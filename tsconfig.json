@@ -39,5 +39,6 @@
 		"**/*.js",
 		".next/types/**/*.ts"
 	],
+	"types": ["web", "bun-types"],
 	"exclude": ["node_modules"]
 }
