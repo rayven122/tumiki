@@ -1,69 +1,63 @@
-import Link from "next/link";
+"use client";
 
-import { LatestPost } from "@/app/_components/post";
-import { auth } from "@/server/auth";
-import { HydrateClient, api } from "@/trpc/server";
+import { useRouter } from "next/navigation";
 
-export default async function Home() {
-	const hello = await api.post.hello({ text: "from tRPC" });
-	const session = await auth();
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 
-	if (session?.user) {
-		void api.post.getLatest.prefetch();
-	}
+export default function Dashboard() {
+	const router = useRouter();
+	const user = {
+		name: "John Doe",
+		email: "john.doe@example.com",
+		avatar: "https://github.com/shadcn.png",
+		provider: "email",
+	};
+
+	const handleSignOut = async () => {
+		router.push("/");
+	};
 
 	return (
-		<HydrateClient>
-			<main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-				<div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-					<h1 className="font-extrabold text-5xl tracking-tight sm:text-[5rem]">
-						Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-					</h1>
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-						<Link
-							className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-							href="https://create.t3.gg/en/usage/first-steps"
-							target="_blank"
-						>
-							<h3 className="font-bold text-2xl">First Steps →</h3>
-							<div className="text-lg">
-								Just the basics - Everything you need to know to set up your
-								database and authentication.
-							</div>
-						</Link>
-						<Link
-							className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-							href="https://create.t3.gg/en/introduction"
-							target="_blank"
-						>
-							<h3 className="font-bold text-2xl">Documentation →</h3>
-							<div className="text-lg">
-								Learn more about Create T3 App, the libraries it uses, and how
-								to deploy it.
-							</div>
-						</Link>
+		<div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+			<Card className="w-full max-w-md">
+				<CardHeader className="flex flex-row items-center gap-4">
+					<Avatar className="h-14 w-14">
+						<AvatarImage src={user.avatar} alt={user.name} />
+						<AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+					</Avatar>
+					<div>
+						<CardTitle className="text-xl">
+							{user.name}さん、ようこそ！
+						</CardTitle>
+						<CardDescription>{user.email}</CardDescription>
 					</div>
-					<div className="flex flex-col items-center gap-2">
-						<p className="text-2xl text-white">
-							{hello ? hello.greeting : "Loading tRPC query..."}
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-2">
+						<p className="text-muted-foreground text-sm">
+							ログイン方法:{" "}
+							{user.provider === "email" ? "メールアドレス" : user.provider}
 						</p>
-
-						<div className="flex flex-col items-center justify-center gap-4">
-							<p className="text-center text-2xl text-white">
-								{session && <span>Logged in as {session.user?.name}</span>}
-							</p>
-							<Link
-								href={session ? "/api/auth/signout" : "/api/auth/signin"}
-								className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-							>
-								{session ? "Sign out" : "Sign in"}
-							</Link>
-						</div>
+						<p className="text-sm">
+							ログインに成功しました。これはモックデータを使用したデモです。
+						</p>
 					</div>
-
-					{session?.user && <LatestPost />}
-				</div>
-			</main>
-		</HydrateClient>
+				</CardContent>
+				<CardFooter>
+					<Button variant="outline" className="w-full" onClick={handleSignOut}>
+						ログアウト
+					</Button>
+				</CardFooter>
+			</Card>
+		</div>
 	);
 }
