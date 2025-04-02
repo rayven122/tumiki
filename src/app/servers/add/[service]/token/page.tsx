@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,8 +15,6 @@ import {
 	ServerCog,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 // サービス情報の取得関数
 const getServiceInfo = (serviceId: string) => {
@@ -99,33 +95,31 @@ const getIcon = (iconName: string) => {
 	}
 };
 
-export default function TokenPage({ params }: { params: { service: string } }) {
-	const router = useRouter();
-	const serviceInfo = getServiceInfo(params.service);
+export default async function TokenPage({
+	params,
+}: { params: Promise<{ service: string }> }) {
+	const serviceInfo = getServiceInfo((await params).service);
 
-	const [token, setToken] = useState("");
-	const [expiryDate, setExpiryDate] = useState("");
+	// const [token, setToken] = useState("");
+	// const [expiryDate, setExpiryDate] = useState("");
 
 	const handleSave = () => {
-		if (!token) {
-			// toast({
-			// 	title: "エラー",
-			// 	description: "APIトークンを入力してください。",
-			// 	variant: "destructive",
-			// });
-			return;
-		}
-
+		// if (!token) {
+		// 	// toast({
+		// 	// 	title: "エラー",
+		// 	// 	description: "APIトークンを入力してください。",
+		// 	// 	variant: "destructive",
+		// 	// });
+		// 	return;
+		// }
 		// ここでトークンを保存する処理を実装
 		// 実際のアプリケーションでは、安全な方法でトークンを保存する必要があります
-
 		// toast({
 		// 	title: "成功",
 		// 	description: `${serviceInfo.name}のAPIトークンが保存されました。`,
 		// });
-
 		// サーバー一覧画面に戻る
-		router.push("/servers");
+		// router.push("/servers");
 	};
 
 	return (
@@ -207,8 +201,8 @@ export default function TokenPage({ params }: { params: { service: string } }) {
 						id="token"
 						type="password"
 						placeholder="APIトークンを入力してください"
-						value={token}
-						onChange={(e) => setToken(e.target.value)}
+						// value={token}
+						// onChange={(e) => setToken(e.target.value)}
 					/>
 				</div>
 
@@ -217,8 +211,8 @@ export default function TokenPage({ params }: { params: { service: string } }) {
 					<Input
 						id="expiry"
 						type="date"
-						value={expiryDate}
-						onChange={(e) => setExpiryDate(e.target.value)}
+						// value={expiryDate}
+						// onChange={(e) => setExpiryDate(e.target.value)}
 					/>
 					<p className="text-muted-foreground text-xs">
 						トークンに有効期限がある場合は入力してください。
