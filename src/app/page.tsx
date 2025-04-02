@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +10,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { signIn } from "next-auth/react";
 
 export default function Dashboard() {
-	const router = useRouter();
 	const user = {
 		name: "John Doe",
 		email: "john.doe@example.com",
@@ -23,7 +21,7 @@ export default function Dashboard() {
 	};
 
 	const handleSignOut = async () => {
-		router.push("/");
+		await signIn();
 	};
 
 	return (
@@ -53,7 +51,13 @@ export default function Dashboard() {
 					</div>
 				</CardContent>
 				<CardFooter>
-					<Button variant="outline" className="w-full" onClick={handleSignOut}>
+					<Button
+						variant="outline"
+						className="w-full"
+						onClick={() => {
+							handleSignOut();
+						}}
+					>
 						ログアウト
 					</Button>
 				</CardFooter>

@@ -1,28 +1,18 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Role } from "@prisma/client";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
+import GitHubProvider from "next-auth/providers/github";
+import GoogleProvider from "next-auth/providers/google";
+import { db } from "../db";
 
-import { db } from "@/server/db";
+export type ExtendedUser = DefaultSession["user"] & {
+	role: Role;
+};
 
-/**
- * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
- * object and keep type safety.
- *
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
- */
 declare module "next-auth" {
-	interface Session extends DefaultSession {
-		user: {
-			id: string;
-			// ...other properties
-			// role: UserRole;
-		} & DefaultSession["user"];
+	interface Session {
+		user: ExtendedUser;
 	}
-
-	// interface User {
-	//   // ...other properties
-	//   // role: UserRole;
-	// }
 }
 
 /**
@@ -32,7 +22,12 @@ declare module "next-auth" {
  */
 export const authConfig = {
 	providers: [
-		DiscordProvider,
+		GoogleProvider({
+			allowDangerousEmailAccountLinking: true,
+		}),
+		GitHubProvider({
+			allowDangerousEmailAccountLinking: true,
+		}),
 		/**
 		 * ...add more providers here.
 		 *
@@ -43,14 +38,41 @@ export const authConfig = {
 		 * @see https://next-auth.js.org/providers/github
 		 */
 	],
+	pages: {
+		signIn: "/login",
+	},
 	adapter: PrismaAdapter(db),
 	callbacks: {
-		session: ({ session, user }) => ({
-			...session,
-			user: {
-				...session.user,
-				id: user.id,
-			},
-		}),
+		/**
+		 * セッションコールバック
+		 * トークンの情報をセッションに反映させる
+		 * - token.sub: ユーザーの一意のID
+		 * - token.role: ユーザーの権限ロール
+		 */
+		session: ({ token, session }) => {
+			if (token.sub && session.user) {
+				session.user.id = token.sub;
+			}
+			if (token.role && session.user) {
+				session.user.role = token.role as Role;
+			}
+			return session;
+		},
+		/**
+		 * JWTコールバック
+		 * トークンの生成・更新時に実行され、ユーザーの権限情報を付与
+		 * - token.subが存在しない場合は早期リターン
+		 * - DBからユーザー情報を取得し、roleをトークンに追加
+		 */
+		async jwt({ token }) {
+			if (!token.sub) return token;
+			const existingUser = await db.user.findUnique({
+				where: { id: token.sub },
+			});
+			if (!existingUser) return token;
+			token.role = existingUser.role;
+			return token;
+		},
 	},
+	session: { strategy: "jwt" },
 } satisfies NextAuthConfig;

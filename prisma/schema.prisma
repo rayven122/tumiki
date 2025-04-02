@@ -14,18 +14,6 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
-
 // Necessary for Next auth
 model Account {
     id                       String  @id @default(cuid())
@@ -54,6 +42,24 @@ model Session {
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+enum Role {
+    /// システム管理者
+    ADMIN
+    /// サーバー管理者
+    SERVER_MANAGER
+    /// ユーザー
+    USER
+    /// 閲覧者
+    VIEWER
+}
+
+enum MembershipType {
+    /// 無料
+    FREE
+    /// 有料
+    PREMIUM
+}
+
 model User {
     id            String    @id @default(cuid())
     name          String?
@@ -62,7 +68,8 @@ model User {
     image         String?
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
+    role          Role    @default(USER)
+    membership    MembershipType @default(FREE)
 }
 
 model VerificationToken {
