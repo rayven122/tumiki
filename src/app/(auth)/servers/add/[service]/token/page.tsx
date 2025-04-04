@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -100,28 +101,6 @@ export default async function TokenPage({
 }: { params: Promise<{ service: string }> }) {
 	const serviceInfo = getServiceInfo((await params).service);
 
-	// const [token, setToken] = useState("");
-	// const [expiryDate, setExpiryDate] = useState("");
-
-	const handleSave = () => {
-		// if (!token) {
-		// 	// toast({
-		// 	// 	title: "エラー",
-		// 	// 	description: "APIトークンを入力してください。",
-		// 	// 	variant: "destructive",
-		// 	// });
-		// 	return;
-		// }
-		// ここでトークンを保存する処理を実装
-		// 実際のアプリケーションでは、安全な方法でトークンを保存する必要があります
-		// toast({
-		// 	title: "成功",
-		// 	description: `${serviceInfo.name}のAPIトークンが保存されました。`,
-		// });
-		// サーバー一覧画面に戻る
-		// router.push("/servers");
-	};
-
 	return (
 		<div className="container mx-auto px-4 py-6">
 			{/* ヘッダー */}
@@ -221,7 +200,7 @@ export default async function TokenPage({
 
 				<Separator className="my-4" />
 
-				<Button onClick={handleSave} className="w-full">
+				<Button onClick={() => {}} className="w-full">
 					保存
 				</Button>
 			</div>

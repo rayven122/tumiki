@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -15,7 +16,8 @@ import {
 	Server,
 	ServerCog,
 } from "lucide-react";
-import Link from "next/link";
+import { useState } from "react";
+import { ApiTokenModal } from "./ApiTokenModal";
 
 type Service = {
 	id: string;
@@ -29,6 +31,7 @@ type ServiceCardProps = {
 };
 
 export function ServiceCard({ service }: ServiceCardProps) {
+	const [tokenModalOpen, setTokenModalOpen] = useState(false);
 	// アイコンを選択する関数
 	const getIcon = () => {
 		switch (service.icon) {
@@ -63,10 +66,22 @@ export function ServiceCard({ service }: ServiceCardProps) {
 				</CardDescription>
 			</CardContent>
 			<CardFooter>
-				<Link href={`/servers/add/${service.id}/token`} className="w-full">
-					<Button className="w-full">選択</Button>
-				</Link>
+				<Button
+					type="button"
+					onClick={() => {
+						setTokenModalOpen(true);
+					}}
+					className="w-full"
+				>
+					接続
+				</Button>
 			</CardFooter>
+			<ApiTokenModal
+				open={tokenModalOpen}
+				onOpenChange={setTokenModalOpen}
+				serviceId={service.id}
+				onSave={() => {}}
+			/>
 		</Card>
 	);
 }
