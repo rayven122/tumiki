@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Github, Loader2 } from "lucide-react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
@@ -26,8 +27,6 @@ export function LoginForm() {
 	const [password, setPassword] = useState("password");
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
-	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-	const [isGithubLoading, setIsGithubLoading] = useState(false);
 	const [rememberMe, setRememberMe] = useState(false);
 	const router = useRouter();
 
@@ -38,32 +37,10 @@ export function LoginForm() {
 
 		try {
 			router.push("/dashboard");
-		} catch (err) {
+		} catch {
 			setError("予期せぬエラーが発生しました");
 		} finally {
 			setIsLoading(false);
-		}
-	};
-
-	const handleSocialLogin = async (provider: "google" | "github") => {
-		setError(null);
-
-		if (provider === "google") {
-			setIsGoogleLoading(true);
-		} else {
-			setIsGithubLoading(true);
-		}
-
-		try {
-			router.push("/dashboard");
-		} catch (err) {
-			setError("予期せぬエラーが発生しました");
-		} finally {
-			if (provider === "google") {
-				setIsGoogleLoading(false);
-			} else {
-				setIsGithubLoading(false);
-			}
 		}
 	};
 
@@ -148,29 +125,19 @@ export function LoginForm() {
 					<Button
 						variant="outline"
 						type="button"
-						onClick={() => handleSocialLogin("google")}
-						disabled={isGoogleLoading || isGithubLoading || isLoading}
+						onClick={() => signIn("google")}
 						className="border-gray-300 bg-white text-black hover:bg-gray-50"
 					>
-						{isGoogleLoading ? (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-						) : (
-							<FcGoogle className="mr-2 h-5 w-5" />
-						)}
+						<FcGoogle className="mr-2 h-5 w-5" />
 						Google
 					</Button>
 					<Button
 						variant="outline"
 						type="button"
-						onClick={() => handleSocialLogin("github")}
-						disabled={isGithubLoading || isGoogleLoading || isLoading}
+						onClick={() => signIn("github")}
 						className="bg-[#24292e] text-white hover:bg-[#2c3238]"
 					>
-						{isGithubLoading ? (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-						) : (
-							<Github className="mr-2 h-4 w-4" />
-						)}
+						<Github className="mr-2 h-4 w-4" />
 						GitHub
 					</Button>
 				</div>
