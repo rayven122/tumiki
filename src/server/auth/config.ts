@@ -4,14 +4,21 @@ import type { DefaultSession, NextAuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { db } from "../db";
-
-export type ExtendedUser = DefaultSession["user"] & {
-	role: Role;
-};
+import "next-auth/jwt";
 
 declare module "next-auth" {
 	interface Session {
-		user: ExtendedUser;
+		user: DefaultSession["user"] & {
+			role: Role;
+		};
+	}
+}
+
+declare module "next-auth/jwt" {
+	/** Returned by the `jwt` callback and `auth`, when using JWT sessions */
+	interface JWT {
+		id: string;
+		role: Role;
 	}
 }
 
@@ -44,21 +51,6 @@ export const authConfig = {
 	adapter: PrismaAdapter(db),
 	callbacks: {
 		/**
-		 * セッションコールバック
-		 * トークンの情報をセッションに反映させる
-		 * - token.sub: ユーザーの一意のID
-		 * - token.role: ユーザーの権限ロール
-		 */
-		session: ({ token, session }) => {
-			if (token.sub && session.user) {
-				session.user.id = token.sub;
-			}
-			if (token.role && session.user) {
-				session.user.role = token.role as Role;
-			}
-			return session;
-		},
-		/**
 		 * JWTコールバック
 		 * トークンの生成・更新時に実行され、ユーザーの権限情報を付与
 		 * - token.subが存在しない場合は早期リターン
@@ -72,6 +64,21 @@ export const authConfig = {
 			if (!existingUser) return token;
 			token.role = existingUser.role;
 			return token;
+		},
+		/**
+		 * セッションコールバック
+		 * トークンの情報をセッションに反映させる
+		 * - token.sub: ユーザーの一意のID
+		 * - token.role: ユーザーの権限ロール
+		 */
+		session: ({ token, session }) => {
+			if (token.sub && session.user) {
+				session.user.id = token.sub;
+			}
+			if (token.role && session.user) {
+				session.user.role = token.role as Role;
+			}
+			return session;
 		},
 	},
 	session: { strategy: "jwt" },
