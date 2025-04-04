@@ -1,8 +1,8 @@
 "use client";
 
 import { PlusCircle } from "lucide-react";
-import { useState } from "react";
 import { ServerCard } from "./_components/ServerCard";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -16,7 +16,6 @@ type Server = {
 };
 
 export default function ServersPage() {
-	// サンプルデータ
 	const [servers, setServers] = useState<Server[]>([
 		{
 			id: "1",
