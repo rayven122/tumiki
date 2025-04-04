@@ -42,7 +42,7 @@ import {
 	Square,
 	Trash2,
 } from "lucide-react";
-// サーバーデータの型定義
+
 type ServerType = {
 	id: string;
 	name: string;

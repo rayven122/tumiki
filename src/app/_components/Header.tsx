@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Bell, Server, Settings, User } from "lucide-react";
+import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -81,7 +82,14 @@ export function Header() {
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem>
-								<span>ログアウト</span>
+								<button
+									type="button"
+									onClick={() => {
+										void signOut();
+									}}
+								>
+									ログアウト
+								</button>
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
