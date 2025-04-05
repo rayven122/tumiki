@@ -19,10 +19,9 @@ export function Header() {
 	const pathname = usePathname();
 
 	const navigation = [
-		{ name: "ダッシュボード", href: "/dashboard" },
+		// { name: "ダッシュボード", href: "/dashboard" },
 		{ name: "サーバー管理", href: "/servers" },
-		{ name: "API管理", href: "/apis" },
-		{ name: "URL管理", href: "/urls" },
+		{ name: "プラグイン", href: "/plugins" },
 	];
 
 	return (
