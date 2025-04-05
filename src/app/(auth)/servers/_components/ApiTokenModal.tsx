@@ -105,15 +105,13 @@ export function ApiTokenModal({
 
 				{/* サービス情報 */}
 				<div className="mb-6 flex items-center">
-					<div className="mr-3 rounded-md bg-muted p-3">
-						{getIcon(serviceInfo.icon)}
-					</div>
+					<div className="mr-3 rounded-md p-3">{getIcon(serviceInfo.icon)}</div>
 					<h2 className="font-semibold text-xl">{serviceInfo.name}</h2>
 				</div>
 
 				{/* APIトークン取得手順 */}
 				<Card className="mb-6">
-					<CardContent className="">
+					<CardContent>
 						<h3 className="mb-4 font-medium text-lg">APIトークンの取得方法</h3>
 
 						<div className="space-y-4">
