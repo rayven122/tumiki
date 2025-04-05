@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
@@ -13,70 +12,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-
-import {
-	Cloud,
-	Database,
-	Droplet,
-	ExternalLink,
-	Globe,
-	Server,
-	ServerCog,
-	X,
-} from "lucide-react";
+import Image from "next/image";
+import { ExternalLink } from "lucide-react";
 
 // サービス情報の取得関数
 const getServiceInfo = (serviceId: string) => {
 	const services = {
-		upstash: {
-			name: "Upstash",
-			icon: "database",
-			tokenUrl: "https://upstash.com/account/api",
+		slack: {
+			name: "Slack",
+			icon: "/logos/slack.svg",
+			tokenUrl: "https://api.slack.com/apps",
 			tokenInstructions:
-				"Upstashアカウントページで「Create API Key」をクリックし、新しいAPIキーを生成してください。",
+				"Slack APIのページで新しいアプリを作成し、Bot User OAuth Tokenを生成してください。",
 		},
-		vercel: {
-			name: "Vercel",
-			icon: "globe",
-			tokenUrl: "https://vercel.com/account/tokens",
+		notion: {
+			name: "Notion",
+			icon: "/logos/notion.svg",
+			tokenUrl: "https://www.notion.so/my-integrations",
 			tokenInstructions:
-				"Vercelのアカウント設定から「Tokens」タブを開き、新しいトークンを作成してください。",
+				"Notionのインテグレーション設定から新しいインテグレーションを作成し、内部インテグレーショントークンを取得してください。",
 		},
-		aws: {
-			name: "AWS",
-			icon: "cloud",
-			tokenUrl: "https://console.aws.amazon.com/iam/home#/security_credentials",
+		playwright: {
+			name: "Playwright",
+			icon: "/logos/playwright.svg",
+			tokenUrl: "https://playwright.dev/docs/auth",
 			tokenInstructions:
-				"AWSコンソールからIAMユーザーのアクセスキーを作成してください。",
+				"Playwrightの認証設定から必要な認証情報を取得してください。",
 		},
-		gcp: {
-			name: "Google Cloud",
-			icon: "server",
-			tokenUrl: "https://console.cloud.google.com/apis/credentials",
+		github: {
+			name: "GitHub",
+			icon: "/logos/github.svg",
+			tokenUrl: "https://github.com/settings/tokens",
 			tokenInstructions:
-				"GCPコンソールから新しいサービスアカウントキーを作成してください。",
-		},
-		azure: {
-			name: "Microsoft Azure",
-			icon: "server-cog",
-			tokenUrl:
-				"https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
-			tokenInstructions:
-				"Azureポータルからアプリケーション登録を行い、クライアントシークレットを生成してください。",
-		},
-		digitalocean: {
-			name: "DigitalOcean",
-			icon: "droplet",
-			tokenUrl: "https://cloud.digitalocean.com/account/api/tokens",
-			tokenInstructions:
-				"DigitalOceanコントロールパネルからAPIトークンを生成してください。",
+				"GitHubの設定から「Developer settings」→「Personal access tokens」で新しいトークンを生成してください。",
 		},
 	};
 
 	return (
 		services[serviceId as keyof typeof services] || {
 			name: "Unknown Service",
-			icon: "server",
+			icon: "/logos/default.png",
 			tokenUrl: "#",
 			tokenInstructions:
 				"サービスプロバイダーのウェブサイトでAPIトークンを取得してください。",
@@ -84,24 +59,17 @@ const getServiceInfo = (serviceId: string) => {
 	);
 };
 
-// アイコンを選択する関数
-const getIcon = (iconName: string) => {
-	switch (iconName) {
-		case "database":
-			return <Database className="h-6 w-6" />;
-		case "globe":
-			return <Globe className="h-6 w-6" />;
-		case "cloud":
-			return <Cloud className="h-6 w-6" />;
-		case "server":
-			return <Server className="h-6 w-6" />;
-		case "server-cog":
-			return <ServerCog className="h-6 w-6" />;
-		case "droplet":
-			return <Droplet className="h-6 w-6" />;
-		default:
-			return <Server className="h-6 w-6" />;
-	}
+// アイコンを表示する関数
+const getIcon = (iconPath: string) => {
+	return (
+		<Image
+			src={iconPath}
+			alt="Service Icon"
+			width={24}
+			height={24}
+			className="h-6 w-6"
+		/>
+	);
 };
 
 type ApiTokenModalProps = {
@@ -118,7 +86,7 @@ export function ApiTokenModal({
 	onSave,
 }: ApiTokenModalProps) {
 	const [token, setToken] = useState("");
-	const [expiryDate, setExpiryDate] = useState("");
+	const [expiryDate, _setExpiryDate] = useState("");
 	const serviceInfo = getServiceInfo(serviceId);
 
 	const handleSave = () => {

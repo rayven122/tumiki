@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { ServiceCard } from "../_components/ServiceCard";
@@ -10,53 +11,71 @@ type Service = {
 	id: string;
 	name: string;
 	description: string;
-	icon: string;
+	icon: React.ReactNode;
 };
 
 export default function AddServerPage() {
 	// 利用可能なMCPサービスのサンプルデータ
 	const [services] = useState<Service[]>([
 		{
-			id: "upstash",
-			name: "Upstash",
+			id: "slack",
+			name: "Slack",
 			description:
-				"高速なサーバーレスRedisとKafkaサービス。低レイテンシーと高スケーラビリティを提供します。",
-			icon: "database",
+				"チームコミュニケーションツール。リアルタイムのメッセージング、ファイル共有、チャンネル管理が可能です。",
+			icon: (
+				<Image
+					src="/logos/slack.svg"
+					alt="Slack"
+					width={24}
+					height={24}
+					className="h-6 w-6"
+				/>
+			),
 		},
 		{
-			id: "vercel",
-			name: "Vercel",
+			id: "notion",
+			name: "Notion",
 			description:
-				"フロントエンドアプリケーションのためのグローバルデプロイメントプラットフォーム。",
-			icon: "globe",
+				"オールインワンワークスペース。ドキュメント管理、タスク管理、データベース機能を統合した生産性ツール。",
+			icon: (
+				<Image
+					src="/logos/notion.svg"
+					alt="Notion"
+					width={24}
+					height={24}
+					className="h-6 w-6"
+				/>
+			),
 		},
 		{
-			id: "aws",
-			name: "AWS",
+			id: "playwright",
+			name: "Playwright",
 			description:
-				"包括的なクラウドコンピューティングサービス。EC2、S3、Lambdaなど多様なサービスを提供。",
-			icon: "cloud",
+				"モダンなWebテスト自動化フレームワーク。クロスブラウザテスト、自動スクリーンショット、テストレポート生成が可能。",
+			icon: (
+				<Image
+					src="/logos/playwright.svg"
+					alt="Playwright"
+					width={24}
+					height={24}
+					className="h-6 w-6"
+				/>
+			),
 		},
 		{
-			id: "gcp",
-			name: "Google Cloud",
+			id: "github",
+			name: "GitHub",
 			description:
-				"Googleのインフラストラクチャ上に構築されたクラウドサービス。機械学習やデータ分析に強み。",
-			icon: "server",
-		},
-		{
-			id: "azure",
-			name: "Microsoft Azure",
-			description:
-				"マイクロソフトのクラウドコンピューティングサービス。企業向けの統合ソリューションを提供。",
-			icon: "server-cog",
-		},
-		{
-			id: "digitalocean",
-			name: "DigitalOcean",
-			description:
-				"シンプルで使いやすいクラウドインフラストラクチャ。開発者向けの手頃な価格のサービス。",
-			icon: "droplet",
+				"バージョン管理とコラボレーションプラットフォーム。コード管理、Issueトラッキング、プルリクエスト機能を提供。",
+			icon: (
+				<Image
+					src="/logos/github.svg"
+					alt="GitHub"
+					width={24}
+					height={24}
+					className="h-6 w-6"
+				/>
+			),
 		},
 	]);
 
