@@ -16,11 +16,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Github, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FcGoogle } from "react-icons/fc";
+import Image from "next/image";
 
 export function LoginForm() {
 	const [email, setEmail] = useState("user@example.com");
@@ -128,16 +128,28 @@ export function LoginForm() {
 						onClick={() => signIn("google")}
 						className="border-gray-300 bg-white text-black hover:bg-gray-50"
 					>
-						<FcGoogle className="mr-2 h-5 w-5" />
+						<Image
+							src="/logos/google.svg"
+							alt="Google"
+							width={20}
+							height={20}
+							className="mr-2"
+						/>
 						Google
 					</Button>
 					<Button
 						variant="outline"
 						type="button"
 						onClick={() => signIn("github")}
-						className="bg-[#24292e] text-white hover:bg-[#2c3238]"
+						className="border-gray-300 bg-white text-black hover:bg-gray-50"
 					>
-						<Github className="mr-2 h-4 w-4" />
+						<Image
+							src="/logos/github.svg"
+							alt="GitHub"
+							width={20}
+							height={20}
+							className="mr-2"
+						/>
 						GitHub
 					</Button>
 				</div>
