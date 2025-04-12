@@ -22,11 +22,12 @@ import type React from "react";
 
 import { Badge } from "@/components/ui/badge";
 
-export default function MCPServerDetailPage({
+export default async function MCPServerDetailPage({
 	params,
-}: { params: { id: string } }) {
+}: { params: Promise<{ id: string }> }) {
+	const { id } = await params;
 	// 実際のアプリケーションではデータベースやAPIからデータを取得します
-	const server = mcpServers.find((s) => s.id === params.id);
+	const server = mcpServers.find((s) => s.id === id);
 
 	if (!server) {
 		return notFound();

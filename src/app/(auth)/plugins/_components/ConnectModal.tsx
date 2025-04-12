@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -8,9 +8,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -18,7 +17,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Database, Key, Copy, Check } from "lucide-react";
+import { Check, Copy, Database, Key } from "lucide-react";
+import { useState } from "react";
 
 export function ConnectModal() {
 	const [client, setClient] = useState("");
@@ -77,7 +77,7 @@ export function ConnectModal() {
 						value={apiKey}
 						onChange={(e) => setApiKey(e.target.value)}
 					/>
-					<p className="text-xs text-muted-foreground">
+					<p className="text-muted-foreground text-xs">
 						You can find your API key in your account settings.
 					</p>
 				</div>
@@ -85,7 +85,7 @@ export function ConnectModal() {
 				<div className="space-y-2">
 					<Label>Generated Command</Label>
 					<div className="relative">
-						<pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+						<pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm">
 							{getCommand()}
 						</pre>
 						<Button
@@ -104,9 +104,9 @@ export function ConnectModal() {
 					</div>
 				</div>
 
-				<div className="text-sm space-y-2">
+				<div className="space-y-2 text-sm">
 					<h3 className="font-medium">Instructions:</h3>
-					<ol className="list-decimal pl-5 space-y-1">
+					<ol className="list-decimal space-y-1 pl-5">
 						<li>Copy the command above</li>
 						<li>Open your terminal and paste the command</li>
 						<li>Restart your MCP client ({client})</li>
