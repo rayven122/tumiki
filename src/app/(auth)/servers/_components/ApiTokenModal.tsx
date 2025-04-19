@@ -86,7 +86,8 @@ export function ApiTokenModal({
   onSave,
 }: ApiTokenModalProps) {
   const [token, setToken] = useState("");
-  const [expiryDate, _setExpiryDate] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [expiryDate, setExpiryDate] = useState("");
   const serviceInfo = getServiceInfo(serviceId);
 
   const handleSave = () => {
