@@ -49,7 +49,7 @@ const getServiceInfo = (serviceId: string) => {
   };
 
   return (
-    services[serviceId as keyof typeof services] || {
+    services[serviceId as keyof typeof services] ?? {
       name: "Unknown Service",
       icon: "/logos/default.png",
       tokenUrl: "#",
