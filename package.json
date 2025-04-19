@@ -77,8 +77,10 @@
 		"@types/ws": "^8.18.1",
 		"postcss": "^8.5.3",
 		"prisma": "^6.5.0",
+		"prisma-markdown": "^2.0.0",
 		"tailwindcss": "^4.0.15",
-		"typescript": "^5.8.2"
+		"typescript": "^5.8.2",
+		"zod-prisma-types": "^3.2.4"
 	},
 	"ct3aMetadata": {
 		"initVersion": "7.39.2"
