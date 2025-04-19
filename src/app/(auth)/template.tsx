@@ -2,15 +2,15 @@ import { auth } from "@/server/auth";
 import { redirect } from "next/navigation";
 
 export default async function AuthLayout({
-	children,
+  children,
 }: {
-	children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-	const session = await auth();
+  const session = await auth();
 
-	if (!session?.user) {
-		redirect("/login");
-	}
+  if (!session?.user) {
+    redirect("/login");
+  }
 
-	return <>{children}</>;
+  return <>{children}</>;
 }
