@@ -16,7 +16,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Run biome check
+      - name: Run run check
         run: bun run check
 
   typecheck:
