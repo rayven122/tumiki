@@ -1,0 +1,51 @@
+/**
+ * @namespace McpServer
+ * 全ユーザが共通して利用するテーブル
+ */
+
+/// MCP サーバー (github や notion などの接続する外部 MCP サーバー)
+/// @namespace McpServer
+model McpServer {
+    id                String   @id @default(cuid())
+    /// MCP サーバー名
+    /// @zod.string.min(1)
+    name              String
+    /// コマンド
+    /// @zod.string.min(1)
+    command           String
+    /// 引数
+    /// @zod.custom.use(z.array(z.string().min(1)).min(1))
+    args              String[]
+    /// 環境変数
+    envVars           String[]
+    /// サーバーが公開されているか
+    isPublic          Boolean   @default(false)
+    tools             Tool[]
+
+    createdAt         DateTime  @default(now())
+    updatedAt         DateTime  @updatedAt
+}
+
+/// MCP サーバーのツール一覧
+/// @namespace McpServer
+/// @namespace ApiAccess
+model Tool {
+    id            String   @id @default(cuid())
+    /// ツールの名前
+    /// @zod.string.min(1)
+    name          String
+    /// ツールの説明
+    description   String
+    /// ツールの入力スキーマ（JSON Schema形式）
+    inputSchema   Json
+    /// ツールを有効にするか
+    isEnabled     Boolean   @default(true)
+
+    mcpServerId   String
+    mcpServer     McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+    toolGroups    ToolGroup[]
+    apiAccesses     ApiAccess[]
+
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+}

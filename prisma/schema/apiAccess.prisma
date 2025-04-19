@@ -1,0 +1,46 @@
+/**
+ * @namespace ApiAccess
+ * ユーザごとに作成するため、他のユーザには表示されない
+ */
+
+/// どのツール群を利用するかを設定する
+/// @namespace ApiAccess
+model ToolGroup {
+  id          String   @id @default(cuid())
+  /// ツールグループ名
+  /// @zod.string.min(1)
+  name        String
+  /// ツールグループの説明
+  description String
+  /// ツールグループが有効かどうか
+  isEnabled   Boolean  @default(true)
+  
+  apiAccesses ApiAccess[]
+  /// ツールの順序を保持するためのID配列
+  tools       Tool[]
+  toolOrder   String[]
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+
+/// APIアクセスの設定
+/// @namespace ApiAccess
+model ApiAccess {
+  id          String   @id @default(cuid())
+  /// APIアクセス名
+  /// @zod.string.min(1)
+  name        String
+  /// APIアクセスの説明
+  description String
+
+  toolGroups ToolGroup[]
+  tools      Tool[]
+
+  /// ツールグループとツールの順序を保持するためのID配列
+  order String[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
