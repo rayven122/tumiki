@@ -3,8 +3,8 @@
 
 - tool を動的に増やしたり減らしたりする検証をする必要あり
 - session 管理のみ、外部にすることで、サーバーレスでも問題なさそうなので、vercel への移行を検討する
-  - next auth 側の session を利用するか要検討
 
+  - next auth 側の session を利用するか要検討
 
 - 各種toolの増減による権限管理をした API キーを発行する。このAPIキーを使うと、どのユーザでも同一のアクセストークンで、API呼び出し可能
 
@@ -12,14 +12,14 @@
 
 ```mermaid
 erDiagram
-    users ||--o{ api_keys : has
-    api_keys ||--o{ api_key_access_tokens : uses
-    mcp_servers ||--o{ access_tokens : has
-    access_tokens ||--o{ api_key_access_tokens : used_by
-    api_keys ||--o{ api_key_tool_permissions : has
-    tool_permissions ||--o{ api_key_tool_permissions : has
-    mcp_servers ||--o{ tools : has
-    tools ||--o{ tool_permissions : has
+    users ??--o{ api_keys : has
+    api_keys ??--o{ api_key_access_tokens : uses
+    mcp_servers ??--o{ access_tokens : has
+    access_tokens ??--o{ api_key_access_tokens : used_by
+    api_keys ??--o{ api_key_tool_permissions : has
+    tool_permissions ??--o{ api_key_tool_permissions : has
+    mcp_servers ??--o{ tools : has
+    tools ??--o{ tool_permissions : has
 
     users {
         int id PK
