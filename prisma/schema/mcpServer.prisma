@@ -7,11 +7,14 @@
 /// @namespace McpServer
 model McpServer {
     id                String   @id @default(cuid())
-    /// @zod.string.min(1).describe("MCP サーバー名")
+    /// MCP サーバー名
+    /// @zod.string.min(1)
     name              String
-    /// @zod.string.min(1).describe("コマンド")
+    /// コマンド
+    /// @zod.string.min(1)
     command           String
-    /// @zod.custom.use(z.array(z.string().min(1)).min(1).describe("引数"))
+    /// 引数
+    /// @zod.custom.use(z.array(z.string().min(1)).min(1))
     args              String[]
     /// 環境変数
     envVars           String[]
@@ -25,9 +28,11 @@ model McpServer {
 
 /// MCP サーバーのツール一覧
 /// @namespace McpServer
+/// @namespace ApiAccess
 model Tool {
     id            String   @id @default(cuid())
-    /// @zod.string.min(1).describe("ツールの名前")
+    /// ツールの名前
+    /// @zod.string.min(1)
     name          String
     /// ツールの説明
     description   String

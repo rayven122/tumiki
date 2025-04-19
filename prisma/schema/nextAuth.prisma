@@ -51,6 +51,7 @@ enum MembershipType {
     PREMIUM
 }
 
+/// @namespace NextAuth
 model User {
     id            String    @id @default(cuid())
     name          String?

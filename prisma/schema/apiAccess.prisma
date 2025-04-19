@@ -7,7 +7,8 @@
 /// @namespace ApiAccess
 model ToolGroup {
   id          String   @id @default(cuid())
-  /// @zod.string.min(1).describe("ツールグループ名")
+  /// ツールグループ名
+  /// @zod.string.min(1)
   name        String
   /// ツールグループの説明
   description String
@@ -28,7 +29,8 @@ model ToolGroup {
 /// @namespace ApiAccess
 model ApiAccess {
   id          String   @id @default(cuid())
-  /// @zod.string.min(1).describe("APIアクセス名")
+  /// APIアクセス名
+  /// @zod.string.min(1)
   name        String
   /// APIアクセスの説明
   description String
