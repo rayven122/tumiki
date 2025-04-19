@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run run check
-        run: bun run check
+        run: bunx dotenv -e .env.test -- bun run check
 
   typecheck:
     name: ✅ Typecheck
@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run typecheck
-        run: bun run typecheck
+        run: bunx dotenv -e .env.test -- bun run typecheck
 
   # build:
   #   name: 🧰 Build
