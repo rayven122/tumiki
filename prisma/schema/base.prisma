@@ -14,8 +14,8 @@ generator zod {
 
 generator markdown {
   provider = "prisma-markdown"
-  output   = "../ERD.md"
-  title    = "MCP Server Manager ERD"
+  output   = "../README.md"
+  title    = "DB Schema"
 }
 
 datasource db {
