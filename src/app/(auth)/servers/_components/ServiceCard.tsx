@@ -53,6 +53,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
         open={tokenModalOpen}
         onOpenChange={setTokenModalOpen}
         serviceId={service.id}
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         onSave={() => {}}
       />
     </Card>

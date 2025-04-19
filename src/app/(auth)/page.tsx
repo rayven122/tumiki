@@ -55,7 +55,7 @@ export default function Dashboard() {
             variant="outline"
             className="w-full"
             onClick={() => {
-              handleSignOut();
+              void handleSignOut();
             }}
           >
             ログアウト

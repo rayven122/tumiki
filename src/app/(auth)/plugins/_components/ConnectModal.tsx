@@ -42,7 +42,7 @@ export function ConnectModal({
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -119,7 +119,9 @@ export function ConnectModal({
               <li>Copy the command above</li>
               <li>Open your terminal and paste the command</li>
               <li>Restart your MCP client ({client})</li>
-              <li>Test the connection by asking "List my projects"</li>
+              <li>
+                Test the connection by asking &quot;List my projects&quot;
+              </li>
             </ol>
           </div>
         </div>
