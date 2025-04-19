@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -174,7 +175,7 @@ const formSchema = z.object({
     })
     .refine(
       (data) =>
-        (data.users && data.users.length > 0) ||
+        (data.users && data.users.length > 0) ??
         (data.teams && data.teams.length > 0),
       {
         message: "少なくとも1つのユーザーまたはチームを選択してください",
@@ -186,7 +187,6 @@ const formSchema = z.object({
 type PermissionFormValues = z.infer<typeof formSchema>;
 
 type PermissionFormProps = {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   initialData?: any;
 };
 
@@ -206,16 +206,16 @@ export function PermissionForm({ initialData }: PermissionFormProps) {
             ? new Date(initialData.expirationDate)
             : undefined,
           status: initialData.status === "active",
-          scopes: initialData.scopes || [],
+          scopes: initialData.scopes ?? [],
           targets: {
             users:
               initialData.targets?.filter((t: string) =>
                 t.startsWith("user"),
-              ) || [],
+              ) ?? [],
             teams:
               initialData.targets?.filter((t: string) =>
                 t.startsWith("team"),
-              ) || [],
+              ) ?? [],
           },
         }
       : {
@@ -229,7 +229,7 @@ export function PermissionForm({ initialData }: PermissionFormProps) {
             teams: [],
           },
         },
-  }) as ReturnType<typeof useForm<PermissionFormValues>>;
+  });
 
   const watchToolType = form.watch("toolType");
 
@@ -468,9 +468,7 @@ export function PermissionForm({ initialData }: PermissionFormProps) {
                               </FormDescription>
                             </div>
                             <div className="space-y-4">
-                              {toolScopes[
-                                watchToolType as keyof typeof toolScopes
-                              ].map((scope) => (
+                              {toolScopes[watchToolType].map((scope) => (
                                 <FormField
                                   key={scope.id}
                                   control={form.control}
@@ -562,7 +560,7 @@ export function PermissionForm({ initialData }: PermissionFormProps) {
                                               onCheckedChange={(checked) => {
                                                 return checked
                                                   ? field.onChange([
-                                                      ...(field.value || []),
+                                                      ...(field.value ?? []),
                                                       user.id,
                                                     ])
                                                   : field.onChange(
@@ -616,7 +614,7 @@ export function PermissionForm({ initialData }: PermissionFormProps) {
                                               onCheckedChange={(checked) => {
                                                 return checked
                                                   ? field.onChange([
-                                                      ...(field.value || []),
+                                                      ...(field.value ?? []),
                                                       team.id,
                                                     ])
                                                   : field.onChange(
@@ -670,7 +668,7 @@ function PermissionPreview({ formValues }: PermissionPreviewProps) {
   } = formValues;
 
   // Get selected scope names
-  const selectedScopes = toolScopes[toolType as keyof typeof toolScopes]
+  const selectedScopes = toolScopes[toolType]
     .filter((scope) => scopes.includes(scope.id))
     .map((scope) => scope.name);
 

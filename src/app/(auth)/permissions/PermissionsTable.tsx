@@ -386,11 +386,11 @@ export function PermissionsTable() {
         onOpenChange={setConnectModalOpen}
         client={
           permissions.find((p) => p.id === selectedPermission)?.connectionInfo
-            .client || ""
+            .client ?? ""
         }
         apiKey={
           permissions.find((p) => p.id === selectedPermission)?.connectionInfo
-            .apiKey || ""
+            .apiKey ?? ""
         }
       />
     </Card>
