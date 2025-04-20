@@ -134,3 +134,14 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
+
+//  protectedProcedure　の第一引数を型抽出する
+export type ProtectedContext = {
+  session: {
+    user: {
+      id: string;
+    };
+  } & Context["session"];
+} & Context;

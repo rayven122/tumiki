@@ -23,6 +23,22 @@ const createPrismaClient = () => {
   client.$use(fieldEncryptionMiddleware());
   // // フィールド暗号化のための拡張
   // client.$extends(fieldEncryptionExtension());
+
+  client.$extends({
+    query: {
+      // userMcpServer: {
+      //   findMany: async ({ args, query }) => {
+      //     const result = await query(args);
+      //     let parsedEnvVars: Record<string, string> | undefined;
+      //     if (result.env)
+      //       return result.map((item) => ({
+      //         ...item,
+      //         envVars: item.envVars && JSON.parse(item.envVars),
+      //       }));
+      //   },
+      // },
+    },
+  });
   return client;
 };
 
@@ -33,3 +49,5 @@ const globalForPrisma = globalThis as unknown as {
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
 if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+export type Db = typeof db;
