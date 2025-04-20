@@ -9,9 +9,8 @@ model UserMcpServer {
   id          String    @id @default(cuid())
   /// カスタムMCPサーバー名 (ユーザーが設定した名前)
   name        String?
-  /// 環境変数（アクセストークンなど）
-  // TODO: 暗号化する
-  envVars     String[]
+  /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+  envVars     String /// @encrypted
   /// 利用可能なツールグループ
   tools       Tool[]
   /// MCPサーバーID
