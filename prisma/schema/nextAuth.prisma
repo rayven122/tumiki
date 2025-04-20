@@ -6,17 +6,28 @@
 model Account {
     id                       String  @id @default(cuid())
     userId                   String
+    /// 認証プロバイダーの種類（oauth, oidc, email, credentials）
     type                     String
+    /// 認証プロバイダー名（google, github, etc.）
     provider                 String
+    /// プロバイダー側のアカウントID
     providerAccountId        String
+    /// リフレッシュトークン
     refresh_token            String?
+    /// アクセストークン
     access_token             String?
+    /// トークンの有効期限（Unixタイムスタンプ）
     expires_at               Int?
+    /// トークンの種類
     token_type               String?
+    /// 認可スコープ
     scope                    String?
+    /// IDトークン
     id_token                 String?
+    /// セッション状態
     session_state            String?
     user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    /// リフレッシュトークンの有効期限（秒）
     refresh_token_expires_in Int?
 
     @@unique([provider, providerAccountId])
@@ -25,8 +36,10 @@ model Account {
 /// @namespace NextAuth
 model Session {
     id           String   @id @default(cuid())
+    /// セッショントークン
     sessionToken String   @unique
     userId       String
+    /// セッションの有効期限
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -52,22 +65,35 @@ enum MembershipType {
 }
 
 /// @namespace NextAuth
+/// @namespace ApiAccess
 model User {
-    id            String         @id @default(cuid())
-    name          String?
-    email         String?        @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
-    role          Role           @default(USER)
-    membership    MembershipType @default(FREE)
+    id             String          @id @default(cuid())
+    /// ユーザー名
+    name           String?
+    /// メールアドレス
+    email          String?         @unique
+    /// メールアドレスの検証日時
+    emailVerified  DateTime?
+    /// プロフィール画像のURL
+    image          String?
+    accounts       Account[]
+    sessions       Session[]
+    toolGroups     ToolGroup[]
+    userMcpServers UserMcpServer[]
+    apiKeys        ApiKey[]
+    /// ユーザーの権限
+    role           Role            @default(USER)
+    /// メンバーシップの種類
+    membership     MembershipType  @default(FREE)
 }
 
 /// @namespace NextAuth
 model VerificationToken {
+    /// 検証対象の識別子（メールアドレスなど）
     identifier String
+    /// 検証トークン
     token      String   @unique
+    /// トークンの有効期限
     expires    DateTime
 
     @@unique([identifier, token])
