@@ -41,7 +41,7 @@ const getMcpServerTools = async (server: McpServer) => {
 /**
  * MCP サーバーからツールを取得してデータベースに書き込む
  */
-const addMcpTools = async () => {
+export const upsertMcpTools = async () => {
   const mcpServers = await db.mcpServer.findMany();
   for (const mcpServer of mcpServers) {
     // ツール一覧を取得
@@ -75,13 +75,3 @@ const addMcpTools = async () => {
     console.log(JSON.stringify(upsertedTools, null, 2));
   }
 };
-
-try {
-  await addMcpTools();
-  console.log("すべての MCP サーバーのツールが正常に登録されました");
-} catch (error) {
-  console.error(error);
-} finally {
-  await db.$disconnect();
-  process.exit(0);
-}
