@@ -8,28 +8,39 @@
 ## ApiAccess
 ```mermaid
 erDiagram
+"UserMcpServer" {
+  String id PK
+  String name "nullable"
+  String envVars
+  String mcpServerId FK
+  String userId FK
+  DateTime createdAt
+  DateTime updatedAt
+}
 "ToolGroup" {
   String id PK
   String name
   String description
   Boolean isEnabled
-  String toolOrder
+  String order
+  String userId FK
   DateTime createdAt
   DateTime updatedAt
 }
-"ApiAccess" {
+"ApiKey" {
   String id PK
   String name
   String description
+  String userId FK
   String order
   DateTime createdAt
   DateTime updatedAt
 }
-"_ApiAccessToToolGroup" {
+"_ApiKeyToToolGroup" {
   String A FK
   String B FK
 }
-"_ApiAccessToTool" {
+"_ApiKeyToTool" {
   String A FK
   String B FK
 }
@@ -43,17 +54,47 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"User" {
+  String id PK
+  String name "nullable"
+  String email UK "nullable"
+  DateTime emailVerified "nullable"
+  String image "nullable"
+  Role role
+  MembershipType membership
+}
+"_ToolToUserMcpServer" {
+  String A FK
+  String B FK
+}
 "_ToolToToolGroup" {
   String A FK
   String B FK
 }
-"_ApiAccessToToolGroup" }o--|| "ApiAccess" : ApiAccess
-"_ApiAccessToToolGroup" }o--|| "ToolGroup" : ToolGroup
-"_ApiAccessToTool" }o--|| "ApiAccess" : ApiAccess
-"_ApiAccessToTool" }o--|| "Tool" : Tool
+"UserMcpServer" }o--|| "User" : user
+"ToolGroup" }o--|| "User" : user
+"ApiKey" }o--|| "User" : user
+"_ApiKeyToToolGroup" }o--|| "ApiKey" : ApiKey
+"_ApiKeyToToolGroup" }o--|| "ToolGroup" : ToolGroup
+"_ApiKeyToTool" }o--|| "ApiKey" : ApiKey
+"_ApiKeyToTool" }o--|| "Tool" : Tool
+"_ToolToUserMcpServer" }o--|| "Tool" : Tool
+"_ToolToUserMcpServer" }o--|| "UserMcpServer" : UserMcpServer
 "_ToolToToolGroup" }o--|| "Tool" : Tool
 "_ToolToToolGroup" }o--|| "ToolGroup" : ToolGroup
 ```
+
+### `UserMcpServer`
+ユーザーが利用できるMCPサーバーの設定
+
+**Properties**
+  - `id`: 
+  - `name`: カスタムMCPサーバー名 (ユーザーが設定した名前)
+  - `envVars`: 環境変数（アクセストークンなど）
+  - `mcpServerId`: MCPサーバーID
+  - `userId`: ユーザーID
+  - `createdAt`: 
+  - `updatedAt`: 
 
 ### `ToolGroup`
 どのツール群を利用するかを設定する
@@ -63,30 +104,32 @@ erDiagram
   - `name`: ツールグループ名
   - `description`: ツールグループの説明
   - `isEnabled`: ツールグループが有効かどうか
-  - `toolOrder`: 
+  - `order`: ツールの表示順序を保持するためのID配列
+  - `userId`: ユーザーID
   - `createdAt`: 
   - `updatedAt`: 
 
-### `ApiAccess`
+### `ApiKey`
 APIアクセスの設定
 
 **Properties**
   - `id`: 
   - `name`: APIアクセス名
   - `description`: APIアクセスの説明
-  - `order`: ツールグループとツールの順序を保持するためのID配列
+  - `userId`: ユーザーID
+  - `order`: ツールグループとツールの表示順序を保持するためのID配列
   - `createdAt`: 
   - `updatedAt`: 
 
-### `_ApiAccessToToolGroup`
-Pair relationship table between [ApiAccess](#ApiAccess) and [ToolGroup](#ToolGroup)
+### `_ApiKeyToToolGroup`
+Pair relationship table between [ApiKey](#ApiKey) and [ToolGroup](#ToolGroup)
 
 **Properties**
   - `A`: 
   - `B`: 
 
-### `_ApiAccessToTool`
-Pair relationship table between [ApiAccess](#ApiAccess) and [Tool](#Tool)
+### `_ApiKeyToTool`
+Pair relationship table between [ApiKey](#ApiKey) and [Tool](#Tool)
 
 **Properties**
   - `A`: 
@@ -104,6 +147,24 @@ MCP サーバーのツール一覧
   - `mcpServerId`: 
   - `createdAt`: 
   - `updatedAt`: 
+
+### `User`
+
+**Properties**
+  - `id`: 
+  - `name`: ユーザー名
+  - `email`: メールアドレス
+  - `emailVerified`: メールアドレスの検証日時
+  - `image`: プロフィール画像のURL
+  - `role`: ユーザーの権限
+  - `membership`: メンバーシップの種類
+
+### `_ToolToUserMcpServer`
+Pair relationship table between [Tool](#Tool) and [UserMcpServer](#UserMcpServer)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 ### `_ToolToToolGroup`
 Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
@@ -137,17 +198,22 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"_ToolToUserMcpServer" {
+  String A FK
+  String B FK
+}
 "_ToolToToolGroup" {
   String A FK
   String B FK
 }
-"_ApiAccessToTool" {
+"_ApiKeyToTool" {
   String A FK
   String B FK
 }
 "Tool" }o--|| "McpServer" : mcpServer
+"_ToolToUserMcpServer" }o--|| "Tool" : Tool
 "_ToolToToolGroup" }o--|| "Tool" : Tool
-"_ApiAccessToTool" }o--|| "Tool" : Tool
+"_ApiKeyToTool" }o--|| "Tool" : Tool
 ```
 
 ### `McpServer`
@@ -177,6 +243,13 @@ MCP サーバーのツール一覧
   - `createdAt`: 
   - `updatedAt`: 
 
+### `_ToolToUserMcpServer`
+Pair relationship table between [Tool](#Tool) and [UserMcpServer](#UserMcpServer)
+
+**Properties**
+  - `A`: 
+  - `B`: 
+
 ### `_ToolToToolGroup`
 Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
 
@@ -184,8 +257,8 @@ Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
   - `A`: 
   - `B`: 
 
-### `_ApiAccessToTool`
-Pair relationship table between [ApiAccess](#ApiAccess) and [Tool](#Tool)
+### `_ApiKeyToTool`
+Pair relationship table between [ApiKey](#ApiKey) and [Tool](#Tool)
 
 **Properties**
   - `A`: 
@@ -239,40 +312,40 @@ erDiagram
 **Properties**
   - `id`: 
   - `userId`: 
-  - `type`: 
-  - `provider`: 
-  - `providerAccountId`: 
-  - `refresh_token`: 
-  - `access_token`: 
-  - `expires_at`: 
-  - `token_type`: 
-  - `scope`: 
-  - `id_token`: 
-  - `session_state`: 
-  - `refresh_token_expires_in`: 
+  - `type`: 認証プロバイダーの種類（oauth, oidc, email, credentials）
+  - `provider`: 認証プロバイダー名（google, github, etc.）
+  - `providerAccountId`: プロバイダー側のアカウントID
+  - `refresh_token`: リフレッシュトークン
+  - `access_token`: アクセストークン
+  - `expires_at`: トークンの有効期限（Unixタイムスタンプ）
+  - `token_type`: トークンの種類
+  - `scope`: 認可スコープ
+  - `id_token`: IDトークン
+  - `session_state`: セッション状態
+  - `refresh_token_expires_in`: リフレッシュトークンの有効期限（秒）
 
 ### `Session`
 
 **Properties**
   - `id`: 
-  - `sessionToken`: 
+  - `sessionToken`: セッショントークン
   - `userId`: 
-  - `expires`: 
+  - `expires`: セッションの有効期限
 
 ### `User`
 
 **Properties**
   - `id`: 
-  - `name`: 
-  - `email`: 
-  - `emailVerified`: 
-  - `image`: 
-  - `role`: 
-  - `membership`: 
+  - `name`: ユーザー名
+  - `email`: メールアドレス
+  - `emailVerified`: メールアドレスの検証日時
+  - `image`: プロフィール画像のURL
+  - `role`: ユーザーの権限
+  - `membership`: メンバーシップの種類
 
 ### `VerificationToken`
 
 **Properties**
-  - `identifier`: 
-  - `token`: 
-  - `expires`: 
+  - `identifier`: 検証対象の識別子（メールアドレスなど）
+  - `token`: 検証トークン
+  - `expires`: トークンの有効期限
