@@ -90,7 +90,7 @@ erDiagram
 **Properties**
   - `id`: 
   - `name`: カスタムMCPサーバー名 (ユーザーが設定した名前)
-  - `envVars`: 環境変数（アクセストークンなど）
+  - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
   - `createdAt`: 
