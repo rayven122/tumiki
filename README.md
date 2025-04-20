@@ -1,12 +1,16 @@
-# Create T3 App
+# Remote MCP Server Manager
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+複数のMCPサーバーを一元管理し、効率的なAPI管理を実現するためのWebアプリケーションです。
 
-## What's next? How do I make an app with this?
+## 主な機能
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- 複数のMCPサーバーの一元管理
+- サーバーの状態監視と制御
+- APIキーの安全な管理
+- 統合URLの生成と管理
+- ツールの選択的な公開
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## 技術スタック
 
 - [Next.js](https://nextjs.org)
 - [NextAuth.js](https://next-auth.js.org)
@@ -15,15 +19,54 @@ If you are not familiar with the different technologies used in this project, pl
 - [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
 
-## Learn More
+## セットアップ
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+1. リポジトリのクローン
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+```bash
+git clone [repository-url]
+cd mcp-server-manager
+```
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+2. 依存関係のインストール
 
-## How do I deploy this?
+```bash
+bun install
+```
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+3. 環境変数の設定
+
+```bash
+cp .env.test .env
+# .envファイルを編集して必要な環境変数を設定
+```
+
+4. データベースのセットアップ
+
+```bash
+bun db:deploy
+```
+
+5. 開発サーバーの起動
+
+```bash
+bun dev
+```
+
+## スクリプト
+
+### MCPサーバーの追加
+
+`src/scripts/addMcpServers.ts` スクリプトを使用して、MCPサーバーをデータベースに追加できます。
+
+```bash
+bun run src/scripts/addMcpServers.ts
+```
+
+### MCPツールの追加
+
+`src/scripts/addMcpTools.ts` スクリプトを使用して、MCPサーバーからツール情報を取得し、データベースに追加できます。
+
+```bash
+bun run src/scripts/addMcpTools.ts
+```

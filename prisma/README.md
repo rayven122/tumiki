@@ -62,7 +62,7 @@ erDiagram
   - `id`: 
   - `name`: ツールグループ名
   - `description`: ツールグループの説明
-  - `isEnabled`: ツールグループが有効かどうか
+  - `isEnabled`: ツールグループが有効かど���か
   - `toolOrder`: 
   - `createdAt`: 
   - `updatedAt`: 
@@ -118,7 +118,7 @@ Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
 erDiagram
 "McpServer" {
   String id PK
-  String name
+  String name UK
   String command
   String args
   String envVars
