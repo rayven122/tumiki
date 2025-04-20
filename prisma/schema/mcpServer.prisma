@@ -9,7 +9,7 @@ model McpServer {
     id       String   @id @default(cuid())
     /// MCP サーバー名
     /// @zod.string.min(1)
-    name     String
+    name     String   @unique
     /// コマンド
     /// @zod.string.min(1)
     command  String
