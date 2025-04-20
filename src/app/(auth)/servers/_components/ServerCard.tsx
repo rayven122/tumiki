@@ -1,181 +1,103 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
-import { ja } from "date-fns/locale";
-import { useState } from "react";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type React from "react";
+import Image from "next/image";
+
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { ApiTokenModal } from "./ApiTokenModal";
+import { PenToolIcon as ToolIcon } from "lucide-react";
+import { ToolsModal } from "./ToolsModal";
+import type { Prisma } from "@prisma/client";
 
-import {
-  Database,
-  Edit,
-  MoreVertical,
-  Network,
-  Play,
-  RotateCw,
-  Server,
-  ServerCog,
-  ServerOff,
-  Square,
-  Trash2,
-} from "lucide-react";
-
-type ServerType = {
-  id: string;
-  name: string;
-  status: "running" | "stopped";
-  lastUpdated: string;
-  icon: string;
-};
+type McpServerWithTools = Prisma.McpServerGetPayload<{
+  include: { tools: true };
+}>;
 
 type ServerCardProps = {
-  server: ServerType;
-  onStatusChange: (id: string, action: "start" | "stop" | "restart") => void;
-  onDelete: (id: string) => void;
+  mcpServer: McpServerWithTools;
 };
 
-export function ServerCard({
-  server,
-  onStatusChange,
-  onDelete,
-}: ServerCardProps) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-  // アイコンを選択する関数
-  const getIcon = () => {
-    switch (server.icon) {
-      case "server":
-        return <Server className="h-6 w-6" />;
-      case "server-cog":
-        return <ServerCog className="h-6 w-6" />;
-      case "server-off":
-        return <ServerOff className="h-6 w-6" />;
-      case "database":
-        return <Database className="h-6 w-6" />;
-      case "network":
-        return <Network className="h-6 w-6" />;
-      default:
-        return <Server className="h-6 w-6" />;
-    }
-  };
-
-  // 最終更新日時をフォーマットする
-  const formattedLastUpdated = formatDistanceToNow(
-    new Date(server.lastUpdated),
-    {
-      addSuffix: true,
-      locale: ja,
-    },
-  );
+export function ServerCard({ mcpServer }: ServerCardProps) {
+  const [tokenModalOpen, setTokenModalOpen] = useState(false);
+  const [toolsModalOpen, setToolsModalOpen] = useState(false);
 
   return (
-    <>
-      <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center space-x-2">
-            {getIcon()}
-            <h3 className="font-medium">{server.name}</h3>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+        <div className="mr-2 rounded-md p-2">
+          {mcpServer.iconPath && (
+            <Image
+              src={mcpServer.iconPath}
+              alt={mcpServer.name}
+              width={32}
+              height={32}
+            />
+          )}
+        </div>
+        <div className="flex-1">
+          <CardTitle>{mcpServer.name}</CardTitle>
+          <div className="mt-1 flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="border-blue-200 bg-blue-50 text-blue-700"
+            >
+              ツール: {mcpServer.tools.length}
+            </Badge>
           </div>
-          <Badge
-            variant={server.status === "running" ? "default" : "secondary"}
-          >
-            {server.status === "running" ? "起動中" : "停止中"}
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1">
+        {/* ツール一覧を表示するボタン */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-2 flex w-full items-center justify-between"
+          onClick={() => setToolsModalOpen(true)}
+        >
+          <span className="flex items-center">
+            <ToolIcon className="mr-2 h-4 w-4" />
+            利用可能なツール
+          </span>
+          <Badge variant="secondary" className="ml-2">
+            {mcpServer.tools.length}
           </Badge>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <p className="text-muted-foreground text-sm">
-            最終更新: {formattedLastUpdated}
-          </p>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="flex space-x-1">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={server.status === "running"}
-              onClick={() => onStatusChange(server.id, "start")}
-              title="起動"
-            >
-              <Play className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={server.status === "stopped"}
-              onClick={() => onStatusChange(server.id, "stop")}
-              title="停止"
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onStatusChange(server.id, "restart")}
-              title="再起動"
-            >
-              <RotateCw className="h-4 w-4" />
-            </Button>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Edit className="mr-2 h-4 w-4" />
-                編集
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                削除
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </CardFooter>
-      </Card>
+        </Button>
+      </CardContent>
+      <CardFooter className="mt-auto">
+        <Button
+          type="button"
+          onClick={() => {
+            setTokenModalOpen(true);
+          }}
+          className="w-full"
+        >
+          接続
+        </Button>
+      </CardFooter>
 
-      {/* 削除確認ダイアログ */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>サーバーを削除しますか？</AlertDialogTitle>
-            <AlertDialogDescription>
-              「{server.name}」を削除します。この操作は元に戻せません。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onDelete(server.id)}>
-              削除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      {/* APIトークンモーダル */}
+      <ApiTokenModal
+        open={tokenModalOpen}
+        onOpenChange={setTokenModalOpen}
+        mcpServer={mcpServer}
+      />
+
+      {/* ツール一覧モーダル */}
+      <ToolsModal
+        open={toolsModalOpen}
+        onOpenChange={setToolsModalOpen}
+        serverName={mcpServer.name}
+        tools={mcpServer.tools}
+      />
+    </Card>
   );
 }
