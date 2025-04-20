@@ -62,7 +62,7 @@ erDiagram
   - `id`: 
   - `name`: ツールグループ名
   - `description`: ツールグループの説明
-  - `isEnabled`: ツールグループが有効かどうか
+  - `isEnabled`: ツールグループが有効かど���か
   - `toolOrder`: 
   - `createdAt`: 
   - `updatedAt`: 

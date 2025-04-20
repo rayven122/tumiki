@@ -79,6 +79,9 @@ CREATE TABLE "_ToolToToolGroup" (
 CREATE UNIQUE INDEX "McpServer_name_key" ON "McpServer"("name");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Tool_mcpServerId_name_key" ON "Tool"("mcpServerId", "name");
+
+-- CreateIndex
 CREATE INDEX "_ApiAccessToToolGroup_B_index" ON "_ApiAccessToToolGroup"("B");
 
 -- CreateIndex
