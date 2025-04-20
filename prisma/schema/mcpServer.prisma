@@ -10,6 +10,8 @@ model McpServer {
     /// MCP サーバー名
     /// @zod.string.min(1)
     name     String   @unique
+    /// アイコンパス
+    iconPath String?
     /// コマンド
     /// @zod.string.min(1)
     command  String
