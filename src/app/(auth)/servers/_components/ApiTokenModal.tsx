@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,51 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "react-toastify";
 import type { McpServer } from "@prisma/client";
-
-// サービス情報の取得関数
-// const getServiceInfo = (serviceId: string) => {
-//   const services = {
-//     slack: {
-//       name: "Slack",
-//       icon: "/logos/slack.svg",
-//       tokenUrl: "https://api.slack.com/apps",
-//       tokenInstructions:
-//         "Slack APIのページで新しいアプリを作成し、Bot User OAuth Tokenを生成してください。",
-//     },
-//     notion: {
-//       name: "Notion",
-//       icon: "/logos/notion.svg",
-//       tokenUrl: "https://www.notion.so/my-integrations",
-//       tokenInstructions:
-//         "Notionのインテグレーション設定から新しいインテグレーションを作成し、内部インテグレーショントークンを取得してください。",
-//     },
-//     playwright: {
-//       name: "Playwright",
-//       icon: "/logos/playwright.svg",
-//       tokenUrl: "https://playwright.dev/docs/auth",
-//       tokenInstructions:
-//         "Playwrightの認証設定から必要な認証情報を取得してください。",
-//     },
-//     github: {
-//       name: "GitHub",
-//       icon: "/logos/github.svg",
-//       tokenUrl: "https://github.com/settings/tokens",
-//       tokenInstructions:
-//         "GitHubの設定から「Developer settings」→「Personal access tokens」で新しいトークンを生成してください。",
-//     },
-//   };
-
-//   return (
-//     services[serviceId as keyof typeof services] ?? {
-//       name: "Unknown Service",
-//       icon: "/logos/default.png",
-//       tokenUrl: "#",
-//       tokenInstructions:
-//         "サービスプロバイダーのウェブサイトでAPIトークンを取得してください。",
-//     }
-//   );
-// };
 
 type ApiTokenModalProps = {
   open: boolean;
@@ -74,7 +31,49 @@ export const ApiTokenModal = ({
   onOpenChange,
   mcpServer,
 }: ApiTokenModalProps) => {
-  const [token, setToken] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  // 各環境変数に対応するトークンを保持するステート
+  const [tokens, setTokens] = useState<Record<string, string>>(() => {
+    // envVarsの各項目に対して空の文字列を初期値として設定
+    return mcpServer.envVars.reduce((acc, envVar) => {
+      return { ...acc, [envVar]: "" };
+    }, {});
+  });
+
+  // 特定の環境変数のトークン値を更新する関数
+  const handleTokenChange = (envVar: string, value: string) => {
+    setTokens((prev) => ({
+      ...prev,
+      [envVar]: value,
+    }));
+  };
+
+  // すべてのトークンが入力されているかチェック
+  const isFormValid = () => {
+    return Object.values(tokens).every((token) => token.trim() !== "");
+  };
+
+  // トークンを保存する関数
+  const handleSave = async () => {
+    startTransition(async () => {
+      // APIトークン保存のシミュレーション
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // 成功時のトースト表示
+      toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
+
+      console.log("保存されたトークン:", tokens);
+      onOpenChange(false);
+
+      // エラー時のトースト表示
+      // toast({
+      //   title: "エラーが発生しました",
+      //   description: "APIトークンの保存中にエラーが発生しました。もう一度お試しください。",
+      //   variant: "destructive",
+      // })
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,7 +83,8 @@ export const ApiTokenModal = ({
             APIトークンの設定
           </DialogTitle>
           <DialogDescription>
-            {mcpServer.name}に接続するためのAPIトークンを設定してください。
+            {mcpServer.name}
+            に接続するために必要なAPIトークンを設定してください。
           </DialogDescription>
         </DialogHeader>
 
@@ -92,7 +92,7 @@ export const ApiTokenModal = ({
         <div className="mb-4 flex items-center">
           <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md border p-2">
             <Image
-              src={mcpServer.iconPath ?? "/placeholder.svg"}
+              src={mcpServer.iconPath ?? "/placeholder.svg?height=24&width=24"}
               alt={mcpServer.name}
               width={24}
               height={24}
@@ -102,7 +102,9 @@ export const ApiTokenModal = ({
           <div>
             <h2 className="font-medium">{mcpServer.name}</h2>
             <Badge variant="outline" className="mt-1 text-xs">
-              APIトークンが必要
+              {mcpServer.envVars.length > 1
+                ? `${mcpServer.envVars.length}つのAPIトークンが必要`
+                : "APIトークンが必要"}
             </Badge>
           </div>
         </div>
@@ -120,8 +122,6 @@ export const ApiTokenModal = ({
                 <div>
                   <p className="font-medium">APIトークン発行ページにアクセス</p>
                   <a
-                    // TODO: ツールの説明を追加
-                    // href={mcpServer.tokenUrl}
                     href="#"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -140,10 +140,7 @@ export const ApiTokenModal = ({
                 <div>
                   <p className="font-medium">トークンの生成</p>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    {/* TODO: ツールの説明を追加 */}
-                    Slack APIのページで新しいアプリを作成し、Bot User
-                    OAuthTokenを生成してください。
-                    {/* {serviceInfo.tokenInstructions} */}
+                    必要なAPIトークンを生成してください。
                   </p>
                 </div>
               </div>
@@ -163,24 +160,28 @@ export const ApiTokenModal = ({
           </CardContent>
         </Card>
 
-        {/* トークン入力フォーム */}
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="token" className="text-sm">
-              APIトークン
-            </Label>
-            <Input
-              id="token"
-              type="password"
-              placeholder="APIトークンを入力してください"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              className="text-sm"
-            />
-            <p className="text-muted-foreground text-xs">
-              トークンは暗号化されて安全に保存されます
-            </p>
-          </div>
+        {/* 動的に生成されるトークン入力フォーム */}
+        <div className="space-y-4">
+          {mcpServer.envVars.map((envVar, index) => (
+            <div key={envVar} className="space-y-2">
+              <Label htmlFor={`token-${envVar}`} className="text-sm">
+                {envVar}
+              </Label>
+              <Input
+                id={`token-${envVar}`}
+                type="password"
+                placeholder={`${envVar}を入力してください`}
+                value={tokens[envVar]}
+                onChange={(e) => handleTokenChange(envVar, e.target.value)}
+                className="text-sm"
+              />
+              {index === mcpServer.envVars.length - 1 && (
+                <p className="text-muted-foreground text-xs">
+                  トークンは暗号化されて安全に保存されます
+                </p>
+              )}
+            </div>
+          ))}
 
           <Separator className="my-4" />
 
@@ -189,12 +190,23 @@ export const ApiTokenModal = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
               size="sm"
+              disabled={isPending}
             >
               キャンセル
             </Button>
-            {/* eslint-disable-next-line @typescript-eslint/no-empty-function */}
-            <Button onClick={() => {}} disabled={!token.trim()} size="sm">
-              保存
+            <Button
+              onClick={handleSave}
+              disabled={!isFormValid() || isPending}
+              size="sm"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  保存中...
+                </>
+              ) : (
+                "保存"
+              )}
             </Button>
           </div>
         </div>
