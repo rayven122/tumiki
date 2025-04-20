@@ -16,8 +16,8 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Run biome check
-        run: bun run check
+      - name: Run run check
+        run: bunx dotenv -e .env.test -- bun run check
 
   typecheck:
     name: ✅ Typecheck
