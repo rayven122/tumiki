@@ -39,5 +39,5 @@
     ".next/types/**/*.ts"
   ],
   "types": ["web", "bun-types"],
-  "exclude": ["node_modules", "prisma/generated"]
+  "exclude": ["node_modules"]
 }
