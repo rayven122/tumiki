@@ -6,14 +6,16 @@ import type { Prisma } from "@prisma/client";
 export const MCP_SERVERS = [
   {
     name: "Notion MCP",
-    command: "/root/.nix-profile/bin/node",
+    iconPath: "/logos/notion.svg",
+    command: "node",
     args: ["node_modules/@suekou/mcp-notion-server/build/index.js"],
     envVars: ["NOTION_API_TOKEN"],
     isPublic: true,
   },
   {
     name: "GitHub MCP",
-    command: "/root/.nix-profile/bin/node",
+    iconPath: "/logos/github.svg",
+    command: "node",
     args: ["node_modules/@modelcontextprotocol/server-github/dist/index.js"],
     envVars: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
     isPublic: true,

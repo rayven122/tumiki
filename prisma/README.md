@@ -62,7 +62,7 @@ erDiagram
   - `id`: 
   - `name`: ツールグループ名
   - `description`: ツールグループの説明
-  - `isEnabled`: ツールグループが有効かど���か
+  - `isEnabled`: ツールグループが有効かどうか
   - `toolOrder`: 
   - `createdAt`: 
   - `updatedAt`: 
@@ -119,6 +119,7 @@ erDiagram
 "McpServer" {
   String id PK
   String name UK
+  String iconPath "nullable"
   String command
   String args
   String envVars
@@ -155,6 +156,7 @@ MCP サーバー (github や notion などの接続する外部 MCP サーバー
 **Properties**
   - `id`: 
   - `name`: MCP サーバー名
+  - `iconPath`: アイコンパス
   - `command`: コマンド
   - `args`: 引数
   - `envVars`: 環境変数
