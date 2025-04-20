@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { ExternalLink, Loader2 } from "lucide-react";
 
@@ -19,22 +19,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-toastify";
 import type { McpServer } from "@prisma/client";
+import { api } from "@/trpc/react";
 
 type ApiTokenModalProps = {
-  open: boolean;
   onOpenChange: (open: boolean) => void;
   mcpServer: McpServer;
 };
 
 export const ApiTokenModal = ({
-  open,
   onOpenChange,
   mcpServer,
 }: ApiTokenModalProps) => {
-  const [isPending, startTransition] = useTransition();
+  const { mutate: addUserMcpServer, isPending } =
+    api.userMcpServer.add.useMutation({
+      onSuccess: () => {
+        toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
+        onOpenChange(false);
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
 
   // 各環境変数に対応するトークンを保持するステート
-  const [tokens, setTokens] = useState<Record<string, string>>(() => {
+  const [envVars, setTokens] = useState<Record<string, string>>(() => {
     // envVarsの各項目に対して空の文字列を初期値として設定
     return mcpServer.envVars.reduce((acc, envVar) => {
       return { ...acc, [envVar]: "" };
@@ -51,32 +59,19 @@ export const ApiTokenModal = ({
 
   // すべてのトークンが入力されているかチェック
   const isFormValid = () => {
-    return Object.values(tokens).every((token) => token.trim() !== "");
+    return Object.values(envVars).every((token) => token.trim() !== "");
   };
 
   // トークンを保存する関数
-  const handleSave = async () => {
-    startTransition(async () => {
-      // APIトークン保存のシミュレーション
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // 成功時のトースト表示
-      toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
-
-      console.log("保存されたトークン:", tokens);
-      onOpenChange(false);
-
-      // エラー時のトースト表示
-      // toast({
-      //   title: "エラーが発生しました",
-      //   description: "APIトークンの保存中にエラーが発生しました。もう一度お試しください。",
-      //   variant: "destructive",
-      // })
+  const handleSave = () => {
+    addUserMcpServer({
+      mcpServerId: mcpServer.id,
+      envVars,
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
@@ -171,7 +166,7 @@ export const ApiTokenModal = ({
                 id={`token-${envVar}`}
                 type="password"
                 placeholder={`${envVar}を入力してください`}
-                value={tokens[envVar]}
+                value={envVars[envVar]}
                 onChange={(e) => handleTokenChange(envVar, e.target.value)}
                 className="text-sm"
               />

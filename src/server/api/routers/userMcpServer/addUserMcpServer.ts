@@ -29,7 +29,7 @@ export const addUserMcpServer = async ({
 
   const tools = await getMcpServerTools(mcpServer, input.envVars);
   if (tools.length === 0) {
-    throw new Error("MCPサーバーのツールが見つかりません");
+    throw new Error("正しい環境変数が設定されていません");
   }
 
   return await ctx.db.userMcpServer.create({

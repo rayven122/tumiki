@@ -85,11 +85,9 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
       </CardFooter>
 
       {/* APIトークンモーダル */}
-      <ApiTokenModal
-        open={tokenModalOpen}
-        onOpenChange={setTokenModalOpen}
-        mcpServer={mcpServer}
-      />
+      {tokenModalOpen && (
+        <ApiTokenModal onOpenChange={setTokenModalOpen} mcpServer={mcpServer} />
+      )}
 
       {/* ツール一覧モーダル */}
       <ToolsModal

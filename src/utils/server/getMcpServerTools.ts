@@ -20,7 +20,7 @@ export const getMcpServerTools = async (
   try {
     // トランスポートの設定
     const transport = new StdioClientTransport({
-      command: server.command,
+      command: server.command === "node" ? process.execPath : server.command,
       args: server.args,
       env: envVars,
     });
@@ -30,6 +30,10 @@ export const getMcpServerTools = async (
 
     // ツール一覧を取得
     const listTools = await client.listTools();
+
+    // サーバーの接続を閉じる
+    await client.close();
+
     return listTools.tools;
   } catch (error) {
     console.error(error);
