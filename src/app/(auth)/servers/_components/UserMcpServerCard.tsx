@@ -13,44 +13,51 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { ApiTokenModal } from "./ApiTokenModal";
 import { PenToolIcon as ToolIcon } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@prisma/client";
 
-type McpServerWithTools = Prisma.McpServerGetPayload<{
-  include: { tools: true };
+type UserMcpServerWithTools = Prisma.UserMcpServerGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    tools: true;
+    mcpServer: true;
+  };
 }>;
 
-type ServerCardProps = {
-  mcpServer: McpServerWithTools;
+type UserMcpServerCardProps = {
+  userMcpServer: UserMcpServerWithTools;
 };
 
-export function ServerCard({ mcpServer }: ServerCardProps) {
-  const [tokenModalOpen, setTokenModalOpen] = useState(false);
+export const UserMcpServerCard = ({
+  userMcpServer,
+}: UserMcpServerCardProps) => {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
 
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
         <div className="mr-2 rounded-md p-2">
-          {mcpServer.iconPath && (
+          {userMcpServer.mcpServer.iconPath && (
             <Image
-              src={mcpServer.iconPath}
-              alt={mcpServer.name}
+              src={userMcpServer.mcpServer.iconPath}
+              alt={userMcpServer.name ?? userMcpServer.mcpServer.name}
               width={32}
               height={32}
             />
           )}
         </div>
         <div className="flex-1">
-          <CardTitle>{mcpServer.name}</CardTitle>
+          <CardTitle>
+            {userMcpServer.name ?? userMcpServer.mcpServer.name}
+          </CardTitle>
           <div className="mt-1 flex items-center gap-2">
             <Badge
               variant="outline"
               className="border-blue-200 bg-blue-50 text-blue-700"
             >
-              ツール: {mcpServer.tools.length}
+              ツール: {userMcpServer.tools.length}
             </Badge>
           </div>
         </div>
@@ -68,12 +75,12 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
             利用可能なツール
           </span>
           <Badge variant="secondary" className="ml-2">
-            {mcpServer.tools.length}
+            {userMcpServer.tools.length}
           </Badge>
         </Button>
       </CardContent>
       <CardFooter className="mt-auto">
-        <Button
+        {/* <Button
           type="button"
           onClick={() => {
             setTokenModalOpen(true);
@@ -81,21 +88,16 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
           className="w-full"
         >
           接続
-        </Button>
+        </Button> */}
       </CardFooter>
-
-      {/* APIトークンモーダル */}
-      {tokenModalOpen && (
-        <ApiTokenModal onOpenChange={setTokenModalOpen} mcpServer={mcpServer} />
-      )}
 
       {/* ツール一覧モーダル */}
       <ToolsModal
         open={toolsModalOpen}
         onOpenChange={setToolsModalOpen}
-        serverName={mcpServer.name}
-        tools={mcpServer.tools}
+        serverName={userMcpServer.name ?? userMcpServer.mcpServer.name}
+        tools={userMcpServer.tools}
       />
     </Card>
   );
-}
+};

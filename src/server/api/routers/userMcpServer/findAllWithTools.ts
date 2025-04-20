@@ -1,12 +1,21 @@
-import { db } from "@/server/db";
+import type { ProtectedContext } from "../../trpc";
 
-export const findAllWithTools = async () => {
-  const mcpServers = await db.mcpServer.findMany({
+type FindAllWithMcpServerToolsInput = {
+  ctx: ProtectedContext;
+};
+
+export const findAllWithMcpServerTools = async ({
+  ctx,
+}: FindAllWithMcpServerToolsInput) => {
+  const mcpServers = await ctx.db.userMcpServer.findMany({
     where: {
-      isPublic: true,
+      userId: ctx.session.user.id,
     },
-    include: {
+    select: {
+      id: true,
+      name: true,
       tools: true,
+      mcpServer: true,
     },
   });
   return mcpServers;
