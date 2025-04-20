@@ -55,18 +55,10 @@ bun dev
 
 ## スクリプト
 
-### MCPサーバーの追加
+### MCPサーバーとツールの一括登録
 
-`src/scripts/addMcpServers.ts` スクリプトを使用して、MCPサーバーをデータベースに追加できます。
-
-```bash
-bun run src/scripts/addMcpServers.ts
-```
-
-### MCPツールの追加
-
-`src/scripts/addMcpTools.ts` スクリプトを使用して、MCPサーバーからツール情報を取得し、データベースに追加できます。
+`src/scripts/upsertAll.ts` スクリプトを使用して、MCPサーバーとツールを一括で登録できます。
 
 ```bash
-bun run src/scripts/addMcpTools.ts
+bun run src/scripts/upsertAll.ts
 ```
