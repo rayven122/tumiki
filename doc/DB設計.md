@@ -1,141 +1,109 @@
+<!-- ユーザは、mcpサーバーをアクセストークン(envVars)を入力することで、mcp サーバーが利用できるようになります。利用できるようになったmcp サーバーを保存するテーブルを作成してください。また、利用できるようになったmcpサーバーはこちらのアクセストークンごとに、利用できるtool が制限されます。上記の情報をもとに、テーブルを修正してください。 -->
+
 # データベース構造
 
 ```mermaid
 erDiagram
-    users ||--o{ api_keys : has
-    users ||--o{ accounts : has
-    users ||--o{ sessions : has
-    api_keys ||--o{ api_key_access_tokens : uses
-    api_keys ||--o{ api_key_logs : has
-    mcp_servers ||--o{ access_tokens : has
-    access_tokens ||--o{ api_key_access_tokens : used_by
-    api_keys ||--o{ api_key_tool_permissions : has
-    tool_permissions ||--o{ api_key_tool_permissions : has
-    mcp_servers ||--o{ tools : has
-    tools ||--o{ tool_permissions : has
+    User ||--o{ Account : has
+    User ||--o{ Session : has
+    User ||--o{ UserMcpServer : has
+    User ||--o{ ToolGroup : has
+    McpServer ||--o{ UserMcpServer : has
+    McpServer ||--o{ Tool : has
+    Tool ||--o{ ToolGroup : belongs_to
+    Tool ||--o{ ApiKey : has
+    ToolGroup ||--o{ ApiKey : has
+    UserMcpServer ||--o{ Tool : has
 
-    users {
+    User {
         string id PK
         string name
         string email
-        datetime email_verified
+        datetime emailVerified
         string image
         enum role
         enum membership
-        datetime created_at
-        datetime updated_at
+        datetime createdAt
+        datetime updatedAt
     }
 
-    accounts {
+    Account {
         string id PK
-        string user_id FK
+        string userId FK
         string type
         string provider
-        string provider_account_id
-        string refresh_token
-        string access_token
-        int expires_at
-        string token_type
+        string providerAccountId
+        string refreshToken
+        string accessToken
+        int expiresAt
+        string tokenType
         string scope
-        string id_token
-        string session_state
-        int refresh_token_expires_in
+        string idToken
+        string sessionState
+        int refreshTokenExpiresIn
     }
 
-    sessions {
+    Session {
         string id PK
-        string session_token
-        string user_id FK
+        string sessionToken
+        string userId FK
         datetime expires
     }
 
-    api_keys {
-        int id PK
-        int user_id FK
-        string api_key
+    ApiKey {
+        string id PK
         string name
-        boolean is_active
-        datetime created_at
-        datetime updated_at
-        datetime expires_at
+        string description
+        string[] order
+        datetime createdAt
+        datetime updatedAt
     }
 
-    api_key_logs {
-        int id PK
-        int api_key_id FK
-        string action
-        string endpoint
-        string request_body
-        string response_body
-        int status_code
-        datetime created_at
-    }
-
-    mcp_servers {
-        int id PK
+    McpServer {
+        string id PK
         string name
+        string iconPath
         string command
         string[] args
-        string[] env_vars
-        string working_directory
-        enum status
-        datetime last_started_at
-        datetime last_stopped_at
-        datetime deleted_at
-        boolean is_active
-        datetime created_at
-        datetime updated_at
+        string[] envVars
+        boolean isPublic
+        datetime createdAt
+        datetime updatedAt
     }
 
-    access_tokens {
-        int id PK
-        int mcp_server_id FK
-        string token
-        string provider
-        datetime created_at
-        datetime updated_at
-        datetime expires_at
+    UserMcpServer {
+        string id PK
+        string userId FK
+        string mcpServerId FK
+        string name
+        string[] envVars
+        datetime createdAt
+        datetime updatedAt
     }
 
-    api_key_access_tokens {
-        int id PK
-        int api_key_id FK
-        int access_token_id FK
-        datetime created_at
-        datetime updated_at
-    }
-
-    tools {
-        int id PK
-        int mcp_server_id FK
+    Tool {
+        string id PK
+        string mcpServerId FK
         string name
         string description
-        string endpoint
-        boolean is_active
-        datetime created_at
-        datetime updated_at
+        json inputSchema
+        boolean isEnabled
+        datetime createdAt
+        datetime updatedAt
     }
 
-    tool_permissions {
-        int id PK
-        int tool_id FK
+    ToolGroup {
+        string id PK
+        string userId FK
         string name
         string description
-        datetime created_at
-        datetime updated_at
+        boolean isEnabled
+        string[] order
+        datetime createdAt
+        datetime updatedAt
     }
 
-    api_key_tool_permissions {
-        int id PK
-        int api_key_id FK
-        int tool_permission_id FK
-        boolean can_read
-        boolean can_write
-        datetime created_at
-        datetime updated_at
-    }
-
-    verification_tokens {
+    VerificationToken {
         string identifier
         string token
         datetime expires
@@ -145,16 +113,19 @@ erDiagram
 ## 列挙型
 
 ### Role
+
 - ADMIN: システム管理者
 - SERVER_MANAGER: サーバー管理者
 - USER: ユーザー
 - VIEWER: 閲覧者
 
 ### MembershipType
+
 - FREE: 無料
 - PREMIUM: 有料
 
 ### ServerStatus
+
 - ACTIVE: 稼働中
 - INACTIVE: 停止中
 - DELETED: 論理削除
