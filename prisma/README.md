@@ -118,7 +118,7 @@ Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
 erDiagram
 "McpServer" {
   String id PK
-  String name
+  String name UK
   String command
   String args
   String envVars
