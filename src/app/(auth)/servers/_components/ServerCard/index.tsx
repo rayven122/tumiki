@@ -13,9 +13,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { ApiTokenModal } from "./ApiTokenModal";
+import { ApiTokenModal } from "../ApiTokenModal";
 import { Wrench } from "lucide-react";
-import { ToolsModal } from "./ToolsModal";
+import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@prisma/client";
 
 type McpServerWithTools = Prisma.McpServerGetPayload<{

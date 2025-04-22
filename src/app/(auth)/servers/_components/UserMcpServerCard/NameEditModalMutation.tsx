@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
-import { NameEditModal } from "../NameEditModal";
+import { NameEditModal } from "./NameEditModal";
 
 type NameEditModalMutationProps = {
   initialName: string;
