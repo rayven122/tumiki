@@ -19,7 +19,7 @@ import {
   MoreHorizontal,
   Wrench,
 } from "lucide-react";
-import { ToolsModal } from "./ToolsModal";
+import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@prisma/client";
 import {
   DropdownMenu,
@@ -27,9 +27,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ImageEditModal } from "./ImageEditModal";
-import { NameEditModal } from "./NameEditModal";
-import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { ApiTokenModal } from "../ApiTokenModal";
+import { DeleteConfirmModalMutation } from "./DeleteConfirmModalMutation";
+import { NameEditModalMutation } from "./NameEditModalMutation";
+import { ImageEditModalMutation } from "./ImageEditModalMutation";
 
 type UserMcpServerWithTools = Prisma.UserMcpServerGetPayload<{
   select: {
@@ -42,71 +43,18 @@ type UserMcpServerWithTools = Prisma.UserMcpServerGetPayload<{
 
 type UserMcpServerCardProps = {
   userMcpServer: UserMcpServerWithTools;
-  onDelete?: (id: string) => Promise<void>;
-  onUpdateName?: (id: string, name: string) => Promise<void>;
-  onUpdateImage?: (id: string, imageUrl: string) => Promise<void>;
 };
 
 export const UserMcpServerCard = ({
   userMcpServer,
-  onDelete,
-  onUpdateName,
-  onUpdateImage,
 }: UserMcpServerCardProps) => {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
-  const [newName, setNewName] = useState(
-    userMcpServer.name ?? userMcpServer.mcpServer.name,
-  );
-  const [newImageUrl, setNewImageUrl] = useState(
-    userMcpServer.mcpServer.iconPath ?? "",
-  );
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleDelete = async () => {
-    if (!onDelete) return;
-
-    setIsLoading(true);
-    try {
-      await onDelete(userMcpServer.id);
-      setDeleteModalOpen(false);
-    } catch (error) {
-      console.error("Failed to delete server:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNameUpdate = async () => {
-    if (!onUpdateName) return;
-
-    setIsLoading(true);
-    try {
-      await onUpdateName(userMcpServer.id, newName);
-      setNameEditModalOpen(false);
-    } catch (error) {
-      console.error("Failed to update server name:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleImageUpdate = async () => {
-    if (!onUpdateImage) return;
-
-    setIsLoading(true);
-    try {
-      await onUpdateImage(userMcpServer.id, newImageUrl);
-      setImageEditModalOpen(false);
-    } catch (error) {
-      console.error("Failed to update server image:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const serverName = userMcpServer.name ?? userMcpServer.mcpServer.name;
 
   return (
     <Card className="flex h-full flex-col">
@@ -115,7 +63,7 @@ export const UserMcpServerCard = ({
           {userMcpServer.mcpServer.iconPath ? (
             <Image
               src={userMcpServer.mcpServer.iconPath || "/placeholder.svg"}
-              alt={userMcpServer.name ?? userMcpServer.mcpServer.name}
+              alt={serverName}
               width={32}
               height={32}
             />
@@ -135,9 +83,7 @@ export const UserMcpServerCard = ({
         </div>
         <div className="flex-1">
           <div className="flex items-center">
-            <CardTitle>
-              {userMcpServer.name ?? userMcpServer.mcpServer.name}
-            </CardTitle>
+            <CardTitle>{serverName}</CardTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -207,46 +153,56 @@ export const UserMcpServerCard = ({
           }}
           className="w-full"
         >
-          接続
+          再設定
         </Button>
       </CardFooter>
+
+      {/* トークンモーダル */}
+      {tokenModalOpen && (
+        <ApiTokenModal
+          onOpenChange={setTokenModalOpen}
+          mcpServer={userMcpServer.mcpServer}
+          userMcpServerId={userMcpServer.id}
+          mode="edit"
+        />
+      )}
 
       {/* ツール一覧モーダル */}
       <ToolsModal
         open={toolsModalOpen}
         onOpenChange={setToolsModalOpen}
-        serverName={userMcpServer.name ?? userMcpServer.mcpServer.name}
+        serverName={serverName}
         tools={userMcpServer.tools}
       />
 
       {/* 削除確認モーダル */}
-      <DeleteConfirmModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        serverName={userMcpServer.name ?? userMcpServer.mcpServer.name}
-        onDelete={handleDelete}
-        isLoading={isLoading}
-      />
+      {deleteModalOpen && (
+        <DeleteConfirmModalMutation
+          userMcpServerId={userMcpServer.id}
+          serverName={serverName}
+          onOpenChange={setDeleteModalOpen}
+        />
+      )}
 
       {/* 名前編集モーダル */}
-      <NameEditModal
-        open={nameEditModalOpen}
-        onOpenChange={setNameEditModalOpen}
-        name={newName}
-        onNameChange={setNewName}
-        onUpdate={handleNameUpdate}
-        isLoading={isLoading}
-      />
+      {nameEditModalOpen && (
+        <NameEditModalMutation
+          userMcpServerId={userMcpServer.id}
+          initialName={serverName}
+          onOpenChange={setNameEditModalOpen}
+        />
+      )}
 
       {/* 画像編集モーダル */}
-      <ImageEditModal
-        open={imageEditModalOpen}
-        onOpenChange={setImageEditModalOpen}
-        imageUrl={newImageUrl}
-        onImageUrlChange={setNewImageUrl}
-        onUpdate={handleImageUpdate}
-        isLoading={isLoading}
-      />
+      {/* TODO: 画像編集モーダルを実装する */}
+      {imageEditModalOpen && (
+        <ImageEditModalMutation
+          serverName={serverName}
+          userMcpServerId={userMcpServer.id}
+          initialImageUrl={userMcpServer.mcpServer.iconPath ?? ""}
+          onOpenChange={setImageEditModalOpen}
+        />
+      )}
     </Card>
   );
 };

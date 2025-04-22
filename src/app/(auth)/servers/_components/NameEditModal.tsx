@@ -15,7 +15,7 @@ type NameEditModalProps = {
   onOpenChange: (open: boolean) => void;
   name: string;
   onNameChange: (name: string) => void;
-  onUpdate: () => Promise<void>;
+  onUpdate: () => Promise<void> | void;
   isLoading: boolean;
 };
 

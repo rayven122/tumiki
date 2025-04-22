@@ -24,11 +24,17 @@ import { api } from "@/trpc/react";
 type ApiTokenModalProps = {
   onOpenChange: (open: boolean) => void;
   mcpServer: McpServer;
+  userMcpServerId?: string;
+  initialEnvVars?: Record<string, string>;
+  mode?: "create" | "edit";
 };
 
 export const ApiTokenModal = ({
   onOpenChange,
   mcpServer,
+  userMcpServerId,
+  initialEnvVars,
+  mode = "create",
 }: ApiTokenModalProps) => {
   const { mutate: addUserMcpServer, isPending } =
     api.userMcpServer.add.useMutation({
@@ -41,11 +47,22 @@ export const ApiTokenModal = ({
       },
     });
 
+  const { mutate: updateUserMcpServer, isPending: isUpdating } =
+    api.userMcpServer.update.useMutation({
+      onSuccess: () => {
+        toast.success(`${mcpServer.name}のAPIトークンが正常に更新されました。`);
+        onOpenChange(false);
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
   // 各環境変数に対応するトークンを保持するステート
   const [envVars, setTokens] = useState<Record<string, string>>(() => {
-    // envVarsの各項目に対して空の文字列を初期値として設定
+    // 初期値として既存のトークンがある場合はそれを使用し、ない場合は空文字列を設定
     return mcpServer.envVars.reduce((acc, envVar) => {
-      return { ...acc, [envVar]: "" };
+      return { ...acc, [envVar]: initialEnvVars?.[envVar] ?? "" };
     }, {});
   });
 
@@ -70,16 +87,28 @@ export const ApiTokenModal = ({
     });
   };
 
+  const handleUpdate = () => {
+    if (!userMcpServerId) {
+      toast.error("ユーザーのMCPサーバーが見つかりません");
+      return;
+    }
+    updateUserMcpServer({
+      id: userMcpServerId,
+      envVars,
+    });
+  };
+
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            APIトークンの設定
+            APIトークンの{mode === "create" ? "設定" : "編集"}
           </DialogTitle>
           <DialogDescription>
             {mcpServer.name}
-            に接続するために必要なAPIトークンを設定してください。
+            に接続するために必要なAPIトークンを
+            {mode === "create" ? "設定" : "編集"}してください。
           </DialogDescription>
         </DialogHeader>
 
@@ -185,22 +214,30 @@ export const ApiTokenModal = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
               size="sm"
-              disabled={isPending}
+              disabled={isPending || isUpdating}
             >
               キャンセル
             </Button>
             <Button
-              onClick={handleSave}
-              disabled={!isFormValid() || isPending}
+              onClick={() => {
+                if (mode === "create") {
+                  handleSave();
+                } else {
+                  handleUpdate();
+                }
+              }}
+              disabled={!isFormValid() || isPending || isUpdating}
               size="sm"
             >
-              {isPending ? (
+              {isPending || isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  保存中...
+                  {mode === "create" ? "保存中..." : "更新中..."}
                 </>
-              ) : (
+              ) : mode === "create" ? (
                 "保存"
+              ) : (
+                "更新"
               )}
             </Button>
           </div>
