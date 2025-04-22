@@ -1,5 +1,5 @@
 import { type ComponentProps } from "react";
-import { DeleteConfirmModal } from "../DeleteConfirmModal";
+import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 

@@ -1,7 +1,7 @@
 import { useState, type ComponentProps } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
-import { ImageEditModal } from "../ImageEditModal";
+import { ImageEditModal } from "./ImageEditModal";
 
 type ImageEditModalMutationProps = {
   initialImageUrl: string;
