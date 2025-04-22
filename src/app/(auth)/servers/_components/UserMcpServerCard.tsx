@@ -13,10 +13,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import {
-  PenToolIcon as ToolIcon,
   Trash2Icon,
   EditIcon,
   ImageIcon,
+  MoreHorizontal,
+  Wrench,
 } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@prisma/client";
@@ -119,17 +120,17 @@ export const UserMcpServerCard = ({
               height={32}
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-200">
-              <ImageIcon className="h-4 w-4 text-gray-500" />
+            <div className="flex size-6 items-center justify-center rounded-md bg-gray-200">
+              <ImageIcon className="size-4 text-gray-500" />
             </div>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute inset-0 flex items-center justify-center rounded-md bg-black/50 opacity-0 group-hover:opacity-100"
+            className="absolute top-0 left-0 flex size-6 items-center justify-center rounded-md bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-black/70"
             onClick={() => setImageEditModalOpen(true)}
           >
-            <EditIcon className="h-4 w-4 text-white" />
+            <EditIcon className="size-4 text-white" />
           </Button>
         </div>
         <div className="flex-1">
@@ -157,22 +158,9 @@ export const UserMcpServerCard = ({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="size-6">
               <span className="sr-only">メニューを開く</span>
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 15 15"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM13.625 7.5C13.625 8.12132 13.1213 8.625 12.5 8.625C11.8787 8.625 11.375 8.12132 11.375 7.5C11.375 6.87868 11.8787 6.375 12.5 6.375C13.1213 6.375 13.625 6.87868 13.625 7.5Z"
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                ></path>
-              </svg>
+              <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -203,7 +191,7 @@ export const UserMcpServerCard = ({
           onClick={() => setToolsModalOpen(true)}
         >
           <span className="flex items-center">
-            <ToolIcon className="mr-2 h-4 w-4" />
+            <Wrench className="mr-2 size-4" />
             利用可能なツール
           </span>
           <Badge variant="secondary" className="ml-2">

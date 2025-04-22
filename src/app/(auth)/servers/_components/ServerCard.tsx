@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { ApiTokenModal } from "./ApiTokenModal";
-import { PenToolIcon as ToolIcon } from "lucide-react";
+import { Wrench } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@prisma/client";
 
@@ -64,7 +64,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
           onClick={() => setToolsModalOpen(true)}
         >
           <span className="flex items-center">
-            <ToolIcon className="mr-2 h-4 w-4" />
+            <Wrench className="mr-2 size-4" />
             利用可能なツール
           </span>
           <Badge variant="secondary" className="ml-2">
