@@ -13,7 +13,7 @@ type DeleteConfirmModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverName: string;
-  onDelete: () => Promise<void>;
+  onDelete: () => Promise<void> | void;
   isLoading: boolean;
 };
 

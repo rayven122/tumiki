@@ -16,7 +16,7 @@ type ImageEditModalProps = {
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   onImageUrlChange: (url: string) => void;
-  onUpdate: () => Promise<void>;
+  onUpdate: () => Promise<void> | void;
   isLoading: boolean;
 };
 
