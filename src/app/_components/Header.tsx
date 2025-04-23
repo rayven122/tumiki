@@ -20,8 +20,10 @@ export function Header() {
 
   const navigation = [
     // { name: "ダッシュボード", href: "/dashboard" },
-    { name: "サーバー管理", href: "/servers" },
-    { name: "プラグイン", href: "/plugins" },
+    { name: "MCPサーバー", href: "/servers" },
+    { name: "アクセス管理", href: "/access" },
+    // { name: "権限管理", href: "/permissions" },
+    // { name: "プラグイン", href: "/plugins" },
   ];
 
   return (
