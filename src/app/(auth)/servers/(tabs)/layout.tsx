@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 export default function ServersLayout({
-  children,
   servers,
   toolGroups,
   access,

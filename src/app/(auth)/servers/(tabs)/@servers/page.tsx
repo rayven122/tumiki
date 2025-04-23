@@ -1,4 +1,4 @@
-import { UserMcpServerCard } from "../_components/UserMcpServerCard";
+import { UserMcpServerCard } from "../../_components/UserMcpServerCard";
 import { api } from "@/trpc/server";
 
 const UserMcpServerList = async () => {
