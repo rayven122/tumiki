@@ -6,6 +6,7 @@ import { UserMcpServerCardSkeleton } from "./_components/UserMcpServerCard/UserM
 import { Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Key, Layers, Plus, Server } from "lucide-react";
+import { ApiKeysTab } from "./_components/ApiKeysTab";
 
 const UserMcpServerList = async () => {
   const userMcpServers = await api.userMcpServer.findAllWithMcpServerTools();
@@ -86,11 +87,7 @@ export default function MCPServersPage() {
         </TabsContent>
 
         <TabsContent value="access">
-          <div className="rounded-lg border p-4">
-            <p className="text-muted-foreground text-center">
-              アクセス管理機能は現在開発中です。
-            </p>
-          </div>
+          <ApiKeysTab />
         </TabsContent>
 
         <TabsContent value="tool-groups">
