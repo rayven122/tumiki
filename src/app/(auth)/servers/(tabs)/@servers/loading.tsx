@@ -1,4 +1,4 @@
-import { UserMcpServerCardSkeleton } from "../_components/UserMcpServerCard/UserMcpServerCardSkeleton";
+import { UserMcpServerCardSkeleton } from "../../_components/UserMcpServerCard/UserMcpServerCardSkeleton";
 
 export default function Loading() {
   return (
