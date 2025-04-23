@@ -3,10 +3,34 @@ import Link from "next/link";
 import { UserMcpServerCard } from "./_components/UserMcpServerCard";
 
 import { api } from "@/trpc/server";
+import { UserMcpServerCardSkeleton } from "./_components/UserMcpServerCard/UserMcpServerCardSkeleton";
+import { Suspense } from "react";
 
-export default async function MCPServersPage() {
+const UserMcpServerList = async () => {
   const userMcpServers = await api.userMcpServer.findAllWithMcpServerTools();
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {userMcpServers.map((userMcpServer) => (
+        <UserMcpServerCard
+          key={userMcpServer.id}
+          userMcpServer={userMcpServer}
+        />
+      ))}
+    </div>
+  );
+};
 
+const UserMcpServerListSkeleton = () => {
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <UserMcpServerCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+};
+
+export default function MCPServersPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8 flex items-center justify-between">
@@ -16,14 +40,9 @@ export default async function MCPServersPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {userMcpServers.map((userMcpServer) => (
-          <UserMcpServerCard
-            key={userMcpServer.id}
-            userMcpServer={userMcpServer}
-          />
-        ))}
-      </div>
+      <Suspense fallback={<UserMcpServerListSkeleton />}>
+        <UserMcpServerList />
+      </Suspense>
     </div>
   );
 }
