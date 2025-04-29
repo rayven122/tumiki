@@ -37,6 +37,7 @@ import { CreateApiKeyDialog } from "./dialogs/CreateApiKeyDialog";
 import { EditApiKeyDialog } from "./dialogs/EditApiKeyDialog";
 import { DeleteApiKeyDialog } from "./dialogs/DeleteApiKeyDialog";
 import type { ApiKey, UserMcpServer } from "./types";
+import { ToolBadge } from "./ToolBadge";
 
 // Mock data
 const mockApiKeys: ApiKey[] = [
@@ -385,23 +386,17 @@ export function ApiKeysTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {apiKey.toolGroups?.slice(0, 5).map((group) => (
-                        <Badge
-                          key={group.id}
-                          variant="outline"
-                          className="border-purple-200 bg-purple-50 text-purple-700"
-                        >
-                          {group.name}
-                        </Badge>
-                      ))}
+                      {apiKey.toolGroups
+                        ?.slice(0, 5)
+                        .map((group) => (
+                          <ToolBadge
+                            key={group.id}
+                            type="toolGroup"
+                            toolGroup={group}
+                          />
+                        ))}
                       {apiKey.tools.slice(0, 5).map((tool) => (
-                        <Badge
-                          key={tool.id}
-                          variant="outline"
-                          className="border-green-200 bg-green-50 text-green-700"
-                        >
-                          {tool.name}
-                        </Badge>
+                        <ToolBadge key={tool.id} type="tool" tool={tool} />
                       ))}
                       {(apiKey.toolGroups?.length ?? 0) + apiKey.tools.length >
                         10 && (
@@ -463,13 +458,6 @@ export function ApiKeysTab() {
           </TableBody>
         </Table>
       </CardContent>
-
-      <CreateApiKeyDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        mockUserMcpServers={mockUserMcpServers}
-        onCreateApiKey={handleCreateApiKey}
-      />
 
       <EditApiKeyDialog
         open={isEditDialogOpen}
