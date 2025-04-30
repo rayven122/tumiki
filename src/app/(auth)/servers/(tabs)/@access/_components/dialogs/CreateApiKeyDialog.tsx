@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ServerToolSelector } from "./ServerToolSelector";
 import { api } from "@/trpc/react";
+import type { ToolId, UserMcpServerId } from "@/schema/ids";
 
 type CreateApiKeyDialogProps = {
   open: boolean;
@@ -27,11 +28,11 @@ export function CreateApiKeyDialog({
   const { data: userMcpServers, isLoading } =
     api.userMcpServer.findAllWithMcpServerTools.useQuery();
   const [newKeyName, setNewKeyName] = useState("");
-  const [selectedServerIds, setSelectedServerIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedServerIds, setSelectedServerIds] = useState<
+    Set<UserMcpServerId>
+  >(new Set());
   const [selectedToolIds, setSelectedToolIds] = useState<
-    Map<string, Set<string>>
+    Map<UserMcpServerId, Set<ToolId>>
   >(new Map());
 
   const handleCreateApiKey = () => {

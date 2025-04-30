@@ -9,24 +9,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import type { Prisma } from "@prisma/client";
 import { ToolBadgeList } from "../ToolBadgeList";
+import type { ToolId, UserMcpServerId } from "@/schema/ids";
+import type { RouterOutputs } from "@/trpc/react";
 
-type UserMcpServer = Prisma.UserMcpServerGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    tools: true;
-    mcpServer: true;
-  };
-}>;
+type UserMcpServer =
+  RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
 
 type ServerToolSelectorProps = {
   servers: UserMcpServer[];
-  selectedServerIds: Set<string>;
-  selectedToolIds: Map<string, Set<string>>;
-  onServersChange: (servers: Set<string>) => void;
-  onToolsChange: (tools: Map<string, Set<string>>) => void;
+  selectedServerIds: Set<UserMcpServerId>;
+  selectedToolIds: Map<UserMcpServerId, Set<ToolId>>;
+  onServersChange: (servers: Set<UserMcpServerId>) => void;
+  onToolsChange: (tools: Map<UserMcpServerId, Set<ToolId>>) => void;
   isLoading?: boolean;
 };
 
@@ -83,8 +78,8 @@ export function ServerToolSelector({
 
   // ツールのチェックボックス変更を処理
   const handleToolCheckChange = (
-    serverId: string,
-    toolId: string,
+    serverId: UserMcpServerId,
+    toolId: ToolId,
     checked: boolean,
   ) => {
     const newSelectedTools = new Map(selectedToolIds);
