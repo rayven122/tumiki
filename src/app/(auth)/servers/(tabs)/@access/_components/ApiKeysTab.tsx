@@ -37,6 +37,8 @@ import { CreateApiKeyDialog } from "./dialogs/CreateApiKeyDialog";
 import { EditApiKeyDialog } from "./dialogs/EditApiKeyDialog";
 import { DeleteApiKeyDialog } from "./dialogs/DeleteApiKeyDialog";
 import type { ApiKey, UserMcpServer } from "./types";
+import { ToolBadge } from "./ToolBadge";
+import { ToolBadgeList } from "./ToolBadgeList";
 
 // Mock data
 const mockApiKeys: ApiKey[] = [
@@ -159,7 +161,6 @@ const mockUserMcpServers: UserMcpServer[] = [
 export function ApiKeysTab() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(mockApiKeys);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentApiKey, setCurrentApiKey] = useState<ApiKey | null>(null);
@@ -171,50 +172,6 @@ export function ApiKeysTab() {
         server.name.toLowerCase().includes(searchQuery.toLowerCase()),
       ),
   );
-
-  const handleCreateApiKey = (apiKey: {
-    name: string;
-    servers: string[];
-    tools: string[];
-    toolGroups: string[];
-  }) => {
-    const newKey = `mcp_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 38)}`;
-
-    // ツールの情報を追加
-    const toolsInfo = apiKey.tools.map((id) => {
-      return {
-        id,
-        name: `ツール ${id.split("-")[1]}`,
-      };
-    });
-
-    // ツールグループの情報を追加
-    const toolGroupsInfo = apiKey.toolGroups.map((id) => {
-      return {
-        id,
-        name: `グループ ${id.split("-")[1]}`,
-      };
-    });
-
-    const newApiKey: ApiKey = {
-      id: `key-${apiKeys.length + 1}`,
-      name: apiKey.name,
-      key: newKey,
-      createdAt: new Date().toISOString(),
-      lastUsed: null,
-      servers: apiKey.servers.map((serverId) => {
-        const server = mockUserMcpServers.find((s) => s.id === serverId);
-        return {
-          id: serverId,
-          name: server?.name ?? "",
-        };
-      }),
-      tools: toolsInfo,
-      toolGroups: toolGroupsInfo,
-    };
-
-    setApiKeys([...apiKeys, newApiKey]);
-  };
 
   const handleEditApiKey = (apiKey: {
     id: string;
@@ -280,10 +237,6 @@ export function ApiKeysTab() {
       hour: "2-digit",
       minute: "2-digit",
     }).format(date);
-  };
-
-  const openCreateDialog = () => {
-    setIsCreateDialogOpen(true);
   };
 
   const openEditDialog = (apiKey: ApiKey) => {
@@ -384,35 +337,13 @@ export function ApiKeysTab() {
                     {apiKey.lastUsed ? formatDate(apiKey.lastUsed) : "未更新"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {apiKey.toolGroups?.slice(0, 5).map((group) => (
-                        <Badge
-                          key={group.id}
-                          variant="outline"
-                          className="border-purple-200 bg-purple-50 text-purple-700"
-                        >
-                          {group.name}
-                        </Badge>
-                      ))}
-                      {apiKey.tools.slice(0, 5).map((tool) => (
-                        <Badge
-                          key={tool.id}
-                          variant="outline"
-                          className="border-green-200 bg-green-50 text-green-700"
-                        >
-                          {tool.name}
-                        </Badge>
-                      ))}
-                      {(apiKey.toolGroups?.length ?? 0) + apiKey.tools.length >
-                        10 && (
-                        <Badge variant="outline" className="bg-slate-100">
-                          +
-                          {(apiKey.toolGroups?.length ?? 0) +
-                            apiKey.tools.length -
-                            10}
-                        </Badge>
-                      )}
-                    </div>
+                    <ToolBadgeList
+                      tools={apiKey.tools.map((tool) => ({
+                        ...tool,
+                        userMcpServerName: apiKey.servers[0]?.name ?? "",
+                      }))}
+                      toolGroups={apiKey.toolGroups}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -463,13 +394,6 @@ export function ApiKeysTab() {
           </TableBody>
         </Table>
       </CardContent>
-
-      <CreateApiKeyDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        mockUserMcpServers={mockUserMcpServers}
-        onCreateApiKey={handleCreateApiKey}
-      />
 
       <EditApiKeyDialog
         open={isEditDialogOpen}

@@ -3,6 +3,7 @@ import { Key, Layers, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { CreateApiKeyButton } from "./@access/_components/CreateApiKeyButton";
 
 export default function ServersLayout({
   servers,
@@ -53,10 +54,7 @@ export default function ServersLayout({
               </Button>
             </TabsContent>
             <TabsContent value="access" className="m-0">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                新規API Key作成
-              </Button>
+              <CreateApiKeyButton />
             </TabsContent>
           </div>
         </div>
