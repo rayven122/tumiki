@@ -4,6 +4,16 @@ import { addUserMcpServer } from "./addUserMcpServer";
 import { findAllWithMcpServerTools } from "./findAllWithTools";
 import { updateUserMcpServer } from "./updateUserMcpServer";
 import { deleteUserMcpServer } from "./deleteUserMcpServer";
+import {
+  McpServerSchema,
+  ToolSchema,
+  UserMcpServerSchema,
+} from "prisma/generated/zod";
+import {
+  McpServerIdSchema,
+  ToolIdSchema,
+  UserMcpServerIdSchema,
+} from "@/schema/ids";
 
 export const AddUserMcpServerInput = z.object({
   mcpServerId: z.string(),
@@ -21,6 +31,18 @@ export const DeleteUserMcpServerInput = z.object({
   id: z.string(),
 });
 
+export const FindAllWithMcpServerToolsOutput = z.array(
+  UserMcpServerSchema.pick({
+    name: true,
+  }).merge(
+    z.object({
+      id: UserMcpServerIdSchema,
+      tools: z.array(ToolSchema.merge(z.object({ id: ToolIdSchema }))),
+      mcpServer: McpServerSchema.merge(z.object({ id: McpServerIdSchema })),
+    }),
+  ),
+);
+
 export const userMcpServerRouter = createTRPCRouter({
   add: protectedProcedure
     .input(AddUserMcpServerInput)
@@ -31,7 +53,7 @@ export const userMcpServerRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(DeleteUserMcpServerInput)
     .mutation(deleteUserMcpServer),
-  findAllWithMcpServerTools: protectedProcedure.query(
-    findAllWithMcpServerTools,
-  ),
+  findAllWithMcpServerTools: protectedProcedure
+    .output(FindAllWithMcpServerToolsOutput)
+    .query(findAllWithMcpServerTools),
 });

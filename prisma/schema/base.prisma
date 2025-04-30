@@ -8,7 +8,6 @@ generator zod {
   output                           = "../generated/zod"
   useMultipleFiles                 = true // スキーマを複数ファイルに分割
   createOptionalDefaultValuesTypes = true // デフォルト値を持つフィールドをオプショナルに
-  createRelationValuesTypes        = true // リレーションフィールドを含むタイプの生成
   addInputTypeValidation           = false // 入力型の検証を追加
 }
 
