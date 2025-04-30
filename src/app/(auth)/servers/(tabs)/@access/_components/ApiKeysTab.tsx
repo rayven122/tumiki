@@ -33,11 +33,9 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { CreateApiKeyDialog } from "./dialogs/CreateApiKeyDialog";
 import { EditApiKeyDialog } from "./dialogs/EditApiKeyDialog";
 import { DeleteApiKeyDialog } from "./dialogs/DeleteApiKeyDialog";
 import type { ApiKey, UserMcpServer } from "./types";
-import { ToolBadge } from "./ToolBadge";
 import { ToolBadgeList } from "./ToolBadgeList";
 
 // Mock data
