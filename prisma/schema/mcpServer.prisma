@@ -16,7 +16,7 @@ model McpServer {
     /// @zod.string.min(1)
     command        String
     /// 引数
-    /// @zod.custom.use(z.array(z.string().min(1)).min(1))
+    /// @zod.string.min(1)
     args           String[]
     /// 環境変数
     envVars        String[]
