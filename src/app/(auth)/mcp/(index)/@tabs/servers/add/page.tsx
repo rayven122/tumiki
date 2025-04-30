@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { ServerCard } from "../_components/ServerCard";
-import { ServerCardSkeleton } from "../_components/ServerCard/ServerCardSkeleton";
+import { ServerCard } from "../../../../_components/ServerCard";
+import { ServerCardSkeleton } from "../../../../_components/ServerCard/ServerCardSkeleton";
 import { api } from "@/trpc/server";
 
 const ServerList = async () => {
