@@ -18,5 +18,6 @@ export const findAllWithMcpServerTools = async ({
       mcpServer: true,
     },
   });
+
   return mcpServers;
 };
