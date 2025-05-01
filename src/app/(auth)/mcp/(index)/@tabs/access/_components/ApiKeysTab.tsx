@@ -37,85 +37,7 @@ import { EditApiKeyDialog } from "./dialogs/EditApiKeyDialog";
 import { DeleteApiKeyDialog } from "./dialogs/DeleteApiKeyDialog";
 import type { ApiKey, UserMcpServer } from "./types";
 import { ToolBadgeList } from "./ToolBadgeList";
-
-// Mock data
-const mockApiKeys: ApiKey[] = [
-  {
-    id: "key-1",
-    name: "開発用API Key",
-    key: "mcp_dev_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    createdAt: "2023-10-15T10:30:00Z",
-    lastUsed: "2023-10-20T14:22:00Z",
-    servers: [
-      { id: "server-1", name: "開発サーバー" },
-      { id: "server-2", name: "テストサーバー" },
-    ],
-    tools: [
-      { id: "tool-1", name: "テキスト生成" },
-      { id: "tool-2", name: "画像生成" },
-      { id: "tool-3", name: "音声認識" },
-    ].concat(
-      "key-1" === "key-1"
-        ? Array.from({ length: 12 }, (_, i) => ({
-            id: `tool-extra-${i + 1}`,
-            name: `追加ツール ${i + 1}`,
-          }))
-        : [],
-    ),
-    toolGroups: [
-      { id: "group-1", name: "基本ツールセット" },
-      { id: "group-2", name: "開発者ツールセット" },
-    ],
-  },
-  {
-    id: "key-2",
-    name: "本番環境API Key",
-    key: "mcp_prod_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    createdAt: "2023-09-05T08:15:00Z",
-    lastUsed: "2023-10-21T09:45:00Z",
-    servers: [{ id: "server-3", name: "本番サーバー" }],
-    tools: [
-      { id: "tool-1", name: "テキスト生成" },
-      { id: "tool-2", name: "画像生成" },
-      { id: "tool-3", name: "音声認識" },
-    ].concat(
-      false
-        ? Array.from({ length: 12 }, (_, i) => ({
-            id: `tool-extra-${i + 1}`,
-            name: `追加ツール ${i + 1}`,
-          }))
-        : [],
-    ),
-    toolGroups: [{ id: "group-1", name: "基本ツールセット" }],
-  },
-  {
-    id: "key-3",
-    name: "デモ用API Key",
-    key: "mcp_demo_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    createdAt: "2023-10-01T16:20:00Z",
-    lastUsed: null,
-    servers: [
-      { id: "server-2", name: "テストサーバー" },
-      { id: "server-4", name: "デモサーバー" },
-    ],
-    tools: [
-      { id: "tool-1", name: "テキスト生成" },
-      { id: "tool-2", name: "画像生成" },
-      { id: "tool-3", name: "音声認識" },
-    ].concat(
-      false
-        ? Array.from({ length: 12 }, (_, i) => ({
-            id: `tool-extra-${i + 1}`,
-            name: `追加ツール ${i + 1}`,
-          }))
-        : [],
-    ),
-    toolGroups: [
-      { id: "group-3", name: "コンテンツ制作ツールセット" },
-      { id: "group-5", name: "チャットボットツールセット" },
-    ],
-  },
-];
+import { api } from "@/trpc/react";
 
 const mockUserMcpServers: UserMcpServer[] = [
   {
@@ -157,7 +79,8 @@ const mockUserMcpServers: UserMcpServer[] = [
 ];
 
 export function ApiKeysTab() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(mockApiKeys);
+  const { data } = api.apiKey.findAll.useQuery();
+  const apiKeys = data ?? [];
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -166,8 +89,12 @@ export function ApiKeysTab() {
   const filteredApiKeys = apiKeys.filter(
     (key) =>
       key.name.toLowerCase().includes(searchQuery.toLowerCase()) ??
-      key.servers.some((server) =>
-        server.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      key.toolGroups.some((group) =>
+        group.toolGroupTools.some((toolGroupTool) =>
+          toolGroupTool.tool.name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+        ),
       ),
   );
 
@@ -193,41 +120,39 @@ export function ApiKeysTab() {
       return key;
     });
 
-    setApiKeys(updatedApiKeys);
+    // setApiKeys(updatedApiKeys);
     setIsEditDialogOpen(false);
   };
 
   const handleDeleteApiKey = (apiKeyId: string) => {
-    const updatedApiKeys = apiKeys.filter((key) => key.id !== apiKeyId);
-    setApiKeys(updatedApiKeys);
+    // const updatedApiKeys = apiKeys.filter((key) => key.id !== apiKeyId);
+    // setApiKeys(updatedApiKeys);
     setIsDeleteDialogOpen(false);
   };
 
   const handleRegenerateApiKey = (keyId: string) => {
     const newKey = `mcp_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 38)}`;
 
-    const updatedApiKeys = apiKeys.map((key) => {
-      if (key.id === keyId) {
-        return {
-          ...key,
-          key: newKey,
-          createdAt: new Date().toISOString(),
-          lastUsed: null,
-        };
-      }
-      return key;
-    });
+    // const updatedApiKeys = apiKeys.map((key) => {
+    //   if (key.id === keyId) {
+    //     return {
+    //       ...key,
+    //       key: newKey,
+    //       createdAt: new Date().toISOString(),
+    //       lastUsed: null,
+    //     };
+    //   }
+    //   return key;
+    // });
 
-    setApiKeys(updatedApiKeys);
+    // setApiKeys(updatedApiKeys);
   };
 
   const copyToClipboard = (text: string) => {
     void navigator.clipboard.writeText(text);
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "未使用";
-    const date = new Date(dateString);
+  const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("ja-JP", {
       year: "numeric",
       month: "2-digit",
@@ -237,15 +162,15 @@ export function ApiKeysTab() {
     }).format(date);
   };
 
-  const openEditDialog = (apiKey: ApiKey) => {
-    setCurrentApiKey(apiKey);
-    setIsEditDialogOpen(true);
-  };
+  // const openEditDialog = (apiKey: ApiKey) => {
+  //   setCurrentApiKey(apiKey);
+  //   setIsEditDialogOpen(true);
+  // };
 
-  const openDeleteDialog = (apiKey: ApiKey) => {
-    setCurrentApiKey(apiKey);
-    setIsDeleteDialogOpen(true);
-  };
+  // const openDeleteDialog = (apiKey: ApiKey) => {
+  //   setCurrentApiKey(apiKey);
+  //   setIsDeleteDialogOpen(true);
+  // };
 
   return (
     <Card>
@@ -287,107 +212,122 @@ export function ApiKeysTab() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredApiKeys.map((apiKey) => (
-                <TableRow key={apiKey.id}>
-                  <TableCell className="font-medium">{apiKey.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-muted-foreground text-xs">
-                          API Key:
-                        </span>
-                        <span className="max-w-[220px] truncate font-mono text-sm">
-                          {apiKey.key}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => copyToClipboard(apiKey.key)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
+              filteredApiKeys.map((apiKey) => {
+                const tools = apiKey.toolGroups.flatMap((toolGroup) =>
+                  toolGroup.toolGroupTools.map((toolGroupTool) => ({
+                    ...toolGroupTool.tool,
+                    userMcpServerName: toolGroupTool.userMcpServer.name ?? "",
+                  })),
+                );
+                const serverNameSet = new Set(
+                  apiKey.toolGroups.flatMap((toolGroup) =>
+                    toolGroup.toolGroupTools.map(
+                      (toolGroupTool) => toolGroupTool.userMcpServer.name,
+                    ),
+                  ),
+                );
+                const serverNameList = Array.from(serverNameSet);
+                return (
+                  <TableRow key={apiKey.id}>
+                    <TableCell className="font-medium">{apiKey.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-muted-foreground text-xs">
+                            API Key:
+                          </span>
+                          <span className="max-w-[220px] truncate font-mono text-sm">
+                            {apiKey.id}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => copyToClipboard(apiKey.id)}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-muted-foreground text-xs">
+                            URL:
+                          </span>
+                          <span className="max-w-[220px] truncate font-mono text-sm text-blue-600 underline">
+                            https://api.mcp-server.com/...
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() =>
+                              copyToClipboard(
+                                `https://api.mcp-server.com/${apiKey.id}`,
+                              )
+                            }
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-muted-foreground text-xs">
-                          URL:
-                        </span>
-                        <span className="max-w-[220px] truncate font-mono text-sm text-blue-600 underline">
-                          https://api.mcp-server.com/...
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() =>
-                            copyToClipboard(
-                              `https://api.mcp-server.com/${apiKey.key}`,
-                            )
-                          }
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
+                    </TableCell>
+                    <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
+                    <TableCell>{formatDate(apiKey.updatedAt)}</TableCell>
+                    <TableCell>
+                      <ToolBadgeList
+                        tools={tools}
+                        toolGroups={apiKey.toolGroups}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {serverNameList.map((serverName) => (
+                          <Badge
+                            key={serverName}
+                            variant="outline"
+                            className="bg-slate-100"
+                          >
+                            {serverName}
+                          </Badge>
+                        ))}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
-                  <TableCell>
-                    {apiKey.lastUsed ? formatDate(apiKey.lastUsed) : "未更新"}
-                  </TableCell>
-                  <TableCell>
-                    <ToolBadgeList
-                      tools={apiKey.tools.map((tool) => ({
-                        ...tool,
-                        userMcpServerName: apiKey.servers[0]?.name ?? "",
-                      }))}
-                      toolGroups={apiKey.toolGroups}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {apiKey.servers.map((server) => (
-                        <Badge
-                          key={server.id}
-                          variant="outline"
-                          className="bg-slate-100"
-                        >
-                          {server.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => openEditDialog(apiKey)}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          編集
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleRegenerateApiKey(apiKey.id)}
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          再生成
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => openDeleteDialog(apiKey)}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          削除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                          // onClick={() => openEditDialog(apiKey)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            編集
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleRegenerateApiKey(apiKey.id)}
+                          >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            再生成
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            // onClick={() => openDeleteDialog(apiKey)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            削除
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
