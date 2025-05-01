@@ -110,7 +110,7 @@ export function ServerToolSelector({
         server.tools.forEach((tool) => {
           if (serverTools.has(tool.id)) {
             tools.push({
-              id: tool.id,
+              id: `${server.id}-${tool.id}`,
               name: tool.name,
               userMcpServerName: server.name ?? server.mcpServer.name,
             });
