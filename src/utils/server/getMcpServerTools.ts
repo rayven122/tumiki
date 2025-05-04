@@ -70,9 +70,6 @@ export const callTool = async () => {
     const transport = new StdioClientTransport({
       command: server.command === "node" ? process.execPath : server.command,
       args: server.args,
-      // env: {
-      //   NOTION_API_TOKEN: "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",
-      // },
       env:
         userMcpServer.envVars !== ""
           ? (JSON.parse(userMcpServer.envVars) as Record<string, string>)
