@@ -4,11 +4,7 @@ import { addUserMcpServer } from "./addUserMcpServer";
 import { findAllWithMcpServerTools } from "./findAllWithTools";
 import { updateUserMcpServer } from "./updateUserMcpServer";
 import { deleteUserMcpServer } from "./deleteUserMcpServer";
-import {
-  McpServerSchema,
-  ToolSchema,
-  UserMcpServerSchema,
-} from "prisma/generated/zod";
+import { McpServerSchema, ToolSchema, UserMcpServerSchema } from "@zod";
 import {
   McpServerIdSchema,
   ToolIdSchema,
