@@ -1,4 +1,8 @@
-export default function McpLayout({ tabs }: { tabs: React.ReactNode }) {
+import { callTool } from "@/utils/server/getMcpServerTools";
+
+export default async function McpLayout({ tabs }: { tabs: React.ReactNode }) {
+  await callTool();
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
