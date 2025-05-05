@@ -79,6 +79,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/web": "^0.0.216",
     "@types/ws": "^8.18.1",
+    "bufferutil": "^4.0.9",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.25.0",
     "eslint-config-next": "^15.3.1",
