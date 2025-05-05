@@ -1,4 +1,4 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
+import { neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 import ws from "ws";
@@ -7,12 +7,12 @@ import { env } from "@/env";
 
 import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 
-// websocket を使った接続を使う
-neonConfig.webSocketConstructor = ws;
-const pool = new Pool({ connectionString: env.DATABASE_URL });
-const adapter = new PrismaNeon(pool);
-
 const createPrismaClient = () => {
+  // websocket を使った接続を使う
+  neonConfig.webSocketConstructor = ws;
+  const connectionString = `${process.env.DATABASE_URL}`;
+  const adapter = new PrismaNeon({ connectionString });
+
   const client = new PrismaClient({
     adapter,
     log:
