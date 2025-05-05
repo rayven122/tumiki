@@ -33,7 +33,7 @@ export default function AddServerPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <header className="mb-6 flex items-center">
-        <Link href="/servers" className="mr-4">
+        <Link href="/mcp/servers" className="mr-4">
           <Button variant="ghost" size="icon">
             <ChevronLeft className="h-5 w-5" />
           </Button>
