@@ -72,7 +72,7 @@ export const callTool = async () => {
     // トランスポートの設定
     const transport = new StdioClientTransport({
       command: server.command === "node" ? process.execPath : server.command,
-      args: ["node_modules/@suekou/mcp-notion-server/build/index.js"],
+      args: ["mcp/notion.mcp-server.js"],
       env:
         userMcpServer.envVars !== ""
           ? (JSON.parse(userMcpServer.envVars) as Record<string, string>)
