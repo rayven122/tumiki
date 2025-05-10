@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function Login() {
   const session = await auth();
   if (session?.user) {
-    redirect("/servers");
+    redirect("/mcp/servers");
   }
 
   return (

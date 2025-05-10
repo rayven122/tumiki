@@ -4,6 +4,7 @@
 - [ApiAccess](#apiaccess)
 - [McpServer](#mcpserver)
 - [NextAuth](#nextauth)
+- [default](#default)
 
 ## ApiAccess
 ```mermaid
@@ -40,10 +41,6 @@ erDiagram
   String A FK
   String B FK
 }
-"_ApiKeyToTool" {
-  String A FK
-  String B FK
-}
 "Tool" {
   String id PK
   String name
@@ -67,21 +64,13 @@ erDiagram
   String A FK
   String B FK
 }
-"_ToolToToolGroup" {
-  String A FK
-  String B FK
-}
 "UserMcpServer" }o--|| "User" : user
 "ToolGroup" }o--|| "User" : user
 "ApiKey" }o--|| "User" : user
 "_ApiKeyToToolGroup" }o--|| "ApiKey" : ApiKey
 "_ApiKeyToToolGroup" }o--|| "ToolGroup" : ToolGroup
-"_ApiKeyToTool" }o--|| "ApiKey" : ApiKey
-"_ApiKeyToTool" }o--|| "Tool" : Tool
 "_ToolToUserMcpServer" }o--|| "Tool" : Tool
 "_ToolToUserMcpServer" }o--|| "UserMcpServer" : UserMcpServer
-"_ToolToToolGroup" }o--|| "Tool" : Tool
-"_ToolToToolGroup" }o--|| "ToolGroup" : ToolGroup
 ```
 
 ### `UserMcpServer`
@@ -128,13 +117,6 @@ Pair relationship table between [ApiKey](#ApiKey) and [ToolGroup](#ToolGroup)
   - `A`: 
   - `B`: 
 
-### `_ApiKeyToTool`
-Pair relationship table between [ApiKey](#ApiKey) and [Tool](#Tool)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
 ### `Tool`
 MCP サーバーのツール一覧
 
@@ -161,13 +143,6 @@ MCP サーバーのツール一覧
 
 ### `_ToolToUserMcpServer`
 Pair relationship table between [Tool](#Tool) and [UserMcpServer](#UserMcpServer)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_ToolToToolGroup`
-Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
 
 **Properties**
   - `A`: 
@@ -202,18 +177,8 @@ erDiagram
   String A FK
   String B FK
 }
-"_ToolToToolGroup" {
-  String A FK
-  String B FK
-}
-"_ApiKeyToTool" {
-  String A FK
-  String B FK
-}
 "Tool" }o--|| "McpServer" : mcpServer
 "_ToolToUserMcpServer" }o--|| "Tool" : Tool
-"_ToolToToolGroup" }o--|| "Tool" : Tool
-"_ApiKeyToTool" }o--|| "Tool" : Tool
 ```
 
 ### `McpServer`
@@ -245,20 +210,6 @@ MCP サーバーのツール一覧
 
 ### `_ToolToUserMcpServer`
 Pair relationship table between [Tool](#Tool) and [UserMcpServer](#UserMcpServer)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_ToolToToolGroup`
-Pair relationship table between [Tool](#Tool) and [ToolGroup](#ToolGroup)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_ApiKeyToTool`
-Pair relationship table between [ApiKey](#ApiKey) and [Tool](#Tool)
 
 **Properties**
   - `A`: 
@@ -349,3 +300,28 @@ erDiagram
   - `identifier`: 検証対象の識別子（メールアドレスなど）
   - `token`: 検証トークン
   - `expires`: トークンの有効期限
+
+
+## default
+```mermaid
+erDiagram
+"ToolGroupTool" {
+  String id PK
+  String toolGroupId FK
+  String toolId FK
+  String userMcpServerId FK
+  DateTime createdAt
+  DateTime updatedAt
+}
+```
+
+### `ToolGroupTool`
+ToolGroup, Tool, UserMcpServerの関連を表す中間テーブル
+
+**Properties**
+  - `id`: 
+  - `toolGroupId`: ToolGroupへの参照
+  - `toolId`: Toolへの参照
+  - `userMcpServerId`: このToolがどのUserMcpServerに属しているか
+  - `createdAt`: 
+  - `updatedAt`: 
