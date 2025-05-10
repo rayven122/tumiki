@@ -2,6 +2,8 @@ import { db } from "@/server/db";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { McpServer } from "@prisma/client";
+import { execSync } from "child_process";
+import "@suekou/mcp-notion-server";
 
 /**
  * MCPサーバーからツール一覧を取得する
@@ -64,11 +66,28 @@ export const callTool = async () => {
     version: "1.0.0",
   });
 
-  console.log(JSON.parse(userMcpServer.envVars));
+  const packagePath = require.resolve("@suekou/mcp-notion-server");
+  console.log("パッケージのパス:", packagePath);
+
+  // node_modules/@suekouのファイル位置をfindコマンドで探す
+  try {
+    const result3 = execSync(`ls -l ${packagePath}`, {
+      encoding: "utf-8",
+    });
+    console.log("node_modulesのファイル一覧:", result3);
+    const result2 = execSync(`ls -l ${packagePath}`, {
+      encoding: "utf-8",
+    });
+    console.log("node_modules/@suekouのファイル一覧:", result2);
+  } catch (err) {
+    console.error("findコマンド実行時のエラー:", err);
+  }
+
   try {
     // トランスポートの設定
     const transport = new StdioClientTransport({
       command: server.command === "node" ? process.execPath : server.command,
+      // args: [`${packagePath}/build/index.js`],
       args: server.args,
       env:
         userMcpServer.envVars !== ""
