@@ -13,7 +13,7 @@
 import { redirect } from "next/navigation";
 
 export default function Dashboard() {
-  redirect("/servers");
+  redirect("/mcp/servers");
   // const user = {
   //   name: "John Doe",
   //   email: "john.doe@example.com",

@@ -39,15 +39,16 @@ function getPermission(id: string) {
   return permission;
 }
 
-export default function EditPermissionPage({
+export default async function EditPermissionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const permission = params.id === "new" ? null : getPermission(params.id);
+  const { id } = await params;
+  const permission = id === "new" ? null : getPermission(id);
 
   // If trying to edit a non-existent permission, show 404
-  if (params.id !== "new" && !permission) {
+  if (id !== "new" && !permission) {
     notFound();
   }
 
@@ -55,10 +56,10 @@ export default function EditPermissionPage({
     <div className="flex flex-col gap-6 p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          {params.id === "new" ? "新規権限作成" : "権限編集"}
+          {id === "new" ? "新規権限作成" : "権限編集"}
         </h1>
         <p className="text-muted-foreground">
-          {params.id === "new"
+          {id === "new"
             ? "新しい外部サービスツールの権限を作成します"
             : "既存の外部サービスツールの権限を編集します"}
         </p>
