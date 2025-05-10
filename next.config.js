@@ -5,6 +5,13 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
-const config = {};
+const config = {
+  outputFileTracingIncludes: {
+    "/mcp/servers": [
+      "./node_modules/@suekou/**/*",
+      "./node_modules/yargs/**/*",
+    ],
+  },
+};
 
 export default config;
