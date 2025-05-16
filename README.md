@@ -62,3 +62,19 @@ bun dev
 ```bash
 bun run src/scripts/upsertAll.ts
 ```
+
+### mcp server
+
+- sse endpoint: `/sse`
+- streamable Http: `/mcp`
+
+SSE ローカル検証例
+
+```bash
+cd docker
+docker compose up -d
+REDIS_URL=redis://localhost:6379 bun run dev
+
+npx @modelcontextprotocol/inspector
+# http://localhost:3000/sse
+```
