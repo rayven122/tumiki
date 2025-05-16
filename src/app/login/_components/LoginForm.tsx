@@ -76,7 +76,7 @@ export function LoginForm() {
             <div className="flex items-center justify-between">
               <Label htmlFor="password">パスワード</Label>
               <a
-                href="/reset-password"
+                // href="/reset-password"
                 className="text-primary text-sm hover:underline"
               >
                 パスワードをお忘れですか？
@@ -157,7 +157,10 @@ export function LoginForm() {
       <CardFooter>
         <p className="text-muted-foreground w-full text-center text-sm">
           アカウントをお持ちでないですか？{" "}
-          <a href="/signup" className="text-primary hover:underline">
+          <a
+            // href="/signup"
+            className="text-primary hover:underline"
+          >
             新規登録
           </a>
         </p>

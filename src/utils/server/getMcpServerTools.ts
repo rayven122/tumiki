@@ -2,10 +2,7 @@ import { db } from "@/server/db";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { McpServer } from "@prisma/client";
-import { execSync } from "child_process";
 import "@suekou/mcp-notion-server";
-import { readdir } from "fs/promises";
-import { resolve } from "path";
 
 /**
  * MCPサーバーからツール一覧を取得する
