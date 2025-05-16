@@ -27,8 +27,8 @@ import { ToolSelectorDialog } from "./_components/ToolSelectorDialog";
 import { ToolGroupCard } from "./_components/ToolGroupCard";
 import { ToolGroupDialog } from "./_components/ToolGroupDialog";
 import { ToolGroupSelectorDialog } from "./_components/ToolGroupSelectorDialog";
-import { ApiKeysTab } from "../mcp/_components/ApiKeysTab";
-import { ApiKeyModal } from "../mcp/_components/ApiKeyModal";
+import { ApiKeysTab } from "../mcp-manager/_components/ApiKeysTab";
+import { ApiKeyModal } from "../mcp-manager/_components/ApiKeyModal";
 
 // Mock data types
 type ApiKey = {
