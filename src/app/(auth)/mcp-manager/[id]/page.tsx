@@ -39,7 +39,7 @@ export default async function MCPServerDetailPage({
     <div className="container mx-auto py-8">
       <div className="mb-6">
         <Link
-          href="/mcp/servers"
+          href="/mcp-manager/servers"
           className="text-muted-foreground hover:text-foreground flex items-center text-sm"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />

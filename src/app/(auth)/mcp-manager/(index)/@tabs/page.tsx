@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ServersPage() {
-  redirect("/mcp/servers");
+  redirect("/mcp-manager/servers");
 }

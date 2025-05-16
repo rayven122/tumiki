@@ -18,19 +18,19 @@ export function McpTabs({
     <Tabs value={activeTab} className="w-full">
       <div className="mb-4 flex items-center justify-between">
         <TabsList>
-          <Link href="/mcp/servers">
+          <Link href="/mcp-manager/servers">
             <TabsTrigger value="servers" className="flex items-center">
               <Server className="mr-2 h-4 w-4" />
               サーバー
             </TabsTrigger>
           </Link>
-          <Link href="/mcp/tool-groups">
+          <Link href="/mcp-manager/tool-groups">
             <TabsTrigger value="tool-groups" className="flex items-center">
               <Layers className="mr-2 h-4 w-4" />
               ツールグループ
             </TabsTrigger>
           </Link>
-          <Link href="/mcp/access">
+          <Link href="/mcp-manager/access">
             <TabsTrigger value="access" className="flex items-center">
               <Key className="mr-2 h-4 w-4" />
               アクセス
