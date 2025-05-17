@@ -2,7 +2,6 @@ import { ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { createClients } from "./client";
 import { type ServerConfig } from "./config";
 import { db } from "@/server/db";
-import { cache } from "react";
 
 // const MAX_RETRIES = 3;
 // const RETRY_DELAY = 1000; // 1秒
@@ -22,7 +21,7 @@ import { cache } from "react";
 //   }
 // };
 
-export const getClientTools = cache(async (apiKeyId: string) => {
+export const getClientTools = async (apiKeyId: string) => {
   const apiKey = await db.apiKey.findUniqueOrThrow({
     where: {
       id: apiKeyId,
@@ -124,4 +123,4 @@ export const getClientTools = cache(async (apiKeyId: string) => {
   }
 
   return { tools, cleanup };
-});
+};
