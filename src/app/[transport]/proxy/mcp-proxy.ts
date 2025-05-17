@@ -32,9 +32,6 @@ export const getClientTools = async (
       .passthrough()
       .safeParse(cachedTools);
 
-    console.log(`[DEBUG] result`, result);
-    console.log(`[DEBUG] result.error`, result.error);
-
     if (result.success) {
       return result.data as {
         tools: ClientTool[];
