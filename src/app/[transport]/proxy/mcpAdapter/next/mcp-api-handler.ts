@@ -1,4 +1,3 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import {
   type IncomingHttpHeaders,
@@ -8,12 +7,21 @@ import {
 import { createClient } from "redis";
 import { Socket } from "node:net";
 import { Readable } from "node:stream";
-import type { ServerOptions } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  Server,
+  type ServerOptions,
+} from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { BodyType } from "./server-response-adapter";
 import assert from "node:assert";
-import type { McpEvent } from "../lib/log-helper";
-import { EventEmittingResponse } from "../lib/event-emitter";
+import type {
+  McpEvent,
+  McpErrorEvent,
+  McpSessionEvent,
+  McpRequestEvent,
+} from "../lib/log-helper";
+import { createEvent } from "../lib/log-helper";
+import { EventEmittingResponse } from "../lib/event-emitter.js";
 
 interface SerializedRequest {
   requestId: string;
@@ -207,7 +215,7 @@ export function initializeMcpApiHandler(
     basePath: "",
     maxDuration: 60,
     verboseLogs: false,
-  },
+  }
 ) {
   const {
     redisUrl,
@@ -250,7 +258,7 @@ export function initializeMcpApiHandler(
               message: "Method not allowed.",
             },
             id: null,
-          }),
+          })
         );
         return;
       }
@@ -264,7 +272,7 @@ export function initializeMcpApiHandler(
               message: "Method not allowed.",
             },
             id: null,
-          }),
+          })
         );
         return;
       }
@@ -272,7 +280,7 @@ export function initializeMcpApiHandler(
       if (req.method === "POST") {
         const eventRes = new EventEmittingResponse(
           createFakeIncomingMessage(),
-          config.onEvent,
+          config.onEvent
         );
 
         if (!statelessServer) {
@@ -281,7 +289,7 @@ export function initializeMcpApiHandler(
               name: "mcp-typescript server on vercel",
               version: "0.1.0",
             },
-            serverOptions,
+            serverOptions
           );
 
           initializeServer(statelessServer);
@@ -307,7 +315,7 @@ export function initializeMcpApiHandler(
         // Create a response that will emit events
         const wrappedRes = new EventEmittingResponse(
           incomingRequest,
-          config.onEvent,
+          config.onEvent
         );
         Object.assign(wrappedRes, res);
 
@@ -320,7 +328,7 @@ export function initializeMcpApiHandler(
           ) {
             eventRes.requestCompleted(
               bodyContent.method as string,
-              bodyContent,
+              bodyContent
             );
           }
         } catch (error) {
@@ -332,7 +340,7 @@ export function initializeMcpApiHandler(
             eventRes.requestCompleted(
               bodyContent.method as string,
               undefined,
-              error instanceof Error ? error : String(error),
+              error instanceof Error ? error : String(error)
             );
           }
           throw error;
@@ -351,7 +359,7 @@ export function initializeMcpApiHandler(
       const eventRes = new EventEmittingResponse(
         createFakeIncomingMessage(),
         config.onEvent,
-        sessionId,
+        sessionId
       );
       eventRes.startSession("SSE", {
         userAgent: req.headers.get("user-agent") ?? undefined,
@@ -366,7 +374,7 @@ export function initializeMcpApiHandler(
           name: "mcp-typescript server on vercel",
           version: "0.1.0",
         },
-        serverOptions,
+        serverOptions
       );
       initializeServer(server);
 
@@ -408,7 +416,7 @@ export function initializeMcpApiHandler(
         const syntheticRes = new EventEmittingResponse(
           req,
           config.onEvent,
-          sessionId,
+          sessionId
         );
         let status = 100;
         let body = "";
@@ -441,7 +449,7 @@ export function initializeMcpApiHandler(
           eventRes.error(
             error instanceof Error ? error : String(error),
             "Error handling SSE message",
-            "session",
+            "session"
           );
           throw error;
         }
@@ -451,23 +459,23 @@ export function initializeMcpApiHandler(
           JSON.stringify({
             status,
             body,
-          }),
+          })
         );
 
         if (status >= 200 && status < 300) {
           logInContext(
             "log",
-            `Request ${sessionId}:${request.requestId} succeeded: ${body}`,
+            `Request ${sessionId}:${request.requestId} succeeded: ${body}`
           );
         } else {
           logInContext(
             "error",
-            `Message for ${sessionId}:${request.requestId} failed with status ${status}: ${body}`,
+            `Message for ${sessionId}:${request.requestId} failed with status ${status}: ${body}`
           );
           eventRes.error(
             `Request failed with status ${status}`,
             body,
-            "session",
+            "session"
           );
         }
       };
@@ -486,12 +494,9 @@ export function initializeMcpApiHandler(
       let resolveTimeout: (value: unknown) => void;
       const waitPromise = new Promise((resolve) => {
         resolveTimeout = resolve;
-        timeout = setTimeout(
-          () => {
-            resolve("max duration reached");
-          },
-          (maxDuration ?? 60) * 1000,
-        );
+        timeout = setTimeout(() => {
+          resolve("max duration reached");
+        }, (maxDuration ?? 60) * 1000);
       });
 
       // eslint-disable-next-line no-inner-declarations
@@ -504,7 +509,7 @@ export function initializeMcpApiHandler(
         res.end();
       }
       req.signal.addEventListener("abort", () =>
-        resolveTimeout("client hang up"),
+        resolveTimeout("client hang up")
       );
 
       await server.connect(transport);
@@ -552,14 +557,14 @@ export function initializeMcpApiHandler(
           };
           res.statusCode = response.status;
           res.end(response.body);
-        },
+        }
       );
 
       // Queue the request in Redis so that a subscriber can pick it up.
       // One queue per session.
       await redisPublisher.publish(
         `requests:${sessionId}`,
-        JSON.stringify(serializedRequest),
+        JSON.stringify(serializedRequest)
       );
       logger.log(`Published requests:${sessionId}`, serializedRequest);
 
@@ -591,7 +596,7 @@ interface FakeIncomingMessageOptions {
 
 // Create a fake IncomingMessage
 function createFakeIncomingMessage(
-  options: FakeIncomingMessageOptions = {},
+  options: FakeIncomingMessageOptions = {}
 ): IncomingMessage {
   const {
     method = "GET",
