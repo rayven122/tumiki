@@ -34,6 +34,7 @@ const handler = async (request: NextRequest) => {
       // Call Tool Handler
       server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
+        console.log(`[DEBUG] name: ${name}`, tools);
         const tool = tools.find((tool) => tool.name === name);
 
         if (!tool) {

@@ -2,10 +2,6 @@ import { ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { createClients, type ConnectedClient } from "./client";
 import { type ServerConfig } from "./config";
 import { db } from "@/server/db";
-import { getFromCache, setInCache } from "@/lib/redis";
-import { z } from "zod";
-
-const makeCacheKey = (apiKeyId: string) => `mcp-proxy-${apiKeyId}`;
 
 type ClientTool = {
   name: string;
@@ -21,25 +17,6 @@ export const getClientTools = async (
   tools: ClientTool[];
   cleanup: () => Promise<void>;
 }> => {
-  const cacheKey = makeCacheKey(apiKeyId);
-  const cachedTools = await getFromCache(cacheKey);
-  if (cachedTools) {
-    console.log(`[DEBUG] Cache hit for ${cacheKey}`);
-    const result = z
-      .object({
-        tools: ListToolsResultSchema.shape.tools,
-      })
-      .passthrough()
-      .safeParse(cachedTools);
-
-    if (result.success) {
-      return result.data as {
-        tools: ClientTool[];
-        cleanup: () => Promise<void>;
-      };
-    }
-  }
-
   const apiKey = await db.apiKey.findUniqueOrThrow({
     where: {
       id: apiKeyId,
@@ -138,8 +115,6 @@ export const getClientTools = async (
       );
     }
   }
-
-  await setInCache(cacheKey, { tools, cleanup });
 
   return { tools, cleanup };
 };
