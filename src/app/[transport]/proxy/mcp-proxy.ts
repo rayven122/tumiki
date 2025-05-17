@@ -68,7 +68,7 @@ export const getClientTools = async (apiKeyId: string) => {
             toolGroupTool.userMcpServer.mcpServer.command === "node"
               ? process.execPath
               : toolGroupTool.userMcpServer.mcpServer.command,
-          args: ["mcp/github.mcp-server.js"],
+          args: toolGroupTool.userMcpServer.mcpServer.args,
           env: envObj,
         },
       } satisfies ServerConfig);
