@@ -15,16 +15,16 @@ import type {
 export default function createMcpRouteHandler(
   initializeServer: (server: Server) => void,
   serverOptions?: ServerOptions,
-  config?: Config
+  config?: Config,
 ): (request: Request) => Promise<Response> {
   const mcpHandler = initializeMcpApiHandler(
     initializeServer,
     serverOptions,
-    config
+    config,
   );
   return (request: Request) => {
     return createServerResponseAdapter(request.signal, (res) => {
-      mcpHandler(request, res);
+      return mcpHandler(request, res);
     });
   };
 }

@@ -1,5 +1,5 @@
-import { EventEmitter } from 'node:events';
-import type { ServerResponse } from 'node:http';
+import { EventEmitter } from "node:events";
+import type { ServerResponse } from "node:http";
 
 type WriteheadArgs = {
   statusCode: number;
@@ -7,6 +7,7 @@ type WriteheadArgs = {
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: Not deterministic
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type BodyType = string | Buffer | Record<string, any> | null;
 
 type EventListener = (...args: unknown[]) => void;
@@ -17,24 +18,24 @@ type EventListener = (...args: unknown[]) => void;
  */
 export function createServerResponseAdapter(
   signal: AbortSignal,
-  fn: (re: ServerResponse) => Promise<void> | void
+  fn: (re: ServerResponse) => Promise<void> | void,
 ): Promise<Response> {
   let writeHeadResolver: (v: WriteheadArgs) => void;
-  const writeHeadPromise = new Promise<WriteheadArgs>(resolve => {
+  const writeHeadPromise = new Promise<WriteheadArgs>((resolve) => {
     writeHeadResolver = resolve;
   });
 
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     let controller: ReadableStreamController<Uint8Array> | undefined;
     let shouldClose = false;
     let wroteHead = false;
 
     const writeHead = (
       statusCode: number,
-      headers?: Record<string, string>
+      headers?: Record<string, string>,
     ) => {
-      if (typeof headers === 'string') {
-        throw new Error('Status message of writeHead not supported');
+      if (typeof headers === "string") {
+        throw new Error("Status message of writeHead not supported");
       }
       wroteHead = true;
       writeHeadResolver({
@@ -48,13 +49,13 @@ export function createServerResponseAdapter(
 
     const write = (
       chunk: Buffer | string,
-      encoding?: BufferEncoding
+      encoding?: BufferEncoding,
     ): boolean => {
       if (encoding) {
-        throw new Error('Encoding not supported');
+        throw new Error("Encoding not supported");
       }
       if (chunk instanceof Buffer) {
-        throw new Error('Buffer not supported');
+        throw new Error("Buffer not supported");
       }
       if (!wroteHead) {
         writeHead(200);
@@ -63,6 +64,7 @@ export function createServerResponseAdapter(
         bufferedData.push(new TextEncoder().encode(chunk as string));
         return true;
       }
+      // @ts-expect-error　呼び出しの型を無視するため
       controller.enqueue(new TextEncoder().encode(chunk as string));
       return true;
     };
@@ -94,8 +96,8 @@ export function createServerResponseAdapter(
       },
     };
 
-    signal.addEventListener('abort', () => {
-      eventEmitter.emit('close');
+    signal.addEventListener("abort", () => {
+      eventEmitter.emit("close");
     });
 
     void fn(fakeServerResponse as ServerResponse);
@@ -118,7 +120,7 @@ export function createServerResponseAdapter(
         {
           status: head.statusCode,
           headers: head.headers,
-        }
+        },
       );
 
       resolve(response);
