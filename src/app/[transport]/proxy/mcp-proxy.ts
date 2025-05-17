@@ -1,27 +1,48 @@
 import { ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import { createClients } from "./client";
+import { createClients, type ConnectedClient } from "./client";
 import { type ServerConfig } from "./config";
 import { db } from "@/server/db";
+import { getFromCache, setInCache } from "@/lib/redis";
+import { z } from "zod";
 
-// const MAX_RETRIES = 3;
-// const RETRY_DELAY = 1000; // 1秒
+const makeCacheKey = (apiKeyId: string) => `mcp-proxy-${apiKeyId}`;
 
-// const retryWithBackoff = async <T>(
-//   fn: () => Promise<T>,
-//   retries = MAX_RETRIES,
-// ): Promise<T> => {
-//   try {
-//     return await fn();
-//   } catch (error) {
-//     if (retries === 0) throw error;
-//     await new Promise((resolve) =>
-//       setTimeout(resolve, RETRY_DELAY * (MAX_RETRIES - retries + 1)),
-//     );
-//     return retryWithBackoff(fn, retries - 1);
-//   }
-// };
+type ClientTool = {
+  name: string;
+  description: string;
+  // JSON Schema
+  inputSchema: object;
+  connectedClient: ConnectedClient;
+};
 
-export const getClientTools = async (apiKeyId: string) => {
+export const getClientTools = async (
+  apiKeyId: string,
+): Promise<{
+  tools: ClientTool[];
+  cleanup: () => Promise<void>;
+}> => {
+  const cacheKey = makeCacheKey(apiKeyId);
+  const cachedTools = await getFromCache(cacheKey);
+  if (cachedTools) {
+    console.log(`[DEBUG] Cache hit for ${cacheKey}`);
+    const result = z
+      .object({
+        tools: ListToolsResultSchema.shape.tools,
+      })
+      .passthrough()
+      .safeParse(cachedTools);
+
+    console.log(`[DEBUG] result`, result);
+    console.log(`[DEBUG] result.error`, result.error);
+
+    if (result.success) {
+      return result.data as {
+        tools: ClientTool[];
+        cleanup: () => Promise<void>;
+      };
+    }
+  }
+
   const apiKey = await db.apiKey.findUniqueOrThrow({
     where: {
       id: apiKeyId,
@@ -90,7 +111,7 @@ export const getClientTools = async (apiKeyId: string) => {
     }
   };
 
-  const tools = [];
+  const tools: ClientTool[] = [];
   for (const connectedClient of connectedClients) {
     try {
       const result = await connectedClient.client.request(
@@ -109,7 +130,6 @@ export const getClientTools = async (apiKeyId: string) => {
               description: tool.description ?? "",
               inputSchema: tool.inputSchema,
               connectedClient,
-              tool,
             });
           }
         }
@@ -121,6 +141,8 @@ export const getClientTools = async (apiKeyId: string) => {
       );
     }
   }
+
+  await setInCache(cacheKey, { tools, cleanup });
 
   return { tools, cleanup };
 };

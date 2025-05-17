@@ -25,7 +25,7 @@ const handler = async (request: NextRequest) => {
       server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
           tools: tools.map((tool) => ({
-            ...tool.tool,
+            ...tool,
             name: tool.name,
           })),
         };

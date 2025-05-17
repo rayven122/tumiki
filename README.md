@@ -75,6 +75,6 @@ cd docker
 docker compose up -d
 REDIS_URL=redis://localhost:6379 bun run dev
 
-npx @modelcontextprotocol/inspector
+bunx @modelcontextprotocol/inspector
 # http://localhost:3000/sse
 ```
