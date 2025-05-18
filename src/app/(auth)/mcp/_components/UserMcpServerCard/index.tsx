@@ -28,9 +28,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ApiTokenModal } from "../ApiTokenModal";
-import { DeleteConfirmModalMutation } from "./DeleteConfirmModalMutation";
-import { NameEditModalMutation } from "./NameEditModalMutation";
-import { ImageEditModalMutation } from "./ImageEditModalMutation";
+import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { NameEditModal } from "./NameEditModal";
+import { ImageEditModal } from "./ImageEditModal";
 import { useRouter } from "next/navigation";
 
 type UserMcpServerWithTools = Prisma.UserMcpServerGetPayload<{
@@ -185,7 +185,8 @@ export const UserMcpServerCard = ({
 
       {/* 削除確認モーダル */}
       {deleteModalOpen && (
-        <DeleteConfirmModalMutation
+        <DeleteConfirmModal
+          open={deleteModalOpen}
           userMcpServerId={userMcpServer.id}
           serverName={serverName}
           onOpenChange={setDeleteModalOpen}
@@ -198,7 +199,7 @@ export const UserMcpServerCard = ({
 
       {/* 名前編集モーダル */}
       {nameEditModalOpen && (
-        <NameEditModalMutation
+        <NameEditModal
           userMcpServerId={userMcpServer.id}
           initialName={serverName}
           onOpenChange={setNameEditModalOpen}
@@ -212,7 +213,8 @@ export const UserMcpServerCard = ({
       {/* 画像編集モーダル */}
       {/* TODO: 画像編集モーダルを実装する */}
       {imageEditModalOpen && (
-        <ImageEditModalMutation
+        <ImageEditModal
+          open={imageEditModalOpen}
           serverName={serverName}
           userMcpServerId={userMcpServer.id}
           initialImageUrl={userMcpServer.mcpServer.iconPath ?? ""}
