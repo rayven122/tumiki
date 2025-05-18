@@ -24,11 +24,9 @@ type EditApiKeyDialogProps = {
 };
 
 export function EditApiKeyDialog({
-  open,
   onClose,
   currentApiKey,
   mockUserMcpServers,
-  onSuccess,
 }: EditApiKeyDialogProps) {
   const [newKeyName, setNewKeyName] = useState("");
   const [selectedServers, setSelectedServers] = useState<string[]>([]);

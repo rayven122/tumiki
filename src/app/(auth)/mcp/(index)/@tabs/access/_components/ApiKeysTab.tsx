@@ -315,7 +315,6 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
           // mockUserMcpServers={mockUserMcpServers}
           onSuccess={() => {
             router.refresh();
-            setIsEditDialogOpen(false);
           }}
         />
       )}
@@ -326,7 +325,6 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
           apiKey={currentApiKey}
           onSuccess={() => {
             router.refresh();
-            setIsDeleteDialogOpen(false);
           }}
         />
       )}
