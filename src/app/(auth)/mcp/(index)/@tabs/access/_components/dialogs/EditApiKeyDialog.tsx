@@ -12,26 +12,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Server } from "lucide-react";
-import type { ApiKey, UserMcpServer } from "../types";
+import type { UserMcpServer } from "../types";
+import type { ApiKey } from "../ApiKeysTab";
 
 type EditApiKeyDialogProps = {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentApiKey: ApiKey | null;
+  onClose: () => void;
+  currentApiKey: ApiKey;
   mockUserMcpServers: UserMcpServer[];
-  onEditApiKey: (apiKey: {
-    id: string;
-    name: string;
-    servers: string[];
-  }) => void;
+  onSuccess: () => void | Promise<void>;
 };
 
 export function EditApiKeyDialog({
   open,
-  onOpenChange,
+  onClose,
   currentApiKey,
   mockUserMcpServers,
-  onEditApiKey,
+  onSuccess,
 }: EditApiKeyDialogProps) {
   const [newKeyName, setNewKeyName] = useState("");
   const [selectedServers, setSelectedServers] = useState<string[]>([]);
@@ -39,7 +36,7 @@ export function EditApiKeyDialog({
   useEffect(() => {
     if (currentApiKey) {
       setNewKeyName(currentApiKey.name);
-      setSelectedServers(currentApiKey.servers.map((server) => server.id));
+      // setSelectedServers(currentApiKey.servers.map((server) => server.id));
     }
   }, [currentApiKey]);
 
@@ -48,21 +45,15 @@ export function EditApiKeyDialog({
       return;
     }
 
-    onEditApiKey({
-      id: currentApiKey.id,
-      name: newKeyName,
-      servers: selectedServers,
-    });
-  };
-
-  const handleClose = () => {
-    setNewKeyName("");
-    setSelectedServers([]);
-    onOpenChange(false);
+    // onEditApiKey({
+    //   id: currentApiKey.id,
+    //   name: newKeyName,
+    //   servers: selectedServers,
+    // });
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>API Key編集</DialogTitle>
@@ -124,7 +115,7 @@ export function EditApiKeyDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={onClose}>
             キャンセル
           </Button>
           <Button onClick={handleEditApiKey}>保存</Button>
