@@ -10,6 +10,7 @@ import { createMcpHandler } from "./proxy/mcpAdapter";
 const handler = async (request: NextRequest) => {
   const bearerToken = request.headers.get("authorization");
 
+  console.log("headers", request.headers, bearerToken);
   const apiKeyId = bearerToken?.split(" ")[1];
   console.log("apiKeyId", apiKeyId);
 
@@ -17,25 +18,23 @@ const handler = async (request: NextRequest) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { tools } = await getClientTools(apiKeyId);
+  const { toolMap } = await getClientTools(apiKeyId);
 
   const mcpHandler = createMcpHandler(
     (server) => {
       // List Tools Handler
       server.setRequestHandler(ListToolsRequestSchema, async () => {
         return {
-          tools: tools.map((tool) => ({
-            ...tool,
-            name: tool.name,
-          })),
+          tools: Array.from(toolMap.values()),
         };
       });
 
       // Call Tool Handler
       server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
-        console.log(`[DEBUG] name: ${name}`, tools);
-        const tool = tools.find((tool) => tool.name === name);
+        console.log(`[DEBUG] name: ${name}`);
+        console.log("toolMap", toolMap);
+        const tool = toolMap.get(name);
 
         if (!tool) {
           throw new Error(`Unknown tool: ${name}`);
@@ -45,7 +44,7 @@ const handler = async (request: NextRequest) => {
           console.log("Forwarding tool call:", name);
 
           // Use the correct schema for tool calls
-          return await tool.connectedClient.client.request(
+          const result = await tool.connectedClient.client.request(
             {
               method: "tools/call",
               params: {
@@ -58,6 +57,8 @@ const handler = async (request: NextRequest) => {
             },
             CompatibilityCallToolResultSchema,
           );
+          console.log("result", result);
+          return result;
         } catch (error) {
           console.error(`Error calling tool through ${tool.name}:`, error);
           throw error;

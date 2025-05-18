@@ -63,12 +63,12 @@ const createClient = (
  * @param servers
  * @returns
  */
-export const createClients = async (
-  servers: ServerConfig[],
-): Promise<ConnectedClient[]> => {
-  const clients: ConnectedClient[] = [];
+export const createClientMap = async (
+  serverConfigMap: Map<string, ServerConfig>,
+): Promise<Map<string, ConnectedClient>> => {
+  const clientMap = new Map<string, ConnectedClient>();
 
-  for (const server of servers) {
+  for (const [id, server] of serverConfigMap.entries()) {
     console.log(`Connecting to server: ${server.name}`);
 
     const waitFor = 2500;
@@ -86,7 +86,7 @@ export const createClients = async (
         await client.connect(transport);
         console.log(`Connected to server: ${server.name}`);
 
-        clients.push({
+        clientMap.set(id, {
           client,
           name: server.name,
           cleanup: async () => {
@@ -113,5 +113,5 @@ export const createClients = async (
     }
   }
 
-  return clients;
+  return clientMap;
 };
