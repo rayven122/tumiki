@@ -26,7 +26,7 @@ export default function ServersPage() {
     <McpTabs
       activeTab="servers"
       addButton={
-        <Link href="/mcp-manager/servers/add">
+        <Link href="/mcp/servers/add">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             新規MCPサーバー追加
