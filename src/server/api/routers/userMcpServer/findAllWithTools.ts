@@ -11,6 +11,10 @@ export const findAllWithMcpServerTools = async ({
     where: {
       userId: ctx.session.user.id,
     },
+    orderBy: {
+      // 作成した順にソート
+      createdAt: "asc",
+    },
     select: {
       id: true,
       name: true,

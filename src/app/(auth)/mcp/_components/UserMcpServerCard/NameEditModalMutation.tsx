@@ -6,18 +6,21 @@ import { NameEditModal } from "./NameEditModal";
 type NameEditModalMutationProps = {
   initialName: string;
   userMcpServerId: string;
+  onSuccess?: () => Promise<void> | void;
 } & Pick<ComponentProps<typeof NameEditModal>, "onOpenChange">;
 
 export const NameEditModalMutation = ({
   initialName,
   userMcpServerId,
+  onSuccess,
   ...props
 }: NameEditModalMutationProps) => {
   const [newName, setNewName] = useState(initialName);
 
   const { mutate: updateUserMcpServer, isPending } =
     api.userMcpServer.update.useMutation({
-      onSuccess: () => {
+      onSuccess: async () => {
+        await onSuccess?.();
         toast.success("サーバー名を更新しました。");
       },
       onError: (error) => {
