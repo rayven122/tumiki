@@ -10,24 +10,45 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import { useState } from "react";
+import { api } from "@/trpc/react";
+import { toast } from "@/utils/client/toast";
 
 type ImageEditModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  imageUrl: string;
-  onImageUrlChange: (url: string) => void;
-  onUpdate: () => Promise<void> | void;
-  isLoading: boolean;
+  initialImageUrl: string;
+  serverName: string;
+  userMcpServerId: string;
 };
 
 export const ImageEditModal = ({
   open,
   onOpenChange,
-  imageUrl,
-  onImageUrlChange,
-  onUpdate,
-  isLoading,
+  initialImageUrl,
+  serverName,
+  userMcpServerId,
 }: ImageEditModalProps) => {
+  const [imageUrl, setImageUrl] = useState(initialImageUrl);
+
+  const {
+    // mutate: updateUserMcpServer,
+    isPending: isLoading,
+  } = api.userMcpServer.update.useMutation({
+    onSuccess: () => {
+      toast.success(`${serverName}の画像を更新しました。`);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const onUpdate = () => {
+    toast.info("実装中");
+    console.log(imageUrl, userMcpServerId);
+    // updateUserMcpServer({ id: userMcpServerId, imageUrl: imageUrl });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -43,7 +64,7 @@ export const ImageEditModal = ({
             <Input
               id="imageUrl"
               value={imageUrl}
-              onChange={(e) => onImageUrlChange(e.target.value)}
+              onChange={(e) => setImageUrl(e.target.value)}
               placeholder="画像URLを入力"
             />
           </div>
