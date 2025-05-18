@@ -19,19 +19,20 @@ import { toast } from "@/utils/client/toast";
 import { Loader2 } from "lucide-react";
 
 type CreateApiKeyDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
+  onSuccess: () => Promise<void> | void;
 };
 
 export function CreateApiKeyDialog({
-  open,
-  onOpenChange,
+  onClose,
+  onSuccess,
 }: CreateApiKeyDialogProps) {
   const { data: userMcpServers, isLoading } =
     api.userMcpServer.findAllWithMcpServerTools.useQuery();
   const { mutate: createApiKey, isPending } = api.apiKey.add.useMutation({
-    onSuccess: () => {
-      onOpenChange(false);
+    onSuccess: async () => {
+      await onSuccess();
+      onClose();
       toast.success("API Keyを作成しました");
     },
     onError: (error) => {
@@ -78,8 +79,8 @@ export function CreateApiKeyDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[80%]">
+    <Dialog open>
+      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[80%]">
         <DialogHeader>
           <DialogTitle>新規API Key作成</DialogTitle>
           <DialogDescription>
@@ -88,7 +89,7 @@ export function CreateApiKeyDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">API Key名</Label>
+            <Label htmlFor="name">名前</Label>
             <Input
               id="name"
               placeholder="開発用API Key"
@@ -106,7 +107,7 @@ export function CreateApiKeyDialog({
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={onClose}>
             キャンセル
           </Button>
           <Button onClick={handleCreateApiKey} disabled={isDisabled}>

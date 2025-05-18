@@ -32,6 +32,7 @@ export function DeleteApiKeyDialog({
   const { mutate: deleteApiKey, isPending } = api.apiKey.delete.useMutation({
     onSuccess: async (data) => {
       await onSuccess();
+      onClose();
       toast.success(`API Key ${data.name}を削除しました`);
     },
     onError: (error) => {
