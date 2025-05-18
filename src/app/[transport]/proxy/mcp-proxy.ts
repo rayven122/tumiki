@@ -112,10 +112,9 @@ export const getClientTools = async (
         for (const tool of result.tools) {
           const userTool = userTools?.find(({ name }) => name === tool.name);
           if (userTool) {
-            const toolName = `[${connectedClient.name}] ${tool.name}`;
-            toolMap.set(toolName, {
-              name: toolName,
-              description: tool.description ?? "",
+            toolMap.set(tool.name, {
+              name: tool.name,
+              description: `[${connectedClient.name}] ${tool.description ?? ""}`,
               inputSchema: tool.inputSchema,
               connectedClient,
             });
