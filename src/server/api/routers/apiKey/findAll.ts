@@ -24,6 +24,7 @@ export const findAll = async ({ ctx }: FindAllInput) => {
           id: true,
           name: true,
           description: true,
+          isEnabled: true,
           toolGroupTools: {
             select: {
               userMcpServer: {

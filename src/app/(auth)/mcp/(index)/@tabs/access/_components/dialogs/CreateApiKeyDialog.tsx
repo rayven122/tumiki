@@ -79,7 +79,7 @@ export function CreateApiKeyDialog({
   };
 
   return (
-    <Dialog open>
+    <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[80%]">
         <DialogHeader>
           <DialogTitle>API Key作成</DialogTitle>

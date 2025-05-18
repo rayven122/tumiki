@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
-import type { AddApiKeyInput, UpdateApiKeyInput } from ".";
+import type { UpdateApiKeyInput } from ".";
 
 type UpdateApiKeyInput = {
   ctx: ProtectedContext;
@@ -20,21 +20,25 @@ export const updateApiKey = async ({ ctx, input }: UpdateApiKeyInput) => {
 
   const apiKey = await ctx.db.apiKey.update({
     where: {
-      id: input.id,
+      id: input.id, // 更新対象のAPIキーID
     },
     data: {
       name: input.name,
       description: input.description,
-      userId: ctx.session.user.id,
       toolGroups: {
-        create: {
-          name: input.name,
-          description: input.description,
-          order: [],
-          userId: ctx.session.user.id,
-          toolGroupTools: {
-            createMany: {
-              data: toolGroupTools,
+        update: {
+          where: {
+            id: input.apiKeyToolGroupId, // 更新対象のツールグループID
+          },
+          data: {
+            // toolGroupToolsの更新
+            toolGroupTools: {
+              // 既存のtoolGroupToolsを削除
+              deleteMany: {},
+              // 新しいtoolGroupToolsを作成
+              createMany: {
+                data: toolGroupTools,
+              },
             },
           },
         },

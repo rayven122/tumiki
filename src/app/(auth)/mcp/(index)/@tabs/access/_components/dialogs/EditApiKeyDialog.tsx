@@ -12,15 +12,58 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import type { ApiKey } from "../ApiKeysTab";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import type { ToolId, UserMcpServerId } from "@/schema/ids";
 import { ServerToolSelector } from "./ServerToolSelector";
 import { toast } from "@/utils/client/toast";
 
+type UserMcpServer =
+  RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
 type EditApiKeyDialogProps = {
   onClose: () => void;
   apiKey: ApiKey;
   onSuccess: () => void | Promise<void>;
+};
+
+const getInitialToolIds = (toolGroups: ApiKey["toolGroups"]) => {
+  const map = new Map<UserMcpServerId, Set<ToolId>>();
+  toolGroups.forEach((toolGroup) => {
+    toolGroup.toolGroupTools.forEach((toolGroupTool) => {
+      const toolIds = map.get(toolGroupTool.userMcpServer.id);
+      if (toolIds) {
+        toolIds.add(toolGroupTool.tool.id);
+        map.set(toolGroupTool.userMcpServer.id, toolIds);
+      } else {
+        map.set(
+          toolGroupTool.userMcpServer.id,
+          new Set([toolGroupTool.tool.id]),
+        );
+      }
+    });
+  });
+  return map;
+};
+
+// userMcpServer の tools の個数と apiKeyToolGroup の個数が同じ場合は、serverIds にチェックを入れる
+const getInitialServerIds = (
+  toolGroups: ApiKey["toolGroups"],
+  userMcpServers: UserMcpServer[],
+) => {
+  const serverIdsSet = new Set<UserMcpServerId>();
+  const apiKeyToolGroup = toolGroups.find(({ isEnabled }) => !isEnabled);
+  if (!apiKeyToolGroup) return serverIdsSet;
+
+  userMcpServers.forEach((userMcpServer) => {
+    const toolsCount = userMcpServer.tools.length;
+    const toolGroupToolsCount = apiKeyToolGroup.toolGroupTools.filter(
+      ({ userMcpServer: server }) => server.id === userMcpServer.id,
+    ).length;
+    if (toolGroupToolsCount >= toolsCount) {
+      serverIdsSet.add(userMcpServer.id);
+    }
+  });
+
+  return serverIdsSet;
 };
 
 export function EditApiKeyDialog({
@@ -46,27 +89,11 @@ export function EditApiKeyDialog({
 
   const [selectedServerIds, setSelectedServerIds] = useState<
     Set<UserMcpServerId>
-  >(new Set());
+  >(getInitialServerIds(apiKey.toolGroups, userMcpServers ?? []));
   const [selectedToolIds, setSelectedToolIds] = useState<
     Map<UserMcpServerId, Set<ToolId>>
-  >(() => {
-    const map = new Map<UserMcpServerId, Set<ToolId>>();
-    apiKey.toolGroups.forEach((toolGroup) => {
-      toolGroup.toolGroupTools.forEach((toolGroupTool) => {
-        const toolIds = map.get(toolGroupTool.userMcpServer.id);
-        if (toolIds) {
-          toolIds.add(toolGroupTool.tool.id);
-          map.set(toolGroupTool.userMcpServer.id, toolIds);
-        } else {
-          map.set(
-            toolGroupTool.userMcpServer.id,
-            new Set([toolGroupTool.tool.id]),
-          );
-        }
-      });
-    });
-    return map;
-  });
+  >(getInitialToolIds(apiKey.toolGroups));
+
   const isDisabled =
     !newKeyName.trim() ||
     (selectedServerIds.size === 0 && selectedToolIds.size === 0) ||
@@ -91,16 +118,25 @@ export function EditApiKeyDialog({
       }
     });
 
+    const apiKeyToolGroupId = apiKey.toolGroups.find(
+      ({ isEnabled }) => !isEnabled,
+    )?.id;
+    if (!apiKeyToolGroupId) {
+      toast.error("API Keyの更新に失敗しました");
+      return;
+    }
+
     updateApiKey({
       id: apiKey.id,
       name: newKeyName,
       serverToolIdsMap: serverToolIdsMap,
+      apiKeyToolGroupId: apiKeyToolGroupId,
     });
   };
 
   return (
-    <Dialog open>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[80%]">
         <DialogHeader>
           <DialogTitle>API Key編集</DialogTitle>
           <DialogDescription>
@@ -130,7 +166,7 @@ export function EditApiKeyDialog({
           <Button variant="outline" onClick={onClose}>
             キャンセル
           </Button>
-          <Button onClick={handleEditApiKey}>
+          <Button onClick={handleEditApiKey} disabled={isDisabled}>
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

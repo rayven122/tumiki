@@ -48,7 +48,7 @@ export function DeleteApiKeyDialog({
   );
 
   return (
-    <Dialog open>
+    <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>API Key 削除</DialogTitle>
