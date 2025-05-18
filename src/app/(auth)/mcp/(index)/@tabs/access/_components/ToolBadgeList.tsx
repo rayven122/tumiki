@@ -26,16 +26,20 @@ export function ToolBadgeList({
 
   return (
     <div className="flex flex-wrap gap-2">
-      {displayedItems.map(({ type, item }) =>
+      {displayedItems.map(({ type, item }, index) =>
         type === "tool" ? (
           <ToolBadge
-            key={item.id}
+            key={`${item.id}-${item.userMcpServerName}-${index}`}
             type="tool"
             tool={item}
             userMcpServerName={item.userMcpServerName}
           />
         ) : (
-          <ToolBadge key={item.id} type="toolGroup" toolGroup={item} />
+          <ToolBadge
+            key={`${item.id}-${index}`}
+            type="toolGroup"
+            toolGroup={item}
+          />
         ),
       )}
       {remainingCount > 0 && (

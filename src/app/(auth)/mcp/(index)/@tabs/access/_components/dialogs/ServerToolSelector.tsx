@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Server, Loader2 } from "lucide-react";
@@ -101,7 +101,7 @@ export function ServerToolSelector({
   };
 
   // 選択されたすべてのツールをオブジェクトとして取得
-  const getSelectedTools = () => {
+  const selectedTools = useMemo(() => {
     const tools: { id: string; name: string; userMcpServerName: string }[] = [];
 
     servers.forEach((server) => {
@@ -120,7 +120,7 @@ export function ServerToolSelector({
     });
 
     return tools;
-  };
+  }, [servers, selectedToolIds]);
 
   return (
     <>
@@ -221,12 +221,12 @@ export function ServerToolSelector({
         </div>
       </div>
       <div className="mt-4">
-        {selectedToolIds.size > 0 && (
+        {selectedTools.length > 0 && (
           <div className="space-y-1">
             <p className="text-muted-foreground text-sm">
-              選択されたツール ({selectedToolIds.size}個):
+              選択されたツール ({selectedTools.length}個):
             </p>
-            <ToolBadgeList tools={getSelectedTools()} />
+            <ToolBadgeList tools={selectedTools} />
           </div>
         )}
       </div>

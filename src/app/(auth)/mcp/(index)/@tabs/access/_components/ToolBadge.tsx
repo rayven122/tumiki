@@ -24,7 +24,6 @@ export function ToolBadge({
   if (type === "toolGroup") {
     return (
       <Badge
-        key={toolGroup.id}
         variant="outline"
         className="border-purple-200 bg-purple-50 text-purple-700"
       >
@@ -35,7 +34,6 @@ export function ToolBadge({
 
   return (
     <Badge
-      key={tool.id}
       variant="outline"
       className="border-green-200 bg-green-50 text-green-700"
     >

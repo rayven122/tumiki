@@ -27,6 +27,8 @@ export const addApiKey = async ({ ctx, input }: AddApiKeyInput) => {
         create: {
           name: input.name,
           description: input.description,
+          // api key 専用の tool group の場合は、isEnabled を false にする
+          isEnabled: false,
           order: [],
           userId: ctx.session.user.id,
           toolGroupTools: {
