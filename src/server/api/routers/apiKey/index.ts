@@ -37,7 +37,11 @@ export const FindAllApiKeysOutput = z.array(
     z.object({
       id: ApiKeyIdSchema,
       toolGroups: z.array(
-        ToolGroupSchema.pick({ name: true, description: true }).merge(
+        ToolGroupSchema.pick({
+          name: true,
+          description: true,
+          isEnabled: true,
+        }).merge(
           z.object({
             id: ToolGroupIdSchema,
             toolGroupTools: z.array(
@@ -67,6 +71,7 @@ export const FindAllApiKeysOutput = z.array(
 
 export const UpdateApiKeyInput = z.object({
   id: ApiKeyIdSchema,
+  apiKeyToolGroupId: ToolGroupIdSchema,
   name: z.string(),
   description: z.string().default(""),
   serverToolIdsMap: z.record(UserMcpServerIdSchema, z.array(ToolIdSchema)),

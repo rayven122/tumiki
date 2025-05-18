@@ -65,32 +65,6 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
       ),
   );
 
-  // const handleEditApiKey = (apiKey: {
-  //   id: string;
-  //   name: string;
-  //   servers: string[];
-  // }) => {
-  //   const updatedApiKeys = apiKeys.map((key) => {
-  //     if (key.id === apiKey.id) {
-  //       return {
-  //         ...key,
-  //         name: apiKey.name,
-  //         servers: apiKey.servers.map((serverId) => {
-  //           const server = mockUserMcpServers.find((s) => s.id === serverId);
-  //           return {
-  //             id: serverId,
-  //             name: server?.name ?? "",
-  //           };
-  //         }),
-  //       };
-  //     }
-  //     return key;
-  //   });
-
-  //   // setApiKeys(updatedApiKeys);
-  //   setIsEditDialogOpen(false);
-  // };
-
   // TODO: 再生成機能の実装
   // const handleRegenerateApiKey = (keyId: string) => {
   //   const newKey = `mcp_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 38)}`;
@@ -123,16 +97,6 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
       minute: "2-digit",
     }).format(date);
   };
-
-  // const openEditDialog = (apiKey: ApiKey) => {
-  //   setCurrentApiKey(apiKey);
-  //   setIsEditDialogOpen(true);
-  // };
-
-  // const openDeleteDialog = (apiKey: ApiKey) => {
-  //   setCurrentApiKey(apiKey);
-  //   setIsDeleteDialogOpen(true);
-  // };
 
   return (
     <Card>
@@ -175,11 +139,14 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
               </TableRow>
             ) : (
               filteredApiKeys.map((apiKey) => {
-                const tools = apiKey.toolGroups.flatMap((toolGroup) =>
-                  toolGroup.toolGroupTools.map((toolGroupTool) => ({
+                const apiKeyToolGroup = apiKey.toolGroups.find(
+                  ({ isEnabled }) => !isEnabled,
+                );
+                const tools = apiKeyToolGroup?.toolGroupTools.flatMap(
+                  (toolGroupTool) => ({
                     ...toolGroupTool.tool,
                     userMcpServerName: toolGroupTool.userMcpServer.name ?? "",
-                  })),
+                  }),
                 );
                 const serverNameSet = new Set(
                   apiKey.toolGroups.flatMap((toolGroup) =>
