@@ -1,7 +1,6 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { AddUserMcpServerInput } from ".";
-import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
 
 type AddUserMcpServerInput = {
   ctx: ProtectedContext;
@@ -14,6 +13,9 @@ export const addUserMcpServer = async ({
 }: AddUserMcpServerInput) => {
   const mcpServer = await ctx.db.mcpServer.findUnique({
     where: { id: input.mcpServerId },
+    include: {
+      tools: true,
+    },
   });
   if (!mcpServer) {
     throw new Error("MCPサーバーが見つかりません");
@@ -27,10 +29,11 @@ export const addUserMcpServer = async ({
     throw new Error("MCPサーバーの環境変数が一致しません");
   }
 
-  const tools = await getMcpServerTools(mcpServer, input.envVars);
-  if (tools.length === 0) {
-    throw new Error("正しい環境変数が設定されていません");
-  }
+  // TODO: ncc による　readfile が解決されるまでコメントアウト
+  // const tools = await getMcpServerTools(mcpServer, input.envVars);
+  // if (tools.length === 0) {
+  //   throw new Error("正しい環境変数が設定されていません");
+  // }
 
   return await ctx.db.userMcpServer.create({
     data: {
@@ -38,7 +41,7 @@ export const addUserMcpServer = async ({
       mcpServerId: input.mcpServerId,
       envVars: JSON.stringify(input.envVars),
       tools: {
-        connect: tools.map((tool) => ({
+        connect: mcpServer.tools.map((tool) => ({
           mcpServerId_name: {
             mcpServerId: input.mcpServerId,
             name: tool.name,
