@@ -308,11 +308,8 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
 
       {isEditDialogOpen && currentApiKey && (
         <EditApiKeyDialog
-          open={isEditDialogOpen}
           onClose={() => setIsEditDialogOpen(false)}
-          currentApiKey={currentApiKey}
-          mockUserMcpServers={[]}
-          // mockUserMcpServers={mockUserMcpServers}
+          apiKey={currentApiKey}
           onSuccess={() => {
             router.refresh();
           }}

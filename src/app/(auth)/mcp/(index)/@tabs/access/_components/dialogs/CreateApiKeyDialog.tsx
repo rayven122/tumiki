@@ -82,9 +82,9 @@ export function CreateApiKeyDialog({
     <Dialog open>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[80%]">
         <DialogHeader>
-          <DialogTitle>新規API Key作成</DialogTitle>
+          <DialogTitle>API Key作成</DialogTitle>
           <DialogDescription>
-            新しいAPI Keyを作成して、MCPサーバーへのアクセスを許可します
+            API Keyを作成して、MCPサーバーへのアクセスを許可します
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
