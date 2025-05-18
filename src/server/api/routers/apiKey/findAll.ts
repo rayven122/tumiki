@@ -9,6 +9,10 @@ export const findAll = async ({ ctx }: FindAllInput) => {
     where: {
       userId: ctx.session.user.id,
     },
+    orderBy: {
+      // 作成した順にソート
+      createdAt: "desc",
+    },
     select: {
       id: true,
       name: true,
@@ -20,6 +24,7 @@ export const findAll = async ({ ctx }: FindAllInput) => {
           id: true,
           name: true,
           description: true,
+          isEnabled: true,
           toolGroupTools: {
             select: {
               userMcpServer: {

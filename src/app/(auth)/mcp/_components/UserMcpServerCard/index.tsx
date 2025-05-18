@@ -31,6 +31,7 @@ import { ApiTokenModal } from "../ApiTokenModal";
 import { DeleteConfirmModalMutation } from "./DeleteConfirmModalMutation";
 import { NameEditModalMutation } from "./NameEditModalMutation";
 import { ImageEditModalMutation } from "./ImageEditModalMutation";
+import { useRouter } from "next/navigation";
 
 type UserMcpServerWithTools = Prisma.UserMcpServerGetPayload<{
   select: {
@@ -53,6 +54,7 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
+  const router = useRouter();
 
   const serverName = userMcpServer.name ?? userMcpServer.mcpServer.name;
 
@@ -72,14 +74,16 @@ export const UserMcpServerCard = ({
               <ImageIcon className="size-4 text-gray-500" />
             </div>
           )}
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
+            // TODO: 画像編集モーダーを実装したら有効化する
+            disabled
             className="absolute top-0 left-0 flex size-6 items-center justify-center rounded-md bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-black/70"
             onClick={() => setImageEditModalOpen(true)}
           >
             <EditIcon className="size-4 text-white" />
-          </Button>
+          </Button> */}
         </div>
         <div className="flex-1">
           <div className="flex items-center">
@@ -114,7 +118,11 @@ export const UserMcpServerCard = ({
               <EditIcon className="mr-2 h-4 w-4" />
               名前を編集
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setImageEditModalOpen(true)}>
+            <DropdownMenuItem
+              onClick={() => setImageEditModalOpen(true)}
+              // TODO: 画像編集モーダーを実装したら有効化する
+              disabled
+            >
               <ImageIcon className="mr-2 h-4 w-4" />
               画像を編集
             </DropdownMenuItem>
@@ -181,6 +189,10 @@ export const UserMcpServerCard = ({
           userMcpServerId={userMcpServer.id}
           serverName={serverName}
           onOpenChange={setDeleteModalOpen}
+          onSuccess={() => {
+            router.refresh();
+            setDeleteModalOpen(false);
+          }}
         />
       )}
 
@@ -190,6 +202,10 @@ export const UserMcpServerCard = ({
           userMcpServerId={userMcpServer.id}
           initialName={serverName}
           onOpenChange={setNameEditModalOpen}
+          onSuccess={() => {
+            router.refresh();
+            setNameEditModalOpen(false);
+          }}
         />
       )}
 

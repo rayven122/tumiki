@@ -8,16 +8,19 @@ type DeleteConfirmModalMutationProps = Pick<
   "serverName" | "onOpenChange"
 > & {
   userMcpServerId: string;
+  onSuccess?: () => Promise<void> | void;
 };
 
 export const DeleteConfirmModalMutation = ({
   serverName,
   userMcpServerId,
+  onSuccess,
   ...props
 }: DeleteConfirmModalMutationProps) => {
   const { mutate: deleteUserMcpServer, isPending } =
     api.userMcpServer.delete.useMutation({
-      onSuccess: () => {
+      onSuccess: async () => {
+        await onSuccess?.();
         toast.success(`${serverName}のMCPサーバーを削除しました。`);
       },
       onError: (error) => {

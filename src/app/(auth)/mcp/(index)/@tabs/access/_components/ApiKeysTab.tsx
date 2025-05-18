@@ -25,66 +25,33 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Copy,
-  Edit,
-  MoreHorizontal,
-  RefreshCw,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Copy, Edit, MoreHorizontal, Search, Trash2 } from "lucide-react";
 import { EditApiKeyDialog } from "./dialogs/EditApiKeyDialog";
 import { DeleteApiKeyDialog } from "./dialogs/DeleteApiKeyDialog";
-import type { ApiKey, UserMcpServer } from "./types";
 import { ToolBadgeList } from "./ToolBadgeList";
-import { api } from "@/trpc/react";
+import { type RouterOutputs } from "@/trpc/react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/utils/client/toast";
 
-const mockUserMcpServers: UserMcpServer[] = [
-  {
-    id: "server-1",
-    name: "開発サーバー",
-    mcpServer: {
-      id: "mcp-1",
-      name: "開発MCP",
-      iconPath: "/placeholder.svg?height=32&width=32",
-    },
-  },
-  {
-    id: "server-2",
-    name: "テストサーバー",
-    mcpServer: {
-      id: "mcp-2",
-      name: "テストMCP",
-      iconPath: "/placeholder.svg?height=32&width=32",
-    },
-  },
-  {
-    id: "server-3",
-    name: "本番サーバー",
-    mcpServer: {
-      id: "mcp-3",
-      name: "本番MCP",
-      iconPath: "/placeholder.svg?height=32&width=32",
-    },
-  },
-  {
-    id: "server-4",
-    name: "デモサーバー",
-    mcpServer: {
-      id: "mcp-4",
-      name: "デモMCP",
-      iconPath: null,
-    },
-  },
-];
+const MCP_PROXY_SERVER_URL =
+  "https://fast-mcp-server-proxy-production.up.railway.app";
 
-export function ApiKeysTab() {
-  const { data } = api.apiKey.findAll.useQuery();
-  const apiKeys = data ?? [];
+const makeMcpProxyServerUrl = (apiKeyId: string) => {
+  return `${MCP_PROXY_SERVER_URL}/mcp?api-key=${apiKeyId}`;
+};
+
+export type ApiKey = RouterOutputs["apiKey"]["findAll"][number];
+
+type ApiKeysTabProps = {
+  apiKeys: ApiKey[];
+};
+
+export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentApiKey, setCurrentApiKey] = useState<ApiKey | null>(null);
+  const router = useRouter();
 
   const filteredApiKeys = apiKeys.filter(
     (key) =>
@@ -98,58 +65,27 @@ export function ApiKeysTab() {
       ),
   );
 
-  const handleEditApiKey = (apiKey: {
-    id: string;
-    name: string;
-    servers: string[];
-  }) => {
-    const updatedApiKeys = apiKeys.map((key) => {
-      if (key.id === apiKey.id) {
-        return {
-          ...key,
-          name: apiKey.name,
-          servers: apiKey.servers.map((serverId) => {
-            const server = mockUserMcpServers.find((s) => s.id === serverId);
-            return {
-              id: serverId,
-              name: server?.name ?? "",
-            };
-          }),
-        };
-      }
-      return key;
-    });
+  // TODO: 再生成機能の実装
+  // const handleRegenerateApiKey = (keyId: string) => {
+  //   const newKey = `mcp_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 38)}`;
 
-    // setApiKeys(updatedApiKeys);
-    setIsEditDialogOpen(false);
-  };
+  //   // const updatedApiKeys = apiKeys.map((key) => {
+  //   //   if (key.id === keyId) {
+  //   //     return {
+  //   //       ...key,
+  //   //       key: newKey,
+  //   //       createdAt: new Date().toISOString(),
+  //   //       lastUsed: null,
+  //   //     };
+  //   //   }
+  //   //   return key;
+  //   // });
 
-  const handleDeleteApiKey = (apiKeyId: string) => {
-    // const updatedApiKeys = apiKeys.filter((key) => key.id !== apiKeyId);
-    // setApiKeys(updatedApiKeys);
-    setIsDeleteDialogOpen(false);
-  };
+  //   // setApiKeys(updatedApiKeys);
+  // };
 
-  const handleRegenerateApiKey = (keyId: string) => {
-    const newKey = `mcp_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 38)}`;
-
-    // const updatedApiKeys = apiKeys.map((key) => {
-    //   if (key.id === keyId) {
-    //     return {
-    //       ...key,
-    //       key: newKey,
-    //       createdAt: new Date().toISOString(),
-    //       lastUsed: null,
-    //     };
-    //   }
-    //   return key;
-    // });
-
-    // setApiKeys(updatedApiKeys);
-  };
-
-  const copyToClipboard = (text: string) => {
-    void navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    await navigator.clipboard.writeText(text);
   };
 
   const formatDate = (date: Date) => {
@@ -161,16 +97,6 @@ export function ApiKeysTab() {
       minute: "2-digit",
     }).format(date);
   };
-
-  // const openEditDialog = (apiKey: ApiKey) => {
-  //   setCurrentApiKey(apiKey);
-  //   setIsEditDialogOpen(true);
-  // };
-
-  // const openDeleteDialog = (apiKey: ApiKey) => {
-  //   setCurrentApiKey(apiKey);
-  //   setIsDeleteDialogOpen(true);
-  // };
 
   return (
     <Card>
@@ -213,11 +139,14 @@ export function ApiKeysTab() {
               </TableRow>
             ) : (
               filteredApiKeys.map((apiKey) => {
-                const tools = apiKey.toolGroups.flatMap((toolGroup) =>
-                  toolGroup.toolGroupTools.map((toolGroupTool) => ({
+                const apiKeyToolGroup = apiKey.toolGroups.find(
+                  ({ isEnabled }) => !isEnabled,
+                );
+                const tools = apiKeyToolGroup?.toolGroupTools.flatMap(
+                  (toolGroupTool) => ({
                     ...toolGroupTool.tool,
                     userMcpServerName: toolGroupTool.userMcpServer.name ?? "",
-                  })),
+                  }),
                 );
                 const serverNameSet = new Set(
                   apiKey.toolGroups.flatMap((toolGroup) =>
@@ -234,7 +163,7 @@ export function ApiKeysTab() {
                       <div className="flex flex-col space-y-2">
                         <div className="flex items-center space-x-2">
                           <span className="text-muted-foreground text-xs">
-                            API Key:
+                            Key:
                           </span>
                           <span className="max-w-[220px] truncate font-mono text-sm">
                             {apiKey.id}
@@ -243,7 +172,10 @@ export function ApiKeysTab() {
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
-                            onClick={() => copyToClipboard(apiKey.id)}
+                            onClick={async () => {
+                              await copyToClipboard(apiKey.id);
+                              toast.success("Keyをコピーしました");
+                            }}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -253,17 +185,18 @@ export function ApiKeysTab() {
                             URL:
                           </span>
                           <span className="max-w-[220px] truncate font-mono text-sm text-blue-600 underline">
-                            https://api.mcp-server.com/...
+                            {makeMcpProxyServerUrl(apiKey.id)}
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
-                            onClick={() =>
-                              copyToClipboard(
-                                `https://api.mcp-server.com/${apiKey.id}`,
-                              )
-                            }
+                            onClick={async () => {
+                              await copyToClipboard(
+                                makeMcpProxyServerUrl(apiKey.id),
+                              );
+                              toast.success("URLをコピーしました");
+                            }}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -275,7 +208,8 @@ export function ApiKeysTab() {
                     <TableCell>
                       <ToolBadgeList
                         tools={tools}
-                        toolGroups={apiKey.toolGroups}
+                        // TODO: ツールグループの実装が完了したら設定する
+                        toolGroups={[]}
                       />
                     </TableCell>
                     <TableCell>
@@ -304,19 +238,25 @@ export function ApiKeysTab() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                          // onClick={() => openEditDialog(apiKey)}
+                            onClick={() => {
+                              setCurrentApiKey(apiKey);
+                              setIsEditDialogOpen(true);
+                            }}
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             編集
                           </DropdownMenuItem>
-                          <DropdownMenuItem
+                          {/* <DropdownMenuItem
                             onClick={() => handleRegenerateApiKey(apiKey.id)}
                           >
                             <RefreshCw className="mr-2 h-4 w-4" />
                             再生成
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                           <DropdownMenuItem
-                            // onClick={() => openDeleteDialog(apiKey)}
+                            onClick={() => {
+                              setCurrentApiKey(apiKey);
+                              setIsDeleteDialogOpen(true);
+                            }}
                             className="text-red-600 focus:text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -333,20 +273,25 @@ export function ApiKeysTab() {
         </Table>
       </CardContent>
 
-      <EditApiKeyDialog
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        currentApiKey={currentApiKey}
-        mockUserMcpServers={mockUserMcpServers}
-        onEditApiKey={handleEditApiKey}
-      />
+      {isEditDialogOpen && currentApiKey && (
+        <EditApiKeyDialog
+          onClose={() => setIsEditDialogOpen(false)}
+          apiKey={currentApiKey}
+          onSuccess={() => {
+            router.refresh();
+          }}
+        />
+      )}
 
-      <DeleteApiKeyDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        currentApiKey={currentApiKey}
-        onDeleteApiKey={handleDeleteApiKey}
-      />
+      {isDeleteDialogOpen && currentApiKey && (
+        <DeleteApiKeyDialog
+          onClose={() => setIsDeleteDialogOpen(false)}
+          apiKey={currentApiKey}
+          onSuccess={() => {
+            router.refresh();
+          }}
+        />
+      )}
     </Card>
   );
 }
