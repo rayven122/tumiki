@@ -10,9 +10,9 @@ const AsyncApiKeysTab = async () => {
   return <ApiKeysTab apiKeys={apiKeys} />;
 };
 
-export default function AccessPage() {
+export default function CustomServersPage() {
   return (
-    <McpTabs activeTab="access" addButton={<CreateApiKeyButton />}>
+    <McpTabs activeTab="custom-servers" addButton={<CreateApiKeyButton />}>
       <Suspense fallback={<ApiKeysTabSkeleton />}>
         <AsyncApiKeysTab />
       </Suspense>
