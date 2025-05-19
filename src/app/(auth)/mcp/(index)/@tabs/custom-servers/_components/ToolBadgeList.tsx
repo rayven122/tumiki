@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Tool, ToolGroup } from "@prisma/client";
 import { ToolBadge } from "./ToolBadge";
 
-type ToolItem = Pick<Tool, "id" | "name"> & { userMcpServerName: string };
+type ToolItem = Pick<Tool, "id" | "name"> & { userMcpServerName?: string };
 type ToolGroupItem = Pick<ToolGroup, "id" | "name">;
 
 type ToolBadgeListProps = {
@@ -14,7 +14,7 @@ type ToolBadgeListProps = {
 export function ToolBadgeList({
   tools = [],
   toolGroups = [],
-  maxDisplay = 10,
+  maxDisplay = 5,
 }: ToolBadgeListProps) {
   const allItems = [
     ...toolGroups.map((group) => ({ type: "toolGroup" as const, item: group })),

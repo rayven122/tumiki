@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Key, Layers, Server } from "lucide-react";
+import { Database, Layers, Server } from "lucide-react";
 
 import Link from "next/link";
 
@@ -10,7 +10,7 @@ export function McpTabs({
   addButton,
   children,
 }: {
-  activeTab: "servers" | "tool-groups" | "access";
+  activeTab: "servers" | "custom-servers" | "tool-groups";
   addButton?: ReactNode;
   children: ReactNode;
 }) {
@@ -24,16 +24,16 @@ export function McpTabs({
               サーバー
             </TabsTrigger>
           </Link>
+          <Link href="/mcp/custom-servers">
+            <TabsTrigger value="custom-servers" className="flex items-center">
+              <Database className="mr-2 h-4 w-4" />
+              カスタムサーバー
+            </TabsTrigger>
+          </Link>
           <Link href="/mcp/tool-groups">
             <TabsTrigger value="tool-groups" className="flex items-center">
               <Layers className="mr-2 h-4 w-4" />
               ツールグループ
-            </TabsTrigger>
-          </Link>
-          <Link href="/mcp/access">
-            <TabsTrigger value="access" className="flex items-center">
-              <Key className="mr-2 h-4 w-4" />
-              アクセス
             </TabsTrigger>
           </Link>
         </TabsList>

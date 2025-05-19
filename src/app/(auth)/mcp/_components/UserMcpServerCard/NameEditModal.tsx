@@ -1,3 +1,7 @@
+import { useState } from "react";
+import { api } from "@/trpc/react";
+import { toast } from "@/utils/client/toast";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,24 +15,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type NameEditModalProps = {
-  open: boolean;
+  initialName: string;
+  userMcpServerId: string;
+  onSuccess?: () => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
-  name: string;
-  onNameChange: (name: string) => void;
-  onUpdate: () => Promise<void> | void;
-  isLoading: boolean;
 };
 
 export const NameEditModal = ({
-  open,
+  initialName,
+  userMcpServerId,
+  onSuccess,
   onOpenChange,
-  name,
-  onNameChange,
-  onUpdate,
-  isLoading,
 }: NameEditModalProps) => {
+  const [newName, setNewName] = useState(initialName);
+
+  const { mutate: updateUserMcpServer, isPending } =
+    api.userMcpServer.update.useMutation({
+      onSuccess: async () => {
+        await onSuccess?.();
+        toast.success("サーバー名を更新しました。");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
+  const onUpdate = () => {
+    updateUserMcpServer({ id: userMcpServerId, name: newName });
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>サーバー名を編集</DialogTitle>
@@ -39,8 +56,8 @@ export const NameEditModal = ({
             <Label htmlFor="name">サーバー名</Label>
             <Input
               id="name"
-              value={name}
-              onChange={(e) => onNameChange(e.target.value)}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
               placeholder="サーバー名を入力"
             />
           </div>
@@ -49,12 +66,12 @@ export const NameEditModal = ({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isLoading}
+            disabled={isPending}
           >
             キャンセル
           </Button>
-          <Button onClick={onUpdate} disabled={isLoading || !name.trim()}>
-            {isLoading ? "更新中..." : "更新"}
+          <Button onClick={onUpdate} disabled={isPending || !newName.trim()}>
+            {isPending ? "更新中..." : "更新"}
           </Button>
         </DialogFooter>
       </DialogContent>

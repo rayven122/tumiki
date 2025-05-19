@@ -6,7 +6,7 @@ type ToolBadgeListProps =
       type: "tool";
       tool: Pick<Tool, "id" | "name">;
       toolGroup?: never;
-      userMcpServerName: string;
+      userMcpServerName?: string;
     }
   | {
       type: "toolGroup";
@@ -37,7 +37,7 @@ export function ToolBadge({
       variant="outline"
       className="border-green-200 bg-green-50 text-green-700"
     >
-      {userMcpServerName}: {tool.name}
+      {userMcpServerName ? `${userMcpServerName}:` : ""} {tool.name}
     </Badge>
   );
 }
