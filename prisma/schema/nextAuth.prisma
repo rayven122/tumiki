@@ -65,26 +65,26 @@ enum MembershipType {
 }
 
 /// @namespace NextAuth
-/// @namespace ApiAccess
+/// @namespace UserMcpServer
 model User {
-    id             String          @id @default(cuid())
+    id                 String              @id @default(cuid())
     /// ユーザー名
-    name           String?
+    name               String?
     /// メールアドレス
-    email          String?         @unique
+    email              String?             @unique
     /// メールアドレスの検証日時
-    emailVerified  DateTime?
+    emailVerified      DateTime?
     /// プロフィール画像のURL
-    image          String?
-    accounts       Account[]
-    sessions       Session[]
-    toolGroups     ToolGroup[]
-    userMcpServers UserMcpServer[]
-    apiKeys        ApiKey[]
+    image              String?
+    accounts           Account[]
+    sessions           Session[]
+    toolGroups         ToolGroup[]
+    mcpServerConfigs   McpServerConfig[]
+    mcpServerInstances McpServerInstance[]
     /// ユーザーの権限
-    role           Role            @default(USER)
+    role               Role                @default(USER)
     /// メンバーシップの種類
-    membership     MembershipType  @default(FREE)
+    membership         MembershipType      @default(FREE)
 }
 
 /// @namespace NextAuth
