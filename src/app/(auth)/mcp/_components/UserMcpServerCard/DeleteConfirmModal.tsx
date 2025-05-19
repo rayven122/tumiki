@@ -8,22 +8,50 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertTriangleIcon } from "lucide-react";
+import { api } from "@/trpc/react";
+import { toast } from "@/utils/client/toast";
 
 type DeleteConfirmModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverName: string;
-  onDelete: () => Promise<void> | void;
-  isLoading: boolean;
+  userMcpServerId: string;
+  onSuccess?: () => Promise<void> | void;
+  // 直接deleteの関数を渡す場合のオプションプロパティ
+  onDelete?: () => Promise<void> | void;
+  isLoading?: boolean;
 };
 
 export const DeleteConfirmModal = ({
   open,
   onOpenChange,
   serverName,
-  onDelete,
-  isLoading,
+  userMcpServerId,
+  onSuccess,
+  onDelete: customOnDelete,
+  isLoading: customIsLoading,
 }: DeleteConfirmModalProps) => {
+  const { mutate: deleteUserMcpServer, isPending } =
+    api.userMcpServer.delete.useMutation({
+      onSuccess: async () => {
+        await onSuccess?.();
+        toast.success(`${serverName}のMCPサーバーを削除しました。`);
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
+  const handleDelete = async () => {
+    if (customOnDelete) {
+      await customOnDelete();
+    } else {
+      deleteUserMcpServer({ id: userMcpServerId });
+    }
+  };
+
+  const isLoading = customIsLoading ?? isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -44,7 +72,11 @@ export const DeleteConfirmModal = ({
           >
             キャンセル
           </Button>
-          <Button variant="destructive" onClick={onDelete} disabled={isLoading}>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isLoading}
+          >
             {isLoading ? "削除中..." : "削除"}
           </Button>
         </DialogFooter>

@@ -32,13 +32,9 @@ import { ToolBadgeList } from "./ToolBadgeList";
 import { type RouterOutputs } from "@/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/utils/client/toast";
-
-const MCP_PROXY_SERVER_URL =
-  "https://fast-mcp-server-proxy-production.up.railway.app";
-
-const makeMcpProxyServerUrl = (apiKeyId: string) => {
-  return `${MCP_PROXY_SERVER_URL}/mcp?api-key=${apiKeyId}`;
-};
+import { copyToClipboard } from "@/utils/client/copyToClipboard";
+import { makeMcpProxyServerUrl } from "@/utils/url";
+import { formatDateTime } from "@/utils/date";
 
 export type ApiKey = RouterOutputs["apiKey"]["findAll"][number];
 
@@ -83,20 +79,6 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
 
   //   // setApiKeys(updatedApiKeys);
   // };
-
-  const copyToClipboard = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-  };
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("ja-JP", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date);
-  };
 
   return (
     <Card>
@@ -160,51 +142,30 @@ export function ApiKeysTab({ apiKeys }: ApiKeysTabProps) {
                   <TableRow key={apiKey.id}>
                     <TableCell className="font-medium">{apiKey.name}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-muted-foreground text-xs">
-                            Key:
-                          </span>
-                          <span className="max-w-[220px] truncate font-mono text-sm">
-                            {apiKey.id}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={async () => {
-                              await copyToClipboard(apiKey.id);
-                              toast.success("Keyをコピーしました");
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-muted-foreground text-xs">
-                            URL:
-                          </span>
-                          <span className="max-w-[220px] truncate font-mono text-sm text-blue-600 underline">
-                            {makeMcpProxyServerUrl(apiKey.id)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={async () => {
-                              await copyToClipboard(
-                                makeMcpProxyServerUrl(apiKey.id),
-                              );
-                              toast.success("URLをコピーしました");
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-muted-foreground text-xs">
+                          URL:
+                        </span>
+                        <span className="max-w-[220px] truncate font-mono text-sm text-blue-600 underline">
+                          {makeMcpProxyServerUrl(apiKey.id)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={async () => {
+                            await copyToClipboard(
+                              makeMcpProxyServerUrl(apiKey.id),
+                            );
+                            toast.success("URLをコピーしました");
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
-                    <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
-                    <TableCell>{formatDate(apiKey.updatedAt)}</TableCell>
+                    <TableCell>{formatDateTime(apiKey.createdAt)}</TableCell>
+                    <TableCell>{formatDateTime(apiKey.updatedAt)}</TableCell>
                     <TableCell>
                       <ToolBadgeList
                         tools={tools}
