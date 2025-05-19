@@ -10,17 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import {
   Trash2Icon,
   EditIcon,
   ImageIcon,
   MoreHorizontal,
-  Wrench,
+  Copy,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
-import type { Prisma } from "@prisma/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,18 +30,18 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
 import { ImageEditModal } from "./ImageEditModal";
 import { useRouter } from "next/navigation";
+import { copyToClipboard } from "@/utils/client/copyToClipboard";
+import { makeMcpProxyServerUrl } from "@/utils/url";
+import { toast } from "@/utils/client/toast";
+import { ToolBadgeList } from "../../(index)/@tabs/custom-servers/_components/ToolBadgeList";
+import { type RouterOutputs } from "@/trpc/react";
+import { formatDateTime } from "@/utils/date";
 
-type UserMcpServerWithTools = Prisma.UserMcpServerGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    tools: true;
-    mcpServer: true;
-  };
-}>;
+type UserMcpServerWithTool =
+  RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
 
 type UserMcpServerCardProps = {
-  userMcpServer: UserMcpServerWithTools;
+  userMcpServer: UserMcpServerWithTool;
 };
 
 export const UserMcpServerCard = ({
@@ -57,6 +55,13 @@ export const UserMcpServerCard = ({
   const router = useRouter();
 
   const serverName = userMcpServer.name ?? userMcpServer.mcpServer.name;
+
+  const copyUrl = async () => {
+    await copyToClipboard(makeMcpProxyServerUrl(userMcpServer.id));
+    toast.success("URLをコピーしました");
+  };
+
+  const isActive = true;
 
   return (
     <Card className="flex h-full flex-col">
@@ -85,7 +90,7 @@ export const UserMcpServerCard = ({
             <EditIcon className="size-4 text-white" />
           </Button> */}
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center">
             <CardTitle>{serverName}</CardTitle>
             <Button
@@ -97,13 +102,26 @@ export const UserMcpServerCard = ({
               <EditIcon className="h-3 w-3" />
             </Button>
           </div>
-          <div className="mt-1 flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border-blue-200 bg-blue-50 text-blue-700"
-            >
-              ツール: {userMcpServer.tools.length}
-            </Badge>
+          <div className="mt-1">
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <span className="text-muted-foreground flex-shrink-0 text-xs">
+                URL:
+              </span>
+              <span
+                className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
+                onClick={copyUrl}
+              >
+                {makeMcpProxyServerUrl(userMcpServer.id)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 cursor-pointer"
+                onClick={copyUrl}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
         <DropdownMenu>
@@ -137,24 +155,40 @@ export const UserMcpServerCard = ({
         </DropdownMenu>
       </CardHeader>
       <CardContent className="flex-1">
-        {/* ツール一覧を表示するボタン */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="mb-2 flex w-full items-center justify-between"
-          onClick={() => setToolsModalOpen(true)}
-        >
-          <span className="flex items-center">
-            <Wrench className="mr-2 size-4" />
-            利用可能なツール
-          </span>
-          <Badge variant="secondary" className="ml-2">
-            {userMcpServer.tools.length}
-          </Badge>
-        </Button>
+        <div className="grid grid-cols-2 gap-4 py-2">
+          <div className="flex flex-col">
+            <span className="text-muted-foreground text-sm">作成日</span>
+            <span>{formatDateTime(userMcpServer.createdAt)}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground text-sm">最終更新日</span>
+            <span>{formatDateTime(userMcpServer.updatedAt)}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground text-sm">接続サーバー</span>
+            <span>{userMcpServer.mcpServer.name}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground text-sm">ステータス</span>
+            <div className="flex items-center space-x-2">
+              <div
+                className={`h-2 w-2 rounded-full ${isActive ? "bg-green-500" : "bg-red-500"}`}
+              />
+              <span>{isActive ? "稼働中" : "停止中"}</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2">
+          {/* ツール一覧を表示するボタン */}
+          <ToolBadgeList
+            tools={userMcpServer.tools}
+            // TODO: ツールグループの実装が完了したら設定する
+            toolGroups={[]}
+          />
+        </div>
       </CardContent>
       <CardFooter className="mt-auto">
-        <Button
+        {/* <Button
           type="button"
           onClick={() => {
             setTokenModalOpen(true);
@@ -162,7 +196,7 @@ export const UserMcpServerCard = ({
           className="w-full"
         >
           再設定
-        </Button>
+        </Button> */}
       </CardFooter>
 
       {/* トークンモーダル */}
