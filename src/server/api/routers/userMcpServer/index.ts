@@ -30,6 +30,8 @@ export const DeleteUserMcpServerInput = z.object({
 export const FindAllWithMcpServerToolsOutput = z.array(
   UserMcpServerSchema.pick({
     name: true,
+    createdAt: true,
+    updatedAt: true,
   }).merge(
     z.object({
       id: UserMcpServerIdSchema,

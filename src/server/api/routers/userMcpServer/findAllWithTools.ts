@@ -20,6 +20,8 @@ export const findAllWithMcpServerTools = async ({
       name: true,
       tools: true,
       mcpServer: true,
+      createdAt: true,
+      updatedAt: true,
     },
   });
 
