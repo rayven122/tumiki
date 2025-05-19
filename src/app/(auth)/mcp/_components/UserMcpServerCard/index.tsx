@@ -3,13 +3,7 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import {
   Trash2Icon,
@@ -144,10 +138,7 @@ export const UserMcpServerCard = ({
               <ImageIcon className="mr-2 h-4 w-4" />
               画像を編集
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setDeleteModalOpen(true)}
-              className="text-red-600 focus:text-red-600"
-            >
+            <DropdownMenuItem onClick={() => setDeleteModalOpen(true)}>
               <Trash2Icon className="mr-2 h-4 w-4" />
               削除
             </DropdownMenuItem>
@@ -179,16 +170,21 @@ export const UserMcpServerCard = ({
           </div>
         </div>
         <div className="mt-2">
-          {/* ツール一覧を表示するボタン */}
-          <ToolBadgeList
-            tools={userMcpServer.tools}
-            // TODO: ツールグループの実装が完了したら設定する
-            toolGroups={[]}
-          />
+          <span className="text-muted-foreground text-sm">
+            ツール・ツールグループ
+          </span>
+          <div className="mt-1 flex items-center space-x-2">
+            {/* ツール一覧を表示するボタン */}
+            <ToolBadgeList
+              tools={userMcpServer.tools}
+              // TODO: ツールグループの実装が完了したら設定する
+              toolGroups={[]}
+            />
+          </div>
         </div>
       </CardContent>
-      <CardFooter className="mt-auto">
-        {/* <Button
+      {/* <CardFooter className="mt-auto">
+        <Button
           type="button"
           onClick={() => {
             setTokenModalOpen(true);
@@ -196,8 +192,8 @@ export const UserMcpServerCard = ({
           className="w-full"
         >
           再設定
-        </Button> */}
-      </CardFooter>
+        </Button>
+      </CardFooter> */}
 
       {/* トークンモーダル */}
       {tokenModalOpen && (

@@ -5,12 +5,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Bell, Server, Settings, User } from "lucide-react";
+import { Settings, User } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,7 +20,6 @@ export function Header() {
   const navigation = [
     // { name: "ダッシュボード", href: "/dashboard" },
     { name: "MCPサーバー", href: "/mcp/servers" },
-    { name: "アクセス管理", href: "/access" },
     // { name: "権限管理", href: "/permissions" },
     // { name: "プラグイン", href: "/plugins" },
   ];
@@ -31,7 +29,7 @@ export function Header() {
       <div className="container flex h-14 items-center justify-between">
         <div className="flex items-center">
           <Link href="/" className="mx-6 flex items-center space-x-2">
-            <span className="font-bold">MCP Server Manager</span>
+            <span className="font-bold">Tumiki</span>
           </Link>
           <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
             {navigation.map((item) => (
@@ -52,18 +50,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* サーバー状態表示 */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Server className="h-5 w-5" />
-            <span className="border-background absolute -top-1 -right-1 h-3 w-3 rounded-full border bg-green-500" />
-          </Button>
-
-          {/* 通知 */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="border-background absolute -top-1 -right-1 h-3 w-3 rounded-full border bg-red-500" />
-          </Button>
-
           {/* ユーザーメニュー */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -72,13 +58,11 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>アカウント</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>設定</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled>
                 <span>プロフィール</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
