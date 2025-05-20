@@ -1,8 +1,8 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { UpdateUserMcpServerInput } from ".";
-import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
-import type { Prisma } from "@prisma/client";
+// import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
+// import type { Prisma } from "@prisma/client";
 
 type UpdateUserMcpServerInput = {
   ctx: ProtectedContext;
@@ -28,7 +28,7 @@ export const updateUserMcpServer = async ({
     throw new Error("ユーザーのMCPサーバーが見つかりません");
   }
 
-  let toolsConnect: Prisma.ToolWhereUniqueInput[] = [];
+  // let toolsConnect: Prisma.ToolWhereUniqueInput[] = [];
   if (input.envVars) {
     const envVars = Object.keys(input.envVars);
     const isEnvVarsMatch = envVars.every((envVar) =>
@@ -37,20 +37,21 @@ export const updateUserMcpServer = async ({
     if (!isEnvVarsMatch) {
       throw new Error("MCPサーバーの環境変数が一致しません");
     }
-    const tools = await getMcpServerTools(
-      userMcpServer.mcpServer,
-      input.envVars,
-    );
-    if (tools.length === 0) {
-      throw new Error("正しい環境変数が設定されていません");
-    }
+    // TODO: ncc による　readfile が解決されるまでコメントアウト
+    // const tools = await getMcpServerTools(
+    //   userMcpServer.mcpServer,
+    //   input.envVars,
+    // );
+    // if (tools.length === 0) {
+    //   throw new Error("正しい環境変数が設定されていません");
+    // }
 
-    toolsConnect = tools.map((tool) => ({
-      mcpServerId_name: {
-        mcpServerId: userMcpServer.mcpServer.id,
-        name: tool.name,
-      },
-    }));
+    // toolsConnect = userMcpServer.mcpServer.tools.map((tool) => ({
+    //   mcpServerId_name: {
+    //     mcpServerId: userMcpServer.mcpServer.id,
+    //     name: tool.name,
+    //   },
+    // }));
   }
 
   return await ctx.db.userMcpServer.update({
@@ -59,11 +60,11 @@ export const updateUserMcpServer = async ({
       name: input.name,
       // imageUrl: input.imageUrl,
       envVars: input.envVars,
-      ...(toolsConnect.length > 0 && {
-        tools: {
-          connect: toolsConnect,
-        },
-      }),
+      // ...(toolsConnect.length > 0 && {
+      //   tools: {
+      //     connect: toolsConnect,
+      //   },
+      // }),
     },
   });
 };
