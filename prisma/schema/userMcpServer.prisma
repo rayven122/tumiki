@@ -44,6 +44,8 @@ model ToolGroupTool {
   /// このToolがどのUserMcpServerに属しているか
   mcpServerConfigId String
   mcpServerConfig   McpServerConfig @relation(fields: [mcpServerConfigId], references: [id], onDelete: Cascade)
+  /// ソート順序
+  sortOrder         Int             @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,54 +57,68 @@ model ToolGroupTool {
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model ToolGroup {
-  id                  String              @id @default(cuid())
+  id                         String                       @id @default(cuid())
   /// ツールグループ名
   /// @zod.string.min(1)
-  name                String
+  name                       String
   /// ツールグループの説明
-  description         String
+  description                String
   /// ツールグループが有効かどうか
-  isEnabled           Boolean             @default(true)
-  /// ツールの表示順序を保持するためのID配列
-  order               String[]
+  isEnabled                  Boolean                      @default(true)
   /// ユーザーID
-  userId              String
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                     String
+  user                       User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// ツールグループに含まれるMcpServerInstance（中間テーブル経由）
-  mcpServerInstances  McpServerInstance[]
+  mcpServerInstances         McpServerInstance[]
   /// McpServerInstance に直接紐づくものは、id を管理する
-  mcpServerInstanceId String?
-
+  mcpServerInstanceId        String?
   /// ToolGroupに含まれるTool（中間テーブル経由）
-  toolGroupTools ToolGroupTool[]
+  toolGroupTools             ToolGroupTool[]
   /// 組織
-  organizationId String?
-  organization   Organization?   @relation(fields: [organizationId], references: [id])
+  organizationId             String?
+  organization               Organization?                @relation(fields: [organizationId], references: [id])
+  /// MCPサーバーとツールグループの関連を管理する中間テーブル
+  mcpServerInstanceToolGroup McpServerInstanceToolGroup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// MCPサーバーとツールグループの関連を管理する中間テーブル
+model McpServerInstanceToolGroup {
+  mcpServerInstanceId String
+  mcpServerInstance   McpServerInstance @relation(fields: [mcpServerInstanceId], references: [id], onDelete: Cascade)
+  toolGroupId         String
+  toolGroup           ToolGroup         @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
+  /// このMcpServerInstance内でのToolGroupの表示順序
+  sortOrder           Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([mcpServerInstanceId, toolGroupId])
 }
 
 /// MCPサーバーとして利用するインスタンス
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model McpServerInstance {
-  id             String        @id @default(cuid())
+  id                         String                       @id @default(cuid())
   /// サーバー名
   /// @zod.string.min(1)
-  name           String
+  name                       String
   /// サーバーの説明
-  description    String
+  description                String
   /// ツールグループ
-  toolGroups     ToolGroup[]
+  toolGroups                 ToolGroup[]
   /// ユーザーID
-  userId         String
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// ツールグループとツールの表示順序を保持するためのID配列
-  order          String[]
+  userId                     String
+  user                       User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 組織
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId             String?
+  organization               Organization?                @relation(fields: [organizationId], references: [id])
+  /// MCPサーバーとツールグループの関連を管理する中間テーブル
+  mcpServerInstanceToolGroup McpServerInstanceToolGroup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
