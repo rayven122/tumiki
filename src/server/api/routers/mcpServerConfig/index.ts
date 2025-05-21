@@ -4,11 +4,11 @@ import { addUserMcpServer } from "./addUserMcpServer";
 import { findAllWithMcpServerTools } from "./findAllWithTools";
 import { updateUserMcpServer } from "./updateUserMcpServer";
 import { deleteUserMcpServer } from "./deleteUserMcpServer";
-import { McpServerSchema, ToolSchema, UserMcpServerSchema } from "@zod";
+import { McpServerSchema, ToolSchema, UserMcpServerConfigSchema } from "@zod";
 import {
   McpServerIdSchema,
   ToolIdSchema,
-  UserMcpServerIdSchema,
+  UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
 
 export const AddUserMcpServerInput = z.object({
@@ -28,13 +28,13 @@ export const DeleteUserMcpServerInput = z.object({
 });
 
 export const FindAllWithMcpServerToolsOutput = z.array(
-  UserMcpServerSchema.pick({
+  UserMcpServerConfigSchema.pick({
     name: true,
     createdAt: true,
     updatedAt: true,
   }).merge(
     z.object({
-      id: UserMcpServerIdSchema,
+      id: UserMcpServerConfigIdSchema,
       tools: z.array(ToolSchema.merge(z.object({ id: ToolIdSchema }))),
       mcpServer: McpServerSchema.merge(z.object({ id: McpServerIdSchema })),
     }),

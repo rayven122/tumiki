@@ -2,10 +2,10 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { addApiKey } from "./addApiKey";
 import {
-  ApiKeyIdSchema,
-  ToolGroupIdSchema,
+  UserMcpServerInstanceIdSchema,
+  UserToolGroupIdSchema,
   ToolIdSchema,
-  UserMcpServerIdSchema,
+  UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
 import { findAll } from "./findAll";
 import { deleteApiKey } from "./deleteApiKey";
@@ -20,11 +20,14 @@ import { updateApiKey } from "./updateApiKey";
 export const AddApiKeyInput = z.object({
   name: z.string(),
   description: z.string().default(""),
-  serverToolIdsMap: z.record(UserMcpServerIdSchema, z.array(ToolIdSchema)),
+  serverToolIdsMap: z.record(
+    UserMcpServerConfigIdSchema,
+    z.array(ToolIdSchema),
+  ),
 });
 
 export const DeleteApiKeyInput = z.object({
-  id: UserMcpServerIdSchema,
+  id: UserMcpServerConfigIdSchema,
 });
 
 export const FindAllApiKeysOutput = z.array(
@@ -35,7 +38,7 @@ export const FindAllApiKeysOutput = z.array(
     updatedAt: true,
   }).merge(
     z.object({
-      id: ApiKeyIdSchema,
+      id: UserMcpServerInstanceIdSchema,
       toolGroups: z.array(
         ToolGroupSchema.pick({
           name: true,
@@ -43,14 +46,14 @@ export const FindAllApiKeysOutput = z.array(
           isEnabled: true,
         }).merge(
           z.object({
-            id: ToolGroupIdSchema,
+            id: UserToolGroupIdSchema,
             toolGroupTools: z.array(
               z.object({
                 userMcpServer: UserMcpServerSchema.pick({
                   name: true,
                 }).merge(
                   z.object({
-                    id: UserMcpServerIdSchema,
+                    id: UserMcpServerConfigIdSchema,
                   }),
                 ),
                 tool: ToolSchema.pick({
@@ -70,11 +73,14 @@ export const FindAllApiKeysOutput = z.array(
 );
 
 export const UpdateApiKeyInput = z.object({
-  id: ApiKeyIdSchema,
-  apiKeyToolGroupId: ToolGroupIdSchema,
+  id: UserMcpServerInstanceIdSchema,
+  apiKeyToolGroupId: UserToolGroupIdSchema,
   name: z.string(),
   description: z.string().default(""),
-  serverToolIdsMap: z.record(UserMcpServerIdSchema, z.array(ToolIdSchema)),
+  serverToolIdsMap: z.record(
+    UserMcpServerConfigIdSchema,
+    z.array(ToolIdSchema),
+  ),
 });
 
 export const apiKeyRouter = createTRPCRouter({
