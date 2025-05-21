@@ -5,7 +5,6 @@
 - [NextAuth](#nextauth)
 - [Organization](#organization)
 - [UserMcpServer](#usermcpserver)
-- [default](#default)
 
 ## McpServer
 ```mermaid
@@ -44,10 +43,8 @@ erDiagram
 "UserToolGroupTool" {
   String toolGroupId FK
   String toolId FK
-  String mcpServerConfigId FK
   Int sortOrder
   DateTime createdAt
-  DateTime updatedAt
 }
 "UserToolGroup" {
   String id PK
@@ -55,7 +52,6 @@ erDiagram
   String description
   Boolean isEnabled
   String userId FK
-  String mcpServerInstanceId "nullable"
   String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
@@ -64,6 +60,8 @@ erDiagram
   String id PK
   String name
   String description
+  ServerStatus serverStatus
+  ServerType serverType
   String userId FK
   String organizationId FK "nullable"
   DateTime createdAt
@@ -73,19 +71,28 @@ erDiagram
   String A FK
   String B FK
 }
-"_UserMcpServerInstanceToUserToolGroup" {
-  String A FK
-  String B FK
+"UserMcpServerInstanceToolGroup" {
+  String mcpServerInstanceId FK
+  String toolGroupId FK
+  Int sortOrder
+  DateTime createdAt
+}
+"UserMcpServerInstanceTool" {
+  String mcpServerInstanceId FK
+  String toolId FK
+  Int sortOrder
+  DateTime createdAt
 }
 "Tool" }o--|| "McpServer" : mcpServer
 "UserMcpServerConfig" }o--|| "McpServer" : mcpServer
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
 "UserToolGroupTool" }o--|| "Tool" : tool
-"UserToolGroupTool" }o--|| "UserMcpServerConfig" : mcpServerConfig
 "_ToolToUserMcpServerConfig" }o--|| "Tool" : Tool
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
-"_UserMcpServerInstanceToUserToolGroup" }o--|| "UserMcpServerInstance" : UserMcpServerInstance
-"_UserMcpServerInstanceToUserToolGroup" }o--|| "UserToolGroup" : UserToolGroup
+"UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
+"UserMcpServerInstanceTool" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"UserMcpServerInstanceTool" }o--|| "Tool" : tool
 ```
 
 ### `McpServer`
@@ -129,15 +136,13 @@ MCP サーバーのツール一覧
   - `updatedAt`: 
 
 ### `UserToolGroupTool`
-ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
+ToolGroup, Toolの関連を表す中間テーブル
 
 **Properties**
   - `toolGroupId`: ToolGroupへの参照
   - `toolId`: Toolへの参照
-  - `mcpServerConfigId`: このToolがどのUserMcpServerに属しているか
   - `sortOrder`: ソート順序
   - `createdAt`: 
-  - `updatedAt`: 
 
 ### `UserToolGroup`
 どのツール群を利用するかを設定する
@@ -148,7 +153,6 @@ ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
   - `description`: ツールグループの説明
   - `isEnabled`: ツールグループが有効かどうか
   - `userId`: ユーザーID
-  - `mcpServerInstanceId`: McpServerInstance に直接紐づくものは、id を管理する
   - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
@@ -160,6 +164,8 @@ MCPサーバーとして利用するインスタンス
   - `id`: 
   - `name`: サーバー名
   - `description`: サーバーの説明
+  - `serverStatus`: サーバーの状態
+  - `serverType`: サーバーの種類
   - `userId`: ユーザーID
   - `organizationId`: 組織
   - `createdAt`: 
@@ -172,12 +178,23 @@ Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcp
   - `A`: 
   - `B`: 
 
-### `_UserMcpServerInstanceToUserToolGroup`
-Pair relationship table between [UserMcpServerInstance](#UserMcpServerInstance) and [UserToolGroup](#UserToolGroup)
+### `UserMcpServerInstanceToolGroup`
+MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
 
 **Properties**
-  - `A`: 
-  - `B`: 
+  - `mcpServerInstanceId`: 
+  - `toolGroupId`: 
+  - `sortOrder`: このMcpServerInstance内でのToolGroupの表示順序
+  - `createdAt`: 
+
+### `UserMcpServerInstanceTool`
+MCPサーバーインスタンスとツールの関連を管理する中間テーブル
+
+**Properties**
+  - `mcpServerInstanceId`: 
+  - `toolId`: 
+  - `sortOrder`: このMcpServerInstance内でのToolの表示順序
+  - `createdAt`: 
 
 
 ## NextAuth
@@ -473,6 +490,18 @@ Pair relationship table between [OrganizationGroup](#OrganizationGroup) and [Org
 ## UserMcpServer
 ```mermaid
 erDiagram
+"UserMcpServerInstanceToolGroup" {
+  String mcpServerInstanceId FK
+  String toolGroupId FK
+  Int sortOrder
+  DateTime createdAt
+}
+"UserMcpServerInstanceTool" {
+  String mcpServerInstanceId FK
+  String toolId FK
+  Int sortOrder
+  DateTime createdAt
+}
 "User" {
   String id PK
   String name "nullable"
@@ -494,10 +523,8 @@ erDiagram
 "UserToolGroupTool" {
   String toolGroupId FK
   String toolId FK
-  String mcpServerConfigId FK
   Int sortOrder
   DateTime createdAt
-  DateTime updatedAt
 }
 "UserToolGroup" {
   String id PK
@@ -505,7 +532,6 @@ erDiagram
   String description
   Boolean isEnabled
   String userId FK
-  String mcpServerInstanceId "nullable"
   String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
@@ -514,6 +540,8 @@ erDiagram
   String id PK
   String name
   String description
+  ServerStatus serverStatus
+  ServerType serverType
   String userId FK
   String organizationId FK "nullable"
   DateTime createdAt
@@ -523,19 +551,33 @@ erDiagram
   String A FK
   String B FK
 }
-"_UserMcpServerInstanceToUserToolGroup" {
-  String A FK
-  String B FK
-}
+"UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
+"UserMcpServerInstanceTool" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "UserMcpServerConfig" }o--|| "User" : user
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
-"UserToolGroupTool" }o--|| "UserMcpServerConfig" : mcpServerConfig
 "UserToolGroup" }o--|| "User" : user
 "UserMcpServerInstance" }o--|| "User" : user
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
-"_UserMcpServerInstanceToUserToolGroup" }o--|| "UserMcpServerInstance" : UserMcpServerInstance
-"_UserMcpServerInstanceToUserToolGroup" }o--|| "UserToolGroup" : UserToolGroup
 ```
+
+### `UserMcpServerInstanceToolGroup`
+MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
+
+**Properties**
+  - `mcpServerInstanceId`: 
+  - `toolGroupId`: 
+  - `sortOrder`: このMcpServerInstance内でのToolGroupの表示順序
+  - `createdAt`: 
+
+### `UserMcpServerInstanceTool`
+MCPサーバーインスタンスとツールの関連を管理する中間テーブル
+
+**Properties**
+  - `mcpServerInstanceId`: 
+  - `toolId`: 
+  - `sortOrder`: このMcpServerInstance内でのToolの表示順序
+  - `createdAt`: 
 
 ### `User`
 
@@ -561,15 +603,13 @@ erDiagram
   - `updatedAt`: 
 
 ### `UserToolGroupTool`
-ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
+ToolGroup, Toolの関連を表す中間テーブル
 
 **Properties**
   - `toolGroupId`: ToolGroupへの参照
   - `toolId`: Toolへの参照
-  - `mcpServerConfigId`: このToolがどのUserMcpServerに属しているか
   - `sortOrder`: ソート順序
   - `createdAt`: 
-  - `updatedAt`: 
 
 ### `UserToolGroup`
 どのツール群を利用するかを設定する
@@ -580,7 +620,6 @@ ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
   - `description`: ツールグループの説明
   - `isEnabled`: ツールグループが有効かどうか
   - `userId`: ユーザーID
-  - `mcpServerInstanceId`: McpServerInstance に直接紐づくものは、id を管理する
   - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
@@ -592,6 +631,8 @@ MCPサーバーとして利用するインスタンス
   - `id`: 
   - `name`: サーバー名
   - `description`: サーバーの説明
+  - `serverStatus`: サーバーの状態
+  - `serverType`: サーバーの種類
   - `userId`: ユーザーID
   - `organizationId`: 組織
   - `createdAt`: 
@@ -603,33 +644,3 @@ Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcp
 **Properties**
   - `A`: 
   - `B`: 
-
-### `_UserMcpServerInstanceToUserToolGroup`
-Pair relationship table between [UserMcpServerInstance](#UserMcpServerInstance) and [UserToolGroup](#UserToolGroup)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-
-## default
-```mermaid
-erDiagram
-"UserMcpServerInstanceToolGroup" {
-  String mcpServerInstanceId FK
-  String toolGroupId FK
-  Int sortOrder
-  DateTime createdAt
-  DateTime updatedAt
-}
-```
-
-### `UserMcpServerInstanceToolGroup`
-MCPサーバーとツールグループの関連を管理する中間テーブル
-
-**Properties**
-  - `mcpServerInstanceId`: 
-  - `toolGroupId`: 
-  - `sortOrder`: このMcpServerInstance内でのToolGroupの表示順序
-  - `createdAt`: 
-  - `updatedAt`: 
