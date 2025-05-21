@@ -27,9 +27,10 @@ import { useRouter } from "next/navigation";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { makeMcpProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
-import { ToolBadgeList } from "../../(index)/@tabs/custom-servers/_components/ToolBadgeList";
+
 import { type RouterOutputs } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
+import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 
 type UserMcpServerWithTool =
   RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
