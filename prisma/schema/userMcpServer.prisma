@@ -8,21 +8,24 @@
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model McpServerConfig {
-  id            String          @id @default(cuid())
+  id             String          @id @default(cuid())
   /// カスタムMCPサーバー名 (ユーザーが設定した名前)
-  name          String?
+  name           String?
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  envVars       String /// @encrypted
+  envVars        String /// @encrypted
   /// 利用可能なツールグループ
-  tools         Tool[]
+  tools          Tool[]
   /// MCPサーバーID
-  mcpServerId   String
-  mcpServer     McpServer       @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  mcpServerId    String
+  mcpServer      McpServer       @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
   /// ユーザーID
-  userId        String
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// ToolGroup, Toolの関連を表す中間テーブル
-  toolGroupTool ToolGroupTool[]
+  toolGroupTool  ToolGroupTool[]
+  /// 組織
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -72,6 +75,9 @@ model ToolGroup {
 
   /// ToolGroupに含まれるTool（中間テーブル経由）
   toolGroupTools ToolGroupTool[]
+  /// 組織
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -81,19 +87,22 @@ model ToolGroup {
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model McpServerInstance {
-  id          String      @id @default(cuid())
+  id             String        @id @default(cuid())
   /// サーバー名
   /// @zod.string.min(1)
-  name        String
+  name           String
   /// サーバーの説明
-  description String
+  description    String
   /// ツールグループ
-  toolGroups  ToolGroup[]
+  toolGroups     ToolGroup[]
   /// ユーザーID
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// ツールグループとツールの表示順序を保持するためのID配列
-  order       String[]
+  order          String[]
+  /// 組織
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

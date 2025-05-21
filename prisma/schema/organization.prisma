@@ -1,0 +1,217 @@
+/**
+ * @namespace Organization
+ */
+
+/// @namespace Organization
+model Organization {
+    id           String                   @id @default(cuid())
+    /// 組織名
+    name         String
+    /// 組織の説明
+    description  String?
+    /// 組織のロゴURL
+    logoUrl      String?
+    /// 論理削除フラグ
+    isDeleted    Boolean                  @default(false)
+    /// 組織の作成者
+    createdBy    String
+    creator      User                     @relation(fields: [createdBy], references: [id])
+    /// 組織のメンバー
+    members      OrganizationMember[]
+    /// 組織のグループ
+    groups       OrganizationGroup[]
+    /// 組織のロール
+    roles        OrganizationRole[]
+    /// リソース固有の権限
+    resourceAcls ResourceAccessControl[]
+    /// 組織の招待
+    invitations  OrganizationInvitation[]
+
+    /// 組織に関連するツールグループ
+    toolGroups         ToolGroup[]
+    /// 組織に関連するMCPサーバー設定
+    mcpServerConfigs   McpServerConfig[]
+    /// 組織に関連するMCPサーバーインスタンス
+    mcpServerInstances McpServerInstance[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+/// @namespace Organization
+model OrganizationMember {
+    id             String                  @id @default(cuid())
+    organizationId String
+    organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    userId         String
+    user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    /// このメンバーが管理者権限を持つか
+    isAdmin        Boolean                 @default(false)
+    /// 割り当てられたロール
+    roles          OrganizationRole[]
+    /// 所属グループ
+    groups         OrganizationGroup[]
+    /// 個別リソースへのアクセス権限
+    resourceAcls   ResourceAccessControl[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+/// @namespace Organization
+model OrganizationInvitation {
+    id             String       @id @default(cuid())
+    organizationId String
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    /// 招待先メールアドレス
+    email          String
+    /// 招待トークン
+    token          String       @unique @default(cuid())
+
+    /// 招待者のユーザーID
+    invitedBy     String
+    invitedByUser User     @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+    /// 招待された人が管理者になるか
+    isAdmin       Boolean  @default(false)
+    /// 付与される予定のロールID配列
+    roleIds       String[]
+    /// 招待時に追加するグループID配列
+    groupIds      String[]
+
+    /// 招待の有効期限
+    expires   DateTime
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([organizationId, email])
+    @@index([token])
+}
+
+/// @namespace Organization
+model OrganizationGroup {
+    id             String                  @id @default(cuid())
+    /// グループ名
+    name           String
+    /// グループの説明
+    description    String?
+    /// 組織ID
+    organizationId String
+    organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    /// グループメンバー
+    members        OrganizationMember[]
+    /// グループに割り当てられたロール
+    roles          OrganizationRole[]
+    /// グループ固有のリソースアクセス権限
+    resourceAcls   ResourceAccessControl[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([organizationId, name])
+    @@index([organizationId])
+}
+
+/// ロール定義
+/// @namespace Organization
+model OrganizationRole {
+    id             String               @id @default(cuid())
+    /// ロール名
+    name           String
+    /// ロールの説明
+    description    String?
+    /// 組織ID
+    organizationId String
+    organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    /// デフォルトロールか
+    isDefault      Boolean              @default(false)
+    /// ロールに割り当てられた権限
+    permissions    RolePermission[]
+    /// このロールを持つメンバー
+    members        OrganizationMember[]
+    /// このロールを持つグループ
+    groups         OrganizationGroup[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([organizationId, name])
+}
+
+/// 権限タイプ
+/// @namespace Organization
+enum PermissionAction {
+    /// 作成権限
+    CREATE
+    /// 読み取り権限
+    READ
+    /// 編集権限
+    UPDATE
+    /// 削除権限
+    DELETE
+    /// 管理権限（権限の管理や設定変更など）
+    MANAGE
+}
+
+/// リソースタイプ
+/// @namespace Organization
+enum ResourceType {
+    /// 組織グループ
+    GROUP
+    /// 組織メンバー
+    MEMBER
+    /// 組織ロール
+    ROLE
+    /// MCPサーバー設定
+    MCP_SERVER_CONFIG
+    /// ツールグループ
+    TOOL_GROUP
+    /// MCPサーバーインスタンス
+    MCP_SERVER_INSTANCE
+}
+
+/// ロールに付与された権限
+/// @namespace Organization
+model RolePermission {
+    id           String           @id @default(cuid())
+    /// ロールID
+    roleId       String
+    role         OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+    /// リソースタイプ
+    resourceType ResourceType
+    /// 権限アクション
+    action       PermissionAction
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([roleId, resourceType, action])
+}
+
+/// 特定リソースへのアクセス制御
+/// @namespace Organization
+model ResourceAccessControl {
+    id             String              @id @default(cuid())
+    /// 組織ID
+    organizationId String
+    organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    /// リソースタイプ
+    resourceType   ResourceType
+    /// リソースID
+    resourceId     String
+    /// 対象メンバー（nullの場合はグループまたはすべてのメンバー）
+    memberId       String?
+    member         OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+    /// 対象グループ（nullの場合はメンバー個人またはすべてのメンバー）
+    groupId        String?
+    group          OrganizationGroup?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+    /// 許可されたアクション
+    allowedActions PermissionAction[]
+    /// 拒否されたアクション　(※許可よりも拒否が優先される)
+    deniedActions  PermissionAction[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([organizationId, resourceType, resourceId, memberId, groupId])
+    @@index([organizationId, resourceType, resourceId])
+}
