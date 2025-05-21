@@ -3,6 +3,7 @@
 
 - [McpServer](#mcpserver)
 - [NextAuth](#nextauth)
+- [Organization](#organization)
 - [UserMcpServer](#usermcpserver)
 
 ## McpServer
@@ -35,6 +36,7 @@ erDiagram
   String envVars
   String mcpServerId FK
   String userId FK
+  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -53,6 +55,7 @@ erDiagram
   String order
   String userId FK
   String mcpServerInstanceId "nullable"
+  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -62,6 +65,7 @@ erDiagram
   String description
   String userId FK
   String order
+  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -120,6 +124,7 @@ MCP サーバーのツール一覧
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
+  - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -144,6 +149,7 @@ ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
   - `order`: ツールの表示順序を保持するためのID配列
   - `userId`: ユーザーID
   - `mcpServerInstanceId`: McpServerInstance に直接紐づくものは、id を管理する
+  - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -156,6 +162,7 @@ MCPサーバーとして利用するインスタンス
   - `description`: サーバーの説明
   - `userId`: ユーザーID
   - `order`: ツールグループとツールの表示順序を保持するためのID配列
+  - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -205,7 +212,6 @@ erDiagram
   DateTime emailVerified "nullable"
   String image "nullable"
   Role role
-  MembershipType membership
 }
 "VerificationToken" {
   String identifier
@@ -250,7 +256,6 @@ erDiagram
   - `emailVerified`: メールアドレスの検証日時
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `membership`: メンバーシップの種類
 
 ### `VerificationToken`
 
@@ -258,6 +263,212 @@ erDiagram
   - `identifier`: 検証対象の識別子（メールアドレスなど）
   - `token`: 検証トークン
   - `expires`: トークンの有効期限
+
+
+## Organization
+```mermaid
+erDiagram
+"Organization" {
+  String id PK
+  String name
+  String description "nullable"
+  String logoUrl "nullable"
+  Boolean isDeleted
+  String createdBy FK
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OrganizationMember" {
+  String id PK
+  String organizationId FK
+  String userId FK
+  Boolean isAdmin
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OrganizationInvitation" {
+  String id PK
+  String organizationId FK
+  String email
+  String token UK
+  String invitedBy FK
+  Boolean isAdmin
+  String roleIds
+  String groupIds
+  DateTime expires
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OrganizationGroup" {
+  String id PK
+  String name
+  String description "nullable"
+  String organizationId FK
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OrganizationRole" {
+  String id PK
+  String name
+  String description "nullable"
+  String organizationId FK
+  Boolean isDefault
+  DateTime createdAt
+  DateTime updatedAt
+}
+"RolePermission" {
+  String id PK
+  String roleId FK
+  ResourceType resourceType
+  PermissionAction action
+  DateTime createdAt
+  DateTime updatedAt
+}
+"ResourceAccessControl" {
+  String id PK
+  String organizationId FK
+  ResourceType resourceType
+  String resourceId
+  String memberId FK "nullable"
+  String groupId FK "nullable"
+  PermissionAction allowedActions
+  PermissionAction deniedActions
+  DateTime createdAt
+  DateTime updatedAt
+}
+"_OrganizationMemberToOrganizationRole" {
+  String A FK
+  String B FK
+}
+"_OrganizationGroupToOrganizationMember" {
+  String A FK
+  String B FK
+}
+"_OrganizationGroupToOrganizationRole" {
+  String A FK
+  String B FK
+}
+"OrganizationMember" }o--|| "Organization" : organization
+"OrganizationInvitation" }o--|| "Organization" : organization
+"OrganizationGroup" }o--|| "Organization" : organization
+"OrganizationRole" }o--|| "Organization" : organization
+"RolePermission" }o--|| "OrganizationRole" : role
+"ResourceAccessControl" }o--|| "Organization" : organization
+"ResourceAccessControl" }o--o| "OrganizationMember" : member
+"ResourceAccessControl" }o--o| "OrganizationGroup" : group
+"_OrganizationMemberToOrganizationRole" }o--|| "OrganizationMember" : OrganizationMember
+"_OrganizationMemberToOrganizationRole" }o--|| "OrganizationRole" : OrganizationRole
+"_OrganizationGroupToOrganizationMember" }o--|| "OrganizationGroup" : OrganizationGroup
+"_OrganizationGroupToOrganizationMember" }o--|| "OrganizationMember" : OrganizationMember
+"_OrganizationGroupToOrganizationRole" }o--|| "OrganizationGroup" : OrganizationGroup
+"_OrganizationGroupToOrganizationRole" }o--|| "OrganizationRole" : OrganizationRole
+```
+
+### `Organization`
+
+**Properties**
+  - `id`: 
+  - `name`: 組織名
+  - `description`: 組織の説明
+  - `logoUrl`: 組織のロゴURL
+  - `isDeleted`: 論理削除フラグ
+  - `createdBy`: 組織の作成者
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OrganizationMember`
+
+**Properties**
+  - `id`: 
+  - `organizationId`: 
+  - `userId`: 
+  - `isAdmin`: このメンバーが管理者権限を持つか
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OrganizationInvitation`
+
+**Properties**
+  - `id`: 
+  - `organizationId`: 
+  - `email`: 招待先メールアドレス
+  - `token`: 招待トークン
+  - `invitedBy`: 招待者のユーザーID
+  - `isAdmin`: 招待された人が管理者になるか
+  - `roleIds`: 付与される予定のロールID配列
+  - `groupIds`: 招待時に追加するグループID配列
+  - `expires`: 招待の有効期限
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OrganizationGroup`
+
+**Properties**
+  - `id`: 
+  - `name`: グループ名
+  - `description`: グループの説明
+  - `organizationId`: 組織ID
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OrganizationRole`
+ロール定義
+
+**Properties**
+  - `id`: 
+  - `name`: ロール名
+  - `description`: ロールの説明
+  - `organizationId`: 組織ID
+  - `isDefault`: デフォルトロールか
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `RolePermission`
+ロールに付与された権限
+
+**Properties**
+  - `id`: 
+  - `roleId`: ロールID
+  - `resourceType`: リソースタイプ
+  - `action`: 権限アクション
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `ResourceAccessControl`
+特定リソースへのアクセス制御
+
+**Properties**
+  - `id`: 
+  - `organizationId`: 組織ID
+  - `resourceType`: リソースタイプ
+  - `resourceId`: リソースID
+  - `memberId`: 対象メンバー（nullの場合はグループまたはすべてのメンバー）
+  - `groupId`: 対象グループ（nullの場合はメンバー個人またはすべてのメンバー）
+  - `allowedActions`: 許可されたアクション
+  - `deniedActions`: 拒否されたアクション　(※許可よりも拒否が優先される)
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `_OrganizationMemberToOrganizationRole`
+Pair relationship table between [OrganizationMember](#OrganizationMember) and [OrganizationRole](#OrganizationRole)
+
+**Properties**
+  - `A`: 
+  - `B`: 
+
+### `_OrganizationGroupToOrganizationMember`
+Pair relationship table between [OrganizationGroup](#OrganizationGroup) and [OrganizationMember](#OrganizationMember)
+
+**Properties**
+  - `A`: 
+  - `B`: 
+
+### `_OrganizationGroupToOrganizationRole`
+Pair relationship table between [OrganizationGroup](#OrganizationGroup) and [OrganizationRole](#OrganizationRole)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 
 ## UserMcpServer
@@ -270,7 +481,6 @@ erDiagram
   DateTime emailVerified "nullable"
   String image "nullable"
   Role role
-  MembershipType membership
 }
 "McpServerConfig" {
   String id PK
@@ -278,6 +488,7 @@ erDiagram
   String envVars
   String mcpServerId FK
   String userId FK
+  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -296,6 +507,7 @@ erDiagram
   String order
   String userId FK
   String mcpServerInstanceId "nullable"
+  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -305,6 +517,7 @@ erDiagram
   String description
   String userId FK
   String order
+  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -335,7 +548,6 @@ erDiagram
   - `emailVerified`: メールアドレスの検証日時
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `membership`: メンバーシップの種類
 
 ### `McpServerConfig`
 ユーザーが利用できるMCPサーバーの設定
@@ -346,6 +558,7 @@ erDiagram
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
+  - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -370,6 +583,7 @@ ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
   - `order`: ツールの表示順序を保持するためのID配列
   - `userId`: ユーザーID
   - `mcpServerInstanceId`: McpServerInstance に直接紐づくものは、id を管理する
+  - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -382,6 +596,7 @@ MCPサーバーとして利用するインスタンス
   - `description`: サーバーの説明
   - `userId`: ユーザーID
   - `order`: ツールグループとツールの表示順序を保持するためのID配列
+  - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
 
