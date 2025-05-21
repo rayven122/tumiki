@@ -8,7 +8,7 @@
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserMcpServerConfig {
-  id             String              @id @default(cuid())
+  id             String        @id @default(cuid())
   /// カスタムMCPサーバー名 (ユーザーが設定した名前)
   name           String?
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
@@ -17,40 +17,34 @@ model UserMcpServerConfig {
   tools          Tool[]
   /// MCPサーバーID
   mcpServerId    String
-  mcpServer      McpServer           @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  mcpServer      McpServer     @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
   /// ユーザーID
   userId         String
-  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// ToolGroup, Toolの関連を表す中間テーブル
-  toolGroupTool  UserToolGroupTool[]
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 組織
   organizationId String?
-  organization   Organization?       @relation(fields: [organizationId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-/// ToolGroup, Tool, McpServerConfig の関連を表す中間テーブル
+/// ToolGroup, Toolの関連を表す中間テーブル
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserToolGroupTool {
   /// ToolGroupへの参照
-  toolGroupId       String
-  toolGroup         UserToolGroup       @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
+  toolGroupId String
+  toolGroup   UserToolGroup @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
   /// Toolへの参照
-  toolId            String
-  tool              Tool                @relation(fields: [toolId], references: [id], onDelete: Cascade)
-  /// このToolがどのUserMcpServerに属しているか
-  mcpServerConfigId String
-  mcpServerConfig   UserMcpServerConfig @relation(fields: [mcpServerConfigId], references: [id], onDelete: Cascade)
+  toolId      String
+  tool        Tool          @relation(fields: [toolId], references: [id], onDelete: Cascade)
   /// ソート順序
-  sortOrder         Int                 @default(0)
+  sortOrder   Int           @default(0)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@id([toolGroupId, toolId, mcpServerConfigId])
+  @@id([toolGroupId, toolId])
 }
 
 /// どのツール群を利用するかを設定する
@@ -68,10 +62,6 @@ model UserToolGroup {
   /// ユーザーID
   userId                     String
   user                       User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// ツールグループに含まれるMcpServerInstance（中間テーブル経由）
-  mcpServerInstances         UserMcpServerInstance[]
-  /// McpServerInstance に直接紐づくものは、id を管理する
-  mcpServerInstanceId        String?
   /// ToolGroupに含まれるTool（中間テーブル経由）
   toolGroupTools             UserToolGroupTool[]
   /// 組織
@@ -84,7 +74,9 @@ model UserToolGroup {
   updatedAt DateTime @updatedAt
 }
 
-/// MCPサーバーとツールグループの関連を管理する中間テーブル
+/// MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
+/// @namespace UserMcpServer
+/// @namespace McpServer
 model UserMcpServerInstanceToolGroup {
   mcpServerInstanceId String
   mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id], onDelete: Cascade)
@@ -94,9 +86,44 @@ model UserMcpServerInstanceToolGroup {
   sortOrder           Int                   @default(0)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@id([mcpServerInstanceId, toolGroupId])
+}
+
+/// MCPサーバーインスタンスとツールの関連を管理する中間テーブル
+/// @namespace UserMcpServer
+/// @namespace McpServer
+model UserMcpServerInstanceTool {
+  mcpServerInstanceId String
+  mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id], onDelete: Cascade)
+  toolId              String
+  tool                Tool                  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  /// このMcpServerInstance内でのToolの表示順序
+  sortOrder           Int                   @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@id([mcpServerInstanceId, toolId])
+}
+
+/// サーバーの状態
+/// @namespace UserMcpServer
+/// @namespace McpServer
+enum ServerStatus {
+  /// サーバーが起動している
+  RUNNING
+  /// サーバーが停止している
+  STOPPED
+}
+
+/// サーバーの種類
+/// @namespace UserMcpServer
+/// @namespace McpServer
+enum ServerType {
+  /// カスタムMCPサーバー
+  CUSTOM
+  /// 公式MCPサーバー
+  OFFICIAL
 }
 
 /// MCPサーバーとして利用するインスタンス
@@ -109,16 +136,20 @@ model UserMcpServerInstance {
   name                       String
   /// サーバーの説明
   description                String
-  /// ツールグループ
-  toolGroups                 UserToolGroup[]
+  /// サーバーの状態
+  serverStatus               ServerStatus
+  /// サーバーの種類
+  serverType                 ServerType
+  /// ツール関連を管理する中間テーブル
+  mcpServerInstanceTool      UserMcpServerInstanceTool[]
+  /// MCPサーバーとツールグループの関連を管理する中間テーブル
+  mcpServerInstanceToolGroup UserMcpServerInstanceToolGroup[]
   /// ユーザーID
   userId                     String
-  user                       User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                       User                             @relation(fields: [userId], references: [id])
   /// 組織
   organizationId             String?
   organization               Organization?                    @relation(fields: [organizationId], references: [id])
-  /// MCPサーバーとツールグループの関連を管理する中間テーブル
-  mcpServerInstanceToolGroup UserMcpServerInstanceToolGroup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
