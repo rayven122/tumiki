@@ -1,9 +1,8 @@
 import { api } from "@/trpc/server";
-import { UserMcpServerCard } from "../../../_components/UserMcpServerCard";
 
 import { Suspense } from "react";
-
-import { UserMcpServerCardSkeleton } from "../../../_components/UserMcpServerCard/UserMcpServerCardSkeleton";
+import { UserMcpServerCardSkeleton } from "../_components/UserMcpServerCard/UserMcpServerCardSkeleton";
+import { UserMcpServerCard } from "../_components/UserMcpServerCard";
 
 const AsyncServerCardList = async () => {
   const userMcpServers = await api.userMcpServer.findAllWithMcpServerTools();
