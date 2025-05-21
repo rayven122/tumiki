@@ -55,25 +55,25 @@ enum Role {
 /// @namespace NextAuth
 /// @namespace UserMcpServer
 model User {
-    id                      String                   @id @default(cuid())
+    id                 String                   @id @default(cuid())
     /// ユーザー名
-    name                    String?
+    name               String?
     /// メールアドレス
-    email                   String?                  @unique
+    email              String?                  @unique
     /// メールアドレスの検証日時
-    emailVerified           DateTime?
+    emailVerified      DateTime?
     /// プロフィール画像のURL
-    image                   String?
-    accounts                Account[]
-    sessions                Session[]
-    toolGroups              ToolGroup[]
-    mcpServerConfigs        McpServerConfig[]
-    mcpServerInstances      McpServerInstance[]
+    image              String?
+    accounts           Account[]
+    sessions           Session[]
+    toolGroups         UserToolGroup[]
+    mcpServerConfigs   UserMcpServerConfig[]
+    mcpServerInstances UserMcpServerInstance[]
     /// ユーザーの権限
-    role                    Role                     @default(USER)
-    organizations           Organization[]
-    organizationMembers     OrganizationMember[]
-    organizationInvitations OrganizationInvitation[]
+    role               Role                     @default(USER)
+    organizations      Organization[]
+    members            OrganizationMember[]
+    invitations        OrganizationInvitation[]
 }
 
 /// @namespace NextAuth
