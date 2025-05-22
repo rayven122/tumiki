@@ -8,22 +8,24 @@
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserMcpServerConfig {
-  id             String        @id @default(cuid())
-  /// カスタムMCPサーバー名 (ユーザーが設定した名前)
-  name           String?
+  id                 String                  @id @default(cuid())
+  /// MCPサーバー名 (ユーザーが設定した名前)
+  name               String?
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  envVars        String /// @encrypted
+  envVars            String /// @encrypted
   /// 利用可能なツールグループ
-  tools          Tool[]
+  tools              Tool[]
+  /// MCPサーバーインスタンス
+  mcpServerInstances UserMcpServerInstance[]
   /// MCPサーバーID
-  mcpServerId    String
-  mcpServer      McpServer     @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  mcpServerId        String
+  mcpServer          McpServer               @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
   /// ユーザーID
-  userId         String
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 組織
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId     String?
+  organization       Organization?           @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -51,24 +53,26 @@ model UserToolGroupTool {
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserToolGroup {
-  id                         String                           @id @default(cuid())
+  id                          String                           @id @default(cuid())
   /// ツールグループ名
   /// @zod.string.min(1)
-  name                       String
+  name                        String
   /// ツールグループの説明
-  description                String
+  description                 String
   /// ツールグループが有効かどうか
-  isEnabled                  Boolean                          @default(true)
+  isEnabled                   Boolean                          @default(true)
+  /// UserMcpServerInstance ごとに1つの ToolGroup が存在する
+  mcpServerInstance           UserMcpServerInstance?
   /// ユーザーID
-  userId                     String
-  user                       User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                      String
+  user                        User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// ToolGroupに含まれるTool（中間テーブル経由）
-  toolGroupTools             UserToolGroupTool[]
+  toolGroupTools              UserToolGroupTool[]
   /// 組織
-  organizationId             String?
-  organization               Organization?                    @relation(fields: [organizationId], references: [id])
+  organizationId              String?
+  organization                Organization?                    @relation(fields: [organizationId], references: [id])
   /// MCPサーバーとツールグループの関連を管理する中間テーブル
-  mcpServerInstanceToolGroup UserMcpServerInstanceToolGroup[]
+  mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,22 +94,6 @@ model UserMcpServerInstanceToolGroup {
   @@id([mcpServerInstanceId, toolGroupId])
 }
 
-/// MCPサーバーインスタンスとツールの関連を管理する中間テーブル
-/// @namespace UserMcpServer
-/// @namespace McpServer
-model UserMcpServerInstanceTool {
-  mcpServerInstanceId String
-  mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id], onDelete: Cascade)
-  toolId              String
-  tool                Tool                  @relation(fields: [toolId], references: [id], onDelete: Cascade)
-  /// このMcpServerInstance内でのToolの表示順序
-  sortOrder           Int                   @default(0)
-
-  createdAt DateTime @default(now())
-
-  @@id([mcpServerInstanceId, toolId])
-}
-
 /// サーバーの状態
 /// @namespace UserMcpServer
 /// @namespace McpServer
@@ -114,6 +102,8 @@ enum ServerStatus {
   RUNNING
   /// サーバーが停止している
   STOPPED
+  /// サーバーがエラーが発生している
+  ERROR
 }
 
 /// サーバーの種類
@@ -130,26 +120,32 @@ enum ServerType {
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserMcpServerInstance {
-  id                         String                           @id @default(cuid())
-  /// サーバー名
+  id                          String                           @id @default(cuid())
+  /// 稼働中のMCPサーバー名
   /// @zod.string.min(1)
-  name                       String
+  name                        String
   /// サーバーの説明
-  description                String
+  description                 String
+  /// アイコンパス
+  iconPath                    String?
   /// サーバーの状態
-  serverStatus               ServerStatus
+  serverStatus                ServerStatus
   /// サーバーの種類
-  serverType                 ServerType
-  /// ツール関連を管理する中間テーブル
-  mcpServerInstanceTool      UserMcpServerInstanceTool[]
+  serverType                  ServerType
+  /// MCPサーバーの設定
+  mcpServerConfigs            UserMcpServerConfig[]
   /// MCPサーバーとツールグループの関連を管理する中間テーブル
-  mcpServerInstanceToolGroup UserMcpServerInstanceToolGroup[]
+  mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
+  /// ツールグループ
+  /// UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
+  toolGroupId                 String                           @unique
+  toolGroup                   UserToolGroup                    @relation(fields: [toolGroupId], references: [id])
   /// ユーザーID
-  userId                     String
-  user                       User                             @relation(fields: [userId], references: [id])
+  userId                      String
+  user                        User                             @relation(fields: [userId], references: [id])
   /// 組織
-  organizationId             String?
-  organization               Organization?                    @relation(fields: [organizationId], references: [id])
+  organizationId              String?
+  organization                Organization?                    @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

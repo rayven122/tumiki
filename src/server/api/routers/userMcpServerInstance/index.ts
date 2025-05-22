@@ -7,7 +7,7 @@ import {
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
-import { findAll } from "./findAll";
+import { findAll } from "./findCustomServers";
 import { deleteApiKey } from "./deleteApiKey";
 import {
   ApiKeySchema,

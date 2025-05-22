@@ -32,23 +32,21 @@ model McpServer {
 /// MCP サーバーのツール一覧
 /// @namespace McpServer
 model Tool {
-    id                    String                      @id @default(cuid())
+    id               String                @id @default(cuid())
     /// ツールの名前
     /// @zod.string.min(1)
-    name                  String
+    name             String
     /// ツールの説明
-    description           String
+    description      String
     /// ツールの入力スキーマ（JSON Schema形式）
-    inputSchema           Json
+    inputSchema      Json
     /// ツールを有効にするか
-    isEnabled             Boolean                     @default(true)
-    mcpServerId           String
-    mcpServer             McpServer                   @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-    mcpServerConfigs      UserMcpServerConfig[]
+    isEnabled        Boolean               @default(true)
+    mcpServerId      String
+    mcpServer        McpServer             @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+    mcpServerConfigs UserMcpServerConfig[]
     /// ToolGroup との関連を表す中間テーブル
-    toolGroupTools        UserToolGroupTool[]
-    /// UserMcpServerInstance との関連を表す中間テーブル
-    mcpServerInstanceTool UserMcpServerInstanceTool[]
+    toolGroupTools   UserToolGroupTool[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
