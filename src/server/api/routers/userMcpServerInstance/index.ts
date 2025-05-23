@@ -1,70 +1,37 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { addApiKey } from "./addApiKey";
+import { addServerInstance } from "./addServerInstance";
 import {
   UserMcpServerInstanceIdSchema,
   UserToolGroupIdSchema,
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
-import { findAll } from "./findCustomServers";
-import { deleteApiKey } from "./deleteApiKey";
+import { findCustomServers } from "./findCustomServers";
+
 import {
-  ApiKeySchema,
-  ToolGroupSchema,
+  McpServerSchema,
+  ServerStatusSchema,
+  ServerTypeSchema,
   ToolSchema,
-  UserMcpServerSchema,
+  UserMcpServerInstanceSchema,
+  UserToolGroupSchema,
 } from "@zod";
-import { updateApiKey } from "./updateApiKey";
 
-export const AddApiKeyInput = z.object({
-  name: z.string(),
-  description: z.string().default(""),
-  serverToolIdsMap: z.record(
-    UserMcpServerConfigIdSchema,
-    z.array(ToolIdSchema),
-  ),
-});
+import { findOfficialServers } from "./findOfficialServers";
+import { deleteServerInstance } from "./deleteServerInstance";
+import { updateServerInstance } from "./updateServerInstance";
 
-export const DeleteApiKeyInput = z.object({
-  id: UserMcpServerConfigIdSchema,
-});
-
-export const FindAllApiKeysOutput = z.array(
-  ApiKeySchema.pick({
-    name: true,
-    description: true,
-    createdAt: true,
-    updatedAt: true,
-  }).merge(
+export const FindCustomServersOutput = z.array(
+  UserMcpServerInstanceSchema.merge(
     z.object({
       id: UserMcpServerInstanceIdSchema,
-      toolGroups: z.array(
-        ToolGroupSchema.pick({
-          name: true,
-          description: true,
-          isEnabled: true,
-        }).merge(
+      tools: z.array(ToolSchema),
+      toolGroups: z.array(UserToolGroupSchema),
+      userMcpServers: z.array(
+        McpServerSchema.merge(
           z.object({
-            id: UserToolGroupIdSchema,
-            toolGroupTools: z.array(
-              z.object({
-                userMcpServer: UserMcpServerSchema.pick({
-                  name: true,
-                }).merge(
-                  z.object({
-                    id: UserMcpServerConfigIdSchema,
-                  }),
-                ),
-                tool: ToolSchema.pick({
-                  name: true,
-                }).merge(
-                  z.object({
-                    id: ToolIdSchema,
-                  }),
-                ),
-              }),
-            ),
+            id: UserMcpServerConfigIdSchema,
           }),
         ),
       ),
@@ -72,9 +39,17 @@ export const FindAllApiKeysOutput = z.array(
   ),
 );
 
-export const UpdateApiKeyInput = z.object({
-  id: UserMcpServerInstanceIdSchema,
-  apiKeyToolGroupId: UserToolGroupIdSchema,
+export const FindOfficialServersOutput = z.array(
+  UserMcpServerInstanceSchema.merge(
+    z.object({
+      id: UserMcpServerInstanceIdSchema,
+      tools: z.array(ToolSchema),
+      userMcpServer: McpServerSchema,
+    }),
+  ),
+);
+
+export const AddServerInstanceInput = z.object({
   name: z.string(),
   description: z.string().default(""),
   serverToolIdsMap: z.record(
@@ -83,9 +58,40 @@ export const UpdateApiKeyInput = z.object({
   ),
 });
 
-export const apiKeyRouter = createTRPCRouter({
-  findAll: protectedProcedure.output(FindAllApiKeysOutput).query(findAll),
-  add: protectedProcedure.input(AddApiKeyInput).mutation(addApiKey),
-  delete: protectedProcedure.input(DeleteApiKeyInput).mutation(deleteApiKey),
-  update: protectedProcedure.input(UpdateApiKeyInput).mutation(updateApiKey),
+export const DeleteServerInstanceInput = z.object({
+  id: UserMcpServerInstanceIdSchema,
+});
+
+export const UpdateServerInstanceInput = z.object({
+  id: UserMcpServerInstanceIdSchema,
+  ServerInstanceToolGroupId: UserToolGroupIdSchema,
+  name: z.string(),
+  description: z.string().default(""),
+  serverStatus: ServerStatusSchema,
+  serverType: ServerTypeSchema,
+  serverToolIdsMap: z.record(
+    UserMcpServerConfigIdSchema,
+    z.array(ToolIdSchema),
+  ),
+});
+
+export const ServerInstanceRouter = createTRPCRouter({
+  findCustomServers: protectedProcedure
+    .output(FindCustomServersOutput)
+    .query(findCustomServers),
+  findOfficialServers: protectedProcedure
+    .output(FindOfficialServersOutput)
+    .query(findOfficialServers),
+  addServerInstance: protectedProcedure
+    .input(AddServerInstanceInput)
+    .output(z.object({}))
+    .mutation(addServerInstance),
+  delete: protectedProcedure
+    .input(DeleteServerInstanceInput)
+    .output(z.object({}))
+    .mutation(deleteServerInstance),
+  update: protectedProcedure
+    .input(UpdateServerInstanceInput)
+    .output(z.object({}))
+    .mutation(updateServerInstance),
 });

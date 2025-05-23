@@ -1,50 +1,58 @@
+import { ServerType } from "@prisma/client";
 import type { ProtectedContext } from "../../trpc";
+import { convertToSortOrder } from "@/utils/server/converter";
 
-type FindAllInput = {
+type FindCustomServersInput = {
   ctx: ProtectedContext;
 };
 
-export const findAll = async ({ ctx }: FindAllInput) => {
-  const apiKeys = await ctx.db.apiKey.findMany({
+export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
+  const customServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
+      serverType: ServerType.CUSTOM,
       userId: ctx.session.user.id,
     },
-    orderBy: {
-      // 作成した順にソート
-      createdAt: "desc",
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      createdAt: true,
-      updatedAt: true,
-      toolGroups: {
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          isEnabled: true,
+    include: {
+      mcpServerConfigs: {
+        include: { mcpServer: true },
+      },
+      toolGroup: {
+        include: {
           toolGroupTools: {
-            select: {
-              userMcpServer: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              tool: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
+            include: { tool: true },
           },
         },
+      },
+      mcpServerInstanceToolGroups: {
+        include: { toolGroup: true },
       },
     },
   });
 
-  return apiKeys;
+  const customServerList = customServers.map((server) => {
+    const userMcpServers = server.mcpServerConfigs.map((serverConfig) => {
+      return {
+        ...serverConfig.mcpServer,
+        id: serverConfig.id,
+        name: server.name ?? serverConfig.mcpServer.name,
+        createdAt: serverConfig.createdAt,
+        updatedAt: serverConfig.updatedAt,
+      };
+    });
+
+    const tools = convertToSortOrder(server.toolGroup.toolGroupTools, "tool");
+    const toolGroups = convertToSortOrder(
+      server.mcpServerInstanceToolGroups,
+      "toolGroup",
+    );
+
+    return {
+      ...server,
+      tools,
+      toolGroups,
+      userMcpServers,
+    };
+  });
+
+  return customServerList;
 };
