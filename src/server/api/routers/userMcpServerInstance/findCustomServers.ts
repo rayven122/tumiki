@@ -1,6 +1,7 @@
 import { ServerType } from "@prisma/client";
 import type { ProtectedContext } from "../../trpc";
 import { convertToSortOrder } from "@/utils/server/converter";
+import type { UserMcpServerConfigId } from "@/schema/ids";
 
 type FindCustomServersInput = {
   ctx: ProtectedContext;
@@ -13,13 +14,12 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
       userId: ctx.session.user.id,
     },
     include: {
-      mcpServerConfigs: {
-        include: { mcpServer: true },
-      },
       toolGroup: {
         include: {
           toolGroupTools: {
-            include: { tool: true },
+            include: {
+              tool: true,
+            },
           },
         },
       },
@@ -28,15 +28,34 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
       },
     },
   });
+  const userMcpServerConfigIds = new Set<UserMcpServerConfigId>();
+  customServers.forEach((server) => {
+    server.toolGroup.toolGroupTools.forEach(({ userMcpServerConfigId }) => {
+      userMcpServerConfigIds.add(
+        userMcpServerConfigId as UserMcpServerConfigId,
+      );
+    });
+  });
+
+  const userMcpServerConfigs = await ctx.db.userMcpServerConfig.findMany({
+    where: {
+      id: {
+        in: [...userMcpServerConfigIds],
+      },
+    },
+    include: {
+      mcpServer: true,
+    },
+  });
 
   const customServerList = customServers.map((server) => {
-    const userMcpServers = server.mcpServerConfigs.map((serverConfig) => {
+    const userMcpServers = userMcpServerConfigs.map((userMcpServerConfig) => {
       return {
-        ...serverConfig.mcpServer,
-        id: serverConfig.id,
-        name: server.name ?? serverConfig.mcpServer.name,
-        createdAt: serverConfig.createdAt,
-        updatedAt: serverConfig.updatedAt,
+        ...userMcpServerConfig.mcpServer,
+        id: userMcpServerConfig.id,
+        name: server.name ?? userMcpServerConfig.mcpServer.name,
+        createdAt: userMcpServerConfig.createdAt,
+        updatedAt: userMcpServerConfig.updatedAt,
       };
     });
 

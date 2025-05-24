@@ -36,8 +36,8 @@ export const UserMcpServerConfigModal = ({
   initialEnvVars,
   mode = "create",
 }: ApiTokenModalProps) => {
-  const { mutate: addUserMcpServer, isPending } =
-    api.userMcpServerConfig.add.useMutation({
+  const { mutate: addOfficialServer, isPending } =
+    api.userMcpServerInstance.addOfficialServer.useMutation({
       onSuccess: () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
         onOpenChange(false);
@@ -47,7 +47,7 @@ export const UserMcpServerConfigModal = ({
       },
     });
 
-  const { mutate: updateUserMcpServer, isPending: isUpdating } =
+  const { mutate: updateServerConfig, isPending: isUpdating } =
     api.userMcpServerConfig.update.useMutation({
       onSuccess: () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に更新されました。`);
@@ -81,7 +81,7 @@ export const UserMcpServerConfigModal = ({
 
   // トークンを保存する関数
   const handleSave = () => {
-    addUserMcpServer({
+    addOfficialServer({
       mcpServerId: mcpServer.id,
       envVars,
     });
@@ -92,7 +92,7 @@ export const UserMcpServerConfigModal = ({
       toast.error("ユーザーのMCPサーバーが見つかりません");
       return;
     }
-    updateUserMcpServer({
+    updateServerConfig({
       id: userMcpServerId,
       envVars,
     });

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ServerToolSelector } from "./ServerToolSelector";
 import { api } from "@/trpc/react";
-import type { ToolId, UserMcpServerId } from "@/schema/ids";
+import type { ToolId, UserMcpServerConfigId } from "@/schema/ids";
 import { toast } from "@/utils/client/toast";
 import { Loader2 } from "lucide-react";
 
@@ -23,40 +23,42 @@ type CreateApiKeyDialogProps = {
   onSuccess: () => Promise<void> | void;
 };
 
-export function CreateApiKeyDialog({
+export function CreateCustomServerDialog({
   onClose,
   onSuccess,
 }: CreateApiKeyDialogProps) {
   const { data: userMcpServers, isLoading } =
-    api.userMcpServer.findAllWithMcpServerTools.useQuery();
-  const { mutate: createApiKey, isPending } = api.apiKey.add.useMutation({
-    onSuccess: async () => {
-      await onSuccess();
-      onClose();
-      toast.success("API Keyを作成しました");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+    api.userMcpServerConfig.findAllWithTools.useQuery();
 
-  const [newKeyName, setNewKeyName] = useState("");
+  const { mutate: addServerInstance, isPending } =
+    api.userMcpServerInstance.addCustomServer.useMutation({
+      onSuccess: async () => {
+        await onSuccess();
+        onClose();
+        toast.success("カスタムMCPサーバーを作成しました");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
+  const [serverName, setServerName] = useState("");
   const [selectedServerIds, setSelectedServerIds] = useState<
-    Set<UserMcpServerId>
+    Set<UserMcpServerConfigId>
   >(new Set());
   const [selectedToolIds, setSelectedToolIds] = useState<
-    Map<UserMcpServerId, Set<ToolId>>
+    Map<UserMcpServerConfigId, Set<ToolId>>
   >(new Map());
 
   const isDisabled =
-    !newKeyName.trim() ||
+    !serverName.trim() ||
     (selectedServerIds.size === 0 && selectedToolIds.size === 0) ||
     isLoading;
 
   const handleCreateApiKey = () => {
     if (isDisabled) return;
 
-    const serverToolIdsMap: Record<UserMcpServerId, ToolId[]> = {};
+    const serverToolIdsMap: Record<UserMcpServerConfigId, ToolId[]> = {};
 
     selectedToolIds.forEach((toolIds, serverId) => {
       serverToolIdsMap[serverId] = Array.from(toolIds);
@@ -72,8 +74,8 @@ export function CreateApiKeyDialog({
       }
     });
 
-    createApiKey({
-      name: newKeyName,
+    addServerInstance({
+      name: serverName,
       serverToolIdsMap: serverToolIdsMap,
     });
   };
@@ -82,9 +84,9 @@ export function CreateApiKeyDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[80%]">
         <DialogHeader>
-          <DialogTitle>API Key作成</DialogTitle>
+          <DialogTitle>カスタムMCPサーバーを作成</DialogTitle>
           <DialogDescription>
-            API Keyを作成して、MCPサーバーへのアクセスを許可します
+            カスタムMCPサーバーを作成して、MCPサーバーへのアクセスを許可します
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -92,9 +94,9 @@ export function CreateApiKeyDialog({
             <Label htmlFor="name">名前</Label>
             <Input
               id="name"
-              placeholder="開発用API Key"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="Cursor 専用MCPサーバー"
+              value={serverName}
+              onChange={(e) => setServerName(e.target.value)}
             />
           </div>
           <ServerToolSelector

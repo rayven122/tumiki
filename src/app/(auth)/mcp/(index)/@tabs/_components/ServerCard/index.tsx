@@ -84,7 +84,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         </Button>
       </CardFooter>
 
-      {/* APIトークンモーダル */}
+      {/* MCPサーバー追加モーダル */}
       {tokenModalOpen && (
         <UserMcpServerConfigModal
           onOpenChange={setTokenModalOpen}
