@@ -78,7 +78,6 @@ export const DeleteServerInstanceInput = z.object({
 });
 
 export const UpdateServerInstanceInput = z.object({
-  id: UserMcpServerInstanceIdSchema,
   toolGroupId: UserToolGroupIdSchema,
   name: z.string(),
   description: z.string().default(""),

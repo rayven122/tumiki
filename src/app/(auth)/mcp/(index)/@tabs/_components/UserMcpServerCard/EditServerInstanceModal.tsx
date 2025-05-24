@@ -30,8 +30,16 @@ type EditServerInstanceModalProps = {
 const getInitialToolIds = (tools: ServerInstance["tools"]) => {
   const map = new Map<UserMcpServerConfigId, Set<ToolId>>();
 
+  console.log({ tools });
+
   tools.forEach((tool) => {
-    map.set(tool.userMcpServerConfigId, new Set([tool.id]));
+    const toolSet = map.get(tool.userMcpServerConfigId);
+    if (toolSet) {
+      toolSet.add(tool.id);
+      map.set(tool.userMcpServerConfigId, toolSet);
+    } else {
+      map.set(tool.userMcpServerConfigId, new Set([tool.id]));
+    }
   });
 
   return map;
@@ -43,6 +51,8 @@ const getInitialServerIds = (
   userMcpServers: ServerInstance["userMcpServers"],
 ) => {
   const serverIdsSet = new Set<UserMcpServerConfigId>();
+
+  console.log({ userMcpServers, tools });
 
   userMcpServers.forEach((userMcpServer) => {
     const toolsCount = userMcpServer.tools.length;
@@ -70,19 +80,12 @@ export function EditServerInstanceModal({
           : undefined,
     });
 
-  console.log(serverInstance.userMcpServers);
-
   const { mutate: updateServerInstance, isPending } =
     api.userMcpServerInstance.update.useMutation({
       onSuccess: async () => {
         await onSuccess();
         onClose();
-
-        const message =
-          serverInstance.serverType === ServerType.CUSTOM
-            ? `カスタムMCPサーバー ${serverInstance.name} を作成しました`
-            : `MCPサーバー ${serverInstance.name} を更新しました`;
-        toast.success(message);
+        toast.success(`${serverInstance.name} を更新しました`);
       },
       onError: () => {
         toast.error("カスタムMCPサーバーの更新に失敗しました");
@@ -106,6 +109,8 @@ export function EditServerInstanceModal({
   const handleEditServerInstance = () => {
     if (isDisabled) return;
 
+    console.log({ selectedServerIds, selectedToolIds });
+
     const serverToolIdsMap: Record<UserMcpServerConfigId, ToolId[]> = {};
 
     selectedToolIds.forEach((toolIds, serverId) => {
@@ -123,7 +128,6 @@ export function EditServerInstanceModal({
     });
 
     updateServerInstance({
-      id: serverInstance.id,
       name: serverName,
       serverToolIdsMap: serverToolIdsMap,
       toolGroupId: serverInstance.toolGroupId,
@@ -134,17 +138,17 @@ export function EditServerInstanceModal({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[80%]">
         <DialogHeader>
-          <DialogTitle>API Key編集</DialogTitle>
+          <DialogTitle>サーバー編集</DialogTitle>
           <DialogDescription>
-            API Keyの名前と接続MCPサーバーおよびツールを編集します
+            サーバー名と接続MCPサーバーおよびツールを編集します
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="edit-name">API Key名</Label>
+            <Label htmlFor="edit-name">サーバー名</Label>
             <Input
               id="edit-name"
-              placeholder="API Key名"
+              placeholder="サーバー名"
               value={serverName}
               onChange={(e) => setServerName(e.target.value)}
             />
@@ -166,10 +170,10 @@ export function EditServerInstanceModal({
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                編集中...
+                更新中...
               </>
             ) : (
-              "編集"
+              "更新"
             )}
           </Button>
         </DialogFooter>

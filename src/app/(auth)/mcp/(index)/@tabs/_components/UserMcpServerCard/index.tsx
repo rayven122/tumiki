@@ -31,6 +31,7 @@ import { type RouterOutputs } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
+import { ServerType } from "@prisma/client";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -182,7 +183,16 @@ export const UserMcpServerCard = ({
           <div className="mt-1 flex items-center space-x-2">
             {/* ツール一覧を表示するボタン */}
             <ToolBadgeList
-              tools={tools}
+              tools={
+                serverInstance.serverType === ServerType.OFFICIAL
+                  ? tools
+                  : tools.map((tool) => ({
+                      ...tool,
+                      userMcpServerName: serverInstance.userMcpServers.find(
+                        (server) => server.id === tool.userMcpServerConfigId,
+                      )?.name,
+                    }))
+              }
               // TODO: ツールグループの実装が完了したら設定する
               toolGroups={[]}
             />

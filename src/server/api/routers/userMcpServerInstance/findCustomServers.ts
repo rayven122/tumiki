@@ -54,7 +54,7 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
       return {
         ...userMcpServerConfig.mcpServer,
         id: userMcpServerConfig.id,
-        name: server.name ?? userMcpServerConfig.mcpServer.name,
+        name: userMcpServerConfig.name,
         createdAt: userMcpServerConfig.createdAt,
         updatedAt: userMcpServerConfig.updatedAt,
         tools: userMcpServerConfig.tools,

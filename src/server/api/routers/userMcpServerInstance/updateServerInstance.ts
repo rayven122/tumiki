@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { UpdateServerInstanceInput } from ".";
+import { ServerType } from "@prisma/client";
 
 type UpdateServerInstanceInput = {
   ctx: ProtectedContext;
@@ -38,21 +39,39 @@ export const updateServerInstance = async ({
             data: toolGroupTools,
           },
         },
+        mcpServerInstance: {
+          update: {
+            name: input.name,
+            description: input.description,
+          },
+        },
+      },
+      include: {
+        toolGroupTools: true,
+        mcpServerInstance: true,
       },
     });
 
-    const serverInstance = await tx.userMcpServerInstance.update({
-      where: {
-        id: input.id, // 更新対象のAPIキーID
-      },
-      data: {
-        name: input.name,
-        description: input.description,
-        toolGroupId: toolGroup.id,
-        // TODO: mcpServerInstanceToolGroups を追加する
-      },
-    });
-    return serverInstance;
+    const userMcpServerConfigId =
+      toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+
+    // 公式サーバーの場合は、userMcpServerConfig の name も更新する
+    if (
+      toolGroup.mcpServerInstance?.serverType === ServerType.OFFICIAL &&
+      userMcpServerConfigId
+    ) {
+      await tx.userMcpServerConfig.update({
+        where: {
+          id: userMcpServerConfigId,
+          userId: ctx.session.user.id,
+        },
+        data: {
+          name: input.name,
+        },
+      });
+    }
+
+    return toolGroup.mcpServerInstance;
   });
 
   return serverInstance;
