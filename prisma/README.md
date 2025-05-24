@@ -127,7 +127,7 @@ MCP サーバーのツール一覧
 
 **Properties**
   - `id`: 
-  - `envVars`: MCPサーバー�� envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+  - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
   - `organizationId`: 組織
@@ -587,7 +587,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 **Properties**
   - `id`: 
-  - `envVars`: MCPサーバー�� envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+  - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
   - `organizationId`: 組織
