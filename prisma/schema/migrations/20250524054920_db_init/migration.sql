@@ -189,6 +189,8 @@ CREATE TABLE "ResourceAccessControl" (
 -- CreateTable
 CREATE TABLE "UserMcpServerConfig" (
     "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
     "envVars" TEXT NOT NULL,
     "mcpServerId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -201,12 +203,13 @@ CREATE TABLE "UserMcpServerConfig" (
 
 -- CreateTable
 CREATE TABLE "UserToolGroupTool" (
+    "userMcpServerConfigId" TEXT NOT NULL,
     "toolGroupId" TEXT NOT NULL,
     "toolId" TEXT NOT NULL,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "UserToolGroupTool_pkey" PRIMARY KEY ("toolGroupId","toolId")
+    CONSTRAINT "UserToolGroupTool_pkey" PRIMARY KEY ("toolGroupId","userMcpServerConfigId","toolId")
 );
 
 -- CreateTable
@@ -282,14 +285,6 @@ CREATE TABLE "_OrganizationGroupToOrganizationRole" (
     CONSTRAINT "_OrganizationGroupToOrganizationRole_AB_pkey" PRIMARY KEY ("A","B")
 );
 
--- CreateTable
-CREATE TABLE "_UserMcpServerConfigToUserMcpServerInstance" (
-    "A" TEXT NOT NULL,
-    "B" TEXT NOT NULL,
-
-    CONSTRAINT "_UserMcpServerConfigToUserMcpServerInstance_AB_pkey" PRIMARY KEY ("A","B")
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "McpServer_name_key" ON "McpServer"("name");
 
@@ -339,6 +334,9 @@ CREATE INDEX "ResourceAccessControl_organizationId_resourceType_resourceI_idx" O
 CREATE UNIQUE INDEX "ResourceAccessControl_organizationId_resourceType_resourceI_key" ON "ResourceAccessControl"("organizationId", "resourceType", "resourceId", "memberId", "groupId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "UserMcpServerConfig_userId_mcpServerId_name_key" ON "UserMcpServerConfig"("userId", "mcpServerId", "name");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "UserMcpServerInstance_toolGroupId_key" ON "UserMcpServerInstance"("toolGroupId");
 
 -- CreateIndex
@@ -352,9 +350,6 @@ CREATE INDEX "_OrganizationGroupToOrganizationMember_B_index" ON "_OrganizationG
 
 -- CreateIndex
 CREATE INDEX "_OrganizationGroupToOrganizationRole_B_index" ON "_OrganizationGroupToOrganizationRole"("B");
-
--- CreateIndex
-CREATE INDEX "_UserMcpServerConfigToUserMcpServerInstance_B_index" ON "_UserMcpServerConfigToUserMcpServerInstance"("B");
 
 -- AddForeignKey
 ALTER TABLE "Tool" ADD CONSTRAINT "Tool_mcpServerId_fkey" FOREIGN KEY ("mcpServerId") REFERENCES "McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -408,6 +403,9 @@ ALTER TABLE "UserMcpServerConfig" ADD CONSTRAINT "UserMcpServerConfig_userId_fke
 ALTER TABLE "UserMcpServerConfig" ADD CONSTRAINT "UserMcpServerConfig_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "UserToolGroupTool" ADD CONSTRAINT "UserToolGroupTool_userMcpServerConfigId_fkey" FOREIGN KEY ("userMcpServerConfigId") REFERENCES "UserMcpServerConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "UserToolGroupTool" ADD CONSTRAINT "UserToolGroupTool_toolGroupId_fkey" FOREIGN KEY ("toolGroupId") REFERENCES "UserToolGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -457,9 +455,3 @@ ALTER TABLE "_OrganizationGroupToOrganizationRole" ADD CONSTRAINT "_Organization
 
 -- AddForeignKey
 ALTER TABLE "_OrganizationGroupToOrganizationRole" ADD CONSTRAINT "_OrganizationGroupToOrganizationRole_B_fkey" FOREIGN KEY ("B") REFERENCES "OrganizationRole"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_UserMcpServerConfigToUserMcpServerInstance" ADD CONSTRAINT "_UserMcpServerConfigToUserMcpServerInstance_A_fkey" FOREIGN KEY ("A") REFERENCES "UserMcpServerConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_UserMcpServerConfigToUserMcpServerInstance" ADD CONSTRAINT "_UserMcpServerConfigToUserMcpServerInstance_B_fkey" FOREIGN KEY ("B") REFERENCES "UserMcpServerInstance"("id") ON DELETE CASCADE ON UPDATE CASCADE;
