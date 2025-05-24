@@ -32,6 +32,8 @@ erDiagram
 }
 "UserMcpServerConfig" {
   String id PK
+  String name
+  String description
   String envVars
   String mcpServerId FK
   String userId FK
@@ -40,6 +42,7 @@ erDiagram
   DateTime updatedAt
 }
 "UserToolGroupTool" {
+  String userMcpServerConfigId FK
   String toolGroupId FK
   String toolId FK
   Int sortOrder
@@ -72,10 +75,6 @@ erDiagram
   String A FK
   String B FK
 }
-"_UserMcpServerConfigToUserMcpServerInstance" {
-  String A FK
-  String B FK
-}
 "UserMcpServerInstanceToolGroup" {
   String mcpServerInstanceId FK
   String toolGroupId FK
@@ -84,13 +83,12 @@ erDiagram
 }
 "Tool" }o--|| "McpServer" : mcpServer
 "UserMcpServerConfig" }o--|| "McpServer" : mcpServer
+"UserToolGroupTool" }o--|| "UserMcpServerConfig" : userMcpServerConfig
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
 "UserToolGroupTool" }o--|| "Tool" : tool
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "_ToolToUserMcpServerConfig" }o--|| "Tool" : Tool
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
-"_UserMcpServerConfigToUserMcpServerInstance" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
-"_UserMcpServerConfigToUserMcpServerInstance" }o--|| "UserMcpServerInstance" : UserMcpServerInstance
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
 ```
@@ -127,6 +125,8 @@ MCP サーバーのツール一覧
 
 **Properties**
   - `id`: 
+  - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
+  - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
@@ -138,6 +138,7 @@ MCP サーバーのツール一覧
 ToolGroup, Toolの関連を表す中間テーブル
 
 **Properties**
+  - `userMcpServerConfigId`: UserMcpServerConfig への参照
   - `toolGroupId`: ToolGroupへの参照
   - `toolId`: Toolへの参照
   - `sortOrder`: ソート順序
@@ -145,6 +146,7 @@ ToolGroup, Toolの関連を表す中間テーブル
 
 ### `UserToolGroup`
 どのツール群を利用するかを設定する
+tool group 内に、同一の mcpServer の設定入れられない🤔
 
 **Properties**
   - `id`: 
@@ -176,13 +178,6 @@ MCPサーバーとして利用するインスタンス
 
 ### `_ToolToUserMcpServerConfig`
 Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcpServerConfig)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_UserMcpServerConfigToUserMcpServerInstance`
-Pair relationship table between [UserMcpServerConfig](#UserMcpServerConfig) and [UserMcpServerInstance](#UserMcpServerInstance)
 
 **Properties**
   - `A`: 
@@ -507,6 +502,8 @@ erDiagram
 }
 "UserMcpServerConfig" {
   String id PK
+  String name
+  String description
   String envVars
   String mcpServerId FK
   String userId FK
@@ -515,6 +512,7 @@ erDiagram
   DateTime updatedAt
 }
 "UserToolGroupTool" {
+  String userMcpServerConfigId FK
   String toolGroupId FK
   String toolId FK
   Int sortOrder
@@ -547,20 +545,15 @@ erDiagram
   String A FK
   String B FK
 }
-"_UserMcpServerConfigToUserMcpServerInstance" {
-  String A FK
-  String B FK
-}
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
 "UserMcpServerConfig" }o--|| "User" : user
+"UserToolGroupTool" }o--|| "UserMcpServerConfig" : userMcpServerConfig
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
 "UserToolGroup" }o--|| "User" : user
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "UserMcpServerInstance" }o--|| "User" : user
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
-"_UserMcpServerConfigToUserMcpServerInstance" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
-"_UserMcpServerConfigToUserMcpServerInstance" }o--|| "UserMcpServerInstance" : UserMcpServerInstance
 ```
 
 ### `UserMcpServerInstanceToolGroup`
@@ -587,6 +580,8 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 **Properties**
   - `id`: 
+  - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
+  - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
@@ -598,6 +593,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 ToolGroup, Toolの関連を表す中間テーブル
 
 **Properties**
+  - `userMcpServerConfigId`: UserMcpServerConfig への参照
   - `toolGroupId`: ToolGroupへの参照
   - `toolId`: Toolへの参照
   - `sortOrder`: ソート順序
@@ -605,6 +601,7 @@ ToolGroup, Toolの関連を表す中間テーブル
 
 ### `UserToolGroup`
 どのツール群を利用するかを設定する
+tool group 内に、同一の mcpServer の設定入れられない🤔
 
 **Properties**
   - `id`: 
@@ -636,13 +633,6 @@ MCPサーバーとして利用するインスタンス
 
 ### `_ToolToUserMcpServerConfig`
 Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcpServerConfig)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_UserMcpServerConfigToUserMcpServerInstance`
-Pair relationship table between [UserMcpServerConfig](#UserMcpServerConfig) and [UserMcpServerInstance](#UserMcpServerInstance)
 
 **Properties**
   - `A`: 

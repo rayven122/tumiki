@@ -8,46 +8,58 @@
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserMcpServerConfig {
-  id                 String                  @id @default(cuid())
+  id                 String              @id @default(cuid())
+  /// 設定名（例：「開発用」「本番用」「テスト用」）
+  name               String
+  /// 設定の説明
+  description        String
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   envVars            String /// @encrypted
   /// 利用可能なツールグループ
   tools              Tool[]
-  /// MCPサーバーインスタンス
-  mcpServerInstances UserMcpServerInstance[]
+  /// UserMcpServerConfig と ToolGroup の関連を管理する中間テーブル
+  userToolGroupTools UserToolGroupTool[]
   /// MCPサーバーID
   mcpServerId        String
-  mcpServer          McpServer               @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  mcpServer          McpServer           @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
   /// ユーザーID
   userId             String
-  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 組織
   organizationId     String?
-  organization       Organization?           @relation(fields: [organizationId], references: [id])
+  organization       Organization?       @relation(fields: [organizationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// 同一ユーザー・同一サーバーで設定名が重複しないようにする
+  @@unique([userId, mcpServerId, name])
 }
 
 /// ToolGroup, Toolの関連を表す中間テーブル
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserToolGroupTool {
+  /// UserMcpServerConfig への参照
+  userMcpServerConfigId String
+  userMcpServerConfig   UserMcpServerConfig @relation(fields: [userMcpServerConfigId], references: [id], onDelete: Cascade)
   /// ToolGroupへの参照
-  toolGroupId String
-  toolGroup   UserToolGroup @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
+  toolGroupId           String
+  toolGroup             UserToolGroup       @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
   /// Toolへの参照
-  toolId      String
-  tool        Tool          @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  toolId                String
+  tool                  Tool                @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
   /// ソート順序
-  sortOrder   Int           @default(0)
+  sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
 
-  @@id([toolGroupId, toolId])
+  @@id([toolGroupId, userMcpServerConfigId, toolId])
 }
 
 /// どのツール群を利用するかを設定する
+/// tool group 内に、同一の mcpServer の設定入れられない🤔
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model UserToolGroup {
@@ -130,8 +142,6 @@ model UserMcpServerInstance {
   serverStatus                ServerStatus
   /// サーバーの種類
   serverType                  ServerType
-  /// MCPサーバーの設定
-  mcpServerConfigs            UserMcpServerConfig[]
   /// MCPサーバーとツールグループの関連を管理する中間テーブル
   mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
   /// ツールグループ
