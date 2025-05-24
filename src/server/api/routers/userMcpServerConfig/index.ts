@@ -1,26 +1,25 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { addUserMcpServer } from "./addUserMcpServer";
+import { addUserOfficialServer } from "./addUserOfficialServer";
 import { findAllWithMcpServerTools } from "./findAllWithTools";
-import { updateUserMcpServer } from "./updateUserMcpServer";
+import { updateServerConfig } from "./updateServerConfig";
 import { deleteUserMcpServer } from "./deleteUserMcpServer";
 import { McpServerSchema, ToolSchema, UserMcpServerConfigSchema } from "@zod";
 import {
   McpServerIdSchema,
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
+  UserMcpServerInstanceIdSchema,
 } from "@/schema/ids";
 
-export const AddUserMcpServerInput = z.object({
+export const AddUserOfficialServerInput = z.object({
   mcpServerId: z.string(),
   envVars: z.record(z.string(), z.string()),
 });
 
-export const UpdateUserMcpServerInput = z.object({
-  id: z.string(),
-  envVars: z.record(z.string(), z.string()).optional(),
-  name: z.string().optional(),
-  // imageUrl: z.string().optional(),
+export const UpdateServerConfigInput = z.object({
+  id: UserMcpServerInstanceIdSchema,
+  envVars: z.record(z.string(), z.string()),
 });
 
 export const DeleteUserMcpServerInput = z.object({
@@ -29,7 +28,6 @@ export const DeleteUserMcpServerInput = z.object({
 
 export const FindAllWithMcpServerToolsOutput = z.array(
   UserMcpServerConfigSchema.pick({
-    name: true,
     createdAt: true,
     updatedAt: true,
   }).merge(
@@ -43,11 +41,12 @@ export const FindAllWithMcpServerToolsOutput = z.array(
 
 export const userMcpServerConfigRouter = createTRPCRouter({
   add: protectedProcedure
-    .input(AddUserMcpServerInput)
-    .mutation(addUserMcpServer),
+    .input(AddUserOfficialServerInput)
+    .output(z.object({}))
+    .mutation(addUserOfficialServer),
   update: protectedProcedure
-    .input(UpdateUserMcpServerInput)
-    .mutation(updateUserMcpServer),
+    .input(UpdateServerConfigInput)
+    .mutation(updateServerConfig),
   delete: protectedProcedure
     .input(DeleteUserMcpServerInput)
     .mutation(deleteUserMcpServer),

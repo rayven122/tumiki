@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ApiTokenModal } from "../ApiTokenModal";
+import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
 import { ImageEditModal } from "./ImageEditModal";
@@ -33,14 +33,14 @@ import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 
 type UserMcpServerWithTool =
-  RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
+  RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
 
 type UserMcpServerCardProps = {
-  userMcpServer: UserMcpServerWithTool;
+  serverInstance: UserMcpServerWithTool;
 };
 
 export const UserMcpServerCard = ({
-  userMcpServer,
+  serverInstance,
 }: UserMcpServerCardProps) => {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
@@ -49,7 +49,7 @@ export const UserMcpServerCard = ({
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const router = useRouter();
 
-  const serverName = userMcpServer.name ?? userMcpServer.mcpServer.name;
+  const { userMcpServer, tools } = serverInstance;
 
   const copyUrl = async () => {
     await copyToClipboard(makeMcpProxyServerUrl(userMcpServer.id));
@@ -62,10 +62,10 @@ export const UserMcpServerCard = ({
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
         <div className="group relative mr-2 rounded-md p-2">
-          {userMcpServer.mcpServer.iconPath ? (
+          {userMcpServer.iconPath ? (
             <Image
-              src={userMcpServer.mcpServer.iconPath || "/placeholder.svg"}
-              alt={serverName}
+              src={userMcpServer.iconPath || "/placeholder.svg"}
+              alt={userMcpServer.name}
               width={32}
               height={32}
             />
@@ -87,7 +87,7 @@ export const UserMcpServerCard = ({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center">
-            <CardTitle>{serverName}</CardTitle>
+            <CardTitle>{userMcpServer.name}</CardTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -106,7 +106,7 @@ export const UserMcpServerCard = ({
                 className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
                 onClick={copyUrl}
               >
-                {makeMcpProxyServerUrl(userMcpServer.id)}
+                {makeMcpProxyServerUrl(serverInstance.id)}
               </span>
               <Button
                 variant="ghost"
@@ -158,13 +158,13 @@ export const UserMcpServerCard = ({
           </div>
           <div className="flex flex-col">
             <span className="text-muted-foreground text-sm">接続サーバー</span>
-            <span>{userMcpServer.mcpServer.name}</span>
+            <span>{userMcpServer.name}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-muted-foreground text-sm">ステータス</span>
             <div className="flex items-center space-x-2">
               <div
-                className={`h-2 w-2 rounded-full ${isActive ? "bg-green-500" : "bg-red-500"}`}
+                className={`h-2 w-2 rounded-full ${serverInstance.serverStatus === "RUNNING" ? "bg-green-500" : "bg-red-500"}`}
               />
               <span>{isActive ? "稼働中" : "停止中"}</span>
             </div>
@@ -177,7 +177,7 @@ export const UserMcpServerCard = ({
           <div className="mt-1 flex items-center space-x-2">
             {/* ツール一覧を表示するボタン */}
             <ToolBadgeList
-              tools={userMcpServer.tools}
+              tools={tools}
               // TODO: ツールグループの実装が完了したら設定する
               toolGroups={[]}
             />
@@ -198,9 +198,9 @@ export const UserMcpServerCard = ({
 
       {/* トークンモーダル */}
       {tokenModalOpen && (
-        <ApiTokenModal
+        <UserMcpServerConfigModal
           onOpenChange={setTokenModalOpen}
-          mcpServer={userMcpServer.mcpServer}
+          mcpServer={userMcpServer}
           userMcpServerId={userMcpServer.id}
           mode="edit"
         />
@@ -210,16 +210,16 @@ export const UserMcpServerCard = ({
       <ToolsModal
         open={toolsModalOpen}
         onOpenChange={setToolsModalOpen}
-        serverName={serverName}
-        tools={userMcpServer.tools}
+        serverName={userMcpServer.name}
+        tools={tools}
       />
 
       {/* 削除確認モーダル */}
       {deleteModalOpen && (
         <DeleteConfirmModal
           open={deleteModalOpen}
-          userMcpServerId={userMcpServer.id}
-          serverName={serverName}
+          serverInstanceId={serverInstance.id}
+          serverName={userMcpServer.name}
           onOpenChange={setDeleteModalOpen}
           onSuccess={() => {
             router.refresh();
@@ -231,8 +231,8 @@ export const UserMcpServerCard = ({
       {/* 名前編集モーダル */}
       {nameEditModalOpen && (
         <NameEditModal
-          userMcpServerId={userMcpServer.id}
-          initialName={serverName}
+          serverInstanceId={serverInstance.id}
+          initialName={userMcpServer.name}
           onOpenChange={setNameEditModalOpen}
           onSuccess={() => {
             router.refresh();
@@ -246,9 +246,9 @@ export const UserMcpServerCard = ({
       {imageEditModalOpen && (
         <ImageEditModal
           open={imageEditModalOpen}
-          serverName={serverName}
+          serverName={userMcpServer.name}
           userMcpServerId={userMcpServer.id}
-          initialImageUrl={userMcpServer.mcpServer.iconPath ?? ""}
+          initialImageUrl={userMcpServer.iconPath ?? ""}
           onOpenChange={setImageEditModalOpen}
         />
       )}

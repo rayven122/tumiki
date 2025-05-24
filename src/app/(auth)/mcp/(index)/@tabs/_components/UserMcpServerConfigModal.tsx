@@ -29,7 +29,7 @@ type ApiTokenModalProps = {
   mode?: "create" | "edit";
 };
 
-export const ApiTokenModal = ({
+export const UserMcpServerConfigModal = ({
   onOpenChange,
   mcpServer,
   userMcpServerId,
@@ -37,7 +37,7 @@ export const ApiTokenModal = ({
   mode = "create",
 }: ApiTokenModalProps) => {
   const { mutate: addUserMcpServer, isPending } =
-    api.userMcpServer.add.useMutation({
+    api.userMcpServerConfig.add.useMutation({
       onSuccess: () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
         onOpenChange(false);
@@ -48,7 +48,7 @@ export const ApiTokenModal = ({
     });
 
   const { mutate: updateUserMcpServer, isPending: isUpdating } =
-    api.userMcpServer.update.useMutation({
+    api.userMcpServerConfig.update.useMutation({
       onSuccess: () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に更新されました。`);
         onOpenChange(false);

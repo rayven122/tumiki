@@ -13,24 +13,25 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { type UserMcpServerInstanceId } from "@/schema/ids";
 
 type NameEditModalProps = {
+  serverInstanceId: UserMcpServerInstanceId;
   initialName: string;
-  userMcpServerId: string;
   onSuccess?: () => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
 };
 
 export const NameEditModal = ({
   initialName,
-  userMcpServerId,
+  serverInstanceId,
   onSuccess,
   onOpenChange,
 }: NameEditModalProps) => {
   const [newName, setNewName] = useState(initialName);
 
-  const { mutate: updateUserMcpServer, isPending } =
-    api.userMcpServer.update.useMutation({
+  const { mutate: updateServerInstanceName, isPending } =
+    api.userMcpServerInstance.updateName.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("サーバー名を更新しました。");
@@ -41,7 +42,7 @@ export const NameEditModal = ({
     });
 
   const onUpdate = () => {
-    updateUserMcpServer({ id: userMcpServerId, name: newName });
+    updateServerInstanceName({ id: serverInstanceId, name: newName });
   };
 
   return (

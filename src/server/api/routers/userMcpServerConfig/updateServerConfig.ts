@@ -1,19 +1,17 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
-import type { UpdateUserMcpServerInput } from ".";
-// import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
-// import type { Prisma } from "@prisma/client";
+import type { UpdateServerConfigInput } from ".";
 
-type UpdateUserMcpServerInput = {
+type UpdateServerConfigInput = {
   ctx: ProtectedContext;
-  input: z.infer<typeof UpdateUserMcpServerInput>;
+  input: z.infer<typeof UpdateServerConfigInput>;
 };
 
-export const updateUserMcpServer = async ({
+export const updateServerConfig = async ({
   ctx,
   input,
-}: UpdateUserMcpServerInput) => {
-  const userMcpServer = await ctx.db.userMcpServer.findUnique({
+}: UpdateServerConfigInput) => {
+  const userMcpServer = await ctx.db.userMcpServerConfig.findUnique({
     where: { id: input.id },
     include: {
       mcpServer: true,
@@ -54,12 +52,10 @@ export const updateUserMcpServer = async ({
     // }));
   }
 
-  return await ctx.db.userMcpServer.update({
+  return await ctx.db.userMcpServerConfig.update({
     where: { id: input.id },
     data: {
-      name: input.name,
-      // imageUrl: input.imageUrl,
-      envVars: input.envVars,
+      envVars: JSON.stringify(input.envVars),
       // ...(toolsConnect.length > 0 && {
       //   tools: {
       //     connect: toolsConnect,
