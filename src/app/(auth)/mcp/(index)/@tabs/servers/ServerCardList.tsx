@@ -5,14 +5,12 @@ import { UserMcpServerCardSkeleton } from "../_components/UserMcpServerCard/User
 import { UserMcpServerCard } from "../_components/UserMcpServerCard";
 
 const AsyncServerCardList = async () => {
-  const userMcpServers = await api.userMcpServer.findAllWithMcpServerTools();
+  const userOfficialServers =
+    await api.userMcpServerInstance.findOfficialServers();
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {userMcpServers.map((userMcpServer) => (
-        <UserMcpServerCard
-          key={userMcpServer.id}
-          userMcpServer={userMcpServer}
-        />
+      {userOfficialServers.map((server) => (
+        <UserMcpServerCard key={server.id} userMcpServer={server} />
       ))}
     </div>
   );

@@ -41,7 +41,7 @@ export const FindAllWithMcpServerToolsOutput = z.array(
   ),
 );
 
-export const userMcpServerRouter = createTRPCRouter({
+export const userMcpServerConfigRouter = createTRPCRouter({
   add: protectedProcedure
     .input(AddUserMcpServerInput)
     .mutation(addUserMcpServer),
