@@ -32,7 +32,6 @@ erDiagram
 }
 "UserMcpServerConfig" {
   String id PK
-  String name "nullable"
   String envVars
   String mcpServerId FK
   String userId FK
@@ -128,8 +127,7 @@ MCP サーバーのツール一覧
 
 **Properties**
   - `id`: 
-  - `name`: MCPサーバー名 (ユーザーが設定した名前)
-  - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+  - `envVars`: MCPサーバー�� envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
   - `organizationId`: 組織
@@ -509,7 +507,6 @@ erDiagram
 }
 "UserMcpServerConfig" {
   String id PK
-  String name "nullable"
   String envVars
   String mcpServerId FK
   String userId FK
@@ -590,8 +587,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 **Properties**
   - `id`: 
-  - `name`: MCPサーバー名 (ユーザーが設定した名前)
-  - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+  - `envVars`: MCPサーバー�� envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   - `mcpServerId`: MCPサーバーID
   - `userId`: ユーザーID
   - `organizationId`: 組織

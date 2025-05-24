@@ -189,7 +189,6 @@ CREATE TABLE "ResourceAccessControl" (
 -- CreateTable
 CREATE TABLE "UserMcpServerConfig" (
     "id" TEXT NOT NULL,
-    "name" TEXT,
     "envVars" TEXT NOT NULL,
     "mcpServerId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
