@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "UserMcpServer" ALTER COLUMN "envVars" SET NOT NULL,
-ALTER COLUMN "envVars" SET DATA TYPE TEXT;
