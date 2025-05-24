@@ -75,7 +75,7 @@ export const UpdateServerInstanceInput = z.object({
   ),
 });
 
-export const ServerInstanceRouter = createTRPCRouter({
+export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
     .output(FindCustomServersOutput)
     .query(findCustomServers),

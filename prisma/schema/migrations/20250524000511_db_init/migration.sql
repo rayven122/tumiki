@@ -1,16 +1,6 @@
-/*
-  Warnings:
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('SYSTEM_ADMIN', 'USER');
 
-  - The values [ADMIN,SERVER_MANAGER,VIEWER] on the enum `Role` will be removed. If these variants are still used in the database, this will fail.
-  - You are about to drop the column `membership` on the `User` table. All the data in the column will be lost.
-  - You are about to drop the `ApiKey` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ToolGroup` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `ToolGroupTool` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `UserMcpServer` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `_ApiKeyToToolGroup` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `_ToolToUserMcpServer` table. If the table is not empty, all the data it contains will be lost.
-
-*/
 -- CreateEnum
 CREATE TYPE "PermissionAction" AS ENUM ('CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE');
 
@@ -23,73 +13,82 @@ CREATE TYPE "ServerStatus" AS ENUM ('RUNNING', 'STOPPED', 'ERROR');
 -- CreateEnum
 CREATE TYPE "ServerType" AS ENUM ('CUSTOM', 'OFFICIAL');
 
--- AlterEnum
-BEGIN;
-CREATE TYPE "Role_new" AS ENUM ('SYSTEM_ADMIN', 'USER');
-ALTER TABLE "User" ALTER COLUMN "role" DROP DEFAULT;
-ALTER TABLE "User" ALTER COLUMN "role" TYPE "Role_new" USING ("role"::text::"Role_new");
-ALTER TYPE "Role" RENAME TO "Role_old";
-ALTER TYPE "Role_new" RENAME TO "Role";
-DROP TYPE "Role_old";
-ALTER TABLE "User" ALTER COLUMN "role" SET DEFAULT 'USER';
-COMMIT;
+-- CreateTable
+CREATE TABLE "McpServer" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "iconPath" TEXT,
+    "command" TEXT NOT NULL,
+    "args" TEXT[],
+    "envVars" TEXT[],
+    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "ApiKey" DROP CONSTRAINT "ApiKey_userId_fkey";
+    CONSTRAINT "McpServer_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "ToolGroup" DROP CONSTRAINT "ToolGroup_userId_fkey";
+-- CreateTable
+CREATE TABLE "Tool" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "inputSchema" JSONB NOT NULL,
+    "isEnabled" BOOLEAN NOT NULL DEFAULT true,
+    "mcpServerId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "ToolGroupTool" DROP CONSTRAINT "ToolGroupTool_toolGroupId_fkey";
+    CONSTRAINT "Tool_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "ToolGroupTool" DROP CONSTRAINT "ToolGroupTool_toolId_fkey";
+-- CreateTable
+CREATE TABLE "Account" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerAccountId" TEXT NOT NULL,
+    "refresh_token" TEXT,
+    "access_token" TEXT,
+    "expires_at" INTEGER,
+    "token_type" TEXT,
+    "scope" TEXT,
+    "id_token" TEXT,
+    "session_state" TEXT,
+    "refresh_token_expires_in" INTEGER,
 
--- DropForeignKey
-ALTER TABLE "ToolGroupTool" DROP CONSTRAINT "ToolGroupTool_userMcpServerId_fkey";
+    CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "UserMcpServer" DROP CONSTRAINT "UserMcpServer_mcpServerId_fkey";
+-- CreateTable
+CREATE TABLE "Session" (
+    "id" TEXT NOT NULL,
+    "sessionToken" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "UserMcpServer" DROP CONSTRAINT "UserMcpServer_userId_fkey";
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "_ApiKeyToToolGroup" DROP CONSTRAINT "_ApiKeyToToolGroup_A_fkey";
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "name" TEXT,
+    "email" TEXT,
+    "emailVerified" TIMESTAMP(3),
+    "image" TEXT,
+    "role" "Role" NOT NULL DEFAULT 'USER',
 
--- DropForeignKey
-ALTER TABLE "_ApiKeyToToolGroup" DROP CONSTRAINT "_ApiKeyToToolGroup_B_fkey";
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "_ToolToUserMcpServer" DROP CONSTRAINT "_ToolToUserMcpServer_A_fkey";
-
--- DropForeignKey
-ALTER TABLE "_ToolToUserMcpServer" DROP CONSTRAINT "_ToolToUserMcpServer_B_fkey";
-
--- AlterTable
-ALTER TABLE "User" DROP COLUMN "membership";
-
--- DropTable
-DROP TABLE "ApiKey";
-
--- DropTable
-DROP TABLE "ToolGroup";
-
--- DropTable
-DROP TABLE "ToolGroupTool";
-
--- DropTable
-DROP TABLE "UserMcpServer";
-
--- DropTable
-DROP TABLE "_ApiKeyToToolGroup";
-
--- DropTable
-DROP TABLE "_ToolToUserMcpServer";
-
--- DropEnum
-DROP TYPE "MembershipType";
+-- CreateTable
+CREATE TABLE "VerificationToken" (
+    "identifier" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL
+);
 
 -- CreateTable
 CREATE TABLE "Organization" (
@@ -293,6 +292,27 @@ CREATE TABLE "_UserMcpServerConfigToUserMcpServerInstance" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "McpServer_name_key" ON "McpServer"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Tool_mcpServerId_name_key" ON "Tool"("mcpServerId", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "OrganizationInvitation_token_key" ON "OrganizationInvitation"("token");
 
 -- CreateIndex
@@ -336,6 +356,15 @@ CREATE INDEX "_OrganizationGroupToOrganizationRole_B_index" ON "_OrganizationGro
 
 -- CreateIndex
 CREATE INDEX "_UserMcpServerConfigToUserMcpServerInstance_B_index" ON "_UserMcpServerConfigToUserMcpServerInstance"("B");
+
+-- AddForeignKey
+ALTER TABLE "Tool" ADD CONSTRAINT "Tool_mcpServerId_fkey" FOREIGN KEY ("mcpServerId") REFERENCES "McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Organization" ADD CONSTRAINT "Organization_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
