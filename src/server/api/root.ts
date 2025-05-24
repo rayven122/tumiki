@@ -1,8 +1,8 @@
 import { postRouter } from "@/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { mcpServerRouter } from "./routers/mcpServer";
-import { userMcpServerRouter } from "./routers/userMcpServer";
-import { apiKeyRouter } from "./routers/apiKey";
+import { userMcpServerConfigRouter } from "./routers/userMcpServerConfig";
+import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
 
 /**
  * This is the primary router for your server.
@@ -12,8 +12,8 @@ import { apiKeyRouter } from "./routers/apiKey";
 export const appRouter = createTRPCRouter({
   post: postRouter,
   mcpServer: mcpServerRouter,
-  userMcpServer: userMcpServerRouter,
-  apiKey: apiKeyRouter,
+  userMcpServerConfig: userMcpServerConfigRouter,
+  userMcpServerInstance: userMcpServerInstanceRouter,
 });
 
 // export type definition of API

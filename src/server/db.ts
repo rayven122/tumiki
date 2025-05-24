@@ -17,6 +17,12 @@ const createPrismaClient = () => {
     adapter,
     log:
       env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+
+    omit: {
+      userMcpServerConfig: {
+        envVars: true,
+      },
+    },
   });
 
   // HACK: fieldEncryptionExtension　が使えないため、fieldEncryptionMiddlewareを使う

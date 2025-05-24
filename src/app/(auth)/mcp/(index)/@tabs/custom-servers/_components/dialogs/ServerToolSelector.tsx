@@ -10,18 +10,18 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ToolBadgeList } from "../ToolBadgeList";
-import type { ToolId, UserMcpServerId } from "@/schema/ids";
+import type { ToolId, UserMcpServerConfigId } from "@/schema/ids";
 import type { RouterOutputs } from "@/trpc/react";
 
 type UserMcpServer =
-  RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
+  RouterOutputs["userMcpServerConfig"]["findServersWithTools"][number];
 
 type ServerToolSelectorProps = {
   servers: UserMcpServer[];
-  selectedServerIds: Set<UserMcpServerId>;
-  selectedToolIds: Map<UserMcpServerId, Set<ToolId>>;
-  onServersChange: (servers: Set<UserMcpServerId>) => void;
-  onToolsChange: (tools: Map<UserMcpServerId, Set<ToolId>>) => void;
+  selectedServerIds: Set<UserMcpServerConfigId>;
+  selectedToolIds: Map<UserMcpServerConfigId, Set<ToolId>>;
+  onServersChange: (servers: Set<UserMcpServerConfigId>) => void;
+  onToolsChange: (tools: Map<UserMcpServerConfigId, Set<ToolId>>) => void;
   isLoading?: boolean;
 };
 
@@ -78,7 +78,7 @@ export function ServerToolSelector({
 
   // ツールのチェックボックス変更を処理
   const handleToolCheckChange = (
-    serverId: UserMcpServerId,
+    serverId: UserMcpServerConfigId,
     toolId: ToolId,
     checked: boolean,
   ) => {
@@ -102,7 +102,12 @@ export function ServerToolSelector({
 
   // 選択されたすべてのツールをオブジェクトとして取得
   const selectedTools = useMemo(() => {
-    const tools: { id: string; name: string; userMcpServerName: string }[] = [];
+    const tools: {
+      id: string;
+      name: string;
+      userMcpServerName: string;
+      description: string;
+    }[] = [];
 
     servers.forEach((server) => {
       const serverTools = selectedToolIds.get(server.id);
@@ -113,6 +118,7 @@ export function ServerToolSelector({
               id: `${server.id}-${tool.id}`,
               name: tool.name,
               userMcpServerName: server.name ?? server.mcpServer.name,
+              description: tool.description,
             });
           }
         });
