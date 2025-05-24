@@ -6,24 +6,24 @@
 /// MCP サーバー (github や notion などの接続する外部 MCP サーバー)
 /// @namespace McpServer
 model McpServer {
-    id             String          @id @default(cuid())
+    id               String                @id @default(cuid())
     /// MCP サーバー名
     /// @zod.string.min(1)
-    name           String          @unique
+    name             String                @unique
     /// アイコンパス
-    iconPath       String?
+    iconPath         String?
     /// コマンド
     /// @zod.string.min(1)
-    command        String
+    command          String
     /// 引数
     /// @zod.string.min(1)
-    args           String[]
+    args             String[]
     /// 環境変数
-    envVars        String[]
+    envVars          String[]
     /// サーバーが公開されているか
-    isPublic       Boolean         @default(false)
-    tools          Tool[]
-    userMcpServers UserMcpServer[]
+    isPublic         Boolean               @default(false)
+    tools            Tool[]
+    mcpServerConfigs UserMcpServerConfig[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -31,23 +31,22 @@ model McpServer {
 
 /// MCP サーバーのツール一覧
 /// @namespace McpServer
-/// @namespace ApiAccess
 model Tool {
-    id             String          @id @default(cuid())
+    id               String                @id @default(cuid())
     /// ツールの名前
     /// @zod.string.min(1)
-    name           String
+    name             String
     /// ツールの説明
-    description    String
+    description      String
     /// ツールの入力スキーマ（JSON Schema形式）
-    inputSchema    Json
+    inputSchema      Json
     /// ツールを有効にするか
-    isEnabled      Boolean         @default(true)
-    mcpServerId    String
-    mcpServer      McpServer       @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-    userMcpServers UserMcpServer[]
-    /// ToolGroup, Toolの関連を表す中間テーブル
-    toolGroupTools ToolGroupTool[]
+    isEnabled        Boolean               @default(true)
+    mcpServerId      String
+    mcpServer        McpServer             @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+    mcpServerConfigs UserMcpServerConfig[]
+    /// ToolGroup との関連を表す中間テーブル
+    toolGroupTools   UserToolGroupTool[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

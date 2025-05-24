@@ -47,44 +47,33 @@ model Session {
 /// @namespace NextAuth
 enum Role {
     /// システム管理者
-    ADMIN
-    /// サーバー管理者
-    SERVER_MANAGER
-    /// ユーザー
+    SYSTEM_ADMIN
+    /// 一般ユーザー
     USER
-    /// 閲覧者
-    VIEWER
 }
 
 /// @namespace NextAuth
-enum MembershipType {
-    /// 無料
-    FREE
-    /// 有料
-    PREMIUM
-}
-
-/// @namespace NextAuth
-/// @namespace ApiAccess
+/// @namespace UserMcpServer
 model User {
-    id             String          @id @default(cuid())
+    id                 String                   @id @default(cuid())
     /// ユーザー名
-    name           String?
+    name               String?
     /// メールアドレス
-    email          String?         @unique
+    email              String?                  @unique
     /// メールアドレスの検証日時
-    emailVerified  DateTime?
+    emailVerified      DateTime?
     /// プロフィール画像のURL
-    image          String?
-    accounts       Account[]
-    sessions       Session[]
-    toolGroups     ToolGroup[]
-    userMcpServers UserMcpServer[]
-    apiKeys        ApiKey[]
+    image              String?
+    accounts           Account[]
+    sessions           Session[]
+    toolGroups         UserToolGroup[]
+    mcpServerConfigs   UserMcpServerConfig[]
+    mcpServerInstances UserMcpServerInstance[]
     /// ユーザーの権限
-    role           Role            @default(USER)
-    /// メンバーシップの種類
-    membership     MembershipType  @default(FREE)
+    role               Role                     @default(USER)
+    organizations      Organization[]
+    members            OrganizationMember[]
+    invitations        OrganizationInvitation[]
 }
 
 /// @namespace NextAuth
