@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { Tool, ToolGroup } from "@prisma/client";
+import type { Tool, UserToolGroup } from "@prisma/client";
 
 type ToolBadgeListProps =
   | {
@@ -10,7 +10,7 @@ type ToolBadgeListProps =
     }
   | {
       type: "toolGroup";
-      toolGroup: Pick<ToolGroup, "id" | "name">;
+      toolGroup: Pick<UserToolGroup, "id" | "name">;
       tool?: never;
       userMcpServerName?: never;
     };

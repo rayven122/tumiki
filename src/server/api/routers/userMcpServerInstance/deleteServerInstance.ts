@@ -23,31 +23,32 @@ export const deleteServerInstance = async ({
       select: {
         serverType: true,
         toolGroupId: true,
-        mcpServerConfigs: {
-          select: {
-            id: true,
-          },
-        },
       },
     });
 
-    await tx.userToolGroup.delete({
+    const toolGroup = await tx.userToolGroup.delete({
       where: {
         id: serverInstance.toolGroupId,
         userId: ctx.session.user.id,
+        mcpServerInstance: null,
+      },
+      include: {
+        toolGroupTools: true,
       },
     });
+
+    const userMcpServerConfigId =
+      toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
 
     // 公式サーバーの場合は、公式サーバーの設定を削除
     if (
       serverInstance.serverType === ServerType.OFFICIAL &&
-      // 公式サーバーの場合は、設定1つしか紐づいていないため、そちらの確認も行う
-      serverInstance.mcpServerConfigs.length === 1 &&
-      serverInstance.mcpServerConfigs[0]
+      userMcpServerConfigId
     ) {
       await tx.userMcpServerConfig.delete({
         where: {
-          id: serverInstance.mcpServerConfigs[0].id,
+          id: userMcpServerConfigId,
+          userId: ctx.session.user.id,
         },
       });
     }
