@@ -1,7 +1,6 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { UpdateServerInstanceInput } from ".";
-import type { UserMcpServerConfigId } from "@/schema/ids";
 
 type UpdateServerInstanceInput = {
   ctx: ProtectedContext;
@@ -15,54 +14,45 @@ export const updateServerInstance = async ({
   const { serverToolIdsMap } = input;
 
   const toolGroupTools = Object.entries(serverToolIdsMap).flatMap(
-    ([serverId, toolIds]) =>
+    ([userMcpServerConfigId, toolIds]) =>
       (toolIds ?? []).map((toolId) => ({
         toolId,
-        userMcpServerId: serverId,
+        userMcpServerConfigId,
       })),
   );
 
-  const mcpServerConfigIds = Object.keys(serverToolIdsMap).map((serverId) => ({
-    id: serverId as UserMcpServerConfigId,
-  }));
-
-  const toolGroup = await ctx.db.userToolGroup.update({
-    where: {
-      id: input.ServerInstanceToolGroupId,
-      userId: ctx.session.user.id,
-    },
-    data: {
-      name: input.name,
-      description: input.description,
-      toolGroupTools: {
-        // 既存のtoolGroupToolsを削除
-        deleteMany: {},
-        // 新しいtoolGroupToolsを作成
-        createMany: {
-          data: toolGroupTools,
+  const serverInstance = await ctx.db.$transaction(async (tx) => {
+    const toolGroup = await tx.userToolGroup.update({
+      where: {
+        id: input.toolGroupId,
+        userId: ctx.session.user.id,
+      },
+      data: {
+        name: input.name,
+        description: input.description,
+        toolGroupTools: {
+          // 既存のtoolGroupToolsを削除
+          deleteMany: {},
+          // 新しいtoolGroupToolsを作成
+          createMany: {
+            data: toolGroupTools,
+          },
         },
       },
-    },
-  });
+    });
 
-  const serverInstance = await ctx.db.userMcpServerInstance.update({
-    where: {
-      id: input.id, // 更新対象のAPIキーID
-    },
-    data: {
-      name: input.name,
-      description: input.description,
-      serverStatus: input.serverStatus,
-      serverType: input.serverType,
-      toolGroupId: toolGroup.id,
-      mcpServerConfigs: {
-        connect: mcpServerConfigIds,
+    const serverInstance = await tx.userMcpServerInstance.update({
+      where: {
+        id: input.id, // 更新対象のAPIキーID
       },
-      // TODO: mcpServerInstanceToolGroups を追加する
-      mcpServerInstanceToolGroups: {
-        connect: [],
+      data: {
+        name: input.name,
+        description: input.description,
+        toolGroupId: toolGroup.id,
+        // TODO: mcpServerInstanceToolGroups を追加する
       },
-    },
+    });
+    return serverInstance;
   });
 
   return serverInstance;

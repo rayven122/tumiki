@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { findAllWithTools } from "./findAllWithTools";
+
 import { updateServerConfig } from "./updateServerConfig";
 import { McpServerSchema, ToolSchema, UserMcpServerConfigSchema } from "@zod";
 import {
@@ -9,10 +9,15 @@ import {
   UserMcpServerConfigIdSchema,
   UserMcpServerInstanceIdSchema,
 } from "@/schema/ids";
+import { findServersWithTools } from "./findServersWithTools";
 
 export const UpdateServerConfigInput = z.object({
   id: UserMcpServerInstanceIdSchema,
   envVars: z.record(z.string(), z.string()),
+});
+
+export const FindAllWithToolsInput = z.object({
+  userMcpServerConfigIds: z.array(UserMcpServerConfigIdSchema).optional(),
 });
 
 export const FindAllWithToolsOutput = z.array(
@@ -31,7 +36,8 @@ export const userMcpServerConfigRouter = createTRPCRouter({
   update: protectedProcedure
     .input(UpdateServerConfigInput)
     .mutation(updateServerConfig),
-  findAllWithTools: protectedProcedure
+  findServersWithTools: protectedProcedure
+    .input(FindAllWithToolsInput)
     .output(FindAllWithToolsOutput)
-    .query(findAllWithTools),
+    .query(findServersWithTools),
 });

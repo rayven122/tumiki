@@ -30,13 +30,13 @@ import { toast } from "@/utils/client/toast";
 import { type RouterOutputs } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
+import { EditServerInstanceModal } from "./EditServerInstanceModal";
 
-type UserMcpServerWithTool =
-  | RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number]
-  | RouterOutputs["userMcpServerInstance"]["findCustomServers"][number];
+type ServerInstance =
+  RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
 
 type UserMcpServerCardProps = {
-  serverInstance: UserMcpServerWithTool;
+  serverInstance: ServerInstance;
 };
 
 export const UserMcpServerCard = ({
@@ -47,6 +47,7 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
+  const [toolsEditModalOpen, setToolsEditModalOpen] = useState(false);
   const router = useRouter();
 
   const { tools } = serverInstance;
@@ -130,6 +131,10 @@ export const UserMcpServerCard = ({
             <DropdownMenuItem onClick={() => setNameEditModalOpen(true)}>
               <EditIcon className="mr-2 h-4 w-4" />
               名前を編集
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setToolsEditModalOpen(true)}>
+              <EditIcon className="mr-2 h-4 w-4" />
+              ツールを編集
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setImageEditModalOpen(true)}
@@ -237,6 +242,18 @@ export const UserMcpServerCard = ({
           onSuccess={() => {
             router.refresh();
             setNameEditModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* ツール編集モーダル */}
+      {toolsEditModalOpen && (
+        <EditServerInstanceModal
+          serverInstance={serverInstance}
+          onClose={() => setToolsEditModalOpen(false)}
+          onSuccess={() => {
+            router.refresh();
+            setToolsEditModalOpen(false);
           }}
         />
       )}
