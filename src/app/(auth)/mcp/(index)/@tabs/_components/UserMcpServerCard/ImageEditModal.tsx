@@ -31,17 +31,17 @@ export const ImageEditModal = ({
 }: ImageEditModalProps) => {
   const [imageUrl, setImageUrl] = useState(initialImageUrl);
 
-  const {
-    // mutate: updateUserMcpServer,
-    isPending: isLoading,
-  } = api.userMcpServer.update.useMutation({
-    onSuccess: () => {
-      toast.success(`${serverName}の画像を更新しました。`);
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  // const {
+  //   // mutate: updateUserMcpServer,
+  //   isPending: isLoading,
+  // } = api.userMcpServer.update.useMutation({
+  //   onSuccess: () => {
+  //     toast.success(`${serverName}の画像を更新しました。`);
+  //   },
+  //   onError: (error) => {
+  //     toast.error(error.message);
+  //   },
+  // });
 
   const onUpdate = () => {
     toast.info("実装中");
@@ -85,7 +85,7 @@ export const ImageEditModal = ({
           )}
         </div>
         <DialogFooter>
-          <Button
+          {/* <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
@@ -94,7 +94,7 @@ export const ImageEditModal = ({
           </Button>
           <Button onClick={onUpdate} disabled={isLoading || !imageUrl.trim()}>
             {isLoading ? "更新中..." : "更新"}
-          </Button>
+          </Button> */}
         </DialogFooter>
       </DialogContent>
     </Dialog>
