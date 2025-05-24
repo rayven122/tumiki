@@ -1,5 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { Role } from "@prisma/client";
+import type { PrismaClient, Role } from "@prisma/client";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
@@ -49,7 +49,7 @@ export const authConfig = {
   pages: {
     signIn: "/login",
   },
-  adapter: PrismaAdapter(db),
+  adapter: PrismaAdapter(db as PrismaClient),
   callbacks: {
     /**
      * JWTコールバック

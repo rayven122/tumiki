@@ -22,7 +22,7 @@
     "postinstall": "bun db:generate && chmod +x ./bundle-mcp-servers.sh && ./bundle-mcp-servers.sh"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "2.7.2",
+    "@auth/prisma-adapter": "^2.9.1",
     "@hookform/resolvers": "^5.0.1",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@modelcontextprotocol/server-github": "^2025.4.8",
