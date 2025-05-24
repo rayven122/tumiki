@@ -40,5 +40,5 @@
     ".next/types/**/*.ts"
   ],
   "types": ["web", "bun-types"],
-  "exclude": ["node_modules", "mcp"]
+  "exclude": ["node_modules", "mcp", "prisma"]
 }
