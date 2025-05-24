@@ -21,6 +21,7 @@ import { deleteServerInstance } from "./deleteServerInstance";
 import { updateServerInstance } from "./updateServerInstance";
 import { updateServerInstanceName } from "./updateServerInstanceName";
 import { addOfficialServer } from "./addOfficialServer";
+import { updateServerStatus } from "./updateServerStatus";
 
 export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
@@ -92,6 +93,14 @@ export const UpdateServerInstanceNameInput = z.object({
   name: z.string(),
 });
 
+export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
+  serverStatus: true,
+}).merge(
+  z.object({
+    id: UserMcpServerInstanceIdSchema,
+  }),
+);
+
 export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
     .output(FindServersOutput)
@@ -119,4 +128,8 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .input(UpdateServerInstanceNameInput)
     .output(z.object({}))
     .mutation(updateServerInstanceName),
+  updateStatus: protectedProcedure
+    .input(UpdateServerStatusInput)
+    .output(z.object({}))
+    .mutation(updateServerStatus),
 });
