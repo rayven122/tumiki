@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { ApiTokenModal } from "../ApiTokenModal";
+import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
 import { Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@prisma/client";
@@ -86,7 +86,10 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
 
       {/* APIトークンモーダル */}
       {tokenModalOpen && (
-        <ApiTokenModal onOpenChange={setTokenModalOpen} mcpServer={mcpServer} />
+        <UserMcpServerConfigModal
+          onOpenChange={setTokenModalOpen}
+          mcpServer={mcpServer}
+        />
       )}
 
       {/* ツール一覧モーダル */}
