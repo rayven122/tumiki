@@ -2,6 +2,7 @@ import { ServerType } from "@prisma/client";
 import type { ProtectedContext } from "../../trpc";
 
 import { convertToSortOrder } from "@/utils/server/converter";
+import type { UserMcpServerConfigId } from "@/schema/ids";
 
 type FindOfficialServersInput = {
   ctx: ProtectedContext;
@@ -16,40 +17,51 @@ export const findOfficialServers = async ({
       userId: ctx.session.user.id,
     },
     include: {
-      mcpServerConfigs: {
-        // ServerType.OFFICIAL の mcpServerConfigs は1つしか存在しない
-        take: 1,
-        include: { mcpServer: true },
-      },
       toolGroup: {
         include: {
           toolGroupTools: {
-            include: { tool: true },
+            include: {
+              tool: true,
+            },
           },
         },
       },
     },
   });
 
-  const officialServerList = officialServers.map((server) => {
-    const serverConfig = server.mcpServerConfigs[0];
+  // toolGroupTool の ユニークな userMcpServerConfigId を取得して、その userMcpServerConfig を取得する
+  const userMcpServerConfigIds = officialServers.map((server) => {
+    const userMcpServerConfigId =
+      server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+    if (!userMcpServerConfigId) {
+      throw new Error("userMcpServerConfigId not found");
+    }
+    return userMcpServerConfigId;
+  }) as UserMcpServerConfigId[];
+
+  const userMcpServerConfigs = await ctx.db.userMcpServerConfig.findMany({
+    where: {
+      id: {
+        in: userMcpServerConfigIds,
+      },
+    },
+    include: {
+      mcpServer: true,
+      userToolGroupTools: true,
+    },
+  });
+
+  const officialServerList = officialServers.map((server, i) => {
+    const serverConfig = userMcpServerConfigs[i];
     if (!serverConfig) {
       throw new Error("mcpServerConfig not found");
     }
-
-    const userMcpServer = {
-      ...serverConfig.mcpServer,
-      name: server.name ?? serverConfig.mcpServer.name,
-      iconPath: server.iconPath ?? serverConfig.mcpServer.iconPath,
-      createdAt: server.createdAt,
-      updatedAt: server.updatedAt,
-    };
 
     const tools = convertToSortOrder(server.toolGroup.toolGroupTools, "tool");
     return {
       ...server,
       tools,
-      userMcpServer,
+      iconPath: server.iconPath ?? serverConfig.mcpServer.iconPath,
     };
   });
 

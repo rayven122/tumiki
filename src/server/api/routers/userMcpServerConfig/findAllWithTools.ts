@@ -1,13 +1,11 @@
 import type { ProtectedContext } from "../../trpc";
 
-type FindAllWithMcpServerToolsInput = {
+type FindAllWithToolsInput = {
   ctx: ProtectedContext;
 };
 
-export const findAllWithMcpServerTools = async ({
-  ctx,
-}: FindAllWithMcpServerToolsInput) => {
-  const mcpServers = await ctx.db.userMcpServer.findMany({
+export const findAllWithTools = async ({ ctx }: FindAllWithToolsInput) => {
+  const mcpServers = await ctx.db.userMcpServerConfig.findMany({
     where: {
       userId: ctx.session.user.id,
     },
@@ -15,13 +13,9 @@ export const findAllWithMcpServerTools = async ({
       // 作成した順にソート
       createdAt: "asc",
     },
-    select: {
-      id: true,
-      name: true,
+    include: {
       tools: true,
       mcpServer: true,
-      createdAt: true,
-      updatedAt: true,
     },
   });
 

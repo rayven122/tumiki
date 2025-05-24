@@ -13,7 +13,7 @@ export default function ServersPage() {
         <Link href="/mcp/servers/add">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            新規MCPサーバー追加
+            MCPサーバーを追加
           </Button>
         </Link>
       }

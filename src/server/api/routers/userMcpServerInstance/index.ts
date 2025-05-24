@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { addServerInstance } from "./addServerInstance";
+import { addCustomServer } from "./addCustomServer";
 import {
   UserMcpServerInstanceIdSchema,
   UserToolGroupIdSchema,
@@ -22,6 +22,7 @@ import { findOfficialServers } from "./findOfficialServers";
 import { deleteServerInstance } from "./deleteServerInstance";
 import { updateServerInstance } from "./updateServerInstance";
 import { updateServerInstanceName } from "./updateServerInstanceName";
+import { addOfficialServer } from "./addOfficialServer";
 
 export const FindCustomServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
@@ -45,18 +46,22 @@ export const FindOfficialServersOutput = z.array(
     z.object({
       id: UserMcpServerInstanceIdSchema,
       tools: z.array(ToolSchema),
-      userMcpServer: McpServerSchema,
     }),
   ),
 );
 
-export const AddServerInstanceInput = z.object({
+export const AddCustomServerInput = z.object({
   name: z.string(),
   description: z.string().default(""),
   serverToolIdsMap: z.record(
     UserMcpServerConfigIdSchema,
     z.array(ToolIdSchema),
   ),
+});
+
+export const AddOfficialServerInput = z.object({
+  mcpServerId: z.string(),
+  envVars: z.record(z.string(), z.string()),
 });
 
 export const DeleteServerInstanceInput = z.object({
@@ -88,10 +93,14 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
   findOfficialServers: protectedProcedure
     .output(FindOfficialServersOutput)
     .query(findOfficialServers),
-  addServerInstance: protectedProcedure
-    .input(AddServerInstanceInput)
+  addCustomServer: protectedProcedure
+    .input(AddCustomServerInput)
     .output(z.object({}))
-    .mutation(addServerInstance),
+    .mutation(addCustomServer),
+  addOfficialServer: protectedProcedure
+    .input(AddOfficialServerInput)
+    .output(z.object({}))
+    .mutation(addOfficialServer),
   delete: protectedProcedure
     .input(DeleteServerInstanceInput)
     .output(z.object({}))

@@ -1,21 +1,26 @@
-import { Suspense } from "react";
-import { ApiKeysTab } from "./_components/ApiKeysTab";
-import { ApiKeysTabSkeleton } from "./_components/ApiKeysTabSkeleton";
-import { CreateApiKeyButton } from "./_components/CreateApiKeyButton";
+import { CreateCustomServerButton } from "./_components/CreateCustomServerButton";
 import { McpTabs } from "../_components/McpTabs";
 import { api } from "@/trpc/server";
+import { UserMcpServerCard } from "../_components/UserMcpServerCard";
 
-const AsyncApiKeysTab = async () => {
-  const apiKeys = await api.apiKey.findAll();
-  return <ApiKeysTab apiKeys={apiKeys} />;
+const AsyncServerCardList = async () => {
+  const userCustomServers = await api.userMcpServerInstance.findCustomServers();
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {userCustomServers.map((server) => (
+        <UserMcpServerCard key={server.id} serverInstance={server} />
+      ))}
+    </div>
+  );
 };
 
 export default function CustomServersPage() {
   return (
-    <McpTabs activeTab="custom-servers" addButton={<CreateApiKeyButton />}>
-      <Suspense fallback={<ApiKeysTabSkeleton />}>
-        <AsyncApiKeysTab />
-      </Suspense>
+    <McpTabs
+      activeTab="custom-servers"
+      addButton={<CreateCustomServerButton />}
+    >
+      <AsyncServerCardList />
     </McpTabs>
   );
 }
