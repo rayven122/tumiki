@@ -22,6 +22,7 @@ import {
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
 import { ImageEditModal } from "./ImageEditModal";
+import { StatusEditModal } from "./StatusEditModal";
 import { useRouter } from "next/navigation";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { makeMcpProxyServerUrl } from "@/utils/url";
@@ -31,7 +32,8 @@ import { type RouterOutputs } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
-import { ServerType } from "@prisma/client";
+import { ServerStatus, ServerType } from "@prisma/client";
+import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -49,6 +51,7 @@ export const UserMcpServerCard = ({
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const [toolsEditModalOpen, setToolsEditModalOpen] = useState(false);
+  const [statusEditModalOpen, setStatusEditModalOpen] = useState(false);
   const router = useRouter();
 
   const { tools } = serverInstance;
@@ -57,8 +60,6 @@ export const UserMcpServerCard = ({
     await copyToClipboard(makeMcpProxyServerUrl(serverInstance.id));
     toast.success("URLをコピーしました");
   };
-
-  const isActive = true;
 
   return (
     <Card className="flex h-full flex-col">
@@ -137,6 +138,10 @@ export const UserMcpServerCard = ({
               <EditIcon className="mr-2 h-4 w-4" />
               ツールを編集
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusEditModalOpen(true)}>
+              <EditIcon className="mr-2 h-4 w-4" />
+              ステータスを変更
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setImageEditModalOpen(true)}
               // TODO: 画像編集モーダーを実装したら有効化する
@@ -170,9 +175,23 @@ export const UserMcpServerCard = ({
             <span className="text-muted-foreground text-sm">ステータス</span>
             <div className="flex items-center space-x-2">
               <div
-                className={`h-2 w-2 rounded-full ${serverInstance.serverStatus === "RUNNING" ? "bg-green-500" : "bg-red-500"}`}
+                className={`h-2 w-2 rounded-full ${
+                  serverInstance.serverStatus === ServerStatus.RUNNING
+                    ? "bg-green-500"
+                    : serverInstance.serverStatus === ServerStatus.STOPPED
+                      ? "bg-gray-500"
+                      : "bg-red-500"
+                }`}
               />
-              <span>{isActive ? "稼働中" : "停止中"}</span>
+              <span>{SERVER_STATUS_LABELS[serverInstance.serverStatus]}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-1 h-6 w-6"
+                onClick={() => setStatusEditModalOpen(true)}
+              >
+                <EditIcon className="h-3 w-3" />
+              </Button>
             </div>
           </div>
         </div>
@@ -264,6 +283,19 @@ export const UserMcpServerCard = ({
           onSuccess={() => {
             router.refresh();
             setToolsEditModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* ステータス編集モーダル */}
+      {statusEditModalOpen && (
+        <StatusEditModal
+          serverInstanceId={serverInstance.id}
+          initialStatus={serverInstance.serverStatus}
+          onOpenChange={setStatusEditModalOpen}
+          onSuccess={() => {
+            router.refresh();
+            setStatusEditModalOpen(false);
           }}
         />
       )}
