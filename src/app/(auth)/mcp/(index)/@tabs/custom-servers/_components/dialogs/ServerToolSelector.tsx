@@ -102,7 +102,12 @@ export function ServerToolSelector({
 
   // 選択されたすべてのツールをオブジェクトとして取得
   const selectedTools = useMemo(() => {
-    const tools: { id: string; name: string; userMcpServerName: string }[] = [];
+    const tools: {
+      id: string;
+      name: string;
+      userMcpServerName: string;
+      description: string;
+    }[] = [];
 
     servers.forEach((server) => {
       const serverTools = selectedToolIds.get(server.id);
@@ -113,6 +118,7 @@ export function ServerToolSelector({
               id: `${server.id}-${tool.id}`,
               name: tool.name,
               userMcpServerName: server.name ?? server.mcpServer.name,
+              description: tool.description,
             });
           }
         });
