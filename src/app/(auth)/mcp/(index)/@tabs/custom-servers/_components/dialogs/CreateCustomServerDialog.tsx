@@ -28,7 +28,7 @@ export function CreateCustomServerDialog({
   onSuccess,
 }: CreateApiKeyDialogProps) {
   const { data: userMcpServers, isLoading } =
-    api.userMcpServerConfig.findAllWithTools.useQuery();
+    api.userMcpServerConfig.findServersWithTools.useQuery({});
 
   const { mutate: addServerInstance, isPending } =
     api.userMcpServerInstance.addCustomServer.useMutation({

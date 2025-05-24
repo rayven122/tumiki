@@ -45,6 +45,7 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
     },
     include: {
       mcpServer: true,
+      tools: true,
     },
   });
 
@@ -56,14 +57,16 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
         name: server.name ?? userMcpServerConfig.mcpServer.name,
         createdAt: userMcpServerConfig.createdAt,
         updatedAt: userMcpServerConfig.updatedAt,
+        tools: userMcpServerConfig.tools,
       };
     });
 
-    const tools = convertToSortOrder(server.toolGroup.toolGroupTools, "tool");
+    const tools = convertToSortOrder(server.toolGroup.toolGroupTools).map(
+      ({ tool, userMcpServerConfigId }) => ({ ...tool, userMcpServerConfigId }),
+    );
     const toolGroups = convertToSortOrder(
       server.mcpServerInstanceToolGroups,
-      "toolGroup",
-    );
+    ).map(({ toolGroup }) => toolGroup);
 
     return {
       ...server,

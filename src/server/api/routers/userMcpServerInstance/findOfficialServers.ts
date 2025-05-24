@@ -47,7 +47,7 @@ export const findOfficialServers = async ({
     },
     include: {
       mcpServer: true,
-      userToolGroupTools: true,
+      tools: true,
     },
   });
 
@@ -57,11 +57,27 @@ export const findOfficialServers = async ({
       throw new Error("mcpServerConfig not found");
     }
 
-    const tools = convertToSortOrder(server.toolGroup.toolGroupTools, "tool");
+    const userMcpServers = [
+      {
+        ...serverConfig.mcpServer,
+        id: serverConfig.id,
+        name: server.name ?? serverConfig.mcpServer.name,
+        createdAt: serverConfig.createdAt,
+        updatedAt: serverConfig.updatedAt,
+        tools: serverConfig.tools,
+      },
+    ];
+
+    const tools = convertToSortOrder(server.toolGroup.toolGroupTools).map(
+      ({ tool, userMcpServerConfigId }) => ({ ...tool, userMcpServerConfigId }),
+    );
+
     return {
       ...server,
-      tools,
       iconPath: server.iconPath ?? serverConfig.mcpServer.iconPath,
+      tools,
+      toolGroups: [],
+      userMcpServers,
     };
   });
 

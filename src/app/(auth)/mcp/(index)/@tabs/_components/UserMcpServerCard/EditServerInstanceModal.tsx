@@ -11,52 +11,43 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import type { ApiKey } from "../ApiKeysTab";
-import { api, type RouterOutputs } from "@/trpc/react";
-import type { ToolId, UserMcpServerId } from "@/schema/ids";
-import { ServerToolSelector } from "./ServerToolSelector";
-import { toast } from "@/utils/client/toast";
 
-type UserMcpServer =
-  RouterOutputs["userMcpServer"]["findAllWithMcpServerTools"][number];
-type EditApiKeyDialogProps = {
+import { api, type RouterOutputs } from "@/trpc/react";
+import type { ToolId, UserMcpServerConfigId } from "@/schema/ids";
+import { ServerToolSelector } from "../../custom-servers/_components/dialogs/ServerToolSelector";
+import { toast } from "@/utils/client/toast";
+import { ServerType } from "@prisma/client";
+
+type ServerInstance =
+  RouterOutputs["userMcpServerInstance"]["findCustomServers"][number];
+
+type EditServerInstanceModalProps = {
   onClose: () => void;
-  apiKey: ApiKey;
+  serverInstance: ServerInstance;
   onSuccess: () => void | Promise<void>;
 };
 
-const getInitialToolIds = (toolGroups: ApiKey["toolGroups"]) => {
-  const map = new Map<UserMcpServerId, Set<ToolId>>();
-  toolGroups.forEach((toolGroup) => {
-    toolGroup.toolGroupTools.forEach((toolGroupTool) => {
-      const toolIds = map.get(toolGroupTool.userMcpServer.id);
-      if (toolIds) {
-        toolIds.add(toolGroupTool.tool.id);
-        map.set(toolGroupTool.userMcpServer.id, toolIds);
-      } else {
-        map.set(
-          toolGroupTool.userMcpServer.id,
-          new Set([toolGroupTool.tool.id]),
-        );
-      }
-    });
+const getInitialToolIds = (tools: ServerInstance["tools"]) => {
+  const map = new Map<UserMcpServerConfigId, Set<ToolId>>();
+
+  tools.forEach((tool) => {
+    map.set(tool.userMcpServerConfigId, new Set([tool.id]));
   });
+
   return map;
 };
 
-// userMcpServer の tools の個数と apiKeyToolGroup の個数が同じ場合は、serverIds にチェックを入れる
+// userMcpServerConfig の tools の個数と ServerInstanceToolGroup の個数が同じ場合は、serverIds にチェックを入れる
 const getInitialServerIds = (
-  toolGroups: ApiKey["toolGroups"],
-  userMcpServers: UserMcpServer[],
+  tools: ServerInstance["tools"],
+  userMcpServers: ServerInstance["userMcpServers"],
 ) => {
-  const serverIdsSet = new Set<UserMcpServerId>();
-  const apiKeyToolGroup = toolGroups.find(({ isEnabled }) => !isEnabled);
-  if (!apiKeyToolGroup) return serverIdsSet;
+  const serverIdsSet = new Set<UserMcpServerConfigId>();
 
   userMcpServers.forEach((userMcpServer) => {
     const toolsCount = userMcpServer.tools.length;
-    const toolGroupToolsCount = apiKeyToolGroup.toolGroupTools.filter(
-      ({ userMcpServer: server }) => server.id === userMcpServer.id,
+    const toolGroupToolsCount = tools.filter(
+      ({ userMcpServerConfigId }) => userMcpServerConfigId === userMcpServer.id,
     ).length;
     if (toolGroupToolsCount >= toolsCount) {
       serverIdsSet.add(userMcpServer.id);
@@ -66,43 +57,56 @@ const getInitialServerIds = (
   return serverIdsSet;
 };
 
-export function EditApiKeyDialog({
+export function EditServerInstanceModal({
   onClose,
-  apiKey,
+  serverInstance,
   onSuccess,
-}: EditApiKeyDialogProps) {
+}: EditServerInstanceModalProps) {
   const { data: userMcpServers, isLoading } =
-    api.userMcpServer.findAllWithMcpServerTools.useQuery();
+    api.userMcpServerConfig.findServersWithTools.useQuery({
+      userMcpServerConfigIds:
+        serverInstance.serverType === ServerType.OFFICIAL
+          ? serverInstance.userMcpServers.map(({ id }) => id)
+          : undefined,
+    });
 
-  const { mutate: updateApiKey, isPending } = api.apiKey.update.useMutation({
-    onSuccess: async (data) => {
-      await onSuccess();
-      onClose();
-      toast.success(`API Keyを更新しました: ${data.name}`);
-    },
-    onError: () => {
-      toast.error("API Keyの更新に失敗しました");
-    },
-  });
+  console.log(serverInstance.userMcpServers);
 
-  const [newKeyName, setNewKeyName] = useState(apiKey.name);
+  const { mutate: updateServerInstance, isPending } =
+    api.userMcpServerInstance.update.useMutation({
+      onSuccess: async () => {
+        await onSuccess();
+        onClose();
+
+        const message =
+          serverInstance.serverType === ServerType.CUSTOM
+            ? `カスタムMCPサーバー ${serverInstance.name} を作成しました`
+            : `MCPサーバー ${serverInstance.name} を更新しました`;
+        toast.success(message);
+      },
+      onError: () => {
+        toast.error("カスタムMCPサーバーの更新に失敗しました");
+      },
+    });
+
+  const [serverName, setServerName] = useState(serverInstance.name);
 
   const [selectedServerIds, setSelectedServerIds] = useState<
-    Set<UserMcpServerId>
-  >(getInitialServerIds(apiKey.toolGroups, userMcpServers ?? []));
+    Set<UserMcpServerConfigId>
+  >(getInitialServerIds(serverInstance.tools, serverInstance.userMcpServers));
   const [selectedToolIds, setSelectedToolIds] = useState<
-    Map<UserMcpServerId, Set<ToolId>>
-  >(getInitialToolIds(apiKey.toolGroups));
+    Map<UserMcpServerConfigId, Set<ToolId>>
+  >(getInitialToolIds(serverInstance.tools));
 
   const isDisabled =
-    !newKeyName.trim() ||
+    !serverName.trim() ||
     (selectedServerIds.size === 0 && selectedToolIds.size === 0) ||
     isLoading;
 
-  const handleEditApiKey = () => {
+  const handleEditServerInstance = () => {
     if (isDisabled) return;
 
-    const serverToolIdsMap: Record<UserMcpServerId, ToolId[]> = {};
+    const serverToolIdsMap: Record<UserMcpServerConfigId, ToolId[]> = {};
 
     selectedToolIds.forEach((toolIds, serverId) => {
       serverToolIdsMap[serverId] = Array.from(toolIds);
@@ -118,19 +122,11 @@ export function EditApiKeyDialog({
       }
     });
 
-    const apiKeyToolGroupId = apiKey.toolGroups.find(
-      ({ isEnabled }) => !isEnabled,
-    )?.id;
-    if (!apiKeyToolGroupId) {
-      toast.error("API Keyの更新に失敗しました");
-      return;
-    }
-
-    updateApiKey({
-      id: apiKey.id,
-      name: newKeyName,
+    updateServerInstance({
+      id: serverInstance.id,
+      name: serverName,
       serverToolIdsMap: serverToolIdsMap,
-      apiKeyToolGroupId: apiKeyToolGroupId,
+      toolGroupId: serverInstance.toolGroupId,
     });
   };
 
@@ -149,8 +145,8 @@ export function EditApiKeyDialog({
             <Input
               id="edit-name"
               placeholder="API Key名"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
+              value={serverName}
+              onChange={(e) => setServerName(e.target.value)}
             />
           </div>
           <ServerToolSelector
@@ -166,7 +162,7 @@ export function EditApiKeyDialog({
           <Button variant="outline" onClick={onClose}>
             キャンセル
           </Button>
-          <Button onClick={handleEditApiKey} disabled={isDisabled}>
+          <Button onClick={handleEditServerInstance} disabled={isDisabled}>
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

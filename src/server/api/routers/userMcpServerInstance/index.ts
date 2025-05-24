@@ -11,8 +11,6 @@ import { findCustomServers } from "./findCustomServers";
 
 import {
   McpServerSchema,
-  ServerStatusSchema,
-  ServerTypeSchema,
   ToolSchema,
   UserMcpServerInstanceSchema,
   UserToolGroupSchema,
@@ -24,28 +22,39 @@ import { updateServerInstance } from "./updateServerInstance";
 import { updateServerInstanceName } from "./updateServerInstanceName";
 import { addOfficialServer } from "./addOfficialServer";
 
-export const FindCustomServersOutput = z.array(
+export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
     z.object({
       id: UserMcpServerInstanceIdSchema,
-      tools: z.array(ToolSchema),
-      toolGroups: z.array(UserToolGroupSchema),
+      tools: z.array(
+        ToolSchema.merge(
+          z.object({
+            id: ToolIdSchema,
+            userMcpServerConfigId: UserMcpServerConfigIdSchema,
+          }),
+        ),
+      ),
+      toolGroups: z.array(
+        UserToolGroupSchema.merge(
+          z.object({
+            id: UserToolGroupIdSchema,
+          }),
+        ),
+      ),
       userMcpServers: z.array(
         McpServerSchema.merge(
           z.object({
             id: UserMcpServerConfigIdSchema,
+            tools: z.array(
+              ToolSchema.merge(
+                z.object({
+                  id: ToolIdSchema,
+                }),
+              ),
+            ),
           }),
         ),
       ),
-    }),
-  ),
-);
-
-export const FindOfficialServersOutput = z.array(
-  UserMcpServerInstanceSchema.merge(
-    z.object({
-      id: UserMcpServerInstanceIdSchema,
-      tools: z.array(ToolSchema),
     }),
   ),
 );
@@ -73,8 +82,6 @@ export const UpdateServerInstanceInput = z.object({
   toolGroupId: UserToolGroupIdSchema,
   name: z.string(),
   description: z.string().default(""),
-  serverStatus: ServerStatusSchema,
-  serverType: ServerTypeSchema,
   serverToolIdsMap: z.record(
     UserMcpServerConfigIdSchema,
     z.array(ToolIdSchema),
@@ -88,10 +95,10 @@ export const UpdateServerInstanceNameInput = z.object({
 
 export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
-    .output(FindCustomServersOutput)
+    .output(FindServersOutput)
     .query(findCustomServers),
   findOfficialServers: protectedProcedure
-    .output(FindOfficialServersOutput)
+    .output(FindServersOutput)
     .query(findOfficialServers),
   addCustomServer: protectedProcedure
     .input(AddCustomServerInput)

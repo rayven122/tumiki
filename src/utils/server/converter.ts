@@ -1,15 +1,8 @@
 /**
- * 交差テーブルの sortOrder を利用してソートを行い、交差テーブルを削除してデータを返す
+ * 交差テーブルの sortOrder を利用してソートを行う
  */
-export const convertToSortOrder = <
-  T extends { sortOrder: number },
-  S extends keyof T,
->(
+export const convertToSortOrder = <T extends { sortOrder: number }>(
   crossTableList: T[],
-  // 交差テーブルのキー
-  key: S,
 ) => {
-  return crossTableList
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((item) => item[key]);
+  return crossTableList.sort((a, b) => a.sortOrder - b.sortOrder);
 };
