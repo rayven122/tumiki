@@ -16,3 +16,6 @@ mv mcp/index.js mcp/slack.mcp-server.js
 
 bun ncc build "node_modules/@line/line-bot-mcp-server/dist/index.js" -o mcp -m
 mv mcp/index.js mcp/line.mcp-server.js
+
+bun ncc build "node_modules/@chatwork/mcp-server/dist/index.js" -o mcp -m
+mv mcp/index.js mcp/chatwork.mcp-server.js

@@ -42,5 +42,15 @@ export const MCP_SERVERS = [
       "DESTINATION_USER_ID"
     ],
     isPublic: true,
+  },
+  {
+    name: "Chatwork MCP",
+    iconPath: "/logos/chatwork.svg",
+    command: "npx",
+    args: ["mcp/chatwork.mcp-server.js"],
+    envVars: [
+      "CHATWORK_API_TOKEN",
+    ],
+    isPublic: true,
   }
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
