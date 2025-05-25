@@ -21,7 +21,7 @@ export const getMcpServerTools = async (
   try {
     // トランスポートの設定
     const transport = new StdioClientTransport({
-      command: server.command === "node" ? process.execPath : server.command,
+      command: server.command === "node" || server.command === "npx" ? process.execPath : server.command,
       args: server.args,
       env: envVars,
     });
