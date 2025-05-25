@@ -20,4 +20,16 @@ export const MCP_SERVERS = [
     envVars: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
     isPublic: true,
   },
+  {
+    name: "Slack MCP",
+    iconPath: "/logos/slack.svg",
+    command: "node",
+    args: ["mcp/slack.mcp-server.js"],
+    envVars: [
+      "SLACK_BOT_TOKEN",
+      "SLACK_TEAM_ID",
+      "SLACK_CHANNEL_IDS"
+    ],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];

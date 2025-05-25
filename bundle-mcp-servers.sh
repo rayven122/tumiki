@@ -10,3 +10,6 @@ mv mcp/index.js mcp/notion.mcp-server.js
 
 bun ncc build "node_modules/@modelcontextprotocol/server-github/dist/index.js" -o mcp -m
 mv mcp/index.js mcp/github.mcp-server.js
+
+bun ncc build "node_modules/@modelcontextprotocol/server-slack/dist/index.js" -o mcp -m
+mv mcp/index.js mcp/slack.mcp-server.js
