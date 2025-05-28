@@ -1,6 +1,23 @@
-version: "3.8"
+# For chat feature
 services:
   redis:
     image: redis:latest
     ports:
       - "6379:6379"
+  db:
+    image: postgres:alpine3.18
+    container_name: db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ai-chatbot
+      TZ: "Asia/Tokyo"
+    volumes:
+      - db_vol:/var/lib/postgresql/data
+      - ./tmp/db_local:/app
+
+volumes:
+  db_vol:
