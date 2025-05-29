@@ -5,12 +5,21 @@ import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { db } from "../db";
 import "next-auth/jwt";
+import type { UserType } from "@/app/(auth)/auth";
 
 declare module "next-auth" {
   interface Session {
     user: DefaultSession["user"] & {
+      id: string;
       role: Role;
+      type: UserType;
     };
+  }
+
+  interface User {
+    id?: string;
+    email?: string | null;
+    type: UserType;
   }
 }
 
@@ -19,6 +28,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    type: UserType;
   }
 }
 
