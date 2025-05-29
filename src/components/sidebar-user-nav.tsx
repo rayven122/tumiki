@@ -52,13 +52,13 @@ export function SidebarUserNav({ user }: { user: User }) {
                 data-testid="user-nav-button"
                 className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10"
               >
-                <Image
+                {/* <Image
                   src={`https://avatar.vercel.sh/${user.email}`}
                   alt={user.email ?? "User Avatar"}
                   width={24}
                   height={24}
                   className="rounded-full"
-                />
+                /> */}
                 <span data-testid="user-email" className="truncate">
                   {isGuest ? "Guest" : user?.email}
                 </span>
