@@ -19,6 +19,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "db:chat:generate": "drizzle-kit generate",
+    "db:chat:migrate": "npx tsx src/lib/db/migrate.ts",
+    "db:chat:studio": "drizzle-kit studio",
     "postinstall": "bun db:generate && chmod +x ./bundle-mcp-servers.sh && ./bundle-mcp-servers.sh"
   },
   "dependencies": {
@@ -123,7 +126,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@tailwindcss/postcss": "^4.0.15",
+    "@tailwindcss/postcss": "^4.1.8",
     "@tailwindcss/typography": "^0.5.15",
     "@types/d3-scale": "^4.0.8",
     "@types/node": "^22.15.24",
