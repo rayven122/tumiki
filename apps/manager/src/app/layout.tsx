@@ -7,8 +7,8 @@ import { ClientProvider } from "./_components/ClientProvider";
 import { Header } from "./_components/Header";
 
 export const metadata: Metadata = {
-  title: "MCP Server Manager",
-  description: "MCP Server Manager",
+  title: "Tumiki",
+  description: "Tumiki MCP Server Manager",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

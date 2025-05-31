@@ -54,12 +54,9 @@ importers:
 
   .:
     devDependencies:
-      '@tumiki/prettier-config':
-        specifier: workspace:*
-        version: link:tooling/prettier
-      prettier:
+      tailwindcss:
         specifier: 'catalog:'
-        version: 3.5.3
+        version: 3.4.17
       turbo:
         specifier: ^2.5.1
         version: 2.5.4
@@ -311,6 +308,9 @@ importers:
         specifier: ^8.31.1
         version: 8.33.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.28.0
+        version: 9.28.0
       '@tumiki/prettier-config':
         specifier: workspace:*
         version: link:../prettier
