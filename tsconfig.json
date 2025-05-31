@@ -27,8 +27,8 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@zod": ["./prisma/generated/zod/index.ts"]
+      "@/*": ["apps/manager/src/*"],
+      "@zod": ["apps/manager/prisma/generated/zod/index.ts"]
     }
   },
   "include": [
@@ -37,8 +37,12 @@
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
-    ".next/types/**/*.ts"
+    "apps/manager/.next/types/**/*.ts"
   ],
   "types": ["web", "bun-types"],
-  "exclude": ["node_modules", "mcp", "prisma"]
+  "exclude": [
+    "apps/manager/node_modules",
+    "apps/maapps/manager/prismamcp",
+    "prisma"
+  ]
 }
