@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure } from "apps/manager/src/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { findAllWithTools } from "./findAllWithTools";
 
 export const mcpServerRouter = createTRPCRouter({

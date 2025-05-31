@@ -1,14 +1,18 @@
-import { createTRPCRouter, protectedProcedure } from "apps/manager/src/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 
 import { updateServerConfig } from "./updateServerConfig";
-import { McpServerSchema, ToolSchema, UserMcpServerConfigSchema } from "apps/manager/prisma/generated/zod";
+import {
+  McpServerSchema,
+  ToolSchema,
+  UserMcpServerConfigSchema,
+} from "apps/manager/prisma/generated/zod";
 import {
   McpServerIdSchema,
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
   UserMcpServerInstanceIdSchema,
-} from "apps/manager/src/schema/ids";
+} from "@/schema/ids";
 import { findServersWithTools } from "./findServersWithTools";
 
 export const UpdateServerConfigInput = z.object({

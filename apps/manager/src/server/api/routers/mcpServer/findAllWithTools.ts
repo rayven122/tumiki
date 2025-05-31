@@ -1,4 +1,4 @@
-import { db } from "apps/manager/src/server/db";
+import { db } from "@/server/db";
 
 export const findAllWithTools = async () => {
   const mcpServers = await db.mcpServer.findMany({

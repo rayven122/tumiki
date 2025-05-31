@@ -1,8 +1,8 @@
 import { ServerType } from "@prisma/client";
 import type { ProtectedContext } from "../../trpc";
 
-import { convertToSortOrder } from "apps/manager/src/utils/server/converter";
-import type { UserMcpServerConfigId } from "apps/manager/src/schema/ids";
+import { convertToSortOrder } from "@/utils/server/converter";
+import type { UserMcpServerConfigId } from "@/schema/ids";
 
 type FindOfficialServersInput = {
   ctx: ProtectedContext;

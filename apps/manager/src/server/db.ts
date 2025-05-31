@@ -3,7 +3,7 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 import ws from "ws";
 
-import { env } from "apps/manager/src/env";
+import { env } from "@/env";
 
 import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 

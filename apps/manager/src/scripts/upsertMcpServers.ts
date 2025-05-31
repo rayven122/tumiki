@@ -1,5 +1,5 @@
-import { MCP_SERVERS } from "apps/manager/src/constants/mcpServers";
-import { db } from "apps/manager/src/server/db";
+import { MCP_SERVERS } from "@/constants/mcpServers";
+import { db } from "@/server/db";
 
 /**
  * MCP サーバーを登録する

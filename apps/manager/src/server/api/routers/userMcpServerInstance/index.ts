@@ -1,4 +1,4 @@
-import { createTRPCRouter, protectedProcedure } from "apps/manager/src/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { addCustomServer } from "./addCustomServer";
 import {
@@ -6,7 +6,7 @@ import {
   UserToolGroupIdSchema,
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
-} from "apps/manager/src/schema/ids";
+} from "@/schema/ids";
 import { findCustomServers } from "./findCustomServers";
 
 import {

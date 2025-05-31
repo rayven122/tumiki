@@ -1,5 +1,5 @@
-import { postRouter } from "apps/manager/src/server/api/routers/post";
-import { createCallerFactory, createTRPCRouter } from "apps/manager/src/server/api/trpc";
+import { postRouter } from "@/server/api/routers/post";
+import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { mcpServerRouter } from "./routers/mcpServer";
 import { userMcpServerConfigRouter } from "./routers/userMcpServerConfig";
 import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
