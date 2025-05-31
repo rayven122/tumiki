@@ -5,8 +5,8 @@ import { UserMcpServerInstanceToolGroupWhereInputSchema } from '../inputTypeSche
 import { UserMcpServerInstanceToolGroupOrderByWithRelationInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupOrderByWithRelationInputSchema'
 import { UserMcpServerInstanceToolGroupWhereUniqueInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupWhereUniqueInputSchema'
 import { UserMcpServerInstanceToolGroupScalarFieldEnumSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupScalarFieldEnumSchema'
-import { UserMcpServerInstanceArgsSchema } from "./UserMcpServerInstanceArgsSchema"
-import { UserToolGroupArgsSchema } from "./UserToolGroupArgsSchema"
+import { UserMcpServerInstanceArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceArgsSchema"
+import { UserToolGroupArgsSchema } from "../outputTypeSchemas/UserToolGroupArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

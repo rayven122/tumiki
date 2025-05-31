@@ -5,10 +5,10 @@ import { ToolWhereInputSchema } from '../inputTypeSchemas/ToolWhereInputSchema'
 import { ToolOrderByWithRelationInputSchema } from '../inputTypeSchemas/ToolOrderByWithRelationInputSchema'
 import { ToolWhereUniqueInputSchema } from '../inputTypeSchemas/ToolWhereUniqueInputSchema'
 import { ToolScalarFieldEnumSchema } from '../inputTypeSchemas/ToolScalarFieldEnumSchema'
-import { McpServerArgsSchema } from "./McpServerArgsSchema"
-import { UserMcpServerConfigFindManyArgsSchema } from "./UserMcpServerConfigFindManyArgsSchema"
-import { UserToolGroupToolFindManyArgsSchema } from "./UserToolGroupToolFindManyArgsSchema"
-import { ToolCountOutputTypeArgsSchema } from "./ToolCountOutputTypeArgsSchema"
+import { McpServerArgsSchema } from "../outputTypeSchemas/McpServerArgsSchema"
+import { UserMcpServerConfigFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigFindManyArgsSchema"
+import { UserToolGroupToolFindManyArgsSchema } from "../outputTypeSchemas/UserToolGroupToolFindManyArgsSchema"
+import { ToolCountOutputTypeArgsSchema } from "../outputTypeSchemas/ToolCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

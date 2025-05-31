@@ -4,9 +4,9 @@ import { ResourceAccessControlIncludeSchema } from '../inputTypeSchemas/Resource
 import { ResourceAccessControlUpdateInputSchema } from '../inputTypeSchemas/ResourceAccessControlUpdateInputSchema'
 import { ResourceAccessControlUncheckedUpdateInputSchema } from '../inputTypeSchemas/ResourceAccessControlUncheckedUpdateInputSchema'
 import { ResourceAccessControlWhereUniqueInputSchema } from '../inputTypeSchemas/ResourceAccessControlWhereUniqueInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { OrganizationMemberArgsSchema } from "./OrganizationMemberArgsSchema"
-import { OrganizationGroupArgsSchema } from "./OrganizationGroupArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { OrganizationMemberArgsSchema } from "../outputTypeSchemas/OrganizationMemberArgsSchema"
+import { OrganizationGroupArgsSchema } from "../outputTypeSchemas/OrganizationGroupArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

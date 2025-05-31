@@ -4,8 +4,8 @@ import { UserMcpServerInstanceToolGroupIncludeSchema } from '../inputTypeSchemas
 import { UserMcpServerInstanceToolGroupUpdateInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupUpdateInputSchema'
 import { UserMcpServerInstanceToolGroupUncheckedUpdateInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupUncheckedUpdateInputSchema'
 import { UserMcpServerInstanceToolGroupWhereUniqueInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupWhereUniqueInputSchema'
-import { UserMcpServerInstanceArgsSchema } from "./UserMcpServerInstanceArgsSchema"
-import { UserToolGroupArgsSchema } from "./UserToolGroupArgsSchema"
+import { UserMcpServerInstanceArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceArgsSchema"
+import { UserToolGroupArgsSchema } from "../outputTypeSchemas/UserToolGroupArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

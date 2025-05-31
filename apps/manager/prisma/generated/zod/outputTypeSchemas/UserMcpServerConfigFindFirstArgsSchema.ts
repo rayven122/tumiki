@@ -5,12 +5,12 @@ import { UserMcpServerConfigWhereInputSchema } from '../inputTypeSchemas/UserMcp
 import { UserMcpServerConfigOrderByWithRelationInputSchema } from '../inputTypeSchemas/UserMcpServerConfigOrderByWithRelationInputSchema'
 import { UserMcpServerConfigWhereUniqueInputSchema } from '../inputTypeSchemas/UserMcpServerConfigWhereUniqueInputSchema'
 import { UserMcpServerConfigScalarFieldEnumSchema } from '../inputTypeSchemas/UserMcpServerConfigScalarFieldEnumSchema'
-import { ToolFindManyArgsSchema } from "./ToolFindManyArgsSchema"
-import { UserToolGroupToolFindManyArgsSchema } from "./UserToolGroupToolFindManyArgsSchema"
-import { McpServerArgsSchema } from "./McpServerArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserMcpServerConfigCountOutputTypeArgsSchema } from "./UserMcpServerConfigCountOutputTypeArgsSchema"
+import { ToolFindManyArgsSchema } from "../outputTypeSchemas/ToolFindManyArgsSchema"
+import { UserToolGroupToolFindManyArgsSchema } from "../outputTypeSchemas/UserToolGroupToolFindManyArgsSchema"
+import { McpServerArgsSchema } from "../outputTypeSchemas/McpServerArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserMcpServerConfigCountOutputTypeArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { SessionIncludeSchema } from '../inputTypeSchemas/SessionIncludeSchema'
 import { SessionCreateInputSchema } from '../inputTypeSchemas/SessionCreateInputSchema'
 import { SessionUncheckedCreateInputSchema } from '../inputTypeSchemas/SessionUncheckedCreateInputSchema'
-import { UserArgsSchema } from "./UserArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

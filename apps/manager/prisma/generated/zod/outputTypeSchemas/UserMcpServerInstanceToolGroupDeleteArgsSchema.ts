@@ -2,8 +2,8 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { UserMcpServerInstanceToolGroupIncludeSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupIncludeSchema'
 import { UserMcpServerInstanceToolGroupWhereUniqueInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceToolGroupWhereUniqueInputSchema'
-import { UserMcpServerInstanceArgsSchema } from "./UserMcpServerInstanceArgsSchema"
-import { UserToolGroupArgsSchema } from "./UserToolGroupArgsSchema"
+import { UserMcpServerInstanceArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceArgsSchema"
+import { UserToolGroupArgsSchema } from "../outputTypeSchemas/UserToolGroupArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

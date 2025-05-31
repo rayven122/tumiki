@@ -6,7 +6,7 @@ import { RolePermissionCreateInputSchema } from '../inputTypeSchemas/RolePermiss
 import { RolePermissionUncheckedCreateInputSchema } from '../inputTypeSchemas/RolePermissionUncheckedCreateInputSchema'
 import { RolePermissionUpdateInputSchema } from '../inputTypeSchemas/RolePermissionUpdateInputSchema'
 import { RolePermissionUncheckedUpdateInputSchema } from '../inputTypeSchemas/RolePermissionUncheckedUpdateInputSchema'
-import { OrganizationRoleArgsSchema } from "./OrganizationRoleArgsSchema"
+import { OrganizationRoleArgsSchema } from "../outputTypeSchemas/OrganizationRoleArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

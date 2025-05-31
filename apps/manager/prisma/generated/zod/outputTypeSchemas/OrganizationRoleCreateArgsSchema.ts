@@ -3,11 +3,11 @@ import type { Prisma } from '@prisma/client';
 import { OrganizationRoleIncludeSchema } from '../inputTypeSchemas/OrganizationRoleIncludeSchema'
 import { OrganizationRoleCreateInputSchema } from '../inputTypeSchemas/OrganizationRoleCreateInputSchema'
 import { OrganizationRoleUncheckedCreateInputSchema } from '../inputTypeSchemas/OrganizationRoleUncheckedCreateInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { RolePermissionFindManyArgsSchema } from "./RolePermissionFindManyArgsSchema"
-import { OrganizationMemberFindManyArgsSchema } from "./OrganizationMemberFindManyArgsSchema"
-import { OrganizationGroupFindManyArgsSchema } from "./OrganizationGroupFindManyArgsSchema"
-import { OrganizationRoleCountOutputTypeArgsSchema } from "./OrganizationRoleCountOutputTypeArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { RolePermissionFindManyArgsSchema } from "../outputTypeSchemas/RolePermissionFindManyArgsSchema"
+import { OrganizationMemberFindManyArgsSchema } from "../outputTypeSchemas/OrganizationMemberFindManyArgsSchema"
+import { OrganizationGroupFindManyArgsSchema } from "../outputTypeSchemas/OrganizationGroupFindManyArgsSchema"
+import { OrganizationRoleCountOutputTypeArgsSchema } from "../outputTypeSchemas/OrganizationRoleCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

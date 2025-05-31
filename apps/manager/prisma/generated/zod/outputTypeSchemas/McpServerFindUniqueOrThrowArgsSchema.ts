@@ -2,9 +2,9 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { McpServerIncludeSchema } from '../inputTypeSchemas/McpServerIncludeSchema'
 import { McpServerWhereUniqueInputSchema } from '../inputTypeSchemas/McpServerWhereUniqueInputSchema'
-import { ToolFindManyArgsSchema } from "./ToolFindManyArgsSchema"
-import { UserMcpServerConfigFindManyArgsSchema } from "./UserMcpServerConfigFindManyArgsSchema"
-import { McpServerCountOutputTypeArgsSchema } from "./McpServerCountOutputTypeArgsSchema"
+import { ToolFindManyArgsSchema } from "../outputTypeSchemas/ToolFindManyArgsSchema"
+import { UserMcpServerConfigFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigFindManyArgsSchema"
+import { McpServerCountOutputTypeArgsSchema } from "../outputTypeSchemas/McpServerCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

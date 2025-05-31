@@ -4,11 +4,11 @@ import { OrganizationGroupIncludeSchema } from '../inputTypeSchemas/Organization
 import { OrganizationGroupUpdateInputSchema } from '../inputTypeSchemas/OrganizationGroupUpdateInputSchema'
 import { OrganizationGroupUncheckedUpdateInputSchema } from '../inputTypeSchemas/OrganizationGroupUncheckedUpdateInputSchema'
 import { OrganizationGroupWhereUniqueInputSchema } from '../inputTypeSchemas/OrganizationGroupWhereUniqueInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { OrganizationMemberFindManyArgsSchema } from "./OrganizationMemberFindManyArgsSchema"
-import { OrganizationRoleFindManyArgsSchema } from "./OrganizationRoleFindManyArgsSchema"
-import { ResourceAccessControlFindManyArgsSchema } from "./ResourceAccessControlFindManyArgsSchema"
-import { OrganizationGroupCountOutputTypeArgsSchema } from "./OrganizationGroupCountOutputTypeArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { OrganizationMemberFindManyArgsSchema } from "../outputTypeSchemas/OrganizationMemberFindManyArgsSchema"
+import { OrganizationRoleFindManyArgsSchema } from "../outputTypeSchemas/OrganizationRoleFindManyArgsSchema"
+import { ResourceAccessControlFindManyArgsSchema } from "../outputTypeSchemas/ResourceAccessControlFindManyArgsSchema"
+import { OrganizationGroupCountOutputTypeArgsSchema } from "../outputTypeSchemas/OrganizationGroupCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 
