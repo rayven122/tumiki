@@ -1,5 +1,5 @@
 {
-  "name": "tumiki-monorepo",
+  "name": "tumiki",
   "private": true,
   "version": "0.1.0",
   "engines": {
@@ -25,8 +25,7 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "@tumiki/prettier-config": "workspace:*",
-    "prettier": "catalog:",
+    "tailwindcss": "catalog:",
     "turbo": "^2.5.1",
     "typescript": "catalog:"
   }
