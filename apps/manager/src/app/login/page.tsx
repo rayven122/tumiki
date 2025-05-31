@@ -1,4 +1,4 @@
-import { auth } from "apps/manager/src/server/auth";
+import { auth } from "@/server/auth";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./_components/LoginForm";

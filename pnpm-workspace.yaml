@@ -18,6 +18,7 @@ catalog:
 
   # Tanstack & tRPC
   "@tanstack/react-query": ^5.69.0
+  "@trpc/react-query": ^11.1.0
   "@trpc/client": ^11.1.0
   "@trpc/tanstack-react-query": ^11.1.0
   "@trpc/server": ^11.1.0

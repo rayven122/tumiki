@@ -4,7 +4,7 @@ import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
-} from "apps/manager/src/server/api/trpc";
+} from "@/server/api/trpc";
 
 export const postRouter = createTRPCRouter({
   hello: publicProcedure

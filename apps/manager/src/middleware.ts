@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { URL_HEADER_KEY } from "apps/manager/src/constants/url";
+import { URL_HEADER_KEY } from "./constants/url";
 
 export function middleware(request: Request) {
   const requestHeaders = new Headers(request.headers);

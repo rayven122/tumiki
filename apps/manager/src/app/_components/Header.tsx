@@ -1,14 +1,14 @@
 "use client";
 
-import { Button } from "apps/manager/src/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "apps/manager/src/components/ui/dropdown-menu";
-import { cn } from "apps/manager/src/lib/utils";
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { Settings, User } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";

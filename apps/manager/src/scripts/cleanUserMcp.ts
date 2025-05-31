@@ -1,4 +1,4 @@
-import { db } from "apps/manager/src/server/db";
+import { db } from "@/server/db";
 
 /**
  * MCPサーバーとツールを一括で登録する

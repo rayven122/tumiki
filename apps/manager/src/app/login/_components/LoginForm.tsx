@@ -2,8 +2,8 @@
 
 import type React from "react";
 
-import { Alert, AlertDescription } from "apps/manager/src/components/ui/alert";
-import { Button } from "apps/manager/src/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,11 +11,11 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "apps/manager/src/components/ui/card";
-import { Checkbox } from "apps/manager/src/components/ui/checkbox";
-import { Input } from "apps/manager/src/components/ui/input";
-import { Label } from "apps/manager/src/components/ui/label";
-import { Separator } from "apps/manager/src/components/ui/separator";
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
@@ -98,7 +98,7 @@ export function LoginForm() {
             />
             <Label
               htmlFor="remember"
-              className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               ログイン状態を保持する
             </Label>

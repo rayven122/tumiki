@@ -11,8 +11,8 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "apps/manager/src/server/auth";
-import { db } from "apps/manager/src/server/db";
+import { auth } from "@/server/auth";
+import { db } from "@/server/db";
 
 /**
  * 1. CONTEXT

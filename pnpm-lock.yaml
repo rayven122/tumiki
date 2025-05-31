@@ -12,6 +12,9 @@ catalogs:
     '@trpc/client':
       specifier: ^11.1.0
       version: 11.1.4
+    '@trpc/react-query':
+      specifier: ^11.1.0
+      version: 11.1.4
     '@trpc/server':
       specifier: ^11.1.0
       version: 11.1.4
@@ -144,6 +147,9 @@ importers:
       '@trpc/client':
         specifier: 'catalog:'
         version: 11.1.4(@trpc/server@11.1.4(typescript@5.8.3))(typescript@5.8.3)
+      '@trpc/react-query':
+        specifier: 'catalog:'
+        version: 11.1.4(@tanstack/react-query@5.79.0(react@19.0.0))(@trpc/client@11.1.4(@trpc/server@11.1.4(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.4(typescript@5.8.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.3)
       '@trpc/server':
         specifier: 'catalog:'
         version: 11.1.4(typescript@5.8.3)
@@ -1847,6 +1853,16 @@ packages:
     resolution: {integrity: sha512-QDaIdwhZlHKMhDAr5m4dJNAYkX4ydo63Up0M01mGcdpnOOmGlvGMRWzdVSLIvGc1JasPSvC15RsgrjMzXpElzw==}
     peerDependencies:
       '@trpc/server': 11.1.4
+      typescript: '>=5.7.2'
+
+  '@trpc/react-query@11.1.4':
+    resolution: {integrity: sha512-vMwE3Jif7rJcrqWsQ1aKn43xpmwastYPPftMM5CgdcmF9IuvigH/NTLdWRfSzKtbXmNE6wLI45gU1R77uF86yA==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.67.1
+      '@trpc/client': 11.1.4
+      '@trpc/server': 11.1.4
+      react: '>=18.2.0'
+      react-dom: '>=18.2.0'
       typescript: '>=5.7.2'
 
   '@trpc/server@11.1.4':
@@ -5812,6 +5828,15 @@ snapshots:
   '@trpc/client@11.1.4(@trpc/server@11.1.4(typescript@5.8.3))(typescript@5.8.3)':
     dependencies:
       '@trpc/server': 11.1.4(typescript@5.8.3)
+      typescript: 5.8.3
+
+  '@trpc/react-query@11.1.4(@tanstack/react-query@5.79.0(react@19.0.0))(@trpc/client@11.1.4(@trpc/server@11.1.4(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.4(typescript@5.8.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.3)':
+    dependencies:
+      '@tanstack/react-query': 5.79.0(react@19.0.0)
+      '@trpc/client': 11.1.4(@trpc/server@11.1.4(typescript@5.8.3))(typescript@5.8.3)
+      '@trpc/server': 11.1.4(typescript@5.8.3)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
       typescript: 5.8.3
 
   '@trpc/server@11.1.4(typescript@5.8.3)':

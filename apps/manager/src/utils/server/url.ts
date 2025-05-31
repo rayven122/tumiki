@@ -1,6 +1,6 @@
 import "server-only";
 import { headers } from "next/headers";
-import { URL_HEADER_KEY } from "apps/manager/src/constants/url";
+import { URL_HEADER_KEY } from "@/constants/url";
 
 export const getCurrentUrl = async () => {
   const headerParams = await headers();

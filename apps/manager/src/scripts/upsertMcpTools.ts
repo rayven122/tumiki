@@ -1,5 +1,5 @@
-import { db } from "apps/manager/src/server/db";
-import { getMcpServerTools } from "apps/manager/src/utils/server/getMcpServerTools";
+import { db } from "@/server/db";
+import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
 
 /**
  * MCP サーバーからツールを取得してデータベースに書き込む
