@@ -6,12 +6,12 @@ import { OrganizationMemberCreateInputSchema } from '../inputTypeSchemas/Organiz
 import { OrganizationMemberUncheckedCreateInputSchema } from '../inputTypeSchemas/OrganizationMemberUncheckedCreateInputSchema'
 import { OrganizationMemberUpdateInputSchema } from '../inputTypeSchemas/OrganizationMemberUpdateInputSchema'
 import { OrganizationMemberUncheckedUpdateInputSchema } from '../inputTypeSchemas/OrganizationMemberUncheckedUpdateInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
-import { OrganizationRoleFindManyArgsSchema } from "./OrganizationRoleFindManyArgsSchema"
-import { OrganizationGroupFindManyArgsSchema } from "./OrganizationGroupFindManyArgsSchema"
-import { ResourceAccessControlFindManyArgsSchema } from "./ResourceAccessControlFindManyArgsSchema"
-import { OrganizationMemberCountOutputTypeArgsSchema } from "./OrganizationMemberCountOutputTypeArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
+import { OrganizationRoleFindManyArgsSchema } from "../outputTypeSchemas/OrganizationRoleFindManyArgsSchema"
+import { OrganizationGroupFindManyArgsSchema } from "../outputTypeSchemas/OrganizationGroupFindManyArgsSchema"
+import { ResourceAccessControlFindManyArgsSchema } from "../outputTypeSchemas/ResourceAccessControlFindManyArgsSchema"
+import { OrganizationMemberCountOutputTypeArgsSchema } from "../outputTypeSchemas/OrganizationMemberCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

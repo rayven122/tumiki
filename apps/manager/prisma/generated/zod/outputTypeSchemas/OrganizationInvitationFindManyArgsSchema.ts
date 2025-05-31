@@ -5,8 +5,8 @@ import { OrganizationInvitationWhereInputSchema } from '../inputTypeSchemas/Orga
 import { OrganizationInvitationOrderByWithRelationInputSchema } from '../inputTypeSchemas/OrganizationInvitationOrderByWithRelationInputSchema'
 import { OrganizationInvitationWhereUniqueInputSchema } from '../inputTypeSchemas/OrganizationInvitationWhereUniqueInputSchema'
 import { OrganizationInvitationScalarFieldEnumSchema } from '../inputTypeSchemas/OrganizationInvitationScalarFieldEnumSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

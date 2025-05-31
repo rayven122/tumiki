@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { RolePermissionIncludeSchema } from '../inputTypeSchemas/RolePermissionIncludeSchema'
 import { RolePermissionWhereUniqueInputSchema } from '../inputTypeSchemas/RolePermissionWhereUniqueInputSchema'
-import { OrganizationRoleArgsSchema } from "./OrganizationRoleArgsSchema"
+import { OrganizationRoleArgsSchema } from "../outputTypeSchemas/OrganizationRoleArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

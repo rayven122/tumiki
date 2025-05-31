@@ -6,16 +6,16 @@ import { OrganizationCreateInputSchema } from '../inputTypeSchemas/OrganizationC
 import { OrganizationUncheckedCreateInputSchema } from '../inputTypeSchemas/OrganizationUncheckedCreateInputSchema'
 import { OrganizationUpdateInputSchema } from '../inputTypeSchemas/OrganizationUpdateInputSchema'
 import { OrganizationUncheckedUpdateInputSchema } from '../inputTypeSchemas/OrganizationUncheckedUpdateInputSchema'
-import { UserArgsSchema } from "./UserArgsSchema"
-import { OrganizationMemberFindManyArgsSchema } from "./OrganizationMemberFindManyArgsSchema"
-import { OrganizationGroupFindManyArgsSchema } from "./OrganizationGroupFindManyArgsSchema"
-import { OrganizationRoleFindManyArgsSchema } from "./OrganizationRoleFindManyArgsSchema"
-import { ResourceAccessControlFindManyArgsSchema } from "./ResourceAccessControlFindManyArgsSchema"
-import { OrganizationInvitationFindManyArgsSchema } from "./OrganizationInvitationFindManyArgsSchema"
-import { UserToolGroupFindManyArgsSchema } from "./UserToolGroupFindManyArgsSchema"
-import { UserMcpServerConfigFindManyArgsSchema } from "./UserMcpServerConfigFindManyArgsSchema"
-import { UserMcpServerInstanceFindManyArgsSchema } from "./UserMcpServerInstanceFindManyArgsSchema"
-import { OrganizationCountOutputTypeArgsSchema } from "./OrganizationCountOutputTypeArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
+import { OrganizationMemberFindManyArgsSchema } from "../outputTypeSchemas/OrganizationMemberFindManyArgsSchema"
+import { OrganizationGroupFindManyArgsSchema } from "../outputTypeSchemas/OrganizationGroupFindManyArgsSchema"
+import { OrganizationRoleFindManyArgsSchema } from "../outputTypeSchemas/OrganizationRoleFindManyArgsSchema"
+import { ResourceAccessControlFindManyArgsSchema } from "../outputTypeSchemas/ResourceAccessControlFindManyArgsSchema"
+import { OrganizationInvitationFindManyArgsSchema } from "../outputTypeSchemas/OrganizationInvitationFindManyArgsSchema"
+import { UserToolGroupFindManyArgsSchema } from "../outputTypeSchemas/UserToolGroupFindManyArgsSchema"
+import { UserMcpServerConfigFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigFindManyArgsSchema"
+import { UserMcpServerInstanceFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceFindManyArgsSchema"
+import { OrganizationCountOutputTypeArgsSchema } from "../outputTypeSchemas/OrganizationCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

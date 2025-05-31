@@ -5,9 +5,9 @@ import { ResourceAccessControlWhereInputSchema } from '../inputTypeSchemas/Resou
 import { ResourceAccessControlOrderByWithRelationInputSchema } from '../inputTypeSchemas/ResourceAccessControlOrderByWithRelationInputSchema'
 import { ResourceAccessControlWhereUniqueInputSchema } from '../inputTypeSchemas/ResourceAccessControlWhereUniqueInputSchema'
 import { ResourceAccessControlScalarFieldEnumSchema } from '../inputTypeSchemas/ResourceAccessControlScalarFieldEnumSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { OrganizationMemberArgsSchema } from "./OrganizationMemberArgsSchema"
-import { OrganizationGroupArgsSchema } from "./OrganizationGroupArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { OrganizationMemberArgsSchema } from "../outputTypeSchemas/OrganizationMemberArgsSchema"
+import { OrganizationGroupArgsSchema } from "../outputTypeSchemas/OrganizationGroupArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

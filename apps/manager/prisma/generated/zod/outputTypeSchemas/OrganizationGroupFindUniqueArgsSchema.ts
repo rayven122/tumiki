@@ -2,11 +2,11 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { OrganizationGroupIncludeSchema } from '../inputTypeSchemas/OrganizationGroupIncludeSchema'
 import { OrganizationGroupWhereUniqueInputSchema } from '../inputTypeSchemas/OrganizationGroupWhereUniqueInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { OrganizationMemberFindManyArgsSchema } from "./OrganizationMemberFindManyArgsSchema"
-import { OrganizationRoleFindManyArgsSchema } from "./OrganizationRoleFindManyArgsSchema"
-import { ResourceAccessControlFindManyArgsSchema } from "./ResourceAccessControlFindManyArgsSchema"
-import { OrganizationGroupCountOutputTypeArgsSchema } from "./OrganizationGroupCountOutputTypeArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { OrganizationMemberFindManyArgsSchema } from "../outputTypeSchemas/OrganizationMemberFindManyArgsSchema"
+import { OrganizationRoleFindManyArgsSchema } from "../outputTypeSchemas/OrganizationRoleFindManyArgsSchema"
+import { ResourceAccessControlFindManyArgsSchema } from "../outputTypeSchemas/ResourceAccessControlFindManyArgsSchema"
+import { OrganizationGroupCountOutputTypeArgsSchema } from "../outputTypeSchemas/OrganizationGroupCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

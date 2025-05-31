@@ -6,7 +6,7 @@ import { AccountCreateInputSchema } from '../inputTypeSchemas/AccountCreateInput
 import { AccountUncheckedCreateInputSchema } from '../inputTypeSchemas/AccountUncheckedCreateInputSchema'
 import { AccountUpdateInputSchema } from '../inputTypeSchemas/AccountUpdateInputSchema'
 import { AccountUncheckedUpdateInputSchema } from '../inputTypeSchemas/AccountUncheckedUpdateInputSchema'
-import { UserArgsSchema } from "./UserArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

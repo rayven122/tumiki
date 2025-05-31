@@ -4,11 +4,11 @@ import { UserMcpServerInstanceIncludeSchema } from '../inputTypeSchemas/UserMcpS
 import { UserMcpServerInstanceUpdateInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceUpdateInputSchema'
 import { UserMcpServerInstanceUncheckedUpdateInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceUncheckedUpdateInputSchema'
 import { UserMcpServerInstanceWhereUniqueInputSchema } from '../inputTypeSchemas/UserMcpServerInstanceWhereUniqueInputSchema'
-import { UserMcpServerInstanceToolGroupFindManyArgsSchema } from "./UserMcpServerInstanceToolGroupFindManyArgsSchema"
-import { UserToolGroupArgsSchema } from "./UserToolGroupArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserMcpServerInstanceCountOutputTypeArgsSchema } from "./UserMcpServerInstanceCountOutputTypeArgsSchema"
+import { UserMcpServerInstanceToolGroupFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceToolGroupFindManyArgsSchema"
+import { UserToolGroupArgsSchema } from "../outputTypeSchemas/UserToolGroupArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserMcpServerInstanceCountOutputTypeArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

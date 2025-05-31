@@ -6,12 +6,12 @@ import { UserToolGroupCreateInputSchema } from '../inputTypeSchemas/UserToolGrou
 import { UserToolGroupUncheckedCreateInputSchema } from '../inputTypeSchemas/UserToolGroupUncheckedCreateInputSchema'
 import { UserToolGroupUpdateInputSchema } from '../inputTypeSchemas/UserToolGroupUpdateInputSchema'
 import { UserToolGroupUncheckedUpdateInputSchema } from '../inputTypeSchemas/UserToolGroupUncheckedUpdateInputSchema'
-import { UserMcpServerInstanceArgsSchema } from "./UserMcpServerInstanceArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
-import { UserToolGroupToolFindManyArgsSchema } from "./UserToolGroupToolFindManyArgsSchema"
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserMcpServerInstanceToolGroupFindManyArgsSchema } from "./UserMcpServerInstanceToolGroupFindManyArgsSchema"
-import { UserToolGroupCountOutputTypeArgsSchema } from "./UserToolGroupCountOutputTypeArgsSchema"
+import { UserMcpServerInstanceArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
+import { UserToolGroupToolFindManyArgsSchema } from "../outputTypeSchemas/UserToolGroupToolFindManyArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserMcpServerInstanceToolGroupFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceToolGroupFindManyArgsSchema"
+import { UserToolGroupCountOutputTypeArgsSchema } from "../outputTypeSchemas/UserToolGroupCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

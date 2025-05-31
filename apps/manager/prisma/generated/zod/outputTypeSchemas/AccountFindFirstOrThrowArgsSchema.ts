@@ -5,7 +5,7 @@ import { AccountWhereInputSchema } from '../inputTypeSchemas/AccountWhereInputSc
 import { AccountOrderByWithRelationInputSchema } from '../inputTypeSchemas/AccountOrderByWithRelationInputSchema'
 import { AccountWhereUniqueInputSchema } from '../inputTypeSchemas/AccountWhereUniqueInputSchema'
 import { AccountScalarFieldEnumSchema } from '../inputTypeSchemas/AccountScalarFieldEnumSchema'
-import { UserArgsSchema } from "./UserArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

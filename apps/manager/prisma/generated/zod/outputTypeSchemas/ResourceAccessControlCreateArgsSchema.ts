@@ -3,9 +3,9 @@ import type { Prisma } from '@prisma/client';
 import { ResourceAccessControlIncludeSchema } from '../inputTypeSchemas/ResourceAccessControlIncludeSchema'
 import { ResourceAccessControlCreateInputSchema } from '../inputTypeSchemas/ResourceAccessControlCreateInputSchema'
 import { ResourceAccessControlUncheckedCreateInputSchema } from '../inputTypeSchemas/ResourceAccessControlUncheckedCreateInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { OrganizationMemberArgsSchema } from "./OrganizationMemberArgsSchema"
-import { OrganizationGroupArgsSchema } from "./OrganizationGroupArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { OrganizationMemberArgsSchema } from "../outputTypeSchemas/OrganizationMemberArgsSchema"
+import { OrganizationGroupArgsSchema } from "../outputTypeSchemas/OrganizationGroupArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

@@ -4,7 +4,7 @@ import { SessionIncludeSchema } from '../inputTypeSchemas/SessionIncludeSchema'
 import { SessionUpdateInputSchema } from '../inputTypeSchemas/SessionUpdateInputSchema'
 import { SessionUncheckedUpdateInputSchema } from '../inputTypeSchemas/SessionUncheckedUpdateInputSchema'
 import { SessionWhereUniqueInputSchema } from '../inputTypeSchemas/SessionWhereUniqueInputSchema'
-import { UserArgsSchema } from "./UserArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

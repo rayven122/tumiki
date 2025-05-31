@@ -5,7 +5,7 @@ import { RolePermissionWhereInputSchema } from '../inputTypeSchemas/RolePermissi
 import { RolePermissionOrderByWithRelationInputSchema } from '../inputTypeSchemas/RolePermissionOrderByWithRelationInputSchema'
 import { RolePermissionWhereUniqueInputSchema } from '../inputTypeSchemas/RolePermissionWhereUniqueInputSchema'
 import { RolePermissionScalarFieldEnumSchema } from '../inputTypeSchemas/RolePermissionScalarFieldEnumSchema'
-import { OrganizationRoleArgsSchema } from "./OrganizationRoleArgsSchema"
+import { OrganizationRoleArgsSchema } from "../outputTypeSchemas/OrganizationRoleArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

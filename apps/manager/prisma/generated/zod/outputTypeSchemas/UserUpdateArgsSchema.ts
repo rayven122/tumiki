@@ -4,15 +4,15 @@ import { UserIncludeSchema } from '../inputTypeSchemas/UserIncludeSchema'
 import { UserUpdateInputSchema } from '../inputTypeSchemas/UserUpdateInputSchema'
 import { UserUncheckedUpdateInputSchema } from '../inputTypeSchemas/UserUncheckedUpdateInputSchema'
 import { UserWhereUniqueInputSchema } from '../inputTypeSchemas/UserWhereUniqueInputSchema'
-import { AccountFindManyArgsSchema } from "./AccountFindManyArgsSchema"
-import { SessionFindManyArgsSchema } from "./SessionFindManyArgsSchema"
-import { UserToolGroupFindManyArgsSchema } from "./UserToolGroupFindManyArgsSchema"
-import { UserMcpServerConfigFindManyArgsSchema } from "./UserMcpServerConfigFindManyArgsSchema"
-import { UserMcpServerInstanceFindManyArgsSchema } from "./UserMcpServerInstanceFindManyArgsSchema"
-import { OrganizationFindManyArgsSchema } from "./OrganizationFindManyArgsSchema"
-import { OrganizationMemberFindManyArgsSchema } from "./OrganizationMemberFindManyArgsSchema"
-import { OrganizationInvitationFindManyArgsSchema } from "./OrganizationInvitationFindManyArgsSchema"
-import { UserCountOutputTypeArgsSchema } from "./UserCountOutputTypeArgsSchema"
+import { AccountFindManyArgsSchema } from "../outputTypeSchemas/AccountFindManyArgsSchema"
+import { SessionFindManyArgsSchema } from "../outputTypeSchemas/SessionFindManyArgsSchema"
+import { UserToolGroupFindManyArgsSchema } from "../outputTypeSchemas/UserToolGroupFindManyArgsSchema"
+import { UserMcpServerConfigFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigFindManyArgsSchema"
+import { UserMcpServerInstanceFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerInstanceFindManyArgsSchema"
+import { OrganizationFindManyArgsSchema } from "../outputTypeSchemas/OrganizationFindManyArgsSchema"
+import { OrganizationMemberFindManyArgsSchema } from "../outputTypeSchemas/OrganizationMemberFindManyArgsSchema"
+import { OrganizationInvitationFindManyArgsSchema } from "../outputTypeSchemas/OrganizationInvitationFindManyArgsSchema"
+import { UserCountOutputTypeArgsSchema } from "../outputTypeSchemas/UserCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

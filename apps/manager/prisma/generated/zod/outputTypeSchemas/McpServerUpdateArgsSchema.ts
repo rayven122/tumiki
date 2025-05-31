@@ -4,9 +4,9 @@ import { McpServerIncludeSchema } from '../inputTypeSchemas/McpServerIncludeSche
 import { McpServerUpdateInputSchema } from '../inputTypeSchemas/McpServerUpdateInputSchema'
 import { McpServerUncheckedUpdateInputSchema } from '../inputTypeSchemas/McpServerUncheckedUpdateInputSchema'
 import { McpServerWhereUniqueInputSchema } from '../inputTypeSchemas/McpServerWhereUniqueInputSchema'
-import { ToolFindManyArgsSchema } from "./ToolFindManyArgsSchema"
-import { UserMcpServerConfigFindManyArgsSchema } from "./UserMcpServerConfigFindManyArgsSchema"
-import { McpServerCountOutputTypeArgsSchema } from "./McpServerCountOutputTypeArgsSchema"
+import { ToolFindManyArgsSchema } from "../outputTypeSchemas/ToolFindManyArgsSchema"
+import { UserMcpServerConfigFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigFindManyArgsSchema"
+import { McpServerCountOutputTypeArgsSchema } from "../outputTypeSchemas/McpServerCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

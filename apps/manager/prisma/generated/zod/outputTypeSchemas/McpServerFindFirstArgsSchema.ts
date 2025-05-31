@@ -5,9 +5,9 @@ import { McpServerWhereInputSchema } from '../inputTypeSchemas/McpServerWhereInp
 import { McpServerOrderByWithRelationInputSchema } from '../inputTypeSchemas/McpServerOrderByWithRelationInputSchema'
 import { McpServerWhereUniqueInputSchema } from '../inputTypeSchemas/McpServerWhereUniqueInputSchema'
 import { McpServerScalarFieldEnumSchema } from '../inputTypeSchemas/McpServerScalarFieldEnumSchema'
-import { ToolFindManyArgsSchema } from "./ToolFindManyArgsSchema"
-import { UserMcpServerConfigFindManyArgsSchema } from "./UserMcpServerConfigFindManyArgsSchema"
-import { McpServerCountOutputTypeArgsSchema } from "./McpServerCountOutputTypeArgsSchema"
+import { ToolFindManyArgsSchema } from "../outputTypeSchemas/ToolFindManyArgsSchema"
+import { UserMcpServerConfigFindManyArgsSchema } from "../outputTypeSchemas/UserMcpServerConfigFindManyArgsSchema"
+import { McpServerCountOutputTypeArgsSchema } from "../outputTypeSchemas/McpServerCountOutputTypeArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

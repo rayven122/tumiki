@@ -4,8 +4,8 @@ import { OrganizationInvitationIncludeSchema } from '../inputTypeSchemas/Organiz
 import { OrganizationInvitationUpdateInputSchema } from '../inputTypeSchemas/OrganizationInvitationUpdateInputSchema'
 import { OrganizationInvitationUncheckedUpdateInputSchema } from '../inputTypeSchemas/OrganizationInvitationUncheckedUpdateInputSchema'
 import { OrganizationInvitationWhereUniqueInputSchema } from '../inputTypeSchemas/OrganizationInvitationWhereUniqueInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 

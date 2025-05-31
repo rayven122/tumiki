@@ -2,8 +2,8 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { OrganizationInvitationIncludeSchema } from '../inputTypeSchemas/OrganizationInvitationIncludeSchema'
 import { OrganizationInvitationWhereUniqueInputSchema } from '../inputTypeSchemas/OrganizationInvitationWhereUniqueInputSchema'
-import { OrganizationArgsSchema } from "./OrganizationArgsSchema"
-import { UserArgsSchema } from "./UserArgsSchema"
+import { OrganizationArgsSchema } from "../outputTypeSchemas/OrganizationArgsSchema"
+import { UserArgsSchema } from "../outputTypeSchemas/UserArgsSchema"
 // Select schema needs to be in file to prevent circular imports
 //------------------------------------------------------
 
