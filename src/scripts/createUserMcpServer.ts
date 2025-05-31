@@ -2,7 +2,7 @@
 
 // /**
 //  * UserMcpServerを作成する
-//  * DEBUG="prisma-field-encryption:*" bun src/scripts/createUserMcpServer.ts
+//  * DEBUG="prisma-field-encryption:*" pnpm exec tsx src/scripts/createUserMcpServer.ts
 //  */
 // export const createUserMcpServer = async () => {
 //   try {

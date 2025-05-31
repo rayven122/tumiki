@@ -1,5 +1,5 @@
 name: Setup
-description: Setup Bun and install packages
+description: Setup pnpm and install packages
 
 runs:
   using: composite
@@ -9,11 +9,11 @@ runs:
       with:
         node-version: "20"
 
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
       with:
-        bun-version: latest
+        version: 8.15.5
 
     - name: Install packages
       shell: bash
-      run: bun install
+      run: pnpm install
