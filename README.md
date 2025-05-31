@@ -31,7 +31,7 @@ cd mcp-server-manager
 2. 依存関係のインストール
 
 ```bash
-bun install
+pnpm install
 ```
 
 3. 環境変数の設定
@@ -44,13 +44,13 @@ cp .env.test .env
 4. データベースのセットアップ
 
 ```bash
-bun db:deploy
+pnpm run db:deploy
 ```
 
 5. 開発サーバーの起動
 
 ```bash
-bun dev
+pnpm run dev
 ```
 
 ## スクリプト
@@ -60,7 +60,7 @@ bun dev
 `src/scripts/upsertAll.ts` スクリプトを使用して、MCPサーバーとツールを一括で登録できます。
 
 ```bash
-bun run src/scripts/upsertAll.ts
+pnpm exec tsx src/scripts/upsertAll.ts
 ```
 
 ### mcp server
@@ -73,7 +73,7 @@ SSE ローカル検証例
 ```bash
 cd docker
 docker compose up -d
-REDIS_URL=redis://localhost:6379 bun run dev
+REDIS_URL=redis://localhost:6379 pnpm run dev
 
 npx @modelcontextprotocol/inspector
 # http://localhost:3000/sse

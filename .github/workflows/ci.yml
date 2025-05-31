@@ -7,7 +7,7 @@ on:
 
 jobs:
   format:
-    name: 💅 Biome check
+    name: 💅 Eslint check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run run check
-        run: bunx dotenv -e .env.test -- bun run check
+        run: pnpm exec dotenv -e .env.test -- pnpm run check
 
   typecheck:
     name: ✅ Typecheck
@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run typecheck
-        run: bun run typecheck
+        run: pnpm run typecheck
 
   # build:
   #   name: 🧰 Build
@@ -43,4 +43,4 @@ jobs:
   #       uses: ./.github/actions/setup
 
   #     - name: Run build
-  #       run: bun run build
+  #       run: pnpm run build
