@@ -1,10 +1,7 @@
-import "@/styles/globals.css";
-
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
 import { ClientProvider } from "./_components/ClientProvider";
-import { Header } from "./_components/Header";
 
 export const metadata: Metadata = {
   title: "MCP Server Manager",
@@ -17,14 +14,41 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
+const DARK_THEME_COLOR = "hsl(240deg 10% 3.92%)";
+const THEME_COLOR_SCRIPT = `\
+(function() {
+  var html = document.documentElement;
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  function updateThemeColor() {
+    var isDark = html.classList.contains('dark');
+    meta.setAttribute('content', isDark ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
+  }
+  var observer = new MutationObserver(updateThemeColor);
+  observer.observe(html, { attributes: true, attributeFilter: ['class'] });
+  updateThemeColor();
+})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja" className={`${geist.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: THEME_COLOR_SCRIPT,
+          }}
+        />
+      </head>
       <body>
         <ClientProvider>
-          <Header />
+          {/* <Header /> */}
           {children}
         </ClientProvider>
       </body>

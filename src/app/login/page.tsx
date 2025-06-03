@@ -2,6 +2,8 @@ import { auth } from "@/server/auth";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./_components/LoginForm";
+import { Header } from "@/app/_components/Header";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "ログイン",
@@ -15,8 +17,11 @@ export default async function Login() {
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <LoginForm />
-    </div>
+    <>
+      <Header />
+      <div className="flex h-screen w-full items-center justify-center">
+        <LoginForm />
+      </div>
+    </>
   );
 }
