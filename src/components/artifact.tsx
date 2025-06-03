@@ -1,6 +1,6 @@
-import type { Attachment, UIMessage } from 'ai';
-import { formatDistance } from 'date-fns';
-import { AnimatePresence, motion } from 'framer-motion';
+import type { Attachment, UIMessage } from "ai";
+import { formatDistance } from "date-fns";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   type Dispatch,
   memo,
@@ -8,26 +8,26 @@ import {
   useCallback,
   useEffect,
   useState,
-} from 'react';
-import useSWR, { useSWRConfig } from 'swr';
-import { useDebounceCallback, useWindowSize } from 'usehooks-ts';
-import type { Document, Vote } from '@/lib/db/schema';
-import { fetcher } from '@/lib/utils';
-import { MultimodalInput } from './multimodal-input';
-import { Toolbar } from './toolbar';
-import { VersionFooter } from './version-footer';
-import { ArtifactActions } from './artifact-actions';
-import { ArtifactCloseButton } from './artifact-close-button';
-import { ArtifactMessages } from './artifact-messages';
-import { useSidebar } from './ui/chat/sidebar';
-import { useArtifact } from '@/hooks/use-artifact';
-import { imageArtifact } from '@/artifacts/image/client';
-import { codeArtifact } from '@/artifacts/code/client';
-import { sheetArtifact } from '@/artifacts/sheet/client';
-import { textArtifact } from '@/artifacts/text/client';
-import equal from 'fast-deep-equal';
-import type { UseChatHelpers } from '@ai-sdk/react';
-import type { VisibilityType } from './visibility-selector';
+} from "react";
+import useSWR, { useSWRConfig } from "swr";
+import { useDebounceCallback, useWindowSize } from "usehooks-ts";
+import type { Document, Vote } from "@/lib/db/schema";
+import { fetcher } from "@/lib/utils";
+import { MultimodalInput } from "./multimodal-input";
+import { Toolbar } from "./toolbar";
+import { VersionFooter } from "./version-footer";
+import { ArtifactActions } from "./artifact-actions";
+import { ArtifactCloseButton } from "./artifact-close-button";
+import { ArtifactMessages } from "./artifact-messages";
+import { useSidebar } from "./ui/chat/sidebar";
+import { useArtifact } from "@/hooks/use-artifact";
+import { imageArtifact } from "@/artifacts/image/client";
+import { codeArtifact } from "@/artifacts/code/client";
+import { sheetArtifact } from "@/artifacts/sheet/client";
+import { textArtifact } from "@/artifacts/text/client";
+import equal from "fast-deep-equal";
+import type { UseChatHelpers } from "@ai-sdk/react";
+import type { VisibilityType } from "./visibility-selector";
 
 export const artifactDefinitions = [
   textArtifact,
@@ -35,7 +35,7 @@ export const artifactDefinitions = [
   imageArtifact,
   sheetArtifact,
 ];
-export type ArtifactKind = (typeof artifactDefinitions)[number]['kind'];
+export type ArtifactKind = (typeof artifactDefinitions)[number]["kind"];
 
 export interface UIArtifact {
   title: string;
@@ -43,7 +43,7 @@ export interface UIArtifact {
   kind: ArtifactKind;
   content: string;
   isVisible: boolean;
-  status: 'streaming' | 'idle';
+  status: "streaming" | "idle";
   boundingBox: {
     top: number;
     left: number;
@@ -71,17 +71,17 @@ function PureArtifact({
 }: {
   chatId: string;
   input: string;
-  setInput: UseChatHelpers['setInput'];
-  status: UseChatHelpers['status'];
-  stop: UseChatHelpers['stop'];
+  setInput: UseChatHelpers["setInput"];
+  status: UseChatHelpers["status"];
+  stop: UseChatHelpers["stop"];
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers['setMessages'];
+  setMessages: UseChatHelpers["setMessages"];
   votes: Array<Vote> | undefined;
-  append: UseChatHelpers['append'];
-  handleSubmit: UseChatHelpers['handleSubmit'];
-  reload: UseChatHelpers['reload'];
+  append: UseChatHelpers["append"];
+  handleSubmit: UseChatHelpers["handleSubmit"];
+  reload: UseChatHelpers["reload"];
   isReadonly: boolean;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -92,13 +92,13 @@ function PureArtifact({
     isLoading: isDocumentsFetching,
     mutate: mutateDocuments,
   } = useSWR<Array<Document>>(
-    artifact.documentId !== 'init' && artifact.status !== 'streaming'
+    artifact.documentId !== "init" && artifact.status !== "streaming"
       ? `/api/document?id=${artifact.documentId}`
       : null,
     fetcher,
   );
 
-  const [mode, setMode] = useState<'edit' | 'diff'>('edit');
+  const [mode, setMode] = useState<"edit" | "diff">("edit");
   const [document, setDocument] = useState<Document | null>(null);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1);
 
@@ -113,7 +113,7 @@ function PureArtifact({
         setCurrentVersionIndex(documents.length - 1);
         setArtifact((currentArtifact) => ({
           ...currentArtifact,
-          content: mostRecentDocument.content ?? '',
+          content: mostRecentDocument.content ?? "",
         }));
       }
     }
@@ -144,7 +144,7 @@ function PureArtifact({
 
           if (currentDocument.content !== updatedContent) {
             await fetch(`/api/document?id=${artifact.documentId}`, {
-              method: 'POST',
+              method: "POST",
               body: JSON.stringify({
                 title: artifact.title,
                 content: updatedContent,
@@ -191,28 +191,28 @@ function PureArtifact({
   );
 
   function getDocumentContentById(index: number) {
-    if (!documents) return '';
-    if (!documents[index]) return '';
-    return documents[index].content ?? '';
+    if (!documents) return "";
+    if (!documents[index]) return "";
+    return documents[index].content ?? "";
   }
 
-  const handleVersionChange = (type: 'next' | 'prev' | 'toggle' | 'latest') => {
+  const handleVersionChange = (type: "next" | "prev" | "toggle" | "latest") => {
     if (!documents) return;
 
-    if (type === 'latest') {
+    if (type === "latest") {
       setCurrentVersionIndex(documents.length - 1);
-      setMode('edit');
+      setMode("edit");
     }
 
-    if (type === 'toggle') {
-      setMode((mode) => (mode === 'edit' ? 'diff' : 'edit'));
+    if (type === "toggle") {
+      setMode((mode) => (mode === "edit" ? "diff" : "edit"));
     }
 
-    if (type === 'prev') {
+    if (type === "prev") {
       if (currentVersionIndex > 0) {
         setCurrentVersionIndex((index) => index - 1);
       }
-    } else if (type === 'next') {
+    } else if (type === "next") {
       if (currentVersionIndex < documents.length - 1) {
         setCurrentVersionIndex((index) => index + 1);
       }
@@ -240,11 +240,11 @@ function PureArtifact({
   );
 
   if (!artifactDefinition) {
-    throw new Error('Artifact definition not found!');
+    throw new Error("Artifact definition not found!");
   }
 
   useEffect(() => {
-    if (artifact.documentId !== 'init') {
+    if (artifact.documentId !== "init") {
       if (artifactDefinition.initialize) {
         artifactDefinition.initialize({
           documentId: artifact.documentId,
@@ -259,14 +259,14 @@ function PureArtifact({
       {artifact.isVisible && (
         <motion.div
           data-testid="artifact"
-          className="flex flex-row h-dvh w-dvw fixed top-0 left-0 z-50 bg-transparent"
+          className="fixed top-0 left-0 z-50 flex h-dvh w-dvw flex-row bg-transparent"
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { delay: 0.4 } }}
         >
           {!isMobile && (
             <motion.div
-              className="fixed bg-background h-dvh"
+              className="bg-background fixed h-dvh"
               initial={{
                 width: isSidebarOpen ? windowWidth - 256 : windowWidth,
                 right: 0,
@@ -281,7 +281,7 @@ function PureArtifact({
 
           {!isMobile && (
             <motion.div
-              className="relative w-[400px] bg-muted dark:bg-background h-dvh shrink-0"
+              className="bg-muted dark:bg-background relative h-dvh w-[400px] shrink-0"
               initial={{ opacity: 0, x: 10, scale: 1 }}
               animate={{
                 opacity: 1,
@@ -289,7 +289,7 @@ function PureArtifact({
                 scale: 1,
                 transition: {
                   delay: 0.2,
-                  type: 'spring',
+                  type: "spring",
                   stiffness: 200,
                   damping: 30,
                 },
@@ -304,7 +304,7 @@ function PureArtifact({
               <AnimatePresence>
                 {!isCurrentVersion && (
                   <motion.div
-                    className="left-0 absolute h-dvh w-[400px] top-0 bg-zinc-900/50 z-50"
+                    className="absolute top-0 left-0 z-50 h-dvh w-[400px] bg-zinc-900/50"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -312,7 +312,7 @@ function PureArtifact({
                 )}
               </AnimatePresence>
 
-              <div className="flex flex-col h-full justify-between items-center">
+              <div className="flex h-full flex-col items-center justify-between">
                 <ArtifactMessages
                   chatId={chatId}
                   status={status}
@@ -324,7 +324,7 @@ function PureArtifact({
                   artifactStatus={artifact.status}
                 />
 
-                <form className="flex flex-row gap-2 relative items-end w-full px-4 pb-4">
+                <form className="relative flex w-full flex-row items-end gap-2 px-4 pb-4">
                   <MultimodalInput
                     chatId={chatId}
                     input={input}
@@ -346,7 +346,7 @@ function PureArtifact({
           )}
 
           <motion.div
-            className="fixed dark:bg-muted bg-background h-dvh flex flex-col overflow-y-scroll md:border-l dark:border-zinc-700 border-zinc-200"
+            className="dark:bg-muted bg-background fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 md:border-l dark:border-zinc-700"
             initial={
               isMobile
                 ? {
@@ -373,11 +373,11 @@ function PureArtifact({
                     x: 0,
                     y: 0,
                     height: windowHeight,
-                    width: windowWidth ? windowWidth : 'calc(100dvw)',
+                    width: windowWidth ? windowWidth : "calc(100dvw)",
                     borderRadius: 0,
                     transition: {
                       delay: 0,
-                      type: 'spring',
+                      type: "spring",
                       stiffness: 200,
                       damping: 30,
                       duration: 5000,
@@ -390,11 +390,11 @@ function PureArtifact({
                     height: windowHeight,
                     width: windowWidth
                       ? windowWidth - 400
-                      : 'calc(100dvw-400px)',
+                      : "calc(100dvw-400px)",
                     borderRadius: 0,
                     transition: {
                       delay: 0,
-                      type: 'spring',
+                      type: "spring",
                       stiffness: 200,
                       damping: 30,
                       duration: 5000,
@@ -406,25 +406,25 @@ function PureArtifact({
               scale: 0.5,
               transition: {
                 delay: 0.1,
-                type: 'spring',
+                type: "spring",
                 stiffness: 600,
                 damping: 30,
               },
             }}
           >
-            <div className="p-2 flex flex-row justify-between items-start">
-              <div className="flex flex-row gap-4 items-start">
+            <div className="flex flex-row items-start justify-between p-2">
+              <div className="flex flex-row items-start gap-4">
                 <ArtifactCloseButton />
 
                 <div className="flex flex-col">
                   <div className="font-medium">{artifact.title}</div>
 
                   {isContentDirty ? (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-muted-foreground text-sm">
                       Saving changes...
                     </div>
                   ) : document ? (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-muted-foreground text-sm">
                       {`Updated ${formatDistance(
                         new Date(document.createdAt),
                         new Date(),
@@ -434,7 +434,7 @@ function PureArtifact({
                       )}`}
                     </div>
                   ) : (
-                    <div className="w-32 h-3 mt-2 bg-muted-foreground/20 rounded-md animate-pulse" />
+                    <div className="bg-muted-foreground/20 mt-2 h-3 w-32 animate-pulse rounded-md" />
                   )}
                 </div>
               </div>
@@ -450,7 +450,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="dark:bg-muted bg-background h-full overflow-y-scroll max-w-full! items-center">
+            <div className="dark:bg-muted bg-background h-full max-w-full! items-center overflow-y-scroll">
               <artifactDefinition.content
                 title={artifact.title}
                 content={

@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 export const Greeting = () => {
   return (
     <div
       key="overview"
-      className="max-w-3xl mx-auto md:mt-20 px-8 size-full flex flex-col justify-center"
+      className="mx-auto flex size-full max-w-3xl flex-col justify-center px-8 md:mt-20"
     >
       <motion.div
         initial={{ opacity: 0, y: 10 }}

@@ -1,12 +1,12 @@
-import Form from 'next/form';
+import Form from "next/form";
 
-import { Input } from './ui/chat/input';
-import { Label } from './ui/chat/label';
+import { Input } from "./ui/chat/input";
+import { Label } from "./ui/chat/label";
 
 export function AuthForm({
   action,
   children,
-  defaultEmail = '',
+  defaultEmail = "",
 }: {
   action: NonNullable<
     string | ((formData: FormData) => void | Promise<void>) | undefined
@@ -19,7 +19,7 @@ export function AuthForm({
       <div className="flex flex-col gap-2">
         <Label
           htmlFor="email"
-          className="text-zinc-600 font-normal dark:text-zinc-400"
+          className="font-normal text-zinc-600 dark:text-zinc-400"
         >
           Email Address
         </Label>
@@ -40,7 +40,7 @@ export function AuthForm({
       <div className="flex flex-col gap-2">
         <Label
           htmlFor="password"
-          className="text-zinc-600 font-normal dark:text-zinc-400"
+          className="font-normal text-zinc-600 dark:text-zinc-400"
         >
           Password
         </Label>

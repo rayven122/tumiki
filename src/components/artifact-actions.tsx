@@ -1,17 +1,17 @@
-import { Button } from './ui/chat/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/chat/tooltip';
-import { artifactDefinitions, type UIArtifact } from './artifact';
-import { type Dispatch, memo, type SetStateAction, useState } from 'react';
-import type { ArtifactActionContext } from './create-artifact';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { Button } from "./ui/chat/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
+import { artifactDefinitions, type UIArtifact } from "./artifact";
+import { type Dispatch, memo, type SetStateAction, useState } from "react";
+import type { ArtifactActionContext } from "./create-artifact";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ArtifactActionsProps {
   artifact: UIArtifact;
-  handleVersionChange: (type: 'next' | 'prev' | 'toggle' | 'latest') => void;
+  handleVersionChange: (type: "next" | "prev" | "toggle" | "latest") => void;
   currentVersionIndex: number;
   isCurrentVersion: boolean;
-  mode: 'edit' | 'diff';
+  mode: "edit" | "diff";
   metadata: any;
   setMetadata: Dispatch<SetStateAction<any>>;
 }
@@ -32,7 +32,7 @@ function PureArtifactActions({
   );
 
   if (!artifactDefinition) {
-    throw new Error('Artifact definition not found!');
+    throw new Error("Artifact definition not found!");
   }
 
   const actionContext: ArtifactActionContext = {
@@ -52,9 +52,9 @@ function PureArtifactActions({
           <TooltipTrigger asChild>
             <Button
               variant="outline"
-              className={cn('h-fit dark:hover:bg-zinc-700', {
-                'p-2': !action.label,
-                'py-1.5 px-2': action.label,
+              className={cn("h-fit dark:hover:bg-zinc-700", {
+                "p-2": !action.label,
+                "px-2 py-1.5": action.label,
               })}
               onClick={async () => {
                 setIsLoading(true);
@@ -62,13 +62,13 @@ function PureArtifactActions({
                 try {
                   await Promise.resolve(action.onClick(actionContext));
                 } catch (error) {
-                  toast.error('Failed to execute action');
+                  toast.error("Failed to execute action");
                 } finally {
                   setIsLoading(false);
                 }
               }}
               disabled={
-                isLoading || artifact.status === 'streaming'
+                isLoading || artifact.status === "streaming"
                   ? true
                   : action.isDisabled
                     ? action.isDisabled(actionContext)

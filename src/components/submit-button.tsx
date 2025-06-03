@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useFormStatus } from 'react-dom';
+import { useFormStatus } from "react-dom";
 
-import { LoaderIcon } from '@/components/icons';
+import { LoaderIcon } from "@/components/icons";
 
-import { Button } from './ui/chat/button';
+import { Button } from "./ui/chat/button";
 
 export function SubmitButton({
   children,
@@ -17,7 +17,7 @@ export function SubmitButton({
 
   return (
     <Button
-      type={pending ? 'button' : 'submit'}
+      type={pending ? "button" : "submit"}
       aria-disabled={pending || isSuccessful}
       disabled={pending || isSuccessful}
       className="relative"
@@ -25,13 +25,13 @@ export function SubmitButton({
       {children}
 
       {(pending || isSuccessful) && (
-        <span className="animate-spin absolute right-4">
+        <span className="absolute right-4 animate-spin">
           <LoaderIcon />
         </span>
       )}
 
       <output aria-live="polite" className="sr-only">
-        {pending || isSuccessful ? 'Loading' : 'Submit form'}
+        {pending || isSuccessful ? "Loading" : "Submit form"}
       </output>
     </Button>
   );

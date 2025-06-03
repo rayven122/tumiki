@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { type ReactNode, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/chat/button';
+import { type ReactNode, useMemo, useState } from "react";
+import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/chat/dropdown-menu';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/chat/dropdown-menu";
+import { cn } from "@/lib/utils";
 import {
   CheckCircleFillIcon,
   ChevronDownIcon,
   GlobeIcon,
   LockIcon,
-} from './icons';
-import { useChatVisibility } from '@/hooks/use-chat-visibility';
+} from "./icons";
+import { useChatVisibility } from "@/hooks/use-chat-visibility";
 
-export type VisibilityType = 'private' | 'public';
+export type VisibilityType = "private" | "public";
 
 const visibilities: Array<{
   id: VisibilityType;
@@ -26,15 +26,15 @@ const visibilities: Array<{
   icon: ReactNode;
 }> = [
   {
-    id: 'private',
-    label: 'Private',
-    description: 'Only you can access this chat',
+    id: "private",
+    label: "Private",
+    description: "Only you can access this chat",
     icon: <LockIcon />,
   },
   {
-    id: 'public',
-    label: 'Public',
-    description: 'Anyone with the link can access this chat',
+    id: "public",
+    label: "Public",
+    description: "Anyone with the link can access this chat",
     icon: <GlobeIcon />,
   },
 ];
@@ -64,14 +64,14 @@ export function VisibilitySelector({
       <DropdownMenuTrigger
         asChild
         className={cn(
-          'w-fit data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+          "data-[state=open]:bg-accent data-[state=open]:text-accent-foreground w-fit",
           className,
         )}
       >
         <Button
           data-testid="visibility-selector"
           variant="outline"
-          className="hidden md:flex md:px-2 md:h-[34px]"
+          className="hidden md:flex md:h-[34px] md:px-2"
         >
           {selectedVisibility?.icon}
           {selectedVisibility?.label}
@@ -88,13 +88,13 @@ export function VisibilitySelector({
               setVisibilityType(visibility.id);
               setOpen(false);
             }}
-            className="gap-4 group/item flex flex-row justify-between items-center"
+            className="group/item flex flex-row items-center justify-between gap-4"
             data-active={visibility.id === visibilityType}
           >
-            <div className="flex flex-col gap-1 items-start">
+            <div className="flex flex-col items-start gap-1">
               {visibility.label}
               {visibility.description && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-muted-foreground text-xs">
                   {visibility.description}
                 </div>
               )}

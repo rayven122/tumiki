@@ -1,11 +1,11 @@
-import type { ChatModel } from './models';
+import type { ChatModel } from "./models";
 
 interface Entitlements {
   maxMessagesPerDay: number;
-  availableChatModelIds: Array<ChatModel['id']>;
+  availableChatModelIds: Array<ChatModel["id"]>;
 }
 
-export const entitlementsByUserType: Record<'regular', Entitlements> = {
+export const entitlementsByUserType: Record<"regular", Entitlements> = {
   /*
    * For users without an account
    */
@@ -19,7 +19,7 @@ export const entitlementsByUserType: Record<'regular', Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ['chat-model', 'chat-model-reasoning'],
+    availableChatModelIds: ["chat-model", "chat-model-reasoning"],
   },
 
   /*
