@@ -3,7 +3,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Document } from "@/lib/db/schema";
 import { ChatSDKError, type ErrorCode } from "./errors";
-
+import { createId } from "@paralleldrive/cuid2";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -47,12 +47,9 @@ export async function fetchWithErrorHandlers(
   }
 }
 
-export function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+export function generateCUID(): string {
+  // TODO: [chat] 25 桁にする必要があるので、0 を追加
+  return createId() + "0";
 }
 
 type ResponseMessageWithoutId = CoreToolMessage | CoreAssistantMessage;
