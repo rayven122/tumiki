@@ -5,7 +5,7 @@ import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateUUID } from "@/lib/utils";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { redirect } from "next/navigation";
-import { auth } from "@/app/(auth)/auth";
+import { auth } from "@/server/auth";
 
 export default async function Page() {
   const session = await auth();
