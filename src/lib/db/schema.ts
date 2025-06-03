@@ -1,18 +1,30 @@
 import type { InferSelectModel } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 import {
   pgTable,
   varchar,
   timestamp,
   json,
-  uuid,
+  char,
   text,
   primaryKey,
   foreignKey,
   boolean,
 } from "drizzle-orm/pg-core";
 
+const CUID_LENGTH = 25;
+
+function cuid(columnName: string, opts?: { needGenerate: boolean }) {
+  if (opts?.needGenerate) {
+    return char(columnName, { length: CUID_LENGTH }).$defaultFn(() =>
+      createId(),
+    );
+  }
+  return char(columnName, { length: CUID_LENGTH });
+}
+
 export const user = pgTable("User", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  id: cuid("id", { needGenerate: true }).primaryKey().notNull(),
   email: varchar("email", { length: 64 }).notNull(),
   password: varchar("password", { length: 64 }),
 });
@@ -20,10 +32,10 @@ export const user = pgTable("User", {
 export type User = InferSelectModel<typeof user>;
 
 export const chat = pgTable("Chat", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  id: cuid("id", { needGenerate: true }).primaryKey().notNull(),
   createdAt: timestamp("createdAt").notNull(),
   title: text("title").notNull(),
-  userId: uuid("userId")
+  userId: cuid("userId")
     .notNull()
     .references(() => user.id),
   visibility: varchar("visibility", { enum: ["public", "private"] })
@@ -36,8 +48,8 @@ export type Chat = InferSelectModel<typeof chat>;
 // DEPRECATED: The following schema is deprecated and will be removed in the future.
 // Read the migration guide at https://chat-sdk.dev/docs/migration-guides/message-parts
 export const messageDeprecated = pgTable("Message", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  chatId: uuid("chatId")
+  id: cuid("id", { needGenerate: true }).primaryKey().notNull(),
+  chatId: cuid("chatId")
     .notNull()
     .references(() => chat.id),
   role: varchar("role").notNull(),
@@ -48,8 +60,8 @@ export const messageDeprecated = pgTable("Message", {
 export type MessageDeprecated = InferSelectModel<typeof messageDeprecated>;
 
 export const message = pgTable("Message_v2", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  chatId: uuid("chatId")
+  id: cuid("id", { needGenerate: true }).primaryKey().notNull(),
+  chatId: cuid("chatId")
     .notNull()
     .references(() => chat.id),
   role: varchar("role").notNull(),
@@ -65,10 +77,10 @@ export type DBMessage = InferSelectModel<typeof message>;
 export const voteDeprecated = pgTable(
   "Vote",
   {
-    chatId: uuid("chatId")
+    chatId: cuid("chatId")
       .notNull()
       .references(() => chat.id),
-    messageId: uuid("messageId")
+    messageId: cuid("messageId")
       .notNull()
       .references(() => messageDeprecated.id),
     isUpvoted: boolean("isUpvoted").notNull(),
@@ -85,10 +97,10 @@ export type VoteDeprecated = InferSelectModel<typeof voteDeprecated>;
 export const vote = pgTable(
   "Vote_v2",
   {
-    chatId: uuid("chatId")
+    chatId: cuid("chatId")
       .notNull()
       .references(() => chat.id),
-    messageId: uuid("messageId")
+    messageId: cuid("messageId")
       .notNull()
       .references(() => message.id),
     isUpvoted: boolean("isUpvoted").notNull(),
@@ -105,14 +117,14 @@ export type Vote = InferSelectModel<typeof vote>;
 export const document = pgTable(
   "Document",
   {
-    id: uuid("id").notNull().defaultRandom(),
+    id: cuid("id", { needGenerate: true }).notNull(),
     createdAt: timestamp("createdAt").notNull(),
     title: text("title").notNull(),
     content: text("content"),
     kind: varchar("text", { enum: ["text", "code", "image", "sheet"] })
       .notNull()
       .default("text"),
-    userId: uuid("userId")
+    userId: cuid("userId")
       .notNull()
       .references(() => user.id),
   },
@@ -128,14 +140,14 @@ export type Document = InferSelectModel<typeof document>;
 export const suggestion = pgTable(
   "Suggestion",
   {
-    id: uuid("id").notNull().defaultRandom(),
-    documentId: uuid("documentId").notNull(),
+    id: cuid("id", { needGenerate: true }).notNull(),
+    documentId: cuid("documentId").notNull(),
     documentCreatedAt: timestamp("documentCreatedAt").notNull(),
     originalText: text("originalText").notNull(),
     suggestedText: text("suggestedText").notNull(),
     description: text("description"),
     isResolved: boolean("isResolved").notNull().default(false),
-    userId: uuid("userId")
+    userId: cuid("userId")
       .notNull()
       .references(() => user.id),
     createdAt: timestamp("createdAt").notNull(),
@@ -154,8 +166,8 @@ export type Suggestion = InferSelectModel<typeof suggestion>;
 export const stream = pgTable(
   "Stream",
   {
-    id: uuid("id").notNull().defaultRandom(),
-    chatId: uuid("chatId").notNull(),
+    id: cuid("id", { needGenerate: true }).notNull(),
+    chatId: cuid("chatId").notNull(),
     createdAt: timestamp("createdAt").notNull(),
   },
   (table) => ({
