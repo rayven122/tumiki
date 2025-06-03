@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 
 import { Chat } from "@/components/chat";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
-import { generateUUID } from "@/lib/utils";
+import { generateCUID } from "@/lib/utils";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
@@ -14,7 +14,7 @@ export default async function Page() {
     redirect("/login");
   }
 
-  const id = generateUUID();
+  const id = generateCUID();
 
   const cookieStore = await cookies();
   const modelIdFromCookie = cookieStore.get("chat-model");

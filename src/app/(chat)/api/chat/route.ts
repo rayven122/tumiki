@@ -17,7 +17,7 @@ import {
   saveChat,
   saveMessages,
 } from "@/lib/db/queries";
-import { generateUUID, getTrailingMessageId } from "@/lib/utils";
+import { generateCUID, getTrailingMessageId } from "@/lib/utils";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
       ],
     });
 
-    const streamId = generateUUID();
+    const streamId = generateCUID();
     await createStreamId({ streamId, chatId: id });
 
     const stream = createDataStream({
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
                   "requestSuggestions",
                 ],
           experimental_transform: smoothStream({ chunking: "word" }),
-          experimental_generateMessageId: generateUUID,
+          experimental_generateMessageId: generateCUID,
           tools: {
             getWeather,
             createDocument: createDocument({ session, dataStream }),

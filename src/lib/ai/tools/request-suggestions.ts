@@ -3,7 +3,7 @@ import type { Session } from "next-auth";
 import { type DataStreamWriter, streamObject, tool } from "ai";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@/lib/db/schema";
-import { generateUUID } from "@/lib/utils";
+import { generateCUID } from "@/lib/utils";
 import { myProvider } from "../providers";
 
 interface RequestSuggestionsProps {
@@ -53,7 +53,7 @@ export const requestSuggestions = ({
           originalText: element.originalSentence,
           suggestedText: element.suggestedSentence,
           description: element.description,
-          id: generateUUID(),
+          id: generateCUID(),
           documentId: documentId,
           isResolved: false,
         };
