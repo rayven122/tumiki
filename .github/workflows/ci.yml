@@ -9,6 +9,8 @@ jobs:
   format:
     name: 💅 Eslint check
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
@@ -22,6 +24,8 @@ jobs:
   typecheck:
     name: ✅ Typecheck
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4

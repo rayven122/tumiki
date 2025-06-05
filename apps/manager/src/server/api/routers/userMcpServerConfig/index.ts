@@ -2,11 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 
 import { updateServerConfig } from "./updateServerConfig";
-import {
-  McpServerSchema,
-  ToolSchema,
-  UserMcpServerConfigSchema,
-} from "apps/manager/prisma/generated/zod";
+import { McpServerSchema, ToolSchema, UserMcpServerConfigSchema } from "@zod";
 import {
   McpServerIdSchema,
   ToolIdSchema,
