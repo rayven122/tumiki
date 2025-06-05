@@ -10,6 +10,7 @@ import {
   type Dispatch,
   memo,
   type ReactNode,
+  type RefObject,
   type SetStateAction,
   useEffect,
   useRef,
@@ -129,7 +130,7 @@ const Tool = ({
   );
 };
 
-const randomArr = [...Array(6)].map((x) => nanoid(5));
+const randomArr = Array.from({ length: 6 }, () => nanoid(5));
 
 const ReadingLevelSelector = ({
   setSelectedTool,
@@ -280,15 +281,15 @@ export const Tools = ({
       </AnimatePresence>
 
       <Tool
-        description={primaryTool.description}
-        icon={primaryTool.icon}
+        description={primaryTool!.description}
+        icon={primaryTool!.icon}
         selectedTool={selectedTool}
         setSelectedTool={setSelectedTool}
         isToolbarVisible={isToolbarVisible}
         setIsToolbarVisible={setIsToolbarVisible}
         append={append}
         isAnimating={isAnimating}
-        onClick={primaryTool.onClick}
+        onClick={primaryTool!.onClick}
       />
     </motion.div>
   );
@@ -312,12 +313,12 @@ const PureToolbar = ({
   artifactKind: ArtifactKind;
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  useOnClickOutside(toolbarRef, () => {
+  useOnClickOutside(toolbarRef as RefObject<HTMLDivElement>, () => {
     setIsToolbarVisible(false);
     setSelectedTool(null);
   });

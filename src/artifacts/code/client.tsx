@@ -193,14 +193,22 @@ export const codeArtifact = new Artifact<"code", Metadata>({
               },
             ],
           }));
-        } catch (error: any) {
+        } catch (error: unknown) {
           setMetadata((metadata) => ({
             ...metadata,
             outputs: [
               ...metadata.outputs.filter((output) => output.id !== runId),
               {
                 id: runId,
-                contents: [{ type: "text", value: error.message }],
+                contents: [
+                  {
+                    type: "text",
+                    value:
+                      error instanceof Error
+                        ? error.message
+                        : "Unexpected error occurred",
+                  },
+                ],
                 status: "failed",
               },
             ],

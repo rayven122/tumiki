@@ -47,8 +47,8 @@ function getStreamContext() {
       globalStreamContext = createResumableStreamContext({
         waitUntil: after,
       });
-    } catch (error: any) {
-      if (error.message.includes("REDIS_URL")) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes("REDIS_URL")) {
         console.log(
           " > Resumable streams are disabled due to missing REDIS_URL",
         );
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   let requestBody: PostRequestBody;
 
   try {
-    const json = await request.json();
+    const json: unknown = await request.json();
     requestBody = postRequestBodySchema.parse(json);
   } catch (_) {
     return new ChatSDKError("bad_request:api").toResponse();
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     const session = await auth();
 
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
@@ -187,20 +187,22 @@ export async function POST(request: Request) {
                   responseMessages: response.messages,
                 });
 
-                await saveMessages({
-                  messages: [
-                    {
-                      id: assistantId,
-                      chatId: id,
-                      role: assistantMessage.role,
-                      parts: assistantMessage.parts,
-                      attachments:
-                        assistantMessage.experimental_attachments ?? [],
-                      createdAt: new Date(),
-                    },
-                  ],
-                });
-              } catch (_) {
+                if (assistantMessage) {
+                  await saveMessages({
+                    messages: [
+                      {
+                        id: assistantId,
+                        chatId: id,
+                        role: assistantMessage.role,
+                        parts: assistantMessage.parts,
+                        attachments:
+                          assistantMessage.experimental_attachments ?? [],
+                        createdAt: new Date(),
+                      },
+                    ],
+                  });
+                }
+              } catch {
                 console.error("Failed to save chat");
               }
             }
@@ -211,7 +213,7 @@ export async function POST(request: Request) {
           },
         });
 
-        result.consumeStream();
+        void result.consumeStream();
 
         result.mergeIntoDataStream(dataStream, {
           sendReasoning: true,
@@ -259,7 +261,7 @@ export async function GET(request: Request) {
     return new ChatSDKError("unauthorized:chat").toResponse();
   }
 
-  let chat: Chat;
+  let chat: Chat | undefined;
 
   try {
     chat = await getChatById({ id: chatId });
@@ -288,6 +290,7 @@ export async function GET(request: Request) {
   }
 
   const emptyDataStream = createDataStream({
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     execute: () => {},
   });
 
@@ -349,7 +352,7 @@ export async function DELETE(request: Request) {
 
   const chat = await getChatById({ id });
 
-  if (chat.userId !== session.user.id) {
+  if (chat?.userId !== session.user.id) {
     return new ChatSDKError("forbidden:chat").toResponse();
   }
 

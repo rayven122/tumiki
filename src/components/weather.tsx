@@ -214,8 +214,8 @@ export function Weather({
   );
 
   const isDay = isWithinInterval(new Date(weatherAtLocation.current.time), {
-    start: new Date(weatherAtLocation.daily.sunrise[0]),
-    end: new Date(weatherAtLocation.daily.sunset[0]),
+    start: new Date(weatherAtLocation.daily.sunrise[0]!),
+    end: new Date(weatherAtLocation.daily.sunset[0]!),
   });
 
   const [isMobile, setIsMobile] = useState(false);
@@ -300,7 +300,7 @@ export function Weather({
               )}
             />
             <div className="text-sm text-blue-50">
-              {n(displayTemperatures[index])}
+              {n(displayTemperatures[index]!)}
               {weatherAtLocation.hourly_units.temperature_2m}
             </div>
           </div>

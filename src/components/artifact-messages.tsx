@@ -66,7 +66,7 @@ function PureArtifactMessages({
 
       {status === "submitted" &&
         messages.length > 0 &&
-        messages[messages.length - 1].role === "user" && <ThinkingMessage />}
+        messages[messages.length - 1]?.role === "user" && <ThinkingMessage />}
 
       <motion.div
         ref={messagesEndRef}

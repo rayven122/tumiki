@@ -117,7 +117,9 @@ const AlertDialogCancel = React.forwardRef<
   <AlertDialogPrimitive.Cancel
     ref={ref}
     className={cn(
-      buttonVariants({ variant: "outline-solid" }),
+      // TODO: 元のコード(ai-chatbot) では outline-solid が使われていた. しかし、未定義
+      // buttonVariants({ variant: "outline-solid" }),
+      buttonVariants(),
       "mt-2 sm:mt-0",
       className,
     )}

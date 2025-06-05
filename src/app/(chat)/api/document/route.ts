@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return new ChatSDKError("not_found:document").toResponse();
   }
 
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   if (documents.length > 0) {
     const [document] = documents;
 
-    if (document.userId !== session.user.id) {
+    if (document?.userId !== session.user.id) {
       return new ChatSDKError("forbidden:document").toResponse();
     }
   }
@@ -105,7 +105,7 @@ export async function DELETE(request: Request) {
 
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return new ChatSDKError("unauthorized:document").toResponse();
   }
 
@@ -113,7 +113,7 @@ export async function DELETE(request: Request) {
 
   const [document] = documents;
 
-  if (document.userId !== session.user.id) {
+  if (document?.userId !== session.user.id) {
     return new ChatSDKError("forbidden:document").toResponse();
   }
 
