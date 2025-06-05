@@ -1,10 +1,7 @@
-import "@/styles/globals.css";
-
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
 import { ClientProvider } from "./_components/ClientProvider";
-import { Header } from "./_components/Header";
 
 export const metadata: Metadata = {
   title: "MCP Server Manager",
@@ -24,7 +21,7 @@ export default function RootLayout({
     <html lang="ja" className={`${geist.variable}`}>
       <body>
         <ClientProvider>
-          <Header />
+          {/* <Header /> */}
           {children}
         </ClientProvider>
       </body>
