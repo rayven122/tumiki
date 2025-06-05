@@ -1,5 +1,6 @@
 {
   "name": "tumiki",
+  "type": "module",
   "private": true,
   "version": "0.1.0",
   "engines": {
@@ -7,10 +8,6 @@
     "pnpm": ">=9.6.0"
   },
   "packageManager": "pnpm@10.11.0",
-  "workspaces": [
-    "apps/*",
-    "tooling/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "clean": "git clean -xdf node_modules",
@@ -25,7 +22,6 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:",
     "turbo": "^2.5.1",
     "typescript": "catalog:"
   }
