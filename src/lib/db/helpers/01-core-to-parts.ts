@@ -29,9 +29,9 @@ const INSERT_BATCH_SIZE = 1000; // Insert 1000 messages at a time
 type NewMessageInsert = {
   id: string;
   chatId: string;
-  parts: any[];
+  parts: unknown[];
   role: string;
-  attachments: any[];
+  attachments: unknown[];
   createdAt: Date;
 };
 
@@ -72,7 +72,7 @@ function getMessageRank(message: MessageDeprecated): number {
   return 3;
 }
 
-function dedupeParts<T extends { type: string; [k: string]: any }>(
+function dedupeParts<T extends { type: string; [k: string]: unknown }>(
   parts: T[],
 ): T[] {
   const seen = new Set<string>();
@@ -84,7 +84,7 @@ function dedupeParts<T extends { type: string; [k: string]: any }>(
   });
 }
 
-function sanitizeParts<T extends { type: string; [k: string]: any }>(
+function sanitizeParts<T extends { type: string; [k: string]: unknown }>(
   parts: T[],
 ): T[] {
   return parts.filter(
@@ -156,11 +156,11 @@ async function migrateMessages() {
 
         try {
           const uiSection = appendResponseMessages({
-            messages: [userMessage],
+            messages: userMessage ? [userMessage] : [],
             // @ts-expect-error: message.content has different type
             responseMessages: assistantMessages,
             _internal: {
-              currentDate: () => firstAssistantMessage.createdAt ?? new Date(),
+              currentDate: () => firstAssistantMessage?.createdAt ?? new Date(),
             },
           });
 
@@ -177,6 +177,7 @@ async function migrateMessages() {
                 } as NewMessageInsert;
               } else if (message.role === "assistant") {
                 const cleanParts = sanitizeParts(
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   dedupeParts(message.parts || []),
                 );
 
@@ -207,7 +208,8 @@ async function migrateMessages() {
               }
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           console.error(`Error processing chat ${chat.id}: ${error}`);
         }
       }
