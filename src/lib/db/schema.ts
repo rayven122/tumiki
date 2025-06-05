@@ -16,8 +16,10 @@ const CUID_LENGTH = 25;
 
 function cuid(columnName: string, opts?: { needGenerate: boolean }) {
   if (opts?.needGenerate) {
-    return char(columnName, { length: CUID_LENGTH }).$defaultFn(() =>
-      createId(),
+    return char(columnName, { length: CUID_LENGTH }).$defaultFn(
+      () =>
+        // NOTE: Change to cuid v1
+        "c" + createId(),
     );
   }
   return char(columnName, { length: CUID_LENGTH });

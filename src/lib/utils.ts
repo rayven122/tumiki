@@ -48,8 +48,8 @@ export async function fetchWithErrorHandlers(
 }
 
 export function generateCUID(): string {
-  // TODO: [chat] 25 桁にする必要があるので、0 を追加
-  return createId() + "0";
+  // NOTE: Change to cuid v1
+  return "c" + createId();
 }
 
 type ResponseMessageWithoutId = CoreToolMessage | CoreAssistantMessage;
