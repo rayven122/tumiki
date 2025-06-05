@@ -1,4 +1,5 @@
 {
+"extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
     /* Base Options: */
     "esModuleInterop": true,
@@ -16,7 +17,7 @@
     "checkJs": true,
 
     /* Bundled projects */
-    "lib": ["dom", "dom.iterable", "ES2022"],
+    "lib": ["ES2022", "dom", "dom.iterable"],
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -37,7 +38,8 @@
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "postcss.config.mjs"
   ],
   "types": ["web", "bun-types"],
   "exclude": ["node_modules", "mcp", "prisma"]

@@ -32,12 +32,13 @@
     }
   },
   "include": [
-    "next-env.d.ts",
+    "apps/manager/next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
-    "apps/manager/.next/types/**/*.ts"
+    "apps/manager/.next/types/**/*.ts",
+    "apps/manager/postcss.config.mjs"
   ],
   "types": ["web", "bun-types"],
   "exclude": [
