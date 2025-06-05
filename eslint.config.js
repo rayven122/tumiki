@@ -7,7 +7,16 @@ const compat = new FlatCompat({
 
 export default tseslint.config(
   {
-    ignores: [".next"],
+    ignores: [
+      ".next",
+      "src/app/(chat)/**", // For ai-chatbot
+      "src/artifacts/**", // For ai-chatbot
+      "src/components/*.tsx", // For ai-chatbot
+      "src/hooks/**", // For ai-chatbot
+      "src/lib/ai/**", // For ai-chatbot
+      "src/lib/constants.ts", // For ai-chatbot
+      "src/lib/editor/suggestions.tsx", // For ai-chatbot
+    ],
   },
   ...compat.extends("next/core-web-vitals"),
   {
