@@ -46,6 +46,7 @@ yarn-error.log*
 .idea
 
 prisma/generated
+apps/manager/prisma/generated
 mcp
 
 .turbo
