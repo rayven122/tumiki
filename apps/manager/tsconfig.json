@@ -1,5 +1,5 @@
 {
-"extends": "@tumiki/tsconfig/base.json",
+  "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
     /* Base Options: */
     "esModuleInterop": true,

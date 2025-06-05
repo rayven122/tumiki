@@ -14,7 +14,7 @@ import {
   ToolSchema,
   UserMcpServerInstanceSchema,
   UserToolGroupSchema,
-} from "apps/manager/prisma/generated/zod";
+} from "@zod";
 
 import { findOfficialServers } from "./findOfficialServers";
 import { deleteServerInstance } from "./deleteServerInstance";
