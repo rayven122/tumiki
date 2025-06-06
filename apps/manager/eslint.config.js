@@ -1,14 +1,10 @@
-import { FlatCompat } from "@eslint/eslintrc";
 import tseslint from "typescript-eslint";
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
 
 export default tseslint.config(
   {
     ignores: [
       ".next",
+      "prisma/**",
       "src/app/(chat)/**", // For ai-chatbot
       "src/artifacts/**", // For ai-chatbot
       "src/components/*.tsx", // For ai-chatbot
@@ -18,7 +14,6 @@ export default tseslint.config(
       "src/lib/editor/suggestions.tsx", // For ai-chatbot
     ],
   },
-  ...compat.extends("next/core-web-vitals"),
   {
     files: ["**/*.ts", "**/*.tsx"],
     extends: [
