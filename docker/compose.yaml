@@ -10,9 +10,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: root
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: ai-chatbot
+      POSTGRES_DB: mcp-server-manger
       TZ: "Asia/Tokyo"
     volumes:
       - db_vol:/var/lib/postgresql/data
