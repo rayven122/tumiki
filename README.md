@@ -32,7 +32,6 @@ tumiki/
 - [Next.js](https://nextjs.org) - Reactフレームワーク
 - [NextAuth.js](https://next-auth.js.org) - 認証
 - [Prisma](https://prisma.io) - ORM
-- [Drizzle](https://orm.drizzle.team) - データベースツールキット
 - [Tailwind CSS](https://tailwindcss.com) - CSSフレームワーク
 - [tRPC](https://trpc.io) - 型安全API
 - [Turbo](https://turbo.build/repo) - モノレポビルドシステム
