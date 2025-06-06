@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  format:
-    name: 💅 Eslint check
+  lint:
+    name: 🔍 Lint
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
@@ -18,8 +18,23 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Run run check
-        run: pnpm exec dotenv -e .env.test -- pnpm run check
+      - name: Run lint
+        run: pnpm run lint
+
+  format:
+    name: 💅 Format
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Run format
+        run: pnpm run format
 
   typecheck:
     name: ✅ Typecheck
