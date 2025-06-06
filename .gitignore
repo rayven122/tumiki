@@ -50,3 +50,5 @@ apps/manager/prisma/generated
 mcp
 
 .turbo
+
+.cache
