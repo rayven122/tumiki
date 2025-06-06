@@ -1,7 +1,7 @@
 import type { CoreAssistantMessage, CoreToolMessage, UIMessage } from "ai";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { Document } from "@/lib/db/schema";
+import type { Document } from "@prisma/client";
 import { ChatSDKError, type ErrorCode } from "./errors";
 import { createId } from "@paralleldrive/cuid2";
 export function cn(...inputs: ClassValue[]) {
