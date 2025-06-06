@@ -54,6 +54,7 @@ enum Role {
 
 /// @namespace NextAuth
 /// @namespace UserMcpServer
+/// @namespace Chat
 model User {
     id                 String                   @id @default(cuid())
     /// ユーザー名
@@ -74,6 +75,10 @@ model User {
     organizations      Organization[]
     members            OrganizationMember[]
     invitations        OrganizationInvitation[]
+    /// Chat関連
+    Chat               Chat[]
+    Document           Document[]
+    Suggestion         Suggestion[]
 }
 
 /// @namespace NextAuth
