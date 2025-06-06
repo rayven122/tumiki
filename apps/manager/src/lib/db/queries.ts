@@ -1,9 +1,9 @@
 import "server-only";
 import { db } from "@/server/db";
-import { type Suggestion, type DBMessage } from "./schema";
 import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
+import type { Message, Prisma, Suggestion } from "@prisma/client";
 
 export async function saveChat({
   id,
@@ -133,10 +133,17 @@ export async function getChatById({ id }: { id: string }) {
 export async function saveMessages({
   messages,
 }: {
-  messages: Array<DBMessage>;
+  messages: Array<
+    Message & {
+      parts: Prisma.InputJsonValue;
+      attachments: Prisma.InputJsonValue;
+    }
+  >;
 }) {
   try {
-    return await db.message.createMany({ data: messages });
+    return await db.message.createMany({
+      data: messages,
+    });
   } catch {
     throw new ChatSDKError("bad_request:database", "Failed to save messages");
   }
@@ -171,7 +178,12 @@ export async function voteMessage({
     });
     if (existingVote) {
       return await db.vote.update({
-        where: { id: existingVote.id },
+        where: {
+          chatId_messageId: {
+            chatId,
+            messageId,
+          },
+        },
         data: { isUpvoted: type === "up" },
       });
     }
