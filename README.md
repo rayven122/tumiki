@@ -79,6 +79,8 @@ pnpm run dev
 ### 基本コマンド
 
 ```bash
+# docker 起動 (Redisを利用)
+docker compose -f ./docker/compose.yaml up -d
 # 開発サーバーの起動（すべてのアプリ）
 pnpm dev
 
@@ -105,6 +107,9 @@ pnpm lint:ws
 # クリーンアップ
 pnpm clean            # node_modules削除
 pnpm clean:workspaces # 各ワークスペースのクリーンアップ
+
+# docker のクリーンアップ
+docker compose -f ./docker/compose.yaml down --volumes
 ```
 
 ### Turboタスク
