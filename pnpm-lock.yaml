@@ -443,7 +443,7 @@ importers:
         specifier: ^4.19.1
         version: 4.19.4
       typescript-eslint:
-        specifier: ^8.31.1
+        specifier: ^8.33.0
         version: 8.33.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
       zod-prisma-types:
         specifier: ^3.2.4
@@ -567,7 +567,7 @@ importers:
         specifier: ^2.5.1
         version: 2.5.4(eslint@9.28.0(jiti@2.4.2))(turbo@2.5.4)
       typescript-eslint:
-        specifier: ^8.31.1
+        specifier: ^8.33.0
         version: 8.33.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
     devDependencies:
       '@eslint/js':
@@ -8609,7 +8609,7 @@ snapshots:
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.0.9(vite@6.3.5(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0))':
+  '@vitest/mocker@3.0.9(vite@6.3.5(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(yaml@2.8.0))':
     dependencies:
       '@vitest/spy': 3.0.9
       estree-walker: 3.0.3
@@ -12107,7 +12107,7 @@ snapshots:
   vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0):
     dependencies:
       '@vitest/expect': 3.0.9
-      '@vitest/mocker': 3.0.9(vite@6.3.5(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0))
+      '@vitest/mocker': 3.0.9(vite@6.3.5(@types/node@22.15.29)(jiti@2.4.2)(lightningcss@1.30.1)(yaml@2.8.0))
       '@vitest/pretty-format': 3.1.4
       '@vitest/runner': 3.0.9
       '@vitest/snapshot': 3.0.9

@@ -16,7 +16,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "inspector": "bunx @modelcontextprotocol/inspector http://localhost:3000/sse",
-    "postinstall": "pnpm db:generate && chmod +x ./bundle-mcp-servers.sh && ./bundle-mcp-servers.sh"
+    "postinstall": "pnpm db:generate  && pnpm format --write && chmod +x ./bundle-mcp-servers.sh && ./bundle-mcp-servers.sh"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.0.2",
