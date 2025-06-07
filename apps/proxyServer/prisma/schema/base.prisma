@@ -1,0 +1,28 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+generator zod {
+  provider                         = "zod-prisma-types"
+  output                           = "../generated/zod"
+  useMultipleFiles                 = true // スキーマを複数ファイルに分割
+  createOptionalDefaultValuesTypes = true // デフォルト値を持つフィールドをオプショナルに
+  addInputTypeValidation           = false // 入力型の検証を追加
+}
+
+generator markdown {
+  provider = "prisma-markdown"
+  output   = "../README.md"
+  title    = "DB Schema"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+  // Further reading:
+  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
