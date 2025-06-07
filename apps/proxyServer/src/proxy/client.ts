@@ -19,7 +19,7 @@ export type ConnectedClient = {
  * @returns
  */
 const createClient = (
-  server: ServerConfig
+  server: ServerConfig,
 ): { client: Client | undefined; transport: Transport | undefined } => {
   let transport: Transport | null = null;
   try {
@@ -34,7 +34,7 @@ const createClient = (
               Object.entries(server.transport.env).map(([key, value]) => [
                 key,
                 process.env[key] ?? value,
-              ])
+              ]),
             )
           : undefined,
       });
@@ -44,7 +44,7 @@ const createClient = (
       `Failed to create transport ${server.transport.type ?? "stdio"} to ${
         server.name
       }:`,
-      error
+      error,
     );
     console.error(`Transport ${server.name} not available.`);
     return { transport: undefined, client: undefined };
@@ -66,7 +66,7 @@ const createClient = (
  * @returns
  */
 export const createClients = async (
-  servers: ServerConfig[]
+  servers: ServerConfig[],
 ): Promise<ConnectedClient[]> => {
   const clients: ConnectedClient[] = [];
 
@@ -107,7 +107,7 @@ export const createClients = async (
             await client.close();
           } finally {
             console.log(
-              `Retry connection to ${server.name} in ${waitFor}ms (${count}/${retries})`
+              `Retry connection to ${server.name} in ${waitFor}ms (${count}/${retries})`,
             );
             await sleep(waitFor);
           }

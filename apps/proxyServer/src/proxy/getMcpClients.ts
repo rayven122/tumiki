@@ -23,7 +23,7 @@ const getServerConfigs = async (apiKeyId: string) => {
   });
 
   const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
-    ({ userMcpServerConfigId }) => userMcpServerConfigId
+    ({ userMcpServerConfigId }) => userMcpServerConfigId,
   );
 
   const serverConfigs = await db.userMcpServerConfig.findMany({
@@ -43,7 +43,8 @@ const getServerConfigs = async (apiKeyId: string) => {
   const serverConfigList: ServerConfig[] = serverConfigs.map((serverConfig) => {
     const toolNames = serverInstance.toolGroup.toolGroupTools
       .filter(
-        ({ userMcpServerConfigId }) => userMcpServerConfigId === serverConfig.id
+        ({ userMcpServerConfigId }) =>
+          userMcpServerConfigId === serverConfig.id,
       )
       .map(({ tool }) => tool.name);
 

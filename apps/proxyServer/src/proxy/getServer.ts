@@ -19,7 +19,7 @@ export const getServer = async (apiKeyId: string) => {
       capabilities: {
         tools: {},
       },
-    }
+    },
   );
   const toolToClientMap = new Map<string, ConnectedClient>();
 
@@ -37,7 +37,7 @@ export const getServer = async (apiKeyId: string) => {
               _meta: request.params?._meta,
             },
           },
-          ListToolsResultSchema
+          ListToolsResultSchema,
         );
 
         if (result.tools) {
@@ -55,7 +55,7 @@ export const getServer = async (apiKeyId: string) => {
       } catch (error) {
         console.error(
           `Error fetching tools from ${connectedClient.name}:`,
-          error
+          error,
         );
       }
     }
@@ -82,13 +82,13 @@ export const getServer = async (apiKeyId: string) => {
           method: "tools/call",
           params: {
             name,
-            arguments: args || {},
+            arguments: args ?? {},
             _meta: {
               progressToken: request.params._meta?.progressToken,
             },
           },
         },
-        CompatibilityCallToolResultSchema
+        CompatibilityCallToolResultSchema,
       );
     } catch (error) {
       console.error(`Error calling tool through ${clientForTool.name}:`, error);

@@ -7,7 +7,7 @@ import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 
 const createPrismaClient = () => {
   // websocket を使った接続を使う
-  neonConfig.webSocketConstructor = ws;
+  neonConfig.webSocketConstructor = ws as unknown as typeof WebSocket;
   const connectionString = `${process.env.DATABASE_URL}`;
   const adapter = new PrismaNeon({ connectionString });
 

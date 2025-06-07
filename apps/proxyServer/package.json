@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
-    "lint:fix": "next lint --fix",
+    "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
@@ -45,8 +45,10 @@
     "@types/ws": "^8.18.1",
     "@vercel/ncc": "^0.38.3",
     "dotenv-cli": "^8.0.0",
+    "eslint": "catalog:",
     "prisma": "^6.7.0",
     "prisma-markdown": "^2.0.0",
+    "typescript-eslint": "^8.33.0",
     "zod-prisma-types": "^3.2.4"
   },
   "prisma": {
