@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { type Request, type Response } from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { getServer } from "./proxy/getServer.js";
 
@@ -26,7 +26,7 @@ app.get("/mcp", async (req: Request, res: Response) => {
   console.log("Received GET request to /sse (establishing SSE stream)");
 
   // request header から apiKeyId を取得
-  const bearerToken = req.headers["authorization"];
+  const bearerToken = req.headers.authorization;
 
   // クエリパラメータから apiKeyId を取得
   const apiKeyId = (req.query["api-key"] ?? req.headers["api-key"]) as
@@ -63,7 +63,7 @@ app.get("/mcp", async (req: Request, res: Response) => {
       console.log(`SSE transport closed for session ${sessionId}`);
       delete transports[sessionId];
       delete lastActivity[sessionId];
-      cleanup();
+      void cleanup();
       // セッション削除後にセッション数をロギング
       logSessionCount();
     };
@@ -71,7 +71,7 @@ app.get("/mcp", async (req: Request, res: Response) => {
     // クライアント切断検出用のイベントハンドラを追加
     res.on("close", () => {
       console.log(`Client disconnected for session ${sessionId}`);
-      cleanupSession(sessionId);
+      void cleanupSession(sessionId);
     });
 
     // キープアライブメッセージを送信する設定
@@ -89,7 +89,7 @@ app.get("/mcp", async (req: Request, res: Response) => {
           `Error sending keepalive for session ${sessionId}:`,
           error,
         );
-        cleanupSession(sessionId);
+        void cleanupSession(sessionId);
         clearInterval(keepAliveInterval);
       }
     }, KEEPALIVE_INTERVAL);
@@ -165,7 +165,7 @@ setInterval(() => {
   for (const sessionId in lastActivity) {
     const lastActiveTime = lastActivity[sessionId];
     if (now - lastActiveTime > CONNECTION_TIMEOUT) {
-      cleanupSession(sessionId);
+      void cleanupSession(sessionId);
     }
   }
 }, CONNECTION_TIMEOUT / 2);
@@ -180,7 +180,7 @@ app.listen(PORT, () => {
 });
 
 // Handle server shutdown
-process.on("SIGINT", async () => {
+process.on("SIGINT", () => {
   console.log("Shutting down server...");
   // シャットダウン開始時のセッション数をロギング
   logSessionCount();
@@ -189,7 +189,7 @@ process.on("SIGINT", async () => {
   for (const sessionId in transports) {
     try {
       console.log(`Closing transport for session ${sessionId}`);
-      await cleanupSession(sessionId);
+      void cleanupSession(sessionId);
     } catch (error) {
       console.error(`Error closing transport for session ${sessionId}:`, error);
     }
