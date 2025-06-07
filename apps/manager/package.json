@@ -152,7 +152,7 @@
     "tailwindcss": "catalog:",
     "tsx": "^4.19.1",
     "typescript": "^4.1.8",
-    "typescript-eslint": "^8.31.1",
+    "typescript-eslint": "^8.33.0",
     "zod-prisma-types": "^3.2.4"
   },
   "prisma": {
