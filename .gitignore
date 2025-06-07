@@ -45,8 +45,7 @@ yarn-error.log*
 # idea files
 .idea
 
-prisma/generated
-apps/manager/prisma/generated
+**/prisma/generated
 mcp
 
 .turbo
