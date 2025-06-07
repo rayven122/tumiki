@@ -1,0 +1,60 @@
+{
+  "name": "@tumiki/proxyServer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm with-env pnpm build && pnpm start",
+    "build": "tsc && node -e \"require('fs').chmodSync('build/sse.js', '755')\"",
+    "start": "pnpm with-env node build/sse.js",
+    "clean": "git clean -xdf .cache .next .turbo node_modules",
+    "typecheck": "tsc --noEmit",
+    "with-env": "dotenv -e ../../.env --",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "inspector": "bunx @modelcontextprotocol/inspector http://localhost:3000/sse",
+    "postinstall": "pnpm db:generate  && pnpm format --write && chmod +x ./bundle-mcp-servers.sh && ./bundle-mcp-servers.sh"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.0.2",
+    "@modelcontextprotocol/sdk": "^1.10.1",
+    "@modelcontextprotocol/server-github": "^2025.4.8",
+    "@neondatabase/serverless": "^1.0.0",
+    "@playwright/mcp": "^0.0.10",
+    "@prisma/adapter-neon": "^6.7.0",
+    "@prisma/client": "^6.7.0",
+    "@suekou/mcp-notion-server": "^1.2.3",
+    "agents": "^0.0.45",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "fastmcp": "^1.27.6",
+    "hono": "^4.7.4",
+    "just-pick": "^4.2.0",
+    "marked": "^15.0.8",
+    "octokit": "^4.1.2",
+    "prisma-field-encryption": "^1.6.0",
+    "workers-mcp": "0.1.0-3",
+    "ws": "^8.18.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/ws": "^8.18.1",
+    "@vercel/ncc": "^0.38.3",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "catalog:",
+    "prisma": "^6.7.0",
+    "prisma-markdown": "^2.0.0",
+    "typescript-eslint": "^8.33.0",
+    "zod-prisma-types": "^3.2.4"
+  },
+  "prisma": {
+    "schema": "./prisma/schema"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

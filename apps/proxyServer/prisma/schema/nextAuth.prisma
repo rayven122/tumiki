@@ -1,0 +1,89 @@
+/**
+ * @namespace NextAuth
+ */
+
+/// @namespace NextAuth
+model Account {
+    id                       String  @id @default(cuid())
+    userId                   String
+    /// 認証プロバイダーの種類（oauth, oidc, email, credentials）
+    type                     String
+    /// 認証プロバイダー名（google, github, etc.）
+    provider                 String
+    /// プロバイダー側のアカウントID
+    providerAccountId        String
+    /// リフレッシュトークン
+    refresh_token            String?
+    /// アクセストークン
+    access_token             String?
+    /// トークンの有効期限（Unixタイムスタンプ）
+    expires_at               Int?
+    /// トークンの種類
+    token_type               String?
+    /// 認可スコープ
+    scope                    String?
+    /// IDトークン
+    id_token                 String?
+    /// セッション状態
+    session_state            String?
+    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    /// リフレッシュトークンの有効期限（秒）
+    refresh_token_expires_in Int?
+
+    @@unique([provider, providerAccountId])
+}
+
+/// @namespace NextAuth
+model Session {
+    id           String   @id @default(cuid())
+    /// セッショントークン
+    sessionToken String   @unique
+    userId       String
+    /// セッションの有効期限
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// @namespace NextAuth
+enum Role {
+    /// システム管理者
+    SYSTEM_ADMIN
+    /// 一般ユーザー
+    USER
+}
+
+/// @namespace NextAuth
+/// @namespace UserMcpServer
+model User {
+    id                 String                   @id @default(cuid())
+    /// ユーザー名
+    name               String?
+    /// メールアドレス
+    email              String?                  @unique
+    /// メールアドレスの検証日時
+    emailVerified      DateTime?
+    /// プロフィール画像のURL
+    image              String?
+    accounts           Account[]
+    sessions           Session[]
+    toolGroups         UserToolGroup[]
+    mcpServerConfigs   UserMcpServerConfig[]
+    mcpServerInstances UserMcpServerInstance[]
+    /// ユーザーの権限
+    role               Role                     @default(USER)
+    organizations      Organization[]
+    members            OrganizationMember[]
+    invitations        OrganizationInvitation[]
+}
+
+/// @namespace NextAuth
+model VerificationToken {
+    /// 検証対象の識別子（メールアドレスなど）
+    identifier String
+    /// 検証トークン
+    token      String   @unique
+    /// トークンの有効期限
+    expires    DateTime
+
+    @@unique([identifier, token])
+}
