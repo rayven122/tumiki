@@ -2,10 +2,10 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["prisma/**"],
+    ignores: ["prisma/**", "build/**", "node_modules/**"],
   },
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["**/*.ts", "**/*.js"],
     extends: [
       ...tseslint.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
@@ -27,6 +27,8 @@ export default tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
     },
   },
   {
