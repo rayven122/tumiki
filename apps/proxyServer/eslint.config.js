@@ -2,15 +2,25 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["prisma/**", "build/**", "node_modules/**"],
+    ignores: ["prisma/**", "build/**", "node_modules/**", "mcp/**"],
   },
   {
-    files: ["**/*.ts", "**/*.js"],
+    files: ["**/*.js"],
+    extends: [...tseslint.configs.recommended],
+  },
+  {
+    files: ["**/*.ts"],
     extends: [
       ...tseslint.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
+    languageOptions: {
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/consistent-type-definitions": "off",
@@ -34,11 +44,6 @@ export default tseslint.config(
   {
     linterOptions: {
       reportUnusedDisableDirectives: true,
-    },
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-      },
     },
   },
 );
