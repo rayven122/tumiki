@@ -201,8 +201,7 @@ docker compose -f ./docker/compose.yaml up -d
 
 この設定では以下のサービスが起動します：
 
-- **アプリケーション**: app/proxyServer（ポート8080）
+- **アプリケーション**: @tumiki/proxyServer（ポート8080）
 - **HTTPS Portal**:
-  - HTTP: http://localhost:80（HTTPSにリダイレクト）
-  - HTTPS: https://localhost:443（SSL証明書付き）
-  - HTTPS: https://localhost（SSL証明書付き）
+  - HTTP: http://tumiki.server.cloud:80（HTTPSにリダイレクト）
+  - HTTPS: https://tumiki.server.cloud（SSL証明書付き）
