@@ -1,0 +1,89 @@
+/**
+ * @namespace Chat
+ * AIチャット関連のテーブル
+ */
+enum Visibility {
+    private
+    public
+}
+
+model Chat {
+    id         String     @id @default(cuid())
+    createdAt  DateTime
+    title      String
+    userId     String
+    user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+    visibility Visibility @default(private)
+
+    messages Message[]
+    votes    Vote[]
+    streams  Stream[]
+}
+
+model Message {
+    id          String   @id @default(cuid())
+    chatId      String
+    chat        Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+    role        String
+    parts       Json
+    attachments Json
+    createdAt   DateTime
+
+    votes Vote[]
+}
+
+model Vote {
+    chatId    String
+    messageId String
+    isUpvoted Boolean
+
+    chat    Chat    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+    message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+    @@id([chatId, messageId])
+}
+
+enum DocumentKind {
+    text
+    code
+    image
+    sheet
+}
+
+model Document {
+    id        String       @default(cuid())
+    createdAt DateTime
+    title     String
+    content   String?
+    kind      DocumentKind @default(text)
+    userId    String
+    user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    suggestions Suggestion[]
+
+    @@id([id, createdAt])
+}
+
+model Suggestion {
+    id                String   @id @default(cuid())
+    documentId        String
+    documentCreatedAt DateTime
+    originalText      String
+    suggestedText     String
+    description       String?
+    isResolved        Boolean  @default(false)
+    userId            String
+    user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    document Document @relation(fields: [documentId, documentCreatedAt], references: [id, createdAt], onDelete: Cascade)
+
+    createdAt DateTime
+}
+
+model Stream {
+    id        String   @id @default(cuid())
+    chatId    String
+    createdAt DateTime
+
+    chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}

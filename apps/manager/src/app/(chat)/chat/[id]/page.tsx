@@ -6,7 +6,7 @@ import { Chat } from "@/components/chat";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
-import type { DBMessage } from "@/lib/db/schema";
+import type { Message } from "@prisma/client";
 import type { Attachment, UIMessage } from "ai";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
@@ -38,7 +38,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     id,
   });
 
-  function convertToUIMessages(messages: Array<DBMessage>): Array<UIMessage> {
+  function convertToUIMessages(messages: Array<Message>): Array<UIMessage> {
     return messages.map((message) => ({
       id: message.id,
       parts: message.parts as UIMessage["parts"],
@@ -47,7 +47,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       content: "",
       createdAt: message.createdAt,
       experimental_attachments:
-        (message.attachments as Array<Attachment>) ?? [],
+        (message.attachments as unknown as Array<Attachment>) ?? [],
     }));
   }
 
