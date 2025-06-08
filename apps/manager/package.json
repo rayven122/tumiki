@@ -16,9 +16,9 @@
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "check": "next lint && tsc --noEmit",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio",
+    "db:migrate": "pnpm with-env prisma migrate dev",
+    "db:deploy": "pnpm with-env prisma migrate deploy",
+    "db:studio": "pnpm with-env prisma studio",
     "postinstall": "pnpm db:generate && pnpm format --write"
   },
   "dependencies": {
