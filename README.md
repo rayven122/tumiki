@@ -90,7 +90,7 @@ pnpm run dev
 
 # または個別起動
 cd apps/manager && pnpm run dev     # Manager（ポート3000）
-cd apps/proxyServer && pnpm run dev # ProxyServer（ポート3001）
+cd apps/proxyServer && pnpm run dev # ProxyServer（ポート８０８０）
 ```
 
 ## アプリケーション
@@ -154,9 +154,6 @@ pnpm lint:ws
 # クリーンアップ
 pnpm clean            # node_modules削除
 pnpm clean:workspaces # 各ワークスペースのクリーンアップ
-
-# docker のクリーンアップ
-docker compose -f ./docker/compose.yaml down --volumes
 ```
 
 ### Turboタスク
@@ -169,39 +166,42 @@ Turboは以下のタスクを並列実行し、キャッシュを活用して高
 - `format` - Prettierによるコードフォーマット
 - `typecheck` - TypeScriptの型チェック
 
-## スクリプト
-
-### MCPサーバーとツールの一括登録
-
-`apps/manager/src/scripts/upsertAll.ts` スクリプトを使用して、MCPサーバーとツールを一括で登録できます。
-
-```bash
-cd apps/manager
-pnpm exec tsx src/scripts/upsertAll.ts
-```
-
 ## Docker環境
 
-### 開発環境（Redisのみ）
-
-データベースをDockerで起動する場合：
-
-```bash
-cd docker
-docker compose up -d
-```
-
-### HTTPS対応環境（SSL証明書付きリバースプロキシ）
+### HTTPS対応（SSL証明書付きリバースプロキシ）
 
 https-portalを使用したSSL対応の完全な環境を起動する場合：
 
+#### 開発環境（ローカルSSL）
+
+ローカル開発で自己署名証明書を使用する場合：
+
 ```bash
-docker compose -f ./docker/compose.yaml up -d
+docker compose -f ./docker/compose.dev.yaml up -d
 ```
 
-この設定では以下のサービスが起動します：
+- **ドメイン**: https://local-server.tumiki.cloud
+- **証明書**: 自己署名証明書（STAGEが"local"）
+- **アクセス**: https://local-server.tumiki.cloud でプロキシサーバー（ポート8080）にアクセス
 
-- **アプリケーション**: @tumiki/proxyServer（ポート8080）
-- **HTTPS Portal**:
-  - HTTP: http://tumiki.server.cloud:80（HTTPSにリダイレクト）
-  - HTTPS: https://tumiki.server.cloud（SSL証明書付き）
+#### 本番環境（Let's Encrypt SSL）
+
+本番環境でLet's Encryptの証明書を使用する場合：
+
+```bash
+docker compose -f ./docker/compose.prod.yaml up -d
+```
+
+- **ドメイン**: https://server.tumiki.cloud
+- **証明書**: Let's Encrypt自動取得（STAGEが"production"）
+- **アクセス**: https://server.tumiki.cloud でプロキシサーバー（ポート8080）にアクセス
+
+#### 停止とクリーンアップ
+
+```bash
+# 開発環境の停止
+docker compose -f ./docker/compose.dev.yaml down
+
+# 本番環境の停止
+docker compose -f ./docker/compose.prod.yaml down
+```
