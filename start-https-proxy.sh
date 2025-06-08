@@ -10,5 +10,6 @@ sleep 5
 
 echo "Starting @tumiki/proxyServer..."
 cd apps/proxyServer
+pnpm install
 pnpm build
 pnpm start
