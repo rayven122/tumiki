@@ -3,3 +3,45 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      DOMAINS: 'localhost -> http://app:3000'
+      STAGE: 'local'
+      WEBSOCKET: 'true'
+      CLIENT_MAX_BODY_SIZE: 10M
+      PROXY_CONNECT_TIMEOUT: 60s
+      PROXY_SEND_TIMEOUT: 60s
+      PROXY_READ_TIMEOUT: 60s
+      PROXY_PASS_REQUEST_HEADERS: 'on'
+      PROXY_INTERCEPT_ERRORS: 'off'
+      CUSTOM_NGINX_SERVER_CONFIG_BLOCK: |
+        server {
+          listen 8080;
+          server_name _;
+          return 301 https://$$host$$request_uri;
+        }
+    volumes:
+      - https-portal-data:/var/lib/https-portal
+    depends_on:
+      - app
+    restart: always
+
+volumes:
+  https-portal-data:

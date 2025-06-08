@@ -182,9 +182,34 @@ pnpm exec tsx src/scripts/upsertAll.ts
 
 ## Docker環境
 
+### 開発環境（Redisのみ）
+
 データベースをDockerで起動する場合：
 
 ```bash
 cd docker
 docker compose up -d
 ```
+
+### HTTPS対応環境（SSL証明書付きリバースプロキシ）
+
+https-portalを使用したSSL対応の完全な環境を起動する場合：
+
+```bash
+cd docker
+docker compose up -d
+```
+
+この設定では以下のサービスが起動します：
+
+- **アプリケーション**: http://localhost:3000（内部）
+- **HTTPS Portal**: 
+  - HTTP: http://localhost:80（HTTPSにリダイレクト）
+  - HTTPS: https://localhost:443（SSL証明書付き）
+  - HTTP Proxy: http://localhost:8080（HTTPSにリダイレクト）
+- **Redis**: redis://localhost:6379
+
+**注意**: 
+- 初回起動時はSSL証明書の生成に時間がかかる場合があります
+- 本番環境では`STAGE: 'production'`と適切なドメイン名を設定してください
+- 8080ポートは自動的にHTTPSにリダイレクトされます
