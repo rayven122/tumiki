@@ -126,7 +126,7 @@ pnpm run inspector
 ### 基本コマンド
 
 ```bash
-# docker 起動 (Redisを利用)
+# docker 起動
 docker compose -f ./docker/compose.yaml up -d
 # 開発サーバーの起動（すべてのアプリ）
 pnpm dev
@@ -182,9 +182,26 @@ pnpm exec tsx src/scripts/upsertAll.ts
 
 ## Docker環境
 
+### 開発環境（Redisのみ）
+
 データベースをDockerで起動する場合：
 
 ```bash
 cd docker
 docker compose up -d
 ```
+
+### HTTPS対応環境（SSL証明書付きリバースプロキシ）
+
+https-portalを使用したSSL対応の完全な環境を起動する場合：
+
+```bash
+docker compose -f ./docker/compose.yaml up -d
+```
+
+この設定では以下のサービスが起動します：
+
+- **アプリケーション**: @tumiki/proxyServer（ポート8080）
+- **HTTPS Portal**:
+  - HTTP: http://tumiki.server.cloud:80（HTTPSにリダイレクト）
+  - HTTPS: https://tumiki.server.cloud（SSL証明書付き）
