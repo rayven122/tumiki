@@ -36,7 +36,6 @@ tumiki/
 - [Next.js](https://nextjs.org) - Reactフレームワーク
 - [NextAuth.js](https://next-auth.js.org) - 認証
 - [Prisma](https://prisma.io) - ORM
-- [Drizzle](https://orm.drizzle.team) - データベースツールキット
 - [Tailwind CSS](https://tailwindcss.com) - CSSフレームワーク
 - [tRPC](https://trpc.io) - 型安全API
 
@@ -127,6 +126,8 @@ pnpm run inspector
 ### 基本コマンド
 
 ```bash
+# docker 起動 (Redisを利用)
+docker compose -f ./docker/compose.yaml up -d
 # 開発サーバーの起動（すべてのアプリ）
 pnpm dev
 
@@ -153,6 +154,9 @@ pnpm lint:ws
 # クリーンアップ
 pnpm clean            # node_modules削除
 pnpm clean:workspaces # 各ワークスペースのクリーンアップ
+
+# docker のクリーンアップ
+docker compose -f ./docker/compose.yaml down --volumes
 ```
 
 ### Turboタスク

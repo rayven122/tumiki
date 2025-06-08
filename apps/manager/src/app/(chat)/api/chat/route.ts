@@ -32,7 +32,7 @@ import {
   type ResumableStreamContext,
 } from "resumable-stream";
 import { after } from "next/server";
-import type { Chat } from "@/lib/db/schema";
+import type { Chat } from "@prisma/client";
 import { differenceInSeconds } from "date-fns";
 import { ChatSDKError } from "@/lib/errors";
 import { generateTitleFromUserMessage } from "@/app/(chat)/chat/actions";
@@ -194,9 +194,10 @@ export async function POST(request: Request) {
                         id: assistantId,
                         chatId: id,
                         role: assistantMessage.role,
-                        parts: assistantMessage.parts,
+                        parts: assistantMessage.parts as any,
                         attachments:
-                          assistantMessage.experimental_attachments ?? [],
+                          assistantMessage.experimental_attachments ??
+                          ([] as any),
                         createdAt: new Date(),
                       },
                     ],
@@ -261,7 +262,7 @@ export async function GET(request: Request) {
     return new ChatSDKError("unauthorized:chat").toResponse();
   }
 
-  let chat: Chat | undefined;
+  let chat: Chat | null;
 
   try {
     chat = await getChatById({ id: chatId });

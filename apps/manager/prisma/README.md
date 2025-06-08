@@ -6,6 +6,8 @@
 - [NextAuth](#nextauth)
 - [Organization](#organization)
 - [UserMcpServer](#usermcpserver)
+- [Chat](#chat)
+- [default](#default)
 
 ## McpServer
 
@@ -688,3 +690,145 @@ Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcp
 
 - `A`:
 - `B`:
+
+## Chat
+
+```mermaid
+erDiagram
+"User" {
+  String id PK
+  String name "nullable"
+  String email UK "nullable"
+  DateTime emailVerified "nullable"
+  String image "nullable"
+  Role role
+}
+```
+
+### `User`
+
+**Properties**
+
+- `id`:
+- `name`: ユーザー名
+- `email`: メールアドレス
+- `emailVerified`: メールアドレスの検証日時
+- `image`: プロフィール画像のURL
+- `role`: ユーザーの権限
+
+## default
+
+```mermaid
+erDiagram
+"Chat" {
+  String id PK
+  DateTime createdAt
+  String title
+  String userId FK
+  Visibility visibility
+}
+"Message" {
+  String id PK
+  String chatId FK
+  String role
+  Json parts
+  Json attachments
+  DateTime createdAt
+}
+"Vote" {
+  String chatId FK
+  String messageId FK
+  Boolean isUpvoted
+}
+"Document" {
+  String id
+  DateTime createdAt
+  String title
+  String content "nullable"
+  DocumentKind kind
+  String userId FK
+}
+"Suggestion" {
+  String id PK
+  String documentId FK
+  DateTime documentCreatedAt
+  String originalText
+  String suggestedText
+  String description "nullable"
+  Boolean isResolved
+  String userId FK
+  DateTime createdAt
+}
+"Stream" {
+  String id PK
+  String chatId FK
+  DateTime createdAt
+}
+"Message" }o--|| "Chat" : chat
+"Vote" }o--|| "Chat" : chat
+"Vote" }o--|| "Message" : message
+"Suggestion" }o--|| "Document" : document
+"Stream" }o--|| "Chat" : chat
+```
+
+### `Chat`
+
+**Properties**
+
+- `id`:
+- `createdAt`:
+- `title`:
+- `userId`:
+- `visibility`:
+
+### `Message`
+
+**Properties**
+
+- `id`:
+- `chatId`:
+- `role`:
+- `parts`:
+- `attachments`:
+- `createdAt`:
+
+### `Vote`
+
+**Properties**
+
+- `chatId`:
+- `messageId`:
+- `isUpvoted`:
+
+### `Document`
+
+**Properties**
+
+- `id`:
+- `createdAt`:
+- `title`:
+- `content`:
+- `kind`:
+- `userId`:
+
+### `Suggestion`
+
+**Properties**
+
+- `id`:
+- `documentId`:
+- `documentCreatedAt`:
+- `originalText`:
+- `suggestedText`:
+- `description`:
+- `isResolved`:
+- `userId`:
+- `createdAt`:
+
+### `Stream`
+
+**Properties**
+
+- `id`:
+- `chatId`:
+- `createdAt`:
