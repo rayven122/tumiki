@@ -53,3 +53,5 @@ apps/proxyServer/mcp
 .turbo
 
 .cache
+
+.env.*
