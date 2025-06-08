@@ -21,6 +21,11 @@ function logSessionCount() {
   console.log(`現在のアクティブセッション数: ${count}`);
 }
 
+app.get("/", (req, res) => {
+  console.log("Received GET request to /");
+  res.send("MCP Proxy Server is running. Use /mcp to establish an SSE stream.");
+});
+
 // SSE endpoint for establishing the stream
 app.get("/mcp", async (req: Request, res: Response) => {
   console.log("Received GET request to /sse (establishing SSE stream)");

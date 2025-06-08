@@ -407,7 +407,7 @@ erDiagram
 - `description`: 組織の説明
 - `logoUrl`: 組織のロゴURL
 - `isDeleted`: 論理削除フラグ
-- `createdBy`: 組織の作��者
+- `createdBy`: 組織の作成者
 - `createdAt`:
 - `updatedAt`:
 
