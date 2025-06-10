@@ -1,0 +1,17 @@
+{
+  "extends": "@tumiki/tsconfig/base.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "~/*": ["./*"]
+    },
+    /** Emit both JS and types for runtime usage. */
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "outDir": "${configDir}/dist"
+  },
+  "include": ["src", "prisma/generated"],
+  "exclude": ["node_modules"]
+}

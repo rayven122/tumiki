@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,14 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { useState } from "react";
-import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
 
 type ImageEditModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialImageUrl: string;
-  serverName: string;
   userMcpServerId: string;
 };
 
@@ -26,8 +22,7 @@ export const ImageEditModal = ({
   open,
   onOpenChange,
   initialImageUrl,
-  serverName,
-  userMcpServerId,
+  userMcpServerId: _userMcpServerId,
 }: ImageEditModalProps) => {
   const [imageUrl, setImageUrl] = useState(initialImageUrl);
 
@@ -43,11 +38,11 @@ export const ImageEditModal = ({
   //   },
   // });
 
-  const onUpdate = () => {
-    toast.info("実装中");
-    console.log(imageUrl, userMcpServerId);
-    // updateUserMcpServer({ id: userMcpServerId, imageUrl: imageUrl });
-  };
+  // const _onUpdate = () => {
+  //   toast.info("実装中");
+  //   console.log(imageUrl, _userMcpServerId);
+  //   // updateUserMcpServer({ id: _userMcpServerId, imageUrl: imageUrl });
+  // };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

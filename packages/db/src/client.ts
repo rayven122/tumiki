@@ -1,13 +1,10 @@
 import { neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
+import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 import ws from "ws";
 
-import { env } from "@/env";
-
-import { fieldEncryptionMiddleware } from "prisma-field-encryption";
-
-const createPrismaClient = () => {
+const createPrismaClient = (): PrismaClient => {
   // websocket を使った接続を使う
   neonConfig.webSocketConstructor = ws;
   const connectionString = `${process.env.DATABASE_URL}`;
@@ -16,8 +13,9 @@ const createPrismaClient = () => {
   const client = new PrismaClient({
     adapter,
     log:
-      env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
     omit: {
       userMcpServerConfig: {
         envVars: true,
@@ -30,8 +28,9 @@ const createPrismaClient = () => {
   // // フィールド暗号化のための拡張
   // client.$extends(fieldEncryptionExtension());
 
-  client.$extends({
+  const extendedClient = client.$extends({
     query: {
+      // TODO: userMcpServer の　parse をここで行う
       // userMcpServer: {
       //   findMany: async ({ args, query }) => {
       //     const result = await query(args);
@@ -45,15 +44,15 @@ const createPrismaClient = () => {
       // },
     },
   });
-  return client;
+  return extendedClient as unknown as PrismaClient;
 };
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: ReturnType<typeof createPrismaClient> | undefined;
+  prisma: PrismaClient | undefined;
 };
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
-export type Db = typeof db;
+export type Db = PrismaClient;

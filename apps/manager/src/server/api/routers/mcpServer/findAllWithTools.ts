@@ -1,4 +1,4 @@
-import { db } from "@/server/db";
+import { db } from "@tumiki/db/client";
 
 export const findAllWithTools = async () => {
   const mcpServers = await db.mcpServer.findMany({
