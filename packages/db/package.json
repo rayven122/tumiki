@@ -6,20 +6,23 @@
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
-      "default": "./src/index.ts"
+      "default": "./dist/src/index.js"
     },
     "./client": {
       "types": "./dist/src/client.d.ts",
-      "default": "./src/client.ts"
+      "default": "./dist/src/client.js"
     },
-    "./env": "./src/env.ts",
+    "./env": {
+      "types": "./dist/src/env.d.ts",
+      "default": "./dist/src/env.js"
+    },
     "./prisma": {
       "types": "./dist/src/prisma.d.ts",
-      "default": "./src/prisma.ts"
+      "default": "./dist/src/prisma.js"
     },
     "./zod": {
-      "types": "./dist/src/zod.d.ts",
-      "default": "./src/zod.ts"
+      "types": "./dist/prisma/generated/zod/index.d.ts",
+      "default": "./dist/prisma/generated/zod/index.js"
     }
   },
   "scripts": {
@@ -58,7 +61,6 @@
     "prisma-markdown": "^2.0.0",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
-    "zod-prisma": "^0.5.4",
     "zod-prisma-types": "^3.2.4"
   },
   "prisma": {
