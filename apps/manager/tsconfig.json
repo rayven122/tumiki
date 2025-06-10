@@ -29,7 +29,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@zod": ["./prisma/generated/zod/index.ts"]
+      "@zod": ["@tumiki/db/zod"]
     }
   },
   "include": [
