@@ -21,8 +21,8 @@
       "default": "./dist/src/prisma.js"
     },
     "./zod": {
-      "types": "./dist/prisma/generated/zod/index.d.ts",
-      "default": "./dist/prisma/generated/zod/index.js"
+      "types": "./dist/src/zod.d.ts",
+      "default": "./dist/src/zod.js"
     }
   },
   "scripts": {
