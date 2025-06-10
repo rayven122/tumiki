@@ -1,99 +1,99 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、Claude Code (claude.ai/code) がこのリポジトリのコードを扱う際のガイダンスを提供します。
 
-## Project Overview
+## プロジェクト概要
 
-**Tumiki** is an MCP (Model Context Protocol) server management system built as a Next.js web application with a Node.js proxy server. It provides centralized management for multiple MCP servers, API key management, and unified access URLs for MCP clients.
+**Tumiki** は、Next.js ウェブアプリケーションと Node.js プロキシサーバーで構築された MCP (Model Context Protocol) サーバー管理システムです。複数の MCP サーバーの一元管理、API キー管理、MCP クライアント向けの統一アクセス URL を提供します。
 
-## Architecture
+## アーキテクチャ
 
-### Monorepo Structure
-- `apps/manager/` - Next.js web application (port 3000) with tRPC API, NextAuth, and Prisma
-- `apps/proxyServer/` - Express/Hono MCP proxy server (port 8080) handling MCP protocol communication
-- `packages/db/` - Shared Prisma database package with multi-schema architecture
-- `tooling/` - Shared ESLint, Prettier, Tailwind, and TypeScript configurations
+### モノレポ構造
+- `apps/manager/` - tRPC API、NextAuth、Prisma を備えた Next.js ウェブアプリケーション（ポート 3000）
+- `apps/proxyServer/` - MCP プロトコル通信を処理する Express/Hono MCP プロキシサーバー（ポート 8080）
+- `packages/db/` - マルチスキーマアーキテクチャを持つ共有 Prisma データベースパッケージ
+- `tooling/` - ESLint、Prettier、Tailwind、TypeScript の共有設定
 
-### Technology Stack
-- **Frontend**: Next.js 15 + React 19 + App Router + tRPC + Tailwind CSS + Radix UI
-- **Backend**: Express/Hono + MCP SDK + SSE for real-time communication
-- **Database**: PostgreSQL + Prisma with field encryption and Neon adapter
-- **Auth**: NextAuth.js with Google/GitHub OAuth
-- **AI**: Vercel AI SDK with multiple providers
+### 技術スタック
+- **フロントエンド**: Next.js 15 + React 19 + App Router + tRPC + Tailwind CSS + Radix UI
+- **バックエンド**: Express/Hono + MCP SDK + リアルタイム通信用 SSE
+- **データベース**: PostgreSQL + フィールド暗号化と Neon アダプター付き Prisma
+- **認証**: Google/GitHub OAuth 対応 NextAuth.js
+- **AI**: 複数プロバイダー対応 Vercel AI SDK
 
-## Development Commands
+## 開発コマンド
 
-### Core Development
+### コア開発
 ```bash
-pnpm dev                  # Start all applications in watch mode
-pnpm build               # Build all applications  
-pnpm start               # Start production servers
+pnpm dev                  # 全アプリケーションをウォッチモードで開始
+pnpm build               # 全アプリケーションをビルド
+pnpm start               # 本番サーバーを開始
 ```
 
-### Code Quality
+### コード品質
 ```bash
-pnpm lint                # ESLint across all packages
-pnpm lint:fix            # Auto-fix ESLint issues
-pnpm format              # Check Prettier formatting
-pnpm format:fix          # Auto-format with Prettier
-pnpm typecheck           # TypeScript type checking
-pnpm check               # Run all quality checks (lint + format + typecheck)
+pnpm lint                # 全パッケージで ESLint 実行
+pnpm lint:fix            # ESLint の問題を自動修正
+pnpm format              # Prettier フォーマットをチェック
+pnpm format:fix          # Prettier で自動フォーマット
+pnpm typecheck           # TypeScript 型チェック
+pnpm check               # 全品質チェック実行（lint + format + typecheck）
 ```
 
-### Database Management
+### データベース管理
 ```bash
-# From root directory
+# ルートディレクトリから
 cd packages/db
-pnpm db:migrate          # Run database migrations
-pnpm db:deploy           # Deploy migrations to production
-pnpm db:studio           # Open Prisma Studio
-pnpm db:generate         # Generate Prisma client and Zod schemas
+pnpm db:migrate          # データベースマイグレーション実行
+pnpm db:deploy           # 本番環境にマイグレーションをデプロイ
+pnpm db:studio           # Prisma Studio を開く
+pnpm db:generate         # Prisma クライアントと Zod スキーマを生成
 
-# Alternative: from apps/manager (legacy compatibility)
+# 代替手段: apps/manager から（レガシー互換性）
 cd apps/manager
-pnpm db:migrate          # Run database migrations
-pnpm db:deploy           # Deploy migrations to production  
-pnpm db:studio           # Open Prisma Studio
+pnpm db:migrate          # データベースマイグレーション実行
+pnpm db:deploy           # 本番環境にマイグレーションをデプロイ
+pnpm db:studio           # Prisma Studio を開く
 ```
 
-### Docker Deployment
+### Docker デプロイメント
 ```bash
-# Development with self-signed SSL
+# 自己署名SSL付き開発環境
 docker compose -f ./docker/compose.dev.yaml up -d
 
-# Production with Let's Encrypt SSL  
+# Let's Encrypt SSL付き本番環境
 docker compose -f ./docker/compose.prod.yaml up -d
 ```
 
-## Key Architecture Patterns
+## 重要なアーキテクチャパターン
 
-### Database Schema Organization
-The Prisma schema is split across multiple files:
-- `base.prisma` - Core configuration and generators
-- `nextAuth.prisma` - Authentication tables
-- `mcpServer.prisma` - MCP server definitions and tools
-- `userMcpServer.prisma` - User-specific server configurations
-- `organization.prisma` - Multi-tenant organization support
-- `chat.prisma` - Chat/messaging functionality
+### データベーススキーマ構成
+Prisma スキーマは複数のファイルに分割されています：
+- `base.prisma` - コア設定とジェネレーター
+- `nextAuth.prisma` - 認証テーブル
+- `mcpServer.prisma` - MCP サーバー定義とツール
+- `userMcpServer.prisma` - ユーザー固有のサーバー設定
+- `organization.prisma` - マルチテナント組織サポート
+- `chat.prisma` - チャット/メッセージング機能
 
-### API Architecture
-- **tRPC Routers**: Located in `apps/manager/src/server/api/routers/`
-- **MCP Proxy**: Handles MCP protocol communication via SSE in `apps/proxyServer/`
-- **Type Safety**: Full-stack type safety with automatic API generation
+### API アーキテクチャ
+- **tRPC ルーター**: `apps/manager/src/server/api/routers/` に配置
+- **MCP プロキシ**: `apps/proxyServer/` で SSE 経由の MCP プロトコル通信を処理
+- **型安全性**: 自動 API 生成によるフルスタック型安全性
 
-### Security Features
-- Field-level encryption for sensitive data (API keys, tokens)
-- OAuth authentication with Google/GitHub
-- Role-based access control
-- JWT session management
+### セキュリティ機能
+- 機密データ（API キー、トークン）のフィールドレベル暗号化
+- Google/GitHub OAuth 認証
+- ロールベースアクセス制御
+- JWT セッション管理
 
-## Important Notes
+## 重要な注意事項
 
-### Environment Variables
-Required variables include `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `NODE_ENV`.
+### 環境変数
+必要な変数：`DATABASE_URL`、`AUTH_SECRET`、`AUTH_GOOGLE_ID`、`AUTH_GOOGLE_SECRET`、`NODE_ENV`
 
-### Package Management
-Uses pnpm workspaces with Node.js >=22.14.0 and pnpm@10.11.0.
+### パッケージ管理
+Node.js >=22.14.0 と pnpm@10.11.0 を使用した pnpm ワークスペースを使用。
 
-### Testing and Quality
-Always run `pnpm check` before committing to ensure code quality. TypeScript strict mode is enforced across all packages.
+### テストと品質
+コード品質を確保するため、コミット前に必ず `pnpm check` を実行してください。全パッケージで TypeScript strict モードが適用されています。

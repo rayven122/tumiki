@@ -29,7 +29,20 @@ const createPrismaClient = (): PrismaClient => {
   // client.$extends(fieldEncryptionExtension());
 
   const extendedClient = client.$extends({
-    query: {},
+    query: {
+      // TODO: userMcpServer の　parse をここで行う
+      // userMcpServer: {
+      //   findMany: async ({ args, query }) => {
+      //     const result = await query(args);
+      //     let parsedEnvVars: Record<string, string> | undefined;
+      //     if (result.env)
+      //       return result.map((item) => ({
+      //         ...item,
+      //         envVars: item.envVars && JSON.parse(item.envVars),
+      //       }));
+      //   },
+      // },
+    },
   });
   return extendedClient as unknown as PrismaClient;
 };
