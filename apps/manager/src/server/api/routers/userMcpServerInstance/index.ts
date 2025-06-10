@@ -14,7 +14,7 @@ import {
   ToolSchema,
   UserMcpServerInstanceSchema,
   UserToolGroupSchema,
-} from "@zod";
+} from "@tumiki/db/zod";
 
 import { findOfficialServers } from "./findOfficialServers";
 import { deleteServerInstance } from "./deleteServerInstance";

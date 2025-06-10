@@ -1,5 +1,5 @@
 import { MCP_SERVERS } from "@/constants/mcpServers";
-import { db } from "@/server/db";
+import { db } from "@tumiki/db/client";
 
 /**
  * MCP サーバーを登録する

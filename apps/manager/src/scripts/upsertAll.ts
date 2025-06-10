@@ -1,6 +1,6 @@
 import { upsertMcpServers } from "./upsertMcpServers";
 import { upsertMcpTools } from "./upsertMcpTools";
-import { db } from "@/server/db";
+import { db } from "@tumiki/db/client";
 
 /**
  * MCPサーバーとツールを一括で登録する
