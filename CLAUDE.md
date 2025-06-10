@@ -42,11 +42,18 @@ pnpm check               # Run all quality checks (lint + format + typecheck)
 
 ### Database Management
 ```bash
-cd apps/manager
+# From root directory
+cd packages/db
 pnpm db:migrate          # Run database migrations
 pnpm db:deploy           # Deploy migrations to production
 pnpm db:studio           # Open Prisma Studio
 pnpm db:generate         # Generate Prisma client and Zod schemas
+
+# Alternative: from apps/manager (legacy compatibility)
+cd apps/manager
+pnpm db:migrate          # Run database migrations
+pnpm db:deploy           # Deploy migrations to production  
+pnpm db:studio           # Open Prisma Studio
 ```
 
 ### Docker Deployment
