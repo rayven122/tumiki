@@ -1,4 +1,4 @@
-import { db } from "@/server/db";
+import { db } from "@tumiki/db/client";
 import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
 
 /**

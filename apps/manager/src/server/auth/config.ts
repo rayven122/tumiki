@@ -1,9 +1,9 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { PrismaClient, Role } from "@prisma/client";
+import type { Role } from "@prisma/client";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { db } from "../db";
+import { db } from "@tumiki/db/client";
 import "next-auth/jwt";
 
 declare module "next-auth" {
@@ -49,7 +49,7 @@ export const authConfig = {
   pages: {
     signIn: "/login",
   },
-  adapter: PrismaAdapter(db as PrismaClient),
+  adapter: PrismaAdapter(db),
   callbacks: {
     /**
      * JWTコールバック
