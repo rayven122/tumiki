@@ -1,5 +1,6 @@
 packages:
 - apps/*
+- packages/*
 - tooling/*
 catalog:
   '@auth/core': 0.37.2

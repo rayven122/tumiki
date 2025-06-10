@@ -1,0 +1,17 @@
+{
+  "extends": "@tumiki/tsconfig/base.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "~/*": ["./*"]
+    },
+    /** Emit types for internal packages to speed up editor performance. */
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "${configDir}/dist"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

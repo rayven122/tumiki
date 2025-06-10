@@ -305,7 +305,6 @@ export const UserMcpServerCard = ({
       {imageEditModalOpen && (
         <ImageEditModal
           open={imageEditModalOpen}
-          serverName={serverInstance.name}
           userMcpServerId={serverInstance.id}
           initialImageUrl={serverInstance.iconPath ?? ""}
           onOpenChange={setImageEditModalOpen}
