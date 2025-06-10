@@ -6,8 +6,17 @@ generator client {
 generator zod {
   provider                         = "zod-prisma-types"
   output                           = "../generated/zod"
-  useMultipleFiles                 = true // スキーマを複数ファイルに分割
-  createOptionalDefaultValuesTypes = true // デフォルト値を持つフィールドをオプショナルに
+  writeBarrelFiles                 = false
+  createInputTypes                 = false
+  createModelTypes                 = true
+  addIncludeType                   = false
+  addSelectType                    = false
+  validateWhereUniqueInput         = false
+  createRelationValuesTypes        = false
+  createPartialTypes               = false
+  writeNullishInModelTypes         = false
+  useMultipleFiles                 = false // スキーマを複数ファイルに分割
+  createOptionalDefaultValuesTypes = false // デフォルト値を持つフィールドをオプショナルに
   addInputTypeValidation           = false // 入力型の検証を追加
 }
 

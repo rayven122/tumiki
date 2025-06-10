@@ -5,13 +5,13 @@
       "@/*": ["./src/*"],
       "~/*": ["./*"]
     },
-    /** Emit types for internal packages to speed up editor performance. */
+    /** Emit both JS and types for runtime usage. */
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true,
+    "emitDeclarationOnly": false,
     "noEmit": false,
     "outDir": "${configDir}/dist"
   },
-  "include": ["src"],
+  "include": ["src", "prisma/generated"],
   "exclude": ["node_modules"]
 }
