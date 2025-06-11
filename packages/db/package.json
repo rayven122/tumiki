@@ -8,18 +8,6 @@
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
     },
-    "./client": {
-      "types": "./dist/src/client.d.ts",
-      "default": "./dist/src/client.js"
-    },
-    "./env": {
-      "types": "./dist/src/env.d.ts",
-      "default": "./dist/src/env.js"
-    },
-    "./prisma": {
-      "types": "./dist/src/prisma.d.ts",
-      "default": "./dist/src/prisma.js"
-    },
     "./zod": {
       "types": "./dist/src/zod.d.ts",
       "default": "./dist/src/zod.js"

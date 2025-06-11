@@ -3,7 +3,7 @@ import type { Role } from "@prisma/client";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { db } from "@tumiki/db/client";
+import { db } from "@tumiki/db";
 import "next-auth/jwt";
 
 declare module "next-auth" {

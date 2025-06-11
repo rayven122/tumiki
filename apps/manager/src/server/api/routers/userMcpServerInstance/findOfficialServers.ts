@@ -1,7 +1,7 @@
 import { ServerType } from "@prisma/client";
 import type { ProtectedContext } from "../../trpc";
 
-import { convertToSortOrder } from "@/utils/server/converter";
+import { convertToSortOrder } from "@tumiki/utils/converter";
 import type { UserMcpServerConfigId } from "@/schema/ids";
 
 type FindOfficialServersInput = {
