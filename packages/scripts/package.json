@@ -1,0 +1,51 @@
+{
+  "name": "@tumiki/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./cleanUserMcp": {
+      "types": "./dist/src/cleanUserMcp.d.ts",
+      "default": "./dist/src/cleanUserMcp.js"
+    },
+    "./createUserMcpServer": {
+      "types": "./dist/src/createUserMcpServer.d.ts",
+      "default": "./dist/src/createUserMcpServer.js"
+    },
+    "./upsertAll": {
+      "types": "./dist/src/upsertAll.d.ts",
+      "default": "./dist/src/upsertAll.js"
+    },
+    "./upsertMcpServers": {
+      "types": "./dist/src/upsertMcpServers.d.ts",
+      "default": "./dist/src/upsertMcpServers.js"
+    },
+    "./upsertMcpTools": {
+      "types": "./dist/src/upsertMcpTools.d.ts",
+      "default": "./dist/src/upsertMcpTools.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --check . --ignore-path ../../.gitignore --write"
+  },
+  "dependencies": {
+    "@tumiki/db": "workspace:*",
+    "@tumiki/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  },
+  "prettier": "@tumiki/prettier-config"
+}
