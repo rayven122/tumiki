@@ -28,8 +28,7 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@zod": ["@tumiki/db/zod"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -42,5 +41,5 @@
     "postcss.config.mjs"
   ],
   "types": ["web", "bun-types"],
-  "exclude": ["node_modules", "mcp", "prisma"]
+  "exclude": ["node_modules", "mcp"]
 }
