@@ -1,5 +1,5 @@
-import { db } from "@tumiki/db/client";
-import { getMcpServerTools } from "@/utils/server/getMcpServerTools";
+import { db } from "@tumiki/db";
+import { getMcpServerTools } from "@tumiki/utils";
 
 /**
  * MCP サーバーからツールを取得してデータベースに書き込む

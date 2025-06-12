@@ -1,1 +1,1 @@
-export * from "../prisma/generated/zod";
+export * from "../prisma/generated/zod/index.js";
