@@ -1,6 +1,8 @@
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServer } from "@prisma/client";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import type { McpServer } from "@prisma/client";
+
 import "@suekou/mcp-notion-server";
 
 /**
@@ -11,7 +13,7 @@ import "@suekou/mcp-notion-server";
 export const getMcpServerTools = async (
   server: Pick<McpServer, "name" | "command" | "args">,
   envVars: Record<string, string>,
-) => {
+): Promise<Tool[]> => {
   // MCPクライアントの初期化
   const client = new Client({
     name: server.name,

@@ -10,6 +10,8 @@
     "declarationMap": true,
     "emitDeclarationOnly": false,
     "noEmit": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "${configDir}/dist"
   },
   "include": ["src", "prisma/generated"],

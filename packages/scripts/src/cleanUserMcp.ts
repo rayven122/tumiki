@@ -1,19 +1,14 @@
-import { upsertMcpServers } from "./upsertMcpServers";
-import { upsertMcpTools } from "./upsertMcpTools";
-import { db } from "@tumiki/db/client";
+import { db } from "@tumiki/db";
 
 /**
  * MCPサーバーとツールを一括で登録する
  */
-const upsertAll = async () => {
+const cleanUserMcp = async () => {
   try {
     // MCPサーバーを登録
-    await upsertMcpServers();
-    console.log("MCPサーバーが正常に登録されました");
-
-    // MCPツールを登録
-    await upsertMcpTools();
-    console.log("MCPツールが正常に登録されました");
+    await db.userMcpServerInstance.deleteMany({});
+    await db.userMcpServerConfig.deleteMany({});
+    await db.userToolGroup.deleteMany({});
   } catch (error) {
     if (error instanceof Error) {
       console.error("エラーが発生しました:", error.message);
@@ -25,7 +20,7 @@ const upsertAll = async () => {
 };
 
 try {
-  await upsertAll();
+  await cleanUserMcp();
 } catch (error) {
   console.error(error);
 } finally {

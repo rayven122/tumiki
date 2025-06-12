@@ -169,7 +169,7 @@ setInterval(() => {
 
   for (const sessionId in lastActivity) {
     const lastActiveTime = lastActivity[sessionId];
-    if (now - lastActiveTime > CONNECTION_TIMEOUT) {
+    if (lastActiveTime && now - lastActiveTime > CONNECTION_TIMEOUT) {
       void cleanupSession(sessionId);
     }
   }

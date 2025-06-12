@@ -12,7 +12,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { auth } from "@/server/auth";
-import { db } from "@tumiki/db/client";
+import { db } from "@tumiki/db";
 
 /**
  * 1. CONTEXT

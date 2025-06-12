@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@tumiki/db/client";
+import { db } from "@tumiki/db";
 import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";

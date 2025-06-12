@@ -1,7 +1,7 @@
 packages:
-- apps/*
-- packages/*
-- tooling/*
+  - apps/*
+  - packages/*
+  - tooling/*
 catalog:
   '@auth/core': 0.37.2
   eslint: ^9.25.1
@@ -20,3 +20,5 @@ catalogs:
     react-dom: 19.0.0
     '@types/react': ^19.0.12
     '@types/react-dom': ^19.0.4
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
