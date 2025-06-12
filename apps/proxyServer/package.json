@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
-    "build": "tsc && node -e \"require('fs').chmodSync('build/sse.js', '755')\"",
+    "build": "tsc && chmod +x build/sse.js",
     "start": "pnpm with-env node build/sse.js",
     "clean": "git clean -xdf .cache .next .turbo node_modules",
     "typecheck": "tsc --noEmit",
