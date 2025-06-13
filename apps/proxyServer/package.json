@@ -13,7 +13,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "inspector": "bunx @modelcontextprotocol/inspector http://localhost:3000/sse"
+    "inspector": "pnpm dlx @modelcontextprotocol/inspector http://localhost:8080/sse"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.0.2",
