@@ -30,16 +30,6 @@ app.get("/", (req, res) => {
 app.get("/mcp", async (req: Request, res: Response) => {
   console.log("Received GET request to /sse (establishing SSE stream)");
 
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "X-Accel-Buffering": "no", // nginx用の重要設定
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, api-key, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  });
-
   // request header から apiKeyId を取得
   const bearerToken = req.headers.authorization;
 
