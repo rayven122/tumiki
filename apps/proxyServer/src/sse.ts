@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { getServer } from "./proxy/getServer.js";
+import { logSystemHealth } from "./monitoring.js";
 
 const app = express();
 app.use(express.json());
@@ -174,6 +175,15 @@ setInterval(() => {
     }
   }
 }, CONNECTION_TIMEOUT / 2);
+
+// システムヘルスチェックの定期実行（5分ごと）
+setInterval(
+  () => {
+    const sessionCount = Object.keys(transports).length;
+    logSystemHealth(sessionCount);
+  },
+  5 * 60 * 1000,
+);
 
 // Start the server
 const PORT = 8080;
