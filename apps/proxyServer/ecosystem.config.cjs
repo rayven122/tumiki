@@ -1,9 +1,9 @@
-export default {
+module.exports = {
   apps: [
     {
       name: "tumiki-proxy-server",
-      script: "node",
-      args: "build/sse.js",
+      script: "./build/sse.js",
+      interpreter: "node",
       cwd: "./",
       instances: 1,
       exec_mode: "fork",
