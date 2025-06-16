@@ -22,12 +22,7 @@ fi
 pm2 delete tumiki-proxy-server 2>/dev/null || true
 
 # 環境変数を読み込んでプロセスを開始
-pnpm with-env pm2 start ecosystem.config.mjs
-
-# PM2の起動設定（システム再起動時の自動起動）
-# 注意: sudoが必要な場合があります
-# pm2 startup
-# pm2 save
+pnpm with-env pm2 start ecosystem.config.cjs
 
 echo "Tumiki Proxy Server が PM2 で起動しました"
 echo ""
