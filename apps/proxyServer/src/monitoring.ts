@@ -50,5 +50,6 @@ export function logSystemHealth(activeConnections: number) {
       `CPU: ${metrics.cpu.percentage.toFixed(1)}% | ` +
       `Uptime: ${(metrics.uptime / 1000 / 60).toFixed(1)}min | ` +
       `Connections: ${metrics.activeConnections}`,
+    `Connection Count: ${activeConnections}`,
   );
 }

@@ -17,7 +17,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "inspector": "pnpm dlx @modelcontextprotocol/inspector http://localhost:8080/sse"
+    "inspector": " NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector http://localhost:8080/sse"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.0.2",

@@ -16,12 +16,6 @@ const CONNECTION_TIMEOUT = 60 * 1000;
 /** キープアライブの間隔（ミリ秒）　30秒 */
 const KEEPALIVE_INTERVAL = 30 * 1000;
 
-// アクティブセッション数のロギング関数
-function logSessionCount() {
-  const count = Object.keys(transports).length;
-  console.log(`現在のアクティブセッション数: ${count}`);
-}
-
 app.get("/", (req, res) => {
   console.log("Received GET request to /");
   res.send("MCP Proxy Server is running. Use /mcp to establish an SSE stream.");
@@ -59,9 +53,6 @@ app.get("/mcp", async (req: Request, res: Response) => {
     // 初期アクティビティタイムスタンプを設定
     lastActivity[sessionId] = Date.now();
 
-    // セッション追加後にセッション数をロギング
-    logSessionCount();
-
     const { server, cleanup } = await getServer(apiKeyId);
 
     // トランスポートが閉じられたときにクリーンアップを行うハンドラを設定
@@ -70,8 +61,6 @@ app.get("/mcp", async (req: Request, res: Response) => {
       delete transports[sessionId];
       delete lastActivity[sessionId];
       void cleanup();
-      // セッション削除後にセッション数をロギング
-      logSessionCount();
     };
 
     // クライアント切断検出用のイベントハンドラを追加
@@ -157,16 +146,12 @@ async function cleanupSession(sessionId: string) {
     }
     delete transports[sessionId];
     delete lastActivity[sessionId];
-    // セッション削除後にセッション数をロギング
-    logSessionCount();
   }
 }
 
 // 定期的なセッションクリーンアップの実行
 setInterval(() => {
   const now = Date.now();
-  // 定期チェック開始時のセッション数をロギング
-  logSessionCount();
 
   for (const sessionId in lastActivity) {
     const lastActiveTime = lastActivity[sessionId];
@@ -197,8 +182,6 @@ app.listen(PORT, () => {
 // Handle server shutdown
 process.on("SIGINT", () => {
   console.log("Shutting down server...");
-  // シャットダウン開始時のセッション数をロギング
-  logSessionCount();
 
   // Close all active transports to properly clean up resources
   for (const sessionId in transports) {
