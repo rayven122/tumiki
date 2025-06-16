@@ -57,3 +57,5 @@ apps/proxyServer/mcp
 .cache
 
 .env.*
+
+*.log
