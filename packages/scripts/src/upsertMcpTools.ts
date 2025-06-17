@@ -43,6 +43,10 @@ export const upsertMcpTools = async () => {
     const upsertedTools = await db.$transaction(upsertPromises);
 
     console.log(`${mcpServer.name} のツールが正常に登録されました`);
-    console.log(JSON.stringify(upsertedTools, null, 2));
+    console.log(`登録されたツール数: ${upsertedTools.length}`);
+    console.log(
+      `ツールの詳細:`,
+      upsertedTools.map((tool) => tool.name),
+    );
   }
 };
