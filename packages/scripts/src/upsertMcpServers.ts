@@ -22,5 +22,9 @@ export const upsertMcpServers = async () => {
   const upsertedMcpServers = await db.$transaction(upsertPromises);
 
   console.log("MCPサーバーが正常に登録されました:");
-  console.log(JSON.stringify(upsertedMcpServers, null, 2));
+  console.log(`登録されたMCPサーバー数: ${upsertedMcpServers.length}`);
+  console.log(
+    "登録されたMCPサーバーの詳細:",
+    upsertedMcpServers.map((server) => server.name),
+  );
 };

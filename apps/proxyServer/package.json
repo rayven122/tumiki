@@ -26,6 +26,7 @@
     "@playwright/mcp": "^0.0.10",
     "@suekou/mcp-notion-server": "^1.2.3",
     "@tumiki/db": "workspace:*",
+    "@upstash/context7-mcp": "^1.0.14",
     "agents": "^0.0.45",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",

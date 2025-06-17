@@ -26,8 +26,8 @@
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
+    "upsertAll": "pnpm with-env bun run src/upsertAll.ts",
+    "with-env": "dotenv -e ../../.env --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -35,8 +35,11 @@
     "format": "prettier --check . --ignore-path ../../.gitignore --write"
   },
   "dependencies": {
+    "@modelcontextprotocol/server-github": "^2025.4.8",
+    "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
-    "@tumiki/utils": "workspace:*"
+    "@tumiki/utils": "workspace:*",
+    "@upstash/context7-mcp": "^1.0.14"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
