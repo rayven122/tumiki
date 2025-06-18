@@ -8,6 +8,10 @@
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
     },
+    "./tcp": {
+      "types": "./dist/src/tcpClient.d.ts",
+      "default": "./dist/src/tcpClient.js"
+    },
     "./zod": {
       "types": "./dist/src/zod.d.ts",
       "default": "./dist/src/zod.js"
