@@ -11,6 +11,8 @@
     "pm2:logs": "pm2 logs tumiki-proxy-server",
     "pm2:status": "pm2 status",
     "pm2:restart": "pm2 restart tumiki-proxy-server",
+    "pm2:stop": "pm2 stop tumiki-proxy-server",
+    "pm2:delete": "pm2 delete tumiki-proxy-server",
     "clean": "git clean -xdf .cache .next .turbo node_modules",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
