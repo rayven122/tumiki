@@ -105,11 +105,28 @@ export const createClients = async (
         if (retry) {
           try {
             await client.close();
+            // transportも確実にクローズする
+            await transport.close();
+          } catch (closeError) {
+            console.error(
+              `Error closing client/transport for ${server.name}:`,
+              closeError,
+            );
           } finally {
             console.log(
               `Retry connection to ${server.name} in ${waitFor}ms (${count}/${retries})`,
             );
             await sleep(waitFor);
+          }
+        } else {
+          // リトライ終了時もtransportをクローズ
+          try {
+            await transport.close();
+          } catch (closeError) {
+            console.error(
+              `Error closing transport for ${server.name}:`,
+              closeError,
+            );
           }
         }
       }
