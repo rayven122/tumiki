@@ -1,5 +1,5 @@
 import { type Request, type Response } from "express";
-import { logger } from "../../infrastructure/utils/logger.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * ヘルスチェック用のルートハンドラー

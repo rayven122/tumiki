@@ -2,8 +2,8 @@ import express from "express";
 import { handleHealthCheck } from "./routes/health.js";
 import { handleSSEConnection } from "./routes/sse.js";
 import { handleMessage } from "./routes/messages.js";
-import { initializeApplication } from "../infrastructure/lifecycle/startup.js";
-import { logger } from "../infrastructure/utils/logger.js";
+import { initializeApplication } from "./lifecycle/startup.js";
+import { logger } from "./lib/logger.js";
 
 /**
  * Express アプリケーションを設定

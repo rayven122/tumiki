@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
-import { establishConnection } from "../../core/connection/sseConnection.js";
-import { logger } from "../../infrastructure/utils/logger.js";
+import { establishConnection } from "../services/connection.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * SSE接続確立用のルートハンドラー

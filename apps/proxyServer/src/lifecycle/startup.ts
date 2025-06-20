@@ -1,8 +1,8 @@
-import { startMetricsCollection } from "../utils/metrics.js";
-import { startRecoveryManager } from "../../core/connection/recoveryManager.js";
+import { startMetricsCollection } from "../lib/metrics.js";
+import { startRecoveryManager } from "../services/connection.js";
 import { startMaintenanceTasks } from "./maintenance.js";
 import { setupShutdownHandlers } from "./shutdown.js";
-import { logger } from "../utils/logger.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * アプリケーション初期化処理を集約
