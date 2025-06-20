@@ -228,12 +228,12 @@ export const startHealthMonitoring = (): NodeJS.Timeout => {
 export const initializeRecoveryManager = (): (() => void) => {
   console.log("Initializing connection recovery manager");
   const healthMonitoringTimer = startHealthMonitoring();
-  
+
   // クリーンアップ関数を返す
   return () => {
     console.log("Stopping connection recovery manager");
     clearInterval(healthMonitoringTimer);
-    
+
     // 回復統計をクリア
     recoveryStats.clear();
   };

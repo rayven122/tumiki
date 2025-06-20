@@ -10,7 +10,7 @@ import {
   recordConnectionError,
   connections,
 } from "./connectionManager.js";
-import { 
+import {
   attemptConnectionRecovery,
   checkConnectionHealth,
   ConnectionState,
@@ -111,7 +111,7 @@ export const establishConnection = async (
           error,
         );
         recordConnectionError(sessionId, error as Error);
-        
+
         // 回復を試行
         void attemptConnectionRecovery(sessionId, async () => {
           // 新しい接続を試行する場合の処理
@@ -122,7 +122,7 @@ export const establishConnection = async (
             void cleanupConnection(sessionId);
           }
         });
-        
+
         clearInterval(keepAliveInterval);
       }
     }, KEEPALIVE_INTERVAL);
