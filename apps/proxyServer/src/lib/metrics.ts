@@ -1,11 +1,12 @@
 import { logger } from "./logger.js";
 import { config } from "./config.js";
-import { connections } from "../services/connection.js";
+import { getSessionStats } from "../services/transport.js";
 import { getSSEConnectionPool } from "../services/proxy.js";
 
 interface MetricsData {
   timestamp: string;
-  connections: {
+  sessions: {
+    total: number;
     active: number;
   };
   requests: {
@@ -100,10 +101,14 @@ export const collectMetrics = (): MetricsData => {
     heap: Math.round(memUsage.heapUsed / 1024 / 1024),
   };
 
+  // セッション統計を取得
+  const sessionStats = getSessionStats();
+
   return {
     timestamp: new Date().toISOString(),
-    connections: {
-      active: connections.size,
+    sessions: {
+      total: sessionStats.totalSessions,
+      active: sessionStats.activeSessions,
     },
     requests: {
       total: metricsState.requestCount,
