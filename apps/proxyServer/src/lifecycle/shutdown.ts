@@ -28,7 +28,9 @@ export const gracefulShutdown = async (): Promise<void> => {
 /**
  * シャットダウンシグナルハンドラーを設定
  */
-export const setupShutdownHandlers = (recoveryManagerCleanup?: () => void): void => {
+export const setupShutdownHandlers = (
+  recoveryManagerCleanup?: () => void,
+): void => {
   // Handle server shutdown
   process.on("SIGINT", () => {
     void (async () => {
@@ -36,7 +38,7 @@ export const setupShutdownHandlers = (recoveryManagerCleanup?: () => void): void
       if (recoveryManagerCleanup) {
         recoveryManagerCleanup();
       }
-      
+
       await gracefulShutdown();
       process.exit(0);
     })();
@@ -45,12 +47,12 @@ export const setupShutdownHandlers = (recoveryManagerCleanup?: () => void): void
   process.on("SIGTERM", () => {
     void (async () => {
       console.log("Received SIGTERM, shutting down gracefully...");
-      
+
       // 回復マネージャーを停止
       if (recoveryManagerCleanup) {
         recoveryManagerCleanup();
       }
-      
+
       process.emit("SIGINT");
     })();
   });

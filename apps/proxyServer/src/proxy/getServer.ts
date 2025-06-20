@@ -26,15 +26,19 @@ export const getServer = async (apiKeyId: string) => {
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
     console.log("Listing tools - establishing fresh connections");
     const requestTimeout = 30 * 1000; // 30秒
-    
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Tools list request timeout")), requestTimeout);
+      setTimeout(
+        () => reject(new Error("Tools list request timeout")),
+        requestTimeout,
+      );
     });
 
     try {
       const result = await Promise.race([
         (async () => {
-          const { connectedClients, cleanup: clientsCleanup } = await getMcpClients(apiKeyId);
+          const { connectedClients, cleanup: clientsCleanup } =
+            await getMcpClients(apiKeyId);
 
           try {
             const allTools: Tool[] = [];
@@ -54,7 +58,9 @@ export const getServer = async (apiKeyId: string) => {
 
                 if (result.tools) {
                   const toolsWithSource = result.tools
-                    .filter((tool) => connectedClient.toolNames.includes(tool.name))
+                    .filter((tool) =>
+                      connectedClient.toolNames.includes(tool.name),
+                    )
                     .map((tool) => {
                       toolToClientMap.set(tool.name, connectedClient);
                       return {
@@ -94,17 +100,21 @@ export const getServer = async (apiKeyId: string) => {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     console.log(`Tool call: ${name} - establishing fresh connections`);
-    
+
     const requestTimeout = 30 * 1000; // 30秒
-    
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Tool call ${name} timeout`)), requestTimeout);
+      setTimeout(
+        () => reject(new Error(`Tool call ${name} timeout`)),
+        requestTimeout,
+      );
     });
 
     try {
       const result = await Promise.race([
         (async () => {
-          const { connectedClients, cleanup: clientsCleanup } = await getMcpClients(apiKeyId);
+          const { connectedClients, cleanup: clientsCleanup } =
+            await getMcpClients(apiKeyId);
 
           try {
             // ツール名から対応するクライアントを見つける
@@ -122,7 +132,9 @@ export const getServer = async (apiKeyId: string) => {
               throw new Error(`Unknown tool: ${name}`);
             }
 
-            console.log(`Forwarding tool call: ${name} to ${clientForTool.name}`);
+            console.log(
+              `Forwarding tool call: ${name} to ${clientForTool.name}`,
+            );
 
             // Use the correct schema for tool calls
             const result = await clientForTool.client.request(

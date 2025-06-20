@@ -5,7 +5,6 @@ import { startMaintenanceTasks } from "./lifecycle/maintenance.js";
 import { setupShutdownHandlers } from "./lifecycle/shutdown.js";
 import { initializeRecoveryManager } from "./connection/recoveryManager.js";
 
-
 const app = express();
 app.use(express.json({ limit: "10mb" })); // JSONペイロードサイズ制限
 
