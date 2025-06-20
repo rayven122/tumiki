@@ -13,7 +13,7 @@ import { config } from "../../infrastructure/config/index.js";
 import {
   recordError,
   measureExecutionTime,
-} from "../../infrastructure/monitoring/metrics.js";
+} from "../../infrastructure/utils/metrics.js";
 
 export const getServer = async (apiKeyId: string) => {
   const server = new Server(
