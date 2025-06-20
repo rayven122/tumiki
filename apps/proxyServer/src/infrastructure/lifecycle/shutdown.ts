@@ -2,7 +2,8 @@ import {
   connections,
   cleanupConnection,
 } from "../../core/connection/connectionManager.js";
-import { stopMetricsCollection } from "../monitoring/metrics.js";
+import { stopRecoveryManager } from "../../core/connection/recoveryManager.js";
+import { stopMetricsCollection } from "../utils/metrics.js";
 import { logger } from "../utils/logger.js";
 
 /**
@@ -10,6 +11,10 @@ import { logger } from "../utils/logger.js";
  */
 export const gracefulShutdown = async (): Promise<void> => {
   logger.info("Shutting down server...");
+
+  // Stop recovery manager
+  stopRecoveryManager();
+  logger.info("Recovery manager stopped");
 
   // Stop metrics collection
   stopMetricsCollection();
@@ -36,17 +41,10 @@ export const gracefulShutdown = async (): Promise<void> => {
 /**
  * シャットダウンシグナルハンドラーを設定
  */
-export const setupShutdownHandlers = (
-  recoveryManagerCleanup?: () => void,
-): void => {
+export const setupShutdownHandlers = (): void => {
   // Handle server shutdown
   process.on("SIGINT", () => {
     void (async () => {
-      // 回復マネージャーを停止
-      if (recoveryManagerCleanup) {
-        recoveryManagerCleanup();
-      }
-
       await gracefulShutdown();
       process.exit(0);
     })();
@@ -55,13 +53,8 @@ export const setupShutdownHandlers = (
   process.on("SIGTERM", () => {
     void (async () => {
       logger.info("Received SIGTERM, shutting down gracefully...");
-
-      // 回復マネージャーを停止
-      if (recoveryManagerCleanup) {
-        recoveryManagerCleanup();
-      }
-
-      process.emit("SIGINT");
+      await gracefulShutdown();
+      process.exit(0);
     })();
   });
 

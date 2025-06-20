@@ -3,6 +3,7 @@ import {
   cleanupConnection,
   CONNECTION_TIMEOUT,
 } from "./connectionManager.js";
+import { logger } from "../../infrastructure/utils/logger.js";
 
 // 回復設定
 export const RECOVERY_CONFIG = {
@@ -222,19 +223,38 @@ export const startHealthMonitoring = (): NodeJS.Timeout => {
   }, RECOVERY_CONFIG.HEALTH_CHECK_INTERVAL);
 };
 
-/**
- * 回復マネージャーの初期化
- */
-export const initializeRecoveryManager = (): (() => void) => {
-  console.log("Initializing connection recovery manager");
-  const healthMonitoringTimer = startHealthMonitoring();
+// 回復マネージャーの状態
+let healthMonitoringTimer: NodeJS.Timeout | null = null;
 
-  // クリーンアップ関数を返す
-  return () => {
-    console.log("Stopping connection recovery manager");
+/**
+ * 回復マネージャーを開始
+ */
+export const startRecoveryManager = (): void => {
+  if (healthMonitoringTimer === null) {
+    logger.info("Starting connection recovery manager");
+    healthMonitoringTimer = startHealthMonitoring();
+  }
+};
+
+/**
+ * 回復マネージャーを停止
+ */
+export const stopRecoveryManager = (): void => {
+  if (healthMonitoringTimer !== null) {
+    logger.info("Stopping connection recovery manager");
     clearInterval(healthMonitoringTimer);
+    healthMonitoringTimer = null;
 
     // 回復統計をクリア
     recoveryStats.clear();
-  };
+  }
+};
+
+/**
+ * 回復マネージャーの初期化（後方互換性のために残す）
+ * @deprecated startRecoveryManager() を使用してください
+ */
+export const initializeRecoveryManager = (): (() => void) => {
+  startRecoveryManager();
+  return stopRecoveryManager;
 };

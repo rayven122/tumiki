@@ -1,7 +1,7 @@
 import { logger } from "../utils/logger.js";
 import { config } from "../config/index.js";
 import { connections } from "../../core/connection/connectionManager.js";
-import { getPoolInfo } from "./pool.js";
+import { getSSEConnectionPool } from "../../core/proxy/reconnectingSSEClient.js";
 
 interface MetricsData {
   timestamp: string;
@@ -141,6 +141,17 @@ const resetMetrics = (): void => {
   metricsState.responseTimes = [];
   metricsState.errorCount = 0;
   metricsState.errorTypes = {};
+};
+
+// SSE接続プールの統計を取得する関数
+const getPoolInfo = (): string => {
+  try {
+    const pool = getSSEConnectionPool();
+    const poolStats = pool.getPoolStats();
+    return `Pool: ${poolStats.activeConnections}/${poolStats.totalConnections}`;
+  } catch {
+    return "Pool: N/A";
+  }
 };
 
 // ヘルパー関数：実行時間を測定してメトリクスを記録

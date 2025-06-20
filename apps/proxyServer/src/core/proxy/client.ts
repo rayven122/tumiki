@@ -5,7 +5,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { ServerConfig } from "../../infrastructure/types/config.js";
 import { logger } from "../../infrastructure/utils/logger.js";
 import { config } from "../../infrastructure/config/index.js";
-import { recordError } from "../../infrastructure/monitoring/metrics.js";
+import { recordError } from "../../infrastructure/utils/metrics.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
