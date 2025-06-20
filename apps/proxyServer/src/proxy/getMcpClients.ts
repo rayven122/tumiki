@@ -1,8 +1,8 @@
 import { createClients } from "./client.js";
 import { type ServerConfig } from "../types/config.js";
+import { db } from "@tumiki/db/tcp";
 
 import { ServerStatus } from "@prisma/client";
-import { db } from "@tumiki/db";
 
 const getServerConfigs = async (apiKeyId: string) => {
   const serverInstance = await db.userMcpServerInstance.findUniqueOrThrow({
