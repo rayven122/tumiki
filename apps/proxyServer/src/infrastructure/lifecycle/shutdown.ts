@@ -1,13 +1,19 @@
 import {
   connections,
   cleanupConnection,
-} from "../connection/connectionManager.js";
+} from "../../core/connection/connectionManager.js";
+import { stopMetricsCollection } from "../monitoring/metrics.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * グレースフルシャットダウン処理
  */
 export const gracefulShutdown = async (): Promise<void> => {
-  console.log("Shutting down server...");
+  logger.info("Shutting down server...");
+
+  // Stop metrics collection
+  stopMetricsCollection();
+  logger.info("Metrics collection stopped");
 
   // Close all active connections gracefully
   const cleanupPromises: Promise<void>[] = [];
@@ -17,12 +23,14 @@ export const gracefulShutdown = async (): Promise<void> => {
 
   try {
     await Promise.all(cleanupPromises);
-    console.log("All connections closed gracefully");
+    logger.info("All connections closed gracefully");
   } catch (error) {
-    console.error("Error during graceful shutdown:", error);
+    logger.error("Error during graceful shutdown", {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
-  console.log("Server shutdown complete");
+  logger.info("Server shutdown complete");
 };
 
 /**
@@ -46,7 +54,7 @@ export const setupShutdownHandlers = (
 
   process.on("SIGTERM", () => {
     void (async () => {
-      console.log("Received SIGTERM, shutting down gracefully...");
+      logger.info("Received SIGTERM, shutting down gracefully...");
 
       // 回復マネージャーを停止
       if (recoveryManagerCleanup) {
@@ -58,12 +66,17 @@ export const setupShutdownHandlers = (
   });
 
   // Unhandled promise rejection handling
-  process.on("unhandledRejection", (reason, promise) => {
-    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  process.on("unhandledRejection", (reason, _promise) => {
+    logger.error("Unhandled Rejection", {
+      reason: reason instanceof Error ? reason.message : String(reason),
+    });
   });
 
   process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
+    logger.error("Uncaught Exception", {
+      error: error.message,
+      stack: error.stack,
+    });
     process.exit(1);
   });
 };

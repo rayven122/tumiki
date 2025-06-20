@@ -1,6 +1,7 @@
 import { createClients } from "./client.js";
-import { type ServerConfig } from "../types/config.js";
+import { type ServerConfig } from "../../infrastructure/types/config.js";
 import { db } from "@tumiki/db/tcp";
+import { logger } from "../../infrastructure/utils/logger.js";
 
 import { ServerStatus } from "@prisma/client";
 
@@ -49,7 +50,18 @@ const getServerConfigs = async (apiKeyId: string) => {
       )
       .map(({ tool }) => tool.name);
 
-    const envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
+    let envObj: Record<string, string>;
+    try {
+      envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
+    } catch (error) {
+      logger.error("Failed to parse environment variables", {
+        serverConfigName: serverConfig.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new Error(
+        `Invalid environment variables configuration for ${serverConfig.name}`,
+      );
+    }
 
     return {
       name: serverConfig.name,
@@ -73,14 +85,21 @@ export const getMcpClients = async (apiKeyId: string) => {
   const serverConfigs = await getServerConfigs(apiKeyId);
 
   const connectedClients = await createClients(serverConfigs);
-  console.log(`[DEBUG] Connected to ${connectedClients.length} servers`);
+  logger.debug("Connected to servers", {
+    clientCount: connectedClients.length,
+    serverNames: connectedClients.map((client) => client.name),
+  });
 
   const cleanup = async () => {
     try {
-      console.log(`[DEBUG] Cleaning up ${connectedClients.length} servers`);
+      logger.debug("Cleaning up servers", {
+        clientCount: connectedClients.length,
+      });
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
     } catch (error) {
-      console.error("Error during cleanup:", error);
+      logger.error("Error during cleanup", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
