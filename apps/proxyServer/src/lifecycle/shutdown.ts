@@ -1,10 +1,10 @@
 import {
   connections,
   cleanupConnection,
-} from "../../core/connection/connectionManager.js";
-import { stopRecoveryManager } from "../../core/connection/recoveryManager.js";
-import { stopMetricsCollection } from "../utils/metrics.js";
-import { logger } from "../utils/logger.js";
+  stopRecoveryManager,
+} from "../services/connection.js";
+import { stopMetricsCollection } from "../lib/metrics.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * グレースフルシャットダウン処理

@@ -1,7 +1,7 @@
-import { logger } from "../utils/logger.js";
-import { config } from "../config/index.js";
-import { connections } from "../../core/connection/connectionManager.js";
-import { getSSEConnectionPool } from "../../core/proxy/reconnectingSSEClient.js";
+import { logger } from "./logger.js";
+import { config } from "./config.js";
+import { connections } from "../services/connection.js";
+import { getSSEConnectionPool } from "../services/proxy.js";
 
 interface MetricsData {
   timestamp: string;

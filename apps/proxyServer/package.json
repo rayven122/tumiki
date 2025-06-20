@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
-    "build": "tsc && chmod +x build/app/server.js",
-    "start": "pnpm with-env node build/app/server.js",
+    "build": "tsc && chmod +x build/index.js",
+    "start": "pnpm with-env node build/index.js",
     "start:prod": "bash start-prod.sh",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
     "pm2:status": "pm2 status",
