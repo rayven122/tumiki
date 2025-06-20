@@ -1,11 +1,13 @@
 import type { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { messageQueuePool } from "../utils/objectPool.js";
+import { messageQueuePool } from "../../infrastructure/utils/objectPool.js";
+import { logger } from "../../infrastructure/utils/logger.js";
+import { config } from "../../infrastructure/config/index.js";
 
 // SSE接続管理の設定
-/** SSE接続のタイムアウト設定（ミリ秒）　60秒 */
-export const CONNECTION_TIMEOUT = 60 * 1000;
-/** キープアライブの間隔（ミリ秒）　30秒 */
-export const KEEPALIVE_INTERVAL = 30 * 1000;
+/** SSE接続のタイムアウト設定（ミリ秒） */
+export const CONNECTION_TIMEOUT = config.timeouts.connection;
+/** キープアライブの間隔（ミリ秒） */
+export const KEEPALIVE_INTERVAL = config.timeouts.keepalive;
 
 // 接続状態管理
 export interface ConnectionInfo {
@@ -38,10 +40,11 @@ export const recordConnectionError = (
   const connection = connections.get(sessionId);
   if (connection) {
     connection.errorCount++;
-    console.error(
-      `Connection error for ${sessionId} (total: ${connection.errorCount}):`,
-      error.message,
-    );
+    logger.error("Connection error recorded", {
+      sessionId,
+      errorCount: connection.errorCount,
+      error: error.message,
+    });
   }
 };
 
@@ -55,7 +58,10 @@ export const isConnectionHealthy = (sessionId: string): boolean => {
   const now = Date.now();
   const timeSinceActivity = now - connection.lastActivity;
 
-  return timeSinceActivity <= CONNECTION_TIMEOUT && connection.errorCount < 5;
+  return (
+    timeSinceActivity <= CONNECTION_TIMEOUT &&
+    connection.errorCount < config.connection.maxErrorCount
+  );
 };
 
 /**
@@ -65,14 +71,16 @@ export const cleanupConnection = async (sessionId: string): Promise<void> => {
   try {
     const connection = connections.get(sessionId);
     if (!connection) {
-      console.warn(`Connection ${sessionId} not found for cleanup`);
+      logger.warn("Connection not found for cleanup", { sessionId });
       return;
     }
 
     const connectionDuration = Date.now() - connection.connectionStartTime;
-    console.log(
-      `Cleaning up connection ${sessionId} (duration: ${Math.round(connectionDuration / 1000)}s, errors: ${connection.errorCount})`,
-    );
+    logger.info("Cleaning up connection", {
+      sessionId,
+      durationSeconds: Math.round(connectionDuration / 1000),
+      errorCount: connection.errorCount,
+    });
 
     // キープアライブを停止
     if (connection.keepAliveInterval) {

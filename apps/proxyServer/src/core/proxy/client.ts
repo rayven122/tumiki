@@ -2,7 +2,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { ServerConfig } from "../types/config.js";
+import type { ServerConfig } from "../../infrastructure/types/config.js";
+import { logger } from "../../infrastructure/utils/logger.js";
+import { config } from "../../infrastructure/config/index.js";
+import { recordError } from "../../infrastructure/monitoring/metrics.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -33,20 +36,19 @@ const createClient = (
           ? Object.fromEntries(
               Object.entries(server.transport.env).map(([key, value]) => [
                 key,
-                process.env[key] ?? value,
+                process.env[key] ?? String(value),
               ]),
             )
           : undefined,
       });
     }
   } catch (error) {
-    console.error(
-      `Failed to create transport ${server.transport.type ?? "stdio"} to ${
-        server.name
-      }:`,
-      error,
-    );
-    console.error(`Transport ${server.name} not available.`);
+    logger.error("Failed to create transport", {
+      transportType: server.transport.type ?? "stdio",
+      serverName: server.name,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    recordError("transport_creation_failed");
     return { transport: undefined, client: undefined };
   }
 
@@ -71,10 +73,10 @@ export const createClients = async (
   const clients: ConnectedClient[] = [];
 
   for (const server of servers) {
-    console.log(`Connecting to server: ${server.name}`);
+    logger.info("Connecting to server", { serverName: server.name });
 
-    const waitFor = 2500;
-    const retries = 3;
+    const waitFor = config.retry.delayMs;
+    const retries = config.retry.maxAttempts;
     let count = 0;
     let retry = true;
 
@@ -86,7 +88,9 @@ export const createClients = async (
 
       try {
         await client.connect(transport);
-        console.log(`Connected to server: ${server.name}`);
+        logger.info("Successfully connected to server", {
+          serverName: server.name,
+        });
 
         clients.push({
           client,
@@ -99,7 +103,13 @@ export const createClients = async (
 
         break;
       } catch (error) {
-        console.error(`Failed to connect to ${server.name}:`, error);
+        logger.error("Failed to connect to server", {
+          serverName: server.name,
+          error: error instanceof Error ? error.message : String(error),
+          attempt: count + 1,
+          maxAttempts: retries,
+        });
+        recordError("server_connection_failed");
         count++;
         retry = count < retries;
         if (retry) {
@@ -108,14 +118,20 @@ export const createClients = async (
             // transportも確実にクローズする
             await transport.close();
           } catch (closeError) {
-            console.error(
-              `Error closing client/transport for ${server.name}:`,
-              closeError,
-            );
+            logger.error("Error closing client/transport during retry", {
+              serverName: server.name,
+              error:
+                closeError instanceof Error
+                  ? closeError.message
+                  : String(closeError),
+            });
           } finally {
-            console.log(
-              `Retry connection to ${server.name} in ${waitFor}ms (${count}/${retries})`,
-            );
+            logger.debug("Retrying connection", {
+              serverName: server.name,
+              delayMs: waitFor,
+              attempt: count,
+              maxAttempts: retries,
+            });
             await sleep(waitFor);
           }
         } else {
@@ -123,10 +139,13 @@ export const createClients = async (
           try {
             await transport.close();
           } catch (closeError) {
-            console.error(
-              `Error closing transport for ${server.name}:`,
-              closeError,
-            );
+            logger.error("Error closing transport after retry exhaustion", {
+              serverName: server.name,
+              error:
+                closeError instanceof Error
+                  ? closeError.message
+                  : String(closeError),
+            });
           }
         }
       }

@@ -1,9 +1,9 @@
-import { getSSEConnectionPool } from "./proxy/reconnectingSSEClient.js";
+import { getSSEConnectionPool } from "../../core/proxy/reconnectingSSEClient.js";
 
 /**
- * SSE接続プールの統計を取得する簡易関数
+ * SSE接続プールの統計を取得する関数
  */
-export function getPoolInfo(): string {
+export const getPoolInfo = (): string => {
   try {
     const pool = getSSEConnectionPool();
     const poolStats = pool.getPoolStats();
@@ -11,4 +11,4 @@ export function getPoolInfo(): string {
   } catch {
     return "Pool: N/A";
   }
-}
+};

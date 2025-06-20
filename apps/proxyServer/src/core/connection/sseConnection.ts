@@ -1,7 +1,7 @@
 import { type Request, type Response } from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { getServer } from "../proxy/getServer.js";
-import { messageQueuePool } from "../utils/objectPool.js";
+import { messageQueuePool } from "../../infrastructure/utils/objectPool.js";
 import {
   type ConnectionInfo,
   KEEPALIVE_INTERVAL,
