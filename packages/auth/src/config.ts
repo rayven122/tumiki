@@ -1,51 +1,20 @@
+import type { NextAuthConfig } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { Role } from "@prisma/client";
-import type { DefaultSession, NextAuthConfig } from "next-auth";
-import GitHubProvider from "next-auth/providers/github";
-import GoogleProvider from "next-auth/providers/google";
+
 import { db } from "@tumiki/db";
-import "next-auth/jwt";
 
-declare module "next-auth" {
-  interface Session {
-    user: DefaultSession["user"] & {
-      role: Role;
-    };
-  }
-}
+import { providers } from "./providers.js";
 
-declare module "next-auth/jwt" {
-  /** Returned by the `jwt` callback and `auth`, when using JWT sessions */
-  interface JWT {
-    id: string;
-    role: Role;
-  }
-}
+import "./types.js";
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
  *
  * @see https://next-auth.js.org/configuration/options
  */
-export const authConfig = {
+export const authConfig: NextAuthConfig = {
   trustHost: true,
-  providers: [
-    GoogleProvider({
-      allowDangerousEmailAccountLinking: true,
-    }),
-    GitHubProvider({
-      allowDangerousEmailAccountLinking: true,
-    }),
-    /**
-     * ...add more providers here.
-     *
-     * Most other providers require a bit more work than the Discord provider. For example, the
-     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-     *
-     * @see https://next-auth.js.org/providers/github
-     */
-  ],
+  providers,
   pages: {
     signIn: "/login",
   },
@@ -73,10 +42,11 @@ export const authConfig = {
      * - token.role: ユーザーの権限ロール
      */
     session: ({ token, session }) => {
-      if (token.sub && session.user) {
+      if (token.sub) {
         session.user.id = token.sub;
       }
-      if (token.role && session.user) {
+
+      if (token.role) {
         session.user.role = token.role;
       }
       return session;

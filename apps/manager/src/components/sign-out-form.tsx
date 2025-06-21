@@ -1,6 +1,6 @@
 import Form from "next/form";
 
-import { signOut } from "@/server/auth";
+import { signOut } from "@tumiki/auth";
 
 export const SignOutForm = () => {
   return (

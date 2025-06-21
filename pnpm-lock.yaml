@@ -168,6 +168,9 @@ importers:
       '@trpc/tanstack-react-query':
         specifier: 'catalog:'
         version: 11.1.4(@tanstack/react-query@5.79.0(react@19.0.0))(@trpc/client@11.1.4(@trpc/server@11.1.4(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.1.4(typescript@5.8.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.8.3)
+      '@tumiki/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -497,6 +500,43 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.28.0(jiti@2.4.2)
+      typescript-eslint:
+        specifier: ^8.33.0
+        version: 8.33.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
+
+  packages/auth:
+    dependencies:
+      '@auth/prisma-adapter':
+        specifier: ^2.9.1
+        version: 2.9.1(@prisma/client@6.8.2(prisma@6.8.2(typescript@5.8.3))(typescript@5.8.3))
+      '@tumiki/db':
+        specifier: workspace:*
+        version: link:../db
+      next-auth:
+        specifier: 5.0.0-beta.25
+        version: 5.0.0-beta.25(next@15.3.3(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+    devDependencies:
+      '@tumiki/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@tumiki/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@tumiki/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.29
+      eslint:
+        specifier: 'catalog:'
+        version: 9.28.0(jiti@2.4.2)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.5.3
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
       typescript-eslint:
         specifier: ^8.33.0
         version: 8.33.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
