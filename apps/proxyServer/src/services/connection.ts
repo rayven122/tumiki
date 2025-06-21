@@ -6,7 +6,6 @@ import { messageQueuePool } from "../lib/utils.js";
 import { logger } from "../lib/logger.js";
 import {
   TransportType,
-  createSession,
   createSessionWithId,
   updateSessionActivity,
   isSessionValid,

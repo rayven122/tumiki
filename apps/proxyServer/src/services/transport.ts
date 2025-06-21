@@ -6,14 +6,19 @@ import { logger } from "../lib/logger.js";
 import { messageQueuePool } from "../lib/utils.js";
 import { getServer } from "./proxy.js";
 import {
+  measureTransportExecutionTime,
+  recordTransportError,
+  updateTransportConnectionCount,
+} from "../lib/metrics.js";
+import {
   TransportType,
-  createSession,
   createSessionWithId,
   isSessionValid,
   generateSessionId,
   updateSessionActivity,
   canCreateNewSession,
   recordSessionError,
+  type SessionInfo,
 } from "./session.js";
 
 // Transport types
@@ -53,6 +58,36 @@ export const streamableConnections = new Map<
   StreamableHTTPConnectionInfo
 >();
 
+// 統一エラーレスポンス関数
+interface ErrorResponse {
+  error: string;
+  code?: string;
+  details?: string;
+}
+
+const sendErrorResponse = (
+  res: Response,
+  status: number,
+  error: string,
+  code?: string,
+  details?: string,
+): void => {
+  if (res.headersSent) {
+    logger.warn("Attempted to send error response after headers sent", {
+      status,
+      error,
+      code,
+    });
+    return;
+  }
+
+  const errorResponse: ErrorResponse = { error };
+  if (code) errorResponse.code = code;
+  if (details) errorResponse.details = details;
+
+  res.status(status).json(errorResponse);
+};
+
 /**
  * SSE接続の確立
  */
@@ -74,68 +109,146 @@ export const establishSSEConnection = async (
   });
 
   if (!apiKeyId) {
-    res.status(401).send("Unauthorized: Missing API key");
+    sendErrorResponse(
+      res,
+      401,
+      "Unauthorized: Missing API key",
+      "MISSING_API_KEY",
+      "API key must be provided via query parameter or header",
+    );
     return;
   }
 
   if (!canCreateNewSession()) {
-    res.status(503).send("Server at capacity");
+    sendErrorResponse(
+      res,
+      503,
+      "Server at capacity",
+      "MAX_SESSIONS_REACHED",
+      "Maximum number of concurrent sessions reached",
+    );
     return;
   }
 
+  let transport: SSEServerTransport | undefined;
+  let messageQueue: unknown[] | undefined;
+  let sessionId: string | undefined;
+  let session: SessionInfo | undefined;
+
+  // ロールバック用クリーンアップ関数
+  const rollbackOnError = async (error: Error, step: string) => {
+    logger.error("Rolling back SSE connection due to error", {
+      sessionId,
+      step,
+      error: error.message,
+      apiKeyId: "***",
+      clientId,
+    });
+
+    try {
+      if (sessionId) {
+        // セッションを削除
+        if (session?.cleanup) {
+          await session.cleanup();
+        }
+
+        // SSE接続をクリーンアップ
+        sseConnections.delete(sessionId);
+      }
+
+      if (messageQueue) {
+        // メッセージキューをプールに返却
+        messageQueuePool.release(messageQueue);
+      }
+
+      if (transport) {
+        // transportを閉じる
+        try {
+          transport.onclose = undefined;
+          await transport.close();
+        } catch (closeError) {
+          logger.warn("Error closing transport during rollback", {
+            sessionId,
+            error:
+              closeError instanceof Error
+                ? closeError.message
+                : String(closeError),
+          });
+        }
+      }
+    } catch (rollbackError) {
+      logger.error("Error during rollback", {
+        sessionId,
+        error:
+          rollbackError instanceof Error
+            ? rollbackError.message
+            : String(rollbackError),
+      });
+    }
+  };
+
   try {
     // Create a new SSE transport for the client
-    const transport = new SSEServerTransportClass("/messages", res);
-    const sessionId = transport.sessionId;
+    transport = new SSEServerTransportClass("/messages", res);
+    sessionId = transport.sessionId;
 
     // メッセージキューをプールから取得
-    const messageQueue = messageQueuePool.acquire();
+    messageQueue = messageQueuePool.acquire();
 
     // クリーンアップフラグを使用して循環参照を防止
     let isCleaningUp = false;
 
     // transportのsessionIdを使用してセッション作成（cleanup関数付き）
-    const session = createSessionWithId(
-      sessionId,
-      TransportType.SSE,
-      apiKeyId,
-      clientId,
-      async () => {
-        // 既にクリーンアップ中の場合は処理をスキップ
-        if (isCleaningUp) {
-          return;
-        }
-        isCleaningUp = true;
-
-        try {
-          // SSE接続のクリーンアップ
-          const connectionInfo = sseConnections.get(sessionId);
-          if (connectionInfo) {
-            if (connectionInfo.keepAliveInterval) {
-              clearInterval(connectionInfo.keepAliveInterval);
-            }
-
-            // transport.close()を呼ぶ前に接続マップから削除
-            sseConnections.delete(sessionId);
-            messageQueuePool.release(connectionInfo.messageQueue);
-
-            // transportのcloseは最後に実行（循環参照を避けるため）
-            try {
-              // oncloseイベントハンドラーを無効化
-              connectionInfo.transport.onclose = undefined;
-              await connectionInfo.transport.close();
-            } catch (error) {
-              logger.warn("Error closing SSE transport", {
-                sessionId,
-                error: error instanceof Error ? error.message : String(error),
-              });
-            }
+    try {
+      session = createSessionWithId(
+        sessionId,
+        TransportType.SSE,
+        apiKeyId,
+        clientId,
+        async () => {
+          // 既にクリーンアップ中の場合は処理をスキップ
+          if (isCleaningUp) {
+            return;
           }
-        } finally {
-          isCleaningUp = false;
-        }
-      },
-    );
+          isCleaningUp = true;
+
+          try {
+            // SSE接続のクリーンアップ
+            const connectionInfo = sessionId
+              ? sseConnections.get(sessionId)
+              : undefined;
+            if (connectionInfo) {
+              if (connectionInfo.keepAliveInterval) {
+                clearInterval(connectionInfo.keepAliveInterval);
+              }
+
+              // transport.close()を呼ぶ前に接続マップから削除
+              if (sessionId) {
+                sseConnections.delete(sessionId);
+              }
+              messageQueuePool.release(connectionInfo.messageQueue);
+
+              // transportのcloseは最後に実行（循環参照を避けるため）
+              try {
+                // oncloseイベントハンドラーを無効化
+                connectionInfo.transport.onclose = undefined;
+                await connectionInfo.transport.close();
+              } catch (error) {
+                logger.warn("Error closing SSE transport", {
+                  sessionId,
+                  error: error instanceof Error ? error.message : String(error),
+                });
+              }
+            }
+          } finally {
+            isCleaningUp = false;
+          }
+        },
+      );
+    } catch (sessionError) {
+      await rollbackOnError(sessionError as Error, "session_creation");
+      throw sessionError;
+    }
 
     // SSE接続情報を保存
     const connectionInfo: SSEConnectionInfo = {
@@ -149,14 +262,21 @@ export const establishSSEConnection = async (
     sseConnections.set(sessionId, connectionInfo);
 
     // MCPサーバーとの接続確立
-    const { server } = await getServer(apiKeyId);
-    await server.connect(transport);
+    let server;
+    try {
+      const serverResult = await getServer(apiKeyId);
+      server = serverResult.server;
+      await server.connect(transport);
+    } catch (serverError) {
+      await rollbackOnError(serverError as Error, "server_connection");
+      throw serverError;
+    }
 
     // トランスポートが閉じられたときのクリーンアップ（循環参照防止）
     transport.onclose = () => {
       logger.info("SSE transport closed", { sessionId });
       // クリーンアップ中でない場合のみ実行
-      if (!isCleaningUp) {
+      if (!isCleaningUp && session) {
         void session.cleanup?.();
       }
     };
@@ -164,7 +284,7 @@ export const establishSSEConnection = async (
     // クライアント切断検出
     res.on("close", () => {
       logger.info("SSE client disconnected", { sessionId });
-      if (!isCleaningUp) {
+      if (!isCleaningUp && session) {
         void session.cleanup?.();
       }
     });
@@ -174,17 +294,21 @@ export const establishSSEConnection = async (
         sessionId,
         error: error.message,
       });
-      recordSessionError(sessionId);
-      if (!isCleaningUp) {
-        void session.cleanup?.();
+      if (sessionId) {
+        recordSessionError(sessionId);
+      }
+      if (!isCleaningUp && session?.cleanup) {
+        void session.cleanup();
       }
     });
 
     // キープアライブの設定
     const keepAliveInterval = setInterval(() => {
-      if (!isSessionValid(sessionId)) {
+      if (!sessionId || !isSessionValid(sessionId)) {
         clearInterval(keepAliveInterval);
-        void session.cleanup?.();
+        if (session?.cleanup) {
+          void session.cleanup();
+        }
         return;
       }
 
@@ -196,10 +320,12 @@ export const establishSSEConnection = async (
           sessionId,
           error: error instanceof Error ? error.message : String(error),
         });
-        recordSessionError(sessionId);
+        if (sessionId) {
+          recordSessionError(sessionId);
+        }
         clearInterval(keepAliveInterval);
-        if (!isCleaningUp) {
-          void session.cleanup?.();
+        if (!isCleaningUp && session?.cleanup) {
+          void session.cleanup();
         }
       }
     }, 30000); // 30秒ごと
@@ -214,10 +340,18 @@ export const establishSSEConnection = async (
   } catch (error) {
     logger.error("Error establishing SSE connection", {
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      apiKeyId: "***",
+      clientId,
     });
-    if (!res.headersSent) {
-      res.status(500).send("Error establishing SSE connection");
-    }
+
+    sendErrorResponse(
+      res,
+      500,
+      "Failed to establish SSE connection",
+      "CONNECTION_FAILED",
+      error instanceof Error ? error.message : "Unknown error occurred",
+    );
   }
 };
 
@@ -235,39 +369,61 @@ export const handleSSEMessage = async (
 
   if (!sessionId) {
     logger.error("No session ID provided in SSE message request");
-    res.status(400).json({ error: "Missing sessionId parameter" });
+    sendErrorResponse(
+      res,
+      400,
+      "Missing sessionId parameter",
+      "MISSING_SESSION_ID",
+    );
     return;
   }
 
   if (!isSessionValid(sessionId)) {
     logger.error("Invalid or expired session", { sessionId });
-    res.status(404).json({ error: "Invalid or expired session" });
+    sendErrorResponse(
+      res,
+      404,
+      "Invalid or expired session",
+      "INVALID_SESSION",
+    );
     return;
   }
 
   const connectionInfo = sseConnections.get(sessionId);
   if (!connectionInfo) {
     logger.error("No SSE connection found for session", { sessionId });
-    res.status(404).json({ error: "Session not found" });
+    sendErrorResponse(res, 404, "Session not found", "SESSION_NOT_FOUND");
     return;
   }
 
   try {
-    // アクティビティタイムスタンプを更新
-    updateSessionActivity(sessionId);
+    // メトリクス付きでメッセージ処理を実行
+    await measureTransportExecutionTime(
+      async () => {
+        // アクティビティタイムスタンプを更新
+        updateSessionActivity(sessionId);
 
-    // Handle the POST message with the transport
-    await connectionInfo.transport.handlePostMessage(req, res, req.body);
+        // Handle the POST message with the transport
+        await connectionInfo.transport.handlePostMessage(req, res, req.body);
+      },
+      "sse",
+      "message_handling",
+    );
   } catch (error) {
     logger.error("Error handling SSE message", {
       sessionId,
       error: error instanceof Error ? error.message : String(error),
     });
     recordSessionError(sessionId);
+    recordTransportError("sse", "message_handling_failed");
 
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Error handling SSE message" });
-    }
+    sendErrorResponse(
+      res,
+      500,
+      "Error handling SSE message",
+      "MESSAGE_HANDLING_FAILED",
+      error instanceof Error ? error.message : "Unknown error occurred",
+    );
   }
 };
 
@@ -288,7 +444,8 @@ export const createStreamableTransport = (
       });
 
       // セッション作成（cleanup関数付き）
-      createSession(
+      createSessionWithId(
+        sessionId,
         TransportType.STREAMABLE_HTTP,
         apiKeyId,
         clientId,
@@ -371,24 +528,34 @@ export const getTransportBySessionId = (
  * SSE接続統計を取得
  */
 export const getSSEConnectionStats = () => {
-  return {
+  const stats = {
     totalConnections: sseConnections.size,
     activeConnections: Array.from(sseConnections.values()).filter((conn) =>
       isSessionValid(conn.sessionId),
     ).length,
   };
+
+  // メトリクス更新
+  updateTransportConnectionCount("sse", stats.totalConnections);
+
+  return stats;
 };
 
 /**
  * Streamable HTTP接続統計を取得
  */
 export const getStreamableConnectionStats = () => {
-  return {
+  const stats = {
     totalConnections: streamableConnections.size,
     activeConnections: Array.from(streamableConnections.values()).filter(
       (conn) => isSessionValid(conn.sessionId),
     ).length,
   };
+
+  // メトリクス更新
+  updateTransportConnectionCount("streamableHttp", stats.totalConnections);
+
+  return stats;
 };
 
 /**
