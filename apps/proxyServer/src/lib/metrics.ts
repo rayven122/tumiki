@@ -120,17 +120,17 @@ export const startMetricsCollection = (): void => {
   if (config.metrics.enabled && !metricsState.interval) {
     metricsState.interval = setInterval(() => {
       const metrics = collectMetrics();
-      
+
       // 読みやすい形式でメトリクスをログ出力
       logger.info("=== Metrics and Health Report ===");
-      
+
       // セッション情報
       logger.info("Sessions", {
         total: metrics.sessions.total,
         active: metrics.sessions.active,
         byTransport: `SSE:${metrics.sessions.sse} HTTP:${metrics.sessions.streamableHttp}`,
       });
-      
+
       // リクエスト情報
       logger.info("Requests", {
         total: metrics.requests.total,
@@ -138,7 +138,7 @@ export const startMetricsCollection = (): void => {
         failed: metrics.requests.failed,
         errorRate: `${metrics.requests.errorRate}%`,
       });
-      
+
       // パフォーマンス情報
       logger.info("Performance", {
         avgResponseTime: `${metrics.performance.averageResponseTime}ms`,
@@ -146,14 +146,14 @@ export const startMetricsCollection = (): void => {
         ssePerf: `Avg:${metrics.performance.byTransport.sse.averageResponseTime}ms Err:${metrics.performance.byTransport.sse.errorRate}%`,
         httpPerf: `Avg:${metrics.performance.byTransport.streamableHttp.averageResponseTime}ms Err:${metrics.performance.byTransport.streamableHttp.errorRate}%`,
       });
-      
+
       // システムリソース
       logger.info("System Resources", {
         memory: `RSS:${metrics.system.memoryUsage.rss}MB(${metrics.system.memoryUsage.rssPercent}%) Heap:${metrics.system.memoryUsage.heap}MB(${metrics.system.memoryUsage.heapPercent}%)`,
         cpu: `${metrics.system.cpuUsage.usage}% (${metrics.system.cpuUsage.cores} cores)`,
         pool: metrics.system.poolInfo,
       });
-      
+
       // エラー情報（エラーがある場合のみ）
       if (metrics.errors.count > 0) {
         logger.warn("Errors Detected", {
@@ -161,7 +161,7 @@ export const startMetricsCollection = (): void => {
           types: metrics.errors.types,
         });
       }
-      
+
       resetMetrics();
     }, config.metrics.interval);
   }
@@ -250,7 +250,7 @@ const getCpuUsage = (): { usage: number; cores: number } => {
   });
 
   const currentCpuUsage = { idle: totalIdle, total: totalTick };
-  
+
   // 初回実行時
   if (!metricsState.lastCpuUsage) {
     metricsState.lastCpuUsage = currentCpuUsage;
@@ -259,10 +259,12 @@ const getCpuUsage = (): { usage: number; cores: number } => {
 
   // CPU使用率を計算
   const idleDifference = currentCpuUsage.idle - metricsState.lastCpuUsage.idle;
-  const totalDifference = currentCpuUsage.total - metricsState.lastCpuUsage.total;
-  const usage = totalDifference > 0 
-    ? 100 - Math.round((100 * idleDifference) / totalDifference)
-    : 0;
+  const totalDifference =
+    currentCpuUsage.total - metricsState.lastCpuUsage.total;
+  const usage =
+    totalDifference > 0
+      ? 100 - Math.round((100 * idleDifference) / totalDifference)
+      : 0;
 
   metricsState.lastCpuUsage = currentCpuUsage;
   return { usage, cores: cpus.length };
@@ -308,9 +310,10 @@ export const collectMetrics = (): MetricsData => {
     rss: Math.round(memUsage.rss / 1024 / 1024),
     heap: Math.round(memUsage.heapUsed / 1024 / 1024),
     rssPercent: Math.round((memUsage.rss / totalMemory) * 100 * 100) / 100,
-    heapPercent: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100 * 100) / 100,
+    heapPercent:
+      Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100 * 100) / 100,
   };
-  
+
   // CPU使用率を取得
   const cpuInfo = getCpuUsage();
 
