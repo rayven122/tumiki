@@ -1,20 +1,21 @@
-# MCP Proxy Server with Streamable HTTP
+# MCP Proxy Server with Dual Transport Support
 
-複数の MCP サーバーを統合管理する次世代プロキシサーバー
+複数の MCP サーバーを統合管理するデュアルTransport対応プロキシサーバー
 
 ## 概要
 
-このプロキシサーバーは、複数の Model Context Protocol (MCP) サーバーを単一のエンドポイントで統合的に管理します。**Streamable HTTP transport**を採用し、MCP最新仕様に準拠した高性能なプロキシ機能を提供します。
+このプロキシサーバーは、複数の Model Context Protocol (MCP) サーバーを統合的に管理します。**Streamable HTTP transport**と**SSE transport**の両方をサポートし、既存システムの後方互換性を維持しながらMCP最新仕様に対応した高性能なプロキシ機能を提供します。
 
 ## 特徴
 
-- **Streamable HTTP Transport**: MCP最新仕様準拠の統合transport
-- **単一エンドポイント**: `/mcp` で全MCP通信を統合管理
-- **セッション管理**: UUIDベースの効率的なセッション管理
+- **デュアルTransport対応**: Streamable HTTP + SSE の両方をサポート
+- **後方互換性**: 既存SSEクライアントの継続利用が可能
+- **統一セッション管理**: Transport種別を問わない共通セッション管理
+- **段階的移行**: 必要に応じてTransportを選択可能
 - **高可用性**: 自動接続回復とヘルスチェック機能
-- **スケーラブル**: ステートレス対応によるスケーリング容易性
+- **スケーラブル**: Transport抽象化によるスケーリング容易性
 - **インフラ親和性**: プロキシ、ロードバランサー対応
-- **メトリクス監視**: リアルタイム性能監視とエラートラッキング
+- **統合メトリクス**: Transport別統計とリアルタイム監視
 
 ## インストール
 
@@ -57,7 +58,7 @@ pnpm pm2:stop
 
 ## API エンドポイント
 
-### 統合MCPエンドポイント
+### Streamable HTTP Transport（推奨）
 
 - **URL**: `http://localhost:8080/mcp`
 - **Methods**: `POST`, `GET`, `DELETE`
@@ -88,6 +89,28 @@ curl -X DELETE http://localhost:8080/mcp \
   -H "mcp-session-id: SESSION_ID"
 ```
 
+### SSE Transport（後方互換性）
+
+- **SSE接続**: `http://localhost:8080/sse`
+- **メッセージ送信**: `http://localhost:8080/messages`
+- **Transport**: Server-Sent Events
+
+#### SSE接続確立
+
+```bash
+curl -N http://localhost:8080/sse \
+  -H "api-key: YOUR_API_KEY" \
+  -H "x-client-id: CLIENT_ID"
+```
+
+#### メッセージ送信
+
+```bash
+curl -X POST "http://localhost:8080/messages?sessionId=SESSION_ID" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}'
+```
+
 ## 技術スタック
 
 - **Runtime**: Node.js 22+
@@ -104,31 +127,60 @@ curl -X DELETE http://localhost:8080/mcp \
 
 ```
 src/
-├── index.ts              # メインサーバー（統合エンドポイント）
+├── index.ts              # メインサーバー（デュアルTransport対応）
 ├── routes/
 │   ├── health.ts         # ヘルスチェック
-│   └── mcp.ts           # 統合MCPエンドポイント
+│   ├── mcp.ts           # Streamable HTTP エンドポイント
+│   └── sse.ts           # SSE エンドポイント（後方互換性）
 ├── services/
-│   ├── transport.ts      # StreamableHTTP transport管理
+│   ├── session.ts        # 統一セッション管理システム
+│   ├── transport.ts      # Streamable HTTP transport管理
+│   ├── connection.ts     # SSE接続管理
 │   └── proxy.ts         # MCPプロキシ機能
 ├── lib/                 # ユーティリティ
 │   ├── config.ts
 │   ├── logger.ts
-│   ├── metrics.ts
+│   ├── metrics.ts       # Transport別統計
 │   └── types.ts
 └── lifecycle/           # アプリケーションライフサイクル
     ├── startup.ts
-    ├── shutdown.ts
+    ├── shutdown.ts      # デュアルTransport対応
     └── maintenance.ts
 ```
 
-## 移行について
+## Transport選択ガイド
 
-### SSE Transport から Streamable HTTP への移行
+### Streamable HTTP Transport（推奨）
 
-このバージョンでは、従来のSSE transportから最新のStreamable HTTP transportに完全移行しました：
+**新規開発・最新仕様対応の場合**
 
-- **統合エンドポイント**: `/mcp` + `/messages` → `/mcp`（単一）
-- **セッション管理**: SSEベース → HTTPヘッダーベース
-- **レスポンス形式**: JSON単発またはSSEストリーム（動的選択）
-- **後方互換性**: 既存クライアントの段階的移行をサポート
+- **エンドポイント**: `/mcp`
+- **特徴**: MCP最新仕様準拠、HTTPヘッダーベースセッション管理
+- **メリット**: インフラ親和性、スケーラビリティ、標準HTTP対応
+
+### SSE Transport（後方互換性）
+
+**既存システム継続利用の場合**
+
+- **エンドポイント**: `/sse`, `/messages`
+- **特徴**: 従来のSSE接続方式を維持
+- **メリット**: 既存クライアントコード変更不要、段階的移行可能
+
+## 移行戦略
+
+### 段階的移行アプローチ
+
+1. **現状維持**: 既存SSEクライアントは `/sse` + `/messages` で継続運用
+2. **新規開発**: 新しいクライアントは `/mcp` のStreamable HTTPを使用
+3. **段階移行**: 必要に応じて既存クライアントを順次移行
+4. **完全移行**: 全クライアント移行後、SSEエンドポイント廃止検討
+
+### Transport別特徴比較
+
+| 項目                 | Streamable HTTP | SSE                        |
+| -------------------- | --------------- | -------------------------- |
+| **仕様準拠**         | MCP最新仕様     | 従来仕様                   |
+| **エンドポイント数** | 1つ（`/mcp`）   | 2つ（`/sse`, `/messages`） |
+| **セッション管理**   | HTTPヘッダー    | クエリパラメータ           |
+| **インフラ対応**     | ◎ 高い          | △ 限定的                   |
+| **メンテナンス性**   | ◎ 良好          | ○ 普通                     |
