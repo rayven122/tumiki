@@ -8,6 +8,7 @@ import { getServer } from "./proxy.js";
 import {
   TransportType,
   createSession,
+  createSessionWithId,
   isSessionValid,
   generateSessionId,
   updateSessionActivity,
@@ -18,7 +19,7 @@ import {
 // Transport types
 export enum TransportImplementation {
   SSE = "sse",
-  STREAMABLE_HTTP = "streamable_http"
+  STREAMABLE_HTTP = "streamable_http",
 }
 
 // Base connection interface
@@ -47,7 +48,10 @@ export type ConnectionInfo = SSEConnectionInfo | StreamableHTTPConnectionInfo;
 
 // Connection management
 export const sseConnections = new Map<string, SSEConnectionInfo>();
-export const streamableConnections = new Map<string, StreamableHTTPConnectionInfo>();
+export const streamableConnections = new Map<
+  string,
+  StreamableHTTPConnectionInfo
+>();
 
 /**
  * SSE接続の確立
@@ -87,28 +91,48 @@ export const establishSSEConnection = async (
     // メッセージキューをプールから取得
     const messageQueue = messageQueuePool.acquire();
 
-    // セッション作成（cleanup関数付き）
-    const session = createSession(
+    // クリーンアップフラグを使用して循環参照を防止
+    let isCleaningUp = false;
+
+    // transportのsessionIdを使用してセッション作成（cleanup関数付き）
+    const session = createSessionWithId(
+      sessionId,
       TransportType.SSE,
       apiKeyId,
       clientId,
       async () => {
-        // SSE接続のクリーンアップ
-        const connectionInfo = sseConnections.get(sessionId);
-        if (connectionInfo) {
-          if (connectionInfo.keepAliveInterval) {
-            clearInterval(connectionInfo.keepAliveInterval);
+        // 既にクリーンアップ中の場合は処理をスキップ
+        if (isCleaningUp) {
+          return;
+        }
+        isCleaningUp = true;
+
+        try {
+          // SSE接続のクリーンアップ
+          const connectionInfo = sseConnections.get(sessionId);
+          if (connectionInfo) {
+            if (connectionInfo.keepAliveInterval) {
+              clearInterval(connectionInfo.keepAliveInterval);
+            }
+
+            // transport.close()を呼ぶ前に接続マップから削除
+            sseConnections.delete(sessionId);
+            messageQueuePool.release(connectionInfo.messageQueue);
+
+            // transportのcloseは最後に実行（循環参照を避けるため）
+            try {
+              // oncloseイベントハンドラーを無効化
+              connectionInfo.transport.onclose = undefined;
+              await connectionInfo.transport.close();
+            } catch (error) {
+              logger.warn("Error closing SSE transport", {
+                sessionId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
           }
-          try {
-            await connectionInfo.transport.close();
-          } catch (error) {
-            logger.warn("Error closing SSE transport", {
-              sessionId,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-          messageQueuePool.release(connectionInfo.messageQueue);
-          sseConnections.delete(sessionId);
+        } finally {
+          isCleaningUp = false;
         }
       },
     );
@@ -128,16 +152,21 @@ export const establishSSEConnection = async (
     const { server } = await getServer(apiKeyId);
     await server.connect(transport);
 
-    // トランスポートが閉じられたときのクリーンアップ
+    // トランスポートが閉じられたときのクリーンアップ（循環参照防止）
     transport.onclose = () => {
       logger.info("SSE transport closed", { sessionId });
-      void session.cleanup?.();
+      // クリーンアップ中でない場合のみ実行
+      if (!isCleaningUp) {
+        void session.cleanup?.();
+      }
     };
 
     // クライアント切断検出
     res.on("close", () => {
       logger.info("SSE client disconnected", { sessionId });
-      void session.cleanup?.();
+      if (!isCleaningUp) {
+        void session.cleanup?.();
+      }
     });
 
     res.on("error", (error) => {
@@ -146,7 +175,9 @@ export const establishSSEConnection = async (
         error: error.message,
       });
       recordSessionError(sessionId);
-      void session.cleanup?.();
+      if (!isCleaningUp) {
+        void session.cleanup?.();
+      }
     });
 
     // キープアライブの設定
@@ -167,7 +198,9 @@ export const establishSSEConnection = async (
         });
         recordSessionError(sessionId);
         clearInterval(keepAliveInterval);
-        void session.cleanup?.();
+        if (!isCleaningUp) {
+          void session.cleanup?.();
+        }
       }
     }, 30000); // 30秒ごと
 
@@ -364,13 +397,15 @@ export const getStreamableConnectionStats = () => {
 export const getAllTransportStats = () => {
   const sseStats = getSSEConnectionStats();
   const streamableStats = getStreamableConnectionStats();
-  
+
   return {
     sse: sseStats,
     streamableHttp: streamableStats,
     total: {
-      totalConnections: sseStats.totalConnections + streamableStats.totalConnections,
-      activeConnections: sseStats.activeConnections + streamableStats.activeConnections,
+      totalConnections:
+        sseStats.totalConnections + streamableStats.totalConnections,
+      activeConnections:
+        sseStats.activeConnections + streamableStats.activeConnections,
     },
   };
 };
