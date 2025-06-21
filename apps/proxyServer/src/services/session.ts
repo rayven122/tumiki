@@ -50,6 +50,25 @@ export const createSession = (
   cleanup?: () => Promise<void>,
 ): SessionInfo => {
   const sessionId = generateSessionId();
+  return createSessionWithId(
+    sessionId,
+    transportType,
+    apiKeyId,
+    clientId,
+    cleanup,
+  );
+};
+
+/**
+ * 指定されたセッションIDでセッションを作成
+ */
+export const createSessionWithId = (
+  sessionId: string,
+  transportType: TransportType,
+  apiKeyId: string,
+  clientId = "unknown",
+  cleanup?: () => Promise<void>,
+): SessionInfo => {
   const now = Date.now();
 
   const session: SessionInfo = {
