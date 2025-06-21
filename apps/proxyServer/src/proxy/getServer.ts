@@ -8,8 +8,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { getMcpClients } from "./getMcpClients.js";
 import type { ConnectedClient } from "./client.js";
+import type { AuthUser } from "@tumiki/auth";
 
-export const getServer = async (apiKeyId: string) => {
+export const getServer = async (userId: string, user?: AuthUser) => {
   const server = new Server(
     {
       name: "mcp-proxy",
@@ -23,11 +24,23 @@ export const getServer = async (apiKeyId: string) => {
   );
   const toolToClientMap = new Map<string, ConnectedClient>();
 
-  const { connectedClients, cleanup } = await getMcpClients(apiKeyId);
+  const { connectedClients, cleanup } = await getMcpClients(userId);
   // List Tools Handler
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
     const allTools: Tool[] = [];
     toolToClientMap.clear();
+    
+    // Add whoami tool to the list
+    allTools.push({
+      name: "whoami",
+      description: "Get information about the current authenticated user",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    });
+
     for (const connectedClient of connectedClients) {
       try {
         const result = await connectedClient.client.request(
@@ -66,6 +79,36 @@ export const getServer = async (apiKeyId: string) => {
   // Call Tool Handler
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+    
+    // Handle whoami tool directly
+    if (name === "whoami") {
+      console.log("Handling whoami tool call");
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              user ? {
+                authenticated: true,
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  role: user.role,
+                },
+                message: "You are successfully authenticated with NextAuth"
+              } : {
+                authenticated: false,
+                message: "No user information available"
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+
     const clientForTool = toolToClientMap.get(name);
 
     if (!clientForTool) {

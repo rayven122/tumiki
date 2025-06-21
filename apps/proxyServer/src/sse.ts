@@ -2,9 +2,37 @@ import express, { type Request, type Response } from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { getServer } from "./proxy/getServer.js";
 import { logSystemHealth } from "./monitoring.js";
+import { requireAuthWithRedirect } from "./middleware/auth-redirect.js";
+import authRoutes from "./routes/auth.js";
+import callbackRoutes from "./routes/callback.js";
+import type { AuthenticatedRequest } from "./types/auth.js";
 
 const app = express();
 app.use(express.json());
+
+// CORS設定（Manager アプリからのアクセスを許可）
+app.use((req, res, next) => {
+  const origin = process.env.MANAGER_URL || "http://localhost:3000";
+  res.header("Access-Control-Allow-Origin", origin);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie, api-key",
+  );
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
+
+// 認証関連のルートを追加
+app.use("/auth", authRoutes);
+
+// コールバック関連のルートを追加
+app.use("/", callbackRoutes);
 
 // セッションIDをキーとしてトランスポートを保存
 const transports: Record<string, SSEServerTransport> = {};
@@ -16,31 +44,20 @@ const CONNECTION_TIMEOUT = 60 * 1000;
 /** キープアライブの間隔（ミリ秒）　30秒 */
 const KEEPALIVE_INTERVAL = 30 * 1000;
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   console.log("Received GET request to /");
   res.send("MCP Proxy Server is running. Use /mcp to establish an SSE stream.");
 });
 
 // SSE endpoint for establishing the stream
-app.get("/mcp", async (req: Request, res: Response) => {
+app.get("/mcp", requireAuthWithRedirect, async (req: Request, res: Response) => {
   console.log("Received GET request to /sse (establishing SSE stream)");
 
-  // request header から apiKeyId を取得
-  const bearerToken = req.headers.authorization;
+  // 認証されたユーザー情報を取得
+  const user = (req as AuthenticatedRequest).user;
+  const userId = user.id;
 
-  // クエリパラメータから apiKeyId を取得
-  const apiKeyId = (req.query["api-key"] ?? req.headers["api-key"]) as
-    | string
-    | undefined;
-  console.log("apiKeyId", apiKeyId);
-
-  const token = bearerToken?.split(" ")[1];
-  console.log("token", token);
-
-  if (!apiKeyId) {
-    res.status(401).send("Unauthorized");
-    return;
-  }
+  console.log("Authenticated user:", { id: userId, email: user.email });
 
   try {
     // Create a new SSE transport for the client
@@ -53,7 +70,7 @@ app.get("/mcp", async (req: Request, res: Response) => {
     // 初期アクティビティタイムスタンプを設定
     lastActivity[sessionId] = Date.now();
 
-    const { server, cleanup } = await getServer(apiKeyId);
+    const { server, cleanup } = await getServer(userId, user);
 
     // トランスポートが閉じられたときにクリーンアップを行うハンドラを設定
     transport.onclose = () => {
