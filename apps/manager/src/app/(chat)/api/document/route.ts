@@ -1,4 +1,4 @@
-import { auth } from "@/server/auth";
+import { auth } from "@tumiki/auth";
 import type { ArtifactKind } from "@/components/artifact";
 import {
   deleteDocumentsByIdAfterTimestamp,

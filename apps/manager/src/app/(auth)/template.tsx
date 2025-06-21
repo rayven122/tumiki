@@ -1,4 +1,4 @@
-import { auth } from "@/server/auth";
+import { auth } from "@tumiki/auth";
 import { redirect } from "next/navigation";
 import { Header } from "@/app/_components/Header";
 import "@/styles/globals.css";
