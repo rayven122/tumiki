@@ -4,6 +4,7 @@ import { getSessionStats } from "../services/session.js";
 import { getStreamableConnectionStats } from "../services/transport.js";
 import { getSSEConnectionStats } from "../services/connection.js";
 import { getSSEConnectionPool } from "../services/proxy.js";
+import os from "node:os";
 
 // Transport別メトリクス
 export interface TransportMetrics {
@@ -67,6 +68,12 @@ interface MetricsData {
     memoryUsage: {
       rss: number;
       heap: number;
+      rssPercent: number;
+      heapPercent: number;
+    };
+    cpuUsage: {
+      usage: number;
+      cores: number;
     };
     poolInfo: string;
   };
@@ -81,6 +88,7 @@ const metricsState = {
   errorCount: 0,
   errorTypes: {} as Record<string, number>,
   interval: null as NodeJS.Timeout | null,
+  lastCpuUsage: null as { idle: number; total: number } | null,
 };
 
 // Transport別メトリクス状態
@@ -112,7 +120,48 @@ export const startMetricsCollection = (): void => {
   if (config.metrics.enabled && !metricsState.interval) {
     metricsState.interval = setInterval(() => {
       const metrics = collectMetrics();
-      logger.info("Metrics and health report", { metrics });
+
+      // 読みやすい形式でメトリクスをログ出力
+      logger.info("=== Metrics and Health Report ===");
+
+      // セッション情報
+      logger.info("Sessions", {
+        total: metrics.sessions.total,
+        active: metrics.sessions.active,
+        byTransport: `SSE:${metrics.sessions.sse} HTTP:${metrics.sessions.streamableHttp}`,
+      });
+
+      // リクエスト情報
+      logger.info("Requests", {
+        total: metrics.requests.total,
+        successful: metrics.requests.successful,
+        failed: metrics.requests.failed,
+        errorRate: `${metrics.requests.errorRate}%`,
+      });
+
+      // パフォーマンス情報
+      logger.info("Performance", {
+        avgResponseTime: `${metrics.performance.averageResponseTime}ms`,
+        minMaxResponseTime: `${metrics.performance.minResponseTime}-${metrics.performance.maxResponseTime}ms`,
+        ssePerf: `Avg:${metrics.performance.byTransport.sse.averageResponseTime}ms Err:${metrics.performance.byTransport.sse.errorRate}%`,
+        httpPerf: `Avg:${metrics.performance.byTransport.streamableHttp.averageResponseTime}ms Err:${metrics.performance.byTransport.streamableHttp.errorRate}%`,
+      });
+
+      // システムリソース
+      logger.info("System Resources", {
+        memory: `RSS:${metrics.system.memoryUsage.rss}MB(${metrics.system.memoryUsage.rssPercent}%) Heap:${metrics.system.memoryUsage.heap}MB(${metrics.system.memoryUsage.heapPercent}%)`,
+        cpu: `${metrics.system.cpuUsage.usage}% (${metrics.system.cpuUsage.cores} cores)`,
+        pool: metrics.system.poolInfo,
+      });
+
+      // エラー情報（エラーがある場合のみ）
+      if (metrics.errors.count > 0) {
+        logger.warn("Errors Detected", {
+          count: metrics.errors.count,
+          types: metrics.errors.types,
+        });
+      }
+
       resetMetrics();
     }, config.metrics.interval);
   }
@@ -187,6 +236,40 @@ export const updateTransportConnectionCount = (
   transportMetrics[transportType].lastActivity = Date.now();
 };
 
+// CPU使用率を計算する関数
+const getCpuUsage = (): { usage: number; cores: number } => {
+  const cpus = os.cpus();
+  let totalIdle = 0;
+  let totalTick = 0;
+
+  cpus.forEach((cpu) => {
+    for (const type in cpu.times) {
+      totalTick += cpu.times[type as keyof typeof cpu.times];
+    }
+    totalIdle += cpu.times.idle;
+  });
+
+  const currentCpuUsage = { idle: totalIdle, total: totalTick };
+
+  // 初回実行時
+  if (!metricsState.lastCpuUsage) {
+    metricsState.lastCpuUsage = currentCpuUsage;
+    return { usage: 0, cores: cpus.length };
+  }
+
+  // CPU使用率を計算
+  const idleDifference = currentCpuUsage.idle - metricsState.lastCpuUsage.idle;
+  const totalDifference =
+    currentCpuUsage.total - metricsState.lastCpuUsage.total;
+  const usage =
+    totalDifference > 0
+      ? 100 - Math.round((100 * idleDifference) / totalDifference)
+      : 0;
+
+  metricsState.lastCpuUsage = currentCpuUsage;
+  return { usage, cores: cpus.length };
+};
+
 // Transport別メトリクス計算ヘルパー
 const calculateTransportMetrics = (metrics: TransportMetrics) => {
   const errorRate =
@@ -222,10 +305,17 @@ export const collectMetrics = (): MetricsData => {
 
   // システム情報の取得
   const memUsage = process.memoryUsage();
+  const totalMemory = os.totalmem();
   const memoryMB = {
     rss: Math.round(memUsage.rss / 1024 / 1024),
     heap: Math.round(memUsage.heapUsed / 1024 / 1024),
+    rssPercent: Math.round((memUsage.rss / totalMemory) * 100 * 100) / 100,
+    heapPercent:
+      Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100 * 100) / 100,
   };
+
+  // CPU使用率を取得
+  const cpuInfo = getCpuUsage();
 
   // セッション統計を取得
   const sessionStats = getSessionStats();
@@ -286,6 +376,7 @@ export const collectMetrics = (): MetricsData => {
     },
     system: {
       memoryUsage: memoryMB,
+      cpuUsage: cpuInfo,
       poolInfo: getPoolInfo(),
     },
   };
