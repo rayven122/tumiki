@@ -62,13 +62,12 @@ const startServer = (): void => {
   // サーバー起動
   const PORT = 8080;
   app.listen(PORT, () => {
-    logger.info("MCP Proxy Server started with dual transport support", {
-      port: PORT,
-      streamableHttpEndpoint: `http://localhost:${PORT}/mcp`,
-      sseEndpoint: `http://localhost:${PORT}/sse`,
-      messagesEndpoint: `http://localhost:${PORT}/messages`,
-      transports: ["StreamableHTTP", "SSE"],
-    });
+    logger.info(
+      "MCP Proxy Server supports both Streamable HTTP and SSE transports",
+    );
+    logger.info(`> Listening on port ${PORT}`);
+    logger.info(`> streamableHttpEndpoint: http://localhost:${PORT}/mcp`);
+    logger.info(`> sseEndpoint: http://localhost:${PORT}/sse`);
   });
 };
 
