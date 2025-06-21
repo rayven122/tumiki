@@ -1,8 +1,9 @@
 import express from "express";
 import { handleHealthCheck } from "./routes/health.js";
 import { handleMCPRequest } from "./routes/mcp.js";
+import { handleSSEConnection, handleSSEMessages } from "./routes/sse.js";
 import { initializeApplication } from "./lifecycle/startup.js";
-import { startSessionCleanup } from "./services/transport.js";
+import { startSessionCleanup } from "./services/session.js";
 import { logger } from "./lib/logger.js";
 
 /**
@@ -37,6 +38,10 @@ const createApp = (): express.Application => {
   app.get("/mcp", handleMCPRequest);
   app.delete("/mcp", handleMCPRequest);
 
+  // SSE transport エンドポイント（後方互換性）
+  app.get("/sse", handleSSEConnection);
+  app.post("/messages", handleSSEMessages);
+
   return app;
 };
 
@@ -57,10 +62,12 @@ const startServer = (): void => {
   // サーバー起動
   const PORT = 8080;
   app.listen(PORT, () => {
-    logger.info("MCP Proxy Server started with Streamable HTTP transport", {
+    logger.info("MCP Proxy Server started with dual transport support", {
       port: PORT,
-      mcpEndpoint: `http://localhost:${PORT}/mcp`,
-      transport: "StreamableHTTP",
+      streamableHttpEndpoint: `http://localhost:${PORT}/mcp`,
+      sseEndpoint: `http://localhost:${PORT}/sse`,
+      messagesEndpoint: `http://localhost:${PORT}/messages`,
+      transports: ["StreamableHTTP", "SSE"],
     });
   });
 };

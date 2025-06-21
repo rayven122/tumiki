@@ -1,5 +1,5 @@
-import { transports, sessions } from "../services/transport.js";
 import { stopMetricsCollection } from "../lib/metrics.js";
+import { cleanupAllSessions } from "../services/session.js";
 import { logger } from "../lib/logger.js";
 
 /**
@@ -12,31 +12,9 @@ export const gracefulShutdown = async (): Promise<void> => {
   stopMetricsCollection();
   logger.info("Metrics collection stopped");
 
-  // Close all active StreamableHTTP sessions gracefully
-  const cleanupPromises: Promise<void>[] = [];
-  for (const [sessionId] of transports) {
-    cleanupPromises.push(
-      (async () => {
-        try {
-          // StreamableHTTPTransportのクリーンアップ（必要に応じて）
-          logger.info("Cleaning up session", { sessionId });
-        } catch (error) {
-          logger.error("Error cleaning up session", {
-            sessionId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      })(),
-    );
-  }
-
+  // Close all active sessions gracefully (both SSE and Streamable HTTP)
   try {
-    await Promise.all(cleanupPromises);
-
-    // Clear all sessions and transports
-    transports.clear();
-    sessions.clear();
-
+    await cleanupAllSessions();
     logger.info("All sessions closed gracefully");
   } catch (error) {
     logger.error("Error during graceful shutdown", {

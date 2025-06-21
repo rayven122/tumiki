@@ -1,6 +1,8 @@
 import { logger } from "./logger.js";
 import { config } from "./config.js";
-import { getSessionStats } from "../services/transport.js";
+import { getSessionStats } from "../services/session.js";
+import { getStreamableConnectionStats } from "../services/transport.js";
+import { getSSEConnectionStats } from "../services/connection.js";
 import { getSSEConnectionPool } from "../services/proxy.js";
 
 interface MetricsData {
@@ -8,6 +10,18 @@ interface MetricsData {
   sessions: {
     total: number;
     active: number;
+    sse: number;
+    streamableHttp: number;
+  };
+  connections: {
+    sse: {
+      total: number;
+      active: number;
+    };
+    streamableHttp: {
+      total: number;
+      active: number;
+    };
   };
   requests: {
     total: number;
@@ -103,12 +117,26 @@ export const collectMetrics = (): MetricsData => {
 
   // セッション統計を取得
   const sessionStats = getSessionStats();
+  const sseStats = getSSEConnectionStats();
+  const streamableStats = getStreamableConnectionStats();
 
   return {
     timestamp: new Date().toISOString(),
     sessions: {
       total: sessionStats.totalSessions,
       active: sessionStats.activeSessions,
+      sse: sessionStats.sse,
+      streamableHttp: sessionStats.streamableHttp,
+    },
+    connections: {
+      sse: {
+        total: sseStats.totalConnections,
+        active: sseStats.activeConnections,
+      },
+      streamableHttp: {
+        total: streamableStats.totalConnections,
+        active: streamableStats.activeConnections,
+      },
     },
     requests: {
       total: metricsState.requestCount,

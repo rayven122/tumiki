@@ -1,7 +1,7 @@
 import {
   cleanupExpiredSessions,
   getSessionStats,
-} from "../services/transport.js";
+} from "../services/session.js";
 import { config } from "../lib/config.js";
 import { logger } from "../lib/logger.js";
 
@@ -11,7 +11,7 @@ import { logger } from "../lib/logger.js";
 export const startMaintenanceTasks = (): void => {
   const intervalMs = config.timeouts.connection / 2;
 
-  logger.info("Starting maintenance tasks for StreamableHTTP transport", {
+  logger.info("Starting maintenance tasks for dual transport support", {
     cleanupIntervalMs: intervalMs,
   });
 
