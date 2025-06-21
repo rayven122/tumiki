@@ -2,11 +2,13 @@ import { type Request, type Response } from "express";
 import { type StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   createStreamableTransport,
-  getTransportBySessionId,
+  getStreamableTransportBySessionId,
+} from "../services/transport.js";
+import {
   updateSessionActivity,
   isSessionValid,
   canCreateNewSession,
-} from "../services/transport.js";
+} from "../services/session.js";
 import { getServer } from "../services/proxy.js";
 import { logger } from "../lib/logger.js";
 
@@ -115,7 +117,7 @@ const handlePOSTRequest = async (
       return;
     }
 
-    const existingTransport = getTransportBySessionId(sessionId);
+    const existingTransport = getStreamableTransportBySessionId(sessionId);
     if (!existingTransport) {
       res.status(404).json({
         jsonrpc: "2.0",
@@ -145,7 +147,7 @@ const handlePOSTRequest = async (
       return;
     }
 
-    transport = createStreamableTransport(apiKeyId);
+    transport = createStreamableTransport(apiKeyId, clientId);
     isNewSession = true;
   }
 
@@ -233,7 +235,7 @@ const handleGETRequest = async (
     return;
   }
 
-  const transport = getTransportBySessionId(sessionId);
+  const transport = getStreamableTransportBySessionId(sessionId);
   if (!transport) {
     res.status(404).json({
       jsonrpc: "2.0",
@@ -284,7 +286,7 @@ const handleDELETERequest = async (
     return;
   }
 
-  const transport = getTransportBySessionId(sessionId);
+  const transport = getStreamableTransportBySessionId(sessionId);
   if (!transport) {
     res.status(404).json({
       jsonrpc: "2.0",
