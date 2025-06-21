@@ -49,18 +49,58 @@ class Logger {
     };
   }
 
-  private output(logEntry: LogEntry): void {
-    if (this.environment === "production") {
-      console.log(JSON.stringify(logEntry));
-    } else {
-      // Development環境では読みやすい形式で出力
-      const contextStr = logEntry.context
-        ? ` ${JSON.stringify(logEntry.context)}`
-        : "";
-      console.log(
-        `[${logEntry.timestamp}] ${logEntry.level.toUpperCase()}: ${logEntry.message}${contextStr}`,
-      );
+  private formatContext(context: LogContext): string {
+    if (!context || Object.keys(context).length === 0) {
+      return "";
     }
+
+    // 特別な処理が必要なフィールド
+    const specialFields = ["metrics", "error", "stats"];
+    const entries: string[] = [];
+
+    Object.entries(context).forEach(([key, value]) => {
+      if (specialFields.includes(key) && typeof value === "object") {
+        // ネストされたオブジェクトを読みやすくフォーマット
+        const formatted = this.formatNestedObject(value as Record<string, unknown>, 1);
+        entries.push(`${key}=${formatted}`);
+      } else if (typeof value === "object" && value !== null) {
+        // 通常のオブジェクトは簡潔に表示
+        entries.push(`${key}=${JSON.stringify(value)}`);
+      } else {
+        entries.push(`${key}=${value}`);
+      }
+    });
+
+    return entries.length > 0 ? `| ${entries.join(" | ")}` : "";
+  }
+
+  private formatNestedObject(obj: Record<string, unknown>, depth: number): string {
+    if (depth > 3) return JSON.stringify(obj); // 深すぎる場合はJSONに戻す
+
+    const entries: string[] = [];
+    Object.entries(obj).forEach(([key, value]) => {
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        const nested = this.formatNestedObject(value as Record<string, unknown>, depth + 1);
+        entries.push(`${key}:{${nested}}`);
+      } else if (Array.isArray(value)) {
+        entries.push(`${key}:[${value.join(",")}]`);
+      } else {
+        entries.push(`${key}:${value}`);
+      }
+    });
+
+    return entries.join(" ");
+  }
+
+  private output(logEntry: LogEntry): void {
+    // 環境に関わらず統一された読みやすい形式を使用
+    const timestamp = new Date(logEntry.timestamp).toISOString().replace("T", " ").slice(0, -5);
+    const level = logEntry.level.toUpperCase().padEnd(5);
+    const contextStr = logEntry.context ? this.formatContext(logEntry.context) : "";
+    
+    console.log(
+      `[${timestamp}] [${level}] [${logEntry.service}] ${logEntry.message}${contextStr}`,
+    );
   }
 
   error(message: string, context?: LogContext): void {
