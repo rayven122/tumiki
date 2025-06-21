@@ -1,5 +1,4 @@
 import { startMetricsCollection } from "../lib/metrics.js";
-import { startRecoveryManager } from "../services/connection.js";
 import { startMaintenanceTasks } from "./maintenance.js";
 import { setupShutdownHandlers } from "./shutdown.js";
 import { logger } from "../lib/logger.js";
@@ -9,10 +8,6 @@ import { logger } from "../lib/logger.js";
  */
 export const initializeApplication = (): void => {
   logger.info("Initializing application components...");
-
-  // 回復マネージャーを開始
-  startRecoveryManager();
-  logger.info("Recovery manager started");
 
   // メンテナンスタスクを開始
   startMaintenanceTasks();

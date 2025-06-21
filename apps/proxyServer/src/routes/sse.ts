@@ -1,14 +1,30 @@
 import { type Request, type Response } from "express";
-import { establishConnection } from "../services/connection.js";
+import {
+  establishSSEConnection,
+  handleSSEMessage,
+} from "../services/connection.js";
 import { logger } from "../lib/logger.js";
 
 /**
- * SSE接続確立用のルートハンドラー
+ * SSE接続確立エンドポイント
+ * GET /sse - SSE接続を確立
  */
 export const handleSSEConnection = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  logger.info("Received GET request to establish SSE stream");
-  await establishConnection(req, res);
+  logger.info("SSE connection endpoint called");
+  await establishSSEConnection(req, res);
+};
+
+/**
+ * SSEメッセージ処理エンドポイント
+ * POST /messages - SSEメッセージを処理
+ */
+export const handleSSEMessages = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  logger.info("SSE messages endpoint called");
+  await handleSSEMessage(req, res);
 };

@@ -1,9 +1,5 @@
-import {
-  connections,
-  cleanupConnection,
-  stopRecoveryManager,
-} from "../services/connection.js";
 import { stopMetricsCollection } from "../lib/metrics.js";
+import { cleanupAllSessions } from "../services/session.js";
 import { logger } from "../lib/logger.js";
 
 /**
@@ -12,23 +8,14 @@ import { logger } from "../lib/logger.js";
 export const gracefulShutdown = async (): Promise<void> => {
   logger.info("Shutting down server...");
 
-  // Stop recovery manager
-  stopRecoveryManager();
-  logger.info("Recovery manager stopped");
-
   // Stop metrics collection
   stopMetricsCollection();
   logger.info("Metrics collection stopped");
 
-  // Close all active connections gracefully
-  const cleanupPromises: Promise<void>[] = [];
-  for (const sessionId of connections.keys()) {
-    cleanupPromises.push(cleanupConnection(sessionId));
-  }
-
+  // Close all active sessions gracefully (both SSE and Streamable HTTP)
   try {
-    await Promise.all(cleanupPromises);
-    logger.info("All connections closed gracefully");
+    await cleanupAllSessions();
+    logger.info("All sessions closed gracefully");
   } catch (error) {
     logger.error("Error during graceful shutdown", {
       error: error instanceof Error ? error.message : String(error),
