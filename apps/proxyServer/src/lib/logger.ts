@@ -5,7 +5,6 @@ interface LogEntry {
   level: string;
   message: string;
   context?: LogContext;
-  service: string;
   environment: string;
 }
 
@@ -17,7 +16,6 @@ export enum LogLevel {
 }
 
 class Logger {
-  private readonly service = "proxy-server";
   private readonly environment = process.env.NODE_ENV || "development";
   private readonly logLevel = process.env.LOG_LEVEL || "info";
 
@@ -44,7 +42,6 @@ class Logger {
       level,
       message,
       context,
-      service: this.service,
       environment: this.environment,
     };
   }
@@ -116,9 +113,7 @@ class Logger {
       ? this.formatContext(logEntry.context)
       : "";
 
-    console.log(
-      `[${timestamp}] [${level}] [${logEntry.service}] ${logEntry.message}${contextStr}`,
-    );
+    console.log(`[${timestamp}] [${level}] ${logEntry.message}${contextStr}`);
   }
 
   error(message: string, context?: LogContext): void {
