@@ -1,4 +1,4 @@
-import { auth } from "@/server/auth";
+import { auth } from "@tumiki/auth";
 import { getSuggestionsByDocumentId } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 

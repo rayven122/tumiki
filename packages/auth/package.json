@@ -1,0 +1,49 @@
+{
+  "name": "@tumiki/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./config": {
+      "types": "./dist/src/config.d.ts",
+      "default": "./dist/src/config.js"
+    },
+    "./providers": {
+      "types": "./dist/src/providers.d.ts",
+      "default": "./dist/src/providers.js"
+    },
+    "./types": {
+      "types": "./dist/src/types.d.ts",
+      "default": "./dist/src/types.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --check . --ignore-path ../../.gitignore"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.9.1",
+    "@tumiki/db": "workspace:*",
+    "next-auth": "5.0.0-beta.25"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "@types/node": "^22.15.3",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.33.0"
+  },
+  "prettier": "@tumiki/prettier-config"
+}

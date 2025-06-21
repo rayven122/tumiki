@@ -1,4 +1,22 @@
 services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:alpine3.18
+    container_name: db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tumiki
+    volumes:
+      - db_vol:/var/lib/postgresql/data
+
   https-portal:
     image: steveltn/https-portal:1
     ports:
@@ -7,11 +25,9 @@ services:
     environment:
       DOMAINS: "local-server.tumiki.cloud -> http://host.docker.internal:8080"
       STAGE: "local"
-      # グローバルHTTP設定でproxy_bufferingを無効化
       CUSTOM_NGINX_GLOBAL_HTTP_CONFIG_BLOCK: |
         proxy_buffering off;
         proxy_http_version 1.1;
-      # 通常のlocation設定をシンプルに
       CUSTOM_NGINX_LOCATION_CONFIG_BLOCK: |
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
@@ -29,4 +45,5 @@ services:
     restart: always
 
 volumes:
+  db_vol:
   https-portal-data:
