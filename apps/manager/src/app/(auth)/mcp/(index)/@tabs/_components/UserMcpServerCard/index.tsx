@@ -32,7 +32,7 @@ import { type RouterOutputs } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
-import { ServerStatus, ServerType } from "@prisma/client";
+import { ServerStatus, ServerType } from "@tumiki/db";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 
 type ServerInstance =

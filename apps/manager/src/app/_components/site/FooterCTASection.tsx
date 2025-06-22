@@ -26,4 +26,3 @@ export function FooterCTASection({ setShowModal }: FooterCTASectionProps) {
     </section>
   );
 }
-

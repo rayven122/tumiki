@@ -17,10 +17,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <HeroSection
-        setShowModal={setShowModal}
-        isVisible={isVisible}
-      />
+      <HeroSection setShowModal={setShowModal} isVisible={isVisible} />
       <AboutSection />
       <FooterCTASection setShowModal={setShowModal} />
       <FooterSection />
