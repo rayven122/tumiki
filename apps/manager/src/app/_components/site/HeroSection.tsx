@@ -5,12 +5,11 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 interface HeroSectionProps {
-  showModal: boolean;
   setShowModal: (show: boolean) => void;
   isVisible: boolean;
 }
 
-export function HeroSection({ showModal, setShowModal, isVisible }: HeroSectionProps) {
+export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
   return (
     <>
       {/* Header */}

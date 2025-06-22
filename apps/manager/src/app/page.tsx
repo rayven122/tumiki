@@ -18,7 +18,6 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       <HeroSection
-        showModal={showModal}
         setShowModal={setShowModal}
         isVisible={isVisible}
       />
