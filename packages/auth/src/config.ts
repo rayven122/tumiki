@@ -18,6 +18,7 @@ export const authConfig: NextAuthConfig = {
   pages: {
     signIn: "/login",
   },
+  // @ts-expect-error - PrismaAdapter type incompatibility with extended Prisma client
   adapter: PrismaAdapter(db),
   callbacks: {
     /**
