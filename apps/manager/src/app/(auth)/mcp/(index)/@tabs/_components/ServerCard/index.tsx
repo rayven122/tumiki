@@ -16,7 +16,7 @@ import { useState } from "react";
 import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
 import { Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@tumiki/db";
 
 type McpServerWithTools = Prisma.McpServerGetPayload<{
   include: { tools: true };
