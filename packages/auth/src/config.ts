@@ -19,6 +19,46 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
   },
   adapter: PrismaAdapter(db),
+  /**
+   * Cross-subdomain cookie configuration for cookie-based JWT authentication
+   * Allows sharing cookies between tumiki.cloud and server.tumiki.cloud
+   */
+  cookies: {
+    sessionToken: {
+      name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        domain:
+          process.env.NODE_ENV === "production" ? ".tumiki.cloud" : undefined,
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      },
+    },
+    callbackUrl: {
+      name: "next-auth.callback-url",
+      options: {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        domain:
+          process.env.NODE_ENV === "production" ? ".tumiki.cloud" : undefined,
+        path: "/",
+      },
+    },
+    csrfToken: {
+      name: "next-auth.csrf-token",
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        domain:
+          process.env.NODE_ENV === "production" ? ".tumiki.cloud" : undefined,
+        path: "/",
+      },
+    },
+  },
   callbacks: {
     /**
      * JWTコールバック

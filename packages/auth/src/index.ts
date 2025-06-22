@@ -1,8 +1,9 @@
 import type { NextAuthResult, Session } from "next-auth";
 import { cache } from "react";
 import NextAuth from "next-auth";
+import { getToken } from "next-auth/jwt";
 
-import { authConfig } from "./config";
+import { authConfig } from "./config.js";
 
 export type { Session };
 
@@ -24,3 +25,9 @@ export const signOut = nextAuth.signOut;
 export const authHandlers: NextAuthResult["handlers"] = handlers;
 export const authSignIn = signIn;
 export const authSignOut = signOut;
+
+/**
+ * Export NextAuth's getToken function for use in Express middleware
+ * This allows Express servers to verify JWT tokens from NextAuth cookies
+ */
+export { getToken };

@@ -1,10 +1,13 @@
 import express from "express";
+import { cookieJWTAuthMiddleware } from "./middleware/auth.js";
 import { handleHealthCheck } from "./routes/health.js";
 import { handleMCPRequest } from "./routes/mcp.js";
 import { handleSSEConnection, handleSSEMessages } from "./routes/sse.js";
+import { handleAuthMetadata } from "./routes/oauth.js";
 import { initializeApplication } from "./lifecycle/startup.js";
 import { startSessionCleanup } from "./services/session.js";
 import { logger } from "./lib/logger.js";
+import type { AuthenticatedRequest } from "./middleware/auth.js";
 
 /**
  * Express アプリケーションを設定
@@ -12,17 +15,32 @@ import { logger } from "./lib/logger.js";
 const createApp = (): express.Application => {
   const app = express();
 
+  // プロキシ信頼設定（認証に必要）
+  app.set("trust proxy", true);
+
   // ミドルウェア設定
   app.use(express.json({ limit: "10mb" })); // JSONペイロードサイズ制限
 
-  // CORS設定（必要に応じて）
+  // CORS設定（クロスドメイン認証対応）
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:3000", // 開発環境
+      "https://tumiki.cloud", // 本番環境
+      "https://app.tumiki.cloud", // 本番環境アプリサブドメイン
+    ];
+
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+    }
+
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, mcp-session-id, api-key, x-client-id",
+      "Content-Type, mcp-session-id, api-key, x-client-id, authorization, cookie",
     );
+
     if (req.method === "OPTIONS") {
       res.sendStatus(200);
       return;
@@ -30,17 +48,38 @@ const createApp = (): express.Application => {
     next();
   });
 
+  // MCPプロトコル準拠の認証メタデータエンドポイント
+  app.get("/.well-known/oauth-authorization-server", handleAuthMetadata);
+
+  // Alternative path for testing
+  app.get("/well-known/oauth-authorization-server", handleAuthMetadata);
+
   // ルート設定
   app.get("/", handleHealthCheck);
 
+  // 全てのルートでCookieベースのJWT認証を適用
+  console.log("Registering cookieJWTAuthMiddleware");
+  app.use(cookieJWTAuthMiddleware);
+
   // 統合MCPエンドポイント（Streamable HTTP transport）
-  app.post("/mcp", handleMCPRequest);
-  app.get("/mcp", handleMCPRequest);
-  app.delete("/mcp", handleMCPRequest);
+  // Cookie-based JWT認証を適用（ハンドラー内でAPI key + セッション両方チェック）
+  app.post("/mcp", (req, res, next) => {
+    handleMCPRequest(req as AuthenticatedRequest, res).catch(next);
+  });
+  app.get("/mcp", (req, res, next) => {
+    handleMCPRequest(req as AuthenticatedRequest, res).catch(next);
+  });
+  app.delete("/mcp", (req, res, next) => {
+    handleMCPRequest(req as AuthenticatedRequest, res).catch(next);
+  });
 
   // SSE transport エンドポイント（後方互換性）
-  app.get("/sse", handleSSEConnection);
-  app.post("/messages", handleSSEMessages);
+  app.get("/sse", (req, res, next) => {
+    handleSSEConnection(req as AuthenticatedRequest, res).catch(next);
+  });
+  app.post("/messages", (req, res, next) => {
+    handleSSEMessages(req as AuthenticatedRequest, res).catch(next);
+  });
 
   return app;
 };

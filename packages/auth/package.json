@@ -19,6 +19,10 @@
     "./types": {
       "types": "./dist/src/types.d.ts",
       "default": "./dist/src/types.js"
+    },
+    "./express-only": {
+      "types": "./dist/src/express-only.d.ts",
+      "default": "./dist/src/express-only.js"
     }
   },
   "scripts": {

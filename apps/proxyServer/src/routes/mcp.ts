@@ -1,4 +1,4 @@
-import { type Request, type Response } from "express";
+import { type Response } from "express";
 import { type StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   createStreamableTransport,
@@ -11,13 +11,17 @@ import {
 } from "../services/session.js";
 import { getServer } from "../services/proxy.js";
 import { logger } from "../lib/logger.js";
+import {
+  validateApiKey,
+  type AuthenticatedRequest,
+} from "../middleware/auth.js";
 
 /**
  * 統合MCPエンドポイント - Streamable HTTP transport
  * すべてのMCP通信がこのエンドポイントを通る
  */
 export const handleMCPRequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
   const method = req.method;
@@ -28,34 +32,69 @@ export const handleMCPRequest = async (
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
+  console.log("MCP handler called - before auth check");
   logger.info("MCP request received", {
     method,
     sessionId,
     apiKeyId: apiKeyId ? "***" : undefined,
     clientId,
     userAgent: req.headers["user-agent"],
+    hasSession: !!req.session,
+    userId: req.session?.user?.id,
   });
 
-  // API key validation
-  if (!apiKeyId) {
+  // 厳密な認証チェック - API keyとセッション認証の両方が必要
+  const hasValidApiKey = validateApiKey(apiKeyId);
+  const hasValidSession = req.session?.user?.id;
+
+  if (!hasValidApiKey) {
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
         code: -32000,
-        message: "Unauthorized: Missing API key",
+        message:
+          "Unauthorized: Both API key and session authentication required - Missing API key",
       },
       id: null,
     });
     return;
   }
 
+  if (!hasValidSession) {
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32000,
+        message:
+          "Unauthorized: Both API key and session authentication required - Missing session",
+      },
+      id: null,
+    });
+    return;
+  }
+
+  // 両方の認証が成功した場合、API keyを使用（この時点でapiKeyIdは必ず存在）
+  const effectiveApiKeyId = apiKeyId!;
+
   try {
     switch (method) {
       case "POST":
-        await handlePOSTRequest(req, res, sessionId, apiKeyId, clientId);
+        await handlePOSTRequest(
+          req,
+          res,
+          sessionId,
+          effectiveApiKeyId,
+          clientId,
+        );
         break;
       case "GET":
-        await handleGETRequest(req, res, sessionId, apiKeyId, clientId);
+        await handleGETRequest(
+          req,
+          res,
+          sessionId,
+          effectiveApiKeyId,
+          clientId,
+        );
         break;
       case "DELETE":
         await handleDELETERequest(req, res, sessionId);
@@ -94,7 +133,7 @@ export const handleMCPRequest = async (
  * POST リクエスト処理 - JSON-RPC メッセージ
  */
 const handlePOSTRequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   sessionId: string | undefined,
   apiKeyId: string,
@@ -205,7 +244,7 @@ const handlePOSTRequest = async (
  * GET リクエスト処理 - SSE ストリーム（オプション）
  */
 const handleGETRequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   sessionId: string | undefined,
   apiKeyId: string,
@@ -270,7 +309,7 @@ const handleGETRequest = async (
  * DELETE リクエスト処理 - セッション終了
  */
 const handleDELETERequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   sessionId: string | undefined,
 ): Promise<void> => {

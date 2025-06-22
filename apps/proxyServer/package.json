@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm with-env pnpm build && pnpm start",
+    "dev": "pnpm with-env nodemon",
     "build": "tsc && chmod +x build/index.js",
     "start": "pnpm with-env node build/index.js",
     "start:prod": "bash start-prod.sh",
@@ -28,6 +28,7 @@
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@playwright/mcp": "^0.0.10",
     "@suekou/mcp-notion-server": "^1.2.4",
+    "@tumiki/auth": "workspace:*",
     "@tumiki/db": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
     "agents": "^0.0.45",
@@ -48,6 +49,7 @@
     "@vercel/ncc": "^0.38.3",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
+    "nodemon": "^3.1.0",
     "typescript-eslint": "^8.33.0"
   },
   "peerDependencies": {

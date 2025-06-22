@@ -39,14 +39,25 @@ export const establishSSEConnection = async (
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
+  // TypeScript assertion for AuthenticatedRequest
+  const authenticatedReq = req as Request & { session?: { user?: { id: string } } };
+  
   logger.info("SSE connection request received", {
     apiKeyId: apiKeyId ? "***" : undefined,
     clientId,
     userAgent: req.headers["user-agent"],
+    hasSession: !!authenticatedReq.session,
+    userId: authenticatedReq.session?.user?.id,
   });
 
+  // 両方の認証をチェック（API keyとセッション）
   if (!apiKeyId) {
     res.status(401).send("Unauthorized: Missing API key");
+    return;
+  }
+
+  if (!authenticatedReq.session?.user?.id) {
+    res.status(401).send("Unauthorized: Missing session");
     return;
   }
 
