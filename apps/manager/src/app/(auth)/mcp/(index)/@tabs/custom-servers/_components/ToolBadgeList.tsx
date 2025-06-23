@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { Tool, UserToolGroup } from "@prisma/client";
+import type { Tool, UserToolGroup } from "@tumiki/db";
 import { ToolBadge } from "./ToolBadge";
 import { useState } from "react";
 
