@@ -143,7 +143,7 @@ MCP サーバーのツール一覧
 
 ### `UserMcpServerConfig`
 
-ユーザーが利用で��るMCPサーバーの設定
+ユーザーが利��できるMCPサーバーの設定
 
 **Properties**
 
@@ -276,7 +276,7 @@ erDiagram
 - `type`: 認証プロバイダーの種類（oauth, oidc, email, credentials）
 - `provider`: 認証プロバイダー名（google, github, etc.）
 - `providerAccountId`: プロバイダー側のアカウントID
-- `refresh_token`: リフレッシ��トークン
+- `refresh_token`: リフレ��シュトークン
 - `access_token`: アクセストークン
 - `expires_at`: トークンの有効期限（Unixタイムスタンプ）
 - `token_type`: トークンの種類
@@ -633,7 +633,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 ### `UserMcpServerConfig`
 
-ユーザーが利用で��るMCPサーバーの設定
+ユーザーが利��できるMCPサーバーの設定
 
 **Properties**
 

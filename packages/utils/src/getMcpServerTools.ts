@@ -1,6 +1,7 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@prisma/client";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import "@suekou/mcp-notion-server";
@@ -11,7 +12,7 @@ import "@suekou/mcp-notion-server";
  * @returns ツール一覧
  */
 export const getMcpServerTools = async (
-  server: Pick<McpServer, "name" | "command" | "args">,
+  server: McpServer,
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化
@@ -21,12 +22,19 @@ export const getMcpServerTools = async (
   });
 
   try {
-    // トランスポートの設定
-    const transport = new StdioClientTransport({
-      command: server.command === "node" ? process.execPath : server.command,
-      args: server.args,
-      env: envVars,
-    });
+    let transport;
+    if (server.transportType === "STDIO") {
+      transport = new StdioClientTransport({
+        command:
+          server.command === "node" ? process.execPath : (server.command ?? ""),
+        args: server.args,
+        env: envVars,
+      });
+    } else {
+      transport = new SSEClientTransport(new URL(server.url ?? ""), {
+        requestInit: { headers: envVars },
+      });
+    }
 
     // サーバーに接続
     await client.connect(transport);
