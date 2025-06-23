@@ -59,3 +59,55 @@ apps/proxyServer/mcp
 .env.*
 
 *.log
+
+# React Email
+.react-email/
+
+# Additional build outputs  
+*.tgz
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and testing
+coverage/
+*.lcov
+.nyc_output
+
+# Cache directories
+.npm
+.eslintcache
+.parcel-cache
+
+# Optional REPL history
+.node_repl_history
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Additional dependency directories
+jspm_packages/
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Additional editor files
+*.swp
+*.swo
+*~
+
+# Additional OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
