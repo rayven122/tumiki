@@ -108,19 +108,13 @@ export const UserMcpServerCard = ({
           <div className="mt-1">
             <div className="flex items-center space-x-2 overflow-hidden">
               <span className="text-muted-foreground flex-shrink-0 text-xs">
-                URL:
+                SSE:
               </span>
               <span
                 className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
                 onClick={copyUrl}
               >
                 {makeSseProxyServerUrl(serverInstance.id)}
-              </span>
-              <span
-                className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
-                onClick={copyUrl}
-              >
-                {makeHttpProxyServerUrl(serverInstance.id)}
               </span>
               <Button
                 variant="ghost"
@@ -130,6 +124,17 @@ export const UserMcpServerCard = ({
               >
                 <Copy className="h-3 w-3" />
               </Button>
+            </div>
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <span className="text-muted-foreground flex-shrink-0 text-xs">
+                HTTP:
+              </span>
+              <span
+                className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
+                onClick={copyUrl}
+              >
+                {makeHttpProxyServerUrl(serverInstance.id)}
+              </span>
               <Button
                 variant="ghost"
                 size="icon"
