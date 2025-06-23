@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ServiceLogoGrid } from "./ServiceLogoGrid";
+import { ServiceLogoGrid } from "../ServiceLogoGrid";
 
 export function AboutSection() {
   return (
