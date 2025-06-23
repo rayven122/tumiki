@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Session } from "next-auth";
 import { type DataStreamWriter, streamObject, tool } from "ai";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
-import type { Suggestion } from "@tumiki/db";
+import type { Suggestion } from "@tumiki/db/prisma";
 import { generateCUID } from "@/lib/utils";
 import { myProvider } from "../providers";
 

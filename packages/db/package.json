@@ -12,6 +12,10 @@
       "types": "./dist/src/tcpClient.d.ts",
       "default": "./dist/src/tcpClient.js"
     },
+    "./prisma": {
+      "types": "./dist/src/prisma.d.ts",
+      "default": "./dist/src/prisma.js"
+    },
     "./zod": {
       "types": "./dist/src/zod.d.ts",
       "default": "./dist/src/zod.js"

@@ -11,7 +11,7 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-import { ServerStatus } from "@tumiki/db";
+import { ServerStatus } from "@tumiki/db/prisma";
 
 import type { ServerConfig } from "../lib/types.js";
 import { logger } from "../lib/logger.js";

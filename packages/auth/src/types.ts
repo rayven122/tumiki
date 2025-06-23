@@ -1,6 +1,6 @@
 import type { DefaultSession } from "next-auth";
 
-import type { Role } from "@tumiki/db";
+import type { Role } from "@tumiki/db/prisma";
 
 import "next-auth/jwt";
 
