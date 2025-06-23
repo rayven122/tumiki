@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { UpdateServerInstanceInput } from ".";
-import { ServerType } from "@tumiki/db";
+import { ServerType } from "@tumiki/db/prisma";
 
 type UpdateServerInstanceInput = {
   ctx: ProtectedContext;

@@ -16,7 +16,7 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import type { ToolId, UserMcpServerConfigId } from "@/schema/ids";
 import { ServerToolSelector } from "../../custom-servers/_components/dialogs/ServerToolSelector";
 import { toast } from "@/utils/client/toast";
-import { ServerType } from "@tumiki/db";
+import { ServerType } from "@tumiki/db/prisma";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findCustomServers"][number];

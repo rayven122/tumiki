@@ -1,5 +1,5 @@
 import { PreviewMessage, ThinkingMessage } from "./message";
-import type { Vote } from "@tumiki/db";
+import type { Vote } from "@tumiki/db/prisma";
 import type { UIMessage } from "ai";
 import { memo } from "react";
 import equal from "fast-deep-equal";

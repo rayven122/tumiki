@@ -22,7 +22,7 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/chat/sidebar";
-import type { Chat } from "@tumiki/db";
+import type { Chat } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { ChatItem } from "./sidebar-history-item";
 import useSWRInfinite from "swr/infinite";
