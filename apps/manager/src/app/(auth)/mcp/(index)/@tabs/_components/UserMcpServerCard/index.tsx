@@ -25,15 +25,15 @@ import { ImageEditModal } from "./ImageEditModal";
 import { StatusEditModal } from "./StatusEditModal";
 import { useRouter } from "next/navigation";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
-import { makeMcpProxyServerUrl } from "@/utils/url";
+import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 
 import { type RouterOutputs } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
-import { ServerStatus, ServerType } from "@tumiki/db";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
+import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -57,8 +57,13 @@ export const UserMcpServerCard = ({
   const { tools } = serverInstance;
 
   const copyUrl = async () => {
-    await copyToClipboard(makeMcpProxyServerUrl(serverInstance.id));
-    toast.success("URLをコピーしました");
+    await copyToClipboard(makeSseProxyServerUrl(serverInstance.id));
+    toast.success("SSE URLをコピーしました");
+  };
+
+  const copyHttpUrl = async () => {
+    await copyToClipboard(makeHttpProxyServerUrl(serverInstance.id));
+    toast.success("Streamable HTTP をコピーしました");
   };
 
   return (
@@ -103,19 +108,38 @@ export const UserMcpServerCard = ({
           <div className="mt-1">
             <div className="flex items-center space-x-2 overflow-hidden">
               <span className="text-muted-foreground flex-shrink-0 text-xs">
-                URL:
+                SSE:
               </span>
               <span
                 className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
                 onClick={copyUrl}
               >
-                {makeMcpProxyServerUrl(serverInstance.id)}
+                {makeSseProxyServerUrl(serverInstance.id)}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 cursor-pointer"
                 onClick={copyUrl}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="flex items-center space-x-2 overflow-hidden">
+              <span className="text-muted-foreground flex-shrink-0 text-xs">
+                HTTP:
+              </span>
+              <span
+                className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
+                onClick={copyUrl}
+              >
+                {makeHttpProxyServerUrl(serverInstance.id)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 cursor-pointer"
+                onClick={copyHttpUrl}
               >
                 <Copy className="h-3 w-3" />
               </Button>

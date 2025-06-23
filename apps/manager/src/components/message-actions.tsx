@@ -2,7 +2,7 @@ import type { Message } from "ai";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
 
-import type { Vote } from "@tumiki/db";
+import type { Vote } from "@tumiki/db/prisma";
 
 import { CopyIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
 import { Button } from "./ui/chat/button";

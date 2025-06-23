@@ -6,7 +6,7 @@ import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { basicSetup } from "codemirror";
 import React, { memo, useEffect, useRef } from "react";
-import type { Suggestion } from "@tumiki/db";
+import type { Suggestion } from "@tumiki/db/prisma";
 
 type EditorProps = {
   content: string;

@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState } from "react";
-import type { Tool } from "@tumiki/db";
+import type { Tool } from "@tumiki/db/prisma";
 
 type ToolsModalProps = {
   open: boolean;
@@ -30,7 +30,7 @@ export function ToolsModal({
   // ツールの検索とフィルタリング
   const filteredTools = tools.filter(
     (tool) =>
-      tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ??
       tool.description.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
