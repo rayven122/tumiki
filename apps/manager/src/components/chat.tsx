@@ -15,11 +15,11 @@ import { useArtifactSelector } from "@/hooks/use-artifact";
 import { unstable_serialize } from "swr/infinite";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
-import type { Session } from "next-auth";
 import { useSearchParams } from "next/navigation";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { ChatSDKError } from "@/lib/errors";
+import type { SessionData } from "@tumiki/auth";
 
 export function Chat({
   id,
@@ -35,7 +35,7 @@ export function Chat({
   initialChatModel: string;
   initialVisibilityType: VisibilityType;
   isReadonly: boolean;
-  session: Session;
+  session: SessionData;
   autoResume: boolean;
 }) {
   const { mutate } = useSWRConfig();

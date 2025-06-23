@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -122,10 +121,10 @@ export function LoginForm() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
+          <a href="/auth/login">Log in</a>
           <Button
             variant="outline"
             type="button"
-            onClick={() => signIn("google")}
             className="border-gray-300 bg-white text-black hover:bg-gray-50"
           >
             <Image
@@ -140,7 +139,7 @@ export function LoginForm() {
           <Button
             variant="outline"
             type="button"
-            onClick={() => signIn("github")}
+            // onClick={() => auth0.startInteractiveLogin({})}
             className="border-gray-300 bg-white text-black hover:bg-gray-50"
           >
             <Image

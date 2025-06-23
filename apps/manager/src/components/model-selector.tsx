@@ -15,14 +15,14 @@ import { cn } from "@/lib/utils";
 
 import { CheckCircleFillIcon, ChevronDownIcon } from "./icons";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
-import type { Session } from "next-auth";
+import type { SessionData } from "@tumiki/auth";
 
 export function ModelSelector({
   session: _,
   selectedModelId,
   className,
 }: {
-  session: Session;
+  session: SessionData;
   selectedModelId: string;
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
