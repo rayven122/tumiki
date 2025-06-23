@@ -37,7 +37,7 @@ export const createDecorations = (
           class: "suggestion-highlight",
         },
         {
-          suggestionId: (suggestion as { id: string }).id,
+          suggestionId: suggestion.id,
           type: "highlight",
         },
       ),
@@ -51,7 +51,7 @@ export const createDecorations = (
           return dom;
         },
         {
-          suggestionId: (suggestion as { id: string }).id,
+          suggestionId: suggestion.id,
           type: "widget",
         },
       ),
