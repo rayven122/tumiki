@@ -11,7 +11,8 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-// ServerStatus は文字列リテラルで直接使用
+import { ServerStatus } from "@tumiki/db";
+
 import type { ServerConfig } from "../lib/types.js";
 import { logger } from "../lib/logger.js";
 import { config } from "../lib/config.js";
@@ -213,7 +214,7 @@ const getServerConfigs = async (apiKeyId: string) => {
   const serverInstance = await db.userMcpServerInstance.findUniqueOrThrow({
     where: {
       id: apiKeyId,
-      serverStatus: "RUNNING",
+      serverStatus: ServerStatus.RUNNING,
     },
     include: {
       toolGroup: {
