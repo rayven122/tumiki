@@ -4,7 +4,7 @@ export function FooterSection() {
   return (
     <footer className="border-t-3 border-black bg-white py-20">
       <div className="mx-auto max-w-6xl px-5">
-        <div className="mb-16 grid gap-10 md:grid-cols-4">
+        {/* <div className="mb-16 grid gap-10 md:grid-cols-4">
           <div>
             <h4 className="mb-6 text-sm font-black tracking-wider text-black uppercase">
               プロダクト
@@ -129,7 +129,7 @@ export function FooterSection() {
               </Link>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <div className="border-t-2 border-black pt-10 text-center">
           <p className="font-semibold text-gray-600">
