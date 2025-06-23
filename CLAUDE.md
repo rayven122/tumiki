@@ -42,18 +42,12 @@ pnpm check               # 全品質チェック実行（lint + format + typeche
 
 ### データベース管理
 ```bash
-# ルートディレクトリから
+# packages/db ディレクトリから実行
 cd packages/db
 pnpm db:migrate          # データベースマイグレーション実行
 pnpm db:deploy           # 本番環境にマイグレーションをデプロイ
 pnpm db:studio           # Prisma Studio を開く
 pnpm db:generate         # Prisma クライアントと Zod スキーマを生成
-
-# 代替手段: apps/manager から（レガシー互換性）
-cd apps/manager
-pnpm db:migrate          # データベースマイグレーション実行
-pnpm db:deploy           # 本番環境にマイグレーションをデプロイ
-pnpm db:studio           # Prisma Studio を開く
 ```
 
 ### Docker デプロイメント
