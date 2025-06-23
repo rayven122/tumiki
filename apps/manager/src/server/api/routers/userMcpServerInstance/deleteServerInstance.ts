@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { DeleteServerInstanceInput } from ".";
-import { ServerType } from "@prisma/client";
+import { ServerType } from "@tumiki/db";
 
 type DeleteServerInstanceInput = {
   ctx: ProtectedContext;

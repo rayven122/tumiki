@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import type { ServerStatus } from "@prisma/client";
+import type { ServerStatus } from "@tumiki/db";
 import { Loader2 } from "lucide-react";
 
 type StatusEditModalProps = {

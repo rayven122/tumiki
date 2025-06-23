@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState } from "react";
-import type { Tool } from "@prisma/client";
+import type { Tool } from "@tumiki/db";
 
 type ToolsModalProps = {
   open: boolean;
