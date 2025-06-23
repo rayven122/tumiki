@@ -1,0 +1,54 @@
+{
+  "name": "@tumiki/mailer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./emails": {
+      "types": "./dist/src/emails/index.d.ts",
+      "default": "./dist/src/emails/index.js"
+    },
+    "./templates": {
+      "types": "./dist/src/templates/index.d.ts",
+      "default": "./dist/src/templates/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "format:fix": "prettier --write . --ignore-path ../../.gitignore",
+    "email:dev": "email dev --dir src/emails --port 3001"
+  },
+  "dependencies": {
+    "@react-email/components": "^0.0.31",
+    "@react-email/render": "^1.1.1",
+    "nodemailer": "^6.9.8",
+    "react": "catalog:react19",
+    "react-dom": "catalog:react19",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "@types/node": "^22.15.3",
+    "@types/nodemailer": "^6.4.14",
+    "@types/react": "catalog:react19",
+    "@types/react-dom": "catalog:react19",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "react-email": "^3.0.3",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.33.0"
+  },
+  "prettier": "@tumiki/prettier-config"
+}
