@@ -3,7 +3,29 @@
  * 全ユーザが共通して利用するテーブル
  */
 
+/// 接続タイプ
+/// @namespace McpServer
+enum TransportType {
+    /// 標準入出力での通信
+    STDIO
+    /// Server-Sent Eventsでの通信  
+    SSE
+}
+
+
+/// ユーザーカスタムサーバーの可視性
+/// @namespace McpServer
+enum McpServerVisibility {
+    /// 作成者のみ閲覧可能
+    PRIVATE
+    /// 組織内で共有
+    ORGANIZATION
+    /// 全ユーザーに公開
+    PUBLIC
+}
+
 /// MCP サーバー (github や notion などの接続する外部 MCP サーバー)
+/// transportType に応じて接続方式を選択
 /// @namespace McpServer
 model McpServer {
     id               String                @id @default(cuid())
@@ -12,15 +34,25 @@ model McpServer {
     name             String                @unique
     /// アイコンパス
     iconPath         String?
-    /// コマンド
-    /// @zod.string.min(1)
-    command          String
-    /// 引数
-    /// @zod.string.min(1)
+    /// 接続タイプ（stdio, sse）
+    transportType    TransportType         @default(STDIO)
+    /// STDIO用のコマンド
+    command          String?
+    /// STDIO用の引数
     args             String[]
-    /// 環境変数
+    /// SSE接続用のURL
+    url              String?
+    /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
+    /// SSE: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
     envVars          String[]
-    /// サーバーが公開されているか
+    /// サーバーの種類（公式/ユーザーカスタム）
+    serverType       ServerType            @default(OFFICIAL)
+    /// ユーザーカスタムサーバーの作成者
+    createdBy        String?
+    creator          User?                 @relation(fields: [createdBy], references: [id])
+    /// ユーザーカスタムサーバーの可視性
+    visibility       McpServerVisibility   @default(PRIVATE)
+    /// サーバーが公開されているか（レガシー）
     isPublic         Boolean               @default(false)
     tools            Tool[]
     mcpServerConfigs UserMcpServerConfig[]
