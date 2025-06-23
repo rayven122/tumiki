@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useSWRConfig } from "swr";
 import { useWindowSize } from "usehooks-ts";
 
-import type { Document } from "@tumiki/db";
+import type { Document } from "@tumiki/db/prisma";
 import { getDocumentTimestampByIndex } from "@/lib/utils";
 
 import { LoaderIcon } from "./icons";

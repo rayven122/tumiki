@@ -1,4 +1,4 @@
-import type { Chat } from "@tumiki/db";
+import type { Chat } from "@tumiki/db/prisma";
 import {
   SidebarMenuAction,
   SidebarMenuButton,

@@ -32,7 +32,7 @@ import {
   type ResumableStreamContext,
 } from "resumable-stream";
 import { after } from "next/server";
-import type { Chat } from "@tumiki/db";
+import type { Chat } from "@tumiki/db/prisma";
 import { differenceInSeconds } from "date-fns";
 import { ChatSDKError } from "@/lib/errors";
 import { generateTitleFromUserMessage } from "@/app/(chat)/chat/actions";
