@@ -6,7 +6,7 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { DataStreamWriter } from "ai";
 import type { Document } from "@prisma/client";
 import { saveDocument } from "../db/queries";
-import type { Session } from "next-auth";
+import type { SessionData } from "@tumiki/auth";
 
 export interface SaveDocumentProps {
   id: string;
@@ -20,14 +20,14 @@ export interface CreateDocumentCallbackProps {
   id: string;
   title: string;
   dataStream: DataStreamWriter;
-  session: Session;
+  session: SessionData;
 }
 
 export interface UpdateDocumentCallbackProps {
   document: Document;
   description: string;
   dataStream: DataStreamWriter;
-  session: Session;
+  session: SessionData;
 }
 
 export interface DocumentHandler<T = ArtifactKind> {
@@ -57,7 +57,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           title: args.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
+          userId: args.session.user.sub,
         });
       }
 
@@ -77,7 +77,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           title: args.document.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
+          userId: args.session.user.sub,
         });
       }
 

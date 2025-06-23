@@ -8,17 +8,9 @@
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
     },
-    "./config": {
-      "types": "./dist/src/config.d.ts",
-      "default": "./dist/src/config.js"
-    },
-    "./providers": {
-      "types": "./dist/src/providers.d.ts",
-      "default": "./dist/src/providers.js"
-    },
-    "./types": {
-      "types": "./dist/src/types.d.ts",
-      "default": "./dist/src/types.js"
+    "./client": {
+      "types": "./dist/src/client.d.ts",
+      "default": "./dist/src/client.js"
     }
   },
   "scripts": {
@@ -31,9 +23,8 @@
     "format": "prettier --check . --ignore-path ../../.gitignore"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.9.1",
-    "@tumiki/db": "workspace:*",
-    "next-auth": "5.0.0-beta.25"
+    "@auth0/nextjs-auth0": "^4.6.1",
+    "@tumiki/db": "workspace:*"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",

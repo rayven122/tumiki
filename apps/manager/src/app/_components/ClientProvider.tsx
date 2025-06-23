@@ -3,8 +3,9 @@
 import { Toaster } from "sonner";
 import { ToastContainer } from "react-toastify";
 import { TRPCReactProvider } from "@/trpc/react";
-import { SessionProvider } from "next-auth/react";
+
 import { ThemeProvider } from "@/components/theme-provider";
+import { Auth0Provider } from "@tumiki/auth/client";
 
 export const ClientProvider = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -17,7 +18,7 @@ export const ClientProvider = ({ children }: { children: React.ReactNode }) => {
       >
         <ToastContainer />
         <Toaster position="top-center" /> {/* For chat */}
-        <SessionProvider>{children}</SessionProvider>
+        <Auth0Provider>{children}</Auth0Provider>
       </ThemeProvider>
     </TRPCReactProvider>
   );
