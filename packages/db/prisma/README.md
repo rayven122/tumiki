@@ -17,9 +17,14 @@ erDiagram
   String id PK
   String name UK
   String iconPath "nullable"
-  String command
+  TransportType transportType
+  String command "nullable"
   String args
+  String url "nullable"
   String envVars
+  ServerType serverType
+  String createdBy FK "nullable"
+  McpServerVisibility visibility
   Boolean isPublic
   DateTime createdAt
   DateTime updatedAt
@@ -100,16 +105,24 @@ erDiagram
 ### `McpServer`
 
 MCP サーバー (github や notion などの接続する外部 MCP サーバー)
+transportType に応じて接続方式を選択
 
 **Properties**
 
 - `id`:
 - `name`: MCP サーバー名
 - `iconPath`: アイコンパス
-- `command`: コマンド
-- `args`: 引数
-- `envVars`: 環境変数
-- `isPublic`: サーバーが公開されているか
+- `transportType`: 接続タイプ（stdio, sse）
+- `command`: STDIO用のコマンド
+- `args`: STDIO用の引数
+- `url`: SSE接続用のURL
+- `envVars`
+  > STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
+  > SSE: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+- `serverType`: サーバーの種類（公式/ユーザーカスタム）
+- `createdBy`: ユーザーカスタムサーバーの作成者
+- `visibility`: ユーザーカスタムサーバーの可視性
+- `isPublic`: サーバーが公開されているか（レガシー）
 - `createdAt`:
 - `updatedAt`:
 
@@ -130,7 +143,7 @@ MCP サーバーのツール一覧
 
 ### `UserMcpServerConfig`
 
-ユーザーが利用できるMCPサーバーの設定
+ユーザーが利��できるMCPサーバーの設定
 
 **Properties**
 
@@ -263,7 +276,7 @@ erDiagram
 - `type`: 認証プロバイダーの種類（oauth, oidc, email, credentials）
 - `provider`: 認証プロバイダー名（google, github, etc.）
 - `providerAccountId`: プロバイダー側のアカウントID
-- `refresh_token`: リフレッシュトークン
+- `refresh_token`: リフレ��シュトークン
 - `access_token`: アクセストークン
 - `expires_at`: トークンの有効期限（Unixタイムスタンプ）
 - `token_type`: トークンの種類
@@ -620,7 +633,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 ### `UserMcpServerConfig`
 
-ユーザーが利用できるMCPサーバーの設定
+ユーザーが利��できるMCPサーバーの設定
 
 **Properties**
 
