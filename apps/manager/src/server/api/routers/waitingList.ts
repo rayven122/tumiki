@@ -96,7 +96,7 @@ async function sendConfirmationEmail(
       appName: "Tumiki",
       language,
     });
-  } catch (emailError) {
+  } catch (emailError: unknown) {
     console.error(WAITING_LIST_MESSAGES.EMAIL_SEND_FAILED, emailError);
     // メール送信失敗でもユーザーには登録成功を返す
     // （グレースフルデグラデーション）
@@ -135,7 +135,7 @@ export const waitingListRouter = createTRPCRouter({
           throw error;
         }
 
-        console.error("Waiting List登録エラー:", error);
+        console.error("Waiting List登録エラー:", error as Error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: WAITING_LIST_MESSAGES.REGISTRATION_FAILED,
