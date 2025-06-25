@@ -3,18 +3,18 @@ import { Section, Text } from "@react-email/components";
 import { Button } from "./components/Button.js";
 import { Layout } from "./components/Layout.js";
 
-interface WaitingListConfirmationProps {
+interface WaitingListConfirmationENProps {
   name?: string;
   confirmUrl?: string;
   appName?: string;
 }
 
-export const WaitingListConfirmation = ({
-  name = "田中太郎",
-  confirmUrl = "https://tumiki.app/jp",
+export const WaitingListConfirmationEN = ({
+  name = "John Doe",
+  confirmUrl = "https://tumiki.app",
   appName = "Tumiki",
-}: WaitingListConfirmationProps) => {
-  const previewText = `${appName} - 早期アクセス登録完了`;
+}: WaitingListConfirmationENProps) => {
+  const previewText = `${appName} - Early Access Registration Complete`;
 
   return (
     <Layout appName={appName} previewText={previewText}>
@@ -25,9 +25,9 @@ export const WaitingListConfirmation = ({
           <span style={brandName}>TUMIKI</span>
           <span style={betaLabel}>BETA</span>
         </Text>
-        <Text style={heroTitle}>🎉 早期アクセス登録完了！</Text>
+        <Text style={heroTitle}>🎉 Early Access Registration Complete!</Text>
         <Text style={heroSubtitle}>
-          AIブロックの革命に参加いただき、ありがとうございます
+          Thank you for joining the AI block revolution
         </Text>
       </Section>
 
@@ -35,32 +35,36 @@ export const WaitingListConfirmation = ({
       <Section style={mainContent}>
         {name && (
           <Text style={greeting}>
-            <span style={highlightText}>{name} 様</span>
+            <span style={highlightText}>Dear {name},</span>
           </Text>
         )}
         <Text style={paragraph}>
-          {appName}の早期アクセスにご登録いただき、ありがとうございます。
+          Thank you for registering for {appName} early access.
         </Text>
         <Text style={paragraph}>
-          <span style={highlightText}>AIブロックの革命</span>
-          が始まります。複数のMCPサーバーを統合し、AIモデルがより多くのツールやデータソースにアクセスできる世界を実現します。
+          <span style={highlightText}>The AI block revolution</span> is about to
+          begin. We're building a unified platform that integrates multiple MCP
+          servers, enabling AI models to access more tools and data sources than
+          ever before.
         </Text>
         <Text style={paragraph}>
-          サービス開始時に優先的にご招待メールをお送りいたします。それまで今しばらくお待ちください。
+          We'll send you a priority invitation email when the service launches.
+          Please stay tuned!
         </Text>
       </Section>
 
       {/* Simplified CTA */}
       <Section style={ctaSection}>
         <Button href={confirmUrl} variant="primary">
-          Tumikiサイトを見る
+          Visit Tumiki Website
         </Button>
       </Section>
 
       {/* Simple Footer */}
       <Section style={footerSection}>
         <Text style={footerText}>
-          ご質問やお問い合わせがございましたら、お気軽にご連絡ください。
+          If you have any questions or inquiries, please feel free to contact
+          us.
         </Text>
         <Text style={decorativeLine}>■ ■ ■</Text>
       </Section>
@@ -181,4 +185,4 @@ const decorativeLine = {
   letterSpacing: "4px",
 };
 
-export default WaitingListConfirmation;
+export default WaitingListConfirmationEN;
