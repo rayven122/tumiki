@@ -777,6 +777,14 @@ erDiagram
   String chatId FK
   DateTime createdAt
 }
+"waiting_list" {
+  String id PK
+  String email UK
+  String name "nullable"
+  String company "nullable"
+  String useCase "nullable"
+  DateTime createdAt
+}
 "Message" }o--|| "Chat" : chat
 "Vote" }o--|| "Chat" : chat
 "Vote" }o--|| "Message" : message
@@ -844,4 +852,15 @@ erDiagram
 
 - `id`:
 - `chatId`:
+- `createdAt`:
+
+### `waiting_list`
+
+**Properties**
+
+- `id`:
+- `email`:
+- `name`:
+- `company`:
+- `useCase`:
 - `createdAt`:

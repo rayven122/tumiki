@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Tumiki** は、Next.js ウェブアプリケーションと Node.js プロキシサーバーで構築された MCP (Model Context Protocol) サーバー管理システムです。複数の MCP サーバーの一元管理、API キー管理、MCP クライアント向けの統一アクセス URL を提供します。
 
+### 重要な概念
+- **MCP (Model Context Protocol)**: AIモデルが外部ツールやデータソースと安全に通信するためのプロトコル
+- **プロキシサーバー**: 複数のMCPサーバーを単一エンドポイントで統合し、SSE/HTTP両方のトランスポートをサポート
+- **ユーザーMCPサーバー**: ユーザーが個別に設定・管理する MCP サーバーインスタンス
+
 ## アーキテクチャ
 
 ### モノレポ構造と主要ディレクトリ
@@ -139,10 +144,14 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 ### API アーキテクチャ
 
 - **tRPC ルーター**: `apps/manager/src/server/api/routers/` に配置
-  - `mcpServer.ts` - MCP サーバー管理
-  - `auth.ts` - 認証関連
-  - `organization.ts` - 組織管理
-- **MCP プロキシ**: `apps/proxyServer/src/services/proxy.ts` で SSE 経由の MCP プロトコル通信を処理
+  - `mcpServer.ts` - 定義済みMCPサーバーテンプレート管理
+  - `userMcpServerConfig.ts` - ユーザー固有のMCPサーバー設定
+  - `userMcpServerInstance.ts` - 実行中のMCPサーバーインスタンス管理
+  - `post.ts` - 汎用投稿機能
+- **MCP プロキシサーバー**: `apps/proxyServer/src/index.ts`
+  - `/mcp` - HTTP/Streamable transport エンドポイント
+  - `/sse` - SSE transport エンドポイント（後方互換性）
+  - `/messages` - SSE メッセージ送信
 - **型安全性**: 自動 API 生成によるフルスタック型安全性、@tumiki/db から型 import
 
 ### 認証アーキテクチャ
@@ -176,8 +185,9 @@ NODE_ENV=                  # development/test/production
 - **Node.js**: >=22.14.0 必須
 - **パッケージマネージャー**: pnpm@10.11.0 以上
 - **型チェック**: 全パッケージで TypeScript strict モード
-- **コミット前**: 必ず `pnpm check` 実行
+- **コミット前**: 必ず `pnpm check` 実行（CI環境変数エラーは開発時は無視可能）
 - **型インポート**: Prisma 型は `@tumiki/db` から import（`@prisma/client` ではない）
+- **ページ構造**: 英語版 `/` と日本語版 `/jp` の2つのランディングページが存在
 
 ### CI/CD
 
@@ -195,6 +205,23 @@ NODE_ENV=                  # development/test/production
 - `format` - Prettier実行
 - `typecheck` - TypeScript型チェック
 
-### MCP構成
+### MCP サーバー管理の重要なパターン
 
-- `context7` - 最新バージョンのライブラリ情報
+1. **MCPサーバーテンプレート**: `mcpServer` テーブルで定義される利用可能なMCPサーバー種別
+2. **ユーザー設定**: `userMcpServerConfig` でユーザー固有の設定（APIキー等）
+3. **実行インスタンス**: `userMcpServerInstance` で実際に動作中のサーバー状態を管理
+4. **プロキシ統合**: ProxyServerが複数のMCPサーバーを単一エンドポイントで統合
+
+### ランディングページの多言語対応
+
+- **英語版**: `/apps/manager/src/app/page.tsx` → `/apps/manager/src/app/_components/site/en/`
+- **日本語版**: `/apps/manager/src/app/jp/page.tsx` → `/apps/manager/src/app/_components/site/jp/`
+- **言語切替**: `LanguageToggle.tsx` コンポーネントでページ間遷移
+- **サービスロゴ**: `/public/logos/` 内のSVGファイルを使用してアニメーション表示
+
+### 重要な実装パターン
+
+- **フィールド暗号化**: 機密データ（APIキー等）はPrismaの暗号化機能で保護
+- **SSE通信**: リアルタイムMCP通信にServer-Sent Eventsを使用
+- **セッション管理**: MCPサーバーとの永続的な接続をセッションで管理
+- **エラーハンドリング**: tRPCによる型安全なエラー処理とユーザー向けメッセージ

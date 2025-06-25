@@ -1,4 +1,5 @@
 export { WaitingListConfirmation } from "./WaitingListConfirmation.js";
+export { WaitingListConfirmationEN } from "./WaitingListConfirmationEN.js";
 export { Invitation } from "./Invitation.js";
 export { Notification } from "./Notification.js";
 export { Layout } from "./components/Layout.js";
