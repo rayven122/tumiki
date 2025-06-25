@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { LanguageToggle } from "../LanguageToggle";
 
 interface HeroSectionProps {
   setShowModal: (show: boolean) => void;
@@ -25,7 +26,7 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
             </span>
           </div>
 
-          <div className="hidden items-center gap-10 md:flex">
+          <div className="hidden items-center gap-6 md:flex">
             <Link
               href="#about"
               className="group relative font-medium text-gray-600 transition-colors hover:text-black"
@@ -33,6 +34,7 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
               About Tumiki
               <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-black transition-all duration-300 group-hover:w-full" />
             </Link>
+            <LanguageToggle />
             <button
               onClick={() => setShowModal(true)}
               className="border-2 border-black bg-black px-7 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
