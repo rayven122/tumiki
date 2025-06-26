@@ -20,9 +20,18 @@ export const env = createEnv({
     // SMTP settings for email
     SMTP_HOST: z.string().default("smtp.gmail.com"),
     SMTP_PORT: z.string().transform(Number).default("587"),
-    SMTP_USER: z.string().min(1),
-    SMTP_PASS: z.string().min(1),
-    FROM_EMAIL: z.string().email(),
+    SMTP_USER:
+      process.env.NODE_ENV === "production"
+        ? z.string().min(1)
+        : z.string().optional().default(""),
+    SMTP_PASS:
+      process.env.NODE_ENV === "production"
+        ? z.string().min(1)
+        : z.string().optional().default(""),
+    FROM_EMAIL:
+      process.env.NODE_ENV === "production"
+        ? z.string().email()
+        : z.string().optional().default("noreply@example.com"),
   },
 
   /**
