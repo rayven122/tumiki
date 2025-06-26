@@ -18,6 +18,14 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Build all packages
+        run: pnpm build
+        # turbo.jsonでlintタスクが^build（依存パッケージのビルド）に依存しているため、
+        # lint実行前に全パッケージをビルドする必要があります。
+        # これにより、@tumiki/mailerなどの内部パッケージの型定義が正しく生成され、
+        # TypeScript ESLintの型チェック（@typescript-eslint/no-unsafe-call）が
+        # 正常に動作するようになります。
+
       - name: Run lint, format and typecheck
         run: pnpm check
 
