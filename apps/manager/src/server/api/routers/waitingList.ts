@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { db } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendWaitingListConfirmation } from "@tumiki/mailer";
+
 import { env } from "@/env";
 
 const WAITING_LIST_MESSAGES = {
@@ -32,6 +33,7 @@ interface WaitingListResponse {
  * メールクライアントを初期化する
  */
 function initializeMailClient(): void {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   createMailClient({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
@@ -89,6 +91,7 @@ async function sendConfirmationEmail(
         : "http://localhost:3000";
     const confirmUrl = language === "ja" ? `${baseUrl}/jp` : `${baseUrl}`;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await sendWaitingListConfirmation({
       email,
       name,
