@@ -4,10 +4,49 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { LanguageToggle } from "../LanguageToggle";
+import { useState, useEffect } from "react";
 
 interface HeroSectionProps {
   setShowModal: (show: boolean) => void;
   isVisible: boolean;
+}
+
+function AnimatedRole() {
+  const roles = [
+    "「フロントエンドエンジニア」",
+    "「バックエンドエンジニア」",
+    "「インフラエンジニア」",
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % roles.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="relative inline-block">
+      {roles.map((role, index) => (
+        <motion.span
+          key={index}
+          className="absolute left-0 whitespace-nowrap"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{
+            opacity: currentIndex === index ? 1 : 0,
+            y: currentIndex === index ? 0 : 20,
+          }}
+          transition={{ duration: 0.5 }}
+        >
+          {role}
+        </motion.span>
+      ))}
+      <span className="invisible">{roles[0]}</span>
+    </span>
+  );
 }
 
 export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
@@ -245,8 +284,8 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
               <span className="mx-1 inline-block -rotate-1 transform bg-black px-4 text-white shadow-[4px_4px_0_#6366f1]">
                 Tumiki
               </span>
-              で<br />
-              あなた専用にする
+              で あなた専用の
+              <AnimatedRole />
             </motion.h1>
 
             <motion.p
@@ -255,9 +294,11 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
               animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Tumikiなら、AIがNotionに記録し、Slackに連絡し、カレンダーを調整。
+              AIに専門的な役割を与え、
               <br />
-              24時間ずっと働いてくれる"AI社員"がいるような感覚です。
+              GitHub・Jira・Slackと安全に連携させて、
+              <br />
+              PM・FE・BE・Infraが協働する高精度AIチームを実現できます
             </motion.p>
 
             <motion.div
@@ -270,10 +311,10 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
                 onClick={() => setShowModal(true)}
                 className="border-3 border-black bg-black px-10 py-4 text-lg font-bold text-white shadow-[4px_4px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#6366f1]"
               >
-                早期アクセスに登録
+                AIチーム環境を構築する
               </button>
               <button className="flex items-center gap-2 border-b-2 border-transparent font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black">
-                使い方を見る <ArrowRight className="h-4 w-4" />
+                MCPサーバー管理デモを見る <ArrowRight className="h-4 w-4" />
               </button>
             </motion.div>
 
