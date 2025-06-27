@@ -22,7 +22,7 @@ export const WaitingListConfirmation = ({
       <Section style={heroHeader}>
         <Text style={logoLine}>
           <span style={logoStyle}>■</span>
-          <span style={brandName}>TUMIKI</span>
+          <span style={brandName}>Tumiki</span>
           <span style={betaLabel}>BETA</span>
         </Text>
         <Text style={heroTitle}>🎉 早期アクセス登録完了！</Text>
