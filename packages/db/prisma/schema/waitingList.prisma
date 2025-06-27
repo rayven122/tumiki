@@ -1,0 +1,10 @@
+model WaitingList {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  company   String?
+  useCase   String?
+  createdAt DateTime @default(now())
+
+  @@map("waiting_list")
+}

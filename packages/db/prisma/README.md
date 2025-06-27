@@ -143,7 +143,7 @@ MCP サーバーのツール一覧
 
 ### `UserMcpServerConfig`
 
-ユーザーが利用で��るMCPサーバーの設定
+ユーザーが利用できるMCPサーバーの設定
 
 **Properties**
 
@@ -276,7 +276,7 @@ erDiagram
 - `type`: 認証プロバイダーの種類（oauth, oidc, email, credentials）
 - `provider`: 認証プロバイダー名（google, github, etc.）
 - `providerAccountId`: プロバイダー側のアカウントID
-- `refresh_token`: リフレッシ��トークン
+- `refresh_token`: リフレッシュトークン
 - `access_token`: アクセストークン
 - `expires_at`: トークンの有効期限（Unixタイムスタンプ）
 - `token_type`: トークンの種類
@@ -633,7 +633,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 ### `UserMcpServerConfig`
 
-ユーザーが利用で��るMCPサーバーの設定
+ユーザーが利用できるMCPサーバーの設定
 
 **Properties**
 
@@ -777,6 +777,14 @@ erDiagram
   String chatId FK
   DateTime createdAt
 }
+"waiting_list" {
+  String id PK
+  String email UK
+  String name "nullable"
+  String company "nullable"
+  String useCase "nullable"
+  DateTime createdAt
+}
 "Message" }o--|| "Chat" : chat
 "Vote" }o--|| "Chat" : chat
 "Vote" }o--|| "Message" : message
@@ -844,4 +852,15 @@ erDiagram
 
 - `id`:
 - `chatId`:
+- `createdAt`:
+
+### `waiting_list`
+
+**Properties**
+
+- `id`:
+- `email`:
+- `name`:
+- `company`:
+- `useCase`:
 - `createdAt`:
