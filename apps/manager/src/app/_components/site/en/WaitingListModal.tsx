@@ -1,181 +1,224 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { api } from "@/trpc/react";
+import { SuccessAnimation } from "../../ui/SuccessAnimation";
+import { USE_CASE_OPTIONS, FORM_FIELD_CLASSES } from "../types";
+import type { WaitingListFormData, WaitingListModalProps } from "../types";
 
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { motion, AnimatePresence } from "framer-motion";
-import { Input } from "@/components/ui/input";
+const INITIAL_FORM_DATA: WaitingListFormData = {
+  email: "",
+  name: "",
+  company: "",
+  useCase: "",
+};
 
-interface WaitingListModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+const MODAL_CLASSES = {
+  OVERLAY:
+    "bg-opacity-80 fixed inset-0 z-50 flex items-center justify-center bg-black p-4 backdrop-blur-sm",
+  CONTAINER:
+    "relative w-full max-w-lg border-4 border-black bg-white p-10 shadow-[8px_8px_0_#6366f1]",
+  CLOSE_BUTTON:
+    "absolute top-5 right-5 text-3xl font-black text-black transition-transform duration-300 hover:rotate-90",
+  HEADER: "mb-8 text-center",
+  TITLE: "mb-3 text-3xl font-black text-black",
+  SUBTITLE: "text-gray-600",
+  FORM_CONTAINER: "space-y-5",
+} as const;
+
+const SUCCESS_MESSAGES = {
+  TITLE: "Registration Complete!",
+  DESCRIPTION:
+    "We've sent you a confirmation email.<br />We'll contact you when the service launches.",
+} as const;
+
+interface FormFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "email";
+  placeholder?: string;
+  required?: boolean;
 }
 
-export const WaitingListModal = ({
-  isOpen,
-  onClose,
-}: WaitingListModalProps) => {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [company, setCompany] = useState("");
-  const [useCase, setUseCase] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+function FormField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  required = false,
+}: FormFieldProps) {
+  return (
+    <div>
+      <label className={FORM_FIELD_CLASSES.LABEL}>
+        {label} {required && "*"}
+      </label>
+      <input
+        type={type}
+        required={required}
+        className={FORM_FIELD_CLASSES.INPUT}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+interface UseCaseSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function UseCaseSelect({ value, onChange }: UseCaseSelectProps) {
+  return (
+    <div>
+      <label className={FORM_FIELD_CLASSES.LABEL}>Expected Use Case</label>
+      <select
+        className={FORM_FIELD_CLASSES.INPUT}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">Select a use case</option>
+        <option value={USE_CASE_OPTIONS.AUTOMATION}>Business Automation</option>
+        <option value={USE_CASE_OPTIONS.CUSTOMER_SUPPORT}>
+          Customer Support
+        </option>
+        <option value={USE_CASE_OPTIONS.DATA_ANALYSIS}>Data Analysis</option>
+        <option value={USE_CASE_OPTIONS.DEVELOPMENT}>
+          Development Support
+        </option>
+        <option value={USE_CASE_OPTIONS.OTHER}>Other</option>
+      </select>
+    </div>
+  );
+}
+
+export function WaitingListModal({ isOpen, onClose }: WaitingListModalProps) {
+  const [formData, setFormData] =
+    useState<WaitingListFormData>(INITIAL_FORM_DATA);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const registerMutation = api.waitingList.register.useMutation({
+    onSuccess: () => {
+      setIsSubmitted(true);
+      setErrorMessage("");
+      setTimeout(() => {
+        setIsSubmitted(false);
+        onClose();
+        setFormData(INITIAL_FORM_DATA);
+      }, 2000);
+    },
+    onError: (error) => {
+      setErrorMessage(error.message);
+    },
+  });
+
+  const updateFormField =
+    (field: keyof WaitingListFormData) => (value: string) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setErrorMessage("");
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setIsSubmitting(false);
-    setIsSuccess(true);
-
-    // Reset form after showing success
-    setTimeout(() => {
-      onClose();
-      setIsSuccess(false);
-      setEmail("");
-      setName("");
-      setCompany("");
-      setUseCase("");
-    }, 2000);
+    registerMutation.mutate({
+      email: formData.email,
+      name: formData.name || undefined,
+      company: formData.company || undefined,
+      useCase: formData.useCase || undefined,
+      language: "en",
+    });
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            Join the Early Access
-          </DialogTitle>
-        </DialogHeader>
+    <div className={MODAL_CLASSES.OVERLAY}>
+      <motion.div
+        className={MODAL_CLASSES.CONTAINER}
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <button
+          onClick={onClose}
+          className={MODAL_CLASSES.CLOSE_BUTTON}
+          aria-label="Close modal"
+        >
+          ×
+        </button>
 
-        <AnimatePresence mode="wait">
-          {!isSuccess ? (
-            <motion.form
-              key="form"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onSubmit={handleSubmit}
-              className="mt-4 space-y-4"
+        <div className={MODAL_CLASSES.HEADER}>
+          <h2 className={MODAL_CLASSES.TITLE}>Join the Early Access</h2>
+          <p className={MODAL_CLASSES.SUBTITLE}>Join the AI block revolution</p>
+        </div>
+
+        {!isSubmitted ? (
+          <form onSubmit={handleSubmit}>
+            <div className={MODAL_CLASSES.FORM_CONTAINER}>
+              <FormField
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={updateFormField("email")}
+                placeholder="you@company.com"
+                required
+              />
+
+              <FormField
+                label="Name"
+                value={formData.name}
+                onChange={updateFormField("name")}
+                placeholder="John Doe"
+                required
+              />
+
+              <FormField
+                label="Company"
+                value={formData.company}
+                onChange={updateFormField("company")}
+                placeholder="Acme Corp"
+              />
+
+              <UseCaseSelect
+                value={formData.useCase}
+                onChange={updateFormField("useCase")}
+              />
+            </div>
+
+            {errorMessage && (
+              <div className={FORM_FIELD_CLASSES.ERROR}>{errorMessage}</div>
+            )}
+
+            <motion.button
+              type="submit"
+              disabled={registerMutation.isPending}
+              className={FORM_FIELD_CLASSES.BUTTON}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="company">Company</Label>
-                <Input
-                  id="company"
-                  placeholder="Acme Corp"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="use-case">Expected Use Case</Label>
-                <Select value={useCase} onValueChange={setUseCase}>
-                  <SelectTrigger id="use-case" disabled={isSubmitting}>
-                    <SelectValue placeholder="Select a use case" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="internal-tools">
-                      Internal Tool Integration
-                    </SelectItem>
-                    <SelectItem value="customer-support">
-                      Customer Support AI
-                    </SelectItem>
-                    <SelectItem value="data-analysis">
-                      Data Analysis & Reporting
-                    </SelectItem>
-                    <SelectItem value="workflow-automation">
-                      Workflow Automation
-                    </SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    className="h-5 w-5 rounded-full border-2 border-white border-t-transparent"
-                  />
-                ) : (
-                  "Register"
-                )}
-              </Button>
-            </motion.form>
-          ) : (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="py-8 text-center"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", delay: 0.2 }}
-                className="mb-4 text-6xl"
-              >
-                🎉
-              </motion.div>
-              <h3 className="mb-2 text-xl font-semibold">
-                Successfully Registered!
-              </h3>
-              <p className="text-gray-600">
-                We'll send you an invitation email soon.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+              {registerMutation.isPending ? (
+                <div className="flex items-center justify-center">
+                  <div className="mr-2 h-5 w-5 animate-spin rounded-full border-3 border-white border-t-transparent" />
+                  Registering...
+                </div>
+              ) : (
+                "Register"
+              )}
+            </motion.button>
+          </form>
+        ) : (
+          <SuccessAnimation
+            title={SUCCESS_MESSAGES.TITLE}
+            description={SUCCESS_MESSAGES.DESCRIPTION}
+          />
+        )}
+      </motion.div>
+    </div>
   );
-};
+}
