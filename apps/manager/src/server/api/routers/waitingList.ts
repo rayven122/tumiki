@@ -33,7 +33,6 @@ interface WaitingListResponse {
  * メールクライアントを初期化する
  */
 function initializeMailClient(): void {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   createMailClient({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
@@ -91,7 +90,6 @@ async function sendConfirmationEmail(
         : "http://localhost:3000";
     const confirmUrl = language === "ja" ? `${baseUrl}/jp` : `${baseUrl}`;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await sendWaitingListConfirmation({
       email,
       name,

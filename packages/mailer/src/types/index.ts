@@ -29,6 +29,7 @@ export const waitingListDataSchema = z.object({
   name: z.string().optional(),
   confirmUrl: z.string().url(),
   appName: z.string().default("Tumiki"),
+  language: z.enum(["ja", "en"]).optional().default("ja"),
 });
 
 export type WaitingListData = z.infer<typeof waitingListDataSchema>;
