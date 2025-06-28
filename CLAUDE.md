@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Tumiki** は、Next.js ウェブアプリケーションと Node.js プロキシサーバーで構築された MCP (Model Context Protocol) サーバー管理システムです。複数の MCP サーバーの一元管理、API キー管理、MCP クライアント向けの統一アクセス URL を提供します。
 
 ### 重要な概念
+
 - **MCP (Model Context Protocol)**: AIモデルが外部ツールやデータソースと安全に通信するためのプロトコル
 - **プロキシサーバー**: 複数のMCPサーバーを単一エンドポイントで統合し、SSE/HTTP両方のトランスポートをサポート
 - **ユーザーMCPサーバー**: ユーザーが個別に設定・管理する MCP サーバーインスタンス
@@ -225,3 +226,9 @@ NODE_ENV=                  # development/test/production
 - **SSE通信**: リアルタイムMCP通信にServer-Sent Eventsを使用
 - **セッション管理**: MCPサーバーとの永続的な接続をセッションで管理
 - **エラーハンドリング**: tRPCによる型安全なエラー処理とユーザー向けメッセージ
+
+# 完了条件（CLAUDE.mdに記載）
+
+- lint, prettier, typecheck, test, build, playwright が通ること
+- vitest を使ってカバレッジを100%にすること
+- 関連ドキュメントの更新完了させること
