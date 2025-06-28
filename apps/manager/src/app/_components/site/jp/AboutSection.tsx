@@ -47,7 +47,7 @@ export function AboutSection() {
         </motion.div>
 
         {/* Key Features Grid */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -88,7 +88,6 @@ export function AboutSection() {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               className="group relative border-2 border-black bg-white p-6 text-center shadow-[3px_3px_0_#000] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#000]"
             >
-              {/* Drag handle indicator */}
               <div className="absolute top-2 left-2 text-xs text-gray-400 opacity-20 transition-opacity group-hover:opacity-40">
                 ⋮⋮
               </div>
@@ -102,7 +101,7 @@ export function AboutSection() {
               </p>
             </motion.div>
           ))}
-        </motion.div>
+        </motion.div> */}
         <ServiceLogoGrid />
       </div>
     </section>
