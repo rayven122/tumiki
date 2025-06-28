@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { X, Check, TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface ComparisonItem {
   category: string;
@@ -83,16 +83,6 @@ const comparisons: ComparisonItem[] = [
     },
   },
 ];
-
-const StatusIcon = ({ status }: { status: string }) => {
-  if (status === "excellent") {
-    return <Check className="h-5 w-5 text-green-600" />;
-  }
-  if (status === "good") {
-    return <Check className="h-5 w-5 text-blue-600" />;
-  }
-  return <X className="h-5 w-5 text-red-600" />;
-};
 
 const StatusBadge = ({ status }: { status: string }) => {
   if (status === "excellent") {

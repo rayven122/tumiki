@@ -75,7 +75,7 @@ export function ChallengesSection() {
               <div className="absolute -top-2 -left-2 h-4 w-4 border-2 border-black bg-red-500" />
               <div className="absolute -top-2 -right-2 h-4 w-4 border-2 border-black bg-yellow-500" />
               <div className="absolute -bottom-2 -left-2 h-4 w-4 border-2 border-black bg-blue-500" />
-              <div className="absolute -bottom-2 -right-2 h-4 w-4 border-2 border-black bg-green-500" />
+              <div className="absolute -right-2 -bottom-2 h-4 w-4 border-2 border-black bg-green-500" />
 
               <div className="mb-4 text-5xl">{challenge.icon}</div>
               <h3 className="mb-6 text-xl font-black text-black">

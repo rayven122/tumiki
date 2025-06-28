@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, ArrowRight, Download, MessageCircle } from "lucide-react";
 
 interface CTASectionProps {
   setShowModal: (show: boolean) => void;
