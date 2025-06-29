@@ -12,6 +12,10 @@
       "types": "./dist/src/createUserMcpServer.d.ts",
       "default": "./dist/src/createUserMcpServer.js"
     },
+    "./migrateWaitingList": {
+      "types": "./dist/src/migrateWaitingList.d.ts",
+      "default": "./dist/src/migrateWaitingList.js"
+    },
     "./upsertAll": {
       "types": "./dist/src/upsertAll.d.ts",
       "default": "./dist/src/upsertAll.js"
@@ -27,6 +31,7 @@
   },
   "scripts": {
     "upsertAll": "pnpm with-env bun run src/upsertAll.ts",
+    "migrateWaitingList": "pnpm with-env bun run src/migrateWaitingList.ts",
     "with-env": "dotenv -e ../../.env --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
