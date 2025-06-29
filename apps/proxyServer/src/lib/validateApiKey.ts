@@ -30,7 +30,7 @@ export const validateApiKey = async (
   }
 
   try {
-    const apiKey = await db.mcpApiKey.findFirst({
+    const apiKey = await db.mcpApiKey.findUnique({
       where: {
         apiKey: providedKey,
         isActive: true,
