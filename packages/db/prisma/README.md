@@ -18,6 +18,7 @@ erDiagram
   String id PK
   String name
   String apiKey UK
+  String apiKeyHash UK "nullable"
   Boolean isActive
   DateTime lastUsedAt "nullable"
   DateTime expiresAt "nullable"
@@ -38,6 +39,7 @@ APIキー管理テーブル
 - `id`:
 - `name`: APIキー名（ユーザーが設定）
 - `apiKey`: 暗号化されたAPIキー（共通鍵暗号化）
+- `apiKeyHash`: APIキーのハッシュ値（検索用）
 - `isActive`: APIキーが有効かどうか
 - `lastUsedAt`: 最後に使用された日時
 - `expiresAt`: APIキーの有効期限

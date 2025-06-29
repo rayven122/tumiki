@@ -11,6 +11,8 @@ model McpApiKey {
   name                     String
   /// 暗号化されたAPIキー（共通鍵暗号化）
   apiKey                   String                  @unique /// @encrypted
+  /// APIキーのハッシュ値（検索用）
+  apiKeyHash               String?                 @unique /// @encryption:hash(apiKey)
   /// APIキーが有効かどうか
   isActive                 Boolean                 @default(true)
   /// 最後に使用された日時

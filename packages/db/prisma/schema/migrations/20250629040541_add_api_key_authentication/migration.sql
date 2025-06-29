@@ -3,6 +3,7 @@ CREATE TABLE "McpApiKey" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "apiKey" TEXT NOT NULL,
+    "apiKeyHash" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "lastUsedAt" TIMESTAMP(3),
     "expiresAt" TIMESTAMP(3),
@@ -17,6 +18,9 @@ CREATE TABLE "McpApiKey" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "McpApiKey_apiKey_key" ON "McpApiKey"("apiKey");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "McpApiKey_apiKeyHash_key" ON "McpApiKey"("apiKeyHash");
 
 -- CreateIndex
 CREATE INDEX "McpApiKey_userMcpServerInstanceId_idx" ON "McpApiKey"("userMcpServerInstanceId");
