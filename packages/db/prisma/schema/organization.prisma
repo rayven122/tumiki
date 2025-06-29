@@ -33,6 +33,8 @@ model Organization {
     mcpServerConfigs   UserMcpServerConfig[]
     /// 組織に関連するMCPサーバーインスタンス
     mcpServerInstances UserMcpServerInstance[]
+    /// 組織内のAPIキー一覧
+    apiKeys            McpApiKey[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
