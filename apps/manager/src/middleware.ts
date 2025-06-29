@@ -7,11 +7,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 認証不要のパス（/, /auth）
-  if (
-    pathname === "/" ||
-    // pathname === "/login" ||
-    pathname.startsWith("/auth")
-  ) {
+  if (pathname === "/" || pathname === "/jp" || pathname.startsWith("/auth")) {
     return auth0.middleware(request);
   }
 
