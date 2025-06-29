@@ -27,11 +27,16 @@
     "./upsertMcpTools": {
       "types": "./dist/src/upsertMcpTools.d.ts",
       "default": "./dist/src/upsertMcpTools.js"
+    },
+    "./test-auth0-api": {
+      "types": "./dist/src/test-auth0-api.d.ts",
+      "default": "./dist/src/test-auth0-api.js"
     }
   },
   "scripts": {
     "upsertAll": "pnpm with-env bun run src/upsertAll.ts",
     "migrateWaitingList": "pnpm with-env bun run src/migrateWaitingList.ts",
+    "test-auth0-api": "pnpm with-env bun run src/test-auth0-api.ts",
     "with-env": "dotenv -e ../../.env --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",

@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   request.headers.set(URL_HEADER_KEY, request.url);
   const pathname = request.nextUrl.pathname;
 
-  // 認証不要のパス（/ と /login）
+  // 認証不要のパス（/, /auth）
   if (
     pathname === "/" ||
     // pathname === "/login" ||
@@ -33,11 +33,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      * - logos (logo files)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|logos).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|logos).*)",
   ],
 };

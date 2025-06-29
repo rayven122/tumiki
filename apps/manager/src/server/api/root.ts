@@ -3,6 +3,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { mcpServerRouter } from "./routers/mcpServer";
 import { userMcpServerConfigRouter } from "./routers/userMcpServerConfig";
 import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
+import { userRouter } from "./routers/user";
 import { waitingListRouter } from "./routers/waitingList";
 
 /**
@@ -13,6 +14,7 @@ import { waitingListRouter } from "./routers/waitingList";
 export const appRouter = createTRPCRouter({
   post: postRouter,
   mcpServer: mcpServerRouter,
+  user: userRouter,
   userMcpServerConfig: userMcpServerConfigRouter,
   userMcpServerInstance: userMcpServerInstanceRouter,
   waitingList: waitingListRouter,
