@@ -1,0 +1,42 @@
+/**
+ * @namespace Auth
+ */
+
+/// @namespace Auth
+enum Role {
+    /// システム管理者
+    SYSTEM_ADMIN
+    /// 一般ユーザー
+    USER
+}
+
+/// @namespace Auth
+/// @namespace UserMcpServer
+/// @namespace Chat
+model User {
+    /// Auth0のユーザーID (sub) - 主キーとして使用
+    id                 String                   @id
+    /// ユーザー名
+    name               String?
+    /// メールアドレス
+    email              String?                  @unique
+    /// プロフィール画像のURL
+    image              String?
+    toolGroups         UserToolGroup[]
+    mcpServerConfigs   UserMcpServerConfig[]
+    mcpServerInstances UserMcpServerInstance[]
+    /// 作成したカスタムMCPサーバー
+    customMcpServers   McpServer[]
+    /// ユーザーの権限
+    role               Role                     @default(USER)
+    organizations      Organization[]
+    members            OrganizationMember[]
+    invitations        OrganizationInvitation[]
+    /// Chat関連
+    Chat               Chat[]
+    Document           Document[]
+    Suggestion         Suggestion[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}

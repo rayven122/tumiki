@@ -1,0 +1,31 @@
+[
+  {
+    "id": "cm5xyz123",
+    "email": "user1@example.com",
+    "name": "田中太郎",
+    "company": "株式会社サンプル",
+    "useCase": "AIアシスタントの開発",
+    "createdAt": "2024-12-01T10:00:00.000Z"
+  },
+  {
+    "id": "cm5xyz456",
+    "email": "user2@example.com",
+    "name": "佐藤花子",
+    "company": "テクノロジー株式会社",
+    "useCase": "データ分析プラットフォーム",
+    "createdAt": "2024-12-02T14:30:00.000Z"
+  },
+  {
+    "email": "user3@example.com",
+    "name": "山田次郎",
+    "company": null,
+    "useCase": "個人プロジェクト",
+    "createdAt": "2024-12-03T09:15:00.000Z"
+  },
+  {
+    "email": "user4@example.com",
+    "name": null,
+    "company": "スタートアップ企業",
+    "useCase": null
+  }
+]
