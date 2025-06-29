@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@tumiki/db/prisma";
 
 /**
  * db に登録する MCP サーバー一覧

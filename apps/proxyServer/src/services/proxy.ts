@@ -11,7 +11,8 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-import { ServerStatus } from "@prisma/client";
+import { ServerStatus, TransportType } from "@tumiki/db/prisma";
+
 import type { ServerConfig } from "../lib/types.js";
 import { logger } from "../lib/logger.js";
 import { config } from "../lib/config.js";
@@ -267,19 +268,31 @@ const getServerConfigs = async (apiKeyId: string) => {
       );
     }
 
-    return {
-      name: serverConfig.name,
-      toolNames,
-      transport: {
-        type: "stdio",
-        command:
-          serverConfig.mcpServer.command === "node"
-            ? process.execPath
-            : serverConfig.mcpServer.command,
-        args: serverConfig.mcpServer.args,
-        env: envObj,
-      },
-    };
+    if (serverConfig.mcpServer.transportType === TransportType.STDIO) {
+      return {
+        name: serverConfig.name,
+        toolNames,
+        transport: {
+          type: "stdio",
+          command:
+            serverConfig.mcpServer.command === "node"
+              ? process.execPath
+              : (serverConfig.mcpServer.command ?? ""),
+          args: serverConfig.mcpServer.args,
+          env: envObj,
+        },
+      };
+    } else {
+      return {
+        name: serverConfig.name,
+        toolNames,
+        transport: {
+          type: "sse",
+          url: serverConfig.mcpServer.url ?? "",
+          env: envObj,
+        },
+      };
+    }
   });
 
   return serverConfigList;

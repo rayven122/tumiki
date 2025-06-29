@@ -1,4 +1,4 @@
-import { ServerStatus } from "@prisma/client";
+import { ServerStatus } from "@tumiki/db/prisma";
 
 export const SERVER_STATUS_LABELS = {
   [ServerStatus.RUNNING]: "実行中",

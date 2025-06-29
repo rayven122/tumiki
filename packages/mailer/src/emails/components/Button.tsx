@@ -1,0 +1,51 @@
+import type { ReactNode } from "react";
+import { Button as ReactEmailButton } from "@react-email/components";
+
+interface ButtonProps {
+  href: string;
+  children: ReactNode;
+  variant?: "primary" | "secondary" | "success";
+}
+
+export const Button = ({
+  href,
+  children,
+  variant = "primary",
+}: ButtonProps) => {
+  return (
+    <ReactEmailButton
+      href={href}
+      style={{ ...buttonBase, ...variants[variant] }}
+    >
+      {children}
+    </ReactEmailButton>
+  );
+};
+
+const buttonBase = {
+  display: "inline-block",
+  padding: "15px 30px",
+  textDecoration: "none",
+  borderRadius: "8px",
+  fontWeight: "600",
+  fontSize: "16px",
+  textAlign: "center" as const,
+  cursor: "pointer",
+  border: "none",
+  margin: "20px 0",
+};
+
+const variants = {
+  primary: {
+    backgroundColor: "#4f46e5",
+    color: "#ffffff",
+  },
+  secondary: {
+    backgroundColor: "#6b7280",
+    color: "#ffffff",
+  },
+  success: {
+    backgroundColor: "#10b981",
+    color: "#ffffff",
+  },
+};

@@ -1,3 +1,6 @@
 {
-	"[prisma]": { "editor.defaultFormatter": "Prisma.prisma"},
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  },
+  "cSpell.words": ["Asana", "Tumiki"]
 }

@@ -12,9 +12,10 @@ export const ClientProvider = ({ children }: { children: React.ReactNode }) => {
     <TRPCReactProvider>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
-        enableSystem
+        defaultTheme="light"
+        enableSystem={false}
         disableTransitionOnChange
+        forcedTheme="light"
       >
         <ToastContainer />
         <Toaster position="top-center" /> {/* For chat */}

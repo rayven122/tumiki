@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { fieldEncryptionMiddleware } from "prisma-field-encryption";
+
+import { fieldEncryptionMiddleware } from "./server.js";
 
 const createPrismaClient = () => {
   const client = new PrismaClient({

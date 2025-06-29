@@ -14,7 +14,7 @@
     "lint": "eslint",
     "lint:fix": "next lint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "check": "next lint && tsc --noEmit"
+    "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\""
   },
   "dependencies": {
     "@ai-sdk/react": "^1.2.11",
@@ -133,6 +133,7 @@
     "@types/ws": "^8.18.1",
     "@vercel/ncc": "^0.38.3",
     "bufferutil": "^4.0.9",
+    "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "eslint-config-next": "^15.3.3",
