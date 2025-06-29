@@ -27,6 +27,8 @@ model User {
     mcpServerInstances UserMcpServerInstance[]
     /// 作成したカスタムMCPサーバー
     customMcpServers   McpServer[]
+    /// 作成したAPIキー一覧
+    apiKeys            McpApiKey[]
     /// ユーザーの権限
     role               Role                     @default(USER)
     organizations      Organization[]

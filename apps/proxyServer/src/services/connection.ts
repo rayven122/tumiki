@@ -32,21 +32,27 @@ export const establishSSEConnection = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  // request header から apiKeyId を取得
-  const apiKeyId = (req.query["api-key"] ?? req.headers["api-key"]) as
-    | string
-    | undefined;
+  // API key を複数の方法で取得
+  const apiKey =
+    (req.query["api-key"] as string) ||
+    (req.headers["api-key"] as string) ||
+    (req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.substring(7)
+      : undefined);
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
   logger.info("SSE connection request received", {
-    apiKeyId: apiKeyId ? "***" : undefined,
+    hasApiKey: !!apiKey,
     clientId,
     userAgent: req.headers["user-agent"],
   });
 
-  if (!apiKeyId) {
-    res.status(401).send("Unauthorized: Missing API key");
+  if (!apiKey) {
+    res.status(401).json({
+      error: "API key required",
+      hint: "Use api-key query parameter, api-key header, or Authorization: Bearer header",
+    });
     return;
   }
 
@@ -70,7 +76,7 @@ export const establishSSEConnection = async (
     const session = createSessionWithId(
       sessionId,
       TransportType.SSE,
-      apiKeyId,
+      apiKey,
       clientId,
       async () => {
         // 既にクリーンアップ中の場合は処理をスキップ
@@ -120,7 +126,7 @@ export const establishSSEConnection = async (
     sseConnections.set(sessionId, connectionInfo);
 
     // MCPサーバーとの接続確立
-    const { server } = await getServer(apiKeyId);
+    const { server } = await getServer(apiKey);
     await server.connect(transport);
 
     // トランスポートが閉じられたときのクリーンアップ（循環参照防止）
@@ -179,7 +185,7 @@ export const establishSSEConnection = async (
 
     logger.info("SSE connection established", {
       sessionId,
-      apiKeyId: "***",
+      hasApiKey: !!apiKey,
       clientId,
     });
   } catch (error) {
