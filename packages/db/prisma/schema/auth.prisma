@@ -14,9 +14,8 @@ enum Role {
 /// @namespace UserMcpServer
 /// @namespace Chat
 model User {
-    id                 String                   @id @default(cuid())
-    /// Auth0のユーザーID (sub)
-    authId             String?                  @unique
+    /// Auth0のユーザーID (sub) - 主キーとして使用
+    id                 String                   @id
     /// ユーザー名
     name               String?
     /// メールアドレス
@@ -37,8 +36,7 @@ model User {
     Chat               Chat[]
     Document           Document[]
     Suggestion         Suggestion[]
-    /// 作成日時
-    createdAt          DateTime                 @default(now())
-    /// 更新日時
-    updatedAt          DateTime                 @updatedAt
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }

@@ -15,7 +15,6 @@
 erDiagram
 "User" {
   String id PK
-  String authId UK "nullable"
   String name "nullable"
   String email UK "nullable"
   String image "nullable"
@@ -29,14 +28,13 @@ erDiagram
 
 **Properties**
 
-- `id`:
-- `authId`: Auth0のユーザーID (sub)
+- `id`: Auth0のユーザーID (sub) - 主キーとして使用
 - `name`: ユーザー名
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `createdAt`: 作成日時
-- `updatedAt`: 更新日時
+- `createdAt`:
+- `updatedAt`:
 
 ## McpServer
 
@@ -488,7 +486,6 @@ erDiagram
 }
 "User" {
   String id PK
-  String authId UK "nullable"
   String name "nullable"
   String email UK "nullable"
   String image "nullable"
@@ -567,14 +564,13 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 
 **Properties**
 
-- `id`:
-- `authId`: Auth0のユーザーID (sub)
+- `id`: Auth0のユーザーID (sub) - 主キーとして使用
 - `name`: ユーザー名
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `createdAt`: 作成日時
-- `updatedAt`: 更新日時
+- `createdAt`:
+- `updatedAt`:
 
 ### `UserMcpServerConfig`
 
@@ -655,7 +651,6 @@ Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcp
 erDiagram
 "User" {
   String id PK
-  String authId UK "nullable"
   String name "nullable"
   String email UK "nullable"
   String image "nullable"
@@ -669,14 +664,13 @@ erDiagram
 
 **Properties**
 
-- `id`:
-- `authId`: Auth0のユーザーID (sub)
+- `id`: Auth0のユーザーID (sub) - 主キーとして使用
 - `name`: ユーザー名
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `createdAt`: 作成日時
-- `updatedAt`: 更新日時
+- `createdAt`:
+- `updatedAt`:
 
 ## default
 
