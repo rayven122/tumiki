@@ -22,22 +22,25 @@ export const handleMCPRequest = async (
 ): Promise<void> => {
   const method = req.method;
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  const apiKeyId = (req.query["api-key"] ?? req.headers["api-key"]) as
-    | string
-    | undefined;
+  const apiKey =
+    (req.query["api-key"] as string) ||
+    (req.headers["api-key"] as string) ||
+    (req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.substring(7)
+      : undefined);
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
   logger.info("MCP request received", {
     method,
     sessionId,
-    apiKeyId: apiKeyId ? "***" : undefined,
+    hasApiKey: !!apiKey,
     clientId,
     userAgent: req.headers["user-agent"],
   });
 
   // API key validation
-  if (!apiKeyId) {
+  if (!apiKey) {
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -52,10 +55,10 @@ export const handleMCPRequest = async (
   try {
     switch (method) {
       case "POST":
-        await handlePOSTRequest(req, res, sessionId, apiKeyId, clientId);
+        await handlePOSTRequest(req, res, sessionId, apiKey, clientId);
         break;
       case "GET":
-        await handleGETRequest(req, res, sessionId, apiKeyId, clientId);
+        await handleGETRequest(req, res, sessionId, apiKey, clientId);
         break;
       case "DELETE":
         await handleDELETERequest(req, res, sessionId);
@@ -97,7 +100,7 @@ const handlePOSTRequest = async (
   req: Request,
   res: Response,
   sessionId: string | undefined,
-  apiKeyId: string,
+  apiKey: string,
   clientId: string,
 ): Promise<void> => {
   let transport: StreamableHTTPServerTransport;
@@ -147,19 +150,19 @@ const handlePOSTRequest = async (
       return;
     }
 
-    transport = createStreamableTransport(apiKeyId, clientId);
+    transport = createStreamableTransport(apiKey, clientId);
     isNewSession = true;
   }
 
   // MCPサーバーとの接続確立（新しいセッションの場合）
   if (isNewSession) {
     try {
-      const { server } = await getServer(apiKeyId);
+      const { server } = await getServer(apiKey);
       await server.connect(transport);
 
       logger.info("New MCP session established", {
         sessionId: transport.sessionId,
-        apiKeyId: "***",
+        hasApiKey: !!apiKey,
         clientId,
       });
     } catch (error) {
@@ -208,7 +211,7 @@ const handleGETRequest = async (
   req: Request,
   res: Response,
   sessionId: string | undefined,
-  apiKeyId: string,
+  apiKey: string,
   clientId: string,
 ): Promise<void> => {
   if (!sessionId) {

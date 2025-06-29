@@ -11,7 +11,8 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-import { ServerStatus, TransportType } from "@tumiki/db/prisma";
+import { TransportType } from "@tumiki/db/prisma";
+import { validateApiKey } from "../lib/validateApiKey.js";
 
 import type { ServerConfig } from "../lib/types.js";
 import { logger } from "../lib/logger.js";
@@ -210,24 +211,19 @@ export const createClients = async (
   return clients;
 };
 
-const getServerConfigs = async (apiKeyId: string) => {
-  const serverInstance = await db.userMcpServerInstance.findUniqueOrThrow({
-    where: {
-      id: apiKeyId,
-      serverStatus: ServerStatus.RUNNING,
-    },
-    include: {
-      toolGroup: {
-        include: {
-          toolGroupTools: {
-            include: {
-              tool: true,
-            },
-          },
-        },
-      },
-    },
-  });
+const getServerConfigs = async (apiKey: string) => {
+  // APIキー検証
+  const validation = await validateApiKey(apiKey);
+
+  if (!validation.valid) {
+    throw new Error(`Invalid API key: ${validation.error}`);
+  }
+
+  const { userMcpServerInstance: serverInstance } = validation;
+
+  if (!serverInstance) {
+    throw new Error("Server instance not found");
+  }
 
   const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
     ({ userMcpServerConfigId }) => userMcpServerConfigId,
@@ -298,8 +294,8 @@ const getServerConfigs = async (apiKeyId: string) => {
   return serverConfigList;
 };
 
-export const getMcpClients = async (apiKeyId: string) => {
-  const serverConfigs = await getServerConfigs(apiKeyId);
+export const getMcpClients = async (apiKey: string) => {
+  const serverConfigs = await getServerConfigs(apiKey);
 
   const connectedClients = await createClients(serverConfigs);
   logger.debug("Connected to servers", {
@@ -323,7 +319,7 @@ export const getMcpClients = async (apiKeyId: string) => {
   return { connectedClients, cleanup };
 };
 
-export const getServer = async (apiKeyId: string) => {
+export const getServer = async (apiKey: string) => {
   const server = new Server(
     {
       name: "mcp-proxy",
@@ -339,7 +335,7 @@ export const getServer = async (apiKeyId: string) => {
   // List Tools Handler with timeout handling
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
     logger.info("Listing tools - establishing fresh connections", {
-      apiKeyId,
+      apiKey: apiKey.substring(0, 8) + "...",
     });
     const requestTimeout = config.timeouts.request;
 
@@ -356,8 +352,7 @@ export const getServer = async (apiKeyId: string) => {
         () =>
           Promise.race([
             (async () => {
-              const { connectedClients, cleanup } =
-                await getMcpClients(apiKeyId);
+              const { connectedClients, cleanup } = await getMcpClients(apiKey);
               clientsCleanup = cleanup;
 
               try {
@@ -414,7 +409,7 @@ export const getServer = async (apiKeyId: string) => {
       await result.cleanup();
       logger.info("Tools list request completed", {
         toolsCount: result.tools.length,
-        apiKeyId,
+        apiKey: apiKey.substring(0, 8) + "...",
       });
       return { tools: result.tools };
     } catch (error) {
@@ -432,7 +427,7 @@ export const getServer = async (apiKeyId: string) => {
       }
       logger.error("Tools list request failed", {
         error: error instanceof Error ? error.message : String(error),
-        apiKeyId,
+        apiKey: apiKey.substring(0, 8) + "...",
       });
       recordError("tools_list_failure");
       throw error;
@@ -444,7 +439,7 @@ export const getServer = async (apiKeyId: string) => {
     const { name, arguments: args } = request.params;
     logger.info("Tool call - establishing fresh connections", {
       toolName: name,
-      apiKeyId,
+      apiKey: apiKey.substring(0, 8) + "...",
     });
 
     const requestTimeout = config.timeouts.request;
@@ -462,8 +457,7 @@ export const getServer = async (apiKeyId: string) => {
         () =>
           Promise.race([
             (async () => {
-              const { connectedClients, cleanup } =
-                await getMcpClients(apiKeyId);
+              const { connectedClients, cleanup } = await getMcpClients(apiKey);
               clientsCleanup = cleanup;
 
               try {
@@ -516,7 +510,7 @@ export const getServer = async (apiKeyId: string) => {
       await result.cleanup();
       logger.info("Tool call completed", {
         toolName: name,
-        apiKeyId,
+        apiKey: apiKey.substring(0, 8) + "...",
       });
       return result.result;
     } catch (error) {
@@ -535,7 +529,7 @@ export const getServer = async (apiKeyId: string) => {
       logger.error("Tool call failed", {
         toolName: name,
         error: error instanceof Error ? error.message : String(error),
-        apiKeyId,
+        apiKey: apiKey.substring(0, 8) + "...",
       });
       recordError(`tool_call_failure_${name}`);
       throw error;

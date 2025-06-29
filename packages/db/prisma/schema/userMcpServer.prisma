@@ -148,6 +148,8 @@ model UserMcpServerInstance {
   /// UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
   toolGroupId                 String                           @unique
   toolGroup                   UserToolGroup                    @relation(fields: [toolGroupId], references: [id])
+  /// APIキー一覧
+  apiKeys                     McpApiKey[]
   /// ユーザーID
   userId                      String
   user                        User                             @relation(fields: [userId], references: [id])

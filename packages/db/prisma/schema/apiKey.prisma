@@ -1,0 +1,35 @@
+/**
+ * @namespace ApiKey
+ * APIキー認証システム用のテーブル
+ */
+
+/// APIキー管理テーブル
+/// @namespace ApiKey
+model McpApiKey {
+  id                       String                  @id @default(cuid())
+  /// APIキー名（ユーザーが設定）
+  name                     String
+  /// 暗号化されたAPIキー（共通鍵暗号化）
+  apiKey                   String                  @unique /// @encrypted
+  /// APIキーが有効かどうか
+  isActive                 Boolean                 @default(true)
+  /// 最後に使用された日時
+  lastUsedAt               DateTime?
+  /// APIキーの有効期限
+  expiresAt                DateTime?
+  /// 関連するUserMcpServerInstanceのID
+  userMcpServerInstanceId  String
+  userMcpServerInstance    UserMcpServerInstance   @relation(fields: [userMcpServerInstanceId], references: [id], onDelete: Cascade)
+  /// 作成者のユーザーID
+  userId                   String
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 組織ID（マルチテナント対応）
+  organizationId           String?
+  organization             Organization?           @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userMcpServerInstanceId])
+  @@index([userId])
+}
