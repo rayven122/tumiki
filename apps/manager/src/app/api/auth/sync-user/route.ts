@@ -102,7 +102,10 @@ export const POST = async (request: NextRequest) => {
         {
           success: false,
           error: "Invalid request data",
-          details: error.errors,
+          // 本番環境では詳細なエラー情報を返さない
+          ...(process.env.NODE_ENV !== "production" && {
+            details: error.errors,
+          }),
         },
         { status: 400, headers: corsHeaders },
       );
@@ -119,7 +122,7 @@ export const POST = async (request: NextRequest) => {
 };
 
 // CORS設定（Auth0からのリクエストを許可）
-export async function OPTIONS(_request: NextRequest) {
+export const OPTIONS = async (_request: NextRequest) => {
   // 本番環境のAuth0ドメインに制限
   const allowedOrigin =
     process.env.NODE_ENV === "production" ? "https://auth.tumiki.cloud" : "*"; // 開発環境では全許可
@@ -134,4 +137,4 @@ export async function OPTIONS(_request: NextRequest) {
     status: 200,
     headers: corsHeaders,
   });
-}
+};
