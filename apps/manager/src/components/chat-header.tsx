@@ -12,7 +12,7 @@ import { useSidebar } from "./ui/chat/sidebar";
 import { memo } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
 import { type VisibilityType, VisibilitySelector } from "./visibility-selector";
-import type { Session } from "next-auth";
+import type { SessionData } from "@tumiki/auth";
 
 function PureChatHeader({
   chatId,
@@ -25,7 +25,7 @@ function PureChatHeader({
   selectedModelId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
-  session: Session;
+  session: SessionData;
 }) {
   const router = useRouter();
   const { open } = useSidebar();

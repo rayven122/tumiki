@@ -4,8 +4,6 @@ import { db } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendWaitingListConfirmation } from "@tumiki/mailer";
 
-import { env } from "@/env";
-
 const WAITING_LIST_MESSAGES = {
   SUCCESS: "Waiting Listへの登録が完了しました。確認メールをお送りしました。",
   DUPLICATE_EMAIL: "このメールアドレスは既に登録されています",
@@ -34,14 +32,14 @@ interface WaitingListResponse {
  */
 function initializeMailClient(): void {
   createMailClient({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_PORT === 465,
+    host: process.env.SMTP_HOST ?? "",
+    port: Number(process.env.SMTP_PORT),
+    secure: Number(process.env.SMTP_PORT) === 465,
     auth: {
-      user: env.SMTP_USER,
-      pass: env.SMTP_PASS,
+      user: process.env.SMTP_USER ?? "",
+      pass: process.env.SMTP_PASS ?? "",
     },
-    from: env.FROM_EMAIL,
+    from: process.env.FROM_EMAIL ?? "",
   });
 }
 
@@ -85,7 +83,7 @@ async function sendConfirmationEmail(
 ): Promise<void> {
   try {
     const baseUrl =
-      env.NODE_ENV === "production"
+      process.env.NODE_ENV === "production"
         ? process.env.NEXTAUTH_URL
         : "http://localhost:3000";
     const confirmUrl = language === "ja" ? `${baseUrl}/jp` : `${baseUrl}`;

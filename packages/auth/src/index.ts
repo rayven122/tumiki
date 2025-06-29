@@ -1,26 +1,36 @@
-import type { NextAuthResult, Session } from "next-auth";
+import type { NextRequest } from "next/server";
 import { cache } from "react";
-import NextAuth from "next-auth";
+import { Auth0Client } from "@auth0/nextjs-auth0/server";
 
-import { authConfig } from "./config";
+// export const auth0 = new Auth0Client({
+//   domain: 'your-tenant.auth0.com',
+//   clientId: 'YOUR_CLIENT_ID',
+//   appBaseUrl: 'http://localhost:3000',
+//   secret: '長くてランダムな文字列', // 32文字以上推奨
+//   clientAuthentication: {
+//     clientSecret: 'YOUR_CLIENT_SECRET'
+//     // または
+//     // clientAssertionSigningKey: '...'
+//   }
+// });
 
-export type { Session };
+export const auth0 = new Auth0Client();
 
-const nextAuth = NextAuth(authConfig);
+const auth = cache(() => auth0.getSession());
 
-/**
- * This is the main way to get session data for your RSCs.
- * This will de-duplicate all calls to next-auth's default `auth()` function and only call it once per request
- */
-const auth: () => Promise<Session | null> = cache(nextAuth.auth);
+export { auth };
 
-const handlers: NextAuthResult["handlers"] = nextAuth.handlers;
+export type { SessionData } from "@auth0/nextjs-auth0/types";
 
-export { handlers, auth };
+export async function authSignIn(
+  provider?: string,
+  options: { returnTo?: string } = {},
+) {
+  const returnTo = options.returnTo || "/dashboard";
+  return auth0.startInteractiveLogin({ returnTo });
+}
 
-export const signIn = nextAuth.signIn;
-export const signOut = nextAuth.signOut;
-
-export const authHandlers: NextAuthResult["handlers"] = handlers;
-export const authSignIn = signIn;
-export const authSignOut = signOut;
+// Next Authの`auth`関数に似た関数
+export async function getAuth(req: NextRequest) {
+  return auth0.getSession(req);
+}

@@ -1,25 +1,10 @@
-import Form from "next/form";
-
-import { signOut } from "@tumiki/auth";
-
 export const SignOutForm = () => {
   return (
-    <Form
-      className="w-full"
-      action={async () => {
-        "use server";
-
-        await signOut({
-          redirectTo: "/chat",
-        });
-      }}
+    <a
+      href="/auth/logout"
+      className="block w-full px-1 py-0.5 text-left text-red-500"
     >
-      <button
-        type="submit"
-        className="w-full px-1 py-0.5 text-left text-red-500"
-      >
-        Sign out
-      </button>
-    </Form>
+      Sign out
+    </a>
   );
 };

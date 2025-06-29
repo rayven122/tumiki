@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -75,10 +74,7 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">パスワード</Label>
-              <a
-                // href="/reset-password"
-                className="text-primary text-sm hover:underline"
-              >
+              <a className="text-primary text-sm hover:underline">
                 パスワードをお忘れですか？
               </a>
             </div>
@@ -122,10 +118,10 @@ export function LoginForm() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
+          <a href="/auth/login">Log in</a>
           <Button
             variant="outline"
             type="button"
-            onClick={() => signIn("google")}
             className="border-gray-300 bg-white text-black hover:bg-gray-50"
           >
             <Image
@@ -140,7 +136,6 @@ export function LoginForm() {
           <Button
             variant="outline"
             type="button"
-            onClick={() => signIn("github")}
             className="border-gray-300 bg-white text-black hover:bg-gray-50"
           >
             <Image
@@ -157,12 +152,7 @@ export function LoginForm() {
       <CardFooter>
         <p className="text-muted-foreground w-full text-center text-sm">
           アカウントをお持ちでないですか？{" "}
-          <a
-            // href="/signup"
-            className="text-primary hover:underline"
-          >
-            新規登録
-          </a>
+          <a className="text-primary hover:underline">新規登録</a>
         </p>
       </CardFooter>
     </Card>
