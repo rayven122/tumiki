@@ -22,13 +22,13 @@ export const handleMCPRequest = async (
 ): Promise<void> => {
   const method = req.method;
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  const apiKey =
+  const apiKey: string | undefined =
     (req.query["api-key"] as string) ||
     (req.headers["api-key"] as string) ||
     (req.headers.authorization?.startsWith("Bearer ")
       ? req.headers.authorization.substring(7)
       : undefined);
-  const clientId =
+  const clientId: string =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
   logger.info("MCP request received", {

@@ -334,9 +334,7 @@ export const getServer = async (apiKey: string) => {
 
   // List Tools Handler with timeout handling
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
-    logger.info("Listing tools - establishing fresh connections", {
-      apiKey: apiKey.substring(0, 8) + "...",
-    });
+    logger.info("Listing tools - establishing fresh connections");
     const requestTimeout = config.timeouts.request;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -409,7 +407,6 @@ export const getServer = async (apiKey: string) => {
       await result.cleanup();
       logger.info("Tools list request completed", {
         toolsCount: result.tools.length,
-        apiKey: apiKey.substring(0, 8) + "...",
       });
       return { tools: result.tools };
     } catch (error) {
@@ -427,7 +424,6 @@ export const getServer = async (apiKey: string) => {
       }
       logger.error("Tools list request failed", {
         error: error instanceof Error ? error.message : String(error),
-        apiKey: apiKey.substring(0, 8) + "...",
       });
       recordError("tools_list_failure");
       throw error;
@@ -439,7 +435,6 @@ export const getServer = async (apiKey: string) => {
     const { name, arguments: args } = request.params;
     logger.info("Tool call - establishing fresh connections", {
       toolName: name,
-      apiKey: apiKey.substring(0, 8) + "...",
     });
 
     const requestTimeout = config.timeouts.request;
@@ -510,7 +505,6 @@ export const getServer = async (apiKey: string) => {
       await result.cleanup();
       logger.info("Tool call completed", {
         toolName: name,
-        apiKey: apiKey.substring(0, 8) + "...",
       });
       return result.result;
     } catch (error) {
@@ -529,7 +523,6 @@ export const getServer = async (apiKey: string) => {
       logger.error("Tool call failed", {
         toolName: name,
         error: error instanceof Error ? error.message : String(error),
-        apiKey: apiKey.substring(0, 8) + "...",
       });
       recordError(`tool_call_failure_${name}`);
       throw error;
