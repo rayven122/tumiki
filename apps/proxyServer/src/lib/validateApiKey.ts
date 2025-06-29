@@ -73,9 +73,30 @@ export const validateApiKey = async (
       userMcpServerInstance: apiKey.userMcpServerInstance,
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // データベース接続エラーかクエリエラーかを判定
+    if (
+      errorMessage.includes("connection") ||
+      errorMessage.includes("ECONNREFUSED")
+    ) {
+      return {
+        valid: false,
+        error: "Database connection failed. Please try again later.",
+      };
+    }
+
+    if (errorMessage.includes("timeout")) {
+      return {
+        valid: false,
+        error: "Database query timeout. Please try again.",
+      };
+    }
+
+    // その他のエラー
     return {
       valid: false,
-      error: `Database error: ${error instanceof Error ? error.message : String(error)}`,
+      error: `API key validation failed: ${errorMessage}`,
     };
   }
 };
