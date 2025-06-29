@@ -10,19 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Settings, User } from "lucide-react";
-// import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/lib/auth";
 
 export function Header() {
   const pathname = usePathname();
 
-  const navigation = [
-    // { name: "ダッシュボード", href: "/dashboard" },
-    { name: "MCPサーバー", href: "/mcp/servers" },
-    // { name: "権限管理", href: "/permissions" },
-    // { name: "プラグイン", href: "/plugins" },
-  ];
+  const navigation = [{ name: "MCPサーバー", href: "/mcp/servers" }];
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
@@ -67,9 +62,13 @@ export function Header() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <a href="/auth/logout" className="flex w-full items-center">
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex w-full items-center"
+                >
                   ログアウト
-                </a>
+                </button>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

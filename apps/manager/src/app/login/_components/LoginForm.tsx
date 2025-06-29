@@ -74,10 +74,7 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">パスワード</Label>
-              <a
-                // href="/reset-password"
-                className="text-primary text-sm hover:underline"
-              >
+              <a className="text-primary text-sm hover:underline">
                 パスワードをお忘れですか？
               </a>
             </div>
@@ -139,7 +136,6 @@ export function LoginForm() {
           <Button
             variant="outline"
             type="button"
-            // onClick={() => auth0.startInteractiveLogin({})}
             className="border-gray-300 bg-white text-black hover:bg-gray-50"
           >
             <Image
@@ -156,12 +152,7 @@ export function LoginForm() {
       <CardFooter>
         <p className="text-muted-foreground w-full text-center text-sm">
           アカウントをお持ちでないですか？{" "}
-          <a
-            // href="/signup"
-            className="text-primary hover:underline"
-          >
-            新規登録
-          </a>
+          <a className="text-primary hover:underline">新規登録</a>
         </p>
       </CardFooter>
     </Card>

@@ -124,12 +124,12 @@ class AuthSyncLogger {
 export const authSyncLogger = AuthSyncLogger.getInstance();
 
 // ヘルパー関数
-export function logSyncSuccess(
+export const logSyncSuccess = (
   userId: string,
   source: SyncLogEntry["source"],
   userInfo?: SyncLogEntry["userInfo"],
   duration?: number,
-): void {
+): void => {
   authSyncLogger.logSync({
     userId,
     source,
@@ -137,14 +137,14 @@ export function logSyncSuccess(
     userInfo,
     duration,
   });
-}
+};
 
-export function logSyncError(
+export const logSyncError = (
   userId: string,
   source: SyncLogEntry["source"],
   error: string,
   duration?: number,
-): void {
+): void => {
   authSyncLogger.logSync({
     userId,
     source,
@@ -152,12 +152,12 @@ export function logSyncError(
     error,
     duration,
   });
-}
+};
 
-export function getSyncStats() {
+export const getSyncStats = () => {
   return authSyncLogger.getStats();
-}
+};
 
-export function getRecentSyncErrors(limit?: number) {
+export const getRecentSyncErrors = (limit?: number) => {
   return authSyncLogger.getRecentErrors(limit);
-}
+};

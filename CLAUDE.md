@@ -107,6 +107,7 @@ docker compose -f ./docker/compose.prod.yaml up -d
 ### フロントエンド コーディング規約
 
 - **コンポーネント**: 関数コンポーネント + アロー関数、必須の Props 型定義
+- **関数定義**: 全ての関数はアロー関数で記述する（`const fn = () => {}` 形式）
 - **スタイリング**: Tailwind CSS 使用、カスタムスタイルは `styles/globals.css`
 - **データフェッチング**: tRPC 使用（`trpc.useQuery()`, `trpc.useMutation()`）
 - **状態管理**: ローカルは `useState`、グローバルは Jotai
