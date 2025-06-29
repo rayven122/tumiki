@@ -9,21 +9,24 @@ export async function middleware(request: NextRequest) {
   // 認証不要のパス（/ と /login）
   if (
     pathname === "/" ||
-    pathname === "/login" ||
+    // pathname === "/login" ||
     pathname.startsWith("/auth")
   ) {
     return auth0.middleware(request);
   }
 
+  console.log("Middleware triggered for path:", pathname);
   // 認証必要パスでのセッションチェック
   const session = await auth0.getSession(request);
   if (session) {
     return auth0.middleware(request);
   }
 
-  // 認証されていない場合は /login にリダイレクト
-  const { origin } = new URL(request.url);
-  return NextResponse.redirect(`${origin}/login`);
+  // 認証されていない場合、Auth0のログイン画面にリダイレクト
+  const returnTo = encodeURIComponent(request.url);
+  const loginUrl = `/auth/login?returnTo=${returnTo}`;
+
+  return NextResponse.redirect(new URL(loginUrl, request.url));
 }
 
 export const config = {
@@ -33,7 +36,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     * - logos (logo files)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|logos).*)",
   ],
 };

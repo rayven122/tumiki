@@ -30,7 +30,6 @@ import { db } from "@tumiki/db";
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
-  console.log("TRPC context session:", session);
 
   return {
     db,
