@@ -4,7 +4,7 @@ import { sheetDocumentHandler } from "@/artifacts/sheet/server";
 import { textDocumentHandler } from "@/artifacts/text/server";
 import type { ArtifactKind } from "@/components/artifact";
 import type { DataStreamWriter } from "ai";
-import type { Document } from "@prisma/client";
+import type { Document } from "@tumiki/db/prisma";
 import { saveDocument } from "../db/queries";
 import type { SessionData } from "@tumiki/auth";
 

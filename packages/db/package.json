@@ -12,15 +12,23 @@
       "types": "./dist/src/tcpClient.d.ts",
       "default": "./dist/src/tcpClient.js"
     },
+    "./prisma": {
+      "types": "./dist/src/prisma.d.ts",
+      "default": "./dist/src/prisma.js"
+    },
     "./zod": {
       "types": "./dist/src/zod.d.ts",
       "default": "./dist/src/zod.js"
+    },
+    "./server": {
+      "types": "./dist/src/server.d.ts",
+      "default": "./dist/src/server.js"
     }
   },
   "scripts": {
     "dev": "tsc",
     "build": "pnpm db:generate && tsc",
-    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",

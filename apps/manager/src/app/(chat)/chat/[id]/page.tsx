@@ -6,7 +6,7 @@ import { Chat } from "@/components/chat";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
-import type { Message } from "@prisma/client";
+import type { Message } from "@tumiki/db/prisma";
 import type { Attachment, UIMessage } from "ai";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {

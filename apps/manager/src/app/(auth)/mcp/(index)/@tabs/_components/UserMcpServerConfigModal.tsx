@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-toastify";
-import type { McpServer } from "@prisma/client";
+import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 
 type ApiTokenModalProps = {

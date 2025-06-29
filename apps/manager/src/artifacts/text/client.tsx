@@ -10,7 +10,7 @@ import {
   RedoIcon,
   UndoIcon,
 } from "@/components/icons";
-import type { Suggestion } from "@prisma/client";
+import type { Suggestion } from "@tumiki/db/prisma";
 import { toast } from "sonner";
 import { getSuggestions } from "../actions";
 

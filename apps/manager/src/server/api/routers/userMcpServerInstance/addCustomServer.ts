@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { AddCustomServerInput } from ".";
-import { ServerStatus, ServerType } from "@prisma/client";
+import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 
 type AddCustomServerInput = {
   ctx: ProtectedContext;

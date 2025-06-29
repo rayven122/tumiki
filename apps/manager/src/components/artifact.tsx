@@ -11,7 +11,7 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
-import type { Document, Vote } from "@prisma/client";
+import type { Document, Vote } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { MultimodalInput } from "./multimodal-input";
 import { Toolbar } from "./toolbar";

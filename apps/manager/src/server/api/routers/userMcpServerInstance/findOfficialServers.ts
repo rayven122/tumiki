@@ -1,4 +1,4 @@
-import { ServerType } from "@prisma/client";
+import { ServerType } from "@tumiki/db/prisma";
 import type { ProtectedContext } from "../../trpc";
 
 import { convertToSortOrder } from "@tumiki/utils";

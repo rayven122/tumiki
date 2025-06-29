@@ -46,9 +46,14 @@ erDiagram
   String id PK
   String name UK
   String iconPath "nullable"
-  String command
+  TransportType transportType
+  String command "nullable"
   String args
+  String url "nullable"
   String envVars
+  ServerType serverType
+  String createdBy FK "nullable"
+  McpServerVisibility visibility
   Boolean isPublic
   DateTime createdAt
   DateTime updatedAt
@@ -129,16 +134,24 @@ erDiagram
 ### `McpServer`
 
 MCP サーバー (github や notion などの接続する外部 MCP サーバー)
+transportType に応じて接続方式を選択
 
 **Properties**
 
 - `id`:
 - `name`: MCP サーバー名
 - `iconPath`: アイコンパス
-- `command`: コマンド
-- `args`: 引数
-- `envVars`: 環境変数
-- `isPublic`: サーバーが公開されているか
+- `transportType`: 接続タイプ（stdio, sse）
+- `command`: STDIO用のコマンド
+- `args`: STDIO用の引数
+- `url`: SSE接続用のURL
+- `envVars`
+  > STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
+  > SSE: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+- `serverType`: サーバーの種類（公式/ユーザーカスタム）
+- `createdBy`: ユーザーカスタムサーバーの作成者
+- `visibility`: ユーザーカスタムサーバーの可視性
+- `isPublic`: サーバーが公開されているか（レガシー）
 - `createdAt`:
 - `updatedAt`:
 
@@ -713,6 +726,14 @@ erDiagram
   String chatId FK
   DateTime createdAt
 }
+"waiting_list" {
+  String id PK
+  String email UK
+  String name "nullable"
+  String company "nullable"
+  String useCase "nullable"
+  DateTime createdAt
+}
 "Message" }o--|| "Chat" : chat
 "Vote" }o--|| "Chat" : chat
 "Vote" }o--|| "Message" : message
@@ -780,4 +801,15 @@ erDiagram
 
 - `id`:
 - `chatId`:
+- `createdAt`:
+
+### `waiting_list`
+
+**Properties**
+
+- `id`:
+- `email`:
+- `name`:
+- `company`:
+- `useCase`:
 - `createdAt`:

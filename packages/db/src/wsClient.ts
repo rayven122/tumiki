@@ -1,8 +1,9 @@
 import { neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
-import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 import ws from "ws";
+
+import { fieldEncryptionMiddleware } from "./server.js";
 
 const createPrismaClient = (): PrismaClient => {
   // websocket を使った接続を使う

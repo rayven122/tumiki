@@ -26,6 +26,8 @@ model User {
     toolGroups         UserToolGroup[]
     mcpServerConfigs   UserMcpServerConfig[]
     mcpServerInstances UserMcpServerInstance[]
+    /// 作成したカスタムMCPサーバー
+    customMcpServers   McpServer[]
     /// ユーザーの権限
     role               Role                     @default(USER)
     organizations      Organization[]
