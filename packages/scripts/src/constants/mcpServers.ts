@@ -53,7 +53,7 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
-    name: "Figma Context",
+    name: "Figma",
     iconPath: "/logos/figma.svg",
     command: "node",
     args: [
@@ -70,6 +70,14 @@ export const MCP_SERVERS = [
     command: "node",
     args: ["node_modules/puppeteer-mcp-server/dist/index.js"],
     envVars: [],
+    isPublic: true,
+  },
+  {
+    name: "Gemini Google Search",
+    iconPath: "/logos/gemini-search.png",
+    command: "node",
+    args: ["node_modules/mcp-gemini-google-search/dist/index.js"],
+    envVars: ["GEMINI_API_KEY", "GEMINI_MODEL"],
     isPublic: true,
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];

@@ -475,6 +475,9 @@ importers:
       marked:
         specifier: ^15.0.8
         version: 15.0.12
+      mcp-gemini-google-search:
+        specifier: ^0.1.1
+        version: 0.1.1(bufferutil@4.0.9)
       octokit:
         specifier: ^4.1.2
         version: 4.1.4
@@ -692,6 +695,9 @@ importers:
       figma-developer-mcp:
         specifier: ^0.4.3
         version: 0.4.3
+      mcp-gemini-google-search:
+        specifier: ^0.1.1
+        version: 0.1.1(bufferutil@4.0.9)
       puppeteer-mcp-server:
         specifier: ^0.7.2
         version: 0.7.2(bufferutil@4.0.9)(typescript@5.8.3)
@@ -1711,6 +1717,15 @@ packages:
 
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
+
+  '@google/genai@1.7.0':
+    resolution: {integrity: sha512-s/OZLkrIfBwc+SFFaZoKdEogkw4in0YRTGc4Q483jnfchNBWzrNe560eZEfGJHQRPn6YfzJgECCx0sqEOMWvYw==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.11.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
 
   '@hookform/resolvers@5.1.1':
     resolution: {integrity: sha512-J/NVING3LMAEvexJkyTLjruSm7aOFx7QX21pzkiJfMoNG0wl5aFEjLTl7ay7IQb9EWY6AkrBy7tHL2Alijpdcg==}
@@ -6177,6 +6192,10 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
+  mcp-gemini-google-search@0.1.1:
+    resolution: {integrity: sha512-45oV00Oamnt36PFOKbAA9NoEirB0bR8AcGsDm8Fy7BKDoQeLLMKRvJngzwfE7ASvFUF64pNwmQ9tXZ1CBO3FHQ==}
+    hasBin: true
+
   mcp-proxy@2.14.3:
     resolution: {integrity: sha512-2jmpBclH72z5ViXhdVWopKDLAyhnFGyIhR7MrjE3BLzgYv3pZwVMHKLOogu1aIWZN/J4OrlZp0jraHKjEPD1RQ==}
     hasBin: true
@@ -9525,6 +9544,20 @@ snapshots:
       react-dom: 19.0.0(react@19.0.0)
 
   '@floating-ui/utils@0.2.9': {}
+
+  '@google/genai@1.7.0(@modelcontextprotocol/sdk@1.13.2)(bufferutil@4.0.9)':
+    dependencies:
+      google-auth-library: 9.15.1
+      ws: 8.18.3(bufferutil@4.0.9)
+      zod: 3.25.67
+      zod-to-json-schema: 3.24.6(zod@3.25.67)
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.13.2
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - supports-color
+      - utf-8-validate
 
   '@hookform/resolvers@5.1.1(react-hook-form@7.59.0(react@19.0.0))':
     dependencies:
@@ -14471,6 +14504,16 @@ snapshots:
   marked@7.0.4: {}
 
   math-intrinsics@1.1.0: {}
+
+  mcp-gemini-google-search@0.1.1(bufferutil@4.0.9):
+    dependencies:
+      '@google/genai': 1.7.0(@modelcontextprotocol/sdk@1.13.2)(bufferutil@4.0.9)
+      '@modelcontextprotocol/sdk': 1.13.2
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - supports-color
+      - utf-8-validate
 
   mcp-proxy@2.14.3:
     dependencies:
