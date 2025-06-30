@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { AddCustomServerInput } from ".";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
+import { generateApiKey } from "../mcpApiKey";
 
 type AddCustomServerInput = {
   ctx: ProtectedContext;
@@ -32,7 +33,7 @@ export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
         },
       },
     });
-    return await tx.userMcpServerInstance.create({
+    const data = await tx.userMcpServerInstance.create({
       data: {
         userId: ctx.session.user.id,
         name: input.name,
@@ -43,6 +44,19 @@ export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
         // TODO: mcpServerInstanceToolGroups を追加する
       },
     });
+
+    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
+    // api key を作成
+    const fullKey = generateApiKey();
+    await tx.mcpApiKey.create({
+      data: {
+        name: `${data.name} API Key`,
+        apiKey: fullKey,
+        userMcpServerInstanceId: data.id,
+        userId: ctx.session.user.id,
+      },
+    });
+    return data;
   });
 
   return serverInstance;

@@ -3,6 +3,7 @@ import type { ProtectedContext } from "../../trpc";
 
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import type { AddOfficialServerInput } from ".";
+import { generateApiKey } from "../mcpApiKey";
 
 type AddOfficialServerInput = {
   ctx: ProtectedContext;
@@ -74,6 +75,18 @@ export const addOfficialServer = async ({
         serverStatus: ServerStatus.RUNNING,
         serverType: ServerType.OFFICIAL,
         toolGroupId: toolGroup.id,
+      },
+    });
+
+    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
+    // api key を作成
+    const fullKey = generateApiKey();
+    await tx.mcpApiKey.create({
+      data: {
+        name: `${data.name} API Key`,
+        apiKey: fullKey,
+        userMcpServerInstanceId: data.id,
+        userId: ctx.session.user.id,
       },
     });
 
