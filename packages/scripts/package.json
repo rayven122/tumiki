@@ -46,10 +46,16 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server-github": "^2025.4.8",
+    "@playwright/mcp": "^0.0.29",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
     "@tumiki/utils": "workspace:*",
-    "@upstash/context7-mcp": "^1.0.14"
+    "@upstash/context7-mcp": "^1.0.14",
+    "figma-developer-mcp": "^0.4.3",
+    "mcp-gemini-google-search": "^0.1.1",
+    "puppeteer-mcp-server": "^0.7.2",
+    "slack-mcp-server": "^1.1.16",
+    "task-master-ai": "^0.18.0"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
