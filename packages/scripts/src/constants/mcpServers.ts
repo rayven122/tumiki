@@ -80,4 +80,12 @@ export const MCP_SERVERS = [
     envVars: ["GEMINI_API_KEY", "GEMINI_MODEL"],
     isPublic: true,
   },
+  {
+    name: "Slack MCP",
+    iconPath: "/logos/slack.svg",
+    command: "go",
+    args: ["run", "packages/go-servers/slack-mcp-server/cmd/slack-mcp-server/main.go", "--transport", "stdio"],
+    envVars: ["SLACK_BOT_TOKEN", "SLACK_APP_TOKEN"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
