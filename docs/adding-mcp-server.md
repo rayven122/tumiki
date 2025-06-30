@@ -6,7 +6,7 @@
 
 Tumiki への MCP サーバー追加は以下の流れで行います：
 
-1. 依存関係の追加
+1. 依存関係の追加（packages/scripts と apps/proxyServer の両方）
 2. サーバー定義の追加
 3. ロゴファイルの配置
 4. データベースへの反映
@@ -15,10 +15,19 @@ Tumiki への MCP サーバー追加は以下の流れで行います：
 
 ### 1. 依存関係の追加
 
-まず、`packages/scripts/package.json` に MCP サーバーパッケージを追加します：
+MCP サーバーパッケージは **2つの場所** に追加する必要があります：
+
+#### 1.1. packages/scripts への追加
 
 ```bash
 cd packages/scripts
+pnpm add @your-org/mcp-server
+```
+
+#### 1.2. apps/proxyServer への追加
+
+```bash
+cd apps/proxyServer
 pnpm add @your-org/mcp-server
 ```
 
@@ -29,10 +38,13 @@ pnpm add @your-org/mcp-server
     "@playwright/mcp": "^0.0.29",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@modelcontextprotocol/server-github": "^2025.4.8",
-    "@upstash/context7-mcp": "^1.0.14"
+    "@upstash/context7-mcp": "^1.0.14",
+    "task-master-ai": "^0.18.0"
   }
 }
 ```
+
+**重要**: 両方のディレクトリに同じパッケージを追加することで、scripts での upsertTools と proxyServer での実行時の両方で MCP サーバーが利用可能になります。
 
 ### 2. サーバー定義の追加
 
@@ -154,11 +166,50 @@ Tumiki は以下のトランスポートをサポート：
 
 ## 参考例
 
-実際のコミット例として、Playwright MCP の追加（コミット 9886658）では：
+### Playwright MCP の追加例（コミット 9886658）
 
-1. `@playwright/mcp` パッケージを追加
+1. `@playwright/mcp` パッケージを両方のディレクトリに追加
 2. `mcpServers.ts` に定義を追加
 3. `/logos/playwright.svg` を配置
 4. データベースに反映
+
+### Task Master AI の追加例
+
+1. **依存関係の追加**:
+   ```bash
+   # packages/scripts に追加
+   cd packages/scripts
+   pnpm add task-master-ai
+   
+   # apps/proxyServer に追加
+   cd apps/proxyServer
+   pnpm add task-master-ai
+   ```
+
+2. **サーバー定義の追加**:
+   ```typescript
+   {
+     name: "Task Master AI",
+     iconPath: "/logos/task-master.svg",
+     command: "node",
+     args: ["node_modules/task-master-ai/index.js"],
+     envVars: [
+       "ANTHROPIC_API_KEY",
+       "PERPLEXITY_API_KEY",
+       "OPENAI_API_KEY",
+       "GOOGLE_API_KEY",
+       "MISTRAL_API_KEY",
+       "OPENROUTER_API_KEY",
+       "XAI_API_KEY",
+       "AZURE_OPENAI_API_KEY",
+       "OLLAMA_API_KEY"
+     ],
+     isPublic: true,
+   }
+   ```
+
+3. **ロゴファイルの作成**: タスクリストアイコンの SVG を作成・配置
+
+4. **データベースへの反映**: `pnpm upsertAll` を実行
 
 このプロセスに従うことで、新しい MCP サーバーを Tumiki システムに統合できます。
