@@ -50,7 +50,8 @@
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
     "@tumiki/utils": "workspace:*",
-    "@upstash/context7-mcp": "^1.0.14"
+    "@upstash/context7-mcp": "^1.0.14",
+    "task-master-ai": "^0.18.0"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
