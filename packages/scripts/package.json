@@ -51,6 +51,7 @@
     "@tumiki/db": "workspace:*",
     "@tumiki/utils": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
+    "figma-developer-mcp": "^0.4.3",
     "task-master-ai": "^0.18.0"
   },
   "devDependencies": {
