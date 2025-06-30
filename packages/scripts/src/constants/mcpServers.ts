@@ -48,8 +48,20 @@ export const MCP_SERVERS = [
       "OPENROUTER_API_KEY",
       "XAI_API_KEY",
       "AZURE_OPENAI_API_KEY",
-      "OLLAMA_API_KEY"
+      "OLLAMA_API_KEY",
     ],
+    isPublic: true,
+  },
+  {
+    name: "Figma Context",
+    iconPath: "/logos/figma.svg",
+    command: "node",
+    args: [
+      "node_modules/figma-developer-mcp/dist/index.js",
+      "--figma-api-key=FIGMA_API_KEY",
+      "--stdio",
+    ],
+    envVars: ["FIGMA_API_KEY"],
     isPublic: true,
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
