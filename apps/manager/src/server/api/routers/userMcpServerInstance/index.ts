@@ -10,6 +10,7 @@ import {
 import { findCustomServers } from "./findCustomServers";
 
 import {
+  McpApiKeySchema,
   McpServerSchema,
   ToolSchema,
   UserMcpServerInstanceSchema,
@@ -27,6 +28,7 @@ export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
     z.object({
       id: UserMcpServerInstanceIdSchema,
+      apiKeys: McpApiKeySchema.array(),
       tools: z.array(
         ToolSchema.merge(
           z.object({

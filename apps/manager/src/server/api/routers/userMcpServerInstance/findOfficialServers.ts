@@ -17,6 +17,7 @@ export const findOfficialServers = async ({
       userId: ctx.session.user.id,
     },
     include: {
+      apiKeys: true,
       toolGroup: {
         include: {
           toolGroupTools: {
@@ -65,6 +66,7 @@ export const findOfficialServers = async ({
         createdAt: serverConfig.createdAt,
         updatedAt: serverConfig.updatedAt,
         tools: serverConfig.tools,
+        apiKeys: server.apiKeys,
       },
     ];
 
