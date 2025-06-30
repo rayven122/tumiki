@@ -1,12 +1,18 @@
 import { db } from "@tumiki/db";
 import { getMcpServerTools } from "@tumiki/utils";
 
+import { MCP_SERVERS } from "./constants/mcpServers";
+
 /**
  * MCP サーバーからツールを取得してデータベースに書き込む
  */
 export const upsertMcpTools = async () => {
   const mcpServers = await db.mcpServer.findMany();
-  for (const mcpServer of mcpServers) {
+  const filteredMcpServers = mcpServers.filter((mcpServer) =>
+    MCP_SERVERS.some((server) => server.name === mcpServer.name),
+  );
+
+  for (const mcpServer of filteredMcpServers) {
     // 環境変数を取得
     const envVars = mcpServer.envVars.reduce<Record<string, string>>(
       (acc, envVar) => {

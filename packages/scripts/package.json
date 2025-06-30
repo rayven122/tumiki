@@ -54,6 +54,7 @@
     "figma-developer-mcp": "^0.4.3",
     "mcp-gemini-google-search": "^0.1.1",
     "puppeteer-mcp-server": "^0.7.2",
+    "slack-mcp-server": "^1.1.16",
     "task-master-ai": "^0.18.0"
   },
   "devDependencies": {
