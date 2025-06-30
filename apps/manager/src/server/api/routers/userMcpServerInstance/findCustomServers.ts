@@ -14,6 +14,7 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
       userId: ctx.session.user.id,
     },
     include: {
+      apiKeys: true,
       toolGroup: {
         include: {
           toolGroupTools: {
@@ -58,6 +59,7 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
         createdAt: userMcpServerConfig.createdAt,
         updatedAt: userMcpServerConfig.updatedAt,
         tools: userMcpServerConfig.tools,
+        apiKeys: server.apiKeys,
       };
     });
 
