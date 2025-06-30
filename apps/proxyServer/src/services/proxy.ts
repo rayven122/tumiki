@@ -264,6 +264,20 @@ const getServerConfigs = async (apiKey: string) => {
       );
     }
 
+    // args 内部に、envObj の key の値と一致するものは、値を置き換える
+    // 例: --api-key=API_KEY の場合、envObj["API_KEY"] の値に置き換える
+    // ただし、envObj に存在しない場合はそのまま使用する
+    const args: string[] = [];
+    serverConfig.mcpServer.args.map((arg) => {
+      Object.entries(envObj).forEach(([key, value]) => {
+        if (arg.includes(key)) {
+          args.push(arg.replace(key, value));
+        } else {
+          args.push(arg);
+        }
+      });
+    });
+
     if (serverConfig.mcpServer.transportType === TransportType.STDIO) {
       return {
         name: serverConfig.name,
@@ -274,7 +288,7 @@ const getServerConfigs = async (apiKey: string) => {
             serverConfig.mcpServer.command === "node"
               ? process.execPath
               : (serverConfig.mcpServer.command ?? ""),
-          args: serverConfig.mcpServer.args,
+          args,
           env: envObj,
         },
       };
