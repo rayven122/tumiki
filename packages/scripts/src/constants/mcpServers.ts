@@ -27,4 +27,11 @@ export const MCP_SERVERS = [
     args: ["node_modules/@upstash/context7-mcp/dist/index.js"],
     isPublic: true,
   },
+  {
+    name: "Playwright MCP",
+    iconPath: "/logos/playwright.svg",
+    command: "node",
+    args: ["node_modules/@playwright/mcp/cli.js"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
