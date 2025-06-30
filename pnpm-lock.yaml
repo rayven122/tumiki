@@ -484,6 +484,9 @@ importers:
       puppeteer-mcp-server:
         specifier: ^0.7.2
         version: 0.7.2(bufferutil@4.0.9)(typescript@5.8.3)
+      slack-mcp-server:
+        specifier: ^1.1.16
+        version: 1.1.16
       task-master-ai:
         specifier: ^0.18.0
         version: 0.18.0(@types/node@24.0.7)(react@19.0.0)(ws@8.18.3(bufferutil@4.0.9))
@@ -701,6 +704,9 @@ importers:
       puppeteer-mcp-server:
         specifier: ^0.7.2
         version: 0.7.2(bufferutil@4.0.9)(typescript@5.8.3)
+      slack-mcp-server:
+        specifier: ^1.1.16
+        version: 1.1.16
       task-master-ai:
         specifier: ^0.18.0
         version: 0.18.0(@types/node@24.0.7)(react@19.0.0)(ws@8.18.3(bufferutil@4.0.9))
@@ -7464,6 +7470,40 @@ packages:
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
+
+  slack-mcp-server-darwin-amd64@1.1.16:
+    resolution: {integrity: sha512-l/1GZCdVMSLnCCBjACr9ZFWUc89bpaxEiY6s4BMhMdFT9GxsUyDB0uyLQkl+7ysOT/ekor3FR0LiuZxiZWICHQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  slack-mcp-server-darwin-arm64@1.1.16:
+    resolution: {integrity: sha512-dO5SXiqICXAU9Rjk+U8YZzFlClJNUMDY1yeWgGlwgsJ9Ou/0Tt1G8TDRq8d0U7vCqy56lc5ipMJoxdCawWx61A==}
+    cpu: [arm64]
+    os: [darwin]
+
+  slack-mcp-server-linux-amd64@1.1.16:
+    resolution: {integrity: sha512-ZTbbv0Uqz8vMEgoHlq7EXovYzeTlDD1oP4kaM+Jn3TK0/WEHhMIkNk0TKwmYlzsvRulCPrO7Ib1EtJp6qxdyAQ==}
+    cpu: [x64]
+    os: [linux]
+
+  slack-mcp-server-linux-arm64@1.1.16:
+    resolution: {integrity: sha512-h1OI6zvwpXVBJzX4DUenu/79s8Bk9zZr8K+6eIMlK5rQ0wzXBQa8itrQ9b2ESQViVGFEKrSOuclIwPH0qAzw4g==}
+    cpu: [arm64]
+    os: [linux]
+
+  slack-mcp-server-windows-amd64@1.1.16:
+    resolution: {integrity: sha512-v/4jIAqQNR7pBUHTH/AE2Hrg+jMpuLKFMRA6LnBpkAr4dTnVm6tK/76sjnXR0i3OFCjm2/y5Przam4HsG2QPhg==}
+    cpu: [x64]
+    os: [win32]
+
+  slack-mcp-server-windows-arm64@1.1.16:
+    resolution: {integrity: sha512-jdE7iWGpItveJSODn3FQ1tBIBr76moSfSdlvIznSSjHr2V7PmeRdhCwJ86e10uhaherLdYkxNPtp6LmY6xuBMA==}
+    cpu: [arm64]
+    os: [win32]
+
+  slack-mcp-server@1.1.16:
+    resolution: {integrity: sha512-eknYO9xEGYwqApnvVSB0/Y8ZpgyomZBXJYOHsIcRK3PojYOPzCdCpU03qDJYw6av0dwoD1AH0+BnLjR7rTuGIQ==}
+    hasBin: true
 
   smart-buffer@4.2.0:
     resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}
@@ -16175,6 +16215,33 @@ snapshots:
       is-arrayish: 0.3.2
 
   sisteransi@1.0.5: {}
+
+  slack-mcp-server-darwin-amd64@1.1.16:
+    optional: true
+
+  slack-mcp-server-darwin-arm64@1.1.16:
+    optional: true
+
+  slack-mcp-server-linux-amd64@1.1.16:
+    optional: true
+
+  slack-mcp-server-linux-arm64@1.1.16:
+    optional: true
+
+  slack-mcp-server-windows-amd64@1.1.16:
+    optional: true
+
+  slack-mcp-server-windows-arm64@1.1.16:
+    optional: true
+
+  slack-mcp-server@1.1.16:
+    optionalDependencies:
+      slack-mcp-server-darwin-amd64: 1.1.16
+      slack-mcp-server-darwin-arm64: 1.1.16
+      slack-mcp-server-linux-amd64: 1.1.16
+      slack-mcp-server-linux-arm64: 1.1.16
+      slack-mcp-server-windows-amd64: 1.1.16
+      slack-mcp-server-windows-arm64: 1.1.16
 
   smart-buffer@4.2.0: {}
 
