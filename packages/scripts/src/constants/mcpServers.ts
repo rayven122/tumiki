@@ -64,4 +64,12 @@ export const MCP_SERVERS = [
     envVars: ["FIGMA_API_KEY"],
     isPublic: true,
   },
+  {
+    name: "Puppeteer MCP",
+    iconPath: "/logos/puppeteer.png",
+    command: "node",
+    args: ["node_modules/puppeteer-mcp-server/dist/index.js"],
+    envVars: [],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
