@@ -56,13 +56,15 @@ export const UserMcpServerCard = ({
 
   const { tools } = serverInstance;
 
+  const apiKey = serverInstance.apiKeys[0]?.apiKey ?? "";
+
   const copyUrl = async () => {
-    await copyToClipboard(makeSseProxyServerUrl(serverInstance.id));
+    await copyToClipboard(makeSseProxyServerUrl(apiKey));
     toast.success("SSE URLをコピーしました");
   };
 
   const copyHttpUrl = async () => {
-    await copyToClipboard(makeHttpProxyServerUrl(serverInstance.id));
+    await copyToClipboard(makeHttpProxyServerUrl(apiKey));
     toast.success("Streamable HTTP をコピーしました");
   };
 
@@ -114,7 +116,7 @@ export const UserMcpServerCard = ({
                 className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
                 onClick={copyUrl}
               >
-                {makeSseProxyServerUrl(serverInstance.id)}
+                {makeSseProxyServerUrl(apiKey)}
               </span>
               <Button
                 variant="ghost"
@@ -133,7 +135,7 @@ export const UserMcpServerCard = ({
                 className="cursor-pointer truncate font-mono text-sm text-blue-600 underline"
                 onClick={copyUrl}
               >
-                {makeHttpProxyServerUrl(serverInstance.id)}
+                {makeHttpProxyServerUrl(apiKey)}
               </span>
               <Button
                 variant="ghost"
