@@ -34,4 +34,22 @@ export const MCP_SERVERS = [
     args: ["node_modules/@playwright/mcp/cli.js"],
     isPublic: true,
   },
+  {
+    name: "Task Master AI",
+    iconPath: "/logos/task-master.svg",
+    command: "node",
+    args: ["node_modules/task-master-ai/index.js"],
+    envVars: [
+      "ANTHROPIC_API_KEY",
+      "PERPLEXITY_API_KEY",
+      "OPENAI_API_KEY",
+      "GOOGLE_API_KEY",
+      "MISTRAL_API_KEY",
+      "OPENROUTER_API_KEY",
+      "XAI_API_KEY",
+      "AZURE_OPENAI_API_KEY",
+      "OLLAMA_API_KEY"
+    ],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];

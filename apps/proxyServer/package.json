@@ -38,6 +38,7 @@
     "just-pick": "^4.2.0",
     "marked": "^15.0.8",
     "octokit": "^4.1.2",
+    "task-master-ai": "^0.18.0",
     "workers-mcp": "0.1.0-3",
     "ws": "^8.18.2",
     "zod": "catalog:"
