@@ -14,7 +14,7 @@ export const WaitingListConfirmation = ({
   confirmUrl = "https://tumiki.app/jp",
   appName = "Tumiki",
 }: WaitingListConfirmationProps) => {
-  const previewText = `${appName} - 早期アクセス登録完了`;
+  const previewText = `${appName} - ウェイティングリスト登録完了`;
 
   return (
     <Layout appName={appName} previewText={previewText}>
@@ -25,7 +25,7 @@ export const WaitingListConfirmation = ({
           <span style={brandName}>Tumiki</span>
           <span style={betaLabel}>BETA</span>
         </Text>
-        <Text style={heroTitle}>🎉 早期アクセス登録完了！</Text>
+        <Text style={heroTitle}>🎉 ウェイティングリスト登録完了！</Text>
         <Text style={heroSubtitle}>
           AIブロックの革命に参加いただき、ありがとうございます
         </Text>
@@ -39,7 +39,8 @@ export const WaitingListConfirmation = ({
           </Text>
         )}
         <Text style={paragraph}>
-          {appName}の早期アクセスにご登録いただき、ありがとうございます。
+          {appName}
+          のウェイティングリストにご登録いただき、ありがとうございます。
         </Text>
         <Text style={paragraph}>
           <span style={highlightText}>AIブロックの革命</span>

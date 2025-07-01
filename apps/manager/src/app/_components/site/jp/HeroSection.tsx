@@ -11,7 +11,7 @@ interface HeroSectionProps {
   isVisible: boolean;
 }
 
-function AnimatedRole() {
+const AnimatedRole = () => {
   const roles = [
     "「フロントエンドエンジニア」",
     "「バックエンドエンジニア」",
@@ -33,7 +33,7 @@ function AnimatedRole() {
       {roles.map((role, index) => (
         <motion.span
           key={index}
-          className="absolute left-0 whitespace-nowrap"
+          className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap"
           initial={{ opacity: 0, y: 20 }}
           animate={{
             opacity: currentIndex === index ? 1 : 0,
@@ -47,28 +47,29 @@ function AnimatedRole() {
       <span className="invisible">{roles[0]}</span>
     </span>
   );
-}
+};
 
-export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
+export const HeroSection = ({ setShowModal, isVisible }: HeroSectionProps) => {
   return (
     <>
       {/* Header */}
       <header className="fixed top-0 z-50 w-full border-b-2 border-black bg-white transition-all duration-300">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
-          <div className="flex items-center gap-3">
-            <div className="relative h-8 w-8 bg-black shadow-[2px_2px_0_#6366f1]" />
-            <span className="text-2xl font-black tracking-tight text-black">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="relative h-6 w-6 bg-black shadow-[2px_2px_0_#6366f1] md:h-8 md:w-8" />
+            <span className="text-xl font-black tracking-tight text-black md:text-2xl">
               Tumiki
             </span>
-            <span className="bg-black px-2 py-1 text-xs font-bold tracking-wider text-white">
+            <span className="bg-black px-1 py-1 text-xs font-bold tracking-wider text-white md:px-2">
               BETA
             </span>
           </div>
 
-          <div className="hidden items-center gap-6 md:flex">
+          {/* Navigation */}
+          <div className="flex items-center gap-2 md:gap-6">
             <Link
               href="#about"
-              className="group relative font-medium text-gray-600 transition-colors hover:text-black"
+              className="group relative hidden font-medium text-gray-600 transition-colors hover:text-black md:block"
             >
               Tumikiとは
               <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-black transition-all duration-300 group-hover:w-full" />
@@ -76,9 +77,9 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
             <LanguageToggle />
             <button
               onClick={() => setShowModal(true)}
-              className="border-2 border-black bg-black px-7 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
+              className="border-2 border-black bg-black px-4 py-2 text-sm font-semibold text-white shadow-[2px_2px_0_#6366f1] transition-all duration-300 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#6366f1] md:px-7 md:py-3 md:shadow-[3px_3px_0_#6366f1] md:hover:-translate-x-1 md:hover:-translate-y-1 md:hover:shadow-[6px_6px_0_#6366f1]"
             >
-              早期アクセス
+              無料で試す
             </button>
           </div>
         </nav>
@@ -275,21 +276,22 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
         <div className="relative z-10 mx-auto mt-20 max-w-6xl px-5">
           <div className="text-center">
             <motion.h1
-              className="mb-6 text-4xl leading-tight font-black tracking-tight text-black md:text-6xl lg:text-7xl"
+              className="mb-6 text-2xl leading-tight font-black tracking-tight text-black sm:text-3xl md:text-6xl lg:text-7xl"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
               transition={{ duration: 0.8 }}
             >
               AIを
-              <span className="mx-1 inline-block -rotate-1 transform bg-black px-4 text-white shadow-[4px_4px_0_#6366f1]">
+              <span className="mx-1 inline-block -rotate-1 transform bg-black px-2 text-white shadow-[4px_4px_0_#6366f1] sm:px-4">
                 Tumiki
               </span>
-              で あなた専用の
+              であなた専用の
+              <br className="sm:hidden" />
               <AnimatedRole />
             </motion.h1>
 
             <motion.p
-              className="mx-auto mb-12 max-w-4xl text-lg leading-relaxed font-medium text-gray-600 md:text-xl lg:text-2xl"
+              className="mx-auto mb-12 max-w-4xl text-sm leading-relaxed font-medium text-gray-600 sm:text-lg md:text-xl lg:text-2xl"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -309,13 +311,16 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
             >
               <button
                 onClick={() => setShowModal(true)}
-                className="border-3 border-black bg-black px-10 py-4 text-lg font-bold text-white shadow-[4px_4px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#6366f1]"
+                className="border-3 border-black bg-black px-6 py-3 text-sm font-bold text-white shadow-[4px_4px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#6366f1] sm:px-10 sm:py-4 sm:text-lg"
               >
                 AIチーム環境を構築する
               </button>
-              <button className="flex items-center gap-2 border-b-2 border-transparent font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black">
+              <Link
+                href="#solution"
+                className="flex items-center gap-2 border-b-2 border-transparent text-sm font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black sm:text-base"
+              >
                 MCPサーバー管理デモを見る <ArrowRight className="h-4 w-4" />
-              </button>
+              </Link>
             </motion.div>
 
             {/* Interactive Block Visual */}
@@ -334,4 +339,4 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
       </section>
     </>
   );
-}
+};

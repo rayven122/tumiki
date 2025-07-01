@@ -34,8 +34,8 @@ export async function sendWaitingListConfirmation(
   const isJapanese = language === "ja";
 
   const subject = isJapanese
-    ? `${validatedData.appName} - 早期アクセス登録完了`
-    : `${validatedData.appName} - Early Access Registration Complete`;
+    ? `${validatedData.appName} - ウェイティングリスト登録完了`
+    : `${validatedData.appName} - Waiting List Registration Complete`;
 
   const EmailComponent = isJapanese
     ? WaitingListConfirmation
