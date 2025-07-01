@@ -28,7 +28,7 @@ import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 
-import { type RouterOutputs } from "@/trpc/react";
+import { type RouterOutputs, api } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
@@ -57,6 +57,13 @@ export const UserMcpServerCard = ({
   const { tools } = serverInstance;
 
   const apiKey = serverInstance.apiKeys[0]?.apiKey ?? "";
+
+  api.userMcpServerConfig.findServersWithTools.usePrefetchQuery({
+    userMcpServerConfigIds:
+      serverInstance.serverType === ServerType.OFFICIAL
+        ? serverInstance.userMcpServers.map(({ id }) => id)
+        : undefined,
+  });
 
   const copyUrl = async () => {
     await copyToClipboard(makeSseProxyServerUrl(apiKey));
