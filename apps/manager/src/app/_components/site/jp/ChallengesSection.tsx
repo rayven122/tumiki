@@ -11,12 +11,12 @@ interface ChallengeCard {
 const challenges: ChallengeCard[] = [
   {
     icon: "🤖",
-    title: "AIエージェントの活用限界",
+    title: "AIの活用限界",
     items: [
       "汎用的で専門性が不足",
-      "役割分担・協働ができない",
-      "複雑タスクでの精度低下",
+      "複雑なタスクでの精度低下",
       "実務レベルでの継続利用困難",
+      "ツール連携・セキュリティの壁",
     ],
   },
   {
