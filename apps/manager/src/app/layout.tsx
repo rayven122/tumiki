@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { GoogleTagManager } from "@next/third-parties/google";
 import "../styles/globals.css";
 
 import { ClientProvider } from "./_components/ClientProvider";
@@ -26,6 +27,7 @@ export default function RootLayout({
           {children}
         </ClientProvider>
       </body>
+      <GoogleTagManager gtmId="GTM-WPZPSVXM" />
     </html>
   );
 }
