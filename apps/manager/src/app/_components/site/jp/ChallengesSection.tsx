@@ -112,10 +112,10 @@ export function ChallengesSection() {
               個別導入から始まる悪循環
             </p>
           </div>
-          
+
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-around md:gap-4">
             {/* Step 1 */}
-            <motion.div 
+            <motion.div
               className="relative flex-1"
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -124,9 +124,12 @@ export function ChallengesSection() {
             >
               <div className="group relative border-2 border-red-300 bg-white p-4 text-center shadow-[3px_3px_0_rgba(239,68,68,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(239,68,68,0.4)] md:p-6">
                 <div className="mb-3 text-4xl md:text-5xl">🤖</div>
-                <h4 className="mb-2 text-lg font-bold text-red-800 md:text-xl">個別ツール導入</h4>
+                <h4 className="mb-2 text-lg font-bold text-red-800 md:text-xl">
+                  個別ツール導入
+                </h4>
                 <p className="text-xs text-red-600 md:text-sm">
-                  ChatGPT、Claude、Copilot等を<br/>
+                  ChatGPT、Claude、Copilot等を
+                  <br />
                   バラバラに導入
                 </p>
               </div>
@@ -139,7 +142,7 @@ export function ChallengesSection() {
             </div>
 
             {/* Step 2 */}
-            <motion.div 
+            <motion.div
               className="relative flex-1"
               initial={{ opacity: 0, x: 0 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -148,9 +151,12 @@ export function ChallengesSection() {
             >
               <div className="group relative border-2 border-orange-300 bg-white p-4 text-center shadow-[3px_3px_0_rgba(251,146,60,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(251,146,60,0.4)] md:p-6">
                 <div className="mb-3 text-4xl md:text-5xl">🚫</div>
-                <h4 className="mb-2 text-lg font-bold text-orange-800 md:text-xl">効果測定困難</h4>
+                <h4 className="mb-2 text-lg font-bold text-orange-800 md:text-xl">
+                  効果測定困難
+                </h4>
                 <p className="text-xs text-orange-600 md:text-sm">
-                  連携なし、専門性なし<br/>
+                  連携なし、専門性なし
+                  <br />
                   ROI測定不可
                 </p>
               </div>
@@ -163,7 +169,7 @@ export function ChallengesSection() {
             </div>
 
             {/* Step 3 */}
-            <motion.div 
+            <motion.div
               className="relative flex-1"
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -172,9 +178,12 @@ export function ChallengesSection() {
             >
               <div className="group relative border-2 border-red-400 bg-white p-4 text-center shadow-[3px_3px_0_rgba(239,68,68,0.4)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(239,68,68,0.5)] md:p-6">
                 <div className="mb-3 text-4xl md:text-5xl">💸</div>
-                <h4 className="mb-2 text-lg font-bold text-red-800 md:text-xl">予算の無駄遣い</h4>
+                <h4 className="mb-2 text-lg font-bold text-red-800 md:text-xl">
+                  予算の無駄遣い
+                </h4>
                 <p className="text-xs text-red-600 md:text-sm">
-                  継続利用されず<br/>
+                  継続利用されず
+                  <br />
                   投資対効果が極めて低い
                 </p>
               </div>
