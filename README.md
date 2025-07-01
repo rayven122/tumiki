@@ -204,3 +204,32 @@ docker compose -f ./docker/compose.dev.yaml down
 # 本番環境の停止
 docker compose -f ./docker/compose.prod.yaml down
 ```
+
+## プロダクション デプロイメント
+
+### ProxyServer の Google Compute Engine (GCE) へのデプロイ
+
+ProxyServer を既存の GCE VM にデプロイして PM2 で管理する詳細な手順は、専用のドキュメントを参照してください。
+
+📖 **[ProxyServer デプロイメントガイド](./docs/proxy-server-deployment.md)**
+
+#### クイックスタート
+
+```bash
+# ProxyServer ディレクトリに移動
+cd apps/proxyServer
+
+# デプロイ実行
+./deploy-to-gce.sh
+
+# ドライラン（実行内容の確認）
+DRY_RUN=true ./deploy-to-gce.sh
+```
+
+デプロイメントガイドには以下の詳細情報が含まれています：
+- 前提条件とセットアップ
+- デプロイプロセスの詳細説明
+- 運用管理コマンド
+- トラブルシューティング
+- 環境変数管理
+- ドライラン機能の使用方法
