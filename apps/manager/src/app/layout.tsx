@@ -19,6 +19,7 @@ const geist = Geist({
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const gtmId = process.env.NODE_ENV === "production" ? "GTM-WPZPSVXM" : "";
   return (
     <html lang="ja" className={`${geist.variable}`}>
       <body>
@@ -27,7 +28,7 @@ export default function RootLayout({
           {children}
         </ClientProvider>
       </body>
-      <GoogleTagManager gtmId="GTM-WPZPSVXM" />
+      <GoogleTagManager gtmId={gtmId} />
     </html>
   );
 }
