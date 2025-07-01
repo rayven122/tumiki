@@ -152,7 +152,7 @@ export function WaitingListModal({ isOpen, onClose }: WaitingListModalProps) {
         </button>
 
         <div className={MODAL_CLASSES.HEADER}>
-          <h2 className={MODAL_CLASSES.TITLE}>早期アクセスに登録</h2>
+          <h2 className={MODAL_CLASSES.TITLE}>ウェイティングリストに登録</h2>
           <p className={MODAL_CLASSES.SUBTITLE}>AIブロックの革命に参加しよう</p>
         </div>
 

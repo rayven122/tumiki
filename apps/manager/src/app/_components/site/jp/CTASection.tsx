@@ -34,7 +34,8 @@ export function CTASection({ setShowModal }: CTASectionProps) {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mx-auto mb-12 max-w-4xl text-lg text-gray-700 md:text-xl"
           >
-            30日間の無料トライアルで、MCPサーバー統一管理と
+            {/* 30日間の無料トライアルで、 */}
+            MCPサーバー統一管理と
             <br />
             AIエージェントの専門化・チーム化を実体験。
             <br />
