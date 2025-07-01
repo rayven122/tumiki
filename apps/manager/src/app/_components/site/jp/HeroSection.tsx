@@ -326,9 +326,12 @@ export const HeroSection = ({ setShowModal, isVisible }: HeroSectionProps) => {
               >
                 AIチーム環境を構築する
               </button>
-              <button className="flex items-center gap-2 border-b-2 border-transparent text-sm font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black sm:text-base">
+              <Link
+                href="#solution"
+                className="flex items-center gap-2 border-b-2 border-transparent text-sm font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black sm:text-base"
+              >
                 MCPサーバー管理デモを見る <ArrowRight className="h-4 w-4" />
-              </button>
+              </Link>
             </motion.div>
 
             {/* Interactive Block Visual */}
