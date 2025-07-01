@@ -100,7 +100,7 @@ importers:
         specifier: ^2025.4.8
         version: 2025.4.8
       '@next/third-parties':
-        specifier: ^15.3.4
+        specifier: ^15.3.3
         version: 15.3.4(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
       '@radix-ui/react-accordion':
         specifier: ^1.2.8
