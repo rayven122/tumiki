@@ -102,24 +102,102 @@ export function ChallengesSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-16 border-3 border-black bg-white p-8 shadow-[6px_6px_0_#000]"
+          className="mt-16 border-3 border-black bg-gradient-to-r from-red-50 to-orange-50 p-6 shadow-[6px_6px_0_#000] md:p-8"
         >
-          <div className="flex flex-col items-center gap-8 md:flex-row md:items-center md:justify-around">
-            <div className="text-center">
-              <div className="mb-2 text-6xl">😔</div>
-              <p className="font-bold text-gray-700">バラバラなAI活用</p>
-            </div>
-            <div className="text-4xl">→</div>
-            <div className="text-center">
-              <div className="mb-2 text-6xl">🚫</div>
-              <p className="font-bold text-gray-700">効果が限定的</p>
-            </div>
-            <div className="text-4xl">→</div>
-            <div className="text-center">
-              <div className="mb-2 text-6xl">💸</div>
-              <p className="font-bold text-gray-700">投資対効果が低い</p>
-            </div>
+          <div className="mb-6 text-center">
+            <h3 className="text-2xl font-black text-red-800 md:text-3xl">
+              よくある失敗パターン
+            </h3>
+            <p className="mt-2 text-sm text-red-600 md:text-base">
+              個別導入から始まる悪循環
+            </p>
           </div>
+          
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-around md:gap-4">
+            {/* Step 1 */}
+            <motion.div 
+              className="relative flex-1"
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              <div className="group relative border-2 border-red-300 bg-white p-4 text-center shadow-[3px_3px_0_rgba(239,68,68,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(239,68,68,0.4)] md:p-6">
+                <div className="mb-3 text-4xl md:text-5xl">🤖</div>
+                <h4 className="mb-2 text-lg font-bold text-red-800 md:text-xl">個別ツール導入</h4>
+                <p className="text-xs text-red-600 md:text-sm">
+                  ChatGPT、Claude、Copilot等を<br/>
+                  バラバラに導入
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Arrow 1 */}
+            <div className="flex justify-center md:flex-shrink-0">
+              <div className="text-2xl text-red-500 md:hidden">↓</div>
+              <div className="hidden text-2xl text-red-500 md:block">→</div>
+            </div>
+
+            {/* Step 2 */}
+            <motion.div 
+              className="relative flex-1"
+              initial={{ opacity: 0, x: 0 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+            >
+              <div className="group relative border-2 border-orange-300 bg-white p-4 text-center shadow-[3px_3px_0_rgba(251,146,60,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(251,146,60,0.4)] md:p-6">
+                <div className="mb-3 text-4xl md:text-5xl">🚫</div>
+                <h4 className="mb-2 text-lg font-bold text-orange-800 md:text-xl">効果測定困難</h4>
+                <p className="text-xs text-orange-600 md:text-sm">
+                  連携なし、専門性なし<br/>
+                  ROI測定不可
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Arrow 2 */}
+            <div className="flex justify-center md:flex-shrink-0">
+              <div className="text-2xl text-red-500 md:hidden">↓</div>
+              <div className="hidden text-2xl text-red-500 md:block">→</div>
+            </div>
+
+            {/* Step 3 */}
+            <motion.div 
+              className="relative flex-1"
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 1.0 }}
+            >
+              <div className="group relative border-2 border-red-400 bg-white p-4 text-center shadow-[3px_3px_0_rgba(239,68,68,0.4)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(239,68,68,0.5)] md:p-6">
+                <div className="mb-3 text-4xl md:text-5xl">💸</div>
+                <h4 className="mb-2 text-lg font-bold text-red-800 md:text-xl">予算の無駄遣い</h4>
+                <p className="text-xs text-red-600 md:text-sm">
+                  継続利用されず<br/>
+                  投資対効果が極めて低い
+                </p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Call to action */}
+          <motion.div
+            className="mt-8 text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 1.2 }}
+          >
+            <div className="mx-auto max-w-md rounded border-2 border-red-300 bg-red-100 p-4">
+              <p className="text-sm font-bold text-red-800 md:text-base">
+                💡 この悪循環を断ち切るには？
+              </p>
+              <p className="mt-2 text-xs text-red-700 md:text-sm">
+                統合されたAIチーム環境が必要です
+              </p>
+            </div>
+          </motion.div>
         </motion.div>
       </div>
     </section>
