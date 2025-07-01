@@ -16,15 +16,15 @@ const INITIAL_FORM_DATA: WaitingListFormData = {
 
 const MODAL_CLASSES = {
   OVERLAY:
-    "bg-opacity-80 fixed inset-0 z-50 flex items-center justify-center bg-black p-4 backdrop-blur-sm",
+    "bg-opacity-80 fixed inset-0 z-50 flex items-center justify-center bg-black p-2 backdrop-blur-sm sm:p-4",
   CONTAINER:
-    "relative w-full max-w-lg border-4 border-black bg-white p-10 shadow-[8px_8px_0_#6366f1]",
+    "relative w-full max-w-sm border-3 border-black bg-white p-4 shadow-[6px_6px_0_#6366f1] sm:max-w-lg sm:border-4 sm:p-10 sm:shadow-[8px_8px_0_#6366f1]",
   CLOSE_BUTTON:
-    "absolute top-5 right-5 text-3xl font-black text-black transition-transform duration-300 hover:rotate-90",
-  HEADER: "mb-8 text-center",
-  TITLE: "mb-3 text-3xl font-black text-black",
-  SUBTITLE: "text-gray-600",
-  FORM_CONTAINER: "space-y-5",
+    "absolute top-2 right-2 text-xl font-black text-black transition-transform duration-300 hover:rotate-90 sm:top-5 sm:right-5 sm:text-3xl",
+  HEADER: "mb-4 text-center sm:mb-8",
+  TITLE: "mb-2 text-xl font-black text-black sm:mb-3 sm:text-3xl",
+  SUBTITLE: "text-xs text-gray-600 sm:text-base",
+  FORM_CONTAINER: "space-y-3 sm:space-y-5",
 } as const;
 
 const SUCCESS_MESSAGES = {
@@ -152,7 +152,7 @@ export function WaitingListModal({ isOpen, onClose }: WaitingListModalProps) {
         </button>
 
         <div className={MODAL_CLASSES.HEADER}>
-          <h2 className={MODAL_CLASSES.TITLE}>早期アクセスに登録</h2>
+          <h2 className={MODAL_CLASSES.TITLE}>ウェイティングリストに登録</h2>
           <p className={MODAL_CLASSES.SUBTITLE}>AIブロックの革命に参加しよう</p>
         </div>
 
@@ -202,8 +202,8 @@ export function WaitingListModal({ isOpen, onClose }: WaitingListModalProps) {
             >
               {registerMutation.isPending ? (
                 <div className="flex items-center justify-center">
-                  <div className="mr-2 h-5 w-5 animate-spin rounded-full border-3 border-white border-t-transparent" />
-                  登録中...
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-5 sm:w-5 sm:border-3" />
+                  <span className="text-xs sm:text-base">登録中...</span>
                 </div>
               ) : (
                 "登録する"

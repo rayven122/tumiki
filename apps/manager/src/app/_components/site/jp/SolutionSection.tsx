@@ -69,7 +69,7 @@ const solutions: SolutionFeature[] = [
 
 export function SolutionSection() {
   return (
-    <section className="bg-white py-24">
+    <section id="solution" className="bg-white py-24">
       <div className="mx-auto max-w-6xl px-5">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -101,11 +101,11 @@ export function SolutionSection() {
               } items-center`}
             >
               {/* Demo Image */}
-              <div className="flex-1">
-                <div className="relative border-3 border-black bg-white p-4 shadow-[6px_6px_0_#000]">
+              <div className="w-full lg:flex-1">
+                <div className="relative border-3 border-black bg-white p-3 shadow-[6px_6px_0_#000] md:p-4">
                   <div className="absolute -top-3 -left-3 h-6 w-6 border-2 border-black bg-indigo-500 shadow-[2px_2px_0_#000]" />
                   <div className="absolute -top-3 -right-3 h-6 w-6 border-2 border-black bg-indigo-500 shadow-[2px_2px_0_#000]" />
-                  <div className="relative aspect-video overflow-hidden rounded border-2 border-gray-200">
+                  <div className="relative aspect-[4/3] overflow-hidden rounded border-2 border-gray-200 md:aspect-video">
                     <Image
                       src={solution.imagePath}
                       alt={solution.imageAlt}
