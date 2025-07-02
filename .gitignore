@@ -113,3 +113,6 @@ ehthumbs.db
 Thumbs.db
 
 waitingList.json
+
+deployment.tar.gz
+deployment-package
