@@ -23,12 +23,11 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
 import { ImageEditModal } from "./ImageEditModal";
 import { StatusEditModal } from "./StatusEditModal";
-import { useRouter } from "next/navigation";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 
-import { type RouterOutputs } from "@/trpc/react";
+import { type RouterOutputs, api } from "@/trpc/react";
 import { formatDateTime } from "@/utils/date";
 import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
@@ -40,10 +39,12 @@ type ServerInstance =
 
 type UserMcpServerCardProps = {
   serverInstance: ServerInstance;
+  revalidate?: () => Promise<void>;
 };
 
 export const UserMcpServerCard = ({
   serverInstance,
+  revalidate,
 }: UserMcpServerCardProps) => {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   // const [tokenModalOpen, setTokenModalOpen] = useState(false);
@@ -52,11 +53,17 @@ export const UserMcpServerCard = ({
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const [toolsEditModalOpen, setToolsEditModalOpen] = useState(false);
   const [statusEditModalOpen, setStatusEditModalOpen] = useState(false);
-  const router = useRouter();
 
   const { tools } = serverInstance;
 
   const apiKey = serverInstance.apiKeys[0]?.apiKey ?? "";
+
+  api.userMcpServerConfig.findServersWithTools.usePrefetchQuery({
+    userMcpServerConfigIds:
+      serverInstance.serverType === ServerType.OFFICIAL
+        ? serverInstance.userMcpServers.map(({ id }) => id)
+        : undefined,
+  });
 
   const copyUrl = async () => {
     await copyToClipboard(makeSseProxyServerUrl(apiKey));
@@ -281,8 +288,8 @@ export const UserMcpServerCard = ({
           serverInstanceId={serverInstance.id}
           serverName={serverInstance.name}
           onOpenChange={setDeleteModalOpen}
-          onSuccess={() => {
-            router.refresh();
+          onSuccess={async () => {
+            await revalidate?.();
             setDeleteModalOpen(false);
           }}
         />
@@ -294,8 +301,8 @@ export const UserMcpServerCard = ({
           serverInstanceId={serverInstance.id}
           initialName={serverInstance.name}
           onOpenChange={setNameEditModalOpen}
-          onSuccess={() => {
-            router.refresh();
+          onSuccess={async () => {
+            await revalidate?.();
             setNameEditModalOpen(false);
           }}
         />
@@ -306,8 +313,8 @@ export const UserMcpServerCard = ({
         <EditServerInstanceModal
           serverInstance={serverInstance}
           onClose={() => setToolsEditModalOpen(false)}
-          onSuccess={() => {
-            router.refresh();
+          onSuccess={async () => {
+            await revalidate?.();
             setToolsEditModalOpen(false);
           }}
         />
@@ -319,8 +326,8 @@ export const UserMcpServerCard = ({
           serverInstanceId={serverInstance.id}
           initialStatus={serverInstance.serverStatus}
           onOpenChange={setStatusEditModalOpen}
-          onSuccess={() => {
-            router.refresh();
+          onSuccess={async () => {
+            await revalidate?.();
             setStatusEditModalOpen(false);
           }}
         />
