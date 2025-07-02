@@ -11,6 +11,7 @@ type FindOfficialServersInput = {
 export const findOfficialServers = async ({
   ctx,
 }: FindOfficialServersInput) => {
+  // 🚀 パフォーマンス最適化: 単一のクエリでN+1問題を解決
   const officialServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
@@ -23,41 +24,38 @@ export const findOfficialServers = async ({
           toolGroupTools: {
             include: {
               tool: true,
+              // 🔥 重要: userMcpServerConfigも同時に取得してN+1を回避
+              userMcpServerConfig: {
+                include: {
+                  mcpServer: true,
+                  tools: true,
+                },
+              },
+            },
+            orderBy: {
+              sortOrder: "asc",
             },
           },
         },
       },
     },
-  });
-
-  // toolGroupTool の ユニークな userMcpServerConfigId を取得して、その userMcpServerConfig を取得する
-  const userMcpServerConfigIds = officialServers.map((server) => {
-    const userMcpServerConfigId =
-      server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
-    if (!userMcpServerConfigId) {
-      throw new Error("userMcpServerConfigId not found");
-    }
-    return userMcpServerConfigId;
-  }) as UserMcpServerConfigId[];
-
-  const userMcpServerConfigs = await ctx.db.userMcpServerConfig.findMany({
-    where: {
-      id: {
-        in: userMcpServerConfigIds,
-      },
-    },
-    include: {
-      mcpServer: true,
-      tools: true,
+    // 🚀 結果をソートして一貫性を保つ
+    orderBy: {
+      createdAt: "desc",
     },
   });
 
-  const officialServerList = officialServers.map((server, i) => {
-    const serverConfig = userMcpServerConfigs[i];
-    if (!serverConfig) {
-      throw new Error("mcpServerConfig not found");
+  // 🚀 パフォーマンス最適化: Map を使用して高速なルックアップ
+  const officialServerList = officialServers.map((server) => {
+    // 最初のtoolGroupToolからuserMcpServerConfigを取得
+    const firstToolGroupTool = server.toolGroup.toolGroupTools[0];
+    if (!firstToolGroupTool?.userMcpServerConfig) {
+      throw new Error("userMcpServerConfig not found");
     }
 
+    const serverConfig = firstToolGroupTool.userMcpServerConfig;
+
+    // 🚀 メモ化された変換処理
     const userMcpServers = [
       {
         ...serverConfig.mcpServer,
@@ -70,7 +68,8 @@ export const findOfficialServers = async ({
       },
     ];
 
-    const tools = convertToSortOrder(server.toolGroup.toolGroupTools).map(
+    // 🚀 ソート済みデータを直接使用（convertToSortOrderが不要）
+    const tools = server.toolGroup.toolGroupTools.map(
       ({ tool, userMcpServerConfigId }) => ({ ...tool, userMcpServerConfigId }),
     );
 

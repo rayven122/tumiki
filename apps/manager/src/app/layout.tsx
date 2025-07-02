@@ -6,8 +6,8 @@ import "../styles/globals.css";
 import { ClientProvider } from "./_components/ClientProvider";
 
 export const metadata: Metadata = {
-  title: "Tumiki",
-  description: "Tumiki MCP Server Manager",
+  title: "Tumiki MCP Manager",
+  description: "MCPサーバーの統一管理でAIエージェントチーム環境を構築",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
