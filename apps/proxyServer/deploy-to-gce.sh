@@ -13,7 +13,8 @@ set -euo pipefail
 #   INSTANCE_NAME  - GCEインスタンス名 (デフォルト: tumiki-instance-20250601)
 #   ZONE          - GCEゾーン (デフォルト: asia-northeast2-c)
 #   PROJECT_ID    - GCEプロジェクトID (デフォルト: mcp-server-455206)
-#   REMOTE_PATH   - デプロイ先パス (デフォルト: ~/proxy-server)
+#   REMOTE_PATH   - デプロイ先パス (デフォルト: /opt/proxy-server)
+#   DEPLOY_USER   - デプロイ用ユーザー (デフォルト: tumiki-deploy)
 #   DRY_RUN       - ドライランモード (デフォルト: false)
 #
 # =============================================================================
@@ -22,7 +23,8 @@ set -euo pipefail
 INSTANCE_NAME="${INSTANCE_NAME:-tumiki-instance-20250601}"
 ZONE="${ZONE:-asia-northeast2-c}"
 PROJECT_ID="${PROJECT_ID:-mcp-server-455206}"
-REMOTE_PATH="${REMOTE_PATH:-~/proxy-server}"
+REMOTE_PATH="${REMOTE_PATH:-/opt/proxy-server}"
+DEPLOY_USER="${DEPLOY_USER:-tumiki-deploy}"  # デプロイ用共通ユーザー
 DRY_RUN="${DRY_RUN:-false}"
 
 # 色付きログ出力
@@ -96,6 +98,7 @@ check_prerequisites() {
     fi
     
     log_info "デプロイ先: $INSTANCE_NAME ($ZONE)"
+    log_info "デプロイユーザー: $DEPLOY_USER"
 }
 
 # アプリケーションのビルド
@@ -172,18 +175,23 @@ deploy_to_vm() {
     log_info "VMにデプロイしています..."
     
     # ファイル転送
-    execute_command "デプロイパッケージをVMに転送" gcloud compute scp deployment.tar.gz $INSTANCE_NAME:~/deployment.tar.gz --zone=$ZONE --project=$PROJECT_ID
+    execute_command "デプロイパッケージをVMに転送" gcloud compute scp deployment.tar.gz $DEPLOY_USER@$INSTANCE_NAME:~/deployment.tar.gz --zone=$ZONE --project=$PROJECT_ID
     
     # VM上でのセットアップと起動
     if [ "$DRY_RUN" = "true" ]; then
         log_dry_run "VM上でのセットアップと起動"
         log_dry_run "実行予定コマンド: gcloud compute ssh (VM内でのセットアップスクリプト実行)"
     else
-        gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
+        gcloud compute ssh $DEPLOY_USER@$INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
             set -e
             
-            # ディレクトリ準備
-            mkdir -p $REMOTE_PATH
+            # ディレクトリ準備（sudo権限で作成）
+            sudo mkdir -p $REMOTE_PATH
+            sudo chown \$USER:\$USER $REMOTE_PATH
+            
+            # 現在のユーザー情報をログ出力
+            echo \"現在のデプロイユーザー: \$USER\"
+            echo \"デプロイ先ディレクトリ: $REMOTE_PATH\"
             
             # 既存のアプリ停止
             command -v pm2 &>/dev/null && pm2 delete tumiki-proxy-server 2>/dev/null || true
