@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# Tumiki ProxyServer - 既存VM デプロイメントスクリプト
+# Tumiki ProxyServer - Gitベースデプロイメントスクリプト
 # =============================================================================
 #
 # 使用方法:
@@ -114,6 +114,7 @@ build_application() {
     
     execute_command "ProxyServerディレクトリに移動" cd apps/proxyServer
     execute_command "ProxyServerビルド" pnpm build
+    execute_command "ProxyServerバンドル作成" pnpm build:bundle
 }
 
 # 環境変数の取得
@@ -160,8 +161,9 @@ create_package() {
     execute_command "既存パッケージディレクトリを削除" rm -rf deployment-package
     execute_command "パッケージディレクトリを作成" mkdir -p deployment-package
     
-    execute_command "アプリファイルをコピー" cp -r build package.json ecosystem.config.cjs deployment-package/
-    execute_command "依存パッケージをコピー" cp -r ../../packages ../../package.json ../../pnpm-*.yaml deployment-package/
+    execute_command "バンドルファイルをコピー" cp -r dist package.json ecosystem.config.cjs deployment-package/
+    execute_command "Prismaクライアント用ディレクトリ作成" mkdir -p deployment-package/packages/db
+    execute_command "Prismaクライアントをコピー" cp -r ../../packages/db/dist deployment-package/packages/db/
     
     execute_command ".env.productionを.envとしてコピー" cp .env.production deployment-package/.env
     log_info ".env.production を .env としてパッケージに含めました"
@@ -177,31 +179,25 @@ deploy_to_vm() {
     # ファイル転送
     execute_command "デプロイパッケージをVMに転送" gcloud compute scp deployment.tar.gz $DEPLOY_USER@$INSTANCE_NAME:~/deployment.tar.gz --zone=$ZONE --project=$PROJECT_ID
     
-    # VM上でのセットアップと起動
+    # VM上でのセットアップ
     if [ "$DRY_RUN" = "true" ]; then
-        log_dry_run "VM上でのセットアップと起動"
-        log_dry_run "実行予定コマンド: gcloud compute ssh (VM内でのセットアップスクリプト実行)"
+        log_dry_run "VM上でのセットアップ"
+        log_dry_run "実行予定コマンド: gcloud compute ssh (パッケージ展開, セットアップ, PM2起動)"
     else
         gcloud compute ssh $DEPLOY_USER@$INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
             set -e
             
-            # ディレクトリ準備（sudo権限で作成）
+            # ディレクトリ準備
             sudo mkdir -p $REMOTE_PATH
             sudo chown \$USER:\$USER $REMOTE_PATH
             
-            # 現在のユーザー情報をログ出力
             echo \"現在のデプロイユーザー: \$USER\"
             echo \"デプロイ先ディレクトリ: $REMOTE_PATH\"
             
             # 既存のアプリ停止
             command -v pm2 &>/dev/null && pm2 delete tumiki-proxy-server 2>/dev/null || true
             
-            # パッケージ展開
-            cd $REMOTE_PATH
-            tar -xzf ~/deployment.tar.gz --strip-components=1
-            rm ~/deployment.tar.gz
-            
-            # Node.js環境セットアップ（必要な場合）
+            # Node.js環境セットアップ
             if ! command -v node &>/dev/null; then
                 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
                 sudo apt-get install -y nodejs
@@ -215,17 +211,42 @@ deploy_to_vm() {
                 sudo npm install -g pm2
             fi
             
-            # 依存関係インストール（postinstallスクリプトをスキップ）
+            # Gitがインストールされていない場合はインストール
+            if ! command -v git &>/dev/null; then
+                sudo apt-get update
+                sudo apt-get install -y git
+            fi
+            
+            # パッケージ展開
+            cd $REMOTE_PATH
+            tar -xzf ~/deployment.tar.gz --strip-components=1
+            rm ~/deployment.tar.gz
+            
+            # 依存関係インストール
+            echo '依存関係をインストール中...'
             pnpm install --frozen-lockfile --prod --ignore-scripts
             
-            # 環境変数ファイル確認
-            if [ -f '.env' ]; then
-                echo '本番環境用 .env ファイルがデプロイされました'
+            # 環境変数設定
+            echo '環境変数ファイルを確認中...'
+            cd $REMOTE_PATH
+            if [ ! -f '.env' ]; then
+                echo '警告: .env ファイルが存在しません'
+                echo 'デプロイ後に手動で設定してください'
+                # テンプレート.envファイルを作成
+                cat > .env << 'EOL'
+# 本番環境用環境変数
+# 以下の値を実際の本番環境用の値に置き換えてください
+DATABASE_URL=\"postgresql://user:password@host:port/database\"
+NODE_ENV=\"production\"
+PORT=\"8080\"
+EOL
+                echo 'テンプレート .env ファイルを作成しました'
             else
-                echo '警告: .env ファイルが見つかりません'
+                echo '既存の .env ファイルを使用します'
             fi
             
             # PM2で起動
+            cd $REMOTE_PATH
             pm2 start ecosystem.config.cjs
             pm2 save
             pm2 startup | grep -v 'PM2' | bash || true
@@ -234,8 +255,6 @@ deploy_to_vm() {
             pm2 status
         "
     fi
-    
-    execute_command "ローカルのデプロイパッケージを削除" rm -f deployment.tar.gz
 }
 
 # メイン処理
@@ -264,9 +283,9 @@ main() {
     log_info "アクセスURL: http://$EXTERNAL_IP:8080"
     log_info ""
     log_info "環境変数を設定する場合:"
-    log_info "  gcloud compute ssh $INSTANCE_NAME --zone=$ZONE"
-    log_info "  nano ~/proxy-server/.env"
-    log_info "  pm2 restart tumiki-proxy-server"
+    log_info "  gcloud compute ssh $DEPLOY_USER@$INSTANCE_NAME --zone=$ZONE"
+    log_info "  sudo nano $REMOTE_PATH/.env"
+    log_info "  cd $REMOTE_PATH && pm2 restart ecosystem.config.cjs"
 }
 
 # エラーハンドリング
