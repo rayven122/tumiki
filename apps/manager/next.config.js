@@ -4,7 +4,7 @@ const config = {
   outputFileTracingIncludes: {
     "/mcp/servers": ["./mcp/*"],
   },
-  
+
   // 画像最適化設定
   images: {
     // 次世代画像フォーマット対応（WebP: 20-35%削減、AVIF: 50%削減）
@@ -12,10 +12,10 @@ const config = {
     // 画像キャッシュ期間: 1年間（再訪問時の高速化）
     minimumCacheTTL: 60 * 60 * 24 * 365, // 1年
   },
-  
+
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
   compress: true,
-  
+
   // バンドルサイズ最適化
   experimental: {
     // 使用していないアイコンを自動除外してバンドルサイズ削減
