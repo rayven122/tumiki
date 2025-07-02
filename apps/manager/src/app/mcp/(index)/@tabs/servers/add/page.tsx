@@ -1,34 +1,9 @@
 import type React from "react";
-import { Suspense } from "react";
-
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
-import { api } from "@/trpc/server";
-import { ServerCardSkeleton } from "../../_components/ServerCard/ServerCardSkeleton";
-import { ServerCard } from "../../_components/ServerCard";
-
-const ServerList = async () => {
-  const mcpServers = await api.mcpServer.findAll();
-  return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {mcpServers.map((mcpServer) => (
-        <ServerCard key={mcpServer.id} mcpServer={mcpServer} />
-      ))}
-    </div>
-  );
-};
-
-const ServerListSkeleton = () => {
-  return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <ServerCardSkeleton key={i} />
-      ))}
-    </div>
-  );
-};
+import { ServerList } from "./ServerList";
 
 export default function AddServerPage() {
   return (
@@ -42,9 +17,7 @@ export default function AddServerPage() {
         <h1 className="text-2xl font-bold">MCPサーバーの追加</h1>
       </header>
 
-      <Suspense fallback={<ServerListSkeleton />}>
-        <ServerList />
-      </Suspense>
+      <ServerList />
     </div>
   );
 }
