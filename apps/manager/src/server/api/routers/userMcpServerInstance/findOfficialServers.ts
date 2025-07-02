@@ -1,6 +1,9 @@
 import { ServerType } from "@tumiki/db/prisma";
 import type { ProtectedContext } from "../../trpc";
 
+import { convertToSortOrder } from "@tumiki/utils";
+import type { UserMcpServerConfigId } from "@/schema/ids";
+
 type FindOfficialServersInput = {
   ctx: ProtectedContext;
 };
@@ -20,33 +23,40 @@ export const findOfficialServers = async ({
           toolGroupTools: {
             include: {
               tool: true,
-              userMcpServerConfig: {
-                include: {
-                  mcpServer: true,
-                  tools: true,
-                },
-              },
-            },
-            orderBy: {
-              sortOrder: "asc",
             },
           },
         },
       },
     },
-    orderBy: {
-      createdAt: "desc",
+  });
+
+  // toolGroupTool の ユニークな userMcpServerConfigId を取得して、その userMcpServerConfig を取得する
+  const userMcpServerConfigIds = officialServers.map((server) => {
+    const userMcpServerConfigId =
+      server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+    if (!userMcpServerConfigId) {
+      throw new Error("userMcpServerConfigId not found");
+    }
+    return userMcpServerConfigId;
+  }) as UserMcpServerConfigId[];
+
+  const userMcpServerConfigs = await ctx.db.userMcpServerConfig.findMany({
+    where: {
+      id: {
+        in: userMcpServerConfigIds,
+      },
+    },
+    include: {
+      mcpServer: true,
+      tools: true,
     },
   });
 
-  const officialServerList = officialServers.map((server) => {
-    // 最初のtoolGroupToolからuserMcpServerConfigを取得
-    const firstToolGroupTool = server.toolGroup.toolGroupTools[0];
-    if (!firstToolGroupTool?.userMcpServerConfig) {
-      throw new Error("userMcpServerConfig not found");
+  const officialServerList = officialServers.map((server, i) => {
+    const serverConfig = userMcpServerConfigs[i];
+    if (!serverConfig) {
+      throw new Error("mcpServerConfig not found");
     }
-
-    const serverConfig = firstToolGroupTool.userMcpServerConfig;
 
     const userMcpServers = [
       {
@@ -60,7 +70,7 @@ export const findOfficialServers = async ({
       },
     ];
 
-    const tools = server.toolGroup.toolGroupTools.map(
+    const tools = convertToSortOrder(server.toolGroup.toolGroupTools).map(
       ({ tool, userMcpServerConfigId }) => ({ ...tool, userMcpServerConfigId }),
     );
 
