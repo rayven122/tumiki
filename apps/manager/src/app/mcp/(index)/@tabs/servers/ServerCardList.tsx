@@ -8,10 +8,17 @@ import { api } from "@/trpc/react";
 const AsyncServerCardList = () => {
   const [userOfficialServers] =
     api.userMcpServerInstance.findOfficialServers.useSuspenseQuery();
+  const utils = api.useUtils();
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {userOfficialServers.map((server) => (
-        <UserMcpServerCard key={server.id} serverInstance={server} />
+        <UserMcpServerCard
+          key={server.id}
+          serverInstance={server}
+          revalidate={() =>
+            utils.userMcpServerInstance.findOfficialServers.invalidate()
+          }
+        />
       ))}
     </div>
   );
