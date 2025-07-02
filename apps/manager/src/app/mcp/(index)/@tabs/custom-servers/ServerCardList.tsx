@@ -1,16 +1,24 @@
-import { api } from "@/trpc/server";
+"use client";
 
+import { UserMcpServerCard } from "../_components/UserMcpServerCard";
 import { Suspense } from "react";
 import { UserMcpServerCardSkeleton } from "../_components/UserMcpServerCard/UserMcpServerCardSkeleton";
-import { UserMcpServerCard } from "../_components/UserMcpServerCard";
+import { api } from "@/trpc/react";
 
-const AsyncServerCardList = async () => {
-  const userOfficialServers =
-    await api.userMcpServerInstance.findOfficialServers();
+const AsyncServerCardList = () => {
+  const [userCustomServers] =
+    api.userMcpServerInstance.findCustomServers.useSuspenseQuery();
+  const utils = api.useUtils();
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {userOfficialServers.map((server) => (
-        <UserMcpServerCard key={server.id} serverInstance={server} />
+      {userCustomServers.map((server) => (
+        <UserMcpServerCard
+          key={server.id}
+          serverInstance={server}
+          revalidate={async () =>
+            await utils.userMcpServerInstance.findCustomServers.invalidate()
+          }
+        />
       ))}
     </div>
   );

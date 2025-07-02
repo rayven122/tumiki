@@ -28,7 +28,7 @@ type StatusEditModalProps = {
   serverInstanceId: string;
   initialStatus: ServerStatus;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void> | void;
 };
 
 export const StatusEditModal = ({
@@ -43,10 +43,10 @@ export const StatusEditModal = ({
 
   const { mutate: updateStatus, isPending } =
     api.userMcpServerInstance.updateStatus.useMutation({
-      onSuccess: () => {
+      onSuccess: async () => {
         toast.success("サーバーステータスを更新しました");
         if (onSuccess) {
-          onSuccess();
+          await onSuccess();
         } else {
           router.refresh();
           onOpenChange(false);
