@@ -21,7 +21,9 @@
   - プロジェクト: `mcp-server-455206`
 - **SSH 接続** が可能
 
-> **注意**: 初回デプロイ時にGCE用のSSHキーが存在しない場合、自動でSSHキーペアが生成されます。パスフレーズの入力を求められた場合は、空のまま Enter を押すか、任意のパスフレーズを設定してください。
+> **注意**: 
+> - 初回デプロイ時にGCE用のSSHキーが存在しない場合、自動でSSHキーペアが生成されます。パスフレーズの入力を求められた場合は、空のまま Enter を押すか、任意のパスフレーズを設定してください。
+> - **デプロイユーザー**: デフォルトでは `tumiki-deploy` ユーザーでデプロイされます。別のユーザーを使用したい場合は `DEPLOY_USER` 環境変数で指定してください（例：`DEPLOY_USER=production-deploy`）。アプリケーションは `/opt/proxy-server` にデプロイされ、PM2プロセスも指定したユーザーで管理されます。
 
 ## クイックスタート
 
@@ -32,7 +34,10 @@ cd apps/proxyServer
 # 2. デプロイ実行（Vercelから環境変数を自動取得）
 ./deploy-to-gce.sh
 
-# 3. ドライラン（実際には実行せずに処理内容を確認）
+# 3. 別のユーザーでデプロイ（本番環境用ユーザーを使用）
+DEPLOY_USER=production-deploy ./deploy-to-gce.sh
+
+# 4. ドライラン（実際には実行せずに処理内容を確認）
 DRY_RUN=true ./deploy-to-gce.sh
 ```
 
@@ -52,7 +57,7 @@ DRY_RUN=true ./deploy-to-gce.sh
 ## デプロイ先構成
 
 ```
-~/proxy-server/              # ホームディレクトリ直下
+/opt/proxy-server/          # システムディレクトリ
 ├── build/                  # ビルド済みアプリケーション
 ├── packages/               # @tumiki/db など依存パッケージ
 ├── package.json            # パッケージ設定
@@ -85,8 +90,11 @@ DRY_RUN=true ./deploy-to-gce.sh
 ## 運用管理
 
 ```bash
-# SSH 接続
-gcloud compute ssh tumiki-instance-20250601 --zone=asia-northeast2-c
+# SSH 接続（デプロイユーザーで接続）
+gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
+
+# または別のユーザーで接続
+gcloud compute ssh production-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
 
 # アプリケーション状態確認
 pm2 status
@@ -101,6 +109,10 @@ pm2 start tumiki-proxy-server      # 開始
 
 # リソース監視
 pm2 monit
+
+# デプロイ済みアプリケーションの確認
+ls -la /opt/proxy-server/          # アプリケーションファイル確認
+sudo ls -la /opt/proxy-server/     # 権限が必要な場合
 ```
 
 ## アップデート
@@ -121,7 +133,7 @@ pm2 monit
 ```bash
 # VM 内で直接編集
 gcloud compute ssh tumiki-instance-20250601 --zone=asia-northeast2-c
-nano ~/proxy-server/.env
+sudo nano /opt/proxy-server/.env
 pm2 restart tumiki-proxy-server
 
 # または、Vercelで環境変数を更新してから再デプロイ
@@ -171,3 +183,4 @@ pm2 logs tumiki-proxy-server  # エラーログを確認
 # 接続できない場合
 curl http://localhost:8080/  # VM 内からのアクセステスト
 ```
+
