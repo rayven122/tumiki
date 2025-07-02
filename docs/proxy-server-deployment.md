@@ -21,7 +21,8 @@
   - プロジェクト: `mcp-server-455206`
 - **SSH 接続** が可能
 
-> **注意**: 
+> **注意**:
+>
 > - 初回デプロイ時にGCE用のSSHキーが存在しない場合、自動でSSHキーペアが生成されます。パスフレーズの入力を求められた場合は、空のまま Enter を押すか、任意のパスフレーズを設定してください。
 > - **デプロイユーザー**: デフォルトでは `tumiki-deploy` ユーザーでデプロイされます。別のユーザーを使用したい場合は `DEPLOY_USER` 環境変数で指定してください（例：`DEPLOY_USER=production-deploy`）。アプリケーションは `/opt/proxy-server` にデプロイされ、PM2プロセスも指定したユーザーで管理されます。
 
@@ -45,32 +46,55 @@ DRY_RUN=true ./deploy-to-gce.sh
 
 スクリプトは以下を自動実行します：
 
-1. **📋 前提条件チェック**: gcloud, Vercel CLI の確認
-2. **🔄 環境変数取得**: Vercel から本番環境変数を自動取得
-3. **🔧 依存関係インストール**: pnpm による依存関係の解決
-4. **🏗️ @tumiki/db ビルド**: Prisma クライアント生成とパッケージビルド
-5. **📦 ProxyServer ビルド**: TypeScript のコンパイル
-6. **📁 パッケージ作成**: 必要ファイルの圧縮（環境変数を .env として含める）
-7. **🚀 VM デプロイ**: SSH 経由でのファイル転送と環境セットアップ
+1. **📋 前提条件チェック**: gcloud CLI の確認
+2. **🔄 Git操作**: VM上でリポジトリのクローンまたは更新
+3. **🔧 依存関係インストール**: VM上でpnpm install
+4. **🏗️ @tumiki/db ビルド**: VM上でPrisma クライアント生成とパッケージビルド
+5. **📦 ProxyServer ビルド**: VM上でTypeScript のコンパイル
+6. **🎁 バンドル作成**: VM上でncc による単一ファイル化（依存関係を含む）
+7. **⚙️ 環境変数設定**: テンプレート.envファイル作成（手動設定が必要）
 8. **▶️ PM2 起動**: プロセス管理と自動起動設定
 
 ## デプロイ先構成
 
 ```
-/opt/proxy-server/          # システムディレクトリ
-├── build/                  # ビルド済みアプリケーション
-├── packages/               # @tumiki/db など依存パッケージ
-├── package.json            # パッケージ設定
-├── ecosystem.config.cjs    # PM2 設定
-├── .env                   # 本番環境変数（.env.production から自動コピー）
-└── logs/                  # PM2 ログ（自動作成）
+/opt/proxy-server/          # Git リポジトリ（プロジェクト全体）
+├── .git/                  # Git管理情報
+├── apps/
+│   └── proxyServer/       # ProxyServerアプリケーション
+│       ├── dist/          # nccバンドル済みアプリケーション
+│       │   └── index.js   # 単一実行ファイル
+│       ├── build/         # TypeScriptビルド結果
+│       ├── ecosystem.config.cjs # PM2 設定
+│       ├── .env           # 本番環境変数（手動設定）
+│       └── logs/          # PM2 ログ（自動作成）
+├── packages/
+│   └── db/                # Prisma クライアント
+│       └── dist/          # ビルド済みPrismaクライアント
+└── node_modules/          # 依存関係
 ```
 
 ## 環境変数の管理
 
-環境変数は **Vercel** で一元管理されており、デプロイ時に自動取得されます。
+環境変数は **手動設定** が必要です。デプロイ後に以下の手順で設定してください：
 
-すべての必要な環境変数（データベース接続、暗号化キー、APIキーなど）がVercelから自動で取得されます。
+```bash
+# VM に接続
+gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
+
+# 環境変数ファイルを編集
+sudo nano /opt/proxy-server/apps/proxyServer/.env
+
+# 必要な環境変数（例）
+DATABASE_URL="postgresql://user:password@host:port/database"
+NODE_ENV="production"
+PORT="8080"
+# その他の必要な環境変数...
+
+# アプリケーション再起動
+cd /opt/proxy-server/apps/proxyServer
+pm2 restart ecosystem.config.cjs
+```
 
 ## ドライラン機能
 
@@ -89,13 +113,19 @@ DRY_RUN=true ./deploy-to-gce.sh
 
 ## 運用管理
 
+### SSH接続
+
 ```bash
 # SSH 接続（デプロイユーザーで接続）
 gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
 
 # または別のユーザーで接続
 gcloud compute ssh production-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
+```
 
+### PM2管理コマンド
+
+```bash
 # アプリケーション状態確認
 pm2 status
 
@@ -103,9 +133,10 @@ pm2 status
 pm2 logs tumiki-proxy-server
 
 # アプリケーション操作
-pm2 restart tumiki-proxy-server    # 再起動
-pm2 stop tumiki-proxy-server       # 停止
-pm2 start tumiki-proxy-server      # 開始
+cd /opt/proxy-server
+pm2 restart ecosystem.config.cjs   # 再起動
+pm2 start ecosystem.config.cjs     # 開始
+pm2 stop ecosystem.config.cjs      # 停止
 
 # リソース監視
 pm2 monit
@@ -132,9 +163,10 @@ sudo ls -la /opt/proxy-server/     # 権限が必要な場合
 
 ```bash
 # VM 内で直接編集
-gcloud compute ssh tumiki-instance-20250601 --zone=asia-northeast2-c
+gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
 sudo nano /opt/proxy-server/.env
-pm2 restart tumiki-proxy-server
+# 設定ファイルを使用して再起動
+cd /opt/proxy-server && pm2 restart ecosystem.config.cjs
 
 # または、Vercelで環境変数を更新してから再デプロイ
 ./deploy-to-gce.sh
@@ -177,10 +209,14 @@ ls -la .env.production  # ファイルが存在するか確認
 # "Cannot find module 'minimist'" などのエラー
 # → スクリプトで --ignore-scripts オプションを使用して回避済み
 
+# モジュールエラーが発生する場合（nccバンドル使用により稀）
+# 再デプロイで解決することが多い
+./deploy-to-gce.sh
+
 # アプリケーションが起動しない場合
 pm2 logs tumiki-proxy-server  # エラーログを確認
+pm2 status                    # プロセス状態確認
 
 # 接続できない場合
 curl http://localhost:8080/  # VM 内からのアクセステスト
 ```
-

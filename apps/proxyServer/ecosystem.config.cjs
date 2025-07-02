@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "tumiki-proxy-server",
-      script: "./build/index.js",
+      script: "./dist/index.js",
       interpreter: "node",
       cwd: "./",
       instances: 1,

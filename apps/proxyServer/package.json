@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
     "build": "tsc && chmod +x build/index.js",
+    "build:bundle": "ncc build build/index.js -o dist --minify && chmod +x dist/index.js",
     "start": "pnpm with-env node build/index.js",
     "start:prod": "bash start-prod.sh",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
