@@ -423,7 +423,7 @@ deploy_to_vm() {
             echo '=============================='
             echo 'アプリケーションを起動中...'
             echo '=============================='
-            pm2 start ecosystem.config.cjs
+            pnpm pm2:start
             pm2 save
             
             # PM2 自動起動設定
