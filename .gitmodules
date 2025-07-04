@@ -1,3 +1,0 @@
-[submodule "packages/go-servers/slack-mcp-server"]
-	path = packages/go-servers/slack-mcp-server
-	url = https://github.com/korotovsky/slack-mcp-server.git
