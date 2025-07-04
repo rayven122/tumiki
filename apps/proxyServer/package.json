@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
     "build": "tsc && chmod +x build/index.js",
-    "build:bundle": "ncc build build/index.js -o dist --minify && chmod +x dist/index.js",
     "start": "pnpm with-env node build/index.js",
     "start:prod": "bash start-prod.sh",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
@@ -51,7 +50,6 @@
   "devDependencies": {
     "@types/express": "^5.0.2",
     "@types/ws": "^8.18.1",
-    "@vercel/ncc": "^0.38.3",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "typescript-eslint": "^8.33.0"
