@@ -2,8 +2,11 @@
 set -euo pipefail
 
 # =============================================================================
-# Tumiki ProxyServer - 既存VM デプロイメントスクリプト
+# Tumiki ProxyServer - GitベースGCEデプロイメントスクリプト
 # =============================================================================
+#
+# このスクリプトはtumikiリポジトリをGCE VMにデプロイします。
+# VM上に設定済みのSSHキーを使用してGitHub認証を行います。
 #
 # 使用方法:
 #   ./deploy-to-gce.sh           # 通常のデプロイ
@@ -13,9 +16,19 @@ set -euo pipefail
 #   INSTANCE_NAME  - GCEインスタンス名 (デフォルト: tumiki-instance-20250601)
 #   ZONE          - GCEゾーン (デフォルト: asia-northeast2-c)
 #   PROJECT_ID    - GCEプロジェクトID (デフォルト: mcp-server-455206)
-#   REMOTE_PATH   - デプロイ先パス (デフォルト: /opt/proxy-server)
+#   REMOTE_PATH   - デプロイ先パス (デフォルト: /opt/tumiki)
 #   DEPLOY_USER   - デプロイ用ユーザー (デフォルト: tumiki-deploy)
 #   DRY_RUN       - ドライランモード (デフォルト: false)
+#
+# デプロイフロー:
+#   1. tumikiリポジトリ (git@github.com:rayven122/tumiki.git) を使用
+#   2. /opt/tumiki が存在する場合はpull、存在しない場合はclone
+#   3. VM上で依存関係インストールとビルド (sudo git使用)
+#   4. PM2でアプリケーション起動
+#
+# 前提条件:
+#   - VM上でSSHキーが設定済み (sudo git clone可能)
+#   - Node.js 22.x, pnpm, PM2がインストール済み
 #
 # =============================================================================
 
@@ -23,8 +36,9 @@ set -euo pipefail
 INSTANCE_NAME="${INSTANCE_NAME:-tumiki-instance-20250601}"
 ZONE="${ZONE:-asia-northeast2-c}"
 PROJECT_ID="${PROJECT_ID:-mcp-server-455206}"
-REMOTE_PATH="${REMOTE_PATH:-/opt/proxy-server}"
+REMOTE_PATH="${REMOTE_PATH:-/opt/tumiki}"
 DEPLOY_USER="${DEPLOY_USER:-tumiki-deploy}"  # デプロイ用共通ユーザー
+REPO_URL="${REPO_URL:-git@github.com:rayven122/tumiki.git}"  # リポジトリURL
 DRY_RUN="${DRY_RUN:-false}"
 
 # 色付きログ出力
@@ -82,9 +96,44 @@ check_prerequisites() {
         exit 1
     fi
     
+    # Git の確認
+    if ! command -v git &> /dev/null; then
+        log_error "Git が見つかりません"
+        log_error "Git をインストールしてください"
+        exit 1
+    fi
+    
     # Vercel CLI の確認
     if ! command -v vercel &> /dev/null; then
-        log_warn "Vercel CLI が見つかりません。環境変数を手動で設定してください"
+        log_error "Vercel CLI が見つかりません"
+        log_error "以下のコマンドでインストールしてください:"
+        log_error "npm install -g vercel"
+        exit 1
+    fi
+    
+    # Vercel 認証確認（プロジェクトルートで実行）
+    log_info "Vercelプロジェクトの設定を確認中..."
+    local current_dir=$(pwd)
+    local project_root="../../"
+    
+    if cd "$project_root" 2>/dev/null; then
+        if ! vercel whoami &>/dev/null; then
+            log_error "Vercel 認証が必要です"
+            log_error "vercel login を実行してください"
+            cd "$current_dir"
+            exit 1
+        fi
+        
+        # プロジェクトがリンクされているかチェック
+        if [ ! -f ".vercel/project.json" ]; then
+            log_warn "プロジェクトがVercelにリンクされていない可能性があります"
+            log_warn "プロジェクトルートで 'vercel link' を実行してください"
+        fi
+        
+        cd "$current_dir"
+    else
+        log_error "プロジェクトルートディレクトリ $project_root が見つかりません"
+        exit 1
     fi
     
     if [ -z "$PROJECT_ID" ]; then
@@ -101,157 +150,317 @@ check_prerequisites() {
     log_info "デプロイユーザー: $DEPLOY_USER"
 }
 
-# アプリケーションのビルド
-build_application() {
-    execute_command "プロジェクトルートに移動" cd ../..
-    
-    execute_command "依存関係をインストール" pnpm install --frozen-lockfile
-    
-    execute_command "@tumiki/dbディレクトリに移動" cd packages/db
-    execute_command "Prismaクライアント生成" pnpm db:generate
-    execute_command "@tumiki/dbパッケージビルド" pnpm build
-    execute_command "プロジェクトルートに戻る" cd ../..
-    
-    execute_command "ProxyServerディレクトリに移動" cd apps/proxyServer
-    execute_command "ProxyServerビルド" pnpm build
-}
+# デプロイ設定
+CURRENT_BRANCH="main"  # 使用するブランチ
 
-# 環境変数の取得
-get_environment_variables() {
-    log_info "Vercelから環境変数を取得しています..."
+# Vercelから環境変数を取得
+fetch_vercel_env() {
+    log_info "Vercelから本番環境の環境変数を取得しています..."
     
-    # Vercel CLI の確認
-    if ! command -v vercel &> /dev/null; then
-        log_error "Vercel CLI が見つかりません"
-        log_error "npm install -g vercel でインストールしてください"
-        exit 1
+    local env_file="apps/proxyServer/.env"
+    local current_dir=$(pwd)
+    local project_root="../../"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "環境変数取得"
+        log_dry_run "実行予定コマンド: cd $project_root && vercel env pull --environment=production $env_file"
+        return 0
     fi
     
-    execute_command "プロジェクトルートに移動" cd ../..
+    log_info "プロジェクトルートディレクトリに移動中..."
+    
+    # プロジェクトルートに移動
+    if ! cd "$project_root"; then
+        log_error "プロジェクトルートディレクトリに移動できませんでした"
+        exit 1
+    fi
     
     # Vercelから環境変数を取得
-    if [ "$DRY_RUN" = "true" ]; then
-        log_dry_run "Vercelから環境変数を取得"
-        log_dry_run "実行予定コマンド: vercel env pull --environment=production apps/proxyServer/.env.production"
-    else
-        if ! vercel env pull --environment=production apps/proxyServer/.env.production; then
-            log_error "Vercelから環境変数の取得に失敗しました"
-            log_error "vercel login でログインしてください"
-            exit 1
-        fi
-    fi
-    
-    execute_command "ProxyServerディレクトリに戻る" cd apps/proxyServer
-    
-    log_info "環境変数の取得が完了しました"
-}
-
-# デプロイメントパッケージの作成
-create_package() {
-    log_info "デプロイメントパッケージを作成しています..."
-    
-    # .env.production ファイルの存在確認
-    if [ "$DRY_RUN" = "false" ] && [ ! -f ".env.production" ]; then
-        log_error ".env.production ファイルが見つかりません"
-        log_error "get_environment_variables() が正常に実行されていません"
+    log_info "vercel env pull を実行中..."
+    if ! vercel env pull --environment=production "$env_file"; then
+        log_error "Vercelからの環境変数取得に失敗しました"
+        log_error "以下を確認してください:"
+        log_error "1. vercel login が完了している"
+        log_error "2. このプロジェクトがVercelにリンクされている (vercel link)"
+        log_error "3. 本番環境の環境変数が設定されている"
+        log_error "4. 現在のディレクトリがプロジェクトルートである"
+        cd "$current_dir"
         exit 1
     fi
     
-    execute_command "既存パッケージディレクトリを削除" rm -rf deployment-package
-    execute_command "パッケージディレクトリを作成" mkdir -p deployment-package
+    # 元のディレクトリに戻る
+    cd "$current_dir"
     
-    execute_command "アプリファイルをコピー" cp -r build package.json ecosystem.config.cjs deployment-package/
-    execute_command "依存パッケージをコピー" cp -r ../../packages ../../package.json ../../pnpm-*.yaml deployment-package/
+    if [ ! -f ".env" ]; then
+        log_error "環境変数ファイル .env が作成されませんでした"
+        exit 1
+    fi
     
-    execute_command ".env.productionを.envとしてコピー" cp .env.production deployment-package/.env
-    log_info ".env.production を .env としてパッケージに含めました"
+    log_info "環境変数ファイル .env を取得しました"
     
-    execute_command "アーカイブ作成" tar -czf deployment.tar.gz deployment-package/
-    execute_command "一時ディレクトリを削除" rm -rf deployment-package
+    # ファイルサイズを確認
+    local file_size=$(wc -l < ".env")
+    log_info "環境変数の数: $file_size 行"
+}
+
+# 環境変数ファイルをVMに転送
+transfer_env_file() {
+    log_info "環境変数ファイルをVMに転送しています..."
+    
+    local env_file=".env"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "環境変数ファイル転送"
+        log_dry_run "実行予定コマンド: gcloud compute scp $env_file $DEPLOY_USER@$INSTANCE_NAME:$REMOTE_PATH/"
+        return 0
+    fi
+    
+    if [ ! -f "$env_file" ]; then
+        log_warn "環境変数ファイル $env_file が見つかりません"
+        log_warn "VM上でテンプレートファイルが作成されます"
+        return 0
+    fi
+    
+    # 環境変数ファイルをVMに転送
+    if ! gcloud compute scp "$env_file" "$DEPLOY_USER@$INSTANCE_NAME:$REMOTE_PATH/" --zone="$ZONE" --project="$PROJECT_ID"; then
+        log_error "環境変数ファイルの転送に失敗しました"
+        log_warn "VM上でテンプレートファイルが作成されます"
+        return 0
+    fi
+    
+    log_info "環境変数ファイルをVMに転送しました"
 }
 
 # VMへのデプロイ
 deploy_to_vm() {
-    log_info "VMにデプロイしています..."
+    log_info "VMにGitベースデプロイを実行しています..."
     
-    # ファイル転送
-    execute_command "デプロイパッケージをVMに転送" gcloud compute scp deployment.tar.gz $DEPLOY_USER@$INSTANCE_NAME:~/deployment.tar.gz --zone=$ZONE --project=$PROJECT_ID
-    
-    # VM上でのセットアップと起動
+    # VM上でのGitベースセットアップ
     if [ "$DRY_RUN" = "true" ]; then
-        log_dry_run "VM上でのセットアップと起動"
-        log_dry_run "実行予定コマンド: gcloud compute ssh (VM内でのセットアップスクリプト実行)"
+        log_dry_run "VM上でのGitベースセットアップ"
+        log_dry_run "実行予定コマンド: gcloud compute ssh (Git clone/pull, ビルド, PM2起動)"
     else
         gcloud compute ssh $DEPLOY_USER@$INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID --command="
             set -e
             
-            # ディレクトリ準備（sudo権限で作成）
-            sudo mkdir -p $REMOTE_PATH
-            sudo chown \$USER:\$USER $REMOTE_PATH
+            # ディレクトリ準備
+            # 注意: この時点で /opt/tumiki は $DEPLOY_USER 所有であることが前提
+            # 初回セットアップ時はrootユーザーで以下を実行:
+            # sudo mkdir -p /opt/tumiki && sudo chown $DEPLOY_USER:$DEPLOY_USER /opt/tumiki
+            if [ ! -d \"$REMOTE_PATH\" ]; then
+                echo \"エラー: $REMOTE_PATH が存在しません。\"
+                echo \"rootユーザーで以下を実行してください:\"
+                echo \"  sudo mkdir -p $REMOTE_PATH && sudo chown $DEPLOY_USER:$DEPLOY_USER $REMOTE_PATH\"
+                exit 1
+            fi
             
-            # 現在のユーザー情報をログ出力
+            echo \"==============================\"
+            echo \"デプロイ情報:\"
+            echo \"==============================\"
             echo \"現在のデプロイユーザー: \$USER\"
             echo \"デプロイ先ディレクトリ: $REMOTE_PATH\"
+            echo \"リポジトリURL: $REPO_URL\"
+            echo \"ブランチ: $CURRENT_BRANCH\"
+            echo \"==============================\"
             
             # 既存のアプリ停止
-            command -v pm2 &>/dev/null && pm2 delete tumiki-proxy-server 2>/dev/null || true
+            echo \"既存のアプリケーションを停止中...\"
+            if command -v pm2 &>/dev/null; then
+                pm2 delete tumiki-proxy-server 2>/dev/null || true
+                pm2 kill 2>/dev/null || true  # 念のため全PM2プロセスをクリーンアップ
+            fi
             
-            # パッケージ展開
-            cd $REMOTE_PATH
-            tar -xzf ~/deployment.tar.gz --strip-components=1
-            rm ~/deployment.tar.gz
-            
-            # Node.js環境セットアップ（必要な場合）
+            # Node.js環境セットアップ
+            echo \"環境をセットアップ中...\"
             if ! command -v node &>/dev/null; then
+                echo \"Node.js 22.x をインストール中...\"
                 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
                 sudo apt-get install -y nodejs
+            else
+                echo \"Node.js $(node --version) が既にインストールされています\"
             fi
             
             if ! command -v pnpm &>/dev/null; then
+                echo \"pnpm をインストール中...\"
                 sudo npm install -g pnpm@latest
+            else
+                echo \"pnpm $(pnpm --version) が既にインストールされています\"
             fi
             
             if ! command -v pm2 &>/dev/null; then
+                echo \"PM2 をインストール中...\"
                 sudo npm install -g pm2
-            fi
-            
-            # 依存関係インストール（postinstallスクリプトをスキップ）
-            pnpm install --frozen-lockfile --prod --ignore-scripts
-            
-            # 環境変数ファイル確認
-            if [ -f '.env' ]; then
-                echo '本番環境用 .env ファイルがデプロイされました'
             else
-                echo '警告: .env ファイルが見つかりません'
+                echo \"PM2 $(pm2 --version) が既にインストールされています\"
             fi
+            
+            if ! command -v git &>/dev/null; then
+                echo \"Git をインストール中...\"
+                sudo apt-get update
+                sudo apt-get install -y git
+            else
+                echo \"Git $(git --version) が既にインストールされています\"
+            fi
+            
+            # Git設定（認証プロンプト回避）
+            export GIT_TERMINAL_PROMPT=0
+            git config --global user.name \"Deployment Bot\"
+            git config --global user.email \"deploy@tumiki.local\"
+            
+            # SSHキーの確認（デプロイユーザー用）
+            echo \"\"
+            echo \"SSHキーの設定を確認中...\"
+            if [ ! -f ~/.ssh/id_rsa ] && [ ! -f ~/.ssh/id_ed25519 ]; then
+                echo \"警告: SSHキーが見つかりません\"
+                echo \"SSHキーを設定してください:\"
+                echo \"  1. ローカルマシンで: gcloud compute ssh $DEPLOY_USER@$INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID\"
+                echo \"  2. VM上で: ssh-keygen -t ed25519 -C 'deploy@tumiki.local'\"
+                echo \"  3. 公開鍵をGitHubに追加: cat ~/.ssh/id_ed25519.pub\"
+                exit 1
+            fi
+            
+            # GitHubへのSSH接続テスト
+            echo \"GitHubへのSSH接続をテスト中...\"
+            
+            if ! ssh -o StrictHostKeyChecking=no -T git@github.com 2>&1 | grep -q \"successfully authenticated\"; then
+                echo \"エラー: GitHubへのSSH接続に失敗しました\"
+                echo \"\"
+                echo \"以下の手順でSSHキーを設定してください:\"
+                echo \"1. SSHキーを生成（まだの場合）:\"
+                echo \"   ssh-keygen -t ed25519 -C 'deploy@tumiki.local'\"
+                echo \"\"
+                echo \"2. 公開鍵を表示:\"
+                echo \"   cat ~/.ssh/id_ed25519.pub\"
+                echo \"\"
+                echo \"3. GitHubに公開鍵を追加:\"
+                echo \"   https://github.com/settings/keys\"
+                echo \"\"
+                echo \"4. 接続テスト:\"
+                echo \"   ssh -T git@github.com\"
+                exit 1
+            fi
+            echo \"GitHubへのSSH接続が確認できました\"
+            
+            # リポジトリのクローンまたは更新
+            if [ -d \"$REMOTE_PATH/.git\" ]; then
+                echo 'リポジトリを更新中...'
+                cd $REMOTE_PATH
+                # git操作を実行
+                git fetch origin
+                git reset --hard origin/$CURRENT_BRANCH
+                git clean -fd
+                echo 'リポジトリを最新の状態に更新しました'
+                echo \"現在のコミット: $(git log -1 --format='%h %s')\"
+            else
+                echo 'リポジトリをクローン中...'
+                
+                # ディレクトリが存在するが.gitがない場合は削除
+                if [ -d \"$REMOTE_PATH\" ] && [ ! -d \"$REMOTE_PATH/.git\" ]; then
+                    echo '既存のディレクトリ（Git管理外）を削除中...'
+                    sudo rm -rf $REMOTE_PATH
+                fi
+                
+                # 親ディレクトリを作成（必要に応じて）
+                sudo mkdir -p /opt
+                
+                # 一時ディレクトリにクローンしてから移動
+                echo \"リポジトリをクローン中...\"
+                TEMP_DIR=\"/tmp/tumiki_deploy_\$(date +%s)\"
+                
+                if ! git clone -b $CURRENT_BRANCH $REPO_URL \$TEMP_DIR; then
+                    echo 'エラー: Gitクローンに失敗しました'
+                    echo 'リポジトリURL: $REPO_URL'
+                    echo 'ブランチ: $CURRENT_BRANCH'
+                    echo ''
+                    echo 'SSHキーが正しく設定されているか確認してください:'
+                    echo '  ssh -T git@github.com'
+                    exit 1
+                fi
+                
+                # クローンしたディレクトリを目的地に移動
+                # 注意: /opt/tumiki は事前に $DEPLOY_USER 所有に設定されている前提
+                mv \$TEMP_DIR $REMOTE_PATH
+                
+                echo 'リポジトリのクローンが完了しました'
+                cd $REMOTE_PATH
+                echo \"現在のコミット: $(git log -1 --format='%h %s')\"
+            fi
+            
+            # 作業ディレクトリに移動
+            cd $REMOTE_PATH
+            
+            # 依存関係インストール
+            echo ''
+            echo '=============================='
+            echo '依存関係をインストール中...'
+            echo '=============================='
+            export NODE_OPTIONS='--max-old-space-size=4096'
+            if ! pnpm install --frozen-lockfile; then
+                echo '警告: frozen-lockfileでのインストールに失敗しました。lockfileを更新してリトライします...'
+                pnpm install --no-frozen-lockfile
+            fi
+            echo '依存関係のインストールが完了しました'
+            
+            # @tumiki/db ビルド
+            echo ''
+            echo '=============================='
+            echo '@tumiki/db パッケージをビルド中...'
+            echo '=============================='
+            cd packages/db
+            pnpm db:generate
+            pnpm build
+            
+            # ProxyServer ビルド
+            echo ''
+            echo '=============================='
+            echo 'ProxyServer をビルド中...'
+            echo '=============================='
+            cd ../../apps/proxyServer
+            pnpm build
             
             # PM2で起動
-            pm2 start ecosystem.config.cjs
+            echo ''
+            echo '=============================='
+            echo 'アプリケーションを起動中...'
+            echo '=============================='
+            pnpm pm2:start
             pm2 save
-            pm2 startup | grep -v 'PM2' | bash || true
+            
+            # PM2 自動起動設定
+            echo 'PM2 自動起動を設定中...'
+            # 注意: PM2の自動起動設定にはsudoが必要です
+            # 初回セットアップ時にrootユーザーで実行してください:
+            # pm2 startup systemd -u tumiki-deploy --hp /home/tumiki-deploy
+            pm2 save || true
             
             # ステータス表示
+            echo ''
+            echo '=============================='
+            echo 'デプロイ完了！'
+            echo '=============================='
             pm2 status
+            echo ''
+            echo 'ログを確認する場合: pm2 logs tumiki-proxy-server'
+            echo 'アプリを再起動する場合: pm2 restart tumiki-proxy-server'
         "
     fi
-    
-    execute_command "ローカルのデプロイパッケージを削除" rm -f deployment.tar.gz
 }
 
 # メイン処理
 main() {
     log_info "デプロイメントを開始します..."
+    log_info "リポジトリURL: $REPO_URL"
+    log_info "ブランチ: $CURRENT_BRANCH"
     
     check_prerequisites
-    get_environment_variables
-    build_application
-    create_package
+    fetch_vercel_env
+    transfer_env_file
     deploy_to_vm
     
     # 外部IPアドレス取得と表示
     if [ "$DRY_RUN" = "true" ]; then
         log_dry_run "外部IPアドレス取得"
-        log_dry_run "実行予定コマンド: gcloud compute instances describe (外部IP取得)"
+        log_dry_run "実行予定コマンド: gcloud compute instances describe で外部IP取得"
         EXTERNAL_IP="[DRY_RUN_MODE]"
     else
         EXTERNAL_IP=$(gcloud compute instances describe $INSTANCE_NAME \
@@ -261,16 +470,109 @@ main() {
     fi
     
     log_info "✅ デプロイメント完了!"
-    log_info "アクセスURL: http://$EXTERNAL_IP:8080"
     log_info ""
-    log_info "環境変数を設定する場合:"
-    log_info "  gcloud compute ssh $INSTANCE_NAME --zone=$ZONE"
-    log_info "  nano ~/proxy-server/.env"
-    log_info "  pm2 restart tumiki-proxy-server"
+    log_info "=============================="
+    log_info "アクセス情報:"
+    log_info "=============================="
+    log_info "アクセスURL: http://$EXTERNAL_IP:8080"
+    log_info "ヘルスチェック: http://$EXTERNAL_IP:8080/health"
+    log_info ""
+    log_info "=============================="
+    log_info "管理コマンド:"
+    log_info "=============================="
+    log_info "SSH接続:"
+    log_info "  gcloud compute ssh $DEPLOY_USER@$INSTANCE_NAME --zone=$ZONE --project=$PROJECT_ID"
+    log_info ""
+    log_info "環境変数設定:"
+    log_info "  nano $REMOTE_PATH/apps/proxyServer/.env"
+    log_info ""
+    log_info "アプリ管理:"
+    log_info "  pm2 restart tumiki-proxy-server  # 再起動"
+    log_info "  pm2 logs tumiki-proxy-server     # ログ表示"
+    log_info "  pm2 status                       # ステータス確認"
+    log_info "============================="
 }
 
-# エラーハンドリング
-trap 'log_error "エラーが発生しました"; exit 1' ERR
+# エラーハンドリングとクリーンアップ
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log_error "エラーが発生しました (exit code: $exit_code)"
+        log_error "デプロイが失敗しました。ログを確認してください。"
+    fi
+}
+
+trap cleanup EXIT ERR
+
+# ヘルプ表示
+show_help() {
+    cat << EOF
+Usage: ./deploy-to-gce.sh [OPTIONS]
+
+Tumiki ProxyServer GCEデプロイメントスクリプト
+
+このスクリプトは以下を自動実行します:
+1. Vercelから本番環境の環境変数を取得 (.env.production)
+2. 環境変数ファイルをVMに転送
+3. GitリポジトリをVM上でクローン/更新
+4. 依存関係のインストールとビルド
+5. PM2でアプリケーションを起動
+
+OPTIONS:
+    -h, --help              このヘルプメッセージを表示
+    --dry-run               実際の実行を行わずにコマンドを表示
+
+前提条件:
+    - gcloud CLI がインストール済み (gcloud auth login 実行済み)
+    - Vercel CLI がインストール済み (vercel login 実行済み)
+    - プロジェクトがVercelにリンク済み
+    - VM上で初回セットアップが完了済み
+
+環境変数:
+    INSTANCE_NAME          GCEインスタンス名 (default: tumiki-instance-20250601)
+    ZONE                   GCEゾーン (default: asia-northeast2-c)
+    PROJECT_ID             GCPプロジェクトID (default: mcp-server-455206)
+    REMOTE_PATH            デプロイ先パス (default: /opt/tumiki)
+    DEPLOY_USER            デプロイユーザー (default: tumiki-deploy)
+    REPO_URL               リポジトリURL (default: git@github.com:rayven122/tumiki.git)
+
+例:
+    # 通常のデプロイ
+    ./deploy-to-gce.sh
+
+    # ドライラン（実際には実行しない）
+    ./deploy-to-gce.sh --dry-run
+    
+    # カスタムインスタンスへのデプロイ
+    INSTANCE_NAME=my-instance ./deploy-to-gce.sh
+
+    # 別のデプロイユーザーを使用
+    DEPLOY_USER=production-deploy ./deploy-to-gce.sh
+
+詳細なドキュメント:
+    docs/proxy-server-deployment.md
+
+EOF
+}
+
+# コマンドライン引数の処理
+for arg in "$@"; do
+    case $arg in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        --dry-run)
+            DRY_RUN="true"
+            shift
+            ;;
+        *)
+            log_error "不明なオプション: $arg"
+            show_help
+            exit 1
+            ;;
+    esac
+done
 
 # スクリプト実行
 main "$@"

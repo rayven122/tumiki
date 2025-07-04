@@ -512,9 +512,6 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      '@vercel/ncc':
-        specifier: ^0.38.3
-        version: 0.38.3
       dotenv-cli:
         specifier: ^8.0.0
         version: 8.0.0

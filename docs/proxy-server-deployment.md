@@ -1,8 +1,10 @@
 # ProxyServer の Google Compute Engine (GCE) へのデプロイ
 
-既存の GCE VM に ProxyServer をデプロイして PM2 で管理する方法です。
+Tumiki ProxyServerをGCE VMにGitベースでデプロイして PM2 で管理する方法です。
 
 ## 前提条件
+
+### 必須ツール
 
 - **Google Cloud SDK (gcloud)** がインストール済み
   ```bash
@@ -10,92 +12,238 @@
   gcloud auth login
   gcloud config set project mcp-server-455206
   ```
-- **Vercel CLI** がインストール済み（環境変数取得用）
+- **Vercel CLI** がインストール済み
+
   ```bash
+  # インストール
   npm install -g vercel
+
+  # 認証
   vercel login
+
+  # プロジェクトリンク（プロジェクトルートで実行）
+  vercel link
   ```
-- **既存の GCE VM** が稼働中（自動で環境構築されます）
+
+- **Git** がインストール済み
+- **既存の GCE VM** が稼働中
   - インスタンス名: `tumiki-instance-20250601`
   - ゾーン: `asia-northeast2-c`
   - プロジェクト: `mcp-server-455206`
 - **SSH 接続** が可能
 
-> **注意**: 
-> - 初回デプロイ時にGCE用のSSHキーが存在しない場合、自動でSSHキーペアが生成されます。パスフレーズの入力を求められた場合は、空のまま Enter を押すか、任意のパスフレーズを設定してください。
-> - **デプロイユーザー**: デフォルトでは `tumiki-deploy` ユーザーでデプロイされます。別のユーザーを使用したい場合は `DEPLOY_USER` 環境変数で指定してください（例：`DEPLOY_USER=production-deploy`）。アプリケーションは `/opt/proxy-server` にデプロイされ、PM2プロセスも指定したユーザーで管理されます。
+## 初回セットアップ（rootユーザーで実行）
 
-## クイックスタート
+VM上で以下の初回セットアップを**一度だけ**実行してください：
+
+### 1. デプロイディレクトリの作成と権限設定
+
+```bash
+# デプロイディレクトリを作成してデプロイユーザーの所有に設定
+sudo mkdir -p /opt/tumiki
+sudo chown tumiki-deploy:tumiki-deploy /opt/tumiki
+```
+
+### 2. デプロイユーザーにSSHキーをコピー
+
+既存のユーザーのSSHキーをデプロイユーザーにコピーします：
+
+```bash
+# デプロイユーザーの.sshディレクトリを作成
+sudo mkdir -p /home/tumiki-deploy/.ssh
+
+# 既存ユーザーのSSHキーをコピー
+sudo cp /home/techneighbor122/.ssh/id_ed25519* /home/tumiki-deploy/.ssh/
+sudo cp /home/techneighbor122/.ssh/known_hosts /home/tumiki-deploy/.ssh/
+
+# 所有者と権限を正しく設定
+sudo chown -R tumiki-deploy:tumiki-deploy /home/tumiki-deploy/.ssh
+sudo chmod 700 /home/tumiki-deploy/.ssh
+sudo chmod 600 /home/tumiki-deploy/.ssh/id_ed25519
+sudo chmod 644 /home/tumiki-deploy/.ssh/id_ed25519.pub
+sudo chmod 644 /home/tumiki-deploy/.ssh/known_hosts
+```
+
+### 3. PM2の自動起動設定
+
+```bash
+# PM2の自動起動を設定
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u tumiki-deploy --hp /home/tumiki-deploy
+
+# 設定完了後、デプロイユーザーで実行（後でpm2 saveが必要）
+```
+
+### 4. 設定確認
+
+```bash
+# デプロイユーザーに切り替えて確認
+su - tumiki-deploy
+
+# GitHubへのSSH接続テスト
+ssh -T git@github.com
+# 成功メッセージ: "Hi username! You've successfully authenticated..."
+
+# ディレクトリの権限確認
+ls -la /opt/tumiki
+```
+
+## デプロイの実行
+
+### クイックスタート
 
 ```bash
 # 1. ProxyServer ディレクトリに移動
 cd apps/proxyServer
 
-# 2. デプロイ実行（Vercelから環境変数を自動取得）
+# 2. デプロイ実行
 ./deploy-to-gce.sh
 
-# 3. 別のユーザーでデプロイ（本番環境用ユーザーを使用）
+# 3. ドライラン（実際には実行せずに処理内容を確認）
+DRY_RUN=true ./deploy-to-gce.sh
+# または
+./deploy-to-gce.sh --dry-run
+
+# 4. ヘルプ表示
+./deploy-to-gce.sh --help
+```
+
+### 環境変数でのカスタマイズ
+
+```bash
+# 別のユーザーでデプロイ
 DEPLOY_USER=production-deploy ./deploy-to-gce.sh
 
-# 4. ドライラン（実際には実行せずに処理内容を確認）
-DRY_RUN=true ./deploy-to-gce.sh
+# 別のインスタンスにデプロイ
+INSTANCE_NAME=my-instance ZONE=asia-northeast1-a ./deploy-to-gce.sh
+
+# 別のプロジェクトにデプロイ
+PROJECT_ID=my-project ./deploy-to-gce.sh
+
+# 別のリポジトリからデプロイ
+REPO_URL=git@github.com:myorg/myrepo.git ./deploy-to-gce.sh
+
+# 別のデプロイパスを使用
+REMOTE_PATH=/opt/myapp ./deploy-to-gce.sh
 ```
 
 ## デプロイプロセス
 
-スクリプトは以下を自動実行します：
+スクリプトは以下の処理を自動実行します：
 
-1. **📋 前提条件チェック**: gcloud, Vercel CLI の確認
-2. **🔄 環境変数取得**: Vercel から本番環境変数を自動取得
-3. **🔧 依存関係インストール**: pnpm による依存関係の解決
-4. **🏗️ @tumiki/db ビルド**: Prisma クライアント生成とパッケージビルド
-5. **📦 ProxyServer ビルド**: TypeScript のコンパイル
-6. **📁 パッケージ作成**: 必要ファイルの圧縮（環境変数を .env として含める）
-7. **🚀 VM デプロイ**: SSH 経由でのファイル転送と環境セットアップ
-8. **▶️ PM2 起動**: プロセス管理と自動起動設定
+1. **📋 前提条件チェック**
 
-## デプロイ先構成
+   - gcloud CLI の確認
+   - Google Cloud 認証の確認
+   - Git の確認
+   - Vercel CLI の確認
+   - Vercel 認証の確認
+   - プロジェクトのVercelリンク確認
+   - GCE インスタンスの存在確認
 
-```
-/opt/proxy-server/          # システムディレクトリ
-├── build/                  # ビルド済みアプリケーション
-├── packages/               # @tumiki/db など依存パッケージ
-├── package.json            # パッケージ設定
-├── ecosystem.config.cjs    # PM2 設定
-├── .env                   # 本番環境変数（.env.production から自動コピー）
-└── logs/                  # PM2 ログ（自動作成）
-```
+2. **🌍 Vercelから環境変数取得**
+
+   - Vercelから本番環境の環境変数を取得
+   - `.env` ファイルの作成
+   - 環境変数ファイルのVMへの転送
+
+3. **🔐 VM上でのSSH接続とキー確認**
+
+   - デプロイユーザーのSSHキー確認
+   - GitHubへのSSH接続テスト
+
+4. **⚙️ 環境セットアップ**
+
+   - Node.js 22.x の確認・インストール
+   - pnpm の確認・インストール
+   - PM2 の確認・インストール
+   - Git の確認・インストール
+
+5. **🔄 Git操作**
+
+   - 既存リポジトリの更新 または 新規クローン
+   - mainブランチへのリセット
+   - 作業ツリーのクリーンアップ
+
+6. **📦 依存関係とビルド**
+
+   - `pnpm install` の実行（frozen-lockfile優先）
+   - `@tumiki/db` パッケージのビルド
+   - ProxyServer のビルド
+
+7. **🌍 環境変数設定**
+
+   - 転送された `.env` ファイルの配置
+   - テンプレートファイルの作成（存在しない場合）
+
+8. **▶️ PM2でアプリケーション起動**
+   - 既存アプリケーションの停止
+   - `ecosystem.config.cjs` を使用した起動
+   - PM2設定の保存
 
 ## 環境変数の管理
 
-環境変数は **Vercel** で一元管理されており、デプロイ時に自動取得されます。
+### Vercelベースの環境変数管理
 
-すべての必要な環境変数（データベース接続、暗号化キー、APIキーなど）がVercelから自動で取得されます。
-
-## ドライラン機能
-
-デプロイ前に実行内容を確認したい場合は、ドライランモードを使用できます：
+デプロイスクリプトは**Vercelから自動的に本番環境の環境変数を取得**します：
 
 ```bash
-# 実際には実行せずに処理内容を確認
-DRY_RUN=true ./deploy-to-gce.sh
+# スクリプトが自動実行するコマンド
+vercel env pull --environment=production apps/proxyServer/.env
 ```
 
-ドライランでは以下が実行されます：
+### 手動での環境変数設定
 
-- 前提条件チェック（実際のコマンド確認）
-- 実行予定のコマンドとその説明の表示
-- ファイル操作やネットワーク通信は行わない
+Vercelからの環境変数取得に失敗した場合、手動で設定できます：
+
+```bash
+# VM に接続
+gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c --project=mcp-server-455206
+
+# 環境変数ファイルを編集
+nano /opt/tumiki/apps/proxyServer/.env
+```
+
+### 必要な環境変数
+
+```bash
+# 本番環境用環境変数
+DATABASE_URL="postgresql://user:password@host:port/database"
+NODE_ENV="production"
+PORT="8080"
+
+# その他の必要な環境変数を追加...
+```
+
+### Vercel環境変数の更新
+
+Vercel上で環境変数を更新した場合、再デプロイで最新の値が取得されます：
+
+```bash
+# 最新の環境変数で再デプロイ
+cd apps/proxyServer
+./deploy-to-gce.sh
+```
+
+### 設定変更後の再起動
+
+```bash
+# アプリケーション再起動
+cd /opt/tumiki/apps/proxyServer
+pm2 restart ecosystem.config.cjs
+```
 
 ## 運用管理
 
+### SSH接続
+
 ```bash
-# SSH 接続（デプロイユーザーで接続）
-gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
+# デプロイユーザーでSSH接続
+gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c --project=mcp-server-455206
+```
 
-# または別のユーザーで接続
-gcloud compute ssh production-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c
+### PM2管理コマンド
 
+```bash
 # アプリケーション状態確認
 pm2 status
 
@@ -103,84 +251,205 @@ pm2 status
 pm2 logs tumiki-proxy-server
 
 # アプリケーション操作
-pm2 restart tumiki-proxy-server    # 再起動
-pm2 stop tumiki-proxy-server       # 停止
-pm2 start tumiki-proxy-server      # 開始
+pm2 restart tumiki-proxy-server   # 再起動
+pm2 stop tumiki-proxy-server      # 停止
+pm2 start ecosystem.config.cjs    # 開始
 
 # リソース監視
 pm2 monit
 
-# デプロイ済みアプリケーションの確認
-ls -la /opt/proxy-server/          # アプリケーションファイル確認
-sudo ls -la /opt/proxy-server/     # 権限が必要な場合
+# 保存された設定を確認
+pm2 save
+```
+
+### アプリケーションの確認
+
+```bash
+# アプリケーションファイル確認
+ls -la /opt/tumiki/apps/proxyServer/
+
+# 環境変数ファイル確認
+cat /opt/tumiki/apps/proxyServer/.env
+
+# ビルド結果確認
+ls -la /opt/tumiki/apps/proxyServer/dist/
+
+# ログファイル確認
+ls -la ~/.pm2/logs/
+
+# プロセス確認
+ps aux | grep node
+
+# Git状態確認
+cd /opt/tumiki
+git log -1 --format='%h %s'  # 現在のコミット
+git status                   # Git作業ツリー状態
 ```
 
 ## アップデート
 
-コード変更後の更新手順：
+コード変更後の更新は同じデプロイコマンドで実行できます：
 
 ```bash
-# 同じデプロイコマンドで更新
+# 最新コードで更新
 ./deploy-to-gce.sh
 ```
 
-既存のアプリケーションは自動で停止・更新・再起動されます。
+既存のアプリケーションは自動で：
 
-## 環境変数の変更
+1. 停止
+2. 最新コードに更新
+3. 再ビルド
+4. 再起動
 
-デプロイ後に環境変数を変更する場合：
+## トラブルシューティング
+
+### よくある問題と解決方法
+
+**1. Vercel環境変数取得エラー**
 
 ```bash
-# VM 内で直接編集
-gcloud compute ssh tumiki-instance-20250601 --zone=asia-northeast2-c
-sudo nano /opt/proxy-server/.env
-pm2 restart tumiki-proxy-server
+# Vercel認証確認
+vercel whoami
 
-# または、Vercelで環境変数を更新してから再デプロイ
-./deploy-to-gce.sh
+# プロジェクトリンク確認
+ls -la .vercel/project.json
+
+# 手動で環境変数取得
+cd プロジェクトルート
+vercel env pull --environment=production apps/proxyServer/.env
+```
+
+**2. SSH接続エラー**
+
+```bash
+# GitHubへの接続確認
+ssh -T git@github.com
+
+# SSHキーの権限確認
+ls -la ~/.ssh/
+
+# SSHキーが存在しない場合
+ssh-keygen -t ed25519 -C 'deploy@tumiki.local'
+cat ~/.ssh/id_ed25519.pub  # GitHub に追加
+```
+
+**3. 権限エラー**
+
+```bash
+# デプロイディレクトリの所有者確認
+ls -la /opt/tumiki
+
+# 必要に応じて権限修正（rootユーザーで）
+sudo chown -R tumiki-deploy:tumiki-deploy /opt/tumiki
+```
+
+**4. ビルドエラー**
+
+```bash
+# Node.jsバージョン確認
+node --version  # 22.x が必要
+
+# pnpmバージョン確認
+pnpm --version
+
+# メモリ不足の場合
+export NODE_OPTIONS='--max-old-space-size=4096'
+
+# 依存関係を再インストール
+cd /opt/tumiki
+rm -rf node_modules packages/*/node_modules apps/*/node_modules
+pnpm install --no-frozen-lockfile
+
+# 段階的ビルド
+cd packages/db
+pnpm db:generate
+pnpm build
+cd ../../apps/proxyServer
+pnpm build
+```
+
+**5. PM2エラー**
+
+```bash
+# PM2プロセス確認
+pm2 status
+
+# PM2を完全リセット
+pm2 delete tumiki-proxy-server
+pm2 kill
+pm2 start ecosystem.config.cjs
+pm2 save
+
+# 自動起動設定確認
+sudo systemctl status pm2-tumiki-deploy
+
+# PM2自動起動の再設定（rootユーザーで）
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u tumiki-deploy --hp /home/tumiki-deploy
+```
+
+**6. アプリケーションが起動しない**
+
+```bash
+# 詳細ログ確認
+pm2 logs tumiki-proxy-server --lines 50
+
+# 環境変数確認
+cat /opt/tumiki/apps/proxyServer/.env
+echo "環境変数の数: $(grep -c '^[^#]' /opt/tumiki/apps/proxyServer/.env)"
+
+# ビルド結果確認
+ls -la /opt/tumiki/apps/proxyServer/dist/
+
+# 手動起動テスト
+cd /opt/tumiki/apps/proxyServer
+node dist/index.js
+
+# データベース接続テスト
+cd /opt/tumiki/packages/db
+pnpm db:migrate
+```
+
+### ログの確認
+
+```bash
+# PM2ログ
+pm2 logs tumiki-proxy-server
+
+# システムログ
+sudo journalctl -u pm2-tumiki-deploy -f
+
+# アプリケーションログ（アプリケーション固有）
+tail -f /opt/tumiki/apps/proxyServer/logs/*.log
+```
+
+## デプロイ設定
+
+### デフォルト設定値
+
+```bash
+INSTANCE_NAME="tumiki-instance-20250601"
+ZONE="asia-northeast2-c"
+PROJECT_ID="mcp-server-455206"
+REMOTE_PATH="/opt/tumiki"
+DEPLOY_USER="tumiki-deploy"
+REPO_URL="git@github.com:rayven122/tumiki.git"
+CURRENT_BRANCH="main"
 ```
 
 ## アクセス情報
 
 デプロイ完了後のアクセス先：
 
-- **外部IP**: `34.97.140.159`
-- **アクセスURL**: <http://34.97.140.159:8080>
-- **ヘルスチェック**: `curl http://34.97.140.159:8080/`
+- **アクセスURL**: デプロイ完了時に表示される外部IP:8080
+- **ヘルスチェック**: `curl http://外部IP:8080/health`
+- **SSH接続**: `gcloud compute ssh tumiki-deploy@tumiki-instance-20250601 --zone=asia-northeast2-c --project=mcp-server-455206`
 
-## トラブルシューティング
+## セキュリティ注意事項
 
-詳細なトラブルシューティング情報は [デプロイメントガイド](../doc/deployment-guide-gce-direct.md) を参照してください。
-
-**よくある問題**:
-
-```bash
-# Google Cloud認証がない場合
-gcloud auth login
-gcloud config set project mcp-server-455206
-
-# Vercel CLIがない場合
-npm install -g vercel
-vercel login
-
-# SSH接続でキー生成が必要な場合（初回のみ）
-# パスフレーズを求められたら空のままEnterを押すか任意のパスフレーズを設定
-
-# 環境変数ファイルが取得できない場合（手動取得）
-cd ../../  # プロジェクトルートに移動
-vercel env pull --environment=production apps/proxyServer/.env.production
-
-# デプロイが失敗する場合
-ls -la .env.production  # ファイルが存在するか確認
-
-# 依存関係のインストールでエラーが発生する場合
-# "Cannot find module 'minimist'" などのエラー
-# → スクリプトで --ignore-scripts オプションを使用して回避済み
-
-# アプリケーションが起動しない場合
-pm2 logs tumiki-proxy-server  # エラーログを確認
-
-# 接続できない場合
-curl http://localhost:8080/  # VM 内からのアクセステスト
-```
-
+- SSHキーは適切な権限（600）で保護されています
+- デプロイユーザーは最小権限で運用されます
+- 環境変数はVercelから自動取得されるため、Vercelアカウントのセキュリティを確保してください
+- 環境変数ファイルには機密情報が含まれるため、適切にアクセス制御してください
+- PM2は systemd サービスとして自動起動設定されています
+- GitHubへのSSH接続にはデプロイ専用のSSHキーを使用してください
