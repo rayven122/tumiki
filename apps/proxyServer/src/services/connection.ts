@@ -12,6 +12,7 @@ import {
   canCreateNewSession,
   recordSessionError,
 } from "./session.js";
+import { TransportType as PrismaTransportType } from "@tumiki/db/prisma";
 
 // SSE接続情報
 export interface SSEConnectionInfo {
@@ -126,7 +127,7 @@ export const establishSSEConnection = async (
     sseConnections.set(sessionId, connectionInfo);
 
     // MCPサーバーとの接続確立
-    const { server } = await getServer(apiKey);
+    const { server } = await getServer(apiKey, PrismaTransportType.SSE);
     await server.connect(transport);
 
     // トランスポートが閉じられたときのクリーンアップ（循環参照防止）
