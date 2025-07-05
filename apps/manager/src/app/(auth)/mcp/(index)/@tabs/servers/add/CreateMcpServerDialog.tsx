@@ -143,8 +143,13 @@ export const CreateMcpServerDialog = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // HTTPヘッダーのキーのみをenvVarsとして送信
-    const envVars = headers.map((h) => h.key);
+    const envVars = headers.reduce(
+      (acc, header) => {
+        acc[header.key] = header.value;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
 
     createMcpServer.mutate({
       name,

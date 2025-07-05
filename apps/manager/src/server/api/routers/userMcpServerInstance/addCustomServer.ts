@@ -33,6 +33,11 @@ export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
         },
       },
     });
+
+    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
+    // api key を作成
+    const fullKey = generateApiKey();
+
     const data = await tx.userMcpServerInstance.create({
       data: {
         userId: ctx.session.user.id,
@@ -41,21 +46,17 @@ export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
         serverStatus: ServerStatus.RUNNING,
         serverType: ServerType.CUSTOM,
         toolGroupId: toolGroup.id,
+        apiKeys: {
+          create: {
+            name: `${input.name} API Key`,
+            apiKey: fullKey,
+            userId: ctx.session.user.id,
+          },
+        },
         // TODO: mcpServerInstanceToolGroups を追加する
       },
     });
 
-    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
-    // api key を作成
-    const fullKey = generateApiKey();
-    await tx.mcpApiKey.create({
-      data: {
-        name: `${data.name} API Key`,
-        apiKey: fullKey,
-        userMcpServerInstanceId: data.id,
-        userId: ctx.session.user.id,
-      },
-    });
     return data;
   });
 

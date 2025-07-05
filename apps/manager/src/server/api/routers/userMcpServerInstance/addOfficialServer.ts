@@ -67,6 +67,11 @@ export const addOfficialServer = async ({
         },
       },
     });
+
+    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
+    // api key を作成
+    const fullKey = generateApiKey();
+
     const data = await tx.userMcpServerInstance.create({
       data: {
         userId: ctx.session.user.id,
@@ -75,18 +80,13 @@ export const addOfficialServer = async ({
         serverStatus: ServerStatus.RUNNING,
         serverType: ServerType.OFFICIAL,
         toolGroupId: toolGroup.id,
-      },
-    });
-
-    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
-    // api key を作成
-    const fullKey = generateApiKey();
-    await tx.mcpApiKey.create({
-      data: {
-        name: `${data.name} API Key`,
-        apiKey: fullKey,
-        userMcpServerInstanceId: data.id,
-        userId: ctx.session.user.id,
+        apiKeys: {
+          create: {
+            name: `${mcpServer.name} API Key`,
+            apiKey: fullKey,
+            userId: ctx.session.user.id,
+          },
+        },
       },
     });
 

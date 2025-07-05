@@ -4,6 +4,7 @@ import { ServerType, ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import { generateApiKey } from "../mcpApiKey";
 import type { CreateMcpServerInput } from ".";
+import { getMcpServerToolsSSE } from "@tumiki/utils";
 
 type CreateMcpServerInputProps = {
   ctx: ProtectedContext;
@@ -22,18 +23,6 @@ export const createMcpServer = async ({
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "SSEタイプの場合、URLは必須です",
-    });
-  }
-
-  // 同じ名前のサーバーが既に存在するかチェック
-  const existingServer = await db.mcpServer.findUnique({
-    where: { name: input.name },
-  });
-
-  if (existingServer) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "同じ名前のMCPサーバーが既に存在します",
     });
   }
 
@@ -68,10 +57,27 @@ export const createMcpServer = async ({
     organizationId = inputOrganizationId;
   }
 
+  const tools = await getMcpServerToolsSSE(
+    {
+      name: input.name,
+      url: input.url ?? null,
+    },
+    input.envVars,
+  );
+  if (tools.length === 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "指定されたMCPサーバーのツールが取得できませんでした",
+    });
+  }
+
   // トランザクションでMCPサーバーとインスタンスを作成
   const result = await db.$transaction(async (tx) => {
     // MCPサーバーを作成
     const mcpServer = await tx.mcpServer.create({
+      include: {
+        tools: true,
+      },
       data: {
         name: input.name,
         iconPath: input.iconPath,
@@ -79,12 +85,21 @@ export const createMcpServer = async ({
         command: input.command,
         args: input.args,
         url: input.url,
-        envVars: input.envVars,
+        envVars: Object.keys(input.envVars),
         serverType: ServerType.OFFICIAL,
         createdBy: userId,
         visibility: input.visibility,
         organizationId,
         isPublic: true,
+        tools: {
+          createMany: {
+            data: tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description ?? "",
+              inputSchema: tool.inputSchema as object,
+            })),
+          },
+        },
       },
     });
 
@@ -95,10 +110,18 @@ export const createMcpServer = async ({
         name: mcpServer.name,
         description: "",
         mcpServerId: mcpServer.id,
-        envVars: JSON.stringify({}), // 初期状態では空のオブジェクト
+        envVars: JSON.stringify(input.envVars),
         organizationId,
+        tools: {
+          connect: mcpServer.tools.map((tool) => ({ id: tool.id })),
+        },
       },
     });
+
+    const toolGroupTools = mcpServer.tools.map((tool) => ({
+      toolId: tool.id,
+      userMcpServerConfigId: serverConfig.id,
+    }));
 
     // ツールグループを作成
     const toolGroup = await tx.userToolGroup.create({
@@ -107,8 +130,16 @@ export const createMcpServer = async ({
         name: mcpServer.name,
         description: "",
         organizationId,
+        toolGroupTools: {
+          createMany: {
+            data: toolGroupTools,
+          },
+        },
       },
     });
+
+    // APIキーを生成
+    const fullKey = generateApiKey();
 
     // MCPサーバーインスタンスを作成
     const serverInstance = await tx.userMcpServerInstance.create({
@@ -116,22 +147,18 @@ export const createMcpServer = async ({
         userId,
         name: mcpServer.name,
         description: "",
-        serverStatus: ServerStatus.STOPPED,
-        serverType: ServerType.CUSTOM,
+        serverStatus: ServerStatus.RUNNING,
+        serverType: ServerType.OFFICIAL,
         toolGroupId: toolGroup.id,
         organizationId,
-      },
-    });
-
-    // APIキーを生成
-    const fullKey = generateApiKey();
-    await tx.mcpApiKey.create({
-      data: {
-        name: `${mcpServer.name} API Key`,
-        apiKey: fullKey,
-        userMcpServerInstanceId: serverInstance.id,
-        userId,
-        organizationId,
+        apiKeys: {
+          create: {
+            name: `${mcpServer.name} API Key`,
+            apiKey: fullKey,
+            userId,
+            organizationId,
+          },
+        },
       },
     });
 
