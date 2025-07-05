@@ -23,7 +23,9 @@
     "postinstall": "pnpm lint:ws",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",
     "db:generate": "pnpm --filter @tumiki/db db:generate",
-    "inspector": "pnpm --filter @tumiki/proxy-server inspector"
+    "inspector": "pnpm --filter @tumiki/proxy-server inspector",
+    "env:pull": "vercel env pull apps/proxyServer/.env",
+    "env:push": "bash scripts/vercel-env-push.sh .env development"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
