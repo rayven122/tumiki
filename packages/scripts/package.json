@@ -51,6 +51,7 @@
     "@tumiki/db": "workspace:*",
     "@tumiki/utils": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
+    "discord-mcp-server": "^1.0.1",
     "figma-developer-mcp": "^0.4.3",
     "mcp-gemini-google-search": "^0.1.1",
     "puppeteer-mcp-server": "^0.7.2",
