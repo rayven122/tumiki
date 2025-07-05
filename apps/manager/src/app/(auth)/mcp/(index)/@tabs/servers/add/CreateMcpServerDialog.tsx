@@ -21,19 +21,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, X, Upload, Globe, Users, Lock, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
-import type { TransportType, McpServerVisibility } from "@tumiki/db/prisma";
+import {
+  Loader2,
+  Plus,
+  X,
+  Upload,
+  Globe,
+  Users,
+  Lock,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
-interface CreateMcpServerDialogProps {
+import { McpServerVisibility, TransportType } from "@tumiki/db/prisma";
+import { toast } from "@/utils/client/toast";
+
+type CreateMcpServerDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
+};
 
-interface Header {
+type Header = {
   key: string;
   value: string;
-}
+};
 
 export const CreateMcpServerDialog = ({
   open,
@@ -41,14 +52,13 @@ export const CreateMcpServerDialog = ({
 }: CreateMcpServerDialogProps) => {
   const [name, setName] = useState("");
   const [iconPath, setIconPath] = useState("");
-  const transportType: TransportType = "SSE";
   const [url, setUrl] = useState("");
   const [headers, setHeaders] = useState<Header[]>([]);
   const [newHeader, setNewHeader] = useState({ key: "", value: "" });
   const [visibleHeaders, setVisibleHeaders] = useState<Set<number>>(new Set());
   const [visibility, setVisibility] = useState<McpServerVisibility>("PRIVATE");
   const [selectedOrganizationId, setSelectedOrganizationId] =
-    useState<string>("");
+    useState<string>();
 
   const utils = api.useUtils();
   const { data: organizations = [] } =
@@ -58,14 +68,14 @@ export const CreateMcpServerDialog = ({
   useEffect(() => {
     if (organizations.length === 0 && visibility === "ORGANIZATION") {
       setVisibility("PRIVATE");
-      setSelectedOrganizationId("");
+      setSelectedOrganizationId(undefined);
     }
   }, [organizations.length, visibility]);
 
   const createMcpServer = api.mcpServer.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("MCPサーバーを作成しました");
-      void utils.mcpServer.findAll.invalidate();
+      await utils.mcpServer.findAll.invalidate();
       onOpenChange(false);
       resetForm();
     },
@@ -133,18 +143,21 @@ export const CreateMcpServerDialog = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // HTTPヘッダーのキーのみをenvVarsとして送信
     const envVars = headers.map((h) => h.key);
 
     createMcpServer.mutate({
       name,
       iconPath: iconPath || undefined,
-      transportType,
+      transportType: TransportType.SSE,
       url,
       args: [],
       envVars,
       visibility,
       organizationId:
-        visibility === "ORGANIZATION" ? selectedOrganizationId : undefined,
+        visibility === McpServerVisibility.ORGANIZATION
+          ? selectedOrganizationId
+          : undefined,
     });
   };
 
@@ -152,22 +165,11 @@ export const CreateMcpServerDialog = ({
     if (!name.trim()) return false;
     if (!url.trim()) return false;
     if (
-      visibility === "ORGANIZATION" &&
+      visibility === McpServerVisibility.ORGANIZATION &&
       (!selectedOrganizationId || organizations.length === 0)
     )
       return false;
     return true;
-  };
-
-  const getVisibilityIcon = (visibility: McpServerVisibility) => {
-    switch (visibility) {
-      case "PRIVATE":
-        return <Lock className="h-4 w-4" />;
-      case "ORGANIZATION":
-        return <Users className="h-4 w-4" />;
-      case "PUBLIC":
-        return <Globe className="h-4 w-4" />;
-    }
   };
 
   return (
@@ -398,7 +400,7 @@ export const CreateMcpServerDialog = ({
                       全ユーザーがMCPサーバーの追加画面から選択可能になります
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      ※ヘッダーのキー名のみ公開され、値は非公開です
+                      ※ヘッダーのキー名のみ公開され、値は非公開です（ユーザ毎に、ヘッダーの値を入力する形で公開されます）
                     </p>
                   </div>
                 </div>

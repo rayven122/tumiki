@@ -82,7 +82,7 @@ erDiagram
 erDiagram
 "McpServer" {
   String id PK
-  String name UK
+  String name
   String iconPath "nullable"
   TransportType transportType
   String command "nullable"
