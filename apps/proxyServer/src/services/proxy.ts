@@ -117,96 +117,130 @@ const createClient = (
 };
 
 /**
- * 複数のサーバーに接続する
+ * 単一のサーバーに接続する（リトライロジック付き）
+ * @param server
+ * @returns
+ */
+const connectToServer = async (
+  server: ServerConfig,
+): Promise<ConnectedClient | null> => {
+  logger.info("Connecting to server", { serverName: server.name });
+
+  const waitFor = config.retry.delayMs;
+  const retries = config.retry.maxAttempts;
+  let count = 0;
+  let retry = true;
+
+  while (retry) {
+    const { client, transport } = createClient(server);
+    if (!client || !transport) {
+      return null;
+    }
+
+    try {
+      await client.connect(transport);
+      logger.info("Successfully connected to server", {
+        serverName: server.name,
+      });
+
+      return {
+        client,
+        name: server.name,
+        cleanup: async () => {
+          await transport.close();
+        },
+        toolNames: server.toolNames,
+      };
+    } catch (error) {
+      logger.error("Failed to connect to server", {
+        serverName: server.name,
+        error: error instanceof Error ? error.message : String(error),
+        attempt: count + 1,
+        maxAttempts: retries,
+      });
+      recordError("server_connection_failed");
+      count++;
+      retry = count < retries;
+      if (retry) {
+        try {
+          await client.close();
+          // transportも確実にクローズする
+          await transport.close();
+        } catch (closeError) {
+          logger.error("Error closing client/transport during retry", {
+            serverName: server.name,
+            error:
+              closeError instanceof Error
+                ? closeError.message
+                : String(closeError),
+          });
+        } finally {
+          logger.debug("Retrying connection", {
+            serverName: server.name,
+            delayMs: waitFor,
+            attempt: count,
+            maxAttempts: retries,
+          });
+          await sleep(waitFor);
+        }
+      } else {
+        // リトライ終了時もtransportをクローズ
+        try {
+          await transport.close();
+        } catch (closeError) {
+          logger.error("Error closing transport after retry exhaustion", {
+            serverName: server.name,
+            error:
+              closeError instanceof Error
+                ? closeError.message
+                : String(closeError),
+          });
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * 複数のサーバーに並列で接続する
  * 接続に失敗したら、2.5秒待ってから再接続を試みる
- * 3回失敗したら、エラーをスローする
+ * 3回失敗したら、そのサーバーはスキップする
  * @param servers
  * @returns
  */
 export const createClients = async (
   servers: ServerConfig[],
 ): Promise<ConnectedClient[]> => {
+  // 全てのサーバーに対して並列で接続を試みる
+  const connectionPromises = servers.map((server) => connectToServer(server));
+  
+  // Promise.allSettledを使用して、全ての接続試行の結果を取得
+  const results = await Promise.allSettled(connectionPromises);
+  
+  // 成功した接続のみをフィルタリング
   const clients: ConnectedClient[] = [];
-
-  for (const server of servers) {
-    logger.info("Connecting to server", { serverName: server.name });
-
-    const waitFor = config.retry.delayMs;
-    const retries = config.retry.maxAttempts;
-    let count = 0;
-    let retry = true;
-
-    while (retry) {
-      const { client, transport } = createClient(server);
-      if (!client || !transport) {
-        break;
-      }
-
-      try {
-        await client.connect(transport);
-        logger.info("Successfully connected to server", {
+  
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value !== null) {
+      clients.push(result.value);
+    } else {
+      const server = servers[index];
+      if (server) {
+        logger.warn("Server connection skipped after all retries", {
           serverName: server.name,
+          reason: result.status === "rejected" ? result.reason : "Connection returned null",
         });
-
-        clients.push({
-          client,
-          name: server.name,
-          cleanup: async () => {
-            await transport.close();
-          },
-          toolNames: server.toolNames,
-        });
-
-        break;
-      } catch (error) {
-        logger.error("Failed to connect to server", {
-          serverName: server.name,
-          error: error instanceof Error ? error.message : String(error),
-          attempt: count + 1,
-          maxAttempts: retries,
-        });
-        recordError("server_connection_failed");
-        count++;
-        retry = count < retries;
-        if (retry) {
-          try {
-            await client.close();
-            // transportも確実にクローズする
-            await transport.close();
-          } catch (closeError) {
-            logger.error("Error closing client/transport during retry", {
-              serverName: server.name,
-              error:
-                closeError instanceof Error
-                  ? closeError.message
-                  : String(closeError),
-            });
-          } finally {
-            logger.debug("Retrying connection", {
-              serverName: server.name,
-              delayMs: waitFor,
-              attempt: count,
-              maxAttempts: retries,
-            });
-            await sleep(waitFor);
-          }
-        } else {
-          // リトライ終了時もtransportをクローズ
-          try {
-            await transport.close();
-          } catch (closeError) {
-            logger.error("Error closing transport after retry exhaustion", {
-              serverName: server.name,
-              error:
-                closeError instanceof Error
-                  ? closeError.message
-                  : String(closeError),
-            });
-          }
-        }
       }
     }
-  }
+  });
+  
+  logger.info("Parallel connection completed", {
+    totalServers: servers.length,
+    connectedServers: clients.length,
+    failedServers: servers.length - clients.length,
+  });
 
   return clients;
 };
