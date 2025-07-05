@@ -18,6 +18,7 @@ import type { ServerConfig } from "../lib/types.js";
 import { logger } from "../lib/logger.js";
 import { config } from "../lib/config.js";
 import { recordError, measureExecutionTime } from "../lib/metrics.js";
+import { logMcpRequest, calculateDataUsage } from "../lib/requestLogger.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -370,7 +371,10 @@ export const getMcpClients = async (apiKey: string) => {
   return { connectedClients, cleanup };
 };
 
-export const getServer = async (apiKey: string) => {
+export const getServer = async (
+  apiKey: string,
+  transportType: TransportType,
+) => {
   const server = new Server(
     {
       name: "mcp-proxy",
@@ -385,6 +389,8 @@ export const getServer = async (apiKey: string) => {
 
   // List Tools Handler with timeout handling
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+    const startTime = Date.now();
+
     logger.info("Listing tools - establishing fresh connections");
     const requestTimeout = config.timeouts.request;
 
@@ -396,7 +402,15 @@ export const getServer = async (apiKey: string) => {
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
+    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+
     try {
+      // API キー検証を先に実行してユーザー情報を取得
+      validation = await validateApiKey(apiKey);
+      if (!validation.valid || !validation.userMcpServerInstance) {
+        throw new Error(`Invalid API key: ${validation.error}`);
+      }
+
       const result = await measureExecutionTime(
         () =>
           Promise.race([
@@ -456,9 +470,44 @@ export const getServer = async (apiKey: string) => {
       );
 
       await result.cleanup();
+
+      const durationMs = Date.now() - startTime;
+
+      // 非同期でログ記録（レスポンス返却をブロックしない）
+      if (validation.userMcpServerInstance) {
+        const { inputBytes, outputBytes } = calculateDataUsage(
+          request.params,
+          result.tools,
+        );
+
+        // 成功時のログ記録
+        // ログ記録を非同期で実行（await しない）
+        logMcpRequest({
+          userId: validation.userMcpServerInstance.userId,
+          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          toolName: "tools/list",
+          transportType: transportType,
+          method: "tools/list",
+          responseStatus: "200",
+          durationMs,
+          inputBytes,
+          outputBytes,
+          organizationId:
+            validation.userMcpServerInstance.organizationId ?? undefined,
+        }).catch((error) => {
+          // ログ記録失敗をログに残すが、リクエスト処理は継続
+          logger.error("Failed to log tools/list request", {
+            error: error instanceof Error ? error.message : String(error),
+            userId: validation?.userMcpServerInstance?.userId,
+          });
+        });
+      }
+
       logger.info("Tools list request completed", {
         toolsCount: result.tools.length,
+        durationMs,
       });
+      // レスポンスデータを準備
       return { tools: result.tools };
     } catch (error) {
       if (clientsCleanup) {
@@ -473,8 +522,38 @@ export const getServer = async (apiKey: string) => {
           });
         }
       }
+
+      // エラー時のログ記録
+      const durationMs = Date.now() - startTime;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      if (validation?.userMcpServerInstance) {
+        // エラー時も非同期でログ記録
+        logMcpRequest({
+          userId: validation.userMcpServerInstance.userId,
+          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          toolName: "tools/list",
+          transportType: transportType,
+          method: "tools/list",
+          responseStatus: "500",
+          durationMs,
+          errorMessage,
+          errorCode: error instanceof Error ? error.name : "UnknownError",
+          organizationId:
+            validation.userMcpServerInstance.organizationId ?? undefined,
+        }).catch((logError) => {
+          logger.error("Failed to log tools/list error", {
+            logError:
+              logError instanceof Error ? logError.message : String(logError),
+            originalError: errorMessage,
+          });
+        });
+      }
+
       logger.error("Tools list request failed", {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
+        durationMs,
       });
       recordError("tools_list_failure");
       throw error;
@@ -484,6 +563,8 @@ export const getServer = async (apiKey: string) => {
   // Call Tool Handler with timeout handling
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+    const startTime = Date.now();
+
     logger.info("Tool call - establishing fresh connections", {
       toolName: name,
     });
@@ -498,7 +579,15 @@ export const getServer = async (apiKey: string) => {
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
+    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+
     try {
+      // API キー検証を先に実行してユーザー情報を取得
+      validation = await validateApiKey(apiKey);
+      if (!validation.valid || !validation.userMcpServerInstance) {
+        throw new Error(`Invalid API key: ${validation.error}`);
+      }
+
       const result = await measureExecutionTime(
         () =>
           Promise.race([
@@ -554,8 +643,43 @@ export const getServer = async (apiKey: string) => {
       );
 
       await result.cleanup();
+
+      const durationMs = Date.now() - startTime;
+
+      // 非同期でログ記録（レスポンス返却をブロックしない）
+      if (validation.userMcpServerInstance) {
+        const { inputBytes, outputBytes } = calculateDataUsage(
+          request.params,
+          result.result,
+        );
+
+        // 成功時のログ記録
+        // ログ記録を非同期で実行（await しない）
+        logMcpRequest({
+          userId: validation.userMcpServerInstance.userId,
+          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          toolName: name,
+          transportType: transportType,
+          method: "tools/call",
+          responseStatus: "200",
+          durationMs,
+          inputBytes,
+          outputBytes,
+          organizationId:
+            validation.userMcpServerInstance.organizationId ?? undefined,
+        }).catch((error) => {
+          // ログ記録失敗をログに残すが、リクエスト処理は継続
+          logger.error("Failed to log tools/call request", {
+            error: error instanceof Error ? error.message : String(error),
+            toolName: name,
+            userId: validation?.userMcpServerInstance?.userId,
+          });
+        });
+      }
+
       logger.info("Tool call completed", {
         toolName: name,
+        durationMs,
       });
       return result.result;
     } catch (error) {
@@ -571,9 +695,40 @@ export const getServer = async (apiKey: string) => {
           });
         }
       }
+
+      // エラー時のログ記録
+      const durationMs = Date.now() - startTime;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      if (validation?.userMcpServerInstance) {
+        // エラー時も非同期でログ記録
+        logMcpRequest({
+          userId: validation.userMcpServerInstance.userId,
+          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          toolName: name,
+          transportType: transportType,
+          method: "tools/call",
+          responseStatus: "500",
+          durationMs,
+          errorMessage,
+          errorCode: error instanceof Error ? error.name : "UnknownError",
+          organizationId:
+            validation.userMcpServerInstance.organizationId ?? undefined,
+        }).catch((logError) => {
+          logger.error("Failed to log tools/call error", {
+            logError:
+              logError instanceof Error ? logError.message : String(logError),
+            originalError: errorMessage,
+            toolName: name,
+          });
+        });
+      }
+
       logger.error("Tool call failed", {
         toolName: name,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
+        durationMs,
       });
       recordError(`tool_call_failure_${name}`);
       throw error;

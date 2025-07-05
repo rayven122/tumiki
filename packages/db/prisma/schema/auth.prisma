@@ -38,6 +38,8 @@ model User {
     Chat               Chat[]
     Document           Document[]
     Suggestion         Suggestion[]
+    /// MCPサーバーリクエストログ
+    mcpServerRequestLogs McpServerRequestLog[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

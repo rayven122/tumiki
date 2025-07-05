@@ -37,6 +37,8 @@ model Organization {
     apiKeys            McpApiKey[]
     /// 組織限定公開のMCPサーバー
     mcpServers         McpServer[]
+    /// 組織のリクエストログ
+    requestLogs        McpServerRequestLog[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

@@ -20,6 +20,7 @@ import {
   recordSessionError,
   type SessionInfo,
 } from "./session.js";
+import { TransportType as PrismaTransportType } from "@tumiki/db/prisma";
 
 // Transport types
 export enum TransportImplementation {
@@ -264,7 +265,7 @@ export const establishSSEConnection = async (
     // MCPサーバーとの接続確立
     let server;
     try {
-      const serverResult = await getServer(apiKeyId);
+      const serverResult = await getServer(apiKeyId, PrismaTransportType.SSE);
       server = serverResult.server;
       await server.connect(transport);
     } catch (serverError) {
