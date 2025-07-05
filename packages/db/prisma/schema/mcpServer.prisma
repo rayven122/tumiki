@@ -30,7 +30,7 @@ model McpServer {
     id               String                @id @default(cuid())
     /// MCP サーバー名
     /// @zod.string.min(1)
-    name             String                @unique
+    name             String
     /// アイコンパス
     iconPath         String?
     /// 接続タイプ（stdio, sse）

@@ -13,9 +13,11 @@ export const upsertMcpServers = async () => {
       },
       update: {
         ...serverData,
+        visibility: "PUBLIC",
       },
       create: {
         ...serverData,
+        visibility: "PUBLIC",
       },
     });
   });
