@@ -11,18 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Server } from "lucide-react";
 
-interface AddRemoteServerCardProps {
+type AddRemoteServerCardProps = {
   onConnect: () => void;
-}
+};
 
 export const AddRemoteServerCard = ({
   onConnect,
 }: AddRemoteServerCardProps) => {
-  const handleConnect = () => {
-    console.log("AddRemoteServerCard connect button clicked");
-    onConnect();
-  };
-
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
@@ -51,7 +46,7 @@ export const AddRemoteServerCard = ({
           variant="outline"
           size="sm"
           className="mb-2 flex w-full items-center justify-between"
-          onClick={handleConnect}
+          onClick={onConnect}
         >
           <span className="flex items-center">
             <Server className="mr-2 size-4" />
@@ -73,7 +68,7 @@ export const AddRemoteServerCard = ({
       </CardContent>
 
       <CardFooter className="mt-auto">
-        <Button type="button" onClick={handleConnect} className="w-full">
+        <Button type="button" onClick={onConnect} className="w-full">
           接続
         </Button>
       </CardFooter>
