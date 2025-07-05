@@ -204,7 +204,7 @@ export function WaitingListModal({ isOpen, onClose }: WaitingListModalProps) {
             >
               {registerMutation.isPending ? (
                 <div className="flex items-center justify-center">
-                  <div className="mr-2 h-5 w-5 animate-spin rounded-full border-3 border-white border-t-transparent" />
+                  <div className="border-3 mr-2 h-5 w-5 animate-spin rounded-full border-white border-t-transparent" />
                   Registering...
                 </div>
               ) : (

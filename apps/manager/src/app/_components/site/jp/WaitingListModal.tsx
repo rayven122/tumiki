@@ -202,7 +202,7 @@ export function WaitingListModal({ isOpen, onClose }: WaitingListModalProps) {
             >
               {registerMutation.isPending ? (
                 <div className="flex items-center justify-center">
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-5 sm:w-5 sm:border-3" />
+                  <div className="sm:border-3 mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-5 sm:w-5" />
                   <span className="text-xs sm:text-base">登録中...</span>
                 </div>
               ) : (

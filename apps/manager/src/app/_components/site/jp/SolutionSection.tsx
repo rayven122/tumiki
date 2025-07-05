@@ -102,9 +102,9 @@ export function SolutionSection() {
             >
               {/* Demo Image */}
               <div className="w-full lg:flex-1">
-                <div className="relative border-3 border-black bg-white p-3 shadow-[6px_6px_0_#000] md:p-4">
-                  <div className="absolute -top-3 -left-3 h-6 w-6 border-2 border-black bg-indigo-500 shadow-[2px_2px_0_#000]" />
-                  <div className="absolute -top-3 -right-3 h-6 w-6 border-2 border-black bg-indigo-500 shadow-[2px_2px_0_#000]" />
+                <div className="border-3 relative border-black bg-white p-3 shadow-[6px_6px_0_#000] md:p-4">
+                  <div className="absolute -left-3 -top-3 h-6 w-6 border-2 border-black bg-indigo-500 shadow-[2px_2px_0_#000]" />
+                  <div className="absolute -right-3 -top-3 h-6 w-6 border-2 border-black bg-indigo-500 shadow-[2px_2px_0_#000]" />
                   <div className="relative aspect-[4/3] overflow-hidden rounded border-2 border-gray-200 md:aspect-video">
                     <Image
                       src={solution.imagePath}
@@ -150,7 +150,7 @@ export function SolutionSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mt-24 border-3 border-black bg-indigo-50 p-12 shadow-[8px_8px_0_#000]"
+          className="border-3 mt-24 border-black bg-indigo-50 p-12 shadow-[8px_8px_0_#000]"
         >
           <div className="text-center">
             <h3 className="mb-8 text-3xl font-black text-black">

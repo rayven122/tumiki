@@ -72,10 +72,10 @@ export function ChallengesSection() {
               className="group relative border-2 border-black bg-white p-8 shadow-[4px_4px_0_#000] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#000]"
             >
               {/* Decorative corner blocks */}
-              <div className="absolute -top-2 -left-2 h-4 w-4 border-2 border-black bg-red-500" />
-              <div className="absolute -top-2 -right-2 h-4 w-4 border-2 border-black bg-yellow-500" />
+              <div className="absolute -left-2 -top-2 h-4 w-4 border-2 border-black bg-red-500" />
+              <div className="absolute -right-2 -top-2 h-4 w-4 border-2 border-black bg-yellow-500" />
               <div className="absolute -bottom-2 -left-2 h-4 w-4 border-2 border-black bg-blue-500" />
-              <div className="absolute -right-2 -bottom-2 h-4 w-4 border-2 border-black bg-green-500" />
+              <div className="absolute -bottom-2 -right-2 h-4 w-4 border-2 border-black bg-green-500" />
 
               <div className="mb-4 text-5xl">{challenge.icon}</div>
               <h3 className="mb-6 text-xl font-black text-black">
@@ -102,7 +102,7 @@ export function ChallengesSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-16 border-3 border-black bg-gradient-to-r from-red-50 to-orange-50 p-6 shadow-[6px_6px_0_#000] md:p-8"
+          className="border-3 mt-16 border-black bg-gradient-to-r from-red-50 to-orange-50 p-6 shadow-[6px_6px_0_#000] md:p-8"
         >
           <div className="mb-6 text-center">
             <h3 className="text-2xl font-black text-red-800 md:text-3xl">

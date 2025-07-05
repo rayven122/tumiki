@@ -187,7 +187,7 @@ export function ServerToolSelector({
                       </Label>
                     </AccordionTrigger>
                   </div>
-                  <AccordionContent className="pr-2 pl-8">
+                  <AccordionContent className="pl-8 pr-2">
                     <div className="space-y-1">
                       {server.tools.map((tool) => (
                         <div

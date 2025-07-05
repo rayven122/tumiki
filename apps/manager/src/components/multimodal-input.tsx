@@ -232,7 +232,7 @@ function PureMultimodalInput({
 
       <input
         type="file"
-        className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
+        className="pointer-events-none fixed -left-4 -top-4 size-0.5 opacity-0"
         ref={fileInputRef}
         multiple
         onChange={handleFileChange}
@@ -269,7 +269,7 @@ function PureMultimodalInput({
         value={input}
         onChange={handleInput}
         className={cx(
-          "bg-muted max-h-[calc(75dvh)] min-h-[24px] resize-none overflow-hidden rounded-2xl pb-10 text-base! dark:border-zinc-700",
+          "bg-muted text-base! max-h-[calc(75dvh)] min-h-[24px] resize-none overflow-hidden rounded-2xl pb-10 dark:border-zinc-700",
           className,
         )}
         rows={2}
@@ -295,7 +295,7 @@ function PureMultimodalInput({
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
       </div>
 
-      <div className="absolute right-0 bottom-0 flex w-fit flex-row justify-end p-2">
+      <div className="absolute bottom-0 right-0 flex w-fit flex-row justify-end p-2">
         {status === "submitted" ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
