@@ -138,7 +138,7 @@ export function ComparisonSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="border-3 mb-16 overflow-hidden border-black bg-white shadow-[8px_8px_0_#000]"
+          className="mb-16 overflow-hidden border-3 border-black bg-white shadow-[8px_8px_0_#000]"
         >
           <div className="overflow-x-auto">
             <table className="w-full">

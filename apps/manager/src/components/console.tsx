@@ -134,7 +134,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
                 consoleOutput.status,
               ) ? (
                 <div className="flex flex-row gap-2">
-                  <div className="mb-auto mt-0.5 size-fit animate-spin self-center">
+                  <div className="mt-0.5 mb-auto size-fit animate-spin self-center">
                     <LoaderIcon />
                   </div>
                   <div className="text-muted-foreground">
@@ -155,13 +155,13 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
                         <img
                           src={content.value}
                           alt="output"
-                          className="max-w-(--breakpoint-toast-mobile) w-full rounded-md"
+                          className="w-full max-w-(--breakpoint-toast-mobile) rounded-md"
                         />
                       </picture>
                     ) : (
                       <div
                         key={`${consoleOutput.id}-${index}`}
-                        className="w-full whitespace-pre-line break-words"
+                        className="w-full break-words whitespace-pre-line"
                       >
                         {content.value}
                       </div>

@@ -24,16 +24,16 @@ export function AboutSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="border-3 relative border-black bg-white p-12 shadow-[8px_8px_0_#000]"
+              className="relative border-3 border-black bg-white p-12 shadow-[8px_8px_0_#000]"
             >
               {/* Block decoration for the overview card */}
-              <div className="absolute left-4 top-4 h-6 w-6 border-2 border-gray-300 bg-gray-100 shadow-[2px_2px_0_rgba(0,0,0,0.1)]" />
-              <div className="absolute right-4 top-4 h-4 w-4 border border-gray-200 bg-gray-50" />
+              <div className="absolute top-4 left-4 h-6 w-6 border-2 border-gray-300 bg-gray-100 shadow-[2px_2px_0_rgba(0,0,0,0.1)]" />
+              <div className="absolute top-4 right-4 h-4 w-4 border border-gray-200 bg-gray-50" />
               <div className="absolute bottom-4 left-6 h-5 w-5 border border-gray-300 bg-gray-100" />
-              <div className="absolute bottom-4 right-6 h-6 w-6 border-2 border-gray-200 bg-gray-50 shadow-[1px_1px_0_rgba(0,0,0,0.05)]" />
+              <div className="absolute right-6 bottom-4 h-6 w-6 border-2 border-gray-200 bg-gray-50 shadow-[1px_1px_0_rgba(0,0,0,0.05)]" />
 
               <div className="relative z-10">
-                <p className="text-lg font-medium leading-relaxed text-gray-700 md:text-xl lg:text-2xl">
+                <p className="text-lg leading-relaxed font-medium text-gray-700 md:text-xl lg:text-2xl">
                   GoogleカレンダーやNotion、Slackなどの業務ツールと簡単に連携し、
                   <span className="mx-1 inline-block bg-black px-3 py-1 font-bold tracking-wide text-white shadow-[3px_3px_0_#6366f1]">
                     MCP（Model Context Protocol）
