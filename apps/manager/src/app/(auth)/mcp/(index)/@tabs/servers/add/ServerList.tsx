@@ -1,16 +1,19 @@
 "use client";
 
 import type React from "react";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
 import { ServerCardSkeleton } from "../../_components/ServerCard/ServerCardSkeleton";
 import { ServerCard } from "../../_components/ServerCard";
+import { AddRemoteServerCard } from "./AddRemoteServerCard";
+import { CreateMcpServerDialog } from "./CreateMcpServerDialog";
 import { api } from "@/trpc/react";
 
-const AsyncServerList = () => {
+const AsyncServerList = ({ onCreateServerClick }: { onCreateServerClick: () => void }) => {
   const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <AddRemoteServerCard onConnect={onCreateServerClick} />
       {mcpServers.map((mcpServer) => (
         <ServerCard key={mcpServer.id} mcpServer={mcpServer} />
       ))}
@@ -29,9 +32,23 @@ const ServerListSkeleton = () => {
 };
 
 export function ServerList() {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const handleCreateServerClick = () => {
+    console.log("CreateServerClick triggered");
+    setCreateDialogOpen(true);
+  };
+
   return (
-    <Suspense fallback={<ServerListSkeleton />}>
-      <AsyncServerList />
-    </Suspense>
+    <>
+      <Suspense fallback={<ServerListSkeleton />}>
+        <AsyncServerList onCreateServerClick={handleCreateServerClick} />
+      </Suspense>
+      
+      <CreateMcpServerDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+      />
+    </>
   );
 }
