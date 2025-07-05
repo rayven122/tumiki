@@ -11,7 +11,7 @@ export const CreateMcpServerInput = z.object({
   command: z.string().optional(),
   args: z.array(z.string()).default([]),
   url: z.string().optional(),
-  envVars: z.array(z.string()).default([]),
+  envVars: z.record(z.string()).default({}),
   visibility: z.nativeEnum(McpServerVisibility).default("PRIVATE"),
   organizationId: z.string().optional(),
 });
