@@ -10,6 +10,8 @@ enum TransportType {
     STDIO
     /// Server-Sent Eventsでの通信  
     SSE
+    /// Streamable HTTPSでの通信
+    STREAMABLE_HTTPS
 }
 
 /// ユーザーカスタムサーバーの可視性
@@ -39,10 +41,10 @@ model McpServer {
     command          String?
     /// STDIO用の引数
     args             String[]
-    /// SSE接続用のURL
+    /// SSE/Streamable HTTPS接続用のURL
     url              String?
     /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
-    /// SSE: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+    /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
     envVars          String[]
     /// サーバーの種類（公式/ユーザーカスタム）
     serverType       ServerType            @default(OFFICIAL)
