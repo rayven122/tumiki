@@ -36,7 +36,7 @@ export default function Error({
             <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
               開発者向けエラー詳細
             </summary>
-            <pre className="mt-2 whitespace-pre-wrap rounded bg-gray-100 p-4 text-left text-xs text-gray-800">
+            <pre className="mt-2 rounded bg-gray-100 p-4 text-left text-xs whitespace-pre-wrap text-gray-800">
               {error.message}
               {error.digest && `\nError ID: ${error.digest}`}
             </pre>

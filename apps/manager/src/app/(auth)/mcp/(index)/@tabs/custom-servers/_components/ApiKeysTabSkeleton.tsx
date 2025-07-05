@@ -26,7 +26,7 @@ export function ApiKeysTabSkeleton() {
         <div className="flex items-center justify-between">
           <CardTitle>API Keys</CardTitle>
           <div className="relative w-64">
-            <Search className="text-muted-foreground absolute left-2 top-2.5 h-4 w-4" />
+            <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
             <Input placeholder="API Keyを検索..." className="pl-8" disabled />
           </div>
         </div>

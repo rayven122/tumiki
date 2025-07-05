@@ -174,7 +174,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                 className="flex h-8 items-center gap-2 rounded-md px-2"
               >
                 <div
-                  className="bg-sidebar-accent-foreground/10 max-w-(--skeleton-width) h-4 flex-1 rounded-md"
+                  className="bg-sidebar-accent-foreground/10 h-4 max-w-(--skeleton-width) flex-1 rounded-md"
                   style={
                     {
                       "--skeleton-width": `${item}%`,

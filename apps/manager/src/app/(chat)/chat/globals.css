@@ -183,7 +183,7 @@
 
   *[class^="text-"] {
     color: transparent;
-    @apply bg-foreground/20 animate-pulse select-none rounded-md;
+    @apply bg-foreground/20 animate-pulse rounded-md select-none;
   }
 
   .skeleton-bg {

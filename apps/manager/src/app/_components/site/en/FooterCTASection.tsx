@@ -14,7 +14,7 @@ export const FooterCTASection = ({ setShowModal }: FooterCTASectionProps) => {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="mb-6 text-3xl font-bold leading-tight lg:text-5xl"
+          className="mb-6 text-3xl leading-tight font-bold lg:text-5xl"
         >
           Build with blocks to transform AI into your digital workforce.
         </motion.h2>

@@ -57,7 +57,7 @@ export default function Preloader() {
 
                 {/* Middle Layer */}
                 <motion.div
-                  className="absolute left-0 top-0 h-10 w-10 rounded-lg bg-blue-700"
+                  className="absolute top-0 left-0 h-10 w-10 rounded-lg bg-blue-700"
                   initial={{ scale: 0, y: 0, rotateY: 0 }}
                   animate={{
                     scale: 1,
@@ -78,7 +78,7 @@ export default function Preloader() {
 
                 {/* Top Layer */}
                 <motion.div
-                  className="absolute left-1 top-0 h-8 w-8 rounded-lg bg-blue-500"
+                  className="absolute top-0 left-1 h-8 w-8 rounded-lg bg-blue-500"
                   initial={{ scale: 0, y: 0, rotateY: 0 }}
                   animate={{
                     scale: 1,
