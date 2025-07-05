@@ -215,13 +215,13 @@ export const createClients = async (
 ): Promise<ConnectedClient[]> => {
   // 全てのサーバーに対して並列で接続を試みる
   const connectionPromises = servers.map((server) => connectToServer(server));
-  
+
   // Promise.allSettledを使用して、全ての接続試行の結果を取得
   const results = await Promise.allSettled(connectionPromises);
-  
+
   // 成功した接続のみをフィルタリング
   const clients: ConnectedClient[] = [];
-  
+
   results.forEach((result, index) => {
     if (result.status === "fulfilled" && result.value !== null) {
       clients.push(result.value);
@@ -230,12 +230,15 @@ export const createClients = async (
       if (server) {
         logger.warn("Server connection skipped after all retries", {
           serverName: server.name,
-          reason: result.status === "rejected" ? result.reason : "Connection returned null",
+          reason:
+            result.status === "rejected"
+              ? result.reason
+              : "Connection returned null",
         });
       }
     }
   });
-  
+
   logger.info("Parallel connection completed", {
     totalServers: servers.length,
     connectedServers: clients.length,
