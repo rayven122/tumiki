@@ -72,8 +72,15 @@ export const getMcpServerToolsSSE = async (
       requestInit: { headers: envVars },
     });
 
-    // サーバーに接続
-    await client.connect(transport);
+    // 10秒のタイムアウトを設定
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("MCPサーバーへの接続がタイムアウトしました（10秒）"));
+      }, 10000);
+    });
+
+    // サーバーに接続（タイムアウト付き）
+    await Promise.race([client.connect(transport), timeoutPromise]);
 
     // ツール一覧を取得
     const listTools = await client.listTools();
