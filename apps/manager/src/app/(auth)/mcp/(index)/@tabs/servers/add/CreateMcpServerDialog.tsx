@@ -59,6 +59,9 @@ export const CreateMcpServerDialog = ({
   const [visibility, setVisibility] = useState<McpServerVisibility>("PRIVATE");
   const [selectedOrganizationId, setSelectedOrganizationId] =
     useState<string>();
+  const [transportType, setTransportType] = useState<TransportType>(
+    TransportType.SSE,
+  );
 
   const utils = api.useUtils();
   const { data: organizations = [] } =
@@ -93,6 +96,7 @@ export const CreateMcpServerDialog = ({
     setVisibleHeaders(new Set());
     setVisibility("PRIVATE");
     setSelectedOrganizationId("");
+    setTransportType(TransportType.SSE);
   };
 
   const addHeader = () => {
@@ -154,7 +158,7 @@ export const CreateMcpServerDialog = ({
     createMcpServer.mutate({
       name,
       iconPath: iconPath || undefined,
-      transportType: TransportType.SSE,
+      transportType,
       url,
       args: [],
       envVars,
@@ -222,6 +226,33 @@ export const CreateMcpServerDialog = ({
             </div>
           </div>
 
+          {/* 接続タイプ */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">接続タイプ</Label>
+            <Select
+              value={transportType}
+              onValueChange={(value: TransportType) => setTransportType(value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SSE">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">SSE</Badge>
+                    <span>Server-Sent Events</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="STREAMABLE_HTTPS">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">HTTPS</Badge>
+                    <span>Streamable HTTPS</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* 接続URL */}
           <div className="space-y-2">
             <Label htmlFor="url" className="text-sm font-medium">
@@ -229,14 +260,18 @@ export const CreateMcpServerDialog = ({
             </Label>
             <Input
               id="url"
-              placeholder="https://api.example.com/mcp"
+              placeholder={`https://api.example.com/${
+                transportType === TransportType.SSE ? "sse" : "mcp"
+              }`}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
               className="font-mono text-base"
             />
             <p className="text-xs text-gray-500">
-              SSE（Server-Sent Events）プロトコルでMCPサーバーに接続します
+              {transportType === TransportType.SSE
+                ? "SSE（Server-Sent Events）プロトコルでMCPサーバーに接続します"
+                : "Streamable HTTPS プロトコルでMCPサーバーに接続します"}
             </p>
           </div>
 

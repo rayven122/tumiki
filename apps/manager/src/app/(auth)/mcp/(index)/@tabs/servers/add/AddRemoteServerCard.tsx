@@ -53,7 +53,7 @@ export const AddRemoteServerCard = ({
             リモートMCPサーバーを追加
           </span>
           <Badge variant="secondary" className="ml-2">
-            SSE
+            SSE / Streamable HTTPS
           </Badge>
         </Button>
 

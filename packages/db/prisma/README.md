@@ -183,10 +183,10 @@ transportType に応じて接続方式を選択
 - `transportType`: 接続タイプ（stdio, sse）
 - `command`: STDIO用のコマンド
 - `args`: STDIO用の引数
-- `url`: SSE接続用のURL
+- `url`: SSE/Streamable HTTPS接続用のURL
 - `envVars`
   > STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
-  > SSE: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+  > SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
 - `serverType`: サーバーの種類（公式/ユーザーカスタム）
 - `createdBy`: ユーザーカスタムサーバーの作成者
 - `visibility`: ユーザーカスタムサーバーの可視性
