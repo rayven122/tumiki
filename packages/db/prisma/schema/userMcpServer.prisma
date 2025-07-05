@@ -150,6 +150,8 @@ model UserMcpServerInstance {
   toolGroup                   UserToolGroup                    @relation(fields: [toolGroupId], references: [id])
   /// APIキー一覧
   apiKeys                     McpApiKey[]
+  /// リクエストログ
+  requestLogs                 McpServerRequestLog[]
   /// ユーザーID
   userId                      String
   user                        User                             @relation(fields: [userId], references: [id])
@@ -159,4 +161,42 @@ model UserMcpServerInstance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// MCPサーバーインスタンスへのリクエストログ
+/// @namespace McpServer
+/// @namespace UserMcpServer
+model McpServerRequestLog {
+  id                  String                @id @default(cuid())
+  /// ユーザーID
+  userId              String
+  user                User                  @relation(fields: [userId], references: [id])
+  /// MCPサーバーインスタンスID
+  mcpServerInstanceId String
+  mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id])
+  /// 実行されたツール名
+  toolName            String
+  /// リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
+  transportType       TransportType
+  /// MCPメソッド（tools/list, tools/call）
+  method              String
+  /// HTTPステータスコード
+  responseStatus      String
+  /// 実行時間（ミリ秒）
+  durationMs          Int
+  /// エラーメッセージ（エラー種別のみ）
+  errorMessage        String?
+  /// エラーコード
+  errorCode           String?
+  /// 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+  inputBytes          Int?
+  /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+  outputBytes         Int?
+  /// 組織ID
+  organizationId      String?
+  organization        Organization?         @relation(fields: [organizationId], references: [id])
+  /// ユーザーエージェント
+  userAgent           String?
+
+  createdAt DateTime @default(now())
 }

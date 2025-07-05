@@ -148,6 +148,23 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"McpServerRequestLog" {
+  String id PK
+  String userId FK
+  String mcpServerInstanceId FK
+  String toolName
+  TransportType transportType
+  String method
+  String responseStatus
+  Int durationMs
+  String errorMessage "nullable"
+  String errorCode "nullable"
+  Int inputBytes "nullable"
+  Int outputBytes "nullable"
+  String organizationId FK "nullable"
+  String userAgent "nullable"
+  DateTime createdAt
+}
 "_ToolToUserMcpServerConfig" {
   String A FK
   String B FK
@@ -164,6 +181,7 @@ erDiagram
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
 "UserToolGroupTool" }o--|| "Tool" : tool
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
+"McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "_ToolToUserMcpServerConfig" }o--|| "Tool" : Tool
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
@@ -273,6 +291,28 @@ MCPサーバーとして利用するインスタンス
 - `organizationId`: 組織
 - `createdAt`:
 - `updatedAt`:
+
+### `McpServerRequestLog`
+
+MCPサーバーインスタンスへのリクエストログ
+
+**Properties**
+
+- `id`:
+- `userId`: ユーザーID
+- `mcpServerInstanceId`: MCPサーバーインスタンスID
+- `toolName`: 実行されたツール名
+- `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
+- `method`: MCPメソッド（tools/list, tools/call）
+- `responseStatus`: HTTPステータスコード
+- `durationMs`: 実行時間（ミリ秒）
+- `errorMessage`: エラーメッセージ（エラー種別のみ）
+- `errorCode`: エラーコード
+- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+- `organizationId`: 組織ID
+- `userAgent`: ユーザーエージェント
+- `createdAt`:
 
 ### `_ToolToUserMcpServerConfig`
 
@@ -576,6 +616,23 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"McpServerRequestLog" {
+  String id PK
+  String userId FK
+  String mcpServerInstanceId FK
+  String toolName
+  TransportType transportType
+  String method
+  String responseStatus
+  Int durationMs
+  String errorMessage "nullable"
+  String errorCode "nullable"
+  Int inputBytes "nullable"
+  Int outputBytes "nullable"
+  String organizationId FK "nullable"
+  String userAgent "nullable"
+  DateTime createdAt
+}
 "_ToolToUserMcpServerConfig" {
   String A FK
   String B FK
@@ -588,6 +645,8 @@ erDiagram
 "UserToolGroup" }o--|| "User" : user
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "UserMcpServerInstance" }o--|| "User" : user
+"McpServerRequestLog" }o--|| "User" : user
+"McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 ```
 
@@ -677,6 +736,28 @@ MCPサーバーとして利用するインスタンス
 - `organizationId`: 組織
 - `createdAt`:
 - `updatedAt`:
+
+### `McpServerRequestLog`
+
+MCPサーバーインスタンスへのリクエストログ
+
+**Properties**
+
+- `id`:
+- `userId`: ユーザーID
+- `mcpServerInstanceId`: MCPサーバーインスタンスID
+- `toolName`: 実行されたツール名
+- `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
+- `method`: MCPメソッド（tools/list, tools/call）
+- `responseStatus`: HTTPステータスコード
+- `durationMs`: 実行時間（ミリ秒）
+- `errorMessage`: エラーメッセージ（エラー種別のみ）
+- `errorCode`: エラーコード
+- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+- `organizationId`: 組織ID
+- `userAgent`: ユーザーエージェント
+- `createdAt`:
 
 ### `_ToolToUserMcpServerConfig`
 
