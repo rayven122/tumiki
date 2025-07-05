@@ -36,10 +36,12 @@ export const UserMcpServerConfigModal = ({
   initialEnvVars,
   mode = "create",
 }: ApiTokenModalProps) => {
+  const utils = api.useUtils();
   const { mutate: addOfficialServer, isPending } =
     api.userMcpServerInstance.addOfficialServer.useMutation({
-      onSuccess: () => {
+      onSuccess: async () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
+        await utils.userMcpServerInstance.invalidate();
         onOpenChange(false);
       },
       onError: (error) => {
