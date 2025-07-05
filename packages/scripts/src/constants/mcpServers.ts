@@ -96,4 +96,12 @@ export const MCP_SERVERS = [
     envVars: ["SLACK_MCP_XOXP_TOKEN"],
     isPublic: true,
   },
+  {
+    name: "Discord MCP",
+    iconPath: "/logos/discord.svg",
+    command: "node",
+    args: ["node_modules/discord-mcp-server/build/index.js"],
+    envVars: ["DISCORD_TOKEN"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
