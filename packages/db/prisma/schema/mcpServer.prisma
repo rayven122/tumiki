@@ -12,7 +12,6 @@ enum TransportType {
     SSE
 }
 
-
 /// ユーザーカスタムサーバーの可視性
 /// @namespace McpServer
 enum McpServerVisibility {
@@ -52,6 +51,9 @@ model McpServer {
     creator          User?                 @relation(fields: [createdBy], references: [id])
     /// ユーザーカスタムサーバーの可視性
     visibility       McpServerVisibility   @default(PRIVATE)
+    /// 組織限定公開時の所属組織ID
+    organizationId   String?
+    organization     Organization?         @relation(fields: [organizationId], references: [id])
     /// サーバーが公開されているか（レガシー）
     isPublic         Boolean               @default(false)
     tools            Tool[]
