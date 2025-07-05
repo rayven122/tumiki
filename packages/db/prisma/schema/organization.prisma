@@ -35,6 +35,8 @@ model Organization {
     mcpServerInstances UserMcpServerInstance[]
     /// 組織内のAPIキー一覧
     apiKeys            McpApiKey[]
+    /// 組織限定公開のMCPサーバー
+    mcpServers         McpServer[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -58,6 +60,8 @@ model OrganizationMember {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@unique([organizationId, userId])
 }
 
 /// @namespace Organization

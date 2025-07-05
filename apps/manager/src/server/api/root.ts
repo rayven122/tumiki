@@ -6,6 +6,7 @@ import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
 import { userRouter } from "./routers/user";
 import { waitingListRouter } from "./routers/waitingList";
 import { mcpApiKeyRouter } from "./routers/mcpApiKey";
+import { organizationRouter } from "./routers/organization";
 
 /**
  * This is the primary router for your server.
@@ -20,6 +21,7 @@ export const appRouter = createTRPCRouter({
   userMcpServerInstance: userMcpServerInstanceRouter,
   waitingList: waitingListRouter,
   mcpApiKey: mcpApiKeyRouter,
+  organization: organizationRouter,
 });
 
 // export type definition of API

@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
-import { Wrench } from "lucide-react";
+import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 
@@ -33,16 +33,22 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-        <div className="mr-2 rounded-md p-2">
-          {mcpServer.iconPath && (
+        {mcpServer.iconPath ? (
+          <div className="mr-2 rounded-md p-2">
             <Image
               src={mcpServer.iconPath}
               alt={mcpServer.name}
               width={32}
               height={32}
             />
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="mr-2 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
+            <div className="flex h-8 w-8 items-center justify-center">
+              <Server className="h-4 w-4 text-white" />
+            </div>
+          </div>
+        )}
         <div className="flex-1">
           <CardTitle>{mcpServer.name}</CardTitle>
           <div className="mt-1 flex items-center gap-2">
