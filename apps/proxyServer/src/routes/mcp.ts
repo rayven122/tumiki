@@ -10,6 +10,7 @@ import {
   canCreateNewSession,
 } from "../services/session.js";
 import { getServer } from "../services/proxy.js";
+import { TransportType } from "@tumiki/db/prisma";
 import { logger } from "../lib/logger.js";
 
 /**
@@ -157,7 +158,10 @@ const handlePOSTRequest = async (
   // MCPサーバーとの接続確立（新しいセッションの場合）
   if (isNewSession) {
     try {
-      const { server } = await getServer(apiKey);
+      const { server } = await getServer(
+        apiKey,
+        TransportType.STREAMABLE_HTTPS,
+      );
       await server.connect(transport);
 
       logger.info("New MCP session established", {
