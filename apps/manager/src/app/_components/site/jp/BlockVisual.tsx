@@ -91,12 +91,12 @@ export function BlockVisual() {
             className="relative"
           >
             <motion.div
-              className={`relative flex aspect-square cursor-grab items-center justify-center border-3 border-black transition-all duration-200 active:cursor-grabbing ${
+              className={`border-3 relative flex aspect-square cursor-grab items-center justify-center border-black transition-all duration-200 active:cursor-grabbing ${
                 connectedBlocks.includes(block.id)
                   ? "bg-black text-white shadow-[8px_8px_0_#000]"
                   : "bg-white text-black shadow-[4px_4px_0_#000] hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#000]"
               } ${
-                draggedBlock === block.id ? "scale-105 rotate-3 opacity-50" : ""
+                draggedBlock === block.id ? "rotate-3 scale-105 opacity-50" : ""
               }`}
               onClick={() => toggleBlock(block.id)}
               whileHover={
@@ -142,18 +142,18 @@ export function BlockVisual() {
                 </div>
               )}
 
-              <div className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 transform text-xs font-medium whitespace-nowrap text-gray-600">
+              <div className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 transform whitespace-nowrap text-xs font-medium text-gray-600">
                 {block.service}
               </div>
 
               {/* Drag indicator */}
-              <div className="pointer-events-none absolute top-2 right-2 text-xs text-gray-500 opacity-30">
+              <div className="pointer-events-none absolute right-2 top-2 text-xs text-gray-500 opacity-30">
                 ⋮⋮
               </div>
 
               {/* Drop zone indicator */}
               {draggedBlock && draggedBlock !== block.id && (
-                <div className="bg-opacity-20 pointer-events-none absolute inset-0 rounded-sm border-2 border-dashed border-blue-400 bg-blue-50" />
+                <div className="pointer-events-none absolute inset-0 rounded-sm border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-20" />
               )}
             </motion.div>
           </div>

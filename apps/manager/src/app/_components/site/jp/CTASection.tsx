@@ -52,7 +52,7 @@ export function CTASection({ setShowModal }: CTASectionProps) {
           >
             <button
               onClick={() => setShowModal(true)}
-              className="mb-6 border-3 border-black bg-black px-12 py-5 text-xl font-bold text-white shadow-[6px_6px_0_#6366f1] transition-all duration-300 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_#6366f1]"
+              className="border-3 mb-6 border-black bg-black px-12 py-5 text-xl font-bold text-white shadow-[6px_6px_0_#6366f1] transition-all duration-300 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_#6366f1]"
             >
               無料でAIチーム環境を構築する
             </button>

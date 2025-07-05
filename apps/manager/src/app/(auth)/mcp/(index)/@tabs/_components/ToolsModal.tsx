@@ -47,7 +47,7 @@ export function ToolsModal({
 
         {/* 検索ボックス */}
         <div className="relative mb-4">
-          <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
+          <Search className="text-muted-foreground absolute left-2 top-2.5 h-4 w-4" />
           <Input
             placeholder="ツールを検索..."
             className="pl-8"
