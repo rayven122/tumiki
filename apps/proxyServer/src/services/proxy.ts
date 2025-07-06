@@ -483,7 +483,7 @@ export const getServer = async (
         // 成功時のログ記録
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
-          userId: validation.userMcpServerInstance.userId,
+          userId: undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
@@ -531,7 +531,7 @@ export const getServer = async (
       if (validation?.userMcpServerInstance) {
         // エラー時も非同期でログ記録
         logMcpRequest({
-          userId: validation.userMcpServerInstance.userId,
+          userId: undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
@@ -656,7 +656,7 @@ export const getServer = async (
         // 成功時のログ記録
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
-          userId: validation.userMcpServerInstance.userId,
+          userId: undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
@@ -704,7 +704,7 @@ export const getServer = async (
       if (validation?.userMcpServerInstance) {
         // エラー時も非同期でログ記録
         logMcpRequest({
-          userId: validation.userMcpServerInstance.userId,
+          userId: undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
