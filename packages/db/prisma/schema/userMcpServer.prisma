@@ -142,6 +142,8 @@ model UserMcpServerInstance {
   serverStatus                ServerStatus
   /// サーバーの種類
   serverType                  ServerType
+  /// OAuth認証を有効にするかどうか
+  enableOAuth                 Boolean                          @default(false)
   /// MCPサーバーとツールグループの関連を管理する中間テーブル
   mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
   /// ツールグループ

@@ -142,6 +142,7 @@ erDiagram
   String iconPath "nullable"
   ServerStatus serverStatus
   ServerType serverType
+  Boolean enableOAuth
   String toolGroupId FK,UK
   String userId FK
   String organizationId FK "nullable"
@@ -266,6 +267,7 @@ MCPサーバーとして利用するインスタンス
 - `iconPath`: アイコンパス
 - `serverStatus`: サーバーの状態
 - `serverType`: サーバーの種類
+- `enableOAuth`: OAuth認証を有効にするかどうか
 - `toolGroupId`
   > ツールグループ
   > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
@@ -570,6 +572,7 @@ erDiagram
   String iconPath "nullable"
   ServerStatus serverStatus
   ServerType serverType
+  Boolean enableOAuth
   String toolGroupId FK,UK
   String userId FK
   String organizationId FK "nullable"
@@ -670,6 +673,7 @@ MCPサーバーとして利用するインスタンス
 - `iconPath`: アイコンパス
 - `serverStatus`: サーバーの状態
 - `serverType`: サーバーの種類
+- `enableOAuth`: OAuth認証を有効にするかどうか
 - `toolGroupId`
   > ツールグループ
   > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
