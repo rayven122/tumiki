@@ -23,6 +23,11 @@ import { updateServerInstance } from "./updateServerInstance";
 import { updateServerInstanceName } from "./updateServerInstanceName";
 import { addOfficialServer } from "./addOfficialServer";
 import { updateServerStatus } from "./updateServerStatus";
+import { findById } from "./findById";
+import { findRequestLogs } from "./findRequestLogs";
+import { getRequestStats } from "./getRequestStats";
+import { getToolStats } from "./getToolStats";
+import { getTimeSeriesStats } from "./getTimeSeriesStats";
 
 export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
@@ -103,6 +108,66 @@ export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
   }),
 );
 
+// リクエストログ関連のInput schemas
+export const FindRequestLogsInput = z.object({
+  instanceId: z.string(),
+  limit: z.number().optional().default(20),
+  offset: z.number().optional().default(0),
+});
+
+export const GetRequestStatsInput = z.object({
+  instanceId: z.string(),
+  period: z.enum(["1day", "7days", "30days", "90days"]).default("7days"),
+});
+
+export const GetToolStatsInput = z.object({
+  instanceId: z.string(),
+  period: z.enum(["1day", "7days", "30days", "90days"]).default("7days"),
+});
+
+export const GetTimeSeriesStatsInput = z.object({
+  instanceId: z.string(),
+  period: z.enum(["24hours", "7days", "30days"]).default("24hours"),
+});
+
+// Output schemas for request logs
+export const RequestLogOutput = z.object({
+  id: z.string(),
+  userId: z.string(),
+  mcpServerInstanceId: z.string(),
+  toolName: z.string(),
+  transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTPS"]),
+  method: z.string(),
+  responseStatus: z.string(),
+  durationMs: z.number(),
+  errorMessage: z.string().nullable(),
+  errorCode: z.string().nullable(),
+  inputBytes: z.number().nullable(),
+  outputBytes: z.number().nullable(),
+  organizationId: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  createdAt: z.date(),
+});
+
+export const ToolStatsOutput = z.array(
+  z.object({
+    toolName: z.string(),
+    count: z.number(),
+    avgDuration: z.number(),
+    errorCount: z.number(),
+    errorRate: z.number(),
+  }),
+);
+
+export const TimeSeriesStatsOutput = z.array(
+  z.object({
+    time: z.string(),
+    requests: z.number(),
+    errors: z.number(),
+    avgDuration: z.number(),
+  }),
+);
+
 export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
     .output(FindServersOutput)
@@ -130,8 +195,26 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .input(UpdateServerInstanceNameInput)
     .output(z.object({}))
     .mutation(updateServerInstanceName),
-  updateStatus: protectedProcedure
+  updateServerStatus: protectedProcedure
     .input(UpdateServerStatusInput)
     .output(z.object({}))
     .mutation(updateServerStatus),
+  findById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(findById),
+
+  // リクエストログ関連のエンドポイント
+  findRequestLogs: protectedProcedure
+    .input(FindRequestLogsInput)
+    .query(findRequestLogs),
+
+  getRequestStats: protectedProcedure
+    .input(GetRequestStatsInput)
+    .query(getRequestStats),
+
+  getToolStats: protectedProcedure.input(GetToolStatsInput).query(getToolStats),
+
+  getTimeSeriesStats: protectedProcedure
+    .input(GetTimeSeriesStatsInput)
+    .query(getTimeSeriesStats),
 });

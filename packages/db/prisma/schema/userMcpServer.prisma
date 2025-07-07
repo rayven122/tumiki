@@ -168,9 +168,9 @@ model UserMcpServerInstance {
 /// @namespace UserMcpServer
 model McpServerRequestLog {
   id                  String                @id @default(cuid())
-  /// ユーザーID
-  userId              String
-  user                User                  @relation(fields: [userId], references: [id])
+  /// ユーザーID (OAuth2 認証を利用している場合のみ存在)
+  userId              String?
+  user                User?                 @relation(fields: [userId], references: [id])
   /// MCPサーバーインスタンスID
   mcpServerInstanceId String
   mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id])

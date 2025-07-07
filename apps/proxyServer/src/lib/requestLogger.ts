@@ -3,7 +3,7 @@ import { type TransportType } from "@tumiki/db/prisma";
 import { logger } from "./logger.js";
 
 type LogRequestParams = {
-  userId: string;
+  userId?: string;
   mcpServerInstanceId: string;
   toolName: string;
   transportType: TransportType;
