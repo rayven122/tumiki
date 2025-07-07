@@ -42,7 +42,7 @@ export const StatusEditModal = ({
   const router = useRouter();
 
   const { mutate: updateStatus, isPending } =
-    api.userMcpServerInstance.updateStatus.useMutation({
+    api.userMcpServerInstance.updateServerStatus.useMutation({
       onSuccess: async () => {
         toast.success("サーバーステータスを更新しました");
         if (onSuccess) {
