@@ -150,7 +150,7 @@ erDiagram
 }
 "McpServerRequestLog" {
   String id PK
-  String userId FK
+  String userId FK "nullable"
   String mcpServerInstanceId FK
   String toolName
   TransportType transportType
@@ -299,7 +299,7 @@ MCPサーバーインスタンスへのリクエストログ
 **Properties**
 
 - `id`:
-- `userId`: ユーザーID
+- `userId`: ユーザーID (OAuth2 認証を利用している場合のみ存在)
 - `mcpServerInstanceId`: MCPサーバーインスタンスID
 - `toolName`: 実行されたツール名
 - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
@@ -618,7 +618,7 @@ erDiagram
 }
 "McpServerRequestLog" {
   String id PK
-  String userId FK
+  String userId FK "nullable"
   String mcpServerInstanceId FK
   String toolName
   TransportType transportType
@@ -645,7 +645,7 @@ erDiagram
 "UserToolGroup" }o--|| "User" : user
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "UserMcpServerInstance" }o--|| "User" : user
-"McpServerRequestLog" }o--|| "User" : user
+"McpServerRequestLog" }o--o| "User" : user
 "McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 ```
@@ -744,7 +744,7 @@ MCPサーバーインスタンスへのリクエストログ
 **Properties**
 
 - `id`:
-- `userId`: ユーザーID
+- `userId`: ユーザーID (OAuth2 認証を利用している場合のみ存在)
 - `mcpServerInstanceId`: MCPサーバーインスタンスID
 - `toolName`: 実行されたツール名
 - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）

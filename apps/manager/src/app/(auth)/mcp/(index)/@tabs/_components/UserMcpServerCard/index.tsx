@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
@@ -11,6 +12,7 @@ import {
   ImageIcon,
   MoreHorizontal,
   Copy,
+  ExternalLink,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import {
@@ -104,7 +106,14 @@ export const UserMcpServerCard = ({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center">
-            <CardTitle>{serverInstance.name}</CardTitle>
+            <Link
+              href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+              className="hover:underline"
+            >
+              <CardTitle className="cursor-pointer">
+                {serverInstance.name}
+              </CardTitle>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
@@ -163,6 +172,14 @@ export const UserMcpServerCard = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                詳細を見る
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setNameEditModalOpen(true)}>
               <EditIcon className="mr-2 h-4 w-4" />
               名前を編集
