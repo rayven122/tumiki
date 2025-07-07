@@ -106,11 +106,13 @@ export const UserMcpServerCard = ({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center">
-            <Link 
-              href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? 'servers' : 'custom-servers'}/${serverInstance.id}`}
+            <Link
+              href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
               className="hover:underline"
             >
-              <CardTitle className="cursor-pointer">{serverInstance.name}</CardTitle>
+              <CardTitle className="cursor-pointer">
+                {serverInstance.name}
+              </CardTitle>
             </Link>
             <Button
               variant="ghost"
@@ -171,7 +173,9 @@ export const UserMcpServerCard = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? 'servers' : 'custom-servers'}/${serverInstance.id}`}>
+              <Link
+                href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+              >
                 <ExternalLink className="mr-2 h-4 w-4" />
                 詳細を見る
               </Link>
