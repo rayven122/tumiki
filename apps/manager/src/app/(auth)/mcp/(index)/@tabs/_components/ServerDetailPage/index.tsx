@@ -97,13 +97,15 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">総リクエスト数</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              総リクエスト数
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {requestStats?.totalRequests ?? 0}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               今日: {requestStats?.todayRequests ?? 0}
             </p>
           </CardContent>
@@ -117,7 +119,7 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
             <div className="text-2xl font-bold">
               {requestStats?.successRate ?? 0}%
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               エラー: {requestStats?.totalErrors ?? 0}
             </p>
           </CardContent>
