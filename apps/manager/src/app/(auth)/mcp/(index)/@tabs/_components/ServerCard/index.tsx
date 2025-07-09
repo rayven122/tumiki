@@ -17,6 +17,7 @@ import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
 import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
+import { FaviconImage } from "@/components/ui/FaviconImage";
 
 type McpServerWithTools = Prisma.McpServerGetPayload<{
   include: { tools: true };
@@ -43,10 +44,19 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
             />
           </div>
         ) : (
-          <div className="mr-2 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
-            <div className="flex h-8 w-8 items-center justify-center">
-              <Server className="h-4 w-4 text-white" />
-            </div>
+          <div className="mr-2 rounded-md p-2">
+            <FaviconImage
+              url={mcpServer.url}
+              alt={mcpServer.name}
+              size={32}
+              fallback={
+                <div className="rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
+                  <div className="flex h-8 w-8 items-center justify-center">
+                    <Server className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+              }
+            />
           </div>
         )}
         <div className="flex-1">
