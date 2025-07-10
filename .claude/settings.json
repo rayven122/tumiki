@@ -1,5 +1,18 @@
 {
   "permissions": {
     "deny": ["Read(.env.*)", "Read(**/*token*)", "Read(**/*key*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm format:fix && pnpm lint:fix"
+          }
+        ]
+      }
+    ]
   }
 }
