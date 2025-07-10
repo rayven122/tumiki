@@ -66,9 +66,12 @@ export const findOfficialServers = async ({
       };
     }
 
-    const userMcpServerConfigId = server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
-    const serverConfig = userMcpServerConfigs.find(config => config.id === userMcpServerConfigId);
-    
+    const userMcpServerConfigId =
+      server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+    const serverConfig = userMcpServerConfigs.find(
+      (config) => config.id === userMcpServerConfigId,
+    );
+
     if (!serverConfig) {
       throw new Error("mcpServerConfig not found");
     }
