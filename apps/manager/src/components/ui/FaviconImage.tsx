@@ -45,9 +45,7 @@ const getFaviconUrls = (domain: string, size = 32): string[] => {
   return [
     // 1. Google Favicon Service (最も信頼性が高い)
     `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`,
-    // 2. サイト直接のfavicon.ico
-    `https://${domain}/favicon.ico`,
-    // 3. DuckDuckGo Favicon Service (バックアップ)
+    // 2. DuckDuckGo Favicon Service (バックアップ)
     `https://icons.duckduckgo.com/ip3/${domain}.ico`,
   ];
 };
