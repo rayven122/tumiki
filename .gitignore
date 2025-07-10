@@ -113,3 +113,6 @@ ehthumbs.db
 Thumbs.db
 
 waitingList.json
+
+# Claude Code local settings
+.claude/settings.local.json
