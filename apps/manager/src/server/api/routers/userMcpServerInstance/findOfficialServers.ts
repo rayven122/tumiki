@@ -31,14 +31,16 @@ export const findOfficialServers = async ({
   });
 
   // toolGroupTool の ユニークな userMcpServerConfigId を取得して、その userMcpServerConfig を取得する
-  const userMcpServerConfigIds = officialServers.map((server) => {
-    const userMcpServerConfigId =
-      server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
-    if (!userMcpServerConfigId) {
-      throw new Error("userMcpServerConfigId not found");
-    }
-    return userMcpServerConfigId;
-  }) as UserMcpServerConfigId[];
+  const userMcpServerConfigIds = officialServers
+    .filter((server) => server.toolGroup?.toolGroupTools?.length > 0)
+    .map((server) => {
+      const userMcpServerConfigId =
+        server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+      if (!userMcpServerConfigId) {
+        throw new Error("userMcpServerConfigId not found");
+      }
+      return userMcpServerConfigId;
+    }) as UserMcpServerConfigId[];
 
   const userMcpServerConfigs = await ctx.db.userMcpServerConfig.findMany({
     where: {
@@ -52,8 +54,21 @@ export const findOfficialServers = async ({
     },
   });
 
-  const officialServerList = officialServers.map((server, i) => {
-    const serverConfig = userMcpServerConfigs[i];
+  const officialServerList = officialServers.map((server) => {
+    // toolGroupTools が空の場合は、空の配列を返す
+    if (!server.toolGroup?.toolGroupTools?.length) {
+      return {
+        ...server,
+        iconPath: server.iconPath,
+        tools: [],
+        toolGroups: [],
+        userMcpServers: [],
+      };
+    }
+
+    const userMcpServerConfigId = server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+    const serverConfig = userMcpServerConfigs.find(config => config.id === userMcpServerConfigId);
+    
     if (!serverConfig) {
       throw new Error("mcpServerConfig not found");
     }
