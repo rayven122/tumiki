@@ -404,7 +404,17 @@ export const handleSSEMessage = async (
         updateSessionActivity(sessionId);
 
         // Handle the POST message with the transport
-        await connectionInfo.transport.handlePostMessage(req, res, req.body);
+        // 認証情報を適切にマッピング
+        const authInfo = req.unifiedAuth?.isAuthenticated ? {
+          token: req.headers.authorization?.replace('Bearer ', '') || '',
+          clientId: req.unifiedAuth.clientId || req.unifiedAuth.userId || '',
+          scopes: req.unifiedAuth.scopes || [],
+        } : undefined;
+        
+        const requestWithAuth = req as typeof req & { auth?: typeof authInfo };
+        requestWithAuth.auth = authInfo;
+        
+        await connectionInfo.transport.handlePostMessage(requestWithAuth, res, req.body);
       },
       "sse",
       "message_handling",
