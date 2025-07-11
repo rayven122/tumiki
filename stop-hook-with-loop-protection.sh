@@ -8,7 +8,7 @@ STATE_FILE="$SCRIPT_DIR/.stop-hook-state"
 MAX_RETRIES=3
 
 # CI環境または skip ファイルが存在する場合はスキップ
-if [ "$CI" = "true" ] || [ -f "$SCRIPT_DIR/.skip-stop-hook" ]; then
+if  [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
     echo "Stop hook skipped (CI or skip file detected)"
     exit 0
 fi
