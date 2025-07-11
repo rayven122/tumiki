@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2, Server } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "react-toastify";
 import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
+import { FaviconImage } from "@/components/ui/FaviconImage";
 
 type ApiTokenModalProps = {
   onOpenChange: (open: boolean) => void;
@@ -117,13 +118,23 @@ export const UserMcpServerConfigModal = ({
         {/* サービス情報 */}
         <div className="mb-4 flex items-center">
           <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md border p-2">
-            <Image
-              src={mcpServer.iconPath ?? "/placeholder.svg?height=24&width=24"}
-              alt={mcpServer.name}
-              width={24}
-              height={24}
-              className="h-6 w-6"
-            />
+            {mcpServer.iconPath ? (
+              <Image
+                src={mcpServer.iconPath}
+                alt={mcpServer.name}
+                width={24}
+                height={24}
+                className="h-6 w-6"
+              />
+            ) : (
+              <FaviconImage
+                url={mcpServer.url}
+                alt={mcpServer.name}
+                size={24}
+                className="h-6 w-6"
+                fallback={<Server className="h-6 w-6 text-gray-500" />}
+              />
+            )}
           </div>
           <div>
             <h2 className="font-medium">{mcpServer.name}</h2>
