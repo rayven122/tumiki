@@ -35,6 +35,7 @@ import { ToolBadgeList } from "../../custom-servers/_components/ToolBadgeList";
 import { EditServerInstanceModal } from "./EditServerInstanceModal";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
+import { FaviconImage } from "@/components/ui/FaviconImage";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -77,6 +78,9 @@ export const UserMcpServerCard = ({
     toast.success("Streamable HTTP をコピーしました");
   };
 
+  // MCPサーバーのURLを取得（ファビコン表示用）
+  const mcpServerUrl = serverInstance.userMcpServers[0]?.url;
+
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
@@ -89,9 +93,16 @@ export const UserMcpServerCard = ({
               height={32}
             />
           ) : (
-            <div className="flex size-6 items-center justify-center rounded-md bg-gray-200">
-              <ImageIcon className="size-4 text-gray-500" />
-            </div>
+            <FaviconImage
+              url={mcpServerUrl}
+              alt={serverInstance.name}
+              size={32}
+              fallback={
+                <div className="flex size-6 items-center justify-center rounded-md bg-gray-200">
+                  <ImageIcon className="size-4 text-gray-500" />
+                </div>
+              }
+            />
           )}
           {/* <Button
             variant="ghost"
