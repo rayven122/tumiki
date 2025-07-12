@@ -1,9 +1,56 @@
+// 複数部分TLD（Top Level Domain）のリスト
+const MULTI_PART_TLDS = [
+  // 日本
+  'co.jp', 'or.jp', 'ne.jp', 'ac.jp', 'ad.jp', 'ed.jp', 'go.jp', 'gr.jp', 'lg.jp',
+  // イギリス
+  'co.uk', 'org.uk', 'me.uk', 'ac.uk', 'gov.uk', 'sch.uk',
+  // オーストラリア
+  'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au', 'asn.au', 'id.au',
+  // カナダ
+  'co.ca', 'net.ca', 'org.ca', 'gov.ca', 'ab.ca', 'bc.ca', 'mb.ca', 'nb.ca', 'nf.ca', 'nl.ca', 'ns.ca', 'nt.ca', 'nu.ca', 'on.ca', 'pe.ca', 'qc.ca', 'sk.ca', 'yk.ca',
+  // インド
+  'co.in', 'net.in', 'org.in', 'gov.in', 'ac.in', 'edu.in', 'res.in', 'mil.in', 'nic.in',
+  // ドイツ
+  'com.de', 'net.de', 'org.de',
+  // フランス
+  'com.fr', 'asso.fr', 'nom.fr', 'prd.fr', 'presse.fr', 'tm.fr', 'aeroport.fr', 'assedic.fr', 'avocat.fr', 'avoues.fr', 'cci.fr', 'chambagri.fr', 'chirurgiens-dentistes.fr', 'experts-comptables.fr', 'geometre-expert.fr', 'gouv.fr', 'greta.fr', 'huissier-justice.fr', 'medecin.fr', 'notaires.fr', 'pharmacien.fr', 'port.fr', 'veterinaire.fr',
+  // ブラジル
+  'com.br', 'net.br', 'org.br', 'gov.br', 'edu.br', 'mil.br', 'art.br', 'esp.br', 'etc.br', 'eti.br', 'fim.br', 'fnd.br', 'fot.br', 'fst.br', 'g12.br', 'imb.br', 'ind.br', 'inf.br', 'jor.br', 'lel.br', 'mat.br', 'med.br', 'mus.br', 'not.br', 'ntr.br', 'odo.br', 'ppg.br', 'pro.br', 'psc.br', 'psi.br', 'qsl.br', 'rec.br', 'slg.br', 'srv.br', 'tmp.br', 'trd.br', 'tur.br', 'tv.br', 'vet.br', 'zlg.br',
+  // 中国
+  'com.cn', 'net.cn', 'org.cn', 'edu.cn', 'gov.cn', 'mil.cn', 'ac.cn', 'ah.cn', 'bj.cn', 'cq.cn', 'fj.cn', 'gd.cn', 'gs.cn', 'gz.cn', 'gx.cn', 'ha.cn', 'hb.cn', 'he.cn', 'hi.cn', 'hk.cn', 'hl.cn', 'hn.cn', 'jl.cn', 'js.cn', 'jx.cn', 'ln.cn', 'mo.cn', 'nm.cn', 'nx.cn', 'qh.cn', 'sc.cn', 'sd.cn', 'sh.cn', 'sn.cn', 'sx.cn', 'tj.cn', 'tw.cn', 'xj.cn', 'xz.cn', 'yn.cn', 'zj.cn',
+  // その他よく使用される複数部分TLD
+  'co.nz', 'net.nz', 'org.nz', 'ac.nz', 'govt.nz', 'geek.nz', 'gen.nz', 'kiwi.nz', 'maori.nz', 'iwi.nz', 'school.nz',
+  'co.za', 'net.za', 'org.za', 'edu.za', 'gov.za', 'mil.za', 'ac.za', 'law.za', 'nom.za', 'school.za', 'tm.za', 'web.za',
+];
+
+/**
+ * 指定されたホスト名が複数部分TLDを持つかチェックする
+ * @param hostname - チェック対象のホスト名
+ * @returns 複数部分TLDが見つかった場合はその長さ、見つからない場合は0
+ */
+const getMultiPartTldLength = (hostname: string): number => {
+  const lowerHostname = hostname.toLowerCase();
+  
+  // 最大で4部分まで（例: pvt.k12.ma.us）チェック
+  for (let i = 2; i <= 4; i++) {
+    const parts = lowerHostname.split('.');
+    if (parts.length >= i) {
+      const possibleTld = parts.slice(-i).join('.');
+      if (MULTI_PART_TLDS.includes(possibleTld)) {
+        return i;
+      }
+    }
+  }
+  
+  return 0;
+};
+
 /**
  * サブドメインを除去してルートドメインを取得する関数
  * @param hostname - ホスト名
  * @returns ルートドメインまたは元のホスト名
  */
-const getRootDomain = (hostname: string): string => {
+export const getRootDomain = (hostname: string): string => {
   // IPv4アドレスの場合はそのまま返す
   if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
     return hostname;
@@ -26,8 +73,16 @@ const getRootDomain = (hostname: string): string => {
     return hostname;
   }
 
-  // それ以外のサブドメインは除去してルートドメインを返す
-  // 例: api.example.com -> example.com, subdomain.example.co.jp -> example.co.jp
+  // 複数部分TLDをチェック
+  const tldLength = getMultiPartTldLength(hostname);
+  if (tldLength > 0) {
+    // 複数部分TLD + ドメイン名を返す
+    // 例: api.example.co.jp -> example.co.jp (tldLength=2, so take -3 parts)
+    return parts.slice(-(tldLength + 1)).join(".");
+  }
+
+  // 通常のTLD（.com, .org等）の場合は最後の2つの部分を返す
+  // 例: api.example.com -> example.com
   return parts.slice(-2).join(".");
 };
 
