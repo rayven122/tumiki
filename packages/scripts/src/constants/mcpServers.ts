@@ -104,4 +104,12 @@ export const MCP_SERVERS = [
     envVars: ["DISCORD_TOKEN"],
     isPublic: true,
   },
+  {
+    name: "LINE Bot MCP",
+    iconPath: "/logos/line.svg",
+    command: "node",
+    args: ["node_modules/@line/line-bot-mcp-server/dist/index.js"],
+    envVars: ["CHANNEL_ACCESS_TOKEN", "DESTINATION_USER_ID"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
