@@ -1,7 +1,10 @@
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db/prisma";
 import { logger } from "./logger.js";
-import { compressRequestResponseData } from "./dataCompression.js";
+import {
+  compressRequestResponseData,
+  calculateDataSize,
+} from "./dataCompression.js";
 
 type LogRequestParams = {
   userId?: string;
@@ -99,22 +102,14 @@ export const logMcpRequest = async (
 };
 
 /**
- * データサイズを計算する（バイト数）
- */
-export const calculateDataBytes = (data: unknown): number => {
-  const jsonString = JSON.stringify(data);
-  return Buffer.byteLength(jsonString, "utf8");
-};
-
-/**
  * リクエスト/レスポンスからデータサイズを計算（バイト数）
  */
-export const calculateDataUsage = (
-  requestData: unknown,
-  responseData: unknown,
+export const calculateDataUsage = <TRequest, TResponse>(
+  requestData: TRequest,
+  responseData: TResponse,
 ): { inputBytes: number; outputBytes: number } => {
   return {
-    inputBytes: calculateDataBytes(requestData),
-    outputBytes: calculateDataBytes(responseData),
+    inputBytes: calculateDataSize(requestData),
+    outputBytes: calculateDataSize(responseData),
   };
 };
