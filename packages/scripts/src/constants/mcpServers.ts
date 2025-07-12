@@ -105,7 +105,7 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
-    name: "LINE Bot MCP Server",
+    name: "LINE Bot MCP",
     iconPath: "/logos/line.svg",
     command: "node",
     args: ["node_modules/@line/line-bot-mcp-server/dist/index.js"],
