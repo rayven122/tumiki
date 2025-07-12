@@ -13,16 +13,16 @@
           }
         ]
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./stop-hook-with-loop-protection.sh"
-          }
-        ]
-      }
     ]
+    // "Stop": [
+    //   {
+    //     "hooks": [
+    //       {
+    //         "type": "command",
+    //         "command": "./stop-hook-with-loop-protection.sh"
+    //       }
+    //     ]
+    //   }
+    // ]
   }
 }
