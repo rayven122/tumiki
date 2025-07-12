@@ -47,10 +47,10 @@ export const compressData = async <T>(
 
 /**
  * 圧縮されたデータを展開する
+ * @param compressedData 圧縮されたBuffer
+ * @returns 展開されたデータ（型安全性のため明示的な型指定を推奨）
  */
-export const decompressData = async <T = unknown>(
-  compressedData: Buffer,
-): Promise<T> => {
+export const decompressData = async <T>(compressedData: Buffer): Promise<T> => {
   try {
     if (!Buffer.isBuffer(compressedData)) {
       throw new Error("Invalid input: expected Buffer");
@@ -59,9 +59,43 @@ export const decompressData = async <T = unknown>(
     const decompressedBuffer = await gunzipAsync(compressedData);
     const jsonString = decompressedBuffer.toString("utf8");
 
-    return JSON.parse(jsonString) as T;
+    // JSONデータの基本的な形式検証
+    if (
+      !jsonString.trim().startsWith("{") &&
+      !jsonString.trim().startsWith("[")
+    ) {
+      throw new Error("Invalid JSON format: expected object or array");
+    }
+
+    // プロトタイプ汚染対策のためのJSON.parseとreviver使用
+    const parsedData: unknown = JSON.parse(
+      jsonString,
+      (key: string, value: unknown) => {
+        // __proto__やconstructor.prototypeなどの危険なキーを除外
+        if (
+          key === "__proto__" ||
+          key === "constructor" ||
+          key === "prototype"
+        ) {
+          return undefined;
+        }
+        return value;
+      },
+    );
+
+    return parsedData as T;
   } catch (error) {
     if (error instanceof Error) {
+      // より具体的なエラーメッセージを提供
+      if (error.message.includes("incorrect header check")) {
+        throw new Error("Data decompression failed: Invalid gzip format");
+      }
+      if (error.message.includes("Unexpected token")) {
+        throw new Error("Data decompression failed: Malformed JSON data");
+      }
+      if (error.message.includes("Invalid JSON format")) {
+        throw new Error(`Data decompression failed: ${error.message}`);
+      }
       throw new Error(`Data decompression failed: ${error.message}`);
     }
     throw new Error("Data decompression failed: Unknown error");
@@ -70,6 +104,11 @@ export const decompressData = async <T = unknown>(
 
 /**
  * リクエスト/レスポンスデータを一括で圧縮
+ * 両方のデータを並列で圧縮し、全体の圧縮効率を測定する
+ *
+ * @param requestData MCPリクエストデータ
+ * @param responseData MCPレスポンスデータ
+ * @returns 圧縮結果と全体の圧縮率（ストレージ効率測定用）
  */
 export const compressRequestResponseData = async <TRequest, TResponse>(
   requestData: TRequest,
@@ -86,7 +125,8 @@ export const compressRequestResponseData = async <TRequest, TResponse>(
     compressData(responseData),
   ]);
 
-  // 全体の圧縮率を計算（入力と出力の加重平均）
+  // 全体の圧縮率を計算（ストレージ効率監視用の重要メトリクス）
+  // 入力と出力を合算した実際の圧縮効果を測定
   const totalOriginalSize =
     inputResult.originalSize + outputResult.originalSize;
   const totalCompressedSize =
