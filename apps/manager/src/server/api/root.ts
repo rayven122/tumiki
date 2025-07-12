@@ -7,6 +7,7 @@ import { userRouter } from "./routers/user";
 import { waitingListRouter } from "./routers/waitingList";
 import { mcpApiKeyRouter } from "./routers/mcpApiKey";
 import { organizationRouter } from "./routers/organization";
+import { resourceAccessControlRouter } from "./routers/resourceAccessControl";
 
 /**
  * This is the primary router for your server.
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   waitingList: waitingListRouter,
   mcpApiKey: mcpApiKeyRouter,
   organization: organizationRouter,
+  resourceAccessControl: resourceAccessControlRouter,
 });
 
 // export type definition of API
