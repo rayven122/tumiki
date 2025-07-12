@@ -1,6 +1,7 @@
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db/prisma";
 import { logger } from "./logger.js";
+import { compressRequestResponseData } from "./dataCompression.js";
 
 type LogRequestParams = {
   userId?: string;
@@ -16,6 +17,9 @@ type LogRequestParams = {
   outputBytes?: number;
   organizationId?: string;
   userAgent?: string;
+  // 詳細データ用の追加パラメータ
+  requestData?: unknown;
+  responseData?: unknown;
 };
 
 /**
@@ -25,7 +29,8 @@ export const logMcpRequest = async (
   params: LogRequestParams,
 ): Promise<void> => {
   try {
-    await db.mcpServerRequestLog.create({
+    // 基本ログを作成
+    const requestLog = await db.mcpServerRequestLog.create({
       data: {
         userId: params.userId,
         mcpServerInstanceId: params.mcpServerInstanceId,
@@ -43,11 +48,47 @@ export const logMcpRequest = async (
       },
     });
 
-    logger.debug("MCP request logged successfully", {
-      toolName: params.toolName,
-      responseStatus: params.responseStatus,
-      durationMs: params.durationMs,
-    });
+    // 詳細データがある場合は圧縮して保存
+    if (params.requestData && params.responseData) {
+      const {
+        inputDataCompressed,
+        outputDataCompressed,
+        originalInputSize,
+        originalOutputSize,
+        compressionRatio,
+      } = await compressRequestResponseData(
+        params.requestData,
+        params.responseData,
+      );
+
+      await db.mcpServerRequestData.create({
+        data: {
+          requestLogId: requestLog.id,
+          inputDataCompressed,
+          outputDataCompressed,
+          originalInputSize,
+          originalOutputSize,
+          compressedInputSize: inputDataCompressed.length,
+          compressedOutputSize: outputDataCompressed.length,
+          compressionRatio,
+        },
+      });
+
+      logger.debug("MCP request with detailed data logged successfully", {
+        toolName: params.toolName,
+        responseStatus: params.responseStatus,
+        durationMs: params.durationMs,
+        originalInputSize,
+        originalOutputSize,
+        compressionRatio: Math.round(compressionRatio * 100) / 100,
+      });
+    } else {
+      logger.debug("MCP request logged successfully", {
+        toolName: params.toolName,
+        responseStatus: params.responseStatus,
+        durationMs: params.durationMs,
+      });
+    }
   } catch (error) {
     // ログ記録の失敗はサービス全体を停止させない
     logger.error("Failed to log MCP request", {

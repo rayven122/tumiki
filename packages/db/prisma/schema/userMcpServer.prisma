@@ -197,6 +197,35 @@ model McpServerRequestLog {
   organization        Organization?         @relation(fields: [organizationId], references: [id])
   /// ユーザーエージェント
   userAgent           String?
+  /// 詳細データ（1:1関係）
+  requestData         McpServerRequestData?
+
+  createdAt DateTime @default(now())
+}
+
+/// MCPサーバーリクエストの詳細データ（分析用）
+/// ユーザーには表示されない内部データ
+/// @namespace McpServer
+/// @namespace UserMcpServer
+model McpServerRequestData {
+  id           String              @id @default(cuid())
+  /// 関連するリクエストログID（1:1関係）
+  requestLogId String              @unique
+  requestLog   McpServerRequestLog @relation(fields: [requestLogId], references: [id], onDelete: Cascade)
+
+  /// リクエストの生データ（JSON文字列、gzip圧縮 + 暗号化）
+  inputDataCompressed  Bytes /// @encrypted
+  /// レスポンスの生データ（JSON文字列、gzip圧縮 + 暗号化）
+  outputDataCompressed Bytes /// @encrypted
+
+  /// 圧縮前の元データサイズ
+  originalInputSize    Int
+  originalOutputSize   Int
+  /// 圧縮後のデータサイズ
+  compressedInputSize  Int
+  compressedOutputSize Int
+  /// 圧縮率（0.0-1.0、小さいほど高圧縮）
+  compressionRatio     Float
 
   createdAt DateTime @default(now())
 }
