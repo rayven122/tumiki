@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 
 import {
   extractDomainFromUrl,
-  extractDomainFromUrlDetailed,
   getFaviconUrls,
   getFaviconUrlsFromUrl,
   getRootDomain,
@@ -182,45 +181,5 @@ describe("getFaviconUrlsFromUrl", () => {
     expect(urls[0]).toStrictEqual(
       "https://www.google.com/s2/favicons?domain=example.com&sz=64",
     );
-  });
-});
-
-describe("extractDomainFromUrlDetailed", () => {
-  test("HTTPSのURLから詳細な結果を取得する", () => {
-    const result = extractDomainFromUrlDetailed("https://api.example.com/path");
-    expect(result).not.toBeNull();
-    expect(result?.domain).toStrictEqual("example.com");
-    expect(result?.isValidDomain).toStrictEqual(true);
-    expect(result?.originalHostname).toStrictEqual("api.example.com");
-  });
-
-  test("複数部分TLDのURLから詳細な結果を取得する", () => {
-    const result = extractDomainFromUrlDetailed("https://api.example.co.jp");
-    expect(result).not.toBeNull();
-    expect(result?.domain).toStrictEqual("example.co.jp");
-    expect(result?.isValidDomain).toStrictEqual(true);
-    expect(result?.originalHostname).toStrictEqual("api.example.co.jp");
-  });
-
-  test("無効なURLの場合nullを返す", () => {
-    expect(extractDomainFromUrlDetailed("")).toStrictEqual(null);
-    expect(extractDomainFromUrlDetailed("invalid-url")).toStrictEqual(null);
-    expect(extractDomainFromUrlDetailed("://invalid")).toStrictEqual(null);
-  });
-
-  test("IPv4アドレスの詳細な結果を取得する", () => {
-    const result = extractDomainFromUrlDetailed("https://192.168.1.1");
-    expect(result).not.toBeNull();
-    expect(result?.domain).toStrictEqual("192.168.1.1");
-    expect(result?.isValidDomain).toStrictEqual(true);
-    expect(result?.originalHostname).toStrictEqual("192.168.1.1");
-  });
-
-  test("localhostの詳細な結果を取得する", () => {
-    const result = extractDomainFromUrlDetailed("http://localhost:3000");
-    expect(result).not.toBeNull();
-    expect(result?.domain).toStrictEqual("localhost");
-    expect(result?.isValidDomain).toStrictEqual(true);
-    expect(result?.originalHostname).toStrictEqual("localhost");
   });
 });
