@@ -1,5 +1,5 @@
 // 複数部分TLD（Top Level Domain）のリスト
-const MULTI_PART_TLDS = [
+const MULTI_PART_TLD_ARRAY = [
   // 日本
   "co.jp",
   "or.jp",
@@ -191,6 +191,22 @@ const MULTI_PART_TLDS = [
   "web.za",
 ];
 
+// O(1)検索のためのSet（パフォーマンス最適化）
+// 注意: バンドルサイズ最適化が必要な場合は、動的インポートやtree-shakingを検討
+const MULTI_PART_TLD_SET = new Set(MULTI_PART_TLD_ARRAY);
+
+/**
+ * ドメイン抽出結果の詳細な型定義
+ */
+export type DomainExtractionResult = {
+  /** 抽出されたドメイン名 */
+  domain: string;
+  /** ドメインが有効かどうか */
+  isValidDomain: boolean;
+  /** 元のホスト名 */
+  originalHostname: string;
+} | null;
+
 /**
  * 指定されたホスト名が複数部分TLDを持つかチェックする
  * @param hostname - チェック対象のホスト名
@@ -204,7 +220,7 @@ const getMultiPartTldLength = (hostname: string): number => {
     const parts = lowerHostname.split(".");
     if (parts.length >= i) {
       const possibleTld = parts.slice(-i).join(".");
-      if (MULTI_PART_TLDS.includes(possibleTld)) {
+      if (MULTI_PART_TLD_SET.has(possibleTld)) {
         return i;
       }
     }
@@ -305,6 +321,49 @@ export const getFaviconUrls = (domain: string, size = 32): string[] => {
     // 3. DuckDuckGo Favicon Service (バックアップ)
     `https://icons.duckduckgo.com/ip3/${domain}.ico`,
   ];
+};
+
+/**
+ * URLからドメイン名を抽出する関数（詳細な結果を返すバージョン）
+ * @param url - 抽出対象のURL
+ * @returns 詳細なドメイン抽出結果
+ */
+export const extractDomainFromUrlDetailed = (
+  url: string,
+): DomainExtractionResult => {
+  if (!url.trim()) {
+    return null;
+  }
+
+  try {
+    // URLが相対パスの場合やプロトコルがない場合を考慮
+    const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
+    const urlObject = new URL(normalizedUrl);
+    const hostname = urlObject.hostname;
+
+    // 有効なホスト名かチェック（ドットが含まれているかIPアドレスかlocalhost）
+    const isValidDomain = !!(
+      hostname &&
+      (hostname.includes(".") ||
+        hostname === "localhost" ||
+        /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname))
+    );
+
+    if (!isValidDomain) {
+      return null;
+    }
+
+    // サブドメインを除去してルートドメインを取得
+    const domain = getRootDomain(hostname);
+
+    return {
+      domain,
+      isValidDomain: true,
+      originalHostname: hostname,
+    };
+  } catch {
+    return null;
+  }
 };
 
 /**
