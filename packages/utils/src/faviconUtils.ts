@@ -255,13 +255,12 @@ export const getRootDomain = (hostname: string): string => {
 };
 
 /**
- * URLからドメイン名を抽出する関数（クライアントサイド専用）
+ * URLからドメイン名を抽出する関数
  * @param url - 抽出対象のURL
  * @returns ドメイン名またはnull（無効なURLの場合）
  */
 export const extractDomainFromUrl = (url: string): string | null => {
-  if (typeof window === "undefined") {
-    // サーバーサイドでは処理しない
+  if (!url.trim()) {
     return null;
   }
 
@@ -270,6 +269,16 @@ export const extractDomainFromUrl = (url: string): string | null => {
     const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
     const urlObject = new URL(normalizedUrl);
     const hostname = urlObject.hostname;
+
+    // 有効なホスト名かチェック（ドットが含まれているかIPアドレスかlocalhost）
+    if (
+      !hostname ||
+      (!hostname.includes(".") &&
+        hostname !== "localhost" &&
+        !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname))
+    ) {
+      return null;
+    }
 
     // サブドメインを除去してルートドメインを取得
     return getRootDomain(hostname);
