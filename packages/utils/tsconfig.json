@@ -6,7 +6,9 @@
     "declaration": true,
     "declarationMap": true,
     "module": "ESNext",
-    "moduleResolution": "Node"
+    "moduleResolution": "Node",
+    "types": ["bun-types"],
+    "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

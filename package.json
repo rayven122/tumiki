@@ -21,6 +21,7 @@
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest",
     "postinstall": "pnpm lint:ws",
+    "test": "turbo run test",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",
     "db:generate": "pnpm --filter @tumiki/db db:generate",
     "inspector": "pnpm --filter @tumiki/proxy-server inspector",
