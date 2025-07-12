@@ -336,8 +336,8 @@ MCPサーバーリクエストの詳細データ（分析用）
 
 - `id`:
 - `requestLogId`: 関連するリクエストログID（1:1関係）
-- `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮 + 暗号化）
-- `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮 + 暗号化）
+- `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮済み）
+- `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮済み）
 - `originalInputSize`: 圧縮前の元データサイズ
 - `originalOutputSize`:
 - `compressedInputSize`: 圧縮後のデータサイズ
@@ -812,8 +812,8 @@ MCPサーバーリクエストの詳細データ（分析用）
 
 - `id`:
 - `requestLogId`: 関連するリクエストログID（1:1関係）
-- `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮 + 暗号化）
-- `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮 + 暗号化）
+- `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮済み）
+- `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮済み）
 - `originalInputSize`: 圧縮前の元データサイズ
 - `originalOutputSize`:
 - `compressedInputSize`: 圧縮後のデータサイズ

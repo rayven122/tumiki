@@ -213,10 +213,10 @@ model McpServerRequestData {
   requestLogId String              @unique
   requestLog   McpServerRequestLog @relation(fields: [requestLogId], references: [id], onDelete: Cascade)
 
-  /// リクエストの生データ（JSON文字列、gzip圧縮 + 暗号化）
-  inputDataCompressed  Bytes /// @encrypted
-  /// レスポンスの生データ（JSON文字列、gzip圧縮 + 暗号化）
-  outputDataCompressed Bytes /// @encrypted
+  /// リクエストの生データ（JSON文字列、gzip圧縮済み）
+  inputDataCompressed  Bytes
+  /// レスポンスの生データ（JSON文字列、gzip圧縮済み）
+  outputDataCompressed Bytes
 
   /// 圧縮前の元データサイズ
   originalInputSize    Int

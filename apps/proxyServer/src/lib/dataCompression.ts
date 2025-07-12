@@ -8,6 +8,40 @@ const gunzipAsync = promisify(gunzip);
 const MAX_DATA_SIZE = 100 * 1024 * 1024;
 
 /**
+ * undefinedデータのバリデーション
+ */
+const validateDataNotUndefined = <T>(data: T): void => {
+  if (data === undefined) {
+    throw new Error("Cannot process undefined data");
+  }
+};
+
+/**
+ * データをJSON文字列に変換しBufferを作成
+ */
+const dataToBuffer = <T>(data: T): { buffer: Buffer; size: number } => {
+  validateDataNotUndefined(data);
+  const jsonString = JSON.stringify(data);
+  const buffer = Buffer.from(jsonString, "utf8");
+  return { buffer, size: buffer.length };
+};
+
+/**
+ * プロトタイプ汚染攻撃を防ぐ安全なJSONパーサー
+ * @param jsonString JSONテキスト
+ * @returns パースされたオブジェクト
+ */
+export const parseJsonSafely = (jsonString: string): unknown => {
+  return JSON.parse(jsonString, (key: string, value: unknown) => {
+    // __proto__やconstructor.prototypeなどの危険なキーを除外
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      return undefined;
+    }
+    return value;
+  });
+};
+
+/**
  * データを圧縮する（一律圧縮）
  */
 export const compressData = async <T>(
@@ -17,89 +51,60 @@ export const compressData = async <T>(
   originalSize: number;
   compressionRatio: number;
 }> => {
-  try {
-    const jsonString = JSON.stringify(data);
-    const originalBuffer = Buffer.from(jsonString, "utf8");
-    const originalSize = originalBuffer.length;
+  const { buffer: originalBuffer, size: originalSize } = dataToBuffer(data);
 
-    // データサイズの検証
-    if (originalSize > MAX_DATA_SIZE) {
-      throw new Error(
-        `Data size (${originalSize} bytes) exceeds maximum limit (${MAX_DATA_SIZE} bytes)`,
-      );
-    }
-
-    const compressedBuffer = await gzipAsync(originalBuffer);
-    const compressionRatio = compressedBuffer.length / originalSize;
-
-    return {
-      compressedData: compressedBuffer,
-      originalSize,
-      compressionRatio,
-    };
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Data compression failed: ${error.message}`);
-    }
-    throw new Error("Data compression failed: Unknown error");
+  // データサイズの検証
+  if (originalSize > MAX_DATA_SIZE) {
+    throw new Error(`Data size exceeds maximum limit of 100MB`);
   }
+
+  // gzip圧縮のみ
+  const compressedBuffer = await gzipAsync(originalBuffer);
+  const compressionRatio = compressedBuffer.length / originalSize;
+
+  return {
+    compressedData: compressedBuffer,
+    originalSize,
+    compressionRatio,
+  };
 };
 
 /**
  * 圧縮されたデータを展開する
- * @param compressedData 圧縮されたBuffer
+ * @param compressedData gzip圧縮されたBuffer
  * @returns 展開されたデータ（型安全性のため明示的な型指定を推奨）
  */
 export const decompressData = async <T>(compressedData: Buffer): Promise<T> => {
-  try {
-    if (!Buffer.isBuffer(compressedData)) {
-      throw new Error("Invalid input: expected Buffer");
-    }
-
-    const decompressedBuffer = await gunzipAsync(compressedData);
-    const jsonString = decompressedBuffer.toString("utf8");
-
-    // JSONデータの基本的な形式検証
-    if (
-      !jsonString.trim().startsWith("{") &&
-      !jsonString.trim().startsWith("[")
-    ) {
-      throw new Error("Invalid JSON format: expected object or array");
-    }
-
-    // プロトタイプ汚染対策のためのJSON.parseとreviver使用
-    const parsedData: unknown = JSON.parse(
-      jsonString,
-      (key: string, value: unknown) => {
-        // __proto__やconstructor.prototypeなどの危険なキーを除外
-        if (
-          key === "__proto__" ||
-          key === "constructor" ||
-          key === "prototype"
-        ) {
-          return undefined;
-        }
-        return value;
-      },
+  // 入力バリデーション
+  if (!Buffer.isBuffer(compressedData)) {
+    const actualType = Array.isArray(compressedData)
+      ? "array"
+      : typeof compressedData;
+    throw new Error(
+      `Invalid compressed data: expected Buffer, got ${actualType}`,
     );
-
-    return parsedData as T;
-  } catch (error) {
-    if (error instanceof Error) {
-      // より具体的なエラーメッセージを提供
-      if (error.message.includes("incorrect header check")) {
-        throw new Error("Data decompression failed: Invalid gzip format");
-      }
-      if (error.message.includes("Unexpected token")) {
-        throw new Error("Data decompression failed: Malformed JSON data");
-      }
-      if (error.message.includes("Invalid JSON format")) {
-        throw new Error(`Data decompression failed: ${error.message}`);
-      }
-      throw new Error(`Data decompression failed: ${error.message}`);
-    }
-    throw new Error("Data decompression failed: Unknown error");
   }
+
+  if (compressedData.length === 0) {
+    throw new Error("Invalid compressed data: buffer is empty");
+  }
+
+  // gzip展開のみ
+  const decompressedBuffer = await gunzipAsync(compressedData);
+  const jsonString = decompressedBuffer.toString("utf8");
+
+  // JSONデータの基本的な形式検証
+  if (
+    !jsonString.trim().startsWith("{") &&
+    !jsonString.trim().startsWith("[")
+  ) {
+    throw new Error("Invalid JSON format: expected object or array");
+  }
+
+  // プロトタイプ汚染対策のためのJSON.parseとreviver使用
+  const parsedData: unknown = parseJsonSafely(jsonString);
+
+  return parsedData as T;
 };
 
 /**
@@ -147,13 +152,6 @@ export const compressRequestResponseData = async <TRequest, TResponse>(
  * データサイズを計算する（バイト数）
  */
 export const calculateDataSize = <T>(data: T): number => {
-  try {
-    const jsonString = JSON.stringify(data);
-    return Buffer.byteLength(jsonString, "utf8");
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to calculate data size: ${error.message}`);
-    }
-    throw new Error("Failed to calculate data size: Unknown error");
-  }
+  const { size } = dataToBuffer(data);
+  return size;
 };
