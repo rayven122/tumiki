@@ -1,6 +1,5 @@
 import { describe, expect, test, beforeEach, mock } from "bun:test";
-import { logMcpRequest, calculateDataUsage } from "./requestLogger.js";
-import { calculateDataSize } from "./dataCompression.js";
+import { logMcpRequest } from "./requestLogger.js";
 
 // モック設定
 interface MockTx {
@@ -450,102 +449,5 @@ describe("logMcpRequest", () => {
         error: "String error",
       }),
     );
-  });
-});
-
-describe("calculateDataUsage", () => {
-  test("リクエストとレスポンスのバイト数を正確に計算する", () => {
-    const requestData = { method: "test", id: 123 };
-    const responseData = { result: "success", data: "response" };
-
-    const result = calculateDataUsage(requestData, responseData);
-
-    expect(result.inputBytes).toStrictEqual(calculateDataSize(requestData));
-    expect(result.outputBytes).toStrictEqual(calculateDataSize(responseData));
-  });
-
-  test("空のオブジェクトでも正常に計算する", () => {
-    const result = calculateDataUsage({}, {});
-
-    expect(result.inputBytes).toStrictEqual(2); // {}
-    expect(result.outputBytes).toStrictEqual(2); // {}
-  });
-
-  test("null値を正常に処理する", () => {
-    const result = calculateDataUsage(null, null);
-
-    expect(result.inputBytes).toStrictEqual(4); // null
-    expect(result.outputBytes).toStrictEqual(4); // null
-  });
-
-  test("undefined値でエラーが発生する", () => {
-    expect(() => calculateDataUsage(undefined, undefined)).toThrow(
-      "Cannot process undefined data",
-    );
-  });
-
-  test("文字列データを正常に処理する", () => {
-    const result = calculateDataUsage("request", "response");
-
-    expect(result.inputBytes).toStrictEqual(9); // "request"
-    expect(result.outputBytes).toStrictEqual(10); // "response"
-  });
-
-  test("数値データを正常に処理する", () => {
-    const result = calculateDataUsage(123, 456);
-
-    expect(result.inputBytes).toStrictEqual(3); // 123
-    expect(result.outputBytes).toStrictEqual(3); // 456
-  });
-
-  test("配列データを正常に処理する", () => {
-    const requestArray = [1, 2, 3];
-    const responseArray = ["a", "b", "c"];
-
-    const result = calculateDataUsage(requestArray, responseArray);
-
-    expect(result.inputBytes).toStrictEqual(calculateDataSize(requestArray));
-    expect(result.outputBytes).toStrictEqual(calculateDataSize(responseArray));
-  });
-
-  test("ネストしたオブジェクトを正常に処理する", () => {
-    const nestedRequest = { level1: { level2: { value: "nested" } } };
-    const nestedResponse = { data: { items: [{ id: 1, name: "test" }] } };
-
-    const result = calculateDataUsage(nestedRequest, nestedResponse);
-
-    expect(result.inputBytes).toBeGreaterThan(20);
-    expect(result.outputBytes).toBeGreaterThan(25);
-  });
-
-  test("大きなデータでも正常に処理する", () => {
-    const largeRequest = { content: "x".repeat(5000) };
-    const largeResponse = { content: "y".repeat(3000) };
-
-    const result = calculateDataUsage(largeRequest, largeResponse);
-
-    expect(result.inputBytes).toBeGreaterThan(5000);
-    expect(result.outputBytes).toBeGreaterThan(3000);
-  });
-
-  test("異なる型のデータを混在させても正常に処理する", () => {
-    const mixedRequest = {
-      string: "text",
-      number: 42,
-      boolean: true,
-      array: [1, 2, 3],
-      object: { nested: "value" },
-      null: null,
-    };
-    const mixedResponse = {
-      status: 200,
-      message: "OK",
-      data: [{ id: 1 }, { id: 2 }],
-    };
-
-    const result = calculateDataUsage(mixedRequest, mixedResponse);
-
-    expect(result.inputBytes).toBeGreaterThan(50);
-    expect(result.outputBytes).toBeGreaterThan(30);
   });
 });

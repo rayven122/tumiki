@@ -1,10 +1,7 @@
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db/prisma";
 import { logger } from "./logger.js";
-import {
-  compressRequestResponseData,
-  calculateDataSize,
-} from "./dataCompression.js";
+import { compressRequestResponseData } from "./dataCompression.js";
 
 /**
  * ログ出力用に機密情報をマスクする
@@ -136,22 +133,4 @@ export const logMcpRequest = async (
       error: error instanceof Error ? error.message : String(error),
     });
   }
-};
-
-/**
- * リクエスト/レスポンスのペアからデータ使用量を計算する
- * MCPサーバーログ記録時の入力・出力バイト数測定に使用
- *
- * @param requestData MCPリクエストデータ
- * @param responseData MCPレスポンスデータ
- * @returns 入力・出力それぞれのバイト数
- */
-export const calculateDataUsage = <TRequest, TResponse>(
-  requestData: TRequest,
-  responseData: TResponse,
-): { inputBytes: number; outputBytes: number } => {
-  return {
-    inputBytes: calculateDataSize(requestData),
-    outputBytes: calculateDataSize(responseData),
-  };
 };

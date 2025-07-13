@@ -18,7 +18,8 @@ import type { ServerConfig } from "../lib/types.js";
 import { logger } from "../lib/logger.js";
 import { config } from "../lib/config.js";
 import { recordError, measureExecutionTime } from "../lib/metrics.js";
-import { logMcpRequest, calculateDataUsage } from "../lib/requestLogger.js";
+import { logMcpRequest } from "../lib/requestLogger.js";
+import { calculateDataSize } from "../lib/dataCompression.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -475,10 +476,8 @@ export const getServer = async (
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
       if (validation.userMcpServerInstance) {
-        const { inputBytes, outputBytes } = calculateDataUsage(
-          request.params,
-          result.tools,
-        );
+        const inputBytes = calculateDataSize(request.params);
+        const outputBytes = calculateDataSize(result.tools);
 
         // 成功時のログ記録
         // ログ記録を非同期で実行（await しない）
@@ -648,10 +647,8 @@ export const getServer = async (
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
       if (validation.userMcpServerInstance) {
-        const { inputBytes, outputBytes } = calculateDataUsage(
-          request.params,
-          result.result,
-        );
+        const inputBytes = calculateDataSize(request.params);
+        const outputBytes = calculateDataSize(result.result);
 
         // 成功時のログ記録
         // ログ記録を非同期で実行（await しない）
