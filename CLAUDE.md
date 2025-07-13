@@ -105,10 +105,7 @@ pnpm pm2:stop            # PM2停止
 ### Docker デプロイメント
 
 ```bash
-# 基本 Docker 環境
-docker compose -f ./docker/compose.yaml up -d
-
-# 自己署名SSL付き開発環境
+# 開発 Docker 環境（自己署名SSL）
 docker compose -f ./docker/compose.dev.yaml up -d
 
 # Let's Encrypt SSL付き本番環境
