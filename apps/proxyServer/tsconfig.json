@@ -32,9 +32,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["bun-types"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "types": ["bun-types"],
   "exclude": ["node_modules"]
 }
