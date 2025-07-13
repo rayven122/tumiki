@@ -72,9 +72,13 @@ export const compressData = async <T>(
 /**
  * 圧縮されたデータを展開する
  * @param compressedData gzip圧縮されたBuffer
+ * @param validator オプションの型バリデーター関数
  * @returns 展開されたデータ（型安全性のため明示的な型指定を推奨）
  */
-export const decompressData = async <T>(compressedData: Buffer): Promise<T> => {
+export const decompressData = async <T>(
+  compressedData: Buffer,
+  validator?: (data: unknown) => data is T,
+): Promise<T> => {
   // 入力バリデーション
   if (!Buffer.isBuffer(compressedData)) {
     const actualType = Array.isArray(compressedData)
@@ -104,25 +108,37 @@ export const decompressData = async <T>(compressedData: Buffer): Promise<T> => {
   // プロトタイプ汚染対策のためのJSON.parseとreviver使用
   const parsedData: unknown = parseJsonSafely(jsonString);
 
+  // バリデーター関数が提供されている場合は型検証を実行
+  if (validator) {
+    if (!validator(parsedData)) {
+      throw new Error("Decompressed data does not match expected type");
+    }
+    return parsedData;
+  }
+
   return parsedData as T;
 };
 
 /**
  * リクエスト/レスポンスデータを一括で圧縮
- * 両方のデータを並列で圧縮し、全体の圧縮効率を測定する
+ * 両方のデータを並列で圧縮し、個別および全体の圧縮効率を測定する
  *
  * @param requestData MCPリクエストデータ
  * @param responseData MCPレスポンスデータ
- * @returns 圧縮結果と全体の圧縮率（ストレージ効率測定用）
+ * @param includeOverallRatio 全体圧縮率の計算を含めるかどうか（デフォルト: true）
+ * @returns 圧縮結果と圧縮率（個別および全体）
  */
 export const compressRequestResponseData = async <TRequest, TResponse>(
   requestData: TRequest,
   responseData: TResponse,
+  includeOverallRatio = true,
 ): Promise<{
   inputDataCompressed: Buffer;
   outputDataCompressed: Buffer;
   originalInputSize: number;
   originalOutputSize: number;
+  inputCompressionRatio: number;
+  outputCompressionRatio: number;
   compressionRatio: number;
 }> => {
   const [inputResult, outputResult] = await Promise.all([
@@ -130,20 +146,24 @@ export const compressRequestResponseData = async <TRequest, TResponse>(
     compressData(responseData),
   ]);
 
-  // 全体の圧縮率を計算（ストレージ効率監視用の重要メトリクス）
-  // 入力と出力を合算した実際の圧縮効果を測定
-  const totalOriginalSize =
-    inputResult.originalSize + outputResult.originalSize;
-  const totalCompressedSize =
-    inputResult.compressedData.length + outputResult.compressedData.length;
-  const overallCompressionRatio =
-    totalOriginalSize > 0 ? totalCompressedSize / totalOriginalSize : 1.0;
+  // 全体の圧縮率を計算（オプション）
+  let overallCompressionRatio = 1.0;
+  if (includeOverallRatio) {
+    const totalOriginalSize =
+      inputResult.originalSize + outputResult.originalSize;
+    const totalCompressedSize =
+      inputResult.compressedData.length + outputResult.compressedData.length;
+    overallCompressionRatio =
+      totalOriginalSize > 0 ? totalCompressedSize / totalOriginalSize : 1.0;
+  }
 
   return {
     inputDataCompressed: inputResult.compressedData,
     outputDataCompressed: outputResult.compressedData,
     originalInputSize: inputResult.originalSize,
     originalOutputSize: outputResult.originalSize,
+    inputCompressionRatio: inputResult.compressionRatio,
+    outputCompressionRatio: outputResult.compressionRatio,
     compressionRatio: overallCompressionRatio,
   };
 };
