@@ -24,7 +24,6 @@ export interface ValidationResult {
   };
 }
 
-
 // 内部のvalidateApiKey関数（メモ化されない元の実装）
 const _validateApiKey = async (
   providedKey: string,
