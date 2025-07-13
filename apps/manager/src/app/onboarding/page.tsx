@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "@/components/organizations/OrganizationCreateForm";
-import { toast } from "sonner";
+import { toast } from "@/utils/client/toast";
 
 const OnboardingPage = () => {
   const router = useRouter();
@@ -28,33 +28,11 @@ const OnboardingPage = () => {
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
-  const [isCreatingPersonalOrg, setIsCreatingPersonalOrg] = useState(false);
 
-  const createOrganizationMutation = api.organization.create.useMutation();
-
-  const handlePersonalUse = async () => {
+  const handlePersonalUse = () => {
     setSelectedOption("personal");
-    setIsCreatingPersonalOrg(true);
-
-    try {
-      // 個人組織を自動作成
-      await createOrganizationMutation.mutateAsync({
-        name: "個人組織",
-        description: "個人利用のための組織です",
-        logoUrl: null,
-        isPersonal: true,
-      });
-
-      toast.success("個人組織が作成されました。");
-
-      // MCPサーバー管理画面にリダイレクト
-      void router.push("/mcp");
-    } catch {
-      toast.error("個人組織の作成に失敗しました");
-      setSelectedOption(null);
-    } finally {
-      setIsCreatingPersonalOrg(false);
-    }
+    // 個人利用の場合は組織を作らずに直接MCPページに遷移
+    void router.push("/mcp");
   };
 
   const handleTeamUse = () => {
@@ -64,7 +42,6 @@ const OnboardingPage = () => {
 
   const handleOrganizationCreated = () => {
     setIsOrgDialogOpen(false);
-    toast.success("組織が作成されました。");
     void router.push("/mcp");
   };
 
@@ -105,7 +82,7 @@ const OnboardingPage = () => {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  個人用組織を自動作成
+                  即座に利用開始
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -118,20 +95,13 @@ const OnboardingPage = () => {
               </ul>
               <Button
                 className="mt-6 w-full"
-                disabled={isCreatingPersonalOrg}
                 onClick={(e) => {
                   e.stopPropagation();
-                  void handlePersonalUse();
+                  handlePersonalUse();
                 }}
               >
-                {isCreatingPersonalOrg ? (
-                  "作成中..."
-                ) : (
-                  <>
-                    個人利用で開始
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+                個人利用で開始
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>

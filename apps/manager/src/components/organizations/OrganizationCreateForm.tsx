@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { toast } from "@/utils/client/toast";
 
 const createOrganizationSchema = z.object({
   name: z
@@ -36,9 +36,9 @@ const createOrganizationSchema = z.object({
 
 type CreateOrganizationFormData = z.infer<typeof createOrganizationSchema>;
 
-interface OrganizationCreateFormProps {
+type OrganizationCreateFormProps = {
   onSuccess?: () => void;
-}
+};
 
 export const OrganizationCreateForm = ({
   onSuccess,
@@ -63,8 +63,10 @@ export const OrganizationCreateForm = ({
     try {
       const formData = {
         name: data.name,
-        description: data.description ?? null,
-        logoUrl: data.logoUrl ?? null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        description: data.description || null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        logoUrl: data.logoUrl || null,
         isPersonal: data.isPersonal,
       };
 
@@ -112,6 +114,7 @@ export const OrganizationCreateForm = ({
                   placeholder="組織の説明を入力してください"
                   rows={3}
                   {...field}
+                  value={field.value ?? ""}
                 />
               </FormControl>
               <FormDescription>
@@ -133,6 +136,7 @@ export const OrganizationCreateForm = ({
                   type="url"
                   placeholder="https://example.com/logo.png"
                   {...field}
+                  value={field.value ?? ""}
                 />
               </FormControl>
               <FormDescription>
