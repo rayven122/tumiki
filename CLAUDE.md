@@ -1,127 +1,24 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Claude Code がこのリポジトリで作業する際のガイダンスファイルです。
 
 ## プロジェクト概要
 
-**Tumiki** は、Next.js ウェブアプリケーションと Node.js プロキシサーバーで構築された MCP (Model Context Protocol) サーバー管理システムです。複数の MCP サーバーの一元管理、API キー管理、MCP クライアント向けの統一アクセス URL を提供します。
-
-### 重要な概念
-
-- **MCP (Model Context Protocol)**: AIモデルが外部ツールやデータソースと安全に通信するためのプロトコル
-- **プロキシサーバー**: 複数のMCPサーバーを単一エンドポイントで統合し、SSE/HTTP両方のトランスポートをサポート
-- **ユーザーMCPサーバー**: ユーザーが個別に設定・管理する MCP サーバーインスタンス
-
-## アーキテクチャ
-
-### モノレポ構造と主要ディレクトリ
-
-```
-tumiki/
-├── apps/
-│   ├── manager/                  # Next.js 15 + React 19 Webアプリケーション（ポート 3000）
-│   │   ├── src/app/             # App Router ページとレイアウト
-│   │   ├── src/components/       # 共有コンポーネント
-│   │   ├── src/server/api/       # tRPC API ルーター
-│   │   └── public/logos/        # MCPサーバー用SVGロゴ
-│   └── proxyServer/             # MCP プロキシサーバー（ポート 8080）
-│       ├── src/services/proxy.ts # MCP プロトコル処理
-│       ├── src/lib/             # ログ、メトリクス、設定、データ圧縮
-│       └── ecosystem.config.js   # PM2設定ファイル
-├── packages/
-│   ├── db/                      # 共有 Prisma データベースパッケージ
-│   │   ├── prisma/schema/       # 分割された Prisma スキーマ
-│   │   └── src/                 # DB クライアントと型定義
-│   ├── auth/                    # Auth0 認証パッケージ
-│   ├── utils/                   # ユーティリティ関数（favicon処理等）
-│   ├── mailer/                  # メール送信機能
-│   └── scripts/                 # データベーススクリプト・MCP管理
-├── tooling/                     # 共有開発ツール設定
-│   ├── eslint/                  # ESLint 設定
-│   ├── prettier/                # Prettier 設定
-│   ├── tailwind/                # Tailwind CSS 設定
-│   ├── typescript/              # TypeScript 設定
-│   └── github/                  # GitHub Actions設定
-└── docker/                      # Docker Compose 設定
-```
-
-### 技術スタック
-
-- **フロントエンド**: Next.js 15 + React 19 + App Router + tRPC + Tailwind CSS + Radix UI
-- **バックエンド**: Express/Hono + MCP SDK + リアルタイム通信用 SSE + PM2プロセス管理
-- **データベース**: PostgreSQL + フィールド暗号化と Neon アダプター付き Prisma + Redis キャッシュ
-- **認証**: Auth0 ベース認証システム（OAuth対応）
-- **AI**: 複数プロバイダー対応 Vercel AI SDK
-- **モノレポ**: Turbo + pnpm ワークスペース
-- **開発・運用**: Docker Compose + GitHub Actions CI/CD
+プロジェクトの詳細については [README.md](./README.md) を参照してください。
 
 ## 開発コマンド
 
-### コア開発
-
-```bash
-pnpm dev                  # 全アプリケーションをウォッチモードで開始
-pnpm build               # 全アプリケーションをビルド
-pnpm start               # 本番サーバーを開始
-```
-
-### コード品質
-
-```bash
-pnpm lint                # 全パッケージで ESLint 実行
-pnpm lint:fix            # ESLint の問題を自動修正
-pnpm format              # Prettier フォーマットをチェック
-pnpm format:fix          # Prettier で自動フォーマット
-pnpm typecheck           # TypeScript 型チェック
-pnpm check               # 全品質チェック実行（lint + format + typecheck）
-pnpm lint:ws             # ワークスペース依存関係チェック（sherif）
-```
-
-### データベース管理
-
-```bash
-# packages/db ディレクトリから実行
-cd packages/db
-pnpm db:migrate          # データベースマイグレーション実行
-pnpm db:deploy           # 本番環境にマイグレーションをデプロイ
-pnpm db:studio           # Prisma Studio を開く
-pnpm db:generate         # Prisma クライアントと Zod スキーマを生成
-```
-
-### ProxyServer 管理
-
-```bash
-pnpm inspector           # MCP Inspector による接続テスト
-
-# PM2プロセス管理（ProxyServerディレクトリで実行）
-cd apps/proxyServer
-pnpm pm2:start           # PM2でサーバー起動
-pnpm pm2:logs            # PM2ログ確認
-pnpm pm2:status          # PM2ステータス確認
-pnpm pm2:restart         # PM2再起動
-pnpm pm2:stop            # PM2停止
-```
-
-### Docker デプロイメント
-
-```bash
-# 開発 Docker 環境（自己署名SSL）
-docker compose -f ./docker/compose.dev.yaml up -d
-
-# Let's Encrypt SSL付き本番環境
-docker compose -f ./docker/compose.prod.yaml up -d
-```
+開発に必要なコマンドについては [README.md](./README.md) の「開発コマンド」セクションを参照してください。
 
 ## 開発ガイドライン
 
 ### フロントエンド コーディング規約
 
-- **コンポーネント**: 関数コンポーネント + アロー関数、必須の Props 型定義
+- **コンポーネント**: 関数コンポーネント + アロー関数、必須の Props 型定義。呼び出す側と同一階層の `_components/` ディレクトリに配置する。共通で利用するコンポーネントは、呼び出し側の一つ上の `_components/` ディレクトリに配置する。
 - **関数定義**: 全ての関数はアロー関数で記述する（`const fn = () => {}` 形式）
 - **スタイリング**: Tailwind CSS 使用、カスタムスタイルは `styles/globals.css`
 - **データフェッチング**: tRPC 使用（`trpc.useQuery()`, `trpc.useMutation()`）
 - **状態管理**: ローカルは `useState`、グローバルは Jotai
-- **パフォーマンス**: `React.memo()`, `useCallback`, `useMemo` の適切な使用
 - **型定義**: 共有型は `@tumiki/db` から import
 - **型定義方法**: `type` のみ使用（`interface` は使用しない）
 - **ID管理**: branded type を使用し、`@apps/manager/src/schema/ids.ts` に定義
@@ -140,7 +37,7 @@ docker compose -f ./docker/compose.prod.yaml up -d
 
 ### Pull Request 作成ルール
 
-コミット時は `.cursor/rules/pr-rule.md` のテンプレートに従い、以下を含める：
+`.cursor/rules/pr-rule.md` のテンプレートに従い、以下を含める：
 
 - 変更内容の概要と理由
 - 実装の詳細
@@ -190,35 +87,6 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - JWT セッション管理
 - ウェブフックシークレット検証
 
-## 環境設定
-
-### 必須環境変数
-
-```bash
-# データベース
-DATABASE_URL=              # PostgreSQL 接続 URL
-REDIS_URL=                 # Redis 接続 URL
-
-# Auth0認証
-AUTH0_SECRET=              # Auth0 シークレット
-AUTH0_DOMAIN=              # Auth0 ドメイン
-AUTH0_CLIENT_ID=           # Auth0 クライアント ID
-AUTH0_CLIENT_SECRET=       # Auth0 クライアントシークレット
-APP_BASE_URL=              # アプリケーションベース URL
-AUTH0_WEBHOOK_SECRET=      # ウェブフック検証用シークレット
-
-# Prisma暗号化
-PRISMA_FIELD_ENCRYPTION_KEY=     # フィールド暗号化キー
-PRISMA_FIELD_DECRYPTION_KEYS=    # 復号化キー（複数対応）
-PRISMA_FIELD_ENCRYPTION_HASH_SALT= # ハッシュ化ソルト
-
-# 運用設定
-NODE_ENV=                  # development/test/production
-METRICS_ENABLED=           # メトリクス有効化フラグ
-API_KEY_PREFIX=            # APIキープレフィックス
-API_KEY_LENGTH=            # APIキー長
-```
-
 ### 開発時の重要事項
 
 - **Node.js**: >=22.14.0 必須
@@ -245,20 +113,6 @@ API_KEY_LENGTH=            # APIキー長
 - `pnpm lint` - ESLint実行
 - `pnpm format` - Prettier実行
 - `pnpm typecheck` - TypeScript型チェック
-
-### MCP サーバー管理の重要なパターン
-
-1. **MCPサーバーテンプレート**: `mcpServer` テーブルで定義される利用可能なMCPサーバー種別
-2. **ユーザー設定**: `userMcpServerConfig` でユーザー固有の設定（APIキー等）
-3. **実行インスタンス**: `userMcpServerInstance` で実際に動作中のサーバー状態を管理
-4. **プロキシ統合**: ProxyServerが複数のMCPサーバーを単一エンドポイントで統合
-
-### ランディングページの多言語対応
-
-- **英語版**: `/apps/manager/src/app/page.tsx` → `/apps/manager/src/app/_components/site/en/`
-- **日本語版**: `/apps/manager/src/app/jp/page.tsx` → `/apps/manager/src/app/_components/site/jp/`
-- **言語切替**: `LanguageToggle.tsx` コンポーネントでページ間遷移
-- **サービスロゴ**: `/public/logos/` 内のSVGファイルを使用してアニメーション表示
 
 ### 重要な実装パターン
 

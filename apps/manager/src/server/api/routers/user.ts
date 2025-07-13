@@ -38,13 +38,6 @@ export const userRouter = createTRPCRouter({
           },
         });
 
-        console.log(`User ${input.sub} synchronized to database:`, {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role,
-        });
-
         return dbUser;
       } catch (error) {
         console.error("Failed to sync user to database:", error);

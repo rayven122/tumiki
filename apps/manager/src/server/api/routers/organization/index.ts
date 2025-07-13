@@ -4,7 +4,11 @@ import { createOrganization, createOrganizationInputSchema } from "./create";
 import { updateOrganization, updateOrganizationInputSchema } from "./update";
 import { deleteOrganization, deleteOrganizationInputSchema } from "./delete";
 import { restoreOrganization, restoreOrganizationInputSchema } from "./restore";
-import { getOrganizationById, getOrganizationByIdInputSchema } from "./getById";
+import {
+  getOrganizationById,
+  getOrganizationByIdInputSchema,
+  getOrganizationByIdOutputSchema,
+} from "./getById";
 
 import { z } from "zod";
 
@@ -39,5 +43,6 @@ export const organizationRouter = createTRPCRouter({
   // 組織詳細取得
   getById: protectedProcedure
     .input(getOrganizationByIdInputSchema)
+    .output(getOrganizationByIdOutputSchema)
     .query(getOrganizationById),
 });
