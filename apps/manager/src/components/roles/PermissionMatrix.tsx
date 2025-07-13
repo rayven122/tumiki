@@ -15,8 +15,10 @@ import {
   PERMISSION_LABELS,
   RESOURCE_TYPE_LABELS,
   type Permission,
+  type ResourceType,
+  type PermissionAction,
+  PERMISSION_ACTIONS,
 } from "@/lib/permissions";
-import { type ResourceType, PermissionAction } from "@tumiki/db";
 
 interface PermissionMatrixProps {
   selectedPermissions: Permission[];
@@ -29,7 +31,7 @@ export const PermissionMatrix = ({
 }: PermissionMatrixProps) => {
   const matrix = getPermissionMatrix();
   const resourceTypes = Object.keys(matrix) as ResourceType[];
-  const allActions = Object.values(PermissionAction);
+  const allActions = Object.values(PERMISSION_ACTIONS);
 
   const isPermissionSelected = (
     resourceType: ResourceType,
