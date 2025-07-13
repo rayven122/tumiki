@@ -1,4 +1,6 @@
 import { db } from "@tumiki/db/tcp";
+import pMemoize from "p-memoize";
+import ExpiryMap from "expiry-map";
 import type {
   UserMcpServerInstance,
   User,
@@ -22,7 +24,8 @@ export interface ValidationResult {
   };
 }
 
-export const validateApiKey = async (
+// 内部のvalidateApiKey関数（メモ化されない元の実装）
+const _validateApiKey = async (
   providedKey: string,
 ): Promise<ValidationResult> => {
   if (!providedKey || typeof providedKey !== "string") {
@@ -62,7 +65,7 @@ export const validateApiKey = async (
       return { valid: false, error: "Tool group is disabled" };
     }
 
-    // 最後に使用された日時を更新
+    // 最後に使用された日時を更新（キャッシュミス時のみ）
     await db.mcpApiKey.update({
       where: { id: apiKey.id },
       data: { lastUsedAt: new Date() },
@@ -99,4 +102,23 @@ export const validateApiKey = async (
       error: `API key validation failed: ${errorMessage}`,
     };
   }
+};
+
+// 5分間でキャッシュが期限切れになるExpiryMapを作成
+const cache = new ExpiryMap(5 * 60 * 1000); // 5分間キャッシュ
+
+// p-memoizeを使ってvalidateApiKeyをメモ化
+export const validateApiKey = pMemoize(_validateApiKey, {
+  cache,
+  cacheKey: ([providedKey]) => providedKey, // APIキーをキャッシュキーとして使用
+});
+
+// キャッシュクリア用の関数をエクスポート
+export const clearValidationCache = () => {
+  cache.clear();
+};
+
+// 特定のAPIキーのキャッシュを削除
+export const clearValidationCacheForKey = (apiKey: string) => {
+  cache.delete(apiKey);
 };
