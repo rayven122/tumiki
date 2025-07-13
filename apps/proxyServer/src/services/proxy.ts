@@ -9,7 +9,6 @@ import {
   ListToolsRequestSchema,
   ListToolsResultSchema,
   InitializeRequestSchema,
-  InitializeResultSchema,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
