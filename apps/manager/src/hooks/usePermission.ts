@@ -5,8 +5,11 @@ import {
   checkPermission,
   hasManagePermission,
   type Permission,
+  type PermissionAction,
+  type ResourceType,
+  PERMISSION_ACTIONS,
+  RESOURCE_TYPES,
 } from "@/lib/permissions";
-import { PermissionAction, ResourceType } from "@tumiki/db";
 
 export const usePermission = (organizationId?: string) => {
   const { data: session } = useSession();
@@ -55,24 +58,24 @@ export const usePermission = (organizationId?: string) => {
   };
 
   const canCreate = (resourceType: ResourceType): boolean => {
-    return hasPermission(resourceType, PermissionAction.CREATE);
+    return hasPermission(resourceType, PERMISSION_ACTIONS.CREATE);
   };
 
   const canRead = (resourceType: ResourceType): boolean => {
-    return hasPermission(resourceType, PermissionAction.READ);
+    return hasPermission(resourceType, PERMISSION_ACTIONS.READ);
   };
 
   const canUpdate = (resourceType: ResourceType): boolean => {
-    return hasPermission(resourceType, PermissionAction.UPDATE);
+    return hasPermission(resourceType, PERMISSION_ACTIONS.UPDATE);
   };
 
   const canDelete = (resourceType: ResourceType): boolean => {
-    return hasPermission(resourceType, PermissionAction.DELETE);
+    return hasPermission(resourceType, PERMISSION_ACTIONS.DELETE);
   };
 
   const isAdmin = useMemo(() => {
     // Check if user has manage permission for all resource types
-    const resourceTypes = Object.values(ResourceType);
+    const resourceTypes = Object.values(RESOURCE_TYPES);
     return resourceTypes.every((resourceType) => canManage(resourceType));
   }, [userPermissions]);
 
