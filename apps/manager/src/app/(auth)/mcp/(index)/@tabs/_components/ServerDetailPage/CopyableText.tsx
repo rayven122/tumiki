@@ -23,7 +23,7 @@ export const CopyableText = ({
     try {
       await navigator.clipboard.writeText(text);
       toast.success("クリップボードにコピーしました");
-    } catch (error) {
+    } catch {
       toast.error("コピーに失敗しました");
     }
   };
