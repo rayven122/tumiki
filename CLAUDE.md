@@ -227,6 +227,8 @@ API_KEY_LENGTH=            # APIキー長
 - **コミット前**: 必ず `pnpm check` 実行（CI環境変数エラーは開発時は無視可能）
 - **型インポート**: Prisma 型は `@tumiki/db` から import（`@prisma/client` ではない）
 - **ページ構造**: 英語版 `/` と日本語版 `/jp` の2つのランディングページが存在
+- **環境変数**: プロジェクト直下の `.env` ファイルに定義。環境変数を読み込んで実行する必要があるものは、
+  `dotenv` パッケージを使用して読み込む。ただし、npm scripts 実行時は自動的に読み込まれるため、手動での読み込みは不要。
 
 ### CI/CD
 
@@ -238,11 +240,11 @@ API_KEY_LENGTH=            # APIキー長
 
 並列実行とキャッシュ活用により高速化：
 
-- `build` - アプリケーションビルド
-- `dev` - 開発サーバー起動
-- `lint` - ESLint実行
-- `format` - Prettier実行
-- `typecheck` - TypeScript型チェック
+- `pnpm build` - アプリケーションビルド
+- `pnpm dev` - 開発サーバー起動
+- `pnpm lint` - ESLint実行
+- `pnpm format` - Prettier実行
+- `pnpm typecheck` - TypeScript型チェック
 
 ### MCP サーバー管理の重要なパターン
 
@@ -271,7 +273,7 @@ API_KEY_LENGTH=            # APIキー長
 
 # 完了条件
 
-- lint, prettier, typecheck, test, build が通ること
+- `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
 - bun test を使って実装ロジックのカバレッジを100%にすること
 - 関連ドキュメントの更新完了させること
 - PM2での本番環境デプロイが正常に動作すること

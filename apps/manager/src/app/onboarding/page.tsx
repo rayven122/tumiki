@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { User, Users, ArrowRight, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,6 @@ import { api } from "@/trpc/react";
 
 const OnboardingPage = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
   >(null);
@@ -34,8 +33,17 @@ const OnboardingPage = () => {
   const isFirstLogin =
     onboardingStatus && !onboardingStatus.isOnboardingCompleted;
 
-  const handlePersonalUse = () => {
+  // オンボーディング完了ミューテーション
+  const completeOnboarding = api.user.completeOnboarding.useMutation();
+
+  const handlePersonalUse = async () => {
     setSelectedOption("personal");
+
+    // 初回ログイン時はオンボーディング完了をマーク
+    if (isFirstLogin) {
+      await completeOnboarding.mutateAsync();
+    }
+
     // 個人利用の場合は組織を作らずに直接MCPページに遷移
     void router.push("/mcp");
   };
@@ -45,8 +53,14 @@ const OnboardingPage = () => {
     setIsOrgDialogOpen(true);
   };
 
-  const handleOrganizationCreated = () => {
+  const handleOrganizationCreated = async () => {
     setIsOrgDialogOpen(false);
+
+    // 初回ログイン時はオンボーディング完了をマーク
+    if (isFirstLogin) {
+      await completeOnboarding.mutateAsync();
+    }
+
     void router.push("/mcp");
   };
 
@@ -106,7 +120,7 @@ const OnboardingPage = () => {
                 className="mt-6 w-full"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handlePersonalUse();
+                  void handlePersonalUse();
                 }}
               >
                 {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
