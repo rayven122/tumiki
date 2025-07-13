@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  protectedProcedure,
+} from "@/server/api/trpc";
 
 // Auth0 Post-Login Actionから送信されるユーザー情報のスキーマ
 export const syncUserFromAuth0Schema = z.object({
@@ -47,4 +51,29 @@ export const userRouter = createTRPCRouter({
         throw new Error("User synchronization failed");
       }
     }),
+
+  // オンボーディング状況をチェック
+  checkOnboardingStatus: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    try {
+      // ユーザーが所属している組織があるかチェック
+      const organizationCount = await ctx.db.organizationMember.count({
+        where: {
+          userId,
+        },
+      });
+
+      // 組織に所属していればオンボーディング完了とみなす
+      const isOnboardingCompleted = organizationCount > 0;
+
+      return {
+        isOnboardingCompleted,
+        organizationCount,
+      };
+    } catch (error) {
+      console.error("Failed to check onboarding status:", error);
+      throw new Error("Failed to check onboarding status");
+    }
+  }),
 });
