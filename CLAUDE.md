@@ -123,14 +123,20 @@ docker compose -f ./docker/compose.prod.yaml up -d
 - **状態管理**: ローカルは `useState`、グローバルは Jotai
 - **パフォーマンス**: `React.memo()`, `useCallback`, `useMemo` の適切な使用
 - **型定義**: 共有型は `@tumiki/db` から import
+- **型定義方法**: `type` のみ使用（`interface` は使用しない）
+- **ID管理**: branded type を使用し、`@apps/manager/src/schema/ids.ts` に定義
+- **設計原則**: DRY原則とSOLID原則を遵守
+- **プログラミングパラダイム**: 関数型プログラミング（クラスは使用しない）
+- **モジュール構成**: `utils/` や `libs/` からのインポートを容易にするため、`index.ts` にエントリーポイントを用意
 
 ### テストコーディング規約
 
-- **フレームワーク**: `test` 使用（`it` ではない）、日本語テスト名
+- **フレームワーク**: bun test 使用
+- **テスト記法**: `test` 使用（`it` ではない）、日本語でテスト名を記載
+- **構造**: 関数ごとに `describe` ブロックを記載、古典派単体テスト
 - **アサーション**: `toStrictEqual` 使用（`toEqual` ではない）
-- **構造**: `describe` ブロックは関数名、古典派単体テスト
-- **実行**: `pnpm test`、特定ファイル実行も対応
-- **カバレッジ**: vitest を使ってカバレッジ100%を目標
+- **実行**: `bun test`、特定ファイル実行も対応
+- **カバレッジ**: bun test を使って実装ロジックのカバレッジ100%を目標
 
 ### Pull Request 作成ルール
 
@@ -266,7 +272,7 @@ API_KEY_LENGTH=            # APIキー長
 # 完了条件
 
 - lint, prettier, typecheck, test, build が通ること
-- vitest を使ってカバレッジを100%にすること
+- bun test を使って実装ロジックのカバレッジを100%にすること
 - 関連ドキュメントの更新完了させること
 - PM2での本番環境デプロイが正常に動作すること
 - MCPサーバーの統合テストが成功すること
