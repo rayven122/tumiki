@@ -8,6 +8,7 @@ import {
   CompatibilityCallToolResultSchema,
   ListToolsRequestSchema,
   ListToolsResultSchema,
+  InitializeRequestSchema,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
@@ -383,10 +384,40 @@ export const getServer = async (
     },
     {
       capabilities: {
-        tools: {},
+        tools: {
+          listChanged: true,
+        },
       },
     },
   );
+
+  // Initialize Handler
+  server.setRequestHandler(InitializeRequestSchema, async (request) => {
+    logger.info("Initialize request received", {
+      clientInfo: request.params.clientInfo,
+      protocolVersion: request.params.protocolVersion,
+    });
+
+    // API key validation
+    const validation = await validateApiKey(apiKey);
+    if (!validation.valid || !validation.userMcpServerInstance) {
+      throw new Error(`Invalid API key: ${validation.error}`);
+    }
+
+    // Return server capabilities
+    return {
+      protocolVersion: "2024-11-05",
+      capabilities: {
+        tools: {
+          listChanged: true,
+        },
+      },
+      serverInfo: {
+        name: "mcp-proxy",
+        version: "1.0.0",
+      },
+    };
+  });
 
   // List Tools Handler with timeout handling
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
