@@ -1,5 +1,7 @@
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+
 import { db } from "@tumiki/db";
-import { getMcpServerTools } from "@tumiki/utils";
+import { getMcpServerTools } from "@tumiki/utils/server";
 
 import { MCP_SERVERS } from "./constants/mcpServers";
 
@@ -24,7 +26,7 @@ export const upsertMcpTools = async () => {
     // ツール一覧を取得
     const tools = await getMcpServerTools(mcpServer, envVars);
 
-    const upsertPromises = tools.map((tool) => {
+    const upsertPromises = tools.map((tool: Tool) => {
       return db.tool.upsert({
         where: {
           mcpServerId_name: {
