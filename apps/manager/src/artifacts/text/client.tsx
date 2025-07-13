@@ -11,8 +11,9 @@ import {
   UndoIcon,
 } from "@/components/icons";
 import type { Suggestion } from "@tumiki/db/prisma";
-import { toast } from "sonner";
+
 import { getSuggestions } from "../actions";
+import { toast } from "@/utils/client/toast";
 
 interface TextArtifactMetadata {
   suggestions: Array<Suggestion>;
