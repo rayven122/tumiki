@@ -385,7 +385,9 @@ export const getServer = async (
     },
     {
       capabilities: {
-        tools: {},
+        tools: {
+          listChanged: true,
+        },
       },
     },
   );
@@ -407,7 +409,9 @@ export const getServer = async (
     return {
       protocolVersion: "2024-11-05",
       capabilities: {
-        tools: {},
+        tools: {
+          listChanged: true,
+        },
       },
       serverInfo: {
         name: "mcp-proxy",
