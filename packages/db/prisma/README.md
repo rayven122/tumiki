@@ -165,6 +165,18 @@ erDiagram
   String userAgent "nullable"
   DateTime createdAt
 }
+"McpServerRequestData" {
+  String id PK
+  String requestLogId FK,UK
+  Bytes inputDataCompressed
+  Bytes outputDataCompressed
+  Int originalInputSize
+  Int originalOutputSize
+  Int compressedInputSize
+  Int compressedOutputSize
+  Float compressionRatio
+  DateTime createdAt
+}
 "_ToolToUserMcpServerConfig" {
   String A FK
   String B FK
@@ -182,6 +194,7 @@ erDiagram
 "UserToolGroupTool" }o--|| "Tool" : tool
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
 "_ToolToUserMcpServerConfig" }o--|| "Tool" : Tool
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
@@ -312,6 +325,24 @@ MCPサーバーインスタンスへのリクエストログ
 - `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
+- `createdAt`:
+
+### `McpServerRequestData`
+
+MCPサーバーリクエストの詳細データ（分析用）
+ユーザーには表示されない内部データ
+
+**Properties**
+
+- `id`:
+- `requestLogId`: 関連するリクエストログID（1:1関係）
+- `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮済み）
+- `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮済み）
+- `originalInputSize`: 圧縮前の元データサイズ
+- `originalOutputSize`:
+- `compressedInputSize`: 圧縮後のデータサイズ
+- `compressedOutputSize`:
+- `compressionRatio`: 圧縮率（0.0-1.0、小さいほど高圧縮）
 - `createdAt`:
 
 ### `_ToolToUserMcpServerConfig`
@@ -633,6 +664,18 @@ erDiagram
   String userAgent "nullable"
   DateTime createdAt
 }
+"McpServerRequestData" {
+  String id PK
+  String requestLogId FK,UK
+  Bytes inputDataCompressed
+  Bytes outputDataCompressed
+  Int originalInputSize
+  Int originalOutputSize
+  Int compressedInputSize
+  Int compressedOutputSize
+  Float compressionRatio
+  DateTime createdAt
+}
 "_ToolToUserMcpServerConfig" {
   String A FK
   String B FK
@@ -647,6 +690,7 @@ erDiagram
 "UserMcpServerInstance" }o--|| "User" : user
 "McpServerRequestLog" }o--o| "User" : user
 "McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 ```
 
@@ -757,6 +801,24 @@ MCPサーバーインスタンスへのリクエストログ
 - `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
+- `createdAt`:
+
+### `McpServerRequestData`
+
+MCPサーバーリクエストの詳細データ（分析用）
+ユーザーには表示されない内部データ
+
+**Properties**
+
+- `id`:
+- `requestLogId`: 関連するリクエストログID（1:1関係）
+- `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮済み）
+- `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮済み）
+- `originalInputSize`: 圧縮前の元データサイズ
+- `originalOutputSize`:
+- `compressedInputSize`: 圧縮後のデータサイズ
+- `compressedOutputSize`:
+- `compressionRatio`: 圧縮率（0.0-1.0、小さいほど高圧縮）
 - `createdAt`:
 
 ### `_ToolToUserMcpServerConfig`
