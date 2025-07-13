@@ -48,7 +48,7 @@ export function Header() {
         <div className="flex items-center space-x-4">
           {/* 組織セレクター */}
           <OrganizationSelector />
-          
+
           {/* ユーザーメニュー */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
