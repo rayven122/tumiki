@@ -56,24 +56,18 @@ export const userRouter = createTRPCRouter({
   checkOnboardingStatus: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
-    try {
-      // ユーザーが所属している組織があるかチェック
-      const organizationCount = await ctx.db.organizationMember.count({
-        where: {
-          userId,
-        },
-      });
+    const user = await ctx.db.user.findUnique({
+      where: { id: userId },
+      select: { createdAt: true }
+    });
 
-      // 組織に所属していればオンボーディング完了とみなす
-      const isOnboardingCompleted = organizationCount > 0;
+    if (!user) return { isOnboardingCompleted: false };
 
-      return {
-        isOnboardingCompleted,
-        organizationCount,
-      };
-    } catch (error) {
-      console.error("Failed to check onboarding status:", error);
-      throw new Error("Failed to check onboarding status");
-    }
+    // 作成から5分以内なら初回ログインとみなす
+    const isFirstLogin = Date.now() - user.createdAt.getTime() < 5 * 60 * 1000;
+
+    return {
+      isOnboardingCompleted: !isFirstLogin
+    };
   }),
 });

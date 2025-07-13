@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { User, Users, ArrowRight, CheckCircle } from "lucide-react";
-import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,14 +19,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "@/components/organizations/OrganizationCreateForm";
-import { toast } from "@/utils/client/toast";
+import { api } from "@/trpc/react";
 
 const OnboardingPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
+
+  // オンボーディング状況をチェック
+  const { data: onboardingStatus } = api.user.checkOnboardingStatus.useQuery();
+  const isFirstLogin = onboardingStatus && !onboardingStatus.isOnboardingCompleted;
 
   const handlePersonalUse = () => {
     setSelectedOption("personal");
@@ -50,9 +54,14 @@ const OnboardingPage = () => {
       <div className="w-full max-w-4xl">
         {/* ヘッダー */}
         <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold">Tumikiへようこそ！</h1>
+          <h1 className="mb-4 text-4xl font-bold">
+            {isFirstLogin ? "Tumikiへようこそ！" : "新しい組織を作成"}
+          </h1>
           <p className="text-muted-foreground text-xl">
-            MCPサーバー管理を始めるために、利用形態を選択してください
+            {isFirstLogin 
+              ? "MCPサーバー管理を始めるために、利用形態を選択してください"
+              : "チーム利用のための新しい組織を作成します。利用形態を選択してください"
+            }
           </p>
         </div>
 
@@ -100,7 +109,7 @@ const OnboardingPage = () => {
                   handlePersonalUse();
                 }}
               >
-                個人利用で開始
+                {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
@@ -156,15 +165,6 @@ const OnboardingPage = () => {
           </Card>
         </div>
 
-        {/* 後で決めるオプション */}
-        <div className="mt-8 text-center">
-          <p className="text-muted-foreground mb-4 text-sm">
-            どちらにするか迷っている場合
-          </p>
-          <Button variant="ghost" onClick={() => router.push("/mcp")}>
-            スキップしてMCPサーバー管理画面へ
-          </Button>
-        </div>
       </div>
 
       {/* 組織作成ダイアログ */}
