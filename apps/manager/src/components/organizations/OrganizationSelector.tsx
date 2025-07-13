@@ -13,25 +13,28 @@ import {
 export const OrganizationSelector = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: organizations, isLoading } = api.organization.getUserOrganizations.useQuery();
+  const { data: organizations, isLoading } =
+    api.organization.getUserOrganizations.useQuery();
 
   const currentOrgId = searchParams.get("org");
-  const selectedOrganization = organizations?.find(org => org.id === currentOrgId);
+  const selectedOrganization = organizations?.find(
+    (org) => org.id === currentOrgId,
+  );
 
   const handleValueChange = (value: string) => {
     if (value === "team_usage") {
       router.push("/onboarding");
       return;
     }
-    
+
     const params = new URLSearchParams(searchParams);
-    
+
     if (value === "personal") {
       params.delete("org");
     } else {
       params.set("org", value);
     }
-    
+
     router.push(`${window.location.pathname}?${params.toString()}`);
   };
 
@@ -39,7 +42,7 @@ export const OrganizationSelector = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex items-center space-x-2 text-sm">
         <Building2 className="h-4 w-4" />
         <span>読み込み中...</span>
       </div>

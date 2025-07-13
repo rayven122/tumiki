@@ -58,7 +58,7 @@ export const userRouter = createTRPCRouter({
 
     const user = await ctx.db.user.findUnique({
       where: { id: userId },
-      select: { createdAt: true }
+      select: { createdAt: true },
     });
 
     if (!user) return { isOnboardingCompleted: false };
@@ -67,7 +67,7 @@ export const userRouter = createTRPCRouter({
     const isFirstLogin = Date.now() - user.createdAt.getTime() < 5 * 60 * 1000;
 
     return {
-      isOnboardingCompleted: !isFirstLogin
+      isOnboardingCompleted: !isFirstLogin,
     };
   }),
 });

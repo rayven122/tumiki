@@ -31,7 +31,8 @@ const OnboardingPage = () => {
 
   // オンボーディング状況をチェック
   const { data: onboardingStatus } = api.user.checkOnboardingStatus.useQuery();
-  const isFirstLogin = onboardingStatus && !onboardingStatus.isOnboardingCompleted;
+  const isFirstLogin =
+    onboardingStatus && !onboardingStatus.isOnboardingCompleted;
 
   const handlePersonalUse = () => {
     setSelectedOption("personal");
@@ -58,10 +59,9 @@ const OnboardingPage = () => {
             {isFirstLogin ? "Tumikiへようこそ！" : "新しい組織を作成"}
           </h1>
           <p className="text-muted-foreground text-xl">
-            {isFirstLogin 
+            {isFirstLogin
               ? "MCPサーバー管理を始めるために、利用形態を選択してください"
-              : "チーム利用のための新しい組織を作成します。利用形態を選択してください"
-            }
+              : "チーム利用のための新しい組織を作成します。利用形態を選択してください"}
           </p>
         </div>
 
@@ -164,7 +164,6 @@ const OnboardingPage = () => {
             </CardContent>
           </Card>
         </div>
-
       </div>
 
       {/* 組織作成ダイアログ */}
