@@ -1,9 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
+import { OrganizationIdSchema } from "@/schema/ids";
 
 export const updateOrganizationInputSchema = z.object({
-  id: z.string(),
+  id: OrganizationIdSchema,
   name: z.string().min(1).max(100).optional(),
   description: z.string().optional().nullable(),
   logoUrl: z.string().url().optional().nullable(),
