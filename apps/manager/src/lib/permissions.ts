@@ -1,37 +1,39 @@
-import { PermissionAction, ResourceType } from "@tumiki/db";
-
+// クライアントサイド用の型と定数定義
 export const PERMISSION_ACTIONS = {
-  CREATE: PermissionAction.CREATE,
-  READ: PermissionAction.READ,
-  UPDATE: PermissionAction.UPDATE,
-  DELETE: PermissionAction.DELETE,
-  MANAGE: PermissionAction.MANAGE,
+  CREATE: "CREATE",
+  READ: "READ", 
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+  MANAGE: "MANAGE",
 } as const;
 
 export const RESOURCE_TYPES = {
-  GROUP: ResourceType.GROUP,
-  MEMBER: ResourceType.MEMBER,
-  ROLE: ResourceType.ROLE,
-  MCP_SERVER_CONFIG: ResourceType.MCP_SERVER_CONFIG,
-  TOOL_GROUP: ResourceType.TOOL_GROUP,
-  MCP_SERVER_INSTANCE: ResourceType.MCP_SERVER_INSTANCE,
+  GROUP: "GROUP",
+  MEMBER: "MEMBER",
+  ROLE: "ROLE",
+  MCP_SERVER_CONFIG: "MCP_SERVER_CONFIG",
+  TOOL_GROUP: "TOOL_GROUP",
+  MCP_SERVER_INSTANCE: "MCP_SERVER_INSTANCE",
 } as const;
 
+export type PermissionAction = (typeof PERMISSION_ACTIONS)[keyof typeof PERMISSION_ACTIONS];
+export type ResourceType = (typeof RESOURCE_TYPES)[keyof typeof RESOURCE_TYPES];
+
 export const PERMISSION_LABELS = {
-  [PermissionAction.CREATE]: "作成",
-  [PermissionAction.READ]: "読み取り",
-  [PermissionAction.UPDATE]: "編集",
-  [PermissionAction.DELETE]: "削除",
-  [PermissionAction.MANAGE]: "管理",
+  [PERMISSION_ACTIONS.CREATE]: "作成",
+  [PERMISSION_ACTIONS.READ]: "読み取り",
+  [PERMISSION_ACTIONS.UPDATE]: "編集", 
+  [PERMISSION_ACTIONS.DELETE]: "削除",
+  [PERMISSION_ACTIONS.MANAGE]: "管理",
 } as const;
 
 export const RESOURCE_TYPE_LABELS = {
-  [ResourceType.GROUP]: "グループ",
-  [ResourceType.MEMBER]: "メンバー",
-  [ResourceType.ROLE]: "ロール",
-  [ResourceType.MCP_SERVER_CONFIG]: "MCPサーバー設定",
-  [ResourceType.TOOL_GROUP]: "ツールグループ",
-  [ResourceType.MCP_SERVER_INSTANCE]: "MCPサーバーインスタンス",
+  [RESOURCE_TYPES.GROUP]: "グループ",
+  [RESOURCE_TYPES.MEMBER]: "メンバー",
+  [RESOURCE_TYPES.ROLE]: "ロール",
+  [RESOURCE_TYPES.MCP_SERVER_CONFIG]: "MCPサーバー設定",
+  [RESOURCE_TYPES.TOOL_GROUP]: "ツールグループ",
+  [RESOURCE_TYPES.MCP_SERVER_INSTANCE]: "MCPサーバーインスタンス",
 } as const;
 
 export type Permission = {
@@ -68,7 +70,7 @@ export const hasManagePermission = (
 ): boolean => {
   return checkPermission(userPermissions, {
     resourceType,
-    action: PermissionAction.MANAGE,
+    action: PERMISSION_ACTIONS.MANAGE,
   });
 };
 
@@ -77,46 +79,46 @@ export const getPermissionMatrix = (): Record<
   PermissionAction[]
 > => {
   return {
-    [ResourceType.GROUP]: [
-      PermissionAction.CREATE,
-      PermissionAction.READ,
-      PermissionAction.UPDATE,
-      PermissionAction.DELETE,
-      PermissionAction.MANAGE,
+    [RESOURCE_TYPES.GROUP]: [
+      PERMISSION_ACTIONS.CREATE,
+      PERMISSION_ACTIONS.READ,
+      PERMISSION_ACTIONS.UPDATE,
+      PERMISSION_ACTIONS.DELETE,
+      PERMISSION_ACTIONS.MANAGE,
     ],
-    [ResourceType.MEMBER]: [
-      PermissionAction.READ,
-      PermissionAction.UPDATE,
-      PermissionAction.DELETE,
-      PermissionAction.MANAGE,
+    [RESOURCE_TYPES.MEMBER]: [
+      PERMISSION_ACTIONS.READ,
+      PERMISSION_ACTIONS.UPDATE,
+      PERMISSION_ACTIONS.DELETE,
+      PERMISSION_ACTIONS.MANAGE,
     ],
-    [ResourceType.ROLE]: [
-      PermissionAction.CREATE,
-      PermissionAction.READ,
-      PermissionAction.UPDATE,
-      PermissionAction.DELETE,
-      PermissionAction.MANAGE,
+    [RESOURCE_TYPES.ROLE]: [
+      PERMISSION_ACTIONS.CREATE,
+      PERMISSION_ACTIONS.READ,
+      PERMISSION_ACTIONS.UPDATE,
+      PERMISSION_ACTIONS.DELETE,
+      PERMISSION_ACTIONS.MANAGE,
     ],
-    [ResourceType.MCP_SERVER_CONFIG]: [
-      PermissionAction.CREATE,
-      PermissionAction.READ,
-      PermissionAction.UPDATE,
-      PermissionAction.DELETE,
-      PermissionAction.MANAGE,
+    [RESOURCE_TYPES.MCP_SERVER_CONFIG]: [
+      PERMISSION_ACTIONS.CREATE,
+      PERMISSION_ACTIONS.READ,
+      PERMISSION_ACTIONS.UPDATE,
+      PERMISSION_ACTIONS.DELETE,
+      PERMISSION_ACTIONS.MANAGE,
     ],
-    [ResourceType.TOOL_GROUP]: [
-      PermissionAction.CREATE,
-      PermissionAction.READ,
-      PermissionAction.UPDATE,
-      PermissionAction.DELETE,
-      PermissionAction.MANAGE,
+    [RESOURCE_TYPES.TOOL_GROUP]: [
+      PERMISSION_ACTIONS.CREATE,
+      PERMISSION_ACTIONS.READ,
+      PERMISSION_ACTIONS.UPDATE,
+      PERMISSION_ACTIONS.DELETE,
+      PERMISSION_ACTIONS.MANAGE,
     ],
-    [ResourceType.MCP_SERVER_INSTANCE]: [
-      PermissionAction.CREATE,
-      PermissionAction.READ,
-      PermissionAction.UPDATE,
-      PermissionAction.DELETE,
-      PermissionAction.MANAGE,
+    [RESOURCE_TYPES.MCP_SERVER_INSTANCE]: [
+      PERMISSION_ACTIONS.CREATE,
+      PERMISSION_ACTIONS.READ,
+      PERMISSION_ACTIONS.UPDATE,
+      PERMISSION_ACTIONS.DELETE,
+      PERMISSION_ACTIONS.MANAGE,
     ],
   };
 };
