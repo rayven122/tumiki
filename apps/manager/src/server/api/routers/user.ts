@@ -58,16 +58,25 @@ export const userRouter = createTRPCRouter({
 
     const user = await ctx.db.user.findUnique({
       where: { id: userId },
-      select: { createdAt: true },
+      select: { hasCompletedOnboarding: true },
     });
 
     if (!user) return { isOnboardingCompleted: false };
 
-    // 作成から5分以内なら初回ログインとみなす
-    const isFirstLogin = Date.now() - user.createdAt.getTime() < 5 * 60 * 1000;
-
     return {
-      isOnboardingCompleted: !isFirstLogin,
+      isOnboardingCompleted: user.hasCompletedOnboarding,
     };
+  }),
+
+  // オンボーディング完了をマーク
+  completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    await ctx.db.user.update({
+      where: { id: userId },
+      data: { hasCompletedOnboarding: true },
+    });
+
+    return { success: true };
   }),
 });
