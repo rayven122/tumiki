@@ -1,7 +1,7 @@
 // クライアントサイド用の型と定数定義
 export const PERMISSION_ACTIONS = {
   CREATE: "CREATE",
-  READ: "READ", 
+  READ: "READ",
   UPDATE: "UPDATE",
   DELETE: "DELETE",
   MANAGE: "MANAGE",
@@ -16,13 +16,14 @@ export const RESOURCE_TYPES = {
   MCP_SERVER_INSTANCE: "MCP_SERVER_INSTANCE",
 } as const;
 
-export type PermissionAction = (typeof PERMISSION_ACTIONS)[keyof typeof PERMISSION_ACTIONS];
+export type PermissionAction =
+  (typeof PERMISSION_ACTIONS)[keyof typeof PERMISSION_ACTIONS];
 export type ResourceType = (typeof RESOURCE_TYPES)[keyof typeof RESOURCE_TYPES];
 
 export const PERMISSION_LABELS = {
   [PERMISSION_ACTIONS.CREATE]: "作成",
   [PERMISSION_ACTIONS.READ]: "読み取り",
-  [PERMISSION_ACTIONS.UPDATE]: "編集", 
+  [PERMISSION_ACTIONS.UPDATE]: "編集",
   [PERMISSION_ACTIONS.DELETE]: "削除",
   [PERMISSION_ACTIONS.MANAGE]: "管理",
 } as const;
