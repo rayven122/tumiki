@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { LanguageToggle } from "../LanguageToggle";
 
 interface HeroSectionProps {
@@ -17,7 +18,13 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
       <header className="fixed top-0 z-50 w-full border-b-2 border-black bg-white transition-all duration-300">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="relative h-6 w-6 bg-black shadow-[2px_2px_0_#6366f1] md:h-8 md:w-8" />
+            <Image
+              src="/favicon/logo.svg"
+              alt="Tumiki Logo"
+              width={24}
+              height={24}
+              className="h-6 w-6 md:h-8 md:w-8"
+            />
             <span className="text-xl font-black tracking-tight text-black md:text-2xl">
               Tumiki
             </span>
