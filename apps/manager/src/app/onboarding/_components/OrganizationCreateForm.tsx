@@ -50,7 +50,7 @@ export const OrganizationCreateForm = ({
       onSuccess?.();
     },
     onError: (error) => {
-      toast.error(`組織の作成に失敗しました: ${error.message}`);
+      toast.error(error.message);
     },
   });
 

@@ -30,6 +30,7 @@ const OnboardingPage = () => {
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
+  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
 
   // オンボーディング状況をチェック
   const { data: onboardingStatus } = api.user.checkOnboardingStatus.useQuery();
@@ -54,6 +55,7 @@ const OnboardingPage = () => {
 
     // 初回ログイン時はオンボーディング完了をマーク
     if (isFirstLogin) {
+      setShowWelcomeOverlay(true);
       await completeOnboarding.mutateAsync();
     } else {
       // 初回ログインでない場合は直接遷移
@@ -63,6 +65,7 @@ const OnboardingPage = () => {
 
   // アニメーション完了後の遷移処理
   const handleAnimationComplete = () => {
+    setShowWelcomeOverlay(false);
     router.push("/mcp");
   };
 
@@ -77,10 +80,11 @@ const OnboardingPage = () => {
     // 初回ログイン時はオンボーディング完了をマーク
     if (isFirstLogin) {
       await completeOnboarding.mutateAsync();
-    } else {
-      // 初回ログインでない場合は直接遷移
-      router.push("/mcp");
     }
+
+    // 組織作成後はウェルカムオーバーレイを表示
+    // その後、MCPダッシュボードに遷移
+    setShowWelcomeOverlay(true);
   };
 
   return (
@@ -232,7 +236,7 @@ const OnboardingPage = () => {
 
       {/* ウェルカムローディングオーバーレイ */}
       <WelcomeLoadingOverlay
-        isVisible={completeOnboarding.isPending}
+        isVisible={showWelcomeOverlay}
         onAnimationComplete={handleAnimationComplete}
       />
 
