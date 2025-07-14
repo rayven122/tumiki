@@ -31,7 +31,7 @@ rayven122/tumikiリポジトリの直近1週間のプルリクエスト情報を
 
 5. **レポートファイルの作成**
    - MultiEditツールでMarkdown形式でレポートを生成
-   - プロジェクトルートに日付を含むファイル名で保存
+   - `/doc/weekly-report/` ディレクトリに日付を含むファイル名で保存
    - UTF-8エンコーディングを確実に使用
 
 ## 使用例
@@ -137,7 +137,7 @@ rayven122/tumikiリポジトリの直近1週間のプルリクエスト情報を
 - マージされたPR: 5件
 - 新機能: 3個
 - バグ修正: 2件
-- 保存先: ./doc/週次業務報告\_2025年7月7日.md
+- 保存先: ./doc/weekly-report/週次業務報告\_2025年7月7日.md
 ```
 
 ## 技術的な実装詳細
@@ -156,7 +156,8 @@ gh pr list --repo rayven122/tumiki --state closed --limit 50 --json number,title
 
 - 既存ファイルが存在する場合はReadツールで読み取ってからWriteまたはMultiEditを使用
 - 日本語ファイル名を使用する場合はUTF-8エンコーディングを確保
-- プロジェクトルートディレクトリに保存（`./週次業務報告_YYYY年MM月DD日.md`）
+- `/doc/weekly-report/` ディレクトリに保存（`./doc/weekly-report/週次業務報告_YYYY年MM月DD日.md`）
+- ディレクトリが存在しない場合は自動作成
 
 ### タスク管理の実装
 
