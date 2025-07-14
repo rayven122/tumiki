@@ -1,4 +1,5 @@
 import { Header } from "@/app/_components/Header";
+import { OnboardingCheck } from "@/components/OnboardingCheck";
 
 export default async function AuthLayout({
   children,
@@ -8,7 +9,7 @@ export default async function AuthLayout({
   return (
     <>
       <Header />
-      {children}
+      <OnboardingCheck>{children}</OnboardingCheck>
     </>
   );
 }

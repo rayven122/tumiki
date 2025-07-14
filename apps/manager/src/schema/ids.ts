@@ -42,7 +42,10 @@ export type UserMcpServerInstanceId = z.infer<
   typeof UserMcpServerInstanceIdSchema
 >;
 
-export const OrganizationIdSchema = z.string().brand<"OrganizationId">();
+export const OrganizationIdSchema = z
+  .string()
+  .uuid("有効な組織IDを入力してください")
+  .brand<"OrganizationId">();
 export const OrganizationMemberIdSchema = z
   .string()
   .brand<"OrganizationMemberId">();

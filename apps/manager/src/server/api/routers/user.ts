@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  protectedProcedure,
+} from "@/server/api/trpc";
 
 // Auth0 Post-Login Actionから送信されるユーザー情報のスキーマ
 export const syncUserFromAuth0Schema = z.object({
@@ -34,17 +38,38 @@ export const userRouter = createTRPCRouter({
           },
         });
 
-        console.log(`User ${input.sub} synchronized to database:`, {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role,
-        });
-
         return dbUser;
       } catch (error) {
         console.error("Failed to sync user to database:", error);
         throw new Error("User synchronization failed");
       }
     }),
+
+  // オンボーディング状況をチェック
+  checkOnboardingStatus: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const user = await ctx.db.user.findUnique({
+      where: { id: userId },
+      select: { hasCompletedOnboarding: true },
+    });
+
+    if (!user) return { isOnboardingCompleted: false };
+
+    return {
+      isOnboardingCompleted: user.hasCompletedOnboarding,
+    };
+  }),
+
+  // オンボーディング完了をマーク
+  completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    await ctx.db.user.update({
+      where: { id: userId },
+      data: { hasCompletedOnboarding: true },
+    });
+
+    return { success: true };
+  }),
 });
