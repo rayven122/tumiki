@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Users, ArrowRight, CheckCircle } from "lucide-react";
+import { User, Users, ArrowRight, CheckCircle, Loader2 } from "lucide-react";
+import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,9 +19,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { OrganizationCreateForm } from "@/components/organizations/OrganizationCreateForm";
+import { OrganizationCreateForm } from "./_components/OrganizationCreateForm";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
+import { WelcomeLoadingOverlay } from "./_components/WelcomeLoadingOverlay";
 
 const OnboardingPage = () => {
   const router = useRouter();
@@ -28,14 +30,21 @@ const OnboardingPage = () => {
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
+  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
 
   // オンボーディング状況をチェック
   const { data: onboardingStatus } = api.user.checkOnboardingStatus.useQuery();
   const isFirstLogin =
     onboardingStatus && !onboardingStatus.isOnboardingCompleted;
 
+  const utils = api.useUtils();
+
   // オンボーディング完了ミューテーション
   const completeOnboarding = api.user.completeOnboarding.useMutation({
+    onSuccess: async () => {
+      await utils.user.checkOnboardingStatus.invalidate();
+      toast.success("アカウント設定が完了しました！");
+    },
     onError: (error) => {
       toast.error(error.message);
     },
@@ -46,11 +55,18 @@ const OnboardingPage = () => {
 
     // 初回ログイン時はオンボーディング完了をマーク
     if (isFirstLogin) {
+      setShowWelcomeOverlay(true);
       await completeOnboarding.mutateAsync();
+    } else {
+      // 初回ログインでない場合は直接遷移
+      router.push("/mcp");
     }
+  };
 
-    // 個人利用の場合は組織を作らずに直接MCPページに遷移
-    void router.push("/mcp");
+  // アニメーション完了後の遷移処理
+  const handleAnimationComplete = () => {
+    setShowWelcomeOverlay(false);
+    router.push("/mcp");
   };
 
   const handleTeamUse = () => {
@@ -66,7 +82,9 @@ const OnboardingPage = () => {
       await completeOnboarding.mutateAsync();
     }
 
-    void router.push("/mcp");
+    // 組織作成後はウェルカムオーバーレイを表示
+    // その後、MCPダッシュボードに遷移
+    setShowWelcomeOverlay(true);
   };
 
   return (
@@ -88,10 +106,16 @@ const OnboardingPage = () => {
         <div className="grid gap-8 md:grid-cols-2">
           {/* 個人利用オプション */}
           <Card
-            className={`cursor-pointer transition-all hover:shadow-lg ${
-              selectedOption === "personal" ? "ring-primary ring-2" : ""
-            }`}
-            onClick={handlePersonalUse}
+            className={clsx(
+              "transition-all hover:shadow-lg",
+              selectedOption === "personal" && "ring-primary ring-2",
+              completeOnboarding.isPending
+                ? "cursor-not-allowed opacity-70"
+                : "cursor-pointer",
+            )}
+            onClick={
+              completeOnboarding.isPending ? undefined : handlePersonalUse
+            }
           >
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
@@ -123,23 +147,38 @@ const OnboardingPage = () => {
               </ul>
               <Button
                 className="mt-6 w-full"
+                disabled={completeOnboarding.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   void handlePersonalUse();
                 }}
               >
-                {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {completeOnboarding.isPending &&
+                selectedOption === "personal" ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    設定中...
+                  </>
+                ) : (
+                  <>
+                    {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
 
           {/* チーム利用オプション */}
           <Card
-            className={`cursor-pointer transition-all hover:shadow-lg ${
-              selectedOption === "team" ? "ring-primary ring-2" : ""
-            }`}
-            onClick={handleTeamUse}
+            className={clsx(
+              "transition-all hover:shadow-lg",
+              selectedOption === "team" && "ring-primary ring-2",
+              completeOnboarding.isPending
+                ? "cursor-not-allowed opacity-70"
+                : "cursor-pointer",
+            )}
+            onClick={completeOnboarding.isPending ? undefined : handleTeamUse}
           >
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
@@ -172,18 +211,34 @@ const OnboardingPage = () => {
               <Button
                 className="mt-6 w-full"
                 variant="outline"
+                disabled={completeOnboarding.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleTeamUse();
                 }}
               >
-                組織を作成
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {completeOnboarding.isPending && selectedOption === "team" ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    設定中...
+                  </>
+                ) : (
+                  <>
+                    組織を作成
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* ウェルカムローディングオーバーレイ */}
+      <WelcomeLoadingOverlay
+        isVisible={showWelcomeOverlay}
+        onAnimationComplete={handleAnimationComplete}
+      />
 
       {/* 組織作成ダイアログ */}
       <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
