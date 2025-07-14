@@ -59,6 +59,7 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
+  Boolean hasCompletedOnboarding
   DateTime createdAt
   DateTime updatedAt
 }
@@ -73,6 +74,7 @@ erDiagram
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -603,6 +605,7 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
+  Boolean hasCompletedOnboarding
   DateTime createdAt
   DateTime updatedAt
 }
@@ -714,6 +717,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -840,6 +844,7 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
+  Boolean hasCompletedOnboarding
   DateTime createdAt
   DateTime updatedAt
 }
@@ -854,6 +859,7 @@ erDiagram
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 

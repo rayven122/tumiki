@@ -14,6 +14,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { logout } from "@/lib/auth";
+import { OrganizationSelector } from "@/components/organizations/OrganizationSelector";
 
 export function Header() {
   const pathname = usePathname();
@@ -52,7 +53,10 @@ export function Header() {
           </nav>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
+          {/* 組織セレクター */}
+          <OrganizationSelector />
+
           {/* ユーザーメニュー */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -40,6 +40,8 @@ model User {
     Suggestion         Suggestion[]
     /// MCPサーバーリクエストログ
     mcpServerRequestLogs McpServerRequestLog[]
+    /// オンボーディング完了フラグ
+    hasCompletedOnboarding Boolean @default(false)
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
