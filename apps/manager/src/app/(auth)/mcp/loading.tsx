@@ -1,4 +1,4 @@
-import { UserMcpServerCardSkeleton } from "./(index)/@tabs/_components/UserMcpServerCard/UserMcpServerCardSkeleton";
+import { UserMcpServerCardSkeleton } from "./(mcpTabs)/@tabs/_components/UserMcpServerCard/UserMcpServerCardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {

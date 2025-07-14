@@ -11,7 +11,6 @@ export async function middleware(request: NextRequest) {
     return auth0.middleware(request);
   }
 
-  console.log("Middleware triggered for path:", pathname);
   // 認証必要パスでのセッションチェック
   const session = await auth0.getSession(request);
   if (session) {
