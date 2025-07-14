@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,9 +42,17 @@ type OrganizationCreateFormProps = {
 export const OrganizationCreateForm = ({
   onSuccess,
 }: OrganizationCreateFormProps) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const createMutation = api.organization.create.useMutation();
+  const createMutation = api.organization.create.useMutation({
+    onSuccess: async (data) => {
+      toast.success(`組織「${data.name}」が正常に作成されました。`);
+      // フォームをリセット
+      form.reset();
+      onSuccess?.();
+    },
+    onError: (error) => {
+      toast.error(`組織の作成に失敗しました: ${error.message}`);
+    },
+  });
 
   const form = useForm({
     resolver: zodResolver(createOrganizationSchema),
@@ -58,29 +65,15 @@ export const OrganizationCreateForm = ({
   });
 
   const onSubmit = async (data: CreateOrganizationFormData) => {
-    setIsSubmitting(true);
-
-    try {
-      const formData = {
-        name: data.name,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        description: data.description || null,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        logoUrl: data.logoUrl || null,
-        isPersonal: data.isPersonal,
-      };
-
-      await createMutation.mutateAsync(formData);
-
-      toast.success(`組織「${data.name}」が正常に作成されました。`);
-
-      form.reset();
-      onSuccess?.();
-    } catch {
-      toast.error("組織の作成に失敗しました");
-    } finally {
-      setIsSubmitting(false);
-    }
+    const formData = {
+      name: data.name,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      description: data.description || null,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      logoUrl: data.logoUrl || null,
+      isPersonal: data.isPersonal,
+    };
+    await createMutation.mutateAsync(formData);
   };
 
   return (
@@ -152,12 +145,14 @@ export const OrganizationCreateForm = ({
             type="button"
             variant="outline"
             onClick={() => form.reset()}
-            disabled={isSubmitting}
+            disabled={createMutation.isPending}
           >
             リセット
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={createMutation.isPending}>
+            {createMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             組織を作成
           </Button>
         </div>

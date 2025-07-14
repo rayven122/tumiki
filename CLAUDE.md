@@ -16,7 +16,7 @@ Claude Code がこのリポジトリで作業する際のガイダンスファ�
 
 - **コンポーネント**: 関数コンポーネント + アロー関数、必須の Props 型定義。呼び出す側と同一階層の `_components/` ディレクトリに配置する。共通で利用するコンポーネントは、呼び出し側の一つ上の `_components/` ディレクトリに配置する。
 - **関数定義**: 全ての関数はアロー関数で記述する（`const fn = () => {}` 形式）
-- **スタイリング**: Tailwind CSS 使用、カスタムスタイルは `styles/globals.css`
+- **スタイリング**: Tailwind CSS 使用、カスタムスタイルは `styles/globals.css`。className で条件分岐を含む場合は `clsx` を使用する
 - **データフェッチング**: tRPC 使用（`trpc.useQuery()`, `trpc.useMutation()`）
 - **状態管理**: ローカルは `useState`、グローバルは Jotai
 - **型定義**: 共有型は `@tumiki/db` から import
