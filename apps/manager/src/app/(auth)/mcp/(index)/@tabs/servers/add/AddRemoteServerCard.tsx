@@ -19,15 +19,25 @@ export const AddRemoteServerCard = ({
   onConnect,
 }: AddRemoteServerCardProps) => {
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+    <Card className="relative flex h-full flex-col">
+      {/* 認証タイプタグ（右上） */}
+      <div className="absolute top-2 right-2 z-10">
+        <Badge
+          variant="secondary"
+          className="border-0 bg-purple-100 px-2 py-1 text-xs text-purple-800"
+        >
+          カスタム
+        </Badge>
+      </div>
+
+      <CardHeader className="flex flex-row items-center space-y-0 pr-16 pb-2">
         <div className="mr-2 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
           <div className="flex h-8 w-8 items-center justify-center">
             <Server className="h-4 w-4 text-white" />
           </div>
         </div>
         <div className="flex-1">
-          <CardTitle>リモートMCPサーバー</CardTitle>
+          <CardTitle>リモートMCP</CardTitle>
           <div className="mt-1 flex items-center gap-2">
             <Badge
               variant="outline"
@@ -40,31 +50,25 @@ export const AddRemoteServerCard = ({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 space-y-3">
         {/* 機能説明ボタン */}
         <Button
           variant="outline"
           size="sm"
-          className="mb-2 flex w-full items-center justify-between"
+          className="flex w-full items-center justify-between"
           onClick={onConnect}
         >
           <span className="flex items-center">
             <Server className="mr-2 size-4" />
             リモートMCPサーバーを追加
           </span>
-          <Badge variant="secondary" className="ml-2">
-            SSE / Streamable HTTPS
-          </Badge>
         </Button>
-
-        {/* <div className="border-muted-foreground/25 rounded-lg border-2 border-dashed p-3 text-center">
-          <ImageIcon className="text-muted-foreground/50 mx-auto h-8 w-8" />
-          <p className="text-muted-foreground mt-2 text-sm">
-            独自のMCPサーバーを作成して
-            <br />
-            他のユーザーと共有できます
+        {/* MCPサーバーの概要 */}
+        <div>
+          <p className="text-sm text-gray-600">
+            リモートMCPサーバーを登録して利用できます。WebSocketやHTTPエンドポイントを指定してカスタムツールやサービスと連携が可能です。
           </p>
-        </div> */}
+        </div>
       </CardContent>
 
       <CardFooter className="mt-auto">

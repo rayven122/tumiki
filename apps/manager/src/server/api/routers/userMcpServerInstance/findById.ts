@@ -37,12 +37,25 @@ export const findById = async ({
     throw new Error("サーバーインスタンスが見つかりません");
   }
 
+  // Get MCP server URL and iconPath from the first tool group tool's config
+  let mcpServerUrl: string | null = null;
+  let mcpServerIconPath: string | null = null;
+  if (instance.toolGroup?.toolGroupTools?.length > 0) {
+    const firstToolGroupTool = instance.toolGroup.toolGroupTools[0];
+    const mcpServer = firstToolGroupTool?.userMcpServerConfig?.mcpServer;
+    mcpServerUrl = mcpServer?.url ?? null;
+    mcpServerIconPath = mcpServer?.iconPath ?? null;
+  }
+
   // 型安全な戻り値
   return {
     id: instance.id,
     name: instance.name,
     description: instance.description,
+    iconPath: instance.iconPath ?? mcpServerIconPath,
     serverStatus: instance.serverStatus,
+    serverType: instance.serverType,
+    mcpServerUrl,
     createdAt: instance.createdAt,
     updatedAt: instance.updatedAt,
     toolGroup: instance.toolGroup,

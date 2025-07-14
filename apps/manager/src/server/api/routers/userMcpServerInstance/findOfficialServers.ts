@@ -81,6 +81,8 @@ export const findOfficialServers = async ({
         ...serverConfig.mcpServer,
         id: serverConfig.id,
         name: serverConfig.name,
+        description: serverConfig.description,
+        mcpServerId: serverConfig.mcpServerId,
         createdAt: serverConfig.createdAt,
         updatedAt: serverConfig.updatedAt,
         tools: serverConfig.tools,
