@@ -26,7 +26,7 @@
 
 ### 2. Auth0 Post-Login Action スクリプト
 
-- **ファイル**: `/doc/auth0-post-login-action.js`
+- **ファイル**: `/docs/auth0-post-login-action.js`
 - **機能**: Auth0管理画面で設定するJavaScriptコード
 
 ### 3. ログ機能
@@ -67,7 +67,7 @@ AUTH0_WEBHOOK_SECRET='webhook_secret_for_post_login_action_12345'
 
 4. **コードをコピー**
 
-   - `/doc/auth0-post-login-action.js` の内容を Action エディターにコピー
+   - `/docs/auth0-post-login-action.js` の内容を Action エディターにコピー
 
 5. **Secrets の設定**
    Action の設定画面で以下のSecretsを追加:
