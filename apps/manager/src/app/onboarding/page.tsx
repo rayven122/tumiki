@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "@/components/organizations/OrganizationCreateForm";
 import { api } from "@/trpc/react";
+import { toast } from "@/utils/client/toast";
 
 const OnboardingPage = () => {
   const router = useRouter();
@@ -34,7 +35,11 @@ const OnboardingPage = () => {
     onboardingStatus && !onboardingStatus.isOnboardingCompleted;
 
   // オンボーディング完了ミューテーション
-  const completeOnboarding = api.user.completeOnboarding.useMutation();
+  const completeOnboarding = api.user.completeOnboarding.useMutation({
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const handlePersonalUse = async () => {
     setSelectedOption("personal");
