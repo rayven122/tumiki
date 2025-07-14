@@ -1,5 +1,6 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Database, Layers, Server } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import Link from "next/link";
 
@@ -19,19 +20,43 @@ export function McpTabs({
       <div className="mb-4 flex items-center justify-between">
         <TabsList>
           <Link href="/mcp/servers">
-            <TabsTrigger value="servers" className="flex items-center">
+            <TabsTrigger
+              value="servers"
+              className={cn(
+                "flex items-center transition-colors duration-200",
+                "data-[state=active]:bg-[#874FFF] data-[state=active]:font-semibold data-[state=active]:text-white data-[state=active]:shadow-lg",
+                "hover:bg-purple-50 hover:text-[#874FFF]",
+                "text-gray-600",
+              )}
+            >
               <Server className="mr-2 h-4 w-4" />
               サーバー
             </TabsTrigger>
           </Link>
           <Link href="/mcp/custom-servers">
-            <TabsTrigger value="custom-servers" className="flex items-center">
+            <TabsTrigger
+              value="custom-servers"
+              className={cn(
+                "flex items-center transition-colors duration-200",
+                "data-[state=active]:bg-[#874FFF] data-[state=active]:font-semibold data-[state=active]:text-white data-[state=active]:shadow-lg",
+                "hover:bg-purple-50 hover:text-[#874FFF]",
+                "text-gray-600",
+              )}
+            >
               <Database className="mr-2 h-4 w-4" />
               カスタムサーバー
             </TabsTrigger>
           </Link>
           <Link href="/mcp/tool-groups">
-            <TabsTrigger value="tool-groups" className="flex items-center">
+            <TabsTrigger
+              value="tool-groups"
+              className={cn(
+                "flex items-center transition-colors duration-200",
+                "data-[state=active]:bg-[#874FFF] data-[state=active]:font-semibold data-[state=active]:text-white data-[state=active]:shadow-lg",
+                "hover:bg-purple-50 hover:text-[#874FFF]",
+                "text-gray-600",
+              )}
+            >
               <Layers className="mr-2 h-4 w-4" />
               ツールグループ
             </TabsTrigger>

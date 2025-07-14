@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 import { ServerCardList } from "./ServerCardList";
+import { AvailableServersList } from "./AvailableServersList";
 
 export default function ServersPage() {
   return (
@@ -18,7 +19,19 @@ export default function ServersPage() {
         </Link>
       }
     >
-      <ServerCardList />
+      <div className="space-y-8">
+        {/* 追加済みMCPサーバー一覧 */}
+        <div>
+          <h2 className="mb-4 text-lg font-semibold">接続済みMCPサーバー</h2>
+          <ServerCardList />
+        </div>
+
+        {/* 追加可能なMCPサーバー一覧 */}
+        <div>
+          <h2 className="mb-4 text-lg font-semibold">追加可能なMCPサーバー</h2>
+          <AvailableServersList />
+        </div>
+      </div>
     </McpTabs>
   );
 }

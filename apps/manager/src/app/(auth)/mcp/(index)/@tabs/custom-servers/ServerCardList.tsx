@@ -10,7 +10,7 @@ const AsyncServerCardList = () => {
     api.userMcpServerInstance.findCustomServers.useSuspenseQuery();
   const utils = api.useUtils();
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {userCustomServers.map((server) => (
         <UserMcpServerCard
           key={server.id}
@@ -26,7 +26,7 @@ const AsyncServerCardList = () => {
 
 function ServerCardListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 6 }).map((_, i) => (
         <UserMcpServerCardSkeleton key={i} />
       ))}
