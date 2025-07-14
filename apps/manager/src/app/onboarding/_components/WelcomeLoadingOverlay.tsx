@@ -10,19 +10,19 @@ type WelcomeLoadingOverlayProps = {
 
 /**
  * Tumikiオンボーディング用のウェルカムローディングオーバーレイコンポーネント
- * 
+ *
  * アニメーションタイムライン（合計3秒間最低保証）:
  * - 0-2秒: 「Tumikiへようこそ！」メッセージ表示
  * - 2-3秒: 「準備完了！」表示
  * - 3秒後: onAnimationComplete()コールバック実行
- * 
+ *
  * 視覚効果:
  * - グラデーション背景のアニメーション（連続サイクル）
  * - 30個の浮遊パーティクル（Sparkles, Heart, Zap）
  * - メッセージのスライドイン/アウト効果
  * - ローディングドットのバウンスアニメーション
  * - 完了時の拡張パーティクルエフェクト
- * 
+ *
  * @param isVisible - オーバーレイの表示状態
  * @param onAnimationComplete - アニメーション完了時のコールバック関数
  */
@@ -74,14 +74,14 @@ export const WelcomeLoadingOverlay = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-sm animate-gradient-x" />
-      
+      <div className="animate-gradient-x absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-sm" />
+
       {/* Floating particles */}
       <div className="absolute inset-0 overflow-hidden">
         {Array.from({ length: 30 }).map((_, i) => (
           <div
             key={i}
-            className="absolute animate-float"
+            className="animate-float absolute"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -104,18 +104,16 @@ export const WelcomeLoadingOverlay = ({
       <div className="relative z-10 text-center">
         {isCompleting ? (
           <div className="animate-in fade-in duration-700">
-            <div className="text-8xl mb-6 animate-bounce">🎊</div>
-            <h2 className="text-5xl font-bold text-white mb-6 animate-pulse">
+            <div className="mb-6 animate-bounce text-8xl">🎊</div>
+            <h2 className="mb-6 animate-pulse text-5xl font-bold text-white">
               準備完了！
             </h2>
-            <p className="text-2xl text-white/90 mb-4">
-              さあ、始めましょう！
-            </p>
+            <p className="mb-4 text-2xl text-white/90">さあ、始めましょう！</p>
             <div className="flex justify-center space-x-1">
               {[0, 1, 2, 3, 4].map((dot) => (
                 <div
                   key={dot}
-                  className="w-2 h-2 bg-white rounded-full animate-pulse"
+                  className="h-2 w-2 animate-pulse rounded-full bg-white"
                   style={{
                     animationDelay: `${dot * 0.1}s`,
                     animationDuration: "0.6s",
@@ -125,16 +123,19 @@ export const WelcomeLoadingOverlay = ({
             </div>
           </div>
         ) : (
-          <div className="animate-slide-up duration-700" key={currentMessageIndex}>
+          <div
+            className="animate-slide-up duration-700"
+            key={currentMessageIndex}
+          >
             {/* Icon with enhanced animation */}
-            <div className="text-9xl mb-8 animate-bounce-slow">
+            <div className="animate-bounce-slow mb-8 text-9xl">
               {currentMessage?.icon}
             </div>
-            
+
             {/* Tumiki logo with enhanced glow */}
             <div className="mb-10">
-              <div className="inline-block px-8 py-4 bg-white/15 backdrop-blur-md rounded-full border border-white/30 shadow-2xl">
-                <span className="text-3xl font-bold text-white animate-pulse-slow">
+              <div className="inline-block rounded-full border border-white/30 bg-white/15 px-8 py-4 shadow-2xl backdrop-blur-md">
+                <span className="animate-pulse-slow text-3xl font-bold text-white">
                   Tumiki
                 </span>
               </div>
@@ -142,10 +143,10 @@ export const WelcomeLoadingOverlay = ({
 
             {/* Message content with enhanced styling */}
             <div className="space-y-6">
-              <h2 className="text-5xl font-bold text-white mb-6 animate-slide-in">
+              <h2 className="animate-slide-in mb-6 text-5xl font-bold text-white">
                 {currentMessage?.title}
               </h2>
-              <p className="text-2xl text-white/90 animate-slide-in-delay">
+              <p className="animate-slide-in-delay text-2xl text-white/90">
                 {currentMessage?.subtitle}
               </p>
             </div>
@@ -156,7 +157,7 @@ export const WelcomeLoadingOverlay = ({
                 {[0, 1, 2, 3].map((dot) => (
                   <div
                     key={dot}
-                    className="w-4 h-4 bg-white/70 rounded-full animate-bounce"
+                    className="h-4 w-4 animate-bounce rounded-full bg-white/70"
                     style={{
                       animationDelay: `${dot * 0.15}s`,
                       animationDuration: "1.2s",
@@ -171,16 +172,18 @@ export const WelcomeLoadingOverlay = ({
 
       <style jsx>{`
         @keyframes gradient-x {
-          0%, 100% {
+          0%,
+          100% {
             background-position: 0% 50%;
           }
           50% {
             background-position: 100% 50%;
           }
         }
-        
+
         @keyframes float {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0px) rotate(0deg);
           }
           50% {
@@ -214,7 +217,7 @@ export const WelcomeLoadingOverlay = ({
           background-size: 400% 400%;
           animation: gradient-x 6s ease infinite;
         }
-        
+
         .animate-float {
           animation: float 3s ease-in-out infinite;
         }
