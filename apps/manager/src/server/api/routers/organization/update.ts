@@ -1,18 +1,12 @@
+import { type z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { OrganizationIdSchema } from "@/schema/ids";
+import { validateOrganizationAdminAccess } from "@/server/utils/organizationPermissions";
+import { updateOrganizationInput } from "@/server/utils/organizationSchemas";
 
-export const updateOrganizationInputSchema = z.object({
-  id: OrganizationIdSchema,
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().optional().nullable(),
-  logoUrl: z.string().url().optional().nullable(),
-});
+export const updateOrganizationInputSchema = updateOrganizationInput;
 
-export type UpdateOrganizationInput = z.infer<
-  typeof updateOrganizationInputSchema
->;
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationInput>;
 
 export const updateOrganization = async ({
   input,
@@ -21,24 +15,8 @@ export const updateOrganization = async ({
   input: UpdateOrganizationInput;
   ctx: ProtectedContext;
 }) => {
-  const userId = ctx.session.user.id;
-
-  // 権限チェック：ユーザーが組織の管理者であることを確認
-  const membership = await ctx.db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId: input.id,
-        userId,
-      },
-    },
-  });
-
-  if (!membership?.isAdmin) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "この組織を更新する権限がありません",
-    });
-  }
+  // 管理者権限を検証
+  await validateOrganizationAdminAccess(ctx.db, input.id, ctx.session.user.id);
 
   try {
     const organization = await ctx.db.organization.update({

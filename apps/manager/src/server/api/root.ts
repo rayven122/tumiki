@@ -6,7 +6,7 @@ import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
 import { userRouter } from "./routers/user";
 import { waitingListRouter } from "./routers/waitingList";
 import { mcpApiKeyRouter } from "./routers/mcpApiKey";
-import { organizationRouter } from "./routers/organization";
+import { organizationRouter } from "./routers/organization/index";
 import { organizationRoleRouter } from "./routers/organizationRole";
 
 /**
