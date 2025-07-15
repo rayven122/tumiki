@@ -67,11 +67,7 @@ export const OrganizationCreateForm = ({
   const onSubmit = async (data: CreateOrganizationFormData) => {
     const formData = {
       name: data.name,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      description: data.description || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      logoUrl: data.logoUrl || null,
-      isPersonal: data.isPersonal,
+      description: data.description ?? undefined,
     };
     await createMutation.mutateAsync(formData);
   };
