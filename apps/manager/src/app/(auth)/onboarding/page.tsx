@@ -42,7 +42,10 @@ const OnboardingPage = () => {
   // オンボーディング完了ミューテーション
   const completeOnboarding = api.user.completeOnboarding.useMutation({
     onSuccess: async () => {
-      await utils.user.checkOnboardingStatus.invalidate();
+      await Promise.all([
+        utils.user.checkOnboardingStatus.invalidate(),
+        utils.organization.getUserOrganizations.invalidate(),
+      ]);
       toast.success("アカウント設定が完了しました！");
     },
     onError: (error) => {
