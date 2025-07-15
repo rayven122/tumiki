@@ -8,7 +8,6 @@ import {
   CompatibilityCallToolResultSchema,
   ListToolsRequestSchema,
   ListToolsResultSchema,
-  InitializeRequestSchema,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
