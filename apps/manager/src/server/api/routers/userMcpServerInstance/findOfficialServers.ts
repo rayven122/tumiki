@@ -1,9 +1,6 @@
 import { ServerType } from "@tumiki/db/prisma";
 import type { ProtectedContext } from "../../trpc";
 
-import { convertToSortOrder } from "@tumiki/utils";
-import type { UserMcpServerConfigId } from "@/schema/ids";
-
 type FindOfficialServersInput = {
   ctx: ProtectedContext;
 };
@@ -20,9 +17,26 @@ export const findOfficialServers = async ({
       apiKeys: true,
       toolGroup: {
         include: {
+          _count: {
+            select: {
+              toolGroupTools: true,
+            },
+          },
           toolGroupTools: {
+            take: 1, // 1つだけ取得してmcpServerConfigIdを特定
             include: {
-              tool: true,
+              userMcpServerConfig: {
+                include: {
+                  mcpServer: {
+                    select: {
+                      id: true,
+                      name: true,
+                      iconPath: true,
+                      url: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -30,76 +44,17 @@ export const findOfficialServers = async ({
     },
   });
 
-  // toolGroupTool の ユニークな userMcpServerConfigId を取得して、その userMcpServerConfig を取得する
-  const userMcpServerConfigIds = officialServers
-    .filter((server) => server.toolGroup?.toolGroupTools?.length > 0)
-    .map((server) => {
-      const userMcpServerConfigId =
-        server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
-      if (!userMcpServerConfigId) {
-        throw new Error("userMcpServerConfigId not found");
-      }
-      return userMcpServerConfigId;
-    }) as UserMcpServerConfigId[];
-
-  const userMcpServerConfigs = await ctx.db.userMcpServerConfig.findMany({
-    where: {
-      id: {
-        in: userMcpServerConfigIds,
-      },
-    },
-    include: {
-      mcpServer: true,
-      tools: true,
-    },
-  });
-
   const officialServerList = officialServers.map((server) => {
-    // toolGroupTools が空の場合は、空の配列を返す
-    if (!server.toolGroup?.toolGroupTools?.length) {
-      return {
-        ...server,
-        iconPath: server.iconPath,
-        tools: [],
-        toolGroups: [],
-        userMcpServers: [],
-      };
-    }
-
-    const userMcpServerConfigId =
-      server.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
-    const serverConfig = userMcpServerConfigs.find(
-      (config) => config.id === userMcpServerConfigId,
-    );
-
-    if (!serverConfig) {
-      throw new Error("mcpServerConfig not found");
-    }
-
-    const userMcpServers = [
-      {
-        ...serverConfig.mcpServer,
-        id: serverConfig.id,
-        name: serverConfig.name,
-        description: serverConfig.description,
-        mcpServerId: serverConfig.mcpServerId,
-        createdAt: serverConfig.createdAt,
-        updatedAt: serverConfig.updatedAt,
-        tools: serverConfig.tools,
-        apiKeys: server.apiKeys,
-      },
-    ];
-
-    const tools = convertToSortOrder(server.toolGroup.toolGroupTools).map(
-      ({ tool, userMcpServerConfigId }) => ({ ...tool, userMcpServerConfigId }),
-    );
+    const toolCount = server.toolGroup?._count?.toolGroupTools ?? 0;
+    const mcpServer =
+      server.toolGroup?.toolGroupTools?.[0]?.userMcpServerConfig?.mcpServer;
 
     return {
       ...server,
-      iconPath: server.iconPath ?? serverConfig.mcpServer.iconPath,
-      tools,
+      tools: Array(toolCount).fill({}), // ツール数分の空オブジェクトを作成
       toolGroups: [],
-      userMcpServers,
+      userMcpServers: [],
+      mcpServer: mcpServer ?? null, // mcpServerデータを追加
     };
   });
 

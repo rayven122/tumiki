@@ -12,9 +12,7 @@ import { findCustomServers } from "./findCustomServers";
 import {
   McpApiKeySchema,
   McpServerSchema,
-  ToolSchema,
   UserMcpServerInstanceSchema,
-  UserToolGroupSchema,
 } from "@tumiki/db/zod";
 
 import { findOfficialServers } from "./findOfficialServers";
@@ -34,35 +32,15 @@ export const FindServersOutput = z.array(
     z.object({
       id: UserMcpServerInstanceIdSchema,
       apiKeys: McpApiKeySchema.array(),
-      tools: z.array(
-        ToolSchema.merge(
-          z.object({
-            id: ToolIdSchema,
-            userMcpServerConfigId: UserMcpServerConfigIdSchema,
-          }),
-        ),
-      ),
-      toolGroups: z.array(
-        UserToolGroupSchema.merge(
-          z.object({
-            id: UserToolGroupIdSchema,
-          }),
-        ),
-      ),
-      userMcpServers: z.array(
-        McpServerSchema.merge(
-          z.object({
-            id: UserMcpServerConfigIdSchema,
-            tools: z.array(
-              ToolSchema.merge(
-                z.object({
-                  id: ToolIdSchema,
-                }),
-              ),
-            ),
-          }),
-        ),
-      ),
+      tools: z.array(z.object({})), // ツール数のみ必要なので空オブジェクトの配列
+      toolGroups: z.array(z.never()).optional(), // 使用しないので削除
+      userMcpServers: z.array(z.never()).optional(), // 使用しないので削除
+      mcpServer: McpServerSchema.pick({
+        id: true,
+        name: true,
+        iconPath: true,
+        url: true,
+      }).nullable(), // mcpServerデータを追加
     }),
   ),
 );
