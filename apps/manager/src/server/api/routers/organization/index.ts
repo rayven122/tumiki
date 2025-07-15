@@ -26,7 +26,6 @@ import {
 } from "./removeMember";
 
 import { z } from "zod";
-import { Oranienbaum } from "next/font/google";
 import { OrganizationSchema } from "@tumiki/db/zod";
 import { OrganizationIdSchema } from "@/schema/ids";
 
