@@ -175,7 +175,11 @@ export const UserMcpServerCard = ({
         <div className="group relative mr-2 rounded-md p-2">
           {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
             <Image
-              src={serverInstance.iconPath || serverInstance.mcpServer?.iconPath || "/placeholder.svg"}
+              src={
+                serverInstance.iconPath ??
+                serverInstance.mcpServer?.iconPath ??
+                "/placeholder.svg"
+              }
               alt={serverInstance.name}
               width={32}
               height={32}
@@ -335,9 +339,7 @@ export const UserMcpServerCard = ({
 
         {/* MCPサーバーの概要 */}
         <div>
-          <p className="text-sm text-gray-600">
-            {sampleDescription}
-          </p>
+          <p className="text-sm text-gray-600">{sampleDescription}</p>
         </div>
 
         {/* カテゴリータグ（カード下部） */}
