@@ -12,28 +12,33 @@ jobs:
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
-      - name: Checkout branch
+      - name: 📥 Checkout branch
         uses: actions/checkout@v4
 
-      - name: Setup
+      - name: ⚙️ Setup
         uses: ./.github/actions/setup
 
-      - name: Build dependencies
+      - name: 🔧 Build dependencies
         run: pnpm run --filter @tumiki/mailer build && pnpm run --filter @tumiki/db build && pnpm run --filter @tumiki/auth build && pnpm run --filter @tumiki/utils build
         # CI環境で@tumiki/mailerの型定義を確実に生成するため、依存パッケージのみビルド
 
-      - name: Run lint, format and typecheck
+      - name: ✅ Run lint, format and typecheck
         run: pnpm check
 
-  # build:
-  #   name: 🧰 Build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout branch
-  #       uses: actions/checkout@v4
+  build:
+    name: 🧰 Build
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v4
 
-  #     - name: Setup
-  #       uses: ./.github/actions/setup
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
 
-  #     - name: Run build
-  #       run: pnpm run build
+      - name: 🔧 Copy test environment file
+        run: cp .env.test .env
+
+      - name: 🏗️ Run build
+        run: pnpm run build
