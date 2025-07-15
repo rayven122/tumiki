@@ -44,7 +44,7 @@ export type UserMcpServerInstanceId = z.infer<
 
 export const OrganizationIdSchema = z
   .string()
-  .uuid("有効な組織IDを入力してください")
+  .cuid("有効な組織IDを入力してください")
   .brand<"OrganizationId">();
 export const OrganizationMemberIdSchema = z
   .string()

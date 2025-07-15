@@ -15,7 +15,6 @@ import { logout } from "@/lib/auth";
 import { OrganizationNavigation } from "@/app/_components/OrganizationNavigation";
 
 export function Header() {
-
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="container flex h-14 items-center justify-between">
@@ -30,13 +29,12 @@ export function Header() {
             />
             <span className="font-bold">Tumiki</span>
           </Link>
-          
+
           {/* 組織ナビゲーション */}
           <OrganizationNavigation />
         </div>
 
         <div className="flex items-center space-x-4">
-
           {/* ユーザーメニュー */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

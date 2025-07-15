@@ -56,7 +56,7 @@ export const OrganizationSelector = () => {
           {selectedOrganization ? (
             <>
               <Building2 className="h-4 w-4" />
-              <span>{selectedOrganization.name}</span>
+              <span>{selectedOrganization.organization.name}</span>
             </>
           ) : (
             <>
@@ -77,7 +77,7 @@ export const OrganizationSelector = () => {
           <SelectItem key={org.id} value={org.id}>
             <div className="flex items-center space-x-2">
               <Building2 className="h-4 w-4" />
-              <span>{org.name}</span>
+              <span>{org.organization.name}</span>
             </div>
           </SelectItem>
         ))}

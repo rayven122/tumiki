@@ -26,7 +26,7 @@ export const OrganizationNavigation = () => {
 
   const handleValueChange = (value: string) => {
     if (value === "team_usage") {
-      router.push("/onboarding");
+      router.push(`/onboarding?org=${currentOrgId}`);
       return;
     }
 
@@ -45,12 +45,18 @@ export const OrganizationNavigation = () => {
 
   // 基本ナビゲーション
   const baseNavigation = [{ name: "MCPサーバー", href: "/mcp/servers" }];
-  
+
   // 組織が選択されている場合の追加ナビゲーション
-  const organizationNavigation = selectedOrganization 
+  const organizationNavigation = selectedOrganization
     ? [
-        { name: "組織設定", href: `/organizations/${selectedOrganization.id}` },
-        { name: "ロール管理", href: `/organizations/${selectedOrganization.id}/roles` },
+        {
+          name: "組織設定",
+          href: `/organizations/dashboard?org=${selectedOrganization.id}`,
+        },
+        {
+          name: "ロール管理",
+          href: `/organizations/roles?org=${selectedOrganization.id}`,
+        },
       ]
     : [];
 
@@ -118,9 +124,7 @@ export const OrganizationNavigation = () => {
             href={item.href}
             className={cn(
               "hover:text-foreground/80 transition-colors",
-              pathname === item.href
-                ? "text-foreground"
-                : "text-foreground/60",
+              pathname === item.href ? "text-foreground" : "text-foreground/60",
             )}
           >
             {item.name}
