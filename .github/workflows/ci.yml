@@ -25,15 +25,17 @@ jobs:
       - name: Run lint, format and typecheck
         run: pnpm check
 
-  # build:
-  #   name: 🧰 Build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout branch
-  #       uses: actions/checkout@v4
+  build:
+    name: 🧰 Build
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
 
-  #     - name: Setup
-  #       uses: ./.github/actions/setup
+      - name: Setup
+        uses: ./.github/actions/setup
 
-  #     - name: Run build
-  #       run: pnpm run build
+      - name: Run build
+        run: pnpm run build
