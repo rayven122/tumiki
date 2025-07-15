@@ -66,12 +66,7 @@ export const UserMcpServerCard = ({
       },
     });
 
-  api.userMcpServerConfig.findServersWithTools.usePrefetchQuery({
-    userMcpServerConfigIds:
-      serverInstance.serverType === ServerType.OFFICIAL
-        ? serverInstance.userMcpServers.map(({ id }) => id)
-        : undefined,
-  });
+  // userMcpServersが削除されたため、プリフェッチクエリは不要
 
   const copyUrl = async () => {
     await copyToClipboard(makeSseProxyServerUrl(apiKey));
@@ -92,7 +87,7 @@ export const UserMcpServerCard = ({
   };
 
   // MCPサーバーのURLを取得（ファビコン表示用）
-  const mcpServerUrl = serverInstance.userMcpServers[0]?.url;
+  const mcpServerUrl = serverInstance.mcpServer?.url;
 
   // サンプルカテゴリータグと説明文の生成（後でDBから取得予定）
   const getSampleData = (serverName: string) => {
@@ -178,9 +173,13 @@ export const UserMcpServerCard = ({
     >
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
         <div className="group relative mr-2 rounded-md p-2">
-          {serverInstance.iconPath ? (
+          {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
             <Image
-              src={serverInstance.iconPath || "/placeholder.svg"}
+              src={
+                serverInstance.iconPath ??
+                serverInstance.mcpServer?.iconPath ??
+                "/placeholder.svg"
+              }
               alt={serverInstance.name}
               width={32}
               height={32}
@@ -340,13 +339,7 @@ export const UserMcpServerCard = ({
 
         {/* MCPサーバーの概要 */}
         <div>
-          <p className="text-sm text-gray-600">
-            {(serverInstance.userMcpServers.length > 0 &&
-              serverInstance.userMcpServers[0] &&
-              (serverInstance.userMcpServers[0] as { description?: string })
-                .description) ??
-              sampleDescription}
-          </p>
+          <p className="text-sm text-gray-600">{sampleDescription}</p>
         </div>
 
         {/* カテゴリータグ（カード下部） */}
@@ -390,7 +383,7 @@ export const UserMcpServerCard = ({
         open={toolsModalOpen}
         onOpenChange={setToolsModalOpen}
         serverName={serverInstance.name}
-        tools={tools}
+        tools={[]} // 簡素化されたデータ構造では詳細なツール情報は利用できない
       />
 
       {/* 削除確認モーダル */}

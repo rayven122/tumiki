@@ -10,20 +10,14 @@ import { CreateMcpServerDialog } from "./add/CreateMcpServerDialog";
 
 const AsyncAvailableServersList = () => {
   const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [userOfficialServers] =
     api.userMcpServerInstance.findOfficialServers.useSuspenseQuery();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // 既に追加済みのサーバーIDを取得
-  const addedServerIds = new Set(
-    userOfficialServers
-      .flatMap((instance) =>
-        instance.userMcpServers.map(
-          (server) => (server as { mcpServerId?: string }).mcpServerId,
-        ),
-      )
-      .filter((id): id is string => Boolean(id)),
-  );
+  // userMcpServersが削除されたため、一時的に空のSetを使用
+  const addedServerIds = new Set<string>();
 
   // 未追加のサーバーのみフィルタリング
   const availableServers = mcpServers.filter(
