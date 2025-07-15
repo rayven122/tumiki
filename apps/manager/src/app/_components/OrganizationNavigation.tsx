@@ -1,6 +1,6 @@
 "use client";
 
-import { User, Building2, Plus } from "lucide-react";
+import { User, Building2, Plus, Database } from "lucide-react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { api } from "@/trpc/react";
 import Link from "next/link";
@@ -34,6 +34,16 @@ export const OrganizationNavigation = () => {
 
     if (value === "personal") {
       params.delete("org");
+
+      // 組織固有のページから個人を選択した場合のリダイレクト処理
+      if (pathname.startsWith("/organizations/dashboard")) {
+        router.push("/mcp/servers");
+        return;
+      }
+      if (pathname.startsWith("/organizations/roles")) {
+        router.push("/mcp/servers");
+        return;
+      }
     } else {
       params.set("org", value);
     }
@@ -48,20 +58,24 @@ export const OrganizationNavigation = () => {
         {
           name: "組織設定",
           href: `/organizations/dashboard?org=${selectedOrganization.id}`,
+          icon: Building2,
         },
         {
           name: "ロール管理",
           href: `/organizations/roles?org=${selectedOrganization.id}`,
+          icon: User,
         },
         {
           name: "MCPサーバー",
           href: `/mcp/servers?org=${selectedOrganization.id}`,
+          icon: Database,
         },
       ]
     : [
         {
           name: "MCPサーバー",
           href: "/mcp/servers",
+          icon: Database,
         },
       ];
 
@@ -121,18 +135,24 @@ export const OrganizationNavigation = () => {
 
       {/* ナビゲーションリンク */}
       <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
-        {navigation.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "hover:text-foreground/80 transition-colors",
-              pathname === item.href ? "text-foreground" : "text-foreground/60",
-            )}
-          >
-            {item.name}
-          </Link>
-        ))}
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "hover:text-foreground/80 flex items-center space-x-1 transition-colors",
+                pathname === item.href
+                  ? "text-foreground"
+                  : "text-foreground/60",
+              )}
+            >
+              {Icon && <Icon className="h-4 w-4" />}
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );
