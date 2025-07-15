@@ -1,0 +1,146 @@
+import { z } from "zod";
+import { OrganizationIdSchema } from "@/schema/ids";
+import {
+  OrganizationSchema,
+  UserSchema,
+  OrganizationMemberSchema,
+  OrganizationInvitationSchema,
+} from "@tumiki/db/zod";
+
+/**
+ * 組織ID入力の基本スキーマ
+ */
+export const baseOrganizationIdInput = z.object({
+  id: OrganizationIdSchema,
+});
+
+/**
+ * organizationId パラメータを持つ入力スキーマ
+ */
+export const organizationIdParamInput = z.object({
+  organizationId: OrganizationIdSchema,
+});
+
+/**
+ * 組織の基本出力スキーマ
+ */
+export const baseOrganizationOutput = OrganizationSchema.pick({
+  id: true,
+  name: true,
+  description: true,
+  logoUrl: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+  isDeleted: true,
+});
+
+/**
+ * メンバー情報を含む組織出力スキーマ
+ */
+export const organizationWithMembersOutput = baseOrganizationOutput.extend({
+  members: z.array(
+    OrganizationMemberSchema.pick({
+      id: true,
+      userId: true,
+      isAdmin: true,
+      createdAt: true,
+    }).extend({
+      user: UserSchema.pick({
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+      }),
+      roles: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+        }),
+      ),
+    }),
+  ),
+  _count: z.object({
+    members: z.number(),
+  }),
+});
+
+/**
+ * 完全な組織詳細の出力スキーマ
+ */
+export const fullOrganizationOutput = organizationWithMembersOutput.extend({
+  creator: UserSchema.pick({
+    id: true,
+    name: true,
+    email: true,
+  }),
+  invitations: z.array(
+    OrganizationInvitationSchema.pick({
+      id: true,
+      email: true,
+      expires: true,
+    }).extend({
+      invitedByUser: UserSchema.pick({
+        id: true,
+        name: true,
+      }),
+    }),
+  ),
+  _count: z.object({
+    members: z.number(),
+    groups: z.number(),
+    roles: z.number(),
+  }),
+});
+
+/**
+ * 使用量統計の出力スキーマ
+ */
+export const usageStatsOutput = z.object({
+  totalRequests: z.number(),
+  uniqueUsers: z.number(),
+  memberStats: z.array(
+    z.object({
+      user: z.object({
+        id: z.string(),
+        name: z.string().nullable(),
+        email: z.string().nullable(),
+        image: z.string().nullable(),
+      }),
+      requestCount: z.number(),
+      lastActivity: z.number().nullable(),
+    }),
+  ),
+  dailyStats: z.array(
+    z.object({
+      date: z.string(),
+      requests: z.number(),
+    }),
+  ),
+});
+
+/**
+ * 組織更新入力スキーマ
+ */
+export const updateOrganizationInput = baseOrganizationIdInput.extend({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  logoUrl: z.string().optional(),
+});
+
+/**
+ * メンバー招待入力スキーマ
+ */
+export const inviteMemberInput = organizationIdParamInput.extend({
+  email: z.string().email(),
+  isAdmin: z.boolean().default(false),
+  roleIds: z.array(z.string()).default([]),
+  groupIds: z.array(z.string()).default([]),
+});
+
+/**
+ * メンバー削除入力スキーマ
+ */
+export const removeMemberInput = organizationIdParamInput.extend({
+  memberId: z.string(),
+});

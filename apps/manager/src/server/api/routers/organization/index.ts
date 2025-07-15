@@ -9,15 +9,33 @@ import {
   getOrganizationByIdInputSchema,
   getOrganizationByIdOutputSchema,
 } from "./getById";
+import {
+  getUsageStats,
+  getUsageStatsInputSchema,
+  getUsageStatsOutputSchema,
+} from "./getUsageStats";
+import {
+  inviteMember,
+  inviteMemberInputSchema,
+  inviteMemberOutputSchema,
+} from "./inviteMember";
+import {
+  removeMember,
+  removeMemberInputSchema,
+  removeMemberOutputSchema,
+} from "./removeMember";
 
 import { z } from "zod";
+import { Oranienbaum } from "next/font/google";
+import { OrganizationSchema } from "@tumiki/db/zod";
 
 // ユーザーの組織一覧取得用のスキーマ（現在は入力不要）
 export const GetUserOrganizationsInput = z.object({}).optional();
+export const GetUserOrganizationsOutput = z.array(OrganizationSchema);
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
   getUserOrganizations: protectedProcedure
-    .input(GetUserOrganizationsInput)
+    .output(GetUserOrganizationsOutput)
     .query(getUserOrganizations),
 
   // 組織作成
@@ -45,4 +63,22 @@ export const organizationRouter = createTRPCRouter({
     .input(getOrganizationByIdInputSchema)
     .output(getOrganizationByIdOutputSchema)
     .query(getOrganizationById),
+
+  // 使用量統計取得
+  getUsageStats: protectedProcedure
+    .input(getUsageStatsInputSchema)
+    .output(getUsageStatsOutputSchema)
+    .query(getUsageStats),
+
+  // メンバー招待
+  inviteMember: protectedProcedure
+    .input(inviteMemberInputSchema)
+    .output(inviteMemberOutputSchema)
+    .mutation(inviteMember),
+
+  // メンバー削除
+  removeMember: protectedProcedure
+    .input(removeMemberInputSchema)
+    .output(removeMemberOutputSchema)
+    .mutation(removeMember),
 });
