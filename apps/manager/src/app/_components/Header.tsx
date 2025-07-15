@@ -8,35 +8,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { Settings, User, Database, ChevronDown } from "lucide-react";
+import { Settings, User, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { logout } from "@/lib/auth";
-import { OrganizationSelector } from "@/app/_components/OrganizationSelector";
 import { OrganizationNavigation } from "@/app/_components/OrganizationNavigation";
 import { useUser } from "@tumiki/auth/client";
 import { useMemo } from "react";
 import { guestRegex } from "@/lib/constants";
 
-type NavigationItem = {
-  name: string;
-  href: string;
-  icon?: React.ComponentType<{ className?: string }>;
-};
-
 export const Header = () => {
-  const pathname = usePathname();
   const { user, isLoading } = useUser();
 
   const isGuest = useMemo(() => {
     return guestRegex.test(user?.email ?? "");
   }, [user?.email]);
-
-  const navigation: NavigationItem[] = [
-    { name: "MCPサーバー", href: "/mcp/servers", icon: Database },
-  ];
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="container flex h-14 items-center justify-between">
@@ -51,34 +37,12 @@ export const Header = () => {
             />
             <span className="font-bold">Tumiki</span>
           </Link>
-          <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "hover:text-foreground/80 flex items-center space-x-1 transition-colors",
-                    pathname === item.href
-                      ? "text-foreground"
-                      : "text-foreground/60",
-                  )}
-                >
-                  {Icon && <Icon className="h-4 w-4" />}
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
 
           {/* 組織ナビゲーション */}
           <OrganizationNavigation />
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* 組織セレクター */}
-          <OrganizationSelector />
           {/* ユーザーメニュー */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -168,28 +132,6 @@ export const Header = () => {
           <div className="flex items-center justify-center">
             <OrganizationNavigation />
           </div>
-
-          {/* モバイルナビゲーション項目 */}
-          <nav className="grid grid-cols-2 gap-1">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "hover:bg-accent flex flex-col items-center justify-center space-y-1 rounded-md p-2 text-xs font-medium transition-colors",
-                    pathname === item.href
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {Icon && <Icon className="h-4 w-4" />}
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
         </div>
       </div>
     </header>
