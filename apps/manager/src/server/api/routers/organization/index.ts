@@ -28,10 +28,16 @@ import {
 import { z } from "zod";
 import { Oranienbaum } from "next/font/google";
 import { OrganizationSchema } from "@tumiki/db/zod";
+import { OrganizationIdSchema } from "@/schema/ids";
 
 // ユーザーの組織一覧取得用のスキーマ（現在は入力不要）
 export const GetUserOrganizationsInput = z.object({}).optional();
-export const GetUserOrganizationsOutput = z.array(OrganizationSchema);
+export const GetUserOrganizationsOutput = z.array(
+  OrganizationSchema.extend({
+    id: OrganizationIdSchema,
+  }),
+);
+
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
   getUserOrganizations: protectedProcedure
