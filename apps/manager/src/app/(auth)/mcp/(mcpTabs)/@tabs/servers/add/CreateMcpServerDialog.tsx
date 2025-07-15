@@ -461,13 +461,11 @@ export const CreateMcpServerDialog = ({
                     <SelectValue placeholder="組織を選択してください" />
                   </SelectTrigger>
                   <SelectContent>
-                    {organizations.map(
-                      (org: { id: string; organization: { name: string } }) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.organization.name}
-                        </SelectItem>
-                      ),
-                    )}
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {organizations.length === 0 && (

@@ -1,7 +1,6 @@
-import { z } from "zod";
+import { type z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
-import { getOrganizationMembersForStats } from "@/server/utils/organizationQueries";
 import {
   organizationIdParamInput,
   usageStatsOutput,

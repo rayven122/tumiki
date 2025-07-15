@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { validateOrganizationAdminAccess } from "@/server/utils/organizationPermissions";
