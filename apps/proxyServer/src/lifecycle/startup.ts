@@ -1,7 +1,7 @@
-import { startMetricsCollection } from "../lib/metrics.js";
+import { startMetricsCollection } from "../libs/metrics.js";
 import { startMaintenanceTasks } from "./maintenance.js";
 import { setupShutdownHandlers } from "./shutdown.js";
-import { logger } from "../lib/logger.js";
+import { logger } from "../libs/logger.js";
 
 /**
  * アプリケーション初期化処理を集約

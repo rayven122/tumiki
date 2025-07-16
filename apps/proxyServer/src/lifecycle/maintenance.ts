@@ -1,9 +1,6 @@
-import {
-  cleanupExpiredSessions,
-  getSessionStats,
-} from "../services/session.js";
-import { config } from "../lib/config.js";
-import { logger } from "../lib/logger.js";
+import { cleanupExpiredSessions, getSessionStats } from "../utils/session.js";
+import { config } from "../libs/config.js";
+import { logger } from "../libs/logger.js";
 
 /**
  * 定期的なメンテナンスタスクを開始

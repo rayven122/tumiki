@@ -3,15 +3,15 @@ import { type StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/se
 import {
   createStreamableTransport,
   getStreamableTransportBySessionId,
-} from "../services/transport.js";
+} from "../../utils/transport.js";
 import {
   updateSessionActivity,
   isSessionValid,
   canCreateNewSession,
-} from "../services/session.js";
-import { getServer } from "../services/proxy.js";
+} from "../../utils/session.js";
+import { getServer } from "../../utils/proxy.js";
 import { TransportType } from "@tumiki/db/prisma";
-import { logger } from "../lib/logger.js";
+import { logger } from "../../libs/logger.js";
 
 /**
  * 統合MCPエンドポイント - Streamable HTTP transport
