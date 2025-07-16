@@ -26,7 +26,11 @@
     "db:generate": "pnpm --filter @tumiki/db db:generate",
     "inspector": "pnpm --filter @tumiki/proxy-server inspector",
     "env:pull": "vercel env pull apps/proxyServer/.env",
-    "env:push": "bash scripts/vercel-env-push.sh .env development"
+    "env:push": "bash scripts/vercel-env-push.sh .env development",
+    "deploy": "bash scripts/deploy-all.sh",
+    "deploy:vercel": "vercel --prod",
+    "deploy:gce": "bash apps/proxyServer/deploy-to-gce.sh",
+    "deploy:dry-run": "bash scripts/deploy-all.sh --dry-run"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",

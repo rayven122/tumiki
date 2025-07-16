@@ -159,7 +159,15 @@ fetch_vercel_env() {
     
     local env_file="apps/proxyServer/.env"
     local current_dir=$(pwd)
-    local project_root="../../"
+    
+    # スクリプトがプロジェクトルートから実行されている場合の対応
+    if [ -f "package.json" ] && [ -d "apps/proxyServer" ]; then
+        # プロジェクトルートから実行されている
+        local project_root="."
+    else
+        # apps/proxyServerディレクトリから実行されている
+        local project_root="../../"
+    fi
     
     if [ "$DRY_RUN" = "true" ]; then
         log_dry_run "環境変数取得"
@@ -172,7 +180,8 @@ fetch_vercel_env() {
     # プロジェクトルートに移動
     if ! cd "$project_root"; then
         log_error "プロジェクトルートディレクトリに移動できませんでした"
-        exit 1
+        cd "$current_dir"
+        return 1
     fi
     
     # Vercelから環境変数を取得
@@ -185,7 +194,7 @@ fetch_vercel_env() {
         log_error "3. 本番環境の環境変数が設定されている"
         log_error "4. 現在のディレクトリがプロジェクトルートである"
         cd "$current_dir"
-        exit 1
+        return 1
     fi
     
     # 元のディレクトリに戻る
@@ -193,7 +202,7 @@ fetch_vercel_env() {
     
     if [ ! -f ".env" ]; then
         log_error "環境変数ファイル .env が作成されませんでした"
-        exit 1
+        return 1
     fi
     
     log_info "環境変数ファイル .env を取得しました"
@@ -453,8 +462,15 @@ main() {
     log_info "ブランチ: $CURRENT_BRANCH"
     
     check_prerequisites
-    fetch_vercel_env
-    transfer_env_file
+    
+    # Vercel環境変数の取得（エラーでも続行）
+    if fetch_vercel_env; then
+        transfer_env_file
+    else
+        log_warn "Vercel環境変数の取得に失敗しましたが、デプロイを続行します"
+        log_warn "VM上で既存の.envファイルまたはデフォルト設定が使用されます"
+    fi
+    
     deploy_to_vm
     
     # 外部IPアドレス取得と表示
