@@ -476,8 +476,8 @@ export const getServer = async (
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
       if (validation.userMcpServerInstance) {
-        const inputBytes = calculateDataSize(request.params);
-        const outputBytes = calculateDataSize(result.tools);
+        const inputBytes = calculateDataSize(request.params ?? {});
+        const outputBytes = calculateDataSize(result.tools ?? []);
 
         // 成功時のログ記録
         // ログ記録を非同期で実行（await しない）
@@ -647,8 +647,8 @@ export const getServer = async (
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
       if (validation.userMcpServerInstance) {
-        const inputBytes = calculateDataSize(request.params);
-        const outputBytes = calculateDataSize(result.result);
+        const inputBytes = calculateDataSize(request.params ?? {});
+        const outputBytes = calculateDataSize(result.result ?? {});
 
         // 成功時のログ記録
         // ログ記録を非同期で実行（await しない）
