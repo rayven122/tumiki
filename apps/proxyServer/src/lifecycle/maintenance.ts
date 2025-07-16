@@ -19,10 +19,6 @@ export const startMaintenanceTasks = (): void => {
   setInterval(() => {
     cleanupExpiredSessions();
 
-    // メトリクスログ出力（デバッグ用）
-    const stats = getSessionStats();
-    if (stats.totalSessions > 0) {
-      logger.debug("Session statistics", stats);
-    }
+    // デバッグログを削除（メモリ使用量削減）
   }, intervalMs);
 };

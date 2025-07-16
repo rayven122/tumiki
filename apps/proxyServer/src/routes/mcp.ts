@@ -12,6 +12,7 @@ import {
 import { getServer } from "../services/proxy.js";
 import { TransportType } from "@tumiki/db/prisma";
 import { logger } from "../lib/logger.js";
+import { logSecurityEvent } from "../lib/securityLogger.js";
 
 /**
  * 統合MCPエンドポイント - Streamable HTTP transport
@@ -32,16 +33,18 @@ export const handleMCPRequest = async (
   const clientId: string =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
-  logger.info("MCP request received", {
-    method,
-    sessionId,
-    hasApiKey: !!apiKey,
-    clientId,
-    userAgent: req.headers["user-agent"],
-  });
+  // MCPリクエスト受信ログを削除（メモリ使用量削減）
 
   // API key validation
   if (!apiKey) {
+    // セキュリティログ: APIキー未提供
+    void logSecurityEvent("auth_failure", {
+      clientId,
+      userAgent: req.headers["user-agent"] as string,
+      ipAddress: req.ip,
+      errorMessage: "API key not provided",
+    });
+
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -164,11 +167,7 @@ const handlePOSTRequest = async (
       );
       await server.connect(transport);
 
-      logger.info("New MCP session established", {
-        sessionId: transport.sessionId,
-        hasApiKey: !!apiKey,
-        clientId,
-      });
+      // MCPセッション確立ログを削除（メモリ使用量削減）
     } catch (error) {
       logger.error("Failed to establish MCP connection", {
         error: error instanceof Error ? error.message : String(error),
@@ -310,7 +309,7 @@ const handleDELETERequest = async (
     // セッション終了処理をtransportに委譲
     await transport.handleRequest(req, res);
 
-    logger.info("Session terminated", { sessionId });
+    // セッション終了ログを削除（メモリ使用量削減）
   } catch (error) {
     logger.error("Error terminating session", {
       sessionId,
