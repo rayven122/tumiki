@@ -177,12 +177,7 @@ const connectToServer = async (
                 : String(closeError),
           });
         } finally {
-          logger.debug("Retrying connection", {
-            serverName: server.name,
-            delayMs: waitFor,
-            attempt: count,
-            maxAttempts: retries,
-          });
+          // デバッグログを削除（メモリ使用量削減）
           await sleep(waitFor);
         }
       } else {
@@ -351,16 +346,11 @@ export const getMcpClients = async (apiKey: string) => {
   const serverConfigs = await getServerConfigs(apiKey);
 
   const connectedClients = await createClients(serverConfigs);
-  logger.debug("Connected to servers", {
-    clientCount: connectedClients.length,
-    serverNames: connectedClients.map((client) => client.name),
-  });
+  // デバッグログを削除（メモリ使用量削減）
 
   const cleanup = async () => {
     try {
-      logger.debug("Cleaning up servers", {
-        clientCount: connectedClients.length,
-      });
+      // デバッグログを削除（メモリ使用量削減）
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
     } catch (error) {
       logger.error("Error during cleanup", {
@@ -502,10 +492,7 @@ export const getServer = async (
         });
       }
 
-      logger.info("Tools list request completed", {
-        toolsCount: result.tools.length,
-        durationMs,
-      });
+      // ツール一覧完了ログを削除（メモリ使用量削減）
       // レスポンスデータを準備
       return { tools: result.tools };
     } catch (error) {
@@ -564,9 +551,7 @@ export const getServer = async (
     const { name, arguments: args } = request.params;
     const startTime = Date.now();
 
-    logger.info("Tool call - establishing fresh connections", {
-      toolName: name,
-    });
+    // ツール呼び出し開始ログを削除（メモリ使用量削減）
 
     const requestTimeout = config.timeouts.request;
 
@@ -674,10 +659,7 @@ export const getServer = async (
         });
       }
 
-      logger.info("Tool call completed", {
-        toolName: name,
-        durationMs,
-      });
+      // ツール呼び出し完了ログを削除（メモリ使用量削減）
       return result.result;
     } catch (error) {
       if (clientsCleanup) {

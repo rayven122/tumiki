@@ -84,7 +84,7 @@ const metricsState = {
   requestCount: 0,
   successfulRequests: 0,
   failedRequests: 0,
-  responseTimes: [] as number[],
+  // responseTimes配列を削除（メモリ蓄積防止）
   errorCount: 0,
   errorTypes: {} as Record<string, number>,
   interval: null as NodeJS.Timeout | null,
@@ -97,7 +97,7 @@ const transportMetrics = {
     requestCount: 0,
     successfulRequests: 0,
     failedRequests: 0,
-    responseTimes: [] as number[],
+    // responseTimes配列を削除（メモリ蓄積防止）
     errorCount: 0,
     errorTypes: {} as Record<string, number>,
     connectionCount: 0,
@@ -107,7 +107,7 @@ const transportMetrics = {
     requestCount: 0,
     successfulRequests: 0,
     failedRequests: 0,
-    responseTimes: [] as number[],
+    // responseTimes配列を削除（メモリ蓄積防止）
     errorCount: 0,
     errorTypes: {} as Record<string, number>,
     connectionCount: 0,
@@ -121,46 +121,8 @@ export const startMetricsCollection = (): void => {
     metricsState.interval = setInterval(() => {
       const metrics = collectMetrics();
 
-      // 読みやすい形式でメトリクスをログ出力
-      logger.info("=== Metrics and Health Report ===");
-
-      // セッション情報
-      logger.info("Sessions", {
-        total: metrics.sessions.total,
-        active: metrics.sessions.active,
-        byTransport: `SSE:${metrics.sessions.sse} HTTP:${metrics.sessions.streamableHttp}`,
-      });
-
-      // リクエスト情報
-      logger.info("Requests", {
-        total: metrics.requests.total,
-        successful: metrics.requests.successful,
-        failed: metrics.requests.failed,
-        errorRate: `${metrics.requests.errorRate}%`,
-      });
-
-      // パフォーマンス情報
-      logger.info("Performance", {
-        avgResponseTime: `${metrics.performance.averageResponseTime}ms`,
-        minMaxResponseTime: `${metrics.performance.minResponseTime}-${metrics.performance.maxResponseTime}ms`,
-        ssePerf: `Avg:${metrics.performance.byTransport.sse.averageResponseTime}ms Err:${metrics.performance.byTransport.sse.errorRate}%`,
-        httpPerf: `Avg:${metrics.performance.byTransport.streamableHttp.averageResponseTime}ms Err:${metrics.performance.byTransport.streamableHttp.errorRate}%`,
-      });
-
-      // システムリソース
-      logger.info("System Resources", {
-        memory: `RSS:${metrics.system.memoryUsage.rss}MB(${metrics.system.memoryUsage.rssPercent}%) Heap:${metrics.system.memoryUsage.heap}MB(${metrics.system.memoryUsage.heapPercent}%)`,
-        cpu: `${metrics.system.cpuUsage.usage}% (${metrics.system.cpuUsage.cores} cores)`,
-        pool: metrics.system.poolInfo,
-      });
-
-      // エラー情報（エラーがある場合のみ）
-      if (metrics.errors.count > 0) {
-        logger.warn("Errors Detected", {
-          count: metrics.errors.count,
-          types: metrics.errors.types,
-        });
-      }
+      // メトリクス詳細ログ出力を削除（メモリ使用量削減のため）
+      // 必要に応じて外部監視システムでメトリクス収集を実装
 
       resetMetrics();
     }, config.metrics.interval);
@@ -183,7 +145,7 @@ export const recordRequest = (success: boolean, responseTime: number): void => {
   } else {
     metricsState.failedRequests++;
   }
-  metricsState.responseTimes.push(responseTime);
+  // レスポンス時間の蓄積を削除（メモリ使用量削減）
 };
 
 // Transport別リクエストメトリクス記録
@@ -201,7 +163,7 @@ export const recordTransportRequest = (
   } else {
     metrics.failedRequests++;
   }
-  metrics.responseTimes.push(responseTime);
+  // レスポンス時間の蓄積を削除（メモリ使用量削減）
 
   // 全体メトリクスにも記録
   recordRequest(success, responseTime);
@@ -387,7 +349,7 @@ const resetMetrics = (): void => {
   metricsState.requestCount = 0;
   metricsState.successfulRequests = 0;
   metricsState.failedRequests = 0;
-  metricsState.responseTimes = [];
+  // レスポンス時間配列の削除（メモリ使用量削減）
   metricsState.errorCount = 0;
   metricsState.errorTypes = {};
 
@@ -397,7 +359,7 @@ const resetMetrics = (): void => {
     metrics.requestCount = 0;
     metrics.successfulRequests = 0;
     metrics.failedRequests = 0;
-    metrics.responseTimes = [];
+    // レスポンス時間配列の削除（メモリ使用量削減）
     metrics.errorCount = 0;
     metrics.errorTypes = {};
     // connectionCountとlastActivityはリセットしない
