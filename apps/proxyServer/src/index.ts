@@ -32,6 +32,7 @@ const createApp = (): express.Application => {
 
   // ルート設定
   app.get("/", handleHealthCheck);
+  app.get("/health", handleHealthCheck);
 
   // 統合MCPエンドポイント（Streamable HTTP transport）
   app.post("/mcp", handleMCPRequest);

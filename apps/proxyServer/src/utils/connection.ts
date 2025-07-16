@@ -1,40 +1,27 @@
 import { type Request, type Response } from "express";
-import { logger } from "../libs/logger.js";
+import {
+  establishSSEConnection as transportEstablishSSEConnection,
+  handleSSEMessage as transportHandleSSEMessage,
+} from "./transport.js";
 
 /**
- * SSE接続確立（プレースホルダー実装）
- * 注: services/connection.ts が削除されたため、新しい実装が必要
+ * SSE接続確立
+ * GET /sse - SSE接続を確立
  */
 export const establishSSEConnection = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  logger.warn("SSE connection functionality needs to be reimplemented", {
-    url: req.url,
-    method: req.method,
-  });
-
-  res.status(501).json({
-    error: "SSE connection functionality is being refactored",
-    message: "Please use the /mcp endpoint with Streamable HTTP transport",
-  });
+  await transportEstablishSSEConnection(req, res);
 };
 
 /**
- * SSEメッセージ処理（プレースホルダー実装）
- * 注: services/connection.ts が削除されたため、新しい実装が必要
+ * SSEメッセージ処理
+ * POST /messages - SSEメッセージを処理
  */
 export const handleSSEMessage = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  logger.warn("SSE message handling functionality needs to be reimplemented", {
-    url: req.url,
-    method: req.method,
-  });
-
-  res.status(501).json({
-    error: "SSE message handling functionality is being refactored",
-    message: "Please use the /mcp endpoint with Streamable HTTP transport",
-  });
+  await transportHandleSSEMessage(req, res);
 };
