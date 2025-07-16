@@ -228,6 +228,56 @@ docker compose -f ./docker/compose.prod.yaml down
 
 ## プロダクション デプロイメント
 
+Tumikiプロジェクト全体を簡単にデプロイするための統合デプロイメントシステムを提供しています。
+
+### 統合デプロイメント（推奨）
+
+以下の単一コマンドで、Manager App（Vercel）とProxyServer（GCE）の両方を一括デプロイできます：
+
+```bash
+# 全コンポーネントの一括デプロイ（並列実行）
+pnpm run deploy
+
+# ドライラン（実行内容の確認）
+pnpm run deploy:dry-run
+```
+
+#### 個別デプロイコマンド
+
+```bash
+# Manager App のみ（Vercel）
+pnpm run deploy:vercel
+
+# ProxyServer のみ（GCE）
+pnpm run deploy:gce
+```
+
+#### オプション付きデプロイ
+
+```bash
+# Vercelのみデプロイ
+bash scripts/deploy-all.sh --skip-gce
+
+# GCEのみデプロイ
+bash scripts/deploy-all.sh --skip-vercel
+
+```
+
+### 前提条件
+
+デプロイを実行する前に、以下の準備が必要です：
+
+```bash
+# Vercel CLI のインストールと認証
+npm install -g vercel
+vercel login
+vercel link  # プロジェクトルートで実行
+
+# Google Cloud CLI のインストールと認証
+# https://cloud.google.com/sdk/docs/install
+gcloud auth login
+```
+
 ### ProxyServer の Google Compute Engine (GCE) へのデプロイ
 
 ProxyServer を既存の GCE VM にデプロイして PM2 で管理する詳細な手順は、専用のドキュメントを参照してください。
