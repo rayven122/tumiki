@@ -30,7 +30,8 @@
     "deploy": "bash scripts/deploy-all.sh",
     "deploy:vercel": "vercel --prod",
     "deploy:gce": "bash apps/proxyServer/deploy-to-gce.sh",
-    "deploy:dry-run": "bash scripts/deploy-all.sh --dry-run"
+    "deploy:dry-run": "bash scripts/deploy-all.sh --dry-run",
+    "setup": "bash setup.sh"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",

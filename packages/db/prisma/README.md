@@ -42,7 +42,7 @@ APIキー管理テーブル
 - `apiKeyHash`: APIキーのハッシュ値（検索用）
 - `isActive`: APIキーが有効かどうか
 - `lastUsedAt`: 最後に使用された日時
-- `expiresAt`: APIキーの有効期限
+- `expiresAt`: APIキーの有効���限
 - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
 - `userId`: 作成者のユーザーID
 - `organizationId`: 組織ID（マルチテナント対応）
@@ -281,7 +281,7 @@ tool group 内に、同一の mcpServer の設定入れられない🤔
 - `id`:
 - `name`: ツールグループ名
 - `description`: ツールグループの説明
-- `isEnabled`: ツールグループが有効かどうか
+- `isEnabled`: ツールグループが有���かどうか
 - `userId`: ユーザーID
 - `organizationId`: 組織
 - `createdAt`:
@@ -759,7 +759,7 @@ tool group 内に、同一の mcpServer の設定入れられない🤔
 - `id`:
 - `name`: ツールグループ名
 - `description`: ツールグループの説明
-- `isEnabled`: ツールグループが有効かどうか
+- `isEnabled`: ツールグループが有���かどうか
 - `userId`: ユーザーID
 - `organizationId`: 組織
 - `createdAt`:
