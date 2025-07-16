@@ -127,26 +127,52 @@ curl -X POST "http://localhost:8080/messages?sessionId=SESSION_ID" \
 
 ```
 src/
-├── index.ts              # メインサーバー（デュアルTransport対応）
-├── routes/
-│   ├── health.ts         # ヘルスチェック
-│   ├── mcp.ts           # Streamable HTTP エンドポイント
-│   └── sse.ts           # SSE エンドポイント（後方互換性）
-├── services/
-│   ├── session.ts        # 統一セッション管理システム
-│   ├── transport.ts      # Streamable HTTP transport管理
-│   ├── connection.ts     # SSE接続管理
-│   └── proxy.ts         # MCPプロキシ機能
-├── lib/                 # ユーティリティ
-│   ├── config.ts
-│   ├── logger.ts
-│   ├── metrics.ts       # Transport別統計
-│   └── types.ts
-└── lifecycle/           # アプリケーションライフサイクル
-    ├── startup.ts
-    ├── shutdown.ts      # デュアルTransport対応
-    └── maintenance.ts
+├── index.ts                 # メインサーバー（デュアルTransport対応）
+├── routes/                  # ハンドラー別ディレクトリ構造
+│   ├── mcp/                 # MCP関連ハンドラー
+│   │   └── index.ts        # MCPメインハンドラー
+│   ├── sse/                 # SSE関連ハンドラー
+│   │   └── index.ts        # SSE接続ハンドラー
+│   └── health/              # ヘルスチェックハンドラー
+│       └── index.ts        # ヘルスチェック実装
+├── utils/                   # アプリケーション固有ユーティリティ
+│   ├── session.ts          # 統一セッション管理システム
+│   ├── transport.ts        # Streamable HTTP transport管理
+│   ├── proxy.ts            # MCPプロキシ機能
+│   └── connection.ts       # SSE接続管理（リファクタリング中）
+├── libs/                    # 基盤ライブラリ
+│   ├── config.ts           # 設定管理
+│   ├── logger.ts           # ログ機能
+│   ├── metrics.ts          # Transport別統計
+│   ├── types.ts            # 型定義
+│   ├── dataCompression.ts  # データ圧縮
+│   ├── requestLogger.ts    # リクエストログ
+│   └── validateApiKey.ts   # API認証
+└── lifecycle/               # アプリケーションライフサイクル
+    ├── startup.ts          # 起動処理
+    ├── shutdown.ts         # シャットダウン処理（デュアルTransport対応）
+    └── maintenance.ts      # メンテナンス処理
 ```
+
+### ディレクトリ構造の特徴
+
+#### **routes/** - ハンドラー別ディレクトリ構造
+
+- 各機能別にディレクトリを作成し、関連するハンドラーを集約
+- `mcp/`, `sse/`, `health/` に分割して責任を明確化
+- 将来的な機能拡張時も新しいディレクトリとして追加可能
+
+#### **utils/** - アプリケーション固有ユーティリティ
+
+- ビジネスロジックに密接に関連する機能を配置
+- 旧 `services/` ディレクトリから移行
+- セッション管理、Transport管理、プロキシ機能など
+
+#### **libs/** - 基盤ライブラリ
+
+- アプリケーション全体で共有される基盤機能
+- 設定、ログ、メトリクス、型定義など
+- 他のアプリケーションでも再利用可能な汎用機能
 
 ## Transport選択ガイド
 
