@@ -181,47 +181,104 @@ run_simple_cli_test() {
                 timeout_cmd="gtimeout"
             fi
             
+            # SSE接続をバックグラウンドで開始し、少し待ってからツールテストを実行
             if [ -n "$timeout_cmd" ]; then
-                $timeout_cmd 5s curl -s -N \
+                $timeout_cmd 10s curl -s -N \
                     -H "Accept: text/event-stream" \
                     "$PROXY_SERVER_URL/sse?api-key=$API_KEY&x-client-id=$CLIENT_ID" \
                     > "$TEMP_DIR/sse-test.log" 2>&1 &
+                curl_pid=$!
             else
                 curl -s -N \
                     -H "Accept: text/event-stream" \
                     "$PROXY_SERVER_URL/sse?api-key=$API_KEY&x-client-id=$CLIENT_ID" \
                     > "$TEMP_DIR/sse-test.log" 2>&1 &
                 curl_pid=$!
-                sleep 5
-                kill $curl_pid 2>/dev/null || true
             fi
             
-            sleep 3
+            # 接続確立まで少し待つ
+            sleep 2
             
             if [ -s "$TEMP_DIR/sse-test.log" ]; then
                 log "SUCCESS" "SSE: 接続確立成功"
                 head -3 "$TEMP_DIR/sse-test.log"
                 
-                # メッセージ送信テスト
-                log "INFO" "SSEメッセージ送信テスト"
+                # レスポンスからセッションIDを抽出
+                session_id=""
+                if grep -q "event: endpoint" "$TEMP_DIR/sse-test.log"; then
+                    endpoint_line=$(grep "data: /messages" "$TEMP_DIR/sse-test.log" | head -1)
+                    if [ -n "$endpoint_line" ]; then
+                        session_id=$(echo "$endpoint_line" | grep -oE 'sessionId=[0-9a-f-]+' | cut -d'=' -f2)
+                    fi
+                fi
                 
-                message_response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
-                    -H "Content-Type: application/json" \
-                    -X POST \
-                    -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' \
-                    "$PROXY_SERVER_URL/messages?sessionId=cli-test")
-                
-                message_code=$(echo "$message_response" | tail -n1 | sed 's/HTTPSTATUS://')
-                
-                if [ "$message_code" = "200" ] || [ "$message_code" = "404" ]; then
-                    log "SUCCESS" "SSE: メッセージエンドポイント応答"
-                    return 0
+                if [ -n "$session_id" ]; then
+                    log "INFO" "セッションID抽出成功: $session_id"
+                    
+                    # tools/list リクエスト送信（SSE接続が生きている間に実行）
+                    log "INFO" "SSE tools/list リクエスト送信"
+                    
+                    message_response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
+                        -H "Content-Type: application/json" \
+                        -X POST \
+                        -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' \
+                        "$PROXY_SERVER_URL/messages?sessionId=$session_id")
+                    
+                    message_code=$(echo "$message_response" | tail -n1 | sed 's/HTTPSTATUS://')
+                    message_body=$(echo "$message_response" | sed '$d')
+                    
+                    # curlプロセスを終了
+                    if [ -n "$curl_pid" ]; then
+                        kill $curl_pid 2>/dev/null || true
+                        wait $curl_pid 2>/dev/null || true
+                    fi
+                    
+                    if [ "$message_code" = "200" ] || [ "$message_code" = "202" ]; then
+                        log "SUCCESS" "SSE: tools/list リクエスト送信成功 (HTTP: $message_code)"
+                        if [ -n "$message_body" ] && [ "$message_body" != "Accepted" ]; then
+                            echo "$message_body" | head -5
+                        else
+                            echo "レスポンスはSSEストリームで送信されます"
+                        fi
+                        return 0
+                    else
+                        log "WARN" "SSE: tools/list 取得エラー (HTTP: $message_code)"
+                        echo "$message_body"
+                        return 1
+                    fi
                 else
-                    log "WARN" "SSE: メッセージ送信エラー (HTTP: $message_code)"
-                    return 1
+                    log "WARN" "セッションIDを抽出できませんでした"
+                    
+                    # curlプロセスを終了
+                    if [ -n "$curl_pid" ]; then
+                        kill $curl_pid 2>/dev/null || true
+                        wait $curl_pid 2>/dev/null || true
+                    fi
+                    
+                    # フォールバック: 基本的なメッセージ送信テスト
+                    message_response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
+                        -H "Content-Type: application/json" \
+                        -X POST \
+                        -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' \
+                        "$PROXY_SERVER_URL/messages?sessionId=cli-test")
+                    
+                    message_code=$(echo "$message_response" | tail -n1 | sed 's/HTTPSTATUS://')
+                    
+                    if [ "$message_code" = "200" ] || [ "$message_code" = "202" ] || [ "$message_code" = "404" ]; then
+                        log "SUCCESS" "SSE: メッセージエンドポイント応答 (HTTP: $message_code)"
+                        return 0
+                    else
+                        log "WARN" "SSE: メッセージ送信エラー (HTTP: $message_code)"
+                        return 1
+                    fi
                 fi
             else
                 log "ERROR" "SSE: 接続確立失敗"
+                # curlプロセスを終了
+                if [ -n "$curl_pid" ]; then
+                    kill $curl_pid 2>/dev/null || true
+                    wait $curl_pid 2>/dev/null || true
+                fi
                 return 1
             fi
             ;;
