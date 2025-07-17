@@ -24,6 +24,7 @@ if [ -z "$API_KEY" ]; then
     echo "  または TEST_API_KEY=your-api-key $0"
     exit 1
 fi
+
 TEMP_DIR="/tmp/mcp-inspector-test"
 
 # カラー出力
@@ -82,156 +83,7 @@ setup_temp_dir() {
     log "INFO" "一時ディレクトリ作成: $TEMP_DIR"
 }
 
-# 設定ファイル作成
-create_config_files() {
-    log "INFO" "MCP Inspector設定ファイル作成中..."
-    
-    # Streamable HTTP Transport設定
-    cat > "$TEMP_DIR/streamable-http-config.json" << EOF
-{
-  "mcpServers": {
-    "proxy-server-streamable": {
-      "command": "echo",
-      "args": ["Streamable HTTP Transport"],
-      "transport": {
-        "type": "http",
-        "url": "$PROXY_SERVER_URL/mcp",
-        "headers": {
-          "api-key": "$API_KEY",
-          "x-client-id": "$CLIENT_ID"
-        }
-      }
-    }
-  }
-}
-EOF
-
-    # SSE Transport設定
-    cat > "$TEMP_DIR/sse-config.json" << EOF
-{
-  "mcpServers": {
-    "proxy-server-sse": {
-      "command": "echo",
-      "args": ["SSE Transport"],
-      "transport": {
-        "type": "sse",
-        "url": "$PROXY_SERVER_URL/sse?api-key=$API_KEY&x-client-id=$CLIENT_ID",
-        "messageUrl": "$PROXY_SERVER_URL/messages"
-      }
-    }
-  }
-}
-EOF
-
-    log "SUCCESS" "設定ファイル作成完了"
-}
-
-# MCP Inspector CLI でのテスト実行
-run_inspector_test() {
-    local config_file=$1
-    local transport_name=$2
-    local timeout=${3:-30}
-    
-    log "TEST" "$transport_name テスト開始 (タイムアウト: ${timeout}秒)"
-    
-    # テストコマンドファイル作成
-    cat > "$TEMP_DIR/test-commands.txt" << EOF
-tools list
-EOF
-
-    # MCP Inspector CLI 実行
-    log "INFO" "MCP Inspector CLI起動中..."
-    
-    local transport_lower=$(echo "$transport_name" | tr '[:upper:]' '[:lower:]')
-    local output_file="$TEMP_DIR/${transport_lower}-output.log"
-    local error_file="$TEMP_DIR/${transport_lower}-error.log"
-    
-    # timeoutコマンドを動的に選択
-    timeout_cmd=""
-    if command -v timeout >/dev/null 2>&1; then
-        timeout_cmd="timeout"
-    elif command -v gtimeout >/dev/null 2>&1; then
-        timeout_cmd="gtimeout"
-    fi
-    
-    # サーバー名を設定ファイルから決定
-    local server_name
-    if [[ "$transport_name" == *"Streamable"* ]] || [[ "$transport_name" == *"HTTP"* ]]; then
-        server_name="proxy-server-streamable"
-    else
-        server_name="proxy-server-sse"
-    fi
-    
-    # バックグラウンドでMCP Inspector実行
-    if [ -n "$timeout_cmd" ]; then
-        $timeout_cmd $timeout npx @modelcontextprotocol/inspector \
-            --config "$config_file" \
-            --server "$server_name" \
-            --non-interactive \
-            < "$TEMP_DIR/test-commands.txt" \
-            > "$output_file" 2> "$error_file" &
-        inspector_pid=$!
-    else
-        # timeoutコマンドが無い場合は手動でプロセス管理
-        npx @modelcontextprotocol/inspector \
-            --config "$config_file" \
-            --server "$server_name" \
-            --non-interactive \
-            < "$TEMP_DIR/test-commands.txt" \
-            > "$output_file" 2> "$error_file" &
-        inspector_pid=$!
-        
-        # 指定時間後にプロセスを終了
-        (sleep $timeout && kill $inspector_pid 2>/dev/null) &
-        timeout_killer_pid=$!
-    fi
-    
-    # 結果待機
-    local wait_time=0
-    local max_wait=10
-    
-    while [ $wait_time -lt $max_wait ]; do
-        if [ -s "$output_file" ] || [ -s "$error_file" ]; then
-            break
-        fi
-        sleep 1
-        ((wait_time++))
-    done
-    
-    # プロセス終了待機
-    wait $inspector_pid 2>/dev/null || true
-    
-    # timeout killerプロセスがあれば終了
-    if [ -n "${timeout_killer_pid:-}" ]; then
-        kill $timeout_killer_pid 2>/dev/null || true
-    fi
-    
-    # 結果確認
-    if [ -s "$output_file" ]; then
-        log "SUCCESS" "$transport_name テスト完了"
-        log "INFO" "出力内容:"
-        cat "$output_file" | head -20
-        
-        # ツールリスト取得成功を確認
-        if grep -q "tools\|list\|available" "$output_file"; then
-            log "SUCCESS" "$transport_name: ツールリスト取得成功"
-            return 0
-        else
-            log "WARN" "$transport_name: ツールリスト情報が見つかりません"
-        fi
-    fi
-    
-    if [ -s "$error_file" ]; then
-        log "ERROR" "$transport_name テストエラー:"
-        cat "$error_file" | head -10
-        return 1
-    fi
-    
-    log "WARN" "$transport_name: 出力が見つかりません（タイムアウトまたは接続エラー）"
-    return 1
-}
-
-# 簡易接続テスト（MCP Inspector CLIの代替）
+# 簡易接続テスト（基本機能確認）
 run_simple_cli_test() {
     local transport_type=$1
     
@@ -262,10 +114,8 @@ run_simple_cli_test() {
                 # レスポンスヘッダーからセッションIDを抽出
                 session_id=""
                 if [ -f "$TEMP_DIR/headers.txt" ]; then
-                    # セッションIDを含むヘッダーを探して正規表現で抽出
                     session_line=$(grep "^mcp-session-id:" "$TEMP_DIR/headers.txt" | head -1)
                     if [ -n "$session_line" ]; then
-                        # UUID形式のセッションIDを抽出（例: 4415ebda-4908-4209-b9d4-f50391400221）
                         session_id=$(echo "$session_line" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
                     fi
                     
@@ -273,85 +123,31 @@ run_simple_cli_test() {
                         log "INFO" "セッションID取得: $session_id"
                     else
                         log "WARN" "ヘッダーからセッションIDが見つかりません"
-                        echo "ヘッダー内容:"
-                        cat "$TEMP_DIR/headers.txt" | head -10
                     fi
                 fi
                 
-                # Step 2: 初期化されたセッションでnotifications/initializedを送信
-                log "INFO" "notifications/initialized 送信"
+                # Step 2: ツールリストリクエスト
+                log "INFO" "tools/list リクエスト送信 (Streamable HTTP)"
                 
                 if [ -n "$session_id" ]; then
-                    initialized_response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
+                    response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
                         -H "Content-Type: application/json" \
                         -H "Accept: application/json, text/event-stream" \
                         -H "api-key: $API_KEY" \
                         -H "x-client-id: $CLIENT_ID" \
                         -H "mcp-session-id: $session_id" \
                         -X POST \
-                        -d '{"jsonrpc": "2.0", "method": "notifications/initialized"}' \
+                        -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2}' \
                         "$PROXY_SERVER_URL/mcp")
                 else
-                    initialized_response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
+                    response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
                         -H "Content-Type: application/json" \
                         -H "Accept: application/json, text/event-stream" \
                         -H "api-key: $API_KEY" \
                         -H "x-client-id: $CLIENT_ID" \
                         -X POST \
-                        -d '{"jsonrpc": "2.0", "method": "notifications/initialized"}' \
+                        -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2}' \
                         "$PROXY_SERVER_URL/mcp")
-                fi
-                
-                initialized_code=$(echo "$initialized_response" | tail -n1 | sed 's/HTTPSTATUS://')
-                
-                if [ "$initialized_code" = "200" ] || [ "$initialized_code" = "204" ]; then
-                    log "INFO" "tools/list リクエスト送信 (Streamable HTTP)"
-                    
-                    # Step 3: tools/listリクエスト送信
-                    if [ -n "$session_id" ]; then
-                        response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
-                            -H "Content-Type: application/json" \
-                            -H "Accept: application/json, text/event-stream" \
-                            -H "api-key: $API_KEY" \
-                            -H "x-client-id: $CLIENT_ID" \
-                            -H "mcp-session-id: $session_id" \
-                            -X POST \
-                            -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2}' \
-                            "$PROXY_SERVER_URL/mcp")
-                    else
-                        response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
-                            -H "Content-Type: application/json" \
-                            -H "Accept: application/json, text/event-stream" \
-                            -H "api-key: $API_KEY" \
-                            -H "x-client-id: $CLIENT_ID" \
-                            -X POST \
-                            -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2}' \
-                            "$PROXY_SERVER_URL/mcp")
-                    fi
-                else
-                    log "WARN" "notifications/initialized エラー (HTTP: $initialized_code) - 続行"
-                    
-                    # initializedエラーでもtools/listを試す
-                    if [ -n "$session_id" ]; then
-                        response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
-                            -H "Content-Type: application/json" \
-                            -H "Accept: application/json, text/event-stream" \
-                            -H "api-key: $API_KEY" \
-                            -H "x-client-id: $CLIENT_ID" \
-                            -H "mcp-session-id: $session_id" \
-                            -X POST \
-                            -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2}' \
-                            "$PROXY_SERVER_URL/mcp")
-                    else
-                        response=$(curl -s -w "\\nHTTPSTATUS:%{http_code}" \
-                            -H "Content-Type: application/json" \
-                            -H "Accept: application/json, text/event-stream" \
-                            -H "api-key: $API_KEY" \
-                            -H "x-client-id: $CLIENT_ID" \
-                            -X POST \
-                            -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2}' \
-                            "$PROXY_SERVER_URL/mcp")
-                    fi
                 fi
             else
                 log "ERROR" "Streamable HTTP: 初期化失敗 (HTTP: $init_code)"
@@ -377,7 +173,6 @@ run_simple_cli_test() {
             # SSE Transport テスト
             log "INFO" "SSE接続テスト"
             
-            # SSE接続テスト（短時間）
             # timeoutコマンドを動的に選択
             timeout_cmd=""
             if command -v timeout >/dev/null 2>&1; then
@@ -392,7 +187,6 @@ run_simple_cli_test() {
                     "$PROXY_SERVER_URL/sse?api-key=$API_KEY&x-client-id=$CLIENT_ID" \
                     > "$TEMP_DIR/sse-test.log" 2>&1 &
             else
-                # timeoutコマンドがない場合は5秒間だけcurlを実行
                 curl -s -N \
                     -H "Accept: text/event-stream" \
                     "$PROXY_SERVER_URL/sse?api-key=$API_KEY&x-client-id=$CLIENT_ID" \
@@ -438,10 +232,7 @@ run_simple_cli_test() {
 cleanup() {
     log "INFO" "クリーンアップ実行中..."
     
-    # バックグラウンドプロセス終了
-    pkill -f "@modelcontextprotocol/inspector" 2>/dev/null || true
-    
-    # 一時ファイル削除（オプション）
+    # 一時ファイル削除
     if [ "${KEEP_TEMP:-false}" != "true" ]; then
         rm -rf "$TEMP_DIR"
         log "INFO" "一時ファイル削除完了"
@@ -452,7 +243,7 @@ cleanup() {
 
 # メイン実行
 main() {
-    log "INFO" "${BOLD}=== MCP Inspector CLI モード検証テスト ===${NC}"
+    log "INFO" "${BOLD}=== MCP ProxyServer 基本接続テスト ===${NC}"
     log "INFO" "設定: ProxyServer=$PROXY_SERVER_URL, API_KEY=${API_KEY:0:8}***, Client=$CLIENT_ID"
     
     # 事前チェック
@@ -464,7 +255,6 @@ main() {
     
     # セットアップ
     setup_temp_dir
-    create_config_files
     
     # クリーンアップ用のトラップ設定
     trap cleanup EXIT
@@ -485,49 +275,18 @@ main() {
         ((tests_passed++))
     fi
     
-    # MCP Inspector CLI テスト
-    timeout_cmd=""
-    if command -v timeout >/dev/null 2>&1; then
-        timeout_cmd="timeout"
-    elif command -v gtimeout >/dev/null 2>&1; then
-        timeout_cmd="gtimeout"
-    fi
-    
-    # timeoutコマンドが無くてもテストを実行
-    echo
-    log "TEST" "=== MCP Inspector CLI テスト ==="
-    
-    if [ -n "$timeout_cmd" ]; then
-        log "INFO" "timeoutコマンド利用: $timeout_cmd"
-    else
-        log "INFO" "timeoutコマンドなしで実行（プロセス管理版）"
-    fi
-    
-    log "INFO" "Streamable HTTP with MCP Inspector CLI"
-    if run_inspector_test "$TEMP_DIR/streamable-http-config.json" "Streamable-HTTP" 15; then
-        log "SUCCESS" "MCP Inspector CLI: Streamable HTTP 成功"
-    else
-        log "WARN" "MCP Inspector CLI: Streamable HTTP 警告"
-    fi
-    
-    echo
-    log "INFO" "SSE with MCP Inspector CLI"
-    if run_inspector_test "$TEMP_DIR/sse-config.json" "SSE" 15; then
-        log "SUCCESS" "MCP Inspector CLI: SSE 成功"
-    else
-        log "WARN" "MCP Inspector CLI: SSE 警告"
-    fi
-    
     # 結果サマリー
     echo
     log "INFO" "${BOLD}=== テスト結果サマリー ===${NC}"
     log "INFO" "基本接続テスト: $tests_passed/$tests_total 成功"
     
     if [ $tests_passed -eq $tests_total ]; then
-        log "SUCCESS" "${BOLD}🎉 MCP Inspector CLI接続テスト成功！${NC}"
-        log "INFO" "手動でのMCP Inspector実行:"
-        log "INFO" "  npx @modelcontextprotocol/inspector --config $TEMP_DIR/streamable-http-config.json"
-        log "INFO" "  npx @modelcontextprotocol/inspector --config $TEMP_DIR/sse-config.json"
+        log "SUCCESS" "${BOLD}🎉 ProxyServer 基本接続テスト成功！${NC}"
+        log "INFO" "手動でのProxy Serverテスト:"
+        log "INFO" "  # HTTP Transport:"
+        log "INFO" "  curl -X POST -H 'Content-Type: application/json' -H 'api-key: $API_KEY' -d '{\"jsonrpc\": \"2.0\", \"method\": \"tools/list\", \"id\": 1}' $PROXY_SERVER_URL/mcp"
+        log "INFO" "  # SSE Transport:"
+        log "INFO" "  curl -N -H 'Accept: text/event-stream' '$PROXY_SERVER_URL/sse?api-key=$API_KEY&x-client-id=test'"
         exit 0
     elif [ $tests_passed -gt 0 ]; then
         log "WARN" "${BOLD}⚠️  一部のテストが失敗しました${NC}"
@@ -540,7 +299,7 @@ main() {
 
 # ヘルプ表示
 show_help() {
-    echo "MCP Inspector CLI mode 検証テストスクリプト"
+    echo "MCP ProxyServer 基本接続テストスクリプト"
     echo
     echo "使用方法:"
     echo "  $0 [API_KEY]"
@@ -562,7 +321,6 @@ show_help() {
     echo "必要な依存関係:"
     echo "  - Node.js (npx)"
     echo "  - curl"
-    echo "  - @modelcontextprotocol/inspector (自動インストール)"
     echo
 }
 
