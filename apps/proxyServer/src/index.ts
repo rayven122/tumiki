@@ -2,7 +2,7 @@ import express from "express";
 import { handleHealthCheck } from "./routes/health/index.js";
 import { handleMCPRequest } from "./routes/mcp/index.js";
 import { handleSSEConnection, handleSSEMessages } from "./routes/sse/index.js";
-import { initializeApplication } from "./lifecycle/startup.js";
+import { initializeApplication } from "./libs/startup.js";
 import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
 
