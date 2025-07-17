@@ -1,6 +1,6 @@
-import { stopMetricsCollection } from "../libs/metrics.js";
+import { stopMetricsCollection } from "./metrics.js";
 import { cleanupAllSessions } from "../utils/session.js";
-import { logger } from "../libs/logger.js";
+import { logger } from "./logger.js";
 
 /**
  * グレースフルシャットダウン処理
