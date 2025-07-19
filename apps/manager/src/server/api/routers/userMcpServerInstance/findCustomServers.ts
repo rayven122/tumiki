@@ -10,6 +10,7 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
     where: {
       serverType: ServerType.CUSTOM,
       userId: ctx.session.user.id,
+      deletedAt: null,
     },
     include: {
       apiKeys: true,

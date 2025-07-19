@@ -42,7 +42,7 @@ APIキー管理テーブル
 - `apiKeyHash`: APIキーのハッシュ値（検索用）
 - `isActive`: APIキーが有効かどうか
 - `lastUsedAt`: 最後に使用された日時
-- `expiresAt`: APIキーの有効期限
+- `expiresAt`: APIキーの���効期限
 - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
 - `userId`: 作成者のユーザーID
 - `organizationId`: 組織ID（マルチテナント対応）
@@ -149,11 +149,12 @@ erDiagram
   String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
+  DateTime deletedAt "nullable"
 }
 "McpServerRequestLog" {
   String id PK
   String userId FK "nullable"
-  String mcpServerInstanceId FK
+  String mcpServerInstanceId FK "nullable"
   String toolName
   TransportType transportType
   String method
@@ -195,7 +196,7 @@ erDiagram
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
 "UserToolGroupTool" }o--|| "Tool" : tool
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
-"McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"McpServerRequestLog" }o--o| "UserMcpServerInstance" : mcpServerInstance
 "McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
 "_ToolToUserMcpServerConfig" }o--|| "Tool" : Tool
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
@@ -281,7 +282,7 @@ tool group 内に、同一の mcpServer の設定入れられない🤔
 - `id`:
 - `name`: ツールグループ名
 - `description`: ツールグループの説明
-- `isEnabled`: ツールグループが有効かどうか
+- `isEnabled`: ツールグループ���有効かどうか
 - `userId`: ユーザーID
 - `organizationId`: 組織
 - `createdAt`:
@@ -306,6 +307,7 @@ MCPサーバーとして利用するインスタンス
 - `organizationId`: 組織
 - `createdAt`:
 - `updatedAt`:
+- `deletedAt`: 論理削除用のタイムスタンプ
 
 ### `McpServerRequestLog`
 
@@ -649,11 +651,12 @@ erDiagram
   String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
+  DateTime deletedAt "nullable"
 }
 "McpServerRequestLog" {
   String id PK
   String userId FK "nullable"
-  String mcpServerInstanceId FK
+  String mcpServerInstanceId FK "nullable"
   String toolName
   TransportType transportType
   String method
@@ -692,7 +695,7 @@ erDiagram
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "UserMcpServerInstance" }o--|| "User" : user
 "McpServerRequestLog" }o--o| "User" : user
-"McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
+"McpServerRequestLog" }o--o| "UserMcpServerInstance" : mcpServerInstance
 "McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
 "_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 ```
@@ -759,7 +762,7 @@ tool group 内に、同一の mcpServer の設定入れられない🤔
 - `id`:
 - `name`: ツールグループ名
 - `description`: ツールグループの説明
-- `isEnabled`: ツールグループが有効かどうか
+- `isEnabled`: ツールグループ���有効かどうか
 - `userId`: ユーザーID
 - `organizationId`: 組織
 - `createdAt`:
@@ -784,6 +787,7 @@ MCPサーバーとして利用するインスタンス
 - `organizationId`: 組織
 - `createdAt`:
 - `updatedAt`:
+- `deletedAt`: 論理削除用のタイムスタンプ
 
 ### `McpServerRequestLog`
 

@@ -12,6 +12,7 @@ export const findById = async ({
     where: {
       id: input.id,
       userId: ctx.session.user.id,
+      deletedAt: null,
     },
     include: {
       toolGroup: {
