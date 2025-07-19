@@ -758,9 +758,9 @@ setInterval(
       external: Math.round(usage.external / 1024 / 1024) + "MB",
     };
 
-    // メモリ使用量が高い場合のみログ出力（e2-small環境に最適化）
-    if (usage.heapUsed > 50 * 1024 * 1024) {
-      // 50MB超過時（e2-small環境向け）
+    // メモリ使用量が高い場合のみログ出力
+    if (usage.heapUsed > 100 * 1024 * 1024) {
+      // 100MB超過時
       console.log("[Memory Usage]", stats);
     }
   },

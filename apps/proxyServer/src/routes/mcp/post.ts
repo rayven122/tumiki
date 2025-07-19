@@ -145,8 +145,26 @@ export const handlePOSTRequest = async (
   } finally {
     // リクエスト完了時にログ記録
     const durationMs = Date.now() - startTime;
-    const inputBytes = JSON.stringify(req.body || {}).length;
-    const outputBytes = responseData ? JSON.stringify(responseData).length : 0;
+
+    // データサイズ制限チェック（圧縮前の生データサイズで5MB制限）
+    const maxLogSize = 5 * 1024 * 1024; // 5MB（圧縮前）
+
+    // リクエストデータのサイズチェック
+    const requestStr = JSON.stringify(req.body || {});
+    const requestData =
+      requestStr.length > maxLogSize
+        ? `[Data too large: ${requestStr.length} bytes]`
+        : requestStr;
+
+    // レスポンスデータのサイズチェック
+    const responseStr = responseData ? JSON.stringify(responseData) : "";
+    const responseDataForLog =
+      responseStr.length > maxLogSize
+        ? `[Data too large: ${responseStr.length} bytes]`
+        : responseStr;
+
+    const inputBytes = requestStr.length;
+    const outputBytes = responseStr.length;
 
     // 非同期でログ記録（レスポンス返却をブロックしない）
     logMcpRequest({
@@ -160,9 +178,9 @@ export const handlePOSTRequest = async (
       inputBytes,
       outputBytes,
       organizationId: undefined,
-      // 詳細ログ記録を追加
-      requestData: JSON.stringify(req.body || {}),
-      responseData: responseData ? JSON.stringify(responseData) : undefined,
+      // 詳細ログ記録を追加（サイズ制限付き）
+      requestData: requestData,
+      responseData: responseDataForLog || undefined,
     }).catch((error) => {
       logger.error("Failed to log HTTP transport request", {
         error: error instanceof Error ? error.message : String(error),

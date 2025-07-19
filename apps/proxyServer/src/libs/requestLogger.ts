@@ -60,8 +60,8 @@ export const logMcpRequest = async (
       return;
     }
 
-    // データサイズ制限チェック（10MB）
-    const maxDataSize = 10 * 1024 * 1024; // 10MB
+    // データサイズ制限チェック（圧縮前の生データサイズで5MB制限）
+    const maxDataSize = 5 * 1024 * 1024; // 5MB（圧縮前）
     let compressionResult: Awaited<
       ReturnType<typeof compressRequestResponseData>
     > | null = null;
