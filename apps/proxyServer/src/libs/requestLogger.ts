@@ -59,15 +59,34 @@ export const logMcpRequest = async (
       });
       return;
     }
-    // 詳細データがある場合は事前に圧縮（トランザクション外で重い処理を実行）
+
+    // データサイズ制限チェック（10MB）
+    const maxDataSize = 10 * 1024 * 1024; // 10MB
     let compressionResult: Awaited<
       ReturnType<typeof compressRequestResponseData>
     > | null = null;
+
     if (params.requestData && params.responseData) {
-      compressionResult = await compressRequestResponseData(
-        params.requestData,
-        params.responseData,
-      );
+      const requestSize = JSON.stringify(params.requestData).length;
+      const responseSize = JSON.stringify(params.responseData).length;
+
+      if (requestSize > maxDataSize || responseSize > maxDataSize) {
+        logger.warn(
+          "Request/response data exceeds size limit, skipping detailed logging",
+          {
+            toolName: params.toolName,
+            requestSize,
+            responseSize,
+            maxDataSize,
+          },
+        );
+      } else {
+        // 詳細データがある場合は事前に圧縮（トランザクション外で重い処理を実行）
+        compressionResult = await compressRequestResponseData(
+          params.requestData,
+          params.responseData,
+        );
+      }
     }
 
     // データベースアクセスをトランザクションで原子性を保証
