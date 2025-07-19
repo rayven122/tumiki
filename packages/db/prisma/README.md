@@ -60,6 +60,7 @@ erDiagram
   String image "nullable"
   Role role
   Boolean hasCompletedOnboarding
+  String stripeCustomerId UK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -75,6 +76,7 @@ erDiagram
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
 - `hasCompletedOnboarding`: オンボーディング完了フラグ
+- `stripeCustomerId`:
 - `createdAt`:
 - `updatedAt`:
 
@@ -378,6 +380,7 @@ erDiagram
   String logoUrl "nullable"
   Boolean isDeleted
   String createdBy FK
+  String stripeCustomerId UK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -477,6 +480,7 @@ erDiagram
 - `logoUrl`: 組織のロゴURL
 - `isDeleted`: 論理削除フラグ
 - `createdBy`: 組織の作成者
+- `stripeCustomerId`:
 - `createdAt`:
 - `updatedAt`:
 
@@ -606,6 +610,7 @@ erDiagram
   String image "nullable"
   Role role
   Boolean hasCompletedOnboarding
+  String stripeCustomerId UK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -718,6 +723,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
 - `hasCompletedOnboarding`: オンボーディング完了フラグ
+- `stripeCustomerId`:
 - `createdAt`:
 - `updatedAt`:
 
@@ -845,6 +851,7 @@ erDiagram
   String image "nullable"
   Role role
   Boolean hasCompletedOnboarding
+  String stripeCustomerId UK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -860,6 +867,7 @@ erDiagram
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
 - `hasCompletedOnboarding`: オンボーディング完了フラグ
+- `stripeCustomerId`:
 - `createdAt`:
 - `updatedAt`:
 
@@ -911,6 +919,46 @@ erDiagram
   String chatId FK
   DateTime createdAt
 }
+"Plan" {
+  String id PK
+  String name
+  String description "nullable"
+  String stripePriceId UK
+  Int amount
+  String currency
+  String interval
+  Json features
+  Json limits
+  PlanType type
+  Boolean isActive
+  DateTime createdAt
+  DateTime updatedAt
+}
+"Subscription" {
+  String id PK
+  String userId FK,UK "nullable"
+  String organizationId FK,UK "nullable"
+  String stripeSubscriptionId UK
+  String stripeCustomerId
+  String stripePriceId
+  DateTime stripeCurrentPeriodEnd
+  SubscriptionStatus status
+  String planId FK
+  Json metadata "nullable"
+  DateTime canceledAt "nullable"
+  String cancelReason "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"StripeWebhookEvent" {
+  String id PK
+  String stripeEventId UK
+  String type
+  Json data
+  DateTime processedAt
+  String error "nullable"
+  Int retryCount
+}
 "waiting_list" {
   String id PK
   String email UK
@@ -924,6 +972,7 @@ erDiagram
 "Vote" }o--|| "Message" : message
 "Suggestion" }o--|| "Document" : document
 "Stream" }o--|| "Chat" : chat
+"Subscription" }o--|| "Plan" : plan
 ```
 
 ### `Chat`
@@ -987,6 +1036,55 @@ erDiagram
 - `id`:
 - `chatId`:
 - `createdAt`:
+
+### `Plan`
+
+**Properties**
+
+- `id`:
+- `name`:
+- `description`:
+- `stripePriceId`:
+- `amount`:
+- `currency`:
+- `interval`:
+- `features`:
+- `limits`:
+- `type`:
+- `isActive`:
+- `createdAt`:
+- `updatedAt`:
+
+### `Subscription`
+
+**Properties**
+
+- `id`:
+- `userId`:
+- `organizationId`:
+- `stripeSubscriptionId`:
+- `stripeCustomerId`:
+- `stripePriceId`:
+- `stripeCurrentPeriodEnd`:
+- `status`:
+- `planId`:
+- `metadata`:
+- `canceledAt`:
+- `cancelReason`:
+- `createdAt`:
+- `updatedAt`:
+
+### `StripeWebhookEvent`
+
+**Properties**
+
+- `id`:
+- `stripeEventId`:
+- `type`:
+- `data`:
+- `processedAt`:
+- `error`:
+- `retryCount`:
 
 ### `waiting_list`
 

@@ -43,6 +43,13 @@ model User {
     /// オンボーディング完了フラグ
     hasCompletedOnboarding Boolean @default(false)
 
+    // Stripe関連フィールド
+    stripeCustomerId String?         @unique
+    subscription     Subscription?   // サブスクリプションとのリレーション
+
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    // インデックス
+    @@index([stripeCustomerId])
 }

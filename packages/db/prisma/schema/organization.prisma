@@ -40,8 +40,15 @@ model Organization {
     /// 組織のリクエストログ
     requestLogs        McpServerRequestLog[]
 
+    // Stripe関連フィールド
+    stripeCustomerId String?         @unique
+    subscription     Subscription?   // サブスクリプションとのリレーション
+
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    // インデックス
+    @@index([stripeCustomerId])
 }
 
 /// @namespace Organization
