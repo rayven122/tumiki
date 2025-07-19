@@ -18,8 +18,6 @@ type DeleteConfirmModalProps = {
   serverName: string;
   serverInstanceId: UserMcpServerInstanceId;
   onSuccess?: () => Promise<void> | void;
-  // 直接deleteの関数を渡す場合のオプションプロパティ
-  onDelete?: () => Promise<void> | void;
   isLoading?: boolean;
 };
 
@@ -29,26 +27,23 @@ export const DeleteConfirmModal = ({
   serverName,
   serverInstanceId,
   onSuccess,
-  onDelete: customOnDelete,
   isLoading: customIsLoading,
 }: DeleteConfirmModalProps) => {
   const { mutate: deleteServerInstance, isPending } =
     api.userMcpServerInstance.delete.useMutation({
       onSuccess: async () => {
-        await onSuccess?.();
         toast.success(`${serverName}のMCPサーバーを削除しました。`);
+        await onSuccess?.();
       },
       onError: (error) => {
         toast.error(error.message);
       },
     });
 
-  const handleDelete = async () => {
-    if (customOnDelete) {
-      await customOnDelete();
-    } else {
-      deleteServerInstance({ id: serverInstanceId });
-    }
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deleteServerInstance({ id: serverInstanceId });
   };
 
   const isLoading = customIsLoading ?? isPending;
