@@ -469,7 +469,7 @@ export const getServer = async (
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.tools ?? []);
 
-        // 成功時のログ記録
+        // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
           userId: undefined,
@@ -483,6 +483,9 @@ export const getServer = async (
           outputBytes,
           organizationId:
             validation.userMcpServerInstance.organizationId ?? undefined,
+          // 詳細ログ記録を追加
+          requestData: JSON.stringify(request),
+          responseData: JSON.stringify({ tools: result.tools }),
         }).catch((error) => {
           // ログ記録失敗をログに残すが、リクエスト処理は継続
           logger.error("Failed to log tools/list request", {
@@ -635,7 +638,7 @@ export const getServer = async (
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.result ?? {});
 
-        // 成功時のログ記録
+        // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
           userId: undefined,
@@ -649,6 +652,9 @@ export const getServer = async (
           outputBytes,
           organizationId:
             validation.userMcpServerInstance.organizationId ?? undefined,
+          // 詳細ログ記録を追加
+          requestData: JSON.stringify(request),
+          responseData: JSON.stringify(result.result),
         }).catch((error) => {
           // ログ記録失敗をログに残すが、リクエスト処理は継続
           logger.error("Failed to log tools/call request", {
