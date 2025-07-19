@@ -31,9 +31,6 @@ model UserMcpServerConfig {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  /// 同一ユーザー・同一サーバーで設定名が重複しないようにする
-  @@unique([userId, mcpServerId, name])
 }
 
 /// ToolGroup, Toolの関連を表す中間テーブル
