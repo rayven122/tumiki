@@ -518,7 +518,7 @@ erDiagram
 - `id`:
 - `name`: グループ名
 - `description`: グループの説明
-- `organizationId`: ��織ID
+- `organizationId`: 組織ID
 - `createdAt`:
 - `updatedAt`:
 
@@ -940,7 +940,9 @@ erDiagram
   String stripeEventId UK
   String type
   Json data
-  DateTime processedAt
+  Boolean processed
+  DateTime processedAt "nullable"
+  DateTime createdAt
   String error "nullable"
   Int retryCount
 }
@@ -1048,7 +1050,9 @@ erDiagram
 - `stripeEventId`:
 - `type`:
 - `data`:
+- `processed`:
 - `processedAt`:
+- `createdAt`:
 - `error`:
 - `retryCount`:
 

@@ -1,5 +1,7 @@
 import { type PlanType } from "@prisma/client";
 
+import { STRIPE_PRICE_IDS } from "./stripe.js";
+
 export type PlanLimits = {
   mcpServers: number;
   apiCalls: number;
@@ -24,8 +26,7 @@ export const PLANS: Record<PlanType, PlanConstant> = {
     type: "INDIVIDUAL",
     name: "プロプラン",
     description: "個人向けの高機能プラン",
-    stripePriceId:
-      process.env.STRIPE_PRICE_ID_INDIVIDUAL || "price_dev_individual",
+    stripePriceId: STRIPE_PRICE_IDS.INDIVIDUAL,
     amount: 1980,
     currency: "jpy",
     interval: "month",
@@ -46,7 +47,7 @@ export const PLANS: Record<PlanType, PlanConstant> = {
     type: "TEAM",
     name: "チームプラン",
     description: "チーム向けのコラボレーション機能付きプラン",
-    stripePriceId: process.env.STRIPE_PRICE_ID_TEAM || "price_dev_team",
+    stripePriceId: STRIPE_PRICE_IDS.TEAM,
     amount: 4980,
     currency: "jpy",
     interval: "month",
@@ -69,8 +70,7 @@ export const PLANS: Record<PlanType, PlanConstant> = {
     type: "ENTERPRISE",
     name: "エンタープライズプラン",
     description: "大規模チーム向けのカスタマイズ可能なプラン",
-    stripePriceId:
-      process.env.STRIPE_PRICE_ID_ENTERPRISE || "price_dev_enterprise",
+    stripePriceId: STRIPE_PRICE_IDS.ENTERPRISE,
     amount: 19800,
     currency: "jpy",
     interval: "month",

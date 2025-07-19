@@ -1,18 +1,23 @@
 import { type Prisma } from "@prisma/client";
 
 // カスタムバリデーション: UserIdまたはOrganizationIdのいずれか一つが必須
-export const validateSubscriptionOwner = (
-  data: Prisma.SubscriptionCreateInput | Prisma.SubscriptionUpdateInput,
-) => {
-  const hasUserId = "user" in data && data.user;
-  const hasOrgId = "organization" in data && data.organization;
+export const validateSubscriptionOwner = (data: {
+  userId?: string | null;
+  organizationId?: string | null;
+}) => {
+  const hasUserId = Boolean(data.userId);
+  const hasOrgId = Boolean(data.organizationId);
 
   if (!hasUserId && !hasOrgId) {
-    throw new Error("Subscription must have either userId or organizationId");
+    throw new Error(
+      "サブスクリプションにはuserIdまたはorganizationIdが必要です",
+    );
   }
 
   if (hasUserId && hasOrgId) {
-    throw new Error("Subscription cannot have both userId and organizationId");
+    throw new Error(
+      "サブスクリプションは個人または組織のいずれか一方のみに関連付けできます",
+    );
   }
 
   return true;
@@ -24,12 +29,17 @@ export const checkDuplicateActiveSubscription = async (
   userId?: string,
   organizationId?: string,
 ) => {
+  const whereConditions = [];
+  if (userId) whereConditions.push({ userId });
+  if (organizationId) whereConditions.push({ organizationId });
+
+  if (whereConditions.length === 0) {
+    throw new Error("UserIdまたはOrganizationIdが必要です");
+  }
+
   const existingSubscription = await prisma.subscription.findFirst({
     where: {
-      OR: [
-        userId ? { userId } : {},
-        organizationId ? { organizationId } : {},
-      ].filter((condition) => Object.keys(condition).length > 0),
+      OR: whereConditions,
       status: {
         in: ["active", "trialing", "incomplete"],
       },
@@ -37,7 +47,7 @@ export const checkDuplicateActiveSubscription = async (
   });
 
   if (existingSubscription) {
-    throw new Error("An active subscription already exists");
+    throw new Error("アクティブなサブスクリプションが既に存在します");
   }
 
   return true;

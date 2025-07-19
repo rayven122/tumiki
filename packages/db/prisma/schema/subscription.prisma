@@ -31,6 +31,9 @@ model Subscription {
   @@index([status])
   @@index([stripeCustomerId])
   @@index([stripeCurrentPeriodEnd])
+  @@index([status, stripeCurrentPeriodEnd]) // 期限切れ検索用
+  @@index([userId, status]) // ユーザー別アクティブ検索用
+  @@index([organizationId, status]) // 組織別アクティブ検索用
 }
 
 // Stripe Webhookイベント（冪等性管理用）
@@ -39,13 +42,16 @@ model StripeWebhookEvent {
   stripeEventId   String   @unique // StripeイベントID（冪等性キー）
   type            String   // イベントタイプ
   data            Json     // イベントデータ
-  processedAt     DateTime @default(now())
+  processed       Boolean  @default(false) // 処理済みフラグ
+  processedAt     DateTime? // 処理完了日時
+  createdAt       DateTime @default(now()) // 受信日時
   
   // エラー追跡
   error           String?  // エラーメッセージ
   retryCount      Int      @default(0)
   
   @@index([type])
+  @@index([processed])
   @@index([processedAt])
 }
 
