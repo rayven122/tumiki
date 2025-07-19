@@ -9,7 +9,7 @@ module.exports = {
       exec_mode: "fork",
       autorestart: true,
       watch: false,
-      max_memory_restart: "1.4G",
+      max_memory_restart: "1400M",
       error_file: "./logs/err.log",
       out_file: "./logs/out.log",
       log_file: "./logs/combined.log",
