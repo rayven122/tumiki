@@ -160,6 +160,8 @@ model UserMcpServerInstance {
   updatedAt DateTime  @updatedAt
   /// 論理削除用のタイムスタンプ
   deletedAt DateTime?
+
+  @@index([deletedAt])
 }
 
 /// MCPサーバーインスタンスへのリクエストログ
