@@ -24,7 +24,6 @@ erDiagram
   DateTime expiresAt "nullable"
   String userMcpServerInstanceId FK
   String userId FK
-  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -45,7 +44,6 @@ APIキー管理テーブル
 - `expiresAt`: APIキーの有効期限
 - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
 - `userId`: 作成者のユーザーID
-- `organizationId`: 組織ID（マルチテナント対応）
 - `createdAt`:
 - `updatedAt`:
 
