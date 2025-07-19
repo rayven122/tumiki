@@ -12,14 +12,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
 import { TransportType } from "@tumiki/db/prisma";
-import { validateApiKey } from "../lib/validateApiKey.js";
+import { validateApiKey } from "../libs/validateApiKey.js";
 
-import type { ServerConfig } from "../lib/types.js";
-import { logger } from "../lib/logger.js";
-import { config } from "../lib/config.js";
-import { recordError, measureExecutionTime } from "../lib/metrics.js";
-import { logMcpRequest } from "../lib/requestLogger.js";
-import { calculateDataSize } from "../lib/dataCompression.js";
+import type { ServerConfig } from "../libs/types.js";
+import { logger } from "../libs/logger.js";
+import { config } from "../libs/config.js";
+import { recordError, measureExecutionTime } from "../libs/metrics.js";
+import { logMcpRequest } from "../libs/requestLogger.js";
+import { calculateDataSize } from "../libs/dataCompression.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

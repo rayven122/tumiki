@@ -2,8 +2,8 @@ import { type Request, type Response } from "express";
 import {
   establishSSEConnection,
   handleSSEMessage,
-} from "../services/connection.js";
-import { logger } from "../lib/logger.js";
+} from "../../utils/connection.js";
+import { logger } from "../../libs/logger.js";
 
 /**
  * SSE接続確立エンドポイント
