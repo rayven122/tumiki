@@ -63,6 +63,11 @@ const _validateApiKey = async (
       return { valid: false, error: "Invalid or expired API key" };
     }
 
+    // UserMcpServerInstanceが論理削除されていないか確認
+    if (apiKey.userMcpServerInstance.deletedAt) {
+      return { valid: false, error: "MCP server instance has been deleted" };
+    }
+
     if (!apiKey.userMcpServerInstance.toolGroup.isEnabled) {
       return { valid: false, error: "Tool group is disabled" };
     }
