@@ -12,7 +12,6 @@ export interface TransportMetrics {
   requestCount: number;
   successfulRequests: number;
   failedRequests: number;
-  responseTimes: number[];
   errorCount: number;
   errorTypes: Record<string, number>;
   connectionCount: number;
@@ -98,22 +97,34 @@ const transportMetrics = {
     requestCount: 0,
     successfulRequests: 0,
     failedRequests: 0,
-    // responseTimes配列を削除（メモリ蓄積防止）
     errorCount: 0,
     errorTypes: {} as Record<string, number>,
     connectionCount: 0,
     lastActivity: Date.now(),
-  } as TransportMetrics,
+    totalResponseTime: 0, // レスポンス時間合計
+    minResponseTime: Infinity,
+    maxResponseTime: 0,
+  } as TransportMetrics & {
+    totalResponseTime: number;
+    minResponseTime: number;
+    maxResponseTime: number;
+  },
   streamableHttp: {
     requestCount: 0,
     successfulRequests: 0,
     failedRequests: 0,
-    // responseTimes配列を削除（メモリ蓄積防止）
     errorCount: 0,
     errorTypes: {} as Record<string, number>,
     connectionCount: 0,
     lastActivity: Date.now(),
-  } as TransportMetrics,
+    totalResponseTime: 0, // レスポンス時間合計
+    minResponseTime: Infinity,
+    maxResponseTime: 0,
+  } as TransportMetrics & {
+    totalResponseTime: number;
+    minResponseTime: number;
+    maxResponseTime: number;
+  },
 };
 
 // メトリクス収集開始
@@ -156,16 +167,22 @@ export const recordTransportRequest = (
   success: boolean,
   responseTime: number,
 ): void => {
-  const metrics = transportMetrics[transportType];
+  const metrics = transportMetrics[
+    transportType
+  ] as (typeof transportMetrics)["sse"];
   metrics.requestCount++;
   metrics.lastActivity = Date.now();
+
+  // レスポンス時間の統計を更新
+  metrics.totalResponseTime += responseTime;
+  metrics.minResponseTime = Math.min(metrics.minResponseTime, responseTime);
+  metrics.maxResponseTime = Math.max(metrics.maxResponseTime, responseTime);
 
   if (success) {
     metrics.successfulRequests++;
   } else {
     metrics.failedRequests++;
   }
-  // レスポンス時間の蓄積を削除（メモリ使用量削減）
 
   // 全体メトリクスにも記録
   recordRequest(success, responseTime);
@@ -235,13 +252,22 @@ const getCpuUsage = (): { usage: number; cores: number } => {
 };
 
 // Transport別メトリクス計算ヘルパー
-const calculateTransportMetrics = (metrics: TransportMetrics) => {
+const calculateTransportMetrics = (
+  metrics: TransportMetrics & {
+    totalResponseTime: number;
+    minResponseTime: number;
+    maxResponseTime: number;
+  },
+) => {
   const errorRate =
     metrics.requestCount > 0
       ? (metrics.failedRequests / metrics.requestCount) * 100
       : 0;
 
-  const avgResponseTime = 0;
+  const avgResponseTime =
+    metrics.requestCount > 0
+      ? metrics.totalResponseTime / metrics.requestCount
+      : 0;
 
   return {
     averageResponseTime: Math.round(avgResponseTime * 100) / 100,
@@ -257,6 +283,7 @@ export const collectMetrics = (): MetricsData => {
       ? (metricsState.failedRequests / metricsState.requestCount) * 100
       : 0;
 
+  // 全体メトリクスではレスポンス時間を追跡していないため0を返す
   const avgResponseTime = 0;
 
   // システム情報の取得
@@ -343,13 +370,17 @@ const resetMetrics = (): void => {
 
   // Transport別メトリクスもリセット
   for (const transportType of ["sse", "streamableHttp"] as const) {
-    const metrics = transportMetrics[transportType];
+    const metrics = transportMetrics[
+      transportType
+    ] as (typeof transportMetrics)["sse"];
     metrics.requestCount = 0;
     metrics.successfulRequests = 0;
     metrics.failedRequests = 0;
-    // レスポンス時間配列の削除（メモリ使用量削減）
     metrics.errorCount = 0;
     metrics.errorTypes = {};
+    metrics.totalResponseTime = 0;
+    metrics.minResponseTime = Infinity;
+    metrics.maxResponseTime = 0;
     // connectionCountとlastActivityはリセットしない
   }
 };
