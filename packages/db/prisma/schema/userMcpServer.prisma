@@ -31,9 +31,6 @@ model UserMcpServerConfig {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  /// 同一ユーザー・同一サーバーで設定名が重複しないようにする
-  @@unique([userId, mcpServerId, name])
 }
 
 /// ToolGroup, Toolの関連を表す中間テーブル
@@ -159,8 +156,12 @@ model UserMcpServerInstance {
   organizationId              String?
   organization                Organization?                    @relation(fields: [organizationId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// 論理削除用のタイムスタンプ
+  deletedAt DateTime?
+
+  @@index([deletedAt])
 }
 
 /// MCPサーバーインスタンスへのリクエストログ
@@ -168,7 +169,7 @@ model UserMcpServerInstance {
 /// @namespace UserMcpServer
 model McpServerRequestLog {
   id                  String                @id @default(cuid())
-  /// ユーザーID (OAuth2 認証を利用している場合のみ存在)
+  /// ユーザーID (OAuth2 認証もしくは、api key に応じて、利用ユーザを特定する)
   userId              String?
   user                User?                 @relation(fields: [userId], references: [id])
   /// MCPサーバーインスタンスID
