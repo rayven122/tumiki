@@ -1,28 +1,5 @@
 // Stripe決済関連のスキーマ定義
 
-// 料金プラン
-model Plan {
-  id            String         @id @default(cuid())
-  name          String         // プラン名（例: "プロプラン"）
-  description   String?        // プランの説明
-  stripePriceId String         @unique // Stripe価格ID
-  amount        Int            // 金額（円）
-  currency      String         @default("jpy")
-  interval      String         @default("month") // 請求間隔
-  features      Json           // 機能リスト（string[]）
-  limits        Json           // 制限値（mcpServers, apiCalls等）
-  type          PlanType       // プランタイプ
-  isActive      Boolean        @default(true) // 販売中かどうか
-  
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  
-  subscriptions Subscription[]
-
-  @@index([type])
-  @@index([isActive])
-}
-
 // サブスクリプション
 model Subscription {
   id                     String             @id @default(cuid())
@@ -34,7 +11,7 @@ model Subscription {
   stripeCurrentPeriodEnd DateTime           // 現在の請求期間終了日
   
   status                 SubscriptionStatus @default(incomplete)
-  planId                 String
+  planType               PlanType           // プランタイプ（定数から参照）
   
   // メタデータ
   metadata               Json?              // 追加情報の保存用
@@ -47,7 +24,6 @@ model Subscription {
   // リレーション
   user                  User?              @relation(fields: [userId], references: [id])
   organization          Organization?      @relation(fields: [organizationId], references: [id])
-  plan                  Plan               @relation(fields: [planId], references: [id])
   
   // 制約: userIdまたはorganizationIdのいずれか一つが必須
   @@unique([userId])

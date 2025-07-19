@@ -518,7 +518,7 @@ erDiagram
 - `id`:
 - `name`: グループ名
 - `description`: グループの説明
-- `organizationId`: 組織ID
+- `organizationId`: ��織ID
 - `createdAt`:
 - `updatedAt`:
 
@@ -919,21 +919,6 @@ erDiagram
   String chatId FK
   DateTime createdAt
 }
-"Plan" {
-  String id PK
-  String name
-  String description "nullable"
-  String stripePriceId UK
-  Int amount
-  String currency
-  String interval
-  Json features
-  Json limits
-  PlanType type
-  Boolean isActive
-  DateTime createdAt
-  DateTime updatedAt
-}
 "Subscription" {
   String id PK
   String userId FK,UK "nullable"
@@ -943,7 +928,7 @@ erDiagram
   String stripePriceId
   DateTime stripeCurrentPeriodEnd
   SubscriptionStatus status
-  String planId FK
+  PlanType planType
   Json metadata "nullable"
   DateTime canceledAt "nullable"
   String cancelReason "nullable"
@@ -972,7 +957,6 @@ erDiagram
 "Vote" }o--|| "Message" : message
 "Suggestion" }o--|| "Document" : document
 "Stream" }o--|| "Chat" : chat
-"Subscription" }o--|| "Plan" : plan
 ```
 
 ### `Chat`
@@ -1037,24 +1021,6 @@ erDiagram
 - `chatId`:
 - `createdAt`:
 
-### `Plan`
-
-**Properties**
-
-- `id`:
-- `name`:
-- `description`:
-- `stripePriceId`:
-- `amount`:
-- `currency`:
-- `interval`:
-- `features`:
-- `limits`:
-- `type`:
-- `isActive`:
-- `createdAt`:
-- `updatedAt`:
-
 ### `Subscription`
 
 **Properties**
@@ -1067,7 +1033,7 @@ erDiagram
 - `stripePriceId`:
 - `stripeCurrentPeriodEnd`:
 - `status`:
-- `planId`:
+- `planType`:
 - `metadata`:
 - `canceledAt`:
 - `cancelReason`:
