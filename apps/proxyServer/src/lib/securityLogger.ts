@@ -5,7 +5,11 @@ import { logger } from "./logger.js";
  * セキュリティ関連のログをDBに記録する
  */
 export const logSecurityEvent = async (
-  eventType: "auth_failure" | "invalid_api_key" | "session_anomaly" | "suspicious_activity",
+  eventType:
+    | "auth_failure"
+    | "invalid_api_key"
+    | "session_anomaly"
+    | "suspicious_activity",
   details: {
     apiKey?: string;
     clientId?: string;
@@ -53,7 +57,11 @@ export const logSecurityEvent = async (
  * 運用監視用のログをDBに記録する
  */
 export const logOperationalEvent = async (
-  eventType: "server_start" | "server_stop" | "critical_error" | "resource_shortage",
+  eventType:
+    | "server_start"
+    | "server_stop"
+    | "critical_error"
+    | "resource_shortage",
   details: {
     message: string;
     errorMessage?: string;
@@ -68,7 +76,9 @@ export const logOperationalEvent = async (
         message: details.message,
         errorMessage: details.errorMessage,
         severity: details.severity || "medium",
-        metadata: details.metadata ? JSON.stringify(details.metadata) : undefined,
+        metadata: details.metadata
+          ? JSON.stringify(details.metadata)
+          : undefined,
         createdAt: new Date(),
       },
     });
