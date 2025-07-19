@@ -30,7 +30,9 @@
     "deploy": "bash scripts/deploy-all.sh",
     "deploy:vercel": "vercel --prod",
     "deploy:gce": "bash apps/proxyServer/deploy-to-gce.sh",
-    "deploy:dry-run": "bash scripts/deploy-all.sh --dry-run"
+    "deploy:dry-run": "bash scripts/deploy-all.sh --dry-run",
+    "verify:stripe": "tsx scripts/verify-stripe-env.ts",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
