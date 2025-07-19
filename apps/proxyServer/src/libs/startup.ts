@@ -2,6 +2,7 @@ import { startMetricsCollection } from "./metrics.js";
 import { startMaintenanceTasks } from "../utils/maintenance.js";
 import { setupShutdownHandlers } from "./shutdown.js";
 import { logger } from "./logger.js";
+import { logOperationalEvent } from "./securityLogger.js";
 
 /**
  * アプリケーション初期化処理を集約
@@ -22,4 +23,14 @@ export const initializeApplication = (): void => {
   logger.info("Shutdown handlers configured");
 
   logger.info("Application initialization completed");
+
+  // 運用監視ログ: サーバー起動
+  void logOperationalEvent("server_start", {
+    message: "MCP Proxy Server started successfully",
+    severity: "medium",
+    metadata: {
+      port: process.env.PORT || 8080,
+      nodeVersion: process.version,
+    },
+  });
 };

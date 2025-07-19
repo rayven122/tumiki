@@ -27,7 +27,7 @@ const sanitizeForLog = (toolName: string): string => {
 
 type LogRequestParams = {
   userId?: string;
-  mcpServerInstanceId: string;
+  mcpServerInstanceId?: string;
   toolName: string;
   transportType: TransportType;
   method: string;
@@ -51,15 +51,42 @@ export const logMcpRequest = async (
   params: LogRequestParams,
 ): Promise<void> => {
   try {
-    // 詳細データがある場合は事前に圧縮（トランザクション外で重い処理を実行）
+    // mcpServerInstanceIdが未定義の場合はログ記録をスキップ
+    if (!params.mcpServerInstanceId) {
+      logger.debug("Skipping log record due to missing mcpServerInstanceId", {
+        toolName: params.toolName,
+        method: params.method,
+      });
+      return;
+    }
+
+    // データサイズ制限チェック（圧縮前の生データサイズで5MB制限）
+    const maxDataSize = 5 * 1024 * 1024; // 5MB（圧縮前）
     let compressionResult: Awaited<
       ReturnType<typeof compressRequestResponseData>
     > | null = null;
+
     if (params.requestData && params.responseData) {
-      compressionResult = await compressRequestResponseData(
-        params.requestData,
-        params.responseData,
-      );
+      const requestSize = JSON.stringify(params.requestData).length;
+      const responseSize = JSON.stringify(params.responseData).length;
+
+      if (requestSize > maxDataSize || responseSize > maxDataSize) {
+        logger.warn(
+          "Request/response data exceeds size limit, skipping detailed logging",
+          {
+            toolName: params.toolName,
+            requestSize,
+            responseSize,
+            maxDataSize,
+          },
+        );
+      } else {
+        // 詳細データがある場合は事前に圧縮（トランザクション外で重い処理を実行）
+        compressionResult = await compressRequestResponseData(
+          params.requestData,
+          params.responseData,
+        );
+      }
     }
 
     // データベースアクセスをトランザクションで原子性を保証
@@ -67,19 +94,19 @@ export const logMcpRequest = async (
       // 基本ログを作成
       const requestLog = await tx.mcpServerRequestLog.create({
         data: {
-          userId: params.userId,
-          mcpServerInstanceId: params.mcpServerInstanceId,
+          userId: params.userId || null,
+          mcpServerInstanceId: params.mcpServerInstanceId!, // 事前チェック済み
           toolName: params.toolName,
           transportType: params.transportType,
           method: params.method,
           responseStatus: params.responseStatus,
           durationMs: params.durationMs,
-          errorMessage: params.errorMessage,
-          errorCode: params.errorCode,
-          inputBytes: params.inputBytes,
-          outputBytes: params.outputBytes,
-          organizationId: params.organizationId,
-          userAgent: params.userAgent,
+          errorMessage: params.errorMessage || null,
+          errorCode: params.errorCode || null,
+          inputBytes: params.inputBytes || null,
+          outputBytes: params.outputBytes || null,
+          organizationId: params.organizationId || null,
+          userAgent: params.userAgent || null,
         },
       });
 

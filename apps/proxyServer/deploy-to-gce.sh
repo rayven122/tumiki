@@ -403,7 +403,7 @@ deploy_to_vm() {
             echo '=============================='
             echo '依存関係をインストール中...'
             echo '=============================='
-            export NODE_OPTIONS='--max-old-space-size=4096'
+            export NODE_OPTIONS='--max-old-space-size=1536'
             if ! pnpm install --frozen-lockfile; then
                 echo '警告: frozen-lockfileでのインストールに失敗しました。lockfileを更新してリトライします...'
                 pnpm install --no-frozen-lockfile

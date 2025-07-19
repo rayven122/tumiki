@@ -27,7 +27,7 @@ export const SESSION_CONFIG = {
   /** セッションクリーンアップ間隔（ミリ秒） */
   CLEANUP_INTERVAL: config.timeouts.keepalive,
   /** 最大セッション数 */
-  MAX_SESSIONS: parseInt(process.env.MAX_SESSIONS || "1000", 10),
+  MAX_SESSIONS: parseInt(process.env.MAX_SESSIONS || "200", 10),
   /** 最大エラー数 */
   MAX_ERROR_COUNT: config.connection.maxErrorCount,
 } as const;
@@ -84,12 +84,7 @@ export const createSessionWithId = (
 
   sessions.set(sessionId, session);
 
-  logger.info("Session created", {
-    sessionId,
-    transportType,
-    apiKeyId: "***",
-    clientId,
-  });
+  // セッション作成の詳細ログを削除（メモリ使用量削減）
 
   return session;
 };
