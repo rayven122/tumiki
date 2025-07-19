@@ -1,4 +1,4 @@
-import { cleanupExpiredSessions, getSessionStats } from "../utils/session.js";
+import { cleanupExpiredSessions } from "../utils/session.js";
 import { config } from "../libs/config.js";
 import { logger } from "../libs/logger.js";
 

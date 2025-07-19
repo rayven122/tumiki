@@ -1,4 +1,3 @@
-import { logger } from "./logger.js";
 import { config } from "./config.js";
 import { getSessionStats } from "../utils/session.js";
 import {
@@ -121,8 +120,6 @@ const transportMetrics = {
 export const startMetricsCollection = (): void => {
   if (config.metrics.enabled && !metricsState.interval) {
     metricsState.interval = setInterval(() => {
-      const metrics = collectMetrics();
-
       // メトリクス詳細ログ出力を削除（メモリ使用量削減のため）
       // 必要に応じて外部監視システムでメトリクス収集を実装
 
@@ -140,7 +137,10 @@ export const stopMetricsCollection = (): void => {
 };
 
 // リクエスト関連のメトリクス記録
-export const recordRequest = (success: boolean, responseTime: number): void => {
+export const recordRequest = (
+  success: boolean,
+  _responseTime: number,
+): void => {
   metricsState.requestCount++;
   if (success) {
     metricsState.successfulRequests++;
@@ -241,11 +241,7 @@ const calculateTransportMetrics = (metrics: TransportMetrics) => {
       ? (metrics.failedRequests / metrics.requestCount) * 100
       : 0;
 
-  const avgResponseTime =
-    metrics.responseTimes.length > 0
-      ? metrics.responseTimes.reduce((sum, time) => sum + time, 0) /
-        metrics.responseTimes.length
-      : 0;
+  const avgResponseTime = 0;
 
   return {
     averageResponseTime: Math.round(avgResponseTime * 100) / 100,
@@ -261,11 +257,7 @@ export const collectMetrics = (): MetricsData => {
       ? (metricsState.failedRequests / metricsState.requestCount) * 100
       : 0;
 
-  const avgResponseTime =
-    metricsState.responseTimes.length > 0
-      ? metricsState.responseTimes.reduce((sum, time) => sum + time, 0) /
-        metricsState.responseTimes.length
-      : 0;
+  const avgResponseTime = 0;
 
   // システム情報の取得
   const memUsage = process.memoryUsage();
@@ -319,14 +311,8 @@ export const collectMetrics = (): MetricsData => {
     },
     performance: {
       averageResponseTime: Math.round(avgResponseTime * 100) / 100,
-      maxResponseTime:
-        metricsState.responseTimes.length > 0
-          ? Math.max(...metricsState.responseTimes)
-          : 0,
-      minResponseTime:
-        metricsState.responseTimes.length > 0
-          ? Math.min(...metricsState.responseTimes)
-          : 0,
+      maxResponseTime: 0,
+      minResponseTime: 0,
       byTransport: {
         sse: calculateTransportMetrics(transportMetrics.sse),
         streamableHttp: calculateTransportMetrics(

@@ -27,7 +27,7 @@ const sanitizeForLog = (toolName: string): string => {
 
 type LogRequestParams = {
   userId?: string;
-  mcpServerInstanceId: string;
+  mcpServerInstanceId?: string;
   toolName: string;
   transportType: TransportType;
   method: string;
@@ -51,6 +51,14 @@ export const logMcpRequest = async (
   params: LogRequestParams,
 ): Promise<void> => {
   try {
+    // mcpServerInstanceIdが未定義の場合はログ記録をスキップ
+    if (!params.mcpServerInstanceId) {
+      logger.debug("Skipping log record due to missing mcpServerInstanceId", {
+        toolName: params.toolName,
+        method: params.method,
+      });
+      return;
+    }
     // 詳細データがある場合は事前に圧縮（トランザクション外で重い処理を実行）
     let compressionResult: Awaited<
       ReturnType<typeof compressRequestResponseData>
@@ -67,19 +75,19 @@ export const logMcpRequest = async (
       // 基本ログを作成
       const requestLog = await tx.mcpServerRequestLog.create({
         data: {
-          userId: params.userId,
-          mcpServerInstanceId: params.mcpServerInstanceId,
+          userId: params.userId || null,
+          mcpServerInstanceId: params.mcpServerInstanceId!, // 事前チェック済み
           toolName: params.toolName,
           transportType: params.transportType,
           method: params.method,
           responseStatus: params.responseStatus,
           durationMs: params.durationMs,
-          errorMessage: params.errorMessage,
-          errorCode: params.errorCode,
-          inputBytes: params.inputBytes,
-          outputBytes: params.outputBytes,
-          organizationId: params.organizationId,
-          userAgent: params.userAgent,
+          errorMessage: params.errorMessage || null,
+          errorCode: params.errorCode || null,
+          inputBytes: params.inputBytes || null,
+          outputBytes: params.outputBytes || null,
+          organizationId: params.organizationId || null,
+          userAgent: params.userAgent || null,
         },
       });
 
