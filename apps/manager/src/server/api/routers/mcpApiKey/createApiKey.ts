@@ -43,7 +43,6 @@ export const createApiKey = async ({ ctx, input }: CreateApiKeyProps) => {
       expiresAt,
       userMcpServerInstanceId,
       userId: ctx.session.user.id,
-      organizationId: instance.organizationId,
     },
   });
 
