@@ -7,11 +7,13 @@ import type {
   UserToolGroup,
   UserToolGroupTool,
   Tool,
+  McpApiKey,
 } from "@tumiki/db/prisma";
 
 export interface ValidationResult {
   valid: boolean;
   error?: string;
+  apiKey?: McpApiKey;
   userMcpServerInstance?: UserMcpServerInstance & {
     user: User;
     toolGroup: UserToolGroup & {
@@ -66,13 +68,14 @@ const _validateApiKey = async (
     }
 
     // 最後に使用された日時を更新（キャッシュミス時のみ）
-    await db.mcpApiKey.update({
+    void db.mcpApiKey.update({
       where: { id: apiKey.id },
       data: { lastUsedAt: new Date() },
     });
 
     return {
       valid: true,
+      apiKey,
       userMcpServerInstance: apiKey.userMcpServerInstance,
     };
   } catch (error) {
