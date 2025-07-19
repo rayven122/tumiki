@@ -15,6 +15,7 @@ export const getRequestStats = async ({
     where: {
       id: input.instanceId,
       userId: ctx.session.user.id,
+      deletedAt: null,
     },
   });
 

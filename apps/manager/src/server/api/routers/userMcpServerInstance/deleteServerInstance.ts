@@ -15,10 +15,15 @@ export const deleteServerInstance = async ({
   const { id } = input;
 
   return await ctx.db.$transaction(async (tx) => {
-    const serverInstance = await tx.userMcpServerInstance.delete({
+    // 論理削除を実行
+    const serverInstance = await tx.userMcpServerInstance.update({
       where: {
         id,
         userId: ctx.session.user.id,
+        deletedAt: null, // 既に削除されていないことを確認
+      },
+      data: {
+        deletedAt: new Date(),
       },
       select: {
         serverType: true,
@@ -26,11 +31,14 @@ export const deleteServerInstance = async ({
       },
     });
 
-    const toolGroup = await tx.userToolGroup.delete({
+    // ツールグループも論理削除または無効化
+    const toolGroup = await tx.userToolGroup.update({
       where: {
         id: serverInstance.toolGroupId,
         userId: ctx.session.user.id,
-        mcpServerInstance: null,
+      },
+      data: {
+        isEnabled: false,
       },
       include: {
         toolGroupTools: true,
@@ -45,6 +53,7 @@ export const deleteServerInstance = async ({
       serverInstance.serverType === ServerType.OFFICIAL &&
       userMcpServerConfigId
     ) {
+      // 公式サーバーの設定は物理削除のまま（機密情報を含むため）
       await tx.userMcpServerConfig.delete({
         where: {
           id: userMcpServerConfigId,
