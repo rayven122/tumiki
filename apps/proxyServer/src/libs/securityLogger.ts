@@ -1,4 +1,5 @@
 import { logger } from "./logger.js";
+import { randomBytes } from "node:crypto";
 
 // メモリ内セキュリティログキャッシュ（容量制限付き）
 const securityLogsCache = new Map<
@@ -41,7 +42,7 @@ export const logSecurityEvent = async (
   });
 
   // メモリ内キャッシュに保存（DB代替）
-  const logId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const logId = `${Date.now()}-${randomBytes(8).toString("hex")}`;
   securityLogsCache.set(logId, {
     timestamp: new Date(),
     eventType,
