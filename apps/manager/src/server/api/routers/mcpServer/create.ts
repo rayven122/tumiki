@@ -156,7 +156,6 @@ export const createMcpServer = async ({
             name: `${mcpServer.name} API Key`,
             apiKey: fullKey,
             userId,
-            organizationId,
           },
         },
       },
