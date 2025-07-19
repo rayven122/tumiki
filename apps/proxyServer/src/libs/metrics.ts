@@ -1,9 +1,11 @@
 import { logger } from "./logger.js";
 import { config } from "./config.js";
-import { getSessionStats } from "../services/session.js";
-import { getStreamableConnectionStats } from "../services/transport.js";
-import { getSSEConnectionStats } from "../services/connection.js";
-import { getSSEConnectionPool } from "../services/proxy.js";
+import { getSessionStats } from "../utils/session.js";
+import {
+  getStreamableConnectionStats,
+  getSSEConnectionStats,
+} from "../utils/transport.js";
+import { getSSEConnectionPool } from "../utils/proxy.js";
 import os from "node:os";
 
 // Transport別メトリクス

@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
-import { logger } from "../lib/logger.js";
-import { config } from "../lib/config.js";
+import { logger } from "../libs/logger.js";
+import { config } from "../libs/config.js";
 
 // Transport種別
 export enum TransportType {

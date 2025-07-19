@@ -2,14 +2,14 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { type SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { SSEServerTransport as SSEServerTransportClass } from "@modelcontextprotocol/sdk/server/sse.js";
 import { type Request, type Response } from "express";
-import { logger } from "../lib/logger.js";
-import { messageQueuePool } from "../lib/utils.js";
+import { logger } from "../libs/logger.js";
+import { messageQueuePool } from "../libs/utils.js";
 import { getServer } from "./proxy.js";
 import {
   measureTransportExecutionTime,
   recordTransportError,
   updateTransportConnectionCount,
-} from "../lib/metrics.js";
+} from "../libs/metrics.js";
 import {
   TransportType,
   createSessionWithId,
