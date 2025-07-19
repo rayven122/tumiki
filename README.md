@@ -194,6 +194,26 @@ pnpm clean        # node_modules削除
 pnpm clean:workspaces # 各ワークスペースのクリーンアップ
 ```
 
+### Stripe設定
+
+本プロジェクトではStripeを使用した決済機能を実装しています。
+
+#### 必要な環境変数
+- `STRIPE_SECRET_KEY`: StripeのシークレットAPIキー
+- `STRIPE_WEBHOOK_SECRET`: Webhook署名検証用のシークレット
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`: クライアント側で使用する公開可能キー
+
+#### 開発環境でのWebhookテスト
+```bash
+# Stripe環境変数の検証
+pnpm verify:stripe
+
+# Stripe CLIでWebhookをローカルに転送
+pnpm stripe:listen
+```
+
+詳細なセットアップ手順は [Stripe開発環境セットアップガイド](./docs/development/stripe-setup.md) を参照してください。
+
 ## Docker環境詳細
 
 ### 開発環境（ローカルSSL）
