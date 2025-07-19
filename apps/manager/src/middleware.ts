@@ -2,12 +2,27 @@ import { NextResponse, type NextRequest } from "next/server";
 import { URL_HEADER_KEY } from "./constants/url";
 import { auth0 } from "@tumiki/auth";
 
+// 認証不要のパス定数
+const PUBLIC_PATHS = [
+  "/",
+  "/jp",
+  "/about",
+  "/pricing",
+  "/legal/tokusho",
+  "/legal/privacy",
+  "/legal/terms",
+] as const;
+
 export async function middleware(request: NextRequest) {
   request.headers.set(URL_HEADER_KEY, request.url);
   const pathname = request.nextUrl.pathname;
 
-  // 認証不要のパス（/, /auth）
-  if (pathname === "/" || pathname === "/jp" || pathname.startsWith("/auth")) {
+  // 認証不要のパス判定
+  const isPublicPath =
+    (PUBLIC_PATHS as readonly string[]).includes(pathname) ||
+    pathname.startsWith("/auth");
+
+  if (isPublicPath) {
     return auth0.middleware(request);
   }
 
