@@ -24,7 +24,6 @@ erDiagram
   DateTime expiresAt "nullable"
   String userMcpServerInstanceId FK
   String userId FK
-  String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -45,7 +44,6 @@ APIキー管理テーブル
 - `expiresAt`: APIキーの有効期限
 - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
 - `userId`: 作成者のユーザーID
-- `organizationId`: 組織ID（マルチテナント対応）
 - `createdAt`:
 - `updatedAt`:
 
@@ -151,6 +149,7 @@ erDiagram
   String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
+  DateTime deletedAt "nullable"
 }
 "McpServerRequestLog" {
   String id PK
@@ -308,6 +307,7 @@ MCPサーバーとして利用するインスタンス
 - `organizationId`: 組織
 - `createdAt`:
 - `updatedAt`:
+- `deletedAt`: 論理削除用のタイムスタンプ
 
 ### `McpServerRequestLog`
 
@@ -316,7 +316,7 @@ MCPサーバーインスタンスへのリクエストログ
 **Properties**
 
 - `id`:
-- `userId`: ユーザーID (OAuth2 認証を利用している場合のみ存在)
+- `userId`: ユーザーID (OAuth2 認証もしくは、api key に応じて、利用ユーザを特定する)
 - `mcpServerInstanceId`: MCPサーバーインスタンスID
 - `toolName`: 実行されたツール名
 - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
@@ -654,6 +654,7 @@ erDiagram
   String organizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
+  DateTime deletedAt "nullable"
 }
 "McpServerRequestLog" {
   String id PK
@@ -790,6 +791,7 @@ MCPサーバーとして利用するインスタンス
 - `organizationId`: 組織
 - `createdAt`:
 - `updatedAt`:
+- `deletedAt`: 論理削除用のタイムスタンプ
 
 ### `McpServerRequestLog`
 
@@ -798,7 +800,7 @@ MCPサーバーインスタンスへのリクエストログ
 **Properties**
 
 - `id`:
-- `userId`: ユーザーID (OAuth2 認証を利用している場合のみ存在)
+- `userId`: ユーザーID (OAuth2 認証もしくは、api key に応じて、利用ユーザを特定する)
 - `mcpServerInstanceId`: MCPサーバーインスタンスID
 - `toolName`: 実行されたツール名
 - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）

@@ -7,11 +7,13 @@ import type {
   UserToolGroup,
   UserToolGroupTool,
   Tool,
+  McpApiKey,
 } from "@tumiki/db/prisma";
 
 export interface ValidationResult {
   valid: boolean;
   error?: string;
+  apiKey?: McpApiKey;
   userMcpServerInstance?: UserMcpServerInstance & {
     user: User;
     toolGroup: UserToolGroup & {
@@ -61,18 +63,24 @@ const _validateApiKey = async (
       return { valid: false, error: "Invalid or expired API key" };
     }
 
+    // UserMcpServerInstanceが論理削除されていないか確認
+    if (apiKey.userMcpServerInstance.deletedAt) {
+      return { valid: false, error: "MCP server instance has been deleted" };
+    }
+
     if (!apiKey.userMcpServerInstance.toolGroup.isEnabled) {
       return { valid: false, error: "Tool group is disabled" };
     }
 
     // 最後に使用された日時を更新（キャッシュミス時のみ）
-    await db.mcpApiKey.update({
+    void db.mcpApiKey.update({
       where: { id: apiKey.id },
       data: { lastUsedAt: new Date() },
     });
 
     return {
       valid: true,
+      apiKey,
       userMcpServerInstance: apiKey.userMcpServerInstance,
     };
   } catch (error) {

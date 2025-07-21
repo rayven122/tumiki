@@ -12,6 +12,7 @@ export const findOfficialServers = async ({
     where: {
       serverType: ServerType.OFFICIAL,
       userId: ctx.session.user.id,
+      deletedAt: null,
     },
     include: {
       apiKeys: true,

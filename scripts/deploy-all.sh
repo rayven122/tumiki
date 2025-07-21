@@ -29,6 +29,7 @@ set -euo pipefail
 DRY_RUN="${DRY_RUN:-false}"
 SKIP_VERCEL="${SKIP_VERCEL:-false}"
 SKIP_GCE="${SKIP_GCE:-false}"
+SKIP_DB_MIGRATION="${SKIP_DB_MIGRATION:-false}"
 
 # 色付きログ出力
 RED='\033[0;31m'
@@ -232,6 +233,40 @@ deploy_gce() {
     fi
 }
 
+# データベースマイグレーション
+run_database_migration() {
+    log_step "データベースマイグレーションを実行しています..."
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "データベースマイグレーション"
+        log_dry_run "実行予定コマンド: cd packages/db && pnpm db:deploy"
+        return 0
+    fi
+    
+    log_info "データベースのマイグレーションを開始します..."
+    
+    # 現在のディレクトリを保存
+    local current_dir=$(pwd)
+    
+    # packages/db ディレクトリに移動
+    if ! cd packages/db; then
+        log_error "packages/db ディレクトリが見つかりません"
+        return 1
+    fi
+    
+    # データベースマイグレーションを実行
+    if pnpm db:deploy; then
+        log_info "✅ データベースマイグレーションが完了しました"
+        cd "$current_dir"
+        return 0
+    else
+        log_error "❌ データベースマイグレーションに失敗しました"
+        log_error "データベース接続やマイグレーションファイルを確認してください"
+        cd "$current_dir"
+        return 1
+    fi
+}
+
 # 並列デプロイ
 deploy_parallel() {
     log_step "並列デプロイを開始します..."
@@ -282,6 +317,17 @@ deploy_parallel() {
 
 # デプロイ実行（並列のみ）
 execute_deployment() {
+    # データベースマイグレーションの実行（スキップ可能）
+    if [ "$SKIP_DB_MIGRATION" != "true" ]; then
+        if ! run_database_migration; then
+            log_error "データベースマイグレーションが失敗したため、デプロイを中止します"
+            return 1
+        fi
+    else
+        log_info "データベースマイグレーションをスキップしています"
+    fi
+    
+    # その後並列デプロイを実行
     deploy_parallel
 }
 
@@ -326,14 +372,16 @@ Usage: ./scripts/deploy-all.sh [OPTIONS]
 Tumiki 統合デプロイメントスクリプト
 
 このスクリプトは以下を自動実行します:
-1. Manager アプリを Vercel にデプロイ
-2. ProxyServer を Google Compute Engine にデプロイ
+1. データベースマイグレーションを実行
+2. Manager アプリを Vercel にデプロイ
+3. ProxyServer を Google Compute Engine にデプロイ
 
 OPTIONS:
     -h, --help              このヘルプメッセージを表示
     --dry-run               実際の実行を行わずにコマンドを表示
     --skip-vercel           Vercelデプロイをスキップ
     --skip-gce              GCEデプロイをスキップ
+    --skip-db               データベースマイグレーションをスキップ
 
 前提条件:
     - Vercel CLI がインストール済み (npm install -g vercel)
@@ -359,6 +407,7 @@ OPTIONS:
     DRY_RUN=true            ドライランモード
     SKIP_VERCEL=true        Vercelデプロイをスキップ
     SKIP_GCE=true           GCEデプロイをスキップ
+    SKIP_DB_MIGRATION=true  データベースマイグレーションをスキップ
 
 詳細なドキュメント:
     README.md
@@ -405,6 +454,9 @@ for arg in "$@"; do
             ;;
         --skip-gce)
             SKIP_GCE="true"
+            ;;
+        --skip-db)
+            SKIP_DB_MIGRATION="true"
             ;;
         *)
             log_error "不明なオプション: $arg"
