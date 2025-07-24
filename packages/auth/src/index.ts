@@ -21,6 +21,7 @@ const auth = cache(() => auth0.getSession());
 export { auth };
 
 export type { SessionData } from "@auth0/nextjs-auth0/types";
+export * from "./oauth.js";
 
 export async function authSignIn(
   provider?: string,
