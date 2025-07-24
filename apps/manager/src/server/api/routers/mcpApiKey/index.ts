@@ -12,7 +12,6 @@ import {
 
 // 他のファイルから関数をエクスポート
 export { validateApiKey } from "./validateApiKey";
-export { generateApiKey } from "./generateApiKey";
 
 export const mcpApiKeyRouter = createTRPCRouter({
   // APIキー生成
