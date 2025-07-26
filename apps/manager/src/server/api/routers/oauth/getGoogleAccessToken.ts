@@ -1,19 +1,28 @@
-import { z } from "zod";
-import { protectedProcedure } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { getProviderAccessToken } from "@tumiki/auth";
+import {
+  getProviderAccessToken,
+  OAuthError,
+  OAuthErrorCode,
+} from "@tumiki/auth";
 
 /**
  * ユーザーのGoogle OAuthアクセストークンを取得
  */
-export const getGoogleAccessTokenProcedure = protectedProcedure
-  .input(z.object({}).optional())
-  .query(async () => {
-    try {
-      // getProviderAccessTokenを使用してGoogleのアクセストークンを取得
-      const accessToken = await getProviderAccessToken("google");
+export const getGoogleAccessToken = async () => {
+  try {
+    // getProviderAccessTokenを使用してGoogleのアクセストークンを取得
+    const accessToken = await getProviderAccessToken("google");
 
-      if (!accessToken) {
+    return {
+      accessToken,
+      needsReauth: false,
+    };
+  } catch (error) {
+    if (error instanceof OAuthError) {
+      if (
+        error.code === OAuthErrorCode.UNAUTHORIZED ||
+        error.code === OAuthErrorCode.NO_ACCESS_TOKEN
+      ) {
         // アクセストークンが見つからない場合
         return {
           accessToken: null,
@@ -21,16 +30,16 @@ export const getGoogleAccessTokenProcedure = protectedProcedure
           needsReauth: true,
         };
       }
-
-      return {
-        accessToken,
-        needsReauth: false,
-      };
-    } catch (error) {
-      console.error("Error fetching Google access token:", error);
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "アクセストークンの取得に失敗しました",
-      });
     }
-  });
+
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error fetching Google access token:", error);
+    }
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "アクセストークンの取得に失敗しました",
+      cause: error,
+    });
+  }
+};
