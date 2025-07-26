@@ -29,6 +29,11 @@ const config = {
         hostname: "avatar.vercel.sh",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.microcms-assets.io",
+        pathname: "/**",
+      },
     ],
   },
 };

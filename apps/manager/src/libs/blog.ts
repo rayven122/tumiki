@@ -13,6 +13,9 @@ export const getAllBlogPosts = async () => {
     return response.contents;
   } catch (error) {
     console.error("Error fetching all blog posts:", error);
+    if (process.env.NODE_ENV === "development") {
+      throw error;
+    }
     return [];
   }
 };
