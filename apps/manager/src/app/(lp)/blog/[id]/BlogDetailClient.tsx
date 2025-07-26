@@ -90,25 +90,6 @@ export default function BlogDetailClient({ post }: BlogDetailClientProps) {
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
-        {/* Tags */}
-        {post.tags && post.tags.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-12 flex flex-wrap gap-3"
-          >
-            {post.tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="border-2 border-black bg-blue-50 px-4 py-2 text-sm font-semibold text-black shadow-[2px_2px_0_#000] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#000]"
-              >
-                #{tag.name}
-              </span>
-            ))}
-          </motion.div>
-        )}
-
         {/* Bottom CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
