@@ -1,11 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { startOAuthFlow } from "@tumiki/auth";
-import type { StartOAuthConnectionInput } from "./index";
+import { startOAuthFlow, OAuthError } from "@tumiki/auth";
+import { type z } from "zod";
+import { type StartOAuthConnectionInput } from "./index";
 
 export const startOAuthConnection = async ({
   input,
 }: {
-  input: StartOAuthConnectionInput;
+  input: z.infer<typeof StartOAuthConnectionInput>;
 }) => {
   const { provider, scopes, returnTo } = input;
 
@@ -19,10 +20,18 @@ export const startOAuthConnection = async ({
     );
 
     return { loginUrl };
-  } catch {
+  } catch (error) {
+    if (error instanceof OAuthError) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: error.message,
+        cause: error,
+      });
+    }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "OAuth認証フローの開始に失敗しました",
+      cause: error,
     });
   }
 };

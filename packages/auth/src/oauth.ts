@@ -1,13 +1,9 @@
 import type { NextRequest } from "next/server";
 
+import type { OAuthProvider } from "./providers/index.js";
+import { createOAuthError, OAuthError, OAuthErrorCode } from "./errors.js";
 import { auth0, managementClient } from "./index.js";
-
-export type OAuthProvider =
-  | "google"
-  | "github"
-  | "slack"
-  | "notion"
-  | "linkedin";
+import { PROVIDER_CONNECTIONS } from "./providers/index.js";
 
 export interface OAuthConfig {
   provider: OAuthProvider;
@@ -15,16 +11,12 @@ export interface OAuthConfig {
   connection?: string;
 }
 
-/**
- * プロバイダー別のAuth0 connection名マッピング
- */
-export const PROVIDER_CONNECTIONS: Record<OAuthProvider, string> = {
-  google: "google-oauth2",
-  github: "github",
-  slack: "slack",
-  notion: "notion",
-  linkedin: "linkedin",
-};
+// Re-export types and constants from providers
+export {
+  type OAuthProvider,
+  PROVIDER_CONNECTIONS,
+  OAUTH_PROVIDERS,
+} from "./providers/index.js";
 
 /**
  * ManagementClientを使用してユーザーのIDプロバイダートークンを取得
@@ -52,25 +44,12 @@ export const getUserIdentityProviderTokens = async (
       (identity) => identity.connection === connectionName,
     );
 
-    // デバッグ: identity情報を詳細に出力
-    if (providerIdentity) {
-      console.log(
-        "Provider identity found:",
-        {
-          provider: providerIdentity.provider,
-          connection: providerIdentity.connection,
-          hasAccessToken: !!providerIdentity.access_token,
-          // profileDataにスコープ情報が含まれる場合がある
-          profileData: providerIdentity.profileData,
-        },
-        providerIdentity,
-      );
-    }
-
     return providerIdentity?.access_token || null;
   } catch (error) {
-    console.error("Failed to get provider access token:", error);
-    return null;
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to get provider access token:", error);
+    }
+    throw createOAuthError(OAuthErrorCode.CONNECTION_FAILED, provider, error);
   }
 };
 
@@ -91,14 +70,26 @@ export const getProviderAccessToken = async (
       : await auth0.getSession();
 
     if (!session?.user?.sub) {
-      return null;
+      throw createOAuthError(OAuthErrorCode.UNAUTHORIZED, provider);
     }
 
     // ManagementClientを使用してトークンを取得
-    return await getUserIdentityProviderTokens(session.user.sub, provider);
+    const token = await getUserIdentityProviderTokens(
+      session.user.sub,
+      provider,
+    );
+    if (!token) {
+      throw createOAuthError(OAuthErrorCode.NO_ACCESS_TOKEN, provider);
+    }
+    return token;
   } catch (error) {
-    console.error("Failed to get provider access token:", error);
-    return null;
+    if (error instanceof Error && error.name === "OAuthError") {
+      throw error;
+    }
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to get provider access token:", error);
+    }
+    throw createOAuthError(OAuthErrorCode.UNKNOWN_ERROR, provider, error);
   }
 };
 
@@ -140,127 +131,21 @@ export const checkOAuthConnection = async (
     const token = await getProviderAccessToken(provider, request);
     return !!token;
   } catch (error) {
-    console.error("Failed to check OAuth connection:", error);
-    return false;
+    // OAuthErrorの場合は、NO_ACCESS_TOKENまたはUNAUTHORIZEDの場合のみfalseを返す
+    if (error instanceof OAuthError) {
+      if (
+        error.code === OAuthErrorCode.NO_ACCESS_TOKEN ||
+        error.code === OAuthErrorCode.UNAUTHORIZED
+      ) {
+        return false;
+      }
+    }
+    if (process.env.NODE_ENV === "development") {
+      console.error("Failed to check OAuth connection:", error);
+    }
+    throw error;
   }
 };
 
-/**
- * プロバイダー設定情報
- */
-export const PROVIDER_CONFIGS = {
-  google: {
-    name: "Google",
-    icon: "🔍",
-    availableScopes: [
-      {
-        id: "drive-read",
-        label: "Google Drive（読み取り）",
-        description: "ファイルの閲覧",
-        scopes: ["https://www.googleapis.com/auth/drive.readonly"],
-      },
-      {
-        id: "drive-write",
-        label: "Google Drive（書き込み）",
-        description: "ファイルの作成・編集",
-        scopes: ["https://www.googleapis.com/auth/drive.file"],
-      },
-      {
-        id: "calendar",
-        label: "カレンダー",
-        description: "カレンダーイベントの管理",
-        scopes: ["https://www.googleapis.com/auth/calendar"],
-      },
-      {
-        id: "gmail",
-        label: "Gmail",
-        description: "メールの読み取り",
-        scopes: ["https://www.googleapis.com/auth/gmail.readonly"],
-      },
-    ],
-  },
-  github: {
-    name: "GitHub",
-    icon: "🐙",
-    availableScopes: [
-      {
-        id: "repo",
-        label: "リポジトリ",
-        description: "リポジトリの読み書き",
-        scopes: ["repo"],
-      },
-      {
-        id: "gist",
-        label: "Gist",
-        description: "Gistの管理",
-        scopes: ["gist"],
-      },
-      {
-        id: "org",
-        label: "組織",
-        description: "組織の管理",
-        scopes: ["read:org", "admin:org"],
-      },
-    ],
-  },
-  slack: {
-    name: "Slack",
-    icon: "💬",
-    availableScopes: [
-      {
-        id: "channels",
-        label: "チャンネル",
-        description: "チャンネル情報の読み取り",
-        scopes: ["channels:read", "groups:read"],
-      },
-      {
-        id: "chat",
-        label: "メッセージ",
-        description: "メッセージの送信",
-        scopes: ["chat:write"],
-      },
-      {
-        id: "users",
-        label: "ユーザー",
-        description: "ユーザー情報の読み取り",
-        scopes: ["users:read", "users:read.email"],
-      },
-    ],
-  },
-  notion: {
-    name: "Notion",
-    icon: "📝",
-    availableScopes: [
-      {
-        id: "read",
-        label: "読み取り",
-        description: "ページとデータベースの読み取り",
-        scopes: ["read_content"],
-      },
-      {
-        id: "write",
-        label: "書き込み",
-        description: "ページとデータベースの編集",
-        scopes: ["insert_content", "update_content"],
-      },
-    ],
-  },
-  linkedin: {
-    name: "LinkedIn",
-    icon: "💼",
-    availableScopes: [
-      {
-        id: "profile",
-        label: "プロフィール",
-        description: "プロフィール情報",
-        scopes: ["r_liteprofile", "r_emailaddress"], // cspell:disable-line
-      },
-      {
-        id: "share",
-        label: "投稿",
-        description: "投稿の作成",
-        scopes: ["w_member_social"],
-      },
-    ],
-  },
-} as const;
+// PROVIDER_CONFIGS is now imported from providers/index.js
+// Use OAUTH_PROVIDERS instead

@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { getGoogleAccessTokenProcedure } from "./getGoogleAccessToken";
 import { startOAuthConnection } from "./startOAuthConnection";
 import { getConnectionStatus } from "./getConnectionStatus";
-import { getProviderConfigs } from "./getProviderConfigs";
+import { getGoogleAccessToken } from "./getGoogleAccessToken";
 
 export const StartOAuthConnectionInput = z.object({
   provider: z.enum(["google", "github", "slack", "notion", "linkedin"]),
@@ -20,11 +19,11 @@ export const oauthRouter = createTRPCRouter({
     .input(StartOAuthConnectionInput)
     .mutation(startOAuthConnection),
 
-  getGoogleAccessToken: getGoogleAccessTokenProcedure,
+  getGoogleAccessToken: protectedProcedure
+    .input(z.object({}).optional())
+    .query(getGoogleAccessToken),
 
   getConnectionStatus: protectedProcedure
     .input(GetConnectionStatusInput)
     .query(getConnectionStatus),
-
-  getProviderConfigs: protectedProcedure.query(getProviderConfigs),
 });
