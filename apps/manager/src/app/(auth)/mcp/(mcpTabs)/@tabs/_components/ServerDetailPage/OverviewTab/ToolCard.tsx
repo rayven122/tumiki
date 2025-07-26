@@ -2,7 +2,6 @@
 
 import { Switch } from "@/components/ui/switch";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { toast } from "@/utils/client/toast";
 // import type { ToolGroupTool } from "@tumiki/db/prisma";
 
 type ToolCardProps = {
@@ -11,7 +10,7 @@ type ToolCardProps = {
       id: string;
       name: string;
       description: string | null;
-      inputSchema: any;
+      inputSchema: unknown;
     };
   };
   isExpanded: boolean;

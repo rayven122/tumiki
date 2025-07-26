@@ -25,7 +25,7 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 export async function fetchWithErrorHandlers(
   input: RequestInfo | URL,
   init?: RequestInit,
-) {
+): Promise<Response> {
   try {
     const response = await fetch(input, init);
 
@@ -46,6 +46,13 @@ export async function fetchWithErrorHandlers(
     throw error;
   }
 }
+
+// Add preconnect method to match fetch interface
+interface FetchWithPreconnect {
+  (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+  preconnect?: typeof fetch.preconnect;
+}
+(fetchWithErrorHandlers as FetchWithPreconnect).preconnect = fetch.preconnect;
 
 export function generateCUID(): string {
   // NOTE: Change to cuid v1
