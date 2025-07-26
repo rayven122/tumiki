@@ -59,8 +59,9 @@ model McpServer {
     envVars          String[]
     /// 認証タイプ
     authType         AuthType              @default(NONE)
-    /// OAuth プロバイダー名（google, github, slack, notion等）
-    oauthProvider    String?
+    /// OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
+    /// google, github, slack, notion, linkedin など
+    oauthProvider    String?               @db.VarChar(50)
     /// OAuth で必要なデフォルトスコープ
     oauthScopes      String[]
     /// サーバーの種類（公式/ユーザーカスタム）
