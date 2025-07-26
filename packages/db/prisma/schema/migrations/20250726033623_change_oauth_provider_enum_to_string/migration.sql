@@ -3,7 +3,7 @@ CREATE TYPE "AuthType" AS ENUM ('NONE', 'API_KEY', 'OAUTH');
 
 -- AlterTable
 ALTER TABLE "McpServer" ADD COLUMN     "authType" "AuthType" NOT NULL DEFAULT 'NONE',
-ADD COLUMN     "oauthProvider" TEXT,
+ADD COLUMN     "oauthProvider" VARCHAR(50),
 ADD COLUMN     "oauthScopes" TEXT[];
 
 -- AlterTable
