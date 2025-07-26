@@ -14,6 +14,7 @@ export type {
   OAuthScope,
   OAuthProviderConfig,
 } from "./providers/index.js";
+export * from "./providers/validation.js";
 
 // export const auth0 = new Auth0Client({
 //   domain: 'your-tenant.auth0.com',
