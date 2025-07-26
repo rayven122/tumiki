@@ -20,9 +20,11 @@ export async function GET() {
     return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching blog posts:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch blog posts" },
-      { status: 500 },
-    );
+    const errorMessage =
+      process.env.NODE_ENV === "development" && error instanceof Error
+        ? error.message
+        : "Failed to fetch blog posts";
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

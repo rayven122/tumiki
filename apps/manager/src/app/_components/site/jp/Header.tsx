@@ -41,13 +41,13 @@ export const Header = ({
           </span>
         </Link>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-2 md:gap-6">
+        {/* Desktop Navigation */}
+        <div className="hidden items-center gap-6 md:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="group relative hidden font-medium text-gray-600 transition-colors hover:text-black md:block"
+              className="group relative font-medium text-gray-600 transition-colors hover:text-black"
             >
               {item.label}
               <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-black transition-all duration-300 group-hover:w-full" />
@@ -57,7 +57,20 @@ export const Header = ({
           {showCTA && setShowModal && (
             <button
               onClick={() => setShowModal(true)}
-              className="border-2 border-black bg-black px-4 py-2 text-sm font-semibold text-white shadow-[2px_2px_0_#6366f1] transition-all duration-300 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#6366f1] md:px-7 md:py-3 md:shadow-[3px_3px_0_#6366f1] md:hover:-translate-x-1 md:hover:-translate-y-1 md:hover:shadow-[6px_6px_0_#6366f1]"
+              className="border-2 border-black bg-black px-7 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
+            >
+              無料で試す
+            </button>
+          )}
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className="flex items-center gap-2 md:hidden">
+          <LanguageToggle />
+          {showCTA && setShowModal && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="border-2 border-black bg-black px-3 py-2 text-xs font-semibold text-white shadow-[2px_2px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[4px_4px_0_#6366f1]"
             >
               無料で試す
             </button>
