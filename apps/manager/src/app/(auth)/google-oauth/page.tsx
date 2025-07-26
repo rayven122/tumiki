@@ -24,80 +24,13 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
+import { OAUTH_PROVIDERS } from "@tumiki/auth";
 
-// Google用のスコープ設定（拡張版）
-const GOOGLE_SCOPES = [
-  {
-    id: "drive-read",
-    label: "Google Drive（読み取り）",
-    description: "ファイルの閲覧・検索",
-    value: "https://www.googleapis.com/auth/drive.readonly",
-    category: "ドライブ",
-  },
-  {
-    id: "drive-write",
-    label: "Google Drive（書き込み）",
-    description: "ファイルの作成・編集・削除",
-    value: "https://www.googleapis.com/auth/drive.file",
-    category: "ドライブ",
-  },
-  {
-    id: "drive-full",
-    label: "Google Drive（フルアクセス）",
-    description: "すべてのドライブ機能へのアクセス",
-    value: "https://www.googleapis.com/auth/drive",
-    category: "ドライブ",
-  },
-  {
-    id: "calendar",
-    label: "カレンダー",
-    description: "カレンダーイベントの管理",
-    value: "https://www.googleapis.com/auth/calendar",
-    category: "カレンダー",
-  },
-  {
-    id: "calendar-readonly",
-    label: "カレンダー（読み取り）",
-    description: "カレンダーの閲覧のみ",
-    value: "https://www.googleapis.com/auth/calendar.readonly",
-    category: "カレンダー",
-  },
-  {
-    id: "gmail-readonly",
-    label: "Gmail（読み取り）",
-    description: "メールの読み取り",
-    value: "https://www.googleapis.com/auth/gmail.readonly",
-    category: "メール",
-  },
-  {
-    id: "gmail-compose",
-    label: "Gmail（作成）",
-    description: "メールの作成・送信",
-    value: "https://www.googleapis.com/auth/gmail.compose",
-    category: "メール",
-  },
-  {
-    id: "gmail-modify",
-    label: "Gmail（編集）",
-    description: "メールの編集・削除",
-    value: "https://www.googleapis.com/auth/gmail.modify",
-    category: "メール",
-  },
-  {
-    id: "tasks",
-    label: "タスク",
-    description: "Google Tasksの管理",
-    value: "https://www.googleapis.com/auth/tasks",
-    category: "その他",
-  },
-  {
-    id: "userinfo",
-    label: "ユーザー情報",
-    description: "基本的なプロフィール情報",
-    value: "https://www.googleapis.com/auth/userinfo.profile",
-    category: "その他",
-  },
-];
+// Google用のスコープ設定
+const GOOGLE_SCOPES = OAUTH_PROVIDERS.google.availableScopes.map((scope) => ({
+  ...scope,
+  value: scope.scopes.join(" "),
+}));
 
 export default function GoogleOAuthPage() {
   const router = useRouter();
@@ -203,10 +136,13 @@ export default function GoogleOAuthPage() {
   }
 
   // カテゴリごとにスコープをグループ化
-  const scopesByCategory = GOOGLE_SCOPES.reduce(
+  const scopesByCategory = GOOGLE_SCOPES.reduce<
+    Record<string, typeof GOOGLE_SCOPES>
+  >(
     (acc, scope) => {
-      acc[scope.category] ??= [];
-      acc[scope.category]!.push(scope);
+      const category = scope.category ?? "その他";
+      acc[category] ??= [];
+      acc[category].push(scope);
       return acc;
     },
     {} as Record<string, typeof GOOGLE_SCOPES>,

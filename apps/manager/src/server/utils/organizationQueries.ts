@@ -68,10 +68,6 @@ export const getOrganizationWithFullDetails = async (
   db: PrismaClient,
   organizationId: string,
 ) => {
-  console.log(
-    "getOrganizationWithFullDetails called with organizationId:",
-    organizationId,
-  );
   return await db.organization.findUnique({
     where: { id: organizationId },
     include: getFullOrganizationInclude(),
