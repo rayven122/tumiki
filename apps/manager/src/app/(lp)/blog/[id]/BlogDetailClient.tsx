@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { BlogPost } from "~/types/blog";
 import { FooterSection } from "~/app/_components/site/jp/FooterSection";
 import { WaitingListModal } from "~/app/_components/site/jp/WaitingListModal";
@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Header } from "~/app/_components/site/jp/Header";
+import Image from "next/image";
+import DOMPurify from "dompurify";
 
 interface BlogDetailClientProps {
   post: BlogPost;
@@ -15,6 +17,13 @@ interface BlogDetailClientProps {
 
 export default function BlogDetailClient({ post }: BlogDetailClientProps) {
   const [showModal, setShowModal] = useState(false);
+  const [sanitizedContent, setSanitizedContent] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSanitizedContent(DOMPurify.sanitize(post.content));
+    }
+  }, [post.content]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -73,10 +82,13 @@ export default function BlogDetailClient({ post }: BlogDetailClientProps) {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-12 overflow-hidden border-2 border-black shadow-[4px_4px_0_#000]"
           >
-            <img
+            <Image
               src={post.eyecatch.url}
               alt={post.title}
+              width={post.eyecatch.width ?? 1200}
+              height={post.eyecatch.height ?? 630}
               className="h-auto w-full"
+              loading="lazy"
             />
           </motion.div>
         )}
@@ -87,7 +99,7 @@ export default function BlogDetailClient({ post }: BlogDetailClientProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           className="prose prose-lg prose-headings:font-black prose-headings:tracking-tight prose-h2:mb-4 prose-h2:mt-12 prose-h2:text-2xl prose-h3:mb-3 prose-h3:mt-8 prose-h3:text-xl prose-p:mb-6 prose-p:leading-relaxed prose-p:text-gray-700 prose-a:border-b-2 prose-a:border-blue-600 prose-a:text-blue-600 prose-a:no-underline prose-a:transition-colors hover:prose-a:border-blue-800 hover:prose-a:text-blue-800 prose-blockquote:border-l-4 prose-blockquote:border-black prose-blockquote:bg-gray-50 prose-blockquote:py-4 prose-blockquote:pl-6 prose-blockquote:pr-4 prose-blockquote:not-italic prose-code:rounded prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:before:content-[''] prose-code:after:content-[''] prose-pre:border-2 prose-pre:border-black prose-pre:bg-gray-900 prose-pre:shadow-[4px_4px_0_#000] max-w-none"
-          dangerouslySetInnerHTML={{ __html: post.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
 
         {/* Bottom CTA */}

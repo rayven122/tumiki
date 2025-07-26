@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import type { BlogPost } from "~/types/blog";
 import { ArrowRight } from "lucide-react";
@@ -81,10 +82,13 @@ export const BlogClient = ({ posts }: BlogClientProps) => {
               >
                 {post.eyecatch && (
                   <div className="relative h-48 overflow-hidden border-b-2 border-black">
-                    <img
+                    <Image
                       src={post.eyecatch.url}
                       alt={post.title}
+                      width={post.eyecatch.width ?? 400}
+                      height={post.eyecatch.height ?? 200}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      loading="lazy"
                     />
                   </div>
                 )}
