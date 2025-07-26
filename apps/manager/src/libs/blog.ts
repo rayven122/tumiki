@@ -6,7 +6,7 @@ export const getAllBlogPosts = async () => {
     const response = await client.get<{ contents: BlogPost[] }>({
       endpoint: "blogs",
       queries: {
-        limit: 9999, // 全記事取得
+        limit: 100, // microCMSの最大値
         orders: "-publishedAt",
       },
     });
