@@ -16,18 +16,6 @@ export type {
 } from "./providers/index.js";
 export * from "./providers/validation.js";
 
-// export const auth0 = new Auth0Client({
-//   domain: 'your-tenant.auth0.com',
-//   clientId: 'YOUR_CLIENT_ID',
-//   appBaseUrl: 'http://localhost:3000',
-//   secret: '長くてランダムな文字列', // 32文字以上推奨
-//   clientAuthentication: {
-//     clientSecret: 'YOUR_CLIENT_SECRET'
-//     // または
-//     // clientAssertionSigningKey: '...'
-//   }
-// });
-
 export const auth0 = new Auth0Client();
 
 export const managementClient = new ManagementClient({
