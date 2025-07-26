@@ -102,8 +102,9 @@ export const EditServerDialog = ({
     });
 
     updateServerInstance({
-      id: instance.id,
+      toolGroupId: instance.toolGroup.id,
       name: serverName,
+      description: instance.description ?? "",
       serverToolIdsMap: serverToolIdsMap,
     });
   };
