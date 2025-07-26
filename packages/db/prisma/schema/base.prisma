@@ -26,6 +26,11 @@ generator markdown {
   title    = "DB Schema"
 }
 
+generator fabbrica {
+  provider = "prisma-fabbrica"
+  output   = "../generated/fabbrica"
+}
+
 datasource db {
   provider  = "postgresql"
   // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
