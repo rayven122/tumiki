@@ -1,4 +1,3 @@
-import type { User } from "@prisma/client";
 import { Role } from "@prisma/client";
 import { beforeEach, describe, expect, test } from "bun:test";
 
@@ -15,13 +14,13 @@ describe("User creation with prisma-fabbrica", () => {
   });
 
   test("ユーザーを作成できる", async () => {
-    const mockUser = await UserFactory.build({
+    const mockUser = await UserFactory.create({
       id: "auth0|test-id",
       email: "test@example.com",
       name: "Test User",
     });
 
-    prismaMock.user.create.mockResolvedValue(mockUser as User);
+    prismaMock.user.create.mockResolvedValue(mockUser);
 
     const result = await prismaMock.user.create({
       data: mockUser,
@@ -36,14 +35,14 @@ describe("User creation with prisma-fabbrica", () => {
   });
 
   test("ユーザーの検索ができる", async () => {
-    const mockUser = await UserFactory.build({
+    const mockUser = await UserFactory.create({
       email: "test@example.com",
       name: "Test User",
       image: "https://example.com/avatar.jpg",
       hasCompletedOnboarding: true,
     });
 
-    prismaMock.user.findUnique.mockResolvedValue(mockUser as User);
+    prismaMock.user.findUnique.mockResolvedValue(mockUser);
 
     const result = await prismaMock.user.findUnique({
       where: { email: "test@example.com" },
@@ -66,12 +65,12 @@ describe("User creation with prisma-fabbrica", () => {
   });
 
   test("SYSTEM_ADMIN権限のユーザーを作成できる", async () => {
-    const mockAdminUser = await AdminUserFactory.build({
+    const mockAdminUser = await AdminUserFactory.create({
       email: "admin@example.com",
       name: "Admin User",
     });
 
-    prismaMock.user.create.mockResolvedValue(mockAdminUser as User);
+    prismaMock.user.create.mockResolvedValue(mockAdminUser);
 
     const result = await prismaMock.user.create({
       data: mockAdminUser,
