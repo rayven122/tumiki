@@ -18,6 +18,7 @@ import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
+import { getMcpServerData } from "@/constants/mcpServerDescriptions";
 
 type McpServerWithTools = Prisma.McpServerGetPayload<{
   include: { tools: true };
@@ -110,68 +111,9 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   };
 
   // サンプル概要文の生成（後でDBから取得予定）
-  const getSampleDescription = (serverName: string) => {
-    const descriptions: Record<string, string> = {
-      GitHub:
-        "GitHubリポジトリの管理、イシューの作成・更新、プルリクエストの操作など、開発ワークフローを効率化します。",
-      Slack:
-        "Slackチャンネルへのメッセージ送信、通知の管理、チームメンバーとのリアルタイムコミュニケーションを支援します。",
-      Notion:
-        "Notionページの作成・編集、データベースの操作、プロジェクト情報の管理を自動化します。",
-      "Google Drive":
-        "Google Driveのファイル・フォルダ管理、共有設定、ドキュメントの作成・編集機能を提供します。",
-      Jira: "Jiraチケットの作成・更新、プロジェクト進捗の追跡、アジャイル開発のサポートを行います。",
-      Discord:
-        "Discordサーバーでのメッセージ送信、チャンネル管理、ボット機能による自動化を実現します。",
-      Figma:
-        "Figmaデザインファイルの管理、コメント機能、デザインシステムとの連携をサポートします。",
-      AWS: "AWSリソースの監視・管理、EC2インスタンスの操作、クラウドインフラの自動化を提供します。",
-      Docker:
-        "Dockerコンテナの管理、イメージのビルド・デプロイ、開発環境の構築を自動化します。",
-      PostgreSQL:
-        "PostgreSQLデータベースへのクエリ実行、データの取得・更新、スキーマ管理を行います。",
-      Neon: "サーバーレスPostgreSQLデータベースの管理、スケーラブルなデータベース操作、開発・本番環境の分離管理を提供します。",
-      Playwright:
-        "ブラウザ自動化によるウェブページ操作、スクリーンショット取得、フォーム入力、複数ブラウザでの動作テストを実行します。",
-      Context7:
-        "最新ライブラリのドキュメントとコード例を迅速に取得する強力なツールです。古い情報に頼らず、効率的で正確なプログラミングをサポートします。",
-    };
+  const sampleDescription = getMcpServerData(mcpServer.name).description;
 
-    const matchedKey = Object.keys(descriptions).find((key) =>
-      serverName.toLowerCase().includes(key.toLowerCase()),
-    );
-    return matchedKey
-      ? descriptions[matchedKey]
-      : "このMCPサーバーは様々な機能を提供し、AIとの連携を通じてワークフローの自動化をサポートします。";
-  };
-
-  const sampleDescription = getSampleDescription(mcpServer.name);
-
-  // サンプルカテゴリータグの生成（後でDBから取得予定）
-  const getSampleTags = (serverName: string) => {
-    const tagsMap: Record<string, string[]> = {
-      GitHub: ["開発", "バージョン管理"],
-      Slack: ["コミュニケーション", "通知"],
-      Notion: ["ドキュメント", "プロジェクト管理"],
-      "Google Drive": ["ファイル管理", "ストレージ"],
-      Jira: ["プロジェクト管理", "タスク"],
-      Discord: ["コミュニケーション", "チーム"],
-      Figma: ["デザイン", "UI/UX"],
-      AWS: ["インフラ", "クラウド"],
-      Docker: ["コンテナ", "DevOps"],
-      PostgreSQL: ["データベース", "ストレージ"],
-      Neon: ["データベース", "クラウド"],
-      Playwright: ["テスト", "ブラウザ自動化"],
-      Context7: ["開発", "ドキュメント"],
-    };
-
-    const matchedKey = Object.keys(tagsMap).find((key) =>
-      serverName.toLowerCase().includes(key.toLowerCase()),
-    );
-    return matchedKey ? tagsMap[matchedKey] : ["ツール", "サービス"];
-  };
-
-  const sampleTags = getSampleTags(mcpServer.name) ?? [];
+  const sampleTags = getMcpServerData(mcpServer.name).tags ?? [];
 
   return (
     <Card className="relative flex h-full flex-col">

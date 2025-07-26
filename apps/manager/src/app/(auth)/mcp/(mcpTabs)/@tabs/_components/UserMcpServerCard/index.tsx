@@ -33,6 +33,7 @@ import { type RouterOutputs, api } from "@/trpc/react";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
+import { getMcpServerData } from "@/constants/mcpServerDescriptions";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -89,72 +90,9 @@ export const UserMcpServerCard = ({
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = serverInstance.mcpServer?.url;
 
-  // サンプルカテゴリータグと説明文の生成（後でDBから取得予定）
+  // サンプルカテゴリータグと説明文の生成（constantsから取得）
   const getSampleData = (serverName: string) => {
-    const dataMap: Record<string, { tags: string[]; description: string }> = {
-      GitHub: {
-        tags: ["開発", "バージョン管理"],
-        description:
-          "GitHubリポジトリの管理、イシューの作成・更新、プルリクエストの操作など、開発ワークフローを効率化します。",
-      },
-      Slack: {
-        tags: ["コミュニケーション", "通知"],
-        description:
-          "Slackチャンネルへのメッセージ送信、通知の管理、チームメンバーとのリアルタイムコミュニケーションを支援します。",
-      },
-      Notion: {
-        tags: ["ドキュメント", "プロジェクト管理"],
-        description:
-          "Notionページの作成・編集、データベースの操作、プロジェクト情報の管理を自動化します。",
-      },
-      "Google Drive": {
-        tags: ["ファイル管理", "ストレージ"],
-        description:
-          "Google Driveのファイル・フォルダ管理、共有設定、ドキュメントの作成・編集機能を提供します。",
-      },
-      Jira: {
-        tags: ["プロジェクト管理", "タスク"],
-        description:
-          "Jiraチケットの作成・更新、プロジェクト進捗の追跡、アジャイル開発のサポートを行います。",
-      },
-      Discord: {
-        tags: ["コミュニケーション", "チーム"],
-        description:
-          "Discordサーバーでのメッセージ送信、チャンネル管理、ボット機能による自動化を実現します。",
-      },
-      Figma: {
-        tags: ["デザイン", "UI/UX"],
-        description:
-          "Figmaデザインファイルの管理、コメント機能、デザインシステムとの連携をサポートします。",
-      },
-      AWS: {
-        tags: ["インフラ", "クラウド"],
-        description:
-          "AWSリソースの監視・管理、EC2インスタンスの操作、クラウドインフラの自動化を提供します。",
-      },
-      Docker: {
-        tags: ["コンテナ", "DevOps"],
-        description:
-          "Dockerコンテナの管理、イメージのビルド・デプロイ、開発環境の構築を自動化します。",
-      },
-      PostgreSQL: {
-        tags: ["データベース", "ストレージ"],
-        description:
-          "PostgreSQLデータベースへのクエリ実行、データの取得・更新、スキーマ管理を行います。",
-      },
-    };
-
-    // サーバー名に基づいてデータを返す、該当しない場合はデフォルト
-    const matchedKey = Object.keys(dataMap).find((key) =>
-      serverName.toLowerCase().includes(key.toLowerCase()),
-    );
-    return matchedKey
-      ? dataMap[matchedKey]
-      : {
-          tags: ["ツール", "サービス"],
-          description:
-            "このMCPサーバーは様々な機能を提供し、AI との連携を通じてワークフローの自動化をサポートします。",
-        };
+    return getMcpServerData(serverName);
   };
 
   const sampleData = getSampleData(serverInstance.name);
