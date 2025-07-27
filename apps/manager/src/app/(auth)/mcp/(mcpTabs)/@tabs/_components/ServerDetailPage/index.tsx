@@ -72,6 +72,12 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
       { enabled: !!instanceId },
     );
 
+  // ツール統計を取得
+  const { data: toolStats } = api.userMcpServerInstance.getToolStats.useQuery(
+    { instanceId },
+    { enabled: !!instanceId },
+  );
+
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.userMcpServerInstance.updateServerStatus.useMutation({
       onSuccess: async () => {
@@ -390,6 +396,7 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
                 <OverviewTab
                   instance={instance}
                   requestStats={requestStats}
+                  toolStats={toolStats}
                   onRefresh={async () => {
                     await refetch();
                   }}

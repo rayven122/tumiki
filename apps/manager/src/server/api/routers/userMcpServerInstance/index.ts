@@ -26,6 +26,7 @@ import { findRequestLogs } from "./findRequestLogs";
 import { getRequestStats } from "./getRequestStats";
 import { getToolStats } from "./getToolStats";
 import { getTimeSeriesStats } from "./getTimeSeriesStats";
+import { toggleTool } from "./toggleTool";
 
 export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
@@ -146,6 +147,13 @@ export const TimeSeriesStatsOutput = z.array(
   }),
 );
 
+export const ToggleToolInput = z.object({
+  instanceId: UserMcpServerInstanceIdSchema,
+  toolId: ToolIdSchema,
+  userMcpServerConfigId: UserMcpServerConfigIdSchema,
+  enabled: z.boolean(),
+});
+
 export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
     .output(FindServersOutput)
@@ -195,4 +203,6 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
   getTimeSeriesStats: protectedProcedure
     .input(GetTimeSeriesStatsInput)
     .query(getTimeSeriesStats),
+
+  toggleTool: protectedProcedure.input(ToggleToolInput).mutation(toggleTool),
 });
