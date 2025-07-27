@@ -8,25 +8,26 @@ interface SuccessAnimationProps {
   className?: string;
 }
 
-interface ConfettiParticle {
+interface BlockParticle {
   id: number;
   color: string;
   left: string;
+  size: number;
 }
 
-const CONFETTI_COLORS = [
-  "#6366f1",
-  "#ec4899",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
+const BLOCK_COLORS = [
+  "#6366f1", // Brand purple
+  "#000000", // Black
+  "#e5e7eb", // Gray-200
+  "#9ca3af", // Gray-400
 ] as const;
 
-function generateConfettiParticles(count: number): ConfettiParticle[] {
+function generateBlockParticles(count: number): BlockParticle[] {
   return Array.from({ length: count }, (_, i) => ({
     id: i,
-    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length]!,
+    color: BLOCK_COLORS[i % BLOCK_COLORS.length]!,
     left: `${Math.random() * 100}%`,
+    size: 12 + Math.random() * 8, // 12-20px
   }));
 }
 
@@ -35,7 +36,7 @@ export function SuccessAnimation({
   description,
   className = "",
 }: SuccessAnimationProps) {
-  const confettiParticles = generateConfettiParticles(20);
+  const blockParticles = generateBlockParticles(15);
 
   return (
     <motion.div
@@ -43,32 +44,40 @@ export function SuccessAnimation({
       animate={{ opacity: 1, scale: 1 }}
       className={`py-8 text-center ${className}`}
     >
-      {/* 紙吹雪アニメーション */}
+      {/* Block confetti animation */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {confettiParticles.map((particle) => (
+        {blockParticles.map((particle) => (
           <motion.div
             key={particle.id}
-            className="absolute h-3 w-3 rounded-full"
+            className="absolute border-2"
             style={{
+              borderColor:
+                particle.color === "#000000" ? "#000000" : "transparent",
               backgroundColor: particle.color,
               left: particle.left,
-              top: "-10px",
+              top: "-20px",
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              boxShadow:
+                particle.color === "#6366f1"
+                  ? "2px 2px 0 rgba(0,0,0,0.2)"
+                  : "none",
             }}
             animate={{
-              y: [0, 400],
+              y: [0, 500],
               rotate: [0, 360],
               opacity: [1, 0],
             }}
             transition={{
-              duration: 3,
-              delay: particle.id * 0.1,
+              duration: 2.5,
+              delay: particle.id * 0.08,
               ease: "easeOut",
             }}
           />
         ))}
       </div>
 
-      {/* 成功アイコン */}
+      {/* Success icon with block design */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -80,12 +89,12 @@ export function SuccessAnimation({
         }}
         className="mb-6"
       >
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-green-500 bg-green-100">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center border-4 border-black bg-white shadow-[4px_4px_0_#6366f1]">
           <motion.svg
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="h-10 w-10 text-green-500"
+            className="h-10 w-10 text-black"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -105,7 +114,7 @@ export function SuccessAnimation({
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="mb-2 text-2xl font-black text-black"
+        className="mb-2 text-3xl font-black tracking-tight text-black"
       >
         {title}
       </motion.h3>
@@ -115,24 +124,33 @@ export function SuccessAnimation({
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 1 }}
-        className="mb-6 text-gray-600"
+        className="mb-6 text-lg font-medium text-gray-600"
         dangerouslySetInnerHTML={{ __html: description }}
       />
 
-      {/* パルスエフェクト */}
+      {/* Animated blocks effect */}
       <motion.div
-        animate={{
-          scale: [1, 1.05, 1],
-          opacity: [0.5, 0.8, 0.5],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className="mb-4 text-6xl"
+        className="flex justify-center space-x-3"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2 }}
       >
-        🎉
+        {[0, 1, 2].map((index) => (
+          <motion.div
+            key={index}
+            className="h-8 w-8 border-2 border-black bg-black shadow-[2px_2px_0_rgba(0,0,0,0.2)]"
+            animate={{
+              y: [0, -8, 0],
+              rotate: [0, 15, -15, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: index * 0.2,
+            }}
+          />
+        ))}
       </motion.div>
     </motion.div>
   );
