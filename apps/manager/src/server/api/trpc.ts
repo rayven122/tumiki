@@ -15,6 +15,7 @@ import { ZodError } from "zod";
 
 import { auth } from "@tumiki/auth/server";
 import { db } from "@tumiki/db";
+import { extractUserIdFromSub } from "@tumiki/utils";
 
 /**
  * 1. CONTEXT
@@ -126,12 +127,16 @@ export const protectedProcedure = t.procedure
     if (!ctx.session?.user?.sub) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
+
+    // Auth0 sub から userId を抽出
+    const userId = extractUserIdFromSub(ctx.session.user.sub);
+
     return next({
       ctx: {
         // infers the `session` as non-nullable
         session: {
           ...ctx.session,
-          user: { ...ctx.session.user, id: ctx.session.user.sub },
+          user: { ...ctx.session.user, id: userId },
         },
       },
     });

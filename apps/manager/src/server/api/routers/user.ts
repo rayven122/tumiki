@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { extractUserIdFromSub } from "@tumiki/utils";
 import {
   createTRPCRouter,
   publicProcedure,
@@ -19,9 +20,12 @@ export const userRouter = createTRPCRouter({
     .input(syncUserFromAuth0Schema)
     .mutation(async ({ ctx, input }) => {
       try {
+        // Auth0 sub から userId を抽出
+        const userId = extractUserIdFromSub(input.sub);
+
         const dbUser = await ctx.db.user.upsert({
           where: {
-            id: input.sub,
+            id: userId,
           },
           update: {
             name: input.name ?? null,
@@ -30,7 +34,7 @@ export const userRouter = createTRPCRouter({
             updatedAt: new Date(),
           },
           create: {
-            id: input.sub,
+            id: userId,
             name: input.name ?? null,
             email: input.email ?? null,
             image: input.picture ?? null,

@@ -30,6 +30,7 @@ export const getUserIdentityProviderTokens = async (
 ): Promise<string | null> => {
   try {
     // ManagementClientを使用してユーザーの完全なプロファイルを取得
+    // Management APIには完全なsubを渡す必要がある（プロバイダー情報を含む）
     const user = await managementClient.users.get({
       id: userId,
       fields: "identities",
@@ -71,6 +72,7 @@ export const getProviderAccessToken = async (
     }
 
     // ManagementClientを使用してトークンを取得
+    // Management APIには完全なsub（プロバイダー情報を含む）を渡す必要がある
     const token = await getUserIdentityProviderTokens(
       session.user.sub,
       provider,

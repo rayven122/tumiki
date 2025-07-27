@@ -15,7 +15,7 @@ describe("User creation with prisma-fabbrica", () => {
 
   test("ユーザーを作成できる", async () => {
     const mockUser = await UserFactory.create({
-      id: "auth0|test-id",
+      id: "test-id",
       email: "test@example.com",
       name: "Test User",
     });
@@ -26,7 +26,7 @@ describe("User creation with prisma-fabbrica", () => {
       data: mockUser,
     });
 
-    expect(result.id).toStrictEqual("auth0|test-id");
+    expect(result.id).toStrictEqual("test-id");
     expect(result.email).toStrictEqual("test@example.com");
     expect(result.name).toStrictEqual("Test User");
     expect(result.image).toStrictEqual(null);
