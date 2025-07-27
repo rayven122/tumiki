@@ -46,9 +46,6 @@ export const getUserIdentityProviderTokens = async (
 
     return providerIdentity?.access_token || null;
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("Failed to get provider access token:", error);
-    }
     throw createOAuthError(OAuthErrorCode.CONNECTION_FAILED, provider, error);
   }
 };
@@ -85,9 +82,6 @@ export const getProviderAccessToken = async (
   } catch (error) {
     if (error instanceof Error && error.name === "OAuthError") {
       throw error;
-    }
-    if (process.env.NODE_ENV === "development") {
-      console.error("Failed to get provider access token:", error);
     }
     throw createOAuthError(OAuthErrorCode.UNKNOWN_ERROR, provider, error);
   }
@@ -140,12 +134,6 @@ export const checkOAuthConnection = async (
         return false;
       }
     }
-    if (process.env.NODE_ENV === "development") {
-      console.error("Failed to check OAuth connection:", error);
-    }
     throw error;
   }
 };
-
-// PROVIDER_CONFIGS is now imported from providers/index.js
-// Use OAUTH_PROVIDERS instead

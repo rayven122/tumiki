@@ -15,5 +15,5 @@ export const OauthProviderSchema = z.enum(OAUTH_PROVIDERS);
 export const isValidOAuthProvider = (
   provider: string,
 ): provider is OAuthProvider => {
-  return provider in OAUTH_PROVIDERS;
+  return OAUTH_PROVIDERS.includes(provider as OAuthProvider);
 };
