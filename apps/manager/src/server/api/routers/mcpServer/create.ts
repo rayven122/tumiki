@@ -2,7 +2,7 @@ import { type z } from "zod";
 import { type ProtectedContext } from "@/server/api/trpc";
 import { ServerType, ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import { generateApiKey } from "../mcpApiKey";
+import { generateApiKey } from "@/utils/server";
 import type { CreateMcpServerInput } from ".";
 import { getMcpServerToolsSSE } from "@tumiki/utils/server";
 
