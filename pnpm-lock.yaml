@@ -602,7 +602,7 @@ importers:
         version: 3.25.42
     devDependencies:
       '@quramy/prisma-fabbrica':
-        specifier: ^2.2.1
+        specifier: ^2.3.0
         version: 2.3.0(@prisma/client@6.10.1(prisma@6.10.1(typescript@5.8.3))(typescript@5.8.3))(typescript@5.8.3)
       '@tumiki/eslint-config':
         specifier: workspace:*
@@ -795,7 +795,7 @@ importers:
         version: link:../../tooling/typescript
       bun-types:
         specifier: latest
-        version: 1.2.18(@types/react@19.1.6)
+        version: 1.2.19(@types/react@19.1.6)
       eslint:
         specifier: 'catalog:'
         version: 9.28.0(jiti@2.4.2)
@@ -4626,11 +4626,6 @@ packages:
     engines: {bun: '>=1.0.0'}
     peerDependencies:
       bun-types: '>=1.0.0'
-
-  bun-types@1.2.18:
-    resolution: {integrity: sha512-04+Eha5NP7Z0A9YgDAzMk5PHR16ZuLVa83b26kH5+cp1qZW4F6FmAURngE7INf4tKOvCE69vYvDEwoNl1tGiWw==}
-    peerDependencies:
-      '@types/react': ^19
 
   bun-types@1.2.19:
     resolution: {integrity: sha512-uAOTaZSPuYsWIXRpj7o56Let0g/wjihKCkeRqUBhlLVM/Bt+Fj9xTo+LhC1OV1XDaGkz4hNC80et5xgy+9KTHQ==}
@@ -12938,11 +12933,6 @@ snapshots:
   bun-mock-prisma@1.2.1(bun-types@1.2.19(@types/react@19.1.6)):
     dependencies:
       bun-types: 1.2.19(@types/react@19.1.6)
-
-  bun-types@1.2.18(@types/react@19.1.6):
-    dependencies:
-      '@types/node': 22.15.34
-      '@types/react': 19.1.6
 
   bun-types@1.2.19(@types/react@19.1.6):
     dependencies:

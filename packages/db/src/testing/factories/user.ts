@@ -3,7 +3,7 @@ import { Role } from "@prisma/client";
 import { defineUserFactory } from "../../../prisma/generated/fabbrica/index.js";
 
 export const UserFactory = defineUserFactory({
-  defaultData: ({ seq }) => ({
+  defaultData: ({ seq }: { seq: number }) => ({
     id: `auth0|test-user-${seq}`,
     email: `test-user-${seq}@example.com`,
     name: `Test User ${seq}`,
@@ -14,7 +14,7 @@ export const UserFactory = defineUserFactory({
 });
 
 export const AdminUserFactory = defineUserFactory({
-  defaultData: ({ seq }) => ({
+  defaultData: ({ seq }: { seq: number }) => ({
     id: `auth0|admin-user-${seq}`,
     email: `admin-user-${seq}@example.com`,
     name: `Admin User ${seq}`,
@@ -25,7 +25,7 @@ export const AdminUserFactory = defineUserFactory({
 });
 
 export const OnboardedUserFactory = defineUserFactory({
-  defaultData: ({ seq }) => ({
+  defaultData: ({ seq }: { seq: number }) => ({
     id: `auth0|onboarded-user-${seq}`,
     email: `onboarded-user-${seq}@example.com`,
     name: `Onboarded User ${seq}`,
