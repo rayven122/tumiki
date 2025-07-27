@@ -200,7 +200,10 @@ export const LogsAnalyticsTab = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {100 - (requestStats?.successRate ?? 100)}%
+                {requestStats?.totalRequests === 0 ||
+                requestStats?.successRate === 100
+                  ? "-"
+                  : `${100 - (requestStats?.successRate ?? 100)}%`}
               </div>
               <p className="text-muted-foreground text-xs">
                 失敗したリクエスト
@@ -210,7 +213,7 @@ export const LogsAnalyticsTab = ({
         </div>
 
         {/* リクエスト推移チャート */}
-        <Card>
+        <Card className="mt-6">
           <CardHeader>
             <CardTitle>リクエスト推移</CardTitle>
           </CardHeader>
