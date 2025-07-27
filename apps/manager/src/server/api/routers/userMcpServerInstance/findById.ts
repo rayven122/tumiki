@@ -2,6 +2,7 @@ import { type ProtectedContext } from "@/server/api/trpc";
 import { db } from "@tumiki/db/tcp";
 import { ServerType } from "@tumiki/db/prisma";
 
+// TODO: ロジックの再確認をする
 export const findById = async ({
   input,
   ctx,
@@ -9,7 +10,7 @@ export const findById = async ({
   input: { id: string };
   ctx: ProtectedContext;
 }) => {
-  const instance = await db.userMcpServerInstance.findFirst({
+  const instance = await db.userMcpServerInstance.findUnique({
     where: {
       id: input.id,
       userId: ctx.session.user.id,
@@ -35,7 +36,11 @@ export const findById = async ({
     },
   });
 
-  if (!instance) {
+  if (
+    !instance ||
+    instance.userId !== ctx.session.user.id ||
+    instance.deletedAt !== null
+  ) {
     throw new Error("サーバーインスタンスが見つかりません");
   }
 
@@ -59,7 +64,7 @@ export const findById = async ({
   }
 
   // 公式サーバーの場合、関連する全てのツールを取得
-  type AvailableTool = {
+  let availableTools: Array<{
     id: string;
     name: string;
     description: string | null;
@@ -71,8 +76,7 @@ export const findById = async ({
       name: string;
       iconPath: string | null;
     };
-  };
-  let availableTools: AvailableTool[] = [];
+  }> = [];
   if (
     instance.serverType === ServerType.OFFICIAL &&
     userMcpServerConfigIds.length > 0
