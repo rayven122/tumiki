@@ -22,74 +22,37 @@ export const fetcher = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-async function fetchWithErrorHandlersBase(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
-  try {
-    const response = await fetch(input, init);
+export const fetchWithErrorHandlers = Object.assign(
+  async function (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    try {
+      const response = await fetch(input, init);
 
-    if (!response.ok) {
-      const { code, cause } = (await response.json()) as {
-        code: ErrorCode;
-        cause: string;
-      };
-      throw new ChatSDKError(code, cause);
+      if (!response.ok) {
+        const { code, cause } = (await response.json()) as {
+          code: ErrorCode;
+          cause: string;
+        };
+        throw new ChatSDKError(code, cause);
+      }
+
+      return response;
+    } catch (error: unknown) {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        throw new ChatSDKError("offline:chat");
+      }
+
+      throw error;
     }
-
-    return response;
-  } catch (error: unknown) {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      throw new ChatSDKError("offline:chat");
-    }
-
-    throw error;
-  }
-}
-
-// Interface for fetch with preconnect support
-interface FetchWithPreconnect {
-  (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
-  preconnect?: (
-    url: string | URL,
-    options?: {
-      dns?: boolean;
-      tcp?: boolean;
-      http?: boolean;
-      https?: boolean;
-    },
-  ) => void;
-}
-
-// Export enhanced fetch with error handlers
-export const fetchWithErrorHandlers =
-  fetchWithErrorHandlersBase as FetchWithPreconnect;
-
-// Safely add preconnect if available in the global fetch
-// Using a type guard to ensure type safety
-if (typeof globalThis !== "undefined" && globalThis.fetch) {
-  const globalFetch = globalThis.fetch as {
-    preconnect?: (
-      url: string | URL,
-      options?: {
-        dns?: boolean;
-        tcp?: boolean;
-        http?: boolean;
-        https?: boolean;
-      },
-    ) => void;
-  };
-
-  if (globalFetch.preconnect && typeof globalFetch.preconnect === "function") {
-    // Use Object.defineProperty for safer assignment
-    Object.defineProperty(fetchWithErrorHandlers, "preconnect", {
-      value: globalFetch.preconnect,
-      writable: true,
-      enumerable: true,
-      configurable: true,
-    });
-  }
-}
+  },
+  {
+    preconnect:
+      (fetch as { preconnect?: typeof fetch.preconnect }).preconnect ??
+      (() => undefined),
+  },
+) as typeof fetch;
 
 export function generateCUID(): string {
   // NOTE: Change to cuid v1
