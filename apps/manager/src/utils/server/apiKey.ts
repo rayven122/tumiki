@@ -3,6 +3,10 @@ import "server-only";
 import crypto from "crypto";
 import z from "zod";
 
+/**
+ * APIキーを生成する
+ * @returns 生成されたAPIキー
+ */
 const API_KEY_PREFIX = z.string().parse(process.env.API_KEY_PREFIX);
 const API_KEY_LENGTH = parseInt(process.env.API_KEY_LENGTH ?? "32");
 
