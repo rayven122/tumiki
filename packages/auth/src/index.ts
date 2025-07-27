@@ -6,14 +6,7 @@ import { ManagementClient } from "auth0";
 export type { SessionData } from "@auth0/nextjs-auth0/types";
 export * from "./oauth.js";
 export * from "./errors.js";
-
-// OAuth provider configurations
-export { OAUTH_PROVIDERS, PROVIDER_CONNECTIONS } from "./providers/index.js";
-export type {
-  OAuthProvider,
-  OAuthScope,
-  OAuthProviderConfig,
-} from "./providers/index.js";
+export * from "./providers/index.js";
 export * from "./providers/validation.js";
 
 export const auth0 = new Auth0Client();
