@@ -32,10 +32,6 @@ export const getGoogleAccessToken = async () => {
       }
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error fetching Google access token:", error);
-    }
-
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "アクセストークンの取得に失敗しました",
