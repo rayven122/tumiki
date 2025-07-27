@@ -22,30 +22,37 @@ export const fetcher = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-export async function fetchWithErrorHandlers(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) {
-  try {
-    const response = await fetch(input, init);
+export const fetchWithErrorHandlers = Object.assign(
+  async function (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    try {
+      const response = await fetch(input, init);
 
-    if (!response.ok) {
-      const { code, cause } = (await response.json()) as {
-        code: ErrorCode;
-        cause: string;
-      };
-      throw new ChatSDKError(code, cause);
+      if (!response.ok) {
+        const { code, cause } = (await response.json()) as {
+          code: ErrorCode;
+          cause: string;
+        };
+        throw new ChatSDKError(code, cause);
+      }
+
+      return response;
+    } catch (error: unknown) {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        throw new ChatSDKError("offline:chat");
+      }
+
+      throw error;
     }
-
-    return response;
-  } catch (error: unknown) {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      throw new ChatSDKError("offline:chat");
-    }
-
-    throw error;
-  }
-}
+  },
+  {
+    preconnect:
+      (fetch as { preconnect?: typeof fetch.preconnect }).preconnect ??
+      (() => undefined),
+  },
+) as typeof fetch;
 
 export function generateCUID(): string {
   // NOTE: Change to cuid v1

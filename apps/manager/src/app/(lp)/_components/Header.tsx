@@ -33,6 +33,12 @@ export const Header = () => {
               料金プラン
             </Link>
             <Link
+              href="/blog"
+              className="text-gray-700 transition-colors hover:text-gray-900"
+            >
+              ブログ
+            </Link>
+            <Link
               href="#"
               className="text-gray-700 transition-colors hover:text-gray-900"
             >
