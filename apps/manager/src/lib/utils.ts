@@ -50,9 +50,19 @@ export async function fetchWithErrorHandlers(
 // Add preconnect method to match fetch interface
 interface FetchWithPreconnect {
   (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
-  preconnect?: typeof fetch.preconnect;
+  preconnect?: (
+    url: string | URL,
+    options?: {
+      dns?: boolean;
+      tcp?: boolean;
+      http?: boolean;
+      https?: boolean;
+    },
+  ) => void;
 }
-if (fetch.preconnect !== undefined) {
+
+// Type-safe assignment of preconnect method
+if ("preconnect" in fetch && typeof fetch.preconnect === "function") {
   (fetchWithErrorHandlers as FetchWithPreconnect).preconnect = fetch.preconnect;
 }
 
