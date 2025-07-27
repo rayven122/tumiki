@@ -52,7 +52,9 @@ interface FetchWithPreconnect {
   (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
   preconnect?: typeof fetch.preconnect;
 }
-(fetchWithErrorHandlers as FetchWithPreconnect).preconnect = fetch.preconnect;
+if (fetch.preconnect !== undefined) {
+  (fetchWithErrorHandlers as FetchWithPreconnect).preconnect = fetch.preconnect;
+}
 
 export function generateCUID(): string {
   // NOTE: Change to cuid v1
