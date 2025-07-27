@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { AddCustomServerInput } from ".";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
-import { generateApiKey } from "../mcpApiKey";
+import { generateApiKey } from "@/utils/server";
 
 type AddCustomServerInput = {
   ctx: ProtectedContext;
