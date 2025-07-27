@@ -63,7 +63,7 @@ export function Chat({
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateCUID,
-    fetch: fetchWithErrorHandlers as typeof fetch,
+    fetch: fetchWithErrorHandlers,
     experimental_prepareRequestBody: (body) => ({
       id,
       message: body.messages.at(-1),
