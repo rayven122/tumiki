@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
-import { startOAuthFlow, OAuthError } from "@tumiki/auth";
+import { OAuthError } from "@tumiki/auth";
+import { startOAuthFlow } from "@tumiki/auth/server";
 import { type z } from "zod";
 import { type StartOAuthConnectionInput } from "./index";
 

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/chat/sidebar";
 import Script from "next/script";
-import { auth } from "@tumiki/auth";
+import { auth } from "@tumiki/auth/server";
 import "./globals.css";
 
 export const experimental_ppr = true;
