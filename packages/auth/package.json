@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.6.1",
-    "@tumiki/db": "workspace:*"
+    "@tumiki/db": "workspace:*",
+    "auth0": "^4.27.0"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
