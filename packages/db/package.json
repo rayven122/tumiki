@@ -55,7 +55,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@quramy/prisma-fabbrica": "^2.3.0",
+    "@quramy/prisma-fabbrica": "^2.2.1",
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
