@@ -11,18 +11,14 @@ export const toggleTool = async ({ ctx, input }: ToggleToolInput) => {
   const { instanceId, toolId, userMcpServerConfigId, enabled } = input;
 
   // インスタンスの所有権確認
-  const instance = await ctx.db.userMcpServerInstance.findFirst({
+  const instance = await ctx.db.userMcpServerInstance.findUnique({
     where: {
       id: instanceId,
       userId: ctx.session.user.id,
       deletedAt: null,
     },
     include: {
-      toolGroup: {
-        include: {
-          toolGroupTools: true,
-        },
-      },
+      toolGroup: true,
     },
   });
 
