@@ -9,10 +9,10 @@ const getBlogPost = async (id: string) => {
       endpoint: "blogs",
       contentId: id,
     });
-    
+
     // microCMSから取得したコンテンツは信頼できるソースのため、サーバーサイドで処理
     // 必要に応じてここでサニタイズ処理を追加可能
-    
+
     return post;
   } catch (error) {
     console.error("Error fetching blog post:", error);
