@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 
 import type { OAuthProvider } from "./providers/index.js";
+import { auth0, managementClient } from "./clients.js";
 import { createOAuthError, OAuthError, OAuthErrorCode } from "./errors.js";
-import { auth0, managementClient } from "./index.js";
 import { PROVIDER_CONNECTIONS } from "./providers/index.js";
 
 export interface OAuthConfig {
