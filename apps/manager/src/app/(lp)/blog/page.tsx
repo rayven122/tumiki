@@ -1,5 +1,5 @@
-import { client } from "~/libs/microcms";
-import type { BlogPost } from "~/types/blog";
+import { client } from "@/libs/microcms";
+import type { BlogPost } from "@/types/blog";
 import { BlogClient } from "./BlogClient";
 
 const getBlogPosts = async () => {

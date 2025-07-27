@@ -5,6 +5,11 @@ export type Category = {
   name: string;
 } & MicroCMSDate;
 
+export type Tag = {
+  id: string;
+  name: string;
+} & MicroCMSDate;
+
 export type BlogPost = {
   id: string;
   title: string;
@@ -12,4 +17,5 @@ export type BlogPost = {
   excerpt?: string;
   eyecatch?: MicroCMSImage;
   category?: Category;
+  tags?: Tag[];
 } & MicroCMSDate;
