@@ -3,7 +3,7 @@ import type { ProtectedContext } from "../../trpc";
 
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import type { AddOfficialServerInput } from ".";
-import { generateApiKey } from "../mcpApiKey";
+import { generateApiKey } from "@/utils/server";
 
 type AddOfficialServerInput = {
   ctx: ProtectedContext;

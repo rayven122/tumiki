@@ -42,6 +42,11 @@ export type UserMcpServerInstanceId = z.infer<
   typeof UserMcpServerInstanceIdSchema
 >;
 
+/**
+ * APIキー関連のID型
+ */
+export const ApiKeyIdSchema = z.string().brand<"ApiKeyId">();
+
 export const OrganizationIdSchema = z
   .string()
   .cuid("有効な組織IDを入力してください")
@@ -74,3 +79,4 @@ export type RolePermissionId = z.infer<typeof RolePermissionIdSchema>;
 export type ResourceAccessControlId = z.infer<
   typeof ResourceAccessControlIdSchema
 >;
+export type ApiKeyId = z.infer<typeof ApiKeyIdSchema>;
