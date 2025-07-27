@@ -22,7 +22,7 @@ export const fetcher = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-export async function fetchWithErrorHandlers(
+async function fetchWithErrorHandlersBase(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
@@ -47,7 +47,7 @@ export async function fetchWithErrorHandlers(
   }
 }
 
-// Add preconnect method to match fetch interface
+// Interface for fetch with preconnect support
 interface FetchWithPreconnect {
   (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
   preconnect?: (
@@ -61,9 +61,34 @@ interface FetchWithPreconnect {
   ) => void;
 }
 
-// Type-safe assignment of preconnect method
-if ("preconnect" in fetch && typeof fetch.preconnect === "function") {
-  (fetchWithErrorHandlers as FetchWithPreconnect).preconnect = fetch.preconnect;
+// Export enhanced fetch with error handlers
+export const fetchWithErrorHandlers =
+  fetchWithErrorHandlersBase as FetchWithPreconnect;
+
+// Safely add preconnect if available in the global fetch
+// Using a type guard to ensure type safety
+if (typeof globalThis !== "undefined" && globalThis.fetch) {
+  const globalFetch = globalThis.fetch as {
+    preconnect?: (
+      url: string | URL,
+      options?: {
+        dns?: boolean;
+        tcp?: boolean;
+        http?: boolean;
+        https?: boolean;
+      },
+    ) => void;
+  };
+
+  if (globalFetch.preconnect && typeof globalFetch.preconnect === "function") {
+    // Use Object.defineProperty for safer assignment
+    Object.defineProperty(fetchWithErrorHandlers, "preconnect", {
+      value: globalFetch.preconnect,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
 }
 
 export function generateCUID(): string {
