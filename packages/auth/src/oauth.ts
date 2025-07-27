@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import type { OAuthProvider } from "./providers/index.js";
-import { OAuthError, TokenFetchError } from "./errors";
+import { createOAuthError, OAuthError, OAuthErrorCode } from "./errors.js";
 import { auth0, managementClient } from "./index.js";
 import { PROVIDER_CONNECTIONS } from "./providers/index.js";
 
@@ -46,7 +46,7 @@ export const getUserIdentityProviderTokens = async (
 
     return providerIdentity?.access_token || null;
   } catch (error) {
-    throw new TokenFetchError(provider, error);
+    throw createOAuthError(OAuthErrorCode.CONNECTION_FAILED, provider, error);
   }
 };
 
@@ -67,7 +67,7 @@ export const getProviderAccessToken = async (
       : await auth0.getSession();
 
     if (!session?.user?.sub) {
-      throw new OAuthError("Unauthorized: No session found", provider);
+      throw createOAuthError(OAuthErrorCode.UNAUTHORIZED, provider);
     }
 
     // ManagementClientを使用してトークンを取得
@@ -76,14 +76,14 @@ export const getProviderAccessToken = async (
       provider,
     );
     if (!token) {
-      throw new OAuthError("No access token found for provider", provider);
+      throw createOAuthError(OAuthErrorCode.NO_ACCESS_TOKEN, provider);
     }
     return token;
   } catch (error) {
-    if (error instanceof OAuthError) {
+    if (error instanceof Error && error.name === "OAuthError") {
       throw error;
     }
-    throw new OAuthError("Unknown error occurred", provider, error);
+    throw createOAuthError(OAuthErrorCode.UNKNOWN_ERROR, provider, error);
   }
 };
 
@@ -125,17 +125,14 @@ export const checkOAuthConnection = async (
     const token = await getProviderAccessToken(provider, request);
     return !!token;
   } catch (error) {
-    // OAuthErrorの場合は、特定のメッセージの場合のみfalseを返す
+    // OAuthErrorの場合は、NO_ACCESS_TOKENまたはUNAUTHORIZEDの場合のみfalseを返す
     if (error instanceof OAuthError) {
       if (
-        error.message.includes("No access token found") ||
-        error.message.includes("Unauthorized")
+        error.code === OAuthErrorCode.NO_ACCESS_TOKEN ||
+        error.code === OAuthErrorCode.UNAUTHORIZED
       ) {
         return false;
       }
-    }
-    if (process.env.NODE_ENV === "development") {
-      console.error("Failed to check OAuth connection:", error);
     }
     throw error;
   }

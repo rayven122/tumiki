@@ -89,6 +89,9 @@ erDiagram
   String args
   String url "nullable"
   String envVars
+  AuthType authType
+  String(50) oauthProvider "nullable"
+  String oauthScopes
   ServerType serverType
   String createdBy FK "nullable"
   McpServerVisibility visibility
@@ -112,6 +115,8 @@ erDiagram
   String name
   String description
   String envVars
+  String oauthConnection "nullable"
+  String oauthScopes
   String mcpServerId FK
   String userId FK
   String organizationId FK "nullable"
@@ -219,6 +224,11 @@ transportType に応じて接続方式を選択
 - `envVars`
   > STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
   > SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+- `authType`: 認証タイプ
+- `oauthProvider`
+  > OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
+  > google, github, slack, notion, linkedin など
+- `oauthScopes`: OAuth で必要なデフォルトスコープ
 - `serverType`: サーバーの種類（公式/ユーザーカスタム）
 - `createdBy`: ユーザーカスタムサーバーの作成者
 - `visibility`: ユーザーカスタムサーバーの可視性
@@ -252,6 +262,8 @@ MCP サーバーのツール一覧
 - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
 - `description`: 設定の説明
 - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+- `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
+- `oauthScopes`: ユーザーが選択した追加スコープ
 - `mcpServerId`: MCPサーバーID
 - `userId`: ユーザーID
 - `organizationId`: 組織
@@ -614,6 +626,8 @@ erDiagram
   String name
   String description
   String envVars
+  String oauthConnection "nullable"
+  String oauthScopes
   String mcpServerId FK
   String userId FK
   String organizationId FK "nullable"
@@ -732,6 +746,8 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
 - `description`: 設定の説明
 - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
+- `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
+- `oauthScopes`: ユーザーが選択した追加スコープ
 - `mcpServerId`: MCPサーバーID
 - `userId`: ユーザーID
 - `organizationId`: 組織
