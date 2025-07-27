@@ -3,13 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import type { BlogPost } from "~/types/blog";
+import type { BlogPost } from "@/types/blog";
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { CommunitySection } from "@/app/_components/site/jp/CommunitySection";
-import { Header } from "~/app/_components/site/jp/Header";
-import { WaitingListModal } from "~/app/_components/site/jp/WaitingListModal";
-import { FooterSection } from "~/app/_components/site/jp/FooterSection";
+import { Header } from "@/app/_components/site/jp/Header";
+import { WaitingListModal } from "@/app/_components/site/jp/WaitingListModal";
+import { FooterSection } from "@/app/_components/site/jp/FooterSection";
 
 interface BlogClientProps {
   posts: BlogPost[];
