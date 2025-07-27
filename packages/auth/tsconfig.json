@@ -12,6 +12,7 @@
     "skipLibCheck": true,
     "noEmit": false
   },
+  "types": ["bun-types"],
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }

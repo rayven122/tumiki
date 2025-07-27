@@ -1,18 +1,18 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { oauthProviderSchema } from "@tumiki/auth";
+import { OauthProviderSchema } from "@tumiki/auth";
 import { startOAuthConnection } from "./startOAuthConnection";
 import { getConnectionStatus } from "./getConnectionStatus";
 import { getGoogleAccessToken } from "./getGoogleAccessToken";
 
 export const StartOAuthConnectionInput = z.object({
-  provider: oauthProviderSchema,
+  provider: OauthProviderSchema,
   scopes: z.array(z.string()),
   returnTo: z.string().optional(),
 });
 
 export const GetConnectionStatusInput = z.object({
-  provider: oauthProviderSchema,
+  provider: OauthProviderSchema,
 });
 
 export const oauthRouter = createTRPCRouter({

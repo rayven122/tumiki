@@ -24,13 +24,15 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { OAUTH_PROVIDERS } from "@tumiki/auth";
+import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth";
 
 // Google用のスコープ設定
-const GOOGLE_SCOPES = OAUTH_PROVIDERS.google.availableScopes.map((scope) => ({
-  ...scope,
-  value: scope.scopes.join(" "),
-}));
+const GOOGLE_SCOPES = OAUTH_PROVIDER_CONFIG.google.availableScopes.map(
+  (scope) => ({
+    ...scope,
+    value: scope.scopes.join(" "),
+  }),
+);
 
 export default function GoogleOAuthPage() {
   const router = useRouter();

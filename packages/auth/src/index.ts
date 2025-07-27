@@ -8,7 +8,11 @@ export * from "./oauth.js";
 export * from "./errors.js";
 
 // OAuth provider configurations
-export { OAUTH_PROVIDERS, PROVIDER_CONNECTIONS } from "./providers/index.js";
+export {
+  OAUTH_PROVIDERS,
+  PROVIDER_CONNECTIONS,
+  OAUTH_PROVIDER_CONFIG,
+} from "./providers/index.js";
 export type {
   OAuthProvider,
   OAuthScope,
