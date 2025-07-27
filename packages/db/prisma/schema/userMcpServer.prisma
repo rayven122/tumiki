@@ -15,6 +15,10 @@ model UserMcpServerConfig {
   description        String
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   envVars            String /// @encrypted
+  /// OAuth接続のAuth0 connection名（user-specific）
+  oauthConnection    String?
+  /// ユーザーが選択した追加スコープ
+  oauthScopes        String[]
   /// 利用可能なツールグループ
   tools              Tool[]
   /// UserMcpServerConfig と ToolGroup の関連を管理する中間テーブル
