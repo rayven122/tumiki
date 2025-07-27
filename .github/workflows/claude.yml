@@ -37,6 +37,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
+
       - name: 🤖 Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
@@ -64,16 +67,13 @@ jobs:
           # assignee_trigger: "claude-bot"
 
           # Optional: Allow Claude to run specific commands
-          # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
+          allowed_tools: "Bash(pnpm:*) Bash(pnpm *)"
 
           # Optional: Add custom instructions for Claude to customize its behavior for your project
           custom_instructions: |
             以下のガイドラインに従ってください：
             - 全てのコメントと回答を日本語で記述してください
             - コーディング規約に従ってください
-            - 新しいコードには必ずテストを含めてください
-            - 新しいファイルにはTypeScriptを使用してください
-            - 建設的で丁寧なフィードバックを提供してください
 
           # Optional: Custom environment variables for Claude
           # claude_env: |
