@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { OauthProviderSchema } from "@tumiki/auth";
+import { OauthProviderSchema } from "@tumiki/auth/server";
 import { startOAuthConnection } from "./startOAuthConnection";
 import { getConnectionStatus } from "./getConnectionStatus";
 import { getGoogleAccessToken } from "./getGoogleAccessToken";

@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { type z } from "zod";
-import { checkOAuthConnection, OAuthError, OAuthErrorCode } from "@tumiki/auth";
+import { OAuthError, OAuthErrorCode } from "@tumiki/auth";
+import { checkOAuthConnection } from "@tumiki/auth/server";
 import { type GetConnectionStatusInput } from "./index";
 
 export const getConnectionStatus = async ({

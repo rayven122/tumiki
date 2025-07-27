@@ -13,7 +13,7 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@tumiki/auth";
+import { auth } from "@tumiki/auth/server";
 import { db } from "@tumiki/db";
 
 /**

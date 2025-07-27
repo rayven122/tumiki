@@ -1,4 +1,4 @@
-import { auth } from "@tumiki/auth";
+import { auth } from "@tumiki/auth/server";
 import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
