@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { BlogPost } from "~/types/blog";
-import { FooterSection } from "~/app/_components/site/jp/FooterSection";
-import { WaitingListModal } from "~/app/_components/site/jp/WaitingListModal";
+import { useState, useMemo } from "react";
+import DOMPurify from "dompurify";
+import type { BlogPost } from "@/types/blog";
+import { FooterSection } from "@/app/_components/site/jp/FooterSection";
+import { WaitingListModal } from "@/app/_components/site/jp/WaitingListModal";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Header } from "~/app/_components/site/jp/Header";
+import { Header } from "@/app/_components/site/jp/Header";
 import Image from "next/image";
-import DOMPurify from "dompurify";
 
 interface BlogDetailClientProps {
   post: BlogPost;
@@ -17,12 +17,12 @@ interface BlogDetailClientProps {
 
 export default function BlogDetailClient({ post }: BlogDetailClientProps) {
   const [showModal, setShowModal] = useState(false);
-  const [sanitizedContent, setSanitizedContent] = useState("");
 
-  useEffect(() => {
+  const sanitizedContent = useMemo(() => {
     if (typeof window !== "undefined") {
-      setSanitizedContent(DOMPurify.sanitize(post.content));
+      return DOMPurify.sanitize(post.content);
     }
+    return post.content;
   }, [post.content]);
 
   return (
