@@ -20,17 +20,20 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --check . --ignore-path ../../.gitignore"
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "test": "bun test src"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.6.1",
-    "@tumiki/db": "workspace:*"
+    "@tumiki/db": "workspace:*",
+    "auth0": "^4.27.0"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
     "@types/node": "^22.15.3",
+    "bun-types": "^1.2.19",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
