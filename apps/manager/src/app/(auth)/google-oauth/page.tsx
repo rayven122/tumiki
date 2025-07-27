@@ -24,7 +24,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth";
+import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
 
 // Google用のスコープ設定
 const GOOGLE_SCOPES = OAUTH_PROVIDER_CONFIG.google.availableScopes.map(

@@ -1,9 +1,6 @@
 import { TRPCError } from "@trpc/server";
-import {
-  getProviderAccessToken,
-  OAuthError,
-  OAuthErrorCode,
-} from "@tumiki/auth";
+import { OAuthError, OAuthErrorCode } from "@tumiki/auth";
+import { getProviderAccessToken } from "@tumiki/auth/server";
 
 /**
  * ユーザーのGoogle OAuthアクセストークンを取得
