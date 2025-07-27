@@ -4,7 +4,7 @@ import type { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { db } from "@tumiki/db";
 import type { ProtectedContext } from "../../trpc";
-import { generateApiKey } from "./generateApiKey";
+import { generateApiKey } from "@/utils/server";
 import type { CreateApiKeyInput } from "./schemas";
 
 type CreateApiKeyProps = {
