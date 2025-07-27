@@ -95,7 +95,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                   <div className="mt-4 flex items-center space-x-3">
                     <div className="relative h-8 w-8">
                       <Image
-                        src={`/logos/clients/${client?.id}.webp`}
+                        src={`/logos/clients/${client?.id}.svg`}
                         alt={client?.name ?? ""}
                         width={32}
                         height={32}
@@ -194,7 +194,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                         <div className="flex items-center space-x-3">
                           <div className="relative h-6 w-6">
                             <Image
-                              src={`/logos/clients/${client.id}.webp`}
+                              src={`/logos/clients/${client.id}.svg`}
                               alt={client.name}
                               width={24}
                               height={24}
