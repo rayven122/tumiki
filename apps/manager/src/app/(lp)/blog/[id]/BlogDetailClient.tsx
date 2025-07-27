@@ -85,10 +85,11 @@ export default function BlogDetailClient({ post }: BlogDetailClientProps) {
             <Image
               src={post.eyecatch.url}
               alt={post.title}
-              width={post.eyecatch.width ?? 1200}
-              height={post.eyecatch.height ?? 630}
+              width={1200}
+              height={630}
+              sizes="100vw"
               className="h-auto w-full"
-              loading="lazy"
+              priority
             />
           </motion.div>
         )}

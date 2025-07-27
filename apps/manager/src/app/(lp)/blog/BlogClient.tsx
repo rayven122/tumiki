@@ -85,8 +85,9 @@ export const BlogClient = ({ posts }: BlogClientProps) => {
                     <Image
                       src={post.eyecatch.url}
                       alt={post.title}
-                      width={post.eyecatch.width ?? 400}
-                      height={post.eyecatch.height ?? 200}
+                      width={400}
+                      height={240}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                       loading="lazy"
                     />
