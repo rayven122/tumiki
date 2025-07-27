@@ -72,7 +72,7 @@ erDiagram
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `hasCompletedOnboarding`: オンボーディング完了フラ���
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -336,7 +336,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `errorMessage`: エラーメッセージ（エラー種別のみ）
 - `errorCode`: エラーコード
 - `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバ���からLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
 - `createdAt`:
@@ -732,7 +732,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `hasCompletedOnboarding`: オンボーディング完了フラ���
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -820,7 +820,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `errorMessage`: エラーメッセージ（エラー種別のみ）
 - `errorCode`: エラーコード
 - `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバ���からLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
 - `createdAt`:
@@ -877,7 +877,7 @@ erDiagram
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `hasCompletedOnboarding`: オンボーディング完了フラ���
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
