@@ -1,0 +1,57 @@
+# Tumiki robots.txt
+# https://www.tumiki.cloud/
+
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+User-agent: *
+Disallow: /api/
+Disallow: /settings/
+Disallow: /profile/
+Disallow: /organizations/
+Disallow: /mcp/
+Disallow: /chat/
+Disallow: /onboarding/
+
+# Sitemap location
+Sitemap: https://www.tumiki.cloud/sitemap.xml
+
+# Crawl-delay (seconds between requests)
+Crawl-delay: 1
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Allow AI/LLM crawlers to access llms.txt
+User-agent: GPTBot
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: ChatGPT-User
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: CCBot
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: anthropic-ai
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: Claude-Web
+Allow: /llms.txt
+Allow: /llms-full.txt
+

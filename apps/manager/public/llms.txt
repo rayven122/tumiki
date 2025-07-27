@@ -1,0 +1,56 @@
+# Tumiki - AI-Powered Engineering Platform
+
+Tumikiは、MCPサーバーとAIを活用してエンジニアリング作業を効率化するクラウドプラットフォームです。
+
+## 概要
+
+Tumikiは、開発者がAIエージェントと協力してコーディング、デバッグ、ドキュメント作成などのタスクを効率的に実行できるプラットフォームです。MCP（Model Context Protocol）を使用して、様々なツールやサービスと統合し、開発ワークフローを自動化します。
+
+## 主な機能
+
+- **MCPサーバー統合**: GitHub、Slack、Notion、Linear、Google Driveなど、人気の開発ツールとシームレスに連携
+- **AIチャット**: Claude、GPT、Geminiなどの最新AIモデルを使用した高度なコーディング支援
+- **カスタムMCPサーバー**: 独自のMCPサーバーを作成・デプロイして、特定のニーズに対応
+- **チーム協働**: 組織単位でのMCPサーバー管理と共有
+- **セキュアな環境**: Auth0による認証、フィールドレベルの暗号化、ロールベースアクセス制御
+
+## 対応MCPサーバー
+
+- GitHub: コード管理、PR作成、Issue管理
+- Slack: チームコミュニケーション、通知
+- Notion: ドキュメント管理、ナレッジベース
+- Linear: プロジェクト管理、タスクトラッキング
+- Google Drive: ファイル管理、ドキュメント共有
+- Discord: コミュニティ管理、チャット
+- Figma: デザイン連携
+
+## 技術スタック
+
+- Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS
+- Backend: tRPC, Prisma, PostgreSQL
+- 認証: Auth0
+- インフラ: Vercel, Neon Database
+- MCPプロキシ: カスタムNode.jsサーバー
+
+## 使用例
+
+1. **コード生成**: AIに自然言語で指示を出して、コードを自動生成
+2. **PR作成**: コード変更を自動的にGitHubにプッシュし、PRを作成
+3. **ドキュメント作成**: コードベースを分析して、自動的にドキュメントを生成
+4. **バグ修正**: エラーログを分析して、修正案を提示
+5. **タスク管理**: LinearやNotionと連携して、タスクの進捗を自動更新
+
+## アクセス
+
+- ウェブサイト: https://www.tumiki.cloud/
+- ブログ: https://www.tumiki.cloud/blog
+- ドキュメント: https://docs.tumiki.cloud/
+
+## お問い合わせ
+
+- サポート: support@tumiki.cloud
+- 営業: sales@tumiki.cloud
+
+---
+
+最終更新日: 2025年1月25日
