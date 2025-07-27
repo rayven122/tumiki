@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { Loader2, AlertTriangle } from "lucide-react";
@@ -27,6 +30,7 @@ export const DeleteServerDialog = ({
   onClose,
 }: DeleteServerDialogProps) => {
   const router = useRouter();
+  const [confirmationName, setConfirmationName] = useState("");
 
   const { mutate: deleteServerInstance, isPending } =
     api.userMcpServerInstance.delete.useMutation({
@@ -40,8 +44,14 @@ export const DeleteServerDialog = ({
     });
 
   const handleDeleteServer = () => {
+    if (confirmationName !== instance.name) {
+      toast.error("サーバー名が一致しません");
+      return;
+    }
     deleteServerInstance({ id: instance.id });
   };
+
+  const isDeleteDisabled = isPending || confirmationName !== instance.name;
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -71,6 +81,23 @@ export const DeleteServerDialog = ({
             </div>
           </div>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="server-name" className="text-sm font-medium">
+            確認のため、削除するサーバー名を入力してください
+          </Label>
+          <Input
+            id="server-name"
+            type="text"
+            placeholder={instance.name}
+            value={confirmationName}
+            onChange={(e) => setConfirmationName(e.target.value)}
+            className="w-full"
+          />
+          <p className="text-xs text-gray-500">
+            削除するには「<span className="font-medium">{instance.name}</span>
+            」と入力してください
+          </p>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
             キャンセル
@@ -78,7 +105,7 @@ export const DeleteServerDialog = ({
           <Button
             variant="destructive"
             onClick={handleDeleteServer}
-            disabled={isPending}
+            disabled={isDeleteDisabled}
           >
             {isPending ? (
               <>

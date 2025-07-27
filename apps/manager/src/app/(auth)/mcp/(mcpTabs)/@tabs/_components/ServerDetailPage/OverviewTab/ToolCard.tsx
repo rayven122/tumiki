@@ -5,40 +5,39 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 // import type { ToolGroupTool } from "@tumiki/db/prisma";
 
 type ToolCardProps = {
-  toolGroupTool: {
-    tool: {
-      id: string;
-      name: string;
-      description: string | null;
-      inputSchema: unknown;
-    };
+  tool: {
+    id: string;
+    name: string;
+    description: string | null;
+    inputSchema: unknown;
+    isEnabled: boolean;
+    userMcpServerConfigId: string;
   };
   isExpanded: boolean;
   onToggleExpansion: (toolId: string) => void;
   isEnabled: boolean;
-  onToggleEnabled: (toolId: string, enabled: boolean) => void;
+  onToggleEnabled: (enabled: boolean) => void;
+  callCount?: number;
 };
 
 export const ToolCard = ({
-  toolGroupTool,
+  tool,
   isExpanded,
   onToggleExpansion,
   isEnabled,
   onToggleEnabled,
+  callCount,
 }: ToolCardProps) => {
   const parseSchema = () => {
-    if (!toolGroupTool.tool.inputSchema) {
+    if (!tool.inputSchema) {
       return null;
     }
 
     try {
       const schema =
-        typeof toolGroupTool.tool.inputSchema === "string"
-          ? (JSON.parse(toolGroupTool.tool.inputSchema) as Record<
-              string,
-              unknown
-            >)
-          : (toolGroupTool.tool.inputSchema as Record<string, unknown>);
+        typeof tool.inputSchema === "string"
+          ? (JSON.parse(tool.inputSchema) as Record<string, unknown>)
+          : (tool.inputSchema as Record<string, unknown>);
 
       const properties = (schema.properties ?? {}) as Record<
         string,
@@ -59,7 +58,7 @@ export const ToolCard = ({
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md">
       <div
         className="cursor-pointer p-4"
-        onClick={() => onToggleExpansion(toolGroupTool.tool.id)}
+        onClick={() => onToggleExpansion(tool.id)}
       >
         <div className="flex items-start justify-between">
           <div className="flex flex-1 items-start space-x-2">
@@ -70,27 +69,28 @@ export const ToolCard = ({
             )}
             <div className="min-w-0 flex-1">
               <h4 className="font-mono text-sm font-semibold text-gray-900">
-                {toolGroupTool.tool.name}
+                {tool.name}
               </h4>
               <p
                 className={`mt-1 text-sm text-gray-600 ${!isExpanded ? "line-clamp-2" : ""}`}
               >
-                {toolGroupTool.tool.description ?? "説明はありません"}
+                {tool.description ?? "説明はありません"}
               </p>
             </div>
           </div>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="ml-2 flex-shrink-0"
+            className="ml-2 flex flex-shrink-0 items-center space-x-2"
           >
+            <span className="text-xs text-gray-500">
+              利用回数: <span className="font-medium">{callCount ?? 0}回</span>
+            </span>
             <Switch
               checked={isEnabled}
-              onCheckedChange={(checked) =>
-                onToggleEnabled(toolGroupTool.tool.id, checked)
-              }
+              onCheckedChange={onToggleEnabled}
               disabled={false}
               className="data-[state=checked]:bg-green-500"
-              aria-label={`${toolGroupTool.tool.name}を${isEnabled ? "無効" : "有効"}にする`}
+              aria-label={`${tool.name}を${isEnabled ? "無効" : "有効"}にする`}
             />
           </div>
         </div>

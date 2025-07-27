@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ServerToolSelector } from "../../custom-servers/_components/dialogs/ServerToolSelector";
 import { api } from "@/trpc/react";
 import type { ToolId, UserMcpServerConfigId } from "@/schema/ids";
@@ -64,6 +65,9 @@ export const EditServerDialog = ({
     });
 
   const [serverName, setServerName] = useState(instance.name);
+  const [serverDescription, setServerDescription] = useState(
+    instance.description ?? "",
+  );
   const [selectedServerIds, setSelectedServerIds] = useState<
     Set<UserMcpServerConfigId>
   >(new Set());
@@ -73,9 +77,57 @@ export const EditServerDialog = ({
 
   // 初期値を設定
   useEffect(() => {
-    // 現在は空の状態で開始し、ユーザーが選択できるようにする
-    setSelectedToolIds(new Map());
-  }, [instance, userMcpServers]);
+    if (!instance.toolGroup?.toolGroupTools || !userMcpServers || isLoading)
+      return;
+
+    // 現在有効なツールを集計
+    const toolMap = new Map<UserMcpServerConfigId, Set<ToolId>>();
+    const serverIdSet = new Set<UserMcpServerConfigId>();
+
+    instance.toolGroup.toolGroupTools.forEach((toolGroupTool) => {
+      const serverId =
+        toolGroupTool.userMcpServerConfigId as UserMcpServerConfigId;
+      const toolId = toolGroupTool.tool.id as ToolId;
+
+      if (!toolMap.has(serverId)) {
+        toolMap.set(serverId, new Set());
+      }
+      toolMap.get(serverId)?.add(toolId);
+    });
+
+    // 全てのツールが選択されているサーバーをselectedServerIdsに追加
+    toolMap.forEach((toolIds, serverId) => {
+      const server = userMcpServers.find((s) => {
+        if (instance.serverType === ServerType.OFFICIAL) {
+          // 公式サーバーの場合は、現在のインスタンスの元となったMCPサーバーのみ対象
+          return (
+            s.id === serverId &&
+            instance.toolGroup?.toolGroupTools?.some((toolGroupTool) =>
+              s.tools.some(
+                (serverTool) => serverTool.id === toolGroupTool.tool.id,
+              ),
+            )
+          );
+        }
+        // カスタムサーバーの場合は全て対象
+        return s.id === serverId;
+      });
+
+      if (server && toolIds.size === server.tools.length) {
+        serverIdSet.add(serverId);
+        toolMap.delete(serverId); // 全選択の場合はtoolMapから削除
+      }
+    });
+
+    setSelectedServerIds(serverIdSet);
+    setSelectedToolIds(toolMap);
+  }, [
+    instance.id,
+    instance.serverType,
+    instance.toolGroup,
+    userMcpServers,
+    isLoading,
+  ]);
 
   const isDisabled =
     !serverName.trim() ||
@@ -104,7 +156,7 @@ export const EditServerDialog = ({
     updateServerInstance({
       toolGroupId: instance.toolGroup.id,
       name: serverName,
-      description: instance.description ?? "",
+      description: serverDescription,
       serverToolIdsMap: serverToolIdsMap,
     });
   };
@@ -128,6 +180,19 @@ export const EditServerDialog = ({
               onChange={(e) => setServerName(e.target.value)}
             />
           </div>
+          {instance.serverType === ServerType.CUSTOM && (
+            <div className="grid gap-2">
+              <Label htmlFor="description">概要</Label>
+              <Textarea
+                id="description"
+                placeholder="サーバーの概要を入力（任意）"
+                value={serverDescription}
+                onChange={(e) => setServerDescription(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+          )}
           <ServerToolSelector
             isLoading={isLoading}
             servers={filteredServers}
