@@ -14,6 +14,13 @@
     "moduleResolution": "NodeNext",
     "outDir": "${configDir}/dist"
   },
+  "types": ["bun-types"],
   "include": ["src", "prisma/generated"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "prisma/generated/fabbrica",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/__tests__/**/*"
+  ]
 }
