@@ -1,6 +1,6 @@
 import type { OAuthProviderConfig } from "./types";
 
-export const googleConfig: OAuthProviderConfig = {
+export const googleConfig = {
   name: "Google",
   icon: "🔍",
   connection: "google-oauth2",
@@ -76,4 +76,4 @@ export const googleConfig: OAuthProviderConfig = {
       category: "その他",
     },
   ],
-};
+} as const satisfies OAuthProviderConfig;

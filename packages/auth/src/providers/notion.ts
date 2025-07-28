@@ -1,6 +1,6 @@
 import type { OAuthProviderConfig } from "./types";
 
-export const notionConfig: OAuthProviderConfig = {
+export const notionConfig = {
   name: "Notion",
   icon: "📝",
   connection: "notion",
@@ -30,4 +30,4 @@ export const notionConfig: OAuthProviderConfig = {
       scopes: ["delete_content"],
     },
   ],
-};
+} as const satisfies OAuthProviderConfig;

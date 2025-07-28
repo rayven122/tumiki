@@ -20,7 +20,6 @@ import {
   Copy,
   RefreshCw,
   Info,
-  Github,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -33,30 +32,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Image from "next/image";
 
 type OAuthProvider = keyof typeof OAUTH_PROVIDER_CONFIG;
 
 const getProviderIcon = (provider: OAuthProvider) => {
-  switch (provider) {
-    case "google":
-      return (
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-red-500 p-2">
-          <span className="text-2xl font-bold text-white">G</span>
-        </div>
-      );
-    case "github":
-      return (
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-900 p-2">
-          <Github className="h-6 w-6 text-white" />
-        </div>
-      );
-    default:
-      return (
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-500 p-2">
-          <span className="text-2xl font-bold text-white">?</span>
-        </div>
-      );
-  }
+  const logoPath = `/logos/${provider}.svg`;
+
+  return (
+    <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-white p-2 shadow-sm">
+      <Image
+        src={logoPath}
+        alt={`${provider} logo`}
+        width={32}
+        height={32}
+        className="h-full w-full object-contain"
+        onError={(e) => {
+          // フォールバック: 画像が読み込めない場合はプロバイダー名の頭文字を表示
+          const target = e.target as HTMLImageElement;
+          target.style.display = "none";
+          const fallback =
+            target.parentElement?.querySelector(".fallback-text");
+          if (fallback) {
+            fallback.classList.remove("hidden");
+          }
+        }}
+      />
+      <span className="fallback-text absolute inset-0 hidden items-center justify-center text-lg font-bold text-gray-600">
+        {provider.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  );
 };
 
 const getProviderDisplayName = (provider: OAuthProvider) => {
@@ -65,6 +71,8 @@ const getProviderDisplayName = (provider: OAuthProvider) => {
       return "Google";
     case "github":
       return "GitHub";
+    case "slack":
+      return "Slack";
     default:
       return provider.charAt(0).toUpperCase() + provider.slice(1);
   }
@@ -148,11 +156,6 @@ export default function OAuthPage() {
     },
   );
 
-  // プロバイダー変更時にスコープをリセット
-  useEffect(() => {
-    setSelectedScopes([]);
-  }, [selectedProvider]);
-
   const handleScopeToggle = (scopeValue: string) => {
     setSelectedScopes((prev) =>
       prev.includes(scopeValue)
@@ -205,11 +208,11 @@ export default function OAuthPage() {
   }
 
   // カテゴリごとにスコープをグループ化
-  const scopesByCategory = providerScopes.reduce<
-    Record<string, typeof providerScopes>
-  >(
+  const scopesByCategory = providerScopes.reduce(
     (acc, scope) => {
-      const category = scope.category ?? "その他";
+      // categoryプロパティが存在するかチェック
+      const category =
+        "category" in scope && scope.category ? scope.category : "その他";
       acc[category] ??= [];
       acc[category].push(scope);
       return acc;
@@ -233,7 +236,21 @@ export default function OAuthPage() {
         </Label>
         <Select
           value={selectedProvider}
-          onValueChange={(value) => setSelectedProvider(value as OAuthProvider)}
+          onValueChange={(value) => {
+            const newProvider = value as OAuthProvider;
+            setSelectedProvider(newProvider);
+            setSelectedScopes([]);
+            setError(null);
+
+            // URLのクエリパラメータを更新
+            const newSearchParams = new URLSearchParams(
+              searchParams.toString(),
+            );
+            newSearchParams.set("provider", newProvider);
+            router.replace(`/oauth?${newSearchParams.toString()}`, {
+              scroll: false,
+            });
+          }}
         >
           <SelectTrigger id="provider-select" className="w-full">
             <SelectValue placeholder="プロバイダーを選択" />
@@ -241,7 +258,20 @@ export default function OAuthPage() {
           <SelectContent>
             {Object.keys(OAUTH_PROVIDER_CONFIG).map((provider) => (
               <SelectItem key={provider} value={provider}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-6 w-6 overflow-hidden rounded bg-white shadow-sm">
+                    <Image
+                      src={`/logos/${provider}.svg`}
+                      alt={`${provider} logo`}
+                      width={24}
+                      height={24}
+                      className="h-full w-full object-contain p-0.5"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                      }}
+                    />
+                  </div>
                   <span>
                     {getProviderDisplayName(provider as OAuthProvider)}
                   </span>

@@ -1,9 +1,9 @@
 import type { OAuthProviderConfig } from "./types";
 
-export const slackConfig: OAuthProviderConfig = {
+export const slackConfig = {
   name: "Slack",
   icon: "💬",
-  connection: "slack",
+  connection: "sign-in-with-slack",
   availableScopes: [
     {
       id: "channels-read",
@@ -108,4 +108,4 @@ export const slackConfig: OAuthProviderConfig = {
       scopes: ["files:write"],
     },
   ],
-};
+} as const satisfies OAuthProviderConfig;

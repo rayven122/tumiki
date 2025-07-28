@@ -35,6 +35,7 @@ export const getUserIdentityProviderTokens = async (
       fields: "identities",
       include_fields: true,
     });
+    console.log("User identities:", user.data.identities);
 
     // プロバイダーのconnection名を取得
     const connectionName = PROVIDER_CONNECTIONS[provider];
@@ -43,6 +44,8 @@ export const getUserIdentityProviderTokens = async (
     const providerIdentity = user.data.identities?.find(
       (identity) => identity.connection === connectionName,
     );
+
+    console.log("Provider identity:", providerIdentity);
 
     return providerIdentity?.access_token || null;
   } catch (error) {
