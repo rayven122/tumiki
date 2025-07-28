@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { OAuthError, OAuthErrorCode } from "@tumiki/auth";
-import { getProviderAccessToken } from "@tumiki/auth/server";
-import type { OAuthProvider } from "@tumiki/auth/types";
+import {
+  getProviderAccessToken,
+  type OAuthProvider,
+} from "@tumiki/auth/server";
 
 /**
  * ユーザーのOAuthアクセストークンを取得（汎用版）
