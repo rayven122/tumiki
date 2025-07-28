@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import type { OAuthProvider } from "./providers/index.js";
-import { auth0, managementClient } from "./clients.js";
+import { auth0OAuth, managementClient } from "./clients.js";
 import { createOAuthError, OAuthError, OAuthErrorCode } from "./errors.js";
 import { PROVIDER_CONNECTIONS } from "./providers/index.js";
 
@@ -63,8 +63,8 @@ export const getProviderAccessToken = async (
   try {
     // Auth0からセッションを取得
     const session = request
-      ? await auth0.getSession(request)
-      : await auth0.getSession();
+      ? await auth0OAuth.getSession(request)
+      : await auth0OAuth.getSession();
 
     if (!session?.user?.sub) {
       throw createOAuthError(OAuthErrorCode.UNAUTHORIZED, provider);
@@ -99,7 +99,7 @@ export const startOAuthFlow = async (
 ): Promise<string> => {
   const { provider, scopes } = config;
 
-  // Auth0の標準ログインエンドポイントを使用
+  // OAuth専用のログインエンドポイントを使用
   const params = new URLSearchParams({
     returnTo,
     connection: PROVIDER_CONNECTIONS[provider],
@@ -108,7 +108,7 @@ export const startOAuthFlow = async (
     prompt: "consent",
   });
 
-  return `/auth/login?${params.toString()}`;
+  return `/oauth/auth/login?${params.toString()}`;
 };
 
 /**

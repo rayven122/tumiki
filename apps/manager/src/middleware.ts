@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { URL_HEADER_KEY } from "./constants/url";
-import { auth0 } from "@tumiki/auth/server";
+import { auth0, auth0OAuth } from "@tumiki/auth/server";
 
 // 認証不要のパス定数
 const PUBLIC_PATHS = [
@@ -16,6 +16,16 @@ const PUBLIC_PATHS = [
 export async function middleware(request: NextRequest) {
   request.headers.set(URL_HEADER_KEY, request.url);
   const pathname = request.nextUrl.pathname;
+
+  // OAuth専用パスの判定
+  const isOAuthPath =
+    pathname === "/oauth" || // OAuth設定ページ
+    pathname.startsWith("/oauth/"); // OAuth認証エンドポイント（例: /oauth/auth/login, /oauth/auth/callback）
+
+  // OAuth専用パスの場合はOAuth専用クライアントを使用
+  if (isOAuthPath) {
+    return auth0OAuth.middleware(request);
+  }
 
   // 認証不要のパス判定
   const isPublicPath =
