@@ -1,14 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { OAuthError, OAuthErrorCode } from "@tumiki/auth";
 import { getProviderAccessToken } from "@tumiki/auth/server";
+import type { OAuthProvider } from "@tumiki/auth/types";
 
 /**
- * ユーザーのGoogle OAuthアクセストークンを取得
+ * ユーザーのOAuthアクセストークンを取得（汎用版）
  */
-export const getGoogleAccessToken = async () => {
+export const getAccessToken = async (provider: OAuthProvider) => {
   try {
-    // getProviderAccessTokenを使用してGoogleのアクセストークンを取得
-    const accessToken = await getProviderAccessToken("google");
+    // getProviderAccessTokenを使用してアクセストークンを取得
+    const accessToken = await getProviderAccessToken(provider);
 
     return {
       accessToken,
@@ -21,9 +22,11 @@ export const getGoogleAccessToken = async () => {
         error.code === OAuthErrorCode.NO_ACCESS_TOKEN
       ) {
         // アクセストークンが見つからない場合
+        const providerName =
+          provider.charAt(0).toUpperCase() + provider.slice(1);
         return {
           accessToken: null,
-          message: "Google認証が必要です。再度ログインしてください。",
+          message: `${providerName}認証が必要です。再度ログインしてください。`,
           needsReauth: true,
         };
       }

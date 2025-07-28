@@ -13,8 +13,9 @@
 ```
 
 - ユーザーがプロバイダーを選択してOAuth認証を開始
-- Auth0経由で各プロバイダーの認証画面へリダイレクト
-- 認証成功後、Auth0がアクセストークンを管理
+- `/oauth/auth/login` エンドポイント経由でAuth0の認証画面へリダイレクト
+- 認証成功後、`/oauth/auth/callback` へコールバック
+- Auth0がアクセストークンを管理
 - ProxyServerがMCPサーバーへのリクエスト時に自動的にトークンを注入
 
 ### 2. データベース構造
@@ -52,7 +53,20 @@ enum AuthType {
 
 ### 1. Auth0パッケージ（`@tumiki/auth`）
 
-`packages/auth/src/oauth.ts`で以下の機能を提供：
+#### クライアント設定（`packages/auth/src/clients.ts`）
+
+2つのAuth0クライアントを使用：
+- `auth0`: メイン認証用
+- `auth0OAuth`: OAuth専用（ルート設定付き）
+  ```typescript
+  routes: {
+    login: "/oauth/auth/login",
+    callback: "/oauth/auth/callback",
+    logout: "/oauth/auth/logout",
+  }
+  ```
+
+#### OAuth関数（`packages/auth/src/oauth.ts`）
 
 - `getProviderAccessToken()`: プロバイダー別のアクセストークンを取得
 - `startOAuthFlow()`: OAuth認証フローを開始
@@ -126,8 +140,13 @@ enum AuthType {
 ### OAuth接続に失敗する場合
 
 1. Auth0の設定を確認
+   - OAuth専用アプリケーションのAllowed Callback URLsに`/oauth/auth/callback`が含まれているか
+   - Social ConnectionがOAuth専用アプリケーションで有効化されているか
 2. プロバイダー側のアプリ設定を確認
 3. 必要なスコープが正しく設定されているか確認
+4. 環境変数の設定を確認
+   - `AUTH0_OAUTH_CLIENT_ID`
+   - `AUTH0_OAUTH_CLIENT_SECRET`
 
 ### トークンが期限切れの場合
 
