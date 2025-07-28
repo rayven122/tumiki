@@ -1,6 +1,6 @@
 import type { OAuthProviderConfig } from "./types";
 
-export const githubConfig: OAuthProviderConfig = {
+export const githubConfig = {
   name: "GitHub",
   icon: "🐙",
   connection: "github",
@@ -90,4 +90,4 @@ export const githubConfig: OAuthProviderConfig = {
       scopes: ["write:org"],
     },
   ],
-};
+} as const satisfies OAuthProviderConfig;

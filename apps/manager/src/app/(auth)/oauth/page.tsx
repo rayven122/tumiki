@@ -25,43 +25,110 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Image from "next/image";
 
-// Google用のスコープ設定
-const GOOGLE_SCOPES = OAUTH_PROVIDER_CONFIG.google.availableScopes.map(
-  (scope) => ({
-    ...scope,
-    value: scope.scopes.join(" "),
-  }),
-);
+type OAuthProvider = keyof typeof OAUTH_PROVIDER_CONFIG;
 
-export default function GoogleOAuthPage() {
+const getProviderIcon = (provider: OAuthProvider) => {
+  const logoPath = `/logos/${provider}.svg`;
+
+  return (
+    <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-white p-2 shadow-sm">
+      <Image
+        src={logoPath}
+        alt={`${provider} logo`}
+        width={32}
+        height={32}
+        className="h-full w-full object-contain"
+        onError={(e) => {
+          // フォールバック: 画像が読み込めない場合はプロバイダー名の頭文字を表示
+          const target = e.target as HTMLImageElement;
+          target.style.display = "none";
+          const fallback =
+            target.parentElement?.querySelector(".fallback-text");
+          if (fallback) {
+            fallback.classList.remove("hidden");
+          }
+        }}
+      />
+      <span className="fallback-text absolute inset-0 hidden items-center justify-center text-lg font-bold text-gray-600">
+        {provider.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  );
+};
+
+const getProviderDisplayName = (provider: OAuthProvider) => {
+  switch (provider) {
+    case "google":
+      return "Google";
+    case "github":
+      return "GitHub";
+    case "slack":
+      return "Slack";
+    default:
+      return provider.charAt(0).toUpperCase() + provider.slice(1);
+  }
+};
+
+export default function OAuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [selectedProvider, setSelectedProvider] =
+    useState<OAuthProvider>("google");
   const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState(false);
   const [tokenRefreshed, setTokenRefreshed] = useState(false);
 
-  // URLパラメータから接続成功を確認
+  // URLパラメータから接続成功とプロバイダーを確認
   const isJustConnected = searchParams.get("connected") === "true";
+  const providerFromUrl = searchParams.get("provider") as OAuthProvider | null;
+
+  // URLパラメータからプロバイダーが指定されている場合は設定
+  useEffect(() => {
+    if (providerFromUrl && OAUTH_PROVIDER_CONFIG[providerFromUrl]) {
+      setSelectedProvider(providerFromUrl);
+    }
+  }, [providerFromUrl]);
+
+  // プロバイダー用のスコープ設定
+  const providerScopes =
+    OAUTH_PROVIDER_CONFIG[selectedProvider]?.availableScopes.map((scope) => ({
+      ...scope,
+      value: scope.scopes.join(" "),
+    })) || [];
 
   // OAuth接続状態を確認
   const {
     data: connectionStatus,
     isLoading: isCheckingStatus,
     error: connectionError,
-  } = api.oauth.getConnectionStatus.useQuery({ provider: "google" });
+  } = api.oauth.getConnectionStatus.useQuery({ provider: selectedProvider });
 
   // 接続状態の変更を監視
   useEffect(() => {
     if (connectionStatus !== undefined) {
-      console.log("🎯 Connection status check result:", connectionStatus);
+      console.log(
+        `🎯 ${selectedProvider} connection status:`,
+        connectionStatus,
+      );
     }
     if (connectionError) {
-      console.error("❌ Connection status check error:", connectionError);
+      console.error(
+        `❌ ${selectedProvider} connection error:`,
+        connectionError,
+      );
     }
-  }, [connectionStatus, connectionError]);
+  }, [connectionStatus, connectionError, selectedProvider]);
 
   // OAuth認証開始
   const startOAuthMutation = api.oauth.startOAuthConnection.useMutation({
@@ -76,15 +143,18 @@ export default function GoogleOAuthPage() {
     },
   });
 
-  // Googleアクセストークン取得
+  // アクセストークン取得
   const {
     data: tokenData,
     refetch: refetchToken,
     isLoading: isLoadingToken,
-  } = api.oauth.getGoogleAccessToken.useQuery(undefined, {
-    enabled: connectionStatus?.isConnected === true,
-    refetchOnWindowFocus: false,
-  });
+  } = api.oauth.getProviderAccessToken.useQuery(
+    { provider: selectedProvider },
+    {
+      enabled: connectionStatus?.isConnected === true,
+      refetchOnWindowFocus: false,
+    },
+  );
 
   const handleScopeToggle = (scopeValue: string) => {
     setSelectedScopes((prev) =>
@@ -95,10 +165,10 @@ export default function GoogleOAuthPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedScopes.length === GOOGLE_SCOPES.length) {
+    if (selectedScopes.length === providerScopes.length) {
       setSelectedScopes([]);
     } else {
-      setSelectedScopes(GOOGLE_SCOPES.map((scope) => scope.value));
+      setSelectedScopes(providerScopes.map((scope) => scope.value));
     }
   };
 
@@ -107,9 +177,9 @@ export default function GoogleOAuthPage() {
     setError(null);
 
     startOAuthMutation.mutate({
-      provider: "google",
+      provider: selectedProvider,
       scopes: selectedScopes,
-      returnTo: "/google-oauth?connected=true",
+      returnTo: `/oauth?connected=true&provider=${selectedProvider}`,
     });
   };
 
@@ -138,25 +208,78 @@ export default function GoogleOAuthPage() {
   }
 
   // カテゴリごとにスコープをグループ化
-  const scopesByCategory = GOOGLE_SCOPES.reduce<
-    Record<string, typeof GOOGLE_SCOPES>
-  >(
+  const scopesByCategory = providerScopes.reduce(
     (acc, scope) => {
-      const category = scope.category ?? "その他";
+      // categoryプロパティが存在するかチェック
+      const category =
+        "category" in scope && scope.category ? scope.category : "その他";
       acc[category] ??= [];
       acc[category].push(scope);
       return acc;
     },
-    {} as Record<string, typeof GOOGLE_SCOPES>,
+    {} as Record<string, typeof providerScopes>,
   );
 
   return (
     <div className="container mx-auto max-w-4xl p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Google OAuth認証</h1>
+        <h1 className="text-3xl font-bold">OAuth認証</h1>
         <p className="text-muted-foreground mt-2">
-          Google APIへのアクセス権限を設定し、アクセストークンを取得します
+          各種サービスのAPIへのアクセス権限を設定し、アクセストークンを取得します
         </p>
+      </div>
+
+      {/* プロバイダー選択 */}
+      <div className="mb-6">
+        <Label htmlFor="provider-select" className="mb-2 block">
+          プロバイダーを選択
+        </Label>
+        <Select
+          value={selectedProvider}
+          onValueChange={(value) => {
+            const newProvider = value as OAuthProvider;
+            setSelectedProvider(newProvider);
+            setSelectedScopes([]);
+            setError(null);
+
+            // URLのクエリパラメータを更新
+            const newSearchParams = new URLSearchParams(
+              searchParams.toString(),
+            );
+            newSearchParams.set("provider", newProvider);
+            router.replace(`/oauth?${newSearchParams.toString()}`, {
+              scroll: false,
+            });
+          }}
+        >
+          <SelectTrigger id="provider-select" className="w-full">
+            <SelectValue placeholder="プロバイダーを選択" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(OAUTH_PROVIDER_CONFIG).map((provider) => (
+              <SelectItem key={provider} value={provider}>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-6 w-6 overflow-hidden rounded bg-white shadow-sm">
+                    <Image
+                      src={`/logos/${provider}.svg`}
+                      alt={`${provider} logo`}
+                      width={24}
+                      height={24}
+                      className="h-full w-full object-contain p-0.5"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                      }}
+                    />
+                  </div>
+                  <span>
+                    {getProviderDisplayName(provider as OAuthProvider)}
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* 接続成功メッセージ */}
@@ -165,7 +288,8 @@ export default function GoogleOAuthPage() {
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">接続成功</AlertTitle>
           <AlertDescription className="text-green-700">
-            Googleアカウントとの接続が完了しました。
+            {getProviderDisplayName(selectedProvider)}
+            アカウントとの接続が完了しました。
           </AlertDescription>
         </Alert>
       )}
@@ -174,11 +298,11 @@ export default function GoogleOAuthPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-red-500 p-2">
-                <span className="text-2xl font-bold text-white">G</span>
-              </div>
+              {getProviderIcon(selectedProvider)}
               <div>
-                <CardTitle>Google アカウント連携</CardTitle>
+                <CardTitle>
+                  {getProviderDisplayName(selectedProvider)} アカウント連携
+                </CardTitle>
                 <CardDescription>APIアクセスのための認証設定</CardDescription>
               </div>
             </div>
@@ -205,14 +329,17 @@ export default function GoogleOAuthPage() {
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     {tokenData.message ??
-                      "Google認証が必要です。再度ログインしてください。"}
+                      `${getProviderDisplayName(selectedProvider)}認証が必要です。再度ログインしてください。`}
                   </AlertDescription>
                 </Alert>
               ) : tokenData?.accessToken ? (
                 <>
                   <div className="bg-muted/50 rounded-lg border p-4">
                     <div className="mb-3 flex items-center justify-between">
-                      <h3 className="font-medium">Googleアクセストークン</h3>
+                      <h3 className="font-medium">
+                        {getProviderDisplayName(selectedProvider)}
+                        アクセストークン
+                      </h3>
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
@@ -255,30 +382,12 @@ export default function GoogleOAuthPage() {
                     </code>
                   </div>
 
-                  {/* {tokenData.scope && typeof tokenData.scope === "string" && (
-                    <div className="rounded-lg border p-4">
-                      <h4 className="mb-2 text-sm font-medium">
-                        許可されたスコープ
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {tokenData.scope.split(" ").map((scope: string) => (
-                          <Badge
-                            key={scope}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {scope}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )} */}
-
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      このトークンを使用してGoogle APIにアクセスできます。
-                      トークンは安全に管理してください。
+                      このトークンを使用して
+                      {getProviderDisplayName(selectedProvider)}{" "}
+                      APIにアクセスできます。 トークンは安全に管理してください。
                     </AlertDescription>
                   </Alert>
                 </>
@@ -301,13 +410,13 @@ export default function GoogleOAuthPage() {
           )}
 
           {/* スコープ選択 */}
-          {!connectionStatus?.isConnected && (
+          {providerScopes.length > 0 && (
             <>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">アクセス権限を選択</h3>
                   <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                    {selectedScopes.length === GOOGLE_SCOPES.length
+                    {selectedScopes.length === providerScopes.length
                       ? "すべて解除"
                       : "すべて選択"}
                   </Button>
@@ -369,7 +478,7 @@ export default function GoogleOAuthPage() {
                   ) : (
                     <>
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Googleアカウントと接続
+                      {getProviderDisplayName(selectedProvider)}アカウントと接続
                     </>
                   )}
                 </Button>
@@ -389,8 +498,8 @@ export default function GoogleOAuthPage() {
         <Button variant="ghost" onClick={() => router.push("/mcp")}>
           MCPサーバー一覧
         </Button>
-        <Button variant="ghost" onClick={() => router.push("/oauth")}>
-          他のOAuth設定
+        <Button variant="ghost" onClick={() => router.push("/settings")}>
+          設定
         </Button>
       </div>
     </div>

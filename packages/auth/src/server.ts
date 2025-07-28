@@ -7,7 +7,7 @@ import { auth0 } from "./clients.js";
 export * from "./oauth.js";
 export * from "./providers/index.js";
 export * from "./providers/validation.js";
-export { auth0, managementClient } from "./clients.js";
+export { auth0, auth0OAuth, managementClient } from "./clients.js";
 
 const auth = cache(() => auth0.getSession());
 
