@@ -3,7 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { OauthProviderSchema } from "@tumiki/auth/server";
 import { startOAuthConnection } from "./startOAuthConnection";
 import { getConnectionStatus } from "./getConnectionStatus";
-import { getGoogleAccessToken } from "./getGoogleAccessToken";
+import { getAccessToken } from "./getProviderAccessToken";
 
 export const StartOAuthConnectionInput = z.object({
   provider: OauthProviderSchema,
@@ -20,9 +20,11 @@ export const oauthRouter = createTRPCRouter({
     .input(StartOAuthConnectionInput)
     .mutation(startOAuthConnection),
 
-  getGoogleAccessToken: protectedProcedure
-    .input(z.object({}).optional())
-    .query(getGoogleAccessToken),
+  getProviderAccessToken: protectedProcedure
+    .input(z.object({ provider: OauthProviderSchema }))
+    .query(async ({ input }) => {
+      return getAccessToken(input.provider);
+    }),
 
   getConnectionStatus: protectedProcedure
     .input(GetConnectionStatusInput)
