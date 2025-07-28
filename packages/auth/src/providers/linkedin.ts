@@ -1,6 +1,6 @@
 import type { OAuthProviderConfig } from "./types";
 
-export const linkedinConfig: OAuthProviderConfig = {
+export const linkedinConfig = {
   name: "LinkedIn",
   icon: "💼",
   connection: "linkedin",
@@ -24,4 +24,4 @@ export const linkedinConfig: OAuthProviderConfig = {
       scopes: ["w_member_social"],
     },
   ],
-};
+} as const satisfies OAuthProviderConfig;
