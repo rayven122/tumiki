@@ -72,7 +72,7 @@ erDiagram
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `hasCompletedOnboarding`: オンボーディング完了フラ���
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -732,7 +732,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `hasCompletedOnboarding`: オンボーディング完了フラ���
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -877,7 +877,7 @@ erDiagram
 - `email`: メールアドレス
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `hasCompletedOnboarding`: オンボーディング完了フラ���
+- `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
 
