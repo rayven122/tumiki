@@ -45,7 +45,7 @@ export const UserMcpServerConfigModal = ({
   const router = useRouter();
   const [isValidating, setIsValidating] = useState(false);
 
-  const { mutate: validateServer } =
+  const { mutate: checkServerConnection } =
     api.userMcpServerInstance.checkServerConnection.useMutation({
       onSuccess: async (result) => {
         if (result.success) {
@@ -71,7 +71,7 @@ export const UserMcpServerConfigModal = ({
           // APIキーの場合のみ検証を実行
           setIsValidating(true);
           toast.info("接続を検証しています...");
-          validateServer({
+          checkServerConnection({
             serverInstanceId: data.id,
             updateStatus: true,
           });
