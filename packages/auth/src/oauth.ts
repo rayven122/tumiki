@@ -35,7 +35,6 @@ export const getUserIdentityProviderTokens = async (
       fields: "identities",
       include_fields: true,
     });
-    console.log("User identities:", user.data.identities);
 
     // プロバイダーのconnection名を取得
     const connectionName = PROVIDER_CONNECTIONS[provider];
@@ -44,8 +43,6 @@ export const getUserIdentityProviderTokens = async (
     const providerIdentity = user.data.identities?.find(
       (identity) => identity.connection === connectionName,
     );
-
-    console.log("Provider identity:", providerIdentity);
 
     return providerIdentity?.access_token || null;
   } catch (error) {
@@ -107,8 +104,6 @@ export const startOAuthFlow = async (
     returnTo,
     connection: PROVIDER_CONNECTIONS[provider],
     scope: `openid profile email ${scopes.join(" ")}`,
-    // OAuth同意画面を強制的に表示
-    prompt: "consent",
   });
 
   return `/oauth/auth/login?${params.toString()}`;
