@@ -115,6 +115,8 @@ enum ServerStatus {
   STOPPED
   /// サーバーがエラーが発生している
   ERROR
+  /// サーバーの接続検証中
+  PENDING
 }
 
 /// サーバーの種類

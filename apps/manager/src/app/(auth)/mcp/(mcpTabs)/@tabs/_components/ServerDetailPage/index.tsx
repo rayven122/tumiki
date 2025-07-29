@@ -216,6 +216,8 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
         return <XCircle className="h-4 w-4 text-gray-500" />;
       case ServerStatus.ERROR:
         return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case ServerStatus.PENDING:
+        return <AlertCircle className="h-4 w-4 text-blue-500" />;
       default:
         return <AlertCircle className="h-4 w-4 text-gray-500" />;
     }
@@ -226,12 +228,14 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
       [ServerStatus.RUNNING]: "default",
       [ServerStatus.STOPPED]: "secondary",
       [ServerStatus.ERROR]: "destructive",
+      [ServerStatus.PENDING]: "secondary",
     } as const;
 
     const labels = {
       [ServerStatus.RUNNING]: "実行中",
       [ServerStatus.STOPPED]: "停止中",
       [ServerStatus.ERROR]: "エラー",
+      [ServerStatus.PENDING]: "検証中",
     };
 
     return (
