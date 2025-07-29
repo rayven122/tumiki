@@ -4,6 +4,7 @@ import { OauthProviderSchema } from "@tumiki/auth/server";
 import { startOAuthConnection } from "./startOAuthConnection";
 import { getConnectionStatus } from "./getConnectionStatus";
 import { getAccessToken } from "./getProviderAccessToken";
+import { saveTokenToEnvVars } from "./saveTokenToEnvVars";
 
 export const StartOAuthConnectionInput = z.object({
   provider: OauthProviderSchema,
@@ -13,6 +14,13 @@ export const StartOAuthConnectionInput = z.object({
 
 export const GetConnectionStatusInput = z.object({
   provider: OauthProviderSchema,
+});
+
+export const SaveTokenToEnvVarsInput = z.object({
+  userMcpServerConfigId: z.string(),
+  provider: OauthProviderSchema,
+  tokenKey: z.string(),
+  scopes: z.array(z.string()).optional(),
 });
 
 export const oauthRouter = createTRPCRouter({
@@ -29,4 +37,8 @@ export const oauthRouter = createTRPCRouter({
   getConnectionStatus: protectedProcedure
     .input(GetConnectionStatusInput)
     .query(getConnectionStatus),
+
+  saveTokenToEnvVars: protectedProcedure
+    .input(SaveTokenToEnvVarsInput)
+    .mutation(saveTokenToEnvVars),
 });
