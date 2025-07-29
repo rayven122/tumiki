@@ -69,7 +69,7 @@ export const UserMcpServerCard = ({
     });
 
   const { mutate: scanServer, isPending: isScanning } =
-    api.userMcpServerInstance.scanServer.useMutation({
+    api.userMcpServerInstance.checkServerConnection.useMutation({
       onSuccess: async (result) => {
         if (result.success) {
           toast.success(`接続が正常です（ツール数: ${result.toolCount}）`);
@@ -86,6 +86,7 @@ export const UserMcpServerCard = ({
   const handleScan = () => {
     scanServer({
       serverInstanceId: serverInstance.id,
+      updateStatus: false,
     });
   };
 
