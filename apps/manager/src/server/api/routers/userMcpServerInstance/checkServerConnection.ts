@@ -4,6 +4,7 @@ import type { CheckServerConnectionInput } from ".";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import { getMcpServerToolsSSE } from "@tumiki/utils/server";
+import { makeSseProxyServerUrl } from "@/utils/url";
 
 type CheckServerConnectionInput = {
   ctx: ProtectedContext;
@@ -58,8 +59,6 @@ export const checkServerConnection = async ({
   }
 
   const apiKey = serverInstance.apiKeys[0]!.apiKey;
-  const proxyServerUrl =
-    process.env.PROXY_SERVER_URL ?? "http://localhost:8080";
 
   let success = false;
   let tools: unknown[] = [];
@@ -70,10 +69,9 @@ export const checkServerConnection = async ({
     tools = await getMcpServerToolsSSE(
       {
         name: "validation",
-        url: proxyServerUrl,
+        url: makeSseProxyServerUrl(apiKey),
       },
       {
-        "api-key": apiKey,
         "x-validation-mode": "true",
       },
     );
