@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
-import { ExternalLink, Loader2, Server } from "lucide-react";
+import { Loader2, Server, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +15,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-toastify";
 import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ApiTokenModalProps = {
   onOpenChange: (open: boolean) => void;
@@ -40,6 +43,7 @@ export const UserMcpServerConfigModal = ({
 }: ApiTokenModalProps) => {
   const utils = api.useUtils();
   const router = useRouter();
+  const [isValidating, setIsValidating] = useState(false);
 
   const { mutate: validateServer } =
     api.userMcpServerInstance.checkServerConnection.useMutation({
@@ -52,22 +56,42 @@ export const UserMcpServerConfigModal = ({
         } else {
           toast.error(result.error ?? "接続検証に失敗しました");
         }
+        setIsValidating(false);
       },
       onError: (error) => {
         toast.error(error.message);
+        setIsValidating(false);
       },
     });
 
   const { mutate: addOfficialServer, isPending } =
     api.userMcpServerInstance.addOfficialServer.useMutation({
       onSuccess: async (data) => {
-        // 検証を実行
-        toast.info("接続を検証しています...");
-        validateServer({
-          serverInstanceId: data.id,
-          updateStatus: true,
-        });
+        if (!isGitHubMcp || authMethod !== "oauth") {
+          // APIキーの場合のみ検証を実行
+          setIsValidating(true);
+          toast.info("接続を検証しています...");
+          validateServer({
+            serverInstanceId: data.id,
+            updateStatus: true,
+          });
+        } else {
+          // OAuth認証の場合は別のフローで処理される
+          toast.success(
+            `${mcpServer.name}のAPIトークンが正常に保存されました。`,
+          );
+          await utils.userMcpServerInstance.invalidate();
+          onOpenChange(false);
+        }
       },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
+  // OAuth認証専用のミューテーション（onSuccessコールバックなし）
+  const { mutateAsync: addOfficialServerForOAuth } =
+    api.userMcpServerInstance.addOfficialServer.useMutation({
       onError: (error) => {
         toast.error(error.message);
       },
@@ -84,6 +108,18 @@ export const UserMcpServerConfigModal = ({
       },
     });
 
+  // OAuth認証フロー開始
+  const { mutate: startOAuthConnection } =
+    api.oauth.startOAuthConnection.useMutation({
+      onSuccess: (data) => {
+        // OAuth認証画面へリダイレクト
+        window.location.href = data.loginUrl;
+      },
+      onError: (error) => {
+        toast.error(`OAuth認証の開始に失敗しました: ${error.message}`);
+      },
+    });
+
   // 各環境変数に対応するトークンを保持するステート
   const [envVars, setTokens] = useState<Record<string, string>>(() => {
     // 初期値として既存のトークンがある場合はそれを使用し、ない場合は空文字列を設定
@@ -91,6 +127,21 @@ export const UserMcpServerConfigModal = ({
       return { ...acc, [envVar]: initialEnvVars?.[envVar] ?? "" };
     }, {});
   });
+
+  // 認証方法の選択状態
+  const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
+
+  // 選択されたスコープ
+  const [selectedScopes, setSelectedScopes] = useState<string[]>([
+    "repo",
+    "read:user",
+  ]);
+
+  // OAuth認証処理中のフラグ
+  const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
+
+  // GitHubのスコープ設定を取得
+  const githubScopes = OAUTH_PROVIDER_CONFIG.github.availableScopes;
 
   // 特定の環境変数のトークン値を更新する関数
   const handleTokenChange = (envVar: string, value: string) => {
@@ -107,10 +158,16 @@ export const UserMcpServerConfigModal = ({
 
   // トークンを保存する関数
   const handleSave = () => {
-    addOfficialServer({
-      mcpServerId: mcpServer.id,
-      envVars,
-    });
+    if (isGitHubMcp && authMethod === "oauth") {
+      // OAuthの場合は認証フローを開始のみ
+      void handleOAuthConnect(selectedScopes);
+    } else {
+      // APIキーの場合は既存の処理
+      addOfficialServer({
+        mcpServerId: mcpServer.id,
+        envVars,
+      });
+    }
   };
 
   const handleUpdate = () => {
@@ -118,15 +175,99 @@ export const UserMcpServerConfigModal = ({
       toast.error("ユーザーのMCPサーバーが見つかりません");
       return;
     }
-    updateServerConfig({
-      id: userMcpServerId,
-      envVars,
-    });
+
+    if (isGitHubMcp && authMethod === "oauth") {
+      // OAuth認証の場合は認証フローを開始
+      void handleOAuthConnect(selectedScopes);
+    } else {
+      // APIキーの場合は既存の処理
+      updateServerConfig({
+        id: userMcpServerId,
+        envVars,
+      });
+    }
   };
 
+  // GitHubのOAuth認証を開始
+  const handleOAuthConnect = useCallback(
+    async (scopes?: string[]) => {
+      // 既に処理中の場合は何もしない
+      if (isOAuthConnecting) {
+        console.log("OAuth認証処理中のため、重複実行をスキップ");
+        return;
+      }
+
+      setIsOAuthConnecting(true);
+      const scopesToUse = scopes ?? ["repo", "read:user"];
+
+      try {
+        let configId: string;
+
+        if (mode === "create") {
+          // OAuth認証の場合、PENDINGステータスで作成
+          const result = await addOfficialServerForOAuth({
+            mcpServerId: mcpServer.id,
+            envVars: {},
+            isPending: true, // PENDINGフラグを追加
+          });
+
+          configId = result.userMcpServerConfigId;
+        } else {
+          // 編集モードのOAuth認証は未実装
+          throw new Error("編集モードのOAuth認証は現在サポートされていません");
+        }
+
+        // OAuth認証を開始
+        const scopesParam = scopesToUse.join(",");
+        const returnUrl = `/mcp/servers?oauth_callback=github&configId=${configId}&scopes=${scopesParam}`;
+
+        startOAuthConnection({
+          provider: "github",
+          scopes: scopesToUse,
+          returnTo: returnUrl,
+        });
+      } catch (error) {
+        console.error("OAuth認証の開始に失敗:", error);
+        toast.error("設定の作成に失敗しました");
+        setIsOAuthConnecting(false); // エラー時にフラグをリセット
+      }
+    },
+    [
+      isOAuthConnecting,
+      mode,
+      mcpServer.id,
+      addOfficialServerForOAuth,
+      startOAuthConnection,
+      onOpenChange,
+    ],
+  );
+
+  // GitHub MCPかどうかをチェック
+  const isGitHubMcp = mcpServer.name === "GitHub MCP";
+
+  const isProcessing =
+    isPending || isUpdating || isValidating || isOAuthConnecting;
+
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md md:max-w-lg">
+    <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
+      <DialogContent className="relative sm:max-w-md md:max-w-lg">
+        {/* ローディングオーバーレイ */}
+        {isProcessing && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center space-y-2">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {isPending
+                  ? "サーバーを追加中..."
+                  : isValidating
+                    ? "接続を検証中..."
+                    : isOAuthConnecting
+                      ? "OAuth接続中..."
+                      : "更新中..."}
+              </span>
+            </div>
+          </div>
+        )}
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             APIトークンの{mode === "create" ? "設定" : "編集"}
@@ -169,114 +310,168 @@ export const UserMcpServerConfigModal = ({
           </div>
         </div>
 
-        {/* APIトークン取得手順 */}
-        <Card className="mb-4 border">
-          <CardContent className="p-4">
-            <h3 className="mb-3 font-medium">APIトークンの取得方法</h3>
+        {/* GitHub MCPの場合はタブで認証方法を選択 */}
+        {isGitHubMcp ? (
+          <Tabs
+            value={authMethod}
+            onValueChange={(v) => setAuthMethod(v as "apikey" | "oauth")}
+            className="space-y-4"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="oauth">OAuth認証</TabsTrigger>
+              <TabsTrigger value="apikey">APIキー</TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex">
-                <div className="bg-primary text-primary-foreground mr-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs">
-                  1
+            <TabsContent value="apikey" className="space-y-4">
+              {/* 既存のAPIキー入力フィールド */}
+              {mcpServer.envVars.map((envVar, index) => (
+                <div key={envVar} className="space-y-2">
+                  <Label htmlFor={`token-${envVar}`} className="text-sm">
+                    {envVar}
+                  </Label>
+                  <Input
+                    id={`token-${envVar}`}
+                    type="password"
+                    placeholder={`${envVar}を入力してください`}
+                    value={envVars[envVar]}
+                    onChange={(e) => handleTokenChange(envVar, e.target.value)}
+                    className="text-sm"
+                    disabled={isProcessing}
+                  />
+                  {index === mcpServer.envVars.length - 1 && (
+                    <p className="text-muted-foreground text-xs">
+                      トークンは暗号化されて安全に保存されます
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <p className="font-medium">APIトークン発行ページにアクセス</p>
-                  <a
-                    href="#"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary mt-1 inline-flex items-center text-xs"
-                  >
-                    {mcpServer.name}のAPIトークンページへ
-                    <ExternalLink className="ml-1 h-3 w-3" />
-                  </a>
+              ))}
+            </TabsContent>
+
+            <TabsContent value="oauth" className="space-y-4">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  OAuth認証を使用すると、GitHubアカウントでログインして必要な権限のみを付与できます。
+                  トークンの有効期限が切れた場合は自動的に更新されます。
+                </AlertDescription>
+              </Alert>
+
+              {/* スコープ選択UI */}
+              <div className="space-y-4">
+                <Label>必要な権限を選択してください</Label>
+                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-3">
+                  {githubScopes.map((scope) => {
+                    const handleScopeToggle = () => {
+                      if (selectedScopes.includes(scope.scopes[0])) {
+                        setSelectedScopes(
+                          selectedScopes.filter((s) => s !== scope.scopes[0]),
+                        );
+                      } else {
+                        setSelectedScopes([...selectedScopes, scope.scopes[0]]);
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={scope.id}
+                        className="hover:bg-muted/50 flex cursor-pointer items-start space-x-3 rounded p-2"
+                        onClick={handleScopeToggle}
+                      >
+                        <Checkbox
+                          id={scope.id}
+                          checked={selectedScopes.includes(scope.scopes[0])}
+                          onCheckedChange={handleScopeToggle}
+                        />
+                        <div className="flex-1">
+                          <Label
+                            htmlFor={scope.id}
+                            className="cursor-pointer font-medium"
+                          >
+                            {scope.label}
+                          </Label>
+                          <p className="text-muted-foreground text-xs">
+                            {scope.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-
-              <div className="flex">
-                <div className="bg-primary text-primary-foreground mr-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium">トークンの生成</p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    必要なAPIトークンを生成してください。
+            </TabsContent>
+          </Tabs>
+        ) : (
+          /* 既存のAPIキー入力フィールド（GitHub以外のMCP） */
+          <div className="space-y-4">
+            {mcpServer.envVars.map((envVar, index) => (
+              <div key={envVar} className="space-y-2">
+                <Label htmlFor={`token-${envVar}`} className="text-sm">
+                  {envVar}
+                </Label>
+                <Input
+                  id={`token-${envVar}`}
+                  type="password"
+                  placeholder={`${envVar}を入力してください`}
+                  value={envVars[envVar]}
+                  onChange={(e) => handleTokenChange(envVar, e.target.value)}
+                  className="text-sm"
+                  disabled={isProcessing}
+                />
+                {index === mcpServer.envVars.length - 1 && (
+                  <p className="text-muted-foreground text-xs">
+                    トークンは暗号化されて安全に保存されます
                   </p>
-                </div>
+                )}
               </div>
-
-              <div className="flex">
-                <div className="bg-primary text-primary-foreground mr-3 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium">トークンの保存</p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    生成されたトークンを下のフォームに入力し、「保存」ボタンをクリックしてください。
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 動的に生成されるトークン入力フォーム */}
-        <div className="space-y-4">
-          {mcpServer.envVars.map((envVar, index) => (
-            <div key={envVar} className="space-y-2">
-              <Label htmlFor={`token-${envVar}`} className="text-sm">
-                {envVar}
-              </Label>
-              <Input
-                id={`token-${envVar}`}
-                type="password"
-                placeholder={`${envVar}を入力してください`}
-                value={envVars[envVar]}
-                onChange={(e) => handleTokenChange(envVar, e.target.value)}
-                className="text-sm"
-              />
-              {index === mcpServer.envVars.length - 1 && (
-                <p className="text-muted-foreground text-xs">
-                  トークンは暗号化されて安全に保存されます
-                </p>
-              )}
-            </div>
-          ))}
-
-          <Separator className="my-4" />
-
-          <div className="flex justify-end space-x-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              size="sm"
-              disabled={isPending || isUpdating}
-            >
-              キャンセル
-            </Button>
-            <Button
-              onClick={() => {
-                if (mode === "create") {
-                  handleSave();
-                } else {
-                  handleUpdate();
-                }
-              }}
-              disabled={!isFormValid() || isPending || isUpdating}
-              size="sm"
-            >
-              {isPending || isUpdating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === "create" ? "保存中..." : "更新中..."}
-                </>
-              ) : mode === "create" ? (
-                "保存"
-              ) : (
-                "更新"
-              )}
-            </Button>
+            ))}
           </div>
+        )}
+
+        <Separator className="my-4" />
+
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            size="sm"
+            disabled={isProcessing}
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={() => {
+              if (mode === "create") {
+                handleSave();
+              } else {
+                handleUpdate();
+              }
+            }}
+            disabled={
+              isGitHubMcp && authMethod === "oauth"
+                ? selectedScopes.length === 0 || isProcessing
+                : !isFormValid() || isProcessing
+            }
+            size="sm"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isPending
+                  ? "追加中..."
+                  : isValidating
+                    ? "検証中..."
+                    : isOAuthConnecting
+                      ? "OAuth接続中..."
+                      : "更新中..."}
+              </>
+            ) : isGitHubMcp && authMethod === "oauth" ? (
+              "認証"
+            ) : mode === "create" ? (
+              "保存"
+            ) : (
+              "更新"
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
