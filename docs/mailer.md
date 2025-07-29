@@ -89,7 +89,8 @@ packages/mailer/
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
-    "react-email": "^3.0.3"
+    "react-email": "^3.0.3",
+    "vitest": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }

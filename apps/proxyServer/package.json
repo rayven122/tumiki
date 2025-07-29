@@ -25,7 +25,9 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "format:fix": "prettier --write . --ignore-path ../../.gitignore",
-    "test": "bun test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "verify": "pnpm with-env ./scripts/test-mcp-inspector.sh",
     "inspector": "pnpm dlx @modelcontextprotocol/inspector",
     "inspector:http": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/mcp?api-key=${TEST_API_KEY}\"'",
@@ -63,9 +65,11 @@
   "devDependencies": {
     "@types/express": "^5.0.2",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "catalog:",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
-    "typescript-eslint": "^8.33.0"
+    "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
