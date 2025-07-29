@@ -335,7 +335,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `durationMs`: 実行時間（ミリ秒）
 - `errorMessage`: エラーメッセージ（エラー種別のみ）
 - `errorCode`: エラーコード
-- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信���れるデータのバイト数）
 - `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
@@ -819,7 +819,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `durationMs`: 実行時間（ミリ秒）
 - `errorMessage`: エラーメッセージ（エラー種別のみ）
 - `errorCode`: エラーコード
-- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信���れるデータのバイト数）
 - `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
