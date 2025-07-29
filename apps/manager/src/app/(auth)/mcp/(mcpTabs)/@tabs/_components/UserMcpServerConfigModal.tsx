@@ -250,11 +250,11 @@ export const UserMcpServerConfigModal = ({
 
   return (
     <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
-      <DialogContent className="relative sm:max-w-md md:max-w-lg">
+      <DialogContent className="sm:max-w-md md:max-w-lg">
         {/* ローディングオーバーレイ */}
         {isProcessing && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
-            <div className="flex flex-col items-center space-y-2">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="flex flex-col items-center space-y-2 rounded-lg bg-white p-6 shadow-lg">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
               <span className="text-sm font-medium text-gray-700">
                 {isPending
