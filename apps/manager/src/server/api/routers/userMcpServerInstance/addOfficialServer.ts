@@ -77,7 +77,7 @@ export const addOfficialServer = async ({
         userId: ctx.session.user.id,
         name: mcpServer.name,
         description: "",
-        serverStatus: ServerStatus.RUNNING,
+        serverStatus: ServerStatus.PENDING,
         serverType: ServerType.OFFICIAL,
         toolGroupId: toolGroup.id,
         apiKeys: {

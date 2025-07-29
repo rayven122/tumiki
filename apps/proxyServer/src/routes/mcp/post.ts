@@ -27,6 +27,9 @@ export const handlePOSTRequest = async (
   let transport: StreamableHTTPServerTransport;
   let isNewSession = false;
 
+  // 検証モードの判定
+  const isValidationMode = req.headers["x-validation-mode"] === "true";
+
   // セッションIDがある場合は既存セッションを確認
   if (sessionId) {
     if (!isSessionValid(sessionId)) {
@@ -81,6 +84,7 @@ export const handlePOSTRequest = async (
       const { server } = await getServer(
         apiKey,
         TransportType.STREAMABLE_HTTPS,
+        isValidationMode,
       );
       await server.connect(transport);
 
@@ -166,26 +170,29 @@ export const handlePOSTRequest = async (
     const inputBytes = requestStr.length;
     const outputBytes = responseStr.length;
 
-    // 非同期でログ記録（レスポンス返却をブロックしない）
-    logMcpRequest({
-      userId: undefined,
-      mcpServerInstanceId: undefined, // HTTP transportでは特定できない場合がある
-      toolName: "http_transport",
-      transportType: TransportType.STREAMABLE_HTTPS,
-      method: req.method,
-      responseStatus: success ? "200" : "500",
-      durationMs,
-      inputBytes,
-      outputBytes,
-      organizationId: undefined,
-      // 詳細ログ記録を追加（サイズ制限付き）
-      requestData: requestData,
-      responseData: responseDataForLog || undefined,
-    }).catch((error) => {
-      logger.error("Failed to log HTTP transport request", {
-        error: error instanceof Error ? error.message : String(error),
-        sessionId: transport.sessionId,
+    // 検証モードでない場合のみログ記録
+    if (!isValidationMode) {
+      // 非同期でログ記録（レスポンス返却をブロックしない）
+      logMcpRequest({
+        userId: undefined,
+        mcpServerInstanceId: undefined, // HTTP transportでは特定できない場合がある
+        toolName: "http_transport",
+        transportType: TransportType.STREAMABLE_HTTPS,
+        method: req.method,
+        responseStatus: success ? "200" : "500",
+        durationMs,
+        inputBytes,
+        outputBytes,
+        organizationId: undefined,
+        // 詳細ログ記録を追加（サイズ制限付き）
+        requestData: requestData,
+        responseData: responseDataForLog || undefined,
+      }).catch((error) => {
+        logger.error("Failed to log HTTP transport request", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: transport.sessionId,
+        });
       });
-    });
+    }
   }
 };

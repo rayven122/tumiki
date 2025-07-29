@@ -365,6 +365,7 @@ export const getMcpClients = async (apiKey: string) => {
 export const getServer = async (
   apiKey: string,
   transportType: TransportType,
+  isValidationMode = false,
 ) => {
   const server = new Server(
     {
@@ -517,8 +518,8 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance) {
-        // エラー時も非同期でログ記録
+      if (validation?.userMcpServerInstance && !isValidationMode) {
+        // 検証モードでない場合のみ、エラー時も非同期でログ記録
         logMcpRequest({
           userId: validation?.apiKey?.userId,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
@@ -633,8 +634,8 @@ export const getServer = async (
 
       const durationMs = Date.now() - startTime;
 
-      // 非同期でログ記録（レスポンス返却をブロックしない）
-      if (validation.userMcpServerInstance) {
+      // 検証モードでない場合のみログ記録
+      if (validation.userMcpServerInstance && !isValidationMode) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.result ?? {});
 
@@ -686,8 +687,8 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance) {
-        // エラー時も非同期でログ記録
+      if (validation?.userMcpServerInstance && !isValidationMode) {
+        // 検証モードでない場合のみ、エラー時も非同期でログ記録
         logMcpRequest({
           userId: validation?.apiKey?.userId,
           mcpServerInstanceId: validation.userMcpServerInstance.id,

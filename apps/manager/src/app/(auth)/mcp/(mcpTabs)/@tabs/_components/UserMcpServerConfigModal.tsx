@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
+import { useRouter } from "next/navigation";
 
 type ApiTokenModalProps = {
   onOpenChange: (open: boolean) => void;
@@ -38,12 +39,33 @@ export const UserMcpServerConfigModal = ({
   mode = "create",
 }: ApiTokenModalProps) => {
   const utils = api.useUtils();
+  const router = useRouter();
+
+  const { mutate: validateServer } =
+    api.userMcpServerInstance.validateServer.useMutation({
+      onSuccess: async (result) => {
+        if (result.success) {
+          toast.success(`${mcpServer.name}が正常に接続されました。`);
+          await utils.userMcpServerInstance.invalidate();
+          onOpenChange(false);
+          router.refresh();
+        } else {
+          toast.error(result.error ?? "接続検証に失敗しました");
+        }
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
   const { mutate: addOfficialServer, isPending } =
     api.userMcpServerInstance.addOfficialServer.useMutation({
-      onSuccess: async () => {
-        toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
-        await utils.userMcpServerInstance.invalidate();
-        onOpenChange(false);
+      onSuccess: async (data) => {
+        // 検証を実行
+        toast.info("接続を検証しています...");
+        validateServer({
+          serverInstanceId: data.id,
+        });
       },
       onError: (error) => {
         toast.error(error.message);
