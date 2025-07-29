@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Trash2Icon,
   ImageIcon,
@@ -29,6 +29,7 @@ import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { debounce } from "@tumiki/utils/client";
 
 import { type RouterOutputs, api } from "@/trpc/react";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
@@ -83,11 +84,20 @@ export const UserMcpServerCard = ({
       },
     });
 
+  // デバウンスされたスキャン関数を作成
+  const debouncedScan = useMemo(
+    () =>
+      debounce(() => {
+        scanServer({
+          serverInstanceId: serverInstance.id,
+          updateStatus: false,
+        });
+      }, 1000), // 1秒のデバウンス
+    [serverInstance.id, scanServer],
+  );
+
   const handleScan = () => {
-    scanServer({
-      serverInstanceId: serverInstance.id,
-      updateStatus: false,
-    });
+    debouncedScan();
   };
 
   // userMcpServersが削除されたため、プリフェッチクエリは不要
