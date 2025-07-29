@@ -43,7 +43,7 @@ export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
         userId: ctx.session.user.id,
         name: input.name,
         description: input.description,
-        serverStatus: ServerStatus.RUNNING,
+        serverStatus: ServerStatus.PENDING,
         serverType: ServerType.CUSTOM,
         toolGroupId: toolGroup.id,
         apiKeys: {

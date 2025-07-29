@@ -13,6 +13,7 @@ import {
   Copy,
   ExternalLink,
   Wrench,
+  RefreshCw,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import {
@@ -66,6 +67,27 @@ export const UserMcpServerCard = ({
         toast.error(`エラーが発生しました: ${error.message}`);
       },
     });
+
+  const { mutate: scanServer, isPending: isScanning } =
+    api.userMcpServerInstance.scanServer.useMutation({
+      onSuccess: async (result) => {
+        if (result.success) {
+          toast.success(`接続が正常です（ツール数: ${result.toolCount}）`);
+        } else {
+          toast.error(result.error ?? "接続に失敗しました");
+        }
+        await revalidate?.();
+      },
+      onError: (error) => {
+        toast.error(`スキャンエラー: ${error.message}`);
+      },
+    });
+
+  const handleScan = () => {
+    scanServer({
+      serverInstanceId: serverInstance.id,
+    });
+  };
 
   // userMcpServersが削除されたため、プリフェッチクエリは不要
 
@@ -224,6 +246,18 @@ export const UserMcpServerCard = ({
                 <ExternalLink className="mr-2 h-4 w-4" />
                 詳細を見る
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                handleScan();
+              }}
+              disabled={isScanning}
+            >
+              <RefreshCw
+                className={cn("mr-2 h-4 w-4", isScanning && "animate-spin")}
+              />
+              接続テスト
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={(e) => {
