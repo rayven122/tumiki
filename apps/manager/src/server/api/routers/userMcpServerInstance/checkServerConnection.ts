@@ -75,10 +75,18 @@ export const checkServerConnection = async ({
         "x-validation-mode": "true",
       },
     );
-    success = true;
+
+    // ツールが0個の場合もエラーとして扱う
+    if (tools.length === 0) {
+      errorMessage = "MCPサーバーから利用可能なツールが取得できませんでした";
+      success = false;
+    } else {
+      success = true;
+    }
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "不明なエラーが発生しました";
+    success = false;
   }
 
   // 検証結果に基づいてステータスを更新（updateStatus=trueの場合のみ）
