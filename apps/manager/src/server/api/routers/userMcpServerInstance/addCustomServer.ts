@@ -4,12 +4,15 @@ import type { AddCustomServerInput } from ".";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { generateApiKey } from "@/utils/server";
 
-type AddCustomServerInput = {
+type AddCustomServerParams = {
   ctx: ProtectedContext;
   input: z.infer<typeof AddCustomServerInput>;
 };
 
-export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
+export const addCustomServer = async ({
+  ctx,
+  input,
+}: AddCustomServerParams) => {
   const { serverToolIdsMap } = input;
 
   const toolGroupTools = Object.entries(serverToolIdsMap).flatMap(
@@ -43,7 +46,7 @@ export const addCustomServer = async ({ ctx, input }: AddCustomServerInput) => {
         userId: ctx.session.user.id,
         name: input.name,
         description: input.description,
-        serverStatus: ServerStatus.RUNNING,
+        serverStatus: ServerStatus.PENDING,
         serverType: ServerType.CUSTOM,
         toolGroupId: toolGroup.id,
         apiKeys: {

@@ -20,6 +20,7 @@ import { toast } from "react-toastify";
 import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
@@ -41,13 +42,47 @@ export const UserMcpServerConfigModal = ({
   mode = "create",
 }: ApiTokenModalProps) => {
   const utils = api.useUtils();
+  const router = useRouter();
+  const [isValidating, setIsValidating] = useState(false);
+
+  const { mutate: checkServerConnection } =
+    api.userMcpServerInstance.checkServerConnection.useMutation({
+      onSuccess: async (result) => {
+        if (result.success) {
+          toast.success(`${mcpServer.name}が正常に接続されました。`);
+          await utils.userMcpServerInstance.invalidate();
+          onOpenChange(false);
+          router.refresh();
+        } else {
+          toast.error(result.error ?? "接続検証に失敗しました");
+        }
+        setIsValidating(false);
+      },
+      onError: (error) => {
+        toast.error(error.message);
+        setIsValidating(false);
+      },
+    });
+
   const { mutate: addOfficialServer, isPending } =
     api.userMcpServerInstance.addOfficialServer.useMutation({
-      onSuccess: async () => {
-        // APIキーの場合のみ処理（OAuth認証は別のフローで処理される）
-        toast.success(`${mcpServer.name}のAPIトークンが正常に保存されました。`);
-        await utils.userMcpServerInstance.invalidate();
-        onOpenChange(false);
+      onSuccess: async (data) => {
+        if (!isGitHubMcp || authMethod !== "oauth") {
+          // APIキーの場合のみ検証を実行
+          setIsValidating(true);
+          toast.info("接続を検証しています...");
+          checkServerConnection({
+            serverInstanceId: data.id,
+            updateStatus: true,
+          });
+        } else {
+          // OAuth認証の場合は別のフローで処理される
+          toast.success(
+            `${mcpServer.name}のAPIトークンが正常に保存されました。`,
+          );
+          await utils.userMcpServerInstance.invalidate();
+          onOpenChange(false);
+        }
       },
       onError: (error) => {
         toast.error(error.message);
@@ -210,9 +245,29 @@ export const UserMcpServerConfigModal = ({
   // GitHub MCPかどうかをチェック
   const isGitHubMcp = mcpServer.name === "GitHub MCP";
 
+  const isProcessing =
+    isPending || isUpdating || isValidating || isOAuthConnecting;
+
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
+        {/* ローディングオーバーレイ */}
+        {isProcessing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="flex flex-col items-center space-y-2 rounded-lg bg-white p-6 shadow-lg">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {isPending
+                  ? "サーバーを追加中..."
+                  : isValidating
+                    ? "接続を検証中..."
+                    : isOAuthConnecting
+                      ? "OAuth接続中..."
+                      : "更新中..."}
+              </span>
+            </div>
+          </div>
+        )}
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             APIトークンの{mode === "create" ? "設定" : "編集"}
@@ -281,6 +336,7 @@ export const UserMcpServerConfigModal = ({
                     value={envVars[envVar]}
                     onChange={(e) => handleTokenChange(envVar, e.target.value)}
                     className="text-sm"
+                    disabled={isProcessing}
                   />
                   {index === mcpServer.envVars.length - 1 && (
                     <p className="text-muted-foreground text-xs">
@@ -359,6 +415,7 @@ export const UserMcpServerConfigModal = ({
                   value={envVars[envVar]}
                   onChange={(e) => handleTokenChange(envVar, e.target.value)}
                   className="text-sm"
+                  disabled={isProcessing}
                 />
                 {index === mcpServer.envVars.length - 1 && (
                   <p className="text-muted-foreground text-xs">
@@ -377,7 +434,7 @@ export const UserMcpServerConfigModal = ({
             variant="outline"
             onClick={() => onOpenChange(false)}
             size="sm"
-            disabled={isPending || isUpdating}
+            disabled={isProcessing}
           >
             キャンセル
           </Button>
@@ -391,23 +448,20 @@ export const UserMcpServerConfigModal = ({
             }}
             disabled={
               isGitHubMcp && authMethod === "oauth"
-                ? selectedScopes.length === 0 ||
-                  isPending ||
-                  isUpdating ||
-                  isOAuthConnecting
-                : !isFormValid() || isPending || isUpdating
+                ? selectedScopes.length === 0 || isProcessing
+                : !isFormValid() || isProcessing
             }
             size="sm"
           >
-            {isPending || isUpdating || isOAuthConnecting ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isOAuthConnecting
-                  ? "OAuth接続中..."
-                  : isGitHubMcp && authMethod === "oauth"
-                    ? "認証中..."
-                    : mode === "create"
-                      ? "保存中..."
+                {isPending
+                  ? "追加中..."
+                  : isValidating
+                    ? "検証中..."
+                    : isOAuthConnecting
+                      ? "OAuth接続中..."
                       : "更新中..."}
               </>
             ) : isGitHubMcp && authMethod === "oauth" ? (
