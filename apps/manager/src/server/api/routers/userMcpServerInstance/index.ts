@@ -60,6 +60,13 @@ export const AddCustomServerInput = z.object({
 export const AddOfficialServerInput = z.object({
   mcpServerId: z.string(),
   envVars: z.record(z.string(), z.string()),
+  isPending: z.boolean().optional(), // OAuth認証用フラグを追加
+});
+
+export const AddOfficialServerOutput = z.object({
+  id: z.string(),
+  userMcpServerConfigId: z.string(),
+  toolGroupId: z.string(),
 });
 
 export const DeleteServerInstanceInput = z.object({
@@ -178,11 +185,7 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .mutation(addCustomServer),
   addOfficialServer: protectedProcedure
     .input(AddOfficialServerInput)
-    .output(
-      z.object({
-        id: UserMcpServerInstanceIdSchema,
-      }),
-    )
+    .output(AddOfficialServerOutput)
     .mutation(addOfficialServer),
   delete: protectedProcedure
     .input(DeleteServerInstanceInput)
