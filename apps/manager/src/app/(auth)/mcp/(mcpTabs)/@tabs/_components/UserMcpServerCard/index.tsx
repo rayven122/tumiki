@@ -129,9 +129,23 @@ export const UserMcpServerCard = ({
 
   return (
     <Card
-      className="flex h-full cursor-pointer flex-col transition-all duration-200 hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg"
+      className={cn(
+        "flex h-full cursor-pointer flex-col transition-all duration-200 hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
+        isScanning && "relative overflow-hidden",
+      )}
       onClick={handleCardClick}
     >
+      {/* 接続テスト中のローディングオーバーレイ */}
+      {isScanning && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center space-y-2">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="text-sm font-medium text-gray-700">
+              接続テスト中...
+            </span>
+          </div>
+        </div>
+      )}
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
         <div className="group relative mr-2 rounded-md p-2">
           {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
@@ -277,16 +291,22 @@ export const UserMcpServerCard = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div
-              className={`h-2 w-2 rounded-full ${
+              className={cn(
+                "h-2 w-2 rounded-full",
+                isScanning && "animate-pulse",
                 serverInstance.serverStatus === ServerStatus.RUNNING
                   ? "bg-green-500"
                   : serverInstance.serverStatus === ServerStatus.STOPPED
                     ? "bg-gray-500"
-                    : "bg-red-500"
-              }`}
+                    : serverInstance.serverStatus === ServerStatus.PENDING
+                      ? "bg-yellow-500"
+                      : "bg-red-500",
+              )}
             />
             <span className="text-sm">
-              {SERVER_STATUS_LABELS[serverInstance.serverStatus]}
+              {isScanning
+                ? "接続テスト中"
+                : SERVER_STATUS_LABELS[serverInstance.serverStatus]}
             </span>
           </div>
           <div className="flex items-center space-x-3">
@@ -299,11 +319,12 @@ export const UserMcpServerCard = ({
               <Switch
                 checked={serverInstance.serverStatus === ServerStatus.RUNNING}
                 onCheckedChange={handleStatusToggle}
-                disabled={isStatusUpdating}
+                disabled={isStatusUpdating || isScanning}
                 className={cn(
                   "data-[state=checked]:bg-green-500",
                   "data-[state=unchecked]:bg-gray-300",
                   "dark:data-[state=unchecked]:bg-gray-600",
+                  (isStatusUpdating || isScanning) && "opacity-50",
                 )}
               />
             </div>
