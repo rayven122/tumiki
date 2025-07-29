@@ -42,16 +42,6 @@ export const checkServerConnection = async ({
       });
     }
 
-    // updateStatus=trueの場合、RUNNINGステータスならPENDINGに戻す
-    if (updateStatus && serverInstance.serverStatus === ServerStatus.RUNNING) {
-      await tx.userMcpServerInstance.update({
-        where: { id: serverInstanceId },
-        data: {
-          serverStatus: ServerStatus.PENDING,
-        },
-      });
-    }
-
     // APIキーが存在しない場合はエラー
     if (!serverInstance.apiKeys || serverInstance.apiKeys.length === 0) {
       throw new TRPCError({
@@ -80,21 +70,20 @@ export const checkServerConnection = async ({
 
       // ツールが0個の場合もエラーとして扱う
       if (tools.length === 0) {
-        errorMessage = "MCPサーバーから利用可能なツールが取得できませんでした";
+        errorMessage = "サーバーの接続確認に失敗しました";
         success = false;
       } else {
         success = true;
       }
     } catch (error) {
-      errorMessage =
-        error instanceof Error ? error.message : "不明なエラーが発生しました";
+      // 本番環境では詳細なエラーメッセージを避ける
+      errorMessage = "サーバーの接続確認に失敗しました";
       success = false;
     }
 
     // 検証結果に基づいてステータスを更新（updateStatus=trueの場合のみ）
-    const newStatus = success ? ServerStatus.RUNNING : ServerStatus.ERROR;
-
     if (updateStatus) {
+      const newStatus = success ? ServerStatus.RUNNING : ServerStatus.ERROR;
       await tx.userMcpServerInstance.update({
         where: { id: serverInstanceId },
         data: {
@@ -105,7 +94,11 @@ export const checkServerConnection = async ({
 
     return {
       success,
-      status: updateStatus ? newStatus : serverInstance.serverStatus,
+      status: updateStatus
+        ? success
+          ? ServerStatus.RUNNING
+          : ServerStatus.ERROR
+        : serverInstance.serverStatus,
       error: errorMessage,
       toolCount: tools.length,
     };

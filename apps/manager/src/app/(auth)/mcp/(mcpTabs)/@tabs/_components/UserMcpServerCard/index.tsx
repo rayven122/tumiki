@@ -88,12 +88,15 @@ export const UserMcpServerCard = ({
   const debouncedScan = useMemo(
     () =>
       debounce(() => {
+        // 既に実行中の場合はスキップ
+        if (isScanning) return;
+
         scanServer({
           serverInstanceId: serverInstance.id,
           updateStatus: false,
         });
       }, 1000), // 1秒のデバウンス
-    [serverInstance.id, scanServer],
+    [serverInstance.id, scanServer, isScanning],
   );
 
   const handleScan = () => {
