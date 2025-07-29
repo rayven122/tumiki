@@ -42,7 +42,7 @@ export const UserMcpServerConfigModal = ({
   const router = useRouter();
 
   const { mutate: validateServer } =
-    api.userMcpServerInstance.validateServer.useMutation({
+    api.userMcpServerInstance.checkServerConnection.useMutation({
       onSuccess: async (result) => {
         if (result.success) {
           toast.success(`${mcpServer.name}が正常に接続されました。`);
@@ -65,6 +65,7 @@ export const UserMcpServerConfigModal = ({
         toast.info("接続を検証しています...");
         validateServer({
           serverInstanceId: data.id,
+          updateStatus: true,
         });
       },
       onError: (error) => {
