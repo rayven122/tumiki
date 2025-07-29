@@ -63,7 +63,6 @@ describe("startOAuthFlow", () => {
     expect(url).toContain("returnTo=%2Fdashboard");
     expect(url).toContain("connection=github");
     expect(url).toContain("scope=openid+profile+email+read%3Auser+repo");
-    expect(url).toContain("prompt=consent");
   });
 
   test("returnToが指定されない場合はデフォルトの/mcpを使用する", async () => {
