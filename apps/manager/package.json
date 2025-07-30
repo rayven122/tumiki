@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm with-env next dev --turbopack",
+    "dev": "pnpm with-env next dev --turbopack --experimental-https --hostname local.tumiki.cloud",
     "build": "pnpm with-env next build",
     "start": "pnpm with-env next start",
     "preview": "next build && next start",
