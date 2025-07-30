@@ -22,7 +22,6 @@ import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
 import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -131,17 +130,13 @@ export const UserMcpServerConfigModal = ({
   // 認証方法の選択状態
   const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
 
-  // 選択されたスコープ
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([
-    "repo",
-    "read:user",
-  ]);
+  // 全スコープを適用
+  const allGitHubScopes = OAUTH_PROVIDER_CONFIG.github.availableScopes.flatMap(
+    (scope) => scope.scopes,
+  );
 
   // OAuth認証処理中のフラグ
   const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
-
-  // GitHubのスコープ設定を取得
-  const githubScopes = OAUTH_PROVIDER_CONFIG.github.availableScopes;
 
   // 特定の環境変数のトークン値を更新する関数
   const handleTokenChange = (envVar: string, value: string) => {
@@ -159,8 +154,8 @@ export const UserMcpServerConfigModal = ({
   // トークンを保存する関数
   const handleSave = () => {
     if (isGitHubMcp && authMethod === "oauth") {
-      // OAuthの場合は認証フローを開始のみ
-      void handleOAuthConnect(selectedScopes);
+      // OAuthの場合は認証フローを開始のみ（全スコープを使用）
+      void handleOAuthConnect(allGitHubScopes);
     } else {
       // APIキーの場合は既存の処理
       addOfficialServer({
@@ -177,8 +172,8 @@ export const UserMcpServerConfigModal = ({
     }
 
     if (isGitHubMcp && authMethod === "oauth") {
-      // OAuth認証の場合は認証フローを開始
-      void handleOAuthConnect(selectedScopes);
+      // OAuth認証の場合は認証フローを開始（全スコープを使用）
+      void handleOAuthConnect(allGitHubScopes);
     } else {
       // APIキーの場合は既存の処理
       updateServerConfig({
@@ -198,7 +193,7 @@ export const UserMcpServerConfigModal = ({
       }
 
       setIsOAuthConnecting(true);
-      const scopesToUse = scopes ?? ["repo", "read:user"];
+      const scopesToUse = scopes ?? allGitHubScopes;
 
       try {
         let configId: string;
@@ -354,54 +349,29 @@ export const UserMcpServerConfigModal = ({
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    OAuth認証を使用すると、GitHubアカウントでログインして必要な権限のみを付与できます。
+                    OAuth認証を使用すると、GitHubアカウントでログインして自動的に必要な権限がすべて付与されます。
                     トークンの有効期限が切れた場合は自動的に更新されます。
                   </AlertDescription>
                 </Alert>
 
-                {/* スコープ選択UI */}
-                <div className="space-y-4">
-                  <Label>必要な権限を選択してください</Label>
-                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-3">
-                    {githubScopes.map((scope) => {
-                      const handleScopeToggle = () => {
-                        if (selectedScopes.includes(scope.scopes[0])) {
-                          setSelectedScopes(
-                            selectedScopes.filter((s) => s !== scope.scopes[0]),
-                          );
-                        } else {
-                          setSelectedScopes([
-                            ...selectedScopes,
-                            scope.scopes[0],
-                          ]);
-                        }
-                      };
-
-                      return (
-                        <div
+                <div className="rounded-lg border bg-gray-50 p-4">
+                  <h4 className="mb-2 font-medium">自動適用される権限</h4>
+                  <p className="text-muted-foreground mb-3 text-sm">
+                    OAuth認証では、GitHub
+                    MCPの動作に必要なすべての権限が自動的に適用されます。
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {OAUTH_PROVIDER_CONFIG.github.availableScopes.map(
+                      (scope) => (
+                        <Badge
                           key={scope.id}
-                          className="hover:bg-muted/50 flex cursor-pointer items-start space-x-3 rounded p-2"
-                          onClick={handleScopeToggle}
+                          variant="secondary"
+                          className="text-xs"
                         >
-                          <Checkbox
-                            id={scope.id}
-                            checked={selectedScopes.includes(scope.scopes[0])}
-                            onCheckedChange={handleScopeToggle}
-                          />
-                          <div className="flex-1">
-                            <Label
-                              htmlFor={scope.id}
-                              className="cursor-pointer font-medium"
-                            >
-                              {scope.label}
-                            </Label>
-                            <p className="text-muted-foreground text-xs">
-                              {scope.description}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          {scope.label}
+                        </Badge>
+                      ),
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -454,7 +424,7 @@ export const UserMcpServerConfigModal = ({
               }}
               disabled={
                 isGitHubMcp && authMethod === "oauth"
-                  ? selectedScopes.length === 0 || isProcessing
+                  ? isProcessing
                   : !isFormValid() || isProcessing
               }
               size="sm"

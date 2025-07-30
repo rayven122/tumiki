@@ -87,17 +87,19 @@ const createClient = (
     if (server.transport.type === "sse") {
       transport = new SSEClientTransport(new URL(server.transport.url));
     } else {
+      const finalEnv = server.transport.env
+        ? Object.fromEntries(
+            Object.entries(server.transport.env).map(([key, value]) => [
+              key,
+              String(value), // DBの値を優先（process.envは使用しない）
+            ]),
+          )
+        : undefined;
+
       transport = new StdioClientTransport({
         command: server.transport.command,
         args: server.transport.args,
-        env: server.transport.env
-          ? Object.fromEntries(
-              Object.entries(server.transport.env).map(([key, value]) => [
-                key,
-                process.env[key] ?? String(value),
-              ]),
-            )
-          : undefined,
+        env: finalEnv,
       });
     }
   } catch (error) {
@@ -313,11 +315,11 @@ const getServerConfigs = async (apiKey: string) => {
     });
 
     if (serverConfig.mcpServer.transportType === TransportType.STDIO) {
-      return {
+      const transportConfig = {
         name: serverConfig.name,
         toolNames,
         transport: {
-          type: "stdio",
+          type: "stdio" as const,
           command:
             serverConfig.mcpServer.command === "node"
               ? process.execPath
@@ -326,16 +328,20 @@ const getServerConfigs = async (apiKey: string) => {
           env: envObj,
         },
       };
+
+      return transportConfig;
     } else {
-      return {
+      const transportConfig = {
         name: serverConfig.name,
         toolNames,
         transport: {
-          type: "sse",
+          type: "sse" as const,
           url: serverConfig.mcpServer.url ?? "",
           env: envObj,
         },
       };
+
+      return transportConfig;
     }
   });
 

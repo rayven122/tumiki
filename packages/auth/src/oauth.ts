@@ -3,7 +3,10 @@ import type { NextRequest } from "next/server";
 import type { OAuthProvider } from "./providers/index.js";
 import { auth0OAuth, managementClient } from "./clients.js";
 import { createOAuthError, OAuthError, OAuthErrorCode } from "./errors.js";
-import { PROVIDER_CONNECTIONS } from "./providers/index.js";
+import {
+  OAUTH_PROVIDER_CONFIG,
+  PROVIDER_CONNECTIONS,
+} from "./providers/index.js";
 
 export interface OAuthConfig {
   provider: OAuthProvider;
@@ -99,11 +102,19 @@ export const startOAuthFlow = async (
 ): Promise<string> => {
   const { provider, scopes } = config;
 
+  // GitHubの場合は全スコープを自動適用
+  let finalScopes = scopes;
+  if (provider === "github") {
+    finalScopes = OAUTH_PROVIDER_CONFIG.github.availableScopes.flatMap(
+      (scope) => scope.scopes,
+    );
+  }
+
   // OAuth専用のログインエンドポイントを使用
   const params = new URLSearchParams({
     returnTo,
     connection: PROVIDER_CONNECTIONS[provider],
-    scope: `openid profile email ${scopes.join(" ")}`,
+    scope: `openid profile email ${finalScopes.join(" ")}`,
   });
 
   return `/oauth/auth/login?${params.toString()}`;
