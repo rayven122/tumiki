@@ -30,7 +30,7 @@ export const auth0OAuth = new Auth0Client({
 
 // Management API クライアント
 export const managementClient = new ManagementClient({
-  domain: process.env.AUTH0_DOMAIN!,
+  domain: process.env.AUTH0_M2M_DOMAIN!,
   clientId: process.env.AUTH0_M2M_CLIENT_ID!,
   clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!,
 });
