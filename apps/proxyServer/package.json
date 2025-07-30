@@ -63,6 +63,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@tumiki/vitest-config": "workspace:*",
     "@types/express": "^5.0.2",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "catalog:",

@@ -1,10 +1,10 @@
 {
   "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist/src",
+    "rootDir": ".",
+    "outDir": "dist",
     "declaration": true,
-    "declarationDir": "dist/src",
+    "declarationDir": "dist",
     "module": "ESNext",
     "lib": ["ES2022", "DOM"],
     "target": "ES2022",

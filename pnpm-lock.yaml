@@ -412,6 +412,9 @@ importers:
       '@tumiki/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       '@types/d3-scale':
         specifier: ^4.0.8
         version: 4.0.9
@@ -445,6 +448,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.7.0(vite@6.3.5(@types/node@22.15.34)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0))
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 2.1.9(vitest@2.1.9(@types/node@22.15.34)(lightningcss@1.30.1))
       bufferutil:
         specifier: ^4.0.9
         version: 4.0.9
@@ -466,6 +472,9 @@ importers:
       typescript-eslint:
         specifier: ^8.33.0
         version: 8.35.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.15.34)(lightningcss@1.30.1)
 
   apps/proxyServer:
     dependencies:
@@ -554,6 +563,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.42
     devDependencies:
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       '@types/express':
         specifier: ^5.0.2
         version: 5.0.3
@@ -597,6 +609,9 @@ importers:
       '@tumiki/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.34
@@ -655,6 +670,9 @@ importers:
       '@tumiki/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
@@ -719,6 +737,9 @@ importers:
       '@tumiki/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.34
@@ -731,6 +752,9 @@ importers:
       '@types/react-dom':
         specifier: catalog:react19
         version: 19.1.5(@types/react@19.1.6)
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 2.1.9(vitest@2.1.9(@types/node@22.15.34)(lightningcss@1.30.1))
       eslint:
         specifier: 'catalog:'
         version: 9.28.0(jiti@2.4.2)
@@ -746,6 +770,9 @@ importers:
       typescript-eslint:
         specifier: ^8.33.0
         version: 8.35.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.15.34)(lightningcss@1.30.1)
 
   packages/scripts:
     dependencies:
@@ -760,7 +787,7 @@ importers:
         version: 0.0.29(zod@3.25.67)
       '@suekou/mcp-notion-server':
         specifier: ^1.2.4
-        version: 1.2.4(@types/debug@4.1.12)(@types/node@24.0.7)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0)
+        version: 1.2.4(@types/debug@4.1.12)(@types/node@22.15.34)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0)
       '@tumiki/db':
         specifier: workspace:*
         version: link:../db
@@ -787,7 +814,7 @@ importers:
         version: 1.1.16
       task-master-ai:
         specifier: ^0.18.0
-        version: 0.18.0(@types/node@24.0.7)(react@19.0.0)(ws@8.18.3(bufferutil@4.0.9))
+        version: 0.18.0(@types/node@22.15.34)(react@19.0.0)(ws@8.18.3(bufferutil@4.0.9))
     devDependencies:
       '@tumiki/eslint-config':
         specifier: workspace:*
@@ -798,6 +825,15 @@ importers:
       '@tumiki/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.34
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 2.1.9(vitest@2.1.9(@types/node@22.15.34)(lightningcss@1.30.1))
       eslint:
         specifier: 'catalog:'
         version: 9.28.0(jiti@2.4.2)
@@ -807,6 +843,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.15.34)(lightningcss@1.30.1)
 
   packages/utils:
     dependencies:
@@ -835,6 +874,9 @@ importers:
       '@tumiki/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@tumiki/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 2.1.9(vitest@2.1.9(@types/node@24.0.7)(lightningcss@1.30.1))
@@ -956,6 +998,37 @@ importers:
         version: 5.8.3
 
   tooling/typescript: {}
+
+  tooling/vitest:
+    dependencies:
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@6.3.5(@types/node@22.15.34)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.19.4)(yaml@2.8.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.15.34)(lightningcss@1.30.1)
+    devDependencies:
+      '@tumiki/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint
+      '@tumiki/prettier-config':
+        specifier: workspace:*
+        version: link:../prettier
+      '@tumiki/tsconfig':
+        specifier: workspace:*
+        version: link:../typescript
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.34
+      eslint:
+        specifier: 'catalog:'
+        version: 9.28.0(jiti@2.4.2)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.5.3
+      typescript:
+        specifier: 'catalog:'
+        version: 5.8.3
 
 packages:
 
@@ -9361,8 +9434,8 @@ snapshots:
 
   '@ampproject/remapping@2.3.0':
     dependencies:
-      '@jridgewell/gen-mapping': 0.3.8
-      '@jridgewell/trace-mapping': 0.3.25
+      '@jridgewell/gen-mapping': 0.3.12
+      '@jridgewell/trace-mapping': 0.3.29
 
   '@anthropic-ai/claude-code@1.0.35':
     optionalDependencies:
@@ -9904,7 +9977,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.27.3':
     dependencies:
-      '@babel/types': 7.27.3
+      '@babel/types': 7.28.2
 
   '@babel/helper-compilation-targets@7.27.2':
     dependencies:
@@ -9932,14 +10005,14 @@ snapshots:
   '@babel/helper-member-expression-to-functions@7.27.1':
     dependencies:
       '@babel/traverse': 7.27.4
-      '@babel/types': 7.27.3
+      '@babel/types': 7.28.2
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-module-imports@7.27.1':
     dependencies:
       '@babel/traverse': 7.27.4
-      '@babel/types': 7.27.3
+      '@babel/types': 7.28.2
     transitivePeerDependencies:
       - supports-color
 
@@ -9972,7 +10045,7 @@ snapshots:
 
   '@babel/helper-optimise-call-expression@7.27.1':
     dependencies:
-      '@babel/types': 7.27.3
+      '@babel/types': 7.28.2
 
   '@babel/helper-plugin-utils@7.27.1': {}
 
@@ -9988,7 +10061,7 @@ snapshots:
   '@babel/helper-skip-transparent-expression-wrappers@7.27.1':
     dependencies:
       '@babel/traverse': 7.27.4
-      '@babel/types': 7.27.3
+      '@babel/types': 7.28.2
     transitivePeerDependencies:
       - supports-color
 
@@ -10001,7 +10074,7 @@ snapshots:
   '@babel/helpers@7.27.4':
     dependencies:
       '@babel/template': 7.27.2
-      '@babel/types': 7.27.3
+      '@babel/types': 7.28.2
 
   '@babel/helpers@7.28.2':
     dependencies:
@@ -10732,6 +10805,16 @@ snapshots:
   '@img/sharp-win32-x64@0.34.2':
     optional: true
 
+  '@inquirer/checkbox@4.1.8(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/figures': 1.0.12
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      ansi-escapes: 4.3.2
+      yoctocolors-cjs: 2.1.2
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/checkbox@4.1.8(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
@@ -10742,12 +10825,32 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.0.7
 
+  '@inquirer/confirm@5.1.12(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/confirm@5.1.12(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
       '@inquirer/type': 3.0.7(@types/node@24.0.7)
     optionalDependencies:
       '@types/node': 24.0.7
+
+  '@inquirer/core@10.1.13(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/figures': 1.0.12
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      ansi-escapes: 4.3.2
+      cli-width: 4.1.0
+      mute-stream: 2.0.0
+      signal-exit: 4.1.0
+      wrap-ansi: 6.2.0
+      yoctocolors-cjs: 2.1.2
+    optionalDependencies:
+      '@types/node': 22.15.34
 
   '@inquirer/core@10.1.13(@types/node@24.0.7)':
     dependencies:
@@ -10762,6 +10865,14 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.0.7
 
+  '@inquirer/editor@4.2.13(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      external-editor: 3.1.0
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/editor@4.2.13(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
@@ -10769,6 +10880,14 @@ snapshots:
       external-editor: 3.1.0
     optionalDependencies:
       '@types/node': 24.0.7
+
+  '@inquirer/expand@4.0.15(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      yoctocolors-cjs: 2.1.2
+    optionalDependencies:
+      '@types/node': 22.15.34
 
   '@inquirer/expand@4.0.15(@types/node@24.0.7)':
     dependencies:
@@ -10780,12 +10899,26 @@ snapshots:
 
   '@inquirer/figures@1.0.12': {}
 
+  '@inquirer/input@4.1.12(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/input@4.1.12(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
       '@inquirer/type': 3.0.7(@types/node@24.0.7)
     optionalDependencies:
       '@types/node': 24.0.7
+
+  '@inquirer/number@3.0.15(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+    optionalDependencies:
+      '@types/node': 22.15.34
 
   '@inquirer/number@3.0.15(@types/node@24.0.7)':
     dependencies:
@@ -10794,6 +10927,14 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.0.7
 
+  '@inquirer/password@4.0.15(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      ansi-escapes: 4.3.2
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/password@4.0.15(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
@@ -10801,6 +10942,21 @@ snapshots:
       ansi-escapes: 4.3.2
     optionalDependencies:
       '@types/node': 24.0.7
+
+  '@inquirer/prompts@7.5.3(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/checkbox': 4.1.8(@types/node@22.15.34)
+      '@inquirer/confirm': 5.1.12(@types/node@22.15.34)
+      '@inquirer/editor': 4.2.13(@types/node@22.15.34)
+      '@inquirer/expand': 4.0.15(@types/node@22.15.34)
+      '@inquirer/input': 4.1.12(@types/node@22.15.34)
+      '@inquirer/number': 3.0.15(@types/node@22.15.34)
+      '@inquirer/password': 4.0.15(@types/node@22.15.34)
+      '@inquirer/rawlist': 4.1.3(@types/node@22.15.34)
+      '@inquirer/search': 3.0.15(@types/node@22.15.34)
+      '@inquirer/select': 4.2.3(@types/node@22.15.34)
+    optionalDependencies:
+      '@types/node': 22.15.34
 
   '@inquirer/prompts@7.5.3(@types/node@24.0.7)':
     dependencies:
@@ -10817,6 +10973,14 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.0.7
 
+  '@inquirer/rawlist@4.1.3(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      yoctocolors-cjs: 2.1.2
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/rawlist@4.1.3(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
@@ -10824,6 +10988,15 @@ snapshots:
       yoctocolors-cjs: 2.1.2
     optionalDependencies:
       '@types/node': 24.0.7
+
+  '@inquirer/search@3.0.15(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/figures': 1.0.12
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      yoctocolors-cjs: 2.1.2
+    optionalDependencies:
+      '@types/node': 22.15.34
 
   '@inquirer/search@3.0.15(@types/node@24.0.7)':
     dependencies:
@@ -10834,6 +11007,16 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.0.7
 
+  '@inquirer/select@4.2.3(@types/node@22.15.34)':
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/figures': 1.0.12
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      ansi-escapes: 4.3.2
+      yoctocolors-cjs: 2.1.2
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   '@inquirer/select@4.2.3(@types/node@24.0.7)':
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
@@ -10843,6 +11026,10 @@ snapshots:
       yoctocolors-cjs: 2.1.2
     optionalDependencies:
       '@types/node': 24.0.7
+
+  '@inquirer/type@3.0.7(@types/node@22.15.34)':
+    optionalDependencies:
+      '@types/node': 22.15.34
 
   '@inquirer/type@3.0.7(@types/node@24.0.7)':
     optionalDependencies:
@@ -10872,7 +11059,7 @@ snapshots:
     dependencies:
       '@jridgewell/set-array': 1.2.1
       '@jridgewell/sourcemap-codec': 1.5.0
-      '@jridgewell/trace-mapping': 0.3.25
+      '@jridgewell/trace-mapping': 0.3.29
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
@@ -15407,6 +15594,18 @@ snapshots:
 
   inline-style-parser@0.2.4: {}
 
+  inquirer@12.6.3(@types/node@22.15.34):
+    dependencies:
+      '@inquirer/core': 10.1.13(@types/node@22.15.34)
+      '@inquirer/prompts': 7.5.3(@types/node@22.15.34)
+      '@inquirer/type': 3.0.7(@types/node@22.15.34)
+      ansi-escapes: 4.3.2
+      mute-stream: 2.0.0
+      run-async: 3.0.0
+      rxjs: 7.8.2
+    optionalDependencies:
+      '@types/node': 22.15.34
+
   inquirer@12.6.3(@types/node@24.0.7):
     dependencies:
       '@inquirer/core': 10.1.13(@types/node@24.0.7)
@@ -15596,7 +15795,7 @@ snapshots:
 
   istanbul-lib-source-maps@5.0.6:
     dependencies:
-      '@jridgewell/trace-mapping': 0.3.25
+      '@jridgewell/trace-mapping': 0.3.29
       debug: 4.4.1
       istanbul-lib-coverage: 3.2.2
     transitivePeerDependencies:
@@ -15915,8 +16114,8 @@ snapshots:
 
   magicast@0.3.5:
     dependencies:
-      '@babel/parser': 7.27.4
-      '@babel/types': 7.27.3
+      '@babel/parser': 7.28.0
+      '@babel/types': 7.28.2
       source-map-js: 1.2.1
 
   make-dir@4.0.0:
@@ -17995,6 +18194,58 @@ snapshots:
       minizlib: 3.0.2
       mkdirp: 3.0.1
       yallist: 5.0.0
+
+  task-master-ai@0.18.0(@types/node@22.15.34)(react@19.0.0)(ws@8.18.3(bufferutil@4.0.9)):
+    dependencies:
+      '@ai-sdk/amazon-bedrock': 2.2.10(zod@3.25.67)
+      '@ai-sdk/anthropic': 1.2.12(zod@3.25.67)
+      '@ai-sdk/azure': 1.3.23(zod@3.25.67)
+      '@ai-sdk/google': 1.2.19(zod@3.25.67)
+      '@ai-sdk/google-vertex': 2.2.24(zod@3.25.67)
+      '@ai-sdk/mistral': 1.2.8(zod@3.25.67)
+      '@ai-sdk/openai': 1.3.22(zod@3.25.67)
+      '@ai-sdk/perplexity': 1.1.9(zod@3.25.67)
+      '@ai-sdk/xai': 1.2.16(zod@3.25.67)
+      '@anthropic-ai/sdk': 0.39.0
+      '@aws-sdk/credential-providers': 3.839.0
+      '@inquirer/search': 3.0.15(@types/node@22.15.34)
+      '@openrouter/ai-sdk-provider': 0.4.6(zod@3.25.67)
+      ai: 4.3.13(react@19.0.0)(zod@3.25.67)
+      boxen: 8.0.1
+      chalk: 5.4.1
+      cli-highlight: 2.1.11
+      cli-table3: 0.6.5
+      commander: 11.1.0
+      cors: 2.8.5
+      dotenv: 16.6.1
+      express: 4.21.2
+      fastmcp: 2.2.4
+      figlet: 1.8.1
+      fuse.js: 7.1.0
+      gpt-tokens: 1.3.14
+      gradient-string: 3.0.0
+      helmet: 8.1.0
+      inquirer: 12.6.3(@types/node@22.15.34)
+      jsonwebtoken: 9.0.2
+      lru-cache: 10.4.3
+      ollama-ai-provider: 1.2.0(zod@3.25.67)
+      openai: 4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.67)
+      ora: 8.2.0
+      uuid: 11.1.0
+      zod: 3.25.67
+    optionalDependencies:
+      '@anthropic-ai/claude-code': 1.0.35
+    transitivePeerDependencies:
+      - '@types/node'
+      - '@valibot/to-json-schema'
+      - arktype
+      - aws-crt
+      - effect
+      - encoding
+      - react
+      - supports-color
+      - sury
+      - ws
 
   task-master-ai@0.18.0(@types/node@24.0.7)(react@19.0.0)(ws@8.18.3(bufferutil@4.0.9)):
     dependencies:
