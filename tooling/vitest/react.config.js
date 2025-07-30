@@ -17,6 +17,5 @@ const reactConfig = defineConfig({
     },
   },
 });
-
 // @ts-expect-error - Temporary fix for Vite version conflicts
 export default mergeConfig(baseConfig, reactConfig);

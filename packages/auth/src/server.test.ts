@@ -1,9 +1,20 @@
-import type { NextRequest } from "next/server";
+/* eslint-disable @typescript-eslint/unbound-method */
+import type { NextRequest, NextResponse } from "next/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { auth0 } from "./clients.js";
 import * as serverModule from "./server.js";
 import { auth, authSignIn, getAuth } from "./server.js";
+
+// Mock SessionData type
+type SessionData = {
+  user: { sub: string };
+  tokenSet: { accessToken: string; expiresAt: number };
+  internal: {
+    sid: string;
+    createdAt: number;
+  };
+};
 
 // モックの設定を先頭に配置
 vi.mock("./clients.js", () => ({
@@ -51,8 +62,6 @@ vi.mock("./providers/validation.js", () => ({
 }));
 
 // モック関数の取得
-const mockGetSession = vi.mocked(auth0.getSession);
-const mockStartInteractiveLogin = vi.mocked(auth0.startInteractiveLogin);
 
 describe("auth", () => {
   beforeEach(() => {
@@ -60,27 +69,47 @@ describe("auth", () => {
   });
 
   test("正常系: セッションを取得する", async () => {
-    const mockSession = { user: { sub: "user_123" } };
-    mockGetSession.mockResolvedValue(mockSession);
+    const mockSession: SessionData = {
+      user: { sub: "user_123" },
+      tokenSet: {
+        accessToken: "access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
+    };
+    vi.mocked(auth0).getSession.mockResolvedValue(mockSession);
 
     const result = await auth();
 
-    expect(mockGetSession).toHaveBeenCalledWith();
+    expect(vi.mocked(auth0).getSession).toHaveBeenCalledWith();
     expect(result).toStrictEqual(mockSession);
   });
 
   test("正常系: セッションが存在しない場合はnullを返す", async () => {
-    mockGetSession.mockResolvedValue(null);
+    vi.mocked(auth0).getSession.mockResolvedValue(null);
 
     const result = await auth();
 
-    expect(mockGetSession).toHaveBeenCalledWith();
+    expect(vi.mocked(auth0).getSession).toHaveBeenCalledWith();
     expect(result).toStrictEqual(null);
   });
 
   test("正常系: 複数回呼び出してもキャッシュされた結果を返す", async () => {
-    const mockSession = { user: { sub: "user_123" } };
-    mockGetSession.mockResolvedValue(mockSession);
+    const mockSession: SessionData = {
+      user: { sub: "user_123" },
+      tokenSet: {
+        accessToken: "access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
+    };
+    vi.mocked(auth0).getSession.mockResolvedValue(mockSession);
 
     const result1 = await auth();
     const result2 = await auth();
@@ -98,96 +127,138 @@ describe("authSignIn", () => {
   });
 
   test("正常系: デフォルトのreturnToでサインインを開始する", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn();
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/dashboard",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: カスタムreturnToでサインインを開始する", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn(undefined, { returnTo: "/custom-page" });
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/custom-page",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: プロバイダー引数は無視される", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn("google", { returnTo: "/dashboard" });
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/dashboard",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: 空のオプションオブジェクトでデフォルトのreturnToを使用する", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn(undefined, {});
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/dashboard",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: returnToがundefinedの場合デフォルトを使用する", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn(undefined, { returnTo: undefined });
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/dashboard",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: returnToが空文字の場合デフォルトを使用する", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn(undefined, { returnTo: "" });
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/dashboard",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: プロバイダーとオプションが両方undefinedの場合", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
     const result = await authSignIn(undefined, undefined);
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/dashboard",
     });
     expect(result).toStrictEqual(mockResult);
   });
 
   test("正常系: プロバイダーがnullの場合でも正常に動作する", async () => {
-    const mockResult = { redirect: "/auth/login" };
-    mockStartInteractiveLogin.mockResolvedValue(mockResult);
+    const mockResult = {
+      redirect: "/auth/login",
+      status: 302,
+      headers: new Headers(),
+      cookies: new Map(),
+    } as unknown as NextResponse;
+    vi.mocked(auth0).startInteractiveLogin.mockResolvedValue(mockResult);
 
-    const result = await authSignIn(null as any, { returnTo: "/home" });
+    const result = await authSignIn(null as unknown as string, {
+      returnTo: "/home",
+    });
 
-    expect(mockStartInteractiveLogin).toHaveBeenCalledWith({
+    expect(vi.mocked(auth0).startInteractiveLogin).toHaveBeenCalledWith({
       returnTo: "/home",
     });
     expect(result).toStrictEqual(mockResult);
@@ -201,29 +272,39 @@ describe("getAuth", () => {
 
   test("正常系: リクエストからセッションを取得する", async () => {
     const mockRequest = new Request("http://localhost:3000/") as NextRequest;
-    const mockSession = { user: { sub: "user_123" } };
-    mockGetSession.mockResolvedValue(mockSession);
+    const mockSession: SessionData = {
+      user: { sub: "user_123" },
+      tokenSet: {
+        accessToken: "access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
+    };
+    vi.mocked(auth0).getSession.mockResolvedValue(mockSession);
 
     const result = await getAuth(mockRequest);
 
-    expect(mockGetSession).toHaveBeenCalledWith(mockRequest);
+    expect(vi.mocked(auth0).getSession).toHaveBeenCalledWith(mockRequest);
     expect(result).toStrictEqual(mockSession);
   });
 
   test("正常系: セッションが存在しない場合はnullを返す", async () => {
     const mockRequest = new Request("http://localhost:3000/") as NextRequest;
-    mockGetSession.mockResolvedValue(null);
+    vi.mocked(auth0).getSession.mockResolvedValue(null);
 
     const result = await getAuth(mockRequest);
 
-    expect(mockGetSession).toHaveBeenCalledWith(mockRequest);
+    expect(vi.mocked(auth0).getSession).toHaveBeenCalledWith(mockRequest);
     expect(result).toStrictEqual(null);
   });
 
   test("異常系: getSessionがエラーをスローする", async () => {
     const mockRequest = new Request("http://localhost:3000/") as NextRequest;
     const error = new Error("Session error");
-    mockGetSession.mockRejectedValue(error);
+    vi.mocked(auth0).getSession.mockRejectedValue(error);
 
     await expect(getAuth(mockRequest)).rejects.toThrow("Session error");
   });
@@ -280,7 +361,7 @@ describe("auth function error handling", () => {
 
   test("異常系: getSessionがエラーをスローする場合", async () => {
     const error = new Error("Auth0 session error");
-    mockGetSession.mockRejectedValue(error);
+    vi.mocked(auth0).getSession.mockRejectedValue(error);
 
     await expect(auth()).rejects.toThrow("Auth0 session error");
   });
@@ -293,14 +374,14 @@ describe("authSignIn error handling", () => {
 
   test("異常系: startInteractiveLoginがエラーをスローする場合", async () => {
     const error = new Error("Login initialization failed");
-    mockStartInteractiveLogin.mockRejectedValue(error);
+    vi.mocked(auth0).startInteractiveLogin.mockRejectedValue(error);
 
     await expect(authSignIn()).rejects.toThrow("Login initialization failed");
   });
 
   test("異常系: カスタムreturnToでstartInteractiveLoginがエラーをスローする場合", async () => {
     const error = new Error("Login initialization failed");
-    mockStartInteractiveLogin.mockRejectedValue(error);
+    vi.mocked(auth0).startInteractiveLogin.mockRejectedValue(error);
 
     await expect(
       authSignIn(undefined, { returnTo: "/custom" }),

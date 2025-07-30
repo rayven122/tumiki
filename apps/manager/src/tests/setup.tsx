@@ -10,8 +10,15 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 
 // Next.js Image コンポーネントのモック
 vi.mock("next/image", () => ({
-  default: ({ src, alt, ...props }: any) => {
-    // eslint-disable-next-line @next/next/no-img-element
+  default: ({
+    src,
+    alt,
+    ...props
+  }: {
+    src: string;
+    alt: string;
+    [key: string]: unknown;
+  }) => {
     return <img src={src} alt={alt} {...props} />;
   },
 }));

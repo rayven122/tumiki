@@ -1,8 +1,12 @@
 {
-  "extends": "@tumiki/tsconfig/internal-package.json",
+  "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
     "outDir": ".",
-    "rootDir": "."
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "noEmit": false
   },
   "include": ["*.config.ts"],
   "exclude": ["node_modules", "*.config.js", "*.config.d.ts"]

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -26,6 +27,14 @@ type MockSession = {
   user: {
     sub: string;
   };
+  tokenSet: {
+    accessToken: string;
+    expiresAt: number;
+  };
+  internal: {
+    sid: string;
+    createdAt: number;
+  };
 };
 
 type GetUserParams = {
@@ -38,7 +47,9 @@ type GetUserParams = {
 vi.mock("./clients.js", () => {
   const mockGetSession =
     vi.fn<(req?: NextRequest) => Promise<MockSession | null>>();
-  const mockGetUser =
+
+  // users.getのモック関数 - 直接実行される関数として実装
+  const mockUsersGet =
     vi.fn<(params: GetUserParams) => Promise<{ data: UserData }>>();
 
   return {
@@ -47,17 +58,11 @@ vi.mock("./clients.js", () => {
     },
     managementClient: {
       users: {
-        get: mockGetUser,
+        get: mockUsersGet,
       },
     },
   };
 });
-
-// モック関数を取得
-
-const getAuth0OAuth = () => vi.mocked(auth0OAuth);
-
-const getManagementClient = () => vi.mocked(managementClient);
 
 describe("startOAuthFlow", () => {
   test("指定されたプロバイダーとスコープでOAuth認証URLを生成する", async () => {
@@ -122,12 +127,14 @@ describe("getUserIdentityProviderTokens", () => {
       },
     };
 
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getUserIdentityProviderTokens("auth0|123", "github");
 
     expect(token).toStrictEqual("gho_testtoken123");
-    expect(getManagementClient().users.get).toHaveBeenCalledWith({
+    expect(managementClient.users.get).toHaveBeenCalledWith({
       id: "auth0|123",
       fields: "identities",
       include_fields: true,
@@ -146,7 +153,9 @@ describe("getUserIdentityProviderTokens", () => {
       },
     };
 
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getUserIdentityProviderTokens("auth0|123", "github");
 
@@ -160,7 +169,9 @@ describe("getUserIdentityProviderTokens", () => {
       },
     };
 
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getUserIdentityProviderTokens("auth0|123", "github");
 
@@ -172,7 +183,9 @@ describe("getUserIdentityProviderTokens", () => {
       data: {},
     };
 
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getUserIdentityProviderTokens("auth0|123", "github");
 
@@ -191,7 +204,9 @@ describe("getUserIdentityProviderTokens", () => {
       },
     };
 
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getUserIdentityProviderTokens("auth0|123", "github");
 
@@ -200,8 +215,9 @@ describe("getUserIdentityProviderTokens", () => {
 
   test("ManagementClient APIエラー時はOAuthErrorをスローする", async () => {
     const apiError = new Error("API Error");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockRejectedValue(apiError);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockRejectedValue(
+      apiError,
+    );
 
     await expect(
       getUserIdentityProviderTokens("auth0|123", "github"),
@@ -224,6 +240,14 @@ describe("getProviderAccessToken", () => {
   test("セッションとトークンが存在する場合、アクセストークンを返す", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const mockUser: { data: UserData } = {
       data: {
@@ -236,9 +260,10 @@ describe("getProviderAccessToken", () => {
       },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getProviderAccessToken("github");
 
@@ -249,6 +274,14 @@ describe("getProviderAccessToken", () => {
     const mockRequest = {} as NextRequest;
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const mockUser: { data: UserData } = {
       data: {
@@ -261,18 +294,19 @@ describe("getProviderAccessToken", () => {
       },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const token = await getProviderAccessToken("github", mockRequest);
 
-    expect(getAuth0OAuth().getSession).toHaveBeenCalledWith(mockRequest);
+    expect(vi.mocked(auth0OAuth).getSession).toHaveBeenCalledWith(mockRequest);
     expect(token).toStrictEqual("gho_testtoken123");
   });
 
   test("セッションが存在しない場合、UNAUTHORIZEDエラーをスローする", async () => {
-    getAuth0OAuth().getSession.mockResolvedValue(null);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(null);
 
     await expect(getProviderAccessToken("github")).rejects.toThrow(OAuthError);
     await expect(getProviderAccessToken("github")).rejects.toMatchObject({
@@ -282,9 +316,18 @@ describe("getProviderAccessToken", () => {
   });
 
   test("セッションのuserがnullの場合、UNAUTHORIZEDエラーをスローする", async () => {
-    // @ts-expect-error: テスト用の意図的な不完全なセッション
-    const mockSession = { user: null };
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
+    const mockSession = {
+      user: null,
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
+    } as unknown as MockSession;
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
 
     await expect(getProviderAccessToken("github")).rejects.toThrow(OAuthError);
     await expect(getProviderAccessToken("github")).rejects.toMatchObject({
@@ -294,9 +337,18 @@ describe("getProviderAccessToken", () => {
   });
 
   test("セッションのuser.subがundefinedの場合、UNAUTHORIZEDエラーをスローする", async () => {
-    // @ts-expect-error: テスト用の意図的な不完全なセッション
-    const mockSession = { user: {} };
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
+    const mockSession = {
+      user: {} as { sub: string },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
+    } as unknown as MockSession;
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
 
     await expect(getProviderAccessToken("github")).rejects.toThrow(OAuthError);
     await expect(getProviderAccessToken("github")).rejects.toMatchObject({
@@ -308,6 +360,14 @@ describe("getProviderAccessToken", () => {
   test("トークンが見つからない場合、NO_ACCESS_TOKENエラーをスローする", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const mockUser: { data: UserData } = {
       data: {
@@ -315,9 +375,10 @@ describe("getProviderAccessToken", () => {
       },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     await expect(getProviderAccessToken("github")).rejects.toThrow(OAuthError);
     await expect(getProviderAccessToken("github")).rejects.toMatchObject({
@@ -329,11 +390,18 @@ describe("getProviderAccessToken", () => {
   test("getUserIdentityProviderTokensのエラーはそのまま伝播する", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockRejectedValue(
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("Unexpected error"),
     );
 
@@ -347,6 +415,14 @@ describe("getProviderAccessToken", () => {
   test("OAuthErrorが既にスローされた場合はそのまま再スローする", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const oauthError = new OAuthError(
       "Test error",
@@ -354,9 +430,10 @@ describe("getProviderAccessToken", () => {
       "github",
     );
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockRejectedValue(oauthError);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockRejectedValue(
+      oauthError,
+    );
 
     // エラーインスタンスのチェック
     await expect(getProviderAccessToken("github")).rejects.toThrow(OAuthError);
@@ -369,7 +446,9 @@ describe("getProviderAccessToken", () => {
   test("予期しないエラーの場合、UNKNOWN_ERRORをスローする", async () => {
     // getSessionがError以外の値をスローする場合
 
-    getAuth0OAuth().getSession.mockRejectedValue("Unexpected non-error value");
+    vi.mocked(auth0OAuth).getSession.mockRejectedValue(
+      "Unexpected non-error value",
+    );
 
     await expect(getProviderAccessToken("github")).rejects.toThrow(OAuthError);
     await expect(getProviderAccessToken("github")).rejects.toMatchObject({
@@ -387,6 +466,14 @@ describe("checkOAuthConnection", () => {
   test("トークンが存在する場合はtrueを返す", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const mockUser: { data: UserData } = {
       data: {
@@ -399,9 +486,10 @@ describe("checkOAuthConnection", () => {
       },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const isConnected = await checkOAuthConnection("github");
 
@@ -411,6 +499,14 @@ describe("checkOAuthConnection", () => {
   test("トークンが存在しない場合はfalseを返す", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const mockUser: { data: UserData } = {
       data: {
@@ -418,9 +514,10 @@ describe("checkOAuthConnection", () => {
       },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const isConnected = await checkOAuthConnection("github");
 
@@ -428,7 +525,7 @@ describe("checkOAuthConnection", () => {
   });
 
   test("未認証の場合はfalseを返す", async () => {
-    getAuth0OAuth().getSession.mockResolvedValue(null);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(null);
 
     const isConnected = await checkOAuthConnection("github");
 
@@ -439,6 +536,14 @@ describe("checkOAuthConnection", () => {
     const mockRequest = {} as NextRequest;
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const mockUser: { data: UserData } = {
       data: {
@@ -451,24 +556,32 @@ describe("checkOAuthConnection", () => {
       },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockResolvedValue(mockUser);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockUser,
+    );
 
     const isConnected = await checkOAuthConnection("github", mockRequest);
 
-    expect(getAuth0OAuth().getSession).toHaveBeenCalledWith(mockRequest);
+    expect(vi.mocked(auth0OAuth).getSession).toHaveBeenCalledWith(mockRequest);
     expect(isConnected).toStrictEqual(true);
   });
 
   test("CONNECTION_FAILEDエラーが発生した場合はエラーを再スローする", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockRejectedValue(
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("Connection failed"),
     );
 
@@ -482,6 +595,14 @@ describe("checkOAuthConnection", () => {
   test("その他のOAuthErrorが発生した場合はエラーを再スローする", async () => {
     const mockSession: MockSession = {
       user: { sub: "auth0|123" },
+      tokenSet: {
+        accessToken: "test_access_token",
+        expiresAt: Date.now() + 3600000,
+      },
+      internal: {
+        sid: "test_session_id",
+        createdAt: Date.now(),
+      },
     };
     const oauthError = new OAuthError(
       "Unknown error",
@@ -489,9 +610,10 @@ describe("checkOAuthConnection", () => {
       "github",
     );
 
-    getAuth0OAuth().getSession.mockResolvedValue(mockSession);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    getManagementClient().users.get.mockRejectedValue(oauthError);
+    vi.mocked(auth0OAuth).getSession.mockResolvedValue(mockSession);
+    (managementClient.users.get as ReturnType<typeof vi.fn>).mockRejectedValue(
+      oauthError,
+    );
 
     // エラーインスタンスのチェック
     await expect(checkOAuthConnection("github")).rejects.toThrow(OAuthError);
@@ -504,7 +626,9 @@ describe("checkOAuthConnection", () => {
   test("OAuthError以外のエラーが発生した場合もエラーを再スローする", async () => {
     // getSessionが文字列をスローする場合
 
-    getAuth0OAuth().getSession.mockRejectedValue("Unexpected string error");
+    vi.mocked(auth0OAuth).getSession.mockRejectedValue(
+      "Unexpected string error",
+    );
 
     await expect(checkOAuthConnection("github")).rejects.toThrow(OAuthError);
     await expect(checkOAuthConnection("github")).rejects.toMatchObject({

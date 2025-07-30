@@ -18,8 +18,8 @@
     "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
+    "lint": "eslint *.ts *.js --no-warn-ignored",
+    "lint:fix": "eslint *.ts *.js --fix --no-warn-ignored",
     "format": "prettier --check . --ignore-path ../../.gitignore"
   },
   "dependencies": {

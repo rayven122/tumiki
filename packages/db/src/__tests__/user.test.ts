@@ -30,7 +30,7 @@ describe("User", () => {
 
   describe("create", () => {
     test("正常系: 基本的なユーザーを作成できる", async () => {
-      const mockUser = UserFactory.build({
+      const mockUser = await UserFactory.build({
         id: "auth0|test-id",
         email: "test@example.com",
         name: "Test User",
@@ -50,7 +50,7 @@ describe("User", () => {
     });
 
     test("正常系: オンボーディング完了済みユーザーを作成できる", async () => {
-      const mockUser = OnboardedUserFactory.build({
+      const mockUser = await OnboardedUserFactory.build({
         email: "onboarded@example.com",
         hasCompletedOnboarding: true,
       });
@@ -66,7 +66,7 @@ describe("User", () => {
     });
 
     test("正常系: SYSTEM_ADMIN権限のユーザーを作成できる", async () => {
-      const mockAdminUser = AdminUserFactory.build({
+      const mockAdminUser = await AdminUserFactory.build({
         email: "admin@example.com",
         name: "Admin User",
       });
@@ -82,7 +82,7 @@ describe("User", () => {
     });
 
     test("正常系: null値を含むユーザーを作成できる", async () => {
-      const mockUser = UserFactory.build({
+      const mockUser = await UserFactory.build({
         id: "auth0|null-user",
         email: null,
         name: null,
@@ -102,7 +102,7 @@ describe("User", () => {
 
     test("正常系: 日付フィールドが自動設定される", async () => {
       const now = new Date();
-      const mockUser = UserFactory.build({
+      const mockUser = await UserFactory.build({
         createdAt: now,
         updatedAt: now,
       });
@@ -111,7 +111,7 @@ describe("User", () => {
 
       const result = await db.user.create({
         data: {
-          id: mockUser.id as string,
+          id: mockUser.id,
           email: mockUser.email as string | null,
         },
       });
@@ -123,7 +123,7 @@ describe("User", () => {
 
   describe("findUnique", () => {
     test("正常系: emailでユーザーを検索できる", async () => {
-      const mockUser = UserFactory.build({
+      const mockUser = await UserFactory.build({
         email: "test@example.com",
         name: "Test User",
         image: "https://example.com/avatar.jpg",
@@ -143,7 +143,7 @@ describe("User", () => {
     });
 
     test("正常系: idでユーザーを検索できる", async () => {
-      const mockUser = UserFactory.build({
+      const mockUser = await UserFactory.build({
         id: "auth0|specific-id",
         email: "specific@example.com",
       });
@@ -178,9 +178,9 @@ describe("User", () => {
       const result = await db.user.findMany();
 
       expect(result).toHaveLength(3);
-      expect(result[0].email).toStrictEqual(mockUsers[0].email);
-      expect(result[1].email).toStrictEqual(mockUsers[1].email);
-      expect(result[2].email).toStrictEqual(mockUsers[2].email);
+      expect(result[0]?.email).toStrictEqual(mockUsers[0]?.email);
+      expect(result[1]?.email).toStrictEqual(mockUsers[1]?.email);
+      expect(result[2]?.email).toStrictEqual(mockUsers[2]?.email);
     });
 
     test("正常系: roleでフィルタリングできる", async () => {
@@ -193,8 +193,8 @@ describe("User", () => {
       });
 
       expect(result).toHaveLength(2);
-      expect(result[0].role).toStrictEqual(Role.SYSTEM_ADMIN);
-      expect(result[1].role).toStrictEqual(Role.SYSTEM_ADMIN);
+      expect(result[0]?.role).toStrictEqual(Role.SYSTEM_ADMIN);
+      expect(result[1]?.role).toStrictEqual(Role.SYSTEM_ADMIN);
     });
 
     test("正常系: hasCompletedOnboardingでフィルタリングできる", async () => {
@@ -234,8 +234,8 @@ describe("User", () => {
       });
 
       expect(result).toHaveLength(2);
-      expect(result[0].email).toStrictEqual(mockUsers[2].email);
-      expect(result[1].email).toStrictEqual(mockUsers[3].email);
+      expect(result[0]?.email).toStrictEqual(mockUsers[2]?.email);
+      expect(result[1]?.email).toStrictEqual(mockUsers[3]?.email);
     });
 
     test("正常系: ソート順を指定して取得できる", async () => {
@@ -260,7 +260,9 @@ describe("User", () => {
   describe("update", () => {
     test("正常系: nameを更新できる", async () => {
       const originalUser = await UserFactory.build({ name: "Old Name" });
-      const originalUpdatedAt = new Date(originalUser.updatedAt);
+      const originalUpdatedAt = originalUser.updatedAt
+        ? new Date(originalUser.updatedAt)
+        : new Date();
       const newUpdatedAt = new Date(originalUpdatedAt.getTime() + 1000);
       const updatedUser = {
         ...originalUser,

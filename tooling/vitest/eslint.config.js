@@ -1,3 +1,8 @@
-import baseConfig from "@tumiki/eslint-config";
+import baseConfig from "@tumiki/eslint-config/base";
 
-export default baseConfig;
+export default [
+  ...baseConfig,
+  {
+    files: ["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx"],
+  },
+];

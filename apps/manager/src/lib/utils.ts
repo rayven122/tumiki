@@ -22,37 +22,46 @@ export const fetcher = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-export const fetchWithErrorHandlers = Object.assign(
-  async function (
-    input: RequestInfo | URL,
-    init?: RequestInit,
-  ): Promise<Response> {
-    try {
-      const response = await fetch(input, init);
+export const fetchWithErrorHandlers = async function (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    const response = await fetch(input, init);
 
-      if (!response.ok) {
-        const { code, cause } = (await response.json()) as {
-          code: ErrorCode;
-          cause: string;
-        };
-        throw new ChatSDKError(code, cause);
-      }
-
-      return response;
-    } catch (error: unknown) {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        throw new ChatSDKError("offline:chat");
-      }
-
-      throw error;
+    if (!response.ok) {
+      const { code, cause } = (await response.json()) as {
+        code: ErrorCode;
+        cause: string;
+      };
+      throw new ChatSDKError(code, cause);
     }
-  },
-  {
-    preconnect:
-      (fetch as { preconnect?: typeof fetch.preconnect }).preconnect ??
-      (() => undefined),
-  },
-) as typeof fetch;
+
+    return response;
+  } catch (error: unknown) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      throw new ChatSDKError("offline:chat");
+    }
+
+    throw error;
+  }
+} as typeof fetch;
+
+// Add preconnect property if it exists on the original fetch
+// fetchを型安全に拡張
+type FetchWithPreconnect = typeof fetch & {
+  preconnect?: (url: string) => void;
+};
+
+const originalFetch = fetch as FetchWithPreconnect;
+if (
+  "preconnect" in originalFetch &&
+  typeof originalFetch.preconnect === "function"
+) {
+  // fetchWithErrorHandlersを拡張してpreconnectプロパティを追加
+  const extendedFetch = fetchWithErrorHandlers as FetchWithPreconnect;
+  extendedFetch.preconnect = originalFetch.preconnect;
+}
 
 export function generateCUID(): string {
   // NOTE: Change to cuid v1

@@ -151,6 +151,7 @@
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "eslint-config-next": "^15.3.3",
+    "jsdom": "^26.1.0",
     "prettier": "catalog:",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "catalog:",
