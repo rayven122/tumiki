@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
-import { Loader2, Server, Info } from "lucide-react";
+import { Loader2, Server, Info, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -251,79 +251,164 @@ export const UserMcpServerConfigModal = ({
   return (
     <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
-        {/* ローディングオーバーレイ */}
-        {isProcessing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="flex flex-col items-center space-y-2 rounded-lg bg-white p-6 shadow-lg">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <span className="text-sm font-medium text-gray-700">
-                {isPending
-                  ? "サーバーを追加中..."
-                  : isValidating
-                    ? "接続を検証中..."
-                    : isOAuthConnecting
-                      ? "OAuth接続中..."
-                      : "更新中..."}
-              </span>
+        <div className="relative max-h-[90vh] overflow-y-auto">
+          {/* ローディングオーバーレイ */}
+          {isProcessing && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+              <div className="flex flex-col items-center space-y-2">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {isPending
+                    ? "サーバーを追加中..."
+                    : isValidating
+                      ? "接続を検証中..."
+                      : isOAuthConnecting
+                        ? "OAuth接続中..."
+                        : "更新中..."}
+                </span>
+              </div>
+            </div>
+          )}
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              APIトークンの{mode === "create" ? "設定" : "編集"}
+            </DialogTitle>
+            <DialogDescription>
+              {mcpServer.name}
+              に接続するために必要なAPIトークンを
+              {mode === "create" ? "設定" : "編集"}してください。
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* サービス情報 */}
+          <div className="mb-4 flex items-center">
+            <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md border p-2">
+              {mcpServer.iconPath ? (
+                <Image
+                  src={mcpServer.iconPath}
+                  alt={mcpServer.name}
+                  width={24}
+                  height={24}
+                  className="h-6 w-6"
+                />
+              ) : (
+                <FaviconImage
+                  url={mcpServer.url}
+                  alt={mcpServer.name}
+                  size={24}
+                  className="h-6 w-6"
+                  fallback={<Server className="h-6 w-6 text-gray-500" />}
+                />
+              )}
+            </div>
+            <div>
+              <h2 className="font-medium">{mcpServer.name}</h2>
+              <Badge variant="outline" className="mt-1 text-xs">
+                {mcpServer.envVars.length > 1
+                  ? `${mcpServer.envVars.length}つのAPIトークンが必要`
+                  : "APIトークンが必要"}
+              </Badge>
             </div>
           </div>
-        )}
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            APIトークンの{mode === "create" ? "設定" : "編集"}
-          </DialogTitle>
-          <DialogDescription>
-            {mcpServer.name}
-            に接続するために必要なAPIトークンを
-            {mode === "create" ? "設定" : "編集"}してください。
-          </DialogDescription>
-        </DialogHeader>
 
-        {/* サービス情報 */}
-        <div className="mb-4 flex items-center">
-          <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md border p-2">
-            {mcpServer.iconPath ? (
-              <Image
-                src={mcpServer.iconPath}
-                alt={mcpServer.name}
-                width={24}
-                height={24}
-                className="h-6 w-6"
-              />
-            ) : (
-              <FaviconImage
-                url={mcpServer.url}
-                alt={mcpServer.name}
-                size={24}
-                className="h-6 w-6"
-                fallback={<Server className="h-6 w-6 text-gray-500" />}
-              />
-            )}
-          </div>
-          <div>
-            <h2 className="font-medium">{mcpServer.name}</h2>
-            <Badge variant="outline" className="mt-1 text-xs">
-              {mcpServer.envVars.length > 1
-                ? `${mcpServer.envVars.length}つのAPIトークンが必要`
-                : "APIトークンが必要"}
-            </Badge>
-          </div>
-        </div>
+          {/* GitHub MCPの場合はタブで認証方法を選択 */}
+          {isGitHubMcp ? (
+            <Tabs
+              value={authMethod}
+              onValueChange={(v) => setAuthMethod(v as "apikey" | "oauth")}
+              className="space-y-4"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="oauth">OAuth認証</TabsTrigger>
+                <TabsTrigger value="apikey">APIキー</TabsTrigger>
+              </TabsList>
 
-        {/* GitHub MCPの場合はタブで認証方法を選択 */}
-        {isGitHubMcp ? (
-          <Tabs
-            value={authMethod}
-            onValueChange={(v) => setAuthMethod(v as "apikey" | "oauth")}
-            className="space-y-4"
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="oauth">OAuth認証</TabsTrigger>
-              <TabsTrigger value="apikey">APIキー</TabsTrigger>
-            </TabsList>
+              <TabsContent value="apikey" className="space-y-4">
+                {/* 既存のAPIキー入力フィールド */}
+                {mcpServer.envVars.map((envVar, index) => (
+                  <div key={envVar} className="space-y-2">
+                    <Label htmlFor={`token-${envVar}`} className="text-sm">
+                      {envVar}
+                    </Label>
+                    <Input
+                      id={`token-${envVar}`}
+                      type="password"
+                      placeholder={`${envVar}を入力してください`}
+                      value={envVars[envVar]}
+                      onChange={(e) =>
+                        handleTokenChange(envVar, e.target.value)
+                      }
+                      className="text-sm"
+                      disabled={isProcessing}
+                    />
+                    {index === mcpServer.envVars.length - 1 && (
+                      <p className="text-muted-foreground text-xs">
+                        トークンは暗号化されて安全に保存されます
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </TabsContent>
 
-            <TabsContent value="apikey" className="space-y-4">
-              {/* 既存のAPIキー入力フィールド */}
+              <TabsContent value="oauth" className="space-y-4">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    OAuth認証を使用すると、GitHubアカウントでログインして必要な権限のみを付与できます。
+                    トークンの有効期限が切れた場合は自動的に更新されます。
+                  </AlertDescription>
+                </Alert>
+
+                {/* スコープ選択UI */}
+                <div className="space-y-4">
+                  <Label>必要な権限を選択してください</Label>
+                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-3">
+                    {githubScopes.map((scope) => {
+                      const handleScopeToggle = () => {
+                        if (selectedScopes.includes(scope.scopes[0])) {
+                          setSelectedScopes(
+                            selectedScopes.filter((s) => s !== scope.scopes[0]),
+                          );
+                        } else {
+                          setSelectedScopes([
+                            ...selectedScopes,
+                            scope.scopes[0],
+                          ]);
+                        }
+                      };
+
+                      return (
+                        <div
+                          key={scope.id}
+                          className="hover:bg-muted/50 flex cursor-pointer items-start space-x-3 rounded p-2"
+                          onClick={handleScopeToggle}
+                        >
+                          <Checkbox
+                            id={scope.id}
+                            checked={selectedScopes.includes(scope.scopes[0])}
+                            onCheckedChange={handleScopeToggle}
+                          />
+                          <div className="flex-1">
+                            <Label
+                              htmlFor={scope.id}
+                              className="cursor-pointer font-medium"
+                            >
+                              {scope.label}
+                            </Label>
+                            <p className="text-muted-foreground text-xs">
+                              {scope.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            /* 既存のAPIキー入力フィールド（GitHub以外のMCP） */
+            <div className="space-y-4">
               {mcpServer.envVars.map((envVar, index) => (
                 <div key={envVar} className="space-y-2">
                   <Label htmlFor={`token-${envVar}`} className="text-sm">
@@ -345,133 +430,55 @@ export const UserMcpServerConfigModal = ({
                   )}
                 </div>
               ))}
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="oauth" className="space-y-4">
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  OAuth認証を使用すると、GitHubアカウントでログインして必要な権限のみを付与できます。
-                  トークンの有効期限が切れた場合は自動的に更新されます。
-                </AlertDescription>
-              </Alert>
+          <Separator className="my-4" />
 
-              {/* スコープ選択UI */}
-              <div className="space-y-4">
-                <Label>必要な権限を選択してください</Label>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-3">
-                  {githubScopes.map((scope) => {
-                    const handleScopeToggle = () => {
-                      if (selectedScopes.includes(scope.scopes[0])) {
-                        setSelectedScopes(
-                          selectedScopes.filter((s) => s !== scope.scopes[0]),
-                        );
-                      } else {
-                        setSelectedScopes([...selectedScopes, scope.scopes[0]]);
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={scope.id}
-                        className="hover:bg-muted/50 flex cursor-pointer items-start space-x-3 rounded p-2"
-                        onClick={handleScopeToggle}
-                      >
-                        <Checkbox
-                          id={scope.id}
-                          checked={selectedScopes.includes(scope.scopes[0])}
-                          onCheckedChange={handleScopeToggle}
-                        />
-                        <div className="flex-1">
-                          <Label
-                            htmlFor={scope.id}
-                            className="cursor-pointer font-medium"
-                          >
-                            {scope.label}
-                          </Label>
-                          <p className="text-muted-foreground text-xs">
-                            {scope.description}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          /* 既存のAPIキー入力フィールド（GitHub以外のMCP） */
-          <div className="space-y-4">
-            {mcpServer.envVars.map((envVar, index) => (
-              <div key={envVar} className="space-y-2">
-                <Label htmlFor={`token-${envVar}`} className="text-sm">
-                  {envVar}
-                </Label>
-                <Input
-                  id={`token-${envVar}`}
-                  type="password"
-                  placeholder={`${envVar}を入力してください`}
-                  value={envVars[envVar]}
-                  onChange={(e) => handleTokenChange(envVar, e.target.value)}
-                  className="text-sm"
-                  disabled={isProcessing}
-                />
-                {index === mcpServer.envVars.length - 1 && (
-                  <p className="text-muted-foreground text-xs">
-                    トークンは暗号化されて安全に保存されます
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <Separator className="my-4" />
-
-        <div className="flex justify-end space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            size="sm"
-            disabled={isProcessing}
-          >
-            キャンセル
-          </Button>
-          <Button
-            onClick={() => {
-              if (mode === "create") {
-                handleSave();
-              } else {
-                handleUpdate();
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              size="sm"
+              disabled={isProcessing}
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={() => {
+                if (mode === "create") {
+                  handleSave();
+                } else {
+                  handleUpdate();
+                }
+              }}
+              disabled={
+                isGitHubMcp && authMethod === "oauth"
+                  ? selectedScopes.length === 0 || isProcessing
+                  : !isFormValid() || isProcessing
               }
-            }}
-            disabled={
-              isGitHubMcp && authMethod === "oauth"
-                ? selectedScopes.length === 0 || isProcessing
-                : !isFormValid() || isProcessing
-            }
-            size="sm"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isPending
-                  ? "追加中..."
-                  : isValidating
-                    ? "検証中..."
-                    : isOAuthConnecting
-                      ? "OAuth接続中..."
-                      : "更新中..."}
-              </>
-            ) : isGitHubMcp && authMethod === "oauth" ? (
-              "認証"
-            ) : mode === "create" ? (
-              "保存"
-            ) : (
-              "更新"
-            )}
-          </Button>
+              size="sm"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isPending
+                    ? "追加中..."
+                    : isValidating
+                      ? "検証中..."
+                      : isOAuthConnecting
+                        ? "OAuth接続中..."
+                        : "更新中..."}
+                </>
+              ) : isGitHubMcp && authMethod === "oauth" ? (
+                "認証"
+              ) : mode === "create" ? (
+                "保存"
+              ) : (
+                "更新"
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
