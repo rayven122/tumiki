@@ -3,19 +3,18 @@ import { defineConfig, mergeConfig } from "vitest/config";
 
 import baseConfig from "./base.config";
 
-export default mergeConfig(
-  baseConfig,
-  defineConfig({
-    plugins: [react()],
-    test: {
-      environment: "jsdom",
-      coverage: {
-        exclude: [
-          ...(baseConfig.test?.coverage?.exclude || []),
-          "src/**/types.ts",
-          "src/**/_components/**",
-        ],
-      },
+const reactConfig = defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "jsdom",
+    coverage: {
+      exclude: [
+        ...(baseConfig.test?.coverage?.exclude || []),
+        "src/**/types.ts",
+        "src/**/_components/**",
+      ],
     },
-  }),
-);
+  },
+});
+
+export default mergeConfig(baseConfig, reactConfig);

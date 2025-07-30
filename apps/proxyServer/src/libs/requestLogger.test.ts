@@ -1,79 +1,103 @@
-import { describe, expect, test, beforeEach, mock } from "bun:test";
-import { logMcpRequest } from "./requestLogger.js";
+import { describe, expect, test, beforeEach, vi, type Mock } from "vitest";
+import type { db as DbType } from "@tumiki/db/tcp";
+import type { logger as LoggerType } from "./logger.js";
+import type { compressRequestResponseData as CompressType } from "./dataCompression.js";
 
 // モック設定
 interface MockTx {
   mcpServerRequestLog: {
-    create: ReturnType<typeof mock>;
+    create: ReturnType<typeof vi.fn>;
   };
   mcpServerRequestData: {
-    create: ReturnType<typeof mock>;
+    create: ReturnType<typeof vi.fn>;
   };
 }
 
 type TransactionCallback = (tx: MockTx) => Promise<unknown>;
 
-const mockDb = {
-  $transaction: mock(async (callback: TransactionCallback) => {
-    return await callback(mockTx);
-  }),
-};
-
-const mockTx: MockTx = {
-  mcpServerRequestLog: {
-    create: mock(async (params: { data: Record<string, unknown> }) => {
-      return {
-        id: "test-log-id",
-        ...params.data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    }),
-  },
-  mcpServerRequestData: {
-    create: mock(async (params: { data: Record<string, unknown> }) => {
-      return {
-        id: "test-data-id",
-        ...params.data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    }),
-  },
-};
-
-const mockLogger = {
-  debug: mock(() => {
-    // Mock debug logger
-  }),
-  error: mock(() => {
-    // Mock error logger
-  }),
-  info: mock(() => {
-    // Mock info logger
-  }),
-  warn: mock(() => {
-    // Mock warn logger
-  }),
-};
+// グローバル変数としてモックを定義
+let mockTx: MockTx;
+let mockDb: typeof DbType;
+let mockLogger: typeof LoggerType;
+let mockCompressRequestResponseData: typeof CompressType;
 
 // モジュールレベルでモックを設定
-void mock.module("@tumiki/db/tcp", () => ({
-  db: mockDb,
+vi.mock("@tumiki/db/tcp", () => {
+  return {
+    db: {
+      $transaction: vi.fn(),
+    },
+  };
+});
+
+vi.mock("./logger.js", () => ({
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
-void mock.module("./logger.js", () => ({
-  logger: mockLogger,
+vi.mock("./dataCompression.js", () => ({
+  compressRequestResponseData: vi.fn(),
 }));
+
+import { logMcpRequest } from "./requestLogger.js";
+import { db } from "@tumiki/db/tcp";
+import { logger } from "./logger.js";
+import { compressRequestResponseData } from "./dataCompression.js";
 
 describe("logMcpRequest", () => {
   beforeEach(() => {
+    // モックを初期化
+    mockDb = db;
+    mockLogger = logger;
+    mockCompressRequestResponseData = compressRequestResponseData as Mock;
+
+    // デフォルトの圧縮モック実装
+    (mockCompressRequestResponseData as Mock).mockResolvedValue({
+      inputDataCompressed: Buffer.from("compressed-input"),
+      outputDataCompressed: Buffer.from("compressed-output"),
+      originalInputSize: 100,
+      originalOutputSize: 200,
+      inputCompressionRatio: 0.5,
+      outputCompressionRatio: 0.6,
+      compressionRatio: 0.55,
+    });
+
+    mockTx = {
+      mcpServerRequestLog: {
+        create: vi.fn(async (params: { data: Record<string, unknown> }) => {
+          return {
+            id: "test-log-id",
+            ...params.data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
+      },
+      mcpServerRequestData: {
+        create: vi.fn(async (params: { data: Record<string, unknown> }) => {
+          return {
+            id: "test-data-id",
+            ...params.data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
+      },
+    };
+
+    // $transactionの実装を設定
+    (mockDb.$transaction as Mock).mockImplementation(
+      async (callback: TransactionCallback) => {
+        return await callback(mockTx);
+      },
+    );
+
     // テスト前にモックをリセット
-    mockDb.$transaction.mockClear();
-    mockTx.mcpServerRequestLog.create.mockClear();
-    mockTx.mcpServerRequestData.create.mockClear();
-    mockLogger.debug.mockClear();
-    mockLogger.error.mockClear();
+    vi.clearAllMocks();
   });
 
   test("基本的なリクエストログを正常に記録する", async () => {
@@ -93,7 +117,7 @@ describe("logMcpRequest", () => {
     expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
     expect(mockTx.mcpServerRequestLog.create).toHaveBeenCalledTimes(1);
     expect(mockTx.mcpServerRequestData.create).not.toHaveBeenCalled();
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "test-tool",
@@ -130,7 +154,7 @@ describe("logMcpRequest", () => {
     expect(createDataCall?.data.originalInputSize).toBeGreaterThan(0);
     expect(createDataCall?.data.originalOutputSize).toBeGreaterThan(0);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request with detailed data logged successfully",
       expect.objectContaining({
         toolName: "test-tool",
@@ -188,7 +212,7 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "***_***_*******",
@@ -210,7 +234,7 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "****-*****-*******",
@@ -230,7 +254,7 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "******-*******",
@@ -250,7 +274,7 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "********_*****",
@@ -270,7 +294,7 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "**********-*****",
@@ -290,7 +314,7 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.debug).toHaveBeenCalledWith(
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
       "MCP request logged successfully",
       expect.objectContaining({
         toolName: "weather-service",
@@ -298,8 +322,8 @@ describe("logMcpRequest", () => {
     );
   });
 
-  test("データベースエラーが発生してもサービスを停止しない", () => {
-    mockDb.$transaction.mockRejectedValueOnce(
+  test("データベースエラーが発生してもサービスを停止しない", async () => {
+    (mockDb.$transaction as Mock).mockRejectedValueOnce(
       new Error("Database connection failed"),
     );
 
@@ -313,9 +337,9 @@ describe("logMcpRequest", () => {
     };
 
     // エラーが発生してもPromiseがrejectされないことを確認
-    expect(logMcpRequest(params)).resolves.toBeUndefined();
+    await expect(logMcpRequest(params)).resolves.toBeUndefined();
 
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(mockLogger.error as Mock).toHaveBeenCalledWith(
       "Failed to log MCP request",
       expect.objectContaining({
         toolName: "test-tool",
@@ -324,9 +348,10 @@ describe("logMcpRequest", () => {
     );
   });
 
-  test("圧縮処理でエラーが発生してもサービスを停止しない", () => {
-    const obj: { a: number; self?: unknown } = { a: 1 };
-    obj.self = obj; // 循環参照でJSON.stringifyが失敗
+  test("圧縮処理でエラーが発生してもサービスを停止しない", async () => {
+    (mockCompressRequestResponseData as Mock).mockRejectedValueOnce(
+      new Error("Compression failed"),
+    );
 
     const params = {
       mcpServerInstanceId: "test-instance-id",
@@ -335,17 +360,17 @@ describe("logMcpRequest", () => {
       method: "POST",
       responseStatus: "200",
       durationMs: 100,
-      requestData: obj,
+      requestData: { test: "data" },
       responseData: { result: "success" },
     };
 
-    expect(logMcpRequest(params)).resolves.toBeUndefined();
+    await expect(logMcpRequest(params)).resolves.toBeUndefined();
 
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(mockLogger.error as Mock).toHaveBeenCalledWith(
       "Failed to log MCP request",
       expect.objectContaining({
         toolName: "test-tool",
-        error: expect.stringMatching(/.+/) as string,
+        error: "Compression failed",
       }),
     );
   });
@@ -417,6 +442,17 @@ describe("logMcpRequest", () => {
       responseData: largeData,
     };
 
+    // 大きなデータ用のモックレスポンスを設定
+    (mockCompressRequestResponseData as Mock).mockResolvedValueOnce({
+      inputDataCompressed: Buffer.from("compressed-input-large"),
+      outputDataCompressed: Buffer.from("compressed-output-large"),
+      originalInputSize: 10020,
+      originalOutputSize: 10020,
+      inputCompressionRatio: 0.1,
+      outputCompressionRatio: 0.1,
+      compressionRatio: 0.1,
+    });
+
     await logMcpRequest(params);
 
     expect(mockTx.mcpServerRequestLog.create).toHaveBeenCalledTimes(1);
@@ -430,7 +466,7 @@ describe("logMcpRequest", () => {
   });
 
   test("非Error型のエラーも適切に処理する", async () => {
-    mockDb.$transaction.mockRejectedValueOnce("String error");
+    (mockDb.$transaction as Mock).mockRejectedValueOnce("String error");
 
     const params = {
       mcpServerInstanceId: "test-instance-id",
@@ -443,11 +479,139 @@ describe("logMcpRequest", () => {
 
     await logMcpRequest(params);
 
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(mockLogger.error as Mock).toHaveBeenCalledWith(
       "Failed to log MCP request",
       expect.objectContaining({
         error: "String error",
       }),
     );
+  });
+
+  test("mcpServerInstanceIdが未定義の場合はログ記録をスキップする", async () => {
+    const params = {
+      mcpServerInstanceId: undefined,
+      toolName: "test-tool",
+      transportType: "STREAMABLE_HTTPS" as const,
+      method: "POST",
+      responseStatus: "200",
+      durationMs: 100,
+    };
+
+    await logMcpRequest(params as Parameters<typeof logMcpRequest>[0]);
+
+    expect(mockLogger.debug as Mock).toHaveBeenCalledWith(
+      "Skipping log record due to missing mcpServerInstanceId",
+      expect.objectContaining({
+        toolName: "test-tool",
+        method: "POST",
+      }),
+    );
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  test("5MBを超えるリクエストデータの場合は詳細ログをスキップする", async () => {
+    const largeData = "x".repeat(6 * 1024 * 1024); // 6MB
+    const params = {
+      mcpServerInstanceId: "test-instance-id",
+      toolName: "test-tool",
+      transportType: "STREAMABLE_HTTPS" as const,
+      method: "POST",
+      responseStatus: "200",
+      durationMs: 100,
+      requestData: largeData,
+      responseData: { result: "small" },
+    };
+
+    await logMcpRequest(params);
+
+    expect(mockLogger.warn as Mock).toHaveBeenCalledWith(
+      "Request/response data exceeds size limit, skipping detailed logging",
+      expect.objectContaining({
+        toolName: "test-tool",
+        requestSize: expect.any(Number) as number,
+        responseSize: expect.any(Number) as number,
+        maxDataSize: 5 * 1024 * 1024,
+      }),
+    );
+    expect(mockCompressRequestResponseData).not.toHaveBeenCalled();
+    expect(mockTx.mcpServerRequestData.create).not.toHaveBeenCalled();
+  });
+
+  test("5MBを超えるレスポンスデータの場合は詳細ログをスキップする", async () => {
+    const largeData = "y".repeat(6 * 1024 * 1024); // 6MB
+    const params = {
+      mcpServerInstanceId: "test-instance-id",
+      toolName: "test-tool",
+      transportType: "STREAMABLE_HTTPS" as const,
+      method: "POST",
+      responseStatus: "200",
+      durationMs: 100,
+      requestData: { request: "small" },
+      responseData: largeData,
+    };
+
+    await logMcpRequest(params);
+
+    expect(mockLogger.warn as Mock).toHaveBeenCalledWith(
+      "Request/response data exceeds size limit, skipping detailed logging",
+      expect.objectContaining({
+        toolName: "test-tool",
+        requestSize: expect.any(Number) as number,
+        responseSize: expect.any(Number) as number,
+        maxDataSize: 5 * 1024 * 1024,
+      }),
+    );
+    expect(mockCompressRequestResponseData).not.toHaveBeenCalled();
+    expect(mockTx.mcpServerRequestData.create).not.toHaveBeenCalled();
+  });
+
+  test("nullの値を含むパラメータも正しく処理する", async () => {
+    const params = {
+      userId: null as unknown as string,
+      mcpServerInstanceId: "test-instance-id",
+      toolName: "test-tool",
+      transportType: "STREAMABLE_HTTPS" as const,
+      method: "POST",
+      responseStatus: "200",
+      durationMs: 100,
+      errorMessage: null as unknown as string,
+      errorCode: null as unknown as string,
+      inputBytes: null as unknown as number,
+      outputBytes: null as unknown as number,
+      organizationId: null as unknown as string,
+      userAgent: null as unknown as string,
+    };
+
+    await logMcpRequest(params);
+
+    const createCall = mockTx.mcpServerRequestLog.create.mock.calls[0]?.[0] as
+      | { data: Record<string, unknown> }
+      | undefined;
+    expect(createCall).toBeDefined();
+    expect(createCall?.data.userId).toBeNull();
+    expect(createCall?.data.errorMessage).toBeNull();
+    expect(createCall?.data.errorCode).toBeNull();
+    expect(createCall?.data.inputBytes).toBeNull();
+    expect(createCall?.data.outputBytes).toBeNull();
+    expect(createCall?.data.organizationId).toBeNull();
+    expect(createCall?.data.userAgent).toBeNull();
+  });
+
+  test("SSE transportTypeで正常にログを記録する", async () => {
+    const params = {
+      mcpServerInstanceId: "test-instance-id",
+      toolName: "test-tool",
+      transportType: "SSE" as const,
+      method: "GET",
+      responseStatus: "200",
+      durationMs: 75,
+    };
+
+    await logMcpRequest(params);
+
+    const createCall = mockTx.mcpServerRequestLog.create.mock.calls[0]?.[0] as
+      | { data: Record<string, unknown> }
+      | undefined;
+    expect(createCall?.data.transportType).toStrictEqual("SSE");
   });
 });

@@ -10,6 +10,8 @@ export const UserFactory = defineUserFactory({
     image: null,
     role: Role.USER,
     hasCompletedOnboarding: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }),
 });
 
@@ -21,6 +23,8 @@ export const AdminUserFactory = defineUserFactory({
     image: null,
     role: Role.SYSTEM_ADMIN,
     hasCompletedOnboarding: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }),
 });
 
@@ -32,5 +36,7 @@ export const OnboardedUserFactory = defineUserFactory({
     image: "https://example.com/avatar.jpg",
     role: Role.USER,
     hasCompletedOnboarding: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }),
 });

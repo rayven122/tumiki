@@ -149,7 +149,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   if (!jsonFilePath) {
     console.error(
-      "使用方法: bun run src/migrateWaitingList.ts <JSONファイルパス> [--dry-run] [--no-skip-duplicates]",
+      "使用方法: tsx src/migrateWaitingList.ts <JSONファイルパス> [--dry-run] [--no-skip-duplicates]",
     );
     process.exit(1);
   }
