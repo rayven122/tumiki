@@ -25,34 +25,44 @@
 5. Connection名を記録（例：`oauth2-notion`）
 6. OAuth専用アプリケーションでこのConnectionを有効化
 
-### 2. プロバイダー設定ファイルの作成
+### 2. プロバイダーの登録
 
-`packages/auth/src/providers/[provider].ts`を作成：
+`packages/auth/src/providers.ts`を更新：
 
 ```typescript
-import type { OAuthProviderConfig } from "./types";
+import { z } from "zod";
 
-export const [provider]Config: OAuthProviderConfig = {
-  connection: "oauth2-[provider]", // Auth0のConnection名
-  displayName: "[Provider] OAuth",
-  icon: "[Provider]Icon", // アイコンコンポーネント名
-  availableScopes: [
-    {
-      id: "[scope-id]",
-      label: "[スコープ表示名]",
-      description: "[スコープの説明]",
-      scopes: ["scope1", "scope2"], // 実際のスコープ値
-      category: "[カテゴリ名]", // オプション
-    },
-  ],
-  tokenEnvVar: "[PROVIDER]_TOKEN", // 環境変数名
-  requiredEnvVars: [], // 追加で必要な環境変数
-};
+export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
+
+export const OAUTH_PROVIDERS = [
+  "google",
+  "github",
+  "slack",
+  "notion",
+  "linkedin",
+  "figma",
+  "[provider]", // 新しいプロバイダー
+] as const;
+
+export const PROVIDER_CONNECTIONS = {
+  google: "google-oauth2",
+  github: "github",
+  slack: "sign-in-with-slack",
+  notion: "Notion",
+  linkedin: "linkedin",
+  figma: "figma",
+  [provider]: "[connection-name]", // Auth0のConnection名
+} as const satisfies Record<OAuthProvider, string>;
+
+// Zodスキーマは自動生成される
 ```
 
-### 3. プロバイダーの登録
+### 3. スコープの管理
 
-#### OAuth認証フローについて
+スコープは完全にAuth0側で管理されます。UIでのスコープ選択は不要で、Auth0のSocial Connection設定で必要なスコープを指定します。
+
+
+### 4. OAuth認証フローについて
 
 Tumikiでは、OAuth認証に専用のエンドポイントを使用します：
 - ログイン: `/oauth/auth/login`
@@ -60,49 +70,6 @@ Tumikiでは、OAuth認証に専用のエンドポイントを使用します：
 - ログアウト: `/oauth/auth/logout`
 
 これらのエンドポイントは`auth0OAuth`クライアントによって自動的に処理されます。
-
-`packages/auth/src/providers/index.ts`を更新：
-
-```typescript
-import { [provider]Config } from "./[provider]";
-
-// OAUTH_PROVIDERSに追加
-export const OAUTH_PROVIDERS = [
-  "google",
-  "github",
-  "slack",
-  "notion",
-  "linkedin",
-  "[provider]", // 新しいプロバイダー
-] as const;
-
-// OAUTH_PROVIDER_CONFIGに追加
-export const OAUTH_PROVIDER_CONFIG = {
-  // ... 既存のプロバイダー
-  [provider]: [provider]Config,
-} as const satisfies Record<OAuthProvider, OAuthProviderConfig>;
-
-// PROVIDER_CONNECTIONSに追加
-export const PROVIDER_CONNECTIONS = {
-  // ... 既存のプロバイダー
-  [provider]: [provider]Config.connection,
-} as const satisfies Record<OAuthProvider, string>;
-```
-
-### 4. 型定義の更新
-
-必要に応じて`packages/auth/src/providers/validation.ts`でZodスキーマを更新：
-
-```typescript
-export const OauthProviderSchema = z.enum([
-  "google",
-  "github",
-  "slack",
-  "notion",
-  "linkedin",
-  "[provider]", // 新しいプロバイダー
-]);
-```
 
 ### 5. アクセストークン取得エンドポイントの作成（必要な場合）
 
@@ -161,7 +128,7 @@ export const get[Provider]AccessToken = async ({
 
 ### 8. ProxyServerでのトークン注入
 
-ProxyServerは自動的に`tokenEnvVar`で指定された環境変数名でトークンを注入します。追加の処理は不要です。
+ProxyServerは自動的にOAuthトークンを取得し、MCPサーバーに注入します。追加の処理は不要です。
 
 ### 9. 環境変数の設定
 
@@ -183,9 +150,7 @@ AUTH0_OAUTH_CLIENT_SECRET=your-oauth-client-secret
 ## チェックリスト
 
 - [ ] Auth0でプロバイダー設定完了
-- [ ] プロバイダー設定ファイル作成
-- [ ] プロバイダー登録（index.ts更新）
-- [ ] 型定義更新
+- [ ] プロバイダー登録（providers.ts更新）
 - [ ] 必要に応じてアクセストークン取得エンドポイント作成
 - [ ] UIページ作成（オプション）
 - [ ] MCPサーバー定義への統合
@@ -216,7 +181,7 @@ AUTH0_OAUTH_CLIENT_SECRET=your-oauth-client-secret
 ### プロバイダーが表示されない
 
 1. `OAUTH_PROVIDERS`配列に追加されているか確認
-2. プロバイダー設定ファイルが正しくインポートされているか確認
+2. `PROVIDER_CONNECTIONS`にConnection名が追加されているか確認
 3. ビルドエラーがないか確認
 
 ### 認証エラー
@@ -230,7 +195,7 @@ AUTH0_OAUTH_CLIENT_SECRET=your-oauth-client-secret
 
 ### トークン取得エラー
 
-1. スコープが正しく設定されているか確認
+1. Auth0のSocial Connectionでスコープが正しく設定されているか確認
 2. プロバイダー側でアプリが承認されているか確認
 3. Auth0のログを確認
 

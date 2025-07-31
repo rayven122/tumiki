@@ -77,15 +77,26 @@ export function AvailableServersList() {
     const configId = searchParams.get("configId");
     const scopes = searchParams.get("scopes");
 
-    if (oauthCallback === "github" && configId) {
-      const scopesArray = scopes ? scopes.split(",") : ["repo", "read:user"];
+    if (oauthCallback && configId) {
+      if (oauthCallback === "github") {
+        const scopesArray = scopes ? scopes.split(",") : ["repo", "read:user"];
 
-      saveTokenToEnvVars({
-        userMcpServerConfigId: configId,
-        provider: "github",
-        tokenKey: "GITHUB_PERSONAL_ACCESS_TOKEN",
-        scopes: scopesArray,
-      });
+        saveTokenToEnvVars({
+          userMcpServerConfigId: configId,
+          provider: "github",
+          tokenKey: "GITHUB_PERSONAL_ACCESS_TOKEN",
+          scopes: scopesArray,
+        });
+      } else if (oauthCallback === "figma") {
+        const scopesArray = scopes ? scopes.split(",") : ["file_read"];
+
+        saveTokenToEnvVars({
+          userMcpServerConfigId: configId,
+          provider: "figma",
+          tokenKey: "FIGMA_API_KEY",
+          scopes: scopesArray,
+        });
+      }
     }
   }, [searchParams, saveTokenToEnvVars]);
 
