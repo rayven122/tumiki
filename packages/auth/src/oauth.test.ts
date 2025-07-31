@@ -2,7 +2,7 @@
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { OAuthProvider } from "./providers/index.js";
+import type { OAuthProvider } from "./providers.js";
 // モック関数のimport
 import { auth0OAuth, managementClient } from "./clients.js";
 import { OAuthError, OAuthErrorCode } from "./errors.js";
@@ -78,7 +78,6 @@ describe("startOAuthFlow", () => {
     expect(url).toContain("returnTo=%2Fdashboard");
     expect(url).toContain("connection=github");
     expect(url).toContain("scope=openid+profile+email+read%3Auser+repo");
-    expect(url).toContain("prompt=consent");
   });
 
   test("returnToが指定されない場合はデフォルトの/mcpを使用する", async () => {

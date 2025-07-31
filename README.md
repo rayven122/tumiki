@@ -79,7 +79,7 @@ tumiki/
 
 MCPサーバーの管理画面を提供するNext.js 15 + React 19アプリケーション。
 
-- **URL**: <http://localhost:3000>
+- **URL**: <https://local.tumiki.cloud:3000>
 - **ポート**: 3000
 - **機能**:
   - MCPサーバー設定・監視

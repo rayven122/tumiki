@@ -103,6 +103,9 @@ export const establishSSEConnection = async (
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
+  // 検証モードの判定
+  const isValidationMode = req.headers["x-validation-mode"] === "true";
+
   logger.info("SSE connection request received", {
     apiKeyId: apiKeyId ? "***" : undefined,
     clientId,
@@ -265,7 +268,11 @@ export const establishSSEConnection = async (
     // MCPサーバーとの接続確立
     let server;
     try {
-      const serverResult = await getServer(apiKeyId, PrismaTransportType.SSE);
+      const serverResult = await getServer(
+        apiKeyId,
+        PrismaTransportType.SSE,
+        isValidationMode,
+      );
       server = serverResult.server;
       await server.connect(transport);
     } catch (serverError) {

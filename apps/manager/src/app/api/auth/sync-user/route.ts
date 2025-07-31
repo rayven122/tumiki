@@ -68,13 +68,6 @@ export const POST = async (request: NextRequest) => {
       duration,
     );
 
-    console.log(`User ${dbUser.id} synchronized successfully:`, {
-      id: dbUser.id,
-      name: dbUser.name,
-      email: dbUser.email,
-      role: dbUser.role,
-    });
-
     return NextResponse.json(
       {
         success: true,
