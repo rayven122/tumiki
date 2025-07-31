@@ -30,8 +30,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",
-    "@prisma/client": "^6.7.0",
-    "@suekou/mcp-notion-server": "^1.2.4",
+    "@tumiki/db": "workspace:*",
     "next": "^15.3.3",
     "server-only": "^0.0.1"
   },

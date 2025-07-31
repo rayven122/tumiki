@@ -1,8 +1,9 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { McpServer } from "@prisma/client";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+import type { McpServer } from "@tumiki/db/prisma";
 
 /**
  * MCPサーバーからツール一覧を取得する
