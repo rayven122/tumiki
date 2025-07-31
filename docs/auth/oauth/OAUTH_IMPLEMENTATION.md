@@ -71,16 +71,21 @@ enum AuthType {
 - `getProviderAccessToken()`: プロバイダー別のアクセストークンを取得
 - `startOAuthFlow()`: OAuth認証フローを開始
 - `checkOAuthConnection()`: 接続ステータスを確認
-- `PROVIDER_CONFIGS`: 各プロバイダーの設定情報
+- `getUserIdentityProviderTokens()`: ユーザーのプロバイダートークンを取得
+
+#### プロバイダー設定（`packages/auth/src/providers.ts`）
+
+- `OAUTH_PROVIDERS`: 利用可能なプロバイダーのリスト
+- `PROVIDER_CONNECTIONS`: プロバイダーとAuth0のConnection名のマッピング
+- `isValidOAuthProvider()`: プロバイダー名の検証関数
 
 ### 2. tRPCルーター（`apps/manager/src/server/api/routers/oauth.ts`）
 
 以下のエンドポイントを提供：
 
 - `startOAuthConnection`: OAuth認証フローを開始
-- `getAccessToken`: アクセストークンを取得
+- `getProviderAccessToken`: プロバイダー別のアクセストークンを取得
 - `getConnectionStatus`: 接続ステータスを確認
-- `getProviderConfigs`: 利用可能なプロバイダーとスコープを取得
 
 ### 3. ProxyServerの拡張（`apps/proxyServer/src/utils/proxy.ts`）
 
@@ -113,14 +118,15 @@ enum AuthType {
 - **Slack**: チャンネル、メッセージ、ユーザー情報
 - **Notion**: ページとデータベースの読み書き
 - **LinkedIn**: プロフィール情報と投稿
+- **Figma**: デザインファイルとプロジェクトへのアクセス
 
 ## 使用方法
 
 ### 1. MCPサーバーの追加時
 
 1. 認証タイプとして「OAuth」を選択
-2. 必要なスコープを選択
-3. 「接続」ボタンをクリックしてAuth0経由で認証
+2. 「接続」ボタンをクリックしてAuth0経由で認証
+3. スコープはAuth0側で自動的に管理される
 
 ### 2. トークンの自動管理
 
@@ -133,7 +139,7 @@ enum AuthType {
 - アクセストークンはAuth0のセキュアなストレージで管理
 - データベースにはトークンを保存しない
 - PKCE対応のOAuthフローを使用
-- 必要最小限のスコープのみを要求
+- スコープはAuth0側で管理し、必要最小限のスコープのみを要求
 
 ## トラブルシューティング
 
@@ -155,7 +161,7 @@ enum AuthType {
 
 ## 今後の拡張
 
-- 新しいプロバイダーの追加
-- スコープの動的管理
+- 新しいプロバイダーの追加（`providers.ts`への追加のみで対応可能）
 - トークンの手動リフレッシュ機能
 - 接続履歴の表示
+- プロバイダー別のカスタム設定

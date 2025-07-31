@@ -9,6 +9,7 @@ export const OAUTH_PROVIDERS = [
   "notion",
   "linkedin",
   "figma",
+  "discord",
 ] as const;
 
 export const PROVIDER_CONNECTIONS = {
@@ -18,6 +19,7 @@ export const PROVIDER_CONNECTIONS = {
   notion: "Notion",
   linkedin: "linkedin",
   figma: "figma",
+  discord: "discord",
 } as const satisfies Record<OAuthProvider, string>;
 
 /**
