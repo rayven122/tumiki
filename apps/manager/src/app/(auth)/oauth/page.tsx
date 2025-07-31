@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
-import { OAUTH_PROVIDERS, PROVIDER_CONNECTIONS } from "@tumiki/auth/client";
+import { OAUTH_PROVIDERS } from "@tumiki/auth/client";
 import {
   Select,
   SelectContent,
@@ -71,6 +71,8 @@ const getProviderDisplayName = (provider: OAuthProvider) => {
       return "GitHub";
     case "slack":
       return "Slack";
+    case "discord":
+      return "Discord";
     default:
       return provider.charAt(0).toUpperCase() + provider.slice(1);
   }

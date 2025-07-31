@@ -147,9 +147,10 @@ export const UserMcpServerConfigModal = ({
 
   // トークンを保存する関数
   const handleSave = () => {
-    if (isGitHubMcp && authMethod === "oauth") {
-      // OAuthの場合は認証フローを開始のみ（全スコープを使用）
-      void handleOAuthConnect([]);
+    if (isOAuthSupported && authMethod === "oauth") {
+      // OAuthの場合は認証フローを開始のみ
+      const provider = isGitHubMcp ? "github" : "figma";
+      void handleOAuthConnect(provider, []);
     } else {
       // APIキーの場合は既存の処理
       addOfficialServer({
@@ -165,9 +166,10 @@ export const UserMcpServerConfigModal = ({
       return;
     }
 
-    if (isGitHubMcp && authMethod === "oauth") {
-      // OAuth認証の場合は認証フローを開始（全スコープを使用）
-      void handleOAuthConnect([]);
+    if (isOAuthSupported && authMethod === "oauth") {
+      // OAuth認証の場合は認証フローを開始
+      const provider = isGitHubMcp ? "github" : "figma";
+      void handleOAuthConnect(provider, []);
     } else {
       // APIキーの場合は既存の処理
       updateServerConfig({
@@ -177,9 +179,9 @@ export const UserMcpServerConfigModal = ({
     }
   };
 
-  // GitHubのOAuth認証を開始
+  // OAuth認証を開始
   const handleOAuthConnect = useCallback(
-    async (scopes?: string[]) => {
+    async (provider: "github" | "figma", scopes?: string[]) => {
       // 既に処理中の場合は何もしない
       if (isOAuthConnecting) {
         console.log("OAuth認証処理中のため、重複実行をスキップ");
@@ -208,10 +210,10 @@ export const UserMcpServerConfigModal = ({
 
         // OAuth認証を開始
         const scopesParam = scopesToUse.join(",");
-        const returnUrl = `/mcp/servers?oauth_callback=github&configId=${configId}&scopes=${scopesParam}`;
+        const returnUrl = `/mcp/servers?oauth_callback=${provider}&configId=${configId}&scopes=${scopesParam}`;
 
         startOAuthConnection({
-          provider: "github",
+          provider,
           scopes: scopesToUse,
           returnTo: returnUrl,
         });
@@ -231,8 +233,10 @@ export const UserMcpServerConfigModal = ({
     ],
   );
 
-  // GitHub MCPかどうかをチェック
+  // OAuth対応MCPかどうかをチェック
   const isGitHubMcp = mcpServer.name === "GitHub MCP";
+  const isFigmaMcp = mcpServer.name === "Figma";
+  const isOAuthSupported = isGitHubMcp || isFigmaMcp;
 
   const isProcessing =
     isPending || isUpdating || isValidating || isOAuthConnecting;
@@ -300,8 +304,8 @@ export const UserMcpServerConfigModal = ({
             </div>
           </div>
 
-          {/* GitHub MCPの場合はタブで認証方法を選択 */}
-          {isGitHubMcp ? (
+          {/* OAuth対応MCPの場合はタブで認証方法を選択 */}
+          {isOAuthSupported ? (
             <Tabs
               value={authMethod}
               onValueChange={(v) => setAuthMethod(v as "apikey" | "oauth")}
@@ -343,7 +347,8 @@ export const UserMcpServerConfigModal = ({
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    OAuth認証を使用すると、GitHubアカウントでログインして自動的に必要な権限がすべて付与されます。
+                    OAuth認証を使用すると、{isGitHubMcp ? "GitHub" : "Figma"}
+                    アカウントでログインして自動的に必要な権限がすべて付与されます。
                     トークンの有効期限が切れた場合は自動的に更新されます。
                   </AlertDescription>
                 </Alert>
@@ -352,13 +357,14 @@ export const UserMcpServerConfigModal = ({
                   <h4 className="mb-2 font-medium">自動適用される権限</h4>
                   <p className="text-muted-foreground mb-3 text-sm">
                     OAuth認証では、必要な権限がAuth0側で管理されます。
-                    接続ボタンをクリックすると、GitHubの認証画面に移動します。
+                    接続ボタンをクリックすると、
+                    {isGitHubMcp ? "GitHub" : "Figma"}の認証画面に移動します。
                   </p>
                 </div>
               </TabsContent>
             </Tabs>
           ) : (
-            /* 既存のAPIキー入力フィールド（GitHub以外のMCP） */
+            /* 既存のAPIキー入力フィールド（OAuth非対応のMCP） */
             <div className="space-y-4">
               {mcpServer.envVars.map((envVar, index) => (
                 <div key={envVar} className="space-y-2">
@@ -404,7 +410,7 @@ export const UserMcpServerConfigModal = ({
                 }
               }}
               disabled={
-                isGitHubMcp && authMethod === "oauth"
+                isOAuthSupported && authMethod === "oauth"
                   ? isProcessing
                   : !isFormValid() || isProcessing
               }
@@ -421,7 +427,7 @@ export const UserMcpServerConfigModal = ({
                         ? "OAuth接続中..."
                         : "更新中..."}
                 </>
-              ) : isGitHubMcp && authMethod === "oauth" ? (
+              ) : isOAuthSupported && authMethod === "oauth" ? (
                 "認証"
               ) : mode === "create" ? (
                 "保存"
