@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { OAuthProvider } from "./providers/index.js";
+import type { OAuthProvider } from "./providers.js";
 import { OAuthError, OAuthErrorCode } from "./errors.js";
 import {
   checkOAuthConnection,
