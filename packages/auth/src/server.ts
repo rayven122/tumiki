@@ -5,8 +5,7 @@ import { auth0 } from "./clients.js";
 
 // サーバー専用のエクスポート
 export * from "./oauth.js";
-export * from "./providers/index.js";
-export * from "./providers/validation.js";
+export * from "./providers.js";
 export { auth0, auth0OAuth, managementClient } from "./clients.js";
 
 const auth = cache(() => auth0.getSession());
