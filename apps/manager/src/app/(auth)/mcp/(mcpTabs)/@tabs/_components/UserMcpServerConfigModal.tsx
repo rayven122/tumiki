@@ -140,9 +140,9 @@ export const UserMcpServerConfigModal = ({
     }));
   };
 
-  // すべてのトークンが入力されているかチェック
+  // 少なくとも1つのトークンが入力されているかチェック
   const isFormValid = () => {
-    return Object.values(envVars).every((token) => token.trim() !== "");
+    return Object.values(envVars).some((token) => token.trim() !== "");
   };
 
   // トークンを保存する関数
