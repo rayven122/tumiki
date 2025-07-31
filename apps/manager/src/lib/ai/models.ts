@@ -18,3 +18,9 @@ export const chatModels: Array<ChatModel> = [
     description: "Uses advanced reasoning",
   },
 ];
+
+// Export model instances for provider configuration
+export const chatModel = "chat-model";
+export const reasoningModel = "chat-model-reasoning";
+export const titleModel = "title-model";
+export const artifactModel = "artifact-model";

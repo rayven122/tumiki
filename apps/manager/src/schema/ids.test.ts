@@ -49,7 +49,7 @@ describe("AccountIdSchema", () => {
     expect(result).toStrictEqual(validId);
     // ブランド型であることを確認
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies AccountId;
+    void ((): AccountId => result)();
   });
 
   test("正常系: 空文字列を受け入れる", () => {
@@ -84,7 +84,7 @@ describe("SessionIdSchema", () => {
     const result = SessionIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies SessionId;
+    void ((): SessionId => result)();
   });
 
   test("正常系: UUID形式の文字列を受け入れる", () => {
@@ -104,7 +104,7 @@ describe("UserIdSchema", () => {
     const result = UserIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies UserId;
+    void ((): UserId => result)();
   });
 
   test("正常系: Auth0形式のIDを受け入れる", () => {
@@ -124,7 +124,7 @@ describe("VerificationTokenIdSchema", () => {
     const result = VerificationTokenIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies VerificationTokenId;
+    void ((): VerificationTokenId => result)();
   });
 
   test("正常系: ランダムな文字列を受け入れる", () => {
@@ -144,7 +144,7 @@ describe("McpServerIdSchema", () => {
     const result = McpServerIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies McpServerId;
+    void ((): McpServerId => result)();
   });
 
   test("正常系: ハイフン付きIDを受け入れる", () => {
@@ -164,7 +164,7 @@ describe("ToolIdSchema", () => {
     const result = ToolIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies ToolId;
+    void ((): ToolId => result)();
   });
 
   test("正常系: アンダースコア区切りのIDを受け入れる", () => {
@@ -184,7 +184,7 @@ describe("UserMcpServerConfigIdSchema", () => {
     const result = UserMcpServerConfigIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies UserMcpServerConfigId;
+    void ((): UserMcpServerConfigId => result)();
   });
 
   test("正常系: CUID形式の文字列を受け入れる", () => {
@@ -208,7 +208,7 @@ describe("UserToolGroupIdSchema", () => {
     const result = UserToolGroupIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies UserToolGroupId;
+    void ((): UserToolGroupId => result)();
   });
 
   test("正常系: 数字を含むIDを受け入れる", () => {
@@ -228,7 +228,7 @@ describe("UserMcpServerInstanceIdSchema", () => {
     const result = UserMcpServerInstanceIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies UserMcpServerInstanceId;
+    void ((): UserMcpServerInstanceId => result)();
   });
 
   test("正常系: タイムスタンプ付きIDを受け入れる", () => {
@@ -248,7 +248,7 @@ describe("ApiKeyIdSchema", () => {
     const result = ApiKeyIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies ApiKeyId;
+    void ((): ApiKeyId => result)();
   });
 
   test("正常系: プレフィックス付きキーを受け入れる", () => {
@@ -268,7 +268,7 @@ describe("OrganizationIdSchema", () => {
     const result = OrganizationIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies OrganizationId;
+    void ((): OrganizationId => result)();
   });
 
   test("異常系: 無効なCUID形式の文字列を拒否する", () => {
@@ -300,7 +300,7 @@ describe("OrganizationMemberIdSchema", () => {
     const result = OrganizationMemberIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies OrganizationMemberId;
+    void ((): OrganizationMemberId => result)();
   });
 
   test("正常系: CUID形式の文字列を受け入れる", () => {
@@ -320,7 +320,7 @@ describe("OrganizationInvitationIdSchema", () => {
     const result = OrganizationInvitationIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies OrganizationInvitationId;
+    void ((): OrganizationInvitationId => result)();
   });
 
   test("正常系: ランダムな文字列を受け入れる", () => {
@@ -340,7 +340,7 @@ describe("OrganizationGroupIdSchema", () => {
     const result = OrganizationGroupIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies OrganizationGroupId;
+    void ((): OrganizationGroupId => result)();
   });
 
   test("正常系: 階層的なグループIDを受け入れる", () => {
@@ -362,7 +362,7 @@ describe("OrganizationRoleIdSchema", () => {
     const result = OrganizationRoleIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies OrganizationRoleId;
+    void ((): OrganizationRoleId => result)();
   });
 
   test("正常系: カスタムロールIDを受け入れる", () => {
@@ -382,7 +382,7 @@ describe("RolePermissionIdSchema", () => {
     const result = RolePermissionIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies RolePermissionId;
+    void ((): RolePermissionId => result)();
   });
 
   test("正常系: ドット区切りの権限IDを受け入れる", () => {
@@ -402,7 +402,7 @@ describe("ResourceAccessControlIdSchema", () => {
     const result = ResourceAccessControlIdSchema.parse(validId);
     expect(result).toStrictEqual(validId);
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void result satisfies ResourceAccessControlId;
+    void ((): ResourceAccessControlId => result)();
   });
 
   test("正常系: UUID形式のIDを受け入れる", () => {
@@ -438,8 +438,8 @@ describe("ブランド型の動作確認", () => {
 
     // TypeScriptの型チェックで問題ない
     // 型チェック（変数は使用されないが、型の互換性を確認）
-    void userId1 satisfies UserId;
-    void userId2 satisfies UserId;
+    void ((): UserId => userId1)();
+    void ((): UserId => userId2)();
 
     expect(userId1).toStrictEqual("user_123");
     expect(userId2).toStrictEqual("user_456");

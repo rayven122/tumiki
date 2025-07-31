@@ -5,21 +5,11 @@ import {
 } from "ai";
 import { xai } from "@ai-sdk/xai";
 import { isTestEnvironment } from "../constants";
-import {
-  artifactModel,
-  chatModel,
-  reasoningModel,
-  titleModel,
-} from "./models.test";
 
+// テスト環境では空のプロバイダーを返す
 export const myProvider = isTestEnvironment
   ? customProvider({
-      languageModels: {
-        "chat-model": chatModel,
-        "chat-model-reasoning": reasoningModel,
-        "title-model": titleModel,
-        "artifact-model": artifactModel,
-      },
+      languageModels: {},
     })
   : customProvider({
       languageModels: {

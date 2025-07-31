@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
-    "build": "tsc && chmod +x build/index.js",
-    "start": "pnpm with-env node build/index.js",
+    "build": "tsc && chmod +x build/src/index.js",
+    "start": "pnpm with-env node build/src/index.js",
     "pm2:start": "pnpm with-env pm2 start ecosystem.config.cjs",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
     "pm2:logs:remote": "./scripts/stream-pm2-logs.sh",

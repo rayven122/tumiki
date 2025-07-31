@@ -146,7 +146,7 @@ describe("配列の操作", () => {
       model.id.includes("reasoning"),
     );
     expect(reasoningModels.length).toStrictEqual(1);
-    expect(reasoningModels[0].id).toStrictEqual("chat-model-reasoning");
+    expect(reasoningModels[0]?.id).toStrictEqual("chat-model-reasoning");
   });
 
   test("正常系: mapメソッドでモデルIDの配列を作成できる", () => {
