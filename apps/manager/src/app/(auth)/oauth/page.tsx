@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +21,8 @@ import {
   Info,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
+import { OAUTH_PROVIDERS } from "@tumiki/auth/client";
 import {
   Select,
   SelectContent,
@@ -34,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import Image from "next/image";
 
-type OAuthProvider = keyof typeof OAUTH_PROVIDER_CONFIG;
+type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 const getProviderIcon = (provider: OAuthProvider) => {
   const logoPath = `/logos/${provider}.svg`;
@@ -73,6 +71,8 @@ const getProviderDisplayName = (provider: OAuthProvider) => {
       return "GitHub";
     case "slack":
       return "Slack";
+    case "discord":
+      return "Discord";
     default:
       return provider.charAt(0).toUpperCase() + provider.slice(1);
   }
@@ -83,7 +83,6 @@ export default function OAuthPage() {
   const searchParams = useSearchParams();
   const [selectedProvider, setSelectedProvider] =
     useState<OAuthProvider>("google");
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState(false);
@@ -95,17 +94,10 @@ export default function OAuthPage() {
 
   // URLパラメータからプロバイダーが指定されている場合は設定
   useEffect(() => {
-    if (providerFromUrl && OAUTH_PROVIDER_CONFIG[providerFromUrl]) {
+    if (providerFromUrl && OAUTH_PROVIDERS.includes(providerFromUrl)) {
       setSelectedProvider(providerFromUrl);
     }
   }, [providerFromUrl]);
-
-  // プロバイダー用のスコープ設定
-  const providerScopes =
-    OAUTH_PROVIDER_CONFIG[selectedProvider]?.availableScopes.map((scope) => ({
-      ...scope,
-      value: scope.scopes.join(" "),
-    })) || [];
 
   // OAuth接続状態を確認
   const {
@@ -156,29 +148,13 @@ export default function OAuthPage() {
     },
   );
 
-  const handleScopeToggle = (scopeValue: string) => {
-    setSelectedScopes((prev) =>
-      prev.includes(scopeValue)
-        ? prev.filter((s) => s !== scopeValue)
-        : [...prev, scopeValue],
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedScopes.length === providerScopes.length) {
-      setSelectedScopes([]);
-    } else {
-      setSelectedScopes(providerScopes.map((scope) => scope.value));
-    }
-  };
-
   const handleConnect = () => {
     setIsConnecting(true);
     setError(null);
 
     startOAuthMutation.mutate({
       provider: selectedProvider,
-      scopes: selectedScopes,
+      scopes: [], // Auth0側で管理されるスコープを使用
       returnTo: `/oauth?connected=true&provider=${selectedProvider}`,
     });
   };
@@ -207,19 +183,6 @@ export default function OAuthPage() {
     );
   }
 
-  // カテゴリごとにスコープをグループ化
-  const scopesByCategory = providerScopes.reduce(
-    (acc, scope) => {
-      // categoryプロパティが存在するかチェック
-      const category =
-        "category" in scope && scope.category ? scope.category : "その他";
-      acc[category] ??= [];
-      acc[category].push(scope);
-      return acc;
-    },
-    {} as Record<string, typeof providerScopes>,
-  );
-
   return (
     <div className="container mx-auto max-w-4xl p-6">
       <div className="mb-8">
@@ -239,7 +202,6 @@ export default function OAuthPage() {
           onValueChange={(value) => {
             const newProvider = value as OAuthProvider;
             setSelectedProvider(newProvider);
-            setSelectedScopes([]);
             setError(null);
 
             // URLのクエリパラメータを更新
@@ -256,7 +218,7 @@ export default function OAuthPage() {
             <SelectValue placeholder="プロバイダーを選択" />
           </SelectTrigger>
           <SelectContent>
-            {Object.keys(OAUTH_PROVIDER_CONFIG).map((provider) => (
+            {OAUTH_PROVIDERS.map((provider) => (
               <SelectItem key={provider} value={provider}>
                 <div className="flex items-center gap-3">
                   <div className="relative h-6 w-6 overflow-hidden rounded bg-white shadow-sm">
@@ -272,9 +234,7 @@ export default function OAuthPage() {
                       }}
                     />
                   </div>
-                  <span>
-                    {getProviderDisplayName(provider as OAuthProvider)}
-                  </span>
+                  <span>{getProviderDisplayName(provider)}</span>
                 </div>
               </SelectItem>
             ))}
@@ -409,86 +369,37 @@ export default function OAuthPage() {
             </Alert>
           )}
 
-          {/* スコープ選択 */}
-          {providerScopes.length > 0 && (
-            <>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">アクセス権限を選択</h3>
-                  <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                    {selectedScopes.length === providerScopes.length
-                      ? "すべて解除"
-                      : "すべて選択"}
-                  </Button>
-                </div>
-
-                {Object.entries(scopesByCategory).map(([category, scopes]) => (
-                  <div key={category} className="space-y-2">
-                    <h4 className="text-muted-foreground text-sm font-medium">
-                      {category}
-                    </h4>
-                    <div className="space-y-2">
-                      {scopes.map((scope) => (
-                        <div
-                          key={scope.id}
-                          className={cn(
-                            "flex items-start space-x-3 rounded-lg border p-3",
-                            "hover:bg-muted/50 cursor-pointer transition-colors",
-                            selectedScopes.includes(scope.value) &&
-                              "border-primary bg-primary/5",
-                          )}
-                          onClick={() => handleScopeToggle(scope.value)}
-                        >
-                          <Checkbox
-                            id={scope.id}
-                            checked={selectedScopes.includes(scope.value)}
-                            onCheckedChange={() =>
-                              handleScopeToggle(scope.value)
-                            }
-                            className="mt-0.5"
-                          />
-                          <Label
-                            htmlFor={scope.id}
-                            className="flex-1 cursor-pointer"
-                          >
-                            <div className="font-medium">{scope.label}</div>
-                            <div className="text-muted-foreground text-sm">
-                              {scope.description}
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <Button
-                  onClick={handleConnect}
-                  disabled={isConnecting || selectedScopes.length === 0}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      接続中...
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      {getProviderDisplayName(selectedProvider)}アカウントと接続
-                    </>
-                  )}
-                </Button>
-                {selectedScopes.length === 0 && (
-                  <p className="text-muted-foreground text-center text-sm">
-                    少なくとも1つの権限を選択してください
-                  </p>
+          {/* 接続ボタン */}
+          {!connectionStatus?.isConnected && (
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleConnect}
+                disabled={isConnecting}
+                className="w-full"
+                size="lg"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    接続中...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {getProviderDisplayName(selectedProvider)}アカウントと接続
+                  </>
                 )}
-              </div>
-            </>
+              </Button>
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  接続時に必要な権限はAuth0側で管理されています。
+                  接続ボタンをクリックすると、
+                  {getProviderDisplayName(selectedProvider)}
+                  の認証画面に移動します。
+                </AlertDescription>
+              </Alert>
+            </div>
           )}
         </CardContent>
       </Card>
