@@ -22,7 +22,6 @@ import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OAUTH_PROVIDER_CONFIG } from "@tumiki/auth/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ApiTokenModalProps = {
@@ -130,11 +129,6 @@ export const UserMcpServerConfigModal = ({
   // 認証方法の選択状態
   const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
 
-  // 全スコープを適用
-  const allGitHubScopes = OAUTH_PROVIDER_CONFIG.github.availableScopes.flatMap(
-    (scope) => scope.scopes,
-  );
-
   // OAuth認証処理中のフラグ
   const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
 
@@ -155,7 +149,7 @@ export const UserMcpServerConfigModal = ({
   const handleSave = () => {
     if (isGitHubMcp && authMethod === "oauth") {
       // OAuthの場合は認証フローを開始のみ（全スコープを使用）
-      void handleOAuthConnect(allGitHubScopes);
+      void handleOAuthConnect([]);
     } else {
       // APIキーの場合は既存の処理
       addOfficialServer({
@@ -173,7 +167,7 @@ export const UserMcpServerConfigModal = ({
 
     if (isGitHubMcp && authMethod === "oauth") {
       // OAuth認証の場合は認証フローを開始（全スコープを使用）
-      void handleOAuthConnect(allGitHubScopes);
+      void handleOAuthConnect([]);
     } else {
       // APIキーの場合は既存の処理
       updateServerConfig({
@@ -193,7 +187,7 @@ export const UserMcpServerConfigModal = ({
       }
 
       setIsOAuthConnecting(true);
-      const scopesToUse = scopes ?? allGitHubScopes;
+      const scopesToUse = scopes ?? [];
 
       try {
         let configId: string;
@@ -357,22 +351,9 @@ export const UserMcpServerConfigModal = ({
                 <div className="rounded-lg border bg-gray-50 p-4">
                   <h4 className="mb-2 font-medium">自動適用される権限</h4>
                   <p className="text-muted-foreground mb-3 text-sm">
-                    OAuth認証では、GitHub
-                    MCPの動作に必要なすべての権限が自動的に適用されます。
+                    OAuth認証では、必要な権限がAuth0側で管理されます。
+                    接続ボタンをクリックすると、GitHubの認証画面に移動します。
                   </p>
-                  <div className="flex flex-wrap gap-1">
-                    {OAUTH_PROVIDER_CONFIG.github.availableScopes.map(
-                      (scope) => (
-                        <Badge
-                          key={scope.id}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {scope.label}
-                        </Badge>
-                      ),
-                    )}
-                  </div>
                 </div>
               </TabsContent>
             </Tabs>
