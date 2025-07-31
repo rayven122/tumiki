@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export const CommunitySection = () => {
   return (
@@ -36,10 +37,12 @@ export const CommunitySection = () => {
             <div className="relative z-10">
               <div className="mb-4 flex items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#5865F2]">
-                  <img
-                    src="/icons/discord.svg"
+                  <Image
+                    src="/logos/discord.svg"
                     alt="Discord Icon"
-                    className="h-10 w-10 text-white"
+                    width={40}
+                    height={40}
+                    className="brightness-0 invert"
                   />
                 </div>
                 <div>
@@ -54,10 +57,12 @@ export const CommunitySection = () => {
               </p>
               <div className="flex items-center text-blue-600 group-hover:text-blue-700">
                 <span className="font-semibold">Discordに参加する</span>
-                <img
-                  src="/icons/arrow-right.svg"
+                <Image
+                  src="/logos/arrow-right.svg"
                   alt="Arrow Right"
-                  className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1"
+                  width={20}
+                  height={20}
+                  className="ml-2 transition-transform group-hover:translate-x-1"
                 />
               </div>
             </div>
@@ -78,10 +83,12 @@ export const CommunitySection = () => {
             <div className="relative z-10">
               <div className="mb-4 flex items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black">
-                  <img
-                    src="/icons/x-twitter.svg"
+                  <Image
+                    src="/logos/x-white.svg"
                     alt="X (Twitter) Icon"
-                    className="h-10 w-10 text-white"
+                    width={40}
+                    height={40}
+                    className="brightness-0 invert"
                   />
                 </div>
                 <div>
@@ -96,10 +103,12 @@ export const CommunitySection = () => {
               </p>
               <div className="flex items-center text-blue-600 group-hover:text-blue-700">
                 <span className="font-semibold">Xでフォローする</span>
-                <img
-                  src="/icons/arrow-right.svg"
+                <Image
+                  src="/logos/arrow-right.svg"
                   alt="Arrow Right"
-                  className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1"
+                  width={20}
+                  height={20}
+                  className="ml-2 transition-transform group-hover:translate-x-1"
                 />
               </div>
             </div>
