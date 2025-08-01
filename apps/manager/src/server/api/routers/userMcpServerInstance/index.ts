@@ -7,6 +7,7 @@ import {
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
+import { nameValidationSchema } from "@/schema/validation";
 import { findCustomServers } from "./findCustomServers";
 
 import {
@@ -61,7 +62,7 @@ export const AddOfficialServerInput = z.object({
   mcpServerId: z.string(),
   envVars: z.record(z.string(), z.string()),
   isPending: z.boolean().optional(), // OAuth認証用フラグを追加
-  name: z.string().min(1).max(100).optional(),
+  name: nameValidationSchema.optional(), // サーバー名のオプションを追加
 });
 
 export const AddOfficialServerOutput = z.object({
@@ -86,7 +87,7 @@ export const UpdateServerInstanceInput = z.object({
 
 export const UpdateServerInstanceNameInput = z.object({
   id: UserMcpServerInstanceIdSchema,
-  name: z.string(),
+  name: nameValidationSchema,
 });
 
 export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
