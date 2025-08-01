@@ -1,25 +1,20 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { saveTokenToEnvVars } from "./saveTokenToEnvVars";
 import type { ProtectedContext } from "../../trpc";
 
-// モックの作成
-const mockGetProviderAccessToken = mock(
-  (): Promise<string | null> => Promise.resolve("test-token-123"),
-);
-
 // @tumiki/auth/serverのモック
-void mock.module("@tumiki/auth/server", () => ({
-  getProviderAccessToken: mockGetProviderAccessToken,
+vi.mock("@tumiki/auth/server", () => ({
+  getProviderAccessToken: vi.fn(() => Promise.resolve("test-token-123")),
 }));
 
 describe("saveTokenToEnvVars", () => {
   let mockCtx: ProtectedContext;
-  let mockFindUnique: ReturnType<typeof mock>;
-  let mockUpdate: ReturnType<typeof mock>;
+  let mockFindUnique: ReturnType<typeof vi.fn>;
+  let mockUpdate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     // モック関数を作成
-    mockFindUnique = mock(() =>
+    mockFindUnique = vi.fn(() =>
       Promise.resolve({
         id: "config-123",
         userId: "user-123",
@@ -30,7 +25,7 @@ describe("saveTokenToEnvVars", () => {
       }),
     );
 
-    mockUpdate = mock(() =>
+    mockUpdate = vi.fn(() =>
       Promise.resolve({
         id: "config-123",
         envVars: JSON.stringify({
@@ -56,7 +51,7 @@ describe("saveTokenToEnvVars", () => {
     } as unknown as ProtectedContext;
 
     // モックをリセット
-    mockGetProviderAccessToken.mockClear();
+    vi.clearAllMocks();
   });
 
   test("GitHubのアクセストークンをenvVarsに保存できる", async () => {
@@ -100,9 +95,9 @@ describe("saveTokenToEnvVars", () => {
       tokenKey: "GITHUB_PERSONAL_ACCESS_TOKEN",
     };
 
-    expect(async () =>
-      saveTokenToEnvVars({ ctx: mockCtx, input }),
-    ).rejects.toThrow("MCPサーバー設定が見つかりません");
+    await expect(saveTokenToEnvVars({ ctx: mockCtx, input })).rejects.toThrow(
+      "MCPサーバー設定が見つかりません",
+    );
   });
 
   test("他のユーザーのMCPサーバー設定にはアクセスできない", async () => {
@@ -123,9 +118,9 @@ describe("saveTokenToEnvVars", () => {
       tokenKey: "GITHUB_PERSONAL_ACCESS_TOKEN",
     };
 
-    expect(async () =>
-      saveTokenToEnvVars({ ctx: mockCtx, input }),
-    ).rejects.toThrow("このMCPサーバー設定にアクセスする権限がありません");
+    await expect(saveTokenToEnvVars({ ctx: mockCtx, input })).rejects.toThrow(
+      "このMCPサーバー設定にアクセスする権限がありません",
+    );
   });
 
   test("MCPサーバーがサポートしていない環境変数はエラーになる", async () => {
@@ -146,17 +141,14 @@ describe("saveTokenToEnvVars", () => {
       tokenKey: "GITHUB_PERSONAL_ACCESS_TOKEN",
     };
 
-    expect(async () =>
-      saveTokenToEnvVars({ ctx: mockCtx, input }),
-    ).rejects.toThrow(
+    await expect(saveTokenToEnvVars({ ctx: mockCtx, input })).rejects.toThrow(
       "このMCPサーバーはGITHUB_PERSONAL_ACCESS_TOKEN環境変数をサポートしていません",
     );
   });
 
   test("アクセストークンが取得できない場合はエラーになる", async () => {
-    mockGetProviderAccessToken.mockImplementationOnce(() =>
-      Promise.resolve(null),
-    );
+    const { getProviderAccessToken } = await import("@tumiki/auth/server");
+    vi.mocked(getProviderAccessToken).mockResolvedValueOnce(null);
 
     const input = {
       userMcpServerConfigId: "config-123",
@@ -164,8 +156,8 @@ describe("saveTokenToEnvVars", () => {
       tokenKey: "GITHUB_PERSONAL_ACCESS_TOKEN",
     };
 
-    expect(async () =>
-      saveTokenToEnvVars({ ctx: mockCtx, input }),
-    ).rejects.toThrow("githubのアクセストークンが取得できませんでした");
+    await expect(saveTokenToEnvVars({ ctx: mockCtx, input })).rejects.toThrow(
+      "githubのアクセストークンが取得できませんでした",
+    );
   });
 });

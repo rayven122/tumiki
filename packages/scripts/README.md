@@ -143,13 +143,13 @@ pnpm test-auth0-api
 
 ### TypeScript実行環境
 
-スクリプトの実行には `tsx` を使用します:
+スクリプトの実行には `bun` を使用します:
 
 ```bash
 # @tumiki/scriptsパッケージ内でスクリプトを実行
 cd packages/scripts
 pnpm your-script-name
 
-# または直接tsxで実行
-tsx src/your-script.ts
+# または直接bunで実行
+bun run src/your-script.ts
 ```

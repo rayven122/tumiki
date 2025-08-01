@@ -1,17 +1,18 @@
 {
   "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "dist",
+    "rootDir": "src",
+    "outDir": "dist/src",
     "declaration": true,
-    "declarationDir": "dist",
+    "declarationDir": "dist/src",
     "module": "ESNext",
     "lib": ["ES2022", "DOM"],
     "target": "ES2022",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "noEmit": false
+    "noEmit": false,
+    "types": ["bun-types"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "vitest.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
   "exclude": ["node_modules", "dist"]
 }

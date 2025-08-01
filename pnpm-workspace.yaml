@@ -14,8 +14,6 @@ catalog:
   '@trpc/client': ^11.1.0
   '@trpc/tanstack-react-query': ^11.1.0
   '@trpc/server': ^11.1.0
-  vitest: ^2.1.8
-  '@vitest/coverage-v8': ^2.1.8
 catalogs:
   react19:
     react: 19.0.0

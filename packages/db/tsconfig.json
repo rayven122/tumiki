@@ -14,7 +14,8 @@
     "moduleResolution": "NodeNext",
     "outDir": "${configDir}/dist"
   },
-  "include": ["src", "prisma/generated", "vitest.config.ts"],
+  "types": ["bun-types"],
+  "include": ["src", "prisma/generated"],
   "exclude": [
     "node_modules",
     "prisma/generated/fabbrica",

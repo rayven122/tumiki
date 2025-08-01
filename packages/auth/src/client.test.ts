@@ -9,38 +9,24 @@ vi.mock("@auth0/nextjs-auth0", () => ({
   useUser: vi.fn().mockName("useUser"),
 }));
 
-vi.mock("./providers/index.js", () => ({
-  OAUTH_PROVIDER_CONFIG: {
-    google: {
-      name: "Google",
-      icon: "🔍",
-      connection: "google-oauth2",
-      availableScopes: [],
-    },
-    github: {
-      name: "GitHub",
-      icon: "🐙",
-      connection: "github",
-      availableScopes: [],
-    },
-    slack: {
-      name: "Slack",
-      icon: "💬",
-      connection: "slack",
-      availableScopes: [],
-    },
-    notion: {
-      name: "Notion",
-      icon: "📝",
-      connection: "notion",
-      availableScopes: [],
-    },
-    linkedin: {
-      name: "LinkedIn",
-      icon: "💼",
-      connection: "linkedin",
-      availableScopes: [],
-    },
+vi.mock("./providers.js", () => ({
+  OAUTH_PROVIDERS: [
+    "google",
+    "github",
+    "slack",
+    "notion",
+    "linkedin",
+    "figma",
+    "discord",
+  ],
+  PROVIDER_CONNECTIONS: {
+    google: "google-oauth2",
+    github: "github",
+    slack: "sign-in-with-slack",
+    notion: "Notion",
+    linkedin: "linkedin",
+    figma: "figma",
+    discord: "discord",
   },
 }));
 
@@ -60,18 +46,19 @@ describe("client", () => {
     expect(typeof clientExports.useUser).toStrictEqual("function");
   });
 
-  test("正常系: OAUTH_PROVIDER_CONFIGがエクスポートされている", () => {
-    expect(clientExports.OAUTH_PROVIDER_CONFIG).toBeDefined();
-    expect(typeof clientExports.OAUTH_PROVIDER_CONFIG).toStrictEqual("object");
+  test("正常系: OAUTH_PROVIDERSがエクスポートされている", () => {
+    expect(clientExports.OAUTH_PROVIDERS).toBeDefined();
+    expect(Array.isArray(clientExports.OAUTH_PROVIDERS)).toStrictEqual(true);
   });
 
   test("正常系: エクスポートされているプロパティの数が正しい", () => {
     const exportedKeys = Object.keys(clientExports);
-    expect(exportedKeys.length).toStrictEqual(4);
+    expect(exportedKeys.length).toStrictEqual(5);
     expect(exportedKeys).toContain("useUser");
     expect(exportedKeys).toContain("getAccessToken");
     expect(exportedKeys).toContain("Auth0Provider");
-    expect(exportedKeys).toContain("OAUTH_PROVIDER_CONFIG");
+    expect(exportedKeys).toContain("OAUTH_PROVIDERS");
+    expect(exportedKeys).toContain("PROVIDER_CONNECTIONS");
   });
 
   test("正常系: Auth0の関数が正しくエクスポートされている", () => {
@@ -81,59 +68,28 @@ describe("client", () => {
     expect(vi.isMockFunction(clientExports.useUser)).toStrictEqual(true);
   });
 
-  test("正常系: OAUTH_PROVIDER_CONFIGが全てのプロバイダーを含んでいる", () => {
-    const providers = Object.keys(clientExports.OAUTH_PROVIDER_CONFIG);
-    expect(providers).toStrictEqual([
+  test("正常系: OAUTH_PROVIDERSが全てのプロバイダーを含んでいる", () => {
+    expect(clientExports.OAUTH_PROVIDERS).toStrictEqual([
       "google",
       "github",
       "slack",
       "notion",
       "linkedin",
+      "figma",
+      "discord",
     ]);
   });
 
-  test("正常系: OAUTH_PROVIDER_CONFIGの各プロバイダーが正しい構造を持つ", () => {
-    const config = clientExports.OAUTH_PROVIDER_CONFIG;
+  test("正常系: PROVIDER_CONNECTIONSが正しいマッピングを持つ", () => {
+    const connections = clientExports.PROVIDER_CONNECTIONS;
 
-    // Google
-    expect(config.google).toStrictEqual({
-      name: "Google",
-      icon: "🔍",
-      connection: "google-oauth2",
-      availableScopes: [],
-    });
-
-    // GitHub
-    expect(config.github).toStrictEqual({
-      name: "GitHub",
-      icon: "🐙",
-      connection: "github",
-      availableScopes: [],
-    });
-
-    // Slack
-    expect(config.slack).toStrictEqual({
-      name: "Slack",
-      icon: "💬",
-      connection: "slack",
-      availableScopes: [],
-    });
-
-    // Notion
-    expect(config.notion).toStrictEqual({
-      name: "Notion",
-      icon: "📝",
-      connection: "notion",
-      availableScopes: [],
-    });
-
-    // LinkedIn
-    expect(config.linkedin).toStrictEqual({
-      name: "LinkedIn",
-      icon: "💼",
-      connection: "linkedin",
-      availableScopes: [],
-    });
+    expect(connections.google).toStrictEqual("google-oauth2");
+    expect(connections.github).toStrictEqual("github");
+    expect(connections.slack).toStrictEqual("sign-in-with-slack");
+    expect(connections.notion).toStrictEqual("Notion");
+    expect(connections.linkedin).toStrictEqual("linkedin");
+    expect(connections.figma).toStrictEqual("figma");
+    expect(connections.discord).toStrictEqual("discord");
   });
 
   test("正常系: エクスポートされた全ての要素が定義されている", () => {
@@ -141,7 +97,8 @@ describe("client", () => {
       clientExports.Auth0Provider,
       clientExports.getAccessToken,
       clientExports.useUser,
-      clientExports.OAUTH_PROVIDER_CONFIG,
+      clientExports.OAUTH_PROVIDERS,
+      clientExports.PROVIDER_CONNECTIONS,
     ];
 
     allExports.forEach((exportedItem) => {
@@ -157,9 +114,10 @@ describe("client", () => {
     expect(typeof clientExports.useUser).toStrictEqual("function");
   });
 
-  test("正常系: OAUTH_PROVIDER_CONFIGの型が正しい", () => {
-    expect(typeof clientExports.OAUTH_PROVIDER_CONFIG).toStrictEqual("object");
-    expect(Array.isArray(clientExports.OAUTH_PROVIDER_CONFIG)).toStrictEqual(
+  test("正常系: OAUTH_PROVIDERSとPROVIDER_CONNECTIONSの型が正しい", () => {
+    expect(Array.isArray(clientExports.OAUTH_PROVIDERS)).toStrictEqual(true);
+    expect(typeof clientExports.PROVIDER_CONNECTIONS).toStrictEqual("object");
+    expect(Array.isArray(clientExports.PROVIDER_CONNECTIONS)).toStrictEqual(
       false,
     );
   });

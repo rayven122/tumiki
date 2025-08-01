@@ -95,7 +95,7 @@ export const UserMcpServerCard = ({
           serverInstanceId: serverInstance.id,
           updateStatus: false,
         });
-      }, 1000), // 1秒のデバウンス
+      }, 1000) as () => void, // 1秒のデバウンス
     [serverInstance.id, scanServer, isScanning],
   );
 

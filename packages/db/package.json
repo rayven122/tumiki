@@ -43,14 +43,12 @@
     "db:deploy": "pnpm with-env prisma migrate deploy",
     "db:studio": "pnpm with-env prisma studio",
     "postinstall": "pnpm db:generate",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "bun test"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
-    "@prisma/adapter-neon": "^6.7.0",
-    "@prisma/client": "^6.7.0",
+    "@prisma/adapter-neon": "^6.13.0",
+    "@prisma/client": "^6.13.0",
     "@t3-oss/env-nextjs": "^0.12.0",
     "prisma-field-encryption": "^1.6.0",
     "ws": "^8.18.2",
@@ -61,17 +59,16 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
-    "@tumiki/vitest-config": "workspace:*",
+    "@types/bun": "^1.1.20",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "catalog:",
+    "bun-mock-prisma": "^1.2.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "prisma": "^6.7.0",
+    "prisma": "^6.13.0",
     "prisma-markdown": "^2.0.0",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
-    "vitest": "catalog:",
     "zod-prisma-types": "^3.2.4"
   },
   "prisma": {

@@ -34,18 +34,15 @@
     }
   },
   "scripts": {
-    "upsertAll": "pnpm with-env tsx src/upsertAll.ts",
-    "migrateWaitingList": "pnpm with-env tsx src/migrateWaitingList.ts",
-    "test-auth0-api": "pnpm with-env tsx src/test-auth0-api.ts",
+    "upsertAll": "pnpm with-env bun run src/upsertAll.ts",
+    "migrateWaitingList": "pnpm with-env bun run src/migrateWaitingList.ts",
+    "test-auth0-api": "pnpm with-env bun run src/test-auth0-api.ts",
     "with-env": "dotenv -e ../../.env --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --check . --ignore-path ../../.gitignore --write",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "format": "prettier --check . --ignore-path ../../.gitignore --write"
   },
   "dependencies": {
     "@line/line-bot-mcp-server": "^0.3.0",
@@ -56,7 +53,7 @@
     "@tumiki/utils": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
     "discord-mcp-server": "^1.0.1",
-    "figma-developer-mcp": "^0.4.3",
+    "figma-developer-mcp": "^0.5.0",
     "mcp-gemini-google-search": "^0.1.1",
     "puppeteer-mcp-server": "^0.7.2",
     "slack-mcp-server": "^1.1.16",
@@ -66,13 +63,9 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
-    "@tumiki/vitest-config": "workspace:*",
-    "@types/node": "^22.15.3",
-    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }

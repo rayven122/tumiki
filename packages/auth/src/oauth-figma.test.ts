@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { OAuthErrorCode } from "./errors.js";
 import {
@@ -9,13 +9,13 @@ import {
 } from "./oauth.js";
 
 // モックの設定
-void mock.module("./clients.js", () => ({
+vi.mock("./clients.js", () => ({
   auth0OAuth: {
-    getSession: mock(() => Promise.resolve(null)),
+    getSession: vi.fn(() => Promise.resolve(null)),
   },
   managementClient: {
     users: {
-      get: mock(() => Promise.resolve({ data: { identities: [] } })),
+      get: vi.fn(() => Promise.resolve({ data: { identities: [] } })),
     },
   },
 }));
@@ -23,17 +23,7 @@ void mock.module("./clients.js", () => ({
 describe("Figma OAuth認証", () => {
   beforeEach(() => {
     // 各テストの前にモックをリセット
-    mock.restore();
-    void mock.module("./clients.js", () => ({
-      auth0OAuth: {
-        getSession: mock(() => Promise.resolve(null)),
-      },
-      managementClient: {
-        users: {
-          get: mock(() => Promise.resolve({ data: { identities: [] } })),
-        },
-      },
-    }));
+    vi.clearAllMocks();
   });
 
   describe("getUserIdentityProviderTokens", () => {
@@ -49,13 +39,8 @@ describe("Figma OAuth認証", () => {
         },
       };
 
-      void mock.module("./clients.js", () => ({
-        managementClient: {
-          users: {
-            get: mock(() => Promise.resolve(mockUser)),
-          },
-        },
-      }));
+      const { managementClient } = await import("./clients.js");
+      vi.mocked(managementClient.users.get).mockResolvedValue(mockUser);
 
       const result = await getUserIdentityProviderTokens("user123", "figma");
       expect(result).toStrictEqual("figma_test_token_123");
@@ -73,13 +58,8 @@ describe("Figma OAuth認証", () => {
         },
       };
 
-      void mock.module("./clients.js", () => ({
-        managementClient: {
-          users: {
-            get: mock(() => Promise.resolve(mockUser)),
-          },
-        },
-      }));
+      const { managementClient } = await import("./clients.js");
+      vi.mocked(managementClient.users.get).mockResolvedValue(mockUser);
 
       const result = await getUserIdentityProviderTokens("user123", "figma");
       expect(result).toStrictEqual(null);
@@ -105,27 +85,17 @@ describe("Figma OAuth認証", () => {
         },
       };
 
-      void mock.module("./clients.js", () => ({
-        auth0OAuth: {
-          getSession: mock(() => Promise.resolve(mockSession)),
-        },
-        managementClient: {
-          users: {
-            get: mock(() => Promise.resolve(mockUser)),
-          },
-        },
-      }));
+      const { auth0OAuth, managementClient } = await import("./clients.js");
+      vi.mocked(auth0OAuth.getSession).mockResolvedValue(mockSession);
+      vi.mocked(managementClient.users.get).mockResolvedValue(mockUser);
 
       const result = await getProviderAccessToken("figma");
       expect(result).toStrictEqual("figma_access_token_456");
     });
 
     test("セッションが存在しない場合はUNAUTHORIZEDエラーをスローする", async () => {
-      void mock.module("./clients.js", () => ({
-        auth0OAuth: {
-          getSession: mock(() => Promise.resolve(null)),
-        },
-      }));
+      const { auth0OAuth } = await import("./clients.js");
+      vi.mocked(auth0OAuth.getSession).mockResolvedValue(null);
 
       void expect(getProviderAccessToken("figma")).rejects.toMatchObject({
         name: "OAuthError",
@@ -147,16 +117,9 @@ describe("Figma OAuth認証", () => {
         },
       };
 
-      void mock.module("./clients.js", () => ({
-        auth0OAuth: {
-          getSession: mock(() => Promise.resolve(mockSession)),
-        },
-        managementClient: {
-          users: {
-            get: mock(() => Promise.resolve(mockUser)),
-          },
-        },
-      }));
+      const { auth0OAuth, managementClient } = await import("./clients.js");
+      vi.mocked(auth0OAuth.getSession).mockResolvedValue(mockSession);
+      vi.mocked(managementClient.users.get).mockResolvedValue(mockUser);
 
       void expect(getProviderAccessToken("figma")).rejects.toMatchObject({
         name: "OAuthError",
@@ -213,16 +176,9 @@ describe("Figma OAuth認証", () => {
         },
       };
 
-      void mock.module("./clients.js", () => ({
-        auth0OAuth: {
-          getSession: mock(() => Promise.resolve(mockSession)),
-        },
-        managementClient: {
-          users: {
-            get: mock(() => Promise.resolve(mockUser)),
-          },
-        },
-      }));
+      const { auth0OAuth, managementClient } = await import("./clients.js");
+      vi.mocked(auth0OAuth.getSession).mockResolvedValue(mockSession);
+      vi.mocked(managementClient.users.get).mockResolvedValue(mockUser);
 
       const result = await checkOAuthConnection("figma");
       expect(result).toStrictEqual(true);
@@ -241,27 +197,17 @@ describe("Figma OAuth認証", () => {
         },
       };
 
-      void mock.module("./clients.js", () => ({
-        auth0OAuth: {
-          getSession: mock(() => Promise.resolve(mockSession)),
-        },
-        managementClient: {
-          users: {
-            get: mock(() => Promise.resolve(mockUser)),
-          },
-        },
-      }));
+      const { auth0OAuth, managementClient } = await import("./clients.js");
+      vi.mocked(auth0OAuth.getSession).mockResolvedValue(mockSession);
+      vi.mocked(managementClient.users.get).mockResolvedValue(mockUser);
 
       const result = await checkOAuthConnection("figma");
       expect(result).toStrictEqual(false);
     });
 
     test("セッションが存在しない場合はfalseを返す", async () => {
-      void mock.module("./clients.js", () => ({
-        auth0OAuth: {
-          getSession: mock(() => Promise.resolve(null)),
-        },
-      }));
+      const { auth0OAuth } = await import("./clients.js");
+      vi.mocked(auth0OAuth.getSession).mockResolvedValue(null);
 
       const result = await checkOAuthConnection("figma");
       expect(result).toStrictEqual(false);

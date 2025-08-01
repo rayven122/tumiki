@@ -21,18 +21,16 @@
     "dev": "tsc --watch",
     "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore --write",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",
-    "@prisma/client": "^6.7.0",
-    "@suekou/mcp-notion-server": "^1.2.4",
+    "@tumiki/db": "workspace:*",
     "next": "^15.3.3",
     "server-only": "^0.0.1"
   },
@@ -40,12 +38,10 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
-    "@tumiki/vitest-config": "workspace:*",
-    "@vitest/coverage-v8": "catalog:",
+    "bun-types": "latest",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }

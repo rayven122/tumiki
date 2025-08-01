@@ -35,10 +35,8 @@
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "catalog:",
     "concurrently": "^9.0.1",
     "turbo": "^2.5.1",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   }
 }

@@ -38,9 +38,8 @@
     "**/*.cjs",
     "**/*.js",
     ".next/types/**/*.ts",
-    "postcss.config.mjs",
-    "vitest.config.ts"
+    "postcss.config.mjs"
   ],
-  "types": ["web"],
-  "exclude": ["node_modules", "mcp", "coverage"]
+  "types": ["web", "bun-types"],
+  "exclude": ["node_modules", "mcp"]
 }
