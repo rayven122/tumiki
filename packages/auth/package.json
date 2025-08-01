@@ -25,7 +25,9 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "test": "bun test src"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.6.1",
@@ -36,12 +38,14 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/node": "^22.15.3",
-    "bun-types": "^1.2.19",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.33.0"
+    "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }

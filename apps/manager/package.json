@@ -14,7 +14,10 @@
     "lint": "eslint",
     "lint:fix": "next lint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\""
+    "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@ai-sdk/react": "^1.2.11",
@@ -125,8 +128,12 @@
     "@paralleldrive/cuid2": "^2.2.2",
     "@tailwindcss/postcss": "^4.1.8",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
     "@tumiki/tailwind-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/d3-scale": "^4.0.8",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^22.15.3",
@@ -137,15 +144,19 @@
     "@types/web": "^0.0.216",
     "@types/ws": "^8.18.1",
     "@vercel/ncc": "^0.38.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "catalog:",
     "bufferutil": "^4.0.9",
     "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "eslint-config-next": "^15.3.3",
+    "jsdom": "^26.1.0",
     "prettier": "catalog:",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "catalog:",
     "typescript": "^4.1.8",
-    "typescript-eslint": "^8.33.0"
+    "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:"
   }
 }

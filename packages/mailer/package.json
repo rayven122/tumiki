@@ -26,7 +26,10 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "format:fix": "prettier --write . --ignore-path ../../.gitignore",
-    "email:dev": "email dev --dir src/emails --port 3001"
+    "email:dev": "email dev --dir src/emails --port 3001",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@react-email/components": "^0.0.31",
@@ -40,15 +43,18 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/node": "^22.15.3",
     "@types/nodemailer": "^6.4.14",
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "react-email": "^3.0.3",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.33.0"
+    "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }
