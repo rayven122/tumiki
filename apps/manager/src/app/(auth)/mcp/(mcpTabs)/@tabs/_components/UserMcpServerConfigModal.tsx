@@ -126,6 +126,9 @@ export const UserMcpServerConfigModal = ({
     }, {});
   });
 
+  // サーバー名の状態
+  const [serverName, setServerName] = useState(mcpServer.name);
+
   // 認証方法の選択状態
   const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
 
@@ -156,6 +159,7 @@ export const UserMcpServerConfigModal = ({
       addOfficialServer({
         mcpServerId: mcpServer.id,
         envVars,
+        name: serverName,
       });
     }
   };
@@ -200,6 +204,7 @@ export const UserMcpServerConfigModal = ({
             mcpServerId: mcpServer.id,
             envVars: {},
             isPending: true, // PENDINGフラグを追加
+            name: serverName,
           });
 
           configId = result.userMcpServerConfigId;
@@ -302,6 +307,25 @@ export const UserMcpServerConfigModal = ({
                   : "APIトークンが必要"}
               </Badge>
             </div>
+          </div>
+
+          {/* サーバー名入力フィールド */}
+          <div className="space-y-2">
+            <Label htmlFor="server-name" className="text-sm font-medium">
+              サーバー名
+            </Label>
+            <Input
+              id="server-name"
+              type="text"
+              placeholder={mcpServer.name}
+              value={serverName}
+              onChange={(e) => setServerName(e.target.value)}
+              className="text-sm"
+              disabled={isProcessing}
+            />
+            <p className="text-muted-foreground text-xs">
+              表示されるサーバー名を設定できます
+            </p>
           </div>
 
           {/* OAuth対応MCPの場合はタブで認証方法を選択 */}

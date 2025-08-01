@@ -61,6 +61,7 @@ export const AddOfficialServerInput = z.object({
   mcpServerId: z.string(),
   envVars: z.record(z.string(), z.string()),
   isPending: z.boolean().optional(), // OAuth認証用フラグを追加
+  name: z.string().min(1).max(100).optional(),
 });
 
 export const AddOfficialServerOutput = z.object({
