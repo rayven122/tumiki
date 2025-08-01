@@ -145,6 +145,8 @@ export const UserMcpServerConfigModal = ({
 
   // 少なくとも1つのトークンが入力されているかチェック
   const isFormValid = () => {
+    // mcpServerに環境変数がない場合は常に有効
+    if (mcpServer.envVars.length === 0) return true;
     return Object.values(envVars).some((token) => token.trim() !== "");
   };
 
