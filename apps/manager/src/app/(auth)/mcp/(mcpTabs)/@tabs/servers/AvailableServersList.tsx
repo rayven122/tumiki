@@ -93,7 +93,7 @@ export function AvailableServersList() {
         saveTokenToEnvVars({
           userMcpServerConfigId: configId,
           provider: "figma",
-          tokenKey: "FIGMA_API_KEY",
+          tokenKey: "FIGMA_OAUTH_TOKEN",
           scopes: scopesArray,
         });
       }
