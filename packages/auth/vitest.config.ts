@@ -6,6 +6,11 @@ import baseConfig from "@tumiki/vitest-config/base";
 export default mergeConfig(
   baseConfig,
   defineConfig({
+    server: {
+      deps: {
+        inline: ['@tumiki/vitest-config']
+      }
+    },
     test: {
       setupFiles: ["../../tests/setup.ts"],
     },
