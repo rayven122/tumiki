@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Wrench,
   RefreshCw,
+  Edit2,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { ImageEditModal } from "./ImageEditModal";
+import { NameEditModal } from "./NameEditModal";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
@@ -53,6 +55,7 @@ export const UserMcpServerCard = ({
   // const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
+  const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
 
   const { tools } = serverInstance;
 
@@ -141,50 +144,51 @@ export const UserMcpServerCard = ({
   };
 
   return (
-    <Card
-      className={cn(
-        "flex h-full cursor-pointer flex-col transition-all duration-200 hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
-        isScanning && "relative overflow-hidden",
-      )}
-      onClick={handleCardClick}
-    >
-      {/* 接続テスト中のローディングオーバーレイ */}
-      {isScanning && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center space-y-2">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="text-sm font-medium text-gray-700">
-              接続テスト中...
-            </span>
+    <>
+      <Card
+        className={cn(
+          "flex h-full cursor-pointer flex-col transition-all duration-200 hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
+          isScanning && "relative overflow-hidden",
+        )}
+        onClick={handleCardClick}
+      >
+        {/* 接続テスト中のローディングオーバーレイ */}
+        {isScanning && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center space-y-2">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-gray-700">
+                接続テスト中...
+              </span>
+            </div>
           </div>
-        </div>
-      )}
-      <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-        <div className="group relative mr-2 rounded-md p-2">
-          {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
-            <Image
-              src={
-                serverInstance.iconPath ??
-                serverInstance.mcpServer?.iconPath ??
-                "/placeholder.svg"
-              }
-              alt={serverInstance.name}
-              width={32}
-              height={32}
-            />
-          ) : (
-            <FaviconImage
-              url={mcpServerUrl}
-              alt={serverInstance.name}
-              size={32}
-              fallback={
-                <div className="flex size-6 items-center justify-center rounded-md bg-gray-200">
-                  <ImageIcon className="size-4 text-gray-500" />
-                </div>
-              }
-            />
-          )}
-          {/* <Button
+        )}
+        <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          <div className="group relative mr-2 rounded-md p-2">
+            {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
+              <Image
+                src={
+                  serverInstance.iconPath ??
+                  serverInstance.mcpServer?.iconPath ??
+                  "/placeholder.svg"
+                }
+                alt={serverInstance.name}
+                width={32}
+                height={32}
+              />
+            ) : (
+              <FaviconImage
+                url={mcpServerUrl}
+                alt={serverInstance.name}
+                size={32}
+                fallback={
+                  <div className="flex size-6 items-center justify-center rounded-md bg-gray-200">
+                    <ImageIcon className="size-4 text-gray-500" />
+                  </div>
+                }
+              />
+            )}
+            {/* <Button
             variant="ghost"
             size="icon"
             // TODO: 画像編集モーダーを実装したら有効化する
@@ -194,176 +198,196 @@ export const UserMcpServerCard = ({
           >
             <EditIcon className="size-4 text-white" />
           </Button> */}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center">
-            <CardTitle className="text-lg font-semibold">
-              {serverInstance.name}
-            </CardTitle>
           </div>
-          <div className="mt-1">
-            <div className="flex items-center space-x-2 overflow-hidden">
-              <span className="text-muted-foreground flex-shrink-0 text-xs">
-                SSE:
-              </span>
-              <span
-                className="cursor-pointer truncate font-mono text-sm text-blue-600 underline hover:text-blue-800"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyUrl();
-                }}
-              >
-                {makeSseProxyServerUrl(apiKey)}
-              </span>
+          <div className="min-w-0 flex-1">
+            <div className="group flex items-center">
+              <CardTitle className="text-lg font-semibold">
+                {serverInstance.name}
+              </CardTitle>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 cursor-pointer hover:bg-gray-200"
+                className="ml-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
-                  void copyUrl();
+                  setNameEditModalOpen(true);
                 }}
               >
-                <Copy className="h-3 w-3" />
+                <Edit2 className="h-3 w-3" />
               </Button>
             </div>
-            <div className="flex items-center space-x-2 overflow-hidden">
-              <span className="text-muted-foreground flex-shrink-0 text-xs">
-                HTTP:
-              </span>
-              <span
-                className="cursor-pointer truncate font-mono text-sm text-blue-600 underline hover:text-blue-800"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyHttpUrl();
-                }}
-              >
-                {makeHttpProxyServerUrl(apiKey)}
-              </span>
+            <div className="mt-1">
+              <div className="flex items-center space-x-2 overflow-hidden">
+                <span className="text-muted-foreground flex-shrink-0 text-xs">
+                  SSE:
+                </span>
+                <span
+                  className="cursor-pointer truncate font-mono text-sm text-blue-600 underline hover:text-blue-800"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyUrl();
+                  }}
+                >
+                  {makeSseProxyServerUrl(apiKey)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 cursor-pointer hover:bg-gray-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyUrl();
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2 overflow-hidden">
+                <span className="text-muted-foreground flex-shrink-0 text-xs">
+                  HTTP:
+                </span>
+                <span
+                  className="cursor-pointer truncate font-mono text-sm text-blue-600 underline hover:text-blue-800"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyHttpUrl();
+                  }}
+                >
+                  {makeHttpProxyServerUrl(apiKey)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 cursor-pointer hover:bg-gray-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyHttpUrl();
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 cursor-pointer hover:bg-gray-200"
+                className="size-6 hover:bg-gray-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="sr-only">メニューを開く</span>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  詳細を見る
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  void copyHttpUrl();
+                  setNameEditModalOpen(true);
                 }}
               >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6 hover:bg-gray-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span className="sr-only">メニューを開く</span>
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+                <Edit2 className="mr-2 h-4 w-4" />
+                名前を編集
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleScan();
+                }}
+                disabled={isScanning}
               >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                詳細を見る
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                handleScan();
-              }}
-              disabled={isScanning}
-            >
-              <RefreshCw
-                className={cn("mr-2 h-4 w-4", isScanning && "animate-spin")}
-              />
-              接続テスト
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteModalOpen(true);
-              }}
-            >
-              <Trash2Icon className="mr-2 h-4 w-4" />
-              削除
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-3">
-        {/* ステータスとツール数の横並び */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div
-              className={cn(
-                "h-2 w-2 rounded-full",
-                isScanning && "animate-pulse",
-                serverInstance.serverStatus === ServerStatus.RUNNING
-                  ? "bg-green-500"
-                  : serverInstance.serverStatus === ServerStatus.STOPPED
-                    ? "bg-gray-500"
-                    : serverInstance.serverStatus === ServerStatus.PENDING
-                      ? "bg-yellow-500"
-                      : "bg-red-500",
-              )}
-            />
-            <span className="text-sm">
-              {isScanning
-                ? "接続テスト中"
-                : SERVER_STATUS_LABELS[serverInstance.serverStatus]}
-            </span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1 text-sm text-gray-600">
-              <Wrench className="h-4 w-4" />
-              ツール
-              <span>{tools.length}個</span>
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              <Switch
-                checked={serverInstance.serverStatus === ServerStatus.RUNNING}
-                onCheckedChange={handleStatusToggle}
-                disabled={isStatusUpdating || isScanning}
+                <RefreshCw
+                  className={cn("mr-2 h-4 w-4", isScanning && "animate-spin")}
+                />
+                接続テスト
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteModalOpen(true);
+                }}
+              >
+                <Trash2Icon className="mr-2 h-4 w-4" />
+                削除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardHeader>
+        <CardContent className="flex-1 space-y-3">
+          {/* ステータスとツール数の横並び */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div
                 className={cn(
-                  "data-[state=checked]:bg-green-500",
-                  "data-[state=unchecked]:bg-gray-300",
-                  "dark:data-[state=unchecked]:bg-gray-600",
-                  (isStatusUpdating || isScanning) && "opacity-50",
+                  "h-2 w-2 rounded-full",
+                  isScanning && "animate-pulse",
+                  serverInstance.serverStatus === ServerStatus.RUNNING
+                    ? "bg-green-500"
+                    : serverInstance.serverStatus === ServerStatus.STOPPED
+                      ? "bg-gray-500"
+                      : serverInstance.serverStatus === ServerStatus.PENDING
+                        ? "bg-yellow-500"
+                        : "bg-red-500",
                 )}
               />
+              <span className="text-sm">
+                {isScanning
+                  ? "接続テスト中"
+                  : SERVER_STATUS_LABELS[serverInstance.serverStatus]}
+              </span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1 text-sm text-gray-600">
+                <Wrench className="h-4 w-4" />
+                ツール
+                <span>{tools.length}個</span>
+              </div>
+              <div onClick={(e) => e.stopPropagation()}>
+                <Switch
+                  checked={serverInstance.serverStatus === ServerStatus.RUNNING}
+                  onCheckedChange={handleStatusToggle}
+                  disabled={isStatusUpdating || isScanning}
+                  className={cn(
+                    "data-[state=checked]:bg-green-500",
+                    "data-[state=unchecked]:bg-gray-300",
+                    "dark:data-[state=unchecked]:bg-gray-600",
+                    (isStatusUpdating || isScanning) && "opacity-50",
+                  )}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* MCPサーバーの概要 */}
-        <div>
-          <p className="text-sm text-gray-600">{sampleDescription}</p>
-        </div>
+          {/* MCPサーバーの概要 */}
+          <div>
+            <p className="text-sm text-gray-600">{sampleDescription}</p>
+          </div>
 
-        {/* カテゴリータグ（カード下部） */}
-        <div className="flex flex-wrap gap-1 pt-2">
-          {sampleTags.map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white"
-              style={{ backgroundColor: "#6B46C1" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </CardContent>
-      {/* <CardFooter className="mt-auto">
+          {/* カテゴリータグ（カード下部） */}
+          <div className="flex flex-wrap gap-1 pt-2">
+            {sampleTags.map((tag, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white"
+                style={{ backgroundColor: "#6B46C1" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </CardContent>
+        {/* <CardFooter className="mt-auto">
         <Button
           type="button"
           onClick={() => {
@@ -374,6 +398,7 @@ export const UserMcpServerCard = ({
           再設定
         </Button>
       </CardFooter> */}
+      </Card>
 
       {/* トークンモーダル */}
       {/* {tokenModalOpen && (
@@ -417,6 +442,19 @@ export const UserMcpServerCard = ({
           onOpenChange={setImageEditModalOpen}
         />
       )}
-    </Card>
+
+      {/* 名前編集モーダル */}
+      {nameEditModalOpen && (
+        <NameEditModal
+          serverInstanceId={serverInstance.id}
+          initialName={serverInstance.name}
+          onSuccess={async () => {
+            await revalidate?.();
+            setNameEditModalOpen(false);
+          }}
+          onOpenChange={setNameEditModalOpen}
+        />
+      )}
+    </>
   );
 };
