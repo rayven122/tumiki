@@ -405,7 +405,7 @@ export const getServer = async (
     try {
       // API キー検証を先に実行してユーザー情報を取得
       validation = await validateApiKey(apiKey);
-      if (!validation.valid || !validation.userMcpServerInstance) {
+      if (!validation.valid) {
         throw new Error(`Invalid API key: ${validation.error}`);
       }
 
@@ -489,7 +489,7 @@ export const getServer = async (
           inputBytes,
           outputBytes,
           organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+            validation?.userMcpServerInstance?.organizationId ?? undefined,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify({ tools: result.tools }),
@@ -497,7 +497,10 @@ export const getServer = async (
           // ログ記録失敗をログに残すが、リクエスト処理は継続
           logger.error("Failed to log tools/list request", {
             error: error instanceof Error ? error.message : String(error),
-            userId: validation?.userMcpServerInstance?.userId,
+            userId:
+              validation?.valid && "apiKey" in validation
+                ? validation.apiKey?.userId
+                : undefined,
           });
         });
       }
@@ -524,10 +527,17 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance && !isValidationMode) {
+      if (
+        validation?.valid &&
+        validation?.userMcpServerInstance &&
+        !isValidationMode
+      ) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
         logMcpRequest({
-          userId: validation?.apiKey?.userId,
+          userId:
+            validation?.valid && "apiKey" in validation
+              ? validation.apiKey?.userId
+              : undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
@@ -537,7 +547,7 @@ export const getServer = async (
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
           organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+            validation?.userMcpServerInstance?.organizationId ?? undefined,
         }).catch((logError) => {
           logger.error("Failed to log tools/list error", {
             logError:
@@ -578,8 +588,10 @@ export const getServer = async (
     try {
       // API キー検証を先に実行してユーザー情報を取得
       validation = await validateApiKey(apiKey);
-      if (!validation.valid || !validation.userMcpServerInstance) {
-        throw new Error(`Invalid API key: ${validation.error}`);
+      if (!validation.valid) {
+        throw new Error(
+          `Invalid API key: ${validation.error || "Authentication failed"}`,
+        );
       }
 
       const result = await measureExecutionTime(
@@ -641,14 +653,21 @@ export const getServer = async (
       const durationMs = Date.now() - startTime;
 
       // 検証モードでない場合のみログ記録
-      if (validation.userMcpServerInstance && !isValidationMode) {
+      if (
+        validation.valid &&
+        validation.userMcpServerInstance &&
+        !isValidationMode
+      ) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.result ?? {});
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
-          userId: validation?.apiKey?.userId,
+          userId:
+            validation?.valid && "apiKey" in validation
+              ? validation.apiKey?.userId
+              : undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
@@ -658,7 +677,7 @@ export const getServer = async (
           inputBytes,
           outputBytes,
           organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+            validation?.userMcpServerInstance?.organizationId ?? undefined,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify(result.result),
@@ -667,7 +686,10 @@ export const getServer = async (
           logger.error("Failed to log tools/call request", {
             error: error instanceof Error ? error.message : String(error),
             toolName: name,
-            userId: validation?.userMcpServerInstance?.userId,
+            userId:
+              validation?.valid && "apiKey" in validation
+                ? validation.apiKey?.userId
+                : undefined,
           });
         });
       }
@@ -693,10 +715,17 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance && !isValidationMode) {
+      if (
+        validation?.valid &&
+        validation?.userMcpServerInstance &&
+        !isValidationMode
+      ) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
         logMcpRequest({
-          userId: validation?.apiKey?.userId,
+          userId:
+            validation?.valid && "apiKey" in validation
+              ? validation.apiKey?.userId
+              : undefined,
           mcpServerInstanceId: validation.userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
@@ -706,7 +735,7 @@ export const getServer = async (
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
           organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+            validation?.userMcpServerInstance?.organizationId ?? undefined,
         }).catch((logError) => {
           logger.error("Failed to log tools/call error", {
             logError:
