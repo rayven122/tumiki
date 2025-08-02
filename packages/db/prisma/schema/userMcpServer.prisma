@@ -161,6 +161,8 @@ model UserMcpServerInstance {
   /// 組織
   organizationId              String?
   organization                Organization?                    @relation(fields: [organizationId], references: [id])
+  /// 表示順序（ユーザーごと）
+  displayOrder                Int                              @default(0)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
