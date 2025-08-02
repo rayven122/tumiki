@@ -9,16 +9,7 @@
     
     /** Module resolution for bundlers */
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    
-    /** Path aliases */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-    
-    /** Additional strictness */
-    "verbatimModuleSyntax": true
+    "moduleResolution": "Bundler"
   },
   "include": [
     "next-env.d.ts",
