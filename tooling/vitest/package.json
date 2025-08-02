@@ -1,31 +1,5 @@
 {
   "name": "@tumiki/vitest-config",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    "./base": "./base.config.ts",
-    "./react": "./react.config.ts"
-  },
-  "scripts": {
-    "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint *.ts *.js --no-warn-ignored",
-    "lint:fix": "eslint *.ts *.js --fix --no-warn-ignored",
-    "format": "prettier --check . --ignore-path ../../.gitignore"
-  },
-  "dependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vitest": "catalog:"
-  },
-  "devDependencies": {
-    "@tumiki/eslint-config": "workspace:*",
-    "@tumiki/prettier-config": "workspace:*",
-    "@tumiki/tsconfig": "workspace:*",
-    "@types/node": "^22.15.3",
-    "eslint": "catalog:",
-    "prettier": "catalog:",
-    "typescript": "catalog:"
-  },
-  "prettier": "@tumiki/prettier-config"
+  "version": "0.0.0",
+  "private": true
 }
