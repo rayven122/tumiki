@@ -41,5 +41,5 @@
     "postcss.config.mjs"
   ],
   "types": ["web", "bun-types"],
-  "exclude": ["node_modules", "mcp"]
+  "exclude": ["node_modules", "mcp", "coverage"]
 }

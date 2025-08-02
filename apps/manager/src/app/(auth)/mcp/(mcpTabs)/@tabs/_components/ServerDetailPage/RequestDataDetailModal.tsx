@@ -11,10 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, FileText, BarChart3 } from "lucide-react";
+import { Loader2, AlertCircle, BarChart3 } from "lucide-react";
 import { api } from "@/trpc/react";
-import { decompressGzipData, formatDataSize } from "@/utils/dataDecompression";
-import JsonView from "@uiw/react-json-view";
+import { decompressGzipData } from "@/utils/dataDecompression";
+import { formatDataSize } from "@tumiki/utils";
+import { JsonViewer } from "@/components/JsonViewer";
 
 type RequestDataDetailModalProps = {
   requestLogId: string | null;
@@ -115,61 +116,7 @@ export const RequestDataDetailModal = ({
       );
     }
 
-    if (!data) {
-      return (
-        <div className="text-muted-foreground flex items-center justify-center p-8">
-          <FileText className="mr-2 h-6 w-6" />
-          <span>データがありません</span>
-        </div>
-      );
-    }
-
-    // データ型を確認してJSONオブジェクトに変換
-    let jsonData: object = data;
-
-    // stringの場合は再度JSONパースを試行
-    if (typeof data === "string") {
-      try {
-        jsonData = JSON.parse(data) as object;
-      } catch {
-        // パースに失敗した場合はそのまま表示
-      }
-    }
-
-    // フォールバック表示の実装
-    try {
-      return (
-        <div className="max-h-[700px] overflow-auto">
-          <JsonView
-            value={jsonData}
-            collapsed={2}
-            style={{
-              fontSize: "12px",
-              fontFamily: "monospace",
-            }}
-          />
-        </div>
-      );
-    } catch {
-      // フォールバック表示：プリフォーマットされたテキスト
-      const displayText =
-        typeof jsonData === "string"
-          ? jsonData
-          : JSON.stringify(jsonData, null, 2);
-
-      return (
-        <div className="max-h-[700px] overflow-auto">
-          <div className="rounded border bg-gray-50 p-4">
-            <div className="mb-2 text-sm text-gray-600">
-              JSON表示に失敗しました。以下はプレーンテキスト表示です：
-            </div>
-            <pre className="font-mono text-xs break-words whitespace-pre-wrap">
-              {displayText}
-            </pre>
-          </div>
-        </div>
-      );
-    }
+    return <JsonViewer data={data} />;
   };
 
   if (!isOpen) return null;
