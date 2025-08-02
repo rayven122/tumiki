@@ -147,8 +147,10 @@ export const UserMcpServerCard = ({
     <Card
       className={cn(
         "flex h-full flex-col transition-all duration-200",
-        !isSortMode && "cursor-pointer hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
-        isSortMode && "cursor-grab select-none border-2 border-dashed border-blue-300 bg-blue-50/30",
+        !isSortMode &&
+          "cursor-pointer hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
+        isSortMode &&
+          "cursor-grab border-2 border-dashed border-blue-300 bg-blue-50/30 select-none",
         isScanning && "relative overflow-hidden",
       )}
       onClick={handleCardClick}

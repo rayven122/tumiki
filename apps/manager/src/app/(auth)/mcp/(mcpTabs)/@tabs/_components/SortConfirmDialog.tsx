@@ -52,9 +52,7 @@ export const SortConfirmDialog = ({
               </AlertDialogAction>
             </>
           ) : (
-            <AlertDialogAction onClick={onConfirm}>
-              終了
-            </AlertDialogAction>
+            <AlertDialogAction onClick={onConfirm}>終了</AlertDialogAction>
           )}
         </AlertDialogFooter>
       </AlertDialogContent>

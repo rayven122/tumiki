@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useImperativeHandle, forwardRef } from "react";
+import { Suspense, useImperativeHandle, forwardRef } from "react";
 import { UserMcpServerCardSkeleton } from "../_components/UserMcpServerCard/UserMcpServerCardSkeleton";
 import { api } from "@/trpc/react";
 import {
@@ -10,19 +10,17 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
-import { SortableServerCard } from "./SortableServerCard";
+import { SortableServerCard } from "../_components/SortableServerCard";
+import { useSortableServers } from "@/hooks/useSortableServers";
 
 type AsyncServerCardListProps = {
   isSortMode: boolean;
-  onSortModeChange: (enabled: boolean) => void;
 };
 
 const AsyncServerCardList = forwardRef<
@@ -32,17 +30,26 @@ const AsyncServerCardList = forwardRef<
     hasChanges: () => boolean;
   },
   AsyncServerCardListProps
->(function AsyncServerCardListComponent(
-  { isSortMode, onSortModeChange: _onSortModeChange },
-  ref,
-) {
+>(function AsyncServerCardListComponent({ isSortMode }, ref) {
   const [userCustomServers] =
     api.userMcpServerInstance.findCustomServers.useSuspenseQuery();
-  const [servers, setServers] = useState(userCustomServers);
-  const [originalServers, setOriginalServers] = useState(userCustomServers); // 元の順序を保存
   const utils = api.useUtils();
   const updateDisplayOrderMutation =
     api.userMcpServerInstance.updateDisplayOrder.useMutation();
+
+  const {
+    servers,
+    handleDragEnd,
+    handleConfirmChanges,
+    handleCancelChanges,
+    hasChanges,
+  } = useSortableServers({
+    originalServers: userCustomServers,
+    updateMutation: updateDisplayOrderMutation,
+    invalidateQuery: () =>
+      utils.userMcpServerInstance.findCustomServers.invalidate(),
+    isSortMode,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -51,60 +58,12 @@ const AsyncServerCardList = forwardRef<
     }),
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = servers.findIndex((item) => item.id === active.id);
-      const newIndex = servers.findIndex((item) => item.id === over.id);
-
-      // ローカルで即座に並び替え（DB更新はしない）
-      const newServers = arrayMove(servers, oldIndex, newIndex);
-      setServers(newServers);
-    }
-  };
-
-  // 変更を確定する関数
-  const handleConfirmChanges = async () => {
-    const updates = servers.map((server, index) => ({
-      id: server.id,
-      displayOrder: index,
-    }));
-
-    await updateDisplayOrderMutation.mutateAsync({ updates });
-    await utils.userMcpServerInstance.findCustomServers.invalidate();
-    setOriginalServers(servers); // 新しい順序を元の順序として保存
-  };
-
-  // 変更を中止する関数
-  const handleCancelChanges = () => {
-    setServers(originalServers); // 元の順序に戻す
-  };
-
-  // 変更があるかチェック
-  const hasChanges = () => {
-    return (
-      JSON.stringify(servers.map((s) => s.id)) !==
-      JSON.stringify(originalServers.map((s) => s.id))
-    );
-  };
-
   // refで関数を公開
   useImperativeHandle(ref, () => ({
     handleConfirmChanges,
     handleCancelChanges,
     hasChanges,
   }));
-
-  // サーバーデータが更新されたら反映（ソートモード中でない場合のみ）
-  if (
-    userCustomServers !== originalServers &&
-    userCustomServers.length > 0 &&
-    !isSortMode
-  ) {
-    setServers(userCustomServers);
-    setOriginalServers(userCustomServers);
-  }
 
   if (isSortMode) {
     return (
@@ -160,7 +119,6 @@ function ServerCardListSkeleton() {
 
 type ServerCardListProps = {
   isSortMode: boolean;
-  onSortModeChange: (enabled: boolean) => void;
 };
 
 export const ServerCardList = forwardRef<
@@ -170,14 +128,10 @@ export const ServerCardList = forwardRef<
     hasChanges: () => boolean;
   },
   ServerCardListProps
->(({ isSortMode, onSortModeChange }, ref) => {
+>(({ isSortMode }, ref) => {
   return (
     <Suspense fallback={<ServerCardListSkeleton />}>
-      <AsyncServerCardList
-        isSortMode={isSortMode}
-        onSortModeChange={onSortModeChange}
-        ref={ref}
-      />
+      <AsyncServerCardList isSortMode={isSortMode} ref={ref} />
     </Suspense>
   );
 });
