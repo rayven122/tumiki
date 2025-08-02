@@ -40,5 +40,9 @@ jobs:
       - name: 🔧 Copy test environment file
         run: cp .env.test .env
 
+      - name: 🔧 Build dependencies
+        run: pnpm run --filter @tumiki/mailer build && pnpm run --filter @tumiki/db build && pnpm run --filter @tumiki/auth build && pnpm run --filter @tumiki/utils build
+        # CI環境で@tumiki/authなどの型定義を確実に生成するため、依存パッケージのみビルド
+
       - name: 🏗️ Run build
         run: pnpm run build
