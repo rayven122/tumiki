@@ -29,8 +29,7 @@ import {
 } from "lucide-react";
 import type { RequestStats, RequestLogs } from "./types";
 import { RequestDataDetailModal } from "./RequestDataDetailModal";
-
-import { formatDataSize } from "@/utils/dataDecompression";
+import { formatDataSize } from "@tumiki/utils";
 
 type LogsAnalyticsTabProps = {
   requestStats: RequestStats;

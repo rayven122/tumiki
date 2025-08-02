@@ -1,6 +1,7 @@
 import { type ProtectedContext } from "@/server/api/trpc";
 import { db } from "@tumiki/db/tcp";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 
 export const GetRequestDataDetailInput = z.object({
   requestLogId: z.string(),
@@ -53,17 +54,27 @@ export const getRequestDataDetail = async ({
   });
 
   if (!requestLog) {
-    throw new Error("リクエストログが見つかりません");
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "リクエストログが見つかりません",
+    });
   }
 
   // ユーザーのアクセス権限チェック
   if (requestLog.mcpServerInstance.userId !== ctx.session.user.id) {
-    throw new Error("アクセス権限がありません");
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "アクセス権限がありません",
+    });
   }
 
   // 詳細データが存在しない場合
   if (!requestLog.requestData) {
-    throw new Error("詳細データが見つかりません");
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message:
+        "詳細データが見つかりません。データが保存されていない可能性があります。",
+    });
   }
 
   // Bufferデータを Base64 エンコードして返却
