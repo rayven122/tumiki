@@ -88,12 +88,15 @@ const extractBearerToken = (req: Request): string | undefined => {
   return undefined;
 };
 
+// JWT形式の標準パート数
+const JWT_PARTS_COUNT = 3;
+
 /**
  * JWTトークンかどうかを判定
  */
 const isJWT = (token: string): boolean => {
   const parts = token.split(".");
-  return parts.length === 3;
+  return parts.length === JWT_PARTS_COUNT;
 };
 
 /**
