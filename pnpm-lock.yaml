@@ -463,9 +463,6 @@ importers:
 
   apps/proxyServer:
     dependencies:
-      '@cloudflare/workers-oauth-provider':
-        specifier: ^0.0.2
-        version: 0.0.2
       '@line/line-bot-mcp-server':
         specifier: ^0.3.0
         version: 0.3.0
@@ -1367,9 +1364,6 @@ packages:
 
   '@clack/prompts@0.8.2':
     resolution: {integrity: sha512-6b9Ab2UiZwJYA9iMyboYyW9yJvAO9V753ZhS+DHKEjZRKAxPPOb7MXXu84lsPFG+vZt6FRFniZ8rXi+zCIw4yQ==}
-
-  '@cloudflare/workers-oauth-provider@0.0.2':
-    resolution: {integrity: sha512-/4ITlItqtmG077CBdo/14c4GNrhLDQ9Y/+mDMEppzXz5g0gVbYjzZGtXrQFQG1mfOHNfXmNxgVwin2eh0X423Q==}
 
   '@cloudflare/workers-types@4.20250802.0':
     resolution: {integrity: sha512-zWjDMBxPf4kv4air928Qpo1fmIacMKbztO4R3+fdrB2stn0425zJrqhRGye27e/v9cA1Jum8IHl7Q/P2ZIT2QA==}
@@ -9593,10 +9587,6 @@ snapshots:
       '@clack/core': 0.3.5
       picocolors: 1.1.1
       sisteransi: 1.0.5
-
-  '@cloudflare/workers-oauth-provider@0.0.2':
-    dependencies:
-      '@cloudflare/workers-types': 4.20250802.0
 
   '@cloudflare/workers-types@4.20250802.0': {}
 
