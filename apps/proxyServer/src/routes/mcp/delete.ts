@@ -36,8 +36,18 @@ export const handleDELETERequest = async (
   }
 
   try {
+    // リクエストにauth情報を追加（MCP SDK向け）
+    const mcpReq = req as typeof req & {
+      mcpAuth?: { token: string; clientId: string; scopes: string[] };
+    };
+
+    // 新しいオブジェクトにauth情報を追加（型競合を回避）
+    const reqWithAuth = Object.assign({}, mcpReq, {
+      auth: mcpReq.mcpAuth,
+    });
+
     // セッション終了処理をtransportに委譲
-    await transport.handleRequest(req, res);
+    await transport.handleRequest(reqWithAuth, res);
 
     logger.info("Session terminated", { sessionId });
   } catch (error) {

@@ -21,6 +21,7 @@ import {
   type SessionInfo,
 } from "./session.js";
 import { TransportType as PrismaTransportType } from "@tumiki/db/prisma";
+import { validateAuth, convertToMcpAuthInfo } from "../libs/authMiddleware.js";
 
 // Transport types
 export enum TransportImplementation {
@@ -96,7 +97,29 @@ export const establishSSEConnection = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  // request header から apiKeyId を取得
+  // Unified authentication validation
+  const authResult = await validateAuth(req);
+
+  if (!authResult.valid) {
+    sendErrorResponse(
+      res,
+      401,
+      `Unauthorized: ${authResult.error}`,
+      "AUTH_FAILED",
+      authResult.authType,
+    );
+    return;
+  }
+
+  const { userMcpServerInstance, userId, authType } = authResult;
+
+  logger.info("SSE authentication successful", {
+    authType,
+    instanceId: userMcpServerInstance?.id,
+    userId,
+  });
+
+  // request header から apiKeyId を取得（後方互換性のため）
   const apiKeyId = (req.query["api-key"] ?? req.headers["api-key"]) as
     | string
     | undefined;
@@ -268,8 +291,14 @@ export const establishSSEConnection = async (
     // MCPサーバーとの接続確立
     let server;
     try {
+      // OAuth認証の場合もAPIキーを使用（getServerの互換性のため）
+      const serverApiKey =
+        authType === "oauth" && userMcpServerInstance?.apiKeys?.[0]
+          ? userMcpServerInstance.apiKeys[0].apiKey
+          : apiKeyId;
+
       const serverResult = await getServer(
-        apiKeyId,
+        serverApiKey,
         PrismaTransportType.SSE,
         isValidationMode,
       );
@@ -411,8 +440,26 @@ export const handleSSEMessage = async (
         // アクティビティタイムスタンプを更新
         updateSessionActivity(sessionId);
 
+        // セッション情報から認証情報を再構築
+        const authResult = await validateAuth(req);
+
+        // リクエストにauth情報を追加
+        const bearerToken = req.headers.authorization?.startsWith("Bearer ")
+          ? req.headers.authorization.substring(7)
+          : undefined;
+        const authInfo = convertToMcpAuthInfo(authResult, bearerToken);
+
+        // 新しいオブジェクトにauth情報を追加（型競合を回避）
+        const reqWithAuth = Object.assign({}, req, {
+          auth: authInfo,
+        });
+
         // Handle the POST message with the transport
-        await connectionInfo.transport.handlePostMessage(req, res, req.body);
+        await connectionInfo.transport.handlePostMessage(
+          reqWithAuth,
+          res,
+          req.body,
+        );
       },
       "sse",
       "message_handling",

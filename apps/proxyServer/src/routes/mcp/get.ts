@@ -55,7 +55,17 @@ export const handleGETRequest = async (
 
   // SSE ストリームとして処理
   try {
-    await transport.handleRequest(req, res);
+    // リクエストにauth情報を追加（MCP SDK向け）
+    const mcpReq = req as typeof req & {
+      mcpAuth?: { token: string; clientId: string; scopes: string[] };
+    };
+
+    // 新しいオブジェクトにauth情報を追加（型競合を回避）
+    const reqWithAuth = Object.assign({}, mcpReq, {
+      auth: mcpReq.mcpAuth,
+    });
+
+    await transport.handleRequest(reqWithAuth, res);
   } catch (error) {
     logger.error("Error handling SSE stream", {
       sessionId,
