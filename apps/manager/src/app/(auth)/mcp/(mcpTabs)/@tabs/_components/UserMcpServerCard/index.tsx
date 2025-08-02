@@ -43,11 +43,13 @@ type ServerInstance =
 type UserMcpServerCardProps = {
   serverInstance: ServerInstance;
   revalidate?: () => Promise<void>;
+  isSortMode?: boolean;
 };
 
 export const UserMcpServerCard = ({
   serverInstance,
   revalidate,
+  isSortMode = false,
 }: UserMcpServerCardProps) => {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   // const [tokenModalOpen, setTokenModalOpen] = useState(false);
@@ -137,13 +139,16 @@ export const UserMcpServerCard = ({
     sampleData?.description ?? "このMCPサーバーの説明は設定されていません。";
 
   const handleCardClick = () => {
+    if (isSortMode) return; // ソートモード時はクリック無効
     window.location.href = `/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`;
   };
 
   return (
     <Card
       className={cn(
-        "flex h-full cursor-pointer flex-col transition-all duration-200 hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
+        "flex h-full flex-col transition-all duration-200",
+        !isSortMode && "cursor-pointer hover:-translate-y-1 hover:bg-gray-50/50 hover:shadow-lg",
+        isSortMode && "cursor-grab select-none border-2 border-dashed border-blue-300 bg-blue-50/30",
         isScanning && "relative overflow-hidden",
       )}
       onClick={handleCardClick}
@@ -254,50 +259,57 @@ export const UserMcpServerCard = ({
             </div>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-6 hover:bg-gray-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span className="sr-only">メニューを開く</span>
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+        {!isSortMode && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 hover:bg-gray-200"
+                onClick={(e) => e.stopPropagation()}
               >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                詳細を見る
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                handleScan();
-              }}
-              disabled={isScanning}
-            >
-              <RefreshCw
-                className={cn("mr-2 h-4 w-4", isScanning && "animate-spin")}
-              />
-              接続テスト
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteModalOpen(true);
-              }}
-            >
-              <Trash2Icon className="mr-2 h-4 w-4" />
-              削除
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <span className="sr-only">メニューを開く</span>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  詳細を見る
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleScan();
+                }}
+                disabled={isScanning}
+              >
+                <RefreshCw
+                  className={cn("mr-2 h-4 w-4", isScanning && "animate-spin")}
+                />
+                接続テスト
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteModalOpen(true);
+                }}
+              >
+                <Trash2Icon className="mr-2 h-4 w-4" />
+                削除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {isSortMode && (
+          <div className="flex size-6 items-center justify-center">
+            <span className="text-xs font-medium text-blue-600">ドラッグ</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 space-y-3">
         {/* ステータスとツール数の横並び */}
