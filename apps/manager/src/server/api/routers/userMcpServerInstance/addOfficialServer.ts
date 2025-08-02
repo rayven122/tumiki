@@ -36,7 +36,7 @@ export const addOfficialServer = async ({
     const serverConfig = await tx.userMcpServerConfig.create({
       data: {
         userId: ctx.session.user.id,
-        name: mcpServer.name,
+        name: input.name ?? mcpServer.name,
         description: "",
         mcpServerId: input.mcpServerId,
         envVars: JSON.stringify(input.envVars),
@@ -52,7 +52,7 @@ export const addOfficialServer = async ({
     const toolGroup = await tx.userToolGroup.create({
       data: {
         userId: ctx.session.user.id,
-        name: mcpServer.name,
+        name: input.name ?? mcpServer.name,
         description: "",
         toolGroupTools: {
           createMany: {
@@ -68,7 +68,7 @@ export const addOfficialServer = async ({
     const data = await tx.userMcpServerInstance.create({
       data: {
         userId: ctx.session.user.id,
-        name: mcpServer.name,
+        name: input.name ?? mcpServer.name,
         description: "",
         // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
         serverStatus: input.isPending
@@ -81,7 +81,7 @@ export const addOfficialServer = async ({
             ? undefined
             : {
                 create: {
-                  name: `${mcpServer.name} API Key`,
+                  name: `${input.name ?? mcpServer.name} API Key`,
                   apiKey: fullKey,
                   userId: ctx.session.user.id,
                 },
