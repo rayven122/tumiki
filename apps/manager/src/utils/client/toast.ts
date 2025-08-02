@@ -4,6 +4,8 @@ import { toast as reactToast, type ToastOptions } from "react-toastify";
 export const toast = {
   success: (content: ReactNode, options?: ToastOptions) =>
     reactToast.success(content, options),
+  warning: (content: ReactNode, options?: ToastOptions) =>
+    reactToast.warning(content, options),
   error: (content: ReactNode, options?: ToastOptions) =>
     reactToast.error(content, options),
   info: (content: ReactNode, options?: ToastOptions) =>
