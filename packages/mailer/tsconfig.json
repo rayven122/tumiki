@@ -2,7 +2,9 @@
   "extends": "@tumiki/tsconfig/react-library.json",
   "compilerOptions": {
     "rootDir": "src",
-    "declarationDir": "dist/src"
+    "outDir": "dist",
+    "declaration": true,
+    "declarationDir": "dist"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]

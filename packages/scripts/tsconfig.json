@@ -1,9 +1,6 @@
 {
   "extends": "@tumiki/tsconfig/node.json",
-  "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler"
-  },
+  "compilerOptions": {},
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
