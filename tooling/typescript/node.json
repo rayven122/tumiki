@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./base.json",
+  "compilerOptions": {
+    /** Node.js module resolution */
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    
+    /** Emit options for packages */
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "outDir": "${configDir}/dist",
+    
+    /** Node.js specific */
+    "lib": ["ES2022"],
+    "target": "ES2022"
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/__tests__/**/*"
+  ]
+}
