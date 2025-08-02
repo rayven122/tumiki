@@ -18,8 +18,9 @@
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
+    "dev": "tsc -w",
     "build": "tsc",
+    "build:clean": "rm -rf dist",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
