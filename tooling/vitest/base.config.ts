@@ -1,7 +1,6 @@
-import { resolve } from "path";
 import { defineConfig } from "vitest/config";
 
-export default defineConfig({
+const config = defineConfig({
   test: {
     globals: true,
     environment: "node",
@@ -38,3 +37,5 @@ export default defineConfig({
     clearMocks: true,
   },
 });
+
+export default config;

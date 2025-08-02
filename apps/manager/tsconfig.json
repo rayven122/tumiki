@@ -14,9 +14,7 @@
     "**/*.cjs",
     "**/*.js",
     ".next/types/**/*.ts",
-    "postcss.config.mjs",
-    "vitest.config.ts"
+    "postcss.config.mjs"
   ],
-  "types": ["web"],
-  "exclude": ["node_modules", "mcp", "coverage"]
+  "exclude": ["node_modules", "mcp", "coverage", "vitest.config.ts", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
 }

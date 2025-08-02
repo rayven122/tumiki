@@ -3,10 +3,10 @@
   "compilerOptions": {
     "outDir": ".",
     "rootDir": ".",
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "emitDeclarationOnly": false,
-    "noEmit": false
+    "noEmit": true
   },
   "include": ["*.config.ts"],
   "exclude": ["node_modules", "*.config.js", "*.config.d.ts"]
