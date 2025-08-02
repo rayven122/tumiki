@@ -26,7 +26,7 @@ export const SortableServerCard = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ 
+  } = useSortable({
     id: serverInstance.id,
     disabled: !isSortMode, // ソートモードでない時はドラッグ無効
   });
