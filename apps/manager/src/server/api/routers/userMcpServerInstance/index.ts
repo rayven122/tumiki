@@ -29,6 +29,10 @@ import { getTimeSeriesStats } from "./getTimeSeriesStats";
 import { toggleTool } from "./toggleTool";
 import { checkServerConnection } from "./checkServerConnection";
 import { ServerStatus } from "@tumiki/db";
+import {
+  updateDisplayOrder,
+  updateDisplayOrderSchema,
+} from "./updateDisplayOrder";
 
 export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
@@ -235,4 +239,9 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
       }),
     )
     .mutation(checkServerConnection),
+
+  updateDisplayOrder: protectedProcedure
+    .input(updateDisplayOrderSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(updateDisplayOrder),
 });
