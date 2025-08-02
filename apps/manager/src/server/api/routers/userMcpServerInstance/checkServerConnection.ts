@@ -50,7 +50,14 @@ export const checkServerConnection = async ({
       });
     }
 
-    const apiKey = serverInstance.apiKeys[0]!.apiKey;
+    const firstApiKey = serverInstance.apiKeys[0];
+    if (!firstApiKey) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "認証情報が見つかりません",
+      });
+    }
+    const apiKey = firstApiKey.apiKey;
 
     let success = false;
     let tools: unknown[] = [];
@@ -58,7 +65,7 @@ export const checkServerConnection = async ({
 
     try {
       // getMcpServerToolsSSEを直接使用してツール一覧を取得
-      tools = await getMcpServerToolsSSE(
+      const fetchedTools = await getMcpServerToolsSSE(
         {
           name: "validation",
           url: makeSseProxyServerUrl(apiKey),
@@ -67,6 +74,7 @@ export const checkServerConnection = async ({
           "x-validation-mode": "true",
         },
       );
+      tools = fetchedTools;
 
       // ツールが0個の場合もエラーとして扱う
       if (tools.length === 0) {
@@ -75,7 +83,7 @@ export const checkServerConnection = async ({
       } else {
         success = true;
       }
-    } catch (error) {
+    } catch {
       // 本番環境では詳細なエラーメッセージを避ける
       errorMessage = "サーバーの接続確認に失敗しました";
       success = false;
