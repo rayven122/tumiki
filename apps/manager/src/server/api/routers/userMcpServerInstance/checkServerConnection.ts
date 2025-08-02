@@ -3,7 +3,12 @@ import type { ProtectedContext } from "../../trpc";
 import type { CheckServerConnectionInput } from ".";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import { getMcpServerToolsSSE } from "@tumiki/utils/server";
+import {
+  getMcpServerToolsSSE,
+  runMcpSecurityScan,
+  type McpSecurityIssue,
+  type McpScanResult,
+} from "@tumiki/utils/server";
 import { makeSseProxyServerUrl } from "@/utils/url";
 
 type CheckServerConnectionParams = {
@@ -55,6 +60,7 @@ export const checkServerConnection = async ({
     let success = false;
     let tools: unknown[] = [];
     let errorMessage: string | undefined;
+    let securityScanResult: McpScanResult | undefined;
 
     try {
       // getMcpServerToolsSSEを直接使用してツール一覧を取得
@@ -73,9 +79,33 @@ export const checkServerConnection = async ({
         errorMessage = "サーバーの接続確認に失敗しました";
         success = false;
       } else {
-        success = true;
+        // ツール取得に成功した場合、セキュリティスキャンを実行
+        try {
+          const serverUrl = makeSseProxyServerUrl(apiKey);
+          securityScanResult = await runMcpSecurityScan(
+            serverUrl,
+            apiKey,
+            30000, // 30秒のタイムアウト
+          );
+
+          // criticalまたはhighのリスクレベルの場合は接続を拒否
+          if (
+            securityScanResult.riskLevel === "critical" ||
+            securityScanResult.riskLevel === "high"
+          ) {
+            errorMessage = `セキュリティリスクが検出されました (リスクレベル: ${securityScanResult.riskLevel})`;
+            success = false;
+          } else {
+            success = true;
+          }
+        } catch (scanError) {
+          // セキュリティスキャンのエラーはログに記録するが、接続自体は許可
+          console.error("Security scan error:", scanError);
+          // スキャンエラーの場合でも接続は成功とする
+          success = true;
+        }
       }
-    } catch (_error) {
+    } catch {
       // 本番環境では詳細なエラーメッセージを避ける
       errorMessage = "サーバーの接続確認に失敗しました";
       success = false;
@@ -92,6 +122,20 @@ export const checkServerConnection = async ({
       });
     }
 
+    // セキュリティスキャン結果の整形
+    const securityScan = securityScanResult
+      ? {
+          riskLevel: securityScanResult.riskLevel,
+          issues: securityScanResult.issues.map((issue: McpSecurityIssue) => ({
+            type: issue.type,
+            severity: issue.severity,
+            description: issue.description,
+            recommendation: issue.recommendation,
+            toolName: issue.toolName,
+          })),
+        }
+      : undefined;
+
     return {
       success,
       status: updateStatus
@@ -101,6 +145,7 @@ export const checkServerConnection = async ({
         : serverInstance.serverStatus,
       error: errorMessage,
       toolCount: tools.length,
+      securityScan,
     };
   });
 };

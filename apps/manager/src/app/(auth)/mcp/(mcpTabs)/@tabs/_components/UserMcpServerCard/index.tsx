@@ -15,6 +15,7 @@ import {
   Wrench,
   RefreshCw,
   Edit2,
+  Shield,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import {
@@ -58,6 +59,17 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
+  const [securityScanResult, setSecurityScanResult] = useState<{
+    riskLevel: string;
+    issues: Array<{
+      type: string;
+      severity: string;
+      description: string;
+      recommendation?: string;
+      toolName?: string;
+    }>;
+  } | null>(null);
+  const [showSecurityDetails, setShowSecurityDetails] = useState(false);
 
   const { tools } = serverInstance;
 
@@ -79,6 +91,21 @@ export const UserMcpServerCard = ({
       onSuccess: async (result) => {
         if (result.success) {
           toast.success(`接続が正常です（ツール数: ${result.toolCount}）`);
+
+          // セキュリティスキャン結果がある場合は保存
+          if (result.securityScan) {
+            setSecurityScanResult(result.securityScan);
+
+            // リスクレベルに応じた通知
+            const { riskLevel, issues } = result.securityScan;
+            if (riskLevel === "critical" || riskLevel === "high") {
+              toast.error(`⚠️ 高リスクのセキュリティ問題が検出されました`);
+            } else if (riskLevel === "medium") {
+              toast.warning(`⚠️ 中程度のセキュリティリスクが検出されました`);
+            } else if (issues.length > 0) {
+              toast.info(`ℹ️ ${issues.length}件の軽微な問題が検出されました`);
+            }
+          }
         } else {
           toast.error(result.error ?? "接続に失敗しました");
         }
@@ -126,6 +153,17 @@ export const UserMcpServerCard = ({
       id: serverInstance.id,
       serverStatus: newStatus,
     });
+  };
+
+  const getRiskLevelLabel = (level: string): string => {
+    const labels: Record<string, string> = {
+      critical: "重大なリスク",
+      high: "高リスク",
+      medium: "中リスク",
+      low: "低リスク",
+      none: "問題なし",
+    };
+    return labels[level] ?? level;
   };
 
   // MCPサーバーのURLを取得（ファビコン表示用）
@@ -403,6 +441,80 @@ export const UserMcpServerCard = ({
             ))}
           </div>
         </CardContent>
+
+        {/* セキュリティスキャン結果表示 */}
+        {securityScanResult && (
+          <div className="space-y-2 border-t px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield
+                  className={cn(
+                    "h-4 w-4",
+                    securityScanResult.riskLevel === "critical" ||
+                      securityScanResult.riskLevel === "high"
+                      ? "text-red-500"
+                      : securityScanResult.riskLevel === "medium"
+                        ? "text-yellow-500"
+                        : "text-green-500",
+                  )}
+                />
+                <span className="text-sm font-medium">
+                  セキュリティスキャン:{" "}
+                  {getRiskLevelLabel(securityScanResult.riskLevel)}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSecurityDetails(!showSecurityDetails);
+                }}
+              >
+                {showSecurityDetails ? "詳細を隠す" : "詳細を表示"}
+              </Button>
+            </div>
+
+            {showSecurityDetails && securityScanResult.issues.length > 0 && (
+              <div className="space-y-2 rounded-md bg-gray-50 p-3">
+                {securityScanResult.issues.map((issue, index) => (
+                  <div key={index} className="text-sm">
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={cn(
+                          "inline-block rounded px-2 py-0.5 text-xs font-medium",
+                          issue.severity === "critical"
+                            ? "bg-red-100 text-red-800"
+                            : issue.severity === "high"
+                              ? "bg-orange-100 text-orange-800"
+                              : issue.severity === "medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-blue-100 text-blue-800",
+                        )}
+                      >
+                        {issue.severity.toUpperCase()}
+                      </span>
+                      <div className="flex-1">
+                        <p className="font-medium">{issue.description}</p>
+                        {issue.recommendation && (
+                          <p className="mt-1 text-gray-600">
+                            💡 {issue.recommendation}
+                          </p>
+                        )}
+                        {issue.toolName && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            影響ツール: {issue.toolName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* <CardFooter className="mt-auto">
         <Button
           type="button"
