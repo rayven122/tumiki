@@ -36,8 +36,10 @@ export const NameEditModal = ({
         await onSuccess?.();
         toast.success("サーバー名を更新しました。");
       },
-      onError: (error) => {
-        toast.error(error.message);
+      onError: () => {
+        toast.error(
+          "サーバー名の更新に失敗しました。しばらく時間を置いてから再度お試しください。",
+        );
       },
     });
 
@@ -61,6 +63,9 @@ export const NameEditModal = ({
               onChange={(e) => setNewName(e.target.value)}
               placeholder="サーバー名を入力"
             />
+            <p className="text-muted-foreground text-sm">
+              英数字、ハイフン、アンダースコアのみ使用可能
+            </p>
           </div>
         </div>
         <DialogFooter>
