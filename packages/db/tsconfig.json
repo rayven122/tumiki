@@ -1,12 +1,20 @@
 {
-  "extends": "@tumiki/tsconfig/node.json",
+  "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
     },
-    "types": ["node"]
+    /** Emit both JS and types for runtime usage. */
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "noEmit": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "${configDir}/dist"
   },
+  "types": ["bun-types"],
   "include": ["src", "prisma/generated"],
   "exclude": [
     "node_modules",

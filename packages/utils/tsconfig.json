@@ -1,7 +1,13 @@
 {
-  "extends": "@tumiki/tsconfig/node.json",
+  "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
-    "types": ["node"],
+    "noEmit": false,
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["bun-types"],
     "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*"],

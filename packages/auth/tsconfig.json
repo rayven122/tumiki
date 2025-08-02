@@ -1,14 +1,17 @@
 {
-  "extends": "@tumiki/tsconfig/node.json",
+  "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist",
+    "outDir": "dist/src",
     "declaration": true,
-    "declarationDir": "dist",
-    "lib": ["ES2022", "DOM"],
+    "declarationDir": "dist/src",
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "types": ["node"]
+    "lib": ["ES2022", "DOM"],
+    "target": "ES2022",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "types": ["bun-types"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
   "exclude": ["node_modules", "dist"]
