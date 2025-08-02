@@ -308,7 +308,7 @@ MCPサーバーとして利用するインスタンス
 - `id`:
 - `name`: 稼働中のMCPサーバー名
 - `description`: サーバーの説明
-- `iconPath`: アイコ��パス
+- `iconPath`: アイコンパス
 - `serverStatus`: サーバーの状態
 - `serverType`: サーバーの種類
 - `toolGroupId`
@@ -794,7 +794,7 @@ MCPサーバーとして利用するインスタンス
 - `id`:
 - `name`: 稼働中のMCPサーバー名
 - `description`: サーバーの説明
-- `iconPath`: アイコ��パス
+- `iconPath`: アイコンパス
 - `serverStatus`: サーバーの状態
 - `serverType`: サーバーの種類
 - `toolGroupId`
