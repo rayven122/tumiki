@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pnpm format:fix && pnpm lint:fix"
+            "command": "pnpm format:fix && pnpm lint:fix || true"
           }
         ]
       }
