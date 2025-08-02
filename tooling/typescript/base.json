@@ -22,7 +22,7 @@
     "checkJs": true,
 
     /** Transpile using Bundler (not tsc) */
-    "module": "ESNext",
+    "module": "Preserve",
     "moduleResolution": "Bundler",
     "noEmit": true
   },
