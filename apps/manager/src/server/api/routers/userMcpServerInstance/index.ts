@@ -29,6 +29,11 @@ import { getToolStats } from "./getToolStats";
 import { getTimeSeriesStats } from "./getTimeSeriesStats";
 import { toggleTool } from "./toggleTool";
 import { checkServerConnection } from "./checkServerConnection";
+import {
+  getRequestDataDetail,
+  GetRequestDataDetailInput,
+  GetRequestDataDetailOutput,
+} from "./getRequestDataDetail";
 import { ServerStatus } from "@tumiki/db";
 import {
   updateDisplayOrder,
@@ -246,4 +251,8 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .input(updateDisplayOrderSchema)
     .output(z.object({ success: z.boolean() }))
     .mutation(updateDisplayOrder),
+  getRequestDataDetail: protectedProcedure
+    .input(GetRequestDataDetailInput)
+    .output(GetRequestDataDetailOutput)
+    .query(getRequestDataDetail),
 });
