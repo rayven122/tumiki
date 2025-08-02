@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,8 +25,11 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 import type { RequestStats, RequestLogs } from "./types";
+import { RequestDataDetailModal } from "./RequestDataDetailModal";
+import { formatDataSize } from "@tumiki/utils";
 
 type LogsAnalyticsTabProps = {
   requestStats: RequestStats;
@@ -38,6 +42,21 @@ export const LogsAnalyticsTab = ({
   requestLogs,
   refetchLogs,
 }: LogsAnalyticsTabProps) => {
+  const [selectedRequestLogId, setSelectedRequestLogId] = useState<
+    string | null
+  >(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleViewDetail = (requestLogId: string) => {
+    setSelectedRequestLogId(requestLogId);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedRequestLogId(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* ログセクション */}
@@ -63,6 +82,7 @@ export const LogsAnalyticsTab = ({
                     <TableHead>実行時間</TableHead>
                     <TableHead>データサイズ</TableHead>
                     <TableHead>エラー</TableHead>
+                    <TableHead>詳細</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -103,8 +123,8 @@ export const LogsAnalyticsTab = ({
                       </TableCell>
                       <TableCell>{log.durationMs ?? 0}ms</TableCell>
                       <TableCell className="text-xs">
-                        <div>↑ {log.inputBytes ?? 0}B</div>
-                        <div>↓ {log.outputBytes ?? 0}B</div>
+                        <div>↑ {formatDataSize(log.inputBytes ?? 0)}</div>
+                        <div>↓ {formatDataSize(log.outputBytes ?? 0)}</div>
                       </TableCell>
                       <TableCell>
                         {log.errorMessage ? (
@@ -114,6 +134,17 @@ export const LogsAnalyticsTab = ({
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetail(log.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">詳細を表示</span>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -238,6 +269,13 @@ export const LogsAnalyticsTab = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* リクエスト詳細データ表示モーダル */}
+      <RequestDataDetailModal
+        requestLogId={selectedRequestLogId}
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+      />
     </div>
   );
 };

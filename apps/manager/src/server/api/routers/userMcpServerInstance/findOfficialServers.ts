@@ -13,6 +13,10 @@ export const findOfficialServers = async ({
       serverType: ServerType.OFFICIAL,
       userId: ctx.session.user.id,
       deletedAt: null,
+      organizationId: null, // 個人のMCPサーバーのみを取得
+    },
+    orderBy: {
+      displayOrder: "asc",
     },
     include: {
       apiKeys: true,
