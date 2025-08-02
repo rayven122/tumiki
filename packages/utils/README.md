@@ -47,11 +47,35 @@ import { getMcpServerTools, getMcpServerToolsSSE } from "@tumiki/utils/server";
 ### クライアントサイド専用の関数
 
 ```typescript
-// 現在はクライアント専用の関数はありません
-import "@tumiki/utils/client";
+// デバウンス関数
+import { debounce } from "@tumiki/utils/client";
+
+// 使用例
+const debouncedSearch = debounce((query: string) => {
+  console.log("Searching for:", query);
+}, 300);
+
+debouncedSearch("hello"); // 300ms後に実行される
 ```
 
 ## 🔧 API リファレンス
+
+### クライアントサイドユーティリティ
+
+#### `debounce<T extends (...args: any[]) => any>(func: T, wait: number): T`
+
+指定された時間内に複数回呼ばれた場合、最後の呼び出しのみを実行する関数を返します。
+
+```typescript
+const debouncedSave = debounce((data: string) => {
+  saveToServer(data);
+}, 1000);
+
+// 1秒以内に複数回呼ばれても、最後の呼び出しのみが実行される
+debouncedSave("data1");
+debouncedSave("data2");
+debouncedSave("data3"); // これのみ実行される
+```
 
 ### ファビコンユーティリティ
 

@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { nameValidationSchema } from "@/schema/validation";
 
 // APIキー生成用のスキーマ
 export const CreateApiKeyInput = z.object({
-  name: z.string().min(1).max(100),
+  name: nameValidationSchema,
   userMcpServerInstanceId: z.string(),
   expiresInDays: z.number().optional(),
 });
@@ -15,7 +16,7 @@ export const ListApiKeysInput = z.object({
 // APIキー更新用のスキーマ
 export const UpdateApiKeyInput = z.object({
   id: z.string(),
-  name: z.string().min(1).max(100).optional(),
+  name: nameValidationSchema.optional(),
   isActive: z.boolean().optional(),
 });
 
