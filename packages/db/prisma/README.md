@@ -38,7 +38,7 @@ APIキー管理テーブル
 - `id`:
 - `name`: APIキー名（ユーザーが設定）
 - `apiKey`: 暗号化されたAPIキー（共通鍵暗号化）
-- `apiKeyHash`: APIキーのハ��シュ値（検索用）
+- `apiKeyHash`: APIキーのハッシュ値（検索用）
 - `isActive`: APIキーが有効かどうか
 - `lastUsedAt`: 最後に使用された日時
 - `expiresAt`: APIキーの有効期限
@@ -229,7 +229,7 @@ transportType に応じて接続方式を選択
   > OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
   > google, github, slack, notion, linkedin など
 - `oauthScopes`: OAuth で必要なデフォルトスコープ
-- `serverType`: サーバーの種類���公式/ユーザーカスタム）
+- `serverType`: サーバーの種類（公式/ユーザーカスタム）
 - `createdBy`: ユーザーカスタムサーバーの作成者
 - `visibility`: ユーザーカスタムサーバーの可視性
 - `organizationId`: 組織限定公開時の所属組織ID
@@ -336,7 +336,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `errorMessage`: エラーメッセージ（エラー種別のみ）
 - `errorCode`: エラーコード
 - `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-- `outputBytes`: 出力データサイズ（MCPサーバ���からLLMに返すデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
 - `createdAt`:
@@ -488,7 +488,7 @@ erDiagram
 - `description`: 組織の説明
 - `logoUrl`: 組織のロゴURL
 - `isDeleted`: 論理削除フラグ
-- `createdBy`: 組織の作成者
+- `createdBy`: 組織の��成者
 - `createdAt`:
 - `updatedAt`:
 
@@ -820,7 +820,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `errorMessage`: エラーメッセージ（エラー種別のみ）
 - `errorCode`: エラーコード
 - `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-- `outputBytes`: 出力データサイズ（MCPサーバ���からLLMに返すデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
 - `organizationId`: 組織ID
 - `userAgent`: ユーザーエージェント
 - `createdAt`:

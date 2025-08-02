@@ -1,3 +1,4 @@
+import { describe, test, expect } from "vitest";
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV1 } from "ai/test";
 import { getResponseChunksByPrompt } from "@/tests/prompts/utils";
@@ -76,4 +77,36 @@ export const artifactModel = new MockLanguageModelV1({
     }),
     rawCall: { rawPrompt: null, rawSettings: {} },
   }),
+});
+
+describe("Mock AI Models", () => {
+  describe("chatModel", () => {
+    test("チャットモデルのdoGenerate関数が正しく動作する", async () => {
+      const result = await chatModel.doGenerate({
+        abortSignal: new AbortController().signal,
+        inputFormat: "prompt",
+        mode: { type: "regular" },
+        prompt: [],
+      });
+
+      expect(result.text).toBe("Hello, world!");
+      expect(result.finishReason).toBe("stop");
+      expect(result.usage.promptTokens).toBe(10);
+      expect(result.usage.completionTokens).toBe(20);
+    });
+  });
+
+  describe("titleModel", () => {
+    test("タイトルモデルのdoGenerate関数が正しく動作する", async () => {
+      const result = await titleModel.doGenerate({
+        abortSignal: new AbortController().signal,
+        inputFormat: "prompt",
+        mode: { type: "regular" },
+        prompt: [],
+      });
+
+      expect(result.text).toBe("This is a test title");
+      expect(result.finishReason).toBe("stop");
+    });
+  });
 });

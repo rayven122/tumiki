@@ -1,6 +1,10 @@
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
+// 環境変数の設定
+vi.stubEnv("API_KEY_PREFIX", "test_");
+vi.stubEnv("API_KEY_LENGTH", "32");
+
 // グローバルモックの設定
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
@@ -34,3 +38,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
 }));
+
+// server-only モジュールのモック
+vi.mock("server-only", () => ({}));

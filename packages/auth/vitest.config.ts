@@ -1,23 +1,16 @@
 import { resolve } from "path";
-import { defineConfig, mergeConfig } from "vitest/config";
+import { defineProject } from "vitest/config";
 
-import baseConfig from "@tumiki/vitest-config/base";
-
-export default mergeConfig(
-  baseConfig,
-  defineConfig({
-    server: {
-      deps: {
-        inline: ['@tumiki/vitest-config']
-      }
+export default defineProject({
+  test: {
+    name: "auth",
+    globals: true,
+    environment: "node",
+    setupFiles: ["../../tests/setup.ts"],
+  },
+  resolve: {
+    alias: {
+      "@tumiki/db": resolve(__dirname, "../db/src"),
     },
-    test: {
-      setupFiles: ["../../tests/setup.ts"],
-    },
-    resolve: {
-      alias: {
-        "@tumiki/db": resolve(__dirname, "../db/src"),
-      },
-    },
-  }),
-);
+  },
+});

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Trash2Icon,
   ImageIcon,
@@ -29,7 +29,6 @@ import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { debounce } from "@tumiki/utils/client";
 
 import { type RouterOutputs, api } from "@/trpc/react";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
@@ -85,23 +84,25 @@ export const UserMcpServerCard = ({
     });
 
   // デバウンスされたスキャン関数を作成
-  const debouncedScan = useMemo(
-    () =>
-      debounce(() => {
-        // 既に実行中の場合はスキップ
-        if (isScanning) return;
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-        scanServer({
-          serverInstanceId: serverInstance.id,
-          updateStatus: false,
-        });
-      }, 1000), // 1秒のデバウンス
-    [serverInstance.id, scanServer, isScanning],
-  );
+  const handleScan = useCallback(() => {
+    // 既に実行中の場合はスキップ
+    if (isScanning) return;
 
-  const handleScan = () => {
-    debouncedScan();
-  };
+    // 既存のタイムアウトをクリア
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // 1秒後に実行
+    timeoutRef.current = setTimeout(() => {
+      scanServer({
+        serverInstanceId: serverInstance.id,
+        updateStatus: false,
+      });
+    }, 1000);
+  }, [isScanning, scanServer, serverInstance.id]);
 
   // userMcpServersが削除されたため、プリフェッチクエリは不要
 

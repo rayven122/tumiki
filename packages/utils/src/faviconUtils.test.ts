@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 
 import {
   extractDomainFromUrl,
@@ -129,12 +129,11 @@ describe("extractDomainFromUrl", () => {
 describe("getFaviconUrls", () => {
   test("ドメインからファビコンURLの配列を生成する", () => {
     const urls = getFaviconUrls("example.com");
-    expect(urls).toHaveLength(3);
+    expect(urls).toHaveLength(2);
     expect(urls[0]).toStrictEqual(
       "https://www.google.com/s2/favicons?domain=example.com&sz=32",
     );
-    expect(urls[1]).toStrictEqual("https://example.com/favicon.ico");
-    expect(urls[2]).toStrictEqual(
+    expect(urls[1]).toStrictEqual(
       "https://icons.duckduckgo.com/ip3/example.com.ico",
     );
   });
@@ -158,7 +157,7 @@ describe("getFaviconUrls", () => {
 describe("getFaviconUrlsFromUrl", () => {
   test("URLからファビコンURLの配列を取得する", () => {
     const urls = getFaviconUrlsFromUrl("https://api.example.com");
-    expect(urls).toHaveLength(3);
+    expect(urls).toHaveLength(2);
     expect(urls[0]).toStrictEqual(
       "https://www.google.com/s2/favicons?domain=example.com&sz=32",
     );

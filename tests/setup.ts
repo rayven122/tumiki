@@ -19,8 +19,10 @@ afterEach(() => {
 })
 
 // 環境変数のモック
-process.env.NODE_ENV = 'test'
-process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test'
+vi.stubEnv('NODE_ENV', 'test')
+vi.stubEnv('DATABASE_URL', 'postgresql://test:test@localhost:5432/test')
+vi.stubEnv('API_KEY_PREFIX', 'test_')
+vi.stubEnv('API_KEY_LENGTH', '32')
 
 // グローバルに利用可能なテストユーティリティ
 global.testUtils = {

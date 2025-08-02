@@ -75,7 +75,7 @@ export const checkServerConnection = async ({
       } else {
         success = true;
       }
-    } catch (error) {
+    } catch {
       // 本番環境では詳細なエラーメッセージを避ける
       errorMessage = "サーバーの接続確認に失敗しました";
       success = false;

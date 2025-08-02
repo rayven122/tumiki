@@ -1,18 +1,16 @@
 import { resolve } from "path";
-import { defineConfig, mergeConfig } from "vitest/config";
+import { defineProject } from "vitest/config";
 
-import baseConfig from "@tumiki/vitest-config/base";
-
-export default mergeConfig(
-  baseConfig,
-  defineConfig({
-    test: {
-      setupFiles: ["../../tests/setup.ts"],
+export default defineProject({
+  test: {
+    name: "utils",
+    globals: true,
+    environment: "node",
+    setupFiles: ["../../tests/setup.ts"],
+  },
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
     },
-    resolve: {
-      alias: {
-        "@": resolve(__dirname, "./src"),
-      },
-    },
-  }),
-);
+  },
+});

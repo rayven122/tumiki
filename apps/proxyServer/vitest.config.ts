@@ -1,38 +1,23 @@
 import { resolve } from "path";
-import { defineConfig, mergeConfig } from "vitest/config";
-import type { UserConfig } from "vitest/config";
-import baseConfig from "@tumiki/vitest-config/base";
+import { defineProject } from "vitest/config";
 
-// baseConfigの型を明示的に定義
-type BaseConfigWithCoverage = UserConfig & {
-  test?: {
-    coverage?: {
-      exclude?: string[];
-    };
-  };
-};
-
-export default mergeConfig(
-  baseConfig as BaseConfigWithCoverage,
-  defineConfig({
-    test: {
-      setupFiles: ["../../tests/setup.ts"],
-      coverage: {
-        exclude: [
-          ...(() => {
-            const baseExclude = (baseConfig as BaseConfigWithCoverage).test
-              ?.coverage?.exclude;
-            return Array.isArray(baseExclude) ? baseExclude : [];
-          })(),
-          "build/",
-        ],
-      },
+export default defineProject({
+  test: {
+    name: "proxyServer",
+    globals: true,
+    environment: "node",
+    setupFiles: ["../../tests/setup.ts"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.{idea,git,cache,output,temp}/**",
+    ],
+  },
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
+      "@tumiki/db": resolve(__dirname, "../../packages/db/src"),
     },
-    resolve: {
-      alias: {
-        "@": resolve(__dirname, "./src"),
-        "@tumiki/db": resolve(__dirname, "../../packages/db/src"),
-      },
-    },
-  }),
-);
+  },
+});

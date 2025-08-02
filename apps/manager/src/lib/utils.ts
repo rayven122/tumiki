@@ -22,6 +22,10 @@ export const fetcher = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
+type FetchWithPreconnect = typeof fetch & {
+  preconnect?: (...args: unknown[]) => unknown;
+};
+
 export const fetchWithErrorHandlers = Object.assign(
   async function (
     input: RequestInfo | URL,
@@ -49,8 +53,10 @@ export const fetchWithErrorHandlers = Object.assign(
   },
   {
     preconnect:
-      (fetch as { preconnect?: typeof fetch.preconnect }).preconnect ??
-      (() => undefined),
+      (fetch as FetchWithPreconnect).preconnect ??
+      (() => {
+        // No-op function as fallback
+      }),
   },
 ) as typeof fetch;
 
