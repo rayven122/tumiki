@@ -1,5 +1,9 @@
 {
   "extends": "@tumiki/tsconfig/base.json",
-  "include": ["."],
-  "exclude": ["node_modules"]
+  "include": ["*.js", "**/*.js"],
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  }
 }

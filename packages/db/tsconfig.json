@@ -5,7 +5,7 @@
       "@/*": ["./src/*"],
       "~/*": ["./*"]
     },
-    "types": ["bun-types"]
+    "types": ["node"]
   },
   "include": ["src", "prisma/generated"],
   "exclude": [

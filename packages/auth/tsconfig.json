@@ -2,11 +2,13 @@
   "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
     "rootDir": "src",
-    "declarationDir": "dist/src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationDir": "dist",
     "lib": ["ES2022", "DOM"],
-    "types": ["bun-types"],
     "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
   "exclude": ["node_modules", "dist"]
