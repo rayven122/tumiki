@@ -10,21 +10,25 @@ import type {
   McpApiKey,
 } from "@tumiki/db/prisma";
 
-export interface ValidationResult {
-  valid: boolean;
-  error?: string;
-  apiKey?: McpApiKey;
-  userMcpServerInstance?: UserMcpServerInstance & {
-    user: User;
-    toolGroup: UserToolGroup & {
-      toolGroupTools: Array<
-        UserToolGroupTool & {
-          tool: Tool;
-        }
-      >;
+export type ValidationResult =
+  | {
+      valid: true;
+      apiKey: McpApiKey;
+      userMcpServerInstance: UserMcpServerInstance & {
+        user: User;
+        toolGroup: UserToolGroup & {
+          toolGroupTools: Array<
+            UserToolGroupTool & {
+              tool: Tool;
+            }
+          >;
+        };
+      };
+    }
+  | {
+      valid: false;
+      error: string;
     };
-  };
-}
 
 // 内部のvalidateApiKey関数（メモ化されない元の実装）
 const _validateApiKey = async (
