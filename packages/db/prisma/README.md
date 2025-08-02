@@ -150,6 +150,7 @@ erDiagram
   String toolGroupId FK,UK
   String userId FK
   String organizationId FK "nullable"
+  Int displayOrder
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -307,7 +308,7 @@ MCPサーバーとして利用するインスタンス
 - `id`:
 - `name`: 稼働中のMCPサーバー名
 - `description`: サーバーの説明
-- `iconPath`: アイコンパス
+- `iconPath`: アイコ��パス
 - `serverStatus`: サーバーの状態
 - `serverType`: サーバーの種類
 - `toolGroupId`
@@ -315,6 +316,7 @@ MCPサーバーとして利用するインスタンス
   > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
 - `userId`: ユーザーID
 - `organizationId`: 組織
+- `displayOrder`: 表示順序（ユーザーごと）
 - `createdAt`:
 - `updatedAt`:
 - `deletedAt`: 論理削除用のタイムスタンプ
@@ -661,6 +663,7 @@ erDiagram
   String toolGroupId FK,UK
   String userId FK
   String organizationId FK "nullable"
+  Int displayOrder
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -791,7 +794,7 @@ MCPサーバーとして利用するインスタンス
 - `id`:
 - `name`: 稼働中のMCPサーバー名
 - `description`: サーバーの説明
-- `iconPath`: アイコンパス
+- `iconPath`: アイコ��パス
 - `serverStatus`: サーバーの状態
 - `serverType`: サーバーの種類
 - `toolGroupId`
@@ -799,6 +802,7 @@ MCPサーバーとして利用するインスタンス
   > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
 - `userId`: ユーザーID
 - `organizationId`: 組織
+- `displayOrder`: 表示順序（ユーザーごと）
 - `createdAt`:
 - `updatedAt`:
 - `deletedAt`: 論理削除用のタイムスタンプ
