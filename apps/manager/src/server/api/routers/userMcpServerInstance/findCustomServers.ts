@@ -11,6 +11,10 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
       serverType: ServerType.CUSTOM,
       userId: ctx.session.user.id,
       deletedAt: null,
+      organizationId: null, // 個人のMCPサーバーのみを取得
+    },
+    orderBy: {
+      displayOrder: "asc",
     },
     include: {
       apiKeys: true,
