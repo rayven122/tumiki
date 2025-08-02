@@ -302,7 +302,6 @@ pnpm typecheck
 ### v0.x から v1.0 へ
 
 1. 環境変数名の変更
-
    - `NEXTAUTH_URL` → `AUTH0_BASE_URL`
    - `NEXTAUTH_SECRET` → `AUTH0_SECRET`
 
