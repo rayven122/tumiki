@@ -4,9 +4,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
-    }
+    },
+    "types": ["bun-types"]
   },
-  "types": ["bun-types"],
   "include": ["src", "prisma/generated"],
   "exclude": [
     "node_modules",
