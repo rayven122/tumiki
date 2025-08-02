@@ -1,18 +1,10 @@
 {
-  "extends": "@tumiki/tsconfig/base.json",
+  "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
-    },
-    /** Emit both JS and types for runtime usage. */
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "noEmit": false,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "${configDir}/dist"
+    }
   },
   "include": ["src", "prisma/generated", "vitest.config.ts"],
   "exclude": [

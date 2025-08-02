@@ -1,17 +1,11 @@
 {
-  "extends": "@tumiki/tsconfig/base.json",
+  "extends": "@tumiki/tsconfig/react-library.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "dist",
-    "declaration": true,
-    "declarationDir": "dist",
-    "module": "ESNext",
-    "lib": ["ES2022", "DOM"],
-    "target": "ES2022",
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "noEmit": false
+    "rootDir": "src",
+    "outDir": "dist/src",
+    "declarationDir": "dist/src",
+    "types": ["bun-types"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "vitest.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
   "exclude": ["node_modules", "dist"]
 }

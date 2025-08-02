@@ -1,14 +1,8 @@
 {
-  "extends": "@tumiki/tsconfig/base.json",
+  "extends": "@tumiki/tsconfig/react-library.json",
   "compilerOptions": {
-    "noEmit": false,
-    "outDir": "./dist",
-    "declaration": true,
-    "declarationMap": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"]
+    "types": ["bun-types"]
   },
-  "include": ["src/**/*", "vitest.config.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
