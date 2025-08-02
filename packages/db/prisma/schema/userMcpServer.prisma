@@ -155,6 +155,8 @@ model UserMcpServerInstance {
   apiKeys                     McpApiKey[]
   /// リクエストログ
   requestLogs                 McpServerRequestLog[]
+  /// セキュリティスキャン結果
+  securityScans               McpSecurityScan[]
   /// ユーザーID
   userId                      String
   user                        User                             @relation(fields: [userId], references: [id])

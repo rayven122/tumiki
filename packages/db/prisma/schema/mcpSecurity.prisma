@@ -1,0 +1,59 @@
+/**
+ * @namespace McpSecurity
+ * MCPサーバーのセキュリティスキャン結果を管理
+ */
+
+/// MCPサーバーのセキュリティスキャン結果
+/// @namespace McpSecurity
+model McpSecurityScan {
+  id                  String                @id @default(cuid())
+  /// スキャン対象のMCPサーバーインスタンス
+  mcpServerInstanceId String
+  mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id], onDelete: Cascade)
+  /// スキャンの種類
+  scanType            String                // "connection_check" | "scheduled" | "manual"
+  /// スキャンのステータス
+  scanStatus          String                // "pending" | "completed" | "failed"
+  /// 検出されたリスクレベル
+  riskLevel           String?               // "critical" | "high" | "medium" | "low" | "none"
+  /// mcp-scanの完全な結果（JSON形式）
+  scanResult          Json
+  /// 検出された個別の問題
+  issues              McpSecurityIssue[]
+  /// スキャン実行時間（ミリ秒）
+  durationMs          Int?
+  /// エラーメッセージ（スキャン失敗時）
+  errorMessage        String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mcpServerInstanceId, createdAt])
+  @@index([riskLevel])
+}
+
+/// セキュリティスキャンで検出された個別の問題
+/// @namespace McpSecurity
+model McpSecurityIssue {
+  id            String          @id @default(cuid())
+  /// 関連するセキュリティスキャン
+  scanId        String
+  scan          McpSecurityScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  /// 問題の種類
+  issueType     String          // "tool_poisoning" | "cross_origin" | "rug_pull" | "toxic_flow" | "other"
+  /// 深刻度
+  severity      String          // "critical" | "high" | "medium" | "low" | "info"
+  /// 影響を受けるツール名（該当する場合）
+  toolName      String?
+  /// 問題の説明
+  description   String
+  /// 追加の詳細情報（JSON形式）
+  details       Json?
+  /// 推奨される対処法
+  recommendation String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([scanId])
+  @@index([severity])
+}

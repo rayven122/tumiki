@@ -4,6 +4,7 @@
 
 - [ApiKey](#apikey)
 - [Auth](#auth)
+- [McpSecurity](#mcpsecurity)
 - [McpServer](#mcpserver)
 - [Organization](#organization)
 - [UserMcpServer](#usermcpserver)
@@ -75,6 +76,69 @@ erDiagram
 - `hasCompletedOnboarding`: オンボーディング完了フラグ
 - `createdAt`:
 - `updatedAt`:
+
+## McpSecurity
+
+```mermaid
+erDiagram
+"McpSecurityScan" {
+  String id PK
+  String mcpServerInstanceId FK
+  String scanType
+  String scanStatus
+  String riskLevel "nullable"
+  Json scanResult
+  Int durationMs "nullable"
+  String errorMessage "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"McpSecurityIssue" {
+  String id PK
+  String scanId FK
+  String issueType
+  String severity
+  String toolName "nullable"
+  String description
+  Json details "nullable"
+  String recommendation "nullable"
+  DateTime createdAt
+}
+"McpSecurityIssue" }o--|| "McpSecurityScan" : scan
+```
+
+### `McpSecurityScan`
+
+MCPサーバーのセキュリティスキャン結果
+
+**Properties**
+
+- `id`:
+- `mcpServerInstanceId`: スキャン対象のMCPサーバーインスタンス
+- `scanType`: スキャンの種類
+- `scanStatus`: スキャンのステータス
+- `riskLevel`: 検出されたリスクレベル
+- `scanResult`: mcp-scanの完全な結果（JSON形式）
+- `durationMs`: スキャン実行時間（ミリ秒）
+- `errorMessage`: エラーメッセージ（スキャン失敗時）
+- `createdAt`:
+- `updatedAt`:
+
+### `McpSecurityIssue`
+
+セキュリティスキャンで検出された個別の問題
+
+**Properties**
+
+- `id`:
+- `scanId`: 関連するセキュリティスキャン
+- `issueType`: 問題の種類
+- `severity`: 深刻度
+- `toolName`: 影響を受けるツール名（該当する場合）
+- `description`: 問題の説明
+- `details`: 追加の詳細情報（JSON形式）
+- `recommendation`: 推奨される対処法
+- `createdAt`:
 
 ## McpServer
 

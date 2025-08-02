@@ -38,6 +38,7 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@types/uuid": "^10.0.0",
     "bun-types": "latest",
     "eslint": "catalog:",
     "prettier": "catalog:",
