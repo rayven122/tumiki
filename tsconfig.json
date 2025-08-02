@@ -40,7 +40,6 @@
     "apps/manager/.next/types/**/*.ts",
     "apps/manager/postcss.config.mjs"
   ],
-  "types": ["web"],
   "exclude": [
     "apps/manager/node_modules",
     "apps/maapps/manager/prismamcp",

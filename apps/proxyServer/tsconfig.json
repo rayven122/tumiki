@@ -6,9 +6,8 @@
     "outDir": "./build",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "types": ["bun-types"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "vitest.config.ts"]
 }
