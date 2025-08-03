@@ -148,6 +148,7 @@ erDiagram
   ServerStatus serverStatus
   ServerType serverType
   String toolGroupId FK,UK
+  AuthType authType
   String userId FK
   String organizationId FK "nullable"
   Int displayOrder
@@ -314,6 +315,7 @@ MCPサーバーとして利用するインスタンス
 - `toolGroupId`
   > ツールグループ
   > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
+- `authType`: 使用する認証タイプ（API_KEY, OAUTH, BOTH）
 - `userId`: ユーザーID
 - `organizationId`: 組織
 - `displayOrder`: 表示順序（ユーザーごと）
@@ -661,6 +663,7 @@ erDiagram
   ServerStatus serverStatus
   ServerType serverType
   String toolGroupId FK,UK
+  AuthType authType
   String userId FK
   String organizationId FK "nullable"
   Int displayOrder
@@ -800,6 +803,7 @@ MCPサーバーとして利用するインスタンス
 - `toolGroupId`
   > ツールグループ
   > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
+- `authType`: 使用する認証タイプ（API_KEY, OAUTH, BOTH）
 - `userId`: ユーザーID
 - `organizationId`: 組織
 - `displayOrder`: 表示順序（ユーザーごと）
