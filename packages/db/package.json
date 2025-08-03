@@ -3,35 +3,45 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "default": "./dist/src/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     },
     "./tcp": {
-      "types": "./dist/src/tcpClient.d.ts",
-      "default": "./dist/src/tcpClient.js"
+      "types": "./dist/tcpClient.d.ts",
+      "import": "./dist/tcpClient.mjs",
+      "require": "./dist/tcpClient.js"
     },
     "./prisma": {
-      "types": "./dist/src/prisma.d.ts",
-      "default": "./dist/src/prisma.js"
+      "types": "./dist/prisma.d.ts",
+      "import": "./dist/prisma.mjs",
+      "require": "./dist/prisma.js"
     },
     "./zod": {
-      "types": "./dist/src/zod.d.ts",
-      "default": "./dist/src/zod.js"
+      "types": "./dist/zod.d.ts",
+      "import": "./dist/zod.mjs",
+      "require": "./dist/zod.js"
     },
     "./server": {
-      "types": "./dist/src/server.d.ts",
-      "default": "./dist/src/server.js"
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.js"
     },
     "./testing": {
-      "types": "./dist/src/testing/index.d.ts",
-      "default": "./dist/src/testing/index.js"
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.mjs",
+      "require": "./dist/testing/index.js"
     }
   },
   "scripts": {
-    "dev": "tsc",
-    "build": "pnpm db:generate && tsc",
+    "dev": "tsup --watch",
+    "build": "pnpm db:generate && tsup",
+    "build:clean": "rm -rf dist",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
@@ -69,6 +79,7 @@
     "prettier": "catalog:",
     "prisma": "^6.7.0",
     "prisma-markdown": "^2.0.0",
+    "tsup": "^8.3.5",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
     "vitest": "catalog:",

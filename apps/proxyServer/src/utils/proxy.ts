@@ -11,7 +11,7 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-import { TransportType } from "@tumiki/db/prisma";
+import { TransportType } from "@tumiki/db";
 import { validateApiKey } from "../libs/validateApiKey.js";
 
 import type { ServerConfig } from "../libs/types.js";
