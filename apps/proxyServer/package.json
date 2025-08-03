@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
-    "build": "tsc && chmod +x build/index.js",
+    "build": "pnpm build:clean && tsup && chmod +x build/index.js",
+    "build:clean": "rm -rf build",
     "start": "pnpm with-env node build/index.js",
     "pm2:start": "pnpm with-env pm2 start ecosystem.config.cjs",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
@@ -63,8 +64,10 @@
   "devDependencies": {
     "@types/express": "^5.0.2",
     "@types/ws": "^8.18.1",
+    "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
+    "tsup": "^8.3.5",
     "typescript-eslint": "^8.33.0"
   },
   "peerDependencies": {

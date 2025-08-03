@@ -10,7 +10,7 @@ import {
   canCreateNewSession,
 } from "../../utils/session.js";
 import { getServer } from "../../utils/proxy.js";
-import { TransportType } from "@tumiki/db/prisma";
+import { TransportType } from "@tumiki/db";
 import { logger } from "../../libs/logger.js";
 import { logMcpRequest } from "../../libs/requestLogger.js";
 
