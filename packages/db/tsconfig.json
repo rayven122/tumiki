@@ -8,7 +8,7 @@
     }
   },
   "types": ["bun-types"],
-  "include": ["src", "prisma/generated"],
+  "include": ["src", "prisma/generated", "tsup.config.ts"],
   "exclude": [
     "node_modules",
     "prisma/generated/fabbrica",
