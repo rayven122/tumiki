@@ -85,7 +85,12 @@ const createClient = (
   let transport: Transport | null = null;
   try {
     if (server.transport.type === "sse") {
-      transport = new SSEClientTransport(new URL(server.transport.url));
+      const url = server.transport.url;
+      if (typeof url !== "string") {
+        throw new Error("Invalid URL type");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
+      transport = new SSEClientTransport(new URL(url));
     } else {
       const finalEnv = server.transport.env
         ? Object.fromEntries(

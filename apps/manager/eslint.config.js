@@ -12,6 +12,8 @@ export default tseslint.config(
       "src/lib/ai/**", // For ai-chatbot
       "src/lib/constants.ts", // For ai-chatbot
       "src/lib/editor/suggestions.tsx", // For ai-chatbot
+      "vitest.config.ts",
+      "**/*.test.ts",
     ],
   },
   {

@@ -5,7 +5,7 @@ import baseConfig from "@tumiki/eslint-config/base";
 /** @type {import('typescript-eslint').Config} */
 export default tseslint.config(
   {
-    ignores: ["dist/**", "coverage/**"],
+    ignores: ["dist/**", "coverage/**", "vitest.config.ts"],
   },
   ...baseConfig,
   {
