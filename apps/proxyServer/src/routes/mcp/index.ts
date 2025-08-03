@@ -14,25 +14,33 @@ export const handleMCPRequest = async (
 ): Promise<void> => {
   const method = req.method;
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  const apiKey: string | undefined =
-    (req.query["api-key"] as string) ||
-    (req.headers["api-key"] as string) ||
-    (req.headers.authorization?.startsWith("Bearer ")
-      ? req.headers.authorization.substring(7)
-      : undefined);
   const clientId: string =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
+
+  // OAuth認証を使用するかどうかをチェック
+  const useOAuth =
+    req.query.useOAuth === "true" || req.query.use_oauth === "true";
+
+  // APIキーの取得（OAuth認証を使用しない場合のみ必要）
+  const apiKey: string | undefined = useOAuth
+    ? undefined
+    : (req.query["api-key"] as string) ||
+      (req.headers["api-key"] as string) ||
+      (req.headers.authorization?.startsWith("Bearer ")
+        ? req.headers.authorization.substring(7)
+        : undefined);
 
   logger.info("MCP request received", {
     method,
     sessionId,
     hasApiKey: !!apiKey,
+    useOAuth,
     clientId,
     userAgent: req.headers["user-agent"],
   });
 
-  // API key validation
-  if (!apiKey) {
+  // OAuth認証を使用しない場合のAPIキー検証
+  if (!useOAuth && !apiKey) {
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -47,10 +55,10 @@ export const handleMCPRequest = async (
   try {
     switch (method) {
       case "POST":
-        await handlePOSTRequest(req, res, sessionId, apiKey, clientId);
+        await handlePOSTRequest(req, res, sessionId, apiKey || "", clientId);
         break;
       case "GET":
-        await handleGETRequest(req, res, sessionId, apiKey, clientId);
+        await handleGETRequest(req, res, sessionId, apiKey || "", clientId);
         break;
       case "DELETE":
         await handleDELETERequest(req, res, sessionId);

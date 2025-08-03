@@ -5,6 +5,7 @@ import { handleSSEConnection, handleSSEMessages } from "./routes/sse/index.js";
 import { initializeApplication } from "./libs/startup.js";
 import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
+import { conditionalAuthMiddleware } from "./middleware/auth.js";
 
 /**
  * Express アプリケーションを設定
@@ -35,13 +36,15 @@ const createApp = (): express.Application => {
   app.get("/health", handleHealthCheck);
 
   // 統合MCPエンドポイント（Streamable HTTP transport）
-  app.post("/mcp", handleMCPRequest);
-  app.get("/mcp", handleMCPRequest);
-  app.delete("/mcp", handleMCPRequest);
+  // 条件付きOAuth認証ミドルウェアを適用
+  app.post("/mcp", conditionalAuthMiddleware(), handleMCPRequest);
+  app.get("/mcp", conditionalAuthMiddleware(), handleMCPRequest);
+  app.delete("/mcp", conditionalAuthMiddleware(), handleMCPRequest);
 
   // SSE transport エンドポイント（後方互換性）
-  app.get("/sse", handleSSEConnection);
-  app.post("/messages", handleSSEMessages);
+  // SSEエンドポイントにも条件付きOAuth認証を適用
+  app.get("/sse", conditionalAuthMiddleware(), handleSSEConnection);
+  app.post("/messages", conditionalAuthMiddleware(), handleSSEMessages);
 
   return app;
 };
