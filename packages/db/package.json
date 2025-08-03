@@ -3,40 +3,36 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./tcp": {
-      "types": "./dist/tcpClient.d.ts",
-      "import": "./dist/tcpClient.mjs",
-      "require": "./dist/tcpClient.js"
+      "types": "./dist/src/tcpClient.d.ts",
+      "default": "./dist/src/tcpClient.js"
     },
     "./prisma": {
-      "types": "./dist/prisma.d.ts",
-      "import": "./dist/prisma.mjs",
-      "require": "./dist/prisma.js"
+      "types": "./dist/src/prisma.d.ts",
+      "default": "./dist/src/prisma.js"
     },
     "./zod": {
-      "types": "./dist/zod.d.ts",
-      "import": "./dist/zod.mjs",
-      "require": "./dist/zod.js"
+      "types": "./dist/src/zod.d.ts",
+      "default": "./dist/src/zod.js"
     },
     "./server": {
       "types": "./dist/server.d.ts",
       "import": "./dist/server.mjs",
       "require": "./dist/server.js"
+    },
+    "./testing": {
+      "types": "./dist/src/testing/index.d.ts",
+      "default": "./dist/src/testing/index.js"
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "pnpm db:generate && tsup",
-    "build:clean": "rm -rf dist",
+    "dev": "tsc",
+    "build": "pnpm db:generate && tsc",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "with-env": "dotenv -e ../../.env --",
@@ -72,7 +68,6 @@
     "prettier": "catalog:",
     "prisma": "^6.13.0",
     "prisma-markdown": "^2.0.0",
-    "tsup": "^8.3.5",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
     "zod-prisma-types": "^3.2.4"
