@@ -1,14 +1,13 @@
 {
   "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "./dist",
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
     }
   },
   "types": ["bun-types"],
-  "include": ["src", "prisma/generated", "tsup.config.ts"],
+  "include": ["src", "prisma/generated"],
   "exclude": [
     "node_modules",
     "prisma/generated/fabbrica",
