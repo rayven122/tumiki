@@ -10,5 +10,5 @@
     "types": ["bun-types"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "tsup.config.ts"]
 }
