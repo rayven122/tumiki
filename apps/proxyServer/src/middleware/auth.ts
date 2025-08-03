@@ -57,7 +57,6 @@ export const conditionalAuthMiddleware = () => {
       // JWTのsubをログに出力
       logger.info("OAuth validation successful", {
         path: req.path,
-        // @ts-expect-error auth object is added by express-oauth2-jwt-bearer
         sub: req.auth?.sub,
       });
 

@@ -35,16 +35,17 @@ const createApp = (): express.Application => {
   app.get("/", handleHealthCheck);
   app.get("/health", handleHealthCheck);
 
+  // ここ以降のすべてのルートに条件付きOAuth認証ミドルウェアを適用
+  app.use(conditionalAuthMiddleware());
+
   // 統合MCPエンドポイント（Streamable HTTP transport）
-  // 条件付きOAuth認証ミドルウェアを適用
-  app.post("/mcp", conditionalAuthMiddleware(), handleMCPRequest);
-  app.get("/mcp", conditionalAuthMiddleware(), handleMCPRequest);
-  app.delete("/mcp", conditionalAuthMiddleware(), handleMCPRequest);
+  app.post("/mcp", handleMCPRequest);
+  app.get("/mcp", handleMCPRequest);
+  app.delete("/mcp", handleMCPRequest);
 
   // SSE transport エンドポイント（後方互換性）
-  // SSEエンドポイントにも条件付きOAuth認証を適用
-  app.get("/sse", conditionalAuthMiddleware(), handleSSEConnection);
-  app.post("/messages", conditionalAuthMiddleware(), handleSSEMessages);
+  app.get("/sse", handleSSEConnection);
+  app.post("/messages", handleSSEMessages);
 
   return app;
 };
