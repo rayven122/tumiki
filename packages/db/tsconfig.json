@@ -1,7 +1,7 @@
 {
   "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "./dist",
+    "noEmit": true,
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
