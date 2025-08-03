@@ -1,5 +1,5 @@
 import { db } from "@tumiki/db/tcp";
-import { type TransportType } from "@tumiki/db/prisma";
+import { type TransportType } from "@tumiki/db";
 import { logger } from "./logger.js";
 import { compressRequestResponseData } from "./dataCompression.js";
 

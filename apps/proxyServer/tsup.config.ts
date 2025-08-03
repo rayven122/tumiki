@@ -7,7 +7,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   target: "node22",
-  treeshake: true,
+  treeshake: false,
   shims: true,
   outDir: "build",
   bundle: true,
@@ -21,5 +21,8 @@ export default defineConfig({
     "agents",
     "discord-mcp-server",
     "fastmcp",
+    "node:crypto",
+    "node:os",
+    "crypto",
   ],
 });
