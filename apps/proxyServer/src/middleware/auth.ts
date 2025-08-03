@@ -1,5 +1,5 @@
 import { type Request, type Response, type NextFunction } from "express";
-import { auth, requiredScopes } from "express-oauth2-jwt-bearer";
+import { auth } from "express-oauth2-jwt-bearer";
 import { logger } from "../libs/logger.js";
 
 /**
@@ -15,7 +15,7 @@ const jwtCheck = auth({
  * 条件付きOAuth認証ミドルウェア
  * 特定のクエリパラメータが存在する場合のみJWT検証を実行
  */
-export const conditionalAuthMiddleware = (requiredScope?: string) => {
+export const conditionalAuthMiddleware = () => {
   return async (
     req: Request,
     res: Response,
@@ -54,26 +54,7 @@ export const conditionalAuthMiddleware = (requiredScope?: string) => {
         });
       });
 
-      // スコープ検証が必要な場合
-      if (requiredScope) {
-        const scopeCheck = requiredScopes(requiredScope);
-        await new Promise<void>((resolve, reject) => {
-          scopeCheck(req, res, (err?: unknown) => {
-            if (err) {
-              reject(
-                err instanceof Error
-                  ? err
-                  : new Error(
-                      typeof err === "string" ? err : "Scope validation failed",
-                    ),
-              );
-            } else {
-              resolve();
-            }
-          });
-        });
-      }
-
+      // JWTのsubをログに出力
       logger.info("OAuth validation successful", {
         path: req.path,
         // @ts-expect-error auth object is added by express-oauth2-jwt-bearer
@@ -99,48 +80,5 @@ export const conditionalAuthMiddleware = (requiredScope?: string) => {
         });
       }
     }
-  };
-};
-
-/**
- * APIキーとOAuth認証を組み合わせた認証ミドルウェア
- * OAuthが有効な場合はOAuth認証を使用し、そうでない場合はAPIキー認証を使用
- */
-export const hybridAuthMiddleware = (requiredScope?: string) => {
-  return async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    const useOAuth =
-      req.query.useOAuth === "true" || req.query.use_oauth === "true";
-
-    if (useOAuth) {
-      // OAuth認証を使用
-      return conditionalAuthMiddleware(requiredScope)(req, res, next);
-    }
-
-    // APIキー認証をチェック
-    const apiKey: string | undefined =
-      (req.query["api-key"] as string) ||
-      (req.headers["api-key"] as string) ||
-      (req.headers.authorization?.startsWith("Bearer ")
-        ? req.headers.authorization.substring(7)
-        : undefined);
-
-    if (!apiKey) {
-      res.status(401).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Unauthorized: Missing API key",
-        },
-        id: null,
-      });
-      return;
-    }
-
-    // APIキーの検証は後続のミドルウェアで行う
-    next();
   };
 };
