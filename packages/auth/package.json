@@ -18,8 +18,8 @@
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -40,6 +40,7 @@
     "bun-types": "^1.2.19",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "tsup": "^8.3.5",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0"
   },
