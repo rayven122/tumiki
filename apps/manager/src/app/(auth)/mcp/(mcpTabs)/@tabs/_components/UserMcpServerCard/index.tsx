@@ -16,6 +16,8 @@ import {
   RefreshCw,
   Edit2,
   Shield,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import {
@@ -39,6 +41,13 @@ import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { getMcpServerData } from "@/constants/mcpServerDescriptions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -69,6 +78,7 @@ export const UserMcpServerCard = ({
     error?: string;
   } | null>(null);
   const [showSecurityDetails, setShowSecurityDetails] = useState(false);
+  const [showScanResultModal, setShowScanResultModal] = useState(false);
 
   const { tools } = serverInstance;
 
@@ -165,9 +175,9 @@ export const UserMcpServerCard = ({
     result: typeof securityScanResult,
   ): string => {
     if (!result) return "text-gray-500";
-    if (!result.success) return "text-red-500";
+    if (!result.success) return "text-yellow-500";
     if (result.issues.length === 0) return "text-green-500";
-    return "text-yellow-500";
+    return "text-red-500";
   };
 
   // MCPサーバーのURLを取得（ファビコン表示用）
@@ -198,6 +208,14 @@ export const UserMcpServerCard = ({
           isSortMode &&
             "cursor-grab border-2 border-dashed border-blue-300 bg-blue-50/30 select-none",
           isScanning && "relative overflow-hidden",
+          // セキュリティ問題がある場合のスタイル
+          securityScanResult &&
+            !securityScanResult.success &&
+            "border-yellow-300 bg-yellow-50/10",
+          securityScanResult &&
+            securityScanResult.success &&
+            securityScanResult.issues.length > 0 &&
+            "border-red-300 bg-red-50/10",
         )}
         onClick={handleCardClick}
       >
@@ -213,6 +231,39 @@ export const UserMcpServerCard = ({
           </div>
         )}
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          {/* セキュリティ警告アイコン */}
+          {securityScanResult && securityScanResult.issues.length > 0 && (
+            <div className="absolute -top-2 -right-2 z-10">
+              <div className="relative">
+                <AlertTriangle
+                  className={cn(
+                    "h-5 w-5",
+                    !securityScanResult.success
+                      ? "text-yellow-600"
+                      : "text-red-600",
+                  )}
+                />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span
+                    className={cn(
+                      "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                      !securityScanResult.success
+                        ? "bg-yellow-400"
+                        : "bg-red-400",
+                    )}
+                  ></span>
+                  <span
+                    className={cn(
+                      "relative inline-flex h-3 w-3 rounded-full",
+                      !securityScanResult.success
+                        ? "bg-yellow-500"
+                        : "bg-red-500",
+                    )}
+                  ></span>
+                </span>
+              </div>
+            </div>
+          )}
           <div className="group relative mr-2 rounded-md p-2">
             {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
               <Image
@@ -448,7 +499,15 @@ export const UserMcpServerCard = ({
 
         {/* セキュリティスキャン結果表示 */}
         {securityScanResult && (
-          <div className="space-y-2 border-t px-4 py-3">
+          <div
+            className={cn(
+              "space-y-2 border-t px-4 py-3",
+              !securityScanResult.success && "border-t-yellow-300 bg-yellow-50",
+              securityScanResult.success &&
+                securityScanResult.issues.length > 0 &&
+                "border-t-red-300 bg-red-50",
+            )}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield
@@ -491,7 +550,26 @@ export const UserMcpServerCard = ({
                     {securityScanResult.issues.map((issue, index) => (
                       <div key={index} className="text-sm">
                         <div className="flex items-start gap-2">
-                          <span className="inline-block rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                          <span
+                            className={cn(
+                              "inline-block rounded px-2 py-0.5 text-xs font-medium",
+                              // コードに応じた色分け
+                              issue.code === "TF001" &&
+                                "bg-red-100 text-red-800",
+                              issue.code === "scan_timeout" &&
+                                "bg-orange-100 text-orange-800",
+                              issue.code === "scan_error" &&
+                                "bg-red-100 text-red-800",
+                              issue.code === "invalid_output" &&
+                                "bg-purple-100 text-purple-800",
+                              issue.code === "parse_error" &&
+                                "bg-purple-100 text-purple-800",
+                              // デフォルト
+                              !issue.code?.match(
+                                /^(TF001|scan_timeout|scan_error|invalid_output|parse_error)$/,
+                              ) && "bg-yellow-100 text-yellow-800",
+                            )}
+                          >
                             {issue.code ?? "UNKNOWN"}
                           </span>
                           <div className="flex-1">
@@ -500,12 +578,15 @@ export const UserMcpServerCard = ({
                             </p>
                             {issue.extraData && (
                               <details className="mt-1">
-                                <summary className="cursor-pointer text-xs text-gray-500">
-                                  詳細情報
+                                <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+                                  詳細情報を表示
                                 </summary>
-                                <pre className="mt-1 overflow-auto rounded bg-gray-100 p-2 text-xs">
-                                  {JSON.stringify(issue.extraData, null, 2)}
-                                </pre>
+                                <div className="mt-2 rounded-md bg-gray-100 p-3">
+                                  {/* その他の場合は通常のJSON表示 */}
+                                  <pre className="overflow-auto text-xs text-gray-600">
+                                    {JSON.stringify(issue.extraData, null, 2)}
+                                  </pre>
+                                </div>
                               </details>
                             )}
                           </div>
