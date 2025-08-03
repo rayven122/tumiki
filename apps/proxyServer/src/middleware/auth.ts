@@ -6,9 +6,9 @@ import { logger } from "../libs/logger.js";
  * JWT検証ミドルウェアの設定
  */
 const jwtCheck = auth({
-  audience: process.env.AUTH0_AUDIENCE || "",
-  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL || "",
-  tokenSigningAlg: "RS256",
+
+  audience: `https://${process.env.AUTH0_DOMAIN || ""}`,
+  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN || ""}`,
 });
 
 /**
