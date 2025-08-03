@@ -669,56 +669,66 @@ export const UserMcpServerCard = ({
 
       {/* セキュリティスキャン結果モーダル */}
       <Dialog open={showScanResultModal} onOpenChange={setShowScanResultModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
               <Shield className="h-5 w-5" />
               セキュリティスキャン結果
             </DialogTitle>
           </DialogHeader>
-          
+
           {securityScanResult && (
-            <div className="space-y-4 mt-4">
+            <div className="mt-4 space-y-4">
               {/* スキャンエラーの場合 */}
               {!securityScanResult.success && (
                 <Alert className="border-yellow-300 bg-yellow-50">
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription>
                     <p className="font-medium">スキャンエラー</p>
-                    <p className="text-sm mt-1">
-                      {securityScanResult.error ?? "セキュリティスキャンの実行中にエラーが発生しました"}
+                    <p className="mt-1 text-sm">
+                      {securityScanResult.error ??
+                        "セキュリティスキャンの実行中にエラーが発生しました"}
                     </p>
                   </AlertDescription>
                 </Alert>
               )}
 
               {/* セキュリティ問題が見つかった場合 */}
-              {securityScanResult.success && securityScanResult.issues.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <p className="font-medium">
-                      {securityScanResult.issues.length}件のセキュリティ問題が検出されました
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              )}
+              {securityScanResult.success &&
+                securityScanResult.issues.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <p className="font-medium">
+                        {securityScanResult.issues.length}
+                        件のセキュリティ問題が検出されました
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
               {/* 問題の詳細リスト */}
               {securityScanResult.issues.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="font-medium text-sm">検出された問題:</h3>
+                  <h3 className="text-sm font-medium">検出された問題:</h3>
                   {securityScanResult.issues.map((issue, index) => (
-                    <div key={index} className="border rounded-lg p-4 space-y-2">
+                    <div
+                      key={index}
+                      className="space-y-2 rounded-lg border p-4"
+                    >
                       <div className="flex items-start gap-2">
-                        <span 
+                        <span
                           className={cn(
                             "inline-block rounded px-2 py-0.5 text-xs font-medium",
                             issue.code === "TF001" && "bg-red-100 text-red-800",
-                            issue.code === "scan_timeout" && "bg-orange-100 text-orange-800",
-                            issue.code === "scan_error" && "bg-red-100 text-red-800",
-                            issue.code === "invalid_output" && "bg-purple-100 text-purple-800",
-                            issue.code === "parse_error" && "bg-purple-100 text-purple-800",
+                            issue.code === "scan_timeout" &&
+                              "bg-orange-100 text-orange-800",
+                            issue.code === "scan_error" &&
+                              "bg-red-100 text-red-800",
+                            issue.code === "invalid_output" &&
+                              "bg-purple-100 text-purple-800",
+                            issue.code === "parse_error" &&
+                              "bg-purple-100 text-purple-800",
                             !issue.code?.match(
                               /^(TF001|scan_timeout|scan_error|invalid_output|parse_error)$/,
                             ) && "bg-yellow-100 text-yellow-800",
@@ -727,12 +737,12 @@ export const UserMcpServerCard = ({
                           {issue.code ?? "UNKNOWN"}
                         </span>
                         <div className="flex-1">
-                          <p className="font-medium text-sm">
+                          <p className="text-sm font-medium">
                             {issue.message ?? "不明な問題"}
                           </p>
                         </div>
                       </div>
-                      
+
                       {issue.extraData && (
                         <details className="mt-2">
                           <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">

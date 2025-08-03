@@ -130,7 +130,7 @@ export const checkServerConnection = async ({
             issues: securityScanResult.issues.map((issue) => ({
               code: issue?.code ?? "unknown",
               message: issue?.message ?? "不明な問題",
-              extraData: issue?.extra_data,
+              extraData: issue?.extra_data ?? undefined,
             })),
             error: securityScanResult.error,
           }
