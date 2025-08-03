@@ -3,30 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.mjs",
-      "require": "./dist/server/index.js"
+      "default": "./dist/server/index.js"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.mjs",
-      "require": "./dist/client/index.js"
+      "default": "./dist/client/index.js"
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "tsup",
-    "build:clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -39,16 +32,18 @@
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@tumiki/db": "workspace:*",
     "next": "^15.3.3",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "uuid": "^10.0.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@types/uuid": "^10.0.0",
     "bun-types": "latest",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "tsup": "^8.3.5",
     "typescript": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
