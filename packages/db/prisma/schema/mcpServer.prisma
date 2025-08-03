@@ -23,6 +23,8 @@ enum AuthType {
     API_KEY
     /// OAuth認証
     OAUTH
+    /// APIキーとOAuth両方を許可
+    BOTH
 }
 
 /// ユーザーカスタムサーバーの可視性
