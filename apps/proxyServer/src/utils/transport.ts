@@ -20,7 +20,7 @@ import {
   recordSessionError,
   type SessionInfo,
 } from "./session.js";
-import { TransportType as PrismaTransportType } from "@tumiki/db/prisma";
+import { TransportType as PrismaTransportType } from "@tumiki/db";
 
 // Transport types
 export enum TransportImplementation {
