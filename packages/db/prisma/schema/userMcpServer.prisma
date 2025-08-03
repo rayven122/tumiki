@@ -155,6 +155,8 @@ model UserMcpServerInstance {
   apiKeys                     McpApiKey[]
   /// リクエストログ
   requestLogs                 McpServerRequestLog[]
+  /// 使用する認証タイプ（API_KEY, OAUTH, BOTH）
+  authType                    AuthType                         @default(API_KEY)
   /// ユーザーID
   userId                      String
   user                        User                             @relation(fields: [userId], references: [id])
