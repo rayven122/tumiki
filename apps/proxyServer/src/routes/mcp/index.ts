@@ -21,14 +21,13 @@ export const handleMCPRequest = async (
   const useOAuth =
     req.query.useOAuth === "true" || req.query.use_oauth === "true";
 
-  // APIキーの取得（OAuth認証を使用しない場合のみ必要）
-  const apiKey: string | undefined = useOAuth
-    ? undefined
-    : (req.query["api-key"] as string) ||
-      (req.headers["api-key"] as string) ||
-      (req.headers.authorization?.startsWith("Bearer ")
-        ? req.headers.authorization.substring(7)
-        : undefined);
+  // APIキーの取得（OAuth認証使用時も必須）
+  const apiKey: string | undefined =
+    (req.query["api-key"] as string) ||
+    (req.headers["api-key"] as string) ||
+    (!useOAuth && req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.substring(7)
+      : undefined);
 
   logger.info("MCP request received", {
     method,
@@ -39,8 +38,8 @@ export const handleMCPRequest = async (
     userAgent: req.headers["user-agent"],
   });
 
-  // OAuth認証を使用しない場合のAPIキー検証
-  if (!useOAuth && !apiKey) {
+  // APIキー検証（OAuth使用時も必須）
+  if (!apiKey) {
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
