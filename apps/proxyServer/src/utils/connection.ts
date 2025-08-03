@@ -12,7 +12,6 @@ export const establishSSEConnection = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  // OAuth認証はミドルウェアで処理済みのため、ここでは通常の処理を実行
   await transportEstablishSSEConnection(req, res);
 };
 
@@ -24,6 +23,5 @@ export const handleSSEMessage = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  // OAuth認証はミドルウェアで処理済みのため、ここでは通常の処理を実行
   await transportHandleSSEMessage(req, res);
 };
