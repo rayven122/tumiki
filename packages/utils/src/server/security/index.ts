@@ -1,5 +1,5 @@
 export {
   runMcpSecurityScan,
-  type McpSecurityIssue,
+  type McpIssue,
   type McpScanResult,
 } from "./mcpScan";

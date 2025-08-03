@@ -60,14 +60,13 @@ export const UserMcpServerCard = ({
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
   const [securityScanResult, setSecurityScanResult] = useState<{
-    riskLevel: string;
+    success: boolean;
     issues: Array<{
-      type: string;
-      severity: string;
-      description: string;
-      recommendation?: string;
-      toolName?: string;
+      code?: string;
+      message?: string;
+      extraData?: Record<string, unknown>;
     }>;
+    error?: string;
   } | null>(null);
   const [showSecurityDetails, setShowSecurityDetails] = useState(false);
 
@@ -96,14 +95,12 @@ export const UserMcpServerCard = ({
           if (result.securityScan) {
             setSecurityScanResult(result.securityScan);
 
-            // リスクレベルに応じた通知
-            const { riskLevel, issues } = result.securityScan;
-            if (riskLevel === "critical" || riskLevel === "high") {
-              toast.error(`⚠️ 高リスクのセキュリティ問題が検出されました`);
-            } else if (riskLevel === "medium") {
-              toast.warning(`⚠️ 中程度のセキュリティリスクが検出されました`);
-            } else if (issues.length > 0) {
-              toast.info(`ℹ️ ${issues.length}件の軽微な問題が検出されました`);
+            // 問題の数に応じた通知
+            const { issues } = result.securityScan;
+            if (issues.length > 0) {
+              toast.warning(
+                `⚠️ ${issues.length}件のセキュリティ問題が検出されました`,
+              );
             }
           }
         } else {
@@ -155,15 +152,22 @@ export const UserMcpServerCard = ({
     });
   };
 
-  const getRiskLevelLabel = (level: string): string => {
-    const labels: Record<string, string> = {
-      critical: "重大なリスク",
-      high: "高リスク",
-      medium: "中リスク",
-      low: "低リスク",
-      none: "問題なし",
-    };
-    return labels[level] ?? level;
+  const getSecurityStatusLabel = (
+    result: typeof securityScanResult,
+  ): string => {
+    if (!result) return "";
+    if (!result.success) return "スキャンエラー";
+    if (result.issues.length === 0) return "問題なし";
+    return `${result.issues.length}件の問題`;
+  };
+
+  const getSecurityStatusColor = (
+    result: typeof securityScanResult,
+  ): string => {
+    if (!result) return "text-gray-500";
+    if (!result.success) return "text-red-500";
+    if (result.issues.length === 0) return "text-green-500";
+    return "text-yellow-500";
   };
 
   // MCPサーバーのURLを取得（ファビコン表示用）
@@ -450,66 +454,66 @@ export const UserMcpServerCard = ({
                 <Shield
                   className={cn(
                     "h-4 w-4",
-                    securityScanResult.riskLevel === "critical" ||
-                      securityScanResult.riskLevel === "high"
-                      ? "text-red-500"
-                      : securityScanResult.riskLevel === "medium"
-                        ? "text-yellow-500"
-                        : "text-green-500",
+                    getSecurityStatusColor(securityScanResult),
                   )}
                 />
                 <span className="text-sm font-medium">
                   セキュリティスキャン:{" "}
-                  {getRiskLevelLabel(securityScanResult.riskLevel)}
+                  {getSecurityStatusLabel(securityScanResult)}
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowSecurityDetails(!showSecurityDetails);
-                }}
-              >
-                {showSecurityDetails ? "詳細を隠す" : "詳細を表示"}
-              </Button>
+              {(securityScanResult.issues.length > 0 ||
+                securityScanResult.error) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSecurityDetails(!showSecurityDetails);
+                  }}
+                >
+                  {showSecurityDetails ? "詳細を隠す" : "詳細を表示"}
+                </Button>
+              )}
             </div>
 
-            {showSecurityDetails && securityScanResult.issues.length > 0 && (
+            {showSecurityDetails && (
               <div className="space-y-2 rounded-md bg-gray-50 p-3">
-                {securityScanResult.issues.map((issue, index) => (
-                  <div key={index} className="text-sm">
-                    <div className="flex items-start gap-2">
-                      <span
-                        className={cn(
-                          "inline-block rounded px-2 py-0.5 text-xs font-medium",
-                          issue.severity === "critical"
-                            ? "bg-red-100 text-red-800"
-                            : issue.severity === "high"
-                              ? "bg-orange-100 text-orange-800"
-                              : issue.severity === "medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-blue-100 text-blue-800",
-                        )}
-                      >
-                        {issue.severity.toUpperCase()}
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-medium">{issue.description}</p>
-                        {issue.recommendation && (
-                          <p className="mt-1 text-gray-600">
-                            💡 {issue.recommendation}
-                          </p>
-                        )}
-                        {issue.toolName && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            影響ツール: {issue.toolName}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                {securityScanResult.error && (
+                  <div className="text-sm text-red-600">
+                    <p className="font-medium">
+                      エラー: {securityScanResult.error}
+                    </p>
                   </div>
-                ))}
+                )}
+                {securityScanResult.issues.length > 0 && (
+                  <div className="space-y-2">
+                    {securityScanResult.issues.map((issue, index) => (
+                      <div key={index} className="text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="inline-block rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                            {issue.code ?? "UNKNOWN"}
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {issue.message ?? "不明な問題"}
+                            </p>
+                            {issue.extraData && (
+                              <details className="mt-1">
+                                <summary className="cursor-pointer text-xs text-gray-500">
+                                  詳細情報
+                                </summary>
+                                <pre className="mt-1 overflow-auto rounded bg-gray-100 p-2 text-xs">
+                                  {JSON.stringify(issue.extraData, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -245,16 +245,15 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
         toolCount: z.number(),
         securityScan: z
           .object({
-            riskLevel: z.enum(["critical", "high", "medium", "low", "none"]),
+            success: z.boolean(),
             issues: z.array(
               z.object({
-                type: z.string(),
-                severity: z.enum(["critical", "high", "medium", "low", "info"]),
-                description: z.string(),
-                recommendation: z.string().optional(),
-                toolName: z.string().optional(),
+                code: z.string().optional(),
+                message: z.string().optional(),
+                extraData: z.record(z.unknown()).optional(),
               }),
             ),
+            error: z.string().optional(),
           })
           .optional(),
       }),

@@ -2,7 +2,14 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
-import { Loader2, Server, Info, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  Server,
+  Info,
+  RefreshCw,
+  Shield,
+  AlertCircle,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +49,19 @@ export const UserMcpServerConfigModal = ({
   const utils = api.useUtils();
   const router = useRouter();
   const [isValidating, setIsValidating] = useState(false);
+  const [validationDetails, setValidationDetails] = useState<{
+    step: "connecting" | "scanning" | "complete";
+    message: string;
+  }>({ step: "connecting", message: "接続を確認中..." });
+  const [scanResult, setScanResult] = useState<{
+    success: boolean;
+    issues: Array<{
+      code?: string;
+      message?: string;
+      extraData?: Record<string, unknown>;
+    }>;
+    error?: string;
+  } | null>(null);
 
   const { mutate: checkServerConnection } =
     api.userMcpServerInstance.checkServerConnection.useMutation({
@@ -52,9 +72,14 @@ export const UserMcpServerConfigModal = ({
           onOpenChange(false);
           router.refresh();
         } else {
+          // セキュリティスキャン結果を保存
+          if (result.securityScan) {
+            setScanResult(result.securityScan);
+          }
           toast.error(result.error ?? "接続検証に失敗しました");
         }
         setIsValidating(false);
+        setValidationDetails({ step: "complete", message: "検証完了" });
       },
       onError: (error) => {
         toast.error(error.message);
@@ -68,7 +93,22 @@ export const UserMcpServerConfigModal = ({
         if (!isGitHubMcp || authMethod !== "oauth") {
           // APIキーの場合のみ検証を実行
           setIsValidating(true);
+          setValidationDetails({
+            step: "connecting",
+            message: "接続を確認中...",
+          });
           toast.info("接続を検証しています...");
+
+          // 2秒後にスキャンステップに移行（実際のスキャンは同時進行）
+          setTimeout(() => {
+            if (isValidating) {
+              setValidationDetails({
+                step: "scanning",
+                message: "セキュリティスキャン実行中...",
+              });
+            }
+          }, 2000);
+
           checkServerConnection({
             serverInstanceId: data.id,
             updateStatus: true,
@@ -256,16 +296,25 @@ export const UserMcpServerConfigModal = ({
           {isProcessing && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
               <div className="flex flex-col items-center space-y-2">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                {isValidating && validationDetails.step === "scanning" ? (
+                  <Shield className="h-8 w-8 animate-pulse text-blue-600" />
+                ) : (
+                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                )}
                 <span className="text-sm font-medium text-gray-700">
                   {isPending
                     ? "サーバーを追加中..."
                     : isValidating
-                      ? "接続を検証中..."
+                      ? validationDetails.message
                       : isOAuthConnecting
                         ? "OAuth接続中..."
                         : "更新中..."}
                 </span>
+                {isValidating && validationDetails.step === "scanning" && (
+                  <span className="text-xs text-gray-500">
+                    セキュリティチェックを実行しています...
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -329,6 +378,33 @@ export const UserMcpServerConfigModal = ({
               表示されるサーバー名を設定できます
             </p>
           </div>
+
+          {/* セキュリティスキャン結果の表示 */}
+          {scanResult && !scanResult.success && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-medium">
+                    セキュリティスキャンで問題が検出されました
+                  </p>
+                  {scanResult.error && (
+                    <p className="text-sm">{scanResult.error}</p>
+                  )}
+                  {scanResult.issues.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {scanResult.issues.map((issue, index) => (
+                        <div key={index} className="text-sm">
+                          <span className="font-medium">{issue.code}:</span>{" "}
+                          {issue.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* OAuth対応MCPの場合はタブで認証方法を選択 */}
           {isOAuthSupported ? (
@@ -448,7 +524,9 @@ export const UserMcpServerConfigModal = ({
                   {isPending
                     ? "追加中..."
                     : isValidating
-                      ? "検証中..."
+                      ? validationDetails.step === "scanning"
+                        ? "スキャン中..."
+                        : "検証中..."
                       : isOAuthConnecting
                         ? "OAuth接続中..."
                         : "更新中..."}
