@@ -13,6 +13,7 @@
     "prisma/generated/fabbrica",
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
-    "src/__tests__/**/*"
+    "src/__tests__/**/*",
+    "tsup.config.ts"
   ]
 }
