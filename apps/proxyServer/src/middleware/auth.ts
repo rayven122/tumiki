@@ -6,7 +6,6 @@ import { logger } from "../libs/logger.js";
  * JWT検証ミドルウェアの設定
  */
 const jwtCheck = auth({
-
   audience: `https://${process.env.AUTH0_DOMAIN || ""}`,
   issuerBaseURL: `https://${process.env.AUTH0_DOMAIN || ""}`,
 });
