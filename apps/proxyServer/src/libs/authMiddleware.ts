@@ -1,55 +1,16 @@
 import type { Request } from "express";
 import { AuthType } from "@tumiki/db/prisma";
-import { validateApiKey, type ValidationResult } from "./validateApiKey.js";
+import { validateApiKey } from "./validateApiKey.js";
 import { validateOAuthToken } from "./validateOAuthToken.js";
-
-import { type db } from "@tumiki/db/tcp";
-
-type UserMcpServerInstanceWithApiKeys = Awaited<
-  ReturnType<typeof db.userMcpServerInstance.findFirst>
-> & {
-  apiKeys?: Array<{ apiKey: string; id: string; userId: string }>;
-};
-
-export interface AuthResult {
-  valid: boolean;
-  authType: "api_key" | "oauth";
-  userMcpServerInstance?: UserMcpServerInstanceWithApiKeys;
-  userId?: string;
-  error?: string;
-}
-
-/**
- * リクエストからAPIキーを抽出
- */
-const extractApiKey = (req: Request): string | undefined => {
-  return (
-    (req.query["api-key"] as string) ||
-    (req.headers["api-key"] as string) ||
-    (req.headers.authorization?.startsWith("Bearer ") &&
-    !req.headers.authorization.substring(7).includes(".")
-      ? req.headers.authorization.substring(7)
-      : undefined)
-  );
-};
-
-/**
- * リクエストからBearerトークンを抽出
- */
-const extractBearerToken = (req: Request): string | undefined => {
-  if (
-    req.headers.authorization?.startsWith("Bearer ") &&
-    req.headers.authorization.substring(7).includes(".")
-  ) {
-    return req.headers.authorization.substring(7);
-  }
-  return undefined;
-};
+import type { AuthValidationResult } from "../types/auth.js";
+import { extractApiKey, extractBearerToken } from "../utils/authExtractor.js";
 
 /**
  * 統一された認証検証
  */
-export const validateAuth = async (req: Request): Promise<ValidationResult> => {
+export const validateAuth = async (
+  req: Request,
+): Promise<AuthValidationResult> => {
   try {
     // 1. リクエストから認証情報を取得
     const apiKey = extractApiKey(req);

@@ -1,34 +1,9 @@
 import { db } from "@tumiki/db/tcp";
 import pMemoize from "p-memoize";
 import ExpiryMap from "expiry-map";
-import type {
-  UserMcpServerInstance,
-  User,
-  UserToolGroup,
-  UserToolGroupTool,
-  Tool,
-  McpApiKey,
-} from "@tumiki/db/prisma";
+import type { ApiKeyValidationResult } from "../types/auth.js";
 
-export type ValidationResult =
-  | {
-      valid: true;
-      apiKey: McpApiKey;
-      userMcpServerInstance: UserMcpServerInstance & {
-        user: User;
-        toolGroup: UserToolGroup & {
-          toolGroupTools: Array<
-            UserToolGroupTool & {
-              tool: Tool;
-            }
-          >;
-        };
-      };
-    }
-  | {
-      valid: false;
-      error: string;
-    };
+export type ValidationResult = ApiKeyValidationResult;
 
 // 内部のvalidateApiKey関数（メモ化されない元の実装）
 const _validateApiKey = async (

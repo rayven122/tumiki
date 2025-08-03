@@ -1,18 +1,7 @@
 import { auth } from "express-oauth2-jwt-bearer";
 import type { Request, Response, Handler } from "express";
 import { logger } from "./logger.js";
-
-export type OAuthValidationResult =
-  | {
-      valid: true;
-      userId: string;
-      issuer?: string;
-      metadata?: Record<string, unknown>;
-    }
-  | {
-      valid: false;
-      error: string;
-    };
+import type { OAuthValidationResult } from "../types/auth.js";
 
 // express-oauth2-jwt-bearerがリクエストオブジェクトに追加するauth情報の型定義
 interface AuthenticatedRequest extends Request {

@@ -4,6 +4,7 @@ import { handleGETRequest } from "./get.js";
 import { handleDELETERequest } from "./delete.js";
 import { logger } from "../../libs/logger.js";
 import { validateAuth } from "../../libs/authMiddleware.js";
+import { sendAuthErrorResponse } from "../../utils/errorResponse.js";
 
 /**
  * 統合MCPエンドポイント - Streamable HTTP transport
@@ -29,14 +30,10 @@ export const handleMCPRequest = async (
   const authResult = await validateAuth(req);
 
   if (!authResult.valid) {
-    res.status(401).json({
-      jsonrpc: "2.0",
-      error: {
-        code: -32000,
-        message: `Unauthorized: Invalid API key or Bearer token - ${authResult.error}`,
-      },
-      id: null,
-    });
+    sendAuthErrorResponse(
+      res,
+      `Invalid API key or Bearer token - ${authResult.error}`,
+    );
     return;
   }
 

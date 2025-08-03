@@ -13,13 +13,17 @@ import {
 import { db } from "@tumiki/db/tcp";
 import { TransportType } from "@tumiki/db/prisma";
 import { validateApiKey } from "../libs/validateApiKey.js";
+import type { ApiKeyValidationResult } from "../types/auth.js";
 
 import type { ServerConfig } from "../libs/types.js";
 import { logger } from "../libs/logger.js";
 import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
-import { logMcpRequest } from "../libs/requestLogger.js";
 import { calculateDataSize } from "../libs/dataCompression.js";
+import {
+  logMcpRequestWithValidation,
+  logMcpRequestError,
+} from "./mcpLogger.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -400,7 +404,7 @@ export const getServer = async (
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
-    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+    let validation: ApiKeyValidationResult | undefined;
 
     try {
       // API キー検証を先に実行してユーザー情報を取得
@@ -478,30 +482,18 @@ export const getServer = async (
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
-        logMcpRequest({
-          userId: validation.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+        void logMcpRequestWithValidation({
+          validation,
           toolName: "tools/list",
-          transportType: transportType,
+          transportType,
           method: "tools/list",
           responseStatus: "200",
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId:
-            validation?.userMcpServerInstance?.organizationId ?? undefined,
-          // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify({ tools: result.tools }),
-        }).catch((error) => {
-          // ログ記録失敗をログに残すが、リクエスト処理は継続
-          logger.error("Failed to log tools/list request", {
-            error: error instanceof Error ? error.message : String(error),
-            userId:
-              validation?.valid && "apiKey" in validation
-                ? validation.apiKey?.userId
-                : undefined,
-          });
+          isValidationMode,
         });
       }
 
@@ -527,33 +519,16 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (
-        validation?.valid &&
-        validation?.userMcpServerInstance &&
-        !isValidationMode
-      ) {
-        // 検証モードでない場合のみ、エラー時も非同期でログ記録
-        logMcpRequest({
-          userId:
-            validation?.valid && "apiKey" in validation
-              ? validation.apiKey?.userId
-              : undefined,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+      // エラーログ記録を非同期で実行
+      if (validation) {
+        void logMcpRequestError({
+          validation,
           toolName: "tools/list",
-          transportType: transportType,
+          transportType,
           method: "tools/list",
-          responseStatus: "500",
+          error,
           durationMs,
-          errorMessage,
-          errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId:
-            validation?.userMcpServerInstance?.organizationId ?? undefined,
-        }).catch((logError) => {
-          logger.error("Failed to log tools/list error", {
-            logError:
-              logError instanceof Error ? logError.message : String(logError),
-            originalError: errorMessage,
-          });
+          isValidationMode,
         });
       }
 
@@ -583,7 +558,7 @@ export const getServer = async (
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
-    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+    let validation: ApiKeyValidationResult | undefined;
 
     try {
       // API キー検証を先に実行してユーザー情報を取得
@@ -653,44 +628,24 @@ export const getServer = async (
       const durationMs = Date.now() - startTime;
 
       // 検証モードでない場合のみログ記録
-      if (
-        validation.valid &&
-        validation.userMcpServerInstance &&
-        !isValidationMode
-      ) {
+      if (validation.valid && !isValidationMode) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.result ?? {});
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
-        logMcpRequest({
-          userId:
-            validation?.valid && "apiKey" in validation
-              ? validation.apiKey?.userId
-              : undefined,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+        void logMcpRequestWithValidation({
+          validation,
           toolName: name,
-          transportType: transportType,
+          transportType,
           method: "tools/call",
           responseStatus: "200",
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId:
-            validation?.userMcpServerInstance?.organizationId ?? undefined,
-          // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify(result.result),
-        }).catch((error) => {
-          // ログ記録失敗をログに残すが、リクエスト処理は継続
-          logger.error("Failed to log tools/call request", {
-            error: error instanceof Error ? error.message : String(error),
-            toolName: name,
-            userId:
-              validation?.valid && "apiKey" in validation
-                ? validation.apiKey?.userId
-                : undefined,
-          });
+          isValidationMode,
         });
       }
 
@@ -715,34 +670,16 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (
-        validation?.valid &&
-        validation?.userMcpServerInstance &&
-        !isValidationMode
-      ) {
-        // 検証モードでない場合のみ、エラー時も非同期でログ記録
-        logMcpRequest({
-          userId:
-            validation?.valid && "apiKey" in validation
-              ? validation.apiKey?.userId
-              : undefined,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+      // エラーログ記録を非同期で実行
+      if (validation) {
+        void logMcpRequestError({
+          validation,
           toolName: name,
-          transportType: transportType,
+          transportType,
           method: "tools/call",
-          responseStatus: "500",
+          error,
           durationMs,
-          errorMessage,
-          errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId:
-            validation?.userMcpServerInstance?.organizationId ?? undefined,
-        }).catch((logError) => {
-          logger.error("Failed to log tools/call error", {
-            logError:
-              logError instanceof Error ? logError.message : String(logError),
-            originalError: errorMessage,
-            toolName: name,
-          });
+          isValidationMode,
         });
       }
 

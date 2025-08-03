@@ -22,6 +22,10 @@ import {
 } from "./session.js";
 import { TransportType as PrismaTransportType } from "@tumiki/db/prisma";
 import { validateAuth } from "../libs/authMiddleware.js";
+import {
+  sendAuthErrorResponse,
+  sendErrorResponse as sendErrorResponseUtil,
+} from "../utils/errorResponse.js";
 
 // Transport types
 export enum TransportImplementation {
@@ -60,13 +64,7 @@ export const streamableConnections = new Map<
   StreamableHTTPConnectionInfo
 >();
 
-// 統一エラーレスポンス関数
-interface ErrorResponse {
-  error: string;
-  code?: string;
-  details?: string;
-}
-
+// 後方互換性のための関数（新しいエラーレスポンスユーティリティを使用）
 const sendErrorResponse = (
   res: Response,
   status: number,
@@ -83,11 +81,7 @@ const sendErrorResponse = (
     return;
   }
 
-  const errorResponse: ErrorResponse = { error };
-  if (code) errorResponse.code = code;
-  if (details) errorResponse.details = details;
-
-  res.status(status).json(errorResponse);
+  sendErrorResponseUtil(res, status, error, code || "SERVER_ERROR", details);
 };
 
 /**
@@ -101,12 +95,7 @@ export const establishSSEConnection = async (
   const authResult = await validateAuth(req);
 
   if (!authResult.valid) {
-    sendErrorResponse(
-      res,
-      401,
-      `Unauthorized: ${authResult.error}`,
-      "AUTH_FAILED",
-    );
+    sendAuthErrorResponse(res, authResult.error);
     return;
   }
 
