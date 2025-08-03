@@ -13,10 +13,10 @@ const execAsync = promisify(exec);
  * スキャナーによって異なるフィールド名を使用する可能性がある
  */
 export const McpIssueSchema = z.object({
-  code: z.string().optional(),
-  message: z.string().optional(),
-  extra_data: z.record(z.unknown()).optional(),
-  reference: z.unknown().nullable().optional(),
+  code: z.string().nullish(),
+  message: z.string().nullish(),
+  extra_data: z.record(z.unknown()).nullish(),
+  reference: z.unknown().nullable().nullish(),
 });
 
 /**
@@ -115,6 +115,7 @@ export const runMcpSecurityScan = async (
       const parsedResult = z.record(McpScanOutputSchema).parse(scanOutput);
       const mcpScanOutput = parsedResult[configFile];
 
+      console.log("Parsed mcp-scan output:", mcpScanOutput);
       // スキャン結果を標準化された形式に変換
       return {
         success: true,
@@ -153,6 +154,17 @@ export const runMcpSecurityScan = async (
       };
     }
 
+    // エラーメッセージから機密情報を除去
+    let errorMessage = "Unknown error";
+    if (error instanceof Error) {
+      // コマンドラインの詳細を含まないエラーメッセージに変換
+      if (error.message.includes("Command failed")) {
+        errorMessage = "セキュリティスキャンツールの実行に失敗しました";
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     return {
       success: false,
       issues: [
@@ -161,7 +173,7 @@ export const runMcpSecurityScan = async (
           message: "セキュリティスキャンの実行に失敗しました",
         },
       ],
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMessage,
     };
   } finally {
     // 一時ファイルを削除

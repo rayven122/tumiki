@@ -136,6 +136,8 @@ export const checkServerConnection = async ({
           }
         : undefined;
 
+      console.log("securityScan", securityScan);
+
       return {
         success,
         status: updateStatus
