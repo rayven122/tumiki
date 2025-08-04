@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PermissionAction, ResourceType } from "@tumiki/db";
+import { PermissionAction, ResourceType } from "@tumiki/db/server";
 
 export const CreateRoleInput = z.object({
   organizationId: z.string(),

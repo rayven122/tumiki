@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendWaitingListConfirmation } from "@tumiki/mailer";
 

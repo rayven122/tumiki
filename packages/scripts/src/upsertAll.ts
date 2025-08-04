@@ -1,4 +1,4 @@
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 
 import { upsertMcpServers } from "./upsertMcpServers";
 import { upsertMcpTools } from "./upsertMcpTools";
