@@ -2,11 +2,7 @@
   "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": "./dist",
-    "paths": {
-      "@/*": ["./src/*"],
-      "~/*": ["./*"]
-    }
+    "outDir": "./dist"
   },
   "types": ["bun-types"],
   "include": ["src", "prisma/generated"],
