@@ -8,6 +8,7 @@ export default tseslint.config(
       "node_modules/**",
       ".react-email/**",
       "tsup.config.ts",
+      "vitest.config.ts",
     ],
   },
   {
