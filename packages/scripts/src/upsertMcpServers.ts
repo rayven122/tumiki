@@ -1,4 +1,4 @@
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 
 import { MCP_SERVERS } from "./constants/mcpServers";
 

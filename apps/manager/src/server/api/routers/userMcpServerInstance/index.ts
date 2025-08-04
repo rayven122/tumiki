@@ -34,7 +34,7 @@ import {
   GetRequestDataDetailInput,
   GetRequestDataDetailOutput,
 } from "./getRequestDataDetail";
-import { ServerStatus } from "@tumiki/db";
+import { ServerStatus } from "@tumiki/db/server";
 import {
   updateDisplayOrder,
   updateDisplayOrderSchema,
