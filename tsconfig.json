@@ -28,6 +28,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["apps/manager/src/*"],
+      "~/*": ["apps/manager/*"],
       "@zod": ["apps/manager/prisma/generated/zod/index.ts"]
     }
   },

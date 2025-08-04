@@ -21,8 +21,8 @@
     }
   },
   "scripts": {
-    "build": "tsup",
     "dev": "tsup --watch",
+    "build": "tsup",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
