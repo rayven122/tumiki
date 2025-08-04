@@ -1,6 +1,6 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 import { getMcpServerTools } from "@tumiki/utils/server";
 
 import { MCP_SERVERS } from "./constants/mcpServers";
