@@ -1,6 +1,6 @@
 import "server-only";
 
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 
 // APIキー検証関数（Manager用 - 簡易版）
 export const validateApiKey = async (providedKey: string) => {

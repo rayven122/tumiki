@@ -1,4 +1,4 @@
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 
 /**
  * MCPサーバーとツールを一括で登録する

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 
 export const findAllWithTools = async () => {
   const mcpServers = await db.mcpServer.findMany({

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { z } from "zod";
-import { db, type Prisma } from "@tumiki/db";
+import { db, type Prisma } from "@tumiki/db/server";
 import type { ProtectedContext } from "../../trpc";
 import type { ListApiKeysInput } from "./schemas";
 
