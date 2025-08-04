@@ -1,13 +1,14 @@
 import { type Request, type Response, type NextFunction } from "express";
-import { auth } from "express-oauth2-jwt-bearer";
+import { auth, type AuthResult } from "express-oauth2-jwt-bearer";
 import { logger } from "../libs/logger.js";
 
 /**
  * JWT検証ミドルウェアの設定
  */
 const jwtCheck = auth({
-  audience: `https://${process.env.AUTH0_DOMAIN || ""}`,
-  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN || ""}`,
+  audience: `https://${process.env.AUTH0_DOMAIN || ""}/api`,
+  issuerBaseURL: `https://${process.env.AUTH0_M2M_DOMAIN || ""}/`,
+  tokenSigningAlg: "RS256",
 });
 
 /**
@@ -56,7 +57,7 @@ export const conditionalAuthMiddleware = () => {
       // JWTのsubをログに出力
       logger.info("OAuth validation successful", {
         path: req.path,
-        sub: req.auth?.sub,
+        sub: (req.auth as AuthResult | undefined)?.payload?.sub,
       });
 
       next();
