@@ -11,4 +11,7 @@ export default defineWorkspace([
   "packages/mailer/vitest.config.ts",
   "packages/scripts/vitest.config.ts",
   "packages/utils/vitest.config.ts",
+  
+  // Tooling
+  "tooling/vitest/vitest.config.ts",
 ]);

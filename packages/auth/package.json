@@ -38,6 +38,7 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/node": "^22.15.3",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
