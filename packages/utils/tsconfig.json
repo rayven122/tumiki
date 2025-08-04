@@ -1,8 +1,9 @@
 {
   "extends": "@tumiki/tsconfig/react-library.json",
   "compilerOptions": {
-    "noEmit": true,
-    "types": ["bun-types"]
+    "noEmit": false,
+    "types": ["bun-types"],
+    "outDir": "./dist"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
