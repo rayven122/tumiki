@@ -65,6 +65,7 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "catalog:",
     "dotenv-cli": "^8.0.0",

@@ -6,7 +6,7 @@ export default defineProject({
     name: "proxyServer",
     globals: true,
     environment: "node",
-    setupFiles: ["../../tests/setup.ts"],
+    setupFiles: ["@tumiki/vitest-config/setup"],
     exclude: [
       "**/node_modules/**",
       "**/dist/**",

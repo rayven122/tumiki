@@ -6,7 +6,7 @@ export default defineProject({
     name: "scripts",
     globals: true,
     environment: "node",
-    setupFiles: ["../../tests/setup.ts"],
+    setupFiles: ["@tumiki/vitest-config/setup"],
   },
   resolve: {
     alias: {
