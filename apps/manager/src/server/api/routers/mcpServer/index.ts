@@ -2,7 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { findAllWithTools } from "./findAllWithTools";
 import { createMcpServer } from "./create";
 import z from "zod";
-import { McpServerVisibility, TransportType } from "@tumiki/db";
+import { McpServerVisibility, TransportType } from "@tumiki/db/server";
 
 export const CreateMcpServerInput = z.object({
   name: z.string().min(1, "サーバー名は必須です"),
