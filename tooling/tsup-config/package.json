@@ -1,25 +1,25 @@
 {
-  "name": "@tumiki/vitest-config",
+  "name": "@tumiki/tsup-config",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
-    "./setup": {
-      "types": "./dist/setup.d.ts",
-      "default": "./dist/setup.js"
+    "./base": {
+      "types": "./dist/base.d.ts",
+      "default": "./dist/base.js"
     },
-    "./config": {
-      "types": "./dist/config.d.ts",
-      "default": "./dist/config.js"
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
     },
-    "./configs": {
-      "types": "./dist/configs.d.ts",
-      "default": "./dist/configs.js"
+    "./library": {
+      "types": "./dist/library.d.ts",
+      "default": "./dist/library.js"
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -30,11 +30,11 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
-    "@types/node": "^22.15.3",
+    "@types/node": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "tsup": "catalog:",
+    "typescript": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }
