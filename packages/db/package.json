@@ -79,8 +79,5 @@
     "vitest": "catalog:",
     "zod-prisma-types": "^3.2.4"
   },
-  "prisma": {
-    "schema": "./prisma/schema"
-  },
   "prettier": "@tumiki/prettier-config"
 }
