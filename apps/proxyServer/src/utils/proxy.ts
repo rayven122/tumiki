@@ -596,7 +596,7 @@ export const getServer = async (
 
       if (userMcpServerInstance && !isValidationMode) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
-        logMcpRequest({
+        void logMcpRequest({
           userId: userMcpServerInstance?.userId,
           mcpServerInstanceId: userMcpServerInstance.id,
           toolName: "tools/list",
@@ -607,7 +607,7 @@ export const getServer = async (
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
           organizationId: userMcpServerInstance.organizationId ?? undefined,
-        }).catch((logError) => {});
+        });
       }
 
       recordError("tools_list_failure");
@@ -711,7 +711,7 @@ export const getServer = async (
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
-        logMcpRequest({
+        void logMcpRequest({
           userId: userMcpServerInstance?.userId,
           mcpServerInstanceId: userMcpServerInstance.id,
           toolName: name,
@@ -725,8 +725,6 @@ export const getServer = async (
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify(result.result),
-        }).catch((error) => {
-          // ログ記録失敗をログに残すが、リクエスト処理は継続
         });
       }
 
@@ -736,7 +734,9 @@ export const getServer = async (
       if (clientsCleanup) {
         try {
           await clientsCleanup();
-        } catch (cleanupError) {}
+        } catch {
+          // クリーンアップ失敗は無視
+        }
       }
 
       // エラー時のログ記録
@@ -746,7 +746,7 @@ export const getServer = async (
 
       if (userMcpServerInstance && !isValidationMode) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
-        logMcpRequest({
+        void logMcpRequest({
           userId: userMcpServerInstance?.userId,
           mcpServerInstanceId: userMcpServerInstance.id,
           toolName: name,
@@ -757,7 +757,7 @@ export const getServer = async (
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
           organizationId: userMcpServerInstance.organizationId ?? undefined,
-        }).catch((logError) => {});
+        });
       }
 
       recordError(`tool_call_failure_${name}`);
