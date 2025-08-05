@@ -32,7 +32,10 @@ export const convertToMcpAuthInfo = (authData: {
 }): AuthInfo => {
   return {
     token: authData.token,
-    clientId: (authData.payload.sub as string) || "oauth-client",
+    clientId:
+      typeof authData.payload.sub === "string"
+        ? authData.payload.sub
+        : "oauth-client",
     scopes: Array.isArray(authData.payload.scope)
       ? (authData.payload.scope as string[])
       : typeof authData.payload.scope === "string"
