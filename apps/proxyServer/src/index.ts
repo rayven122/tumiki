@@ -46,14 +46,10 @@ const createApp = (): express.Application => {
   app.use(integratedAuthMiddleware());
 
   // 新しいRESTfulエンドポイント（MCPサーバーID指定）
-  app.post("/mcp/:userMcpServerInstanceId", handleMCPRequest);
-  app.get("/mcp/:userMcpServerInstanceId", handleMCPRequest);
-  app.delete("/mcp/:userMcpServerInstanceId", handleMCPRequest);
+  app.all("/mcp/:userMcpServerInstanceId", handleMCPRequest);
 
   // レガシーエンドポイント（後方互換性）
-  app.post("/mcp", handleMCPRequest);
-  app.get("/mcp", handleMCPRequest);
-  app.delete("/mcp", handleMCPRequest);
+  app.all("/mcp", handleMCPRequest);
 
   // 新しいRESTfulエンドポイント（SSE transport）
   app.get("/sse/:userMcpServerInstanceId", establishSSEConnection);
