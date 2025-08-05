@@ -119,7 +119,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **PM2管理**: 本番環境でのプロセス管理と自動復旧
 - **メトリクス収集**: リアルタイムパフォーマンス監視
 
-# 完了条件
+## 完了条件
 
 - `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
 - Vitest を使って実装ロジックのカバレッジを100%にすること
