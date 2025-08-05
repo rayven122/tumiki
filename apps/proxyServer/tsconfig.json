@@ -6,8 +6,7 @@
     "outDir": "./build",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "types": ["bun-types"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "tsup.config.ts"]

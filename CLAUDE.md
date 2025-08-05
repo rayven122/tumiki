@@ -28,12 +28,12 @@ Claude Code がこのリポジトリで作業する際のガイダンスファ�
 
 ### テストコーディング規約
 
-- **フレームワーク**: bun test 使用
+- **フレームワーク**: Vitest 使用
 - **テスト記法**: `test` 使用（`it` ではない）、日本語でテスト名を記載
 - **構造**: 関数ごとに `describe` ブロックを記載、古典派単体テスト
 - **アサーション**: `toStrictEqual` 使用（`toEqual` ではない）
-- **実行**: `bun test`、特定ファイル実行も対応
-- **カバレッジ**: bun test を使って実装ロジックのカバレッジ100%を目標
+- **実行**: `pnpm test`（`vitest run`）、`pnpm test:watch`（`vitest`）でウォッチモード
+- **カバレッジ**: `pnpm test:coverage` でカバレッジ測定、実装ロジックのカバレッジ100%を目標
 
 ## 重要なアーキテクチャパターン
 
@@ -122,7 +122,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 # 完了条件
 
 - `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
-- bun test を使って実装ロジックのカバレッジを100%にすること
+- Vitest を使って実装ロジックのカバレッジを100%にすること
 - 関連ドキュメントの更新完了させること
 - PM2での本番環境デプロイが正常に動作すること
 - MCPサーバーの統合テストが成功すること
