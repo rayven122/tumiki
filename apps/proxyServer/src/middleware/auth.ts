@@ -56,10 +56,6 @@ export const conditionalAuthMiddleware = () => {
         logger.info("OAuth validation successful", {
           path: req.path,
         });
-
-        // req.authを削除して既存の実装に影響を与えない
-        delete req.auth;
-
         next();
       }
     });
