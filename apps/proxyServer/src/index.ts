@@ -1,7 +1,7 @@
 import express from "express";
 import { handleHealthCheck } from "./routes/health/index.js";
 import { handleMCPRequest } from "./routes/mcp/index.js";
-import { handleSSEConnection, handleSSEMessages } from "./routes/sse/index.js";
+import { establishSSEConnection, handleSSEMessage } from "./utils/transport.js";
 import { initializeApplication } from "./libs/startup.js";
 import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
@@ -22,7 +22,7 @@ const createApp = (): express.Application => {
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, mcp-session-id, api-key, x-client-id, Authorization",
+      "Content-Type, mcp-session-id, api-key, x-api-key, x-client-id, Authorization",
     );
     if (req.method === "OPTIONS") {
       res.sendStatus(200);
@@ -38,14 +38,23 @@ const createApp = (): express.Application => {
   // ここ以降のすべてのルートに統合認証ミドルウェアを適用
   app.use(integratedAuthMiddleware());
 
-  // 統合MCPエンドポイント（Streamable HTTP transport）
+  // 新しいRESTfulエンドポイント（MCPサーバーID指定）
+  app.post("/mcp/:userMcpServerInstanceId", handleMCPRequest);
+  app.get("/mcp/:userMcpServerInstanceId", handleMCPRequest);
+  app.delete("/mcp/:userMcpServerInstanceId", handleMCPRequest);
+
+  // レガシーエンドポイント（後方互換性）
   app.post("/mcp", handleMCPRequest);
   app.get("/mcp", handleMCPRequest);
   app.delete("/mcp", handleMCPRequest);
 
-  // SSE transport エンドポイント（後方互換性）
-  app.get("/sse", handleSSEConnection);
-  app.post("/messages", handleSSEMessages);
+  // 新しいRESTfulエンドポイント（SSE transport）
+  app.get("/sse/:userMcpServerInstanceId", establishSSEConnection);
+  app.post("/messages/:userMcpServerInstanceId", handleSSEMessage);
+
+  // レガシーエンドポイント（後方互換性）
+  app.get("/sse", establishSSEConnection);
+  app.post("/messages", handleSSEMessage);
 
   return app;
 };

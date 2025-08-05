@@ -14,7 +14,11 @@ import { db } from "@tumiki/db/tcp";
 import { TransportType } from "@tumiki/db";
 import { validateApiKey } from "../libs/validateApiKey.js";
 
-import type { ServerConfig } from "../libs/types.js";
+import type {
+  ServerConfig,
+  TransportConfig,
+  TransportConfigStdio,
+} from "../libs/types.js";
 import { logger } from "../libs/logger.js";
 import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
@@ -363,6 +367,128 @@ const getServerConfigs = async (apiKey: string) => {
   return serverConfigList;
 };
 
+// MCPサーバーインスタンスIDから設定を取得
+const getServerConfigsByInstanceId = async (
+  userMcpServerInstanceId: string,
+) => {
+  // MCPサーバーインスタンスを取得
+  const serverInstance = await db.userMcpServerInstance.findUnique({
+    where: {
+      id: userMcpServerInstanceId,
+      deletedAt: null,
+    },
+    include: {
+      toolGroup: {
+        include: {
+          toolGroupTools: {
+            include: {
+              tool: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!serverInstance) {
+    throw new Error("Server instance not found");
+  }
+
+  const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
+    ({ userMcpServerConfigId }) => userMcpServerConfigId,
+  );
+
+  const serverConfigs = await db.userMcpServerConfig.findMany({
+    where: {
+      id: {
+        in: serverConfigIds,
+      },
+    },
+    omit: {
+      envVars: false,
+    },
+    include: {
+      mcpServer: true,
+    },
+  });
+
+  const serverConfigList: ServerConfig[] = serverConfigs.map((serverConfig) => {
+    const toolNames = serverInstance.toolGroup.toolGroupTools
+      .filter(
+        ({ userMcpServerConfigId }) =>
+          userMcpServerConfigId === serverConfig.id,
+      )
+      .map(({ tool }) => tool.name);
+
+    let envObj: Record<string, string>;
+    try {
+      envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
+    } catch (error) {
+      logger.error("Failed to parse envVars", {
+        serverConfigId: serverConfig.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      envObj = {};
+    }
+
+    const transportConfig: TransportConfig = {
+      type: "stdio",
+      command: serverConfig.mcpServer.command || "",
+      args: serverConfig.mcpServer.args ?? [],
+      env: {
+        ...process.env,
+        ...envObj,
+      } as Record<string, string>,
+    } as TransportConfigStdio;
+
+    if (
+      transportConfig.type === "stdio" &&
+      transportConfig.args &&
+      transportConfig.args.length > 0
+    ) {
+      transportConfig.args = JSON.parse(
+        JSON.stringify(transportConfig.args),
+      ) as string[];
+    }
+
+    const config: ServerConfig = {
+      name: serverConfig.name,
+      toolNames,
+      transport: transportConfig,
+    };
+
+    return config;
+  });
+
+  return serverConfigList;
+};
+
+// MCPサーバーインスタンスIDからMCPクライアントを取得
+export const getMcpClientsByInstanceId = async (
+  userMcpServerInstanceId: string,
+) => {
+  const serverConfigs = await getServerConfigsByInstanceId(
+    userMcpServerInstanceId,
+  );
+
+  const connectedClients = await createClients(serverConfigs);
+  // デバッグログを削除（メモリ使用量削減）
+
+  const cleanup = async () => {
+    try {
+      // デバッグログを削除（メモリ使用量削減）
+      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
+    } catch (error) {
+      logger.error("Error during cleanup", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  return { connectedClients, cleanup };
+};
+
+// APIキーからMCPクライアントを取得（後方互換性）
 export const getMcpClients = async (apiKey: string) => {
   const serverConfigs = await getServerConfigs(apiKey);
 
@@ -384,7 +510,7 @@ export const getMcpClients = async (apiKey: string) => {
 };
 
 export const getServer = async (
-  apiKey: string,
+  userMcpServerInstanceId: string,
   transportType: TransportType,
   isValidationMode = false,
 ) => {
@@ -415,20 +541,31 @@ export const getServer = async (
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
-    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+    let userMcpServerInstance:
+      | Awaited<ReturnType<typeof db.userMcpServerInstance.findUnique>>
+      | undefined;
 
     try {
-      // API キー検証を先に実行してユーザー情報を取得
-      validation = await validateApiKey(apiKey);
-      if (!validation.valid || !validation.userMcpServerInstance) {
-        throw new Error(`Invalid API key: ${validation.error}`);
+      // MCPサーバーインスタンスを取得
+      userMcpServerInstance = await db.userMcpServerInstance.findUnique({
+        where: {
+          id: userMcpServerInstanceId,
+          deletedAt: null,
+        },
+        include: {
+          user: true,
+        },
+      });
+      if (!userMcpServerInstance) {
+        throw new Error("Server instance not found");
       }
 
       const result = await measureExecutionTime(
         () =>
           Promise.race([
             (async () => {
-              const { connectedClients, cleanup } = await getMcpClients(apiKey);
+              const { connectedClients, cleanup } =
+                await getMcpClientsByInstanceId(userMcpServerInstanceId);
               clientsCleanup = cleanup;
 
               try {
@@ -487,15 +624,15 @@ export const getServer = async (
       const durationMs = Date.now() - startTime;
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
-      if (validation.userMcpServerInstance) {
+      if (userMcpServerInstance) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.tools ?? []);
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
-          userId: validation.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
           method: "tools/list",
@@ -503,8 +640,7 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify({ tools: result.tools }),
@@ -512,7 +648,7 @@ export const getServer = async (
           // ログ記録失敗をログに残すが、リクエスト処理は継続
           logger.error("Failed to log tools/list request", {
             error: error instanceof Error ? error.message : String(error),
-            userId: validation?.userMcpServerInstance?.userId,
+            userId: userMcpServerInstance?.userId,
           });
         });
       }
@@ -539,11 +675,11 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance && !isValidationMode) {
+      if (userMcpServerInstance && !isValidationMode) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
         logMcpRequest({
-          userId: validation?.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
           method: "tools/list",
@@ -551,8 +687,7 @@ export const getServer = async (
           durationMs,
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
         }).catch((logError) => {
           logger.error("Failed to log tools/list error", {
             logError:
@@ -588,20 +723,31 @@ export const getServer = async (
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
-    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+    let userMcpServerInstance:
+      | Awaited<ReturnType<typeof db.userMcpServerInstance.findUnique>>
+      | undefined;
 
     try {
-      // API キー検証を先に実行してユーザー情報を取得
-      validation = await validateApiKey(apiKey);
-      if (!validation.valid || !validation.userMcpServerInstance) {
-        throw new Error(`Invalid API key: ${validation.error}`);
+      // MCPサーバーインスタンスを取得
+      userMcpServerInstance = await db.userMcpServerInstance.findUnique({
+        where: {
+          id: userMcpServerInstanceId,
+          deletedAt: null,
+        },
+        include: {
+          user: true,
+        },
+      });
+      if (!userMcpServerInstance) {
+        throw new Error("Server instance not found");
       }
 
       const result = await measureExecutionTime(
         () =>
           Promise.race([
             (async () => {
-              const { connectedClients, cleanup } = await getMcpClients(apiKey);
+              const { connectedClients, cleanup } =
+                await getMcpClientsByInstanceId(userMcpServerInstanceId);
               clientsCleanup = cleanup;
 
               try {
@@ -656,15 +802,15 @@ export const getServer = async (
       const durationMs = Date.now() - startTime;
 
       // 検証モードでない場合のみログ記録
-      if (validation.userMcpServerInstance && !isValidationMode) {
+      if (userMcpServerInstance && !isValidationMode) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.result ?? {});
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
         logMcpRequest({
-          userId: validation?.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
           method: "tools/call",
@@ -672,8 +818,7 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify(result.result),
@@ -682,7 +827,7 @@ export const getServer = async (
           logger.error("Failed to log tools/call request", {
             error: error instanceof Error ? error.message : String(error),
             toolName: name,
-            userId: validation?.userMcpServerInstance?.userId,
+            userId: userMcpServerInstance?.userId,
           });
         });
       }
@@ -708,11 +853,11 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance && !isValidationMode) {
+      if (userMcpServerInstance && !isValidationMode) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
         logMcpRequest({
-          userId: validation?.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
           method: "tools/call",
@@ -720,8 +865,7 @@ export const getServer = async (
           durationMs,
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
         }).catch((logError) => {
           logger.error("Failed to log tools/call error", {
             logError:
