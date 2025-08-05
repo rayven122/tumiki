@@ -2,7 +2,6 @@ import type { Response } from "express";
 import { handlePOSTRequest } from "./post.js";
 import { handleGETRequest } from "./get.js";
 import { handleDELETERequest } from "./delete.js";
-import { logger } from "../../libs/logger.js";
 import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 
 /**
@@ -22,10 +21,6 @@ export const handleMCPRequest = async (
   const authInfo = req.authInfo;
   if (!authInfo) {
     // このケースは通常発生しないはずだが、念のため
-    logger.error("Authentication info missing in MCP request", {
-      method,
-      path: req.path,
-    });
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -43,16 +38,6 @@ export const handleMCPRequest = async (
     (req.headers["api-key"] as string) ||
     (req.query["api-key"] as string) ||
     undefined;
-
-  logger.info("MCP request received", {
-    method,
-    sessionId,
-    authType: authInfo.type,
-    userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
-    clientId,
-    userAgent: req.headers["user-agent"],
-    pathParams: req.params,
-  });
 
   try {
     switch (method) {
@@ -76,12 +61,6 @@ export const handleMCPRequest = async (
         });
     }
   } catch (error) {
-    logger.error("Error handling MCP request", {
-      method,
-      sessionId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",

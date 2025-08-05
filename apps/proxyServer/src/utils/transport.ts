@@ -18,7 +18,6 @@ import {
   generateSessionId,
   updateSessionActivity,
   canCreateNewSession,
-  recordSessionError,
   type SessionInfo,
 } from "./session.js";
 import { TransportType as PrismaTransportType } from "@tumiki/db";
@@ -255,9 +254,6 @@ export const establishSSEConnection = async (
     });
 
     res.on("error", (_error) => {
-      if (sessionId) {
-        recordSessionError(sessionId);
-      }
       if (!isCleaningUp && session?.cleanup) {
         void session.cleanup();
       }
@@ -277,9 +273,6 @@ export const establishSSEConnection = async (
         res.write(": keepalive\\n\\n");
         updateSessionActivity(sessionId, clientId);
       } catch (error) {
-        if (sessionId) {
-          recordSessionError(sessionId);
-        }
         clearInterval(keepAliveInterval);
         if (!isCleaningUp && session?.cleanup) {
           void session.cleanup();
@@ -353,7 +346,6 @@ export const handleSSEMessage = async (
       "message_handling",
     );
   } catch (error) {
-    recordSessionError(sessionId);
     recordTransportError("sse", "message_handling_failed");
 
     sendErrorResponse(
@@ -385,12 +377,8 @@ export const createStreamableTransport = (
         async () => {
           // Streamable HTTP接続のクリーンアップ
           const connectionInfo = streamableConnections.get(sessionId);
-          if (connectionInfo) {
-            try {
-              // transport固有のクリーンアップ処理があれば実行
-            } catch (error) {}
-            streamableConnections.delete(sessionId);
-          }
+          await connectionInfo?.transport.close();
+          streamableConnections.delete(sessionId);
         },
       );
 

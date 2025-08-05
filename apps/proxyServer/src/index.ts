@@ -3,7 +3,6 @@ import { handleHealthCheck } from "./routes/health/index.js";
 import { handleMCPRequest } from "./routes/mcp/index.js";
 import { establishSSEConnection, handleSSEMessage } from "./utils/transport.js";
 import { initializeApplication } from "./libs/startup.js";
-import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
 import { integratedAuthMiddleware } from "./middleware/integratedAuth.js";
 import {
@@ -71,10 +70,6 @@ const createApp = (): express.Application => {
 const startServer = (): void => {
   // アプリケーション初期化
   initializeApplication();
-
-  // セッションクリーンアップを開始
-  startSessionCleanup();
-  logger.info("Session cleanup started");
 
   // Express アプリケーション作成
   const app = createApp();

@@ -90,69 +90,41 @@ export const logMcpRequest = async (
     }
 
     // データベースアクセスをトランザクションで原子性を保証
-    await db.$transaction(async (tx) => {
-      // 基本ログを作成
-      const requestLog = await tx.mcpServerRequestLog.create({
-        data: {
-          userId: params.userId || null,
-          mcpServerInstanceId: params.mcpServerInstanceId!, // 事前チェック済み
-          toolName: params.toolName,
-          transportType: params.transportType,
-          method: params.method,
-          responseStatus: params.responseStatus,
-          durationMs: params.durationMs,
-          errorMessage: params.errorMessage || null,
-          errorCode: params.errorCode || null,
-          inputBytes: params.inputBytes || null,
-          outputBytes: params.outputBytes || null,
-          organizationId: params.organizationId || null,
-          userAgent: params.userAgent || null,
-        },
-      });
+    // 基本ログと詳細データを一つのクエリで作成
+    await db.mcpServerRequestLog.create({
+      data: {
+        userId: params.userId || null,
+        mcpServerInstanceId: params.mcpServerInstanceId, // 事前チェック済み
+        toolName: params.toolName,
+        transportType: params.transportType,
 
-      // 詳細データがある場合は関連レコードを作成
-      if (compressionResult) {
-        const {
-          inputDataCompressed,
-          outputDataCompressed,
-          originalInputSize,
-          originalOutputSize,
-          compressionRatio,
-        } = compressionResult;
-
-        await tx.mcpServerRequestData.create({
-          data: {
-            requestLogId: requestLog.id,
-            inputDataCompressed,
-            outputDataCompressed,
-            originalInputSize,
-            originalOutputSize,
-            compressedInputSize: inputDataCompressed.length,
-            compressedOutputSize: outputDataCompressed.length,
-            compressionRatio,
-          },
-        });
-      }
+        method: params.method,
+        responseStatus: params.responseStatus,
+        durationMs: params.durationMs,
+        errorMessage: params.errorMessage || null,
+        errorCode: params.errorCode || null,
+        inputBytes: params.inputBytes || null,
+        outputBytes: params.outputBytes || null,
+        organizationId: params.organizationId || null,
+        userAgent: params.userAgent || null,
+        // ネストされたrequestData作成
+        requestData: compressionResult
+          ? {
+              create: {
+                inputDataCompressed: compressionResult.inputDataCompressed,
+                outputDataCompressed: compressionResult.outputDataCompressed,
+                originalInputSize: compressionResult.originalInputSize,
+                originalOutputSize: compressionResult.originalOutputSize,
+                compressedInputSize:
+                  compressionResult.inputDataCompressed.length,
+                compressedOutputSize:
+                  compressionResult.outputDataCompressed.length,
+                compressionRatio: compressionResult.compressionRatio,
+              },
+            }
+          : undefined,
+      },
     });
-
-    // ログ出力（トランザクション成功後）
-    if (compressionResult) {
-      logger.debug("MCP request with detailed data logged successfully", {
-        toolName: sanitizeForLog(params.toolName),
-        responseStatus: params.responseStatus,
-        durationMs: params.durationMs,
-        originalInputSize: compressionResult.originalInputSize,
-        originalOutputSize: compressionResult.originalOutputSize,
-        compressionRatio:
-          Math.round(compressionResult.compressionRatio * 100) / 100,
-      });
-    } else {
-      logger.debug("MCP request logged successfully", {
-        toolName: sanitizeForLog(params.toolName),
-        responseStatus: params.responseStatus,
-        durationMs: params.durationMs,
-      });
-    }
   } catch (error) {
     // ログ記録の失敗はサービス全体を停止させない
     logger.error("Failed to log MCP request", {
