@@ -6,7 +6,7 @@ export default defineProject({
   test: {
     ...browserTestConfig,
     name: "manager",
-    setupFiles: ["./src/tests/setup.tsx"],
+    setupFiles: ["@tumiki/vitest-config/setup"],
   },
   resolve: {
     alias: {
