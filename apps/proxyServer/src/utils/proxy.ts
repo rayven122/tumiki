@@ -112,7 +112,7 @@ const createClient = (
         env: finalEnv,
       });
     }
-  } catch (error) {
+  } catch {
     recordError("transport_creation_failed");
     return { transport: undefined, client: undefined };
   }
@@ -155,7 +155,7 @@ const connectToServer = async (
         },
         toolNames: server.toolNames,
       };
-    } catch (error) {
+    } catch {
       recordError("server_connection_failed");
       count++;
       retry = count < retries;
@@ -164,7 +164,8 @@ const connectToServer = async (
           await client.close();
           // transportも確実にクローズする
           await transport.close();
-        } catch (closeError) {
+        } catch {
+          // クリーンアップ失敗は無視
         } finally {
           // デバッグログを削除（メモリ使用量削減）
           await sleep(waitFor);
@@ -173,7 +174,9 @@ const connectToServer = async (
         // リトライ終了時もtransportをクローズ
         try {
           await transport.close();
-        } catch (closeError) {}
+        } catch {
+          // クリーンアップ失敗は無視
+        }
       }
     }
   }
@@ -256,7 +259,7 @@ const getServerConfigs = async (apiKey: string) => {
     let envObj: Record<string, string>;
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
-    } catch (error) {
+    } catch {
       throw new Error(
         `Invalid environment variables configuration for ${serverConfig.name}`,
       );
@@ -371,7 +374,7 @@ const getServerConfigsByInstanceId = async (
     let envObj: Record<string, string>;
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
-    } catch (error) {
+    } catch {
       envObj = {};
     }
 
@@ -383,7 +386,7 @@ const getServerConfigsByInstanceId = async (
         ...process.env,
         ...envObj,
       } as Record<string, string>,
-    } as TransportConfigStdio;
+    } satisfies TransportConfigStdio;
 
     if (
       transportConfig.type === "stdio" &&
@@ -422,7 +425,9 @@ export const getMcpClientsByInstanceId = async (
     try {
       // デバッグログを削除（メモリ使用量削減）
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch (error) {}
+    } catch {
+      // クリーンアップ失敗は無視
+    }
   };
 
   return { connectedClients, cleanup };
@@ -439,7 +444,9 @@ export const getMcpClients = async (apiKey: string) => {
     try {
       // デバッグログを削除（メモリ使用量削減）
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch (error) {}
+    } catch {
+      // クリーンアップ失敗は無視
+    }
   };
 
   return { connectedClients, cleanup };
@@ -533,7 +540,7 @@ export const getServer = async (
                         });
                       allTools.push(...toolsWithSource);
                     }
-                  } catch (error) {
+                  } catch {
                     recordError("tools_list_client_error");
                   }
                 }
@@ -560,7 +567,7 @@ export const getServer = async (
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
-        logMcpRequest({
+        void logMcpRequest({
           userId: userMcpServerInstance?.userId,
           mcpServerInstanceId: userMcpServerInstance.id,
           toolName: "tools/list",
@@ -574,8 +581,6 @@ export const getServer = async (
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify({ tools: result.tools }),
-        }).catch((error) => {
-          // ログ記録失敗をログに残すが、リクエスト処理は継続
         });
       }
 
@@ -586,7 +591,9 @@ export const getServer = async (
       if (clientsCleanup) {
         try {
           await clientsCleanup();
-        } catch (cleanupError) {}
+        } catch {
+          // クリーンアップ失敗は無視
+        }
       }
 
       // エラー時のログ記録
