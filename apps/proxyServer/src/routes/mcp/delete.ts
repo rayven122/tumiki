@@ -1,6 +1,7 @@
 import { type Request, type Response } from "express";
 import { getStreamableTransportBySessionId } from "../../utils/transport.js";
 import { logger } from "../../libs/logger.js";
+import { toMcpRequest } from "../../utils/mcpAdapter.js";
 
 /**
  * DELETE リクエスト処理 - セッション終了
@@ -37,7 +38,7 @@ export const handleDELETERequest = async (
 
   try {
     // セッション終了処理をtransportに委譲
-    await transport.handleRequest(req, res);
+    await transport.handleRequest(toMcpRequest(req), res);
 
     logger.info("Session terminated", { sessionId });
   } catch (error) {

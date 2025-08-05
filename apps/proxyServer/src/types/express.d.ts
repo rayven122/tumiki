@@ -1,7 +1,9 @@
-import type { VerifyJwtResult } from "express-oauth2-jwt-bearer";
+import { type AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
-declare module "express-serve-static-core" {
-  interface Request {
-    auth?: VerifyJwtResult;
+declare global {
+  namespace Express {
+    interface Request {
+      auth?: AuthInfo;
+    }
   }
 }
