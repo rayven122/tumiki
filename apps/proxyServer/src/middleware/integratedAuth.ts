@@ -2,6 +2,7 @@ import { type Request, type Response, type NextFunction } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
 import { validateApiKey } from "../libs/validateApiKey.js";
 import { logger } from "../libs/logger.js";
+import { db } from "@tumiki/db/tcp";
 import type { AuthType } from "@tumiki/db";
 
 /**
@@ -66,8 +67,44 @@ const getAuthErrorMessage = (authType: AuthType): string => {
 };
 
 /**
+ * MCPサーバーインスタンスの情報を取得
+ */
+const getMcpServerInstance = async (mcpServerInstanceId: string) => {
+  try {
+    const instance = await db.userMcpServerInstance.findUnique({
+      where: {
+        id: mcpServerInstanceId,
+        deletedAt: null,
+      },
+      include: {
+        user: true,
+        organization: true,
+      },
+    });
+    return instance;
+  } catch (error) {
+    logger.error("Failed to fetch MCP server instance", {
+      mcpServerInstanceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+};
+
+/**
+ * APIキーからMCPサーバーインスタンスIDを取得（後方互換用）
+ */
+const getMcpServerInstanceIdFromApiKey = async (apiKey: string) => {
+  const validation = await validateApiKey(apiKey);
+  if (validation.valid && validation.userMcpServerInstance) {
+    return validation.userMcpServerInstance.id;
+  }
+  return null;
+};
+
+/**
  * 統合認証ミドルウェア
- * APIキー認証とJWT認証を統合し、authTypeに基づいて適切な認証方式を選択
+ * URLパスまたはAPIキーからMCPサーバーを識別し、authTypeに基づいて適切な認証方式を選択
  */
 export const integratedAuthMiddleware = () => {
   return async (
@@ -75,244 +112,232 @@ export const integratedAuthMiddleware = () => {
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
+    // APIキーの取得（新しいX-API-Keyヘッダーを優先）
     const apiKey: string | undefined =
-      (req.query["api-key"] as string) ||
+      (req.headers["x-api-key"] as string) ||
       (req.headers["api-key"] as string) ||
+      (req.query["api-key"] as string) ||
       undefined;
 
     const authHeader = req.headers.authorization;
     const hasBearerToken = authHeader?.startsWith("Bearer ");
 
-    logger.info("Integrated auth middleware processing", {
-      path: req.path,
-      method: req.method,
-      hasApiKey: !!apiKey,
-      hasBearerToken,
-      clientId: req.headers["x-client-id"] || req.ip,
-    });
+    // URLパスからMCPサーバーインスタンスIDを取得
+    let mcpServerInstanceId = req.params.userMcpServerInstanceId;
 
-    // APIキーが提供されている場合
-    if (apiKey) {
-      const validation = await validateApiKey(apiKey);
-
-      if (!validation.valid || !validation.userMcpServerInstance) {
-        logger.error("API key validation failed", {
+    // レガシーエンドポイントの場合、APIキーからMCPサーバーインスタンスIDを取得
+    if (!mcpServerInstanceId && apiKey) {
+      mcpServerInstanceId =
+        (await getMcpServerInstanceIdFromApiKey(apiKey)) || undefined;
+      if (!mcpServerInstanceId) {
+        logger.error("Failed to get MCP server instance ID from API key", {
           path: req.path,
-          error: validation.error,
         });
-
         res.status(401).json({
           jsonrpc: "2.0",
           error: {
             code: -32000,
-            message: `Unauthorized: ${validation.error || "Invalid API key"}`,
+            message: "Invalid API key",
           },
           id: null,
         });
         return;
       }
-
-      const authType = validation.userMcpServerInstance.authType;
-
-      logger.info("API key validated, checking authType", {
-        authType,
-        userMcpServerInstanceId: validation.userMcpServerInstance.id,
-      });
-
-      // authTypeに基づく認証チェック
-      switch (authType) {
-        case "NONE":
-          // 認証不要
-          req.authInfo = {
-            type: "api_key",
-            userId: validation.apiKey?.userId,
-            userMcpServerInstanceId: validation.userMcpServerInstance.id,
-            organizationId:
-              validation.userMcpServerInstance.organizationId ?? undefined,
-          };
-          return next();
-
-        case "API_KEY":
-          // APIキーのみ（既に検証済み）
-          req.authInfo = {
-            type: "api_key",
-            userId: validation.apiKey?.userId,
-            userMcpServerInstanceId: validation.userMcpServerInstance.id,
-            organizationId:
-              validation.userMcpServerInstance.organizationId ?? undefined,
-          };
-          return next();
-
-        case "OAUTH":
-          // OAuthのみ - Bearer tokenが必須
-          if (!hasBearerToken) {
-            logger.error("OAuth required but no Bearer token provided", {
-              path: req.path,
-              userMcpServerInstanceId: validation.userMcpServerInstance.id,
-            });
-
-            res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
-            res.status(401).json({
-              jsonrpc: "2.0",
-              error: {
-                code: -32000,
-                message: getAuthErrorMessage(authType),
-              },
-              id: null,
-            });
-            return;
-          }
-
-          // JWT検証を実行
-          jwtCheck(req, res, (err?: unknown) => {
-            if (err) {
-              logger.error("OAuth validation failed", {
-                path: req.path,
-                error:
-                  err instanceof Error ? err.message : "JWT validation failed",
-              });
-
-              if (!res.headersSent) {
-                res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
-                res.status(401).json({
-                  jsonrpc: "2.0",
-                  error: {
-                    code: -32000,
-                    message: "Unauthorized: Invalid or missing OAuth token",
-                  },
-                  id: null,
-                });
-              }
-            } else {
-              // OAuth認証成功
-              // この時点でvalidation.userMcpServerInstanceは必ず存在する（141行目でチェック済み）
-              req.authInfo = {
-                type: "oauth",
-                userId: validation.apiKey?.userId,
-                userMcpServerInstanceId: validation.userMcpServerInstance!.id,
-                organizationId:
-                  validation.userMcpServerInstance!.organizationId ?? undefined,
-                // req.authからOAuth情報を取得（express-oauth2-jwt-bearerが設定）
-                sub: (req as Request & { auth?: JWTAuth }).auth?.payload?.sub,
-                scope: (req as Request & { auth?: JWTAuth }).auth?.payload
-                  ?.scope,
-                permissions: (req as Request & { auth?: JWTAuth }).auth?.payload
-                  ?.permissions,
-              };
-              next();
-            }
-          });
-          return;
-
-        case "BOTH":
-          // APIキーまたはOAuth
-          if (hasBearerToken) {
-            // Bearer tokenがある場合はJWT検証も実行
-            jwtCheck(req, res, (err?: unknown) => {
-              if (err) {
-                logger.warn(
-                  "OAuth validation failed, falling back to API key",
-                  {
-                    path: req.path,
-                    error:
-                      err instanceof Error
-                        ? err.message
-                        : "JWT validation failed",
-                  },
-                );
-
-                // JWT検証失敗してもAPIキーが有効なので続行
-                req.authInfo = {
-                  type: "api_key",
-                  userId: validation.apiKey?.userId,
-                  userMcpServerInstanceId: validation.userMcpServerInstance!.id,
-                  organizationId:
-                    validation.userMcpServerInstance!.organizationId ??
-                    undefined,
-                };
-                next();
-              } else {
-                // OAuth認証成功
-                req.authInfo = {
-                  type: "oauth",
-                  userId: validation.apiKey?.userId,
-                  userMcpServerInstanceId: validation.userMcpServerInstance!.id,
-                  organizationId:
-                    validation.userMcpServerInstance!.organizationId ??
-                    undefined,
-                  sub: (req as Request & { auth?: JWTAuth }).auth?.payload?.sub,
-                  scope: (req as Request & { auth?: JWTAuth }).auth?.payload
-                    ?.scope,
-                  permissions: (req as Request & { auth?: JWTAuth }).auth
-                    ?.payload?.permissions,
-                };
-                next();
-              }
-            });
-            return;
-          }
-
-          // APIキーで既に認証済み
-          req.authInfo = {
-            type: "api_key",
-            userId: validation.apiKey?.userId,
-            userMcpServerInstanceId: validation.userMcpServerInstance.id,
-            organizationId:
-              validation.userMcpServerInstance.organizationId ?? undefined,
-          };
-          return next();
-
-        default:
-          // 未知のauthType
-          logger.error("Unknown authType", {
-            authType,
-            userMcpServerInstanceId: validation.userMcpServerInstance.id,
-          });
-
-          res.status(500).json({
-            jsonrpc: "2.0",
-            error: {
-              code: -32603,
-              message: "Internal error: Invalid authentication configuration",
-            },
-            id: null,
-          });
-          return;
-      }
     }
 
-    // APIキーがない場合はBearer tokenをチェック
-    if (hasBearerToken) {
-      logger.info("No API key provided, checking Bearer token", {
+    // MCPサーバーインスタンスIDが取得できない場合
+    if (!mcpServerInstanceId) {
+      logger.error("No MCP server instance ID provided", {
         path: req.path,
+        method: req.method,
       });
-
-      // TODO: Bearer tokenからMCPサーバー情報を取得する実装
-      // 現在は未実装のため、Bearer tokenのみでの認証はエラーとする
-      res.status(401).json({
+      res.status(400).json({
         jsonrpc: "2.0",
         error: {
           code: -32000,
-          message:
-            "API key required. Bearer token only authentication not yet implemented",
+          message: "MCP server instance ID required",
         },
         id: null,
       });
       return;
     }
 
-    // 認証情報なし
-    logger.error("No authentication credentials provided", {
+    logger.info("Integrated auth middleware processing", {
       path: req.path,
+      method: req.method,
+      mcpServerInstanceId,
+      hasApiKey: !!apiKey,
+      hasBearerToken,
+      clientId: req.headers["x-client-id"] || req.ip,
     });
 
-    res.status(401).json({
-      jsonrpc: "2.0",
-      error: {
-        code: -32000,
-        message: "Unauthorized: Missing authentication credentials",
-      },
-      id: null,
-    });
+    // MCPサーバーインスタンスの情報を取得
+    const mcpServerInstance = await getMcpServerInstance(mcpServerInstanceId);
+    if (!mcpServerInstance) {
+      logger.error("MCP server instance not found", {
+        mcpServerInstanceId,
+      });
+      res.status(404).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "MCP server instance not found",
+        },
+        id: null,
+      });
+      return;
+    }
+
+    const authType = mcpServerInstance.authType;
+
+    // authTypeに基づく認証チェック
+    switch (authType) {
+      case "NONE":
+        // 認証不要
+        req.authInfo = {
+          type: "api_key",
+          userId: mcpServerInstance.userId,
+          userMcpServerInstanceId: mcpServerInstance.id,
+          organizationId: mcpServerInstance.organizationId ?? undefined,
+        };
+        return next();
+
+      case "API_KEY":
+        // APIキー認証が必須
+        if (!apiKey) {
+          logger.error("API key required but not provided", {
+            path: req.path,
+            mcpServerInstanceId,
+          });
+          res.status(401).json({
+            jsonrpc: "2.0",
+            error: {
+              code: -32000,
+              message: getAuthErrorMessage(authType),
+            },
+            id: null,
+          });
+          return;
+        }
+
+        // APIキーの検証
+        const apiKeyValidation = await validateApiKey(apiKey);
+        if (
+          !apiKeyValidation.valid ||
+          !apiKeyValidation.userMcpServerInstance
+        ) {
+          logger.error("API key validation failed", {
+            path: req.path,
+            error: apiKeyValidation.error,
+          });
+          res.status(401).json({
+            jsonrpc: "2.0",
+            error: {
+              code: -32000,
+              message: `Unauthorized: ${apiKeyValidation.error || "Invalid API key"}`,
+            },
+            id: null,
+          });
+          return;
+        }
+
+        // APIキーが正しいMCPサーバーインスタンスに紐付いているか確認
+        if (apiKeyValidation.userMcpServerInstance.id !== mcpServerInstanceId) {
+          logger.error("API key does not match MCP server instance", {
+            apiKeyInstanceId: apiKeyValidation.userMcpServerInstance.id,
+            requestedInstanceId: mcpServerInstanceId,
+          });
+          res.status(401).json({
+            jsonrpc: "2.0",
+            error: {
+              code: -32000,
+              message: "API key does not match the requested MCP server",
+            },
+            id: null,
+          });
+          return;
+        }
+
+        req.authInfo = {
+          type: "api_key",
+          userId: apiKeyValidation.apiKey?.userId,
+          userMcpServerInstanceId: mcpServerInstance.id,
+          organizationId: mcpServerInstance.organizationId ?? undefined,
+        };
+        return next();
+
+      case "OAUTH":
+        // OAuth認証が必須
+        if (!hasBearerToken) {
+          logger.error("OAuth required but no Bearer token provided", {
+            path: req.path,
+            mcpServerInstanceId,
+          });
+          res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
+          res.status(401).json({
+            jsonrpc: "2.0",
+            error: {
+              code: -32000,
+              message: getAuthErrorMessage(authType),
+            },
+            id: null,
+          });
+          return;
+        }
+
+        // JWT検証を実行
+        jwtCheck(req, res, (err?: unknown) => {
+          if (err) {
+            logger.error("OAuth validation failed", {
+              path: req.path,
+              error:
+                err instanceof Error ? err.message : "JWT validation failed",
+            });
+
+            if (!res.headersSent) {
+              res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
+              res.status(401).json({
+                jsonrpc: "2.0",
+                error: {
+                  code: -32000,
+                  message: "Unauthorized: Invalid or missing OAuth token",
+                },
+                id: null,
+              });
+            }
+          } else {
+            // OAuth認証成功
+            req.authInfo = {
+              type: "oauth",
+              userId: mcpServerInstance.userId,
+              userMcpServerInstanceId: mcpServerInstance.id,
+              organizationId: mcpServerInstance.organizationId ?? undefined,
+              // req.authからOAuth情報を取得（express-oauth2-jwt-bearerが設定）
+              sub: (req as Request & { auth?: JWTAuth }).auth?.payload?.sub,
+              scope: (req as Request & { auth?: JWTAuth }).auth?.payload?.scope,
+              permissions: (req as Request & { auth?: JWTAuth }).auth?.payload
+                ?.permissions,
+            };
+            next();
+          }
+        });
+        return next();
+
+      default:
+        // 未知のauthType
+        logger.error("Unknown authType", {
+          authType,
+          mcpServerInstanceId,
+        });
+        res.status(500).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32603,
+            message: "Internal error: Invalid authentication configuration",
+          },
+          id: null,
+        });
+        return;
+    }
   };
 };

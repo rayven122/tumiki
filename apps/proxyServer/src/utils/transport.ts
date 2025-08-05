@@ -1,11 +1,12 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { type SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { SSEServerTransport as SSEServerTransportClass } from "@modelcontextprotocol/sdk/server/sse.js";
-import { type Request, type Response } from "express";
+import { type Response } from "express";
 import { toMcpRequest } from "./mcpAdapter.js";
 import { logger } from "../libs/logger.js";
 import { messageQueuePool } from "../libs/utils.js";
 import { getServer } from "./proxy.js";
+import type { AuthenticatedRequest } from "../middleware/integratedAuth.js";
 import {
   measureTransportExecutionTime,
   recordTransportError,
@@ -94,13 +95,26 @@ const sendErrorResponse = (
  * SSE接続の確立
  */
 export const establishSSEConnection = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
-  // request header から apiKeyId を取得
-  const apiKeyId = (req.query["api-key"] ?? req.headers["api-key"]) as
-    | string
-    | undefined;
+  // 認証情報は統合認証ミドルウェアから取得
+  const authInfo = req.authInfo;
+  if (!authInfo) {
+    logger.error("Authentication info missing in SSE request", {
+      path: req.path,
+      method: req.method,
+    });
+    sendErrorResponse(
+      res,
+      401,
+      "Unauthorized: Authentication required",
+      "AUTHENTICATION_REQUIRED",
+      "Authentication information is missing",
+    );
+    return;
+  }
+
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
@@ -108,21 +122,11 @@ export const establishSSEConnection = async (
   const isValidationMode = req.headers["x-validation-mode"] === "true";
 
   logger.info("SSE connection request received", {
-    apiKeyId: apiKeyId ? "***" : undefined,
+    authType: authInfo.type,
+    userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
     clientId,
     userAgent: req.headers["user-agent"],
   });
-
-  if (!apiKeyId) {
-    sendErrorResponse(
-      res,
-      401,
-      "Unauthorized: Missing API key",
-      "MISSING_API_KEY",
-      "API key must be provided via query parameter or header",
-    );
-    return;
-  }
 
   if (!canCreateNewSession()) {
     sendErrorResponse(
@@ -208,7 +212,7 @@ export const establishSSEConnection = async (
       session = createSessionWithId(
         sessionId,
         TransportType.SSE,
-        apiKeyId,
+        authInfo.userMcpServerInstanceId || "",
         clientId,
         async () => {
           // 既にクリーンアップ中の場合は処理をスキップ
@@ -270,7 +274,7 @@ export const establishSSEConnection = async (
     let server;
     try {
       const serverResult = await getServer(
-        apiKeyId,
+        authInfo.userMcpServerInstanceId || "",
         PrismaTransportType.SSE,
         isValidationMode,
       );
@@ -343,14 +347,16 @@ export const establishSSEConnection = async (
 
     logger.info("SSE connection established", {
       sessionId,
-      apiKeyId: "***",
+      userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
+      authType: authInfo.type,
       clientId,
     });
   } catch (error) {
     logger.error("Error establishing SSE connection", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      apiKeyId: "***",
+      userMcpServerInstanceId: authInfo?.userMcpServerInstanceId,
+      authType: authInfo?.type,
       clientId,
     });
 
@@ -368,10 +374,13 @@ export const establishSSEConnection = async (
  * SSEメッセージ処理
  */
 export const handleSSEMessage = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
-  logger.info("SSE message received");
+  logger.info("SSE message received", {
+    authType: req.authInfo?.type,
+    userMcpServerInstanceId: req.authInfo?.userMcpServerInstanceId,
+  });
 
   // Extract session ID from URL query parameter
   const sessionId = req.query.sessionId as string | undefined;
@@ -444,7 +453,7 @@ export const handleSSEMessage = async (
  * 新しいStreamableHTTPServerTransportを作成
  */
 export const createStreamableTransport = (
-  apiKeyId: string,
+  userMcpServerInstanceId: string,
   clientId = "unknown",
 ): StreamableHTTPServerTransport => {
   const transport = new StreamableHTTPServerTransport({
@@ -452,7 +461,7 @@ export const createStreamableTransport = (
     onsessioninitialized: (sessionId: string) => {
       logger.info("StreamableHTTP session initialized", {
         sessionId,
-        apiKeyId: "***",
+        userMcpServerInstanceId,
         clientId,
       });
 
@@ -460,7 +469,7 @@ export const createStreamableTransport = (
       createSessionWithId(
         sessionId,
         TransportType.STREAMABLE_HTTP,
-        apiKeyId,
+        userMcpServerInstanceId,
         clientId,
         async () => {
           // Streamable HTTP接続のクリーンアップ

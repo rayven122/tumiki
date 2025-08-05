@@ -39,8 +39,9 @@ export const handleMCPRequest = async (
 
   // 後方互換性のため、APIキーを取得（proxy.tsがまだ使用している）
   const apiKey: string | undefined =
-    (req.query["api-key"] as string) ||
+    (req.headers["x-api-key"] as string) ||
     (req.headers["api-key"] as string) ||
+    (req.query["api-key"] as string) ||
     undefined;
 
   logger.info("MCP request received", {
@@ -50,6 +51,7 @@ export const handleMCPRequest = async (
     userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
     clientId,
     userAgent: req.headers["user-agent"],
+    pathParams: req.params,
   });
 
   try {
