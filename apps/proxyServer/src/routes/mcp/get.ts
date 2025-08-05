@@ -56,7 +56,7 @@ export const handleGETRequest = async (
   // SSE ストリームとして処理
   try {
     await transport.handleRequest(toMcpRequest(req), res);
-  } catch (error) {
+  } catch {
     if (!res.headersSent) {
       res.status(500).send("SSE stream error");
     }

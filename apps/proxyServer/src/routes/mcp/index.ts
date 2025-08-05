@@ -60,7 +60,7 @@ export const handleMCPRequest = async (
           id: null,
         });
     }
-  } catch (error) {
+  } catch {
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",

@@ -149,9 +149,13 @@ export const establishSSEConnection = async (
         try {
           transport.onclose = undefined;
           await transport.close();
-        } catch (closeError) {}
+        } catch {
+          // クリーンアップ失敗は無視
+        }
       }
-    } catch (rollbackError) {}
+    } catch {
+      // ロールバック失敗は無視
+    }
   };
 
   try {
@@ -200,7 +204,9 @@ export const establishSSEConnection = async (
                 // oncloseイベントハンドラーを無効化
                 connectionInfo.transport.onclose = undefined;
                 await connectionInfo.transport.close();
-              } catch (error) {}
+              } catch {
+                // クリーンアップ失敗は無視
+              }
             }
           } finally {
             isCleaningUp = false;
@@ -272,7 +278,7 @@ export const establishSSEConnection = async (
       try {
         res.write(": keepalive\\n\\n");
         updateSessionActivity(sessionId, clientId);
-      } catch (error) {
+      } catch {
         clearInterval(keepAliveInterval);
         if (!isCleaningUp && session?.cleanup) {
           void session.cleanup();

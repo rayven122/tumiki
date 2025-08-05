@@ -87,7 +87,7 @@ export const handlePOSTRequest = async (
         isValidationMode,
       );
       await server.connect(transport);
-    } catch (error) {
+    } catch {
       res.status(500).json({
         jsonrpc: "2.0",
         error: {
@@ -118,7 +118,7 @@ export const handlePOSTRequest = async (
 
     await transport.handleRequest(toMcpRequest(req), res, requestBody);
     success = true;
-  } catch (error) {
+  } catch {
     if (!res.headersSent) {
       const errorResponse = {
         jsonrpc: "2.0",
