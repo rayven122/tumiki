@@ -1,5 +1,7 @@
 /** @type {import("next").NextConfig} */
 const config = {
+  // React Strict Mode を無効化
+  reactStrictMode: false,
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
   compress: true,
   images: {
@@ -27,6 +29,11 @@ const config = {
       {
         protocol: "https",
         hostname: "avatar.vercel.sh",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.microcms-assets.io",
         pathname: "/**",
       },
     ],

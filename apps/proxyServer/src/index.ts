@@ -5,6 +5,7 @@ import { handleSSEConnection, handleSSEMessages } from "./routes/sse/index.js";
 import { initializeApplication } from "./libs/startup.js";
 import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
+import { conditionalAuthMiddleware } from "./middleware/auth.js";
 
 /**
  * Express アプリケーションを設定
@@ -33,6 +34,9 @@ const createApp = (): express.Application => {
   // ルート設定
   app.get("/", handleHealthCheck);
   app.get("/health", handleHealthCheck);
+
+  // ここ以降のすべてのルートに条件付きOAuth認証ミドルウェアを適用
+  app.use(conditionalAuthMiddleware());
 
   // 統合MCPエンドポイント（Streamable HTTP transport）
   app.post("/mcp", handleMCPRequest);

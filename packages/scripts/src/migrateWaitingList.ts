@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 import { resolve } from "path";
 
 import type { Prisma } from "@tumiki/db";
-import { db } from "@tumiki/db";
+import { db } from "@tumiki/db/server";
 
 interface WaitingListData {
   id?: string;
@@ -65,7 +65,9 @@ export async function migrateWaitingList(options: MigrationOptions) {
     const existingEmails = await db.waitingList.findMany({
       select: { email: true },
     });
-    const existingEmailSet = new Set(existingEmails.map((e) => e.email));
+    const existingEmailSet = new Set(
+      existingEmails.map((e: { email: string }) => e.email),
+    );
 
     // データを変換
     const dataToInsert: Prisma.WaitingListCreateManyInput[] = [];

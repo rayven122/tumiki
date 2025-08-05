@@ -3,7 +3,7 @@ import type { ProtectedContext } from "../../trpc";
 
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import type { AddOfficialServerInput } from ".";
-import { generateApiKey } from "../mcpApiKey";
+import { generateApiKey } from "@/utils/server";
 
 type AddOfficialServerInput = {
   ctx: ProtectedContext;
@@ -28,21 +28,15 @@ export const addOfficialServer = async ({
   const isEnvVarsMatch = envVars.every((envVar) =>
     mcpServer.envVars.includes(envVar),
   );
-  if (!isEnvVarsMatch) {
+  if (!isEnvVarsMatch && !input.isPending) {
     throw new Error("MCPサーバーの環境変数が一致しません");
   }
-
-  // TODO: ncc による　readfile が解決されるまでコメントアウト
-  // const tools = await getMcpServerTools(mcpServer, input.envVars);
-  // if (tools.length === 0) {
-  //   throw new Error("正しい環境変数が設定されていません");
-  // }
 
   const data = await ctx.db.$transaction(async (tx) => {
     const serverConfig = await tx.userMcpServerConfig.create({
       data: {
         userId: ctx.session.user.id,
-        name: mcpServer.name,
+        name: input.name ?? mcpServer.name,
         description: "",
         mcpServerId: input.mcpServerId,
         envVars: JSON.stringify(input.envVars),
@@ -58,7 +52,7 @@ export const addOfficialServer = async ({
     const toolGroup = await tx.userToolGroup.create({
       data: {
         userId: ctx.session.user.id,
-        name: mcpServer.name,
+        name: input.name ?? mcpServer.name,
         description: "",
         toolGroupTools: {
           createMany: {
@@ -68,30 +62,43 @@ export const addOfficialServer = async ({
       },
     });
 
-    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
-    // api key を作成
-    const fullKey = generateApiKey();
+    // OAuth認証待ちの場合はAPIキーを生成しない
+    const fullKey = input.isPending ? undefined : generateApiKey();
 
     const data = await tx.userMcpServerInstance.create({
       data: {
         userId: ctx.session.user.id,
-        name: mcpServer.name,
+        name: input.name ?? mcpServer.name,
         description: "",
-        serverStatus: ServerStatus.RUNNING,
+        // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
+        serverStatus: input.isPending
+          ? ServerStatus.PENDING
+          : ServerStatus.RUNNING,
         serverType: ServerType.OFFICIAL,
         toolGroupId: toolGroup.id,
-        apiKeys: {
-          create: {
-            name: `${mcpServer.name} API Key`,
-            apiKey: fullKey,
-            userId: ctx.session.user.id,
-          },
-        },
+        apiKeys:
+          input.isPending || !fullKey
+            ? undefined
+            : {
+                create: {
+                  name: `${input.name ?? mcpServer.name} API Key`,
+                  apiKey: fullKey,
+                  userId: ctx.session.user.id,
+                },
+              },
       },
     });
 
-    return data;
+    return {
+      instance: data,
+      configId: serverConfig.id,
+      toolGroupId: toolGroup.id,
+    };
   });
 
-  return data;
+  return {
+    id: data.instance.id,
+    userMcpServerConfigId: data.configId,
+    toolGroupId: data.toolGroupId,
+  };
 };

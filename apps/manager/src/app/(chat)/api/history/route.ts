@@ -1,4 +1,4 @@
-import { auth } from "@tumiki/auth";
+import { auth } from "@tumiki/auth/server";
 import type { NextRequest } from "next/server";
 import { getChatsByUserId } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";

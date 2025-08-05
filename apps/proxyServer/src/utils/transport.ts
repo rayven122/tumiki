@@ -2,6 +2,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { type SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { SSEServerTransport as SSEServerTransportClass } from "@modelcontextprotocol/sdk/server/sse.js";
 import { type Request, type Response } from "express";
+import { toMcpRequest } from "./mcpAdapter.js";
 import { logger } from "../libs/logger.js";
 import { messageQueuePool } from "../libs/utils.js";
 import { getServer } from "./proxy.js";
@@ -20,7 +21,7 @@ import {
   recordSessionError,
   type SessionInfo,
 } from "./session.js";
-import { TransportType as PrismaTransportType } from "@tumiki/db/prisma";
+import { TransportType as PrismaTransportType } from "@tumiki/db";
 
 // Transport types
 export enum TransportImplementation {
@@ -102,6 +103,9 @@ export const establishSSEConnection = async (
     | undefined;
   const clientId =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
+
+  // 検証モードの判定
+  const isValidationMode = req.headers["x-validation-mode"] === "true";
 
   logger.info("SSE connection request received", {
     apiKeyId: apiKeyId ? "***" : undefined,
@@ -265,7 +269,11 @@ export const establishSSEConnection = async (
     // MCPサーバーとの接続確立
     let server;
     try {
-      const serverResult = await getServer(apiKeyId, PrismaTransportType.SSE);
+      const serverResult = await getServer(
+        apiKeyId,
+        PrismaTransportType.SSE,
+        isValidationMode,
+      );
       server = serverResult.server;
       await server.connect(transport);
     } catch (serverError) {
@@ -405,7 +413,11 @@ export const handleSSEMessage = async (
         updateSessionActivity(sessionId);
 
         // Handle the POST message with the transport
-        await connectionInfo.transport.handlePostMessage(req, res, req.body);
+        await connectionInfo.transport.handlePostMessage(
+          toMcpRequest(req),
+          res,
+          req.body,
+        );
       },
       "sse",
       "message_handling",

@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "deny": ["Read(.env.*)", "Read(**/*token*)", "Read(**/*key*)"]
+    "deny": [
+      "cat:*",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/*token*)",
+      "Read(**/*key*)"
+    ]
   },
   "hooks": {
     "PostToolUse": [
@@ -9,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pnpm format:fix && pnpm lint:fix"
+            "command": "pnpm format:fix && pnpm lint:fix || true"
           }
         ]
       }

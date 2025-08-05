@@ -22,10 +22,10 @@ export const fetcher = async <T>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-export async function fetchWithErrorHandlers(
+export const fetchWithErrorHandlers = async function (
   input: RequestInfo | URL,
   init?: RequestInit,
-) {
+): Promise<Response> {
   try {
     const response = await fetch(input, init);
 
@@ -45,7 +45,7 @@ export async function fetchWithErrorHandlers(
 
     throw error;
   }
-}
+};
 
 export function generateCUID(): string {
   // NOTE: Change to cuid v1

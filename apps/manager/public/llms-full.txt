@@ -1,0 +1,286 @@
+# Tumiki - AI-Powered Engineering Platform - Full Documentation
+
+## 会社情報
+
+**会社名**: Tumiki株式会社
+**設立**: 2024年
+**所在地**: 日本
+**ミッション**: AIとMCPテクノロジーを活用して、エンジニアリングの生産性を革新的に向上させる
+
+## プラットフォーム詳細
+
+### 概要
+
+Tumikiは、Model Context Protocol (MCP)を中心に構築された次世代のAIエンジニアリングプラットフォームです。開発者がAIエージェントと協力して、複雑なエンジニアリングタスクを効率的に実行できる環境を提供します。
+
+### コアコンセプト
+
+1. **MCP (Model Context Protocol)**
+   - Anthropic社が開発したオープンプロトコル
+   - AIモデルと外部ツールの標準的な通信方法を定義
+   - セキュアで効率的なデータ交換を実現
+
+2. **AIエージェント統合**
+   - Claude (Anthropic)
+   - GPT-4 (OpenAI)
+   - Gemini (Google)
+   - その他のLLMモデル対応
+
+3. **マルチテナントアーキテクチャ**
+   - 組織単位での管理
+   - ロールベースアクセス制御
+   - データ分離とセキュリティ
+
+## 機能詳細
+
+### MCPサーバー管理
+
+**定義済みMCPサーバー**
+- GitHub MCP Server
+  - リポジトリ管理
+  - PR/Issue操作
+  - コードレビュー自動化
+  - ブランチ管理
+
+- Slack MCP Server
+  - チャンネル管理
+  - メッセージ送受信
+  - ファイル共有
+  - ワークフロー統合
+
+- Notion MCP Server
+  - ページ作成/編集
+  - データベース操作
+  - ナレッジベース構築
+  - AIによる自動文書化
+
+- Linear MCP Server
+  - Issue作成/更新
+  - プロジェクト管理
+  - スプリント計画
+  - 進捗トラッキング
+
+- Google Drive MCP Server
+  - ファイル操作
+  - フォルダ管理
+  - 権限管理
+  - コンテンツ検索
+
+**カスタムMCPサーバー**
+- 独自のMCPサーバー作成
+- TypeScript/JavaScript SDK提供
+- デプロイメント支援
+- バージョン管理
+
+### AIチャット機能
+
+**対話型開発**
+- 自然言語でのコード生成
+- リアルタイムデバッグ支援
+- コードレビュー
+- リファクタリング提案
+
+**コンテキスト管理**
+- プロジェクト全体の理解
+- 履歴保持
+- カスタムプロンプト
+- テンプレート機能
+
+### セキュリティ機能
+
+**認証・認可**
+- Auth0統合
+- SSO対応
+- MFA (多要素認証)
+- JWTベースセッション管理
+
+**データ保護**
+- フィールドレベル暗号化
+- APIキー管理
+- 監査ログ
+- GDPR/CCPA準拠
+
+### 組織管理
+
+**チーム機能**
+- メンバー招待/管理
+- ロール定義
+- 権限設定
+- 利用状況分析
+
+**課金・プラン**
+- フリープラン
+- プロプラン
+- エンタープライズプラン
+- 従量課金オプション
+
+## 技術仕様
+
+### アーキテクチャ
+
+**フロントエンド**
+```
+- Framework: Next.js 15.3.4
+- UI Library: React 19
+- Language: TypeScript 5.8.3
+- Styling: Tailwind CSS 3.4.1
+- State Management: Jotai
+- API Client: tRPC
+```
+
+**バックエンド**
+```
+- Runtime: Node.js 22.14.0
+- API: tRPC with Next.js API Routes
+- Database: PostgreSQL (Neon)
+- ORM: Prisma 6.10.1
+- Encryption: Prisma Field Encryption
+```
+
+**インフラストラクチャ**
+```
+- Hosting: Vercel
+- Database: Neon (Serverless PostgreSQL)
+- CDN: Vercel Edge Network
+- Monitoring: OpenTelemetry
+- Process Management: PM2
+```
+
+### APIエンドポイント
+
+**tRPC Routes**
+- `mcpServer.*` - MCPサーバー管理
+- `userMcpServerConfig.*` - ユーザー設定
+- `userMcpServerInstance.*` - インスタンス管理
+- `chat.*` - チャット機能
+- `organization.*` - 組織管理
+- `apiKey.*` - APIキー管理
+
+**REST Endpoints**
+- `/api/auth/*` - Auth0認証
+- `/api/blog/posts` - ブログ記事
+- `/api/webhooks/*` - 外部連携
+
+### データモデル
+
+**主要エンティティ**
+- User: ユーザー情報
+- Organization: 組織
+- McpServer: MCPサーバー定義
+- UserMcpServerConfig: ユーザー設定
+- UserMcpServerInstance: 実行インスタンス
+- Chat/Message: チャット履歴
+- ApiKey: APIキー
+
+## 使用シナリオ
+
+### 1. 自動コード生成
+```
+ユーザー: "UserServiceクラスにemailでユーザーを検索するメソッドを追加して"
+AI: GitHubと連携してコードを生成、PRを作成
+```
+
+### 2. ドキュメント自動化
+```
+ユーザー: "このプロジェクトのREADMEを更新して"
+AI: コードベースを分析してドキュメントを生成、Notionに保存
+```
+
+### 3. バグ修正
+```
+ユーザー: "このエラーログを分析して修正して"
+AI: エラーを分析、修正コードを生成、テストを実行
+```
+
+### 4. プロジェクト管理
+```
+ユーザー: "今週の進捗をLinearに更新して"
+AI: GitHubのコミット履歴を分析、Linearのタスクを自動更新
+```
+
+## ロードマップ
+
+### 2025 Q1
+- ✅ ベータ版リリース
+- ✅ 基本MCPサーバー統合
+- ✅ Auth0認証実装
+- ⏳ ブログ機能追加
+
+### 2025 Q2
+- Visual Studio Code拡張機能
+- JetBrains IDE統合
+- AIモデル追加（Llama, Mistral）
+- エンタープライズ機能
+
+### 2025 Q3
+- セルフホスティング版
+- API v2リリース
+- 高度な分析機能
+- カスタムAIモデル対応
+
+### 2025 Q4
+- モバイルアプリ
+- オフライン対応
+- エッジコンピューティング
+- グローバル展開
+
+## 料金プラン
+
+### フリープラン
+- 月間1,000 AIリクエスト
+- 3つのMCPサーバー
+- 1組織、3ユーザーまで
+- コミュニティサポート
+
+### プロプラン（¥5,000/月）
+- 月間10,000 AIリクエスト
+- 無制限MCPサーバー
+- 無制限ユーザー
+- 優先サポート
+- カスタムMCPサーバー
+
+### エンタープライズプラン（要問合せ）
+- 無制限AIリクエスト
+- 専用インスタンス
+- SLA保証
+- 24/7サポート
+- カスタム開発
+
+## サポート
+
+### ドキュメント
+- 開発者ガイド: https://docs.tumiki.cloud/
+- APIリファレンス: https://api.tumiki.cloud/docs
+- チュートリアル: https://learn.tumiki.cloud/
+
+### コミュニティ
+- Discord: https://discord.gg/tumiki
+- GitHub: https://github.com/tumiki
+- Twitter: @tumiki_cloud
+
+### 連絡先
+- 一般: info@tumiki.cloud
+- サポート: support@tumiki.cloud
+- 営業: sales@tumiki.cloud
+- 採用: careers@tumiki.cloud
+
+## 法的情報
+
+### 利用規約
+https://www.tumiki.cloud/legal/terms
+
+### プライバシーポリシー
+https://www.tumiki.cloud/legal/privacy
+
+### 特定商取引法に基づく表記
+https://www.tumiki.cloud/legal/tokusho
+
+### セキュリティ
+- ISO 27001準拠（申請中）
+- SOC 2 Type II（準備中）
+- GDPR/CCPA対応
+
+---
+
+最終更新日: 2025年1月25日
+バージョン: 1.0.0

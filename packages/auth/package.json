@@ -11,30 +11,42 @@
     "./client": {
       "types": "./dist/src/client.d.ts",
       "default": "./dist/src/client.js"
+    },
+    "./server": {
+      "types": "./dist/src/server.d.ts",
+      "default": "./dist/src/server.js"
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --check . --ignore-path ../../.gitignore"
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.6.1",
-    "@tumiki/db": "workspace:*"
+    "@tumiki/db": "workspace:*",
+    "auth0": "^4.27.0"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "tsup": "^8.3.5",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.33.0"
+    "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"
 }

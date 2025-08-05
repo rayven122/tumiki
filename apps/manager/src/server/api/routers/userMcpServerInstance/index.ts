@@ -7,6 +7,7 @@ import {
   ToolIdSchema,
   UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
+import { nameValidationSchema } from "@/schema/validation";
 import { findCustomServers } from "./findCustomServers";
 
 import {
@@ -26,6 +27,18 @@ import { findRequestLogs } from "./findRequestLogs";
 import { getRequestStats } from "./getRequestStats";
 import { getToolStats } from "./getToolStats";
 import { getTimeSeriesStats } from "./getTimeSeriesStats";
+import { toggleTool } from "./toggleTool";
+import { checkServerConnection } from "./checkServerConnection";
+import {
+  getRequestDataDetail,
+  GetRequestDataDetailInput,
+  GetRequestDataDetailOutput,
+} from "./getRequestDataDetail";
+import { ServerStatus } from "@tumiki/db/server";
+import {
+  updateDisplayOrder,
+  updateDisplayOrderSchema,
+} from "./updateDisplayOrder";
 
 export const FindServersOutput = z.array(
   UserMcpServerInstanceSchema.merge(
@@ -57,6 +70,14 @@ export const AddCustomServerInput = z.object({
 export const AddOfficialServerInput = z.object({
   mcpServerId: z.string(),
   envVars: z.record(z.string(), z.string()),
+  isPending: z.boolean().optional(), // OAuth認証用フラグを追加
+  name: nameValidationSchema.optional(), // サーバー名のオプションを追加
+});
+
+export const AddOfficialServerOutput = z.object({
+  id: z.string(),
+  userMcpServerConfigId: z.string(),
+  toolGroupId: z.string(),
 });
 
 export const DeleteServerInstanceInput = z.object({
@@ -75,7 +96,7 @@ export const UpdateServerInstanceInput = z.object({
 
 export const UpdateServerInstanceNameInput = z.object({
   id: UserMcpServerInstanceIdSchema,
-  name: z.string(),
+  name: nameValidationSchema,
 });
 
 export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
@@ -146,6 +167,18 @@ export const TimeSeriesStatsOutput = z.array(
   }),
 );
 
+export const ToggleToolInput = z.object({
+  instanceId: UserMcpServerInstanceIdSchema,
+  toolId: ToolIdSchema,
+  userMcpServerConfigId: UserMcpServerConfigIdSchema,
+  enabled: z.boolean(),
+});
+
+export const CheckServerConnectionInput = z.object({
+  serverInstanceId: UserMcpServerInstanceIdSchema,
+  updateStatus: z.boolean().optional().default(false),
+});
+
 export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
     .output(FindServersOutput)
@@ -155,11 +188,15 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .query(findOfficialServers),
   addCustomServer: protectedProcedure
     .input(AddCustomServerInput)
-    .output(z.object({}))
+    .output(
+      z.object({
+        id: UserMcpServerInstanceIdSchema,
+      }),
+    )
     .mutation(addCustomServer),
   addOfficialServer: protectedProcedure
     .input(AddOfficialServerInput)
-    .output(z.object({}))
+    .output(AddOfficialServerOutput)
     .mutation(addOfficialServer),
   delete: protectedProcedure
     .input(DeleteServerInstanceInput)
@@ -195,4 +232,27 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
   getTimeSeriesStats: protectedProcedure
     .input(GetTimeSeriesStatsInput)
     .query(getTimeSeriesStats),
+
+  toggleTool: protectedProcedure.input(ToggleToolInput).mutation(toggleTool),
+
+  checkServerConnection: protectedProcedure
+    .input(CheckServerConnectionInput)
+    .output(
+      z.object({
+        success: z.boolean(),
+        status: z.nativeEnum(ServerStatus),
+        error: z.string().optional(),
+        toolCount: z.number(),
+      }),
+    )
+    .mutation(checkServerConnection),
+
+  updateDisplayOrder: protectedProcedure
+    .input(updateDisplayOrderSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(updateDisplayOrder),
+  getRequestDataDetail: protectedProcedure
+    .input(GetRequestDataDetailInput)
+    .output(GetRequestDataDetailOutput)
+    .query(getRequestDataDetail),
 });

@@ -14,6 +14,19 @@ enum TransportType {
     STREAMABLE_HTTPS
 }
 
+/// 認証タイプ
+/// @namespace McpServer
+enum AuthType {
+    /// 認証不要
+    NONE
+    /// APIキー認証
+    API_KEY
+    /// OAuth認証
+    OAUTH
+    /// APIキーとOAuth両方を許可
+    BOTH
+}
+
 /// ユーザーカスタムサーバーの可視性
 /// @namespace McpServer
 enum McpServerVisibility {
@@ -46,6 +59,13 @@ model McpServer {
     /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
     /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
     envVars          String[]
+    /// 認証タイプ
+    authType         AuthType              @default(NONE)
+    /// OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
+    /// google, github, slack, notion, linkedin など
+    oauthProvider    String?               @db.VarChar(50)
+    /// OAuth で必要なデフォルトスコープ
+    oauthScopes      String[]
     /// サーバーの種類（公式/ユーザーカスタム）
     serverType       ServerType            @default(OFFICIAL)
     /// ユーザーカスタムサーバーの作成者

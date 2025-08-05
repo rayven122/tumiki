@@ -60,9 +60,10 @@ export const MCP_SERVERS = [
     args: [
       "node_modules/figma-developer-mcp/dist/index.js",
       "--figma-api-key=FIGMA_API_KEY",
+      "--figma-oauth-token=FIGMA_OAUTH_TOKEN",
       "--stdio",
     ],
-    envVars: ["FIGMA_API_KEY"],
+    envVars: ["FIGMA_API_KEY", "FIGMA_OAUTH_TOKEN"],
     isPublic: true,
   },
   // {

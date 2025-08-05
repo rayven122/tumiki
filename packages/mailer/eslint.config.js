@@ -2,7 +2,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["build/**", "dist/**", "node_modules/**", ".react-email/**"],
+    ignores: [
+      "build/**",
+      "dist/**",
+      "node_modules/**",
+      ".react-email/**",
+      "tsup.config.ts",
+      "vitest.config.ts",
+    ],
   },
   {
     files: ["**/*.js"],

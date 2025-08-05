@@ -10,9 +10,10 @@ import {
   canCreateNewSession,
 } from "../../utils/session.js";
 import { getServer } from "../../utils/proxy.js";
-import { TransportType } from "@tumiki/db/prisma";
+import { TransportType } from "@tumiki/db";
 import { logger } from "../../libs/logger.js";
 import { logMcpRequest } from "../../libs/requestLogger.js";
+import { toMcpRequest } from "../../utils/mcpAdapter.js";
 
 /**
  * POST リクエスト処理 - JSON-RPC メッセージ
@@ -26,6 +27,9 @@ export const handlePOSTRequest = async (
 ): Promise<void> => {
   let transport: StreamableHTTPServerTransport;
   let isNewSession = false;
+
+  // 検証モードの判定
+  const isValidationMode = req.headers["x-validation-mode"] === "true";
 
   // セッションIDがある場合は既存セッションを確認
   if (sessionId) {
@@ -81,6 +85,7 @@ export const handlePOSTRequest = async (
       const { server } = await getServer(
         apiKey,
         TransportType.STREAMABLE_HTTPS,
+        isValidationMode,
       );
       await server.connect(transport);
 
@@ -122,7 +127,7 @@ export const handlePOSTRequest = async (
       return originalJson(body);
     };
 
-    await transport.handleRequest(req, res, requestBody);
+    await transport.handleRequest(toMcpRequest(req), res, requestBody);
     success = true;
   } catch (error) {
     logger.error("Error handling transport request", {
@@ -166,26 +171,29 @@ export const handlePOSTRequest = async (
     const inputBytes = requestStr.length;
     const outputBytes = responseStr.length;
 
-    // 非同期でログ記録（レスポンス返却をブロックしない）
-    logMcpRequest({
-      userId: undefined,
-      mcpServerInstanceId: undefined, // HTTP transportでは特定できない場合がある
-      toolName: "http_transport",
-      transportType: TransportType.STREAMABLE_HTTPS,
-      method: req.method,
-      responseStatus: success ? "200" : "500",
-      durationMs,
-      inputBytes,
-      outputBytes,
-      organizationId: undefined,
-      // 詳細ログ記録を追加（サイズ制限付き）
-      requestData: requestData,
-      responseData: responseDataForLog || undefined,
-    }).catch((error) => {
-      logger.error("Failed to log HTTP transport request", {
-        error: error instanceof Error ? error.message : String(error),
-        sessionId: transport.sessionId,
+    // 検証モードでない場合のみログ記録
+    if (!isValidationMode) {
+      // 非同期でログ記録（レスポンス返却をブロックしない）
+      logMcpRequest({
+        userId: undefined,
+        mcpServerInstanceId: undefined, // HTTP transportでは特定できない場合がある
+        toolName: "http_transport",
+        transportType: TransportType.STREAMABLE_HTTPS,
+        method: req.method,
+        responseStatus: success ? "200" : "500",
+        durationMs,
+        inputBytes,
+        outputBytes,
+        organizationId: undefined,
+        // 詳細ログ記録を追加（サイズ制限付き）
+        requestData: requestData,
+        responseData: responseDataForLog || undefined,
+      }).catch((error) => {
+        logger.error("Failed to log HTTP transport request", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionId: transport.sessionId,
+        });
       });
-    });
+    }
   }
 };

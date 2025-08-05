@@ -5,11 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
-    "build": "tsc && chmod +x build/index.js",
+    "build": "pnpm build:clean && tsup && chmod +x build/index.js",
+    "build:clean": "rm -rf build",
     "start": "pnpm with-env node build/index.js",
     "pm2:start": "pnpm with-env pm2 start ecosystem.config.cjs",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
+    "pm2:logs:remote": "./scripts/stream-pm2-logs.sh",
+    "pm2:logs:download": "./scripts/download-pm2-logs.sh",
+    "pm2:logs:remote:out": "./scripts/stream-pm2-logs.sh --out",
+    "pm2:logs:remote:err": "./scripts/stream-pm2-logs.sh --err",
     "pm2:status": "pm2 status",
+    "pm2:status:remote": "./scripts/stream-pm2-logs.sh --status",
     "pm2:restart": "pm2 restart tumiki-proxy-server",
     "pm2:stop": "pm2 stop tumiki-proxy-server",
     "pm2:delete": "pm2 delete tumiki-proxy-server",
@@ -20,14 +26,15 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "format:fix": "prettier --write . --ignore-path ../../.gitignore",
-    "test": "bun test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "verify": "pnpm with-env ./scripts/test-mcp-inspector.sh",
     "inspector": "pnpm dlx @modelcontextprotocol/inspector",
     "inspector:http": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/mcp?api-key=${TEST_API_KEY}\"'",
     "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.0.2",
     "@line/line-bot-mcp-server": "^0.3.0",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@modelcontextprotocol/server-github": "^2025.4.8",
@@ -40,8 +47,9 @@
     "dotenv": "^16.4.5",
     "expiry-map": "^2.0.0",
     "express": "^5.1.0",
+    "express-oauth2-jwt-bearer": "^1.6.1",
     "fastmcp": "^1.27.6",
-    "figma-developer-mcp": "^0.4.3",
+    "figma-developer-mcp": "^0.5.0",
     "hono": "^4.7.4",
     "just-pick": "^4.2.0",
     "marked": "^15.0.8",
@@ -56,11 +64,16 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@tumiki/vitest-config": "workspace:*",
     "@types/express": "^5.0.2",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "catalog:",
+    "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
-    "typescript-eslint": "^8.33.0"
+    "tsup": "^8.3.5",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

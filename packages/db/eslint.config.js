@@ -2,7 +2,16 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["prisma/**", "build/**", "dist/**", "node_modules/**", "mcp/**"],
+    ignores: [
+      "prisma/**",
+      "build/**",
+      "dist/**",
+      "node_modules/**",
+      "mcp/**",
+      "tsup.config.ts",
+      "vitest.config.ts",
+      "prisma.config.ts",
+    ],
   },
   {
     files: ["**/*.js"],
@@ -17,7 +26,7 @@ export default tseslint.config(
     ],
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.json",
+        project: ["./tsconfig.json", "./tsconfig.test.json"],
         tsconfigRootDir: import.meta.dirname,
       },
     },
