@@ -1,5 +1,5 @@
 import { type Request, type Response, type NextFunction } from "express";
-import { auth, type AuthResult } from "express-oauth2-jwt-bearer";
+import { auth } from "express-oauth2-jwt-bearer";
 import { logger } from "../libs/logger.js";
 
 /**
@@ -16,11 +16,7 @@ const jwtCheck = auth({
  * 特定のクエリパラメータが存在する場合のみJWT検証を実行
  */
 export const conditionalAuthMiddleware = () => {
-  return async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     // クエリパラメータをチェック
     const useOAuth =
       req.query.useOAuth === "true" || req.query.use_oauth === "true";
@@ -36,48 +32,36 @@ export const conditionalAuthMiddleware = () => {
       clientId: req.headers["x-client-id"] || req.ip,
     });
 
-    try {
-      // JWT検証を実行
-      await new Promise<void>((resolve, reject) => {
-        jwtCheck(req, res, (err?: unknown) => {
-          if (err) {
-            reject(
-              err instanceof Error
-                ? err
-                : new Error(
-                    typeof err === "string" ? err : "JWT validation failed",
-                  ),
-            );
-          } else {
-            resolve();
-          }
+    // jwtCheckを直接呼び出す
+    jwtCheck(req, res, (err?: unknown) => {
+      if (err) {
+        logger.error("OAuth validation failed", {
+          path: req.path,
+          error: err instanceof Error ? err.message : "JWT validation failed",
         });
-      });
 
-      // JWTのsubをログに出力
-      logger.info("OAuth validation successful", {
-        path: req.path,
-        sub: (req.auth as AuthResult | undefined)?.payload?.sub,
-      });
-
-      next();
-    } catch (error) {
-      logger.error("OAuth validation failed", {
-        path: req.path,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      // エラーレスポンスが既に送信されていない場合のみ送信
-      if (!res.headersSent) {
-        res.status(401).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: "Unauthorized: Invalid or missing OAuth token",
-          },
-          id: null,
+        // エラーレスポンスが既に送信されていない場合のみ送信
+        if (!res.headersSent) {
+          res.status(401).json({
+            jsonrpc: "2.0",
+            error: {
+              code: -32000,
+              message: "Unauthorized: Invalid or missing OAuth token",
+            },
+            id: null,
+          });
+        }
+      } else {
+        // 認証成功のログ
+        logger.info("OAuth validation successful", {
+          path: req.path,
         });
+
+        // req.authを削除して既存の実装に影響を与えない
+        delete req.auth;
+
+        next();
       }
-    }
+    });
   };
 };

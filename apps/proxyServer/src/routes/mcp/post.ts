@@ -13,6 +13,7 @@ import { getServer } from "../../utils/proxy.js";
 import { TransportType } from "@tumiki/db";
 import { logger } from "../../libs/logger.js";
 import { logMcpRequest } from "../../libs/requestLogger.js";
+import { toMcpRequest } from "../../utils/mcpAdapter.js";
 
 /**
  * POST リクエスト処理 - JSON-RPC メッセージ
@@ -126,7 +127,7 @@ export const handlePOSTRequest = async (
       return originalJson(body);
     };
 
-    await transport.handleRequest(req, res, requestBody);
+    await transport.handleRequest(toMcpRequest(req), res, requestBody);
     success = true;
   } catch (error) {
     logger.error("Error handling transport request", {
