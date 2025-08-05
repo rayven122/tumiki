@@ -6,6 +6,10 @@ import { initializeApplication } from "./libs/startup.js";
 import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
 import { integratedAuthMiddleware } from "./middleware/integratedAuth.js";
+import {
+  loggingMiddleware,
+  errorLoggingMiddleware,
+} from "./middleware/logging.js";
 
 /**
  * Express アプリケーションを設定
@@ -15,6 +19,9 @@ const createApp = (): express.Application => {
 
   // ミドルウェア設定
   app.use(express.json({ limit: "10mb" })); // JSONペイロードサイズ制限
+
+  // ログミドルウェアを最初に適用
+  app.use(loggingMiddleware());
 
   // CORS設定（必要に応じて）
   app.use((req, res, next) => {
@@ -55,6 +62,9 @@ const createApp = (): express.Application => {
   // レガシーエンドポイント（後方互換性）
   app.get("/sse", establishSSEConnection);
   app.post("/messages", handleSSEMessage);
+
+  // エラーハンドリングミドルウェアを最後に適用
+  app.use(errorLoggingMiddleware());
 
   return app;
 };

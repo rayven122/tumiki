@@ -19,7 +19,6 @@ import type {
   TransportConfig,
   TransportConfigStdio,
 } from "../libs/types.js";
-import { logger } from "../libs/logger.js";
 import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
@@ -114,11 +113,6 @@ const createClient = (
       });
     }
   } catch (error) {
-    logger.error("Failed to create transport", {
-      transportType: server.transport.type ?? "stdio",
-      serverName: server.name,
-      error: error instanceof Error ? error.message : String(error),
-    });
     recordError("transport_creation_failed");
     return { transport: undefined, client: undefined };
   }
@@ -139,8 +133,6 @@ const createClient = (
 const connectToServer = async (
   server: ServerConfig,
 ): Promise<ConnectedClient | null> => {
-  logger.info("Connecting to server", { serverName: server.name });
-
   const waitFor = config.retry.delayMs;
   const retries = config.retry.maxAttempts;
   let count = 0;
@@ -154,9 +146,6 @@ const connectToServer = async (
 
     try {
       await client.connect(transport);
-      logger.info("Successfully connected to server", {
-        serverName: server.name,
-      });
 
       return {
         client,
@@ -167,12 +156,6 @@ const connectToServer = async (
         toolNames: server.toolNames,
       };
     } catch (error) {
-      logger.error("Failed to connect to server", {
-        serverName: server.name,
-        error: error instanceof Error ? error.message : String(error),
-        attempt: count + 1,
-        maxAttempts: retries,
-      });
       recordError("server_connection_failed");
       count++;
       retry = count < retries;
@@ -182,13 +165,6 @@ const connectToServer = async (
           // transportも確実にクローズする
           await transport.close();
         } catch (closeError) {
-          logger.error("Error closing client/transport during retry", {
-            serverName: server.name,
-            error:
-              closeError instanceof Error
-                ? closeError.message
-                : String(closeError),
-          });
         } finally {
           // デバッグログを削除（メモリ使用量削減）
           await sleep(waitFor);
@@ -197,15 +173,7 @@ const connectToServer = async (
         // リトライ終了時もtransportをクローズ
         try {
           await transport.close();
-        } catch (closeError) {
-          logger.error("Error closing transport after retry exhaustion", {
-            serverName: server.name,
-            error:
-              closeError instanceof Error
-                ? closeError.message
-                : String(closeError),
-          });
-        }
+        } catch (closeError) {}
       }
     }
   }
@@ -238,21 +206,8 @@ export const createClients = async (
     } else {
       const server = servers[index];
       if (server) {
-        logger.warn("Server connection skipped after all retries", {
-          serverName: server.name,
-          reason:
-            result.status === "rejected"
-              ? result.reason
-              : "Connection returned null",
-        });
       }
     }
-  });
-
-  logger.info("Parallel connection completed", {
-    totalServers: servers.length,
-    connectedServers: clients.length,
-    failedServers: servers.length - clients.length,
   });
 
   return clients;
@@ -302,10 +257,6 @@ const getServerConfigs = async (apiKey: string) => {
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
     } catch (error) {
-      logger.error("Failed to parse environment variables", {
-        serverConfigName: serverConfig.name,
-        error: error instanceof Error ? error.message : String(error),
-      });
       throw new Error(
         `Invalid environment variables configuration for ${serverConfig.name}`,
       );
@@ -343,9 +294,6 @@ const getServerConfigs = async (apiKey: string) => {
       return transportConfig;
     } else {
       if (!serverConfig.mcpServer.url) {
-        logger.error("SSE transport URL is missing", {
-          serverConfigName: serverConfig.name,
-        });
         throw new Error(
           `SSE transport URL is required for ${serverConfig.name}`,
         );
@@ -424,10 +372,6 @@ const getServerConfigsByInstanceId = async (
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
     } catch (error) {
-      logger.error("Failed to parse envVars", {
-        serverConfigId: serverConfig.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
       envObj = {};
     }
 
@@ -478,11 +422,7 @@ export const getMcpClientsByInstanceId = async (
     try {
       // デバッグログを削除（メモリ使用量削減）
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch (error) {
-      logger.error("Error during cleanup", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    } catch (error) {}
   };
 
   return { connectedClients, cleanup };
@@ -499,11 +439,7 @@ export const getMcpClients = async (apiKey: string) => {
     try {
       // デバッグログを削除（メモリ使用量削減）
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch (error) {
-      logger.error("Error during cleanup", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    } catch (error) {}
   };
 
   return { connectedClients, cleanup };
@@ -530,7 +466,6 @@ export const getServer = async (
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
     const startTime = Date.now();
 
-    logger.info("Listing tools - establishing fresh connections");
     const requestTimeout = config.timeouts.request;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -599,11 +534,6 @@ export const getServer = async (
                       allTools.push(...toolsWithSource);
                     }
                   } catch (error) {
-                    logger.error("Error fetching tools from client", {
-                      clientName: connectedClient.name,
-                      error:
-                        error instanceof Error ? error.message : String(error),
-                    });
                     recordError("tools_list_client_error");
                   }
                 }
@@ -646,10 +576,6 @@ export const getServer = async (
           responseData: JSON.stringify({ tools: result.tools }),
         }).catch((error) => {
           // ログ記録失敗をログに残すが、リクエスト処理は継続
-          logger.error("Failed to log tools/list request", {
-            error: error instanceof Error ? error.message : String(error),
-            userId: userMcpServerInstance?.userId,
-          });
         });
       }
 
@@ -660,14 +586,7 @@ export const getServer = async (
       if (clientsCleanup) {
         try {
           await clientsCleanup();
-        } catch (cleanupError) {
-          logger.error("Error during cleanup after failure", {
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : String(cleanupError),
-          });
-        }
+        } catch (cleanupError) {}
       }
 
       // エラー時のログ記録
@@ -688,19 +607,9 @@ export const getServer = async (
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
           organizationId: userMcpServerInstance.organizationId ?? undefined,
-        }).catch((logError) => {
-          logger.error("Failed to log tools/list error", {
-            logError:
-              logError instanceof Error ? logError.message : String(logError),
-            originalError: errorMessage,
-          });
-        });
+        }).catch((logError) => {});
       }
 
-      logger.error("Tools list request failed", {
-        error: errorMessage,
-        durationMs,
-      });
       recordError("tools_list_failure");
       throw error;
     }
@@ -762,14 +671,8 @@ export const getServer = async (
                 }
 
                 if (!clientForTool) {
-                  logger.error("Unknown tool requested", { toolName: name });
                   throw new Error(`Unknown tool: ${name}`);
                 }
-
-                logger.info("Forwarding tool call to client", {
-                  toolName: name,
-                  clientName: clientForTool.name,
-                });
 
                 // Use the correct schema for tool calls
                 const result = await clientForTool.client.request(
@@ -824,11 +727,6 @@ export const getServer = async (
           responseData: JSON.stringify(result.result),
         }).catch((error) => {
           // ログ記録失敗をログに残すが、リクエスト処理は継続
-          logger.error("Failed to log tools/call request", {
-            error: error instanceof Error ? error.message : String(error),
-            toolName: name,
-            userId: userMcpServerInstance?.userId,
-          });
         });
       }
 
@@ -838,14 +736,7 @@ export const getServer = async (
       if (clientsCleanup) {
         try {
           await clientsCleanup();
-        } catch (cleanupError) {
-          logger.error("Error during cleanup after failure", {
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : String(cleanupError),
-          });
-        }
+        } catch (cleanupError) {}
       }
 
       // エラー時のログ記録
@@ -866,21 +757,9 @@ export const getServer = async (
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
           organizationId: userMcpServerInstance.organizationId ?? undefined,
-        }).catch((logError) => {
-          logger.error("Failed to log tools/call error", {
-            logError:
-              logError instanceof Error ? logError.message : String(logError),
-            originalError: errorMessage,
-            toolName: name,
-          });
-        });
+        }).catch((logError) => {});
       }
 
-      logger.error("Tool call failed", {
-        toolName: name,
-        error: errorMessage,
-        durationMs,
-      });
       recordError(`tool_call_failure_${name}`);
       throw error;
     }
