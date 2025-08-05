@@ -1,16 +1,13 @@
 import { defineConfig } from "tsup";
+import { resolve } from "path";
+import { nodeTsupConfig } from "@tumiki/tsup-config/node";
 
 export default defineConfig({
+  ...nodeTsupConfig,
   entry: ["src/index.ts"],
-  format: ["esm"],
   dts: false, // tscで別途生成
-  sourcemap: true,
-  clean: true,
-  target: "node22",
   treeshake: false,
-  shims: true,
   outDir: "build",
-  bundle: true,
   external: [
     "@tumiki/db",
     "@line/line-bot-mcp-server",
@@ -25,4 +22,10 @@ export default defineConfig({
     "node:os",
     "crypto",
   ],
+  esbuildOptions(options) {
+    options.alias = {
+      "@": resolve(__dirname, "./src"),
+      "~": resolve(__dirname, "./"),
+    };
+  },
 });

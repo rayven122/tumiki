@@ -9,6 +9,7 @@ export default tseslint.config(
       "node_modules/**",
       "mcp/**",
       "tsup.config.ts",
+      "vitest.config.ts",
     ],
   },
   {

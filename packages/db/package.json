@@ -37,17 +37,20 @@
     "dev": "tsc",
     "build": "pnpm db:generate && tsc",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore --write",
-    "db:generate": "pnpm with-env prisma generate && pnpm format",
+    "db:generate": "pnpm with-env prisma generate",
     "db:migrate": "pnpm with-env prisma migrate dev",
     "db:deploy": "pnpm with-env prisma migrate deploy",
     "db:studio": "pnpm with-env prisma studio",
     "postinstall": "pnpm db:generate",
-    "test": "bun test"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
@@ -63,9 +66,9 @@
     "@tumiki/eslint-config": "workspace:*",
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
-    "@types/bun": "^1.1.20",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/ws": "^8.18.1",
-    "bun-mock-prisma": "^1.2.1",
+    "@vitest/coverage-v8": "catalog:",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "prettier": "catalog:",
@@ -73,6 +76,7 @@
     "prisma-markdown": "^2.0.0",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
+    "vitest": "catalog:",
     "zod-prisma-types": "^3.2.4"
   },
   "prisma": {
