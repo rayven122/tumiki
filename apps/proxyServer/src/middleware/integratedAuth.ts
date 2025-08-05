@@ -66,6 +66,36 @@ const getAuthErrorMessage = (authType: AuthType): string => {
 };
 
 /**
+ * 統一的なエラーレスポンスを送信するヘルパー関数
+ */
+const sendAuthError = (
+  res: Response,
+  statusCode: number,
+  message: string,
+  code = -32000,
+  headers?: Record<string, string>,
+): void => {
+  if (res.headersSent) {
+    return;
+  }
+
+  if (headers) {
+    Object.entries(headers).forEach(([key, value]) => {
+      res.setHeader(key, value);
+    });
+  }
+
+  res.status(statusCode).json({
+    jsonrpc: "2.0",
+    error: {
+      code,
+      message,
+    },
+    id: null,
+  });
+};
+
+/**
  * MCPサーバーインスタンスの情報を取得
  */
 const getMcpServerInstance = async (mcpServerInstanceId: string) => {
@@ -125,42 +155,21 @@ export const integratedAuthMiddleware = () => {
       mcpServerInstanceId =
         (await getMcpServerInstanceIdFromApiKey(apiKey)) || undefined;
       if (!mcpServerInstanceId) {
-        res.status(401).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: "Invalid API key",
-          },
-          id: null,
-        });
+        sendAuthError(res, 401, "Invalid API key");
         return;
       }
     }
 
     // MCPサーバーインスタンスIDが取得できない場合
     if (!mcpServerInstanceId) {
-      res.status(400).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "MCP server instance ID required",
-        },
-        id: null,
-      });
+      sendAuthError(res, 400, "MCP server instance ID required");
       return;
     }
 
     // MCPサーバーインスタンスの情報を取得
     const mcpServerInstance = await getMcpServerInstance(mcpServerInstanceId);
     if (!mcpServerInstance) {
-      res.status(404).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "MCP server instance not found",
-        },
-        id: null,
-      });
+      sendAuthError(res, 404, "MCP server instance not found");
       return;
     }
 
@@ -181,14 +190,7 @@ export const integratedAuthMiddleware = () => {
       case "API_KEY":
         // APIキー認証が必須
         if (!apiKey) {
-          res.status(401).json({
-            jsonrpc: "2.0",
-            error: {
-              code: -32000,
-              message: getAuthErrorMessage(authType),
-            },
-            id: null,
-          });
+          sendAuthError(res, 401, getAuthErrorMessage(authType));
           return;
         }
 
@@ -198,27 +200,21 @@ export const integratedAuthMiddleware = () => {
           !apiKeyValidation.valid ||
           !apiKeyValidation.userMcpServerInstance
         ) {
-          res.status(401).json({
-            jsonrpc: "2.0",
-            error: {
-              code: -32000,
-              message: `Unauthorized: ${apiKeyValidation.error || "Invalid API key"}`,
-            },
-            id: null,
-          });
+          sendAuthError(
+            res,
+            401,
+            `Unauthorized: ${apiKeyValidation.error || "Invalid API key"}`,
+          );
           return;
         }
 
         // APIキーが正しいMCPサーバーインスタンスに紐付いているか確認
         if (apiKeyValidation.userMcpServerInstance.id !== mcpServerInstanceId) {
-          res.status(401).json({
-            jsonrpc: "2.0",
-            error: {
-              code: -32000,
-              message: "API key does not match the requested MCP server",
-            },
-            id: null,
-          });
+          sendAuthError(
+            res,
+            401,
+            "API key does not match the requested MCP server",
+          );
           return;
         }
 
@@ -233,14 +229,8 @@ export const integratedAuthMiddleware = () => {
       case "OAUTH":
         // OAuth認証が必須
         if (!hasBearerToken) {
-          res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
-          res.status(401).json({
-            jsonrpc: "2.0",
-            error: {
-              code: -32000,
-              message: getAuthErrorMessage(authType),
-            },
-            id: null,
+          sendAuthError(res, 401, getAuthErrorMessage(authType), -32000, {
+            "WWW-Authenticate": 'Bearer realm="MCP API"',
           });
           return;
         }
@@ -248,17 +238,13 @@ export const integratedAuthMiddleware = () => {
         // JWT検証を実行
         jwtCheck(req, res, (err?: unknown) => {
           if (err) {
-            if (!res.headersSent) {
-              res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
-              res.status(401).json({
-                jsonrpc: "2.0",
-                error: {
-                  code: -32000,
-                  message: "Unauthorized: Invalid or missing OAuth token",
-                },
-                id: null,
-              });
-            }
+            sendAuthError(
+              res,
+              401,
+              "Unauthorized: Invalid or missing OAuth token",
+              -32000,
+              { "WWW-Authenticate": 'Bearer realm="MCP API"' },
+            );
           } else {
             // OAuth認証成功
             req.authInfo = {
@@ -275,18 +261,26 @@ export const integratedAuthMiddleware = () => {
             next();
           }
         });
-        return next();
+        return;
+
+      case "BOTH":
+        // BOTH認証タイプは未実装
+        sendAuthError(
+          res,
+          501,
+          "BOTH authentication type is not yet implemented",
+          -32000,
+        );
+        return;
 
       default:
         // 未知のauthType
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal error: Invalid authentication configuration",
-          },
-          id: null,
-        });
+        sendAuthError(
+          res,
+          500,
+          "Internal error: Invalid authentication configuration",
+          -32603,
+        );
         return;
     }
   };
