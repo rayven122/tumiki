@@ -1,56 +1,64 @@
-import { type Request, type Response } from "express";
+import type { Response } from "express";
 import { handlePOSTRequest } from "./post.js";
 import { handleGETRequest } from "./get.js";
 import { handleDELETERequest } from "./delete.js";
 import { logger } from "../../libs/logger.js";
+import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 
 /**
  * 統合MCPエンドポイント - Streamable HTTP transport
  * すべてのMCP通信がこのエンドポイントを通る
  */
 export const handleMCPRequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
   const method = req.method;
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  const apiKey: string | undefined =
-    (req.query["api-key"] as string) ||
-    (req.headers["api-key"] as string) ||
-    (req.headers.authorization?.startsWith("Bearer ")
-      ? req.headers.authorization.substring(7)
-      : undefined);
   const clientId: string =
     (req.headers["x-client-id"] as string) || req.ip || "unknown";
 
-  logger.info("MCP request received", {
-    method,
-    sessionId,
-    hasApiKey: !!apiKey,
-    clientId,
-    userAgent: req.headers["user-agent"],
-  });
-
-  // API key validation
-  if (!apiKey) {
+  // 認証情報は統合認証ミドルウェアから取得
+  const authInfo = req.authInfo;
+  if (!authInfo) {
+    // このケースは通常発生しないはずだが、念のため
+    logger.error("Authentication info missing in MCP request", {
+      method,
+      path: req.path,
+    });
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
         code: -32000,
-        message: "Unauthorized: Missing API key",
+        message: "Unauthorized: Authentication required",
       },
       id: null,
     });
     return;
   }
 
+  // 後方互換性のため、APIキーを取得（proxy.tsがまだ使用している）
+  const apiKey: string | undefined =
+    (req.query["api-key"] as string) ||
+    (req.headers["api-key"] as string) ||
+    undefined;
+
+  logger.info("MCP request received", {
+    method,
+    sessionId,
+    authType: authInfo.type,
+    userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
+    clientId,
+    userAgent: req.headers["user-agent"],
+  });
+
   try {
     switch (method) {
       case "POST":
-        await handlePOSTRequest(req, res, sessionId, apiKey, clientId);
+        await handlePOSTRequest(req, res, sessionId, apiKey || "", clientId);
         break;
       case "GET":
-        await handleGETRequest(req, res, sessionId, apiKey, clientId);
+        await handleGETRequest(req, res, sessionId, apiKey || "", clientId);
         break;
       case "DELETE":
         await handleDELETERequest(req, res, sessionId);

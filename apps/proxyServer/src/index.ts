@@ -5,7 +5,7 @@ import { handleSSEConnection, handleSSEMessages } from "./routes/sse/index.js";
 import { initializeApplication } from "./libs/startup.js";
 import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
-import { conditionalAuthMiddleware } from "./middleware/auth.js";
+import { integratedAuthMiddleware } from "./middleware/integratedAuth.js";
 
 /**
  * Express アプリケーションを設定
@@ -22,7 +22,7 @@ const createApp = (): express.Application => {
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, mcp-session-id, api-key, x-client-id",
+      "Content-Type, mcp-session-id, api-key, x-client-id, Authorization",
     );
     if (req.method === "OPTIONS") {
       res.sendStatus(200);
@@ -35,8 +35,8 @@ const createApp = (): express.Application => {
   app.get("/", handleHealthCheck);
   app.get("/health", handleHealthCheck);
 
-  // ここ以降のすべてのルートに条件付きOAuth認証ミドルウェアを適用
-  app.use(conditionalAuthMiddleware());
+  // ここ以降のすべてのルートに統合認証ミドルウェアを適用
+  app.use(integratedAuthMiddleware());
 
   // 統合MCPエンドポイント（Streamable HTTP transport）
   app.post("/mcp", handleMCPRequest);
