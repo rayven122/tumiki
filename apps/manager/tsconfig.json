@@ -16,6 +16,6 @@
     ".next/types/**/*.ts",
     "postcss.config.mjs"
   ],
-  "types": ["web", "bun-types"],
+  "types": ["web"],
   "exclude": ["node_modules", "mcp", "coverage"]
 }
