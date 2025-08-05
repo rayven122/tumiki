@@ -10,6 +10,7 @@ export default tseslint.config(
       "mcp/**",
       "tsup.config.ts",
       "vitest.config.ts",
+      "prisma.config.ts",
     ],
   },
   {

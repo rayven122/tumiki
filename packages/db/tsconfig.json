@@ -12,6 +12,7 @@
     "src/**/*.spec.ts",
     "src/__tests__/**/*",
     "src/testing/**/*",
-    "tsup.config.ts"
+    "tsup.config.ts",
+    "prisma.config.ts"
   ]
 }
