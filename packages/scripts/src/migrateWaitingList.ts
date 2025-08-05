@@ -65,7 +65,9 @@ export async function migrateWaitingList(options: MigrationOptions) {
     const existingEmails = await db.waitingList.findMany({
       select: { email: true },
     });
-    const existingEmailSet = new Set(existingEmails.map((e: { email: string }) => e.email));
+    const existingEmailSet = new Set(
+      existingEmails.map((e: { email: string }) => e.email),
+    );
 
     // データを変換
     const dataToInsert: Prisma.WaitingListCreateManyInput[] = [];
