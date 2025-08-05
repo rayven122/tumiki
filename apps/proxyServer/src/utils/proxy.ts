@@ -85,7 +85,14 @@ const createClient = (
   let transport: Transport | null = null;
   try {
     if (server.transport.type === "sse") {
-      transport = new SSEClientTransport(new URL(server.transport.url));
+      // Type narrowing: when type is "sse", url is guaranteed to be string
+      const sseTransport = server.transport;
+      if ("url" in sseTransport && typeof sseTransport.url === "string") {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
+        transport = new SSEClientTransport(new URL(sseTransport.url));
+      } else {
+        throw new Error("SSE transport requires a valid URL");
+      }
     } else {
       const finalEnv = server.transport.env
         ? Object.fromEntries(
@@ -331,13 +338,21 @@ const getServerConfigs = async (apiKey: string) => {
 
       return transportConfig;
     } else {
+      if (!serverConfig.mcpServer.url) {
+        logger.error("SSE transport URL is missing", {
+          serverConfigName: serverConfig.name,
+        });
+        throw new Error(
+          `SSE transport URL is required for ${serverConfig.name}`,
+        );
+      }
+
       const transportConfig = {
         name: serverConfig.name,
         toolNames,
         transport: {
           type: "sse" as const,
-          url: serverConfig.mcpServer.url ?? "",
-          env: envObj,
+          url: serverConfig.mcpServer.url,
         },
       };
 
