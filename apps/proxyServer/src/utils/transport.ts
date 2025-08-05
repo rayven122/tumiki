@@ -3,7 +3,6 @@ import { type SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js
 import { SSEServerTransport as SSEServerTransportClass } from "@modelcontextprotocol/sdk/server/sse.js";
 import { type Response } from "express";
 import { toMcpRequest } from "./mcpAdapter.js";
-import { logger } from "../libs/logger.js";
 import { messageQueuePool } from "../libs/utils.js";
 import { getServer } from "./proxy.js";
 import type { AuthenticatedRequest } from "../middleware/integratedAuth.js";
@@ -76,11 +75,6 @@ const sendErrorResponse = (
   details?: string,
 ): void => {
   if (res.headersSent) {
-    logger.warn("Attempted to send error response after headers sent", {
-      status,
-      error,
-      code,
-    });
     return;
   }
 
@@ -101,10 +95,6 @@ export const establishSSEConnection = async (
   // 認証情報は統合認証ミドルウェアから取得
   const authInfo = req.authInfo;
   if (!authInfo) {
-    logger.error("Authentication info missing in SSE request", {
-      path: req.path,
-      method: req.method,
-    });
     sendErrorResponse(
       res,
       401,
@@ -120,13 +110,6 @@ export const establishSSEConnection = async (
 
   // 検証モードの判定
   const isValidationMode = req.headers["x-validation-mode"] === "true";
-
-  logger.info("SSE connection request received", {
-    authType: authInfo.type,
-    userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
-    clientId,
-    userAgent: req.headers["user-agent"],
-  });
 
   if (!canCreateNewSession()) {
     sendErrorResponse(
@@ -145,15 +128,7 @@ export const establishSSEConnection = async (
   let session: SessionInfo | undefined;
 
   // ロールバック用クリーンアップ関数
-  const rollbackOnError = async (error: Error, step: string) => {
-    logger.error("Rolling back SSE connection due to error", {
-      sessionId,
-      step,
-      error: error.message,
-      apiKeyId: "***",
-      clientId,
-    });
-
+  const rollbackOnError = async (_error: Error, _step: string) => {
     try {
       if (sessionId) {
         // セッションを削除
@@ -175,25 +150,9 @@ export const establishSSEConnection = async (
         try {
           transport.onclose = undefined;
           await transport.close();
-        } catch (closeError) {
-          logger.warn("Error closing transport during rollback", {
-            sessionId,
-            error:
-              closeError instanceof Error
-                ? closeError.message
-                : String(closeError),
-          });
-        }
+        } catch (closeError) {}
       }
-    } catch (rollbackError) {
-      logger.error("Error during rollback", {
-        sessionId,
-        error:
-          rollbackError instanceof Error
-            ? rollbackError.message
-            : String(rollbackError),
-      });
-    }
+    } catch (rollbackError) {}
   };
 
   try {
@@ -242,12 +201,7 @@ export const establishSSEConnection = async (
                 // oncloseイベントハンドラーを無効化
                 connectionInfo.transport.onclose = undefined;
                 await connectionInfo.transport.close();
-              } catch (error) {
-                logger.warn("Error closing SSE transport", {
-                  sessionId,
-                  error: error instanceof Error ? error.message : String(error),
-                });
-              }
+              } catch (error) {}
             }
           } finally {
             isCleaningUp = false;
@@ -287,7 +241,6 @@ export const establishSSEConnection = async (
 
     // トランスポートが閉じられたときのクリーンアップ（循環参照防止）
     transport.onclose = () => {
-      logger.info("SSE transport closed", { sessionId });
       // クリーンアップ中でない場合のみ実行
       if (!isCleaningUp && session) {
         void session.cleanup?.();
@@ -296,17 +249,12 @@ export const establishSSEConnection = async (
 
     // クライアント切断検出
     res.on("close", () => {
-      logger.info("SSE client disconnected", { sessionId });
       if (!isCleaningUp && session) {
         void session.cleanup?.();
       }
     });
 
-    res.on("error", (error) => {
-      logger.error("SSE connection error", {
-        sessionId,
-        error: error.message,
-      });
+    res.on("error", (_error) => {
       if (sessionId) {
         recordSessionError(sessionId);
       }
@@ -329,10 +277,6 @@ export const establishSSEConnection = async (
         res.write(": keepalive\\n\\n");
         updateSessionActivity(sessionId, clientId);
       } catch (error) {
-        logger.error("Error sending keepalive", {
-          sessionId,
-          error: error instanceof Error ? error.message : String(error),
-        });
         if (sessionId) {
           recordSessionError(sessionId);
         }
@@ -344,22 +288,7 @@ export const establishSSEConnection = async (
     }, 30000); // 30秒ごと
 
     connectionInfo.keepAliveInterval = keepAliveInterval;
-
-    logger.info("SSE connection established", {
-      sessionId,
-      userMcpServerInstanceId: authInfo.userMcpServerInstanceId,
-      authType: authInfo.type,
-      clientId,
-    });
   } catch (error) {
-    logger.error("Error establishing SSE connection", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      userMcpServerInstanceId: authInfo?.userMcpServerInstanceId,
-      authType: authInfo?.type,
-      clientId,
-    });
-
     sendErrorResponse(
       res,
       500,
@@ -377,16 +306,10 @@ export const handleSSEMessage = async (
   req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
-  logger.info("SSE message received", {
-    authType: req.authInfo?.type,
-    userMcpServerInstanceId: req.authInfo?.userMcpServerInstanceId,
-  });
-
   // Extract session ID from URL query parameter
   const sessionId = req.query.sessionId as string | undefined;
 
   if (!sessionId) {
-    logger.error("No session ID provided in SSE message request");
     sendErrorResponse(
       res,
       400,
@@ -397,7 +320,6 @@ export const handleSSEMessage = async (
   }
 
   if (!isSessionValid(sessionId)) {
-    logger.error("Invalid or expired session", { sessionId });
     sendErrorResponse(
       res,
       404,
@@ -409,7 +331,6 @@ export const handleSSEMessage = async (
 
   const connectionInfo = sseConnections.get(sessionId);
   if (!connectionInfo) {
-    logger.error("No SSE connection found for session", { sessionId });
     sendErrorResponse(res, 404, "Session not found", "SESSION_NOT_FOUND");
     return;
   }
@@ -432,10 +353,6 @@ export const handleSSEMessage = async (
       "message_handling",
     );
   } catch (error) {
-    logger.error("Error handling SSE message", {
-      sessionId,
-      error: error instanceof Error ? error.message : String(error),
-    });
     recordSessionError(sessionId);
     recordTransportError("sse", "message_handling_failed");
 
@@ -459,12 +376,6 @@ export const createStreamableTransport = (
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => generateSessionId(),
     onsessioninitialized: (sessionId: string) => {
-      logger.info("StreamableHTTP session initialized", {
-        sessionId,
-        userMcpServerInstanceId,
-        clientId,
-      });
-
       // セッション作成（cleanup関数付き）
       createSessionWithId(
         sessionId,
@@ -477,15 +388,7 @@ export const createStreamableTransport = (
           if (connectionInfo) {
             try {
               // transport固有のクリーンアップ処理があれば実行
-              logger.info("Cleaning up StreamableHTTP connection", {
-                sessionId,
-              });
-            } catch (error) {
-              logger.warn("Error cleaning up StreamableHTTP transport", {
-                sessionId,
-                error: error instanceof Error ? error.message : String(error),
-              });
-            }
+            } catch (error) {}
             streamableConnections.delete(sessionId);
           }
         },

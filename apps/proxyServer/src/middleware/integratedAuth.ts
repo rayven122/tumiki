@@ -1,7 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
 import { validateApiKey } from "../libs/validateApiKey.js";
-import { logger } from "../libs/logger.js";
 import { db } from "@tumiki/db/tcp";
 import type { AuthType } from "@tumiki/db";
 
@@ -82,11 +81,7 @@ const getMcpServerInstance = async (mcpServerInstanceId: string) => {
       },
     });
     return instance;
-  } catch (error) {
-    logger.error("Failed to fetch MCP server instance", {
-      mcpServerInstanceId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  } catch {
     return null;
   }
 };
@@ -130,9 +125,6 @@ export const integratedAuthMiddleware = () => {
       mcpServerInstanceId =
         (await getMcpServerInstanceIdFromApiKey(apiKey)) || undefined;
       if (!mcpServerInstanceId) {
-        logger.error("Failed to get MCP server instance ID from API key", {
-          path: req.path,
-        });
         res.status(401).json({
           jsonrpc: "2.0",
           error: {
@@ -147,10 +139,6 @@ export const integratedAuthMiddleware = () => {
 
     // MCPサーバーインスタンスIDが取得できない場合
     if (!mcpServerInstanceId) {
-      logger.error("No MCP server instance ID provided", {
-        path: req.path,
-        method: req.method,
-      });
       res.status(400).json({
         jsonrpc: "2.0",
         error: {
@@ -162,21 +150,9 @@ export const integratedAuthMiddleware = () => {
       return;
     }
 
-    logger.info("Integrated auth middleware processing", {
-      path: req.path,
-      method: req.method,
-      mcpServerInstanceId,
-      hasApiKey: !!apiKey,
-      hasBearerToken,
-      clientId: req.headers["x-client-id"] || req.ip,
-    });
-
     // MCPサーバーインスタンスの情報を取得
     const mcpServerInstance = await getMcpServerInstance(mcpServerInstanceId);
     if (!mcpServerInstance) {
-      logger.error("MCP server instance not found", {
-        mcpServerInstanceId,
-      });
       res.status(404).json({
         jsonrpc: "2.0",
         error: {
@@ -205,10 +181,6 @@ export const integratedAuthMiddleware = () => {
       case "API_KEY":
         // APIキー認証が必須
         if (!apiKey) {
-          logger.error("API key required but not provided", {
-            path: req.path,
-            mcpServerInstanceId,
-          });
           res.status(401).json({
             jsonrpc: "2.0",
             error: {
@@ -226,10 +198,6 @@ export const integratedAuthMiddleware = () => {
           !apiKeyValidation.valid ||
           !apiKeyValidation.userMcpServerInstance
         ) {
-          logger.error("API key validation failed", {
-            path: req.path,
-            error: apiKeyValidation.error,
-          });
           res.status(401).json({
             jsonrpc: "2.0",
             error: {
@@ -243,10 +211,6 @@ export const integratedAuthMiddleware = () => {
 
         // APIキーが正しいMCPサーバーインスタンスに紐付いているか確認
         if (apiKeyValidation.userMcpServerInstance.id !== mcpServerInstanceId) {
-          logger.error("API key does not match MCP server instance", {
-            apiKeyInstanceId: apiKeyValidation.userMcpServerInstance.id,
-            requestedInstanceId: mcpServerInstanceId,
-          });
           res.status(401).json({
             jsonrpc: "2.0",
             error: {
@@ -269,10 +233,6 @@ export const integratedAuthMiddleware = () => {
       case "OAUTH":
         // OAuth認証が必須
         if (!hasBearerToken) {
-          logger.error("OAuth required but no Bearer token provided", {
-            path: req.path,
-            mcpServerInstanceId,
-          });
           res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
           res.status(401).json({
             jsonrpc: "2.0",
@@ -288,12 +248,6 @@ export const integratedAuthMiddleware = () => {
         // JWT検証を実行
         jwtCheck(req, res, (err?: unknown) => {
           if (err) {
-            logger.error("OAuth validation failed", {
-              path: req.path,
-              error:
-                err instanceof Error ? err.message : "JWT validation failed",
-            });
-
             if (!res.headersSent) {
               res.setHeader("WWW-Authenticate", 'Bearer realm="MCP API"');
               res.status(401).json({
@@ -325,10 +279,6 @@ export const integratedAuthMiddleware = () => {
 
       default:
         // 未知のauthType
-        logger.error("Unknown authType", {
-          authType,
-          mcpServerInstanceId,
-        });
         res.status(500).json({
           jsonrpc: "2.0",
           error: {
