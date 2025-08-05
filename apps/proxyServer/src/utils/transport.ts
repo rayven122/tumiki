@@ -2,6 +2,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { type SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { SSEServerTransport as SSEServerTransportClass } from "@modelcontextprotocol/sdk/server/sse.js";
 import { type Request, type Response } from "express";
+import { toMcpRequest } from "./mcpAdapter.js";
 import { logger } from "../libs/logger.js";
 import { messageQueuePool } from "../libs/utils.js";
 import { getServer } from "./proxy.js";
@@ -412,7 +413,11 @@ export const handleSSEMessage = async (
         updateSessionActivity(sessionId);
 
         // Handle the POST message with the transport
-        await connectionInfo.transport.handlePostMessage(req, res, req.body);
+        await connectionInfo.transport.handlePostMessage(
+          toMcpRequest(req),
+          res,
+          req.body,
+        );
       },
       "sse",
       "message_handling",
