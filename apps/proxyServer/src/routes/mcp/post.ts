@@ -93,21 +93,9 @@ export const handlePOSTRequest = async (
   // MCPサーバーとの接続確立（新しいセッションの場合）
   if (isNewSession) {
     try {
-      // 認証情報からuserMcpServerInstanceIdを取得（統合認証ミドルウェアで必ず設定される）
-      if (!req.authInfo?.userMcpServerInstanceId) {
-        res.status(401).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: "Authentication required",
-          },
-          id: null,
-        });
-        return;
-      }
-
+      // isNewSessionがtrueの場合、78-88行で既にauthInfoの存在を確認済み
       const { server } = await getServer(
-        req.authInfo.userMcpServerInstanceId,
+        req.authInfo!.userMcpServerInstanceId!,
         TransportType.STREAMABLE_HTTPS,
         isValidationMode,
       );
