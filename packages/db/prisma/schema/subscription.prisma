@@ -18,6 +18,9 @@ model Subscription {
   canceledAt             DateTime?          // キャンセル日時
   cancelReason           String?            // キャンセル理由
   
+  // 冪等性管理
+  lastProcessedEventId   String?            // 最後に処理したStripeイベントID
+  
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
   
@@ -28,7 +31,6 @@ model Subscription {
   // 制約: userIdまたはorganizationIdのいずれか一つが必須
   @@unique([userId])
   @@unique([organizationId])
-  @@index([status])
   @@index([stripeCustomerId])
   @@index([stripeCurrentPeriodEnd])
   @@index([status, stripeCurrentPeriodEnd]) // 期限切れ検索用
@@ -36,23 +38,14 @@ model Subscription {
   @@index([organizationId, status]) // 組織別アクティブ検索用
 }
 
-// Stripe Webhookイベント（冪等性管理用）
-model StripeWebhookEvent {
-  id              String   @id @default(cuid())
-  stripeEventId   String   @unique // StripeイベントID（冪等性キー）
-  type            String   // イベントタイプ
-  data            Json     // イベントデータ
-  processed       Boolean  @default(false) // 処理済みフラグ
-  processedAt     DateTime? // 処理完了日時
-  createdAt       DateTime @default(now()) // 受信日時
+// 処理済みWebhookイベント（軽量な冪等性管理用）
+model ProcessedWebhookEvent {
+  stripeEventId   String   @id // StripeイベントID（冪等性キー）
+  objectId        String?  // data.object.id（追加の重複排除用）
+  processedAt     DateTime @default(now()) // 処理完了日時
   
-  // エラー追跡
-  error           String?  // エラーメッセージ
-  retryCount      Int      @default(0)
-  
-  @@index([type])
-  @@index([processed])
-  @@index([processedAt])
+  @@index([processedAt]) // 古いレコードの削除用
+  @@index([objectId])    // オブジェクトIDでの検索用
 }
 
 // プランタイプ
