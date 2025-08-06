@@ -144,14 +144,9 @@ export const integratedAuthMiddleware = () => {
     // セッションベースの認証を優先
     if (sessionId) {
       const session = sessions.get(sessionId);
-      if (session) {
-        // セッションに紐づいた認証情報を設定
-        req.authInfo = {
-          type: "api_key",
-          userMcpServerInstanceId: session.apiKeyId, // apiKeyIdは実際にはuserMcpServerInstanceId
-          userId: undefined, // セッションからは取得できない
-          organizationId: undefined,
-        };
+      if (session && session.authInfo) {
+        // セッションから認証情報を直接使用
+        req.authInfo = session.authInfo;
         return next();
       }
     }
