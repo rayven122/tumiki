@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { URL_HEADER_KEY } from "./constants/url";
-import { auth0, auth0OAuth } from "@tumiki/auth/server";
+import { auth0, auth0OAuth } from "@tumiki/auth/edge";
 
 // 認証不要のパス定数
 const PUBLIC_PATHS = [
