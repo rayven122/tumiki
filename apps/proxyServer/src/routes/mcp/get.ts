@@ -1,4 +1,5 @@
-import { type Request, type Response } from "express";
+import { type Response } from "express";
+import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 import { getStreamableTransportBySessionId } from "../../utils/transport.js";
 import { updateSessionActivity, isSessionValid } from "../../utils/session.js";
 import { toMcpRequest } from "../../utils/mcpAdapter.js";
@@ -7,10 +8,9 @@ import { toMcpRequest } from "../../utils/mcpAdapter.js";
  * GET リクエスト処理 - SSE ストリーム（オプション）
  */
 export const handleGETRequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   sessionId: string | undefined,
-  apiKey: string,
   clientId: string,
 ): Promise<void> => {
   if (!sessionId) {
