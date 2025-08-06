@@ -32,20 +32,13 @@ export const handleMCPRequest = async (
     return;
   }
 
-  // 後方互換性のため、APIキーを取得（proxy.tsがまだ使用している）
-  const apiKey: string | undefined =
-    (req.headers["x-api-key"] as string) ||
-    (req.headers["api-key"] as string) ||
-    (req.query["api-key"] as string) ||
-    undefined;
-
   try {
     switch (method) {
       case "POST":
-        await handlePOSTRequest(req, res, sessionId, apiKey || "", clientId);
+        await handlePOSTRequest(req, res, sessionId, clientId);
         break;
       case "GET":
-        await handleGETRequest(req, res, sessionId, apiKey || "", clientId);
+        await handleGETRequest(req, res, sessionId, clientId);
         break;
       case "DELETE":
         await handleDELETERequest(req, res, sessionId);

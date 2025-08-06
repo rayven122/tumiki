@@ -1,4 +1,4 @@
-import { type Request, type Response } from "express";
+import { type Response } from "express";
 import { type StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   createStreamableTransport,
@@ -13,15 +13,15 @@ import { getServer } from "../../utils/proxy.js";
 import { TransportType } from "@tumiki/db";
 import { logMcpRequest } from "../../libs/requestLogger.js";
 import { toMcpRequest } from "../../utils/mcpAdapter.js";
+import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 
 /**
  * POST リクエスト処理 - JSON-RPC メッセージ
  */
 export const handlePOSTRequest = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   sessionId: string | undefined,
-  apiKey: string,
   clientId: string,
 ): Promise<void> => {
   let transport: StreamableHTTPServerTransport;
@@ -74,15 +74,43 @@ export const handlePOSTRequest = async (
       return;
     }
 
-    transport = createStreamableTransport(apiKey, clientId);
+    // 認証情報からuserMcpServerInstanceIdを取得（統合認証ミドルウェアで必ず設定される）
+    if (!req.authInfo?.userMcpServerInstanceId) {
+      res.status(401).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Authentication required",
+        },
+        id: null,
+      });
+      return;
+    }
+    transport = createStreamableTransport(
+      req.authInfo.userMcpServerInstanceId,
+      clientId,
+    );
     isNewSession = true;
   }
 
   // MCPサーバーとの接続確立（新しいセッションの場合）
   if (isNewSession) {
     try {
+      // 認証情報からuserMcpServerInstanceIdを取得（統合認証ミドルウェアで必ず設定される）
+      if (!req.authInfo?.userMcpServerInstanceId) {
+        res.status(401).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "Authentication required",
+          },
+          id: null,
+        });
+        return;
+      }
+
       const { server } = await getServer(
-        apiKey,
+        req.authInfo.userMcpServerInstanceId,
         TransportType.STREAMABLE_HTTPS,
         isValidationMode,
       );
