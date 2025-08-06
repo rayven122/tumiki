@@ -14,8 +14,11 @@ import { db } from "@tumiki/db/tcp";
 import { TransportType } from "@tumiki/db";
 import { validateApiKey } from "../libs/validateApiKey.js";
 
-import type { ServerConfig } from "../libs/types.js";
-import { logger } from "../libs/logger.js";
+import type {
+  ServerConfig,
+  TransportConfig,
+  TransportConfigStdio,
+} from "../libs/types.js";
 import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
@@ -85,7 +88,13 @@ const createClient = (
   let transport: Transport | null = null;
   try {
     if (server.transport.type === "sse") {
-      transport = new SSEClientTransport(new URL(server.transport.url));
+      // Type narrowing: when type is "sse", url is guaranteed to be string
+      const sseTransport = server.transport;
+      if ("url" in sseTransport && typeof sseTransport.url === "string") {
+        transport = new SSEClientTransport(new URL(sseTransport.url));
+      } else {
+        throw new Error("SSE transport requires a valid URL");
+      }
     } else {
       const finalEnv = server.transport.env
         ? Object.fromEntries(
@@ -102,12 +111,7 @@ const createClient = (
         env: finalEnv,
       });
     }
-  } catch (error) {
-    logger.error("Failed to create transport", {
-      transportType: server.transport.type ?? "stdio",
-      serverName: server.name,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  } catch {
     recordError("transport_creation_failed");
     return { transport: undefined, client: undefined };
   }
@@ -128,8 +132,6 @@ const createClient = (
 const connectToServer = async (
   server: ServerConfig,
 ): Promise<ConnectedClient | null> => {
-  logger.info("Connecting to server", { serverName: server.name });
-
   const waitFor = config.retry.delayMs;
   const retries = config.retry.maxAttempts;
   let count = 0;
@@ -143,9 +145,6 @@ const connectToServer = async (
 
     try {
       await client.connect(transport);
-      logger.info("Successfully connected to server", {
-        serverName: server.name,
-      });
 
       return {
         client,
@@ -155,13 +154,7 @@ const connectToServer = async (
         },
         toolNames: server.toolNames,
       };
-    } catch (error) {
-      logger.error("Failed to connect to server", {
-        serverName: server.name,
-        error: error instanceof Error ? error.message : String(error),
-        attempt: count + 1,
-        maxAttempts: retries,
-      });
+    } catch {
       recordError("server_connection_failed");
       count++;
       retry = count < retries;
@@ -170,14 +163,8 @@ const connectToServer = async (
           await client.close();
           // transportも確実にクローズする
           await transport.close();
-        } catch (closeError) {
-          logger.error("Error closing client/transport during retry", {
-            serverName: server.name,
-            error:
-              closeError instanceof Error
-                ? closeError.message
-                : String(closeError),
-          });
+        } catch {
+          // クリーンアップ失敗は無視
         } finally {
           // デバッグログを削除（メモリ使用量削減）
           await sleep(waitFor);
@@ -186,14 +173,8 @@ const connectToServer = async (
         // リトライ終了時もtransportをクローズ
         try {
           await transport.close();
-        } catch (closeError) {
-          logger.error("Error closing transport after retry exhaustion", {
-            serverName: server.name,
-            error:
-              closeError instanceof Error
-                ? closeError.message
-                : String(closeError),
-          });
+        } catch {
+          // クリーンアップ失敗は無視
         }
       }
     }
@@ -227,21 +208,8 @@ export const createClients = async (
     } else {
       const server = servers[index];
       if (server) {
-        logger.warn("Server connection skipped after all retries", {
-          serverName: server.name,
-          reason:
-            result.status === "rejected"
-              ? result.reason
-              : "Connection returned null",
-        });
       }
     }
-  });
-
-  logger.info("Parallel connection completed", {
-    totalServers: servers.length,
-    connectedServers: clients.length,
-    failedServers: servers.length - clients.length,
   });
 
   return clients;
@@ -290,11 +258,7 @@ const getServerConfigs = async (apiKey: string) => {
     let envObj: Record<string, string>;
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
-    } catch (error) {
-      logger.error("Failed to parse environment variables", {
-        serverConfigName: serverConfig.name,
-        error: error instanceof Error ? error.message : String(error),
-      });
+    } catch {
       throw new Error(
         `Invalid environment variables configuration for ${serverConfig.name}`,
       );
@@ -331,13 +295,18 @@ const getServerConfigs = async (apiKey: string) => {
 
       return transportConfig;
     } else {
+      if (!serverConfig.mcpServer.url) {
+        throw new Error(
+          `SSE transport URL is required for ${serverConfig.name}`,
+        );
+      }
+
       const transportConfig = {
         name: serverConfig.name,
         toolNames,
         transport: {
           type: "sse" as const,
-          url: serverConfig.mcpServer.url ?? "",
-          env: envObj,
+          url: serverConfig.mcpServer.url,
         },
       };
 
@@ -348,6 +317,122 @@ const getServerConfigs = async (apiKey: string) => {
   return serverConfigList;
 };
 
+// MCPサーバーインスタンスIDから設定を取得
+const getServerConfigsByInstanceId = async (
+  userMcpServerInstanceId: string,
+) => {
+  // MCPサーバーインスタンスを取得
+  const serverInstance = await db.userMcpServerInstance.findUnique({
+    where: {
+      id: userMcpServerInstanceId,
+      deletedAt: null,
+    },
+    include: {
+      toolGroup: {
+        include: {
+          toolGroupTools: {
+            include: {
+              tool: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!serverInstance) {
+    throw new Error("Server instance not found");
+  }
+
+  const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
+    ({ userMcpServerConfigId }) => userMcpServerConfigId,
+  );
+
+  const serverConfigs = await db.userMcpServerConfig.findMany({
+    where: {
+      id: {
+        in: serverConfigIds,
+      },
+    },
+    omit: {
+      envVars: false,
+    },
+    include: {
+      mcpServer: true,
+    },
+  });
+
+  const serverConfigList: ServerConfig[] = serverConfigs.map((serverConfig) => {
+    const toolNames = serverInstance.toolGroup.toolGroupTools
+      .filter(
+        ({ userMcpServerConfigId }) =>
+          userMcpServerConfigId === serverConfig.id,
+      )
+      .map(({ tool }) => tool.name);
+
+    let envObj: Record<string, string>;
+    try {
+      envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
+    } catch {
+      envObj = {};
+    }
+
+    const transportConfig: TransportConfig = {
+      type: "stdio",
+      command: serverConfig.mcpServer.command || "",
+      args: serverConfig.mcpServer.args ?? [],
+      env: {
+        ...process.env,
+        ...envObj,
+      } as Record<string, string>,
+    } satisfies TransportConfigStdio;
+
+    if (
+      transportConfig.type === "stdio" &&
+      transportConfig.args &&
+      transportConfig.args.length > 0
+    ) {
+      transportConfig.args = JSON.parse(
+        JSON.stringify(transportConfig.args),
+      ) as string[];
+    }
+
+    const config: ServerConfig = {
+      name: serverConfig.name,
+      toolNames,
+      transport: transportConfig,
+    };
+
+    return config;
+  });
+
+  return serverConfigList;
+};
+
+// MCPサーバーインスタンスIDからMCPクライアントを取得
+export const getMcpClientsByInstanceId = async (
+  userMcpServerInstanceId: string,
+) => {
+  const serverConfigs = await getServerConfigsByInstanceId(
+    userMcpServerInstanceId,
+  );
+
+  const connectedClients = await createClients(serverConfigs);
+  // デバッグログを削除（メモリ使用量削減）
+
+  const cleanup = async () => {
+    try {
+      // デバッグログを削除（メモリ使用量削減）
+      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
+    } catch {
+      // クリーンアップ失敗は無視
+    }
+  };
+
+  return { connectedClients, cleanup };
+};
+
+// APIキーからMCPクライアントを取得（後方互換性）
 export const getMcpClients = async (apiKey: string) => {
   const serverConfigs = await getServerConfigs(apiKey);
 
@@ -358,10 +443,8 @@ export const getMcpClients = async (apiKey: string) => {
     try {
       // デバッグログを削除（メモリ使用量削減）
       await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch (error) {
-      logger.error("Error during cleanup", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+    } catch {
+      // クリーンアップ失敗は無視
     }
   };
 
@@ -369,7 +452,7 @@ export const getMcpClients = async (apiKey: string) => {
 };
 
 export const getServer = async (
-  apiKey: string,
+  userMcpServerInstanceId: string,
   transportType: TransportType,
   isValidationMode = false,
 ) => {
@@ -389,7 +472,6 @@ export const getServer = async (
   server.setRequestHandler(ListToolsRequestSchema, async (request) => {
     const startTime = Date.now();
 
-    logger.info("Listing tools - establishing fresh connections");
     const requestTimeout = config.timeouts.request;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -400,20 +482,31 @@ export const getServer = async (
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
-    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+    let userMcpServerInstance:
+      | Awaited<ReturnType<typeof db.userMcpServerInstance.findUnique>>
+      | undefined;
 
     try {
-      // API キー検証を先に実行してユーザー情報を取得
-      validation = await validateApiKey(apiKey);
-      if (!validation.valid || !validation.userMcpServerInstance) {
-        throw new Error(`Invalid API key: ${validation.error}`);
+      // MCPサーバーインスタンスを取得
+      userMcpServerInstance = await db.userMcpServerInstance.findUnique({
+        where: {
+          id: userMcpServerInstanceId,
+          deletedAt: null,
+        },
+        include: {
+          user: true,
+        },
+      });
+      if (!userMcpServerInstance) {
+        throw new Error("Server instance not found");
       }
 
       const result = await measureExecutionTime(
         () =>
           Promise.race([
             (async () => {
-              const { connectedClients, cleanup } = await getMcpClients(apiKey);
+              const { connectedClients, cleanup } =
+                await getMcpClientsByInstanceId(userMcpServerInstanceId);
               clientsCleanup = cleanup;
 
               try {
@@ -446,12 +539,7 @@ export const getServer = async (
                         });
                       allTools.push(...toolsWithSource);
                     }
-                  } catch (error) {
-                    logger.error("Error fetching tools from client", {
-                      clientName: connectedClient.name,
-                      error:
-                        error instanceof Error ? error.message : String(error),
-                    });
+                  } catch {
                     recordError("tools_list_client_error");
                   }
                 }
@@ -472,15 +560,15 @@ export const getServer = async (
       const durationMs = Date.now() - startTime;
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
-      if (validation.userMcpServerInstance) {
+      if (userMcpServerInstance) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.tools ?? []);
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
-        logMcpRequest({
-          userId: validation.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+        void logMcpRequest({
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
           method: "tools/list",
@@ -488,17 +576,10 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify({ tools: result.tools }),
-        }).catch((error) => {
-          // ログ記録失敗をログに残すが、リクエスト処理は継続
-          logger.error("Failed to log tools/list request", {
-            error: error instanceof Error ? error.message : String(error),
-            userId: validation?.userMcpServerInstance?.userId,
-          });
         });
       }
 
@@ -509,13 +590,8 @@ export const getServer = async (
       if (clientsCleanup) {
         try {
           await clientsCleanup();
-        } catch (cleanupError) {
-          logger.error("Error during cleanup after failure", {
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : String(cleanupError),
-          });
+        } catch {
+          // クリーンアップ失敗は無視
         }
       }
 
@@ -524,11 +600,11 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance && !isValidationMode) {
+      if (userMcpServerInstance && !isValidationMode) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
-        logMcpRequest({
-          userId: validation?.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+        void logMcpRequest({
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: "tools/list",
           transportType: transportType,
           method: "tools/list",
@@ -536,21 +612,10 @@ export const getServer = async (
           durationMs,
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
-        }).catch((logError) => {
-          logger.error("Failed to log tools/list error", {
-            logError:
-              logError instanceof Error ? logError.message : String(logError),
-            originalError: errorMessage,
-          });
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
         });
       }
 
-      logger.error("Tools list request failed", {
-        error: errorMessage,
-        durationMs,
-      });
       recordError("tools_list_failure");
       throw error;
     }
@@ -573,20 +638,31 @@ export const getServer = async (
     });
 
     let clientsCleanup: (() => Promise<void>) | undefined;
-    let validation: Awaited<ReturnType<typeof validateApiKey>> | undefined;
+    let userMcpServerInstance:
+      | Awaited<ReturnType<typeof db.userMcpServerInstance.findUnique>>
+      | undefined;
 
     try {
-      // API キー検証を先に実行してユーザー情報を取得
-      validation = await validateApiKey(apiKey);
-      if (!validation.valid || !validation.userMcpServerInstance) {
-        throw new Error(`Invalid API key: ${validation.error}`);
+      // MCPサーバーインスタンスを取得
+      userMcpServerInstance = await db.userMcpServerInstance.findUnique({
+        where: {
+          id: userMcpServerInstanceId,
+          deletedAt: null,
+        },
+        include: {
+          user: true,
+        },
+      });
+      if (!userMcpServerInstance) {
+        throw new Error("Server instance not found");
       }
 
       const result = await measureExecutionTime(
         () =>
           Promise.race([
             (async () => {
-              const { connectedClients, cleanup } = await getMcpClients(apiKey);
+              const { connectedClients, cleanup } =
+                await getMcpClientsByInstanceId(userMcpServerInstanceId);
               clientsCleanup = cleanup;
 
               try {
@@ -601,14 +677,8 @@ export const getServer = async (
                 }
 
                 if (!clientForTool) {
-                  logger.error("Unknown tool requested", { toolName: name });
                   throw new Error(`Unknown tool: ${name}`);
                 }
-
-                logger.info("Forwarding tool call to client", {
-                  toolName: name,
-                  clientName: clientForTool.name,
-                });
 
                 // Use the correct schema for tool calls
                 const result = await clientForTool.client.request(
@@ -641,15 +711,15 @@ export const getServer = async (
       const durationMs = Date.now() - startTime;
 
       // 検証モードでない場合のみログ記録
-      if (validation.userMcpServerInstance && !isValidationMode) {
+      if (userMcpServerInstance && !isValidationMode) {
         const inputBytes = calculateDataSize(request.params ?? {});
         const outputBytes = calculateDataSize(result.result ?? {});
 
         // 成功時のログ記録（詳細データ付き）
         // ログ記録を非同期で実行（await しない）
-        logMcpRequest({
-          userId: validation?.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+        void logMcpRequest({
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
           method: "tools/call",
@@ -657,18 +727,10 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify(result.result),
-        }).catch((error) => {
-          // ログ記録失敗をログに残すが、リクエスト処理は継続
-          logger.error("Failed to log tools/call request", {
-            error: error instanceof Error ? error.message : String(error),
-            toolName: name,
-            userId: validation?.userMcpServerInstance?.userId,
-          });
         });
       }
 
@@ -678,13 +740,8 @@ export const getServer = async (
       if (clientsCleanup) {
         try {
           await clientsCleanup();
-        } catch (cleanupError) {
-          logger.error("Error during cleanup after failure", {
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : String(cleanupError),
-          });
+        } catch {
+          // クリーンアップ失敗は無視
         }
       }
 
@@ -693,11 +750,11 @@ export const getServer = async (
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (validation?.userMcpServerInstance && !isValidationMode) {
+      if (userMcpServerInstance && !isValidationMode) {
         // 検証モードでない場合のみ、エラー時も非同期でログ記録
-        logMcpRequest({
-          userId: validation?.apiKey?.userId,
-          mcpServerInstanceId: validation.userMcpServerInstance.id,
+        void logMcpRequest({
+          userId: userMcpServerInstance?.userId,
+          mcpServerInstanceId: userMcpServerInstance.id,
           toolName: name,
           transportType: transportType,
           method: "tools/call",
@@ -705,23 +762,10 @@ export const getServer = async (
           durationMs,
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId:
-            validation.userMcpServerInstance.organizationId ?? undefined,
-        }).catch((logError) => {
-          logger.error("Failed to log tools/call error", {
-            logError:
-              logError instanceof Error ? logError.message : String(logError),
-            originalError: errorMessage,
-            toolName: name,
-          });
+          organizationId: userMcpServerInstance.organizationId ?? undefined,
         });
       }
 
-      logger.error("Tool call failed", {
-        toolName: name,
-        error: errorMessage,
-        durationMs,
-      });
       recordError(`tool_call_failure_${name}`);
       throw error;
     }

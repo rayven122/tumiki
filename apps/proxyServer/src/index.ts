@@ -1,11 +1,14 @@
 import express from "express";
 import { handleHealthCheck } from "./routes/health/index.js";
 import { handleMCPRequest } from "./routes/mcp/index.js";
-import { handleSSEConnection, handleSSEMessages } from "./routes/sse/index.js";
+import { establishSSEConnection, handleSSEMessage } from "./utils/transport.js";
 import { initializeApplication } from "./libs/startup.js";
-import { startSessionCleanup } from "./utils/session.js";
 import { logger } from "./libs/logger.js";
-import { conditionalAuthMiddleware } from "./middleware/auth.js";
+import { integratedAuthMiddleware } from "./middleware/integratedAuth.js";
+import {
+  loggingMiddleware,
+  errorLoggingMiddleware,
+} from "./middleware/logging.js";
 
 /**
  * Express アプリケーションを設定
@@ -16,14 +19,29 @@ const createApp = (): express.Application => {
   // ミドルウェア設定
   app.use(express.json({ limit: "10mb" })); // JSONペイロードサイズ制限
 
-  // CORS設定（必要に応じて）
+  // ログミドルウェアを最初に適用
+  app.use(loggingMiddleware());
+
+  // CORS設定
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    // 許可するオリジンのリスト
+    const allowedOrigins = [
+      "http://localhost:8080",
+      "http://local-server.tumiki.cloud:8080",
+      "https://server.tumiki.cloud",
+    ];
+
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, mcp-session-id, api-key, x-client-id",
+      "Content-Type, mcp-session-id, api-key, x-api-key, x-client-id, Authorization",
     );
+
     if (req.method === "OPTIONS") {
       res.sendStatus(200);
       return;
@@ -35,17 +53,25 @@ const createApp = (): express.Application => {
   app.get("/", handleHealthCheck);
   app.get("/health", handleHealthCheck);
 
-  // ここ以降のすべてのルートに条件付きOAuth認証ミドルウェアを適用
-  app.use(conditionalAuthMiddleware());
+  // ここ以降のすべてのルートに統合認証ミドルウェアを適用
+  app.use(integratedAuthMiddleware());
 
-  // 統合MCPエンドポイント（Streamable HTTP transport）
-  app.post("/mcp", handleMCPRequest);
-  app.get("/mcp", handleMCPRequest);
-  app.delete("/mcp", handleMCPRequest);
+  // 新しいRESTfulエンドポイント（MCPサーバーID指定）
+  app.all("/mcp/:userMcpServerInstanceId", handleMCPRequest);
 
-  // SSE transport エンドポイント（後方互換性）
-  app.get("/sse", handleSSEConnection);
-  app.post("/messages", handleSSEMessages);
+  // レガシーエンドポイント（後方互換性）
+  app.all("/mcp", handleMCPRequest);
+
+  // 新しいRESTfulエンドポイント（SSE transport）
+  app.get("/sse/:userMcpServerInstanceId", establishSSEConnection);
+  app.post("/messages/:userMcpServerInstanceId", handleSSEMessage);
+
+  // レガシーエンドポイント（後方互換性）
+  app.get("/sse", establishSSEConnection);
+  app.post("/messages", handleSSEMessage);
+
+  // エラーハンドリングミドルウェアを最後に適用
+  app.use(errorLoggingMiddleware());
 
   return app;
 };
@@ -56,10 +82,6 @@ const createApp = (): express.Application => {
 const startServer = (): void => {
   // アプリケーション初期化
   initializeApplication();
-
-  // セッションクリーンアップを開始
-  startSessionCleanup();
-  logger.info("Session cleanup started");
 
   // Express アプリケーション作成
   const app = createApp();
