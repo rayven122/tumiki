@@ -7,16 +7,24 @@ export enum TransportType {
   STREAMABLE_HTTP = "streamable_http",
 }
 
+// 認証情報の型定義
+export interface AuthInfo {
+  type: "api_key" | "oauth";
+  userId?: string;
+  userMcpServerInstanceId?: string;
+  organizationId?: string;
+}
+
 // 共通セッション情報
 export interface SessionInfo {
   id: string;
   transportType: TransportType;
-  apiKeyId: string;
   clientId: string;
   createdAt: number;
   lastActivity: number;
   errorCount: number;
   cleanup?: () => Promise<void>;
+  authInfo: AuthInfo;
 }
 
 // セッション管理設定
@@ -45,7 +53,7 @@ export const generateSessionId = (): string => randomUUID();
 export const createSessionWithId = (
   sessionId: string,
   transportType: TransportType,
-  apiKeyId: string,
+  authInfo: AuthInfo,
   clientId = "unknown",
   cleanup?: () => Promise<void>,
 ): SessionInfo => {
@@ -54,12 +62,12 @@ export const createSessionWithId = (
   const session: SessionInfo = {
     id: sessionId,
     transportType,
-    apiKeyId,
     clientId,
     createdAt: now,
     lastActivity: now,
     errorCount: 0,
     cleanup,
+    authInfo,
   };
 
   sessions.set(sessionId, session);

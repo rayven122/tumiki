@@ -86,10 +86,7 @@ export const handlePOSTRequest = async (
       });
       return;
     }
-    transport = createStreamableTransport(
-      req.authInfo.userMcpServerInstanceId,
-      clientId,
-    );
+    transport = createStreamableTransport(req.authInfo, clientId);
     isNewSession = true;
   }
 
