@@ -14,6 +14,14 @@ import { TransportType } from "@tumiki/db";
 import { logMcpRequest } from "../../libs/requestLogger.js";
 import { toMcpRequest } from "../../utils/mcpAdapter.js";
 import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
+import {
+  sendBadRequestError,
+  sendNotFoundError,
+  sendAuthenticationError,
+  sendServiceUnavailableError,
+  sendJsonRpcError,
+  JSON_RPC_ERROR_CODES,
+} from "../../utils/errorResponse.js";
 
 /**
  * POST リクエスト処理 - JSON-RPC メッセージ
@@ -33,27 +41,13 @@ export const handlePOSTRequest = async (
   // セッションIDがある場合は既存セッションを確認
   if (sessionId) {
     if (!isSessionValid(sessionId)) {
-      res.status(400).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Invalid or expired session",
-        },
-        id: null,
-      });
+      sendBadRequestError(res, "Invalid or expired session");
       return;
     }
 
     const existingTransport = getStreamableTransportBySessionId(sessionId);
     if (!existingTransport) {
-      res.status(404).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Session not found",
-        },
-        id: null,
-      });
+      sendNotFoundError(res, "Session not found");
       return;
     }
     transport = existingTransport;
@@ -63,27 +57,13 @@ export const handlePOSTRequest = async (
   } else {
     // 新しいセッションの作成
     if (!canCreateNewSession()) {
-      res.status(503).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Server at capacity",
-        },
-        id: null,
-      });
+      sendServiceUnavailableError(res, "Server at capacity");
       return;
     }
 
     // 認証情報からuserMcpServerInstanceIdを取得（統合認証ミドルウェアで必ず設定される）
     if (!req.authInfo?.userMcpServerInstanceId) {
-      res.status(401).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Authentication required",
-        },
-        id: null,
-      });
+      sendAuthenticationError(res);
       return;
     }
     transport = createStreamableTransport(req.authInfo, clientId);
@@ -101,14 +81,12 @@ export const handlePOSTRequest = async (
       );
       await server.connect(transport);
     } catch {
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Failed to establish MCP connection",
-        },
-        id: null,
-      });
+      sendJsonRpcError(
+        res,
+        500,
+        "Failed to establish MCP connection",
+        JSON_RPC_ERROR_CODES.INTERNAL_ERROR,
+      );
       return;
     }
   }
@@ -136,7 +114,7 @@ export const handlePOSTRequest = async (
       const errorResponse = {
         jsonrpc: "2.0",
         error: {
-          code: -32603,
+          code: JSON_RPC_ERROR_CODES.INTERNAL_ERROR,
           message: "Transport error",
         },
         id: null,
