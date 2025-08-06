@@ -19,6 +19,7 @@ import {
   updateSessionActivity,
   canCreateNewSession,
   type SessionInfo,
+  type AuthInfo,
 } from "./session.js";
 import { TransportType as PrismaTransportType } from "@tumiki/db";
 
@@ -174,7 +175,7 @@ export const establishSSEConnection = async (
       session = createSessionWithId(
         sessionId,
         TransportType.SSE,
-        authInfo.userMcpServerInstanceId || "",
+        authInfo,
         clientId,
         async () => {
           // 既にクリーンアップ中の場合は処理をスキップ
@@ -368,7 +369,7 @@ export const handleSSEMessage = async (
  * 新しいStreamableHTTPServerTransportを作成
  */
 export const createStreamableTransport = (
-  userMcpServerInstanceId: string,
+  authInfo: AuthInfo,
   clientId = "unknown",
 ): StreamableHTTPServerTransport => {
   const transport = new StreamableHTTPServerTransport({
@@ -378,7 +379,7 @@ export const createStreamableTransport = (
       createSessionWithId(
         sessionId,
         TransportType.STREAMABLE_HTTP,
-        userMcpServerInstanceId,
+        authInfo,
         clientId,
         async () => {
           // Streamable HTTP接続のクリーンアップ
