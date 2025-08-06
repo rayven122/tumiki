@@ -22,14 +22,26 @@ const createApp = (): express.Application => {
   // ログミドルウェアを最初に適用
   app.use(loggingMiddleware());
 
-  // CORS設定（必要に応じて）
+  // CORS設定
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    // 許可するオリジンのリスト
+    const allowedOrigins = [
+      "http://localhost:8080",
+      "http://local-server.tumiki.cloud:8080",
+      "https://server.tumiki.cloud",
+    ];
+
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
       "Content-Type, mcp-session-id, api-key, x-api-key, x-client-id, Authorization",
     );
+
     if (req.method === "OPTIONS") {
       res.sendStatus(200);
       return;

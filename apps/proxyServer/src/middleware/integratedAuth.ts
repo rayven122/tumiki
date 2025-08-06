@@ -245,6 +245,7 @@ export const integratedAuthMiddleware = () => {
               -32000,
               { "WWW-Authenticate": 'Bearer realm="MCP API"' },
             );
+            return;
           } else {
             // OAuth認証成功
             req.authInfo = {
@@ -259,6 +260,7 @@ export const integratedAuthMiddleware = () => {
                 ?.permissions,
             };
             next();
+            return;
           }
         });
         return;

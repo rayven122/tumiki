@@ -91,7 +91,6 @@ const createClient = (
       // Type narrowing: when type is "sse", url is guaranteed to be string
       const sseTransport = server.transport;
       if ("url" in sseTransport && typeof sseTransport.url === "string") {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
         transport = new SSEClientTransport(new URL(sseTransport.url));
       } else {
         throw new Error("SSE transport requires a valid URL");
