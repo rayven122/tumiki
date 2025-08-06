@@ -452,10 +452,26 @@ export const getMcpClients = async (apiKey: string) => {
 };
 
 export const getServer = async (
-  userMcpServerInstanceId: string,
+  serverIdentifier: string,
   transportType: TransportType,
   isValidationMode = false,
 ) => {
+  // 後方互換性: APIキー形式（tumiki_mcp_で始まる）かどうかをチェック
+  let userMcpServerInstanceId: string;
+  const apiKeyPrefix = process.env.API_KEY_PREFIX;
+  if (apiKeyPrefix && serverIdentifier.startsWith(apiKeyPrefix)) {
+    // APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
+    const validation = await validateApiKey(serverIdentifier);
+    if (!validation.valid || !validation.userMcpServerInstance) {
+      throw new Error(
+        `Invalid API key: ${validation.error || "Unknown error"}`,
+      );
+    }
+    userMcpServerInstanceId = validation.userMcpServerInstance.id;
+  } else {
+    // 直接userMcpServerInstanceIdとして扱う
+    userMcpServerInstanceId = serverIdentifier;
+  }
   const server = new Server(
     {
       name: "mcp-proxy",

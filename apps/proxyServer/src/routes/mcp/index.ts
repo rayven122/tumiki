@@ -3,6 +3,12 @@ import { handlePOSTRequest } from "./post.js";
 import { handleGETRequest } from "./get.js";
 import { handleDELETERequest } from "./delete.js";
 import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
+import {
+  sendAuthenticationError,
+  sendMethodNotAllowedError,
+  sendJsonRpcError,
+  JSON_RPC_ERROR_CODES,
+} from "../../utils/errorResponse.js";
 
 /**
  * 統合MCPエンドポイント - Streamable HTTP transport
@@ -21,55 +27,32 @@ export const handleMCPRequest = async (
   const authInfo = req.authInfo;
   if (!authInfo) {
     // このケースは通常発生しないはずだが、念のため
-    res.status(401).json({
-      jsonrpc: "2.0",
-      error: {
-        code: -32000,
-        message: "Unauthorized: Authentication required",
-      },
-      id: null,
-    });
+    sendAuthenticationError(res, "Unauthorized: Authentication required");
     return;
   }
-
-  // 後方互換性のため、APIキーを取得（proxy.tsがまだ使用している）
-  const apiKey: string | undefined =
-    (req.headers["x-api-key"] as string) ||
-    (req.headers["api-key"] as string) ||
-    (req.query["api-key"] as string) ||
-    undefined;
 
   try {
     switch (method) {
       case "POST":
-        await handlePOSTRequest(req, res, sessionId, apiKey || "", clientId);
+        await handlePOSTRequest(req, res, sessionId, clientId);
         break;
       case "GET":
-        await handleGETRequest(req, res, sessionId, apiKey || "", clientId);
+        await handleGETRequest(req, res, sessionId, clientId);
         break;
       case "DELETE":
         await handleDELETERequest(req, res, sessionId);
         break;
       default:
-        res.status(405).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: `Method ${method} not allowed`,
-          },
-          id: null,
-        });
+        sendMethodNotAllowedError(res, method);
     }
   } catch {
     if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Internal error",
-        },
-        id: null,
-      });
+      sendJsonRpcError(
+        res,
+        500,
+        "Internal error",
+        JSON_RPC_ERROR_CODES.INTERNAL_ERROR,
+      );
     }
   }
 };

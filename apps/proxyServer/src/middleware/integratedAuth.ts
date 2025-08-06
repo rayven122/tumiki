@@ -3,6 +3,7 @@ import { auth } from "express-oauth2-jwt-bearer";
 import { validateApiKey } from "../libs/validateApiKey.js";
 import { db } from "@tumiki/db/tcp";
 import type { AuthType } from "@tumiki/db";
+import { sessions } from "../utils/session.js";
 
 /**
  * JWT検証ミドルウェアの設定
@@ -59,7 +60,7 @@ const getAuthErrorMessage = (authType: AuthType): string => {
     case "BOTH":
       return "Either API key or OAuth authentication required";
     case "NONE":
-      return "Authentication not required but invalid credentials provided";
+      return "Authentication type NONE is not allowed for security reasons";
     default:
       return "Authentication required";
   }
@@ -137,6 +138,19 @@ export const integratedAuthMiddleware = () => {
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
+    // セッションIDの取得（/messagesエンドポイント用）
+    const sessionId = req.query.sessionId as string | undefined;
+
+    // セッションベースの認証を優先
+    if (sessionId) {
+      const session = sessions.get(sessionId);
+      if (session && session.authInfo) {
+        // セッションから認証情報を直接使用
+        req.authInfo = session.authInfo;
+        return next();
+      }
+    }
+
     // APIキーの取得（新しいX-API-Keyヘッダーを優先）
     const apiKey: string | undefined =
       (req.headers["x-api-key"] as string) ||
@@ -178,14 +192,13 @@ export const integratedAuthMiddleware = () => {
     // authTypeに基づく認証チェック
     switch (authType) {
       case "NONE":
-        // 認証不要
-        req.authInfo = {
-          type: "api_key",
-          userId: mcpServerInstance.userId,
-          userMcpServerInstanceId: mcpServerInstance.id,
-          organizationId: mcpServerInstance.organizationId ?? undefined,
-        };
-        return next();
+        sendAuthError(
+          res,
+          403,
+          "Authentication type NONE is not allowed for security reasons",
+          -32000,
+        );
+        return;
 
       case "API_KEY":
         // APIキー認証が必須
