@@ -15,6 +15,9 @@ import {
   Wrench,
   RefreshCw,
   Edit2,
+  Shield,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import {
@@ -38,6 +41,13 @@ import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { getMcpServerData } from "@/constants/mcpServerDescriptions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ServerInstance =
   RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
@@ -58,6 +68,17 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
+  const [securityScanResult, setSecurityScanResult] = useState<{
+    success: boolean;
+    issues: Array<{
+      code?: string;
+      message?: string;
+      extraData?: Record<string, unknown>;
+    }>;
+    error?: string;
+  } | null>(null);
+  const [showSecurityDetails, setShowSecurityDetails] = useState(false);
+  const [showScanResultModal, setShowScanResultModal] = useState(false);
 
   const { tools } = serverInstance;
 
@@ -77,10 +98,21 @@ export const UserMcpServerCard = ({
   const { mutate: scanServer, isPending: isScanning } =
     api.userMcpServerInstance.checkServerConnection.useMutation({
       onSuccess: async (result) => {
+        // セキュリティスキャン結果がある場合は保存
+        if (result.securityScan) {
+          setSecurityScanResult(result.securityScan);
+        }
+
         if (result.success) {
-          toast.success(`接続が正常です（ツール数: ${result.toolCount}）`);
+          // 問題がある場合はモーダルを表示
+          if (result.securityScan && result.securityScan.issues.length > 0) {
+            setShowScanResultModal(true);
+          } else {
+            toast.success(`接続が正常です（ツール数: ${result.toolCount}）`);
+          }
         } else {
-          toast.error(result.error ?? "接続に失敗しました");
+          // エラーの場合もモーダルを表示
+          setShowScanResultModal(true);
         }
         await revalidate?.();
       },
@@ -128,6 +160,24 @@ export const UserMcpServerCard = ({
     });
   };
 
+  const getSecurityStatusLabel = (
+    result: typeof securityScanResult,
+  ): string => {
+    if (!result) return "";
+    if (!result.success) return "スキャンエラー";
+    if (result.issues.length === 0) return "問題なし";
+    return `${result.issues.length}件の問題`;
+  };
+
+  const getSecurityStatusColor = (
+    result: typeof securityScanResult,
+  ): string => {
+    if (!result) return "text-gray-500";
+    if (!result.success) return "text-yellow-500";
+    if (result.issues.length === 0) return "text-green-500";
+    return "text-red-500";
+  };
+
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = serverInstance.mcpServer?.url;
 
@@ -156,6 +206,14 @@ export const UserMcpServerCard = ({
           isSortMode &&
             "cursor-grab border-2 border-dashed border-blue-300 bg-blue-50/30 select-none",
           isScanning && "relative overflow-hidden",
+          // セキュリティ問題がある場合のスタイル
+          securityScanResult &&
+            !securityScanResult.success &&
+            "border-yellow-300 bg-yellow-50/10",
+          securityScanResult &&
+            securityScanResult.success &&
+            securityScanResult.issues.length > 0 &&
+            "border-red-300 bg-red-50/10",
         )}
         onClick={handleCardClick}
       >
@@ -171,6 +229,39 @@ export const UserMcpServerCard = ({
           </div>
         )}
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          {/* セキュリティ警告アイコン */}
+          {securityScanResult && securityScanResult.issues.length > 0 && (
+            <div className="absolute -top-2 -right-2 z-10">
+              <div className="relative">
+                <AlertTriangle
+                  className={cn(
+                    "h-5 w-5",
+                    !securityScanResult.success
+                      ? "text-yellow-600"
+                      : "text-red-600",
+                  )}
+                />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span
+                    className={cn(
+                      "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                      !securityScanResult.success
+                        ? "bg-yellow-400"
+                        : "bg-red-400",
+                    )}
+                  ></span>
+                  <span
+                    className={cn(
+                      "relative inline-flex h-3 w-3 rounded-full",
+                      !securityScanResult.success
+                        ? "bg-yellow-500"
+                        : "bg-red-500",
+                    )}
+                  ></span>
+                </span>
+              </div>
+            </div>
+          )}
           <div className="group relative mr-2 rounded-md p-2">
             {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
               <Image
@@ -403,6 +494,110 @@ export const UserMcpServerCard = ({
             ))}
           </div>
         </CardContent>
+
+        {/* セキュリティスキャン結果表示 */}
+        {securityScanResult && (
+          <div
+            className={cn(
+              "space-y-2 border-t px-4 py-3",
+              !securityScanResult.success && "border-t-yellow-300 bg-yellow-50",
+              securityScanResult.success &&
+                securityScanResult.issues.length > 0 &&
+                "border-t-red-300 bg-red-50",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield
+                  className={cn(
+                    "h-4 w-4",
+                    getSecurityStatusColor(securityScanResult),
+                  )}
+                />
+                <span className="text-sm font-medium">
+                  セキュリティスキャン:{" "}
+                  {getSecurityStatusLabel(securityScanResult)}
+                </span>
+              </div>
+              {(securityScanResult.issues.length > 0 ||
+                securityScanResult.error) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSecurityDetails(!showSecurityDetails);
+                  }}
+                >
+                  {showSecurityDetails ? "詳細を隠す" : "詳細を表示"}
+                </Button>
+              )}
+            </div>
+
+            {showSecurityDetails && (
+              <div className="space-y-2 rounded-md bg-gray-50 p-3">
+                {securityScanResult.error && (
+                  <div className="text-sm text-red-600">
+                    <p className="font-medium">
+                      エラー: {securityScanResult.error}
+                    </p>
+                  </div>
+                )}
+                {securityScanResult.issues.length > 0 && (
+                  <div className="space-y-2">
+                    {securityScanResult.issues.map((issue, index) => (
+                      <div key={index} className="text-sm">
+                        <div className="flex items-start gap-2">
+                          <span
+                            className={cn(
+                              "inline-block rounded px-2 py-0.5 text-xs font-medium",
+                              // コードに応じた色分け
+                              issue.code === "TF001" &&
+                                "bg-red-100 text-red-800",
+                              issue.code === "scan_timeout" &&
+                                "bg-orange-100 text-orange-800",
+                              issue.code === "scan_error" &&
+                                "bg-red-100 text-red-800",
+                              issue.code === "invalid_output" &&
+                                "bg-purple-100 text-purple-800",
+                              issue.code === "parse_error" &&
+                                "bg-purple-100 text-purple-800",
+                              // デフォルト
+                              !issue.code?.match(
+                                /^(TF001|scan_timeout|scan_error|invalid_output|parse_error)$/,
+                              ) && "bg-yellow-100 text-yellow-800",
+                            )}
+                          >
+                            {issue.code ?? "UNKNOWN"}
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {issue.message ?? "不明な問題"}
+                            </p>
+                            {issue.extraData && (
+                              <details className="mt-1">
+                                <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+                                  詳細情報を表示
+                                </summary>
+                                <div className="mt-2 rounded-md bg-gray-100 p-3">
+                                  {/* その他の場合は通常のJSON表示 */}
+                                  <pre className="overflow-auto text-xs text-gray-600">
+                                    {JSON.stringify(issue.extraData, null, 2)}
+                                  </pre>
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* <CardFooter className="mt-auto">
         <Button
           type="button"
@@ -471,6 +666,113 @@ export const UserMcpServerCard = ({
           onOpenChange={setNameEditModalOpen}
         />
       )}
+
+      {/* セキュリティスキャン結果モーダル */}
+      <Dialog open={showScanResultModal} onOpenChange={setShowScanResultModal}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Shield className="h-5 w-5" />
+              セキュリティスキャン結果
+            </DialogTitle>
+          </DialogHeader>
+
+          {securityScanResult && (
+            <div className="mt-4 space-y-4">
+              {/* スキャンエラーの場合 */}
+              {!securityScanResult.success && (
+                <Alert className="border-yellow-300 bg-yellow-50">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription>
+                    <p className="font-medium">スキャンエラー</p>
+                    <p className="mt-1 text-sm">
+                      {securityScanResult.error ??
+                        "セキュリティスキャンの実行中にエラーが発生しました"}
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* セキュリティ問題が見つかった場合 */}
+              {securityScanResult.success &&
+                securityScanResult.issues.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <p className="font-medium">
+                        {securityScanResult.issues.length}
+                        件のセキュリティ問題が検出されました
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+              {/* 問題の詳細リスト */}
+              {securityScanResult.issues.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">検出された問題:</h3>
+                  {securityScanResult.issues.map((issue, index) => (
+                    <div
+                      key={index}
+                      className="space-y-2 rounded-lg border p-4"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          className={cn(
+                            "inline-block rounded px-2 py-0.5 text-xs font-medium",
+                            issue.code === "TF001" && "bg-red-100 text-red-800",
+                            issue.code === "scan_timeout" &&
+                              "bg-orange-100 text-orange-800",
+                            issue.code === "scan_error" &&
+                              "bg-red-100 text-red-800",
+                            issue.code === "invalid_output" &&
+                              "bg-purple-100 text-purple-800",
+                            issue.code === "parse_error" &&
+                              "bg-purple-100 text-purple-800",
+                            !issue.code?.match(
+                              /^(TF001|scan_timeout|scan_error|invalid_output|parse_error)$/,
+                            ) && "bg-yellow-100 text-yellow-800",
+                          )}
+                        >
+                          {issue.code ?? "UNKNOWN"}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            {issue.message ?? "不明な問題"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {issue.extraData && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+                            詳細情報を表示
+                          </summary>
+                          <div className="mt-2 rounded-md bg-gray-100 p-3">
+                            <pre className="overflow-auto text-xs text-gray-600">
+                              {JSON.stringify(issue.extraData, null, 2)}
+                            </pre>
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* アクションボタン */}
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowScanResultModal(false)}
+                >
+                  閉じる
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

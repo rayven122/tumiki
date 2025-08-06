@@ -243,6 +243,19 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
         status: z.nativeEnum(ServerStatus),
         error: z.string().optional(),
         toolCount: z.number(),
+        securityScan: z
+          .object({
+            success: z.boolean(),
+            issues: z.array(
+              z.object({
+                code: z.string().optional(),
+                message: z.string().optional(),
+                extraData: z.record(z.unknown()).optional(),
+              }),
+            ),
+            error: z.string().optional(),
+          })
+          .optional(),
       }),
     )
     .mutation(checkServerConnection),
