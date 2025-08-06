@@ -32,10 +32,6 @@ model Subscription {
   @@unique([userId])
   @@unique([organizationId])
   @@index([stripeCustomerId])
-  @@index([stripeCurrentPeriodEnd])
-  @@index([status, stripeCurrentPeriodEnd]) // 期限切れ検索用
-  @@index([userId, status]) // ユーザー別アクティブ検索用
-  @@index([organizationId, status]) // 組織別アクティブ検索用
 }
 
 // 処理済みWebhookイベント（軽量な冪等性管理用）
