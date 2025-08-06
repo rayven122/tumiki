@@ -458,7 +458,8 @@ export const getServer = async (
 ) => {
   // 後方互換性: APIキー形式（tumiki_mcp_で始まる）かどうかをチェック
   let userMcpServerInstanceId: string;
-  if (serverIdentifier.startsWith(process.env.API_KEY_PREFIX ?? "")) {
+  const apiKeyPrefix = process.env.API_KEY_PREFIX;
+  if (apiKeyPrefix && serverIdentifier.startsWith(apiKeyPrefix)) {
     // APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
     const validation = await validateApiKey(serverIdentifier);
     if (!validation.valid || !validation.userMcpServerInstance) {
