@@ -1,7 +1,6 @@
 import { type Request, type Response } from "express";
 import { getStreamableTransportBySessionId } from "../../utils/transport.js";
 import { updateSessionActivity, isSessionValid } from "../../utils/session.js";
-import { logger } from "../../libs/logger.js";
 import { toMcpRequest } from "../../utils/mcpAdapter.js";
 
 /**
@@ -57,12 +56,7 @@ export const handleGETRequest = async (
   // SSE ストリームとして処理
   try {
     await transport.handleRequest(toMcpRequest(req), res);
-  } catch (error) {
-    logger.error("Error handling SSE stream", {
-      sessionId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
+  } catch {
     if (!res.headersSent) {
       res.status(500).send("SSE stream error");
     }

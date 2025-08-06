@@ -11,7 +11,6 @@ import {
 } from "../../utils/session.js";
 import { getServer } from "../../utils/proxy.js";
 import { TransportType } from "@tumiki/db";
-import { logger } from "../../libs/logger.js";
 import { logMcpRequest } from "../../libs/requestLogger.js";
 import { toMcpRequest } from "../../utils/mcpAdapter.js";
 
@@ -88,17 +87,7 @@ export const handlePOSTRequest = async (
         isValidationMode,
       );
       await server.connect(transport);
-
-      logger.info("New MCP session established", {
-        sessionId: transport.sessionId,
-        hasApiKey: !!apiKey,
-        clientId,
-      });
-    } catch (error) {
-      logger.error("Failed to establish MCP connection", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-
+    } catch {
       res.status(500).json({
         jsonrpc: "2.0",
         error: {
@@ -129,12 +118,7 @@ export const handlePOSTRequest = async (
 
     await transport.handleRequest(toMcpRequest(req), res, requestBody);
     success = true;
-  } catch (error) {
-    logger.error("Error handling transport request", {
-      sessionId: transport.sessionId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
+  } catch {
     if (!res.headersSent) {
       const errorResponse = {
         jsonrpc: "2.0",
@@ -174,7 +158,7 @@ export const handlePOSTRequest = async (
     // 検証モードでない場合のみログ記録
     if (!isValidationMode) {
       // 非同期でログ記録（レスポンス返却をブロックしない）
-      logMcpRequest({
+      void logMcpRequest({
         userId: undefined,
         mcpServerInstanceId: undefined, // HTTP transportでは特定できない場合がある
         toolName: "http_transport",
@@ -188,11 +172,6 @@ export const handlePOSTRequest = async (
         // 詳細ログ記録を追加（サイズ制限付き）
         requestData: requestData,
         responseData: responseDataForLog || undefined,
-      }).catch((error) => {
-        logger.error("Failed to log HTTP transport request", {
-          error: error instanceof Error ? error.message : String(error),
-          sessionId: transport.sessionId,
-        });
       });
     }
   }
