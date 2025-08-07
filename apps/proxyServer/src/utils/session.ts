@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import { logger } from "../libs/logger.js";
 import { config } from "../libs/config.js";
 
 // Transport種別
@@ -8,16 +7,24 @@ export enum TransportType {
   STREAMABLE_HTTP = "streamable_http",
 }
 
+// 認証情報の型定義
+export interface AuthInfo {
+  type: "api_key" | "oauth";
+  userId?: string;
+  userMcpServerInstanceId?: string;
+  organizationId?: string;
+}
+
 // 共通セッション情報
 export interface SessionInfo {
   id: string;
   transportType: TransportType;
-  apiKeyId: string;
   clientId: string;
   createdAt: number;
   lastActivity: number;
   errorCount: number;
   cleanup?: () => Promise<void>;
+  authInfo: AuthInfo;
 }
 
 // セッション管理設定
@@ -41,31 +48,12 @@ export const sessions = new Map<string, SessionInfo>();
 export const generateSessionId = (): string => randomUUID();
 
 /**
- * セッションを作成
- */
-export const createSession = (
-  transportType: TransportType,
-  apiKeyId: string,
-  clientId = "unknown",
-  cleanup?: () => Promise<void>,
-): SessionInfo => {
-  const sessionId = generateSessionId();
-  return createSessionWithId(
-    sessionId,
-    transportType,
-    apiKeyId,
-    clientId,
-    cleanup,
-  );
-};
-
-/**
  * 指定されたセッションIDでセッションを作成
  */
 export const createSessionWithId = (
   sessionId: string,
   transportType: TransportType,
-  apiKeyId: string,
+  authInfo: AuthInfo,
   clientId = "unknown",
   cleanup?: () => Promise<void>,
 ): SessionInfo => {
@@ -74,12 +62,12 @@ export const createSessionWithId = (
   const session: SessionInfo = {
     id: sessionId,
     transportType,
-    apiKeyId,
     clientId,
     createdAt: now,
     lastActivity: now,
     errorCount: 0,
     cleanup,
+    authInfo,
   };
 
   sessions.set(sessionId, session);
@@ -114,21 +102,6 @@ export const updateSessionActivity = (
 };
 
 /**
- * セッションエラーを記録
- */
-export const recordSessionError = (sessionId: string): void => {
-  const session = sessions.get(sessionId);
-  if (session) {
-    session.errorCount++;
-    logger.error("Session error recorded", {
-      sessionId,
-      transportType: session.transportType,
-      errorCount: session.errorCount,
-    });
-  }
-};
-
-/**
  * セッションの有効性をチェック
  */
 export const isSessionValid = (sessionId: string): boolean => {
@@ -151,26 +124,8 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
   const session = sessions.get(sessionId);
   if (!session) return;
 
-  const sessionDuration = Date.now() - session.createdAt;
-
-  logger.info("Deleting session", {
-    sessionId,
-    transportType: session.transportType,
-    durationSeconds: Math.round(sessionDuration / 1000),
-    errorCount: session.errorCount,
-  });
-
   // クリーンアップ関数を実行
-  if (session.cleanup) {
-    try {
-      await session.cleanup();
-    } catch (error) {
-      logger.error("Error during session cleanup", {
-        sessionId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  await session.cleanup?.();
 
   sessions.delete(sessionId);
 };
@@ -178,7 +133,7 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 /**
  * 期限切れセッションのクリーンアップ
  */
-export const cleanupExpiredSessions = (): void => {
+export const cleanupExpiredSessions = async (): Promise<void> => {
   const now = Date.now();
   const expiredSessions: string[] = [];
 
@@ -188,16 +143,9 @@ export const cleanupExpiredSessions = (): void => {
     }
   }
 
-  for (const sessionId of expiredSessions) {
-    void deleteSession(sessionId);
-  }
-
-  if (expiredSessions.length > 0) {
-    logger.info("Cleaned up expired sessions", {
-      count: expiredSessions.length,
-      remainingSessions: sessions.size,
-    });
-  }
+  await Promise.all(
+    expiredSessions.map((sessionId) => deleteSession(sessionId)),
+  );
 };
 
 /**
@@ -231,15 +179,6 @@ export const getSessionStats = () => {
 };
 
 /**
- * 定期的なセッションクリーンアップを開始
- */
-export const startSessionCleanup = (): NodeJS.Timeout => {
-  return setInterval(() => {
-    cleanupExpiredSessions();
-  }, SESSION_CONFIG.CLEANUP_INTERVAL);
-};
-
-/**
  * 全セッションをクリーンアップ
  */
 export const cleanupAllSessions = async (): Promise<void> => {
@@ -249,12 +188,5 @@ export const cleanupAllSessions = async (): Promise<void> => {
     cleanupPromises.push(deleteSession(sessionId));
   }
 
-  try {
-    await Promise.all(cleanupPromises);
-    logger.info("All sessions cleaned up");
-  } catch (error) {
-    logger.error("Error during session cleanup", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+  await Promise.all(cleanupPromises);
 };

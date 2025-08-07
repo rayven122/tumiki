@@ -3,9 +3,10 @@ import { findAllWithTools } from "./findAllWithTools";
 import { createMcpServer } from "./create";
 import z from "zod";
 import { McpServerVisibility, TransportType } from "@tumiki/db/server";
+import { nameValidationSchema } from "@/schema/validation";
 
 export const CreateMcpServerInput = z.object({
-  name: z.string().min(1, "サーバー名は必須です"),
+  name: nameValidationSchema,
   iconPath: z.string().optional(),
   transportType: z.nativeEnum(TransportType),
   command: z.string().optional(),

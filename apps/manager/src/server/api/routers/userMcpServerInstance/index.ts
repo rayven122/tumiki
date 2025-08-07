@@ -59,7 +59,7 @@ export const FindServersOutput = z.array(
 );
 
 export const AddCustomServerInput = z.object({
-  name: z.string(),
+  name: nameValidationSchema,
   description: z.string().default(""),
   serverToolIdsMap: z.record(
     UserMcpServerConfigIdSchema,
@@ -71,7 +71,7 @@ export const AddOfficialServerInput = z.object({
   mcpServerId: z.string(),
   envVars: z.record(z.string(), z.string()),
   isPending: z.boolean().optional(), // OAuth認証用フラグを追加
-  name: nameValidationSchema.optional(), // サーバー名のオプションを追加
+  name: nameValidationSchema, // サーバー名を必須に変更
 });
 
 export const AddOfficialServerOutput = z.object({

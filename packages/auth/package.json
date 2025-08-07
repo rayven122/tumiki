@@ -6,15 +6,23 @@
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
-      "default": "./dist/src/index.js"
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.cjs"
     },
     "./client": {
       "types": "./dist/src/client.d.ts",
-      "default": "./dist/src/client.js"
+      "import": "./dist/src/client.js",
+      "require": "./dist/src/client.cjs"
     },
     "./server": {
       "types": "./dist/src/server.d.ts",
-      "default": "./dist/src/server.js"
+      "import": "./dist/src/server.js",
+      "require": "./dist/src/server.cjs"
+    },
+    "./edge": {
+      "types": "./dist/src/edge.d.ts",
+      "import": "./dist/src/edge.js",
+      "require": "./dist/src/edge.cjs"
     }
   },
   "scripts": {

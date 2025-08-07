@@ -50,7 +50,7 @@ export const CreateMcpServerDialog = ({
   open,
   onOpenChange,
 }: CreateMcpServerDialogProps) => {
-  const [name, setName] = useState("");
+  const [name, setName] = useState("new-server");
   const [iconPath, setIconPath] = useState("");
   const [url, setUrl] = useState("");
   const [headers, setHeaders] = useState<Header[]>([]);
@@ -88,7 +88,7 @@ export const CreateMcpServerDialog = ({
   });
 
   const resetForm = () => {
-    setName("");
+    setName("new-server");
     setIconPath("");
     setUrl("");
     setHeaders([]);

@@ -2,5 +2,11 @@
   "[prisma]": {
     "editor.defaultFormatter": "Prisma.prisma"
   },
-  "cSpell.words": ["Asana", "microcms", "Tumiki"]
+  "cSpell.words": [
+    "Asana",
+    "microcms",
+    "modelcontextprotocol",
+    "Streamable",
+    "Tumiki"
+  ]
 }
