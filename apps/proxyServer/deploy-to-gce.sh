@@ -419,6 +419,14 @@ deploy_to_vm() {
             pnpm db:generate
             pnpm build
             
+            # @tumiki/tsup-config ビルド
+            echo ''
+            echo '=============================='
+            echo '@tumiki/tsup-config パッケージをビルド中...'
+            echo '=============================='
+            cd ../../tooling/tsup-config
+            pnpm build
+            
             # データベースマイグレーション実行
             echo ''
             echo '=============================='
