@@ -29,47 +29,56 @@ pnpm verify
 
 ## API エンドポイント
 
-### Streamable HTTP Transport
+### RESTful エンドポイント（推奨）
 
-- **エンドポイント**: `http://localhost:8080/mcp` (推奨)
+MCPサーバーIDを直接URLパスに指定する新しいエンドポイント：
+
+#### Streamable HTTP Transport
+
+- **エンドポイント**: `http://localhost:8080/mcp/{mcpServerInstanceId}`
+- **メソッド**: GET, POST, DELETE
+- **認証**: authTypeに応じてAPIキーまたはOAuth
+
+```bash
+# APIキー認証（authType=API_KEY）
+curl -X POST http://localhost:8080/mcp/{mcpServerInstanceId} \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+
+# OAuth認証（authType=OAUTH）
+curl -X POST http://localhost:8080/mcp/{mcpServerInstanceId} \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_M2M_TOKEN" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+#### SSE Transport
+
+- **エンドポイント**: `http://localhost:8080/sse/{mcpServerInstanceId}`
+- **メソッド**: GET（SSE接続確立）
+- **メッセージ送信**: `http://localhost:8080/messages/{mcpServerInstanceId}`
+
+### レガシーエンドポイント（後方互換性）
+
+APIキーからMCPサーバーを特定する従来のエンドポイント：
+
+#### Streamable HTTP Transport
+
+- **エンドポイント**: `http://localhost:8080/mcp`
 - **メソッド**: GET, POST, DELETE
 - **認証**: APIキー（クエリパラメータ、ヘッダー、またはBearer token）
 
-#### POST /mcp
-
-MCPサーバーへのリクエストを処理し、新しいセッションを作成します。
-
 ```bash
-curl -X POST http://localhost:8080/mcp \
+curl -X POST http://localhost:8080/mcp?api-key=your_api_key \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-api-key" \
-  -d '{"method": "tools/list"}'
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
-#### GET /mcp
-
-既存のセッション情報を取得します。
-
-```bash
-curl -X GET http://localhost:8080/mcp \
-  -H "mcp-session-id: session-123" \
-  -H "Authorization: Bearer your-api-key"
-```
-
-#### DELETE /mcp
-
-セッションを終了します。
-
-```bash
-curl -X DELETE http://localhost:8080/mcp \
-  -H "mcp-session-id: session-123" \
-  -H "Authorization: Bearer your-api-key"
-```
-
-### SSE Transport (後方互換性)
+#### SSE Transport
 
 - **エンドポイント**: `http://localhost:8080/sse`
-- **メソッド**: POST
+- **メソッド**: GET
 - **認証**: APIキー
 
 ## クイックスタート
@@ -84,26 +93,78 @@ TEST_API_KEY=your-api-key pnpm verify
 
 ## 認証
 
-ProxyServerは以下の方法でAPIキー認証をサポートしています：
+ProxyServerは複数の認証方式をサポートしています。各MCPサーバーインスタンスのauthTypeフィールドに基づいて認証方式が決定されます。
 
-### APIキーの指定方法
+### 認証タイプ（authType）
 
-1. **Authorizationヘッダー（推奨）**
+1. **API_KEY**: APIキー認証のみ許可
+2. **OAUTH**: OAuth2.0/JWT認証のみ許可
+3. **NONE**: セキュリティ上の理由で403エラー（使用不可）
+4. **BOTH**: 現在未対応（501エラー）
+
+### APIキー認証（authType=API_KEY）
+
+APIキーの指定方法：
+
+1. **X-API-Keyヘッダー（推奨）**
 
    ```bash
-   Authorization: Bearer your-api-key
+   X-API-Key: your-api-key
    ```
 
-2. **api-keyヘッダー**
+2. **api-keyヘッダー（レガシー）**
 
    ```bash
    api-key: your-api-key
    ```
 
-3. **クエリパラメータ**
+3. **クエリパラメータ（レガシー）**
    ```bash
    ?api-key=your-api-key
    ```
+
+### OAuth認証（authType=OAUTH）
+
+Auth0を使用したJWT Bearer token認証：
+
+1. **M2Mトークンの取得**
+
+   ```bash
+   curl -X POST https://YOUR_AUTH0_M2M_DOMAIN/oauth/token \
+     -H "Content-Type: application/json" \
+     -d '{
+       "client_id": "YOUR_M2M_CLIENT_ID",
+       "client_secret": "YOUR_M2M_CLIENT_SECRET",
+       "audience": "https://YOUR_AUTH0_DOMAIN/api",
+       "grant_type": "client_credentials"
+     }'
+   ```
+
+2. **Bearer tokenの使用**
+   ```bash
+   Authorization: Bearer YOUR_M2M_TOKEN
+   ```
+
+### Auth0設定
+
+環境変数に以下を設定：
+
+```env
+# Auth0設定
+AUTH0_DOMAIN=your-auth0-domain.com
+AUTH0_M2M_DOMAIN=your-tenant.auth0.com
+
+# M2Mクライアント設定
+AUTH0_M2M_CLIENT_ID=your-m2m-client-id
+AUTH0_M2M_CLIENT_SECRET=your-m2m-client-secret
+```
+
+### OAuthディスカバリー
+
+Auth0設定情報は以下のエンドポイントから取得可能：
+
+- `/.well-known/oauth-authorization-server`
+- `/.well-known/openid-configuration`
 
 ### セッション管理
 
