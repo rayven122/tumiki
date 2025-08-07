@@ -42,7 +42,7 @@ export function CreateCustomServerDialog({
       },
     });
 
-  const [serverName, setServerName] = useState("");
+  const [serverName, setServerName] = useState("custom-server");
   const [selectedServerIds, setSelectedServerIds] = useState<
     Set<UserMcpServerConfigId>
   >(new Set());

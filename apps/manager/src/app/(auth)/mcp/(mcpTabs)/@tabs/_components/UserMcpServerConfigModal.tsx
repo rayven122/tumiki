@@ -126,8 +126,10 @@ export const UserMcpServerConfigModal = ({
     }, {});
   });
 
-  // サーバー名の状態
-  const [serverName, setServerName] = useState(mcpServer.name);
+  // サーバー名の状態 (MCPサーバー名を小文字に変換し、空白をハイフンに置換)
+  const [serverName, setServerName] = useState(
+    mcpServer.name.toLowerCase().replace(/\s+/g, "-"),
+  );
 
   // 認証方法の選択状態
   const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
@@ -143,9 +145,11 @@ export const UserMcpServerConfigModal = ({
     }));
   };
 
-  // 少なくとも1つのトークンが入力されているかチェック
+  // フォームのバリデーション
   const isFormValid = () => {
-    // mcpServerに環境変数がない場合は常に有効
+    // サーバー名が入力されているかチェック
+    if (!serverName.trim()) return false;
+    // mcpServerに環境変数がない場合はサーバー名のみで有効
     if (mcpServer.envVars.length === 0) return true;
     return Object.values(envVars).some((token) => token.trim() !== "");
   };
