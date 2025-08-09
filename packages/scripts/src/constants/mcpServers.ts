@@ -113,4 +113,12 @@ export const MCP_SERVERS = [
     envVars: ["CHANNEL_ACCESS_TOKEN", "DESTINATION_USER_ID"],
     isPublic: true,
   },
+  {
+    name: "DeepL MCP",
+    iconPath: "/logos/deepl.svg",
+    command: "node",
+    args: ["node_modules/deepl-mcp-server/src/index.mjs"],
+    envVars: ["DEEPL_API_KEY"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
