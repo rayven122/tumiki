@@ -55,6 +55,7 @@
     "just-pick": "^4.2.0",
     "marked": "^15.0.8",
     "mcp-gemini-google-search": "^0.1.1",
+    "microcms-mcp-server": "^0.3.6",
     "octokit": "^4.1.2",
     "p-memoize": "^7.1.1",
     "puppeteer-mcp-server": "^0.7.2",
