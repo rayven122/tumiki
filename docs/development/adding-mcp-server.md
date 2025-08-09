@@ -2,6 +2,8 @@
 
 このドキュメントでは、Tumiki システムに新しい MCP (Model Context Protocol) サーバーを追加する手順を説明します。
 
+> **ヒント**: Claude Code を使用している場合、カスタムスラッシュコマンド `/add-mcp-server` を使用して自動的に MCP サーバーを追加できます。詳細は[カスタムスラッシュコマンド](#カスタムスラッシュコマンド)のセクションを参照してください。
+
 ## 概要
 
 Tumiki への MCP サーバー追加は以下の流れで行います：
@@ -32,6 +34,7 @@ pnpm add @your-org/mcp-server
 ```
 
 例：
+
 ```json
 {
   "dependencies": {
@@ -54,12 +57,12 @@ pnpm add @your-org/mcp-server
 export const MCP_SERVERS = [
   // 既存のサーバー定義...
   {
-    name: "Your MCP Server Name",        // サーバーの表示名（一意である必要があります）
-    iconPath: "/logos/your-server.svg",  // ロゴファイルのパス
-    command: "node",                     // 実行コマンド
+    name: "Your MCP Server Name", // サーバーの表示名（一意である必要があります）
+    iconPath: "/logos/your-server.svg", // ロゴファイルのパス
+    command: "node", // 実行コマンド
     args: ["node_modules/@your-org/mcp-server/dist/index.js"], // コマンド引数
-    envVars: [],                         // 必要な環境変数（例: ["API_KEY", "API_SECRET"]）
-    isPublic: true,                      // 公開サーバーかどうか
+    envVars: [], // 必要な環境変数名の配列（例: ["API_KEY", "API_SECRET"]）
+    isPublic: true, // 公開サーバーかどうか
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
 ```
@@ -70,7 +73,12 @@ export const MCP_SERVERS = [
 - **iconPath**: `/apps/manager/public/` からの相対パス
 - **command**: サーバーを起動するコマンド（通常は `node`）
 - **args**: コマンドに渡す引数の配列
+  - args 内に環境変数名が含まれている場合、実行時に実際の値に置換されます
+  - 例: `["--api-key", "API_KEY"]` → `["--api-key", "実際のAPIキー値"]`
 - **envVars**: サーバーが必要とする環境変数名の配列
+  - ユーザーが設定した値は2つの方法で利用されます：
+    1. args 内の文字列置換（上記参照）
+    2. 子プロセスの環境変数として設定（env プロパティ）
 - **isPublic**: すべてのユーザーに公開するかどうか
 
 ### 3. ロゴファイルの配置
@@ -82,6 +90,7 @@ apps/manager/public/logos/your-server.svg
 ```
 
 推奨事項：
+
 - SVG 形式を使用
 - 正方形のアスペクト比
 - 透明背景
@@ -97,6 +106,7 @@ pnpm upsertAll
 ```
 
 このコマンドは以下を実行します：
+
 1. `upsertMcpServers`: MCP サーバー定義をデータベースに挿入/更新
 2. `upsertMcpTools`: 各サーバーに接続してツール情報を取得・保存
 
@@ -140,8 +150,24 @@ pnpm inspector
 
 1. `envVars` 配列に必要な環境変数名がすべて含まれているか確認
 2. ユーザーが設定画面で環境変数を入力しているか確認
+3. args 内で環境変数を参照している場合、正しい変数名を使用しているか確認
+   - 例: `args: ["--api-key", "API_KEY"]` の場合、`envVars: ["API_KEY"]` が必要
 
 ## 詳細な仕組み
+
+### 環境変数の処理フロー
+
+ProxyServer での環境変数処理の流れ：
+
+1. **ユーザー設定の取得**: `UserMcpServerConfig` テーブルから暗号化された環境変数を取得
+2. **復号化**: Prisma の暗号化機能により自動的に復号化
+3. **args の置換**:
+   - `args` 配列内の各要素をスキャン
+   - 環境変数名が含まれていれば、実際の値に置換
+   - 例: `"--api-key=API_KEY"` → `"--api-key=sk-abc123..."`
+4. **env の設定**:
+   - STDIO トランスポートの場合、環境変数オブジェクトを `env` プロパティに設定
+   - これにより子プロセスから `process.env.API_KEY` でアクセス可能
 
 ### データベーススキーマ
 
@@ -161,6 +187,7 @@ MCP サーバー関連のテーブル：
 ### トランスポートタイプ
 
 Tumiki は以下のトランスポートをサポート：
+
 - **STDIO**: ローカルプロセスとの通信（デフォルト）
 - **SSE**: Server-Sent Events によるリモート通信
 
@@ -176,17 +203,19 @@ Tumiki は以下のトランスポートをサポート：
 ### Task Master AI の追加例
 
 1. **依存関係の追加**:
+
    ```bash
    # packages/scripts に追加
    cd packages/scripts
    pnpm add task-master-ai
-   
+
    # apps/proxyServer に追加
    cd apps/proxyServer
    pnpm add task-master-ai
    ```
 
 2. **サーバー定義の追加**:
+
    ```typescript
    {
      name: "Task Master AI",
@@ -213,3 +242,40 @@ Tumiki は以下のトランスポートをサポート：
 4. **データベースへの反映**: `pnpm upsertAll` を実行
 
 このプロセスに従うことで、新しい MCP サーバーを Tumiki システムに統合できます。
+
+## カスタムスラッシュコマンド
+
+Claude Code を使用している場合、以下のカスタムスラッシュコマンドが利用可能です：
+
+### /add-mcp-server
+
+MCP サーバーを自動的に追加するコマンドです。
+
+```bash
+# DeepL MCP サーバーを追加する例
+/add-mcp-server https://github.com/DeepLcom/deepl-mcp-server
+
+# npmパッケージ名で追加
+/add-mcp-server task-master-ai "Task Master AI"
+
+# 環境変数を指定して追加
+/add-mcp-server figma-developer-mcp "Figma Context" --env FIGMA_API_KEY
+```
+
+このコマンドは以下を自動的に実行します：
+
+1. 両方のディレクトリへの依存関係追加
+2. サーバー定義の更新
+3. ロゴファイルの生成
+4. データベースへの反映
+
+### その他の利用可能なコマンド
+
+`.claude/commands/` ディレクトリには以下のカスタムコマンドがあります：
+
+- **/commit-and-pr**: コミットとプルリクエストを一度に作成
+- **/pr**: プルリクエストを作成
+- **/pr-review**: プルリクエストのレビューを実行
+- **/weekly-report**: 週次レポートを生成
+
+これらのコマンドは Claude Code で作業を効率化するために設計されています。
