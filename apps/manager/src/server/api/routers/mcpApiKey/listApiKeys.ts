@@ -11,10 +11,6 @@ type ListApiKeysProps = {
 };
 
 export const listApiKeys = async ({ ctx, input }: ListApiKeysProps) => {
-  if (!ctx.currentOrganizationId) {
-    return [];
-  }
-
   const where: Prisma.McpApiKeyWhereInput = {
     userMcpServerInstance: {
       organizationId: ctx.currentOrganizationId,

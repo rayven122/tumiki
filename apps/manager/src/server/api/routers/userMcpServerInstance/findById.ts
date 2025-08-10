@@ -10,10 +10,6 @@ export const findById = async ({
   input: { id: string };
   ctx: ProtectedContext;
 }) => {
-  if (!ctx.currentOrganizationId) {
-    throw new Error("組織が選択されていません");
-  }
-
   const instance = await db.userMcpServerInstance.findUnique({
     where: {
       id: input.id,

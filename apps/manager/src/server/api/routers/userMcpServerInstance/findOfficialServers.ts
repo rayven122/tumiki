@@ -8,10 +8,6 @@ type FindOfficialServersInput = {
 export const findOfficialServers = async ({
   ctx,
 }: FindOfficialServersInput) => {
-  if (!ctx.currentOrganizationId) {
-    return [];
-  }
-
   const officialServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
