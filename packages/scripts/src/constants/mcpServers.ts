@@ -121,4 +121,12 @@ export const MCP_SERVERS = [
     envVars: ["DEEPL_API_KEY"],
     isPublic: true,
   },
+  {
+    name: "microCMS MCP",
+    iconPath: "/logos/microcms.svg",
+    command: "node",
+    args: ["node_modules/microcms-mcp-server/dist/index.js"],
+    envVars: ["MICROCMS_SERVICE_ID", "MICROCMS_API_KEY"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
