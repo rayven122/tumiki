@@ -123,9 +123,13 @@ APIキーの指定方法：
    ?api-key=your-api-key
    ```
 
-### OAuth認証（authType=OAUTH）
+### OAuth認可（authType=OAUTH）
 
-Auth0を使用したJWT Bearer token認証：
+2つの方法でOAuth認可が可能です：
+
+#### 方法1: 直接Auth0 M2Mトークンを使用（Client Credentials Grant）
+
+マシン間通信に適したOAuth 2.0 Client Credentials Grantフローを使用します。
 
 1. **M2Mトークンの取得**
 
@@ -143,6 +147,68 @@ Auth0を使用したJWT Bearer token認証：
 2. **Bearer tokenの使用**
    ```bash
    Authorization: Bearer YOUR_M2M_TOKEN
+   ```
+
+#### 方法2: Dynamic Client Registration (DCR)
+
+Tumikiプロキシサーバーは、RFC 7591準拠の簡易的なDynamic Client Registration APIを提供しています。これにより、プログラムから動的にOAuthクライアントを作成し、Client Credentials Grantフローでトークンを取得できます。マシン間通信のユースケースに最適化されています。
+
+1. **クライアント登録**
+
+   ```bash
+   curl -X POST http://localhost:8080/oauth/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "client_name": "My MCP Client",
+       "user_id": "user_123",
+       "mcp_server_instance_id": "instance_456",
+       "grant_types": ["client_credentials"]
+     }'
+   ```
+
+   レスポンス:
+
+   ```json
+   {
+     "client_id": "client_xxxxx",
+     "client_secret": "secret_xxxxx",
+     "client_name": "My MCP Client",
+     "grant_types": ["client_credentials"],
+     "token_endpoint_auth_method": "client_secret_post"
+   }
+   ```
+
+2. **トークン取得**
+
+   ```bash
+   curl -X POST http://localhost:8080/oauth/token \
+     -H "Content-Type: application/json" \
+     -d '{
+       "grant_type": "client_credentials",
+       "client_id": "client_xxxxx",
+       "client_secret": "secret_xxxxx",
+       "scope": "mcp:access"
+     }'
+   ```
+
+   レスポンス:
+
+   ```json
+   {
+     "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+     "token_type": "Bearer",
+     "expires_in": 86400,
+     "scope": "mcp:access"
+   }
+   ```
+
+3. **MCPエンドポイントへのアクセス**
+
+   ```bash
+   curl -X POST http://localhost:8080/mcp/{mcp_server_instance_id} \
+     -H "Authorization: Bearer {access_token}" \
+     -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
    ```
 
 ### Auth0設定
