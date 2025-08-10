@@ -592,7 +592,7 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId: userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify({ tools: result.tools }),
@@ -628,7 +628,7 @@ export const getServer = async (
           durationMs,
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId: userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId,
         });
       }
 
@@ -743,7 +743,7 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          organizationId: userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId,
           // 詳細ログ記録を追加
           requestData: JSON.stringify(request),
           responseData: JSON.stringify(result.result),
@@ -778,7 +778,7 @@ export const getServer = async (
           durationMs,
           errorMessage,
           errorCode: error instanceof Error ? error.name : "UnknownError",
-          organizationId: userMcpServerInstance.organizationId ?? undefined,
+          organizationId: userMcpServerInstance.organizationId,
         });
       }
 

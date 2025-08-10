@@ -37,7 +37,7 @@ type LogRequestParams = {
   errorCode?: string;
   inputBytes?: number;
   outputBytes?: number;
-  organizationId?: string;
+  organizationId: string;
   userAgent?: string;
   // 詳細データ用の追加パラメータ
   requestData?: unknown;
@@ -105,7 +105,7 @@ export const logMcpRequest = async (
         errorCode: params.errorCode || null,
         inputBytes: params.inputBytes || null,
         outputBytes: params.outputBytes || null,
-        organizationId: params.organizationId || null,
+        organizationId: params.organizationId,
         userAgent: params.userAgent || null,
         // ネストされたrequestData作成
         requestData: compressionResult
