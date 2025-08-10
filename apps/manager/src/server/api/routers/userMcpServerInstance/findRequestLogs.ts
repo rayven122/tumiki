@@ -10,10 +10,6 @@ export const findRequestLogs = async ({
   input: z.infer<typeof FindRequestLogsInput>;
   ctx: ProtectedContext;
 }) => {
-  if (!ctx.currentOrganizationId) {
-    throw new Error("組織が選択されていません");
-  }
-
   // 組織がそのインスタンスにアクセス権を持っているかチェック
   const instance = await db.userMcpServerInstance.findFirst({
     where: {

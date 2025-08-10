@@ -11,10 +11,6 @@ export const findServersWithTools = async ({
   ctx,
   input,
 }: FindAllWithToolsInput) => {
-  if (!ctx.currentOrganizationId) {
-    return [];
-  }
-
   const mcpServers = await ctx.db.userMcpServerConfig.findMany({
     where: {
       organizationId: ctx.currentOrganizationId,

@@ -6,10 +6,6 @@ type FindCustomServersInput = {
 };
 
 export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
-  if (!ctx.currentOrganizationId) {
-    return [];
-  }
-
   const customServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       serverType: ServerType.CUSTOM,

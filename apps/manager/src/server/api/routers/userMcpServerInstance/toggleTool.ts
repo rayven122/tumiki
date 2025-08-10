@@ -10,10 +10,6 @@ type ToggleToolInput = {
 export const toggleTool = async ({ ctx, input }: ToggleToolInput) => {
   const { instanceId, toolId, userMcpServerConfigId, enabled } = input;
 
-  if (!ctx.currentOrganizationId) {
-    throw new Error("組織が選択されていません");
-  }
-
   // インスタンスの所有権確認
   const instance = await ctx.db.userMcpServerInstance.findUnique({
     where: {

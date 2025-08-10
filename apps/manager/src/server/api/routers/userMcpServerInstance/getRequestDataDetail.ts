@@ -36,13 +36,6 @@ export const getRequestDataDetail = async ({
   input: z.infer<typeof GetRequestDataDetailInput>;
   ctx: ProtectedContext;
 }) => {
-  if (!ctx.currentOrganizationId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "組織が選択されていません",
-    });
-  }
-
   // まずリクエストログの存在確認とアクセス権チェック
   const requestLog = await db.mcpServerRequestLog.findUnique({
     where: {

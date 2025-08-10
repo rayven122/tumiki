@@ -12,13 +12,6 @@ type DeleteApiKeyProps = {
 };
 
 export const deleteApiKey = async ({ ctx, input }: DeleteApiKeyProps) => {
-  if (!ctx.currentOrganizationId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Organization not selected",
-    });
-  }
-
   // 組織がこのAPIキーの所有者かチェック
   const existingKey = await db.mcpApiKey.findFirst({
     where: {
