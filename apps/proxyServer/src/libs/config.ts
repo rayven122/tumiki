@@ -22,4 +22,14 @@ export const config = {
     enabled: process.env.METRICS_ENABLED === "true",
     interval: parseInt(process.env.METRICS_INTERVAL_MS || "60000", 10), // 1分
   },
+
+  // メンテナンスモード設定
+  maintenance: {
+    enabled: process.env.MAINTENANCE_MODE === "true",
+    message: "システムメンテナンス中です。しばらくお待ちください。",
+    endTime: process.env.MAINTENANCE_END_TIME,
+    allowedIPs:
+      process.env.MAINTENANCE_ALLOWED_IPS?.split(",").map((ip) => ip.trim()) ||
+      [],
+  },
 } as const;

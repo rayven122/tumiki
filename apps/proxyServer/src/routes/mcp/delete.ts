@@ -30,7 +30,7 @@ export const handleDELETERequest = async (
   try {
     // セッション終了処理をtransportに委譲
     await transport.handleRequest(toMcpRequest(req), res);
-  } catch (error) {
+  } catch {
     if (!res.headersSent) {
       sendJsonRpcError(
         res,

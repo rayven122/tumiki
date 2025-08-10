@@ -194,6 +194,39 @@ pnpm clean        # node_modules削除
 pnpm clean:workspaces # 各ワークスペースのクリーンアップ
 ```
 
+## 🔧 メンテナンスモード
+
+システムメンテナンスやデータベースマイグレーション時に、サービスを一時的に停止できます。
+
+### 有効化方法
+
+1. 環境変数を設定:
+```bash
+MAINTENANCE_MODE=true
+MAINTENANCE_ALLOWED_IPS="管理者IP1,管理者IP2"
+MAINTENANCE_END_TIME="2025-01-11T03:00:00Z"
+NEXT_PUBLIC_MAINTENANCE_END_TIME="2025-01-11T03:00:00Z"
+```
+
+2. デプロイ実行:
+```bash
+pnpm run deploy
+```
+
+### 無効化方法
+
+1. 環境変数を変更:
+```bash
+MAINTENANCE_MODE=false
+```
+
+2. 再デプロイ:
+```bash
+pnpm run deploy
+```
+
+詳細な手順は [メンテナンスモード運用ガイド](./docs/operations/maintenance-mode.md) を参照してください。
+
 ### Stripe設定
 
 本プロジェクトではStripeを使用した決済機能を実装しています。
