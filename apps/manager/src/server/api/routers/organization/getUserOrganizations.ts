@@ -46,18 +46,10 @@ export const getUserOrganizations = async ({
     ],
   });
 
-  // ユーザー情報を取得してデフォルト組織IDを確認
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: {
-      defaultOrganizationId: true,
-    },
-  });
-
   return memberships.map((membership) => ({
     ...membership.organization,
     isAdmin: membership.isAdmin,
     memberCount: membership.organization._count.members,
-    isDefault: membership.organization.id === user?.defaultOrganizationId,
+    isDefault: membership.organization.id === ctx.currentOrganizationId,
   }));
 };

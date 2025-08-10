@@ -11,6 +11,11 @@ export const updateServerConfig = async ({
   ctx,
   input,
 }: UpdateServerConfigInput) => {
+  const currentOrganizationId = ctx.currentOrganizationId;
+  if (!currentOrganizationId) {
+    throw new Error("組織が選択されていません");
+  }
+
   const userMcpServer = await ctx.db.userMcpServerConfig.findUnique({
     where: { id: input.id },
     include: {
@@ -18,12 +23,12 @@ export const updateServerConfig = async ({
     },
   });
   if (!userMcpServer) {
-    throw new Error("ユーザーのMCPサーバーが見つかりません");
+    throw new Error("組織のMCPサーバーが見つかりません");
   }
 
-  // 更新するユーザと、ユーザmcpサーバーのユーザが一致するかチェック
-  if (userMcpServer.userId !== ctx.session.user.id) {
-    throw new Error("ユーザーのMCPサーバーが見つかりません");
+  // 更新する組織と、MCPサーバーの組織が一致するかチェック
+  if (userMcpServer.organizationId !== currentOrganizationId) {
+    throw new Error("組織のMCPサーバーが見つかりません");
   }
 
   // let toolsConnect: Prisma.ToolWhereUniqueInput[] = [];

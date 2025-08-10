@@ -32,15 +32,19 @@ export const addOfficialServer = async ({
     throw new Error("MCPサーバーの環境変数が一致しません");
   }
 
+  const organizationId = ctx.currentOrganizationId;
+  if (!organizationId) {
+    throw new Error("組織が選択されていません");
+  }
+
   const data = await ctx.db.$transaction(async (tx) => {
     const serverConfig = await tx.userMcpServerConfig.create({
       data: {
-        userId: ctx.session.user.id,
+        organizationId,
         name: input.name,
         description: "",
         mcpServerId: input.mcpServerId,
         envVars: JSON.stringify(input.envVars),
-        tools: { connect: mcpServer.tools.map(({ id }) => ({ id })) },
       },
     });
 
@@ -51,7 +55,7 @@ export const addOfficialServer = async ({
 
     const toolGroup = await tx.userToolGroup.create({
       data: {
-        userId: ctx.session.user.id,
+        organizationId,
         name: input.name,
         description: "",
         toolGroupTools: {
@@ -67,7 +71,7 @@ export const addOfficialServer = async ({
 
     const data = await tx.userMcpServerInstance.create({
       data: {
-        userId: ctx.session.user.id,
+        organizationId,
         name: input.name,
         description: "",
         // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
@@ -83,7 +87,6 @@ export const addOfficialServer = async ({
                 create: {
                   name: `${input.name} API Key`,
                   apiKey: fullKey,
-                  userId: ctx.session.user.id,
                 },
               },
       },

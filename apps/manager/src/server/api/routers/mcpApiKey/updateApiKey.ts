@@ -14,11 +14,20 @@ type UpdateApiKeyProps = {
 export const updateApiKey = async ({ ctx, input }: UpdateApiKeyProps) => {
   const { id, ...updateData } = input;
 
-  // ユーザーがこのAPIキーの所有者かチェック
+  if (!ctx.currentOrganizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Organization not selected",
+    });
+  }
+
+  // 組織がこのAPIキーの所有者かチェック
   const existingKey = await db.mcpApiKey.findFirst({
     where: {
       id,
-      userId: ctx.session.user.id,
+      userMcpServerInstance: {
+        organizationId: ctx.currentOrganizationId,
+      },
     },
   });
 
