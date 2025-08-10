@@ -28,13 +28,18 @@ export async function middleware(request: NextRequest) {
   const realIp = request.headers.get("x-real-ip");
   const clientIP = forwardedFor?.split(",")[0]?.trim() ?? realIp ?? "";
 
+  // メンテナンスページへのアクセス処理
+  if (pathname === "/maintenance") {
+    // メンテナンスモードでない場合はトップページへリダイレクト
+    if (!isMaintenanceMode) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    // メンテナンスモード中はページを表示
+    return NextResponse.next();
+  }
+
   // メンテナンスモード中の処理
   if (isMaintenanceMode) {
-    // メンテナンスページ自体へのアクセスは許可
-    if (pathname === "/maintenance") {
-      return NextResponse.next();
-    }
-
     // 許可IPからのアクセスはすべて通過
     if (clientIP && allowedIPs.includes(clientIP)) {
       // 通常のルーティングに進む
