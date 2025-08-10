@@ -13,6 +13,7 @@ import {
   loggingMiddleware,
   errorLoggingMiddleware,
 } from "./middleware/logging.js";
+import { maintenanceMiddleware } from "./middleware/maintenance.js";
 
 /**
  * Express アプリケーションを設定
@@ -60,6 +61,9 @@ const createApp = (): express.Application => {
   // OAuthディスカバリーエンドポイント（認証不要）
   app.get("/.well-known/oauth-authorization-server", handleOAuthDiscovery);
   app.get("/.well-known/openid-configuration", handleOpenIDConfiguration);
+
+  // メンテナンスモードミドルウェアを適用
+  app.use(maintenanceMiddleware());
 
   // ここ以降のすべてのルートに統合認証ミドルウェアを適用
   app.use(integratedAuthMiddleware());
