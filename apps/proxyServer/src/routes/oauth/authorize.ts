@@ -63,7 +63,6 @@ export const handleOAuthAuthorize = async (
           select: {
             id: true,
             authType: true,
-            userId: true,
             organizationId: true,
           },
         },
@@ -80,11 +79,8 @@ export const handleOAuthAuthorize = async (
       return;
     }
 
-    // authTypeがOAUTHまたはBOTHであることを確認
-    if (
-      apiKeyRecord.userMcpServerInstance?.authType !== "OAUTH" &&
-      apiKeyRecord.userMcpServerInstance?.authType !== "BOTH"
-    ) {
+    // authTypeがOAUTHであることを確認
+    if (apiKeyRecord.userMcpServerInstance?.authType !== "OAUTH") {
       sendOAuthErrorResponse(
         res,
         403,

@@ -120,11 +120,8 @@ export const handleOAuthRegister = async (
       return;
     }
 
-    // authTypeがOAUTHまたはBOTHであることを確認
-    if (
-      mcpServerInstance.authType !== "OAUTH" &&
-      mcpServerInstance.authType !== "BOTH"
-    ) {
+    // authTypeがOAUTHであることを確認
+    if (mcpServerInstance.authType !== "OAUTH") {
       sendOAuthErrorResponse(
         res,
         400,
@@ -147,7 +144,6 @@ export const handleOAuthRegister = async (
         apiKeyHash: apiKeyHash, // client_secretのハッシュ値
         isActive: true,
         userMcpServerInstanceId: mcp_server_instance_id,
-        userId: user_id,
       },
     });
 

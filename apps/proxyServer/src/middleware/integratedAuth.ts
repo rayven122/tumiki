@@ -9,7 +9,6 @@ import {
   sendBadRequestError,
   sendNotFoundError,
   sendForbiddenError,
-  sendNotImplementedError,
   sendInternalError,
   JSON_RPC_ERROR_CODES,
 } from "../utils/errorResponse.js";
@@ -44,8 +43,6 @@ const getAuthErrorMessage = (authType: AuthType): string => {
       return "OAuth authentication required for this server";
     case "API_KEY":
       return "API key authentication required for this server";
-    case "BOTH":
-      return "Either API key or OAuth authentication required";
     case "NONE":
       return "Authentication type NONE is not allowed for security reasons";
     default:
@@ -64,7 +61,6 @@ const getMcpServerInstance = async (mcpServerInstanceId: string) => {
         deletedAt: null,
       },
       include: {
-        user: true,
         organization: true,
       },
     });
@@ -232,9 +228,8 @@ export const integratedAuthMiddleware = () => {
 
         req.authInfo = {
           type: "api_key",
-          userId: apiKeyValidation.apiKey?.userId,
           userMcpServerInstanceId: mcpServerInstance.id,
-          organizationId: mcpServerInstance.organizationId ?? undefined,
+          organizationId: mcpServerInstance.organizationId,
         };
         return next();
 
@@ -268,7 +263,6 @@ export const integratedAuthMiddleware = () => {
             // OAuth認証成功
             req.authInfo = {
               type: "oauth",
-              userId: mcpServerInstance.userId,
               userMcpServerInstanceId: mcpServerInstance.id,
               organizationId: mcpServerInstance.organizationId ?? undefined,
               // req.authからOAuth情報を取得（express-oauth2-jwt-bearerが設定）
@@ -281,14 +275,6 @@ export const integratedAuthMiddleware = () => {
             return;
           }
         });
-        return;
-
-      case "BOTH":
-        // BOTH認証タイプは未実装
-        sendNotImplementedError(
-          res,
-          "BOTH authentication type is not yet implemented",
-        );
         return;
 
       default:

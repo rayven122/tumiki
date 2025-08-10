@@ -26,7 +26,6 @@ const sanitizeForLog = (toolName: string): string => {
 };
 
 type LogRequestParams = {
-  userId?: string;
   mcpServerInstanceId?: string;
   toolName: string;
   transportType: TransportType;
@@ -93,7 +92,6 @@ export const logMcpRequest = async (
     // 基本ログと詳細データを一つのクエリで作成
     await db.mcpServerRequestLog.create({
       data: {
-        userId: params.userId || null,
         mcpServerInstanceId: params.mcpServerInstanceId, // 事前チェック済み
         toolName: params.toolName,
         transportType: params.transportType,
