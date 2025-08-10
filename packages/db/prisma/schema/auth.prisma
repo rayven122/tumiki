@@ -22,6 +22,8 @@ model User {
     email              String?                  @unique
     /// プロフィール画像のURL
     image              String?
+    /// デフォルト組織ID（ユーザーがアクセスする際のデフォルト組織）
+    defaultOrganizationId String?
     toolGroups         UserToolGroup[]
     mcpServerConfigs   UserMcpServerConfig[]
     mcpServerInstances UserMcpServerInstance[]
