@@ -1210,61 +1210,24 @@ export const authSessionStore = createAuthorizationSessionStore();
 #### 13.4.1 サーキットブレーカー実装
 
 ```typescript
-// サーキットブレーカー設定
-type CircuitBreakerConfig = {
-  failureThreshold: number;     // 失敗回数閾値
-  successThreshold: number;      // 成功回数閾値（HALF_OPEN→CLOSEDへの復帰）
-  timeout: number;               // オープン状態維持時間（ミリ秒）
-  failureRateThreshold: number;  // 失敗率閾値
-};
-
-type CircuitBreakerState = {
-  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
-  failureCount: number;
-  successCount: number;
-  lastFailureTime?: Date;
-};
-
-// サーキットブレーカーの作成（クロージャパターン）
-const createCircuitBreaker = (config: CircuitBreakerConfig = {
-  failureThreshold: 5,
-  successThreshold: 3,
-  timeout: 30000,
-  failureRateThreshold: 0.5,
-}) => {
-  // プライベート状態
-  const state: CircuitBreakerState = {
-    state: 'CLOSED',
-    failureCount: 0,
-    successCount: 0,
-    lastFailureTime: undefined,
+class CircuitBreaker {
+  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  private failureCount = 0;
+  private successCount = 0;
+  private lastFailureTime?: Date;
+  
+  private readonly config = {
+    failureThreshold: 5,        // 失敗回数閾値
+    successThreshold: 3,         // 成功回数閾値（HALF_OPEN→CLOSEDへの復帰）
+    timeout: 30000,              // オープン状態維持時間（30秒）
+    failureRateThreshold: 0.5,   // 失敗率閾値（50%）
   };
 
-  const onSuccess = (): void => {
-    state.failureCount = 0;
-    
-    if (state.state === 'HALF_OPEN') {
-      state.successCount++;
-      if (state.successCount >= config.successThreshold) {
-        state.state = 'CLOSED';
-      }
-    }
-  };
-
-  const onFailure = (): void => {
-    state.failureCount++;
-    state.lastFailureTime = new Date();
-    
-    if (state.failureCount >= config.failureThreshold) {
-      state.state = 'OPEN';
-    }
-  };
-
-  const execute = async <T>(fn: () => Promise<T>): Promise<T> => {
-    if (state.state === 'OPEN') {
-      if (Date.now() - state.lastFailureTime!.getTime() > config.timeout) {
-        state.state = 'HALF_OPEN';
-        state.successCount = 0;
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === 'OPEN') {
+      if (Date.now() - this.lastFailureTime!.getTime() > this.config.timeout) {
+        this.state = 'HALF_OPEN';
+        this.successCount = 0;
       } else {
         throw new Error('Circuit breaker is OPEN');
       }
@@ -1272,181 +1235,163 @@ const createCircuitBreaker = (config: CircuitBreakerConfig = {
 
     try {
       const result = await fn();
-      onSuccess();
+      this.onSuccess();
       return result;
     } catch (error) {
-      onFailure();
+      this.onFailure();
       throw error;
     }
-  };
+  }
 
-  return {
-    execute,
-    getState: () => ({ ...state }),
-  };
-};
+  private onSuccess(): void {
+    this.failureCount = 0;
+    
+    if (this.state === 'HALF_OPEN') {
+      this.successCount++;
+      if (this.successCount >= this.config.successThreshold) {
+        this.state = 'CLOSED';
+      }
+    }
+  }
 
-// シングルトンインスタンス
-export const circuitBreaker = createCircuitBreaker();
+  private onFailure(): void {
+    this.failureCount++;
+    this.lastFailureTime = new Date();
+    
+    if (this.failureCount >= this.config.failureThreshold) {
+      this.state = 'OPEN';
+    }
+  }
+}
 ```
 
 #### 13.4.2 キャッシュ戦略
 
 ```typescript
-// キャッシュ設定
-export const cacheConfig = {
-  jwks: 24 * 60 * 60 * 1000,        // JWKSキャッシュ: 24時間
-  tokenValidation: 5 * 60 * 1000,    // トークン検証結果: 5分
-  userInfo: 15 * 60 * 1000,          // ユーザー情報: 15分
-  clientInfo: 60 * 60 * 1000,        // クライアント情報: 1時間
-};
+class CacheStrategy {
+  private readonly cacheConfig = {
+    jwks: 24 * 60 * 60 * 1000,        // JWKSキャッシュ: 24時間
+    tokenValidation: 5 * 60 * 1000,    // トークン検証結果: 5分
+    userInfo: 15 * 60 * 1000,          // ユーザー情報: 15分
+    clientInfo: 60 * 60 * 1000,        // クライアント情報: 1時間
+  };
 
-// スタンバイキャッシュの取得
-const getStandbyCache = async <T>(key: string): Promise<T | null> => {
-  // 期限切れでも最後の有効なキャッシュを返す
-  const expired = await redis.get(`standby:${key}`);
-  return expired ? JSON.parse(expired) : null;
-};
-
-// キャッシュ付きデータ取得
-export const getWithCache = async <T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  ttl: number
-): Promise<T> => {
-  // Redisからキャッシュ取得
-  const cached = await redis.get(key);
-  if (cached) {
-    return JSON.parse(cached);
-  }
-
-  // Auth0障害時のフォールバック
-  try {
-    const data = await fetcher();
-    await redis.setex(key, ttl / 1000, JSON.stringify(data));
-    return data;
-  } catch (error) {
-    // スタンバイキャッシュから取得
-    const standbyCache = await getStandbyCache(key);
-    if (standbyCache) {
-      return standbyCache;
+  async getWithCache<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttl: number
+  ): Promise<T> {
+    // Redisからキャッシュ取得
+    const cached = await redis.get(key);
+    if (cached) {
+      return JSON.parse(cached);
     }
-    throw error;
+
+    // Auth0障害時のフォールバック
+    try {
+      const data = await fetcher();
+      await redis.setex(key, ttl / 1000, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      // スタンバイキャッシュから取得
+      const standbyCache = await this.getStandbyCache(key);
+      if (standbyCache) {
+        return standbyCache;
+      }
+      throw error;
+    }
   }
-};
+
+  private async getStandbyCache<T>(key: string): Promise<T | null> {
+    // 期限切れでも最後の有効なキャッシュを返す
+    const expired = await redis.get(`standby:${key}`);
+    return expired ? JSON.parse(expired) : null;
+  }
+}
 ```
 
 #### 13.4.3 Auth0障害時のフォールバック
 
 ```typescript
-// Auth0フォールバック認証
-export const authenticateUserWithFallback = async (
-  credentials: Credentials,
-  auth0: Auth0Client,
-  auditLog: AuditLogger
-): Promise<AuthResult> => {
-  return circuitBreaker.execute(async () => {
-    try {
-      // プライマリ: Auth0認証
-      return await auth0.authenticate(credentials);
-    } catch (error) {
-      // フォールバック: キャッシュされた認証情報を使用
-      const cachedAuth = await getWithCache(
-        `auth:${credentials.username}`,
-        () => auth0.authenticate(credentials),
-        cacheConfig.userInfo
-      );
-      
-      if (cachedAuth) {
-        // 降格モードでの動作をログに記録
-        await auditLog.record({
-          event: 'auth0_fallback',
-          mode: 'degraded',
-          timestamp: new Date()
-        });
-        return cachedAuth;
+class Auth0Fallback {
+  private readonly circuitBreaker = new CircuitBreaker();
+  private readonly cache = new CacheStrategy();
+
+  async authenticateUser(credentials: Credentials): Promise<AuthResult> {
+    return this.circuitBreaker.execute(async () => {
+      try {
+        // プライマリ: Auth0認証
+        return await this.auth0.authenticate(credentials);
+      } catch (error) {
+        // フォールバック: キャッシュされた認証情報を使用
+        const cachedAuth = await this.cache.getWithCache(
+          `auth:${credentials.username}`,
+          () => this.auth0.authenticate(credentials),
+          this.cache.cacheConfig.userInfo
+        );
+        
+        if (cachedAuth) {
+          // 降格モードでの動作をログに記録
+          await this.auditLog.record({
+            event: 'auth0_fallback',
+            mode: 'degraded',
+            timestamp: new Date()
+          });
+          return cachedAuth;
+        }
+        
+        throw error;
       }
-      
-      throw error;
-    }
-  });
-};
+    });
+  }
+}
 ```
 
 #### 13.4.4 モニタリングとアラート
 
 ```typescript
-// ヘルスステータス型定義
-type HealthStatus = {
-  healthy: boolean;
-  timestamp: Date;
-  services: {
-    database: 'healthy' | 'unhealthy';
-    auth0: 'healthy' | 'unhealthy';
-    cache: 'healthy' | 'unhealthy';
-    proxy: 'healthy' | 'unhealthy';
-  };
-  metrics: {
-    responseTime: number;
-    errorRate: number;
-    activeConnections: number;
-  };
-};
+class HealthMonitor {
+  async checkHealth(): Promise<HealthStatus> {
+    const checks = await Promise.allSettled([
+      this.checkDatabase(),
+      this.checkAuth0(),
+      this.checkCache(),
+      this.checkProxyInstances()
+    ]);
 
-// アラート送信
-const sendAlert = async (
-  status: HealthStatus,
-  alertManager: AlertManager
-): Promise<void> => {
-  // PagerDuty/Slack/Email通知
-  await alertManager.send({
-    severity: 'critical',
-    message: 'Service degradation detected',
-    details: status
-  });
-};
+    const status: HealthStatus = {
+      healthy: checks.every(c => c.status === 'fulfilled'),
+      timestamp: new Date(),
+      services: {
+        database: checks[0].status === 'fulfilled' ? 'healthy' : 'unhealthy',
+        auth0: checks[1].status === 'fulfilled' ? 'healthy' : 'unhealthy',
+        cache: checks[2].status === 'fulfilled' ? 'healthy' : 'unhealthy',
+        proxy: checks[3].status === 'fulfilled' ? 'healthy' : 'unhealthy',
+      },
+      metrics: {
+        responseTime: await this.measureResponseTime(),
+        errorRate: await this.calculateErrorRate(),
+        activeConnections: await this.countActiveConnections()
+      }
+    };
 
-// ヘルスチェック実行
-export const checkHealth = async (
-  checkDatabase: () => Promise<void>,
-  checkAuth0: () => Promise<void>,
-  checkCache: () => Promise<void>,
-  checkProxyInstances: () => Promise<void>,
-  measureResponseTime: () => Promise<number>,
-  calculateErrorRate: () => Promise<number>,
-  countActiveConnections: () => Promise<number>,
-  alertManager: AlertManager
-): Promise<HealthStatus> => {
-  const checks = await Promise.allSettled([
-    checkDatabase(),
-    checkAuth0(),
-    checkCache(),
-    checkProxyInstances()
-  ]);
-
-  const status: HealthStatus = {
-    healthy: checks.every(c => c.status === 'fulfilled'),
-    timestamp: new Date(),
-    services: {
-      database: checks[0].status === 'fulfilled' ? 'healthy' : 'unhealthy',
-      auth0: checks[1].status === 'fulfilled' ? 'healthy' : 'unhealthy',
-      cache: checks[2].status === 'fulfilled' ? 'healthy' : 'unhealthy',
-      proxy: checks[3].status === 'fulfilled' ? 'healthy' : 'unhealthy',
-    },
-    metrics: {
-      responseTime: await measureResponseTime(),
-      errorRate: await calculateErrorRate(),
-      activeConnections: await countActiveConnections()
+    // アラート送信
+    if (!status.healthy) {
+      await this.sendAlert(status);
     }
-  };
 
-  // アラート送信
-  if (!status.healthy) {
-    await sendAlert(status, alertManager);
+    return status;
   }
 
-  return status;
-};
+  private async sendAlert(status: HealthStatus): Promise<void> {
+    // PagerDuty/Slack/Email通知
+    await this.alertManager.send({
+      severity: 'critical',
+      message: 'Service degradation detected',
+      details: status
+    });
+  }
+}
 ```
 
 ## 14. テスト戦略
