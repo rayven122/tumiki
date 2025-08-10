@@ -24,6 +24,7 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
    - `packages/scripts/src/constants/mcpServers.ts` を更新
    - サーバー名、アイコンパス、実行コマンド、環境変数を設定
    - パッケージ構造に基づいて適切な引数を自動設定
+   - 環境変数は args 内での置換と子プロセスへの env 設定の両方で利用
 
 4. **ロゴファイルの作成**
 
@@ -38,6 +39,9 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 ## 使用例
 
 ```bash
+# DeepL MCP サーバーを追加
+/add-mcp-server https://github.com/DeepLcom/deepl-mcp-server
+
 # GitHubリポジトリから追加
 /add-mcp-server https://github.com/eyaltoledano/claude-task-master
 
@@ -72,6 +76,9 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 
 - READMEから環境変数の記述を抽出
 - 一般的なパターン（API_KEY, TOKEN等）を検出
+- 環境変数は実行時に以下の2つの方法で利用：
+  1. args 内の文字列置換（例: `--api-key=API_KEY` → `--api-key=実際の値`）
+  2. 子プロセスの環境変数として設定（`process.env.API_KEY` でアクセス可能）
 
 ### アイコンの自動生成
 
