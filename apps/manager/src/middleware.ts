@@ -61,7 +61,7 @@ export async function middleware(request: NextRequest) {
 
   // 認証不要のパス判定
   const isPublicPath =
-    (PUBLIC_PATHS as readonly string[]).includes(pathname) ??
+    (PUBLIC_PATHS as readonly string[]).includes(pathname) ||
     pathname.startsWith("/auth");
 
   if (isPublicPath) {
