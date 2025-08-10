@@ -43,7 +43,6 @@
     "@tumiki/db": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
     "agents": "^0.0.45",
-    "deepl-mcp-server": "^0.1.3-beta.0",
     "discord-mcp-server": "^1.0.1",
     "dotenv": "^16.4.5",
     "expiry-map": "^2.0.0",
@@ -67,7 +66,6 @@
   },
   "devDependencies": {
     "@tumiki/vitest-config": "workspace:*",
-    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.2",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "catalog:",

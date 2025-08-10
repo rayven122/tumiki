@@ -1,22 +1,36 @@
 import { type Request, type Response, type NextFunction } from "express";
+import { auth } from "express-oauth2-jwt-bearer";
 import { validateApiKey } from "../libs/validateApiKey.js";
 import { db } from "@tumiki/db/tcp";
 import type { AuthType } from "@tumiki/db";
 import { sessions } from "../utils/session.js";
-import { createJwtCheck, type JWTAuth } from "../libs/auth0Config.js";
-import {
-  sendAuthError,
-  sendBadRequestError,
-  sendNotFoundError,
-  sendForbiddenError,
-  sendInternalError,
-  JSON_RPC_ERROR_CODES,
-} from "../utils/errorResponse.js";
 
 /**
- * JWT検証ミドルウェア
+ * JWT検証ミドルウェアの設定
  */
-const jwtCheck = createJwtCheck();
+const jwtCheck = auth({
+  audience: `https://${process.env.AUTH0_DOMAIN || ""}/api`,
+  issuerBaseURL: `https://${process.env.AUTH0_M2M_DOMAIN || ""}/`,
+  tokenSigningAlg: "RS256",
+});
+
+/**
+ * OAuth認証時のペイロード型定義
+ */
+interface OAuthPayload {
+  sub?: string;
+  scope?: string;
+  permissions?: string[];
+}
+
+/**
+ * JWTペイロード型（express-oauth2-jwt-bearerから）
+ */
+interface JWTAuth {
+  payload?: OAuthPayload;
+  header?: Record<string, unknown>;
+  token?: string;
+}
 
 /**
  * リクエストに認証情報を付与するための拡張型
@@ -48,6 +62,36 @@ const getAuthErrorMessage = (authType: AuthType): string => {
     default:
       return "Authentication required";
   }
+};
+
+/**
+ * 統一的なエラーレスポンスを送信するヘルパー関数
+ */
+const sendAuthError = (
+  res: Response,
+  statusCode: number,
+  message: string,
+  code = -32000,
+  headers?: Record<string, string>,
+): void => {
+  if (res.headersSent) {
+    return;
+  }
+
+  if (headers) {
+    Object.entries(headers).forEach(([key, value]) => {
+      res.setHeader(key, value);
+    });
+  }
+
+  res.status(statusCode).json({
+    jsonrpc: "2.0",
+    error: {
+      code,
+      message,
+    },
+    id: null,
+  });
 };
 
 /**
@@ -117,63 +161,26 @@ export const integratedAuthMiddleware = () => {
     // URLパスからMCPサーバーインスタンスIDを取得
     let mcpServerInstanceId = req.params.userMcpServerInstanceId;
 
-    // req.paramsが取得できない場合、URLから直接抽出
-    if (!mcpServerInstanceId && req.path) {
-      const match = /^\/(mcp|sse|messages)\/([a-z0-9]+)/.exec(req.path);
-      if (match) {
-        mcpServerInstanceId = match[2];
-        console.log(
-          `📍 Extracted MCP instance ID from path: ${mcpServerInstanceId}`,
-        );
-      }
-    }
-
-    // デバッグログ
-    console.log("🔍 Auth middleware debug:");
-    console.log("  - path:", req.path);
-    console.log("  - url:", req.url);
-    console.log("  - params:", req.params);
-    console.log("  - extracted ID:", mcpServerInstanceId);
-    console.log(
-      "  - authType:",
-      hasBearerToken ? "Bearer" : apiKey ? "API Key" : "None",
-    );
-
     // レガシーエンドポイントの場合、APIキーからMCPサーバーインスタンスIDを取得
     if (!mcpServerInstanceId && apiKey) {
       mcpServerInstanceId =
         (await getMcpServerInstanceIdFromApiKey(apiKey)) || undefined;
       if (!mcpServerInstanceId) {
-        sendAuthError(
-          res,
-          401,
-          "Invalid API key",
-          JSON_RPC_ERROR_CODES.SERVER_ERROR,
-        );
+        sendAuthError(res, 401, "Invalid API key");
         return;
       }
     }
 
     // MCPサーバーインスタンスIDが取得できない場合
     if (!mcpServerInstanceId) {
-      console.error("❌ Failed to extract MCP server instance ID");
-      console.error("  - Request details:", {
-        path: req.path,
-        url: req.url,
-        params: req.params,
-        headers: {
-          "x-api-key": req.headers["x-api-key"],
-          authorization: req.headers.authorization ? "Bearer ***" : undefined,
-        },
-      });
-      sendBadRequestError(res, "MCP server instance ID required");
+      sendAuthError(res, 400, "MCP server instance ID required");
       return;
     }
 
     // MCPサーバーインスタンスの情報を取得
     const mcpServerInstance = await getMcpServerInstance(mcpServerInstanceId);
     if (!mcpServerInstance) {
-      sendNotFoundError(res, "MCP server instance not found");
+      sendAuthError(res, 404, "MCP server instance not found");
       return;
     }
 
@@ -182,21 +189,18 @@ export const integratedAuthMiddleware = () => {
     // authTypeに基づく認証チェック
     switch (authType) {
       case "NONE":
-        sendForbiddenError(
+        sendAuthError(
           res,
+          403,
           "Authentication type NONE is not allowed for security reasons",
+          -32000,
         );
         return;
 
       case "API_KEY":
         // APIキー認証が必須
         if (!apiKey) {
-          sendAuthError(
-            res,
-            401,
-            getAuthErrorMessage(authType),
-            JSON_RPC_ERROR_CODES.SERVER_ERROR,
-          );
+          sendAuthError(res, 401, getAuthErrorMessage(authType));
           return;
         }
 
@@ -210,7 +214,6 @@ export const integratedAuthMiddleware = () => {
             res,
             401,
             `Unauthorized: ${apiKeyValidation.error || "Invalid API key"}`,
-            JSON_RPC_ERROR_CODES.SERVER_ERROR,
           );
           return;
         }
@@ -221,7 +224,6 @@ export const integratedAuthMiddleware = () => {
             res,
             401,
             "API key does not match the requested MCP server",
-            JSON_RPC_ERROR_CODES.SERVER_ERROR,
           );
           return;
         }
@@ -236,15 +238,9 @@ export const integratedAuthMiddleware = () => {
       case "OAUTH":
         // OAuth認証が必須
         if (!hasBearerToken) {
-          sendAuthError(
-            res,
-            401,
-            getAuthErrorMessage(authType),
-            JSON_RPC_ERROR_CODES.SERVER_ERROR,
-            {
-              "WWW-Authenticate": 'Bearer realm="MCP API"',
-            },
-          );
+          sendAuthError(res, 401, getAuthErrorMessage(authType), -32000, {
+            "WWW-Authenticate": 'Bearer realm="MCP API"',
+          });
           return;
         }
 
@@ -255,7 +251,7 @@ export const integratedAuthMiddleware = () => {
               res,
               401,
               "Unauthorized: Invalid or missing OAuth token",
-              JSON_RPC_ERROR_CODES.SERVER_ERROR,
+              -32000,
               { "WWW-Authenticate": 'Bearer realm="MCP API"' },
             );
             return;
@@ -279,9 +275,11 @@ export const integratedAuthMiddleware = () => {
 
       default:
         // 未知のauthType
-        sendInternalError(
+        sendAuthError(
           res,
+          500,
           "Internal error: Invalid authentication configuration",
+          -32603,
         );
         return;
     }

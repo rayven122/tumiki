@@ -514,9 +514,6 @@ importers:
       agents:
         specifier: ^0.0.45
         version: 0.0.45(@cloudflare/workers-types@4.20250802.0)
-      deepl-mcp-server:
-        specifier: ^0.1.3-beta.0
-        version: 0.1.3-beta.0
       discord-mcp-server:
         specifier: ^1.0.1
         version: 1.0.1(bufferutil@4.0.9)
@@ -550,9 +547,6 @@ importers:
       mcp-gemini-google-search:
         specifier: ^0.1.1
         version: 0.1.1(bufferutil@4.0.9)
-      microcms-mcp-server:
-        specifier: ^0.3.6
-        version: 0.3.6
       octokit:
         specifier: ^4.1.2
         version: 4.1.4
@@ -584,9 +578,6 @@ importers:
       '@tumiki/vitest-config':
         specifier: workspace:*
         version: link:../../tooling/vitest
-      '@types/bcrypt':
-        specifier: ^6.0.0
-        version: 6.0.0
       '@types/express':
         specifier: ^5.0.2
         version: 5.0.3
@@ -830,9 +821,6 @@ importers:
       '@upstash/context7-mcp':
         specifier: ^1.0.14
         version: 1.0.14
-      deepl-mcp-server:
-        specifier: ^0.1.3-beta.0
-        version: 0.1.3-beta.0
       discord-mcp-server:
         specifier: ^1.0.1
         version: 1.0.1(bufferutil@4.0.9)
@@ -842,9 +830,6 @@ importers:
       mcp-gemini-google-search:
         specifier: ^0.1.1
         version: 0.1.1(bufferutil@4.0.9)
-      microcms-mcp-server:
-        specifier: ^0.3.6
-        version: 0.3.6
       puppeteer-mcp-server:
         specifier: ^0.7.2
         version: 0.7.2(bufferutil@4.0.9)(typescript@5.9.2)
@@ -4191,9 +4176,6 @@ packages:
   '@types/aws-lambda@8.10.152':
     resolution: {integrity: sha512-soT/c2gYBnT5ygwiHPmd9a1bftj462NWVk2tKCc1PYHSIacB2UwbTS2zYG4jzag1mRDuzg/OjtxQjQ2NKRB6Rw==}
 
-  '@types/bcrypt@6.0.0':
-    resolution: {integrity: sha512-/oJGukuH3D2+D+3H4JWLaAsJ/ji86dhRidzZ/Od7H/i8g+aCmvkeCc6Ni/f9uxGLSQVCRZkX2/lqEFG2BvWtlQ==}
-
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
 
@@ -4686,10 +4668,6 @@ packages:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-
-  adm-zip@0.5.16:
-    resolution: {integrity: sha512-TGw5yVi4saajsSEgz25grObGHEUaDrniwvA2qwSC060KfqGPdglhvPMA2lPIoxs3PQIItj2iag35fONcQqgUaQ==}
-    engines: {node: '>=12.0'}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -5363,14 +5341,6 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
-  deepl-mcp-server@0.1.3-beta.0:
-    resolution: {integrity: sha512-mZiPRx+nn+yxskU6ERR5O96UUcpCiv1GDTpBqamtKuf9Zd7noguo9fprW/QrD2NfCra8neq+FS1/0JLmNVW9QA==}
-    hasBin: true
-
-  deepl-node@1.19.0:
-    resolution: {integrity: sha512-icg7dw/IXxsEZ4rf441XBWUpMKYyqa3JfLFbiFEj07f+2SNRseHwoDCJeA6CxYgQdIuX1jy2ShPvY2DAlzXSQw==}
-    engines: {node: '>=12.0'}
-
   deepmerge-ts@7.1.5:
     resolution: {integrity: sha512-HOJkrhaYsweh+W+e74Yn7YStZOilkoPb6fycpwNLKzSPtruFs48nYis0zy5yJz1+ktUhHxoRDJ27RQAWLIJVJw==}
     engines: {node: '>=16.0.0'}
@@ -5986,10 +5956,6 @@ packages:
 
   form-data-encoder@1.7.2:
     resolution: {integrity: sha512-qfqtYan3rxrnCk1VYaA4H+Ms9xdpPqvLZa6xmMgFvhO32x7/3J/ExcTd6qpxM0vH2GdMI+poehyBZvqfMTto8A==}
-
-  form-data@3.0.4:
-    resolution: {integrity: sha512-f0cRzm6dkyVYV3nPoooP8XlccPQukegwhAnpoLcXy+X+A8KfpGOoXwDr9FLZd3wzgLaBGQBE3lY93Zm/i1JvIQ==}
-    engines: {node: '>= 6'}
 
   form-data@4.0.4:
     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
@@ -6802,10 +6768,6 @@ packages:
     resolution: {integrity: sha512-TFYA4jnP7PVbmlBIfhlSe+WKxs9dklXMTEGcBCIvLhE/Tn3H6Gk1norupVW7m5Cnd4bLcr08AytbyV/xj7f/kQ==}
     engines: {node: '>= 12.0.0'}
 
-  loglevel@1.9.2:
-    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
-    engines: {node: '>= 0.6.0'}
-
   longest-streak@3.1.0:
     resolution: {integrity: sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g==}
 
@@ -6971,11 +6933,6 @@ packages:
   microcms-js-sdk@3.2.0:
     resolution: {integrity: sha512-08TyGuBg3oBU27CUT0rn7GDgLu58pZ9F3aBpAa5boJJsllkz9BosLWsqOM9dfGTcVOga+/9tMtwHtmq17MK2KQ==}
     engines: {node: '>=18.0.0'}
-
-  microcms-mcp-server@0.3.6:
-    resolution: {integrity: sha512-GOUL/0rc548W0da19Xfke9klQ4YS04WF/yfEWZJ7xNU4CmQgBppP+zRENSye3pvf3fcU48OooSTijhrG8KBTpA==}
-    engines: {node: '>=18.0.0'}
-    hasBin: true
 
   micromark-core-commonmark@2.0.3:
     resolution: {integrity: sha512-RDBrHEMSxVFLg6xvnXmb1Ayr2WzLAWjeSATAoxwKYJV94TeNavgoIdA0a9ytzDSVzBy2YKFK+emCPOEibLeCrg==}
@@ -7905,7 +7862,6 @@ packages:
   puppeteer@23.11.1:
     resolution: {integrity: sha512-53uIX3KR5en8l7Vd8n5DUv90Ae9QDQsyIthaUFVzwV6yU750RjqRznEtNMBT20VthqAdemnJN+hxVdmMHKt7Zw==}
     engines: {node: '>=18'}
-    deprecated: < 24.9.0 is no longer supported
     hasBin: true
 
   pure-rand@6.1.0:
@@ -8954,10 +8910,6 @@ packages:
 
   uuid@11.1.0:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
-    hasBin: true
-
-  uuid@8.3.2:
-    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
 
   uuid@9.0.1:
@@ -12744,10 +12696,6 @@ snapshots:
 
   '@types/aws-lambda@8.10.152': {}
 
-  '@types/bcrypt@6.0.0':
-    dependencies:
-      '@types/node': 22.17.0
-
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
@@ -13265,8 +13213,6 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  adm-zip@0.5.16: {}
-
   agent-base@7.1.4: {}
 
   agentkeepalive@4.6.0:
@@ -13443,6 +13389,7 @@ snapshots:
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
+    optional: true
 
   axobject-query@4.1.0: {}
 
@@ -13936,26 +13883,6 @@ snapshots:
   deep-eql@5.0.2: {}
 
   deep-is@0.1.4: {}
-
-  deepl-mcp-server@0.1.3-beta.0:
-    dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
-      deepl-node: 1.19.0
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  deepl-node@1.19.0:
-    dependencies:
-      '@types/node': 22.17.0
-      adm-zip: 0.5.16
-      axios: 1.11.0
-      form-data: 3.0.4
-      loglevel: 1.9.2
-      uuid: 8.3.2
-    transitivePeerDependencies:
-      - debug
 
   deepmerge-ts@7.1.5: {}
 
@@ -14936,7 +14863,8 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.15.11: {}
+  follow-redirects@1.15.11:
+    optional: true
 
   for-each@0.3.5:
     dependencies:
@@ -14948,14 +14876,6 @@ snapshots:
       signal-exit: 4.1.0
 
   form-data-encoder@1.7.2: {}
-
-  form-data@3.0.4:
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      es-set-tostringtag: 2.1.0
-      hasown: 2.0.2
-      mime-types: 2.1.35
 
   form-data@4.0.4:
     dependencies:
@@ -15806,8 +15726,6 @@ snapshots:
       safe-stable-stringify: 2.5.0
       triple-beam: 1.4.1
 
-  loglevel@1.9.2: {}
-
   longest-streak@3.1.0: {}
 
   loose-envify@1.4.0:
@@ -16073,13 +15991,6 @@ snapshots:
   microcms-js-sdk@3.2.0:
     dependencies:
       async-retry: 1.3.3
-
-  microcms-mcp-server@0.3.6:
-    dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
-      microcms-js-sdk: 3.2.0
-    transitivePeerDependencies:
-      - supports-color
 
   micromark-core-commonmark@2.0.3:
     dependencies:
@@ -18429,8 +18340,6 @@ snapshots:
   uuid@10.0.0: {}
 
   uuid@11.1.0: {}
-
-  uuid@8.3.2: {}
 
   uuid@9.0.1: {}
 
