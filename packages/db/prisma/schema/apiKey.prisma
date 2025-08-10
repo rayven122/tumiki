@@ -6,29 +6,25 @@
 /// APIキー管理テーブル
 /// @namespace ApiKey
 model McpApiKey {
-  id                       String                  @id @default(cuid())
+  id                      String                @id @default(cuid())
   /// APIキー名（ユーザーが設定）
-  name                     String
+  name                    String
   /// 暗号化されたAPIキー（共通鍵暗号化）
-  apiKey                   String                  @unique /// @encrypted
+  apiKey                  String                @unique /// @encrypted
   /// APIキーのハッシュ値（検索用）
-  apiKeyHash               String?                 @unique /// @encryption:hash(apiKey)
+  apiKeyHash              String?               @unique /// @encryption:hash(apiKey)
   /// APIキーが有効かどうか
-  isActive                 Boolean                 @default(true)
+  isActive                Boolean               @default(true)
   /// 最後に使用された日時
-  lastUsedAt               DateTime?
+  lastUsedAt              DateTime?
   /// APIキーの有効期限
-  expiresAt                DateTime?
+  expiresAt               DateTime?
   /// 関連するUserMcpServerInstanceのID
-  userMcpServerInstanceId  String
-  userMcpServerInstance    UserMcpServerInstance   @relation(fields: [userMcpServerInstanceId], references: [id], onDelete: Cascade)
-  /// 作成者のユーザーID
-  userId                   String
-  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userMcpServerInstanceId String
+  userMcpServerInstance   UserMcpServerInstance @relation(fields: [userMcpServerInstanceId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userMcpServerInstanceId])
-  @@index([userId])
 }
