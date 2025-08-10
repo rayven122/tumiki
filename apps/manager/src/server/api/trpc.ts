@@ -35,25 +35,52 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let currentOrganizationId: string | null = null;
 
   if (session?.user?.sub) {
-    // ユーザーの所属組織を取得（個人組織を優先）
-    const firstMembership = await db.organizationMember.findFirst({
-      where: {
-        userId: session.user.sub,
-        organization: {
-          isDeleted: false,
-        },
-      },
-      orderBy: {
-        organization: {
-          isPersonal: "desc", // 個人組織を優先
-        },
-      },
-      select: {
-        organizationId: true,
-      },
+    // まずユーザーのdefaultOrganizationIdをチェック
+    const user = await db.user.findUnique({
+      where: { id: session.user.sub },
+      select: { defaultOrganizationId: true },
     });
 
-    currentOrganizationId = firstMembership?.organizationId ?? null;
+    if (user?.defaultOrganizationId) {
+      // defaultOrganizationIdが設定されている場合は優先使用
+
+      currentOrganizationId = user.defaultOrganizationId;
+    } else {
+      // フォールバック：個人組織を検索
+      const firstMembership = await db.organizationMember.findFirst({
+        where: {
+          userId: session.user.sub,
+          organization: {
+            isDeleted: false,
+          },
+        },
+        orderBy: {
+          organization: {
+            isPersonal: "desc", // 個人組織を優先
+          },
+        },
+        select: {
+          organizationId: true,
+        },
+      });
+
+      if (firstMembership?.organizationId) {
+        currentOrganizationId = firstMembership.organizationId;
+
+        // 見つかった個人組織をdefaultOrganizationIdに設定
+        try {
+          await db.user.update({
+            where: { id: session.user.sub },
+            data: { defaultOrganizationId: firstMembership.organizationId },
+          });
+        } catch (error) {
+          // 更新に失敗してもログイン処理は継続
+          console.warn("Failed to update defaultOrganizationId:", error);
+        }
+      } else {
+        currentOrganizationId = null;
+      }
+    }
   }
 
   return {
@@ -152,13 +179,23 @@ export const protectedProcedure = t.procedure
     if (!ctx.session?.user?.sub) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
+
+    if (!ctx.currentOrganizationId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Organization membership required. Please complete onboarding first.",
+      });
+    }
+
     return next({
       ctx: {
-        // infers the `session` as non-nullable
+        // infers the `session` as non-nullable and `currentOrganizationId` as string
         session: {
           ...ctx.session,
           user: { ...ctx.session.user, id: ctx.session.user.sub },
         },
+        currentOrganizationId: ctx.currentOrganizationId,
       },
     });
   });
@@ -172,5 +209,5 @@ export type ProtectedContext = {
       id: string;
     };
   } & NonNullable<Context["session"]>;
-  currentOrganizationId: string | null;
+  currentOrganizationId: string; // 組織IDは必須
 } & Context;
