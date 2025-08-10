@@ -20,13 +20,13 @@ export async function middleware(request: NextRequest) {
   // メンテナンスモードチェック
   const isMaintenanceMode = process.env.MAINTENANCE_MODE === "true";
   const allowedIPs =
-    process.env.MAINTENANCE_ALLOWED_IPS?.split(",").map((ip) => ip.trim()) ||
+    process.env.MAINTENANCE_ALLOWED_IPS?.split(",").map((ip) => ip.trim()) ??
     [];
 
   // クライアントIPの取得（x-forwarded-forヘッダーまたはx-real-ipを確認）
   const forwardedFor = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
-  const clientIP = forwardedFor?.split(",")[0]?.trim() || realIp || "";
+  const clientIP = forwardedFor?.split(",")[0]?.trim() ?? realIp ?? "";
 
   // メンテナンスモード中の処理
   if (isMaintenanceMode) {
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
 
   // 認証不要のパス判定
   const isPublicPath =
-    (PUBLIC_PATHS as readonly string[]).includes(pathname) ||
+    (PUBLIC_PATHS as readonly string[]).includes(pathname) ??
     pathname.startsWith("/auth");
 
   if (isPublicPath) {
