@@ -154,8 +154,8 @@ export const handlePOSTRequest = async (
     ) {
       // 非同期でログ記録（レスポンス返却をブロックしない）
       void logMcpRequest({
-        userId: req.authInfo.userId,
         mcpServerInstanceId: req.authInfo.userMcpServerInstanceId,
+        organizationId: req.authInfo.organizationId,
         toolName: "http_transport",
         transportType: TransportType.STREAMABLE_HTTPS,
         method: req.method,
@@ -163,7 +163,6 @@ export const handlePOSTRequest = async (
         durationMs,
         inputBytes,
         outputBytes,
-        organizationId: req.authInfo.organizationId,
         // 詳細ログ記録を追加（サイズ制限付き）
         requestData: requestData,
         responseData: responseDataForLog || undefined,

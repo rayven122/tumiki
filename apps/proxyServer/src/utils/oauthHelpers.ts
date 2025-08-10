@@ -22,7 +22,7 @@ export interface ClientAuthResult {
   apiKeyRecord?: McpApiKey & {
     userMcpServerInstance: Pick<
       UserMcpServerInstance,
-      "id" | "authType" | "userId" | "organizationId"
+      "id" | "authType" | "organizationId"
     > | null;
   };
   error?: string;
@@ -46,7 +46,6 @@ export const authenticateOAuthClient = async (
         select: {
           id: true,
           authType: true,
-          userId: true,
           organizationId: true,
         },
       },
@@ -73,11 +72,8 @@ export const authenticateOAuthClient = async (
     };
   }
 
-  // authTypeがOAUTHまたはBOTHであることを確認
-  if (
-    apiKeyRecord.userMcpServerInstance?.authType !== "OAUTH" &&
-    apiKeyRecord.userMcpServerInstance?.authType !== "BOTH"
-  ) {
+  // authTypeがOAUTHであることを確認
+  if (apiKeyRecord.userMcpServerInstance?.authType !== "OAUTH") {
     return {
       isValid: false,
       error: `Server does not support OAuth authentication (authType: ${apiKeyRecord.userMcpServerInstance?.authType})`,
