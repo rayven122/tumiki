@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { setCorsHeaders } from "../../libs/corsConfig.js";
+import { auth0Config } from "../../libs/auth0Config.js";
 
 /**
  * OAuth 2.0 Authorization Server Metadata
@@ -6,37 +8,11 @@ import type { Request, Response } from "express";
  * https://tools.ietf.org/html/rfc8414
  */
 export const handleOAuthDiscovery = (req: Request, res: Response): void => {
-  const auth0Domain = process.env.AUTH0_DOMAIN;
-  const auth0M2MDomain = process.env.AUTH0_M2M_DOMAIN;
-
   // CORSヘッダーを設定
-  const allowedOrigins = [
-    "http://localhost:3000",
-    "https://local.tumiki.cloud:3000",
-    "http://localhost:6274", // MCP Inspector
-    "http://localhost:8080",
-    "http://local-server.tumiki.cloud:8080",
-    "https://server.tumiki.cloud",
-    "https://tumiki.cloud",
-    "https://www.tumiki.cloud",
-  ];
-
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  } else if (origin && process.env.NODE_ENV !== "production") {
-    // 開発環境では、localhostの任意のポートを許可
-    const localhostPattern = /^http:\/\/localhost:\d+$/;
-    if (localhostPattern.test(origin)) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-    }
-  } else if (!origin) {
-    // originヘッダーがない場合（サーバー間通信など）は許可
-    res.setHeader("Access-Control-Allow-Origin", "*");
-  }
+  setCorsHeaders(req, res, { allowAllIfNoOrigin: true });
 
   // 環境変数が設定されていない場合はエラーを返す
-  if (!auth0Domain || !auth0M2MDomain) {
+  if (!auth0Config.isConfigured()) {
     res.status(503).json({
       error: "OAuth configuration not available",
       message: "Auth0 domains are not configured",
@@ -46,20 +22,29 @@ export const handleOAuthDiscovery = (req: Request, res: Response): void => {
 
   // OAuth 2.0 Authorization Server Metadata
   const metadata = {
-    // 発行者識別子
-    issuer: `https://${auth0M2MDomain}/`,
+    // 発行者識別子（ProxyServerのURL）
+    issuer: process.env.MCP_PROXY_URL || "http://localhost:8080",
 
-    // 認可エンドポイント
-    authorization_endpoint: `https://${auth0M2MDomain}/authorize`,
+    // 認可エンドポイント（ローカルプロキシ経由）
+    authorization_endpoint: `${
+      process.env.MCP_PROXY_URL || "http://localhost:8080"
+    }/oauth/authorize`,
 
-    // トークンエンドポイント
-    token_endpoint: `https://${auth0M2MDomain}/oauth/token`,
+    // トークンエンドポイント（ローカルプロキシ経由）
+    token_endpoint: `${
+      process.env.MCP_PROXY_URL || "http://localhost:8080"
+    }/oauth/token`,
+
+    // Dynamic Client Registration エンドポイント (RFC 7591)
+    registration_endpoint: `${
+      process.env.MCP_PROXY_URL || "http://localhost:8080"
+    }/oauth/register`,
 
     // ユーザー情報エンドポイント
-    userinfo_endpoint: `https://${auth0M2MDomain}/userinfo`,
+    userinfo_endpoint: auth0Config.endpoints.userinfo,
 
     // JWKSエンドポイント（公開鍵の取得用）
-    jwks_uri: `https://${auth0M2MDomain}/.well-known/jwks.json`,
+    jwks_uri: auth0Config.endpoints.jwks,
 
     // サポートされるレスポンスタイプ
     response_types_supported: [
@@ -129,13 +114,13 @@ export const handleOAuthDiscovery = (req: Request, res: Response): void => {
     request_uri_parameter_supported: false,
 
     // その他のAuth0固有の設定
-    device_authorization_endpoint: `https://${auth0M2MDomain}/oauth/device/code`,
-    mfa_challenge_endpoint: `https://${auth0M2MDomain}/mfa/challenge`,
-    revocation_endpoint: `https://${auth0M2MDomain}/oauth/revoke`,
-    end_session_endpoint: `https://${auth0M2MDomain}/v2/logout`,
+    device_authorization_endpoint: auth0Config.endpoints.deviceAuthorization,
+    mfa_challenge_endpoint: auth0Config.endpoints.mfaChallenge,
+    revocation_endpoint: auth0Config.endpoints.revocation,
+    end_session_endpoint: auth0Config.endpoints.logout,
 
     // Tumiki固有の拡張
-    tumiki_api_audience: `https://${auth0Domain}/api`,
+    tumiki_api_audience: auth0Config.api.audience,
     tumiki_mcp_endpoint: `${
       process.env.MCP_PROXY_URL || "http://localhost:8080"
     }/mcp`,
