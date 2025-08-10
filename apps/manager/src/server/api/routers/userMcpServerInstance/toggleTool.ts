@@ -14,7 +14,7 @@ export const toggleTool = async ({ ctx, input }: ToggleToolInput) => {
   const instance = await ctx.db.userMcpServerInstance.findUnique({
     where: {
       id: instanceId,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       deletedAt: null,
     },
     include: {

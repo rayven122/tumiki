@@ -40,13 +40,13 @@ export const getRequestDataDetail = async ({
   const requestLog = await db.mcpServerRequestLog.findUnique({
     where: {
       id: input.requestLogId,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
     },
     include: {
       mcpServerInstance: {
         select: {
           id: true,
-          userId: true,
+          organizationId: true,
         },
       },
       requestData: true,
@@ -60,8 +60,10 @@ export const getRequestDataDetail = async ({
     });
   }
 
-  // ユーザーのアクセス権限チェック
-  if (requestLog.mcpServerInstance.userId !== ctx.session.user.id) {
+  // 組織のアクセス権限チェック
+  if (
+    requestLog.mcpServerInstance.organizationId !== ctx.currentOrganizationId
+  ) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "アクセス権限がありません",

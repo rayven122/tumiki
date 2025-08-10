@@ -22,16 +22,16 @@ export const updateDisplayOrder = async ({
   ctx,
 }: UpdateDisplayOrderInput) => {
   const { updates } = input;
-  const userId = ctx.session.user.id;
 
-  // すべての更新対象がユーザーの個人用サーバーか確認
+  const organizationId = ctx.currentOrganizationId;
+
+  // すべての更新対象が現在の組織のサーバーか確認
   const serverIds = updates.map((update) => update.id);
   const servers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       id: { in: serverIds },
-      userId,
+      organizationId,
       deletedAt: null,
-      organizationId: null, // 個人のMCPサーバーのみ更新可能
     },
     select: { id: true },
   });
@@ -49,7 +49,7 @@ export const updateDisplayOrder = async ({
       ctx.db.userMcpServerInstance.update({
         where: {
           id: update.id,
-          userId,
+          organizationId: organizationId,
         },
         data: {
           displayOrder: update.displayOrder,

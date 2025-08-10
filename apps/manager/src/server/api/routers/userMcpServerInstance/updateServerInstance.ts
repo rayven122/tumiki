@@ -14,6 +14,8 @@ export const updateServerInstance = async ({
 }: UpdateServerInstanceInput) => {
   const { serverToolIdsMap } = input;
 
+  const organizationId = ctx.currentOrganizationId;
+
   const toolGroupTools = Object.entries(serverToolIdsMap).flatMap(
     ([userMcpServerConfigId, toolIds]) =>
       (toolIds ?? []).map((toolId) => ({
@@ -26,7 +28,7 @@ export const updateServerInstance = async ({
     const toolGroup = await tx.userToolGroup.update({
       where: {
         id: input.toolGroupId,
-        userId: ctx.session.user.id,
+        organizationId,
       },
       data: {
         name: input.name,
@@ -63,7 +65,7 @@ export const updateServerInstance = async ({
       await tx.userMcpServerConfig.update({
         where: {
           id: userMcpServerConfigId,
-          userId: ctx.session.user.id,
+          organizationId,
         },
         data: {
           name: input.name,

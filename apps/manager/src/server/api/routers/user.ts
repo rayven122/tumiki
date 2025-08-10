@@ -45,30 +45,68 @@ export const userRouter = createTRPCRouter({
       }
     }),
 
-  // オンボーディング状況をチェック
+  // オンボーディング状況をチェック（個人組織の存在で判断）
   checkOnboardingStatus: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
-    const user = await ctx.db.user.findUnique({
-      where: { id: userId },
-      select: { hasCompletedOnboarding: true },
+    // ユーザーが個人組織を持っているか確認
+    const personalOrg = await ctx.db.organizationMember.findFirst({
+      where: {
+        userId,
+        organization: {
+          isPersonal: true,
+          isDeleted: false,
+        },
+      },
     });
 
-    if (!user) return { isOnboardingCompleted: false };
-
     return {
-      isOnboardingCompleted: user.hasCompletedOnboarding,
+      isOnboardingCompleted: !!personalOrg,
     };
   }),
 
-  // オンボーディング完了をマーク
+  // オンボーディング完了をマーク（個人組織を作成）
   completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
-    await ctx.db.user.update({
-      where: { id: userId },
-      data: { hasCompletedOnboarding: true },
+    // 既に個人組織が存在するか確認
+    const existingOrg = await ctx.db.organizationMember.findFirst({
+      where: {
+        userId,
+        organization: {
+          isPersonal: true,
+          isDeleted: false,
+        },
+      },
     });
+
+    if (!existingOrg) {
+      // ユーザー情報を取得
+      const user = await ctx.db.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // 個人組織を作成
+      await ctx.db.organization.create({
+        data: {
+          name: `${user.name ?? user.email ?? "User"}'s Workspace`,
+          description: "Personal workspace",
+          isPersonal: true,
+          maxMembers: 1,
+          createdBy: userId,
+          members: {
+            create: {
+              userId,
+              isAdmin: true,
+            },
+          },
+        },
+      });
+    }
 
     return { success: true };
   }),

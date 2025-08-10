@@ -132,7 +132,6 @@ export const GetTimeSeriesStatsInput = z.object({
 // Output schemas for request logs
 export const RequestLogOutput = z.object({
   id: z.string(),
-  userId: z.string().nullable(),
   mcpServerInstanceId: z.string(),
   toolName: z.string(),
   transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTPS"]),

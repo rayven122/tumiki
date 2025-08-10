@@ -9,9 +9,8 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
   const customServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       serverType: ServerType.CUSTOM,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       deletedAt: null,
-      organizationId: null, // 個人のMCPサーバーのみを取得
     },
     orderBy: {
       displayOrder: "asc",

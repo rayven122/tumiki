@@ -13,7 +13,7 @@ export const validateApiKey = async (providedKey: string) => {
     include: {
       userMcpServerInstance: {
         include: {
-          user: true,
+          organization: true,
           toolGroup: {
             include: {
               toolGroupTools: {

@@ -18,6 +18,8 @@ export const createMcpServer = async ({
   const { db, session } = ctx;
   const userId = session.user.id;
 
+  const currentOrganizationId = ctx.currentOrganizationId;
+
   // バリデーション
   if (input.transportType === "SSE" && !input.url) {
     throw new TRPCError({
@@ -106,15 +108,11 @@ export const createMcpServer = async ({
     // ユーザーのMCPサーバー設定を作成
     const serverConfig = await tx.userMcpServerConfig.create({
       data: {
-        userId,
         name: mcpServer.name,
         description: "",
         mcpServerId: mcpServer.id,
         envVars: JSON.stringify(input.envVars),
-        organizationId,
-        tools: {
-          connect: mcpServer.tools.map((tool) => ({ id: tool.id })),
-        },
+        organizationId: currentOrganizationId,
       },
     });
 
@@ -126,10 +124,9 @@ export const createMcpServer = async ({
     // ツールグループを作成
     const toolGroup = await tx.userToolGroup.create({
       data: {
-        userId,
         name: mcpServer.name,
         description: "",
-        organizationId,
+        organizationId: currentOrganizationId,
         toolGroupTools: {
           createMany: {
             data: toolGroupTools,
@@ -144,18 +141,16 @@ export const createMcpServer = async ({
     // MCPサーバーインスタンスを作成
     const serverInstance = await tx.userMcpServerInstance.create({
       data: {
-        userId,
         name: mcpServer.name,
         description: "",
         serverStatus: ServerStatus.RUNNING,
         serverType: ServerType.OFFICIAL,
         toolGroupId: toolGroup.id,
-        organizationId,
+        organizationId: currentOrganizationId,
         apiKeys: {
           create: {
             name: `${mcpServer.name} API Key`,
             apiKey: fullKey,
-            userId,
           },
         },
       },

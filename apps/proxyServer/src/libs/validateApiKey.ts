@@ -3,7 +3,6 @@ import pMemoize from "p-memoize";
 import ExpiryMap from "expiry-map";
 import type {
   UserMcpServerInstance,
-  User,
   UserToolGroup,
   UserToolGroupTool,
   Tool,
@@ -15,7 +14,6 @@ export interface ValidationResult {
   error?: string;
   apiKey?: McpApiKey;
   userMcpServerInstance?: UserMcpServerInstance & {
-    user: User;
     toolGroup: UserToolGroup & {
       toolGroupTools: Array<
         UserToolGroupTool & {
@@ -44,7 +42,6 @@ const _validateApiKey = async (
       include: {
         userMcpServerInstance: {
           include: {
-            user: true,
             toolGroup: {
               include: {
                 toolGroupTools: {
