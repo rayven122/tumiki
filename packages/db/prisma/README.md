@@ -51,9 +51,15 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
+  String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
+"_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `User`
@@ -64,8 +70,16 @@ erDiagram
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
+  - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
+
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 
 ## McpServer
@@ -238,7 +252,7 @@ MCP サーバーのツール一覧
   - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
   - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
+  - `oauthConnection`: OAuth���続のAuth0 connection名（user-specific）
   - `mcpServerId`: MCPサーバーID
   - `organizationId`: 組織
   - `createdAt`: 
@@ -405,6 +419,10 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
 "_OrganizationMemberToOrganizationRole" {
   String A FK
   String B FK
@@ -425,6 +443,7 @@ erDiagram
 "ResourceAccessControl" }o--|| "Organization" : organization
 "ResourceAccessControl" }o--o| "OrganizationMember" : member
 "ResourceAccessControl" }o--o| "OrganizationGroup" : group
+"_OrganizationToUser" }o--|| "Organization" : Organization
 "_OrganizationMemberToOrganizationRole" }o--|| "OrganizationMember" : OrganizationMember
 "_OrganizationMemberToOrganizationRole" }o--|| "OrganizationRole" : OrganizationRole
 "_OrganizationGroupToOrganizationMember" }o--|| "OrganizationGroup" : OrganizationGroup
@@ -520,6 +539,13 @@ erDiagram
   - `createdAt`: 
   - `updatedAt`: 
 
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
+
 ### `_OrganizationMemberToOrganizationRole`
 Pair relationship table between [OrganizationMember](#OrganizationMember) and [OrganizationRole](#OrganizationRole)
 
@@ -557,6 +583,7 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
+  String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -630,6 +657,10 @@ erDiagram
   Float compressionRatio
   DateTime createdAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
 "UserToolGroupTool" }o--|| "UserMcpServerConfig" : userMcpServerConfig
@@ -637,6 +668,7 @@ erDiagram
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
+"_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `UserMcpServerInstanceToolGroup`
@@ -656,6 +688,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
+  - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -667,7 +700,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
   - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
+  - `oauthConnection`: OAuth���続のAuth0 connection名（user-specific）
   - `mcpServerId`: MCPサーバーID
   - `organizationId`: 組織
   - `createdAt`: 
@@ -751,6 +784,13 @@ MCPサーバーリクエストの詳細データ（分析用）
   - `compressionRatio`: 圧縮率（0.0-1.0、小さいほど高圧縮）
   - `createdAt`: 
 
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
+
 
 ## Chat
 ```mermaid
@@ -761,9 +801,15 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
+  String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
+"_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `User`
@@ -774,8 +820,16 @@ erDiagram
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
+  - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
+
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 
 ## default

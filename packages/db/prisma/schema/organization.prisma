@@ -20,6 +20,8 @@ model Organization {
   /// 組織の作成者
   createdBy    String
   creator      User                     @relation(fields: [createdBy], references: [id])
+  /// この組織をデフォルトとするユーザー
+  defaultUsers User[]                   @relation("UserDefaultOrganization")
   /// 組織のメンバー
   members      OrganizationMember[]
   /// 組織のグループ

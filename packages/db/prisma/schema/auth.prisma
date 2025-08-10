@@ -15,22 +15,26 @@ enum Role {
 /// @namespace Chat
 model User {
   /// Auth0のユーザーID (sub) - 主キーとして使用
-  id            String                   @id
+  id                     String                   @id
   /// ユーザー名
-  name          String?
+  name                   String?
   /// メールアドレス
-  email         String?                  @unique
+  email                  String?                  @unique
   /// プロフィール画像のURL
-  image         String?
+  image                  String?
   /// ユーザーの権限
-  role          Role                     @default(USER)
-  organizations Organization[]
-  members       OrganizationMember[]
-  invitations   OrganizationInvitation[]
+  role                   Role                     @default(USER)
+  /// デフォルトの組織ID
+  defaultOrganizationId  String?
+  /// デフォルト組織への参照
+  defaultOrganization    Organization?            @relation("UserDefaultOrganization", fields: [defaultOrganizationId], references: [id])
+  organizations          Organization[]
+  members                OrganizationMember[]
+  invitations            OrganizationInvitation[]
   /// Chat関連
-  Chat          Chat[]
-  Document      Document[]
-  Suggestion    Suggestion[]
+  Chat                   Chat[]
+  Document               Document[]
+  Suggestion             Suggestion[]
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
