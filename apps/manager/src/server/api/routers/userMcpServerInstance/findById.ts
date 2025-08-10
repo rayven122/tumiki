@@ -13,7 +13,7 @@ export const findById = async ({
   const instance = await db.userMcpServerInstance.findUnique({
     where: {
       id: input.id,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       deletedAt: null,
     },
     include: {
@@ -38,7 +38,7 @@ export const findById = async ({
 
   if (
     !instance ||
-    instance.userId !== ctx.session.user.id ||
+    instance.organizationId !== ctx.currentOrganizationId ||
     instance.deletedAt !== null
   ) {
     throw new Error("サーバーインスタンスが見つかりません");
@@ -84,17 +84,20 @@ export const findById = async ({
     const userMcpServerConfigs = await db.userMcpServerConfig.findMany({
       where: {
         id: { in: userMcpServerConfigIds },
-        userId: ctx.session.user.id,
+        organizationId: ctx.currentOrganizationId,
       },
       include: {
-        tools: true,
-        mcpServer: true,
+        mcpServer: {
+          include: {
+            tools: true,
+          },
+        },
       },
     });
 
     // 全ての利用可能なツールを取得
     availableTools = userMcpServerConfigs.flatMap((config) =>
-      config.tools.map((tool) => ({
+      config.mcpServer.tools.map((tool) => ({
         ...tool,
         userMcpServerConfigId: config.id,
         isEnabled:
@@ -110,19 +113,22 @@ export const findById = async ({
       })),
     );
   } else if (instance.serverType === ServerType.CUSTOM) {
-    // カスタムサーバーの場合、全てのユーザーのMCPサーバー設定からツールを取得
+    // カスタムサーバーの場合、全ての組織のMCPサーバー設定からツールを取得
     const allUserMcpServerConfigs = await db.userMcpServerConfig.findMany({
       where: {
-        userId: ctx.session.user.id,
+        organizationId: ctx.currentOrganizationId,
       },
       include: {
-        tools: true,
-        mcpServer: true,
+        mcpServer: {
+          include: {
+            tools: true,
+          },
+        },
       },
     });
 
     availableTools = allUserMcpServerConfigs.flatMap((config) =>
-      config.tools.map((tool) => ({
+      config.mcpServer.tools.map((tool) => ({
         ...tool,
         userMcpServerConfigId: config.id,
         isEnabled:

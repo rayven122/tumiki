@@ -26,7 +26,6 @@ const sanitizeForLog = (toolName: string): string => {
 };
 
 type LogRequestParams = {
-  userId?: string;
   mcpServerInstanceId?: string;
   toolName: string;
   transportType: TransportType;
@@ -37,7 +36,7 @@ type LogRequestParams = {
   errorCode?: string;
   inputBytes?: number;
   outputBytes?: number;
-  organizationId?: string;
+  organizationId: string;
   userAgent?: string;
   // 詳細データ用の追加パラメータ
   requestData?: unknown;
@@ -93,7 +92,6 @@ export const logMcpRequest = async (
     // 基本ログと詳細データを一つのクエリで作成
     await db.mcpServerRequestLog.create({
       data: {
-        userId: params.userId || null,
         mcpServerInstanceId: params.mcpServerInstanceId, // 事前チェック済み
         toolName: params.toolName,
         transportType: params.transportType,
@@ -105,7 +103,7 @@ export const logMcpRequest = async (
         errorCode: params.errorCode || null,
         inputBytes: params.inputBytes || null,
         outputBytes: params.outputBytes || null,
-        organizationId: params.organizationId || null,
+        organizationId: params.organizationId,
         userAgent: params.userAgent || null,
         // ネストされたrequestData作成
         requestData: compressionResult

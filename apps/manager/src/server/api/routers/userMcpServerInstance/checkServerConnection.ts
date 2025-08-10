@@ -17,19 +17,18 @@ export const checkServerConnection = async ({
 }: CheckServerConnectionParams) => {
   const { serverInstanceId, updateStatus = false } = input;
 
+  const organizationId = ctx.currentOrganizationId;
+
   // トランザクションで処理を実行
   return await ctx.db.$transaction(async (tx) => {
-    // サーバーインスタンスが存在し、ユーザーが所有していることを確認
+    // サーバーインスタンスが存在し、組織が所有していることを確認
     const serverInstance = await tx.userMcpServerInstance.findUnique({
       where: {
         id: serverInstanceId,
-        userId: ctx.session.user.id,
+        organizationId,
       },
       include: {
         apiKeys: {
-          where: {
-            userId: ctx.session.user.id,
-          },
           take: 1,
         },
       },

@@ -21,7 +21,6 @@ erDiagram
   DateTime lastUsedAt "nullable"
   DateTime expiresAt "nullable"
   String userMcpServerInstanceId FK
-  String userId FK
   DateTime createdAt
   DateTime updatedAt
 }
@@ -39,7 +38,6 @@ APIキー管理テーブル
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
   - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
-  - `userId`: 作成者のユーザーID
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -53,10 +51,15 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
-  Boolean hasCompletedOnboarding
+  String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
+"_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `User`
@@ -67,9 +70,16 @@ erDiagram
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `hasCompletedOnboarding`: オンボーディング完了フラグ
+  - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
+
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 
 ## McpServer
@@ -111,10 +121,8 @@ erDiagram
   String description
   String envVars
   String oauthConnection "nullable"
-  String oauthScopes
   String mcpServerId FK
-  String userId FK
-  String organizationId FK "nullable"
+  String organizationId FK
   DateTime createdAt
   DateTime updatedAt
 }
@@ -130,8 +138,7 @@ erDiagram
   String name
   String description
   Boolean isEnabled
-  String userId FK
-  String organizationId FK "nullable"
+  String organizationId FK
   DateTime createdAt
   DateTime updatedAt
 }
@@ -144,8 +151,7 @@ erDiagram
   ServerType serverType
   String toolGroupId FK,UK
   AuthType authType
-  String userId FK
-  String organizationId FK "nullable"
+  String organizationId FK
   Int displayOrder
   DateTime createdAt
   DateTime updatedAt
@@ -153,7 +159,6 @@ erDiagram
 }
 "McpServerRequestLog" {
   String id PK
-  String userId FK "nullable"
   String mcpServerInstanceId FK
   String toolName
   TransportType transportType
@@ -164,7 +169,7 @@ erDiagram
   String errorCode "nullable"
   Int inputBytes "nullable"
   Int outputBytes "nullable"
-  String organizationId FK "nullable"
+  String organizationId FK
   String userAgent "nullable"
   DateTime createdAt
 }
@@ -180,10 +185,6 @@ erDiagram
   Float compressionRatio
   DateTime createdAt
 }
-"_ToolToUserMcpServerConfig" {
-  String A FK
-  String B FK
-}
 "UserMcpServerInstanceToolGroup" {
   String mcpServerInstanceId FK
   String toolGroupId FK
@@ -198,8 +199,6 @@ erDiagram
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
 "McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
-"_ToolToUserMcpServerConfig" }o--|| "Tool" : Tool
-"_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
 ```
@@ -253,10 +252,8 @@ MCP サーバーのツール一覧
   - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
   - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
-  - `oauthScopes`: ユーザーが選択した追加スコープ
+  - `oauthConnection`: OAuth���続のAuth0 connection名（user-specific）
   - `mcpServerId`: MCPサーバーID
-  - `userId`: ユーザーID
   - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
@@ -280,7 +277,6 @@ tool group 内に、同一の mcpServer の設定入れられない🤔
   - `name`: ツールグループ名
   - `description`: ツールグループの説明
   - `isEnabled`: ツールグループが有効かどうか
-  - `userId`: ユーザーID
   - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
@@ -299,7 +295,6 @@ MCPサーバーとして利用するインスタンス
     > ツールグループ
     > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
   - `authType`: 使用する認証タイプ（API_KEY, OAUTH, BOTH）
-  - `userId`: ユーザーID
   - `organizationId`: 組織
   - `displayOrder`: 表示順序（ユーザーごと）
   - `createdAt`: 
@@ -311,7 +306,6 @@ MCPサーバーインスタンスへのリクエストログ
 
 **Properties**
   - `id`: 
-  - `userId`: ユーザーID (OAuth2 認証もしくは、api key に応じて、利用ユーザを特定する)
   - `mcpServerInstanceId`: MCPサーバーインスタンスID
   - `toolName`: 実行されたツール名
   - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
@@ -342,13 +336,6 @@ MCPサーバーリクエストの詳細データ（分析用）
   - `compressionRatio`: 圧縮率（0.0-1.0、小さいほど高圧縮）
   - `createdAt`: 
 
-### `_ToolToUserMcpServerConfig`
-Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcpServerConfig)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
 ### `UserMcpServerInstanceToolGroup`
 MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
 
@@ -368,6 +355,8 @@ erDiagram
   String description "nullable"
   String logoUrl "nullable"
   Boolean isDeleted
+  Boolean isPersonal
+  Int maxMembers
   String createdBy FK
   DateTime createdAt
   DateTime updatedAt
@@ -430,6 +419,10 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
 "_OrganizationMemberToOrganizationRole" {
   String A FK
   String B FK
@@ -450,6 +443,7 @@ erDiagram
 "ResourceAccessControl" }o--|| "Organization" : organization
 "ResourceAccessControl" }o--o| "OrganizationMember" : member
 "ResourceAccessControl" }o--o| "OrganizationGroup" : group
+"_OrganizationToUser" }o--|| "Organization" : Organization
 "_OrganizationMemberToOrganizationRole" }o--|| "OrganizationMember" : OrganizationMember
 "_OrganizationMemberToOrganizationRole" }o--|| "OrganizationRole" : OrganizationRole
 "_OrganizationGroupToOrganizationMember" }o--|| "OrganizationGroup" : OrganizationGroup
@@ -466,6 +460,8 @@ erDiagram
   - `description`: 組織の説明
   - `logoUrl`: 組織のロゴURL
   - `isDeleted`: 論理削除フラグ
+  - `isPersonal`: 個人組織フラグ（個人ユーザー用の組織の場合true）
+  - `maxMembers`: 最大メンバー数（個人組織の場合は1）
   - `createdBy`: 組織の作成者
   - `createdAt`: 
   - `updatedAt`: 
@@ -543,6 +539,13 @@ erDiagram
   - `createdAt`: 
   - `updatedAt`: 
 
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
+
 ### `_OrganizationMemberToOrganizationRole`
 Pair relationship table between [OrganizationMember](#OrganizationMember) and [OrganizationRole](#OrganizationRole)
 
@@ -580,7 +583,7 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
-  Boolean hasCompletedOnboarding
+  String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -590,10 +593,8 @@ erDiagram
   String description
   String envVars
   String oauthConnection "nullable"
-  String oauthScopes
   String mcpServerId FK
-  String userId FK
-  String organizationId FK "nullable"
+  String organizationId FK
   DateTime createdAt
   DateTime updatedAt
 }
@@ -609,8 +610,7 @@ erDiagram
   String name
   String description
   Boolean isEnabled
-  String userId FK
-  String organizationId FK "nullable"
+  String organizationId FK
   DateTime createdAt
   DateTime updatedAt
 }
@@ -623,8 +623,7 @@ erDiagram
   ServerType serverType
   String toolGroupId FK,UK
   AuthType authType
-  String userId FK
-  String organizationId FK "nullable"
+  String organizationId FK
   Int displayOrder
   DateTime createdAt
   DateTime updatedAt
@@ -632,7 +631,6 @@ erDiagram
 }
 "McpServerRequestLog" {
   String id PK
-  String userId FK "nullable"
   String mcpServerInstanceId FK
   String toolName
   TransportType transportType
@@ -643,7 +641,7 @@ erDiagram
   String errorCode "nullable"
   Int inputBytes "nullable"
   Int outputBytes "nullable"
-  String organizationId FK "nullable"
+  String organizationId FK
   String userAgent "nullable"
   DateTime createdAt
 }
@@ -659,22 +657,18 @@ erDiagram
   Float compressionRatio
   DateTime createdAt
 }
-"_ToolToUserMcpServerConfig" {
+"_OrganizationToUser" {
   String A FK
   String B FK
 }
 "UserMcpServerInstanceToolGroup" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "UserMcpServerInstanceToolGroup" }o--|| "UserToolGroup" : toolGroup
-"UserMcpServerConfig" }o--|| "User" : user
 "UserToolGroupTool" }o--|| "UserMcpServerConfig" : userMcpServerConfig
 "UserToolGroupTool" }o--|| "UserToolGroup" : toolGroup
-"UserToolGroup" }o--|| "User" : user
 "UserMcpServerInstance" |o--|| "UserToolGroup" : toolGroup
-"UserMcpServerInstance" }o--|| "User" : user
-"McpServerRequestLog" }o--o| "User" : user
 "McpServerRequestLog" }o--|| "UserMcpServerInstance" : mcpServerInstance
 "McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
-"_ToolToUserMcpServerConfig" }o--|| "UserMcpServerConfig" : UserMcpServerConfig
+"_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `UserMcpServerInstanceToolGroup`
@@ -694,7 +688,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `hasCompletedOnboarding`: オンボーディング完了フラグ
+  - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -706,10 +700,8 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
   - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
-  - `oauthScopes`: ユーザーが選択した追加スコープ
+  - `oauthConnection`: OAuth���続のAuth0 connection名（user-specific）
   - `mcpServerId`: MCPサーバーID
-  - `userId`: ユーザーID
   - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
@@ -733,7 +725,6 @@ tool group 内に、同一の mcpServer の設定入れられない🤔
   - `name`: ツールグループ名
   - `description`: ツールグループの説明
   - `isEnabled`: ツールグループが有効かどうか
-  - `userId`: ユーザーID
   - `organizationId`: 組織
   - `createdAt`: 
   - `updatedAt`: 
@@ -752,7 +743,6 @@ MCPサーバーとして利用するインスタンス
     > ツールグループ
     > UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
   - `authType`: 使用する認証タイプ（API_KEY, OAUTH, BOTH）
-  - `userId`: ユーザーID
   - `organizationId`: 組織
   - `displayOrder`: 表示順序（ユーザーごと）
   - `createdAt`: 
@@ -764,7 +754,6 @@ MCPサーバーインスタンスへのリクエストログ
 
 **Properties**
   - `id`: 
-  - `userId`: ユーザーID (OAuth2 認証もしくは、api key に応じて、利用ユーザを特定する)
   - `mcpServerInstanceId`: MCPサーバーインスタンスID
   - `toolName`: 実行されたツール名
   - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
@@ -795,8 +784,8 @@ MCPサーバーリクエストの詳細データ（分析用）
   - `compressionRatio`: 圧縮率（0.0-1.0、小さいほど高圧縮）
   - `createdAt`: 
 
-### `_ToolToUserMcpServerConfig`
-Pair relationship table between [Tool](#Tool) and [UserMcpServerConfig](#UserMcpServerConfig)
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
 
 **Properties**
   - `A`: 
@@ -812,10 +801,15 @@ erDiagram
   String email UK "nullable"
   String image "nullable"
   Role role
-  Boolean hasCompletedOnboarding
+  String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
+"_OrganizationToUser" {
+  String A FK
+  String B FK
+}
+"_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `User`
@@ -826,9 +820,16 @@ erDiagram
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `hasCompletedOnboarding`: オンボーディング完了フラグ
+  - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
+
+### `_OrganizationToUser`
+Pair relationship table between [Organization](#Organization) and [User](#User)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 
 ## default

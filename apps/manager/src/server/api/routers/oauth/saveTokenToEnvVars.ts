@@ -16,6 +16,8 @@ export const saveTokenToEnvVars = async ({
 }: SaveTokenToEnvVarsArgs) => {
   const { userMcpServerConfigId, provider, tokenKey } = input;
 
+  const currentOrganizationId = ctx.currentOrganizationId;
+
   // 1. UserMcpServerConfigを取得
   const userMcpServerConfig = await ctx.db.userMcpServerConfig.findUnique({
     where: { id: userMcpServerConfigId },
@@ -26,8 +28,8 @@ export const saveTokenToEnvVars = async ({
     throw new Error("MCPサーバー設定が見つかりません");
   }
 
-  // 2. ユーザーの所有権を確認
-  if (userMcpServerConfig.userId !== ctx.session.user.id) {
+  // 2. 組織の所有権を確認
+  if (userMcpServerConfig.organizationId !== currentOrganizationId) {
     throw new Error("このMCPサーバー設定にアクセスする権限がありません");
   }
 
@@ -64,7 +66,6 @@ export const saveTokenToEnvVars = async ({
       envVars: JSON.stringify(envVars),
       // OAuth接続情報も更新
       oauthConnection: provider,
-      oauthScopes: input.scopes ?? [],
     },
     include: {
       userToolGroupTools: {
@@ -79,11 +80,21 @@ export const saveTokenToEnvVars = async ({
     },
   });
 
-  // 8. 関連するUserMcpServerInstanceのステータスをRUNNINGに更新
-  if (updatedConfig.userToolGroupTools[0]?.toolGroup.mcpServerInstance) {
-    const instance =
-      updatedConfig.userToolGroupTools[0].toolGroup.mcpServerInstance;
+  // 8. 関連するUserMcpServerInstanceを特定してステータスをRUNNINGに更新
+  const relatedInstances = await ctx.db.userMcpServerInstance.findMany({
+    where: {
+      organizationId: currentOrganizationId,
+      toolGroup: {
+        toolGroupTools: {
+          some: {
+            userMcpServerConfigId: userMcpServerConfigId,
+          },
+        },
+      },
+    },
+  });
 
+  for (const instance of relatedInstances) {
     // ステータスをRUNNINGに更新
     await ctx.db.userMcpServerInstance.update({
       where: { id: instance.id },
@@ -103,7 +114,6 @@ export const saveTokenToEnvVars = async ({
         data: {
           name: `${instance.name} API Key`,
           apiKey: fullKey,
-          userId: ctx.session.user.id,
           userMcpServerInstanceId: instance.id,
         },
       });

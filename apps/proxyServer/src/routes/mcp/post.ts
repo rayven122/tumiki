@@ -147,11 +147,15 @@ export const handlePOSTRequest = async (
     const outputBytes = responseStr.length;
 
     // 検証モードでない場合のみログ記録
-    if (!isValidationMode) {
+    if (
+      !isValidationMode &&
+      req.authInfo?.userMcpServerInstanceId &&
+      req.authInfo?.organizationId
+    ) {
       // 非同期でログ記録（レスポンス返却をブロックしない）
       void logMcpRequest({
-        userId: undefined,
-        mcpServerInstanceId: undefined, // HTTP transportでは特定できない場合がある
+        mcpServerInstanceId: req.authInfo.userMcpServerInstanceId,
+        organizationId: req.authInfo.organizationId,
         toolName: "http_transport",
         transportType: TransportType.STREAMABLE_HTTPS,
         method: req.method,
@@ -159,7 +163,6 @@ export const handlePOSTRequest = async (
         durationMs,
         inputBytes,
         outputBytes,
-        organizationId: undefined,
         // 詳細ログ記録を追加（サイズ制限付き）
         requestData: requestData,
         responseData: responseDataForLog || undefined,
