@@ -8,12 +8,15 @@ type FindOfficialServersInput = {
 export const findOfficialServers = async ({
   ctx,
 }: FindOfficialServersInput) => {
+  if (!ctx.currentOrganizationId) {
+    return [];
+  }
+
   const officialServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       deletedAt: null,
-      organizationId: null, // 個人のMCPサーバーのみを取得
     },
     orderBy: {
       displayOrder: "asc",

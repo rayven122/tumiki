@@ -31,9 +31,44 @@ import { db } from "@tumiki/db/server";
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
 
+  // ユーザーの現在の組織を取得
+  let currentOrganizationId: string | null = null;
+
+  if (session?.user?.sub) {
+    const user = await db.user.findUnique({
+      where: { id: session.user.sub },
+      select: { defaultOrganizationId: true },
+    });
+
+    if (user?.defaultOrganizationId) {
+      currentOrganizationId = user.defaultOrganizationId;
+    } else {
+      // デフォルト組織がない場合は最初の組織を取得
+      const firstMembership = await db.organizationMember.findFirst({
+        where: {
+          userId: session.user.sub,
+          organization: {
+            isDeleted: false,
+          },
+        },
+        orderBy: {
+          organization: {
+            isPersonal: "desc", // 個人組織を優先
+          },
+        },
+        select: {
+          organizationId: true,
+        },
+      });
+
+      currentOrganizationId = firstMembership?.organizationId ?? null;
+    }
+  }
+
   return {
     db,
     session,
+    currentOrganizationId,
     ...opts,
   };
 };
@@ -146,4 +181,5 @@ export type ProtectedContext = {
       id: string;
     };
   } & NonNullable<Context["session"]>;
+  currentOrganizationId: string | null;
 } & Context;
