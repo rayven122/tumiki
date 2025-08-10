@@ -13,9 +13,6 @@ export const updateServerInstanceName = async ({
   input,
 }: UpdateServerInstanceNameInput) => {
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new Error("組織が選択されていません");
-  }
 
   const serverInstance = await ctx.db.$transaction(async (tx) => {
     const serverInstance = await tx.userMcpServerInstance.update({

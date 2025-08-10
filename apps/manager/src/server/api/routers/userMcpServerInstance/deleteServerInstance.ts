@@ -16,12 +16,6 @@ export const deleteServerInstance = async ({
   const { id } = input;
 
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "組織が選択されていません",
-    });
-  }
 
   return await ctx.db.$transaction(async (tx) => {
     // 既存のインスタンスを取得して状態確認

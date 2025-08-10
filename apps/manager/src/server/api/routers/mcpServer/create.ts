@@ -19,12 +19,6 @@ export const createMcpServer = async ({
   const userId = session.user.id;
 
   const currentOrganizationId = ctx.currentOrganizationId;
-  if (!currentOrganizationId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "組織が選択されていません",
-    });
-  }
 
   // バリデーション
   if (input.transportType === "SSE" && !input.url) {

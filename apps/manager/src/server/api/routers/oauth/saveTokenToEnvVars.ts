@@ -17,9 +17,6 @@ export const saveTokenToEnvVars = async ({
   const { userMcpServerConfigId, provider, tokenKey } = input;
 
   const currentOrganizationId = ctx.currentOrganizationId;
-  if (!currentOrganizationId) {
-    throw new Error("組織が選択されていません");
-  }
 
   // 1. UserMcpServerConfigを取得
   const userMcpServerConfig = await ctx.db.userMcpServerConfig.findUnique({

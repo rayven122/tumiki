@@ -12,9 +12,6 @@ export const updateServerConfig = async ({
   input,
 }: UpdateServerConfigInput) => {
   const currentOrganizationId = ctx.currentOrganizationId;
-  if (!currentOrganizationId) {
-    throw new Error("組織が選択されていません");
-  }
 
   const userMcpServer = await ctx.db.userMcpServerConfig.findUnique({
     where: { id: input.id },

@@ -15,9 +15,6 @@ export const updateServerInstance = async ({
   const { serverToolIdsMap } = input;
 
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new Error("組織が選択されていません");
-  }
 
   const toolGroupTools = Object.entries(serverToolIdsMap).flatMap(
     ([userMcpServerConfigId, toolIds]) =>
