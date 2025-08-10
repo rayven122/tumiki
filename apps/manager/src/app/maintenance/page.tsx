@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Settings, Clock, Mail, ArrowRight } from "lucide-react";
+import { Settings, Clock, ArrowRight } from "lucide-react";
 
 const MaintenancePage = () => {
   const router = useRouter();
@@ -247,15 +247,14 @@ const MaintenancePage = () => {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <div className="rounded-xl bg-blue-50 p-6">
-              <p className="mb-3 text-sm text-gray-600">
-                緊急のお問い合わせはこちら
-              </p>
+              <p className="mb-3 text-sm text-gray-600">お問い合わせ</p>
               <a
-                href="mailto:support@tumiki.cloud"
+                href="https://www.rayven.cloud/company"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center font-medium text-blue-600 transition-colors hover:text-blue-700"
               >
-                <Mail className="mr-2 h-4 w-4" />
-                support@tumiki.cloud
+                会社情報・お問い合わせはこちら
                 <ArrowRight className="ml-1 h-4 w-4" />
               </a>
             </div>
