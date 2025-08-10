@@ -5,11 +5,6 @@ import {
   handleOAuthDiscovery,
   handleOpenIDConfiguration,
 } from "./routes/oauth/index.js";
-import { handleOAuthRegister } from "./routes/oauth/register.js";
-import { handleOAuthToken } from "./routes/oauth/token.js";
-import { handleOAuthProtectedResource } from "./routes/oauth/resource.js";
-import { handleOAuthAuthorize } from "./routes/oauth/authorize.js";
-import { handleOAuthCallback } from "./routes/oauth/callback.js";
 import { establishSSEConnection, handleSSEMessage } from "./utils/transport.js";
 import { initializeApplication } from "./libs/startup.js";
 import { logger } from "./libs/logger.js";
@@ -18,7 +13,6 @@ import {
   loggingMiddleware,
   errorLoggingMiddleware,
 } from "./middleware/logging.js";
-import { corsMiddleware } from "./libs/corsConfig.js";
 
 /**
  * Express アプリケーションを設定
@@ -28,13 +22,36 @@ const createApp = (): express.Application => {
 
   // ミドルウェア設定
   app.use(express.json({ limit: "10mb" })); // JSONペイロードサイズ制限
-  app.use(express.urlencoded({ extended: true, limit: "10mb" })); // URLエンコードされたボディのパース
 
   // ログミドルウェアを最初に適用
   app.use(loggingMiddleware());
 
   // CORS設定
-  app.use(corsMiddleware());
+  app.use((req, res, next) => {
+    // 許可するオリジンのリスト
+    const allowedOrigins = [
+      "http://localhost:8080",
+      "http://local-server.tumiki.cloud:8080",
+      "https://server.tumiki.cloud",
+    ];
+
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+
+    res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, mcp-session-id, api-key, x-api-key, x-client-id, Authorization",
+    );
+
+    if (req.method === "OPTIONS") {
+      res.sendStatus(200);
+      return;
+    }
+    next();
+  });
 
   // ルート設定
   app.get("/", handleHealthCheck);
@@ -43,51 +60,23 @@ const createApp = (): express.Application => {
   // OAuthディスカバリーエンドポイント（認証不要）
   app.get("/.well-known/oauth-authorization-server", handleOAuthDiscovery);
   app.get("/.well-known/openid-configuration", handleOpenIDConfiguration);
-  app.get(
-    "/.well-known/oauth-protected-resource",
-    handleOAuthProtectedResource,
-  );
-  app.use(
-    "/.well-known/oauth-protected-resource",
-    handleOAuthProtectedResource,
-  );
 
-  // OAuth Dynamic Client Registration エンドポイント（認証不要）
-  app.post("/oauth/register", handleOAuthRegister);
-  app.post("/oauth/token", handleOAuthToken);
-  app.all("/oauth/authorize", handleOAuthAuthorize);
-  app.get("/oauth/callback", handleOAuthCallback);
+  // ここ以降のすべてのルートに統合認証ミドルウェアを適用
+  app.use(integratedAuthMiddleware());
 
-  // MCP仕様のフォールバックパス（認証不要）
-  app.post("/register", handleOAuthRegister);
-  app.post("/token", handleOAuthToken);
-
-  // MCPエンドポイントに個別に統合認証ミドルウェアを適用
   // 新しいRESTfulエンドポイント（MCPサーバーID指定）
-  app.all(
-    "/mcp/:userMcpServerInstanceId",
-    integratedAuthMiddleware(),
-    handleMCPRequest,
-  );
+  app.all("/mcp/:userMcpServerInstanceId", handleMCPRequest);
 
   // レガシーエンドポイント（後方互換性）
-  app.all("/mcp", integratedAuthMiddleware(), handleMCPRequest);
+  app.all("/mcp", handleMCPRequest);
 
   // 新しいRESTfulエンドポイント（SSE transport）
-  app.get(
-    "/sse/:userMcpServerInstanceId",
-    integratedAuthMiddleware(),
-    establishSSEConnection,
-  );
-  app.post(
-    "/messages/:userMcpServerInstanceId",
-    integratedAuthMiddleware(),
-    handleSSEMessage,
-  );
+  app.get("/sse/:userMcpServerInstanceId", establishSSEConnection);
+  app.post("/messages/:userMcpServerInstanceId", handleSSEMessage);
 
   // レガシーエンドポイント（後方互換性）
-  app.get("/sse", integratedAuthMiddleware(), establishSSEConnection);
-  app.post("/messages", integratedAuthMiddleware(), handleSSEMessage);
+  app.get("/sse", establishSSEConnection);
+  app.post("/messages", handleSSEMessage);
 
   // エラーハンドリングミドルウェアを最後に適用
   app.use(errorLoggingMiddleware());
