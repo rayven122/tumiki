@@ -13,6 +13,10 @@ model Organization {
     logoUrl      String?
     /// 論理削除フラグ
     isDeleted    Boolean                  @default(false)
+    /// 個人組織フラグ（個人ユーザー用の組織の場合true）
+    isPersonal   Boolean                  @default(true)
+    /// 最大メンバー数（個人組織の場合は1）
+    maxMembers   Int                      @default(1)
     /// 組織の作成者
     createdBy    String
     creator      User                     @relation(fields: [createdBy], references: [id])

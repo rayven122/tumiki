@@ -36,11 +36,9 @@ model Organization {
   // 追加フィールド
   isPersonal     Boolean  @default(false)  // 個人組織フラグ
   maxMembers     Int      @default(1)      // 最大メンバー数
-  ownerUserId    String?  @unique          // 個人組織の所有者（個人組織の場合のみ）
-  ownerUser      User?    @relation("PersonalOrganization", fields: [ownerUserId], references: [id])
+  // ownerUserIdは不要: isPersonalがtrueでメンバーが1人の場合、そのメンバーが所有者
 
   @@index([isPersonal])
-  @@index([ownerUserId])
 }
 ```
 
@@ -54,47 +52,28 @@ model User {
   // 既存フィールド...
 
   // 追加フィールド
-  personalOrganization   Organization? @relation("PersonalOrganization")
   defaultOrganizationId  String?       // デフォルト組織ID
 
   @@index([defaultOrganizationId])
 }
 ```
 
-**注意**: `stripeCustomerId`や`subscription`関連は現在のスキーマに存在しないため、決済機能は別途検討が必要
+**注意**: 個人組織との関連は、OrganizationMemberテーブルとisPersonalフラグで管理
 
 #### 1.3 Subscriptionモデルの作成
 
-**現状**: Subscriptionモデルが存在しないため、決済機能が必要な場合は新規作成
-**将来的な実装案**:
-
-```prisma
-model Subscription {
-  id                     String             @id @default(cuid())
-  organizationId         String             @unique  // 組織ベースの決済管理
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?            @unique
-  stripePriceId          String?
-  stripeCurrentPeriodEnd DateTime?
-  status                 String?
-  
-  organization           Organization       @relation(fields: [organizationId], references: [id])
-  
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-}
-```
-
-**注意**: 現在のシステムに決済機能がないため、この実装は任意
+**注意**: Subscriptionモデルは別のPRで実装予定のため、このPhaseでは対応しない
 
 #### 1.4 依存モデルの更新方針
 
 **現状**: 以下のモデルは既に`userId`と`organizationId`の両方を持つ
+
 - `UserMcpServerConfig`: 両フィールド存在、`organizationId`は任意
-- `UserToolGroup`: 両フィールド存在、`organizationId`は任意  
+- `UserToolGroup`: 両フィールド存在、`organizationId`は任意
 - `UserMcpServerInstance`: 両フィールド存在、`organizationId`は任意
 
-**更新方針**: 
+**更新方針**:
+
 - `organizationId`を必須化
 - `userId`は当面保持（互換性のため）
 - 段階的に`userId`ベースのクエリを`organizationId`ベースに移行
@@ -109,7 +88,6 @@ model Subscription {
 async function migrateUsersToOrganizations() {
   const users = await prisma.user.findMany({
     include: {
-      subscription: true,
       mcpServerConfigs: true,
       toolGroups: true,
       mcpServerInstances: true,
@@ -122,10 +100,8 @@ async function migrateUsersToOrganizations() {
       data: {
         name: `${user.name || user.email}'s Workspace`,
         isPersonal: true,
-        ownerUserId: user.id,
         createdBy: user.id,
         maxMembers: 1,
-        stripeCustomerId: user.stripeCustomerId,
       },
     });
 
@@ -137,17 +113,6 @@ async function migrateUsersToOrganizations() {
         isAdmin: true,
       },
     });
-
-    // 3. サブスクリプションを移行
-    if (user.subscription) {
-      await prisma.subscription.update({
-        where: { id: user.subscription.id },
-        data: {
-          organizationId: personalOrg.id,
-          userId: null,
-        },
-      });
-    }
 
     // 4. MCPサーバー設定を移行
     await prisma.userMcpServerConfig.updateMany({
@@ -213,7 +178,6 @@ const createPersonalOrganization = async (user: User) => {
     data: {
       name: `${user.name || user.email}'s Workspace`,
       isPersonal: true,
-      ownerUserId: user.id,
       createdBy: user.id,
       maxMembers: 1,
     },
@@ -257,69 +221,19 @@ where: {
 ```
 
 **更新が必要なファイル**:
+
 - `findOfficialServers.ts`
-- `findCustomServers.ts`  
+- `findCustomServers.ts`
 - その他の`userId`ベースクエリを持つルーター
 
 **セッション管理の更新**:
+
 - `ctx.session`に`currentOrganizationId`の追加
 - 組織切り替え機能の実装
 
-#### 3.3 決済システムの実装（任意）
+#### 3.3 決済システムの実装
 
-**現状**: Stripe統合が存在しない
-**将来的な実装案**:
-
-```typescript
-// apps/manager/src/server/stripe/subscription.ts（新規作成の場合）
-
-export const createSubscription = async (
-  organizationId: string,
-  priceId: string,
-) => {
-  const organization = await prisma.organization.findUnique({
-    where: { id: organizationId },
-  });
-
-  if (!organization) {
-    throw new Error('Organization not found');
-  }
-
-  // Stripe顧客の作成または取得
-  let stripeCustomerId = organization.stripeCustomerId;
-  if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
-      email: organization.ownerUser?.email,
-      name: organization.name,
-    });
-    stripeCustomerId = customer.id;
-    
-    // 組織にStripe顧客IDを保存
-    await prisma.organization.update({
-      where: { id: organizationId },
-      data: { stripeCustomerId },
-    });
-  }
-
-  // サブスクリプション作成
-  const subscription = await stripe.subscriptions.create({
-    customer: stripeCustomerId,
-    items: [{ price: priceId }],
-  });
-
-  // Subscriptionレコードを作成
-  return await prisma.subscription.create({
-    data: {
-      organizationId,
-      stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
-      status: subscription.status,
-    },
-  });
-};
-```
-
-**注意**: 現在決済機能がないため、この実装は必要に応じて
+**注意**: 決済システム（Subscription、Stripe統合）は別のPRで実装予定のため、このPhaseでは対応しない
 
 ### Phase 4: UI/UXの調整（2-3日）
 
@@ -341,8 +255,8 @@ export const OrganizationSwitcher = () => {
   if (!organizations?.length) return null;
 
   return (
-    <Select 
-      value={currentOrganization?.id} 
+    <Select
+      value={currentOrganization?.id}
       onValueChange={setCurrentOrganization}
     >
       {organizations.map(org => (
@@ -356,6 +270,7 @@ export const OrganizationSwitcher = () => {
 ```
 
 **必要な追加実装**:
+
 - `OrganizationContext`の作成
 - `getUserOrganizations` tRPCエンドポイントの実装
 - セッション管理での組織状態管理
@@ -451,17 +366,21 @@ export const OrganizationSwitcher = () => {
 ## 8. 実装上の重要な注意事項
 
 ### 8.1 現在のシステムとの差分
-- Subscriptionモデルが存在しないため、決済関連の実装は任意
+
+- Subscriptionモデルは別PRで実装予定のため、今回は対応しない
 - tRPCルーターで`organizationId: null`条件が使用されており、これを適切に更新する必要がある
 - セッション管理で`currentOrganizationId`の概念を新規実装する必要がある
+- 個人組織の所有者は`isPersonal=true`とOrganizationMemberから判定（ownerUserIdフィールドは不要）
 
 ### 8.2 段階的移行戦略
+
 1. **Phase 1**: スキーマ拡張とマイグレーション
 2. **Phase 2**: API更新（`userId` + `organizationId`の並行運用）
 3. **Phase 3**: UI更新と組織切り替え機能
 4. **Phase 4**: `userId`ベースクエリの完全廃止
 
 ### 8.3 開発時の確認事項
+
 - 既存のMCPサーバー設定が正常に移行されることを確認
 - 組織切り替え後もユーザーのデータが適切に表示されることを確認
 - 個人組織での制限機能（メンバー管理非表示等）が正常に動作することを確認

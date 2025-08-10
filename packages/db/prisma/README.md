@@ -52,6 +52,7 @@ erDiagram
   String name "nullable"
   String email UK "nullable"
   String image "nullable"
+  String defaultOrganizationId "nullable"
   Role role
   Boolean hasCompletedOnboarding
   DateTime createdAt
@@ -66,6 +67,7 @@ erDiagram
   - `name`: ユーザー名
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
+  - `defaultOrganizationId`: デフォルト組織ID（ユーザーがアクセスする際のデフォルト組織）
   - `role`: ユーザーの権限
   - `hasCompletedOnboarding`: オンボーディング完了フラグ
   - `createdAt`: 
@@ -368,6 +370,8 @@ erDiagram
   String description "nullable"
   String logoUrl "nullable"
   Boolean isDeleted
+  Boolean isPersonal
+  Int maxMembers
   String createdBy FK
   DateTime createdAt
   DateTime updatedAt
@@ -466,6 +470,8 @@ erDiagram
   - `description`: 組織の説明
   - `logoUrl`: 組織のロゴURL
   - `isDeleted`: 論理削除フラグ
+  - `isPersonal`: 個人組織フラグ（個人ユーザー用の組織の場合true）
+  - `maxMembers`: 最大メンバー数（個人組織の場合は1）
   - `createdBy`: 組織の作成者
   - `createdAt`: 
   - `updatedAt`: 
@@ -579,6 +585,7 @@ erDiagram
   String name "nullable"
   String email UK "nullable"
   String image "nullable"
+  String defaultOrganizationId "nullable"
   Role role
   Boolean hasCompletedOnboarding
   DateTime createdAt
@@ -693,6 +700,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `name`: ユーザー名
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
+  - `defaultOrganizationId`: デフォルト組織ID（ユーザーがアクセスする際のデフォルト組織）
   - `role`: ユーザーの権限
   - `hasCompletedOnboarding`: オンボーディング完了フラグ
   - `createdAt`: 
@@ -811,6 +819,7 @@ erDiagram
   String name "nullable"
   String email UK "nullable"
   String image "nullable"
+  String defaultOrganizationId "nullable"
   Role role
   Boolean hasCompletedOnboarding
   DateTime createdAt
@@ -825,6 +834,7 @@ erDiagram
   - `name`: ユーザー名
   - `email`: メールアドレス
   - `image`: プロフィール画像のURL
+  - `defaultOrganizationId`: デフォルト組織ID（ユーザーがアクセスする際のデフォルト組織）
   - `role`: ユーザーの権限
   - `hasCompletedOnboarding`: オンボーディング完了フラグ
   - `createdAt`: 
