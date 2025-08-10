@@ -15,11 +15,18 @@ type CreateApiKeyProps = {
 export const createApiKey = async ({ ctx, input }: CreateApiKeyProps) => {
   const { name, userMcpServerInstanceId, expiresInDays } = input;
 
-  // ユーザーがこのMCPサーバーインスタンスの所有者かチェック
+  if (!ctx.currentOrganizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Organization not selected",
+    });
+  }
+
+  // 組織がこのMCPサーバーインスタンスの所有者かチェック
   const instance = await db.userMcpServerInstance.findFirst({
     where: {
       id: userMcpServerInstanceId,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
     },
   });
 
@@ -42,7 +49,6 @@ export const createApiKey = async ({ ctx, input }: CreateApiKeyProps) => {
       apiKey: fullKey,
       expiresAt,
       userMcpServerInstanceId,
-      userId: ctx.session.user.id,
     },
   });
 

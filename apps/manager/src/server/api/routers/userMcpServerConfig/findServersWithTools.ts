@@ -11,9 +11,13 @@ export const findServersWithTools = async ({
   ctx,
   input,
 }: FindAllWithToolsInput) => {
+  if (!ctx.currentOrganizationId) {
+    return [];
+  }
+
   const mcpServers = await ctx.db.userMcpServerConfig.findMany({
     where: {
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       ...(input.userMcpServerConfigIds && {
         id: {
           in: input.userMcpServerConfigIds,
@@ -25,10 +29,22 @@ export const findServersWithTools = async ({
       createdAt: "asc",
     },
     include: {
-      tools: true,
-      mcpServer: true,
+      mcpServer: {
+        include: {
+          tools: true,
+        },
+      },
+      userToolGroupTools: {
+        include: {
+          tool: true,
+        },
+      },
     },
   });
 
-  return mcpServers;
+  // toolsプロパティを追加して返す
+  return mcpServers.map((server) => ({
+    ...server,
+    tools: server.userToolGroupTools.map((utt) => utt.tool),
+  }));
 };

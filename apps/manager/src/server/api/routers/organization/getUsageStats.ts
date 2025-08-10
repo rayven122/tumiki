@@ -36,13 +36,9 @@ export const getUsageStats = async ({
         gte: thirtyDaysAgo,
       },
     },
-    include: {
-      user: true,
-    },
   });
 
   const totalRequests = requestLogs.length;
-  const uniqueUsers = new Set(requestLogs.map((log) => log.userId)).size;
 
   const membersWithUser = await ctx.db.organizationMember.findMany({
     where: { organizationId: input.organizationId },
@@ -50,16 +46,10 @@ export const getUsageStats = async ({
   });
 
   const memberStats = membersWithUser.map((member) => {
-    const memberRequests = requestLogs.filter(
-      (log) => log.userId === member.userId,
-    );
     return {
       user: member.user,
-      requestCount: memberRequests.length,
-      lastActivity:
-        memberRequests.length > 0
-          ? Math.max(...memberRequests.map((log) => log.createdAt.getTime()))
-          : null,
+      requestCount: 0, // リクエストログにユーザーIDがないため、0として設定
+      lastActivity: null,
     };
   });
 
@@ -84,7 +74,7 @@ export const getUsageStats = async ({
 
   return {
     totalRequests,
-    uniqueUsers,
+    uniqueUsers: membersWithUser.length, // メンバー数で代替
     memberStats,
     dailyStats,
   };

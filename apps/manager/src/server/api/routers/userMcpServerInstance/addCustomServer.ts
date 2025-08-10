@@ -23,10 +23,15 @@ export const addCustomServer = async ({
       })),
   );
 
+  const organizationId = ctx.currentOrganizationId;
+  if (!organizationId) {
+    throw new Error("組織が選択されていません");
+  }
+
   const serverInstance = await ctx.db.$transaction(async (tx) => {
     const toolGroup = await tx.userToolGroup.create({
       data: {
-        userId: ctx.session.user.id,
+        organizationId,
         name: input.name,
         description: input.description,
         toolGroupTools: {
@@ -43,7 +48,7 @@ export const addCustomServer = async ({
 
     const data = await tx.userMcpServerInstance.create({
       data: {
-        userId: ctx.session.user.id,
+        organizationId,
         name: input.name,
         description: input.description,
         serverStatus: ServerStatus.PENDING,
@@ -53,7 +58,6 @@ export const addCustomServer = async ({
           create: {
             name: `${input.name} API Key`,
             apiKey: fullKey,
-            userId: ctx.session.user.id,
           },
         },
         // TODO: mcpServerInstanceToolGroups を追加する

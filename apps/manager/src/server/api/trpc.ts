@@ -35,34 +35,25 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let currentOrganizationId: string | null = null;
 
   if (session?.user?.sub) {
-    const user = await db.user.findUnique({
-      where: { id: session.user.sub },
-      select: { defaultOrganizationId: true },
+    // ユーザーの所属組織を取得（個人組織を優先）
+    const firstMembership = await db.organizationMember.findFirst({
+      where: {
+        userId: session.user.sub,
+        organization: {
+          isDeleted: false,
+        },
+      },
+      orderBy: {
+        organization: {
+          isPersonal: "desc", // 個人組織を優先
+        },
+      },
+      select: {
+        organizationId: true,
+      },
     });
 
-    if (user?.defaultOrganizationId) {
-      currentOrganizationId = user.defaultOrganizationId;
-    } else {
-      // デフォルト組織がない場合は最初の組織を取得
-      const firstMembership = await db.organizationMember.findFirst({
-        where: {
-          userId: session.user.sub,
-          organization: {
-            isDeleted: false,
-          },
-        },
-        orderBy: {
-          organization: {
-            isPersonal: "desc", // 個人組織を優先
-          },
-        },
-        select: {
-          organizationId: true,
-        },
-      });
-
-      currentOrganizationId = firstMembership?.organizationId ?? null;
-    }
+    currentOrganizationId = firstMembership?.organizationId ?? null;
   }
 
   return {

@@ -42,32 +42,21 @@ export const createPersonalOrganization = async ({
     });
   }
 
-  // トランザクションで個人組織の作成とユーザー更新を実行
-  const personalOrg = await ctx.db.$transaction(async (tx) => {
-    // 個人組織を作成（メンバーも同時に追加）
-    const org = await tx.organization.create({
-      data: {
-        name: `${user.name ?? user.email ?? "User"}'s Workspace`,
-        description: "Personal workspace",
-        isPersonal: true,
-        maxMembers: 1,
-        createdBy: userId,
-        members: {
-          create: {
-            userId: userId,
-            isAdmin: true,
-          },
+  // トランザクションで個人組織の作成を実行
+  const personalOrg = await ctx.db.organization.create({
+    data: {
+      name: `${user.name ?? user.email ?? "User"}'s Workspace`,
+      description: "Personal workspace",
+      isPersonal: true,
+      maxMembers: 1,
+      createdBy: userId,
+      members: {
+        create: {
+          userId: userId,
+          isAdmin: true,
         },
       },
-    });
-
-    // デフォルト組織として設定
-    await tx.user.update({
-      where: { id: userId },
-      data: { defaultOrganizationId: org.id },
-    });
-
-    return org;
+    },
   });
 
   return personalOrg;
