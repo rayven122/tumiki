@@ -24,12 +24,6 @@ export const updateDisplayOrder = async ({
   const { updates } = input;
 
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "組織が選択されていません",
-    });
-  }
 
   // すべての更新対象が現在の組織のサーバーか確認
   const serverIds = updates.map((update) => update.id);

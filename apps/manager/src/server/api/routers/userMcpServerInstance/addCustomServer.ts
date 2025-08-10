@@ -24,9 +24,6 @@ export const addCustomServer = async ({
   );
 
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new Error("組織が選択されていません");
-  }
 
   const serverInstance = await ctx.db.$transaction(async (tx) => {
     const toolGroup = await tx.userToolGroup.create({

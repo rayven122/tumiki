@@ -18,12 +18,6 @@ export const checkServerConnection = async ({
   const { serverInstanceId, updateStatus = false } = input;
 
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "組織が選択されていません",
-    });
-  }
 
   // トランザクションで処理を実行
   return await ctx.db.$transaction(async (tx) => {

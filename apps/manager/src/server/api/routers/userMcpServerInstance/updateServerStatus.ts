@@ -11,9 +11,6 @@ export const updateServerStatus = async ({
   input,
 }: UpdateServerStatusInput) => {
   const organizationId = ctx.currentOrganizationId;
-  if (!organizationId) {
-    throw new Error("組織が選択されていません");
-  }
 
   // サーバーインスタンスのステータスを更新
   return await ctx.db.userMcpServerInstance.update({
