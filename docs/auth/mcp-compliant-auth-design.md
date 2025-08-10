@@ -746,79 +746,102 @@ export const logAuditEvent = async (event: AuditLog): Promise<void> => {
 #### 9.5.2 キーローテーション戦略
 
 ```typescript
-class KeyRotationManager {
-  private readonly rotationSchedule = {
-    masterKey: 365 * 24 * 60 * 60 * 1000,  // 1年
-    dataEncryptionKey: 90 * 24 * 60 * 60 * 1000,  // 90日
-    signingKey: 180 * 24 * 60 * 60 * 1000,  // 6ヶ月
-  };
+const rotationSchedule = {
+  masterKey: 365 * 24 * 60 * 60 * 1000,  // 1年
+  dataEncryptionKey: 90 * 24 * 60 * 60 * 1000,  // 90日
+  signingKey: 180 * 24 * 60 * 60 * 1000,  // 6ヶ月
+};
 
-  async rotateKeys(): Promise<void> {
-    // 1. 新しいキーを生成
-    const newKey = await this.kms.generateDataKey();
-    
-    // 2. 既存データを再暗号化
-    await this.reencryptData(newKey);
-    
-    // 3. 古いキーをアーカイブ
-    await this.archiveOldKey();
-    
-    // 4. 監査ログに記録
-    await this.auditLog.record('key_rotation', {
-      timestamp: new Date(),
-      keyType: 'data_encryption',
-      status: 'success'
-    });
-  }
-}
+export const rotateKeys = async (
+  kms: KMSClient,
+  reencryptData: (key: DataKey) => Promise<void>,
+  archiveOldKey: () => Promise<void>
+): Promise<void> => {
+  // 1. 新しいキーを生成
+  const newKey = await kms.generateDataKey();
+  
+  // 2. 既存データを再暗号化
+  await reencryptData(newKey);
+  
+  // 3. 古いキーをアーカイブ
+  await archiveOldKey();
+  
+  // 4. 監査ログに記録
+  await logAuditEvent({
+    timestamp: new Date(),
+    event_type: 'key_rotation',
+    result: 'success',
+    ip_address: '0.0.0.0',
+    user_agent: 'system'
+  });
+};
+
+export const getRotationSchedule = () => rotationSchedule;
 ```
 
 #### 9.5.3 暗号化実装例
 
 ```typescript
-class EncryptionService {
-  constructor(private kms: KMSClient) {}
-
-  async encrypt(plaintext: string): Promise<string> {
-    // 1. KMSからデータ暗号化キーを取得
-    const { Plaintext: dataKey, CiphertextBlob: encryptedDataKey } = 
-      await this.kms.generateDataKey({
-        KeyId: process.env.KMS_KEY_ID,
-        KeySpec: 'AES_256'
-      });
-
-    // 2. データをAES-256-GCMで暗号化
-    const cipher = crypto.createCipheriv('aes-256-gcm', dataKey, iv);
-    const encrypted = Buffer.concat([
-      cipher.update(plaintext, 'utf8'),
-      cipher.final()
-    ]);
-    const authTag = cipher.getAuthTag();
-
-    // 3. 暗号化データキーと暗号文を結合
-    return Buffer.concat([
-      encryptedDataKey,
-      authTag,
-      iv,
-      encrypted
-    ]).toString('base64');
-  }
-
-  async decrypt(ciphertext: string): Promise<string> {
-    const buffer = Buffer.from(ciphertext, 'base64');
-    
-    // 1. 暗号化データキーをKMSで復号
-    const { Plaintext: dataKey } = await this.kms.decrypt({
-      CiphertextBlob: encryptedDataKey
+export const encrypt = async (
+  plaintext: string,
+  kms: KMSClient
+): Promise<string> => {
+  // IVを生成
+  const iv = crypto.randomBytes(16);
+  
+  // 1. KMSからデータ暗号化キーを取得
+  const { Plaintext: dataKey, CiphertextBlob: encryptedDataKey } = 
+    await kms.generateDataKey({
+      KeyId: process.env.KMS_KEY_ID,
+      KeySpec: 'AES_256'
     });
 
-    // 2. AES-256-GCMで復号
-    const decipher = crypto.createDecipheriv('aes-256-gcm', dataKey, iv);
-    decipher.setAuthTag(authTag);
-    
-    return decipher.update(encrypted) + decipher.final('utf8');
-  }
-}
+  // 2. データをAES-256-GCMで暗号化
+  const cipher = crypto.createCipheriv('aes-256-gcm', dataKey, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, 'utf8'),
+    cipher.final()
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  // 3. 暗号化データキーと暗号文を結合
+  return Buffer.concat([
+    Buffer.from([encryptedDataKey.length]),  // キー長
+    encryptedDataKey,
+    authTag,
+    iv,
+    encrypted
+  ]).toString('base64');
+};
+
+export const decrypt = async (
+  ciphertext: string,
+  kms: KMSClient
+): Promise<string> => {
+  const buffer = Buffer.from(ciphertext, 'base64');
+  let offset = 0;
+  
+  // データを分解
+  const keyLength = buffer[offset++];
+  const encryptedDataKey = buffer.slice(offset, offset + keyLength);
+  offset += keyLength;
+  const authTag = buffer.slice(offset, offset + 16);
+  offset += 16;
+  const iv = buffer.slice(offset, offset + 16);
+  offset += 16;
+  const encrypted = buffer.slice(offset);
+  
+  // 1. 暗号化データキーをKMSで復号
+  const { Plaintext: dataKey } = await kms.decrypt({
+    CiphertextBlob: encryptedDataKey
+  });
+
+  // 2. AES-256-GCMで復号
+  const decipher = crypto.createDecipheriv('aes-256-gcm', dataKey, iv);
+  decipher.setAuthTag(authTag);
+  
+  return decipher.update(encrypted) + decipher.final('utf8');
+};
 ```
 
 ### 9.6 パスワードハッシュアルゴリズム
@@ -1040,78 +1063,108 @@ model OAuthToken {
 
 ```typescript
 // Tumikiクライアント → Auth0アプリケーションのマッピング
-class ClientMapper {
+export const mapToAuth0Client = async (
+  tumikiClientId: string
+): Promise<Auth0Credentials> => {
   // すべてのTumikiクライアントは1つのAuth0アプリを共有
-  private readonly AUTH0_SHARED_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
-  private readonly AUTH0_SHARED_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
+  const AUTH0_SHARED_CLIENT_ID = process.env.AUTH0_CLIENT_ID!;
+  const AUTH0_SHARED_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET!;
   
-  async mapToAuth0Client(tumikiClientId: string): Promise<Auth0Credentials> {
-    // クライアント検証
-    const client = await db.oAuthClient.findUnique({
-      where: { clientId: tumikiClientId, isActive: true }
-    });
-    
-    if (!client) {
-      throw new Error('Invalid client_id');
-    }
-    
-    // 同じAuth0クライアントを返す
-    return {
-      clientId: this.AUTH0_SHARED_CLIENT_ID,
-      clientSecret: this.AUTH0_SHARED_CLIENT_SECRET
-    };
+  // クライアント検証
+  const client = await db.oAuthClient.findUnique({
+    where: { clientId: tumikiClientId, isActive: true }
+  });
+  
+  if (!client) {
+    throw new Error('Invalid client_id');
   }
-}
+  
+  // 同じAuth0クライアントを返す
+  return {
+    clientId: AUTH0_SHARED_CLIENT_ID,
+    clientSecret: AUTH0_SHARED_CLIENT_SECRET
+  };
+};
 ```
 
 ### 13.2 トークン生成戦略
 
 ```typescript
-class TokenManager {
-  async generateTumikiToken(auth0Token: string, clientId: string): Promise<string> {
-    // Auth0トークンを検証
-    const auth0Claims = await this.verifyAuth0Token(auth0Token);
-    
-    // Tumiki独自のJWTを生成
-    const tumikiToken = jwt.sign({
-      iss: 'https://auth.tumiki.cloud',
-      sub: auth0Claims.sub,  // Auth0のユーザーID
-      aud: 'https://server.tumiki.cloud/mcp',
-      client_id: clientId,   // TumikiのクライアントID
-      scope: 'mcp:read mcp:write',
-      auth0_token_id: auth0Claims.jti,  // Auth0トークンへの参照
-      exp: Math.floor(Date.now() / 1000) + 900  // 15分
-    }, TUMIKI_PRIVATE_KEY);
-    
-    // トークンをDBに保存
-    await db.oAuthToken.create({
-      data: {
-        token: tumikiToken,
-        tokenType: 'access',
-        clientId: clientId,
-        userId: auth0Claims.sub,
-        auth0AccessToken: auth0Token,  // 暗号化されて保存
-        expiresAt: new Date(Date.now() + 900000)  // 15分
-      }
+export const verifyAuth0Token = async (
+  auth0Token: string,
+  jwksUri: string
+): Promise<Auth0Claims> => {
+  // JWKSから公開鍵を取得して検証
+  const jwksClient = jwks({ jwksUri });
+  const getKey = (header: any, callback: any) => {
+    jwksClient.getSigningKey(header.kid, (err, key) => {
+      const signingKey = key?.getPublicKey();
+      callback(err, signingKey);
     });
-    
-    return tumikiToken;
-  }
-}
+  };
+  
+  return new Promise((resolve, reject) => {
+    jwt.verify(auth0Token, getKey, (err, decoded) => {
+      if (err) reject(err);
+      else resolve(decoded as Auth0Claims);
+    });
+  });
+};
+
+export const generateTumikiToken = async (
+  auth0Token: string,
+  clientId: string,
+  privateKey: string
+): Promise<string> => {
+  // Auth0トークンを検証
+  const auth0Claims = await verifyAuth0Token(
+    auth0Token,
+    'https://auth.tumiki.cloud/.well-known/jwks.json'
+  );
+  
+  // Tumiki独自のJWTを生成
+  const tumikiToken = jwt.sign({
+    iss: 'https://auth.tumiki.cloud',
+    sub: auth0Claims.sub,  // Auth0のユーザーID
+    aud: 'https://server.tumiki.cloud/mcp',
+    client_id: clientId,   // TumikiのクライアントID
+    scope: 'mcp:read mcp:write',
+    auth0_token_id: auth0Claims.jti,  // Auth0トークンへの参照
+    exp: Math.floor(Date.now() / 1000) + 900  // 15分
+  }, privateKey);
+  
+  // トークンをDBに保存
+  await db.oAuthToken.create({
+    data: {
+      token: tumikiToken,
+      tokenType: 'access',
+      clientId: clientId,
+      userId: auth0Claims.sub,
+      auth0AccessToken: auth0Token,  // 暗号化されて保存
+      expiresAt: new Date(Date.now() + 900000)  // 15分
+    }
+  });
+  
+  return tumikiToken;
+};
 ```
 
 ### 13.3 セッション管理
 
 ```typescript
 // 認可コードのマッピングを管理
-class AuthorizationSession {
-  // Tumikiコード → Auth0コード + クライアント情報
-  private sessions = new Map<string, SessionData>();
+// メモリストアをクロージャーで管理
+const createAuthorizationSessionStore = () => {
+  const sessions = new Map<string, SessionData>();
   
-  createSession(auth0Code: string, clientId: string, redirectUri: string): string {
+  const createSession = (
+    auth0Code: string,
+    clientId: string,
+    redirectUri: string
+  ): string => {
     const tumikiCode = crypto.randomBytes(32).toString('hex');
     
-    this.sessions.set(tumikiCode, {
+    sessions.set(tumikiCode, {
       auth0Code,
       clientId,
       redirectUri,
@@ -1119,20 +1172,37 @@ class AuthorizationSession {
       expiresAt: Date.now() + 600000  // 10分
     });
     
+    // 期限切れセッションのクリーンアップ
+    cleanupExpiredSessions(sessions);
+    
     return tumikiCode;
-  }
+  };
   
-  async exchangeCode(tumikiCode: string): Promise<SessionData> {
-    const session = this.sessions.get(tumikiCode);
+  const exchangeCode = async (tumikiCode: string): Promise<SessionData> => {
+    const session = sessions.get(tumikiCode);
     
     if (!session || session.expiresAt < Date.now()) {
       throw new Error('Invalid or expired authorization code');
     }
     
-    this.sessions.delete(tumikiCode);
+    sessions.delete(tumikiCode);
     return session;
+  };
+  
+  return { createSession, exchangeCode };
+};
+
+const cleanupExpiredSessions = (sessions: Map<string, SessionData>): void => {
+  const now = Date.now();
+  for (const [code, session] of sessions.entries()) {
+    if (session.expiresAt < now) {
+      sessions.delete(code);
+    }
   }
-}
+};
+
+// シングルトンインスタンス
+export const authSessionStore = createAuthorizationSessionStore();
 ```
 
 ### 13.4 障害対策
