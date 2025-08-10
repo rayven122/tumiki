@@ -514,6 +514,9 @@ importers:
       agents:
         specifier: ^0.0.45
         version: 0.0.45(@cloudflare/workers-types@4.20250802.0)
+      bcrypt:
+        specifier: ^6.0.0
+        version: 6.0.0
       discord-mcp-server:
         specifier: ^1.0.1
         version: 1.0.1(bufferutil@4.0.9)
@@ -578,6 +581,9 @@ importers:
       '@tumiki/vitest-config':
         specifier: workspace:*
         version: link:../../tooling/vitest
+      '@types/bcrypt':
+        specifier: ^6.0.0
+        version: 6.0.0
       '@types/express':
         specifier: ^5.0.2
         version: 5.0.3
@@ -4176,6 +4182,9 @@ packages:
   '@types/aws-lambda@8.10.152':
     resolution: {integrity: sha512-soT/c2gYBnT5ygwiHPmd9a1bftj462NWVk2tKCc1PYHSIacB2UwbTS2zYG4jzag1mRDuzg/OjtxQjQ2NKRB6Rw==}
 
+  '@types/bcrypt@6.0.0':
+    resolution: {integrity: sha512-/oJGukuH3D2+D+3H4JWLaAsJ/ji86dhRidzZ/Od7H/i8g+aCmvkeCc6Ni/f9uxGLSQVCRZkX2/lqEFG2BvWtlQ==}
+
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
 
@@ -4874,6 +4883,10 @@ packages:
   bcrypt-ts@5.0.3:
     resolution: {integrity: sha512-2FcgD12xPbwCoe5i9/HK0jJ1xA1m+QfC1e6htG9Bl/hNOnLyaFmQSlqLKcfe3QdnoMPKpKEGFCbESBTg+SJNOw==}
     engines: {node: '>=18'}
+
+  bcrypt@6.0.0:
+    resolution: {integrity: sha512-cU8v/EGSrnH+HnxV2z0J7/blxH8gq7Xh2JFT6Aroax7UohdmiJJlxApMxtKfuI7z68NvvVcmR78k2LbT6efhRg==}
+    engines: {node: '>= 18'}
 
   before-after-hook@3.0.2:
     resolution: {integrity: sha512-Nik3Sc0ncrMK4UUdXQmAnRtzmNQTAAXmXIopizwZ1W1t8QmfJj+zL4OA2I7XPTPW5z5TDqv4hRo/JzouDJnX3A==}
@@ -7212,6 +7225,10 @@ packages:
         optional: true
       sass:
         optional: true
+
+  node-addon-api@8.5.0:
+    resolution: {integrity: sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A==}
+    engines: {node: ^18 || ^20 || >= 21}
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -12696,6 +12713,10 @@ snapshots:
 
   '@types/aws-lambda@8.10.152': {}
 
+  '@types/bcrypt@6.0.0':
+    dependencies:
+      '@types/node': 22.17.0
+
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
@@ -13431,6 +13452,11 @@ snapshots:
   basic-ftp@5.0.5: {}
 
   bcrypt-ts@5.0.3: {}
+
+  bcrypt@6.0.0:
+    dependencies:
+      node-addon-api: 8.5.0
+      node-gyp-build: 4.8.4
 
   before-after-hook@3.0.2: {}
 
@@ -16337,6 +16363,8 @@ snapshots:
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
+
+  node-addon-api@8.5.0: {}
 
   node-domexception@1.0.0: {}
 
