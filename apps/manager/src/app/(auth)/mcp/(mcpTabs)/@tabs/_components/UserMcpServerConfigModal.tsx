@@ -21,6 +21,7 @@ import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { useRouter } from "next/navigation";
+import { normalizeServerName } from "@/utils/url";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -128,7 +129,7 @@ export const UserMcpServerConfigModal = ({
 
   // サーバー名の状態 (MCPサーバー名を小文字に変換し、空白をハイフンに置換)
   const [serverName, setServerName] = useState(
-    mcpServer.name.toLowerCase().replace(/\s+/g, "-"),
+    normalizeServerName(mcpServer.name),
   );
 
   // 認証方法の選択状態

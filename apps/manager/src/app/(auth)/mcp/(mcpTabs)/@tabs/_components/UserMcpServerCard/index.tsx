@@ -111,13 +111,15 @@ export const UserMcpServerCard = ({
   // userMcpServersが削除されたため、プリフェッチクエリは不要
 
   const copyUrl = async () => {
-    await copyToClipboard(makeSseProxyServerUrl(apiKey));
-    toast.success("SSE URLをコピーしました");
+    const urlAndHeader = `URL: ${makeSseProxyServerUrl(serverInstance.id)}\nヘッダー: x-api-key: ${apiKey}`;
+    await copyToClipboard(urlAndHeader);
+    toast.success("SSE URLとヘッダー情報をコピーしました");
   };
 
   const copyHttpUrl = async () => {
-    await copyToClipboard(makeHttpProxyServerUrl(apiKey));
-    toast.success("Streamable HTTP をコピーしました");
+    const urlAndHeader = `URL: ${makeHttpProxyServerUrl(serverInstance.id)}\nヘッダー: x-api-key: ${apiKey}`;
+    await copyToClipboard(urlAndHeader);
+    toast.success("HTTP URLとヘッダー情報をコピーしました");
   };
 
   const handleStatusToggle = (checked: boolean) => {
@@ -235,7 +237,7 @@ export const UserMcpServerCard = ({
                     void copyUrl();
                   }}
                 >
-                  {makeSseProxyServerUrl(apiKey)}
+                  {makeSseProxyServerUrl(serverInstance.id)}
                 </span>
                 <Button
                   variant="ghost"
@@ -260,7 +262,7 @@ export const UserMcpServerCard = ({
                     void copyHttpUrl();
                   }}
                 >
-                  {makeHttpProxyServerUrl(apiKey)}
+                  {makeHttpProxyServerUrl(serverInstance.id)}
                 </span>
                 <Button
                   variant="ghost"
