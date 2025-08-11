@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import type { ProtectedContext } from "@/server/api/trpc";
+import type { AuthenticatedContext } from "@/server/api/trpc";
 
 export const createOrganizationInputSchema = z.object({
   name: z.string().min(1).max(100),
@@ -18,7 +18,7 @@ export const createOrganization = async ({
   ctx,
 }: {
   input: CreateOrganizationInput;
-  ctx: ProtectedContext;
+  ctx: AuthenticatedContext;
 }) => {
   const userId = ctx.session.user.id;
 
@@ -46,6 +46,8 @@ export const createOrganization = async ({
         description: input.description,
         logoUrl: input.logoUrl,
         createdBy: userId,
+        isPersonal: false,
+        maxMembers: 10, // デフォルトの最大メンバー数
         members: {
           create: {
             userId,
@@ -62,6 +64,14 @@ export const createOrganization = async ({
         creator: true,
       },
     });
+  });
+
+  // ユーザーのdefaultOrganizationIdを設定
+  await ctx.db.user.update({
+    where: { id: userId },
+    data: {
+      defaultOrganizationId: organization.id,
+    },
   });
 
   return organization;

@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import type { ProtectedContext } from "../../trpc";
+import type { AuthenticatedContext } from "../../trpc";
 
 type CreatePersonalOrganizationInput = {
-  ctx: ProtectedContext;
+  ctx: AuthenticatedContext;
 };
 
 export const createPersonalOrganization = async ({
@@ -16,6 +16,7 @@ export const createPersonalOrganization = async ({
       userId,
       organization: {
         isPersonal: true,
+        isDeleted: false,
       },
     },
     include: {
@@ -24,10 +25,21 @@ export const createPersonalOrganization = async ({
   });
 
   if (existingMembership) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "Personal organization already exists",
+    // 既に個人組織が存在する場合、defaultOrganizationIdが設定されているか確認
+    const user = await ctx.db.user.findUnique({
+      where: { id: userId },
     });
+
+    if (user && !user.defaultOrganizationId) {
+      await ctx.db.user.update({
+        where: { id: userId },
+        data: {
+          defaultOrganizationId: existingMembership.organization.id,
+        },
+      });
+    }
+
+    return existingMembership.organization;
   }
 
   // ユーザー情報を取得
@@ -56,6 +68,14 @@ export const createPersonalOrganization = async ({
           isAdmin: true,
         },
       },
+    },
+  });
+
+  // ユーザーのdefaultOrganizationIdを設定
+  await ctx.db.user.update({
+    where: { id: userId },
+    data: {
+      defaultOrganizationId: personalOrg.id,
     },
   });
 

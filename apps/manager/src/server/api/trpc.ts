@@ -220,6 +220,15 @@ export const protectedProcedure = authenticatedProcedure.use(
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
+export type AuthenticatedContext = {
+  session: {
+    user: {
+      id: string;
+    };
+  } & NonNullable<Context["session"]>;
+  currentOrganizationId: string | null; // 組織IDはnullの可能性がある
+} & Context;
+
 // protectedProcedureの第一引数を型抽出する
 export type ProtectedContext = {
   session: {
