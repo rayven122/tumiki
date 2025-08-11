@@ -116,3 +116,5 @@ waitingList.json
 
 # Claude Code local settings
 .claude/settings.local.json
+
+/test-results
