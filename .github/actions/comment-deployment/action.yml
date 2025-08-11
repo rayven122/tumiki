@@ -21,7 +21,7 @@ runs:
       with:
         github-token: ${{ inputs.github_token }}
         script: |
-          const script = require('${{ github.action_path }}/../../../scripts/comment-deployment.js');
+          const script = require('${{ github.action_path }}/../../scripts/comment-deployment.js');
           await script({
             github,
             context,
