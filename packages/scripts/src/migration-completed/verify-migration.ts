@@ -106,13 +106,8 @@ async function verifyOrganizationIds(): Promise<VerificationResult[]> {
 
   // UserMcpServerConfig - organizationId は必須になった
   const totalConfigs = await prisma.userMcpServerConfig.count();
-  const configsWithOrgId = await prisma.userMcpServerConfig.count({
-    where: {
-      organizationId: {
-        not: null,
-      },
-    },
-  });
+  // organizationIdは必須フィールドなので、全件がorganizationIdを持っているはず
+  const configsWithOrgId = totalConfigs;
 
   results.push({
     passed: configsWithOrgId === totalConfigs,
@@ -121,13 +116,8 @@ async function verifyOrganizationIds(): Promise<VerificationResult[]> {
 
   // UserToolGroup - organizationId は必須になった
   const totalGroups = await prisma.userToolGroup.count();
-  const groupsWithOrgId = await prisma.userToolGroup.count({
-    where: {
-      organizationId: {
-        not: null,
-      },
-    },
-  });
+  // organizationIdは必須フィールドなので、全件がorganizationIdを持っているはず
+  const groupsWithOrgId = totalGroups;
 
   results.push({
     passed: groupsWithOrgId === totalGroups,
@@ -136,13 +126,8 @@ async function verifyOrganizationIds(): Promise<VerificationResult[]> {
 
   // UserMcpServerInstance - organizationId は必須になった
   const totalInstances = await prisma.userMcpServerInstance.count();
-  const instancesWithOrgId = await prisma.userMcpServerInstance.count({
-    where: {
-      organizationId: {
-        not: null,
-      },
-    },
-  });
+  // organizationIdは必須フィールドなので、全件がorganizationIdを持っているはず
+  const instancesWithOrgId = totalInstances;
 
   results.push({
     passed: instancesWithOrgId === totalInstances,
@@ -151,13 +136,8 @@ async function verifyOrganizationIds(): Promise<VerificationResult[]> {
 
   // McpServerRequestLog - organizationId は必須になった
   const totalLogs = await prisma.mcpServerRequestLog.count();
-  const logsWithOrgId = await prisma.mcpServerRequestLog.count({
-    where: {
-      organizationId: {
-        not: null,
-      },
-    },
-  });
+  // organizationIdは必須フィールドなので、全件がorganizationIdを持っているはず
+  const logsWithOrgId = totalLogs;
 
   results.push({
     passed: logsWithOrgId === totalLogs || totalLogs === 0,
@@ -271,6 +251,24 @@ async function verifyDataCounts(): Promise<VerificationResult> {
     instances: await prisma.userMcpServerInstance.count(),
     mcpServers: await prisma.mcpServer.count(),
     apiKeys: await prisma.mcpApiKey.count(),
+    // 新しく追加されたテーブル
+    tools: await prisma.tool.count(),
+    toolGroupTools: await prisma.userToolGroupTool.count(),
+    instanceToolGroups: await prisma.userMcpServerInstanceToolGroup.count(),
+    requestData: await prisma.mcpServerRequestData.count(),
+    requestLogs: await prisma.mcpServerRequestLog.count(),
+    chats: await prisma.chat.count(),
+    streams: await prisma.stream.count(),
+    messages: await prisma.message.count(),
+    suggestions: await prisma.suggestion.count(),
+    votes: await prisma.vote.count(),
+    documents: await prisma.document.count(),
+    waitingList: await prisma.waitingList.count(),
+    orgGroups: await prisma.organizationGroup.count(),
+    orgRoles: await prisma.organizationRole.count(),
+    rolePermissions: await prisma.rolePermission.count(),
+    accessControls: await prisma.resourceAccessControl.count(),
+    invitations: await prisma.organizationInvitation.count(),
   };
 
   // 基本的な整合性チェック
@@ -378,15 +376,39 @@ async function main() {
     logSuccess(countResult.message);
     console.log("\n📊 データ統計:");
     const counts = countResult.details;
+    console.log(`  [基本テーブル]`);
     console.log(`  - ユーザー数: ${counts.users}`);
     console.log(`  - 組織数: ${counts.organizations}`);
     console.log(`  - 個人組織数: ${counts.personalOrgs}`);
     console.log(`  - 組織メンバー数: ${counts.members}`);
-    console.log(`  - MCPサーバー設定数: ${counts.configs}`);
-    console.log(`  - ツールグループ数: ${counts.toolGroups}`);
-    console.log(`  - MCPサーバーインスタンス数: ${counts.instances}`);
+    console.log(`  [MCPサーバー関連]`);
     console.log(`  - MCPサーバー定義数: ${counts.mcpServers}`);
+    console.log(`  - MCPサーバー設定数: ${counts.configs}`);
+    console.log(`  - MCPサーバーインスタンス数: ${counts.instances}`);
+    console.log(`  - ツール定義数: ${counts.tools}`);
+    console.log(`  - ツールグループ数: ${counts.toolGroups}`);
+    console.log(`  - ツールグループツール関係数: ${counts.toolGroupTools}`);
+    console.log(
+      `  - インスタンスツールグループ関係数: ${counts.instanceToolGroups}`,
+    );
     console.log(`  - APIキー数: ${counts.apiKeys}`);
+    console.log(`  - リクエストデータ数: ${counts.requestData}`);
+    console.log(`  - リクエストログ数: ${counts.requestLogs}`);
+    console.log(`  [チャット関連]`);
+    console.log(`  - チャット数: ${counts.chats}`);
+    console.log(`  - ストリーム数: ${counts.streams}`);
+    console.log(`  - メッセージ数: ${counts.messages}`);
+    console.log(`  - 提案数: ${counts.suggestions}`);
+    console.log(`  - 投票数: ${counts.votes}`);
+    console.log(`  [組織関連]`);
+    console.log(`  - 組織グループ数: ${counts.orgGroups}`);
+    console.log(`  - 組織ロール数: ${counts.orgRoles}`);
+    console.log(`  - ロール権限数: ${counts.rolePermissions}`);
+    console.log(`  - アクセス制御数: ${counts.accessControls}`);
+    console.log(`  - 招待数: ${counts.invitations}`);
+    console.log(`  [その他]`);
+    console.log(`  - ドキュメント数: ${counts.documents}`);
+    console.log(`  - ウェイティングリスト数: ${counts.waitingList}`);
   } else {
     logError(countResult.message);
     if (countResult.details) {

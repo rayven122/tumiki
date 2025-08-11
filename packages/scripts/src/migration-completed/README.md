@@ -11,7 +11,6 @@
 **実行方法:**
 
 ```bash
-BACKUP_DATABASE_URL=postgresql://... DATABASE_URL=postgresql://... \
 pnpm tsx packages/scripts/src/migration-completed/offline-migration.ts
 ```
 
