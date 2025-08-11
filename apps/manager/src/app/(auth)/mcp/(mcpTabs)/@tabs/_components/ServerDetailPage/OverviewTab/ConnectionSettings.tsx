@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Search, Copy, ArrowLeft, ChevronRight } from "lucide-react";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { toast } from "@/utils/client/toast";
-import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
+import {
+  makeHttpProxyServerUrl,
+  makeSseProxyServerUrl,
+  getProxyServerUrl,
+  normalizeServerName,
+} from "@/utils/url";
 import Image from "next/image";
 import type { UserMcpServerInstance } from "../types";
 
@@ -40,7 +45,8 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
 
   const getConfigText = (clientId: string) => {
     if (clientId === "claude-code") {
-      return `claude mcp add --transport sse ${instance.name.toLowerCase().replace(/\s+/g, "-")} https://server.tumiki.cloud/sse --header "api-key: ${instance.apiKeys?.[0]?.apiKey ?? "YOUR_API_KEY"}"`;
+      const serverUrl = getProxyServerUrl();
+      return `claude mcp add --transport sse ${normalizeServerName(instance.name)} ${serverUrl}/sse/${instance.id} --header "x-api-key: ${instance.apiKeys?.[0]?.apiKey ?? "YOUR_API_KEY"}"`;
     }
 
     const config = {
@@ -220,7 +226,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
         <CardHeader>
           <CardTitle className="text-base">接続URL</CardTitle>
           <p className="mt-1 text-sm text-gray-600">
-            MCPサーバーへの接続に使用するURLです
+            MCPサーバーへの接続に使用するURLとAPI Keyヘッダーです
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -230,17 +236,21 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                 <p className="mb-1 text-xs text-gray-600">SSE接続</p>
                 <div className="overflow-x-auto">
                   <code className="text-sm whitespace-nowrap">
-                    {makeSseProxyServerUrl(apiKey)}
+                    {makeSseProxyServerUrl(instance.id)}
                   </code>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  ヘッダー: x-api-key: {apiKey}
+                </p>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
                 className="flex-shrink-0"
                 onClick={async () => {
-                  await copyToClipboard(makeSseProxyServerUrl(apiKey));
-                  toast.success("SSE URLをコピーしました");
+                  const urlAndHeader = `URL: ${makeSseProxyServerUrl(instance.id)}\nヘッダー: x-api-key: ${apiKey}`;
+                  await copyToClipboard(urlAndHeader);
+                  toast.success("SSE URLとヘッダー情報をコピーしました");
                 }}
               >
                 <Copy className="h-4 w-4" />
@@ -254,17 +264,21 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                 <p className="mb-1 text-xs text-gray-600">HTTP接続</p>
                 <div className="overflow-x-auto">
                   <code className="text-sm whitespace-nowrap">
-                    {makeHttpProxyServerUrl(apiKey)}
+                    {makeHttpProxyServerUrl(instance.id)}
                   </code>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  ヘッダー: x-api-key: {apiKey}
+                </p>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
                 className="flex-shrink-0"
                 onClick={async () => {
-                  await copyToClipboard(makeHttpProxyServerUrl(apiKey));
-                  toast.success("HTTP URLをコピーしました");
+                  const urlAndHeader = `URL: ${makeHttpProxyServerUrl(instance.id)}\nヘッダー: x-api-key: ${apiKey}`;
+                  await copyToClipboard(urlAndHeader);
+                  toast.success("HTTP URLとヘッダー情報をコピーしました");
                 }}
               >
                 <Copy className="h-4 w-4" />

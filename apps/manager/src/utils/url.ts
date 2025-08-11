@@ -3,10 +3,24 @@ const MCP_PROXY_SERVER_URL =
     ? "https://server.tumiki.cloud"
     : "http://localhost:8080";
 
-export const makeSseProxyServerUrl = (apiKeyId: string) => {
-  return `${MCP_PROXY_SERVER_URL}/sse?api-key=${apiKeyId}`;
+/**
+ * プロキシサーバーのベースURLを取得
+ */
+export const getProxyServerUrl = () => {
+  return MCP_PROXY_SERVER_URL;
 };
 
-export const makeHttpProxyServerUrl = (apiKeyId: string) => {
-  return `${MCP_PROXY_SERVER_URL}/mcp?api-key=${apiKeyId}`;
+/**
+ * サーバー名を正規化（小文字化、空白をハイフンに変換）
+ */
+export const normalizeServerName = (name: string): string => {
+  return name.toLowerCase().replace(/\s+/g, "-");
+};
+
+export const makeSseProxyServerUrl = (userMcpServerInstanceId: string) => {
+  return `${MCP_PROXY_SERVER_URL}/sse/${userMcpServerInstanceId}`;
+};
+
+export const makeHttpProxyServerUrl = (userMcpServerInstanceId: string) => {
+  return `${MCP_PROXY_SERVER_URL}/mcp/${userMcpServerInstanceId}`;
 };
