@@ -36,10 +36,12 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "upsertAll": "pnpm with-env tsx src/upsertAll.ts",
+    "upsertAll": "pnpm with-env-all tsx src/upsertAll.ts",
     "migrateWaitingList": "pnpm with-env tsx src/migrateWaitingList.ts",
     "test-auth0-api": "pnpm with-env tsx src/test-auth0-api.ts",
     "with-env": "dotenv -e ../../.env --",
+    "with-env-upsert": "dotenv -e ../../.env.upsert --",
+    "with-env-all": "dotenv -e ../../.env -- dotenv -e ../../.env.upsert --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -64,7 +66,8 @@
     "microcms-mcp-server": "^0.3.6",
     "puppeteer-mcp-server": "^0.7.2",
     "slack-mcp-server": "^1.1.16",
-    "task-master-ai": "^0.18.0"
+    "task-master-ai": "^0.18.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",

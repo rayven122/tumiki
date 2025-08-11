@@ -98,7 +98,49 @@ apps/manager/public/logos/your-server.svg
 
 ### 4. データベースへの反映
 
-すべての設定が完了したら、データベースに反映します：
+#### 環境変数の設定
+
+MCPサーバー登録スクリプトは2つの環境変数ファイルを使用します：
+
+1. **基本環境変数（../../.env）**:
+   - DATABASE_URLなどのシステム全体で使用する環境変数
+   - プロジェクトルートの`.env`ファイルに設定
+   - **必須**：これは必ず設定が必要です
+
+2. **MCPサーバー専用環境変数（.env.upsert）**:
+   - 各MCPサーバーに必要なAPIキーやトークン
+   - `packages/scripts/.env.upsert`ファイルに設定
+   - **オプション**：使用したいMCPサーバーの環境変数のみ設定すればOK
+
+3. **環境変数ファイルの準備**:
+
+   ```bash
+   cd packages/scripts
+   cp .env.upsert.example .env.upsert
+   # 使用したいMCPサーバーの環境変数のみを設定
+   ```
+
+   例：NotionとGitHubのみを使用する場合
+   ```bash
+   # .env.upsert の内容
+   NOTION_API_TOKEN=your-notion-token
+   GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
+   # 他のサーバーの環境変数は空のままでOK
+   ```
+
+4. **環境変数のバリデーションとスキップ処理**:
+   - スクリプト実行時に自動的に環境変数がバリデーションされます
+   - DATABASE_URLは必須（../../.envから読み込み）
+   - **MCPサーバーは選択的に登録**：
+     - 環境変数が設定されているサーバー → 登録・ツール取得を実行
+     - 環境変数が設定されていないサーバー → 自動的にスキップ（エラーにならない）
+     - Context7、Playwrightなど環境変数不要のサーバー → 常に登録
+
+> **💡 ヒント**: すべてのMCPサーバーを登録する必要はありません。必要なサーバーの環境変数のみを設定してください。後から追加したいサーバーがあれば、環境変数を設定して再度`pnpm upsertAll`を実行するだけです。
+
+#### データベースへの反映
+
+環境変数を設定したら、データベースに反映します：
 
 ```bash
 cd packages/scripts
@@ -107,8 +149,46 @@ pnpm upsertAll
 
 このコマンドは以下を実行します：
 
-1. `upsertMcpServers`: MCP サーバー定義をデータベースに挿入/更新
-2. `upsertMcpTools`: 各サーバーに接続してツール情報を取得・保存
+1. **環境変数のバリデーション**: 必要な環境変数が正しく設定されているかチェック
+2. **有効なサーバーの判定**: 環境変数が設定されているサーバーを特定
+3. `upsertMcpServers`: 有効なMCPサーバーのみをデータベースに挿入/更新
+4. `upsertMcpTools`: 有効なサーバーのみに接続してツール情報を取得・保存
+
+#### 実行例
+
+```bash
+$ pnpm upsertAll
+
+🔍 環境変数チェック結果:
+  有効なサーバー数: 4/11
+
+⚠️  以下のMCPサーバーは環境変数が設定されていないため、ツール登録がスキップされます:
+  • Figma: 次の環境変数のうち少なくとも1つが必要です: FIGMA_API_KEY, FIGMA_OAUTH_TOKEN
+  • Slack MCP: 次の環境変数が必要です: SLACK_MCP_XOXP_TOKEN
+  • Discord MCP: 次の環境変数が必要です: DISCORD_TOKEN
+  • LINE Bot MCP: 次の環境変数のうち少なくとも1つが必要です: CHANNEL_ACCESS_TOKEN, DESTINATION_USER_ID
+  • DeepL MCP: 次の環境変数が必要です: DEEPL_API_KEY
+  • microCMS MCP: 次の環境変数のうち少なくとも1つが必要です: MICROCMS_SERVICE_ID, MICROCMS_API_KEY
+
+📝 以下のMCPサーバーは環境変数が不足しているためスキップされました:
+  - Figma
+  - Slack MCP
+  - Discord MCP
+  - LINE Bot MCP
+  - DeepL MCP
+  - microCMS MCP
+
+✅ MCPサーバーが正常に登録されました:
+  登録されたMCPサーバー数: 4
+  登録されたMCPサーバー: Notion MCP, GitHub MCP, Context7, Playwright MCP
+
+📊 ツール登録サマリー:
+  ✅ 成功: Notion MCP, GitHub MCP, Context7, Playwright MCP
+
+✨ 処理が完了しました
+```
+
+> **注意**: `.env.upsert` ファイルはGitにコミットされないよう `.gitignore` に追加されています。本番環境では適切な環境変数管理方法を使用してください。
 
 ## 動作確認
 
@@ -129,21 +209,39 @@ pnpm dev
 pnpm inspector
 ```
 
+## 後から追加のMCPサーバーを有効化する場合
+
+既存のシステムに新しいMCPサーバーを追加したい場合：
+
+1. `.env.upsert` に該当サーバーの環境変数を追加
+2. `pnpm upsertAll` を再実行
+3. 既存のサーバーはそのまま、新しく環境変数を設定したサーバーのみが追加登録されます
+
+```bash
+# 例：後からSlackを追加する場合
+echo "SLACK_MCP_XOXP_TOKEN=xoxp-your-token" >> .env.upsert
+pnpm upsertAll
+# → Slackのみが新規登録され、既存のサーバーは影響を受けない
+```
+
 ## トラブルシューティング
 
 ### サーバーがリストに表示されない
 
 1. `pnpm upsertAll` を実行したか確認
-2. データベースの `McpServer` テーブルにレコードが存在するか確認
-3. `isPublic: true` が設定されているか確認
+2. 必要な環境変数が設定されているか確認（環境変数が必要なサーバーの場合）
+3. データベースの `McpServer` テーブルにレコードが存在するか確認
+4. `isPublic: true` が設定されているか確認
 
 ### ツールが表示されない
 
 1. MCP サーバーが正しく起動するか確認
 2. `packages/scripts` ディレクトリで直接サーバーを起動してテスト：
+
    ```bash
    node node_modules/@your-org/mcp-server/dist/index.js
    ```
+
 3. `upsertMcpTools` スクリプトのログを確認
 
 ### 環境変数エラー
