@@ -49,10 +49,15 @@ runs:
 
         # Vercel側でビルドを実行するようにソースコードを直接デプロイ
         if [[ "${{ inputs.environment }}" == "production" ]]; then
-          echo "Deploying to production..."
+          echo "Deploying to production environment..."
           DEPLOYMENT_URL=$(vercel deploy --prod --token=$VERCEL_TOKEN)
+        elif [[ "${{ inputs.environment }}" == "staging" ]]; then
+          echo "Deploying to staging environment..."
+          # Pro/Enterpriseプランのカスタム環境へデプロイ
+          # --target オプションでカスタム環境を指定
+          DEPLOYMENT_URL=$(vercel deploy --target=staging --token=$VERCEL_TOKEN)
         else
-          echo "Deploying to preview/staging..."
+          echo "Deploying to preview environment..."
           DEPLOYMENT_URL=$(vercel deploy --token=$VERCEL_TOKEN)
         fi
 
