@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "deny": ["cat:*", "Read(.env)", "Read(.env.*)"]
+    "deny": ["cat:*", "Read(.env)", "Read(.env.*)", "Read(*production.json)"]
   },
   "hooks": {
     "PostToolUse": [

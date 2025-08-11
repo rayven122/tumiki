@@ -1,0 +1,159 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "デプロイ環境"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  # 環境判定
+  setup:
+    name: 🔧 環境設定
+    runs-on: arc-runner-set
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      stage: ${{ steps.env.outputs.stage }}
+      is_pr: ${{ steps.env.outputs.is_pr }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: env
+        uses: ./.github/actions/determine-env
+
+  # データベースマイグレーション（staging/production のみ）
+  migrate-database:
+    name: 🗄️ データベースマイグレーション
+    needs: setup
+    if: needs.setup.outputs.environment != 'preview'
+    runs-on: arc-runner-set
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup
+        uses: ./.github/actions/setup
+      
+      - name: Build packages (database only)
+        shell: bash
+        run: |
+          pnpm run --filter @tumiki/tsup-config build
+          pnpm run --filter @tumiki/db build
+      
+      - name: Migrate database
+        uses: ./.github/actions/migrate-database
+        with:
+          database_url: ${{ needs.setup.outputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || secrets.DATABASE_URL_STAGING }}
+          environment: ${{ needs.setup.outputs.environment }}
+
+  # Vercelデプロイ
+  deploy-vercel:
+    name: 🚀 Vercelデプロイ
+    needs: [setup, migrate-database]
+    if: always() && needs.setup.result == 'success' && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
+    runs-on: arc-runner-set
+    environment: ${{ needs.setup.outputs.environment }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build packages
+        uses: ./.github/actions/build-packages
+
+      - name: Deploy to Vercel
+        id: deploy
+        uses: ./.github/actions/deploy-vercel
+        with:
+          environment: ${{ needs.setup.outputs.environment }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          database_url: ${{ needs.setup.outputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || secrets.DATABASE_URL_STAGING }}
+          api_url: ${{ needs.setup.outputs.environment == 'production' && secrets.NEXT_PUBLIC_API_URL_PRODUCTION || secrets.NEXT_PUBLIC_API_URL_STAGING }}
+
+      - name: Comment deployment URL
+        uses: ./.github/actions/comment-deployment
+        with:
+          deployment_url: ${{ steps.deploy.outputs.deployment_url }}
+          environment: ${{ needs.setup.outputs.environment }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  # GCEデプロイ（本番環境のみ）
+  deploy-gce:
+    name: 🔧 GCEデプロイ
+    needs: [setup, migrate-database]
+    if: needs.setup.outputs.environment == 'production' && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
+    runs-on: arc-runner-set
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Deploy to GCE
+        uses: ./.github/actions/deploy-gce
+        with:
+          gcp_credentials: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
+          instance_name: ${{ secrets.GCE_INSTANCE_NAME_PRODUCTION }}
+          zone: ${{ secrets.GCE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+  # デプロイ結果通知
+  notify:
+    name: 📢 結果通知
+    needs: [setup, migrate-database, deploy-vercel, deploy-gce]
+    if: always() && needs.setup.outputs.is_pr != 'true'
+    runs-on: arc-runner-set
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const environment = '${{ needs.setup.outputs.environment }}';
+            const migrationStatus = '${{ needs.migrate-database.result }}';
+            const vercelStatus = '${{ needs.deploy-vercel.result }}';
+            const gceStatus = '${{ needs.deploy-gce.result }}';
+            const isProduction = environment === 'production';
+            
+            let emoji = '✅';
+            if (migrationStatus === 'failure' || vercelStatus === 'failure' || (isProduction && gceStatus === 'failure')) {
+              emoji = '❌';
+            }
+            
+            let summary = `## ${emoji} ${environment}環境へのデプロイ\n\n`;
+            summary += `| コンポーネント | ステータス |\n`;
+            summary += `|---------------|------------|\n`;
+            
+            // データベースマイグレーション
+            if (migrationStatus && migrationStatus !== 'skipped') {
+              summary += `| データベース | ${migrationStatus === 'success' ? '✅' : '❌'} ${migrationStatus} |\n`;
+            }
+            
+            // Vercel
+            summary += `| Vercel | ${vercelStatus === 'success' ? '✅' : vercelStatus === 'failure' ? '❌' : '⚠️'} ${vercelStatus} |\n`;
+            
+            // GCE (本番のみ)
+            if (isProduction) {
+              summary += `| GCE ProxyServer | ${gceStatus === 'success' ? '✅' : gceStatus === 'skipped' ? '⏭️' : gceStatus === 'failure' ? '❌' : '⚠️'} ${gceStatus || 'skipped'} |\n`;
+            }
+            
+            summary += `\n**Triggered by:** ${{ github.actor }}\n`;
+            summary += `**Commit:** ${{ github.sha }}`;
+            
+            await core.summary.addRaw(summary).write();

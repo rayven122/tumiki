@@ -252,7 +252,7 @@ MCP サーバーのツール一覧
   - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
   - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `oauthConnection`: OAuth���続のAuth0 connection名（user-specific）
+  - `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
   - `mcpServerId`: MCPサーバーID
   - `organizationId`: 組織
   - `createdAt`: 
@@ -700,7 +700,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `name`: 設定名（例：「開発用」「本番用」「テスト用」）
   - `description`: 設定の説明
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `oauthConnection`: OAuth���続のAuth0 connection名（user-specific）
+  - `oauthConnection`: OAuth接続のAuth0 connection名（user-specific）
   - `mcpServerId`: MCPサーバーID
   - `organizationId`: 組織
   - `createdAt`: 
