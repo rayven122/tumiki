@@ -1,0 +1,60 @@
+name: Deploy to GCE
+description: ProxyServerをGoogle Compute Engine（本番環境）にデプロイします
+
+inputs:
+  gcp_credentials:
+    description: GCPサービスアカウントの認証JSON（本番環境用）
+    required: true
+  instance_name:
+    description: GCEインスタンス名（本番環境用）
+    required: true
+  zone:
+    description: GCEゾーン
+    required: true
+  project_id:
+    description: GCPプロジェクトID
+    required: true
+  api_url:
+    description: API URL（本番環境用）
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: 🔑 Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+
+    - name: ☁️ Setup Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: 📦 Build packages for GCE
+      shell: bash
+      run: |
+        echo "Building packages for GCE deployment..."
+        pnpm run --filter @tumiki/tsup-config build
+        pnpm run --filter @tumiki/db build
+
+    - name: 🚀 Deploy to GCE
+      shell: bash
+      env:
+        NEXT_PUBLIC_API_URL: ${{ inputs.api_url }}
+      run: |
+        echo "Deploying to GCE instance: ${{ inputs.instance_name }}"
+
+        # Create environment file
+        cat > .env.deploy << EOF
+        NODE_ENV=production
+        NEXT_PUBLIC_API_URL=${{ inputs.api_url }}
+        EOF
+
+        # Run deployment
+        INSTANCE_NAME="${{ inputs.instance_name }}" \
+        ZONE="${{ inputs.zone }}" \
+        PROJECT_ID="${{ inputs.project_id }}" \
+        DEPLOY_STAGE="production" \
+        bash scripts/deploy-ci.sh
+
+        # Cleanup
+        rm -f .env.deploy

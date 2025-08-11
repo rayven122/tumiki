@@ -1,0 +1,44 @@
+name: Migrate Database
+description: データベースマイグレーションを実行します。staging/production環境でのみ実行されます
+
+inputs:
+  database_url:
+    description: データベース接続URL（環境別）
+    required: true
+  environment:
+    description: デプロイ環境（staging/production）
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: 🗄️ Run database migration
+      shell: bash
+      env:
+        DATABASE_URL: ${{ inputs.database_url }}
+      run: |
+        echo "🚀 Starting database migration for ${{ inputs.environment }} environment..."
+        echo "📍 Database URL: $(echo $DATABASE_URL | sed 's/:[^@]*@/:***@/')" # パスワードをマスク
+
+        # packages/db ディレクトリに移動
+        if [ ! -d "packages/db" ]; then
+          echo "❌ Error: packages/db directory not found"
+          exit 1
+        fi
+
+        cd packages/db
+
+        # データベースマイグレーション実行
+        echo "🔄 Executing database migrations..."
+        if pnpm db:deploy; then
+          echo "✅ Database migration completed successfully"
+        else
+          echo "❌ Database migration failed"
+          echo "💡 Please check:"
+          echo "  - Database connection (DATABASE_URL)"
+          echo "  - Migration files in prisma/migrations/"
+          echo "  - Database server status"
+          exit 1
+        fi
+
+        echo "🎉 Migration job completed for ${{ inputs.environment }} environment"

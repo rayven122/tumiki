@@ -1,0 +1,59 @@
+name: Determine Environment
+description: |
+  イベントコンテキストに基づいてデプロイ環境を判定します
+
+  判定ルール:
+  - Pull Request → preview環境
+  - mainブランチへのpush → staging環境  
+  - v*タグの作成 → production環境
+  - 手動実行(workflow_dispatch) → 選択した環境
+
+outputs:
+  environment:
+    description: デプロイ環境（preview/staging/production）
+    value: ${{ steps.determine.outputs.environment }}
+  stage:
+    description: デプロイステージ
+    value: ${{ steps.determine.outputs.stage }}
+  is_pr:
+    description: PRデプロイかどうかのフラグ
+    value: ${{ steps.determine.outputs.is_pr }}
+
+runs:
+  using: composite
+  steps:
+    - name: Determine environment
+      id: determine
+      shell: bash
+      run: |
+        echo "📋 Event: ${{ github.event_name }}"
+        echo "🔖 Ref: ${{ github.ref }}"
+
+        # Pull Request → preview環境
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "environment=preview" >> $GITHUB_OUTPUT
+          echo "stage=preview" >> $GITHUB_OUTPUT
+          echo "is_pr=true" >> $GITHUB_OUTPUT
+          echo "🔵 Pull Request detected → preview環境"
+          
+        # 手動実行 → 選択した環境
+        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "stage=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "is_pr=false" >> $GITHUB_OUTPUT
+          echo "🟣 Manual dispatch → ${{ github.event.inputs.environment }}環境"
+          
+        # v*タグ → production環境
+        elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+          echo "stage=production" >> $GITHUB_OUTPUT
+          echo "is_pr=false" >> $GITHUB_OUTPUT
+          echo "🔴 Version tag detected → production環境"
+          
+        # その他（mainブランチへのpush等） → staging環境
+        else
+          echo "environment=staging" >> $GITHUB_OUTPUT
+          echo "stage=staging" >> $GITHUB_OUTPUT
+          echo "is_pr=false" >> $GITHUB_OUTPUT
+          echo "🟡 Default (main branch push) → staging環境"
+        fi
