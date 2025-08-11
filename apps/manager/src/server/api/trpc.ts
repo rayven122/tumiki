@@ -1,12 +1,12 @@
 import "server-only";
 
 /**
- * YOU PROBABLY DON'T NEED TO EDIT THIS FILE, UNLESS:
- * 1. You want to modify request context (see Part 1).
- * 2. You want to create a new middleware or type of procedure (see Part 3).
+ * このファイルを編集する必要があるのは以下の場合のみです：
+ * 1. リクエストコンテキストを変更したい場合（パート1参照）
+ * 2. 新しいミドルウェアやプロシージャタイプを作成したい場合（パート3参照）
  *
- * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
- * need to use are documented accordingly near the end.
+ * 要約：ここはtRPCサーバーの全機能が作成・接続される場所です。
+ * 使用する必要がある部分は最後の方に文書化されています。
  */
 
 import { TRPCError, initTRPC } from "@trpc/server";
@@ -17,14 +17,14 @@ import { auth } from "@tumiki/auth/server";
 import { db } from "@tumiki/db/server";
 
 /**
- * 1. CONTEXT
+ * 1. コンテキスト
  *
- * This section defines the "contexts" that are available in the backend API.
+ * このセクションはバックエンドAPIで利用可能な「コンテキスト」を定義します。
  *
- * These allow you to access things when processing a request, like the database, the session, etc.
+ * これらによりリクエスト処理時にデータベース、セッションなどへアクセスできます。
  *
- * This helper generates the "internals" for a tRPC context. The API handler and RSC clients each
- * wrap this and provides the required context.
+ * このヘルパーはtRPCコンテキストの「内部」を生成します。
+ * APIハンドラーとRSCクライアントはこれをラップして必要なコンテキストを提供します。
  *
  * @see https://trpc.io/docs/server/context
  */
@@ -92,11 +92,11 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 };
 
 /**
- * 2. INITIALIZATION
+ * 2. 初期化
  *
- * This is where the tRPC API is initialized, connecting the context and transformer. We also parse
- * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
- * errors on the backend.
+ * ここでtRPC APIが初期化され、コンテキストとトランスフォーマーが接続されます。
+ * また、バックエンドでバリデーションエラーが発生した場合にフロントエンドで型安全性を
+ * 保つためにZodErrorをパースします。
  */
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
@@ -113,37 +113,37 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 });
 
 /**
- * Create a server-side caller.
+ * サーバーサイドの呼び出し元を作成
  *
  * @see https://trpc.io/docs/server/server-side-calls
  */
 export const createCallerFactory = t.createCallerFactory;
 
 /**
- * 3. ROUTER & PROCEDURE (THE IMPORTANT BIT)
+ * 3. ルーターとプロシージャ（重要な部分）
  *
- * These are the pieces you use to build your tRPC API. You should import these a lot in the
- * "/src/server/api/routers" directory.
+ * これらはtRPC APIを構築するために使用する部品です。
+ * "/src/server/api/routers"ディレクトリで頻繁にインポートすることになります。
  */
 
 /**
- * This is how you create new routers and sub-routers in your tRPC API.
+ * tRPC APIで新しいルーターとサブルーターを作成する方法
  *
  * @see https://trpc.io/docs/router
  */
 export const createTRPCRouter = t.router;
 
 /**
- * Middleware for timing procedure execution and adding an artificial delay in development.
+ * プロシージャの実行時間を計測し、開発環境で人工的な遅延を追加するミドルウェア
  *
- * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
- * network latency that would occur in production but not in local development.
+ * 不要であれば削除できますが、本番環境で発生するネットワークレイテンシーをシミュレートすることで、
+ * 意図しないウォーターフォールを検出するのに役立ちます。
  */
 const timingMiddleware = t.middleware(async ({ next, path }) => {
   const start = Date.now();
 
   if (t._config.isDev) {
-    // artificial delay in dev
+    // 開発環境での人工的な遅延
     const waitMs = Math.floor(Math.random() * 400) + 100;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
@@ -157,52 +157,70 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 });
 
 /**
- * Public (unauthenticated) procedure
+ * パブリック（認証不要）プロシージャ
  *
- * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
- * guarantee that a user querying is authorized, but you can still access user session data if they
- * are logged in.
+ * tRPC APIで新しいクエリやミューテーションを構築するための基本部品です。
+ * ユーザーが認証されていることを保証しませんが、ログインしていればセッションデータに
+ * アクセスできます。
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
 /**
- * Protected (authenticated) procedure
+ * 認証済みプロシージャ（組織不要）
  *
- * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
- * the session is valid and guarantees `ctx.session.user` is not null.
- *
- * @see https://trpc.io/docs/procedures
+ * 認証は必要だが組織コンテキストが不要なプロシージャで使用します。
+ * オンボーディングフローなど、まだ組織を持っていないユーザー向けの処理に便利です。
  */
-export const protectedProcedure = t.procedure
+export const authenticatedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
     if (!ctx.session?.user?.sub) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
 
+    return next({
+      ctx: {
+        // sessionをnon-nullableとして推論
+        session: {
+          ...ctx.session,
+          user: { ...ctx.session.user, id: ctx.session.user.sub },
+        },
+        currentOrganizationId: ctx.currentOrganizationId, // nullの可能性あり
+      },
+    });
+  });
+
+/**
+ * 保護されたプロシージャ（認証と組織が必須）
+ *
+ * ログイン済みかつ組織に所属しているユーザーのみアクセス可能にしたい場合に使用します。
+ * セッションが有効であることを検証し、`ctx.session.user`と`ctx.currentOrganizationId`がnullでないことを保証します。
+ *
+ * @see https://trpc.io/docs/procedures
+ */
+export const protectedProcedure = authenticatedProcedure.use(
+  ({ ctx, next }) => {
     if (!ctx.currentOrganizationId) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
-          "Organization membership required. Please complete onboarding first.",
+          "組織への所属が必要です。先にオンボーディングを完了してください。",
       });
     }
 
     return next({
       ctx: {
-        // infers the `session` as non-nullable and `currentOrganizationId` as string
-        session: {
-          ...ctx.session,
-          user: { ...ctx.session.user, id: ctx.session.user.sub },
-        },
+        ...ctx,
+        // 型の絞り込み: currentOrganizationIdがnon-nullであることを保証
         currentOrganizationId: ctx.currentOrganizationId,
       },
     });
-  });
+  },
+);
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
-//  protectedProcedure　の第一引数を型抽出する
+// protectedProcedureの第一引数を型抽出する
 export type ProtectedContext = {
   session: {
     user: {

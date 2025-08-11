@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   publicProcedure,
-  protectedProcedure,
+  authenticatedProcedure,
 } from "@/server/api/trpc";
 
 // Auth0 Post-Login Actionから送信されるユーザー情報のスキーマ
@@ -46,7 +46,7 @@ export const userRouter = createTRPCRouter({
     }),
 
   // オンボーディング状況をチェック（個人組織の存在で判断）
-  checkOnboardingStatus: protectedProcedure.query(async ({ ctx }) => {
+  checkOnboardingStatus: authenticatedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
     // ユーザーが個人組織を持っているか確認
@@ -66,7 +66,7 @@ export const userRouter = createTRPCRouter({
   }),
 
   // オンボーディング完了をマーク（個人組織を作成）
-  completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+  completeOnboarding: authenticatedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
     // 既に個人組織が存在するか確認
@@ -77,6 +77,9 @@ export const userRouter = createTRPCRouter({
           isPersonal: true,
           isDeleted: false,
         },
+      },
+      include: {
+        organization: true,
       },
     });
 
@@ -91,7 +94,7 @@ export const userRouter = createTRPCRouter({
       }
 
       // 個人組織を作成
-      await ctx.db.organization.create({
+      const newOrg = await ctx.db.organization.create({
         data: {
           name: `${user.name ?? user.email ?? "User"}'s Workspace`,
           description: "Personal workspace",
@@ -106,6 +109,28 @@ export const userRouter = createTRPCRouter({
           },
         },
       });
+
+      // ユーザーのdefaultOrganizationIdを設定
+      await ctx.db.user.update({
+        where: { id: userId },
+        data: {
+          defaultOrganizationId: newOrg.id,
+        },
+      });
+    } else if (!existingOrg.organization.isDeleted) {
+      // 既存の個人組織がある場合、defaultOrganizationIdが設定されているか確認
+      const user = await ctx.db.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (user && !user.defaultOrganizationId) {
+        await ctx.db.user.update({
+          where: { id: userId },
+          data: {
+            defaultOrganizationId: existingOrg.organization.id,
+          },
+        });
+      }
     }
 
     return { success: true };
