@@ -60,10 +60,11 @@ export const checkServerConnection = async ({
       tools = await getMcpServerToolsSSE(
         {
           name: "validation",
-          url: makeSseProxyServerUrl(apiKey),
+          url: makeSseProxyServerUrl(serverInstanceId),
         },
         {
           "x-validation-mode": "true",
+          "x-api-key": apiKey,
         },
       );
 
