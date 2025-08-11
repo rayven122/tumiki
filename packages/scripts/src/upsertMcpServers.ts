@@ -15,18 +15,20 @@ export const upsertMcpServers = async (validServerNames?: string[]) => {
   });
 
   // 有効なサーバーのみをフィルタリング
-  const serversToUpsert = validServerNames 
-    ? MCP_SERVERS.filter(server => validServerNames.includes(server.name))
+  const serversToUpsert = validServerNames
+    ? MCP_SERVERS.filter((server) => validServerNames.includes(server.name))
     : MCP_SERVERS;
-  
+
   // スキップされたサーバーを特定
   const skippedServers = MCP_SERVERS.filter(
-    server => !serversToUpsert.includes(server)
+    (server) => !serversToUpsert.includes(server),
   );
-  
+
   if (skippedServers.length > 0) {
-    console.log("📝 以下のMCPサーバーは環境変数が不足しているためスキップされました:");
-    skippedServers.forEach(server => {
+    console.log(
+      "📝 以下のMCPサーバーは環境変数が不足しているためスキップされました:",
+    );
+    skippedServers.forEach((server) => {
       console.log(`  - ${server.name}`);
     });
     console.log("");

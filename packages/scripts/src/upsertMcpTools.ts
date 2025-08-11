@@ -14,14 +14,14 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
   let filteredMcpServers = mcpServers.filter((mcpServer) =>
     MCP_SERVERS.some((server) => server.name === mcpServer.name),
   );
-  
+
   // 有効なサーバー名が指定されている場合、さらにフィルタリング
   if (validServerNames) {
     filteredMcpServers = filteredMcpServers.filter((mcpServer) =>
       validServerNames.includes(mcpServer.name),
     );
   }
-  
+
   const skippedServers: string[] = [];
   const processedServers: string[] = [];
 
@@ -37,7 +37,7 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
     try {
       // ツール一覧を取得
       const tools = await getMcpServerTools(mcpServer, envVars);
-      
+
       if (tools.length === 0) {
         console.log(`⚠️  ${mcpServer.name}: ツールが見つかりませんでした`);
         skippedServers.push(mcpServer.name);
@@ -45,37 +45,42 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
       }
 
       const upsertPromises = tools.map((tool: Tool) => {
-      return db.tool.upsert({
-        where: {
-          mcpServerId_name: {
+        return db.tool.upsert({
+          where: {
+            mcpServerId_name: {
+              mcpServerId: mcpServer.id,
+              name: tool.name,
+            },
+          },
+          update: {
+            description: tool.description,
+            inputSchema: tool.inputSchema as object,
+          },
+          create: {
             mcpServerId: mcpServer.id,
             name: tool.name,
+            description: tool.description ?? "",
+            inputSchema: tool.inputSchema as object,
           },
-        },
-        update: {
-          description: tool.description,
-          inputSchema: tool.inputSchema as object,
-        },
-        create: {
-          mcpServerId: mcpServer.id,
-          name: tool.name,
-          description: tool.description ?? "",
-          inputSchema: tool.inputSchema as object,
-        },
+        });
       });
-    });
 
       // データベースにツールを書き込む
       const upsertedTools = await db.$transaction(upsertPromises);
 
-      console.log(`✅ ${mcpServer.name}: ${upsertedTools.length}個のツールを登録`);
+      console.log(
+        `✅ ${mcpServer.name}: ${upsertedTools.length}個のツールを登録`,
+      );
       processedServers.push(mcpServer.name);
     } catch (error) {
-      console.error(`❌ ${mcpServer.name}: ツール取得エラー`, error instanceof Error ? error.message : error);
+      console.error(
+        `❌ ${mcpServer.name}: ツール取得エラー`,
+        error instanceof Error ? error.message : error,
+      );
       skippedServers.push(mcpServer.name);
     }
   }
-  
+
   // サマリーを表示
   console.log("");
   console.log("📊 ツール登録サマリー:");
