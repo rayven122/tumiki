@@ -42,6 +42,14 @@ model User {
     mcpServerRequestLogs McpServerRequestLog[]
     /// オンボーディング完了フラグ
     hasCompletedOnboarding Boolean @default(false)
+    /// OAuthクライアント（DCR時の仮割り当て含む）
+    oauthClients      OAuthClient[]
+    /// OAuthアクセストークン
+    oauthAccessTokens OAuthAccessToken[]
+    /// OAuthリフレッシュトークン
+    oauthRefreshTokens OAuthRefreshToken[]
+    /// OAuth認可コード
+    oauthAuthorizationCodes OAuthAuthorizationCode[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

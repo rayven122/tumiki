@@ -4,6 +4,7 @@ import { validateApiKey } from "../libs/validateApiKey.js";
 import { db } from "@tumiki/db/tcp";
 import type { AuthType } from "@tumiki/db";
 import { sessions } from "../utils/session.js";
+import { validateOAuthToken } from "./oauthTokenAuth.js";
 
 /**
  * JWT検証ミドルウェアの設定
@@ -248,7 +249,22 @@ export const integratedAuthMiddleware = () => {
           return;
         }
 
-        // JWT検証を実行
+        const token = authHeader?.slice(7); // "Bearer " を除去
+        
+        // まずTumiki OAuthトークンとして検証
+        const oauthValidation = await validateOAuthToken(token as string, mcpServerInstanceId);
+        if (oauthValidation.valid) {
+          req.authInfo = {
+            type: "oauth",
+            userId: oauthValidation.userId,
+            userMcpServerInstanceId: mcpServerInstance.id,
+            organizationId: mcpServerInstance.organizationId ?? undefined,
+            scope: oauthValidation.scope,
+          };
+          return next();
+        }
+
+        // Auth0 JWT として検証
         jwtCheck(req, res, (err?: unknown) => {
           if (err) {
             sendAuthError(
@@ -260,7 +276,7 @@ export const integratedAuthMiddleware = () => {
             );
             return;
           } else {
-            // OAuth認証成功
+            // OAuth認証成功（Auth0）
             req.authInfo = {
               type: "oauth",
               userId: mcpServerInstance.userId,
@@ -279,13 +295,81 @@ export const integratedAuthMiddleware = () => {
         return;
 
       case "BOTH":
-        // BOTH認証タイプは未実装
-        sendAuthError(
-          res,
-          501,
-          "BOTH authentication type is not yet implemented",
-          -32000,
-        );
+        // APIキーまたはOAuth認証のいずれかが必要
+        if (!apiKey && !hasBearerToken) {
+          sendAuthError(res, 401, getAuthErrorMessage(authType), -32000, {
+            "WWW-Authenticate": 'Bearer realm="MCP API"',
+          });
+          return;
+        }
+
+        // APIキーが提供されている場合
+        if (apiKey) {
+          const apiKeyValidation = await validateApiKey(apiKey);
+          if (
+            apiKeyValidation.valid &&
+            apiKeyValidation.userMcpServerInstance &&
+            apiKeyValidation.userMcpServerInstance.id === mcpServerInstanceId
+          ) {
+            req.authInfo = {
+              type: "api_key",
+              userId: apiKeyValidation.apiKey?.userId,
+              userMcpServerInstanceId: mcpServerInstance.id,
+              organizationId: mcpServerInstance.organizationId ?? undefined,
+            };
+            return next();
+          }
+        }
+
+        // OAuth認証を試みる（Auth0 JWTまたはTumiki OAuthトークン）
+        if (hasBearerToken) {
+          const token = authHeader?.slice(7); // "Bearer " を除去
+          
+          // まずTumiki OAuthトークンとして検証
+          const oauthValidation = await validateOAuthToken(token as string, mcpServerInstanceId);
+          if (oauthValidation.valid) {
+            req.authInfo = {
+              type: "oauth",
+              userId: oauthValidation.userId,
+              userMcpServerInstanceId: mcpServerInstance.id,
+              organizationId: mcpServerInstance.organizationId ?? undefined,
+              scope: oauthValidation.scope,
+            };
+            return next();
+          }
+
+          // Auth0 JWT として検証
+          jwtCheck(req, res, (err?: unknown) => {
+            if (!err) {
+              // OAuth認証成功（Auth0）
+              req.authInfo = {
+                type: "oauth",
+                userId: mcpServerInstance.userId,
+                userMcpServerInstanceId: mcpServerInstance.id,
+                organizationId: mcpServerInstance.organizationId ?? undefined,
+                sub: (req as Request & { auth?: JWTAuth }).auth?.payload?.sub,
+                scope: (req as Request & { auth?: JWTAuth }).auth?.payload
+                  ?.scope,
+                permissions: (req as Request & { auth?: JWTAuth }).auth?.payload
+                  ?.permissions,
+              };
+              next();
+            } else {
+              // OAuth認証も失敗した場合
+              sendAuthError(
+                res,
+                401,
+                "Invalid authentication credentials",
+                -32000,
+                { "WWW-Authenticate": 'Bearer realm="MCP API"' },
+              );
+            }
+          });
+          return;
+        }
+
+        // APIキーが無効な場合
+        sendAuthError(res, 401, "Invalid authentication credentials");
         return;
 
       default:

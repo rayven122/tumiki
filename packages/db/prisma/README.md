@@ -228,7 +228,7 @@ transportType に応じて接続方式を選択
   - `createdBy`: ユーザーカスタムサーバーの作成者
   - `visibility`: ユーザーカスタムサーバーの可視性
   - `organizationId`: 組織限定公開時の所属組織ID
-  - `isPublic`: サーバーが公開されているか（レガシー）
+  - `isPublic`: サーバーが公開され��いるか（レガシー）
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -878,6 +878,56 @@ erDiagram
   String chatId FK
   DateTime createdAt
 }
+"OAuthClient" {
+  String id PK
+  String clientId UK
+  String clientSecret
+  String clientSecretHash UK "nullable"
+  String clientName
+  String redirectUris
+  String grantTypes
+  String responseTypes
+  String scope
+  String tokenEndpointAuthMethod
+  String userMcpServerInstanceId FK "nullable"
+  String userId FK
+  Json metadata "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OAuthAccessToken" {
+  String id PK
+  String token UK
+  String tokenHash UK "nullable"
+  String clientId FK
+  String userId FK
+  String scope
+  DateTime expiresAt
+  DateTime createdAt
+}
+"OAuthRefreshToken" {
+  String id PK
+  String token UK
+  String tokenHash UK "nullable"
+  String clientId FK
+  String userId FK
+  String scope
+  DateTime expiresAt "nullable"
+  DateTime createdAt
+}
+"OAuthAuthorizationCode" {
+  String id PK
+  String code UK
+  String codeHash UK "nullable"
+  String clientId FK
+  String userId FK
+  String redirectUri
+  String scope
+  String codeChallenge "nullable"
+  String codeChallengeMethod "nullable"
+  DateTime expiresAt
+  DateTime createdAt
+}
 "waiting_list" {
   String id PK
   String email UK
@@ -891,6 +941,9 @@ erDiagram
 "Vote" }o--|| "Message" : message
 "Suggestion" }o--|| "Document" : document
 "Stream" }o--|| "Chat" : chat
+"OAuthAccessToken" }o--|| "OAuthClient" : client
+"OAuthRefreshToken" }o--|| "OAuthClient" : client
+"OAuthAuthorizationCode" }o--|| "OAuthClient" : client
 ```
 
 ### `Chat`
@@ -947,6 +1000,64 @@ erDiagram
 **Properties**
   - `id`: 
   - `chatId`: 
+  - `createdAt`: 
+
+### `OAuthClient`
+
+**Properties**
+  - `id`: 
+  - `clientId`: 
+  - `clientSecret`: 
+  - `clientSecretHash`: 
+  - `clientName`: 
+  - `redirectUris`: 
+  - `grantTypes`: 
+  - `responseTypes`: 
+  - `scope`: 
+  - `tokenEndpointAuthMethod`: 
+  - `userMcpServerInstanceId`: 
+  - `userId`: 
+  - `metadata`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OAuthAccessToken`
+
+**Properties**
+  - `id`: 
+  - `token`: 
+  - `tokenHash`: 
+  - `clientId`: 
+  - `userId`: 
+  - `scope`: 
+  - `expiresAt`: 
+  - `createdAt`: 
+
+### `OAuthRefreshToken`
+
+**Properties**
+  - `id`: 
+  - `token`: 
+  - `tokenHash`: 
+  - `clientId`: 
+  - `userId`: 
+  - `scope`: 
+  - `expiresAt`: 
+  - `createdAt`: 
+
+### `OAuthAuthorizationCode`
+
+**Properties**
+  - `id`: 
+  - `code`: 
+  - `codeHash`: 
+  - `clientId`: 
+  - `userId`: 
+  - `redirectUri`: 
+  - `scope`: 
+  - `codeChallenge`: 
+  - `codeChallengeMethod`: 
+  - `expiresAt`: 
   - `createdAt`: 
 
 ### `waiting_list`

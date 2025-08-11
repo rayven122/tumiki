@@ -165,6 +165,8 @@ model UserMcpServerInstance {
   organization                Organization?                    @relation(fields: [organizationId], references: [id])
   /// 表示順序（ユーザーごと）
   displayOrder                Int                              @default(0)
+  /// OAuthクライアント（MCPクライアント用）
+  oauthClients                OAuthClient[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

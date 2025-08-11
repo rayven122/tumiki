@@ -1,0 +1,95 @@
+// OAuth 2.0 クライアント管理
+// MCPクライアントのOAuth認証情報を管理
+
+model OAuthClient {
+  id                      String   @id @default(cuid())
+  clientId                String   @unique
+  clientSecret            String   /// @encrypted // 暗号化されたシークレット
+  clientSecretHash        String?  @unique /// @encryption:hash(clientSecret) // ハッシュ化されたシークレット（検証用）
+  clientName              String
+  redirectUris            String[] // 許可されたリダイレクトURI
+  grantTypes              String[] @default(["authorization_code"])
+  responseTypes           String[] @default(["code"])
+  scope                   String   @default("openid profile email offline_access")
+  tokenEndpointAuthMethod String   @default("client_secret_post")
+  
+  // MCPサーバーインスタンスとの関連（遅延バインディング対応）
+  userMcpServerInstanceId String?
+  userMcpServerInstance   UserMcpServerInstance? @relation(fields: [userMcpServerInstanceId], references: [id], onDelete: Cascade)
+  
+  // ユーザーとの関連（DCR時はsystem_dcr_pending）
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 遅延バインディング用メタデータ
+  metadata Json? // { isPending: boolean, boundAt?: Date, boundToUserId?: string }
+  
+  // アクセストークン
+  accessTokens OAuthAccessToken[]
+  
+  // リフレッシュトークン  
+  refreshTokens OAuthRefreshToken[]
+  
+  // 認可コード
+  authorizationCodes OAuthAuthorizationCode[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([userMcpServerInstanceId])
+}
+
+model OAuthAccessToken {
+  id          String   @id @default(cuid())
+  token       String   @unique /// @encrypted // 暗号化されたトークン
+  tokenHash   String?  @unique /// @encryption:hash(token) // ハッシュ化されたトークン（検証用）
+  clientId    String
+  client      OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope       String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([clientId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model OAuthRefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique /// @encrypted // 暗号化されたトークン
+  tokenHash   String?  @unique /// @encryption:hash(token) // ハッシュ化されたトークン（検証用）
+  clientId    String
+  client      OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope       String
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  
+  @@index([clientId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model OAuthAuthorizationCode {
+  id                String   @id @default(cuid())
+  code              String   @unique /// @encrypted // 暗号化されたコード
+  codeHash          String?  @unique /// @encryption:hash(code) // ハッシュ化されたコード（検証用）
+  clientId          String
+  client            OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri       String
+  scope             String
+  codeChallenge     String?
+  codeChallengeMethod String?
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  
+  @@index([clientId])
+  @@index([userId])
+  @@index([expiresAt])
+}
