@@ -1,0 +1,44 @@
+name: Comment Deployment URL
+description: デプロイURLをPRまたはコミットにコメントします。PRの場合は既存コメントを更新
+
+inputs:
+  deployment_url:
+    description: デプロイ先URL
+    required: true
+  environment:
+    description: デプロイ環境
+    required: true
+  github_token:
+    description: GitHubトークン
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: 📝 Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          const script = require('${{ github.action_path }}/../../../scripts/comment-deployment.js');
+          await script({
+            github,
+            context,
+            deploymentUrl: '${{ inputs.deployment_url }}',
+            environment: '${{ inputs.environment }}',
+            isPR: true
+          });
+
+    - name: 📝 Comment on commit
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          await github.rest.repos.createCommitComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: context.sha,
+            body: `✅ Vercel ${{ inputs.environment }} deployment completed: ${{ inputs.deployment_url }}`
+          });

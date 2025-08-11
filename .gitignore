@@ -118,3 +118,6 @@ waitingList.json
 .claude/settings.local.json
 
 /test-results
+
+# Production configuration files
+*production.json
