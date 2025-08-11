@@ -6,6 +6,20 @@
  * 実行方法:
  * BACKUP_DATABASE_URL=postgresql://... DATABASE_URL=postgresql://... \
  * pnpm tsx packages/scripts/src/migration-completed/offline-migration.ts
+ *
+ * 注意: このスクリプトは古いスキーマから新しいスキーマへの移行用です。
+ * 現在のPrismaスキーマと古いバックアップDBのスキーマに差異がある場合、
+ * 型エラーが発生する可能性がありますが、実際の移行処理には影響しません。
+ *
+ * 主な差分:
+ * - Tool: isDeleted → isEnabled への変更
+ * - UserToolGroupTool: userToolGroupId → toolGroupId への変更
+ * - UserMcpServerInstanceToolGroup: 同様の変更
+ * - McpServerRequestData: フィールド名の変更
+ * - Chat/Message/Stream: スキーマ構造の変更
+ * - Document: 複合ユニークキーの追加
+ * - Vote: ユニークキーの変更
+ * - WaitingList/Organization関連: フィールドの変更
  */
 import { resolve } from "path";
 import { PrismaClient } from "@prisma/client";
@@ -617,8 +631,600 @@ async function migrateData() {
       logWarning(`${apiKeySkipped} 件のAPIキーをスキップしました`);
     }
 
-    // チャット、ドキュメントなど必要に応じて追加
-    // ...
+    // 2. Toolの移行
+    logProgress("ツール定義を移行中...");
+    const tools = await backupDb.tool.findMany();
+    let toolMigrated = 0;
+    let toolSkipped = 0;
+
+    for (const tool of tools) {
+      try {
+        // 複合ユニークキーで既存レコードを確認
+        const existing = await productionDb.tool.findUnique({
+          where: {
+            mcpServerId_name: {
+              mcpServerId: tool.mcpServerId,
+              name: tool.name,
+            },
+          },
+        });
+
+        if (existing) {
+          // 既存の場合は更新
+          await productionDb.tool.update({
+            where: {
+              mcpServerId_name: {
+                mcpServerId: tool.mcpServerId,
+                name: tool.name,
+              },
+            },
+            data: {
+              description: tool.description,
+              inputSchema: tool.inputSchema,
+              // isDeleted → isEnabled の変換（古いスキーマとの互換性）
+              isEnabled: !(tool as any).isDeleted,
+              updatedAt: tool.updatedAt,
+            },
+          });
+        } else {
+          // 新規の場合は作成
+          await productionDb.tool.create({
+            data: {
+              id: tool.id,
+              mcpServerId: tool.mcpServerId,
+              name: tool.name,
+              description: tool.description,
+              inputSchema: tool.inputSchema,
+              // isDeleted → isEnabled の変換
+              isEnabled: !(tool as any).isDeleted,
+              createdAt: tool.createdAt,
+              updatedAt: tool.updatedAt,
+            },
+          });
+        }
+        toolMigrated++;
+      } catch (error) {
+        logError(
+          `Tool (mcpServerId: ${tool.mcpServerId}, name: ${tool.name}) の移行に失敗しました: ${error}`,
+        );
+        toolSkipped++;
+      }
+    }
+
+    if (toolMigrated > 0) {
+      logSuccess(`${toolMigrated} 件のツール定義を移行しました`);
+    }
+    if (toolSkipped > 0) {
+      logWarning(`${toolSkipped} 件のツール定義をスキップしました`);
+    }
+
+    // 3. UserToolGroupToolの移行
+    logProgress("ツールグループツール関係を移行中...");
+    const toolGroupTools = await backupDb.userToolGroupTool.findMany();
+    let toolGroupToolMigrated = 0;
+    let toolGroupToolSkipped = 0;
+
+    // 存在するUserToolGroupのIDを事前に取得
+    const existingToolGroups = await productionDb.userToolGroup.findMany({
+      select: { id: true },
+    });
+    const existingToolGroupIds = new Set(
+      existingToolGroups.map((group) => group.id),
+    );
+
+    // 存在するToolのIDを事前に取得（名前ベースのマッピングも作成）
+    const existingTools = await productionDb.tool.findMany({
+      select: { id: true, name: true, mcpServerId: true },
+    });
+    const existingToolIds = new Set(existingTools.map((tool) => tool.id));
+
+    // バックアップDBのツール情報を取得（名前マッピング用）
+    const backupTools = await backupDb.tool.findMany({
+      select: { id: true, name: true, mcpServerId: true },
+    });
+
+    // ツールIDマッピングを作成: 旧ID → 新ID
+    const toolIdMapping = new Map<string, string>();
+    for (const backupTool of backupTools) {
+      const prodTool = existingTools.find(
+        (t) =>
+          t.name === backupTool.name &&
+          t.mcpServerId === backupTool.mcpServerId,
+      );
+      if (prodTool) {
+        toolIdMapping.set(backupTool.id, prodTool.id);
+      }
+    }
+
+    for (const groupTool of toolGroupTools) {
+      // バックアップDBのフィールド構造:
+      // - userMcpServerConfigId: UserMcpServerConfigとの関連
+      // - toolGroupId: UserToolGroupとの関連（これが正しいフィールド名）
+      // - toolId: Toolとの関連
+      const record = groupTool as any;
+      const toolGroupId = record.toolGroupId; // 正しいフィールド名を使用
+
+      if (!toolGroupId) {
+        logWarning(
+          `UserToolGroupTool にツールグループIDが見つかりません。スキップ`,
+        );
+        toolGroupToolSkipped++;
+        continue;
+      }
+
+      // 関連するUserToolGroupが存在するかチェック
+      if (!existingToolGroupIds.has(toolGroupId)) {
+        // 存在しない場合はスキップ（ログは出さない：大量に出力されるため）
+        toolGroupToolSkipped++;
+        continue;
+      }
+
+      // ツールIDをマッピングして新しいIDを取得
+      const mappedToolId = toolIdMapping.get(groupTool.toolId);
+      if (!mappedToolId) {
+        // マッピングが見つからない場合はスキップ（削除されたツール）
+        toolGroupToolSkipped++;
+        continue;
+      }
+
+      try {
+        await productionDb.userToolGroupTool.upsert({
+          where: {
+            toolGroupId_userMcpServerConfigId_toolId: {
+              toolGroupId: toolGroupId,
+              userMcpServerConfigId: groupTool.userMcpServerConfigId,
+              toolId: mappedToolId, // マッピングされた新しいIDを使用
+            },
+          },
+          create: {
+            toolGroupId: toolGroupId,
+            toolId: mappedToolId, // マッピングされた新しいIDを使用
+            userMcpServerConfigId: groupTool.userMcpServerConfigId,
+            sortOrder: groupTool.sortOrder || 0,
+            createdAt: groupTool.createdAt,
+          },
+          update: {
+            sortOrder: groupTool.sortOrder || 0,
+          },
+        });
+        toolGroupToolMigrated++;
+      } catch (error) {
+        logError(
+          `UserToolGroupTool (GroupID: ${toolGroupId}, ToolID: ${groupTool.toolId}) の移行に失敗しました: ${error}`,
+        );
+        toolGroupToolSkipped++;
+      }
+    }
+
+    if (toolGroupToolMigrated > 0) {
+      logSuccess(
+        `${toolGroupToolMigrated} 件のツールグループツール関係を移行しました`,
+      );
+    }
+    if (toolGroupToolSkipped > 0) {
+      logWarning(
+        `${toolGroupToolSkipped} 件のツールグループツール関係をスキップしました`,
+      );
+    }
+
+    // 4. UserMcpServerInstanceToolGroupの移行
+    logProgress("MCPインスタンスツールグループ関係を移行中...");
+    const instanceToolGroups =
+      await backupDb.userMcpServerInstanceToolGroup.findMany();
+    let instanceToolGroupMigrated = 0;
+    let instanceToolGroupSkipped = 0;
+
+    for (const instanceGroup of instanceToolGroups) {
+      // フィールド名の変換
+      const mcpServerInstanceId =
+        (instanceGroup as any).userMcpServerInstanceId ||
+        (instanceGroup as any).mcpServerInstanceId;
+      const toolGroupId =
+        (instanceGroup as any).userToolGroupId ||
+        (instanceGroup as any).toolGroupId;
+
+      if (!mcpServerInstanceId || !toolGroupId) {
+        logWarning(
+          `UserMcpServerInstanceToolGroup にインスタンスIDまたはツールグループIDが見つかりません`,
+        );
+        instanceToolGroupSkipped++;
+        continue;
+      }
+
+      // 関連するインスタンスとツールグループが存在するかチェック
+      if (!existingInstanceIds.has(mcpServerInstanceId)) {
+        logWarning(
+          `UserMcpServerInstanceToolGroup のインスタンス (${mcpServerInstanceId}) が存在しないためスキップ`,
+        );
+        instanceToolGroupSkipped++;
+        continue;
+      }
+
+      if (!existingToolGroupIds.has(toolGroupId)) {
+        logWarning(
+          `UserMcpServerInstanceToolGroup のツールグループ (${toolGroupId}) が存在しないためスキップ`,
+        );
+        instanceToolGroupSkipped++;
+        continue;
+      }
+
+      try {
+        await productionDb.userMcpServerInstanceToolGroup.upsert({
+          where: {
+            mcpServerInstanceId_toolGroupId: {
+              mcpServerInstanceId: mcpServerInstanceId,
+              toolGroupId: toolGroupId,
+            },
+          },
+          create: {
+            mcpServerInstanceId: mcpServerInstanceId,
+            toolGroupId: toolGroupId,
+            sortOrder: (instanceGroup as any).sortOrder || 0,
+            createdAt: instanceGroup.createdAt,
+          },
+          update: {
+            sortOrder: (instanceGroup as any).sortOrder || 0,
+          },
+        });
+        instanceToolGroupMigrated++;
+      } catch (error) {
+        logError(
+          `UserMcpServerInstanceToolGroup の移行に失敗しました: ${error}`,
+        );
+        instanceToolGroupSkipped++;
+      }
+    }
+
+    if (instanceToolGroupMigrated > 0) {
+      logSuccess(
+        `${instanceToolGroupMigrated} 件のMCPインスタンスツールグループ関係を移行しました`,
+      );
+    }
+    if (instanceToolGroupSkipped > 0) {
+      logWarning(
+        `${instanceToolGroupSkipped} 件のMCPインスタンスツールグループ関係をスキップしました`,
+      );
+    }
+
+    // 5. McpServerRequestDataの移行
+    logProgress("MCPサーバーリクエストデータを移行中...");
+
+    // 関連するRequestLogが存在するものだけを取得
+    const requestDataRecords = await backupDb.$queryRaw`
+      SELECT rd.* FROM "McpServerRequestData" rd
+      INNER JOIN "McpServerRequestLog" rl ON rd."requestLogId" = rl.id
+      LIMIT 10000
+    `;
+
+    let requestDataMigrated = 0;
+    let requestDataSkipped = 0;
+
+    // 存在するRequestLogのIDを事前に取得
+    const existingLogs = await productionDb.mcpServerRequestLog.findMany({
+      select: { id: true },
+    });
+    const existingLogIds = new Set(existingLogs.map((log) => log.id));
+
+    for (const requestData of requestDataRecords as any[]) {
+      // 関連するRequestLogが存在するかチェック
+      if (!existingLogIds.has(requestData.requestLogId)) {
+        // ログが存在しない場合はスキップ
+        requestDataSkipped++;
+        continue;
+      }
+
+      try {
+        // フィールド名の変換が必要な場合
+        const inputData =
+          requestData.compressedData ||
+          requestData.inputDataCompressed ||
+          Buffer.from([]);
+        const outputData = requestData.outputDataCompressed || Buffer.from([]);
+
+        const dataToInsert = {
+          id: requestData.id,
+          requestLogId: requestData.requestLogId,
+          inputDataCompressed: inputData,
+          outputDataCompressed: outputData,
+          originalInputSize:
+            requestData.inputDataSize ||
+            requestData.originalInputSize ||
+            inputData.length,
+          originalOutputSize:
+            requestData.outputDataSize ||
+            requestData.originalOutputSize ||
+            outputData.length,
+          compressedInputSize:
+            requestData.compressedInputSize || inputData.length,
+          compressedOutputSize:
+            requestData.compressedOutputSize || outputData.length,
+          compressionType: requestData.compressionType || "GZIP",
+          compressionRatio: requestData.compressionRatio || 1.0,
+          createdAt: requestData.createdAt,
+        };
+
+        await productionDb.mcpServerRequestData.upsert({
+          where: { id: requestData.id },
+          create: dataToInsert,
+          update: {
+            inputDataCompressed: dataToInsert.inputDataCompressed,
+            outputDataCompressed: dataToInsert.outputDataCompressed,
+            originalInputSize: dataToInsert.originalInputSize,
+            originalOutputSize: dataToInsert.originalOutputSize,
+            compressedInputSize: dataToInsert.compressedInputSize,
+            compressedOutputSize: dataToInsert.compressedOutputSize,
+            compressionType: dataToInsert.compressionType,
+            compressionRatio: dataToInsert.compressionRatio,
+          },
+        });
+        requestDataMigrated++;
+      } catch (error) {
+        // エラーログは表示しない（大量になる可能性があるため）
+        requestDataSkipped++;
+      }
+    }
+
+    if (requestDataMigrated > 0) {
+      logSuccess(
+        `${requestDataMigrated} 件のMCPサーバーリクエストデータを移行しました`,
+      );
+    }
+    if (requestDataSkipped > 0) {
+      logWarning(
+        `${requestDataSkipped} 件のMCPサーバーリクエストデータをスキップしました`,
+      );
+    }
+
+    // 6. Chat, Stream, Message, Suggestion, Voteの移行
+    logProgress("チャット関連データを移行中...");
+
+    // Chatの移行
+    const chats = await backupDb.chat.findMany();
+    for (const chat of chats) {
+      // userIdからorganizationIdを特定
+      const userId = (chat as any).userId;
+      const organizationId = userToPersonalOrgMap.get(userId);
+
+      if (!organizationId) {
+        logWarning(`Chat (ID: ${chat.id}) の organizationId が特定できません`);
+        continue;
+      }
+
+      const { userId: _, ...chatData } = chat as any;
+
+      await productionDb.chat.upsert({
+        where: { id: chat.id },
+        create: {
+          ...chatData,
+          organizationId,
+        },
+        update: {
+          ...chatData,
+          organizationId,
+        },
+      });
+    }
+    logSuccess(`${chats.length} 件のチャットを移行しました`);
+
+    // Streamの移行
+    const streams = await backupDb.stream.findMany();
+    for (const stream of streams) {
+      await productionDb.stream.upsert({
+        where: { id: stream.id },
+        create: stream as any,
+        update: {
+          chatId: stream.chatId,
+          title: stream.title,
+          updatedAt: stream.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${streams.length} 件のストリームを移行しました`);
+
+    // Messageの移行
+    const messages = await backupDb.message.findMany({
+      take: 10000, // 大量のデータの場合は制限
+    });
+    for (const message of messages) {
+      await productionDb.message.upsert({
+        where: { id: message.id },
+        create: message as any,
+        update: {
+          streamId: message.streamId,
+          role: message.role,
+          content: message.content,
+          model: message.model,
+          stop: message.stop,
+          stopReason: message.stopReason,
+          updatedAt: message.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${messages.length} 件のメッセージを移行しました`);
+
+    // Suggestionの移行
+    const suggestions = await backupDb.suggestion.findMany();
+    for (const suggestion of suggestions) {
+      await productionDb.suggestion.upsert({
+        where: { id: suggestion.id },
+        create: suggestion as any,
+        update: {
+          messageId: suggestion.messageId,
+          title: suggestion.title,
+          updatedAt: suggestion.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${suggestions.length} 件の提案を移行しました`);
+
+    // Voteの移行
+    const votes = await backupDb.vote.findMany();
+    for (const vote of votes) {
+      await productionDb.vote.upsert({
+        where: { id: vote.id },
+        create: vote as any,
+        update: {
+          messageId: vote.messageId,
+          isUpvoted: vote.isUpvoted,
+          updatedAt: vote.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${votes.length} 件の投票を移行しました`);
+
+    // 7. Documentの移行
+    logProgress("ドキュメントを移行中...");
+    const documents = await backupDb.document.findMany();
+    for (const doc of documents) {
+      // userIdからorganizationIdを特定
+      const userId = (doc as any).userId;
+      const organizationId = userToPersonalOrgMap.get(userId);
+
+      if (!organizationId) {
+        logWarning(
+          `Document (ID: ${doc.id}) の organizationId が特定できません`,
+        );
+        continue;
+      }
+
+      const { userId: _, ...docData } = doc as any;
+
+      await productionDb.document.upsert({
+        where: { id: doc.id },
+        create: {
+          ...docData,
+          organizationId,
+        },
+        update: {
+          ...docData,
+          organizationId,
+        },
+      });
+    }
+    logSuccess(`${documents.length} 件のドキュメントを移行しました`);
+
+    // 8. WaitingListの移行
+    logProgress("ウェイティングリストを移行中...");
+    const waitingListEntries = await backupDb.waitingList.findMany();
+    for (const entry of waitingListEntries) {
+      await productionDb.waitingList.upsert({
+        where: { id: entry.id },
+        create: entry as any,
+        update: {
+          email: entry.email,
+          name: entry.name,
+          company: entry.company,
+          role: entry.role,
+          useCase: entry.useCase,
+          status: entry.status,
+          approvedAt: entry.approvedAt,
+          approvedBy: entry.approvedBy,
+          updatedAt: entry.updatedAt,
+        },
+      });
+    }
+    logSuccess(
+      `${waitingListEntries.length} 件のウェイティングリストエントリーを移行しました`,
+    );
+
+    // 9. 組織関連の追加テーブルの移行
+    logProgress("組織関連の追加テーブルを移行中...");
+
+    // OrganizationGroupの移行
+    const orgGroups = await backupDb.organizationGroup.findMany();
+    for (const group of orgGroups) {
+      await productionDb.organizationGroup.upsert({
+        where: { id: group.id },
+        create: group as any,
+        update: {
+          organizationId: group.organizationId,
+          name: group.name,
+          description: group.description,
+          isDeleted: group.isDeleted,
+          updatedAt: group.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${orgGroups.length} 件の組織グループを移行しました`);
+
+    // OrganizationRoleの移行
+    const orgRoles = await backupDb.organizationRole.findMany();
+    for (const role of orgRoles) {
+      await productionDb.organizationRole.upsert({
+        where: { id: role.id },
+        create: role as any,
+        update: {
+          organizationId: role.organizationId,
+          name: role.name,
+          description: role.description,
+          isSystemRole: role.isSystemRole,
+          isDeleted: role.isDeleted,
+          updatedAt: role.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${orgRoles.length} 件の組織ロールを移行しました`);
+
+    // RolePermissionの移行
+    const rolePermissions = await backupDb.rolePermission.findMany();
+    for (const permission of rolePermissions) {
+      await productionDb.rolePermission.upsert({
+        where: {
+          roleId_resource_action: {
+            roleId: permission.roleId,
+            resource: permission.resource,
+            action: permission.action,
+          },
+        },
+        create: permission as any,
+        update: {
+          updatedAt: permission.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${rolePermissions.length} 件のロール権限を移行しました`);
+
+    // ResourceAccessControlの移行
+    const accessControls = await backupDb.resourceAccessControl.findMany();
+    for (const control of accessControls) {
+      await productionDb.resourceAccessControl.upsert({
+        where: { id: control.id },
+        create: control as any,
+        update: {
+          organizationId: control.organizationId,
+          resourceType: control.resourceType,
+          resourceId: control.resourceId,
+          principalType: control.principalType,
+          principalId: control.principalId,
+          permission: control.permission,
+          updatedAt: control.updatedAt,
+        },
+      });
+    }
+    logSuccess(
+      `${accessControls.length} 件のリソースアクセス制御を移行しました`,
+    );
+
+    // OrganizationInvitationの移行
+    const invitations = await backupDb.organizationInvitation.findMany();
+    for (const invitation of invitations) {
+      await productionDb.organizationInvitation.upsert({
+        where: { id: invitation.id },
+        create: invitation as any,
+        update: {
+          organizationId: invitation.organizationId,
+          email: invitation.email,
+          roleId: invitation.roleId,
+          invitedBy: invitation.invitedBy,
+          expiresAt: invitation.expiresAt,
+          acceptedAt: invitation.acceptedAt,
+          acceptedBy: invitation.acceptedBy,
+          status: invitation.status,
+          updatedAt: invitation.updatedAt,
+        },
+      });
+    }
+    logSuccess(`${invitations.length} 件の組織招待を移行しました`);
 
     // ========================================
     // 完了
