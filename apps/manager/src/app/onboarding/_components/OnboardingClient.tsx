@@ -19,12 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { OrganizationCreateForm } from "./_components/OrganizationCreateForm";
+import { OrganizationCreateForm } from "./OrganizationCreateForm";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
-import { WelcomeLoadingOverlay } from "./_components/WelcomeLoadingOverlay";
+import { WelcomeLoadingOverlay } from "./WelcomeLoadingOverlay";
 
-const OnboardingPage = () => {
+type OnboardingClientProps = {
+  isFirstLogin: boolean;
+};
+
+export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
   const router = useRouter();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
@@ -32,34 +36,27 @@ const OnboardingPage = () => {
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
 
-  // オンボーディング状況をチェック
-  const { data: onboardingStatus } = api.user.checkOnboardingStatus.useQuery();
-  const isFirstLogin =
-    onboardingStatus && !onboardingStatus.isOnboardingCompleted;
-
   const utils = api.useUtils();
 
-  // オンボーディング完了ミューテーション
-  const completeOnboarding = api.user.completeOnboarding.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.user.checkOnboardingStatus.invalidate(),
-        utils.organization.getUserOrganizations.invalidate(),
-      ]);
-      toast.success("アカウント設定が完了しました！");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  // 個人組織作成ミューテーション（オンボーディング完了）
+  const createPersonalOrganization =
+    api.organization.createPersonalOrganization.useMutation({
+      onSuccess: async () => {
+        await utils.organization.getUserOrganizations.invalidate();
+        toast.success("アカウント設定が完了しました！");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
 
   const handlePersonalUse = async () => {
     setSelectedOption("personal");
 
-    // 初回ログイン時はオンボーディング完了をマーク
+    // 初回ログイン時は個人組織を作成
     if (isFirstLogin) {
       setShowWelcomeOverlay(true);
-      await completeOnboarding.mutateAsync();
+      await createPersonalOrganization.mutateAsync();
     } else {
       // 初回ログインでない場合は直接遷移
       router.push("/mcp");
@@ -80,9 +77,9 @@ const OnboardingPage = () => {
   const handleOrganizationCreated = async () => {
     setIsOrgDialogOpen(false);
 
-    // 初回ログイン時はオンボーディング完了をマーク
+    // 初回ログイン時は個人組織を作成
     if (isFirstLogin) {
-      await completeOnboarding.mutateAsync();
+      await createPersonalOrganization.mutateAsync();
     }
 
     // 組織作成後はウェルカムオーバーレイを表示
@@ -112,12 +109,14 @@ const OnboardingPage = () => {
             className={clsx(
               "transition-all hover:shadow-lg",
               selectedOption === "personal" && "ring-primary ring-2",
-              completeOnboarding.isPending
+              createPersonalOrganization.isPending
                 ? "cursor-not-allowed opacity-70"
                 : "cursor-pointer",
             )}
             onClick={
-              completeOnboarding.isPending ? undefined : handlePersonalUse
+              createPersonalOrganization.isPending
+                ? undefined
+                : handlePersonalUse
             }
           >
             <CardHeader className="text-center">
@@ -150,13 +149,13 @@ const OnboardingPage = () => {
               </ul>
               <Button
                 className="mt-6 w-full"
-                disabled={completeOnboarding.isPending}
+                disabled={createPersonalOrganization.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   void handlePersonalUse();
                 }}
               >
-                {completeOnboarding.isPending &&
+                {createPersonalOrganization.isPending &&
                 selectedOption === "personal" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -177,11 +176,13 @@ const OnboardingPage = () => {
             className={clsx(
               "transition-all hover:shadow-lg",
               selectedOption === "team" && "ring-primary ring-2",
-              completeOnboarding.isPending
+              createPersonalOrganization.isPending
                 ? "cursor-not-allowed opacity-70"
                 : "cursor-pointer",
             )}
-            onClick={completeOnboarding.isPending ? undefined : handleTeamUse}
+            onClick={
+              createPersonalOrganization.isPending ? undefined : handleTeamUse
+            }
           >
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
@@ -214,13 +215,14 @@ const OnboardingPage = () => {
               <Button
                 className="mt-6 w-full"
                 variant="outline"
-                disabled={completeOnboarding.isPending}
+                disabled={createPersonalOrganization.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleTeamUse();
                 }}
               >
-                {completeOnboarding.isPending && selectedOption === "team" ? (
+                {createPersonalOrganization.isPending &&
+                selectedOption === "team" ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     設定中...
@@ -258,5 +260,3 @@ const OnboardingPage = () => {
     </div>
   );
 };
-
-export default OnboardingPage;

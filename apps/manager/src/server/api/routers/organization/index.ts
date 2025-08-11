@@ -1,4 +1,8 @@
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  authenticatedProcedure,
+  createTRPCRouter,
+  protectedProcedure,
+} from "@/server/api/trpc";
 import { getUserOrganizations } from "./getUserOrganizations";
 import { createOrganization, createOrganizationInputSchema } from "./create";
 import { createPersonalOrganization } from "./createPersonalOrganization";
@@ -45,12 +49,12 @@ export const organizationRouter = createTRPCRouter({
     .query(getUserOrganizations),
 
   // 組織作成
-  create: protectedProcedure
+  create: authenticatedProcedure
     .input(createOrganizationInputSchema)
     .mutation(createOrganization),
 
   // 個人組織作成（オンボーディング用）
-  createPersonalOrganization: protectedProcedure.mutation(
+  createPersonalOrganization: authenticatedProcedure.mutation(
     createPersonalOrganization,
   ),
 

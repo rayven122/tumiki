@@ -14,8 +14,8 @@ const PUBLIC_PATHS = [
 ] as const;
 
 export async function middleware(request: NextRequest) {
-  request.headers.set(URL_HEADER_KEY, request.url);
   const pathname = request.nextUrl.pathname;
+  request.headers.set(URL_HEADER_KEY, request.url);
 
   // メンテナンスモードチェック
   const isMaintenanceMode = process.env.MAINTENANCE_MODE === "true";
