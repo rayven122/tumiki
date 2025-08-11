@@ -37,7 +37,6 @@ runs:
         VERCEL_TOKEN: ${{ inputs.vercel_token }}
         DATABASE_URL: ${{ inputs.database_url }}
         NEXT_PUBLIC_API_URL: ${{ inputs.api_url }}
-        # GitHub ActionsのワークフローでVERCEL_ORG_IDとVERCEL_PROJECT_IDが設定されている前提
       run: |
         echo "Deploying to ${{ inputs.environment }} environment..."
         
@@ -49,13 +48,12 @@ runs:
         fi
 
         # Vercel側でビルドを実行するようにソースコードを直接デプロイ
-        # --yesフラグで対話モードを無効化
         if [[ "${{ inputs.environment }}" == "production" ]]; then
           echo "Deploying to production..."
-          DEPLOYMENT_URL=$(vercel --prod --yes --token=$VERCEL_TOKEN)
+          DEPLOYMENT_URL=$(vercel deploy --prod --token=$VERCEL_TOKEN)
         else
           echo "Deploying to preview/staging..."
-          DEPLOYMENT_URL=$(vercel --yes --token=$VERCEL_TOKEN)
+          DEPLOYMENT_URL=$(vercel deploy --token=$VERCEL_TOKEN)
         fi
 
         echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
