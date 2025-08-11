@@ -53,13 +53,45 @@ jobs:
 
             建設的で役に立つフィードバックを提供してください。
 
-          # Optional: Add custom instructions for Japanese language support
+          # Add custom instructions for Japanese language support with review history management
           custom_instructions: |
             以下のガイドラインに従ってください：
             - 全てのコメントと回答を日本語で記述してください
             - コーディング規約に従ってください
             - 建設的で丁寧なフィードバックを提供してください
             - 技術的な用語は適切な日本語または英語で説明してください
+
+            レビュー結果は必ず以下の形式で出力してください：
+
+            ## 🤖 Claude Code Review
+
+            ### 📝 最新のレビュー結果
+            **日時**: {現在の日時をYYYY-MM-DD HH:mm形式で記載}
+            **コミット**: {レビュー対象のコミットハッシュ（最初の7文字）}
+            **評価**: {以下から選択: ✅ 問題なし / ⚠️ 改善提案あり / ❌ 要修正}
+
+            #### サマリー
+            {主な指摘事項を3-5行で簡潔に記載。重要度の高いものから順に記載}
+
+            #### 詳細
+            - **コード品質**: {良好/改善余地あり/要改善など簡潔な評価}
+            - **潜在的な問題**: {なし/軽微/要対応など簡潔な評価}
+            - **セキュリティ**: {問題なし/確認事項あり/要修正など簡潔な評価}
+            - **改善提案**: {主要な提案を1行で。なければ「特になし」}
+
+            ---
+
+            ### 📚 過去のレビュー履歴
+
+            {既存のコメント内容に過去のレビューがある場合、以下の形式で各レビューを個別に折りたたんで追加}
+            {新しいレビューから古いレビューの順（降順）で配置}
+
+            <details>
+            <summary>レビュー #N - {過去の日時} - {過去の評価アイコン}</summary>
+
+            {過去のレビュー内容をそのまま保持}
+
+            </details>
 
           # Optional: Use sticky comments to make Claude reuse the same comment on subsequent pushes to the same PR
           # use_sticky_comment: true
