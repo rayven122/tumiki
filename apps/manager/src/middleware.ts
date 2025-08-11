@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { ONBOARDING_CHECK_HEADER_KEY, URL_HEADER_KEY } from "./constants/url";
-import { auth0 } from "@tumiki/auth/edge";
+import { URL_HEADER_KEY } from "./constants/url";
+import { auth0, auth0OAuth } from "@tumiki/auth/edge";
 
 // 認証不要のパス定数
 const PUBLIC_PATHS = [
@@ -11,15 +11,11 @@ const PUBLIC_PATHS = [
   "/legal/tokusho",
   "/legal/privacy",
   "/legal/terms",
-  "/test-headers", // テスト用
 ] as const;
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-
-  // ヘッダーを設定するための新しいヘッダーオブジェクトを作成
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set(URL_HEADER_KEY, request.url);
+  request.headers.set(URL_HEADER_KEY, request.url);
 
   // メンテナンスモードチェック
   const isMaintenanceMode = process.env.MAINTENANCE_MODE === "true";
@@ -60,7 +56,7 @@ export async function middleware(request: NextRequest) {
 
   // OAuth専用パスの場合はOAuth専用クライアントを使用
   if (isOAuthPath) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return auth0OAuth.middleware(request);
   }
 
   // 認証不要のパス判定
@@ -69,26 +65,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/auth");
 
   if (isPublicPath) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return auth0.middleware(request);
   }
 
   // 認証必要パスでのセッションチェック
   const session = await auth0.getSession(request);
   if (session) {
-    // オンボーディングチェックが必要なパスかどうか判定
-    // PUBLIC_PATHS + /onboarding 以外のパスはオンボーディングチェックが必要
-    const requiresOrganization = ![...PUBLIC_PATHS, "/onboarding"].includes(
-      pathname,
-    );
-    if (requiresOrganization) {
-      // リクエストヘッダーにフラグを設定
-      requestHeaders.set(ONBOARDING_CHECK_HEADER_KEY, "true");
-    }
-
-    // リクエストヘッダーを付与してレスポンスを返す
-    return NextResponse.next({
-      request: { headers: requestHeaders },
-    });
+    return auth0.middleware(request);
   }
 
   // 認証されていない場合、Auth0のログイン画面にリダイレクト
