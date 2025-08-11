@@ -111,7 +111,6 @@ jobs:
           instance_name: ${{ secrets.GCE_INSTANCE_NAME_PRODUCTION }}
           zone: ${{ secrets.GCE_ZONE }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-          api_url: ${{ secrets.NEXT_PUBLIC_API_URL_PRODUCTION }}
 
   # デプロイ結果通知
   notify:

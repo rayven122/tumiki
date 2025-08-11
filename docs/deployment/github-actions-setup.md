@@ -104,22 +104,6 @@ postgresql://user:password@host:port/staging_db?schema=public
 postgresql://user:password@host:port/production_db?schema=public
 ```
 
-### 4. アプリケーション設定
-
-#### `NEXT_PUBLIC_API_URL_STAGING`
-ステージング環境のAPI URL
-
-```
-https://stg-api.tumiki.cloud
-```
-
-#### `NEXT_PUBLIC_API_URL_PRODUCTION`
-本番環境のAPI URL
-
-```
-https://api.tumiki.cloud
-```
-
 ## GitHub Secretsの登録方法
 
 1. GitHubリポジトリにアクセス
@@ -146,8 +130,6 @@ gh secret set GCE_ZONE --body="asia-northeast2-c"
 gh secret set GCE_INSTANCE_NAME_PRODUCTION --body="tumiki-instance-production"
 gh secret set DATABASE_URL_STAGING --body="your-staging-db-url"
 gh secret set DATABASE_URL_PRODUCTION --body="your-production-db-url"
-gh secret set NEXT_PUBLIC_API_URL_STAGING --body="https://stg-api.tumiki.cloud"
-gh secret set NEXT_PUBLIC_API_URL_PRODUCTION --body="https://api.tumiki.cloud"
 
 # JSONファイルから読み込む場合
 gh secret set GCP_SA_KEY_PRODUCTION < sa-key-production.json
@@ -167,7 +149,6 @@ gh secret set GCP_SA_KEY_PRODUCTION < sa-key-production.json
 
 各環境で以下のSecretsを設定：
 - `DATABASE_URL`
-- `NEXT_PUBLIC_API_URL`
 - `GCP_SA_KEY` (本番環境のみ)
 - `GCE_INSTANCE_NAME` (本番環境のみ)
 

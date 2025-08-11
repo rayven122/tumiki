@@ -14,9 +14,6 @@ inputs:
   project_id:
     description: GCPプロジェクトID
     required: true
-  api_url:
-    description: API URL（本番環境用）
-    required: true
 
 runs:
   using: composite
@@ -38,15 +35,12 @@ runs:
 
     - name: 🚀 Deploy to GCE
       shell: bash
-      env:
-        NEXT_PUBLIC_API_URL: ${{ inputs.api_url }}
       run: |
         echo "Deploying to GCE instance: ${{ inputs.instance_name }}"
 
         # Create environment file
         cat > .env.deploy << EOF
         NODE_ENV=production
-        NEXT_PUBLIC_API_URL=${{ inputs.api_url }}
         EOF
 
         # Run deployment
