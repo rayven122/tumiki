@@ -25,7 +25,7 @@ export const CommunitySection = () => {
         <div className="grid gap-8 md:grid-cols-2">
           {/* Discord Card */}
           <motion.a
-            href="https://discord.gg/EBxEcKxf"
+            href="https://discord.gg/gp9SetUmGe"
             target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, x: -20 }}
