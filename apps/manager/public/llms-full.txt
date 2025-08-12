@@ -254,7 +254,7 @@ AI: GitHubのコミット履歴を分析、Linearのタスクを自動更新
 - チュートリアル: https://learn.tumiki.cloud/
 
 ### コミュニティ
-- Discord: https://discord.gg/tumiki
+- Discord: https://discord.gg/gp9SetUmGe
 - GitHub: https://github.com/tumiki
 - Twitter: @tumiki_cloud
 
