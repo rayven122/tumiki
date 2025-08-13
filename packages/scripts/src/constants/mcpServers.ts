@@ -129,4 +129,26 @@ export const MCP_SERVERS = [
     envVars: ["MICROCMS_SERVICE_ID", "MICROCMS_API_KEY"],
     isPublic: true,
   },
+  {
+    name: "Google Search Console",
+    iconPath: "/logos/google-search-console.svg",
+    command: "node",
+    args: ["node_modules/mcp-server-gsc/dist/index.js"],
+    envVars: ["GOOGLE_APPLICATION_CREDENTIALS"],
+    isPublic: true,
+  },
+  {
+    name: "n8n MCP",
+    iconPath: "/logos/n8n.png",
+    command: "node",
+    args: ["node_modules/n8n-mcp/dist/mcp/index.js"],
+    envVars: [
+      "MCP_MODE",
+      "LOG_LEVEL",
+      "DISABLE_CONSOLE_OUTPUT",
+      "N8N_API_URL",
+      "N8N_API_KEY"
+    ],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
