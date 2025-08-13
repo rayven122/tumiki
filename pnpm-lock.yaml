@@ -493,6 +493,9 @@ importers:
       '@line/line-bot-mcp-server':
         specifier: ^0.3.0
         version: 0.3.0
+      '@microsoft/clarity-mcp-server':
+        specifier: ^1.0.5
+        version: 1.0.5
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
         version: 1.17.1
@@ -809,6 +812,9 @@ importers:
       '@line/line-bot-mcp-server':
         specifier: ^0.3.0
         version: 0.3.0
+      '@microsoft/clarity-mcp-server':
+        specifier: ^1.0.5
+        version: 1.0.5
       '@modelcontextprotocol/server-github':
         specifier: ^2025.4.8
         version: 2025.4.8
@@ -948,7 +954,7 @@ importers:
         version: 15.4.5
       eslint-plugin-import:
         specifier: ^2.31.0
-        version: 2.32.0(@typescript-eslint/parser@8.38.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.5.1))
+        version: 2.32.0(eslint@9.32.0(jiti@2.5.1))
       eslint-plugin-jsx-a11y:
         specifier: ^6.10.2
         version: 6.10.2(eslint@9.32.0(jiti@2.5.1))
@@ -2594,6 +2600,10 @@ packages:
 
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
+
+  '@microsoft/clarity-mcp-server@1.0.5':
+    resolution: {integrity: sha512-MP0MldUYakM/hMQ5MllaZtN264EpUo0nk0pQ6ggXIhUYBcYTPYFm3tdRTfGcXuCxNgZIAjXYn97xUX5sF+yYTg==}
+    hasBin: true
 
   '@modelcontextprotocol/sdk@1.0.1':
     resolution: {integrity: sha512-slLdFaxQJ9AlRg+hw28iiTtGvShAOgOKXcD0F91nUcRYiOMuS9ZBYjcdNZRXW9G5JQ511GRTdUy1zQVZDpJ+4w==}
@@ -7902,6 +7912,7 @@ packages:
   puppeteer@23.11.1:
     resolution: {integrity: sha512-53uIX3KR5en8l7Vd8n5DUv90Ae9QDQsyIthaUFVzwV6yU750RjqRznEtNMBT20VthqAdemnJN+hxVdmMHKt7Zw==}
     engines: {node: '>=18'}
+    deprecated: < 24.9.0 is no longer supported
     hasBin: true
 
   pure-rand@6.1.0:
@@ -11035,6 +11046,13 @@ snapshots:
       - supports-color
 
   '@marijn/find-cluster-break@1.0.2': {}
+
+  '@microsoft/clarity-mcp-server@1.0.5':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.17.1
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - supports-color
 
   '@modelcontextprotocol/sdk@1.0.1':
     dependencies:
@@ -14421,6 +14439,33 @@ snapshots:
       tsconfig-paths: 3.15.0
     optionalDependencies:
       '@typescript-eslint/parser': 8.38.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.2)
+    transitivePeerDependencies:
+      - eslint-import-resolver-typescript
+      - eslint-import-resolver-webpack
+      - supports-color
+
+  eslint-plugin-import@2.32.0(eslint@9.32.0(jiti@2.5.1)):
+    dependencies:
+      '@rtsao/scc': 1.1.0
+      array-includes: 3.1.9
+      array.prototype.findlastindex: 1.2.6
+      array.prototype.flat: 1.3.3
+      array.prototype.flatmap: 1.3.3
+      debug: 3.2.7
+      doctrine: 2.1.0
+      eslint: 9.32.0(jiti@2.5.1)
+      eslint-import-resolver-node: 0.3.9
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.38.0(eslint@9.32.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.32.0(jiti@2.5.1))
+      hasown: 2.0.2
+      is-core-module: 2.16.1
+      is-glob: 4.0.3
+      minimatch: 3.1.2
+      object.fromentries: 2.0.8
+      object.groupby: 1.0.3
+      object.values: 1.2.1
+      semver: 6.3.1
+      string.prototype.trimend: 1.0.9
+      tsconfig-paths: 3.15.0
     transitivePeerDependencies:
       - eslint-import-resolver-typescript
       - eslint-import-resolver-webpack
