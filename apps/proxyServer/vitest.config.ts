@@ -6,6 +6,7 @@ export default defineProject({
   test: {
     ...nodeTestConfig,
     name: "proxyServer",
+    setupFiles: ["./src/__tests__/setup.ts"],
   },
   resolve: {
     alias: {
