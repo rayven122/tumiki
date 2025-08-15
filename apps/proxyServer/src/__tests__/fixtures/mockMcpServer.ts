@@ -216,11 +216,11 @@ export class MockMCPServer {
   }
 
   isConnected(): boolean {
-    return this.server.isConnected();
+    return this.server.isConnected() as boolean;
   }
 
   getSessionId(): string | undefined {
-    return this.server.getSessionId();
+    return this.server.getSessionId() as string | undefined;
   }
 
   reset(): void {
