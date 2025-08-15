@@ -68,6 +68,49 @@ const hasCreateProperty = (
 };
 
 /**
+ * ログ出力用のデータサニタイゼーション
+ * 機密情報（パスワード、APIキー、トークンなど）をマスク
+ */
+const sanitizeLoggingData = (data: unknown): unknown => {
+  if (typeof data !== "object" || data === null) {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(sanitizeLoggingData);
+  }
+
+  const sensitiveFields = [
+    "password",
+    "token",
+    "secret",
+    "key",
+    "envVars",
+    "apiKey",
+    "privateKey",
+    "accessToken",
+    "refreshToken",
+  ];
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    const isSecretField = sensitiveFields.some((field) =>
+      key.toLowerCase().includes(field.toLowerCase()),
+    );
+
+    if (isSecretField) {
+      sanitized[key] = "[REDACTED]";
+    } else if (typeof value === "object" && value !== null) {
+      sanitized[key] = sanitizeLoggingData(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+
+  return sanitized;
+};
+
+/**
  * マルチテナンシー拡張
  *
  * この拡張は、Prisma Clientのクエリに自動的にorganizationIdフィルタを追加し、
@@ -108,10 +151,13 @@ export const multiTenancyExtension = Prisma.defineExtension({
 
         // organizationIdがない場合はエラー
         if (!context.organizationId) {
-          throw new Error(
-            `Organization context is required for ${model} operations. ` +
-              `Current operation: ${operation}`,
-          );
+          // ログには詳細情報を記録
+          console.error(`Missing organization context: ${model}.${operation}`, {
+            userId: context.userId,
+            requestId: context.requestId,
+          });
+          // ユーザーには簡潔なエラーを返す
+          throw new Error("組織コンテキストが設定されていません");
         }
 
         // 読み取り操作にフィルタを追加
@@ -208,11 +254,13 @@ export const multiTenancyExtension = Prisma.defineExtension({
         // クエリを実行
         const result = await query(args);
 
-        // デバッグモードの場合はログ出力
-        if (context.debug) {
+        // デバッグモードの場合はログ出力（本番環境では無効）
+        if (context.debug && process.env.NODE_ENV !== "production") {
+          // 機密情報をマスクしてログ出力
+          const sanitizedArgs = sanitizeLoggingData(args);
           console.log(`[MultiTenancy] ${model}.${operation}`, {
             organizationId: context.organizationId,
-            args: JSON.stringify(args, null, 2),
+            args: sanitizedArgs,
           });
         }
 
