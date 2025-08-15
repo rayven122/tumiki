@@ -129,4 +129,12 @@ export const MCP_SERVERS = [
     envVars: ["MICROCMS_SERVICE_ID", "MICROCMS_API_KEY"],
     isPublic: true,
   },
+  {
+    name: "Microsoft Clarity",
+    iconPath: "/logos/microsoft-clarity.png",
+    command: "node",
+    args: ["node_modules/@microsoft/clarity-mcp-server/dist/cli.js"],
+    envVars: ["CLARITY_API_TOKEN"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
