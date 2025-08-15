@@ -493,6 +493,9 @@ importers:
       '@line/line-bot-mcp-server':
         specifier: ^0.3.0
         version: 0.3.0
+      '@microsoft/clarity-mcp-server':
+        specifier: ^1.0.5
+        version: 1.0.5
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
         version: 1.17.1
@@ -812,6 +815,9 @@ importers:
       '@line/line-bot-mcp-server':
         specifier: ^0.3.0
         version: 0.3.0
+      '@microsoft/clarity-mcp-server':
+        specifier: ^1.0.5
+        version: 1.0.5
       '@modelcontextprotocol/server-github':
         specifier: ^2025.4.8
         version: 2025.4.8
@@ -2758,6 +2764,10 @@ packages:
 
   '@marijn/find-cluster-break@1.0.2':
     resolution: {integrity: sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g==}
+
+  '@microsoft/clarity-mcp-server@1.0.5':
+    resolution: {integrity: sha512-MP0MldUYakM/hMQ5MllaZtN264EpUo0nk0pQ6ggXIhUYBcYTPYFm3tdRTfGcXuCxNgZIAjXYn97xUX5sF+yYTg==}
+    hasBin: true
 
   '@modelcontextprotocol/sdk@1.0.1':
     resolution: {integrity: sha512-slLdFaxQJ9AlRg+hw28iiTtGvShAOgOKXcD0F91nUcRYiOMuS9ZBYjcdNZRXW9G5JQ511GRTdUy1zQVZDpJ+4w==}
@@ -8439,6 +8449,7 @@ packages:
   puppeteer@23.11.1:
     resolution: {integrity: sha512-53uIX3KR5en8l7Vd8n5DUv90Ae9QDQsyIthaUFVzwV6yU750RjqRznEtNMBT20VthqAdemnJN+hxVdmMHKt7Zw==}
     engines: {node: '>=18'}
+    deprecated: < 24.9.0 is no longer supported
     hasBin: true
 
   pure-rand@6.1.0:
@@ -11892,6 +11903,13 @@ snapshots:
       - supports-color
 
   '@marijn/find-cluster-break@1.0.2': {}
+
+  '@microsoft/clarity-mcp-server@1.0.5':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.17.1
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - supports-color
 
   '@modelcontextprotocol/sdk@1.0.1':
     dependencies:
