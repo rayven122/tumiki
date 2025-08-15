@@ -53,13 +53,17 @@ describe("createSimpleMockServer", () => {
 
     // initialize リクエストのテスト
     const initRequest = testUtils.createMockJsonRpcRequest("initialize");
-    const initResponse = await mockServer.handleRequest(initRequest);
+    const initResponse = (await mockServer.handleRequest(
+      initRequest,
+    )) as JsonRpcResponse;
 
     expect(initResponse).toStrictEqual(responses.initialize);
 
     // tools/list リクエストのテスト
     const toolsRequest = testUtils.createMockJsonRpcRequest("tools/list");
-    const toolsResponse = await mockServer.handleRequest(toolsRequest);
+    const toolsResponse = (await mockServer.handleRequest(
+      toolsRequest,
+    )) as JsonRpcResponse;
 
     expect(toolsResponse).toStrictEqual(responses["tools/list"]);
   });
@@ -68,7 +72,9 @@ describe("createSimpleMockServer", () => {
     const mockServer = createSimpleMockServer({});
 
     const request = testUtils.createMockJsonRpcRequest("unknown-method");
-    const response = await mockServer.handleRequest(request);
+    const response = (await mockServer.handleRequest(
+      request,
+    )) as JsonRpcResponse;
 
     expect(response).toStrictEqual({
       jsonrpc: "2.0",
@@ -85,6 +91,6 @@ describe("createSimpleMockServer", () => {
 
     // リセット機能の存在確認と実行
     expect(typeof mockServer.reset).toBe("function");
-    expect(() => mockServer.reset()).not.toThrow();
+    expect(() => (mockServer.reset as () => void)()).not.toThrow();
   });
 });
