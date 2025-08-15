@@ -35,6 +35,16 @@ Claude Code がこのリポジトリで作業する際のガイダンスファ�
 - **実行**: `pnpm test`（`vitest run`）、`pnpm test:watch`（`vitest`）でウォッチモード
 - **カバレッジ**: `pnpm test:coverage` でカバレッジ測定、実装ロジックのカバレッジ100%を目標
 
+#### データベーステスト環境
+
+データベースを使用するテストの実行には、専用のテスト環境が必要：
+
+- **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5433）を使用
+- **DB起動**: `docker compose -f ./docker/compose.dev.yaml up -d db-test`
+- **スキーマ適用**: `cd packages/db && pnpm db:push:test` でテスト用DBにスキーマを適用
+- **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5433/tumiki_test`）
+- **テスト環境**: vitest-environment-vprisma でトランザクション分離された独立テスト実行
+
 ## 重要なアーキテクチャパターン
 
 ### データベーススキーマ構成
