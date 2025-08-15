@@ -1,3 +1,5 @@
+import { vi, type Mock } from "vitest";
+
 type JsonRpcRequest = {
   method: string;
   id?: unknown;
@@ -30,7 +32,14 @@ type MockServerOptions = {
 // シンプルなファクトリー関数パターン
 export const createSimpleMockServer = (
   responses: Record<string, JsonRpcResponse>,
-) => {
+): {
+  connect: Mock;
+  disconnect: Mock;
+  handleRequest: Mock;
+  isConnected: Mock;
+  getSessionId: Mock;
+  reset: Mock;
+} => {
   return {
     connect: vi.fn().mockResolvedValue(undefined),
     disconnect: vi.fn().mockResolvedValue(undefined),
@@ -52,7 +61,15 @@ export const createSimpleMockServer = (
 };
 
 // より高度なモックサーバー
-export const createAdvancedMockServer = (options: MockServerOptions = {}) => {
+export const createAdvancedMockServer = (
+  options: MockServerOptions = {},
+): {
+  connect: Mock;
+  disconnect: Mock;
+  isConnected: Mock;
+  getSessionId: Mock;
+  reset: Mock;
+} => {
   let connected = options.connected ?? false;
   let sessionId = options.sessionId;
 
