@@ -1,10 +1,14 @@
-import { type Request, type Response, type NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import {
   extractContext,
   runWithContext,
   StructuredLogger,
 } from "../libs/structuredLogger.js";
 import type { AuthenticatedRequest } from "./integratedAuth.js";
+import type {
+  MiddlewareFunction,
+  ErrorMiddlewareFunction,
+} from "../types/middleware.js";
 
 /**
  * レスポンス情報を保存するための拡張
@@ -17,7 +21,7 @@ interface ResponseWithLogging extends Response {
 /**
  * リクエスト/レスポンスのログを記録するミドルウェア
  */
-export const loggingMiddleware = () => {
+export const loggingMiddleware = (): MiddlewareFunction => {
   return (
     req: Request | AuthenticatedRequest,
     res: ResponseWithLogging,
@@ -76,7 +80,7 @@ export const loggingMiddleware = () => {
 /**
  * エラーハンドリングミドルウェア
  */
-export const errorLoggingMiddleware = () => {
+export const errorLoggingMiddleware = (): ErrorMiddlewareFunction => {
   return (
     err: Error,
     req: Request | AuthenticatedRequest,
