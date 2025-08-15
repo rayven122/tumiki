@@ -38,7 +38,18 @@ const createPrismaClient = (): PrismaClient => {
       async $runWithoutRLS<T>(
         fn: (db: PrismaClient) => Promise<T>,
       ): Promise<T> {
-        return runWithoutRLS(async () => fn(this as unknown as PrismaClient));
+        // 新しいクライアントインスタンスを作成してRLSバイパス
+        const cleanClient = new PrismaClient({
+          adapter: new PrismaNeon({
+            connectionString: process.env.DATABASE_URL!,
+          }),
+          log:
+            process.env.NODE_ENV === "development"
+              ? ["query", "error", "warn"]
+              : ["error"],
+        });
+        cleanClient.$use(fieldEncryptionMiddleware());
+        return runWithoutRLS(async () => fn(cleanClient));
       },
     },
     query: {
