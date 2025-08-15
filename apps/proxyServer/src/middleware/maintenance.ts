@@ -1,12 +1,13 @@
-import { type Request, type Response, type NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { config } from "../libs/config.js";
 import { logger } from "../libs/logger.js";
+import type { MiddlewareFunction } from "../types/middleware.js";
 
 /**
  * メンテナンスモードミドルウェア
  * メンテナンスモード中はすべてのリクエストに503を返却
  */
-export const maintenanceMiddleware = () => {
+export const maintenanceMiddleware = (): MiddlewareFunction => {
   return (req: Request, res: Response, next: NextFunction): void => {
     // メンテナンスモードが有効かチェック
     if (!config.maintenance.enabled) {
