@@ -1,4 +1,3 @@
-import { describe, test, expect, vi } from "vitest";
 import type { Response } from "express";
 import {
   sendAuthenticationError,
@@ -26,7 +25,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(401);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).toHaveBeenCalledWith({
       jsonrpc: "2.0",
       error: {
@@ -43,7 +42,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(400);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).toHaveBeenCalledWith({
       jsonrpc: "2.0",
       error: {
@@ -60,7 +59,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(404);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).toHaveBeenCalledWith({
       jsonrpc: "2.0",
       error: {
@@ -77,7 +76,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(405);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).toHaveBeenCalledWith({
       jsonrpc: "2.0",
       error: {
@@ -94,7 +93,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(503);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).toHaveBeenCalledWith({
       jsonrpc: "2.0",
       error: {
@@ -117,7 +116,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(500);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).toHaveBeenCalledWith({
       jsonrpc: "2.0",
       error: {
@@ -136,7 +135,7 @@ describe("エラーレスポンスユーティリティ", () => {
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).not.toHaveBeenCalled();
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(res.json).not.toHaveBeenCalled();
   });
 });
