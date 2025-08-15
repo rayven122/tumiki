@@ -132,7 +132,37 @@ export const multiTenancyExtension = Prisma.defineExtension({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
+        // 拡張が動作しているかの確認用ログ（常に出力）
+        if (process.env.NODE_ENV === "test") {
+          console.log(
+            `[EXTENSION DEBUG] ${model}.${operation} - Extension called`,
+          );
+        }
+
+        if (process.env.NODE_ENV === "test" && operation === "findMany") {
+          console.log(`[EXTENSION CALLED] ${model}.${operation}`);
+        }
+
         const context = getTenantContext();
+
+        // デバッグログ（テスト環境またはDEBUG_MULTITENANCYフラグが設定されている場合）
+        const isDebug =
+          process.env.DEBUG_MULTITENANCY === "true" ||
+          (process.env.NODE_ENV === "test" &&
+            process.env.DEBUG_MULTITENANCY !== "false");
+
+        if (isDebug && isTenantScopedModel(model)) {
+          console.log(`[MultiTenancy Debug] ${model}.${operation}`, {
+            context: context
+              ? {
+                  organizationId: context.organizationId,
+                  bypassRLS: context.bypassRLS,
+                  userId: context.userId,
+                }
+              : "なし",
+            argsBeforeFilter: args,
+          });
+        }
 
         // コンテキストがない場合はそのまま実行
         if (!context) {
@@ -255,12 +285,16 @@ export const multiTenancyExtension = Prisma.defineExtension({
         const result = await query(args);
 
         // デバッグモードの場合はログ出力（本番環境では無効）
-        if (context.debug && process.env.NODE_ENV !== "production") {
+        if (
+          (context.debug || isDebug) &&
+          process.env.NODE_ENV !== "production"
+        ) {
           // 機密情報をマスクしてログ出力
           const sanitizedArgs = sanitizeLoggingData(args);
-          console.log(`[MultiTenancy] ${model}.${operation}`, {
+          console.log(`[MultiTenancy Applied] ${model}.${operation}`, {
             organizationId: context.organizationId,
-            args: sanitizedArgs,
+            filteredArgs: sanitizedArgs,
+            resultCount: Array.isArray(result) ? result.length : "N/A",
           });
         }
 

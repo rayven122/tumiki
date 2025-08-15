@@ -146,7 +146,7 @@ describe("マルチテナンシー機能", () => {
     });
 
     test("findFirst操作が正常に動作する", async () => {
-      const config = await UserMcpServerConfigFactory.create({
+      await UserMcpServerConfigFactory.create({
         name: "FindFirst テスト設定",
         organization: {
           connect: { id: testOrg1.id },
