@@ -69,14 +69,17 @@
   "devDependencies": {
     "@tumiki/vitest-config": "workspace:*",
     "@types/express": "^5.0.2",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
+    "supertest": "^7.1.4",
     "tsup": "^8.3.5",
     "typescript-eslint": "^8.33.0",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "^3.1.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
