@@ -11,6 +11,7 @@ export default defineConfig({
     "src/prisma.ts",
     "src/zod.ts",
     "src/server.ts",
+    "src/testing/index.ts",
   ],
   esbuildOptions(options) {
     options.alias = {

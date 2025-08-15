@@ -33,6 +33,14 @@
   - 環境別の設定
   - CI/CDとの連携
 
+### テスト環境
+
+- [testing-environment.md](./testing-environment.md) - テスト環境セットアップガイド
+  - データベーステスト環境の構築
+  - テスト用PostgreSQLコンテナの設定
+  - ファクトリーパターンの使用方法
+  - トラブルシューティング
+
 ## 🛠️ 開発環境セットアップ
 
 ### 前提条件
@@ -96,6 +104,11 @@ chore: ビルドプロセスやツールの変更
 
 ## 🧪 テスト
 
+### テスト環境セットアップ
+
+データベーステストを実行する前に、テスト環境のセットアップが必要です。
+詳細は [testing-environment.md](./testing-environment.md) を参照してください。
+
 ### ユニットテスト
 
 ```bash
@@ -107,6 +120,22 @@ pnpm test --filter @tumiki/auth
 
 # カバレッジ付き
 pnpm test:coverage
+
+# ウォッチモード
+pnpm test:watch
+```
+
+### データベーステスト
+
+```bash
+# テスト用データベース起動
+docker compose -f ./docker/compose.dev.yaml up -d db-test
+
+# テスト用DBにスキーマ適用
+cd packages/db && pnpm db:push:test
+
+# データベーステスト実行
+pnpm test
 ```
 
 ### E2Eテスト
