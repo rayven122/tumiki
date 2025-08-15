@@ -4,6 +4,7 @@ import type { CheckServerConnectionInput } from ".";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import { getMcpServerToolsSSE } from "@tumiki/utils/server";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { makeSseProxyServerUrl } from "@/utils/url";
 
 type CheckServerConnectionParams = {
@@ -52,7 +53,7 @@ export const checkServerConnection = async ({
     const apiKey = serverInstance.apiKeys[0]!.apiKey;
 
     let success = false;
-    let tools: unknown[] = [];
+    let tools: Tool[] = [];
     let errorMessage: string | undefined;
 
     try {

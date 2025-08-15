@@ -207,7 +207,9 @@ export const RequestDataDetailModal = ({
                         入力データサイズ
                       </span>
                       <p className="font-mono text-sm font-semibold">
-                        {formatDataSize(requestDataDetail.originalInputSize)}
+                        {formatDataSize(
+                          Number(requestDataDetail.originalInputSize) || 0,
+                        )}
                       </p>
                     </div>
                     <div>
@@ -215,7 +217,9 @@ export const RequestDataDetailModal = ({
                         出力データサイズ
                       </span>
                       <p className="font-mono text-sm font-semibold">
-                        {formatDataSize(requestDataDetail.originalOutputSize)}
+                        {formatDataSize(
+                          Number(requestDataDetail.originalOutputSize) || 0,
+                        )}
                       </p>
                     </div>
                   </div>
