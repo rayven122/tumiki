@@ -1,4 +1,9 @@
-import type { McpServer, Organization, User } from "@prisma/client";
+import type {
+  McpServer,
+  Organization,
+  User,
+  UserMcpServerConfig,
+} from "@prisma/client";
 import { beforeEach, describe, expect, test } from "vitest";
 
 import {
@@ -114,7 +119,9 @@ describe("マルチテナンシー統合テスト", () => {
       });
 
       expect(allConfigs).toHaveLength(2);
-      const orgIds = allConfigs.map((c) => c.organizationId);
+      const orgIds = allConfigs.map(
+        (c: UserMcpServerConfig) => c.organizationId,
+      );
       expect(orgIds).toContain(testOrg1.id);
       expect(orgIds).toContain(testOrg2.id);
     });
@@ -255,7 +262,11 @@ describe("マルチテナンシー統合テスト", () => {
       });
 
       expect(created).toHaveLength(2);
-      expect(created.every((c) => c.organizationId === testOrg1.id)).toBe(true);
+      expect(
+        created.every(
+          (c: UserMcpServerConfig) => c.organizationId === testOrg1.id,
+        ),
+      ).toBe(true);
     });
   });
 });
