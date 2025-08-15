@@ -38,7 +38,6 @@
     "build": "pnpm db:generate && tsc",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit",
-    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
@@ -77,6 +76,7 @@
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
     "vitest": "catalog:",
+    "vitest-environment-vprisma": "^1.3.0",
     "zod-prisma-types": "^3.2.4"
   },
   "prettier": "@tumiki/prettier-config"
