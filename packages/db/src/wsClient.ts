@@ -3,6 +3,8 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 import ws from "ws";
 
+import { runWithoutRLS } from "./context/tenantContext.js";
+import { multiTenancyExtension } from "./extensions/multiTenancy.js";
 import { fieldEncryptionMiddleware } from "./server.js";
 
 const createPrismaClient = (): PrismaClient => {
@@ -29,7 +31,16 @@ const createPrismaClient = (): PrismaClient => {
   // // フィールド暗号化のための拡張
   // client.$extends(fieldEncryptionExtension());
 
-  const extendedClient = client.$extends({
+  // マルチテナンシー拡張を適用
+  const extendedClient = client.$extends(multiTenancyExtension).$extends({
+    client: {
+      // RLSをバイパスして実行するヘルパーメソッド
+      async $runWithoutRLS<T>(
+        fn: (db: PrismaClient) => Promise<T>,
+      ): Promise<T> {
+        return runWithoutRLS(async () => fn(this as unknown as PrismaClient));
+      },
+    },
     query: {
       // TODO: userMcpServer の　parse をここで行う
       // userMcpServer: {

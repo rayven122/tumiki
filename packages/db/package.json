@@ -28,6 +28,10 @@
       "types": "./dist/src/zod.d.ts",
       "default": "./dist/src/zod.js"
     },
+    "./context": {
+      "types": "./dist/src/context.d.ts",
+      "default": "./dist/src/context.js"
+    },
     "./testing": {
       "types": "./dist/src/testing/index.d.ts",
       "default": "./dist/src/testing/index.js"
