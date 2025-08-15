@@ -123,8 +123,12 @@ export const LogsAnalyticsTab = ({
                       </TableCell>
                       <TableCell>{log.durationMs ?? 0}ms</TableCell>
                       <TableCell className="text-xs">
-                        <div>↑ {formatDataSize(log.inputBytes ?? 0)}</div>
-                        <div>↓ {formatDataSize(log.outputBytes ?? 0)}</div>
+                        <div>
+                          ↑ {formatDataSize(Number(log.inputBytes) || 0)}
+                        </div>
+                        <div>
+                          ↓ {formatDataSize(Number(log.outputBytes) || 0)}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {log.errorMessage ? (

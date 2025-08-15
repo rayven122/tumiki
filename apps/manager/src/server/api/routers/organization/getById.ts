@@ -26,6 +26,10 @@ export const getOrganizationById = async ({
   // 完全な組織詳細を取得
   const organization = await getOrganizationWithFullDetails(ctx.db, input.id);
 
+  if (!organization) {
+    throw new Error("Organization not found");
+  }
+
   // この時点で organization は存在することが保証されている
-  return organization!;
+  return organization;
 };
