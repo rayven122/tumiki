@@ -1,13 +1,12 @@
 import { Role } from "@prisma/client";
 import { beforeEach, describe, expect, test } from "vitest";
 
+import { db } from "../server.js";
 import {
   AdminUserFactory,
   OnboardedUserFactory,
   UserFactory,
 } from "../testing/factories/user.js";
-
-const prisma = vPrisma.client;
 
 describe("UserFactory", () => {
   describe("基本的なユーザー作成", () => {
@@ -71,7 +70,7 @@ describe("UserFactory", () => {
     test("各テストは独立したトランザクション内で実行される", async () => {
       const user1 = await UserFactory.create({ email: "test1@example.com" });
 
-      const foundUser = await prisma.user.findUnique({
+      const foundUser = await db.user.findUnique({
         where: { id: user1.id },
       });
 
@@ -80,7 +79,7 @@ describe("UserFactory", () => {
     });
 
     test("前のテストのデータは見えない", async () => {
-      const users = await prisma.user.findMany({
+      const users = await db.user.findMany({
         where: { email: "test1@example.com" },
       });
 
@@ -96,7 +95,7 @@ describe("UserFactory", () => {
     test("findManyクエリが実行できる", async () => {
       await UserFactory.createList(3);
 
-      const users = await prisma.user.findMany();
+      const users = await db.user.findMany();
 
       expect(users.length).toBeGreaterThanOrEqual(4);
     });
@@ -104,7 +103,7 @@ describe("UserFactory", () => {
     test("updateクエリが実行できる", async () => {
       const user = await UserFactory.create();
 
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await db.user.update({
         where: { id: user.id },
         data: { name: "Updated Name" },
       });
@@ -115,11 +114,11 @@ describe("UserFactory", () => {
     test("deleteクエリが実行できる", async () => {
       const user = await UserFactory.create();
 
-      await prisma.user.delete({
+      await db.user.delete({
         where: { id: user.id },
       });
 
-      const deletedUser = await prisma.user.findUnique({
+      const deletedUser = await db.user.findUnique({
         where: { id: user.id },
       });
 
@@ -129,7 +128,7 @@ describe("UserFactory", () => {
     test("countクエリが実行できる", async () => {
       await UserFactory.createList(5);
 
-      const count = await prisma.user.count();
+      const count = await db.user.count();
 
       expect(count).toBeGreaterThanOrEqual(6);
     });
