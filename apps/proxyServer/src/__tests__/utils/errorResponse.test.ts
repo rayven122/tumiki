@@ -1,4 +1,3 @@
-import { describe, test, expect, vi } from "vitest";
 import type { Response } from "express";
 import {
   sendAuthenticationError,

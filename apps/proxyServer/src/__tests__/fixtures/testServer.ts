@@ -82,7 +82,9 @@ export const createMockAuthMiddleware = (authInfo: AuthInfo | null) => {
 
 export const waitForCondition = async (
   condition: () => boolean,
-  timeout = 5000,
+  timeout = process.env.TEST_TIMEOUT
+    ? parseInt(process.env.TEST_TIMEOUT, 10)
+    : 5000,
   interval = 100,
 ): Promise<void> => {
   const startTime = Date.now();
@@ -104,8 +106,18 @@ export const parseSSEData = (data: string): unknown[] => {
       try {
         const jsonData = JSON.parse(line.slice(6)) as unknown;
         messages.push(jsonData);
-      } catch {
-        // Skip non-JSON data
+      } catch (error) {
+        // より詳細なエラー情報を提供
+        console.warn(
+          `Failed to parse SSE data: "${line}". Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+
+        // デバッグ用の詳細情報
+        if (process.env.NODE_ENV === "test" && process.env.DEBUG_SSE_PARSING) {
+          console.debug("Raw line:", JSON.stringify(line));
+          console.debug("Extracted data:", JSON.stringify(line.slice(6)));
+          console.debug("Full error:", error);
+        }
       }
     }
   }
