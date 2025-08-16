@@ -44,6 +44,7 @@
     "with-env-all": "dotenv -e ../../.env -- dotenv -e ../../.env.upsert --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
+    "typecheck:dev": "tsgo --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore --write",
@@ -53,6 +54,7 @@
   },
   "dependencies": {
     "@line/line-bot-mcp-server": "^0.3.0",
+    "@microsoft/clarity-mcp-server": "^1.0.5",
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@playwright/mcp": "^0.0.29",
     "@suekou/mcp-notion-server": "^1.2.4",
@@ -76,6 +78,7 @@
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
     "@tumiki/vitest-config": "workspace:*",
+    "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",

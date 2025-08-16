@@ -21,6 +21,7 @@
     "pm2:delete": "pm2 delete tumiki-proxy-server",
     "clean": "git clean -xdf .cache .turbo node_modules build",
     "typecheck": "tsc --noEmit",
+    "typecheck:dev": "tsgo --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
@@ -36,6 +37,7 @@
   },
   "dependencies": {
     "@line/line-bot-mcp-server": "^0.3.0",
+    "@microsoft/clarity-mcp-server": "^1.0.5",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@playwright/mcp": "^0.0.29",
@@ -70,14 +72,20 @@
   "devDependencies": {
     "@tumiki/vitest-config": "workspace:*",
     "@types/express": "^5.0.2",
+    "@types/express-serve-static-core": "^5.0.7",
+    "@types/qs": "^6.14.0",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
+    "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
+    "supertest": "^7.1.4",
     "tsup": "^8.3.5",
     "typescript-eslint": "^8.33.0",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "^3.1.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
