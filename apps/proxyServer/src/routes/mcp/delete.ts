@@ -1,4 +1,4 @@
-import { type Request, type Response } from "express";
+import type { Request, Response } from "express";
 import { getStreamableTransportBySessionId } from "../../utils/transport.js";
 import { toMcpRequest } from "../../utils/mcpAdapter.js";
 import {
@@ -11,11 +11,11 @@ import {
 /**
  * DELETE リクエスト処理 - セッション終了
  */
-export const handleDELETERequest = async (
+export const handleDELETERequest: (
   req: Request,
   res: Response,
   sessionId: string | undefined,
-): Promise<void> => {
+) => Promise<void> = async (req, res, sessionId) => {
   if (!sessionId) {
     sendBadRequestError(res, "Session ID required");
     return;

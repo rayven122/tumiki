@@ -9,7 +9,6 @@ export const UserFactory = defineUserFactory({
     name: `Test User ${seq}`,
     image: null,
     role: Role.USER,
-    hasCompletedOnboarding: false,
   }),
 });
 
@@ -20,7 +19,6 @@ export const AdminUserFactory = defineUserFactory({
     name: `Admin User ${seq}`,
     image: null,
     role: Role.SYSTEM_ADMIN,
-    hasCompletedOnboarding: true,
   }),
 });
 
@@ -31,6 +29,5 @@ export const OnboardedUserFactory = defineUserFactory({
     name: `Onboarded User ${seq}`,
     image: "https://example.com/avatar.jpg",
     role: Role.USER,
-    hasCompletedOnboarding: true,
   }),
 });

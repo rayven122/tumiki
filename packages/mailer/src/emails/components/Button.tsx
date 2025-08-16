@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Button as ReactEmailButton } from "@react-email/components";
 
 interface ButtonProps {
@@ -11,7 +11,7 @@ export const Button = ({
   href,
   children,
   variant = "primary",
-}: ButtonProps) => {
+}: ButtonProps): ReactElement => {
   return (
     <ReactEmailButton
       href={href}

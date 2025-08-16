@@ -1,6 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
 import { logger } from "../libs/logger.js";
+import type { MiddlewareFunction } from "../types/middleware.js";
 
 /**
  * JWT検証ミドルウェアの設定
@@ -15,7 +16,7 @@ const jwtCheck = auth({
  * 条件付きOAuth認証ミドルウェア
  * 特定のクエリパラメータが存在する場合のみJWT検証を実行
  */
-export const conditionalAuthMiddleware = () => {
+export const conditionalAuthMiddleware = (): MiddlewareFunction => {
   return (req: Request, res: Response, next: NextFunction): void => {
     // クエリパラメータをチェック
     const useOAuth =
