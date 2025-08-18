@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Section, Text } from "@react-email/components";
 
 interface HeaderProps {
@@ -6,7 +7,11 @@ interface HeaderProps {
   gradient?: "blue" | "green" | "purple";
 }
 
-export const Header = ({ title, subtitle, gradient = "blue" }: HeaderProps) => {
+export const Header = ({
+  title,
+  subtitle,
+  gradient = "blue",
+}: HeaderProps): ReactElement => {
   return (
     <Section style={{ ...header, ...gradients[gradient] }}>
       <Text style={headerTitle}>{title}</Text>

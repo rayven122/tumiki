@@ -51,6 +51,7 @@ Auth0を使用した認証システムとOAuth実装に関するドキュメン�
 開発に必要な手順書と実装ガイド。
 
 - [adding-mcp-server.md](./development/adding-mcp-server.md) - 新しいMCPサーバーの追加手順
+- [testing-environment.md](./development/testing-environment.md) - テスト環境セットアップガイド
 - [stripe-setup.md](./development/stripe-setup.md) - Stripe決済の設定ガイド
 - [stripe-integration-implementation-plan.md](./development/stripe-integration-implementation-plan.md) - Stripe統合の実装計画
 - [vercel-env-management.md](./development/vercel-env-management.md) - Vercel環境変数の管理

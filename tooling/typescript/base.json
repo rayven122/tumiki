@@ -27,7 +27,6 @@
     "noEmit": true,
 
     /** Path Aliases */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
