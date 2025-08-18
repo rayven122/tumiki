@@ -10,6 +10,14 @@ Claude Code がこのリポジトリで作業する際のガイダンスファ�
 
 開発に必要なコマンドについては [README.md](./README.md) の「開発コマンド」セクションを参照してください。
 
+### 型チェックコマンド
+
+- **通常の型チェック**: `pnpm typecheck` - 本番環境・CI用の安定した型チェック（tsc使用）
+- **高速型チェック**: `pnpm typecheck:dev` - ローカル開発用の高速型チェック（TSGO使用）
+  - TSGOは従来のtscより約10倍高速で型チェックを実行
+  - 開発時のみ使用推奨（プレビュー版のため）
+  - エラーや互換性問題が発生した場合は通常のtypecheckを使用
+
 ## 開発ガイドライン
 
 ### フロントエンド コーディング規約
@@ -34,6 +42,16 @@ Claude Code がこのリポジトリで作業する際のガイダンスファ�
 - **アサーション**: `toStrictEqual` 使用（`toEqual` ではない）
 - **実行**: `pnpm test`（`vitest run`）、`pnpm test:watch`（`vitest`）でウォッチモード
 - **カバレッジ**: `pnpm test:coverage` でカバレッジ測定、実装ロジックのカバレッジ100%を目標
+
+#### データベーステスト環境
+
+データベースを使用するテストの実行には、専用のテスト環境が必要：
+
+- **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5433）を使用
+- **DB起動**: `docker compose -f ./docker/compose.dev.yaml up -d db-test`
+- **スキーマ適用**: `cd packages/db && pnpm db:push:test` でテスト用DBにスキーマを適用
+- **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5433/tumiki_test`）
+- **テスト環境**: vitest-environment-vprisma でトランザクション分離された独立テスト実行
 
 ## 重要なアーキテクチャパターン
 

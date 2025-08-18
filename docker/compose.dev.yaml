@@ -17,6 +17,19 @@ services:
     volumes:
       - db_vol:/var/lib/postgresql/data
 
+  db-test:
+    image: postgres:alpine3.18
+    container_name: db-test
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tumiki_test
+    volumes:
+      - db_test_vol:/var/lib/postgresql/data
+
   https-portal:
     image: steveltn/https-portal:1
     ports:
@@ -46,4 +59,5 @@ services:
 
 volumes:
   db_vol:
+  db_test_vol:
   https-portal-data:

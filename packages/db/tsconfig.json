@@ -2,17 +2,22 @@
   "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["vitest/globals", "vitest-environment-vprisma"]
   },
-  "include": ["src", "prisma/generated"],
-  "exclude": [
-    "node_modules",
-    "prisma/generated/fabbrica",
+  "include": [
+    "src",
+    "prisma/generated",
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
     "src/__tests__/**/*",
-    "src/testing/**/*",
+    "src/testing/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "prisma/generated/fabbrica",
     "tsup.config.ts",
-    "prisma.config.ts"
+    "prisma.config.ts",
+    "vitest.config.ts"
   ]
 }

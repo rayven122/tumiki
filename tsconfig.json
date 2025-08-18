@@ -22,15 +22,7 @@
     "moduleResolution": "Bundler",
     "jsx": "preserve",
     "plugins": [{ "name": "next" }],
-    "incremental": true,
-
-    /* Path Aliases */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["apps/manager/src/*"],
-      "~/*": ["apps/manager/*"],
-      "@zod": ["apps/manager/prisma/generated/zod/index.ts"]
-    }
+    "incremental": true
   },
   "include": [
     "apps/manager/next-env.d.ts",
