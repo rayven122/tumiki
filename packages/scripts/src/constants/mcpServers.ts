@@ -138,19 +138,6 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
-    name: "n8n MCP",
-    iconPath: "/logos/n8n.png",
-    command: "node",
-    args: ["node_modules/n8n-mcp/dist/mcp/index.js"],
-    envVars: [
-      "MCP_MODE",
-      "LOG_LEVEL",
-      "DISABLE_CONSOLE_OUTPUT",
-      "N8N_API_URL",
-      "N8N_API_KEY"
-    ],
-  },
-  {
     name: "Microsoft Clarity",
     iconPath: "/logos/microsoft-clarity.png",
     command: "node",

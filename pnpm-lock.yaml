@@ -896,9 +896,6 @@ importers:
       microcms-mcp-server:
         specifier: ^0.3.6
         version: 0.3.6
-      n8n-mcp:
-        specifier: ^2.10.4
-        version: 2.10.4
       puppeteer-mcp-server:
         specifier: ^0.7.2
         version: 0.7.2(bufferutil@4.0.9)(typescript@5.9.2)
