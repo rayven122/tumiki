@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Section, Text } from "@react-email/components";
 
 import { Button } from "./components/Button.js";
@@ -16,7 +17,7 @@ export const Invitation = ({
   inviteUrl = "https://tumiki.app/invite?token=xyz789",
   appName = "Tumiki",
   expiresAt = "2024-12-31 23:59:59",
-}: InvitationProps) => {
+}: InvitationProps): ReactElement => {
   const previewText = `🎉 ${appName}へのご招待`;
 
   return (

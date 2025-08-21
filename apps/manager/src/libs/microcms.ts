@@ -1,21 +1,30 @@
 import { createClient } from "microcms-js-sdk";
 
-const serviceDomain = process.env.MICROCMS_TUMIKI_BLOG_SERVICE_DOMAIN;
-const apiKey = process.env.MICROCMS_TUMIKI_BLOG_API_KEY;
+let clientInstance: ReturnType<typeof createClient> | null = null;
 
-if (!serviceDomain) {
-  throw new Error(
-    "MICROCMS_TUMIKI_BLOG_SERVICE_DOMAIN environment variable is required",
-  );
-}
+export const client = {
+  get: <T>(args: Parameters<ReturnType<typeof createClient>["get"]>[0]) => {
+    if (!clientInstance) {
+      const serviceDomain = process.env.MICROCMS_TUMIKI_BLOG_SERVICE_DOMAIN;
+      const apiKey = process.env.MICROCMS_TUMIKI_BLOG_API_KEY;
 
-if (!apiKey) {
-  throw new Error(
-    "MICROCMS_TUMIKI_BLOG_API_KEY environment variable is required",
-  );
-}
+      if (!serviceDomain || !apiKey) {
+        // ビルド時はダミーデータを返す
+        if (process.env.NODE_ENV === "production" && !serviceDomain) {
+          return Promise.resolve({ contents: [] } as T);
+        }
 
-export const client = createClient({
-  serviceDomain,
-  apiKey,
-});
+        throw new Error(
+          `Missing required environment variables: ${!serviceDomain ? "MICROCMS_TUMIKI_BLOG_SERVICE_DOMAIN" : ""} ${!apiKey ? "MICROCMS_TUMIKI_BLOG_API_KEY" : ""}`.trim(),
+        );
+      }
+
+      clientInstance = createClient({
+        serviceDomain,
+        apiKey,
+      });
+    }
+
+    return clientInstance.get<T>(args);
+  },
+};
