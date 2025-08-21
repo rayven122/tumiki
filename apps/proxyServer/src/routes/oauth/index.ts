@@ -1,11 +1,11 @@
-import type { Request, Response } from "express";
+import type { RequestHandler } from "express";
 
 /**
  * OAuth 2.0 Authorization Server Metadata
  * RFC 8414準拠のディスカバリーエンドポイント
  * https://tools.ietf.org/html/rfc8414
  */
-export const handleOAuthDiscovery = (req: Request, res: Response): void => {
+export const handleOAuthDiscovery: RequestHandler = (req, res) => {
   const auth0Domain = process.env.AUTH0_DOMAIN;
   const auth0M2MDomain = process.env.AUTH0_M2M_DOMAIN;
 
@@ -152,10 +152,7 @@ export const handleOAuthDiscovery = (req: Request, res: Response): void => {
  * OpenID Connect Discovery 1.0準拠のエンドポイント
  * https://openid.net/specs/openid-connect-discovery-1_0.html
  */
-export const handleOpenIDConfiguration = (
-  req: Request,
-  res: Response,
-): void => {
+export const handleOpenIDConfiguration: RequestHandler = (req, res, next) => {
   // OAuth Discoveryと同じ内容を返す（OpenID Connect互換）
-  handleOAuthDiscovery(req, res);
+  handleOAuthDiscovery(req, res, next);
 };

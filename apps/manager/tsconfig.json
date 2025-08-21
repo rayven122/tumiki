@@ -2,7 +2,6 @@
   "extends": "@tumiki/tsconfig/nextjs.json",
   "compilerOptions": {
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

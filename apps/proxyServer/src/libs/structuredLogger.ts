@@ -1,4 +1,6 @@
-import { type Request } from "express";
+import type { Request } from "express";
+import type { ParsedQs } from "qs";
+import type { ParamsDictionary } from "express-serve-static-core";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { logger } from "./logger.js";
 import type { AuthenticatedRequest } from "../middleware/integratedAuth.js";
@@ -6,7 +8,7 @@ import type { AuthenticatedRequest } from "../middleware/integratedAuth.js";
 /**
  * ログコンテキスト情報
  */
-interface LogContext {
+export interface LogContext {
   requestId?: string;
   userId?: string;
   userMcpServerInstanceId?: string;
@@ -32,8 +34,13 @@ export const generateRequestId = (): string => {
 /**
  * リクエストからコンテキスト情報を抽出
  */
-export const extractContext = (
-  req: Request | AuthenticatedRequest,
+export const extractContext = <
+  P = ParamsDictionary,
+  ResBody = unknown,
+  ReqBody = unknown,
+  ReqQuery = ParsedQs,
+>(
+  req: Request<P, ResBody, ReqBody, ReqQuery> | AuthenticatedRequest,
 ): LogContext => {
   const authReq = req as AuthenticatedRequest;
   return {
