@@ -73,7 +73,7 @@ const testAutoFiltering = async () => {
   console.log(`  取得件数: ${autoFiltered.length}`);
   console.log(`  期待値: 1件（組織1のデータのみ）`);
   console.log(
-    `  実際の組織ID: ${autoFiltered.map((c) => c.organizationId).join(", ")}`,
+    `  実際の組織ID: ${autoFiltered.map((c: { organizationId: string }) => c.organizationId).join(", ")}`,
   );
   console.log(
     `  結果: ${autoFiltered.length === 1 && autoFiltered[0]?.organizationId === org1.id ? "✅ 成功" : "❌ 失敗"}\n`,
