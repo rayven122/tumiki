@@ -16,8 +16,6 @@ type ClientOptions = {
  * fieldEncryptionMiddleware、multiTenancyExtension、$runWithoutRLSヘルパーを適用
  */
 export const createBaseClient = (options?: ClientOptions) => {
-  console.log(`[DEBUG] createBaseClient called`);
-
   const clientConfig = {
     ...(options?.adapter && { adapter: options.adapter }),
     log:
@@ -32,14 +30,11 @@ export const createBaseClient = (options?: ClientOptions) => {
   };
 
   const client = new PrismaClient(clientConfig);
-  console.log(`[DEBUG] PrismaClient created`);
 
   // フィールド暗号化のミドルウェアを追加
   client.$use(fieldEncryptionMiddleware());
-  console.log(`[DEBUG] fieldEncryptionMiddleware added`);
 
   // マルチテナンシー拡張と$runWithoutRLSヘルパーを適用
-  console.log(`[DEBUG] About to apply multiTenancyExtension`);
   const extendedClient = client.$extends(multiTenancyExtension).$extends({
     client: {
       // RLSをバイパスして実行するヘルパーメソッド
@@ -80,19 +75,6 @@ export const createBaseClient = (options?: ClientOptions) => {
       // },
     },
   });
-
-  console.log(
-    `[DEBUG] Extensions applied. Client keys:`,
-    Object.keys(extendedClient).filter((k) => !k.startsWith("_")),
-  );
-  console.log(
-    `[DEBUG] Has $runWithoutRLS?`,
-    "$runWithoutRLS" in extendedClient,
-  );
-  console.log(
-    `[DEBUG] Has userMcpServerConfig?`,
-    "userMcpServerConfig" in extendedClient,
-  );
 
   return extendedClient;
 };

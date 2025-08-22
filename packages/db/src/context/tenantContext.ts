@@ -87,27 +87,85 @@ export const runWithoutRLS = async <T>(fn: () => Promise<T>): Promise<T> => {
 };
 
 /**
- * 組織を切り替えて処理を実行
+ * 組織を切り替えて処理を実行（権限チェック付き）
  *
  * 一時的に別の組織のコンテキストで処理を実行する場合に使用
+ * 権限チェックのコールバック関数を必須で提供する必要があります
  *
  * @param organizationId 切り替え先の組織ID
  * @param fn 実行する処理
+ * @param options オプション設定
+ * @param options.checkPermission 権限チェック用の関数（必須）
+ * @param options.skipPermissionCheck 権限チェックをスキップするかどうか（デフォルト: false）
  * @returns 処理の結果
  *
  * @example
  * ```typescript
- * // 別組織のデータを参照（権限チェックは呼び出し側で実施）
- * const otherOrgData = await switchOrganization("org_789", async () => {
- *   return await db.userMcpServerConfig.findMany();
- * });
+ * // 権限チェック付きで別組織のデータを参照
+ * const otherOrgData = await switchOrganization(
+ *   "org_789",
+ *   async () => {
+ *     return await db.userMcpServerConfig.findMany();
+ *   },
+ *   {
+ *     checkPermission: async (orgId, userId) => {
+ *       const member = await db.organizationMember.findUnique({
+ *         where: {
+ *           organizationId_userId: {
+ *             organizationId: orgId,
+ *             userId: userId,
+ *           },
+ *         },
+ *       });
+ *       return member !== null;
+ *     }
+ *   }
+ * );
  * ```
  */
 export const switchOrganization = async <T>(
   organizationId: string,
   fn: () => Promise<T>,
+  options?: {
+    checkPermission?: (
+      organizationId: string,
+      userId: string,
+    ) => Promise<boolean>;
+    skipPermissionCheck?: boolean;
+  },
 ): Promise<T> => {
   const currentContext = getTenantContext();
+
+  // 権限チェックを実行（スキップフラグが立っていない場合）
+  if (!options?.skipPermissionCheck) {
+    // checkPermission関数が提供されていない場合はエラー
+    if (!options?.checkPermission) {
+      throw new Error(
+        "Permission check function is required when switching organizations. " +
+          "Either provide checkPermission callback or explicitly set skipPermissionCheck to true.",
+      );
+    }
+
+    // userIdが設定されていない場合はエラー
+    if (!currentContext?.userId) {
+      throw new Error(
+        "User ID is required in context for organization switching. " +
+          "Please ensure the context includes userId before switching organizations.",
+      );
+    }
+
+    // 権限チェックを実行
+    const hasPermission = await options.checkPermission(
+      organizationId,
+      currentContext.userId,
+    );
+
+    if (!hasPermission) {
+      throw new Error(
+        `User ${currentContext.userId} does not have permission to access organization ${organizationId}`,
+      );
+    }
+  }
 
   // 新しいコンテキストで実行（既存の userId などは保持）
   return tenantStorage.run(
