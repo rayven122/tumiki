@@ -181,11 +181,9 @@ export const multiTenancyExtension = Prisma.defineExtension({
 
         // organizationIdがない場合はエラー
         if (!context.organizationId) {
-          // ログには詳細情報を記録
-          console.error(`Missing organization context: ${model}.${operation}`, {
-            userId: context.userId,
-            requestId: context.requestId,
-          });
+          console.error(
+            `Missing organization context for ${model}.${operation}`,
+          );
           // ユーザーには簡潔なエラーを返す
           throw new Error("組織コンテキストが設定されていません");
         }
