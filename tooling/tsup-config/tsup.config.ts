@@ -7,4 +7,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   target: "node22",
+  splitting: false, // コード分割を無効化
 });
