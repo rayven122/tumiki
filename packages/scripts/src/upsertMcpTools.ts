@@ -36,7 +36,7 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
     );
     try {
       // ツール一覧を取得
-      const tools = await getMcpServerTools(mcpServer, envVars);
+      const tools: Tool[] = await getMcpServerTools(mcpServer, envVars);
 
       if (tools.length === 0) {
         console.log(`⚠️  ${mcpServer.name}: ツールが見つかりませんでした`);
