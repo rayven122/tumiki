@@ -27,7 +27,7 @@ vi.mock("@/trpc/react", () => ({
         useQuery: () => mockUseQuery(),
       },
       setDefaultOrganization: {
-        useMutation: () => mockUseMutation(),
+        useMutation: (options: any) => mockUseMutation(options),
       },
     },
     useUtils: () => mockUseUtils(),
@@ -155,32 +155,27 @@ describe("useOrganizationContext", () => {
     expect(result.current.isSwitching).toBe(false);
   });
 
-  test.skip("組織切り替えが成功する", async () => {
-    const mockMutate = vi.fn();
-    let onSuccessCallback: (() => void) | undefined;
+  test("組織切り替えが成功する", () => {
+    // モック関数を明示的にクリア
+    mockToastSuccess.mockClear();
+    mockReload.mockClear();
 
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
       isLoading: false,
     });
 
-    mockUseMutation.mockImplementation(
-      (options?: { onSuccess?: () => void }) => {
-        onSuccessCallback = options?.onSuccess;
-        return {
-          mutate: (input: { organizationId: OrganizationId }) => {
-            mockMutate(input);
-            // 成功コールバックを呼び出す
-            setTimeout(() => {
-              if (onSuccessCallback) {
-                onSuccessCallback();
-              }
-            }, 0);
-          },
-          isPending: false,
-        };
-      },
-    );
+    // mutationのモックを直接設定
+    const mockMutate = vi.fn();
+    let capturedOnSuccess: (() => void) | undefined;
+
+    mockUseMutation.mockImplementation((options) => {
+      capturedOnSuccess = options?.onSuccess;
+      return {
+        mutate: mockMutate,
+        isPending: false,
+      };
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <OrganizationProvider>{children}</OrganizationProvider>
@@ -188,23 +183,25 @@ describe("useOrganizationContext", () => {
 
     const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
-    await act(async () => {
+    act(() => {
       result.current.setCurrentOrganization("org_2" as OrganizationId);
     });
 
-    await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith({
-        organizationId: "org_2",
-      });
+    // mutate が呼ばれたことを確認
+    expect(mockMutate).toHaveBeenCalledWith({
+      organizationId: "org_2",
     });
 
-    await waitFor(() => {
-      expect(mockToastSuccess).toHaveBeenCalledWith("組織を切り替えました");
+    // 成功コールバックを手動でトリガー
+    act(() => {
+      if (capturedOnSuccess) {
+        capturedOnSuccess();
+      }
     });
 
-    await waitFor(() => {
-      expect(mockReload).toHaveBeenCalled();
-    });
+    // 成功コールバックが呼ばれたことを確認
+    expect(mockToastSuccess).toHaveBeenCalledWith("組織を切り替えました");
+    expect(mockReload).toHaveBeenCalled();
   });
 
   test("存在しない組織への切り替えがエラーになる", () => {
@@ -231,33 +228,29 @@ describe("useOrganizationContext", () => {
     expect(mockToastError).toHaveBeenCalledWith("組織が見つかりません");
   });
 
-  test.skip("組織切り替えのエラーが正しく処理される", async () => {
-    const mockMutate = vi.fn();
+  test("組織切り替えのエラーが正しく処理される", () => {
     const errorMessage = "権限がありません";
-    let onErrorCallback: ((error: { message: string }) => void) | undefined;
+
+    // モック関数を明示的にクリア
+    mockToastError.mockClear();
+    mockReload.mockClear();
 
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
       isLoading: false,
     });
 
-    mockUseMutation.mockImplementation(
-      (options?: { onError?: (error: { message: string }) => void }) => {
-        onErrorCallback = options?.onError;
-        return {
-          mutate: (input: { organizationId: OrganizationId }) => {
-            mockMutate(input);
-            // エラーコールバックを呼び出す
-            setTimeout(() => {
-              if (onErrorCallback) {
-                onErrorCallback({ message: errorMessage });
-              }
-            }, 0);
-          },
-          isPending: false,
-        };
-      },
-    );
+    // mutationのモックを直接設定
+    const mockMutate = vi.fn();
+    let capturedOnError: ((error: { message: string }) => void) | undefined;
+
+    mockUseMutation.mockImplementation((options) => {
+      capturedOnError = options?.onError;
+      return {
+        mutate: mockMutate,
+        isPending: false,
+      };
+    });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <OrganizationProvider>{children}</OrganizationProvider>
@@ -265,21 +258,26 @@ describe("useOrganizationContext", () => {
 
     const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
-    await act(async () => {
+    act(() => {
       result.current.setCurrentOrganization("org_2" as OrganizationId);
     });
 
-    await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith({
-        organizationId: "org_2",
-      });
+    // mutate が呼ばれたことを確認
+    expect(mockMutate).toHaveBeenCalledWith({
+      organizationId: "org_2",
     });
 
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(
-        `組織の切り替えに失敗しました: ${errorMessage}`,
-      );
+    // エラーコールバックを手動でトリガー
+    act(() => {
+      if (capturedOnError) {
+        capturedOnError({ message: errorMessage });
+      }
     });
+
+    // エラーコールバックが呼ばれたことを確認
+    expect(mockToastError).toHaveBeenCalledWith(
+      `組織の切り替えに失敗しました: ${errorMessage}`,
+    );
 
     expect(mockReload).not.toHaveBeenCalled();
   });
