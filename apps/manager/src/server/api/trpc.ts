@@ -35,16 +35,47 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let currentOrganizationId: string | null = null;
 
   if (session?.user?.sub) {
-    // まずユーザーのdefaultOrganizationIdをチェック
-    const user = await db.user.findUnique({
-      where: { id: session.user.sub },
-      select: { defaultOrganizationId: true },
-    });
+    // URLパラメータから組織IDを取得（優先度1）
+    const url = opts.headers.get("referer");
+    let urlOrgId: string | null = null;
+    
+    if (url) {
+      try {
+        const urlObj = new URL(url);
+        urlOrgId = urlObj.searchParams.get("org");
+      } catch {
+        // URLパースエラーは無視
+      }
+    }
 
-    if (user?.defaultOrganizationId) {
-      // defaultOrganizationIdが設定されている場合は優先使用
+    // URLパラメータに組織IDがある場合、そのユーザーがメンバーか確認
+    if (urlOrgId) {
+      const membership = await db.organizationMember.findFirst({
+        where: {
+          userId: session.user.sub,
+          organizationId: urlOrgId,
+          organization: {
+            isDeleted: false,
+          },
+        },
+      });
+      
+      if (membership) {
+        currentOrganizationId = urlOrgId;
+      }
+    }
+    
+    // URLパラメータから有効な組織IDが取得できなかった場合
+    if (!currentOrganizationId) {
+      // ユーザーのdefaultOrganizationIdをチェック（優先度2）
+      const user = await db.user.findUnique({
+        where: { id: session.user.sub },
+        select: { defaultOrganizationId: true },
+      });
 
-      currentOrganizationId = user.defaultOrganizationId;
+      if (user?.defaultOrganizationId) {
+        // defaultOrganizationIdが設定されている場合は使用
+        currentOrganizationId = user.defaultOrganizationId;
     } else {
       // フォールバック：個人組織を検索
       const firstMembership = await db.organizationMember.findFirst({
