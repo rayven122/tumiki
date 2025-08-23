@@ -118,11 +118,8 @@ jobs:
           # Vercel CLIのインストール
           npm install -g vercel
           
-          # Vercel認証（トークンを使用）
-          if [ -n "${{ secrets.VERCEL_TOKEN }}" ]; then
-            echo "Vercel認証を設定中..."
-            vercel login --token ${{ secrets.VERCEL_TOKEN }}
-          fi
+          # Vercel認証はVERCEL_TOKEN環境変数で行うため、ここでは設定不要
+          echo "Vercel CLIをインストールしました"
       
       - name: 🧪 Validate Deployment Script (Dry Run)
         shell: bash
