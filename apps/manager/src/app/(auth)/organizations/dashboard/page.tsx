@@ -1,24 +1,20 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
+import { api } from "@/trpc/server";
 import { OrganizationDashboard } from "./_components/OrganizationDashboard";
+import { redirect } from "next/navigation";
 
-const OrganizationDashboardPage = () => {
-  const searchParams = useSearchParams();
-  const orgId = searchParams.get("org");
-
-  if (!orgId) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">エラー</h1>
-          <p className="mt-2 text-gray-600">組織が選択されていません。</p>
-        </div>
-      </div>
-    );
+const OrganizationDashboardPage = async () => {
+  // サーバー側で現在の組織を取得
+  const organizations = await api.organization.getUserOrganizations();
+  
+  // デフォルト組織を探す（isDefault: trueの組織）
+  const defaultOrg = organizations.find(org => org.isDefault);
+  
+  if (!defaultOrg || defaultOrg.isPersonal) {
+    // デフォルト組織がない、または個人組織の場合はMCPサーバーページへリダイレクト
+    redirect("/mcp/servers");
   }
 
-  return <OrganizationDashboard organizationId={orgId} />;
+  return <OrganizationDashboard organizationId={defaultOrg.id} />;
 };
 
 export default OrganizationDashboardPage;
