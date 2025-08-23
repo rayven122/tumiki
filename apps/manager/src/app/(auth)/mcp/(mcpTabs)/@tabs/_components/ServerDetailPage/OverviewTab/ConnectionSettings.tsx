@@ -5,7 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Copy, ArrowLeft, ChevronRight, FileText, Info } from "lucide-react";
+import {
+  Search,
+  Copy,
+  ArrowLeft,
+  ChevronRight,
+  FileText,
+  Info,
+} from "lucide-react";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { toast } from "@/utils/client/toast";
 import {
@@ -63,126 +70,163 @@ claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${instance.id} --h
     // Claude Desktop - mcp-remote経由
     if (clientId === "claude-desktop") {
       const strategy = connectionType === "http" ? "http-only" : "sse-only";
-      const url = connectionType === "http" ? `${serverUrl}/mcp/${instance.id}` : `${serverUrl}/sse/${instance.id}`;
-      
-      return JSON.stringify({
-        mcpServers: {
-          [serverName]: {
-            command: "npx",
-            args: [
-              "-y",
-              "mcp-remote@latest",
-              url,
-              "--header",
-              `x-api-key: ${apiKey}`,
-              "--strategy",
-              strategy
-            ]
-          }
-        }
-      }, null, 2);
-    }
+      const url =
+        connectionType === "http"
+          ? `${serverUrl}/mcp/${instance.id}`
+          : `${serverUrl}/sse/${instance.id}`;
 
-    // Cursor
-    if (clientId === "cursor") {
-      if (connectionType === "http") {
-        return JSON.stringify({
-          mcpServers: {
-            [serverName]: {
-              url: `${serverUrl}/mcp/${instance.id}`,
-              transport: "http",
-              headers: {
-                "x-api-key": apiKey
-              }
-            }
-          }
-        }, null, 2);
-      } else {
-        // SSE via mcp-remote
-        return JSON.stringify({
+      return JSON.stringify(
+        {
           mcpServers: {
             [serverName]: {
               command: "npx",
               args: [
                 "-y",
                 "mcp-remote@latest",
-                `${serverUrl}/sse/${instance.id}`,
+                url,
                 "--header",
                 `x-api-key: ${apiKey}`,
                 "--strategy",
-                "sse-only"
-              ]
-            }
-          }
-        }, null, 2);
+                strategy,
+              ],
+            },
+          },
+        },
+        null,
+        2,
+      );
+    }
+
+    // Cursor
+    if (clientId === "cursor") {
+      if (connectionType === "http") {
+        return JSON.stringify(
+          {
+            mcpServers: {
+              [serverName]: {
+                url: `${serverUrl}/mcp/${instance.id}`,
+                transport: "http",
+                headers: {
+                  "x-api-key": apiKey,
+                },
+              },
+            },
+          },
+          null,
+          2,
+        );
+      } else {
+        // SSE via mcp-remote
+        return JSON.stringify(
+          {
+            mcpServers: {
+              [serverName]: {
+                command: "npx",
+                args: [
+                  "-y",
+                  "mcp-remote@latest",
+                  `${serverUrl}/sse/${instance.id}`,
+                  "--header",
+                  `x-api-key: ${apiKey}`,
+                  "--strategy",
+                  "sse-only",
+                ],
+              },
+            },
+          },
+          null,
+          2,
+        );
       }
     }
 
     // VS Code
     if (clientId === "vscode") {
-      return JSON.stringify({
-        mcpServers: {
-          [serverName]: {
-            url: connectionType === "http" ? `${serverUrl}/mcp/${instance.id}` : `${serverUrl}/sse/${instance.id}`,
-            transport: connectionType,
-            headers: {
-              "x-api-key": apiKey
-            }
-          }
-        }
-      }, null, 2);
+      return JSON.stringify(
+        {
+          mcpServers: {
+            [serverName]: {
+              url:
+                connectionType === "http"
+                  ? `${serverUrl}/mcp/${instance.id}`
+                  : `${serverUrl}/sse/${instance.id}`,
+              transport: connectionType,
+              headers: {
+                "x-api-key": apiKey,
+              },
+            },
+          },
+        },
+        null,
+        2,
+      );
     }
 
     // Windsurf
     if (clientId === "windsurf") {
       if (connectionType === "http") {
         // HTTP via mcp-remote
-        return JSON.stringify({
-          mcpServers: {
-            [serverName]: {
-              command: "npx",
-              args: [
-                "-y",
-                "mcp-remote@latest",
-                `${serverUrl}/mcp/${instance.id}`,
-                "--header",
-                `x-api-key: ${apiKey}`,
-                "--strategy",
-                "http-only"
-              ]
-            }
-          }
-        }, null, 2);
+        return JSON.stringify(
+          {
+            mcpServers: {
+              [serverName]: {
+                command: "npx",
+                args: [
+                  "-y",
+                  "mcp-remote@latest",
+                  `${serverUrl}/mcp/${instance.id}`,
+                  "--header",
+                  `x-api-key: ${apiKey}`,
+                  "--strategy",
+                  "http-only",
+                ],
+              },
+            },
+          },
+          null,
+          2,
+        );
       } else {
         // SSE native support
-        return JSON.stringify({
-          mcpServers: {
-            [serverName]: {
-              serverUrl: `${serverUrl}/sse/${instance.id}`,
-              headers: {
-                "x-api-key": apiKey
-              }
-            }
-          }
-        }, null, 2);
+        return JSON.stringify(
+          {
+            mcpServers: {
+              [serverName]: {
+                serverUrl: `${serverUrl}/sse/${instance.id}`,
+                headers: {
+                  "x-api-key": apiKey,
+                },
+              },
+            },
+          },
+          null,
+          2,
+        );
       }
     }
 
     // Cline
     if (clientId === "cline") {
-      return JSON.stringify({
-        mcpServers: {
-          [serverName]: {
-            url: connectionType === "http" ? `${serverUrl}/mcp/${instance.id}` : `${serverUrl}/sse/${instance.id}`,
-            transport: connectionType,
-            headers: {
-              "x-api-key": apiKey
+      return JSON.stringify(
+        {
+          mcpServers: {
+            [serverName]: {
+              url:
+                connectionType === "http"
+                  ? `${serverUrl}/mcp/${instance.id}`
+                  : `${serverUrl}/sse/${instance.id}`,
+              transport: connectionType,
+              headers: {
+                "x-api-key": apiKey,
+              },
+              alwaysAllow: [],
+              disabled: false,
             },
-            alwaysAllow: [],
-            disabled: false
-          }
-        }
-      }, null, 2);
+          },
+        },
+        null,
+        2,
+      );
     }
 
     // その他のクライアント用
@@ -319,12 +363,14 @@ Headers:
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 設定ファイルパス表示 */}
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-start space-x-2">
-                  <FileText className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <FileText className="mt-0.5 h-4 w-4 text-blue-600" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-blue-900">設定ファイルの場所:</p>
-                    <p className="text-xs text-blue-700 mt-1 whitespace-pre-wrap">
+                    <p className="text-sm font-medium text-blue-900">
+                      設定ファイルの場所:
+                    </p>
+                    <p className="mt-1 text-xs whitespace-pre-wrap text-blue-700">
                       {getConfigFilePath(selectedClient)}
                     </p>
                   </div>
@@ -358,12 +404,15 @@ Headers:
                       </Button>
                     </div>
                   </div>
-                  {(selectedClient === "claude-desktop" || selectedClient === "windsurf") && (
-                    <div className="flex items-start space-x-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
-                      <Info className="h-4 w-4 text-amber-600 mt-0.5" />
+                  {(selectedClient === "claude-desktop" ||
+                    selectedClient === "windsurf") && (
+                    <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <Info className="mt-0.5 h-4 w-4 text-amber-600" />
                       <div className="flex-1">
                         <p className="text-xs text-amber-800">
-                          <span className="font-medium">mcp-remote使用:</span> このクライアントはstdio transportのみサポートするため、mcp-remoteを使用してHTTP接続を行います。
+                          <span className="font-medium">mcp-remote使用:</span>{" "}
+                          このクライアントはstdio
+                          transportのみサポートするため、mcp-remoteを使用してHTTP接続を行います。
                         </p>
                       </div>
                     </div>
@@ -390,12 +439,14 @@ Headers:
                       </Button>
                     </div>
                   </div>
-                  {(selectedClient === "claude-desktop" || selectedClient === "cursor") && (
-                    <div className="flex items-start space-x-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
-                      <Info className="h-4 w-4 text-amber-600 mt-0.5" />
+                  {(selectedClient === "claude-desktop" ||
+                    selectedClient === "cursor") && (
+                    <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <Info className="mt-0.5 h-4 w-4 text-amber-600" />
                       <div className="flex-1">
                         <p className="text-xs text-amber-800">
-                          <span className="font-medium">mcp-remote使用:</span> このクライアントはSSE接続にmcp-remoteを使用します。
+                          <span className="font-medium">mcp-remote使用:</span>{" "}
+                          このクライアントはSSE接続にmcp-remoteを使用します。
                         </p>
                       </div>
                     </div>
@@ -406,7 +457,8 @@ Headers:
               {/* 追加情報 */}
               {selectedClient === "claude-code" && (
                 <p className="text-xs text-gray-600">
-                  ※ Streamable HTTP transportが推奨です。SSE transportは代替オプションとしてご利用ください。
+                  ※ Streamable HTTP transportが推奨です。SSE
+                  transportは代替オプションとしてご利用ください。
                 </p>
               )}
             </CardContent>

@@ -1,7 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
-
 import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 
 import { runWithoutRLS } from "./context/tenantContext.js";
