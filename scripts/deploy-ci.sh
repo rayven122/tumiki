@@ -34,6 +34,7 @@ DEPLOY_USER="${DEPLOY_USER:-tumiki-deploy}"
 REPO_URL="${REPO_URL:-git@github.com:rayven122/tumiki.git}"
 DEPLOY_STAGE="${DEPLOY_STAGE:-staging}"
 BRANCH="${BRANCH:-main}"
+DRY_RUN="${DRY_RUN:-false}"
 
 # 色付きログ出力（CI環境でも動作）
 if [ -t 1 ]; then
@@ -64,6 +65,10 @@ log_error() {
 
 log_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
+}
+
+log_dry_run() {
+    echo -e "${YELLOW}[DRY RUN]${NC} $1"
 }
 
 # エラーハンドリング
@@ -106,10 +111,68 @@ check_prerequisites() {
     log_info "デプロイユーザー: $DEPLOY_USER"
     log_info "デプロイステージ: $DEPLOY_STAGE"
     log_info "ブランチ: $BRANCH"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "ドライランモードで実行します（実際の変更は行いません）"
+        
+        # GCEインスタンスへのSSH接続テスト
+        log_dry_run "GCEインスタンスへの接続を検証中..."
+        if gcloud compute ssh "$DEPLOY_USER@$INSTANCE_NAME" \
+            --zone="$ZONE" \
+            --project="$PROJECT_ID" \
+            --command="echo '✅ SSH接続成功'" 2>/dev/null; then
+            log_dry_run "GCEインスタンスへの接続: ✅ 成功"
+        else
+            log_error "GCEインスタンスへの接続に失敗しました"
+            exit 1
+        fi
+    fi
+}
+
+# Vercel環境変数の検証（ドライラン用）
+verify_vercel_env() {
+    if [ "$DRY_RUN" != "true" ]; then
+        return 0
+    fi
+    
+    log_dry_run "Vercel環境変数の取得を検証中..."
+    
+    # Vercel CLIの確認
+    if ! command -v vercel &> /dev/null; then
+        log_error "Vercel CLI が見つかりません"
+        log_error "npm install -g vercel でインストールしてください"
+        exit 1
+    fi
+    
+    # Vercel認証の確認
+    if ! vercel whoami &>/dev/null; then
+        log_error "Vercel認証が設定されていません"
+        log_error "vercel login を実行してください"
+        exit 1
+    fi
+    
+    # プロジェクトリンクの確認
+    if [ ! -f ".vercel/project.json" ]; then
+        log_warn "Vercelプロジェクトがリンクされていません"
+        log_warn "vercel link を実行してください"
+    else
+        log_dry_run "Vercelプロジェクトリンク: ✅ 確認済み"
+    fi
+    
+    # 環境変数の取得テスト（実際には取得しない）
+    log_dry_run "Vercel環境変数取得コマンドの検証:"
+    log_dry_run "  vercel env pull --environment=production .env.deploy"
+    log_dry_run "Vercel環境変数取得: ✅ 検証完了（実際の取得はスキップ）"
 }
 
 # 環境変数ファイルの転送
 transfer_env_file() {
+    if [ "$DRY_RUN" = "true" ]; then
+        verify_vercel_env
+        log_dry_run "環境変数ファイルの転送をスキップ（ドライラン）"
+        return 0
+    fi
+    
     log_step "環境変数ファイルを転送しています..."
     
     local env_file=".env.deploy"
@@ -134,6 +197,20 @@ transfer_env_file() {
 
 # VMへのデプロイ
 deploy_to_vm() {
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "VMへのデプロイをシミュレート（ドライラン）"
+        log_dry_run "以下のパラメータでデプロイを実行予定:"
+        log_dry_run "  - インスタンス: $INSTANCE_NAME"
+        log_dry_run "  - ゾーン: $ZONE"
+        log_dry_run "  - プロジェクト: $PROJECT_ID"
+        log_dry_run "  - デプロイ先: $REMOTE_PATH"
+        log_dry_run "  - リポジトリ: $REPO_URL"
+        log_dry_run "  - ブランチ: $BRANCH"
+        log_dry_run "  - ステージ: $DEPLOY_STAGE"
+        log_dry_run "実際のVM操作はスキップされました"
+        return 0
+    fi
+    
     log_step "VMにGitベースデプロイを実行しています..."
     
     # デプロイコマンドの作成
@@ -313,6 +390,15 @@ main() {
     check_prerequisites
     transfer_env_file
     deploy_to_vm
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "=============================="
+        log_dry_run "ドライラン完了"
+        log_dry_run "=============================="
+        log_dry_run "実際のデプロイは実行されませんでした"
+        log_dry_run "スクリプトの検証が正常に完了しました"
+        return 0
+    fi
     
     # デプロイ結果表示
     local external_ip
