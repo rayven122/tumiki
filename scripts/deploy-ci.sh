@@ -144,24 +144,33 @@ verify_vercel_env() {
         exit 1
     fi
     
-    # Vercel認証の確認
-    if ! vercel whoami &>/dev/null; then
-        log_error "Vercel認証が設定されていません"
-        log_error "vercel login を実行してください"
-        exit 1
+    # VERCEL_TOKEN環境変数の確認
+    if [ -z "${VERCEL_TOKEN:-}" ]; then
+        log_warn "VERCEL_TOKEN環境変数が設定されていません"
+        log_warn "GitHub ActionsではSecretsから自動的に設定されます"
+    else
+        log_dry_run "VERCEL_TOKEN: ✅ 設定済み"
+    fi
+    
+    # プロジェクト設定の確認
+    if [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+        log_warn "VERCEL_ORG_IDまたはVERCEL_PROJECT_IDが設定されていません"
+        log_warn "GitHub ActionsではSecretsから自動的に設定されます"
+    else
+        log_dry_run "Vercelプロジェクト設定: ✅ 確認済み"
     fi
     
     # プロジェクトリンクの確認
     if [ ! -f ".vercel/project.json" ]; then
-        log_warn "Vercelプロジェクトがリンクされていません"
-        log_warn "vercel link を実行してください"
+        log_warn "Vercelプロジェクトがローカルにリンクされていません"
+        log_warn "CI環境では環境変数で設定されるため問題ありません"
     else
         log_dry_run "Vercelプロジェクトリンク: ✅ 確認済み"
     fi
     
     # 環境変数の取得テスト（実際には取得しない）
     log_dry_run "Vercel環境変数取得コマンドの検証:"
-    log_dry_run "  vercel env pull --environment=production .env.deploy"
+    log_dry_run "  vercel env pull --environment=production .env.deploy --token=\$VERCEL_TOKEN"
     log_dry_run "Vercel環境変数取得: ✅ 検証完了（実際の取得はスキップ）"
 }
 
