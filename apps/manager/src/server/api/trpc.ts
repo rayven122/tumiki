@@ -35,82 +35,49 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let currentOrganizationId: string | null = null;
 
   if (session?.user?.sub) {
-    // URLパラメータから組織IDを取得（優先度1）
-    const url = opts.headers.get("referer");
-    let urlOrgId: string | null = null;
+    // ユーザーのdefaultOrganizationIdをチェック（優先度1）
+    const user = await db.user.findUnique({
+      where: { id: session.user.sub },
+      select: { defaultOrganizationId: true },
+    });
 
-    if (url) {
-      try {
-        const urlObj = new URL(url);
-        urlOrgId = urlObj.searchParams.get("org");
-      } catch {
-        // URLパースエラーは無視
-      }
-    }
-
-    // URLパラメータに組織IDがある場合、そのユーザーがメンバーか確認
-    if (urlOrgId) {
-      const membership = await db.organizationMember.findFirst({
+    if (user?.defaultOrganizationId) {
+      // defaultOrganizationIdが設定されている場合は使用
+      currentOrganizationId = user.defaultOrganizationId;
+    } else {
+      // フォールバック：個人組織を検索（優先度2）
+      const firstMembership = await db.organizationMember.findFirst({
         where: {
           userId: session.user.sub,
-          organizationId: urlOrgId,
           organization: {
             isDeleted: false,
           },
         },
+        orderBy: {
+          organization: {
+            isPersonal: "desc", // 個人組織を優先
+          },
+        },
+        select: {
+          organizationId: true,
+        },
       });
 
-      if (membership) {
-        currentOrganizationId = urlOrgId;
-      }
-    }
+      if (firstMembership?.organizationId) {
+        currentOrganizationId = firstMembership.organizationId;
 
-    // URLパラメータから有効な組織IDが取得できなかった場合
-    if (!currentOrganizationId) {
-      // ユーザーのdefaultOrganizationIdをチェック（優先度2）
-      const user = await db.user.findUnique({
-        where: { id: session.user.sub },
-        select: { defaultOrganizationId: true },
-      });
-
-      if (user?.defaultOrganizationId) {
-        // defaultOrganizationIdが設定されている場合は使用
-        currentOrganizationId = user.defaultOrganizationId;
-      } else {
-        // フォールバック：個人組織を検索（優先度3）
-        const firstMembership = await db.organizationMember.findFirst({
-          where: {
-            userId: session.user.sub,
-            organization: {
-              isDeleted: false,
-            },
-          },
-          orderBy: {
-            organization: {
-              isPersonal: "desc", // 個人組織を優先
-            },
-          },
-          select: {
-            organizationId: true,
-          },
-        });
-
-        if (firstMembership?.organizationId) {
-          currentOrganizationId = firstMembership.organizationId;
-
-          // 見つかった個人組織をdefaultOrganizationIdに設定
-          try {
-            await db.user.update({
-              where: { id: session.user.sub },
-              data: { defaultOrganizationId: firstMembership.organizationId },
-            });
-          } catch (error) {
-            // 更新に失敗してもログイン処理は継続
-            console.warn("Failed to update defaultOrganizationId:", error);
-          }
-        } else {
-          currentOrganizationId = null;
+        // 見つかった個人組織をdefaultOrganizationIdに設定
+        try {
+          await db.user.update({
+            where: { id: session.user.sub },
+            data: { defaultOrganizationId: firstMembership.organizationId },
+          });
+        } catch (error) {
+          // 更新に失敗してもログイン処理は継続
+          console.warn("Failed to update defaultOrganizationId:", error);
         }
+      } else {
+        currentOrganizationId = null;
       }
     }
   }
