@@ -78,6 +78,9 @@ model McpServer {
   isPublic         Boolean               @default(false)
   tools            Tool[]
   mcpServerConfigs UserMcpServerConfig[]
+  
+  /// OAuth Client リレーション
+  oauthClient      OAuthClient?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
