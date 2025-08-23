@@ -108,8 +108,9 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
           // 更新に失敗してもログイン処理は継続
           console.warn("Failed to update defaultOrganizationId:", error);
         }
-      } else {
-        currentOrganizationId = null;
+        } else {
+          currentOrganizationId = null;
+        }
       }
     }
   }
