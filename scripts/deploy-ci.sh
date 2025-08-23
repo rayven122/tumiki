@@ -359,13 +359,6 @@ pnpm build
 cd ../../tooling/tsup-config
 pnpm build
 
-# データベースマイグレーション（エラーでも続行）
-cd ../../packages/db
-echo "=============================="
-echo "データベースマイグレーション..."
-echo "=============================="
-pnpm db:deploy || echo "警告: マイグレーションに失敗しました（続行）"
-
 # ProxyServerビルド
 cd ../../apps/proxyServer
 echo "=============================="
