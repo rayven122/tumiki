@@ -108,6 +108,10 @@ check_prerequisites() {
         
         # インスタンス確認とSSH接続テスト
         log_dry_run "GCEインスタンスの存在確認中..."
+        log_dry_run "  インスタンス名: $INSTANCE_NAME"
+        log_dry_run "  ゾーン: $ZONE"
+        log_dry_run "  プロジェクト: $PROJECT_ID"
+        
         if gcloud compute instances describe "$INSTANCE_NAME" \
             --zone="$ZONE" \
             --project="$PROJECT_ID" &>/dev/null; then
@@ -122,12 +126,23 @@ check_prerequisites() {
                 log_dry_run "GCEインスタンスへの接続: ✅ 成功"
             else
                 log_warn "GCEインスタンスへのSSH接続に失敗しました"
-                log_warn "これはドライランモードのため、処理を続行します"
+                log_warn "SSH鍵の設定またはファイアウォールルールを確認してください"
             fi
         else
-            log_warn "インスタンス $INSTANCE_NAME が見つかりません"
-            log_warn "Zone: $ZONE, Project: $PROJECT_ID"
-            log_warn "ドライランモードのため、処理を続行します"
+            log_error "❌ GCEインスタンスが見つかりません"
+            log_error ""
+            log_error "設定値:"
+            log_error "  インスタンス名: $INSTANCE_NAME"
+            log_error "  ゾーン: $ZONE"
+            log_error "  プロジェクトID: $PROJECT_ID"
+            log_error ""
+            log_error "確認事項:"
+            log_error "1. GitHub Secretsに正しい値が設定されているか"
+            log_error "2. GCEインスタンスが実際に存在し、起動しているか"
+            log_error "3. GCP認証とプロジェクトへのアクセス権限があるか"
+            log_error ""
+            log_error "ドライラン検証失敗 - GCEインスタンスへのアクセスは必須要件です"
+            exit 1
         fi
     else
         # 実際のデプロイ時はインスタンス確認が必須
