@@ -29,6 +29,11 @@ import {
   removeMemberInputSchema,
   removeMemberOutputSchema,
 } from "./removeMember";
+import {
+  setDefaultOrganization,
+  setDefaultOrganizationInputSchema,
+  setDefaultOrganizationOutputSchema,
+} from "./setDefaultOrganization";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
