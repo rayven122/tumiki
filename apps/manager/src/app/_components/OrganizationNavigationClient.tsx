@@ -3,7 +3,7 @@
 import { User, Building2, Database } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useOrganizationContext } from "@/contexts/OrganizationContext";
+import { useOrganizationContext } from "@/hooks/useOrganizationContext";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 import { usePathname } from "next/navigation";
 

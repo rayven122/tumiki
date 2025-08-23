@@ -8,45 +8,52 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
-import { useOrganizationContext } from "@/contexts/OrganizationContext";
-import { Building2, User, Plus } from "lucide-react";
+import { useOrganizationContext } from "@/hooks/useOrganizationContext";
+import { Building2, User, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export const OrganizationSwitcher = () => {
   const { data: organizations } =
     api.organization.getUserOrganizations.useQuery();
-  const { currentOrganization, setCurrentOrganization, isLoading } =
-    useOrganizationContext();
+  const {
+    currentOrganization,
+    setCurrentOrganization,
+    isLoading,
+    isSwitching,
+  } = useOrganizationContext();
   const router = useRouter();
 
   if (!organizations?.length || isLoading) return null;
 
-  const handleValueChange = async (value: string) => {
+  const handleValueChange = (value: string) => {
     if (value === "create_team") {
       // チーム作成ページへ遷移
       router.push("/onboarding");
       return;
     }
 
-    try {
-      await setCurrentOrganization(value === "personal" ? null : value);
-    } catch (error) {
-      // エラーはContextで処理済み
-      console.error("Failed to switch organization:", error);
-    }
+    // valueが組織IDそのものなので、そのまま渡す
+    setCurrentOrganization(value);
   };
 
-  // 現在の組織IDを取得（個人組織の場合は"personal"）
-  const currentValue = currentOrganization?.isPersonal
-    ? "personal"
-    : (currentOrganization?.id ?? "personal");
+  // 現在の組織IDを取得（必ず組織IDが返される）
+  const currentValue = currentOrganization?.id ?? "";
 
   return (
-    <Select value={currentValue} onValueChange={handleValueChange}>
-      <SelectTrigger className="w-[250px] border-gray-200 bg-white shadow-sm hover:bg-gray-50">
+    <Select
+      value={currentValue}
+      onValueChange={handleValueChange}
+      disabled={isSwitching}
+    >
+      <SelectTrigger className="w-[250px] border-gray-200 bg-white shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
         <SelectValue>
           <div className="flex items-center space-x-2">
-            {currentOrganization?.isPersonal ? (
+            {isSwitching ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
+                <span className="font-medium">切り替え中...</span>
+              </>
+            ) : currentOrganization?.isPersonal ? (
               <>
                 <User className="h-4 w-4 text-gray-600" />
                 <span className="font-medium">個人ワークスペース</span>
@@ -61,15 +68,18 @@ export const OrganizationSwitcher = () => {
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {/* 個人ワークスペース */}
-        {organizations.some((org) => org.isPersonal) && (
-          <SelectItem value="personal">
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-gray-600" />
-              <span>個人ワークスペース</span>
-            </div>
-          </SelectItem>
-        )}
+        {/* 個人ワークスペース（1つのみ） */}
+        {(() => {
+          const personalOrg = organizations.find((org) => org.isPersonal);
+          return personalOrg ? (
+            <SelectItem key={personalOrg.id} value={personalOrg.id}>
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-600" />
+                <span>個人ワークスペース</span>
+              </div>
+            </SelectItem>
+          ) : null;
+        })()}
 
         {/* チーム組織 */}
         {organizations
