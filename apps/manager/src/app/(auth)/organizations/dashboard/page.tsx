@@ -1,20 +1,26 @@
-import { api } from "@/trpc/server";
-import { OrganizationDashboard } from "./_components/OrganizationDashboard";
-import { redirect } from "next/navigation";
+"use client";
 
-const OrganizationDashboardPage = async () => {
-  // サーバー側で現在の組織を取得
-  const organizations = await api.organization.getUserOrganizations();
-  
-  // デフォルト組織を探す（isDefault: trueの組織）
-  const defaultOrg = organizations.find(org => org.isDefault);
-  
-  if (!defaultOrg || defaultOrg.isPersonal) {
-    // デフォルト組織がない、または個人組織の場合はMCPサーバーページへリダイレクト
-    redirect("/mcp/servers");
+import { useOrganizationContext } from "@/contexts/OrganizationContext";
+import { OrganizationDashboard } from "./_components/OrganizationDashboard";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+const OrganizationDashboardPage = () => {
+  const { currentOrganization, isLoading } = useOrganizationContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    // 個人組織の場合はMCPサーバーページへリダイレクト
+    if (!isLoading && (!currentOrganization || currentOrganization.isPersonal)) {
+      router.push("/mcp/servers");
+    }
+  }, [currentOrganization, isLoading, router]);
+
+  if (isLoading || !currentOrganization || currentOrganization.isPersonal) {
+    return <div>Loading...</div>;
   }
 
-  return <OrganizationDashboard organizationId={defaultOrg.id} />;
+  return <OrganizationDashboard organizationId={currentOrganization.id} />;
 };
 
 export default OrganizationDashboardPage;
