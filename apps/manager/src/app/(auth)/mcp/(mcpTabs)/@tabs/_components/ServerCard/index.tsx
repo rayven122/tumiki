@@ -18,7 +18,6 @@ import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
-import { getMcpServerData } from "@/constants/mcpServerDescriptions";
 
 type McpServerWithTools = Prisma.McpServerGetPayload<{
   include: { tools: true };
@@ -110,10 +109,9 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
     bgColor: "bg-gray-100",
   };
 
-  // サンプル概要文の生成（後でDBから取得予定）
-  const sampleDescription = getMcpServerData(mcpServer.name).description;
-
-  const sampleTags = getMcpServerData(mcpServer.name).tags ?? [];
+  // DBから説明とタグを取得
+  const description = mcpServer.description ?? "";
+  const tags = mcpServer.tags ?? [];
 
   return (
     <Card className="relative flex h-full flex-col">
@@ -184,14 +182,12 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
 
         {/* MCPサーバーの概要 */}
         <div>
-          <p className="text-sm leading-relaxed text-gray-600">
-            {sampleDescription}
-          </p>
+          <p className="text-sm leading-relaxed text-gray-600">{description}</p>
         </div>
 
         {/* カテゴリータグ（カード下部） */}
         <div className="flex flex-wrap gap-1 pt-2">
-          {sampleTags.map((tag, index) => (
+          {tags.map((tag, index) => (
             <span
               key={index}
               className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white"

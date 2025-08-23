@@ -33,6 +33,8 @@ export const findCustomServers = async ({ ctx }: FindCustomServersInput) => {
                     select: {
                       id: true,
                       name: true,
+                      description: true,
+                      tags: true,
                       iconPath: true,
                       url: true,
                     },
