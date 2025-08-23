@@ -11,6 +11,8 @@ import { api } from "@/trpc/react";
 import { useOrganizationContext } from "@/hooks/useOrganizationContext";
 import { Building2, User, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { OrganizationIdSchema } from "@/schema/ids";
+import { toast } from "@/utils/client/toast";
 
 export const OrganizationSwitcher = () => {
   const { data: organizations } =
@@ -32,8 +34,13 @@ export const OrganizationSwitcher = () => {
       return;
     }
 
-    // valueが組織IDそのものなので、そのまま渡す
-    setCurrentOrganization(value);
+    // stringをOrganizationIdにパース
+    const result = OrganizationIdSchema.safeParse(value);
+    if (result.success) {
+      setCurrentOrganization(result.data);
+    } else {
+      toast.error("無効な組織IDです");
+    }
   };
 
   // 現在の組織IDを取得（必ず組織IDが返される）
