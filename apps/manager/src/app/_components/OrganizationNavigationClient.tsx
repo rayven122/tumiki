@@ -24,11 +24,24 @@ export const OrganizationNavigationClient = ({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const utils = api.useUtils();
 
   const currentOrgId = searchParams.get("org");
   const selectedOrganization = organizations?.find(
     (org) => org.id === currentOrgId,
   );
+
+  // setDefaultOrganization mutation
+  const setDefaultOrgMutation = api.organization.setDefaultOrganization.useMutation({
+    onSuccess: () => {
+      // 組織リストを再取得
+      void utils.organization.getUserOrganizations.invalidate();
+      toast.success("デフォルト組織を変更しました");
+    },
+    onError: (error) => {
+      toast.error(`組織の切り替えに失敗しました: ${error.message}`);
+    },
+  });
 
   const handleValueChange = (value: string) => {
     if (value === "team_usage") {
