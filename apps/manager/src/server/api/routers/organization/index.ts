@@ -29,6 +29,11 @@ import {
   removeMemberInputSchema,
   removeMemberOutputSchema,
 } from "./removeMember";
+import {
+  setDefaultOrganization,
+  setDefaultOrganizationInputSchema,
+  setDefaultOrganizationOutputSchema,
+} from "./setDefaultOrganization";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
@@ -39,6 +44,9 @@ export const GetUserOrganizationsInput = z.object({}).optional();
 export const GetUserOrganizationsOutput = z.array(
   OrganizationSchema.extend({
     id: OrganizationIdSchema,
+    isAdmin: z.boolean(),
+    memberCount: z.number(),
+    isDefault: z.boolean(),
   }),
 );
 
@@ -96,4 +104,10 @@ export const organizationRouter = createTRPCRouter({
     .input(removeMemberInputSchema)
     .output(removeMemberOutputSchema)
     .mutation(removeMember),
+
+  // デフォルト組織設定
+  setDefaultOrganization: protectedProcedure
+    .input(setDefaultOrganizationInputSchema)
+    .output(setDefaultOrganizationOutputSchema)
+    .mutation(setDefaultOrganization),
 });

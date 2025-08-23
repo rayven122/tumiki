@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Activity, Users, TrendingUp, Calendar } from "lucide-react";
 import { api } from "@/trpc/react";
+import { type OrganizationId } from "@/schema/ids";
 
 type UsageStatsSectionProps = {
-  organizationId: string;
+  organizationId: OrganizationId;
 };
 
 type MemberStat = {
