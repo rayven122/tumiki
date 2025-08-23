@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { type OrganizationId } from "@/schema/ids";
-import { type PrismaClient } from "@prisma/client";
+import { type Db } from "@tumiki/db/server";
 import { type SessionData } from "@tumiki/auth";
 
 // server-onlyモジュールをモック
@@ -10,6 +10,11 @@ vi.mock("server-only", () => ({}));
 // tRPCモジュールをモック
 vi.mock("@/server/api/trpc", () => ({
   protectedProcedure: {},
+}));
+
+// データベースクライアントをモック（暗号化ミドルウェアを回避）
+vi.mock("@tumiki/db/server", () => ({
+  db: {},
 }));
 
 import { setDefaultOrganization } from "./setDefaultOrganization";
@@ -55,7 +60,7 @@ const createMockContext = (): ProtectedContext => {
     user: {
       update: mockUserUpdate,
     },
-  } as unknown as PrismaClient;
+  } as unknown as Db;
 
   const sessionWithId = {
     ...mockSession,
