@@ -98,15 +98,6 @@ check_prerequisites() {
         exit 1
     fi
     
-    # インスタンス確認
-    if ! gcloud compute instances describe "$INSTANCE_NAME" \
-        --zone="$ZONE" \
-        --project="$PROJECT_ID" &>/dev/null; then
-        log_error "インスタンス $INSTANCE_NAME が見つかりません"
-        log_error "Zone: $ZONE, Project: $PROJECT_ID"
-        exit 1
-    fi
-    
     log_info "デプロイ先: $INSTANCE_NAME ($ZONE)"
     log_info "デプロイユーザー: $DEPLOY_USER"
     log_info "デプロイステージ: $DEPLOY_STAGE"
@@ -115,15 +106,36 @@ check_prerequisites() {
     if [ "$DRY_RUN" = "true" ]; then
         log_dry_run "ドライランモードで実行します（実際の変更は行いません）"
         
-        # GCEインスタンスへのSSH接続テスト
-        log_dry_run "GCEインスタンスへの接続を検証中..."
-        if gcloud compute ssh "$DEPLOY_USER@$INSTANCE_NAME" \
+        # インスタンス確認とSSH接続テスト
+        log_dry_run "GCEインスタンスの存在確認中..."
+        if gcloud compute instances describe "$INSTANCE_NAME" \
             --zone="$ZONE" \
-            --project="$PROJECT_ID" \
-            --command="echo '✅ SSH接続成功'" 2>/dev/null; then
-            log_dry_run "GCEインスタンスへの接続: ✅ 成功"
+            --project="$PROJECT_ID" &>/dev/null; then
+            log_dry_run "GCEインスタンス: ✅ 存在確認済み"
+            
+            # SSH接続テスト
+            log_dry_run "GCEインスタンスへの接続を検証中..."
+            if gcloud compute ssh "$DEPLOY_USER@$INSTANCE_NAME" \
+                --zone="$ZONE" \
+                --project="$PROJECT_ID" \
+                --command="echo '✅ SSH接続成功'" 2>/dev/null; then
+                log_dry_run "GCEインスタンスへの接続: ✅ 成功"
+            else
+                log_warn "GCEインスタンスへのSSH接続に失敗しました"
+                log_warn "これはドライランモードのため、処理を続行します"
+            fi
         else
-            log_error "GCEインスタンスへの接続に失敗しました"
+            log_warn "インスタンス $INSTANCE_NAME が見つかりません"
+            log_warn "Zone: $ZONE, Project: $PROJECT_ID"
+            log_warn "ドライランモードのため、処理を続行します"
+        fi
+    else
+        # 実際のデプロイ時はインスタンス確認が必須
+        if ! gcloud compute instances describe "$INSTANCE_NAME" \
+            --zone="$ZONE" \
+            --project="$PROJECT_ID" &>/dev/null; then
+            log_error "インスタンス $INSTANCE_NAME が見つかりません"
+            log_error "Zone: $ZONE, Project: $PROJECT_ID"
             exit 1
         fi
     fi
