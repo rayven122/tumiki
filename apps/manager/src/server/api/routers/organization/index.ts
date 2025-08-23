@@ -101,4 +101,10 @@ export const organizationRouter = createTRPCRouter({
     .input(removeMemberInputSchema)
     .output(removeMemberOutputSchema)
     .mutation(removeMember),
+
+  // デフォルト組織設定
+  setDefaultOrganization: protectedProcedure
+    .input(setDefaultOrganizationInputSchema)
+    .output(setDefaultOrganizationOutputSchema)
+    .mutation(setDefaultOrganization),
 });
