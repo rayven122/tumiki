@@ -1,26 +1,17 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
+import { api } from "@/trpc/server";
+import { redirect } from "next/navigation";
 import { Users, Shield, Settings, Code } from "lucide-react";
 
-const RolesPage = () => {
-  const searchParams = useSearchParams();
-  const orgId = searchParams.get("org");
-
-  if (!orgId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-            <Shield className="h-8 w-8 text-red-600" />
-          </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            アクセスエラー
-          </h1>
-          <p className="text-gray-600">組織が選択されていません。</p>
-        </div>
-      </div>
-    );
+const RolesPage = async () => {
+  // サーバー側で現在の組織を取得
+  const organizations = await api.organization.getUserOrganizations();
+  
+  // デフォルト組織を探す（isDefault: trueの組織）
+  const defaultOrg = organizations.find(org => org.isDefault);
+  
+  if (!defaultOrg || defaultOrg.isPersonal) {
+    // デフォルト組織がない、または個人組織の場合はMCPサーバーページへリダイレクト
+    redirect("/mcp/servers");
   }
 
   return (
