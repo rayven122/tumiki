@@ -14,6 +14,7 @@ import type { OAuthError, TokenData, TokenResponse } from "./types.js";
 const DEFAULT_TOKEN_REFRESH_BUFFER = 300; // 5 minutes
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY = 1000; // 1 second
+const DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds
 
 /**
  * トークンを保存
@@ -148,7 +149,10 @@ const performTokenRefresh = async (
   refreshTokenValue: string,
 ): Promise<TokenResponse> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    DEFAULT_REQUEST_TIMEOUT,
+  );
 
   try {
     const response = await fetch(tokenEndpoint, {
@@ -165,8 +169,6 @@ const performTokenRefresh = async (
       }),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -345,7 +347,10 @@ const performTokenRevocation = async (
   tokenTypeHint: "access_token" | "refresh_token",
 ): Promise<void> => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    DEFAULT_REQUEST_TIMEOUT,
+  );
 
   try {
     const response = await fetch(revocationEndpoint, {
@@ -395,11 +400,14 @@ export const revokeToken = async (tokenId: string): Promise<void> => {
     }
 
     // Revocation endpointがある場合は使用
-    if (token.oauthClient.revocationEndpoint) {
+    if (
+      token.oauthClient.revocationEndpoint &&
+      token.oauthClient.clientSecret
+    ) {
       await performTokenRevocation(
         token.oauthClient.revocationEndpoint,
         token.oauthClient.clientId,
-        token.oauthClient.clientSecret ?? "",
+        token.oauthClient.clientSecret,
         token.accessToken,
         "access_token",
       );
@@ -408,7 +416,7 @@ export const revokeToken = async (tokenId: string): Promise<void> => {
         await performTokenRevocation(
           token.oauthClient.revocationEndpoint,
           token.oauthClient.clientId,
-          token.oauthClient.clientSecret ?? "",
+          token.oauthClient.clientSecret,
           token.refreshToken,
           "refresh_token",
         );
