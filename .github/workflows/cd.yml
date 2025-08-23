@@ -91,6 +91,67 @@ jobs:
           environment: ${{ needs.setup.outputs.environment }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
+  # PR時のGCEデプロイ検証（ドライラン）
+  validate-gce:
+    name: 🔍 GCEデプロイ検証
+    needs: setup
+    if: needs.setup.outputs.is_pr == 'true'
+    runs-on: arc-runner-set
+    environment: production  # 本番環境のsecretsを使用
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup
+        uses: ./.github/actions/setup
+      
+      - name: 🔑 Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
+      
+      - name: ☁️ Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: 🔐 Setup Vercel CLI
+        shell: bash
+        run: |
+          # Vercel CLIのインストール
+          npm install -g vercel
+          
+          # Vercel認証（トークンを使用）
+          if [ -n "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "Vercel認証を設定中..."
+            vercel login --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+      
+      - name: 🧪 Validate Deployment Script (Dry Run)
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "🔍 GCEデプロイスクリプトのドライラン検証を実行"
+          echo "=============================="
+          echo "検証内容:"
+          echo "  1. GCEインスタンスへのSSH接続"
+          echo "  2. Vercel環境変数の取得可能性"
+          echo "  3. デプロイスクリプトの構文"
+          echo "=============================="
+          
+          # パッケージビルド
+          pnpm run --filter @tumiki/tsup-config build
+          pnpm run --filter @tumiki/db build
+          
+          # ドライランモードでデプロイスクリプト実行
+          # GCEアクセスとVercel環境変数取得の検証を含む
+          DRY_RUN=true \
+          INSTANCE_NAME="${{ secrets.GCE_INSTANCE_NAME_PRODUCTION }}" \
+          ZONE="${{ secrets.GCE_ZONE }}" \
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}" \
+          DEPLOY_STAGE="production" \
+          bash scripts/deploy-ci.sh
+          
+          echo "✅ ドライラン検証完了"
+
   # GCEデプロイ（本番環境のみ）
   deploy-gce:
     name: 🔧 GCEデプロイ
