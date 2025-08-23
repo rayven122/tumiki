@@ -44,6 +44,9 @@ export const GetUserOrganizationsInput = z.object({}).optional();
 export const GetUserOrganizationsOutput = z.array(
   OrganizationSchema.extend({
     id: OrganizationIdSchema,
+    isAdmin: z.boolean(),
+    memberCount: z.number(),
+    isDefault: z.boolean(),
   }),
 );
 
