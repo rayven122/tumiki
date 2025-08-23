@@ -1,5 +1,11 @@
 import { describe, test, expect, beforeEach, vi, type Mock } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import * as React from "react";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { type OrganizationId } from "@/schema/ids";
@@ -86,6 +92,8 @@ vi.mock("@/components/ui/select", () => ({
         },
         disabled,
         role: "combobox",
+        // カスタムハンドラーを追加してテストから直接呼び出せるようにする
+        onTestValueChange: onValueChange,
       },
       children,
     );
@@ -250,7 +258,7 @@ describe("OrganizationSwitcher", () => {
     expect(selectElement).toBeDisabled();
   });
 
-  test.skip("組織を選択すると切り替え処理が実行される", async () => {
+  test("組織を選択すると切り替え処理が実行される", () => {
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
     });
@@ -273,20 +281,19 @@ describe("OrganizationSwitcher", () => {
 
     render(<OrganizationSwitcher />);
 
-    // Select要素を取得して値を変更
-    const selectElement = screen.getByRole("combobox") as HTMLSelectElement;
-
-    // onValueChangeを直接トリガーするためのchangeイベント
-    fireEvent.change(selectElement, { target: { value: "org_team2" } });
-
-    // setCurrentOrganizationが呼ばれる
-    await waitFor(() => {
-      expect(mockSetCurrentOrganization).toHaveBeenCalledTimes(1);
-      expect(mockSetCurrentOrganization).toHaveBeenCalledWith("org_team2");
+    // 保存されたonValueChange関数を直接呼び出し
+    act(() => {
+      if (selectOnValueChange) {
+        selectOnValueChange("org_team2");
+      }
     });
+
+    // setCurrentOrganizationが呼ばれることを確認
+    expect(mockSetCurrentOrganization).toHaveBeenCalledTimes(1);
+    expect(mockSetCurrentOrganization).toHaveBeenCalledWith("org_team2");
   });
 
-  test.skip("新しいチームを作成を選択するとオンボーディングページへ遷移する", async () => {
+  test("新しいチームを作成を選択するとオンボーディングページへ遷移する", () => {
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
     });
@@ -306,16 +313,15 @@ describe("OrganizationSwitcher", () => {
 
     render(<OrganizationSwitcher />);
 
-    // Select要素を取得して値を変更
-    const selectElement = screen.getByRole("combobox") as HTMLSelectElement;
-
-    // create_teamを選択
-    fireEvent.change(selectElement, { target: { value: "create_team" } });
+    // 保存されたonValueChange関数を直接呼び出してcreate_teamを選択
+    act(() => {
+      if (selectOnValueChange) {
+        selectOnValueChange("create_team");
+      }
+    });
 
     // オンボーディングページへ遷移
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/onboarding");
-    });
+    expect(mockPush).toHaveBeenCalledWith("/onboarding");
 
     // setCurrentOrganizationは呼ばれない
     expect(mockSetCurrentOrganization).not.toHaveBeenCalled();
