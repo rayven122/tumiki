@@ -178,11 +178,13 @@ export const discoverAuthServer = async (
     // Fallback to OpenID Connect Discovery if OAuth metadata not found
     if (!response.ok && response.status === 404) {
       const oidcMetadataUrl = `${authServerUrl}/.well-known/openid-configuration`;
-      console.log("Trying OpenID Connect Discovery", {
+      console.log("Trying OpenID Connect Discovery fallback", {
         authServerUrl,
         metadataUrl: oidcMetadataUrl,
+        previousError: `${response.status} ${response.statusText}`,
       });
 
+      // Create new controller for fallback request
       controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -195,6 +197,25 @@ export const discoverAuthServer = async (
           },
           signal: controller.signal,
         });
+
+        if (response.ok) {
+          console.log("OpenID Connect Discovery successful", {
+            authServerUrl,
+            status: response.status,
+          });
+        } else {
+          console.warn("OpenID Connect Discovery also failed", {
+            authServerUrl,
+            status: response.status,
+            statusText: response.statusText,
+          });
+        }
+      } catch (error) {
+        console.error("OpenID Connect Discovery request failed", {
+          authServerUrl,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
       } finally {
         clearTimeout(timeoutId);
       }

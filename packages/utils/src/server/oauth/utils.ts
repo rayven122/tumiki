@@ -208,15 +208,22 @@ export const formatScopes = (scopes: string[]): string => {
 };
 
 /**
+ * リトライ遅延計算用の定数
+ */
+const DEFAULT_RETRY_BASE_DELAY = 1000; // 1 second
+const DEFAULT_RETRY_MAX_DELAY = 30000; // 30 seconds
+const RETRY_JITTER_FACTOR = 0.1; // 10% jitter
+
+/**
  * リトライ遅延を計算（指数バックオフ）
  */
 export const calculateRetryDelay = (
   attempt: number,
-  baseDelay = 1000,
-  maxDelay = 30000,
+  baseDelay = DEFAULT_RETRY_BASE_DELAY,
+  maxDelay = DEFAULT_RETRY_MAX_DELAY,
 ): number => {
   const delay = baseDelay * Math.pow(2, attempt - 1);
-  const jitter = Math.random() * 0.1 * delay; // 10% jitter
+  const jitter = Math.random() * RETRY_JITTER_FACTOR * delay;
   return Math.min(delay + jitter, maxDelay);
 };
 
