@@ -1,26 +1,17 @@
-"use client";
-
-import { useOrganizationContext } from "@/contexts/OrganizationContext";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { api } from "@/trpc/server";
+import { redirect } from "next/navigation";
 import { Users, Shield, Settings, Code } from "lucide-react";
 
-const RolesPage = () => {
-  const { currentOrganization, isLoading } = useOrganizationContext();
-  const router = useRouter();
+const RolesPage = async () => {
+  // サーバー側で現在の組織を取得
+  const organizations = await api.organization.getUserOrganizations();
 
-  useEffect(() => {
-    // 個人組織の場合はMCPサーバーページへリダイレクト
-    if (
-      !isLoading &&
-      (!currentOrganization || currentOrganization.isPersonal)
-    ) {
-      router.push("/mcp/servers");
-    }
-  }, [currentOrganization, isLoading, router]);
+  // デフォルト組織を探す
+  const defaultOrg = organizations.find((org) => org.isDefault);
 
-  if (isLoading || !currentOrganization || currentOrganization.isPersonal) {
-    return <div>Loading...</div>;
+  // 個人組織またはデフォルト組織がない場合はMCPサーバーページへリダイレクト
+  if (!defaultOrg || defaultOrg.isPersonal) {
+    redirect("/mcp/servers");
   }
 
   return (

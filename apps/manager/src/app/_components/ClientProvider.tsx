@@ -6,7 +6,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Auth0Provider } from "@tumiki/auth/client";
-import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { OrganizationProvider } from "@/hooks/useOrganizationContext";
 
 export const ClientProvider = ({ children }: { children: React.ReactNode }) => {
   return (
