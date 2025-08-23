@@ -443,27 +443,60 @@ export const revokeToken = async (tokenId: string): Promise<void> => {
  */
 export const cleanupExpiredTokens = async (): Promise<number> => {
   try {
+    const now = new Date();
+
+    console.debug("Starting expired token cleanup", {
+      timestamp: now.toISOString(),
+    });
+
+    // 期限切れまたは無効なトークンを削除
     const result = await db.oAuthToken.deleteMany({
       where: {
         OR: [
+          // アクセストークンが期限切れかつ無効
           {
-            expiresAt: {
-              lt: new Date(),
-            },
-            isValid: false,
+            AND: [
+              {
+                expiresAt: {
+                  lt: now,
+                },
+              },
+              {
+                isValid: false,
+              },
+            ],
           },
+          // リフレッシュトークンが期限切れ
           {
             refreshExpiresAt: {
-              lt: new Date(),
+              lt: now,
             },
+          },
+          // 明示的に無効化されたトークン（1日経過後）
+          {
+            AND: [
+              {
+                isValid: false,
+              },
+              {
+                updatedAt: {
+                  lt: new Date(now.getTime() - 24 * 60 * 60 * 1000), // 24 hours ago
+                },
+              },
+            ],
           },
         ],
       },
     });
 
     if (result.count > 0) {
-      console.log("Cleaned up expired tokens", {
-        count: result.count,
+      console.log("Expired token cleanup completed", {
+        deletedCount: result.count,
+        timestamp: now.toISOString(),
+      });
+    } else {
+      console.debug("No expired tokens found during cleanup", {
+        timestamp: now.toISOString(),
       });
     }
 
@@ -471,6 +504,7 @@ export const cleanupExpiredTokens = async (): Promise<number> => {
   } catch (error) {
     console.error("Failed to cleanup expired tokens", {
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
     throw error;
   }
