@@ -11,62 +11,21 @@ export const OrganizationNavigationClient = () => {
   const pathname = usePathname();
   const { currentOrganization } = useOrganizationContext();
 
-    // デフォルト組織を更新
-    const organizationId = value === "personal" ? null : value;
-    
-    // Optimistic update: 即座にUIを更新
-    if (value === "personal") {
-      // 組織固有のページから個人を選択した場合のリダイレクト処理
-      if (pathname.startsWith("/organizations/dashboard")) {
-        router.push("/mcp/servers");
-      } else if (pathname.startsWith("/organizations/roles")) {
-        router.push("/mcp/servers");
-      } else {
-        // URLパラメータを削除してページをリロード
-        const params = new URLSearchParams(searchParams);
-        params.delete("org");
-        router.push(`${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
-      }
-    } else {
-      // チーム組織に切り替え
-      const params = new URLSearchParams(searchParams);
-      params.set("org", value);
-      router.push(`${window.location.pathname}?${params.toString()}`);
-    }
-
-    // バックグラウンドでデフォルト組織を更新
-    try {
-      await setDefaultOrgMutation.mutateAsync({ organizationId });
-      
-      // 成功後、URLパラメータを削除（永続化されたため不要）
-      if (value !== "personal") {
-        const params = new URLSearchParams(searchParams);
-        params.delete("org");
-        router.push(`${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
-      }
-    } catch (error) {
-      // エラーは mutation の onError で処理済み
-      console.error("Failed to set default organization:", error);
-    }
-  };
-
-  const currentValue = currentOrgId ?? "personal";
-
-  const navigation = selectedOrganization
+  const navigation = currentOrganization && !currentOrganization.isPersonal
     ? [
         {
           name: "組織設定",
-          href: `/organizations/dashboard?org=${selectedOrganization.id}`,
+          href: "/organizations/dashboard",
           icon: Building2,
         },
         {
           name: "ロール管理",
-          href: `/organizations/roles?org=${selectedOrganization.id}`,
+          href: "/organizations/roles",
           icon: User,
         },
         {
           name: "MCPサーバー",
-          href: `/mcp/servers?org=${selectedOrganization.id}`,
+          href: "/mcp/servers",
           icon: Database,
         },
       ]
