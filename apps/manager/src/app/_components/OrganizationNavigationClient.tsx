@@ -43,31 +43,49 @@ export const OrganizationNavigationClient = ({
     },
   });
 
-  const handleValueChange = (value: string) => {
+  const handleValueChange = async (value: string) => {
     if (value === "team_usage") {
       router.push(`/onboarding?org=${currentOrgId}`);
       return;
     }
 
-    const params = new URLSearchParams(searchParams);
-
+    // デフォルト組織を更新
+    const organizationId = value === "personal" ? null : value;
+    
+    // Optimistic update: 即座にUIを更新
     if (value === "personal") {
-      params.delete("org");
-
       // 組織固有のページから個人を選択した場合のリダイレクト処理
       if (pathname.startsWith("/organizations/dashboard")) {
         router.push("/mcp/servers");
-        return;
-      }
-      if (pathname.startsWith("/organizations/roles")) {
+      } else if (pathname.startsWith("/organizations/roles")) {
         router.push("/mcp/servers");
-        return;
+      } else {
+        // URLパラメータを削除してページをリロード
+        const params = new URLSearchParams(searchParams);
+        params.delete("org");
+        router.push(`${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
       }
     } else {
+      // チーム組織に切り替え
+      const params = new URLSearchParams(searchParams);
       params.set("org", value);
+      router.push(`${window.location.pathname}?${params.toString()}`);
     }
 
-    router.push(`${window.location.pathname}?${params.toString()}`);
+    // バックグラウンドでデフォルト組織を更新
+    try {
+      await setDefaultOrgMutation.mutateAsync({ organizationId });
+      
+      // 成功後、URLパラメータを削除（永続化されたため不要）
+      if (value !== "personal") {
+        const params = new URLSearchParams(searchParams);
+        params.delete("org");
+        router.push(`${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
+      }
+    } catch (error) {
+      // エラーは mutation の onError で処理済み
+      console.error("Failed to set default organization:", error);
+    }
   };
 
   const currentValue = currentOrgId ?? "personal";
