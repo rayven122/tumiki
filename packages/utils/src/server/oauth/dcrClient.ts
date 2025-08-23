@@ -14,6 +14,12 @@ import type {
 } from "./types.js";
 
 /**
+ * デフォルト設定
+ */
+const DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds
+const DEFAULT_USER_AGENT = "tumiki/1.0";
+
+/**
  * WWW-Authenticateヘッダーをパース
  */
 export const parseWWWAuthenticate = (
@@ -76,8 +82,8 @@ export const discoverProtectedResource = async (
   mcpServerUrl: string,
   options?: { userAgent?: string; timeout?: number },
 ): Promise<ProtectedResourceMetadata | null> => {
-  const userAgent = options?.userAgent ?? "tumiki/1.0";
-  const timeout = options?.timeout ?? 30000;
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
+  const timeout = options?.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
   try {
     const url = new URL(mcpServerUrl);
@@ -140,8 +146,8 @@ export const discoverAuthServer = async (
   authServerUrl: string,
   options?: { userAgent?: string; timeout?: number },
 ): Promise<AuthServerMetadata> => {
-  const userAgent = options?.userAgent ?? "tumiki/1.0";
-  const timeout = options?.timeout ?? 30000;
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
+  const timeout = options?.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
   try {
     // Try OAuth 2.0 Authorization Server Metadata first
@@ -152,19 +158,22 @@ export const discoverAuthServer = async (
       metadataUrl: oauthMetadataUrl,
     });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    let response: Response;
+    let controller = new AbortController();
+    let timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    let response = await fetch(oauthMetadataUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "User-Agent": userAgent,
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
+    try {
+      response = await fetch(oauthMetadataUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": userAgent,
+        },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // Fallback to OpenID Connect Discovery if OAuth metadata not found
     if (!response.ok && response.status === 404) {
@@ -174,19 +183,21 @@ export const discoverAuthServer = async (
         metadataUrl: oidcMetadataUrl,
       });
 
-      const controller2 = new AbortController();
-      const timeoutId2 = setTimeout(() => controller2.abort(), timeout);
+      controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      response = await fetch(oidcMetadataUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "User-Agent": userAgent,
-        },
-        signal: controller2.signal,
-      });
-
-      clearTimeout(timeoutId2);
+      try {
+        response = await fetch(oidcMetadataUrl, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "User-Agent": userAgent,
+          },
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
     }
 
     if (!response.ok) {
@@ -237,8 +248,8 @@ export const registerClient = async (
     timeout?: number;
   },
 ): Promise<ClientCredentials> => {
-  const userAgent = options?.userAgent ?? "tumiki/1.0";
-  const timeout = options?.timeout ?? 30000;
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
+  const timeout = options?.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
   try {
     console.log("Registering OAuth client", {
@@ -326,8 +337,8 @@ export const updateClient = async (
   metadata: Partial<ClientMetadata>,
   options?: { userAgent?: string; timeout?: number },
 ): Promise<ClientCredentials> => {
-  const userAgent = options?.userAgent ?? "tumiki/1.0";
-  const timeout = options?.timeout ?? 30000;
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
+  const timeout = options?.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
   try {
     console.log("Updating OAuth client", {
@@ -387,8 +398,8 @@ export const getClient = async (
   accessToken: string,
   options?: { userAgent?: string; timeout?: number },
 ): Promise<ClientCredentials> => {
-  const userAgent = options?.userAgent ?? "tumiki/1.0";
-  const timeout = options?.timeout ?? 30000;
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
+  const timeout = options?.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
   try {
     console.debug("Fetching OAuth client info", {
@@ -443,8 +454,8 @@ export const deleteClient = async (
   accessToken: string,
   options?: { userAgent?: string; timeout?: number },
 ): Promise<void> => {
-  const userAgent = options?.userAgent ?? "tumiki/1.0";
-  const timeout = options?.timeout ?? 30000;
+  const userAgent = options?.userAgent ?? DEFAULT_USER_AGENT;
+  const timeout = options?.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
   try {
     console.log("Deleting OAuth client", {

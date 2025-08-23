@@ -96,11 +96,12 @@ export const createOAuthError = (
  */
 export const buildRedirectUri = (
   baseUrl: string,
-  sessionId: string,
+  mcpServerId: string,
 ): string => {
   const url = new URL(baseUrl);
-  url.pathname = "/oauth/callback";
-  url.searchParams.set("session", sessionId);
+  // ベースURLの末尾スラッシュを正規化
+  const cleanPath = url.pathname.replace(/\/+$/, "");
+  url.pathname = `${cleanPath}/oauth/callback/${mcpServerId}`;
   return url.toString();
 };
 
@@ -200,10 +201,10 @@ export const parseScopes = (scopeString?: string): string[] => {
 };
 
 /**
- * スコープ配列を文字列に変換
+ * スコープ配列を文字列に変換（重複を除去）
  */
 export const formatScopes = (scopes: string[]): string => {
-  return scopes.join(" ");
+  return Array.from(new Set(scopes)).join(" ");
 };
 
 /**

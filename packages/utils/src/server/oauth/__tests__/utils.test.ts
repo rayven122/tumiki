@@ -121,7 +121,7 @@ describe("buildAuthorizationUrl", () => {
     expect(authorizationUrl).toContain(
       "redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback",
     );
-    expect(authorizationUrl).toContain("scope=read%20write");
+    expect(authorizationUrl).toContain("scope=read+write");
     expect(authorizationUrl).toContain("state=state123");
     expect(authorizationUrl).toContain("code_challenge=challenge123");
     expect(authorizationUrl).toContain("code_challenge_method=S256");
