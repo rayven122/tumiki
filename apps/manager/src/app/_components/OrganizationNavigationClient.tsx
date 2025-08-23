@@ -40,35 +40,7 @@ export const OrganizationNavigationClient = () => {
   return (
     <div className="flex items-center space-x-6">
       {/* 組織セレクター */}
-      <Select value={currentValue} onValueChange={handleValueChange}>
-        <SelectTrigger className="w-[200px] border-0 bg-transparent shadow-none">
-          <div className="flex items-center space-x-2">
-            {selectedOrganization ? (
-              <>
-                <Building2 className="h-4 w-4" />
-                <span>{selectedOrganization.name}</span>
-              </>
-            ) : (
-              <>
-                <User className="h-4 w-4" />
-                <span>個人</span>
-              </>
-            )}
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="personal">
-            <div className="flex items-center space-x-2">
-              <User className="h-4 w-4" />
-              <span>個人</span>
-            </div>
-          </SelectItem>
-          {organizations?.map((org) => (
-            <SelectItem key={org.id} value={org.id}>
-              <div className="flex items-center space-x-2">
-                <Building2 className="h-4 w-4" />
-                <span>{org.name}</span>
-              </div>
+      <OrganizationSwitcher />
             </SelectItem>
           ))}
           <SelectItem value="team_usage">
