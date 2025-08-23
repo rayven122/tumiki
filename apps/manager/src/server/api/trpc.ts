@@ -76,8 +76,8 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
       if (user?.defaultOrganizationId) {
         // defaultOrganizationIdが設定されている場合は使用
         currentOrganizationId = user.defaultOrganizationId;
-    } else {
-      // フォールバック：個人組織を検索
+      } else {
+        // フォールバック：個人組織を検索（優先度3）
       const firstMembership = await db.organizationMember.findFirst({
         where: {
           userId: session.user.sub,
