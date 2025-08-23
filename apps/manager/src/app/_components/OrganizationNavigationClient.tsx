@@ -1,53 +1,15 @@
 "use client";
 
-import { User, Building2, Plus, Database } from "lucide-react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { User, Building2, Database } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
-import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
-import type { Organization } from "@tumiki/db";
+import { useOrganizationContext } from "@/contexts/OrganizationContext";
+import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
+import { usePathname } from "next/navigation";
 
-interface OrganizationNavigationClientProps {
-  organizations: Organization[];
-}
-
-export const OrganizationNavigationClient = ({
-  organizations,
-}: OrganizationNavigationClientProps) => {
-  const router = useRouter();
+export const OrganizationNavigationClient = () => {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const utils = api.useUtils();
-
-  const currentOrgId = searchParams.get("org");
-  const selectedOrganization = organizations?.find(
-    (org) => org.id === currentOrgId,
-  );
-
-  // setDefaultOrganization mutation
-  const setDefaultOrgMutation = api.organization.setDefaultOrganization.useMutation({
-    onSuccess: () => {
-      // 組織リストを再取得
-      void utils.organization.getUserOrganizations.invalidate();
-      toast.success("デフォルト組織を変更しました");
-    },
-    onError: (error) => {
-      toast.error(`組織の切り替えに失敗しました: ${error.message}`);
-    },
-  });
-
-  const handleValueChange = async (value: string) => {
-    if (value === "team_usage") {
-      router.push(`/onboarding?org=${currentOrgId}`);
-      return;
-    }
+  const { currentOrganization } = useOrganizationContext();
 
     // デフォルト組織を更新
     const organizationId = value === "personal" ? null : value;
