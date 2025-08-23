@@ -41,16 +41,6 @@ export const OrganizationNavigationClient = () => {
     <div className="flex items-center space-x-6">
       {/* 組織セレクター */}
       <OrganizationSwitcher />
-            </SelectItem>
-          ))}
-          <SelectItem value="team_usage">
-            <div className="flex items-center space-x-2">
-              <Plus className="h-4 w-4" />
-              <span>チーム利用</span>
-            </div>
-          </SelectItem>
-        </SelectContent>
-      </Select>
 
       {/* ナビゲーションリンク */}
       <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
