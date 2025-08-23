@@ -2,7 +2,6 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { api } from "@/trpc/react";
-import { useRouter } from "next/navigation";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
 
@@ -30,7 +29,6 @@ type OrganizationProviderProps = {
 export const OrganizationProvider = ({
   children,
 }: OrganizationProviderProps) => {
-  const router = useRouter();
   const utils = api.useUtils();
 
   // 組織リストを取得（既にdefaultOrgが設定済み）
@@ -44,12 +42,10 @@ export const OrganizationProvider = ({
   // デフォルト組織を設定するmutation
   const setDefaultOrgMutation =
     api.organization.setDefaultOrganization.useMutation({
-      onSuccess: async () => {
-        // すべてのtRPCクエリを再取得
-        await utils.invalidate();
+      onSuccess: () => {
         toast.success("組織を切り替えました");
-        // ページをリフレッシュして新しい組織コンテキストを反映
-        router.refresh();
+        // ハードリロードでページ全体を再読み込み（キャッシュを完全にクリア）
+        window.location.reload();
       },
       onError: (error) => {
         toast.error(`組織の切り替えに失敗しました: ${error.message}`);
@@ -62,17 +58,6 @@ export const OrganizationProvider = ({
     if (!selectedOrg) {
       toast.error("組織が見つかりません");
       return;
-    }
-
-    // 個人組織を選択した場合、組織固有のページからリダイレクト
-    if (selectedOrg.isPersonal) {
-      const currentPath = window.location.pathname;
-      if (
-        currentPath.startsWith("/organizations/dashboard") ||
-        currentPath.startsWith("/organizations/roles")
-      ) {
-        router.push("/mcp/servers");
-      }
     }
 
     // mutationを実行
