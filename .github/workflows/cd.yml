@@ -40,16 +40,16 @@ jobs:
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup
         uses: ./.github/actions/setup
-      
+
       - name: Build packages (database only)
         shell: bash
         run: |
           pnpm run --filter @tumiki/tsup-config build
           pnpm run --filter @tumiki/db build
-      
+
       - name: Migrate database
         uses: ./.github/actions/migrate-database
         with:
@@ -130,30 +130,30 @@ jobs:
             const vercelStatus = '${{ needs.deploy-vercel.result }}';
             const gceStatus = '${{ needs.deploy-gce.result }}';
             const isProduction = environment === 'production';
-            
+
             let emoji = '✅';
             if (migrationStatus === 'failure' || vercelStatus === 'failure' || (isProduction && gceStatus === 'failure')) {
               emoji = '❌';
             }
-            
+
             let summary = `## ${emoji} ${environment}環境へのデプロイ\n\n`;
             summary += `| コンポーネント | ステータス |\n`;
             summary += `|---------------|------------|\n`;
-            
+
             // データベースマイグレーション
             if (migrationStatus && migrationStatus !== 'skipped') {
               summary += `| データベース | ${migrationStatus === 'success' ? '✅' : '❌'} ${migrationStatus} |\n`;
             }
-            
+
             // Vercel
             summary += `| Vercel | ${vercelStatus === 'success' ? '✅' : vercelStatus === 'failure' ? '❌' : '⚠️'} ${vercelStatus} |\n`;
-            
+
             // GCE (本番のみ)
             if (isProduction) {
               summary += `| GCE ProxyServer | ${gceStatus === 'success' ? '✅' : gceStatus === 'skipped' ? '⏭️' : gceStatus === 'failure' ? '❌' : '⚠️'} ${gceStatus || 'skipped'} |\n`;
             }
-            
+
             summary += `\n**Triggered by:** ${{ github.actor }}\n`;
             summary += `**Commit:** ${{ github.sha }}`;
-            
+
             await core.summary.addRaw(summary).write();

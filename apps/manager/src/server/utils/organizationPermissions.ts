@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import type { PrismaClient } from "@prisma/client";
+import type { Db } from "@tumiki/db/server";
 
 export type OrganizationWithMembers = {
   id: string;
@@ -15,7 +15,7 @@ export type OrganizationWithMembers = {
  * 組織のアクセス権限を検証し、組織データとユーザーのメンバーシップ情報を返す
  */
 export const validateOrganizationAccess = async (
-  db: PrismaClient,
+  db: Db,
   organizationId: string,
   userId: string,
 ) => {
@@ -60,7 +60,7 @@ export const validateOrganizationAccess = async (
  * 組織の管理者権限を検証する
  */
 export const validateOrganizationAdminAccess = async (
-  db: PrismaClient,
+  db: Db,
   organizationId: string,
   userId: string,
 ) => {
