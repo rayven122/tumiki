@@ -231,7 +231,7 @@ transportType に応じて接続方式を選択
   - `createdBy`: ユーザーカスタムサーバーの作成者
   - `visibility`: ユーザーカスタムサーバーの可視性
   - `organizationId`: 組織限定公開時の所属組織ID
-  - `isPublic`: サーバーが公開されているか（レガシー）
+  - `isPublic`: サーバーが公開されている��（レガシー）
   - `createdAt`: 
   - `updatedAt`: 
 
