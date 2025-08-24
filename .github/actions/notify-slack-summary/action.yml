@@ -75,9 +75,9 @@ runs:
 
         # 全体のステータスを判定
         OVERALL_SUCCESS=true
-        if [ "${{ inputs.migration_status }}" == "failure" ] || \
-           [ "${{ inputs.vercel_status }}" == "failure" ] || \
-           ([ "${{ inputs.environment }}" == "production" ] && [ "${{ inputs.gce_status }}" == "failure" ]); then
+        if [ "${{ inputs.migration_status }}" == "failure" ] || 
+           [ "${{ inputs.vercel_status }}" == "failure" ] || 
+           [ "${{ inputs.environment }}" == "production" -a "${{ inputs.gce_status }}" == "failure" ]; then
           OVERALL_SUCCESS=false
         fi
 
