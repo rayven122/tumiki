@@ -34,10 +34,13 @@ runs:
         echo "🔔 Sending Slack notification..."
 
         # メッセージの構築
-        if [ -n "${{ inputs.blocks }}" ]; then
+        BLOCKS_INPUT='${{ inputs.blocks }}'
+        TEXT_INPUT='${{ inputs.text }}'
+        
+        if [ -n "$BLOCKS_INPUT" ]; then
           # Block Kit形式のメッセージ
-          SLACK_MESSAGE="${{ inputs.blocks }}"
-        elif [ -n "${{ inputs.text }}" ]; then
+          SLACK_MESSAGE="$BLOCKS_INPUT"
+        elif [ -n "$TEXT_INPUT" ]; then
           # シンプルなテキストメッセージ
           SLACK_MESSAGE=$(cat <<EOF
         {
