@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Db } from "@tumiki/db/server";
 
 /**
  * 組織の完全な詳細情報を取得するための共通include設定
@@ -37,7 +37,7 @@ export const getFullOrganizationInclude = () => ({
  * 組織の基本情報をメンバー情報と共に取得
  */
 export const getOrganizationWithMembers = async (
-  db: PrismaClient,
+  db: Db,
   organizationId: string,
 ) => {
   return await db.organization.findUnique({
@@ -65,7 +65,7 @@ export const getOrganizationWithMembers = async (
  * 組織の完全な詳細情報を取得
  */
 export const getOrganizationWithFullDetails = async (
-  db: PrismaClient,
+  db: Db,
   organizationId: string,
 ) => {
   return await db.organization.findUnique({
@@ -78,7 +78,7 @@ export const getOrganizationWithFullDetails = async (
  * 使用量統計取得用のメンバー情報を取得
  */
 export const getOrganizationMembersForStats = async (
-  db: PrismaClient,
+  db: Db,
   organizationId: string,
 ) => {
   return await db.organizationMember.findMany({

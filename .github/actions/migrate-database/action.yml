@@ -1,18 +1,27 @@
 name: Migrate Database
-description: データベースマイグレーションを実行します。staging/production環境でのみ実行されます
+description: データベースマイグレーションを実行します。staging/production/preview環境で実行されます
 
 inputs:
   database_url:
     description: データベース接続URL（環境別）
     required: true
   environment:
-    description: デプロイ環境（staging/production）
+    description: デプロイ環境（staging/production/preview）
     required: true
+
+outputs:
+  migration_applied:
+    description: マイグレーションが適用されたかどうか
+    value: ${{ steps.migrate.outputs.migration_applied }}
+  migration_names:
+    description: 適用されたマイグレーション名（カンマ区切り）
+    value: ${{ steps.migrate.outputs.migration_names }}
 
 runs:
   using: composite
   steps:
     - name: 🗄️ Run database migration
+      id: migrate
       shell: bash
       env:
         DATABASE_URL: ${{ inputs.database_url }}
@@ -28,16 +37,61 @@ runs:
 
         cd packages/db
 
-        # データベースマイグレーション実行
+        # データベースマイグレーション実行と出力のキャプチャ
         echo "🔄 Executing database migrations..."
-        if pnpm db:deploy; then
+        MIGRATION_OUTPUT=$(pnpm db:deploy 2>&1 | tee /tmp/migration_output.log)
+        MIGRATION_STATUS=$?
+
+        # マイグレーション実行結果をチェック
+        if [ $MIGRATION_STATUS -eq 0 ]; then
           echo "✅ Database migration completed successfully"
+          
+          # マイグレーションが適用されたかチェック
+          # Prismaの出力パターンに合わせて検知
+          if echo "$MIGRATION_OUTPUT" | grep -q "The following migration(s) have been applied:" || \
+             echo "$MIGRATION_OUTPUT" | grep -q "Applying migration"; then
+            
+            echo "migration_applied=true" >> $GITHUB_OUTPUT
+            
+            # 適用されたマイグレーション名を抽出
+            # パターン1: migrations/の後の行から抽出（└─ 20250823231216_add_tags_description_to_mcpserver/）
+            MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep -A 20 "migrations/" | grep "└─" | sed 's/.*└─ //' | sed 's/\///' | grep -v "migration\.sql" | tr '\n' ',' | sed 's/,$//')
+            
+            if [ -z "$MIGRATION_NAMES" ]; then
+              # パターン2: Applying migration の後から抽出
+              MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep "Applying migration" | sed "s/.*Applying migration \`//" | sed "s/\`//" | grep -v "migration\.sql" | tr '\n' ',' | sed 's/,$//')
+            fi
+            
+            if [ -z "$MIGRATION_NAMES" ]; then
+              # パターン3: 数字で始まるマイグレーション名を直接検索
+              MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep -oE "[0-9]{14}_[a-zA-Z0-9_]+" | grep -v "migration\.sql" | head -5 | tr '\n' ',' | sed 's/,$//')
+            fi
+            
+            # migration.sqlを含むエントリを除外
+            if [ -n "$MIGRATION_NAMES" ]; then
+              MIGRATION_NAMES=$(echo "$MIGRATION_NAMES" | tr ',' '\n' | grep -v "migration\.sql" | tr '\n' ',' | sed 's/,$//')
+            fi
+            
+            echo "migration_names=$MIGRATION_NAMES" >> $GITHUB_OUTPUT
+            echo "📝 Applied migrations: $MIGRATION_NAMES"
+          elif echo "$MIGRATION_OUTPUT" | grep -q "No pending migrations to apply"; then
+            # 明示的に「適用するマイグレーションがない」場合
+            echo "migration_applied=false" >> $GITHUB_OUTPUT
+            echo "migration_names=" >> $GITHUB_OUTPUT
+            echo "ℹ️ No pending migrations to apply"
+          else
+            echo "migration_applied=false" >> $GITHUB_OUTPUT
+            echo "migration_names=" >> $GITHUB_OUTPUT
+            echo "ℹ️ No new migrations were applied"
+          fi
         else
           echo "❌ Database migration failed"
           echo "💡 Please check:"
           echo "  - Database connection (DATABASE_URL)"
           echo "  - Migration files in prisma/migrations/"
           echo "  - Database server status"
+          echo "migration_applied=false" >> $GITHUB_OUTPUT
+          echo "migration_names=" >> $GITHUB_OUTPUT
           exit 1
         fi
 

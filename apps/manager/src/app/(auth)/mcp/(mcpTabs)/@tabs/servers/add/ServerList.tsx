@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { X, Search } from "lucide-react";
@@ -23,30 +23,6 @@ const AsyncServerList = ({
 }) => {
   const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
 
-  // タグマッピング（フィルタリング用）
-  const getServerTags = (serverName: string) => {
-    const tagsMap: Record<string, string[]> = {
-      GitHub: ["開発", "バージョン管理"],
-      Slack: ["コミュニケーション", "通知"],
-      Notion: ["ドキュメント", "プロジェクト管理"],
-      "Google Drive": ["ファイル管理", "ストレージ"],
-      Jira: ["プロジェクト管理", "タスク"],
-      Discord: ["コミュニケーション", "チーム"],
-      Figma: ["デザイン", "UI/UX"],
-      AWS: ["インフラ", "クラウド"],
-      Docker: ["コンテナ", "DevOps"],
-      PostgreSQL: ["データベース", "ストレージ"],
-      Neon: ["データベース", "クラウド"],
-      Playwright: ["テスト", "ブラウザ自動化"],
-      Context7: ["開発", "ドキュメント"],
-    };
-
-    const matchedKey = Object.keys(tagsMap).find((key) =>
-      serverName.toLowerCase().includes(key.toLowerCase()),
-    );
-    return matchedKey ? tagsMap[matchedKey] : ["ツール", "サービス"];
-  };
-
   // フィルタリング
   const filteredServers = mcpServers.filter((server) => {
     // 検索クエリでのフィルタリング
@@ -54,8 +30,8 @@ const AsyncServerList = ({
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
 
-    // タグでのフィルタリング
-    const serverTags = getServerTags(server.name) ?? [];
+    // タグでのフィルタリング（DBのtagsフィールドを使用）
+    const serverTags = server.tags ?? [];
     const matchesTags =
       selectedTags.length === 0 ||
       selectedTags.some((tag) => serverTags.includes(tag));
@@ -88,30 +64,15 @@ export function ServerList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // 利用可能なタグ一覧
-  const availableTags = [
-    "開発",
-    "バージョン管理",
-    "コミュニケーション",
-    "通知",
-    "ドキュメント",
-    "プロジェクト管理",
-    "ファイル管理",
-    "ストレージ",
-    "タスク",
-    "チーム",
-    "デザイン",
-    "UI/UX",
-    "インフラ",
-    "クラウド",
-    "コンテナ",
-    "DevOps",
-    "データベース",
-    "テスト",
-    "ブラウザ自動化",
-    "ツール",
-    "サービス",
-  ];
+  // MCPサーバーから利用可能なタグを動的に取得
+  const { data: mcpServers } = api.mcpServer.findAll.useQuery();
+
+  // 全サーバーからユニークなタグを抽出
+  const availableTags = useMemo(() => {
+    if (!mcpServers) return [];
+    const allTags = mcpServers.flatMap((server) => server.tags ?? []);
+    return Array.from(new Set(allTags)).sort();
+  }, [mcpServers]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>

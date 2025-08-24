@@ -1,25 +1,69 @@
-import { Building2 } from "lucide-react";
-import { OrganizationNavigationClient } from "./OrganizationNavigationClient";
-import { api } from "@/trpc/server";
+"use client";
 
-export const OrganizationNavigation = async () => {
-  try {
-    // tRPCを使用して組織一覧を取得
-    const organizations = await api.organization.getUserOrganizations();
+import { User, Building2, Database } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { useOrganizationContext } from "@/hooks/useOrganizationContext";
+import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
+import { usePathname } from "next/navigation";
 
-    // 個人組織を除外（isPersonal: falseのみ）
-    const teamOrganizations = organizations.filter((org) => !org.isPersonal);
+export const OrganizationNavigation = () => {
+  const pathname = usePathname();
+  const { currentOrganization } = useOrganizationContext();
 
-    return <OrganizationNavigationClient organizations={teamOrganizations} />;
-  } catch {
-    // 認証されていない場合やエラーの場合
-    return (
-      <div className="flex items-center space-x-4">
-        <div className="text-muted-foreground flex items-center space-x-2 text-sm">
-          <Building2 className="h-4 w-4" />
-          <span>ログインが必要です</span>
-        </div>
-      </div>
-    );
-  }
+  const navigation =
+    currentOrganization && !currentOrganization.isPersonal
+      ? [
+          {
+            name: "組織設定",
+            href: "/organizations/dashboard",
+            icon: Building2,
+          },
+          {
+            name: "ロール管理",
+            href: "/organizations/roles",
+            icon: User,
+          },
+          {
+            name: "MCPサーバー",
+            href: "/mcp/servers",
+            icon: Database,
+          },
+        ]
+      : [
+          {
+            name: "MCPサーバー",
+            href: "/mcp/servers",
+            icon: Database,
+          },
+        ];
+
+  return (
+    <div className="flex items-center space-x-6">
+      {/* 組織セレクター */}
+      <OrganizationSwitcher />
+
+      {/* ナビゲーションリンク */}
+      <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "hover:text-foreground/80 flex items-center space-x-1 transition-colors",
+                pathname === item.href
+                  ? "text-foreground"
+                  : "text-foreground/60",
+              )}
+            >
+              {Icon && <Icon className="h-4 w-4" />}
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
 };

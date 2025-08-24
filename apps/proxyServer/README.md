@@ -238,6 +238,196 @@ Auth0設定情報は以下のエンドポイントから取得可能：
 - セッションは一定時間（デフォルト5分）でタイムアウト
 - 各セッションはMCPサーバーとの永続的な接続を保持
 
+## アプリケーション接続方法
+
+### 接続方式の概要
+
+ProxyServerは複数のMCPサーバーを統合管理し、クライアントアプリケーションからの接続を受け付けます。以下の接続方式をサポートしています：
+
+1. **Streamable HTTP Transport** - JSON-RPC 2.0ベースのHTTP通信
+2. **SSE Transport** - Server-Sent Eventsによるリアルタイム通信
+
+### 接続フロー
+
+#### 1. 認証情報の準備
+
+接続前に、MCPサーバーインスタンスのauthTypeに応じた認証情報を準備：
+
+- **APIキー認証**: 管理画面からAPIキーを取得
+- **OAuth認証**: Auth0 M2MトークンまたはDynamic Client Registration経由でトークンを取得
+
+#### 2. エンドポイントへの接続
+
+**推奨: RESTfulエンドポイント**
+
+```javascript
+// Node.js/TypeScriptの例
+const mcpServerInstanceId = "your-instance-id";
+const apiKey = "your-api-key";
+
+// ツール一覧を取得
+const response = await fetch(
+  `http://localhost:8080/mcp/${mcpServerInstanceId}`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+      "mcp-session-id": "unique-session-id", // オプション
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "tools/list",
+      id: 1,
+    }),
+  },
+);
+
+const result = await response.json();
+```
+
+**SSE接続の例**
+
+```javascript
+// SSE接続を確立
+const eventSource = new EventSource(
+  `http://localhost:8080/sse/${mcpServerInstanceId}?api-key=${apiKey}`,
+);
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Received:", data);
+};
+
+// メッセージ送信
+await fetch(`http://localhost:8080/messages/${mcpServerInstanceId}`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+  },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: {
+      /* ... */
+    },
+    id: 2,
+  }),
+});
+```
+
+### SDK/ライブラリ経由の接続
+
+#### MCP SDK (TypeScript/JavaScript)
+
+```typescript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHttpClientTransport } from "@modelcontextprotocol/sdk/client/streamable-http.js";
+
+// クライアントの作成
+const transport = new StreamableHttpClientTransport({
+  url: `http://localhost:8080/mcp/${mcpServerInstanceId}`,
+  headers: {
+    "X-API-Key": apiKey,
+  },
+});
+
+const client = new Client(
+  {
+    name: "my-app",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {},
+  },
+);
+
+// 接続
+await client.connect(transport);
+
+// ツールの呼び出し
+const result = await client.request({
+  method: "tools/call",
+  params: {
+    name: "get_weather",
+    arguments: { location: "Tokyo" },
+  },
+});
+```
+
+### 接続時の考慮事項
+
+#### セッション管理
+
+- `mcp-session-id`ヘッダーで永続的なセッションを管理
+- セッションは5分間のアイドルタイムアウト
+- 同一セッションで複数のリクエストを送信可能
+
+#### エラーハンドリング
+
+```javascript
+try {
+  const response = await fetch(/* ... */);
+
+  if (!response.ok) {
+    const error = await response.json();
+    console.error("Error:", error.error);
+
+    // リトライロジック
+    if (error.error.code === -32603) {
+      // Internal error
+      // リトライまたは再接続
+    }
+  }
+} catch (err) {
+  console.error("Connection failed:", err);
+  // 接続エラーの処理
+}
+```
+
+#### レート制限とタイムアウト
+
+- リクエストサイズ: 最大10MB
+- 接続タイムアウト: デフォルト30秒
+- 同時接続数: MCPサーバーの制限に依存
+
+### デバッグとテスト
+
+#### MCP Inspectorを使用した検証
+
+```bash
+# ProxyServer起動
+pnpm start
+
+# 別ターミナルでInspector起動
+TEST_API_KEY=your-api-key pnpm verify
+
+# または直接Inspector起動
+pnpm dlx @modelcontextprotocol/inspector \
+  "http://localhost:8080/mcp/your-instance-id"
+```
+
+#### ログの確認
+
+```bash
+# PM2ログ確認（本番環境）
+pnpm pm2:logs
+
+# リモートログストリーミング
+pnpm pm2:logs:remote
+```
+
+### トラブルシューティング
+
+| 問題               | 原因                                 | 解決方法                     |
+| ------------------ | ------------------------------------ | ---------------------------- |
+| 401 Unauthorized   | APIキーが無効または期限切れ          | 新しいAPIキーを取得          |
+| 403 Forbidden      | authTypeが一致しない                 | 正しい認証方式を使用         |
+| 404 Not Found      | MCPサーバーインスタンスIDが無効      | 正しいIDを確認               |
+| 500 Internal Error | サーバー側のエラー                   | ログを確認、サポートに連絡   |
+| Connection timeout | ネットワーク問題またはサーバー過負荷 | リトライまたは接続設定を調整 |
+
 ## 技術スタック
 
 - **Runtime**: Node.js 22+

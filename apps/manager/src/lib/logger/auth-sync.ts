@@ -23,8 +23,9 @@ class AuthSyncLogger {
   private logEntries: SyncLogEntry[] = [];
   private maxLogEntries = 1000; // メモリ使用量制限
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  private constructor() {}
+  private constructor() {
+    // Private constructor to enforce singleton pattern
+  }
 
   static getInstance(): AuthSyncLogger {
     if (!AuthSyncLogger.instance) {

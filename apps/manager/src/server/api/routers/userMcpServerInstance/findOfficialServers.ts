@@ -35,6 +35,8 @@ export const findOfficialServers = async ({
                     select: {
                       id: true,
                       name: true,
+                      description: true,
+                      tags: true,
                       iconPath: true,
                       url: true,
                     },

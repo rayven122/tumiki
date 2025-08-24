@@ -5,6 +5,26 @@
       "command": "npx",
       "args": ["@playwright/mcp@latest"],
       "env": {}
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--enable-web-dashboard",
+        "false",
+        "--context",
+        "ide-assistant",
+        "--project",
+        "."
+      ]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }

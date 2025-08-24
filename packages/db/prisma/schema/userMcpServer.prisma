@@ -25,9 +25,14 @@ model UserMcpServerConfig {
   /// 組織
   organizationId     String
   organization       Organization        @relation(fields: [organizationId], references: [id])
+  
+  /// OAuth Tokens リレーション
+  oauthTokens        OAuthToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 /// ToolGroup, Toolの関連を表す中間テーブル
@@ -77,6 +82,8 @@ model UserToolGroup {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 /// MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
@@ -159,6 +166,7 @@ model UserMcpServerInstance {
   deletedAt DateTime?
 
   @@index([deletedAt])
+  @@index([organizationId])
 }
 
 /// MCPサーバーインスタンスへのリクエストログ
@@ -196,6 +204,8 @@ model McpServerRequestLog {
   requestData         McpServerRequestData?
 
   createdAt DateTime @default(now())
+
+  @@index([organizationId])
 }
 
 /// MCPサーバーリクエストの詳細データ（分析用）

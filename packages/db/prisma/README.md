@@ -4,6 +4,7 @@
 - [ApiKey](#apikey)
 - [Auth](#auth)
 - [McpServer](#mcpserver)
+- [OAuth](#oauth)
 - [Organization](#organization)
 - [UserMcpServer](#usermcpserver)
 - [Chat](#chat)
@@ -88,6 +89,8 @@ erDiagram
 "McpServer" {
   String id PK
   String name
+  String description "nullable"
+  String tags
   String iconPath "nullable"
   TransportType transportType
   String command "nullable"
@@ -210,6 +213,8 @@ transportType に応じて接続方式を選択
 **Properties**
   - `id`: 
   - `name`: MCP サーバー名
+  - `description`: MCPサーバーの説明
+  - `tags`: タグ（カテゴリー分類用）
   - `iconPath`: アイコンパス
   - `transportType`: 接続タイプ（stdio, sse）
   - `command`: STDIO用のコマンド
@@ -344,6 +349,164 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `toolGroupId`: 
   - `sortOrder`: このMcpServerInstance内でのToolGroupの表示順序
   - `createdAt`: 
+
+
+## OAuth
+```mermaid
+erDiagram
+"OAuthClient" {
+  String id PK
+  String mcpServerId FK,UK
+  String clientId
+  String clientSecret "nullable"
+  String registrationAccessToken "nullable"
+  String registrationClientUri "nullable"
+  String authorizationServerUrl
+  String tokenEndpoint
+  String authorizationEndpoint
+  String registrationEndpoint "nullable"
+  String jwksUri "nullable"
+  String revocationEndpoint "nullable"
+  String introspectionEndpoint "nullable"
+  String protectedResourceUrl "nullable"
+  String resourceIndicator "nullable"
+  String scopes
+  String grantTypes
+  String responseTypes
+  String tokenEndpointAuthMethod
+  String redirectUris
+  String applicationName "nullable"
+  String applicationUri "nullable"
+  String logoUri "nullable"
+  String contactEmail "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OAuthToken" {
+  String id PK
+  String userMcpConfigId FK,UK
+  String oauthClientId FK
+  String accessToken
+  String refreshToken "nullable"
+  String idToken "nullable"
+  String tokenType
+  String scope "nullable"
+  DateTime expiresAt "nullable"
+  DateTime refreshExpiresAt "nullable"
+  String state "nullable"
+  String nonce "nullable"
+  String codeVerifier "nullable"
+  String codeChallenge "nullable"
+  String codeChallengeMethod "nullable"
+  Boolean isValid
+  DateTime lastUsedAt "nullable"
+  Int refreshCount
+  String lastError "nullable"
+  DateTime lastErrorAt "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OAuthSession" {
+  String id PK
+  String sessionId UK
+  String userId FK
+  String mcpServerId
+  String codeVerifier
+  String codeChallenge
+  String codeChallengeMethod
+  String state
+  String nonce "nullable"
+  String redirectUri
+  String requestedScopes
+  String status
+  String errorCode "nullable"
+  String errorDescription "nullable"
+  DateTime expiresAt
+  DateTime createdAt
+  DateTime updatedAt
+}
+"OAuthToken" }o--|| "OAuthClient" : oauthClient
+```
+
+### `OAuthClient`
+OAuth クライアント情報（Dynamic Client Registration で取得）
+
+**Properties**
+  - `id`: 
+  - `mcpServerId`: 関連するMCPサーバー
+  - `clientId`: DCRで取得したクライアント情報
+  - `clientSecret`: 
+  - `registrationAccessToken`: 
+  - `registrationClientUri`: 
+  - `authorizationServerUrl`: Authorization Server情報
+  - `tokenEndpoint`: 
+  - `authorizationEndpoint`: 
+  - `registrationEndpoint`: 
+  - `jwksUri`: 
+  - `revocationEndpoint`: 
+  - `introspectionEndpoint`: 
+  - `protectedResourceUrl`: Protected Resource情報
+  - `resourceIndicator`: 
+  - `scopes`: メタデータ
+  - `grantTypes`: 
+  - `responseTypes`: 
+  - `tokenEndpointAuthMethod`: 
+  - `redirectUris`: クライアント設定
+  - `applicationName`: 
+  - `applicationUri`: 
+  - `logoUri`: 
+  - `contactEmail`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OAuthToken`
+OAuth トークン情報（ユーザーごと）
+
+**Properties**
+  - `id`: 
+  - `userMcpConfigId`: 関連するユーザーMCPサーバー設定
+  - `oauthClientId`: 関連するOAuthクライアント
+  - `accessToken`: トークン情報
+  - `refreshToken`: 
+  - `idToken`: 
+  - `tokenType`: トークンメタデータ
+  - `scope`: 
+  - `expiresAt`: 
+  - `refreshExpiresAt`: 
+  - `state`: セッション情報（PKCE等）
+  - `nonce`: 
+  - `codeVerifier`: 
+  - `codeChallenge`: 
+  - `codeChallengeMethod`: 
+  - `isValid`: トークン状態
+  - `lastUsedAt`: 
+  - `refreshCount`: 
+  - `lastError`: エラー情報
+  - `lastErrorAt`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OAuthSession`
+OAuth認証セッション（一時的な認証フロー管理）
+
+**Properties**
+  - `id`: 
+  - `sessionId`: セッション識別子
+  - `userId`: 関連するユーザー
+  - `mcpServerId`: 関連するMCPサーバー
+  - `codeVerifier`: PKCE情報
+  - `codeChallenge`: 
+  - `codeChallengeMethod`: 
+  - `state`: セッション情報
+  - `nonce`: 
+  - `redirectUri`: 
+  - `requestedScopes`: 要求されたスコープ
+  - `status`: セッション状態
+  - `errorCode`: エラー情報
+  - `errorDescription`: 
+  - `expiresAt`: タイムスタンプ
+  - `createdAt`: 
+  - `updatedAt`: 
 
 
 ## Organization
