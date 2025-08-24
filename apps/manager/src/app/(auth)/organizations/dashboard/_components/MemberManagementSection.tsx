@@ -28,9 +28,10 @@ import {
 import { UserPlus, Trash2, Crown, User } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
+import { type OrganizationId } from "@/schema/ids";
 
 type MemberManagementSectionProps = {
-  organizationId: string;
+  organizationId: OrganizationId;
 };
 
 export const MemberManagementSection = ({

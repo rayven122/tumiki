@@ -1,9 +1,10 @@
 import { BasicInfoSection } from "./BasicInfoSection";
 import { MemberManagementSection } from "./MemberManagementSection";
 import { UsageStatsSection } from "./UsageStatsSection";
+import { type OrganizationId } from "@/schema/ids";
 
 type OrganizationDashboardProps = {
-  organizationId: string;
+  organizationId: OrganizationId;
 };
 
 export const OrganizationDashboard = ({

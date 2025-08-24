@@ -35,18 +35,17 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let currentOrganizationId: string | null = null;
 
   if (session?.user?.sub) {
-    // まずユーザーのdefaultOrganizationIdをチェック
+    // ユーザーのdefaultOrganizationIdをチェック（優先度1）
     const user = await db.user.findUnique({
       where: { id: session.user.sub },
       select: { defaultOrganizationId: true },
     });
 
     if (user?.defaultOrganizationId) {
-      // defaultOrganizationIdが設定されている場合は優先使用
-
+      // defaultOrganizationIdが設定されている場合は使用
       currentOrganizationId = user.defaultOrganizationId;
     } else {
-      // フォールバック：個人組織を検索
+      // フォールバック：個人組織を検索（優先度2）
       const firstMembership = await db.organizationMember.findFirst({
         where: {
           userId: session.user.sub,
