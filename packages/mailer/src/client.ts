@@ -58,8 +58,7 @@ export class MailClient {
 
       return {
         success: true,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        messageId: info.messageId as string,
+        messageId: (info as { messageId: string }).messageId,
       };
     } catch (error) {
       console.error("Failed to send email:", error);
