@@ -7,31 +7,23 @@ import {
   Users,
   Shield,
   Settings,
-  Code,
   Edit2,
   Trash2,
   MoreVertical,
   UserPlus,
   Server,
   Check,
-  Github,
-  MessageSquare,
-  Database,
-  FolderOpen,
-  Globe,
   X,
   Search,
-  Filter,
   Clock,
   Mail,
   AlertCircle,
   Plus,
   ChevronDown,
   ChevronUp,
-  Wrench,
 } from "lucide-react";
 
-type Role = "admin" | "editor" | "viewer" | string;
+type Role = string;
 
 type TeamMember = {
   id: string;
@@ -115,16 +107,10 @@ const roleLabels: Record<Role, string> = {
   viewer: "閲覧者",
 };
 
-const roleColors: Record<Role, string> = {
-  admin: "bg-red-100 text-red-800",
-  editor: "bg-blue-100 text-blue-800",
-  viewer: "bg-gray-100 text-gray-800",
-};
-
 type MCPTool = {
   name: string;
   description?: string;
-  inputSchema?: any;
+  inputSchema?: unknown;
 };
 
 type MCPServer = {
@@ -132,7 +118,7 @@ type MCPServer = {
   name: string;
   description: string;
   logo?: string;
-  icon?: React.ComponentType<any>;
+  icon?: React.ComponentType<{ className?: string }>;
   color: string;
   bgColor: string;
   isCustom?: boolean;
@@ -269,7 +255,7 @@ const defaultMCPsByRole: Record<Role, string[]> = {
 
 const RolesPage = () => {
   const searchParams = useSearchParams();
-  const orgId = searchParams.get("org");
+  searchParams.get("org");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(mockTeamMembers);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
@@ -291,7 +277,6 @@ const RolesPage = () => {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "active" | "invited" | "inactive"
   >("all");
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [expandedMCPs, setExpandedMCPs] = useState<string[]>([]);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -351,7 +336,7 @@ const RolesPage = () => {
 
   const handleMCPToggle = (role: Role, mcpId: string) => {
     setRoleMCPs((prev) => {
-      const isCurrentlyEnabled = prev[role].includes(mcpId);
+      const isCurrentlyEnabled = prev[role]?.includes(mcpId) ?? false;
 
       // MCPを無効にする場合、そのMCPの全てのツール権限もクリア
       if (isCurrentlyEnabled) {
@@ -367,8 +352,8 @@ const RolesPage = () => {
       return {
         ...prev,
         [role]: isCurrentlyEnabled
-          ? prev[role].filter((id) => id !== mcpId)
-          : [...prev[role], mcpId],
+          ? (prev[role] ?? []).filter((id) => id !== mcpId)
+          : [...(prev[role] ?? []), mcpId],
       };
     });
   };
@@ -455,27 +440,29 @@ const RolesPage = () => {
         ...prev,
         [role]: {
           ...prev[role],
-          [mcpId]: prev[role][mcpId]?.includes(toolName)
-            ? prev[role][mcpId].filter((tool) => tool !== toolName)
-            : [...(prev[role][mcpId] || []), toolName],
+          [mcpId]: prev[role]?.[mcpId]?.includes(toolName)
+            ? (prev[role]?.[mcpId] ?? []).filter((tool) => tool !== toolName)
+            : [...(prev[role]?.[mcpId] ?? []), toolName],
         },
       };
 
       // MCPにツールが1つでも有効な場合、MCPを有効にする
-      const mcp = mockMCPServers.find((m) => m.id === mcpId);
-      const enabledTools = newPermissions[role][mcpId] || [];
+      const enabledTools = newPermissions[role]?.[mcpId] ?? [];
       const shouldEnableMCP = enabledTools.length > 0;
 
       // MCPの有効/無効状態を更新
-      if (shouldEnableMCP && !roleMCPs[role].includes(mcpId)) {
+      if (shouldEnableMCP && !(roleMCPs[role]?.includes(mcpId) ?? false)) {
         setRoleMCPs((prevMCPs) => ({
           ...prevMCPs,
-          [role]: [...prevMCPs[role], mcpId],
+          [role]: [...(prevMCPs[role] ?? []), mcpId],
         }));
-      } else if (!shouldEnableMCP && roleMCPs[role].includes(mcpId)) {
+      } else if (
+        !shouldEnableMCP &&
+        (roleMCPs[role]?.includes(mcpId) ?? false)
+      ) {
         setRoleMCPs((prevMCPs) => ({
           ...prevMCPs,
-          [role]: prevMCPs[role].filter((id) => id !== mcpId),
+          [role]: (prevMCPs[role] ?? []).filter((id) => id !== mcpId),
         }));
       }
 
@@ -665,7 +652,15 @@ const RolesPage = () => {
 
                 <select
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  onChange={(e) =>
+                    setFilterStatus(
+                      e.target.value as
+                        | "all"
+                        | "active"
+                        | "invited"
+                        | "inactive",
+                    )
+                  }
                   className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 >
                   <option value="all">すべてのステータス</option>
@@ -756,7 +751,7 @@ const RolesPage = () => {
                   ) : (
                     <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
                       <Clock className="h-3 w-3" />
-                      <span>{member.lastLogin || "-"}</span>
+                      <span>{member.lastLogin ?? "-"}</span>
                     </div>
                   )}
                 </div>
@@ -1126,8 +1121,8 @@ const RolesPage = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
-                    {roleLabels[selectedRole] ||
-                      customRoles.find((r) => r.id === selectedRole)?.name ||
+                    {roleLabels[selectedRole] ??
+                      customRoles.find((r) => r.id === selectedRole)?.name ??
                       selectedRole}
                     の権限設定
                   </h3>
@@ -1250,7 +1245,7 @@ const RolesPage = () => {
                                 (selectedRole &&
                                   roleToolPermissions[selectedRole]?.[
                                     mcp.id
-                                  ]?.includes(tool.name)) ||
+                                  ]?.includes(tool.name)) ??
                                 false;
 
                               return (
@@ -1272,7 +1267,7 @@ const RolesPage = () => {
                                   </div>
                                   <input
                                     type="checkbox"
-                                    checked={isToolAllowed && isEnabled}
+                                    checked={!!isToolAllowed && !!isEnabled}
                                     onChange={() =>
                                       handleToolPermissionToggle(
                                         selectedRole,
