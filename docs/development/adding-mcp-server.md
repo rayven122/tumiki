@@ -58,6 +58,8 @@ export const MCP_SERVERS = [
   // 既存のサーバー定義...
   {
     name: "Your MCP Server Name", // サーバーの表示名（一意である必要があります）
+    description: "MCPサーバーの機能を説明する文字列", // サーバーの説明文
+    tags: ["カテゴリー1", "カテゴリー2"], // カテゴリータグの配列
     iconPath: "/logos/your-server.svg", // ロゴファイルのパス
     command: "node", // 実行コマンド
     args: ["node_modules/@your-org/mcp-server/dist/index.js"], // コマンド引数
@@ -70,6 +72,8 @@ export const MCP_SERVERS = [
 #### 設定項目の説明
 
 - **name**: UI に表示されるサーバー名。システム内で一意である必要があります
+- **description**: MCPサーバーの機能を説明する文字列。UIでサーバーカードに表示されます
+- **tags**: サーバーのカテゴリータグの配列。フィルタリングやグループ化に使用されます
 - **iconPath**: `/apps/manager/public/` からの相対パス
 - **command**: サーバーを起動するコマンド（通常は `node`）
 - **args**: コマンドに渡す引数の配列
@@ -80,6 +84,59 @@ export const MCP_SERVERS = [
     1. args 内の文字列置換（上記参照）
     2. 子プロセスの環境変数として設定（env プロパティ）
 - **isPublic**: すべてのユーザーに公開するかどうか
+
+#### 推奨タグカテゴリー
+
+MCPサーバーのタグを設定する際は、以下の推奨カテゴリーを使用してください：
+
+**開発関連**
+
+- 開発
+- バージョン管理
+- テスト
+- ブラウザ自動化
+- DevOps
+- コンテナ
+
+**コミュニケーション・コラボレーション**
+
+- コミュニケーション
+- 通知
+- チーム
+
+**ドキュメント・コンテンツ**
+
+- ドキュメント
+- プロジェクト管理
+- CMS
+- コンテンツ管理
+
+**データ・ストレージ**
+
+- ファイル管理
+- ストレージ
+- データベース
+
+**デザイン・UI**
+
+- デザイン
+- UI/UX
+
+**インフラ・クラウド**
+
+- インフラ
+- クラウド
+
+**業務・ツール**
+
+- タスク
+- 翻訳
+- 分析
+- ツール
+- AI
+- 自動化
+
+これらのタグを使用することで、ユーザーがMCPサーバーを効率的にフィルタリング・検索できるようになります。
 
 ### 3. ロゴファイルの配置
 
@@ -102,10 +159,11 @@ apps/manager/public/logos/your-server.svg
 
 MCPサーバー登録スクリプトは2つの環境変数ファイルを使用します：
 
-1. **基本環境変数（../../.env）**:
-   - DATABASE_URLなどのシステム全体で使用する環境変数
-   - プロジェクトルートの`.env`ファイルに設定
-   - **必須**：これは必ず設定が必要です
+/../.env）\*\*:
+
+- DATABASE_URLなどのシステム全体で使用する環境変数
+- プロジェクトルートの`.env`ファイルに設定
+- **必須**：これは必ず設定が必要です
 
 2. **MCPサーバー専用環境変数（.env.upsert）**:
    - 各MCPサーバーに必要なAPIキーやトークン
@@ -121,6 +179,7 @@ MCPサーバー登録スクリプトは2つの環境変数ファイルを使用�
    ```
 
    例：NotionとGitHubのみを使用する場合
+
    ```bash
    # .env.upsert の内容
    NOTION_API_TOKEN=your-notion-token
@@ -271,7 +330,9 @@ ProxyServer での環境変数処理の流れ：
 
 MCP サーバー関連のテーブル：
 
-- **McpServer**: サーバー定義（名前、コマンド、引数など）
+- **McpServer**: サーバー定義（名前、コマンド、引数、説明、タグなど）
+  - `description` フィールド（String?）: サーバーの機能説明
+  - `tags` フィールド（String[]）: カテゴリータグの配列
 - **Tool**: 各サーバーが提供するツール
 - **UserMcpServerConfig**: ユーザー固有の設定（暗号化された環境変数を含む）
 - **UserMcpServerInstance**: 実行中のサーバーインスタンス
@@ -317,6 +378,8 @@ Tumiki は以下のトランスポートをサポート：
    ```typescript
    {
      name: "Task Master AI",
+     description: "AIエージェントのタスク管理と実行を支援するMCPサーバー",
+     tags: ["AI", "タスク管理", "自動化"],
      iconPath: "/logos/task-master.svg",
      command: "node",
      args: ["node_modules/task-master-ai/index.js"],
