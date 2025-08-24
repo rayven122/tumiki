@@ -70,7 +70,7 @@ export const addOfficialServer = async ({
       data: {
         organizationId,
         name: input.name,
-        description: "",
+        description: input.description ?? "",
         // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
         serverStatus: input.isPending
           ? ServerStatus.PENDING

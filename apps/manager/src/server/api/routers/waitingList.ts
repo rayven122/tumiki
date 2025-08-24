@@ -30,8 +30,8 @@ interface WaitingListResponse {
 /**
  * メールクライアントを初期化する
  */
-function initializeMailClient(): void {
-  createMailClient({
+function initializeMailClient() {
+  return createMailClient({
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT),
     secure: Number(process.env.SMTP_PORT) === 465,

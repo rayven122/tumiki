@@ -44,6 +44,10 @@ model McpServer {
   /// MCP サーバー名
   /// @zod.string.min(1)
   name             String
+  /// MCPサーバーの説明
+  description      String?
+  /// タグ（カテゴリー分類用）
+  tags             String[]
   /// アイコンパス
   iconPath         String?
   /// 接続タイプ（stdio, sse）
@@ -78,9 +82,14 @@ model McpServer {
   isPublic         Boolean               @default(false)
   tools            Tool[]
   mcpServerConfigs UserMcpServerConfig[]
+  
+  /// OAuth Client リレーション
+  oauthClient      OAuthClient?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 /// MCP サーバーのツール一覧

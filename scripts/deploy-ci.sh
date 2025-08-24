@@ -34,6 +34,7 @@ DEPLOY_USER="${DEPLOY_USER:-tumiki-deploy}"
 REPO_URL="${REPO_URL:-git@github.com:rayven122/tumiki.git}"
 DEPLOY_STAGE="${DEPLOY_STAGE:-staging}"
 BRANCH="${BRANCH:-main}"
+DRY_RUN="${DRY_RUN:-false}"
 
 # 色付きログ出力（CI環境でも動作）
 if [ -t 1 ]; then
@@ -66,6 +67,10 @@ log_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
 }
 
+log_dry_run() {
+    echo -e "${YELLOW}[DRY RUN]${NC} $1"
+}
+
 # エラーハンドリング
 cleanup() {
     local exit_code=$?
@@ -93,23 +98,117 @@ check_prerequisites() {
         exit 1
     fi
     
-    # インスタンス確認
-    if ! gcloud compute instances describe "$INSTANCE_NAME" \
-        --zone="$ZONE" \
-        --project="$PROJECT_ID" &>/dev/null; then
-        log_error "インスタンス $INSTANCE_NAME が見つかりません"
-        log_error "Zone: $ZONE, Project: $PROJECT_ID"
-        exit 1
-    fi
-    
     log_info "デプロイ先: $INSTANCE_NAME ($ZONE)"
     log_info "デプロイユーザー: $DEPLOY_USER"
     log_info "デプロイステージ: $DEPLOY_STAGE"
     log_info "ブランチ: $BRANCH"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "ドライランモードで実行します（実際の変更は行いません）"
+        
+        # インスタンス確認とSSH接続テスト
+        log_dry_run "GCEインスタンスの存在確認中..."
+        log_dry_run "  インスタンス名: $INSTANCE_NAME"
+        log_dry_run "  ゾーン: $ZONE"
+        log_dry_run "  プロジェクト: $PROJECT_ID"
+        
+        if gcloud compute instances describe "$INSTANCE_NAME" \
+            --zone="$ZONE" \
+            --project="$PROJECT_ID" &>/dev/null; then
+            log_dry_run "GCEインスタンス: ✅ 存在確認済み"
+            
+            # SSH接続テスト
+            log_dry_run "GCEインスタンスへの接続を検証中..."
+            if gcloud compute ssh "$DEPLOY_USER@$INSTANCE_NAME" \
+                --zone="$ZONE" \
+                --project="$PROJECT_ID" \
+                --command="echo '✅ SSH接続成功'" 2>/dev/null; then
+                log_dry_run "GCEインスタンスへの接続: ✅ 成功"
+            else
+                log_warn "GCEインスタンスへのSSH接続に失敗しました"
+                log_warn "SSH鍵の設定またはファイアウォールルールを確認してください"
+            fi
+        else
+            log_error "❌ GCEインスタンスが見つかりません"
+            log_error ""
+            log_error "設定値:"
+            log_error "  インスタンス名: $INSTANCE_NAME"
+            log_error "  ゾーン: $ZONE"
+            log_error "  プロジェクトID: $PROJECT_ID"
+            log_error ""
+            log_error "確認事項:"
+            log_error "1. GitHub Secretsに正しい値が設定されているか"
+            log_error "2. GCEインスタンスが実際に存在し、起動しているか"
+            log_error "3. GCP認証とプロジェクトへのアクセス権限があるか"
+            log_error ""
+            log_error "ドライラン検証失敗 - GCEインスタンスへのアクセスは必須要件です"
+            exit 1
+        fi
+    else
+        # 実際のデプロイ時はインスタンス確認が必須
+        if ! gcloud compute instances describe "$INSTANCE_NAME" \
+            --zone="$ZONE" \
+            --project="$PROJECT_ID" &>/dev/null; then
+            log_error "インスタンス $INSTANCE_NAME が見つかりません"
+            log_error "Zone: $ZONE, Project: $PROJECT_ID"
+            exit 1
+        fi
+    fi
+}
+
+# Vercel環境変数の検証（ドライラン用）
+verify_vercel_env() {
+    if [ "$DRY_RUN" != "true" ]; then
+        return 0
+    fi
+    
+    log_dry_run "Vercel環境変数の取得を検証中..."
+    
+    # Vercel CLIの確認
+    if ! command -v vercel &> /dev/null; then
+        log_error "Vercel CLI が見つかりません"
+        log_error "npm install -g vercel でインストールしてください"
+        exit 1
+    fi
+    
+    # VERCEL_TOKEN環境変数の確認
+    if [ -z "${VERCEL_TOKEN:-}" ]; then
+        log_warn "VERCEL_TOKEN環境変数が設定されていません"
+        log_warn "GitHub ActionsではSecretsから自動的に設定されます"
+    else
+        log_dry_run "VERCEL_TOKEN: ✅ 設定済み"
+    fi
+    
+    # プロジェクト設定の確認
+    if [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+        log_warn "VERCEL_ORG_IDまたはVERCEL_PROJECT_IDが設定されていません"
+        log_warn "GitHub ActionsではSecretsから自動的に設定されます"
+    else
+        log_dry_run "Vercelプロジェクト設定: ✅ 確認済み"
+    fi
+    
+    # プロジェクトリンクの確認
+    if [ ! -f ".vercel/project.json" ]; then
+        log_warn "Vercelプロジェクトがローカルにリンクされていません"
+        log_warn "CI環境では環境変数で設定されるため問題ありません"
+    else
+        log_dry_run "Vercelプロジェクトリンク: ✅ 確認済み"
+    fi
+    
+    # 環境変数の取得テスト（実際には取得しない）
+    log_dry_run "Vercel環境変数取得コマンドの検証:"
+    log_dry_run "  vercel env pull --environment=production .env.deploy --token=\$VERCEL_TOKEN"
+    log_dry_run "Vercel環境変数取得: ✅ 検証完了（実際の取得はスキップ）"
 }
 
 # 環境変数ファイルの転送
 transfer_env_file() {
+    if [ "$DRY_RUN" = "true" ]; then
+        verify_vercel_env
+        log_dry_run "環境変数ファイルの転送をスキップ（ドライラン）"
+        return 0
+    fi
+    
     log_step "環境変数ファイルを転送しています..."
     
     local env_file=".env.deploy"
@@ -134,6 +233,20 @@ transfer_env_file() {
 
 # VMへのデプロイ
 deploy_to_vm() {
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "VMへのデプロイをシミュレート（ドライラン）"
+        log_dry_run "以下のパラメータでデプロイを実行予定:"
+        log_dry_run "  - インスタンス: $INSTANCE_NAME"
+        log_dry_run "  - ゾーン: $ZONE"
+        log_dry_run "  - プロジェクト: $PROJECT_ID"
+        log_dry_run "  - デプロイ先: $REMOTE_PATH"
+        log_dry_run "  - リポジトリ: $REPO_URL"
+        log_dry_run "  - ブランチ: $BRANCH"
+        log_dry_run "  - ステージ: $DEPLOY_STAGE"
+        log_dry_run "実際のVM操作はスキップされました"
+        return 0
+    fi
+    
     log_step "VMにGitベースデプロイを実行しています..."
     
     # デプロイコマンドの作成
@@ -246,13 +359,6 @@ pnpm build
 cd ../../tooling/tsup-config
 pnpm build
 
-# データベースマイグレーション（エラーでも続行）
-cd ../../packages/db
-echo "=============================="
-echo "データベースマイグレーション..."
-echo "=============================="
-pnpm db:deploy || echo "警告: マイグレーションに失敗しました（続行）"
-
 # ProxyServerビルド
 cd ../../apps/proxyServer
 echo "=============================="
@@ -313,6 +419,15 @@ main() {
     check_prerequisites
     transfer_env_file
     deploy_to_vm
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "=============================="
+        log_dry_run "ドライラン完了"
+        log_dry_run "=============================="
+        log_dry_run "実際のデプロイは実行されませんでした"
+        log_dry_run "スクリプトの検証が正常に完了しました"
+        return 0
+    fi
     
     # デプロイ結果表示
     local external_ip

@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "TransportType" ADD VALUE 'STREAMABLE_HTTPS';

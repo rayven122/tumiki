@@ -8,7 +8,7 @@ on:
 jobs:
   ci:
     name: 🚀 CI
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:

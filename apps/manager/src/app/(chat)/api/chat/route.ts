@@ -291,8 +291,9 @@ export async function GET(request: Request) {
   }
 
   const emptyDataStream = createDataStream({
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    execute: () => {},
+    execute: () => {
+      // No-op: Empty stream for SSR resume functionality
+    },
   });
 
   const stream = await streamContext.resumableStream(
