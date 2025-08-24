@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Trash2Icon,
   ImageIcon,
@@ -95,6 +95,7 @@ export const UserMcpServerCard = ({
       },
     });
 
+  const isScanningRef = useRef(false);
   const { mutate: scanServer, isPending: isScanning } =
     api.userMcpServerInstance.checkServerConnection.useMutation({
       onSuccess: async (result) => {
@@ -122,18 +123,21 @@ export const UserMcpServerCard = ({
     });
 
   // デバウンスされたスキャン関数を作成
+  // isScanningの値をrefで管理
+  isScanningRef.current = isScanning;
+
   const debouncedScan = useMemo(
     () =>
       debounce(() => {
         // 既に実行中の場合はスキップ
-        if (isScanning) return;
+        if (isScanningRef.current) return;
 
         scanServer({
           serverInstanceId: serverInstance.id,
           updateStatus: false,
         });
       }, 1000), // 1秒のデバウンス
-    [serverInstance.id, scanServer, isScanning],
+    [serverInstance.id, scanServer],
   );
 
   const handleScan = () => {
@@ -341,7 +345,10 @@ export const UserMcpServerCard = ({
                     void copyUrl();
                   }}
                 >
-                  {makeSseProxyServerUrl(serverInstance.id)}
+                  {makeSseProxyServerUrl(serverInstance.id).replace(
+                    /x-api-key:\s*\S+/,
+                    "x-api-key: ****",
+                  )}
                 </span>
                 <Button
                   variant="ghost"
@@ -366,7 +373,10 @@ export const UserMcpServerCard = ({
                     void copyHttpUrl();
                   }}
                 >
-                  {makeHttpProxyServerUrl(serverInstance.id)}
+                  {makeHttpProxyServerUrl(serverInstance.id).replace(
+                    /x-api-key:\s*\S+/,
+                    "x-api-key: ****",
+                  )}
                 </span>
                 <Button
                   variant="ghost"

@@ -3,11 +3,7 @@ import type { ProtectedContext } from "../../trpc";
 import type { CheckServerConnectionInput } from ".";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import {
-  getMcpServerToolsSSE,
-  runMcpSecurityScan,
-  type McpScanResult,
-} from "@tumiki/utils/server";
+import { getMcpServerToolsSSE } from "@tumiki/utils/server";
 import { makeSseProxyServerUrl } from "@/utils/url";
 
 type CheckServerConnectionParams = {
@@ -58,7 +54,6 @@ export const checkServerConnection = async ({
       let success = false;
       let tools: unknown[] = [];
       let errorMessage: string | undefined;
-      let securityScanResult: McpScanResult | undefined;
 
       try {
         // getMcpServerToolsSSEを直接使用してツール一覧を取得
@@ -78,32 +73,8 @@ export const checkServerConnection = async ({
           errorMessage = "サーバーの接続確認に失敗しました";
           success = false;
         } else {
-          // ツール取得に成功した場合、セキュリティスキャンを実行
-          try {
-            const serverUrl = makeSseProxyServerUrl(serverInstanceId);
-            securityScanResult = await runMcpSecurityScan(
-              serverUrl,
-              apiKey,
-              30000, // 30秒のタイムアウト
-            );
-
-            // エラーが発生した場合は接続を拒否
-            if (!securityScanResult.success) {
-              errorMessage = `セキュリティスキャンでエラーが発生しました: ${securityScanResult.error ?? "不明なエラー"}`;
-              success = false;
-            } else if (securityScanResult.issues.length > 0) {
-              // 問題が検出された場合も接続を拒否
-              errorMessage = `セキュリティリスクが検出されました (${securityScanResult.issues.length}件の問題)`;
-              success = false;
-            } else {
-              success = true;
-            }
-          } catch (scanError) {
-            // セキュリティスキャンのエラーはログに記録するが、接続自体は許可
-            console.error("Security scan error:", scanError);
-            // スキャンエラーの場合でも接続は成功とする
-            success = true;
-          }
+          // ツール取得に成功した場合は接続成功とする
+          success = true;
         }
       } catch {
         // 本番環境では詳細なエラーメッセージを避ける
@@ -122,20 +93,8 @@ export const checkServerConnection = async ({
         });
       }
 
-      // セキュリティスキャン結果の整形
-      const securityScan = securityScanResult
-        ? {
-            success: securityScanResult.success,
-            issues: securityScanResult.issues.map((issue) => ({
-              code: issue?.code ?? "unknown",
-              message: issue?.message ?? "不明な問題",
-              extraData: issue?.extra_data ?? undefined,
-            })),
-            error: securityScanResult.error,
-          }
-        : undefined;
-
-      console.log("securityScan", securityScan);
+      // セキュリティスキャンは実行しない
+      const securityScan = undefined;
 
       return {
         success,
@@ -150,7 +109,7 @@ export const checkServerConnection = async ({
       };
     },
     {
-      timeout: 60000, // 60秒のタイムアウト（セキュリティスキャンのため）
+      timeout: 30000, // 30秒のタイムアウト
     },
   );
 };
