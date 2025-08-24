@@ -55,15 +55,15 @@ jobs:
         uses: ./.github/actions/notify-slack-summary
         with:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          environment: ${{ inputs.environment }}
-          migration_status: ${{ inputs.migration_status }}
-          migration_applied: ${{ inputs.migration_status == 'success' && 'true' || 'false' }}
-          migration_names: ${{ inputs.migration_status == 'success' && '20241224120000_add_test_table,20241224120100_update_users' || '' }}
-          preview_migration_applied: ${{ inputs.environment == 'staging' && 'true' || 'false' }}
-          preview_migration_names: ${{ inputs.environment == 'staging' && '20241224120000_add_test_table' || '' }}
-          vercel_status: ${{ inputs.vercel_status }}
-          vercel_url: https://tumiki-test-deployment.vercel.app
-          gce_status: ${{ inputs.gce_status }}
+          environment: ${{ github.event_name == 'pull_request' && 'preview' || inputs.environment }}
+          migration_status: ${{ github.event_name == 'pull_request' && 'skipped' || inputs.migration_status }}
+          migration_applied: ${{ github.event_name == 'pull_request' && 'false' || (inputs.migration_status == 'success' && 'true' || 'false') }}
+          migration_names: ${{ github.event_name == 'pull_request' && '' || (inputs.migration_status == 'success' && '20241224120000_add_test_table,20241224120100_update_users' || '') }}
+          preview_migration_applied: ${{ github.event_name == 'pull_request' && 'false' || (inputs.environment == 'staging' && 'true' || 'false') }}
+          preview_migration_names: ${{ github.event_name == 'pull_request' && '' || (inputs.environment == 'staging' && '20241224120000_add_test_table' || '') }}
+          vercel_status: ${{ github.event_name == 'pull_request' && 'success' || inputs.vercel_status }}
+          vercel_url: ${{ github.event_name == 'pull_request' && format('https://tumiki-pr-{0}.vercel.app', github.event.pull_request.number) || 'https://tumiki-test-deployment.vercel.app' }}
+          gce_status: ${{ github.event_name == 'pull_request' && 'skipped' || inputs.gce_status }}
           actor: ${{ github.actor }}
           commit_sha: ${{ github.sha }}
-          ref_name: ${{ github.ref_name }}
+          ref_name: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
