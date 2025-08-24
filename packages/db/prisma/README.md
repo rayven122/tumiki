@@ -35,7 +35,7 @@ APIキー管理テーブル
   - `name`: APIキー名（ユーザーが設定）
   - `apiKey`: 暗号化されたAPIキー（共通鍵暗号化）
   - `apiKeyHash`: APIキーのハッシュ値（検索用）
-  - `isActive`: APIキーが有効かどうか
+  - `isActive`: APIキーが有効か���うか
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
   - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
@@ -89,6 +89,8 @@ erDiagram
 "McpServer" {
   String id PK
   String name
+  String description "nullable"
+  String tags
   String iconPath "nullable"
   TransportType transportType
   String command "nullable"
@@ -211,6 +213,8 @@ transportType に応じて接続方式を選択
 **Properties**
   - `id`: 
   - `name`: MCP サーバー名
+  - `description`: MCPサーバーの説明
+  - `tags`: タグ（カテゴリー分類用）
   - `iconPath`: アイコンパス
   - `transportType`: 接続タイプ（stdio, sse）
   - `command`: STDIO用のコマン���

@@ -13,22 +13,26 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { type UserMcpServerInstanceId } from "@/schema/ids";
 
 type NameEditModalProps = {
   serverInstanceId: UserMcpServerInstanceId;
   initialName: string;
+  initialDescription?: string;
   onSuccess?: () => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
 };
 
 export const NameEditModal = ({
   initialName,
+  initialDescription = "",
   serverInstanceId,
   onSuccess,
   onOpenChange,
 }: NameEditModalProps) => {
   const [newName, setNewName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
 
   const { mutate: updateServerInstanceName, isPending } =
     api.userMcpServerInstance.updateName.useMutation({
@@ -44,15 +48,21 @@ export const NameEditModal = ({
     });
 
   const onUpdate = () => {
-    updateServerInstanceName({ id: serverInstanceId, name: newName });
+    updateServerInstanceName({
+      id: serverInstanceId,
+      name: newName,
+      description,
+    });
   };
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>サーバー名を編集</DialogTitle>
-          <DialogDescription>サーバーの表示名を変更します。</DialogDescription>
+          <DialogTitle>サーバー情報を編集</DialogTitle>
+          <DialogDescription>
+            サーバーの表示名と説明を変更します。
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
@@ -66,6 +76,17 @@ export const NameEditModal = ({
             <p className="text-muted-foreground text-sm">
               英数字、ハイフン、アンダースコアのみ使用可能
             </p>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="description">説明</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="このMCPサーバーの説明を入力"
+              rows={3}
+            />
           </div>
         </div>
         <DialogFooter>

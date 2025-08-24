@@ -1,7 +1,3 @@
-
-> @tumiki/db@0.1.0 with-env /Users/suzusanhidetoshi/Documents/tumiki-pj/tumiki/packages/db
-> dotenv -e ../../.env -- prisma migrate diff --from-empty --to-schema-datamodel ./prisma/schema --script
-
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -603,4 +599,3 @@ ALTER TABLE "public"."_OrganizationGroupToOrganizationRole" ADD CONSTRAINT "_Org
 
 -- AddForeignKey
 ALTER TABLE "public"."_OrganizationGroupToOrganizationRole" ADD CONSTRAINT "_OrganizationGroupToOrganizationRole_B_fkey" FOREIGN KEY ("B") REFERENCES "public"."OrganizationRole"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
