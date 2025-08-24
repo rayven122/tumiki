@@ -47,7 +47,7 @@ on:
 jobs:
   test-notification:
     name: 🧪 Slack通知テスト
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     steps:
       - uses: actions/checkout@v4
 
