@@ -1,0 +1,78 @@
+name: Notify Slack
+description: 汎用的なSlack通知アクション。Block Kit形式のメッセージを送信します
+
+inputs:
+  slack_webhook_url:
+    description: Slack Webhook URL
+    required: true
+  blocks:
+    description: Slack Block Kit形式のメッセージ（JSON文字列）
+    required: false
+  text:
+    description: シンプルなテキストメッセージ（blocksが指定されていない場合に使用）
+    required: false
+  fail_on_error:
+    description: Slack通知失敗時にジョブを失敗させるかどうか
+    required: false
+    default: "false"
+
+outputs:
+  status:
+    description: 通知送信ステータス（success/failed）
+    value: ${{ steps.send.outputs.status }}
+  http_code:
+    description: HTTPレスポンスコード
+    value: ${{ steps.send.outputs.http_code }}
+
+runs:
+  using: composite
+  steps:
+    - name: 📢 Send Slack notification
+      id: send
+      shell: bash
+      run: |
+        echo "🔔 Sending Slack notification..."
+
+        # メッセージの構築
+        if [ -n "${{ inputs.blocks }}" ]; then
+          # Block Kit形式のメッセージ
+          SLACK_MESSAGE="${{ inputs.blocks }}"
+        elif [ -n "${{ inputs.text }}" ]; then
+          # シンプルなテキストメッセージ
+          SLACK_MESSAGE=$(cat <<EOF
+        {
+          "text": "${{ inputs.text }}"
+        }
+        EOF
+        )
+        else
+          echo "❌ Error: Either 'blocks' or 'text' must be provided"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          echo "http_code=0" >> $GITHUB_OUTPUT
+          if [ "${{ inputs.fail_on_error }}" == "true" ]; then
+            exit 1
+          fi
+          exit 0
+        fi
+
+        # Slack に通知を送信
+        HTTP_RESPONSE=$(curl -s -o /tmp/slack_response.txt -w "%{http_code}" \
+          -X POST \
+          -H 'Content-Type: application/json' \
+          -d "${SLACK_MESSAGE}" \
+          "${{ inputs.slack_webhook_url }}")
+
+        echo "http_code=$HTTP_RESPONSE" >> $GITHUB_OUTPUT
+
+        if [ "$HTTP_RESPONSE" -eq 200 ]; then
+          echo "✅ Slack notification sent successfully"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ Warning: Failed to send Slack notification (HTTP $HTTP_RESPONSE)"
+          echo "Response: $(cat /tmp/slack_response.txt)"
+          echo "status=failed" >> $GITHUB_OUTPUT
+          
+          if [ "${{ inputs.fail_on_error }}" == "true" ]; then
+            exit 1
+          fi
+        fi
