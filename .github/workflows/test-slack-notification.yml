@@ -1,6 +1,11 @@
 name: Test Slack Notification
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/test-slack-notification.yml'
+      - '.github/actions/notify-slack-summary/**'
   workflow_dispatch:
     inputs:
       environment:
