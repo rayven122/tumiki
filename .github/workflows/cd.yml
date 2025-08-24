@@ -31,15 +31,18 @@ jobs:
       - id: env
         uses: ./.github/actions/determine-env
 
-  # データベースマイグレーション（全環境）
+  # データベースマイグレーション（staging/production時のみ実行、preview環境はスキップ）
   migrate-database:
     name: 🗄️ データベースマイグレーション
     needs: setup
+    if: needs.setup.outputs.environment != 'preview'
     runs-on: arc-runner-set
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
       migration_applied: ${{ steps.migrate.outputs.migration_applied }}
       migration_names: ${{ steps.migrate.outputs.migration_names }}
+      preview_migration_applied: ${{ steps.migrate-preview.outputs.migration_applied }}
+      preview_migration_names: ${{ steps.migrate-preview.outputs.migration_names }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,12 +55,20 @@ jobs:
           pnpm run --filter @tumiki/tsup-config build
           pnpm run --filter @tumiki/db build
 
-      - name: Migrate database
+      - name: Migrate staging/production database
         id: migrate
         uses: ./.github/actions/migrate-database
         with:
-          database_url: ${{ needs.setup.outputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || needs.setup.outputs.environment == 'preview' && secrets.DATABASE_URL_PREVIEW || secrets.DATABASE_URL_STAGING }}
+          database_url: ${{ needs.setup.outputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || secrets.DATABASE_URL_STAGING }}
           environment: ${{ needs.setup.outputs.environment }}
+
+      - name: Also migrate preview database (when merging to main)
+        id: migrate-preview
+        if: needs.setup.outputs.environment == 'staging'
+        uses: ./.github/actions/migrate-database
+        with:
+          database_url: ${{ secrets.DATABASE_URL_PREVIEW }}
+          environment: preview
 
   # Vercelデプロイ
   deploy-vercel:
@@ -66,7 +77,7 @@ jobs:
     if: |
       always() && 
       needs.setup.result == 'success' && 
-      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
+      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
     runs-on: arc-runner-set
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
@@ -105,7 +116,7 @@ jobs:
     needs: [setup, migrate-database]
     if: |
       needs.setup.outputs.environment == 'production' && 
-      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
+      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
     runs-on: arc-runner-set
     environment: production
     steps:
@@ -178,9 +189,11 @@ jobs:
         with:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
           environment: ${{ needs.setup.outputs.environment }}
-          migration_status: ${{ needs.migrate-database.result }}
-          migration_applied: ${{ needs.migrate-database.outputs.migration_applied }}
-          migration_names: ${{ needs.migrate-database.outputs.migration_names }}
+          migration_status: ${{ needs.setup.outputs.environment == 'preview' && 'skipped' || needs.migrate-database.result }}
+          migration_applied: ${{ needs.setup.outputs.environment == 'preview' && 'false' || needs.migrate-database.outputs.migration_applied }}
+          migration_names: ${{ needs.setup.outputs.environment == 'preview' && '' || needs.migrate-database.outputs.migration_names }}
+          preview_migration_applied: ${{ needs.setup.outputs.environment == 'staging' && needs.migrate-database.outputs.preview_migration_applied || 'false' }}
+          preview_migration_names: ${{ needs.setup.outputs.environment == 'staging' && needs.migrate-database.outputs.preview_migration_names || '' }}
           vercel_status: ${{ needs.deploy-vercel.result }}
           vercel_url: ${{ needs.deploy-vercel.outputs.deployment_url }}
           gce_status: ${{ needs.deploy-gce.result }}

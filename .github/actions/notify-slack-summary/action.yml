@@ -18,6 +18,13 @@ inputs:
   migration_names:
     description: 適用されたマイグレーション名（カンマ区切り）
     required: false
+  preview_migration_applied:
+    description: Preview DBにマイグレーションが適用されたかどうか（staging環境時のみ）
+    required: false
+    default: "false"
+  preview_migration_names:
+    description: Preview DBに適用されたマイグレーション名（カンマ区切り）
+    required: false
   vercel_status:
     description: Vercelデプロイの結果
     required: true
@@ -117,6 +124,44 @@ runs:
             }'
         fi
 
+        # Preview DBマイグレーション情報（staging環境のみ）
+        PREVIEW_MIGRATION_SECTION=""
+        if [ "${{ inputs.environment }}" == "staging" ] && [ "${{ inputs.preview_migration_applied }}" == "true" ] && [ -n "${{ inputs.preview_migration_names }}" ]; then
+          # Preview DBマイグレーション名を整形
+          PREVIEW_MIGRATION_LIST=""
+          IFS=',' read -ra PREVIEW_MIGRATIONS <<< "${{ inputs.preview_migration_names }}"
+          for migration in "${PREVIEW_MIGRATIONS[@]}"; do
+            if [ -n "$migration" ]; then
+              # タイムスタンプと名前を分離
+              if [[ "$migration" =~ ^([0-9]{14})_(.*)$ ]]; then
+                NAME="${BASH_REMATCH[2]}"
+                PREVIEW_MIGRATION_LIST="${PREVIEW_MIGRATION_LIST}• \`${NAME}\`\\n"
+              else
+                PREVIEW_MIGRATION_LIST="${PREVIEW_MIGRATION_LIST}• \`${migration}\`\\n"
+              fi
+            fi
+          done
+          PREVIEW_MIGRATION_TEXT="*Preview DBマイグレーション:* ✅ 適用済み\\n${PREVIEW_MIGRATION_LIST}"
+          
+          PREVIEW_MIGRATION_SECTION=',
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "'"${PREVIEW_MIGRATION_TEXT}"'"
+              }
+            }'
+        elif [ "${{ inputs.environment }}" == "staging" ] && [ "${{ inputs.preview_migration_applied }}" == "false" ]; then
+          PREVIEW_MIGRATION_SECTION=',
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Preview DBマイグレーション:* ✅ 変更なし"
+              }
+            }'
+        fi
+
         # Vercelデプロイ情報
         VERCEL_STATUS_TEXT=""
         if [ "${{ inputs.vercel_status }}" == "success" ]; then
@@ -179,7 +224,7 @@ runs:
                   "text": "*Vercel:*\\n${VERCEL_STATUS_TEXT}"
                 }
               ]
-            }${GCE_SECTION}${MIGRATION_SECTION},
+            }${GCE_SECTION}${MIGRATION_SECTION}${PREVIEW_MIGRATION_SECTION},
             {
               "type": "divider"
             },
