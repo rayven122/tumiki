@@ -31,13 +31,18 @@ jobs:
       - id: env
         uses: ./.github/actions/determine-env
 
-  # データベースマイグレーション（staging/production のみ）
+  # データベースマイグレーション（staging/production時のみ実行、preview環境はスキップ）
   migrate-database:
     name: 🗄️ データベースマイグレーション
     needs: setup
     if: needs.setup.outputs.environment != 'preview'
     runs-on: arc-runner-set
     environment: ${{ needs.setup.outputs.environment }}
+    outputs:
+      migration_applied: ${{ steps.migrate.outputs.migration_applied }}
+      migration_names: ${{ steps.migrate.outputs.migration_names }}
+      preview_migration_applied: ${{ steps.migrate-preview.outputs.migration_applied }}
+      preview_migration_names: ${{ steps.migrate-preview.outputs.migration_names }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,19 +55,33 @@ jobs:
           pnpm run --filter @tumiki/tsup-config build
           pnpm run --filter @tumiki/db build
 
-      - name: Migrate database
+      - name: Migrate staging/production database
+        id: migrate
         uses: ./.github/actions/migrate-database
         with:
           database_url: ${{ needs.setup.outputs.environment == 'production' && secrets.DATABASE_URL_PRODUCTION || secrets.DATABASE_URL_STAGING }}
           environment: ${{ needs.setup.outputs.environment }}
 
+      - name: Also migrate preview database (when merging to main)
+        id: migrate-preview
+        if: needs.setup.outputs.environment == 'staging'
+        uses: ./.github/actions/migrate-database
+        with:
+          database_url: ${{ secrets.DATABASE_URL_PREVIEW }}
+          environment: preview
+
   # Vercelデプロイ
   deploy-vercel:
     name: 🚀 Vercelデプロイ
     needs: [setup, migrate-database]
-    if: always() && needs.setup.result == 'success' && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
+    if: |
+      always() && 
+      needs.setup.result == 'success' && 
+      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
     runs-on: arc-runner-set
     environment: ${{ needs.setup.outputs.environment }}
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.deployment_url }}
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -95,7 +114,9 @@ jobs:
   deploy-gce:
     name: 🔧 GCEデプロイ
     needs: [setup, migrate-database]
-    if: needs.setup.outputs.environment == 'production' && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
+    if: |
+      needs.setup.outputs.environment == 'production' && 
+      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
     runs-on: arc-runner-set
     environment: production
     steps:
@@ -118,10 +139,12 @@ jobs:
     needs: [setup, migrate-database, deploy-vercel, deploy-gce]
     if: always() && needs.setup.outputs.is_pr != 'true'
     runs-on: arc-runner-set
+    outputs:
+      deployment_url: ${{ needs.deploy-vercel.outputs.deployment_url }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create summary
+      - name: Create GitHub summary
         uses: actions/github-script@v7
         with:
           script: |
@@ -130,6 +153,7 @@ jobs:
             const vercelStatus = '${{ needs.deploy-vercel.result }}';
             const gceStatus = '${{ needs.deploy-gce.result }}';
             const isProduction = environment === 'production';
+            const isPreview = environment === 'preview';
 
             let emoji = '✅';
             if (migrationStatus === 'failure' || vercelStatus === 'failure' || (isProduction && gceStatus === 'failure')) {
@@ -142,7 +166,8 @@ jobs:
 
             // データベースマイグレーション
             if (migrationStatus && migrationStatus !== 'skipped') {
-              summary += `| データベース | ${migrationStatus === 'success' ? '✅' : '❌'} ${migrationStatus} |\n`;
+              const dbLabel = isPreview ? 'Preview DB' : 'データベース';
+              summary += `| ${dbLabel} | ${migrationStatus === 'success' ? '✅' : '❌'} ${migrationStatus} |\n`;
             }
 
             // Vercel
@@ -157,3 +182,21 @@ jobs:
             summary += `**Commit:** ${{ github.sha }}`;
 
             await core.summary.addRaw(summary).write();
+
+      - name: Send Slack notification
+        if: success() || failure()
+        uses: ./.github/actions/notify-slack-summary
+        with:
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          environment: ${{ needs.setup.outputs.environment }}
+          migration_status: ${{ needs.setup.outputs.environment == 'preview' && 'skipped' || needs.migrate-database.result }}
+          migration_applied: ${{ needs.setup.outputs.environment == 'preview' && 'false' || needs.migrate-database.outputs.migration_applied }}
+          migration_names: ${{ needs.setup.outputs.environment == 'preview' && '' || needs.migrate-database.outputs.migration_names }}
+          preview_migration_applied: ${{ needs.setup.outputs.environment == 'staging' && needs.migrate-database.outputs.preview_migration_applied || 'false' }}
+          preview_migration_names: ${{ needs.setup.outputs.environment == 'staging' && needs.migrate-database.outputs.preview_migration_names || '' }}
+          vercel_status: ${{ needs.deploy-vercel.result }}
+          vercel_url: ${{ needs.deploy-vercel.outputs.deployment_url }}
+          gce_status: ${{ needs.deploy-gce.result }}
+          actor: ${{ github.actor }}
+          commit_sha: ${{ github.sha }}
+          ref_name: ${{ github.ref_name }}
