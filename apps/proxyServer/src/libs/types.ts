@@ -16,6 +16,7 @@ export type ServerConfig = {
   toolNames: string[];
   transport: TransportConfig;
   googleCredentials?: Record<string, unknown> | null;
+  apiKeyOrInstanceId?: string; // TumikiのAPIキーまたはインスタンスID
 };
 
 export type Config = {
