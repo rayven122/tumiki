@@ -35,7 +35,7 @@ APIキー管理テーブル
   - `name`: APIキー名（ユーザーが設定）
   - `apiKey`: 暗号化されたAPIキー（共通鍵暗号化）
   - `apiKeyHash`: APIキーのハッシュ値（検索用）
-  - `isActive`: APIキーが有効か���うか
+  - `isActive`: APIキーが有効かどうか
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
   - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
@@ -217,7 +217,7 @@ transportType に応じて接続方式を選択
   - `tags`: タグ（カテゴリー分類用）
   - `iconPath`: アイコンパス
   - `transportType`: 接続タイプ（stdio, sse）
-  - `command`: STDIO用のコマン���
+  - `command`: STDIO用のコマンド
   - `args`: STDIO用の引数
   - `url`: SSE/Streamable HTTPS接続用のURL
   - `envVars`
@@ -647,7 +647,7 @@ erDiagram
   - `email`: 招待先メールアドレス
   - `token`: 招待トークン
   - `invitedBy`: 招待者のユーザーID
-  - `isAdmin`: 招待された人が管理者になるか
+  - `isAdmin`: 招待された人が管理者��なるか
   - `roleIds`: 付与される予定のロールID配列
   - `groupIds`: 招待時に追加するグループID配列
   - `expires`: 招待の有効期限
