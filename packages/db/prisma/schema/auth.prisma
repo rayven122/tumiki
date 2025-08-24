@@ -4,45 +4,42 @@
 
 /// @namespace Auth
 enum Role {
-    /// システム管理者
-    SYSTEM_ADMIN
-    /// 一般ユーザー
-    USER
+  /// システム管理者
+  SYSTEM_ADMIN
+  /// 一般ユーザー
+  USER
 }
 
 /// @namespace Auth
 /// @namespace UserMcpServer
 /// @namespace Chat
 model User {
-    /// Auth0のユーザーID (sub) - 主キーとして使用
-    id                 String                   @id
-    /// ユーザー名
-    name               String?
-    /// メールアドレス
-    email              String?                  @unique
-    /// プロフィール画像のURL
-    image              String?
-    toolGroups         UserToolGroup[]
-    mcpServerConfigs   UserMcpServerConfig[]
-    mcpServerInstances UserMcpServerInstance[]
-    /// 作成したカスタムMCPサーバー
-    customMcpServers   McpServer[]
-    /// 作成したAPIキー一覧
-    apiKeys            McpApiKey[]
-    /// ユーザーの権限
-    role               Role                     @default(USER)
-    organizations      Organization[]
-    members            OrganizationMember[]
-    invitations        OrganizationInvitation[]
-    /// Chat関連
-    Chat               Chat[]
-    Document           Document[]
-    Suggestion         Suggestion[]
-    /// MCPサーバーリクエストログ
-    mcpServerRequestLogs McpServerRequestLog[]
-    /// オンボーディング完了フラグ
-    hasCompletedOnboarding Boolean @default(false)
+  /// Auth0のユーザーID (sub) - 主キーとして使用
+  id                     String                   @id
+  /// ユーザー名
+  name                   String?
+  /// メールアドレス
+  email                  String?                  @unique
+  /// プロフィール画像のURL
+  image                  String?
+  /// ユーザーの権限
+  role                   Role                     @default(USER)
+  /// デフォルトの組織ID
+  defaultOrganizationId  String?
+  /// デフォルト組織への参照
+  defaultOrganization    Organization?            @relation("UserDefaultOrganization", fields: [defaultOrganizationId], references: [id])
+  organizations          Organization[]
+  members                OrganizationMember[]
+  invitations            OrganizationInvitation[]
+  /// Chat関連
+  Chat                   Chat[]
+  Document               Document[]
+  Suggestion             Suggestion[]
+  
+  /// OAuth Sessions リレーション
+  oauthSessions          OAuthSession[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  McpServer McpServer[]
 }

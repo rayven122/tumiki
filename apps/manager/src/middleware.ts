@@ -14,8 +14,40 @@ const PUBLIC_PATHS = [
 ] as const;
 
 export async function middleware(request: NextRequest) {
-  request.headers.set(URL_HEADER_KEY, request.url);
   const pathname = request.nextUrl.pathname;
+  request.headers.set(URL_HEADER_KEY, request.url);
+
+  // メンテナンスモードチェック
+  const isMaintenanceMode = process.env.MAINTENANCE_MODE === "true";
+  const allowedIPs =
+    process.env.MAINTENANCE_ALLOWED_IPS?.split(",").map((ip) => ip.trim()) ??
+    [];
+
+  // クライアントIPの取得（x-forwarded-forヘッダーまたはx-real-ipを確認）
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const clientIP = forwardedFor?.split(",")[0]?.trim() ?? realIp ?? "";
+
+  // メンテナンスページへのアクセス処理
+  if (pathname === "/maintenance") {
+    // メンテナンスモードでない場合はトップページへリダイレクト
+    if (!isMaintenanceMode) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    // メンテナンスモード中はページを表示
+    return NextResponse.next();
+  }
+
+  // メンテナンスモード中の処理
+  if (isMaintenanceMode) {
+    // 許可IPからのアクセスはすべて通過
+    if (clientIP && allowedIPs.includes(clientIP)) {
+      // 通常のルーティングに進む
+    } else {
+      // メンテナンスページへリダイレクト
+      return NextResponse.redirect(new URL("/maintenance", request.url));
+    }
+  }
 
   // OAuth専用パスの判定
   const isOAuthPath =

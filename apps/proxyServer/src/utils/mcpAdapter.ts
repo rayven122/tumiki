@@ -1,6 +1,6 @@
-import { type Request } from "express";
-import { type IncomingMessage } from "node:http";
-import { type AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { Request } from "express";
+import type { IncomingMessage } from "node:http";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 /**
  * ExpressのRequestオブジェクトをMCP SDKが期待する型に変換するアダプター関数
@@ -11,7 +11,9 @@ import { type AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
  * @param req Express Request オブジェクト
  * @returns MCP SDK互換のリクエストオブジェクト
  */
-export const toMcpRequest = (
+export const toMcpRequest: (
+  req: Request,
+) => IncomingMessage & { auth?: AuthInfo } = (
   req: Request,
 ): IncomingMessage & { auth?: AuthInfo } => {
   // ExpressのRequestはIncomingMessageを継承しているため、

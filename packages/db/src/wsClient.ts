@@ -1,59 +1,26 @@
 import { neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "@prisma/client";
 import ws from "ws";
 
-import { fieldEncryptionMiddleware } from "./server.js";
+import { createBaseClient } from "./createBaseClient.js";
 
-const createPrismaClient = (): PrismaClient => {
+const createPrismaClient = () => {
   // websocket を使った接続を使う
   neonConfig.webSocketConstructor = ws;
   const connectionString = `${process.env.DATABASE_URL}`;
   const adapter = new PrismaNeon({ connectionString });
 
-  const client = new PrismaClient({
-    adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-    omit: {
-      userMcpServerConfig: {
-        envVars: true,
-      },
-    },
-  });
-
-  // HACK: fieldEncryptionExtension　が使えないため、fieldEncryptionMiddlewareを使う
-  client.$use(fieldEncryptionMiddleware());
-  // // フィールド暗号化のための拡張
-  // client.$extends(fieldEncryptionExtension());
-
-  const extendedClient = client.$extends({
-    query: {
-      // TODO: userMcpServer の　parse をここで行う
-      // userMcpServer: {
-      //   findMany: async ({ args, query }) => {
-      //     const result = await query(args);
-      //     let parsedEnvVars: Record<string, string> | undefined;
-      //     if (result.env)
-      //       return result.map((item) => ({
-      //         ...item,
-      //         envVars: item.envVars && JSON.parse(item.envVars),
-      //       }));
-      //   },
-      // },
-    },
-  });
-  return extendedClient as unknown as PrismaClient;
+  return createBaseClient({ adapter, connectionString });
 };
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
+export type { PrismaClient } from "@prisma/client";
+
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
-export type Db = PrismaClient;
+export type Db = ReturnType<typeof createPrismaClient>;

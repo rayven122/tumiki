@@ -23,6 +23,10 @@ vi.stubEnv("NODE_ENV", "test");
 vi.stubEnv("DATABASE_URL", "postgresql://test:test@localhost:5432/test");
 vi.stubEnv("API_KEY_PREFIX", "test_");
 vi.stubEnv("API_KEY_LENGTH", "32");
+vi.stubEnv(
+  "PRISMA_FIELD_ENCRYPTION_KEY",
+  "k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=",
+);
 
 // グローバルに利用可能なテストユーティリティ
 global.testUtils = {

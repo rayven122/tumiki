@@ -15,12 +15,14 @@ export const deleteServerInstance = async ({
 }: DeleteServerInstanceInput) => {
   const { id } = input;
 
+  const organizationId = ctx.currentOrganizationId;
+
   return await ctx.db.$transaction(async (tx) => {
     // 既存のインスタンスを取得して状態確認
     const existingInstance = await tx.userMcpServerInstance.findUnique({
       where: {
         id,
-        userId: ctx.session.user.id,
+        organizationId,
       },
       select: {
         deletedAt: true,
@@ -46,7 +48,7 @@ export const deleteServerInstance = async ({
     const serverInstance = await tx.userMcpServerInstance.update({
       where: {
         id,
-        userId: ctx.session.user.id,
+        organizationId,
       },
       data: {
         deletedAt: new Date(),
@@ -61,7 +63,7 @@ export const deleteServerInstance = async ({
     const toolGroup = await tx.userToolGroup.update({
       where: {
         id: serverInstance.toolGroupId,
-        userId: ctx.session.user.id,
+        organizationId,
       },
       data: {
         isEnabled: false,
@@ -83,7 +85,7 @@ export const deleteServerInstance = async ({
       await tx.userMcpServerConfig.delete({
         where: {
           id: userMcpServerConfigId,
-          userId: ctx.session.user.id,
+          organizationId,
         },
       });
     }

@@ -143,13 +143,15 @@ export const UserMcpServerCard = ({
   // userMcpServersが削除されたため、プリフェッチクエリは不要
 
   const copyUrl = async () => {
-    await copyToClipboard(makeSseProxyServerUrl(apiKey));
-    toast.success("SSE URLをコピーしました");
+    const urlAndHeader = `URL: ${makeSseProxyServerUrl(serverInstance.id)}\nヘッダー: x-api-key: ${apiKey}`;
+    await copyToClipboard(urlAndHeader);
+    toast.success("SSE URLとヘッダー情報をコピーしました");
   };
 
   const copyHttpUrl = async () => {
-    await copyToClipboard(makeHttpProxyServerUrl(apiKey));
-    toast.success("Streamable HTTP をコピーしました");
+    const urlAndHeader = `URL: ${makeHttpProxyServerUrl(serverInstance.id)}\nヘッダー: x-api-key: ${apiKey}`;
+    await copyToClipboard(urlAndHeader);
+    toast.success("HTTP URLとヘッダー情報をコピーしました");
   };
 
   const handleStatusToggle = (checked: boolean) => {
@@ -181,15 +183,28 @@ export const UserMcpServerCard = ({
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = serverInstance.mcpServer?.url;
 
-  // サンプルカテゴリータグと説明文の生成（constantsから取得）
-  const getSampleData = (serverName: string) => {
-    return getMcpServerData(serverName);
-  };
+  // MCPサーバーからdescriptionとtagsを取得、空の場合はモックデータを使用
+  const mcpDescription = serverInstance.mcpServer?.description;
+  const mcpTags = serverInstance.mcpServer?.tags;
 
-  const sampleData = getSampleData(serverInstance.name);
-  const sampleTags = sampleData?.tags ?? [];
-  const sampleDescription =
-    sampleData?.description ?? "このMCPサーバーの説明は設定されていません。";
+  const hasMcpDescription = mcpDescription && mcpDescription.trim() !== "";
+  const hasMcpTags = mcpTags && mcpTags.length > 0;
+
+  // MCPサーバーにデータがない場合のみモックデータを使用
+  const mockData =
+    !hasMcpDescription || !hasMcpTags
+      ? getMcpServerData(serverInstance.name)
+      : null;
+
+  // 説明の優先順位: 1. インスタンスの説明 2. MCPサーバーの説明 3. モックデータ
+  const displayDescription =
+    serverInstance.description && serverInstance.description.trim() !== ""
+      ? serverInstance.description
+      : hasMcpDescription
+        ? mcpDescription
+        : (mockData?.description ?? "");
+
+  const displayTags = hasMcpTags ? mcpTags : (mockData?.tags ?? []);
 
   const handleCardClick = () => {
     if (isSortMode) return; // ソートモード時はクリック無効
@@ -326,7 +341,7 @@ export const UserMcpServerCard = ({
                     void copyUrl();
                   }}
                 >
-                  {makeSseProxyServerUrl(apiKey)}
+                  {makeSseProxyServerUrl(serverInstance.id)}
                 </span>
                 <Button
                   variant="ghost"
@@ -351,7 +366,7 @@ export const UserMcpServerCard = ({
                     void copyHttpUrl();
                   }}
                 >
-                  {makeHttpProxyServerUrl(apiKey)}
+                  {makeHttpProxyServerUrl(serverInstance.id)}
                 </span>
                 <Button
                   variant="ghost"
@@ -477,12 +492,12 @@ export const UserMcpServerCard = ({
 
           {/* MCPサーバーの概要 */}
           <div>
-            <p className="text-sm text-gray-600">{sampleDescription}</p>
+            <p className="text-sm text-gray-600">{displayDescription}</p>
           </div>
 
           {/* カテゴリータグ（カード下部） */}
           <div className="flex flex-wrap gap-1 pt-2">
-            {sampleTags.map((tag, index) => (
+            {displayTags.map((tag, index) => (
               <span
                 key={index}
                 className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white"
@@ -659,6 +674,7 @@ export const UserMcpServerCard = ({
         <NameEditModal
           serverInstanceId={serverInstance.id}
           initialName={serverInstance.name}
+          initialDescription={serverInstance.description}
           onSuccess={async () => {
             await revalidate?.();
             setNameEditModalOpen(false);

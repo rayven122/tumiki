@@ -6,107 +6,113 @@
 /// 接続タイプ
 /// @namespace McpServer
 enum TransportType {
-    /// 標準入出力での通信
-    STDIO
-    /// Server-Sent Eventsでの通信  
-    SSE
-    /// Streamable HTTPSでの通信
-    STREAMABLE_HTTPS
+  /// 標準入出力での通信
+  STDIO
+  /// Server-Sent Eventsでの通信  
+  SSE
+  /// Streamable HTTPSでの通信
+  STREAMABLE_HTTPS
 }
 
 /// 認証タイプ
 /// @namespace McpServer
 enum AuthType {
-    /// 認証不要
-    NONE
-    /// APIキー認証
-    API_KEY
-    /// OAuth認証
-    OAUTH
-    /// APIキーとOAuth両方を許可
-    BOTH
+  /// 認証不要
+  NONE
+  /// APIキー認証
+  API_KEY
+  /// OAuth認証
+  OAUTH
 }
 
 /// ユーザーカスタムサーバーの可視性
 /// @namespace McpServer
 enum McpServerVisibility {
-    /// 作成者のみ閲覧可能
-    PRIVATE
-    /// 組織内で共有
-    ORGANIZATION
-    /// 全ユーザーに公開
-    PUBLIC
+  /// 作成者のみ閲覧可能
+  PRIVATE
+  /// 組織内で共有
+  ORGANIZATION
+  /// 全ユーザーに公開
+  PUBLIC
 }
 
 /// MCP サーバー (github や notion などの接続する外部 MCP サーバー)
 /// transportType に応じて接続方式を選択
 /// @namespace McpServer
 model McpServer {
-    id               String                @id @default(cuid())
-    /// MCP サーバー名
-    /// @zod.string.min(1)
-    name             String
-    /// アイコンパス
-    iconPath         String?
-    /// 接続タイプ（stdio, sse）
-    transportType    TransportType         @default(STDIO)
-    /// STDIO用のコマンド
-    command          String?
-    /// STDIO用の引数
-    args             String[]
-    /// SSE/Streamable HTTPS接続用のURL
-    url              String?
-    /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
-    /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
-    envVars          String[]
-    /// 認証タイプ
-    authType         AuthType              @default(NONE)
-    /// OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
-    /// google, github, slack, notion, linkedin など
-    oauthProvider    String?               @db.VarChar(50)
-    /// OAuth で必要なデフォルトスコープ
-    oauthScopes      String[]
-    /// サーバーの種類（公式/ユーザーカスタム）
-    serverType       ServerType            @default(OFFICIAL)
-    /// ユーザーカスタムサーバーの作成者
-    createdBy        String?
-    creator          User?                 @relation(fields: [createdBy], references: [id])
-    /// ユーザーカスタムサーバーの可視性
-    visibility       McpServerVisibility   @default(PRIVATE)
-    /// 組織限定公開時の所属組織ID
-    organizationId   String?
-    organization     Organization?         @relation(fields: [organizationId], references: [id])
-    /// サーバーが公開されているか（レガシー）
-    isPublic         Boolean               @default(false)
-    tools            Tool[]
-    mcpServerConfigs UserMcpServerConfig[]
+  id               String                @id @default(cuid())
+  /// MCP サーバー名
+  /// @zod.string.min(1)
+  name             String
+  /// MCPサーバーの説明
+  description      String?
+  /// タグ（カテゴリー分類用）
+  tags             String[]
+  /// アイコンパス
+  iconPath         String?
+  /// 接続タイプ（stdio, sse）
+  transportType    TransportType         @default(STDIO)
+  /// STDIO用のコマンド
+  command          String?
+  /// STDIO用の引数
+  args             String[]
+  /// SSE/Streamable HTTPS接続用のURL
+  url              String?
+  /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
+  /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+  envVars          String[]
+  /// 認証タイプ
+  authType         AuthType              @default(NONE)
+  /// OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
+  /// google, github, slack, notion, linkedin など
+  oauthProvider    String?               @db.VarChar(50)
+  /// OAuth で必要なデフォルトスコープ
+  oauthScopes      String[]
+  /// サーバーの種類（公式/ユーザーカスタム）
+  serverType       ServerType            @default(OFFICIAL)
+  /// ユーザーカスタムサーバーの作成者
+  createdBy        String?
+  creator          User?                 @relation(fields: [createdBy], references: [id])
+  /// ユーザーカスタムサーバーの可視性
+  visibility       McpServerVisibility   @default(PRIVATE)
+  /// 組織限定公開時の所属組織ID
+  organizationId   String?
+  organization     Organization?         @relation(fields: [organizationId], references: [id])
+  /// サーバーが公開されているか（レガシー）
+  isPublic         Boolean               @default(false)
+  tools            Tool[]
+  mcpServerConfigs UserMcpServerConfig[]
+  
+  /// OAuth Client リレーション
+  oauthClient      OAuthClient?
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 /// MCP サーバーのツール一覧
 /// @namespace McpServer
 model Tool {
-    id               String                @id @default(cuid())
-    /// ツールの名前
-    /// @zod.string.min(1)
-    name             String
-    /// ツールの説明
-    description      String
-    /// ツールの入力スキーマ（JSON Schema形式）
-    inputSchema      Json
-    /// ツールを有効にするか
-    isEnabled        Boolean               @default(true)
-    mcpServerId      String
-    mcpServer        McpServer             @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-    mcpServerConfigs UserMcpServerConfig[]
-    /// ToolGroup との関連を表す中間テーブル
-    toolGroupTools   UserToolGroupTool[]
+  id               String                @id @default(cuid())
+  /// ツールの名前
+  /// @zod.string.min(1)
+  name             String
+  /// ツールの説明
+  description      String
+  /// ツールの入力スキーマ（JSON Schema形式）
+  inputSchema      Json
+  /// ツールを有効にするか
+  isEnabled        Boolean               @default(true)
+  mcpServerId      String
+  mcpServer        McpServer             @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  /// ToolGroup との関連を表す中間テーブル
+  toolGroupTools   UserToolGroupTool[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    /// MCP サーバー内のツールの名前は一意
-    @@unique([mcpServerId, name])
+  /// MCP サーバー内のツールの名前は一意
+  @@unique([mcpServerId, name])
 }

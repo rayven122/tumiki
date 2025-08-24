@@ -51,6 +51,8 @@ export const FindServersOutput = z.array(
       mcpServer: McpServerSchema.pick({
         id: true,
         name: true,
+        description: true,
+        tags: true,
         iconPath: true,
         url: true,
       }).nullable(), // mcpServerデータを追加
@@ -72,6 +74,7 @@ export const AddOfficialServerInput = z.object({
   envVars: z.record(z.string(), z.string()),
   isPending: z.boolean().optional(), // OAuth認証用フラグを追加
   name: nameValidationSchema, // サーバー名を必須に変更
+  description: z.string().optional(),
 });
 
 export const AddOfficialServerOutput = z.object({
@@ -97,6 +100,7 @@ export const UpdateServerInstanceInput = z.object({
 export const UpdateServerInstanceNameInput = z.object({
   id: UserMcpServerInstanceIdSchema,
   name: nameValidationSchema,
+  description: z.string().optional(),
 });
 
 export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
@@ -132,7 +136,6 @@ export const GetTimeSeriesStatsInput = z.object({
 // Output schemas for request logs
 export const RequestLogOutput = z.object({
   id: z.string(),
-  userId: z.string().nullable(),
   mcpServerInstanceId: z.string(),
   toolName: z.string(),
   transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTPS"]),

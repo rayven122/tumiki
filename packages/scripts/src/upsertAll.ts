@@ -1,5 +1,6 @@
 import { db } from "@tumiki/db/server";
 
+import { getValidMcpServers, validateEnv } from "./env";
 import { upsertMcpServers } from "./upsertMcpServers";
 import { upsertMcpTools } from "./upsertMcpTools";
 
@@ -7,14 +8,29 @@ import { upsertMcpTools } from "./upsertMcpTools";
  * MCPサーバーとツールを一括で登録する
  */
 const upsertAll = async () => {
-  try {
-    // MCPサーバーを登録
-    await upsertMcpServers();
-    console.log("MCPサーバーが正常に登録されました");
+  // 環境変数のバリデーション
+  const env = validateEnv();
 
-    // MCPツールを登録
-    await upsertMcpTools();
-    console.log("MCPツールが正常に登録されました");
+  // 有効なMCPサーバーを取得
+  const validServers = getValidMcpServers(env);
+  const validServerNames = validServers.map((server) => server.name);
+
+  console.log("🔍 環境変数チェック結果:");
+  console.log(
+    `  有効なサーバー数: ${validServers.length}/${(await import("./constants/mcpServers.js")).MCP_SERVERS.length}`,
+  );
+  console.log("");
+
+  try {
+    // MCPサーバーを登録（有効なサーバーのみ）
+    await upsertMcpServers(validServerNames);
+    console.log("");
+
+    // MCPツールを登録（有効なサーバーのみ）
+    await upsertMcpTools(validServerNames);
+    console.log("");
+
+    console.log("✨ 処理が完了しました");
   } catch (error) {
     if (error instanceof Error) {
       console.error("エラーが発生しました:", error.message);

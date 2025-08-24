@@ -54,7 +54,8 @@ const mockTeamMembers: TeamMember[] = [
     role: "admin",
     department: "経営企画部",
     joinedAt: "2023-01-15",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
+    avatar:
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
     status: "active",
     lastLogin: "2分前",
   },
@@ -65,7 +66,8 @@ const mockTeamMembers: TeamMember[] = [
     role: "editor",
     department: "マーケティング部",
     joinedAt: "2023-03-20",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop",
+    avatar:
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop",
     status: "active",
     lastLogin: "1時間前",
   },
@@ -76,7 +78,8 @@ const mockTeamMembers: TeamMember[] = [
     role: "viewer",
     department: "営業部",
     joinedAt: "2023-06-10",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop",
     status: "active",
     lastLogin: "3日前",
   },
@@ -87,7 +90,8 @@ const mockTeamMembers: TeamMember[] = [
     role: "editor",
     department: "開発部",
     joinedAt: "2023-08-05",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
+    avatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
     status: "invited",
     invitedBy: "田中 太郎",
   },
@@ -98,7 +102,8 @@ const mockTeamMembers: TeamMember[] = [
     role: "viewer",
     department: "カスタマーサポート部",
     joinedAt: "2023-11-12",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop",
     status: "inactive",
     lastLogin: "30日前",
   },
@@ -162,7 +167,10 @@ const mockMCPServers: MCPServer[] = [
     bgColor: "bg-purple-100",
     tools: [
       { name: "send_message", description: "チャンネルにメッセージを送信" },
-      { name: "send_direct_message", description: "ダイレクトメッセージを送信" },
+      {
+        name: "send_direct_message",
+        description: "ダイレクトメッセージを送信",
+      },
       { name: "list_channels", description: "チャンネル一覧を取得" },
       { name: "create_channel", description: "新しいチャンネルを作成" },
       { name: "upload_file", description: "ファイルをアップロード" },
@@ -227,7 +235,10 @@ const mockMCPServers: MCPServer[] = [
     createdAt: "2024-01-15",
     tools: [
       { name: "get_user_info", description: "ユーザー情報を取得" },
-      { name: "update_user_profile", description: "ユーザープロフィールを更新" },
+      {
+        name: "update_user_profile",
+        description: "ユーザープロフィールを更新",
+      },
       { name: "get_department_list", description: "部署一覧を取得" },
       { name: "send_notification", description: "社内通知を送信" },
     ],
@@ -261,73 +272,68 @@ const RolesPage = () => {
   const orgId = searchParams.get("org");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(mockTeamMembers);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
-  
+
   // カスタムロールのMCP設定も含めた初期化
   const initialRoleMCPs = {
     ...defaultMCPsByRole,
     "custom-demo-1": [],
-    "custom-demo-2": []
+    "custom-demo-2": [],
   };
-  
-  const [roleMCPs, setRoleMCPs] = useState<Record<string, string[]>>(initialRoleMCPs);
+
+  const [roleMCPs, setRoleMCPs] =
+    useState<Record<string, string[]>>(initialRoleMCPs);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmails, setInviteEmails] = useState<string[]>([]);
   const [currentEmail, setCurrentEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("viewer");
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "invited" | "inactive">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "active" | "invited" | "inactive"
+  >("all");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [expandedMCPs, setExpandedMCPs] = useState<string[]>([]);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
-  const [roleToolPermissions, setRoleToolPermissions] = useState<Record<string, Record<string, string[]>>>({
+  const [roleToolPermissions, setRoleToolPermissions] = useState<
+    Record<string, Record<string, string[]>>
+  >({
     admin: {},
     editor: {},
     viewer: {},
     "custom-demo-1": {},
-    "custom-demo-2": {}
+    "custom-demo-2": {},
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
-  const [customRoles, setCustomRoles] = useState<Array<{id: string; name: string; description: string; color: string}>>([
+  const [customRoles, setCustomRoles] = useState<
+    Array<{ id: string; name: string; description: string; color: string }>
+  >([
     {
       id: "custom-demo-1",
       name: "マネージャー",
       description: "チームの管理と承認権限を持つロール",
-      color: "bg-purple-100 text-purple-800"
+      color: "bg-purple-100 text-purple-800",
     },
     {
-      id: "custom-demo-2", 
+      id: "custom-demo-2",
       name: "開発者",
       description: "開発環境へのアクセスとデプロイ権限",
-      color: "bg-green-100 text-green-800"
-    }
+      color: "bg-green-100 text-green-800",
+    },
   ]);
   const [selectedRoleMenu, setSelectedRoleMenu] = useState<string | null>(null);
   const [showEditRoleModal, setShowEditRoleModal] = useState(false);
   const [showDeleteRoleModal, setShowDeleteRoleModal] = useState(false);
-  const [editingRole, setEditingRole] = useState<{id: string; name: string; description: string} | null>(null);
+  const [editingRole, setEditingRole] = useState<{
+    id: string;
+    name: string;
+    description: string;
+  } | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
-
-  if (!orgId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-            <Shield className="h-8 w-8 text-red-600" />
-          </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            アクセスエラー
-          </h1>
-          <p className="text-gray-600">組織が選択されていません。</p>
-        </div>
-      </div>
-    );
-  }
 
   const handleRoleChange = (memberId: string, newRole: Role) => {
     setTeamMembers((members) =>
@@ -346,18 +352,18 @@ const RolesPage = () => {
   const handleMCPToggle = (role: Role, mcpId: string) => {
     setRoleMCPs((prev) => {
       const isCurrentlyEnabled = prev[role].includes(mcpId);
-      
+
       // MCPを無効にする場合、そのMCPの全てのツール権限もクリア
       if (isCurrentlyEnabled) {
-        setRoleToolPermissions(prevPermissions => ({
+        setRoleToolPermissions((prevPermissions) => ({
           ...prevPermissions,
           [role]: {
             ...prevPermissions[role],
-            [mcpId]: []
-          }
+            [mcpId]: [],
+          },
         }));
       }
-      
+
       return {
         ...prev,
         [role]: isCurrentlyEnabled
@@ -369,14 +375,18 @@ const RolesPage = () => {
 
   const handleAddEmail = (email: string) => {
     const trimmedEmail = email.trim();
-    if (trimmedEmail && trimmedEmail.includes('@') && !inviteEmails.includes(trimmedEmail)) {
+    if (
+      trimmedEmail &&
+      trimmedEmail.includes("@") &&
+      !inviteEmails.includes(trimmedEmail)
+    ) {
       setInviteEmails([...inviteEmails, trimmedEmail]);
       setCurrentEmail("");
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       handleAddEmail(currentEmail);
     }
@@ -387,12 +397,12 @@ const RolesPage = () => {
   };
 
   const handleSendInvites = () => {
-    console.log('招待を送信:', inviteEmails, '役割:', inviteRole);
-    
+    console.log("招待を送信:", inviteEmails, "役割:", inviteRole);
+
     // モックなので実際には送信しない
     setShowInviteModal(false);
     setShowSuccessAnimation(true);
-    
+
     // アニメーション後にリセット
     setTimeout(() => {
       setShowSuccessAnimation(false);
@@ -402,13 +412,15 @@ const RolesPage = () => {
     }, 3000);
   };
 
-  const filteredMembers = teamMembers.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         member.department?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = filterStatus === "all" || member.status === filterStatus;
-    
+  const filteredMembers = teamMembers.filter((member) => {
+    const matchesSearch =
+      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.department?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus =
+      filterStatus === "all" || member.status === filterStatus;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -416,60 +428,66 @@ const RolesPage = () => {
     const styles = {
       active: "bg-green-100 text-green-800",
       invited: "bg-yellow-100 text-yellow-800",
-      inactive: "bg-gray-100 text-gray-800"
+      inactive: "bg-gray-100 text-gray-800",
     };
     const labels = {
       active: "アクティブ",
       invited: "招待中",
-      inactive: "非アクティブ"
+      inactive: "非アクティブ",
     };
-    
+
     return (
-      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[status]}`}>
+      <span
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[status]}`}
+      >
         {labels[status]}
       </span>
     );
   };
 
-  const handleToolPermissionToggle = (role: Role, mcpId: string, toolName: string) => {
-    setRoleToolPermissions(prev => {
+  const handleToolPermissionToggle = (
+    role: Role,
+    mcpId: string,
+    toolName: string,
+  ) => {
+    setRoleToolPermissions((prev) => {
       const newPermissions = {
         ...prev,
         [role]: {
           ...prev[role],
           [mcpId]: prev[role][mcpId]?.includes(toolName)
-            ? prev[role][mcpId].filter(tool => tool !== toolName)
-            : [...(prev[role][mcpId] || []), toolName]
-        }
+            ? prev[role][mcpId].filter((tool) => tool !== toolName)
+            : [...(prev[role][mcpId] || []), toolName],
+        },
       };
-      
+
       // MCPにツールが1つでも有効な場合、MCPを有効にする
-      const mcp = mockMCPServers.find(m => m.id === mcpId);
+      const mcp = mockMCPServers.find((m) => m.id === mcpId);
       const enabledTools = newPermissions[role][mcpId] || [];
       const shouldEnableMCP = enabledTools.length > 0;
-      
+
       // MCPの有効/無効状態を更新
       if (shouldEnableMCP && !roleMCPs[role].includes(mcpId)) {
-        setRoleMCPs(prevMCPs => ({
+        setRoleMCPs((prevMCPs) => ({
           ...prevMCPs,
-          [role]: [...prevMCPs[role], mcpId]
+          [role]: [...prevMCPs[role], mcpId],
         }));
       } else if (!shouldEnableMCP && roleMCPs[role].includes(mcpId)) {
-        setRoleMCPs(prevMCPs => ({
+        setRoleMCPs((prevMCPs) => ({
           ...prevMCPs,
-          [role]: prevMCPs[role].filter(id => id !== mcpId)
+          [role]: prevMCPs[role].filter((id) => id !== mcpId),
         }));
       }
-      
+
       return newPermissions;
     });
   };
 
   const toggleMCPExpansion = (mcpId: string) => {
-    setExpandedMCPs(prev => 
-      prev.includes(mcpId) 
-        ? prev.filter(id => id !== mcpId)
-        : [...prev, mcpId]
+    setExpandedMCPs((prev) =>
+      prev.includes(mcpId)
+        ? prev.filter((id) => id !== mcpId)
+        : [...prev, mcpId],
     );
   };
 
@@ -480,19 +498,19 @@ const RolesPage = () => {
 
   const handleSaveRolePermissions = async () => {
     setIsSaving(true);
-    
+
     // 実際のAPIコールをシミュレート
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    console.log('保存されたロール権限:', {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    console.log("保存されたロール権限:", {
       role: selectedRole,
       mcps: selectedRole ? roleMCPs[selectedRole] : [],
-      tools: selectedRole ? roleToolPermissions[selectedRole] : {}
+      tools: selectedRole ? roleToolPermissions[selectedRole] : {},
     });
-    
+
     setIsSaving(false);
     setShowSaveSuccess(true);
-    
+
     // 成功メッセージを2秒後に非表示
     setTimeout(() => {
       setShowSaveSuccess(false);
@@ -504,32 +522,32 @@ const RolesPage = () => {
 
   const handleAddCustomRole = async () => {
     if (!newRoleName.trim()) return;
-    
+
     setIsSaving(true);
-    
+
     // APIコールをシミュレート
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     const newRole = {
       id: `custom-${Date.now()}`,
       name: newRoleName,
       description: newRoleDescription,
-      color: "bg-purple-100 text-purple-800"
+      color: "bg-purple-100 text-purple-800",
     };
-    
+
     setCustomRoles([...customRoles, newRole]);
-    
+
     // 新しいロールのデフォルト権限を設定
-    setRoleMCPs(prev => ({
+    setRoleMCPs((prev) => ({
       ...prev,
-      [newRole.id]: []
+      [newRole.id]: [],
     }));
-    
-    setRoleToolPermissions(prev => ({
+
+    setRoleToolPermissions((prev) => ({
       ...prev,
-      [newRole.id]: {}
+      [newRole.id]: {},
     }));
-    
+
     // フォームをリセット
     setNewRoleName("");
     setNewRoleDescription("");
@@ -538,19 +556,25 @@ const RolesPage = () => {
   };
 
   const handleEditRole = async () => {
-    if (!editingRole || !editingRole.name.trim()) return;
-    
+    if (!editingRole?.name.trim()) return;
+
     setIsSaving(true);
-    
+
     // APIコールをシミュレート
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setCustomRoles(customRoles.map(role => 
-      role.id === editingRole.id 
-        ? { ...role, name: editingRole.name, description: editingRole.description }
-        : role
-    ));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    setCustomRoles(
+      customRoles.map((role) =>
+        role.id === editingRole.id
+          ? {
+              ...role,
+              name: editingRole.name,
+              description: editingRole.description,
+            }
+          : role,
+      ),
+    );
+
     setIsSaving(false);
     setShowEditRoleModal(false);
     setEditingRole(null);
@@ -558,28 +582,28 @@ const RolesPage = () => {
 
   const handleDeleteRole = async () => {
     if (!editingRole || deleteConfirmation !== editingRole.name) return;
-    
+
     setIsSaving(true);
-    
+
     // APIコールをシミュレート
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // ロールを削除
-    setCustomRoles(customRoles.filter(role => role.id !== editingRole.id));
-    
+    setCustomRoles(customRoles.filter((role) => role.id !== editingRole.id));
+
     // 関連する権限設定も削除
-    setRoleMCPs(prev => {
+    setRoleMCPs((prev) => {
       const newMCPs = { ...prev };
       delete newMCPs[editingRole.id];
       return newMCPs;
     });
-    
-    setRoleToolPermissions(prev => {
+
+    setRoleToolPermissions((prev) => {
       const newPermissions = { ...prev };
       delete newPermissions[editingRole.id];
       return newPermissions;
     });
-    
+
     setIsSaving(false);
     setShowDeleteRoleModal(false);
     setEditingRole(null);
@@ -603,7 +627,7 @@ const RolesPage = () => {
                 </p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setShowInviteModal(true)}
               className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
@@ -618,29 +642,31 @@ const RolesPage = () => {
           <div className="border-b border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">チームメンバー</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  チームメンバー
+                </h2>
                 <p className="mt-1 text-sm text-gray-600">
                   {filteredMembers.length}名のメンバー
                 </p>
               </div>
-              
+
               {/* 検索とフィルター */}
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
                     placeholder="名前、メール、部署で検索"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64 rounded-lg border border-gray-300 pl-10 pr-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-64 rounded-lg border border-gray-300 py-2 pr-3 pl-10 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
-                
+
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 >
                   <option value="all">すべてのステータス</option>
                   <option value="active">アクティブ</option>
@@ -653,7 +679,7 @@ const RolesPage = () => {
 
           {/* テーブルヘッダー */}
           <div className="bg-gray-50 px-6 py-3">
-            <div className="flex items-center text-xs font-medium uppercase tracking-wider text-gray-500">
+            <div className="flex items-center text-xs font-medium tracking-wider text-gray-500 uppercase">
               <div className="flex-1">メンバー</div>
               <div className="w-32 text-center">ステータス</div>
               <div className="w-32 text-center">ロール</div>
@@ -683,7 +709,9 @@ const RolesPage = () => {
                   )}
                   <div>
                     <div className="flex items-center">
-                      <h3 className="text-sm font-medium text-gray-900">{member.name}</h3>
+                      <h3 className="text-sm font-medium text-gray-900">
+                        {member.name}
+                      </h3>
                       {member.role === "admin" && (
                         <Shield className="ml-2 h-4 w-4 text-red-600" />
                       )}
@@ -705,9 +733,11 @@ const RolesPage = () => {
                 <div className="w-32 text-center">
                   <select
                     value={member.role}
-                    onChange={(e) => handleRoleChange(member.id, e.target.value as Role)}
+                    onChange={(e) =>
+                      handleRoleChange(member.id, e.target.value)
+                    }
                     disabled={member.status === "invited"}
-                    className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100"
                   >
                     {Object.entries(roleLabels).map(([value, label]) => (
                       <option key={value} value={value}>
@@ -735,7 +765,11 @@ const RolesPage = () => {
                 <div className="w-20 text-right">
                   <div className="relative">
                     <button
-                      onClick={() => setSelectedMember(selectedMember === member.id ? null : member.id)}
+                      onClick={() =>
+                        setSelectedMember(
+                          selectedMember === member.id ? null : member.id,
+                        )
+                      }
                       className="rounded p-1 hover:bg-gray-100"
                     >
                       <MoreVertical className="h-4 w-4 text-gray-500" />
@@ -773,11 +807,13 @@ const RolesPage = () => {
               </div>
             ))}
           </div>
-          
+
           {filteredMembers.length === 0 && (
             <div className="p-8 text-center">
               <AlertCircle className="mx-auto h-8 w-8 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">条件に一致するメンバーが見つかりません</p>
+              <p className="mt-2 text-sm text-gray-500">
+                条件に一致するメンバーが見つかりません
+              </p>
             </div>
           )}
         </div>
@@ -786,7 +822,7 @@ const RolesPage = () => {
         <div className="mb-8 rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-200 p-4">
             <h2 className="text-lg font-bold text-gray-900">ロール管理</h2>
-            <button 
+            <button
               onClick={() => setShowAddRoleModal(true)}
               className="flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
             >
@@ -794,9 +830,9 @@ const RolesPage = () => {
               カスタムロールを追加
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
-            <div 
+            <div
               onClick={() => handleRoleClick("admin")}
               className="cursor-pointer rounded-lg border-2 border-gray-200 p-4 transition-all hover:border-blue-500 hover:shadow-lg"
             >
@@ -813,12 +849,14 @@ const RolesPage = () => {
                 <li>• 組織設定の変更</li>
               </ul>
               <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-gray-500">クリックして詳細設定</span>
+                <span className="text-xs text-gray-500">
+                  クリックして詳細設定
+                </span>
                 <Settings className="h-4 w-4 text-gray-400" />
               </div>
             </div>
 
-            <div 
+            <div
               onClick={() => handleRoleClick("editor")}
               className="cursor-pointer rounded-lg border-2 border-gray-200 p-4 transition-all hover:border-blue-500 hover:shadow-lg"
             >
@@ -835,12 +873,14 @@ const RolesPage = () => {
                 <li>• 設定の閲覧のみ</li>
               </ul>
               <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-gray-500">クリックして詳細設定</span>
+                <span className="text-xs text-gray-500">
+                  クリックして詳細設定
+                </span>
                 <Settings className="h-4 w-4 text-gray-400" />
               </div>
             </div>
 
-            <div 
+            <div
               onClick={() => handleRoleClick("viewer")}
               className="cursor-pointer rounded-lg border-2 border-gray-200 p-4 transition-all hover:border-blue-500 hover:shadow-lg"
             >
@@ -857,22 +897,26 @@ const RolesPage = () => {
                 <li>• 設定へのアクセスなし</li>
               </ul>
               <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-gray-500">クリックして詳細設定</span>
+                <span className="text-xs text-gray-500">
+                  クリックして詳細設定
+                </span>
                 <Settings className="h-4 w-4 text-gray-400" />
               </div>
             </div>
 
             {/* カスタムロール */}
             {customRoles.map((role) => (
-              <div 
+              <div
                 key={role.id}
                 className="relative cursor-pointer rounded-lg border-2 border-gray-200 p-4 transition-all hover:border-blue-500 hover:shadow-lg"
               >
-                <div className="absolute right-2 top-2">
+                <div className="absolute top-2 right-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedRoleMenu(selectedRoleMenu === role.id ? null : role.id);
+                      setSelectedRoleMenu(
+                        selectedRoleMenu === role.id ? null : role.id,
+                      );
                     }}
                     className="rounded p-1 hover:bg-gray-100"
                   >
@@ -883,7 +927,11 @@ const RolesPage = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingRole({ id: role.id, name: role.name, description: role.description });
+                          setEditingRole({
+                            id: role.id,
+                            name: role.name,
+                            description: role.description,
+                          });
                           setShowEditRoleModal(true);
                           setSelectedRoleMenu(null);
                         }}
@@ -896,7 +944,11 @@ const RolesPage = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingRole({ id: role.id, name: role.name, description: role.description });
+                          setEditingRole({
+                            id: role.id,
+                            name: role.name,
+                            description: role.description,
+                          });
                           setShowDeleteRoleModal(true);
                           setSelectedRoleMenu(null);
                         }}
@@ -908,25 +960,31 @@ const RolesPage = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <div onClick={() => handleRoleClick(role.id)}>
                   <div className="mb-3 flex items-center justify-between pr-8">
-                    <h3 className="text-sm font-semibold text-gray-900">{role.name}</h3>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${role.color}`}>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {role.name}
+                    </h3>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${role.color}`}
+                    >
                       カスタム
                     </span>
                   </div>
                   <p className="text-xs text-gray-600">{role.description}</p>
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-gray-500">クリックして詳細設定</span>
+                    <span className="text-xs text-gray-500">
+                      クリックして詳細設定
+                    </span>
                     <Settings className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
               </div>
             ))}
-            
+
             {/* カスタムロールを追加するカード */}
-            <div 
+            <div
               onClick={() => setShowAddRoleModal(true)}
               className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-gray-400 hover:bg-gray-50"
             >
@@ -941,10 +999,12 @@ const RolesPage = () => {
 
       {/* 招待モーダル */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm">
+        <div className="bg-opacity-30 fixed inset-0 z-50 flex items-center justify-center bg-black backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-white/95 p-6 shadow-xl backdrop-blur-md">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">メンバーを招待</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                メンバーを招待
+              </h3>
               <button
                 onClick={() => setShowInviteModal(false)}
                 className="rounded-lg p-1 hover:bg-gray-100"
@@ -958,7 +1018,7 @@ const RolesPage = () => {
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   メールアドレス
                 </label>
-                
+
                 {/* メールタグ表示エリア */}
                 <div className="mb-2 flex flex-wrap gap-2">
                   {inviteEmails.map((email, index) => (
@@ -985,7 +1045,7 @@ const RolesPage = () => {
                   onKeyDown={handleKeyDown}
                   onBlur={() => handleAddEmail(currentEmail)}
                   placeholder="メールアドレスを入力してEnterキー"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   メールアドレスを入力してEnterキーまたはカンマで追加
@@ -998,8 +1058,8 @@ const RolesPage = () => {
                 </label>
                 <select
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as Role)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 >
                   {Object.entries(roleLabels).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -1041,22 +1101,39 @@ const RolesPage = () => {
 
       {/* ロール詳細設定モーダル */}
       {showRoleModal && selectedRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-          <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                  selectedRole === "admin" ? "bg-red-100" : selectedRole === "editor" ? "bg-blue-100" : "bg-gray-100"
-                }`}>
-                  <Shield className={`h-5 w-5 ${
-                    selectedRole === "admin" ? "text-red-600" : selectedRole === "editor" ? "text-blue-600" : "text-gray-600"
-                  }`} />
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                    selectedRole === "admin"
+                      ? "bg-red-100"
+                      : selectedRole === "editor"
+                        ? "bg-blue-100"
+                        : "bg-gray-100"
+                  }`}
+                >
+                  <Shield
+                    className={`h-5 w-5 ${
+                      selectedRole === "admin"
+                        ? "text-red-600"
+                        : selectedRole === "editor"
+                          ? "text-blue-600"
+                          : "text-gray-600"
+                    }`}
+                  />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
-                    {roleLabels[selectedRole] || customRoles.find(r => r.id === selectedRole)?.name || selectedRole}の権限設定
+                    {roleLabels[selectedRole] ||
+                      customRoles.find((r) => r.id === selectedRole)?.name ||
+                      selectedRole}
+                    の権限設定
                   </h3>
-                  <p className="text-sm text-gray-600">MCPサーバーとツールの利用権限を管理</p>
+                  <p className="text-sm text-gray-600">
+                    MCPサーバーとツールの利用権限を管理
+                  </p>
                 </div>
               </div>
               <button
@@ -1074,39 +1151,55 @@ const RolesPage = () => {
             <div className="flex-1 overflow-y-auto">
               <div className="space-y-4 pr-2">
                 {mockMCPServers.map((mcp) => {
-                  const isEnabled = selectedRole && roleMCPs[selectedRole] ? roleMCPs[selectedRole].includes(mcp.id) : false;
+                  const isEnabled =
+                    selectedRole && roleMCPs[selectedRole]
+                      ? roleMCPs[selectedRole].includes(mcp.id)
+                      : false;
                   const isExpanded = expandedMCPs.includes(mcp.id);
-                  
+
                   return (
-                    <div key={mcp.id} className="rounded-lg border border-gray-200 overflow-hidden">
-                      <div 
-                        className={`p-4 ${isEnabled ? "bg-blue-50" : "bg-gray-50"} cursor-pointer transition-colors hover:bg-opacity-80`}
+                    <div
+                      key={mcp.id}
+                      className="overflow-hidden rounded-lg border border-gray-200"
+                    >
+                      <div
+                        className={`p-4 ${isEnabled ? "bg-blue-50" : "bg-gray-50"} hover:bg-opacity-80 cursor-pointer transition-colors`}
                         onClick={(e) => {
                           // トグルスイッチをクリックした場合は展開しない
-                          if (!(e.target as HTMLElement).closest('label')) {
+                          if (!(e.target as HTMLElement).closest("label")) {
                             toggleMCPExpansion(mcp.id);
                           }
                         }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${mcp.bgColor} shadow-sm`}>
+                            <div
+                              className={`flex h-12 w-12 items-center justify-center rounded-lg ${mcp.bgColor} shadow-sm`}
+                            >
                               {mcp.logo ? (
-                                <img src={mcp.logo} alt={mcp.name} className="h-8 w-8 object-contain" />
+                                <img
+                                  src={mcp.logo}
+                                  alt={mcp.name}
+                                  className="h-8 w-8 object-contain"
+                                />
                               ) : (
                                 <Server className={`h-6 w-6 ${mcp.color}`} />
                               )}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center space-x-2">
-                                <h4 className="font-medium text-gray-900">{mcp.name}</h4>
+                                <h4 className="font-medium text-gray-900">
+                                  {mcp.name}
+                                </h4>
                                 {mcp.isCustom && (
                                   <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
                                     カスタム
                                   </span>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600">{mcp.description}</p>
+                              <p className="text-sm text-gray-600">
+                                {mcp.description}
+                              </p>
                             </div>
                           </div>
 
@@ -1125,15 +1218,21 @@ const RolesPage = () => {
                               <input
                                 type="checkbox"
                                 checked={isEnabled}
-                                onChange={() => handleMCPToggle(selectedRole, mcp.id)}
+                                onChange={() =>
+                                  handleMCPToggle(selectedRole, mcp.id)
+                                }
                                 className="sr-only"
                               />
-                              <div className={`h-6 w-11 rounded-full transition-colors ${
-                                isEnabled ? "bg-blue-600" : "bg-gray-200"
-                              }`}>
-                                <div className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                                  isEnabled ? "translate-x-5" : ""
-                                }`} />
+                              <div
+                                className={`h-6 w-11 rounded-full transition-colors ${
+                                  isEnabled ? "bg-blue-600" : "bg-gray-200"
+                                }`}
+                              >
+                                <div
+                                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                                    isEnabled ? "translate-x-5" : ""
+                                  }`}
+                                />
                               </div>
                             </label>
                           </div>
@@ -1142,28 +1241,45 @@ const RolesPage = () => {
 
                       {isExpanded && mcp.tools && (
                         <div className="border-t border-gray-200 bg-white p-4">
-                          <h5 className="mb-3 text-sm font-medium text-gray-700">ツール権限</h5>
+                          <h5 className="mb-3 text-sm font-medium text-gray-700">
+                            ツール権限
+                          </h5>
                           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             {mcp.tools.map((tool) => {
-                              const isToolAllowed = selectedRole && roleToolPermissions[selectedRole] && roleToolPermissions[selectedRole][mcp.id]?.includes(tool.name) || false;
-                              
+                              const isToolAllowed =
+                                (selectedRole &&
+                                  roleToolPermissions[selectedRole]?.[
+                                    mcp.id
+                                  ]?.includes(tool.name)) ||
+                                false;
+
                               return (
                                 <label
                                   key={tool.name}
                                   className={`flex items-center justify-between rounded-lg border p-3 ${
-                                    isEnabled ? "cursor-pointer hover:bg-gray-50" : "cursor-not-allowed opacity-50"
+                                    isEnabled
+                                      ? "cursor-pointer hover:bg-gray-50"
+                                      : "cursor-not-allowed opacity-50"
                                   }`}
                                 >
                                   <div className="flex-1">
-                                    <code className="rounded bg-gray-100 px-2 py-0.5 text-xs font-mono text-gray-800">
+                                    <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-800">
                                       {tool.name}
                                     </code>
-                                    <p className="mt-1 text-xs text-gray-600">{tool.description}</p>
+                                    <p className="mt-1 text-xs text-gray-600">
+                                      {tool.description}
+                                    </p>
                                   </div>
                                   <input
                                     type="checkbox"
                                     checked={isToolAllowed && isEnabled}
-                                    onChange={() => handleToolPermissionToggle(selectedRole, mcp.id, tool.name)}
+                                    onChange={() =>
+                                      handleToolPermissionToggle(
+                                        selectedRole,
+                                        mcp.id,
+                                        tool.name,
+                                      )
+                                    }
                                     disabled={!isEnabled}
                                     className="ml-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                   />
@@ -1179,15 +1295,15 @@ const RolesPage = () => {
               </div>
             </div>
 
-            <div className="mt-4 flex justify-between items-center pt-4 border-t">
+            <div className="mt-4 flex items-center justify-between border-t pt-4">
               {showSaveSuccess && (
                 <div className="flex items-center space-x-2 text-green-600">
                   <Check className="h-5 w-5" />
                   <span className="text-sm font-medium">保存しました</span>
                 </div>
               )}
-              
-              <div className="flex justify-end space-x-3 flex-1">
+
+              <div className="flex flex-1 justify-end space-x-3">
                 <button
                   onClick={() => {
                     setShowRoleModal(false);
@@ -1196,14 +1312,14 @@ const RolesPage = () => {
                     setShowSaveSuccess(false);
                   }}
                   disabled={isSaving}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   閉じる
                 </button>
-                <button 
+                <button
                   onClick={handleSaveRolePermissions}
                   disabled={isSaving}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
@@ -1222,10 +1338,12 @@ const RolesPage = () => {
 
       {/* ロール追加モーダル */}
       {showAddRoleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">新しいロールを追加</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                新しいロールを追加
+              </h3>
               <button
                 onClick={() => {
                   setShowAddRoleModal(false);
@@ -1248,7 +1366,7 @@ const RolesPage = () => {
                   value={newRoleName}
                   onChange={(e) => setNewRoleName(e.target.value)}
                   placeholder="例: マネージャー"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -1261,7 +1379,7 @@ const RolesPage = () => {
                   onChange={(e) => setNewRoleDescription(e.target.value)}
                   placeholder="このロールの権限や責任について説明してください"
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -1279,14 +1397,14 @@ const RolesPage = () => {
                     setNewRoleDescription("");
                   }}
                   disabled={isSaving}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   キャンセル
                 </button>
                 <button
                   onClick={handleAddCustomRole}
                   disabled={!newRoleName.trim() || isSaving}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
@@ -1305,10 +1423,12 @@ const RolesPage = () => {
 
       {/* ロール編集モーダル */}
       {showEditRoleModal && editingRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">ロールを編集</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                ロールを編集
+              </h3>
               <button
                 onClick={() => {
                   setShowEditRoleModal(false);
@@ -1328,8 +1448,10 @@ const RolesPage = () => {
                 <input
                   type="text"
                   value={editingRole.name}
-                  onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  onChange={(e) =>
+                    setEditingRole({ ...editingRole, name: e.target.value })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -1339,9 +1461,14 @@ const RolesPage = () => {
                 </label>
                 <textarea
                   value={editingRole.description}
-                  onChange={(e) => setEditingRole({ ...editingRole, description: e.target.value })}
+                  onChange={(e) =>
+                    setEditingRole({
+                      ...editingRole,
+                      description: e.target.value,
+                    })
+                  }
                   rows={3}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -1352,14 +1479,14 @@ const RolesPage = () => {
                     setEditingRole(null);
                   }}
                   disabled={isSaving}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   キャンセル
                 </button>
                 <button
                   onClick={handleEditRole}
                   disabled={!editingRole.name.trim() || isSaving}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
@@ -1378,14 +1505,16 @@ const RolesPage = () => {
 
       {/* ロール削除モーダル */}
       {showDeleteRoleModal && editingRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black backdrop-blur-sm">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                   <AlertCircle className="h-5 w-5 text-red-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">ロールを削除</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  ロールを削除
+                </h3>
               </div>
               <button
                 onClick={() => {
@@ -1402,20 +1531,25 @@ const RolesPage = () => {
             <div className="space-y-4">
               <div className="rounded-lg bg-red-50 p-4">
                 <p className="text-sm text-red-800">
-                  <strong>警告:</strong> ロール「{editingRole.name}」を削除すると、このロールに関連するすべての権限設定が失われます。この操作は取り消せません。
+                  <strong>警告:</strong> ロール「{editingRole.name}
+                  」を削除すると、このロールに関連するすべての権限設定が失われます。この操作は取り消せません。
                 </p>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                  削除を確認するには、ロール名「<span className="font-bold text-red-600">{editingRole.name}</span>」を入力してください
+                  削除を確認するには、ロール名「
+                  <span className="font-bold text-red-600">
+                    {editingRole.name}
+                  </span>
+                  」を入力してください
                 </label>
                 <input
                   type="text"
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
                   placeholder={editingRole.name}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none"
                 />
               </div>
 
@@ -1427,14 +1561,14 @@ const RolesPage = () => {
                     setDeleteConfirmation("");
                   }}
                   disabled={isSaving}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   キャンセル
                 </button>
                 <button
                   onClick={handleDeleteRole}
                   disabled={deleteConfirmation !== editingRole.name || isSaving}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>

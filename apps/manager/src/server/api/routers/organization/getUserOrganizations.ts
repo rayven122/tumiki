@@ -13,14 +13,43 @@ export const getUserOrganizations = async ({
   const { db, session } = ctx;
   const userId = session.user.id;
 
-  // ユーザーが所属する組織の一覧を取得
-  return await db.organization.findMany({
+  // ユーザーが所属する組織の一覧を取得（詳細情報含む）
+  const memberships = await db.organizationMember.findMany({
     where: {
-      members: {
-        some: {
-          userId,
+      userId,
+      organization: {
+        isDeleted: false,
+      },
+    },
+    include: {
+      organization: {
+        include: {
+          _count: {
+            select: {
+              members: true,
+            },
+          },
         },
       },
     },
+    orderBy: [
+      {
+        organization: {
+          isPersonal: "desc", // 個人組織を先に
+        },
+      },
+      {
+        organization: {
+          createdAt: "asc",
+        },
+      },
+    ],
   });
+
+  return memberships.map((membership) => ({
+    ...membership.organization,
+    isAdmin: membership.isAdmin,
+    memberCount: membership.organization._count.members,
+    isDefault: membership.organization.id === ctx.currentOrganizationId,
+  }));
 };

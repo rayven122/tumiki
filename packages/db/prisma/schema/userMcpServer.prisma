@@ -17,24 +17,22 @@ model UserMcpServerConfig {
   envVars            String /// @encrypted
   /// OAuth接続のAuth0 connection名（user-specific）
   oauthConnection    String?
-  /// ユーザーが選択した追加スコープ
-  oauthScopes        String[]
-  /// 利用可能なツールグループ
-  tools              Tool[]
   /// UserMcpServerConfig と ToolGroup の関連を管理する中間テーブル
   userToolGroupTools UserToolGroupTool[]
   /// MCPサーバーID
   mcpServerId        String
   mcpServer          McpServer           @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-  /// ユーザーID
-  userId             String
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 組織
-  organizationId     String?
-  organization       Organization?       @relation(fields: [organizationId], references: [id])
+  organizationId     String
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  
+  /// OAuth Tokens リレーション
+  oauthTokens        OAuthToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 /// ToolGroup, Toolの関連を表す中間テーブル
@@ -74,19 +72,18 @@ model UserToolGroup {
   isEnabled                   Boolean                          @default(true)
   /// UserMcpServerInstance ごとに1つの ToolGroup が存在する
   mcpServerInstance           UserMcpServerInstance?
-  /// ユーザーID
-  userId                      String
-  user                        User                             @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// ToolGroupに含まれるTool（中間テーブル経由）
   toolGroupTools              UserToolGroupTool[]
   /// 組織
-  organizationId              String?
-  organization                Organization?                    @relation(fields: [organizationId], references: [id])
+  organizationId              String
+  organization                Organization                     @relation(fields: [organizationId], references: [id])
   /// MCPサーバーとツールグループの関連を管理する中間テーブル
   mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 /// MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
@@ -157,12 +154,9 @@ model UserMcpServerInstance {
   requestLogs                 McpServerRequestLog[]
   /// 使用する認証タイプ（API_KEY, OAUTH, BOTH）
   authType                    AuthType                         @default(API_KEY)
-  /// ユーザーID
-  userId                      String
-  user                        User                             @relation(fields: [userId], references: [id])
   /// 組織
-  organizationId              String?
-  organization                Organization?                    @relation(fields: [organizationId], references: [id])
+  organizationId              String
+  organization                Organization                     @relation(fields: [organizationId], references: [id])
   /// 表示順序（ユーザーごと）
   displayOrder                Int                              @default(0)
 
@@ -172,6 +166,7 @@ model UserMcpServerInstance {
   deletedAt DateTime?
 
   @@index([deletedAt])
+  @@index([organizationId])
 }
 
 /// MCPサーバーインスタンスへのリクエストログ
@@ -179,9 +174,6 @@ model UserMcpServerInstance {
 /// @namespace UserMcpServer
 model McpServerRequestLog {
   id                  String                @id @default(cuid())
-  /// ユーザーID (OAuth2 認証もしくは、api key に応じて、利用ユーザを特定する)
-  userId              String?
-  user                User?                 @relation(fields: [userId], references: [id])
   /// MCPサーバーインスタンスID
   mcpServerInstanceId String
   mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id])
@@ -204,14 +196,16 @@ model McpServerRequestLog {
   /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
   outputBytes         Int?
   /// 組織ID
-  organizationId      String?
-  organization        Organization?         @relation(fields: [organizationId], references: [id])
+  organizationId      String
+  organization        Organization          @relation(fields: [organizationId], references: [id])
   /// ユーザーエージェント
   userAgent           String?
   /// 詳細データ（1:1関係）
   requestData         McpServerRequestData?
 
   createdAt DateTime @default(now())
+
+  @@index([organizationId])
 }
 
 /// MCPサーバーリクエストの詳細データ（分析用）

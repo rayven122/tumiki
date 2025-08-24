@@ -6,6 +6,9 @@ import type { Prisma } from "@prisma/client";
 export const MCP_SERVERS = [
   {
     name: "Notion MCP",
+    description:
+      "Notionワークスペースと連携し、ページの作成・編集・検索を可能にします",
+    tags: ["ドキュメント", "プロジェクト管理"],
     iconPath: "/logos/notion.svg",
     command: "node",
     args: ["node_modules/@suekou/mcp-notion-server/build/index.js"],
@@ -14,6 +17,9 @@ export const MCP_SERVERS = [
   },
   {
     name: "GitHub MCP",
+    description:
+      "GitHubリポジトリの操作、Issue管理、Pull Request作成をサポートします",
+    tags: ["開発", "バージョン管理"],
     iconPath: "/logos/github.svg",
     command: "node",
     args: ["node_modules/@modelcontextprotocol/server-github/dist/index.js"],
@@ -22,6 +28,8 @@ export const MCP_SERVERS = [
   },
   {
     name: "Context7",
+    description: "コンテキスト管理とドキュメント生成を支援するMCPサーバー",
+    tags: ["開発", "ドキュメント"],
     iconPath: "/logos/context7.svg",
     command: "node",
     args: ["node_modules/@upstash/context7-mcp/dist/index.js"],
@@ -29,6 +37,8 @@ export const MCP_SERVERS = [
   },
   {
     name: "Playwright MCP",
+    description: "ブラウザ自動化とE2Eテストの実行をサポートします",
+    tags: ["テスト", "ブラウザ自動化"],
     iconPath: "/logos/playwright.svg",
     command: "node",
     args: ["node_modules/@playwright/mcp/cli.js"],
@@ -55,6 +65,8 @@ export const MCP_SERVERS = [
   // },
   {
     name: "Figma",
+    description: "Figmaデザインファイルの読み取りと操作を可能にします",
+    tags: ["デザイン", "UI/UX"],
     iconPath: "/logos/figma.svg",
     command: "node",
     args: [
@@ -91,6 +103,9 @@ export const MCP_SERVERS = [
   // },
   {
     name: "Slack MCP",
+    description:
+      "Slackワークスペースでのメッセージ送信とチャンネル管理を提供します",
+    tags: ["コミュニケーション", "通知"],
     iconPath: "/logos/slack.svg",
     command: "node",
     args: ["node_modules/slack-mcp-server/bin/index.js"],
@@ -99,6 +114,9 @@ export const MCP_SERVERS = [
   },
   {
     name: "Discord MCP",
+    description:
+      "Discordサーバーでのメッセージ送信とボット操作をサポートします",
+    tags: ["コミュニケーション", "チーム"],
     iconPath: "/logos/discord.svg",
     command: "node",
     args: ["node_modules/discord-mcp-server/build/index.js"],
@@ -107,10 +125,43 @@ export const MCP_SERVERS = [
   },
   {
     name: "LINE Bot MCP",
+    description: "LINE Messaging APIを使用したメッセージの送受信を可能にします",
+    tags: ["コミュニケーション", "通知"],
     iconPath: "/logos/line.svg",
     command: "node",
     args: ["node_modules/@line/line-bot-mcp-server/dist/index.js"],
     envVars: ["CHANNEL_ACCESS_TOKEN", "DESTINATION_USER_ID"],
+    isPublic: true,
+  },
+  {
+    name: "DeepL MCP",
+    description: "DeepL APIを使用した高品質な翻訳機能を提供します",
+    tags: ["翻訳", "ツール"],
+    iconPath: "/logos/deepl.svg",
+    command: "node",
+    args: ["node_modules/deepl-mcp-server/src/index.mjs"],
+    envVars: ["DEEPL_API_KEY"],
+    isPublic: true,
+  },
+  {
+    name: "microCMS MCP",
+    description: "microCMSのコンテンツ管理とAPI操作をサポートします",
+    tags: ["CMS", "コンテンツ管理"],
+    iconPath: "/logos/microcms.svg",
+    command: "node",
+    args: ["node_modules/microcms-mcp-server/dist/index.js"],
+    envVars: ["MICROCMS_SERVICE_ID", "MICROCMS_API_KEY"],
+    isPublic: true,
+  },
+  {
+    name: "Microsoft Clarity",
+    description:
+      "Microsoft Clarityの分析データとヒートマップへのアクセスを提供します",
+    tags: ["分析", "ツール"],
+    iconPath: "/logos/microsoft-clarity.png",
+    command: "node",
+    args: ["node_modules/@microsoft/clarity-mcp-server/dist/cli.js"],
+    envVars: ["CLARITY_API_TOKEN"],
     isPublic: true,
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];

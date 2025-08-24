@@ -20,21 +20,19 @@ export const checkServerConnection = async ({
   input,
 }: CheckServerConnectionParams) => {
   const { serverInstanceId, updateStatus = false } = input;
+  const organizationId = ctx.currentOrganizationId;
 
   // トランザクションで処理を実行（セキュリティスキャンに時間がかかるため、タイムアウトを延長）
   return await ctx.db.$transaction(
     async (tx) => {
-      // サーバーインスタンスが存在し、ユーザーが所有していることを確認
+      // サーバーインスタンスが存在し、組織が所有していることを確認
       const serverInstance = await tx.userMcpServerInstance.findUnique({
         where: {
           id: serverInstanceId,
-          userId: ctx.session.user.id,
+          organizationId,
         },
         include: {
           apiKeys: {
-            where: {
-              userId: ctx.session.user.id,
-            },
             take: 1,
           },
         },
@@ -67,10 +65,11 @@ export const checkServerConnection = async ({
         tools = await getMcpServerToolsSSE(
           {
             name: "validation",
-            url: makeSseProxyServerUrl(apiKey),
+            url: makeSseProxyServerUrl(serverInstanceId),
           },
           {
             "x-validation-mode": "true",
+            "x-api-key": apiKey,
           },
         );
 
@@ -81,7 +80,7 @@ export const checkServerConnection = async ({
         } else {
           // ツール取得に成功した場合、セキュリティスキャンを実行
           try {
-            const serverUrl = makeSseProxyServerUrl(apiKey);
+            const serverUrl = makeSseProxyServerUrl(serverInstanceId);
             securityScanResult = await runMcpSecurityScan(
               serverUrl,
               apiKey,

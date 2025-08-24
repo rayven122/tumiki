@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Section, Text } from "@react-email/components";
 
 import { Button } from "./components/Button.js";
@@ -13,7 +14,7 @@ export const WaitingListConfirmationEN = ({
   name = "John Doe",
   confirmUrl = "https://tumiki.app",
   appName = "Tumiki",
-}: WaitingListConfirmationENProps) => {
+}: WaitingListConfirmationENProps): ReactElement => {
   const previewText = `${appName} - Early Access Registration Complete`;
 
   return (

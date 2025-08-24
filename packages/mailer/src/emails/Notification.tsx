@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Section, Text } from "@react-email/components";
 
 import { Button } from "./components/Button.js";
@@ -20,7 +21,7 @@ export const Notification = ({
   actionUrl = "https://tumiki.app/maintenance",
   actionText = "詳細を確認",
   appName = "Tumiki",
-}: NotificationProps) => {
+}: NotificationProps): ReactElement => {
   return (
     <Layout appName={appName} previewText={title}>
       <Header title={title} gradient="purple" />

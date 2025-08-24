@@ -1,6 +1,10 @@
 import express from "express";
 import { handleHealthCheck } from "./routes/health/index.js";
 import { handleMCPRequest } from "./routes/mcp/index.js";
+import {
+  handleOAuthDiscovery,
+  handleOpenIDConfiguration,
+} from "./routes/oauth/index.js";
 import { establishSSEConnection, handleSSEMessage } from "./utils/transport.js";
 import { initializeApplication } from "./libs/startup.js";
 import { logger } from "./libs/logger.js";
@@ -9,6 +13,7 @@ import {
   loggingMiddleware,
   errorLoggingMiddleware,
 } from "./middleware/logging.js";
+import { maintenanceMiddleware } from "./middleware/maintenance.js";
 
 /**
  * Express アプリケーションを設定
@@ -52,6 +57,13 @@ const createApp = (): express.Application => {
   // ルート設定
   app.get("/", handleHealthCheck);
   app.get("/health", handleHealthCheck);
+
+  // OAuthディスカバリーエンドポイント（認証不要）
+  app.get("/.well-known/oauth-authorization-server", handleOAuthDiscovery);
+  app.get("/.well-known/openid-configuration", handleOpenIDConfiguration);
+
+  // メンテナンスモードミドルウェアを適用
+  app.use(maintenanceMiddleware());
 
   // ここ以降のすべてのルートに統合認証ミドルウェアを適用
   app.use(integratedAuthMiddleware());

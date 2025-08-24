@@ -3,33 +3,34 @@ allowed-tools: Bash, WebFetch, Read, Write, Edit, MultiEdit, TodoWrite, Grep, Gl
 description: "tumikiリポジトリの週次進捗レポートを自動生成するコマンド"
 ---
 
-rayven122/tumikiリポジトリの直近1週間のプルリクエスト情報を解析し、プロジェクトオーナー向けの週次進捗レポートを自動生成します。
+rayven122/tumikiリポジトリの最新レポート生成日から現在までのプルリクエスト情報を解析し、プロジェクトオーナー向けの進捗レポートを自動生成します。
 
 ## 実行手順
 
 1. **タスク管理の初期化**
-
    - TodoWriteツールでタスクリストを作成し、進捗を追跡
 
-2. **GitHub情報の確認**
+2. **最新レポートの日付確認**
+   - `ls -t docs/weekly-reports/週次業務報告_*.md | head -1` で最新レポートファイルを特定
+   - ファイル名から日付を抽出（YYYY年MM月DD日形式）
+   - レポートが存在しない場合はデフォルトで過去7日間を使用
 
-   - `gh pr list --repo rayven122/tumiki --state closed --limit 50` でPR一覧を取得
+3. **GitHub情報の取得**
+   - 最新レポート日付の翌日から現在までのPRを取得
+   - `gh pr list --repo rayven122/tumiki --state closed --search "merged:>YYYY-MM-DD" --limit 100` 形式で実行
    - rayven122/tumikiリポジトリを対象とする
-   - 直近1週間のクローズされたPRを取得
 
-3. **PR情報の解析**
-
+4. **PR情報の解析**
    - PRのタイトル、説明、マージ日時を収集
    - 機能追加、バグ修正、リファクタリングなどに分類
    - 重要度や影響範囲を判定
 
-4. **進捗レポートの生成**
-
+5. **進捗レポートの生成**
    - プロジェクトオーナー向けの要約を作成
    - 技術的詳細は省略し、ビジネス価値に焦点を当てる
-   - 今週の成果と次週の見通しを含める
+   - 期間内の成果と今後の見通しを含める
 
-5. **レポートファイルの作成**
+6. **レポートファイルの作成**
    - MultiEditツールでMarkdown形式でレポートを生成
    - `/docs/weekly-report/` ディレクトリに日付を含むファイル名で保存
    - UTF-8エンコーディングを確実に使用
@@ -37,16 +38,16 @@ rayven122/tumikiリポジトリの直近1週間のプルリクエスト情報を
 ## 使用例
 
 ```bash
-# 週次レポート生成（デフォルト: 過去7日間）
+# レポート生成（最新レポート日付から現在まで）
 /weekly-report
 
-# 特定の期間を指定
+# 初回実行または特定期間を指定したい場合
 /weekly-report --days 14
 ```
 
 ## パラメータ
 
-- `--days`: 過去何日分のPRを確認するか（デフォルト: 7）
+- `--days`: 過去何日分のPRを確認するか（オプション、指定時は最新レポート日付を無視）
 
 ## レポート形式
 
@@ -145,11 +146,21 @@ rayven122/tumikiリポジトリの直近1週間のプルリクエスト情報を
 ### GitHub CLI使用上の注意点
 
 ```bash
-# macOSでの日付計算（実際の実装で使用）
-date -v -7d +%Y-%m-%d
+# 最新レポートファイルの取得
+LATEST_REPORT=$(ls -t docs/weekly-reports/週次業務報告_*.md 2>/dev/null | head -1)
 
-# 週次PRを取得するコマンド
-gh pr list --repo rayven122/tumiki --state closed --limit 50 --json number,title,mergedAt,author,body,labels,headRefName
+# ファイル名から日付を抽出（例: 2025年08月04日 → 2025-08-05）
+if [ -n "$LATEST_REPORT" ]; then
+  # ファイル名から日付部分を抽出し、次の日を計算
+  REPORT_DATE=$(echo "$LATEST_REPORT" | sed -E 's/.*_([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日.*/\1-\2-\3/')
+  START_DATE=$(date -j -f "%Y-%m-%d" -v +1d "$REPORT_DATE" +%Y-%m-%d)
+else
+  # レポートが存在しない場合は過去7日間
+  START_DATE=$(date -v -7d +%Y-%m-%d)
+fi
+
+# 期間指定でPRを取得するコマンド
+gh pr list --repo rayven122/tumiki --state closed --search "merged:>$START_DATE" --limit 100 --json number,title,mergedAt,author,body,labels,headRefName
 ```
 
 ### ファイル作成時の注意事項
@@ -170,17 +181,14 @@ gh pr list --repo rayven122/tumiki --state closed --limit 50 --json number,title
 ### よくある問題と対処法
 
 1. **jqの複雑なクエリエラー**
-
    - 単純なJSONフィルタに変更
    - 必要に応じて後処理でフィルタリング
 
 2. **文字化け問題**
-
    - WriteツールまたはMultiEditツールを使用
    - UTF-8エンコーディングを明示的に指定
 
 3. **GitHubのAPIレート制限**
-
    - 50件のlimitで十分な場合がほとんど
    - 必要に応じて複数回に分けて取得
 

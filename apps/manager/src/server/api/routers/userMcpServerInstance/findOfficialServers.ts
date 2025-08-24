@@ -11,9 +11,8 @@ export const findOfficialServers = async ({
   const officialServers = await ctx.db.userMcpServerInstance.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       deletedAt: null,
-      organizationId: null, // 個人のMCPサーバーのみを取得
     },
     orderBy: {
       displayOrder: "asc",
@@ -36,6 +35,8 @@ export const findOfficialServers = async ({
                     select: {
                       id: true,
                       name: true,
+                      description: true,
+                      tags: true,
                       iconPath: true,
                       url: true,
                     },

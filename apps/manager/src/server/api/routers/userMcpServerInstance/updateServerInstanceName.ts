@@ -12,14 +12,17 @@ export const updateServerInstanceName = async ({
   ctx,
   input,
 }: UpdateServerInstanceNameInput) => {
+  const organizationId = ctx.currentOrganizationId;
+
   const serverInstance = await ctx.db.$transaction(async (tx) => {
     const serverInstance = await tx.userMcpServerInstance.update({
       where: {
         id: input.id,
-        userId: ctx.session.user.id,
+        organizationId,
       },
       data: {
         name: input.name,
+        description: input.description,
         toolGroup: {
           update: {
             name: input.name,
@@ -48,7 +51,7 @@ export const updateServerInstanceName = async ({
       await tx.userMcpServerConfig.update({
         where: {
           id: userMcpServerConfigId,
-          userId: ctx.session.user.id,
+          organizationId,
         },
         data: {
           name: input.name,

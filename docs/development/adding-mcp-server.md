@@ -2,6 +2,8 @@
 
 このドキュメントでは、Tumiki システムに新しい MCP (Model Context Protocol) サーバーを追加する手順を説明します。
 
+> **ヒント**: Claude Code を使用している場合、カスタムスラッシュコマンド `/add-mcp-server` を使用して自動的に MCP サーバーを追加できます。詳細は[カスタムスラッシュコマンド](#カスタムスラッシュコマンド)のセクションを参照してください。
+
 ## 概要
 
 Tumiki への MCP サーバー追加は以下の流れで行います：
@@ -32,6 +34,7 @@ pnpm add @your-org/mcp-server
 ```
 
 例：
+
 ```json
 {
   "dependencies": {
@@ -54,12 +57,14 @@ pnpm add @your-org/mcp-server
 export const MCP_SERVERS = [
   // 既存のサーバー定義...
   {
-    name: "Your MCP Server Name",        // サーバーの表示名（一意である必要があります）
-    iconPath: "/logos/your-server.svg",  // ロゴファイルのパス
-    command: "node",                     // 実行コマンド
+    name: "Your MCP Server Name", // サーバーの表示名（一意である必要があります）
+    description: "MCPサーバーの機能を説明する文字列", // サーバーの説明文
+    tags: ["カテゴリー1", "カテゴリー2"], // カテゴリータグの配列
+    iconPath: "/logos/your-server.svg", // ロゴファイルのパス
+    command: "node", // 実行コマンド
     args: ["node_modules/@your-org/mcp-server/dist/index.js"], // コマンド引数
-    envVars: [],                         // 必要な環境変数（例: ["API_KEY", "API_SECRET"]）
-    isPublic: true,                      // 公開サーバーかどうか
+    envVars: [], // 必要な環境変数名の配列（例: ["API_KEY", "API_SECRET"]）
+    isPublic: true, // 公開サーバーかどうか
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
 ```
@@ -67,11 +72,71 @@ export const MCP_SERVERS = [
 #### 設定項目の説明
 
 - **name**: UI に表示されるサーバー名。システム内で一意である必要があります
+- **description**: MCPサーバーの機能を説明する文字列。UIでサーバーカードに表示されます
+- **tags**: サーバーのカテゴリータグの配列。フィルタリングやグループ化に使用されます
 - **iconPath**: `/apps/manager/public/` からの相対パス
 - **command**: サーバーを起動するコマンド（通常は `node`）
 - **args**: コマンドに渡す引数の配列
+  - args 内に環境変数名が含まれている場合、実行時に実際の値に置換されます
+  - 例: `["--api-key", "API_KEY"]` → `["--api-key", "実際のAPIキー値"]`
 - **envVars**: サーバーが必要とする環境変数名の配列
+  - ユーザーが設定した値は2つの方法で利用されます：
+    1. args 内の文字列置換（上記参照）
+    2. 子プロセスの環境変数として設定（env プロパティ）
 - **isPublic**: すべてのユーザーに公開するかどうか
+
+#### 推奨タグカテゴリー
+
+MCPサーバーのタグを設定する際は、以下の推奨カテゴリーを使用してください：
+
+**開発関連**
+
+- 開発
+- バージョン管理
+- テスト
+- ブラウザ自動化
+- DevOps
+- コンテナ
+
+**コミュニケーション・コラボレーション**
+
+- コミュニケーション
+- 通知
+- チーム
+
+**ドキュメント・コンテンツ**
+
+- ドキュメント
+- プロジェクト管理
+- CMS
+- コンテンツ管理
+
+**データ・ストレージ**
+
+- ファイル管理
+- ストレージ
+- データベース
+
+**デザイン・UI**
+
+- デザイン
+- UI/UX
+
+**インフラ・クラウド**
+
+- インフラ
+- クラウド
+
+**業務・ツール**
+
+- タスク
+- 翻訳
+- 分析
+- ツール
+- AI
+- 自動化
+
+これらのタグを使用することで、ユーザーがMCPサーバーを効率的にフィルタリング・検索できるようになります。
 
 ### 3. ロゴファイルの配置
 
@@ -82,6 +147,7 @@ apps/manager/public/logos/your-server.svg
 ```
 
 推奨事項：
+
 - SVG 形式を使用
 - 正方形のアスペクト比
 - 透明背景
@@ -89,7 +155,51 @@ apps/manager/public/logos/your-server.svg
 
 ### 4. データベースへの反映
 
-すべての設定が完了したら、データベースに反映します：
+#### 環境変数の設定
+
+MCPサーバー登録スクリプトは2つの環境変数ファイルを使用します：
+
+/../.env）\*\*:
+
+- DATABASE_URLなどのシステム全体で使用する環境変数
+- プロジェクトルートの`.env`ファイルに設定
+- **必須**：これは必ず設定が必要です
+
+2. **MCPサーバー専用環境変数（.env.upsert）**:
+   - 各MCPサーバーに必要なAPIキーやトークン
+   - `packages/scripts/.env.upsert`ファイルに設定
+   - **オプション**：使用したいMCPサーバーの環境変数のみ設定すればOK
+
+3. **環境変数ファイルの準備**:
+
+   ```bash
+   cd packages/scripts
+   cp .env.upsert.example .env.upsert
+   # 使用したいMCPサーバーの環境変数のみを設定
+   ```
+
+   例：NotionとGitHubのみを使用する場合
+
+   ```bash
+   # .env.upsert の内容
+   NOTION_API_TOKEN=your-notion-token
+   GITHUB_PERSONAL_ACCESS_TOKEN=your-github-token
+   # 他のサーバーの環境変数は空のままでOK
+   ```
+
+4. **環境変数のバリデーションとスキップ処理**:
+   - スクリプト実行時に自動的に環境変数がバリデーションされます
+   - DATABASE_URLは必須（../../.envから読み込み）
+   - **MCPサーバーは選択的に登録**：
+     - 環境変数が設定されているサーバー → 登録・ツール取得を実行
+     - 環境変数が設定されていないサーバー → 自動的にスキップ（エラーにならない）
+     - Context7、Playwrightなど環境変数不要のサーバー → 常に登録
+
+> **💡 ヒント**: すべてのMCPサーバーを登録する必要はありません。必要なサーバーの環境変数のみを設定してください。後から追加したいサーバーがあれば、環境変数を設定して再度`pnpm upsertAll`を実行するだけです。
+
+#### データベースへの反映
+
+環境変数を設定したら、データベースに反映します：
 
 ```bash
 cd packages/scripts
@@ -97,8 +207,47 @@ pnpm upsertAll
 ```
 
 このコマンドは以下を実行します：
-1. `upsertMcpServers`: MCP サーバー定義をデータベースに挿入/更新
-2. `upsertMcpTools`: 各サーバーに接続してツール情報を取得・保存
+
+1. **環境変数のバリデーション**: 必要な環境変数が正しく設定されているかチェック
+2. **有効なサーバーの判定**: 環境変数が設定されているサーバーを特定
+3. `upsertMcpServers`: 有効なMCPサーバーのみをデータベースに挿入/更新
+4. `upsertMcpTools`: 有効なサーバーのみに接続してツール情報を取得・保存
+
+#### 実行例
+
+```bash
+$ pnpm upsertAll
+
+🔍 環境変数チェック結果:
+  有効なサーバー数: 4/11
+
+⚠️  以下のMCPサーバーは環境変数が設定されていないため、ツール登録がスキップされます:
+  • Figma: 次の環境変数のうち少なくとも1つが必要です: FIGMA_API_KEY, FIGMA_OAUTH_TOKEN
+  • Slack MCP: 次の環境変数が必要です: SLACK_MCP_XOXP_TOKEN
+  • Discord MCP: 次の環境変数が必要です: DISCORD_TOKEN
+  • LINE Bot MCP: 次の環境変数のうち少なくとも1つが必要です: CHANNEL_ACCESS_TOKEN, DESTINATION_USER_ID
+  • DeepL MCP: 次の環境変数が必要です: DEEPL_API_KEY
+  • microCMS MCP: 次の環境変数のうち少なくとも1つが必要です: MICROCMS_SERVICE_ID, MICROCMS_API_KEY
+
+📝 以下のMCPサーバーは環境変数が不足しているためスキップされました:
+  - Figma
+  - Slack MCP
+  - Discord MCP
+  - LINE Bot MCP
+  - DeepL MCP
+  - microCMS MCP
+
+✅ MCPサーバーが正常に登録されました:
+  登録されたMCPサーバー数: 4
+  登録されたMCPサーバー: Notion MCP, GitHub MCP, Context7, Playwright MCP
+
+📊 ツール登録サマリー:
+  ✅ 成功: Notion MCP, GitHub MCP, Context7, Playwright MCP
+
+✨ 処理が完了しました
+```
+
+> **注意**: `.env.upsert` ファイルはGitにコミットされないよう `.gitignore` に追加されています。本番環境では適切な環境変数管理方法を使用してください。
 
 ## 動作確認
 
@@ -119,35 +268,71 @@ pnpm dev
 pnpm inspector
 ```
 
+## 後から追加のMCPサーバーを有効化する場合
+
+既存のシステムに新しいMCPサーバーを追加したい場合：
+
+1. `.env.upsert` に該当サーバーの環境変数を追加
+2. `pnpm upsertAll` を再実行
+3. 既存のサーバーはそのまま、新しく環境変数を設定したサーバーのみが追加登録されます
+
+```bash
+# 例：後からSlackを追加する場合
+echo "SLACK_MCP_XOXP_TOKEN=xoxp-your-token" >> .env.upsert
+pnpm upsertAll
+# → Slackのみが新規登録され、既存のサーバーは影響を受けない
+```
+
 ## トラブルシューティング
 
 ### サーバーがリストに表示されない
 
 1. `pnpm upsertAll` を実行したか確認
-2. データベースの `McpServer` テーブルにレコードが存在するか確認
-3. `isPublic: true` が設定されているか確認
+2. 必要な環境変数が設定されているか確認（環境変数が必要なサーバーの場合）
+3. データベースの `McpServer` テーブルにレコードが存在するか確認
+4. `isPublic: true` が設定されているか確認
 
 ### ツールが表示されない
 
 1. MCP サーバーが正しく起動するか確認
 2. `packages/scripts` ディレクトリで直接サーバーを起動してテスト：
+
    ```bash
    node node_modules/@your-org/mcp-server/dist/index.js
    ```
+
 3. `upsertMcpTools` スクリプトのログを確認
 
 ### 環境変数エラー
 
 1. `envVars` 配列に必要な環境変数名がすべて含まれているか確認
 2. ユーザーが設定画面で環境変数を入力しているか確認
+3. args 内で環境変数を参照している場合、正しい変数名を使用しているか確認
+   - 例: `args: ["--api-key", "API_KEY"]` の場合、`envVars: ["API_KEY"]` が必要
 
 ## 詳細な仕組み
+
+### 環境変数の処理フロー
+
+ProxyServer での環境変数処理の流れ：
+
+1. **ユーザー設定の取得**: `UserMcpServerConfig` テーブルから暗号化された環境変数を取得
+2. **復号化**: Prisma の暗号化機能により自動的に復号化
+3. **args の置換**:
+   - `args` 配列内の各要素をスキャン
+   - 環境変数名が含まれていれば、実際の値に置換
+   - 例: `"--api-key=API_KEY"` → `"--api-key=sk-abc123..."`
+4. **env の設定**:
+   - STDIO トランスポートの場合、環境変数オブジェクトを `env` プロパティに設定
+   - これにより子プロセスから `process.env.API_KEY` でアクセス可能
 
 ### データベーススキーマ
 
 MCP サーバー関連のテーブル：
 
-- **McpServer**: サーバー定義（名前、コマンド、引数など）
+- **McpServer**: サーバー定義（名前、コマンド、引数、説明、タグなど）
+  - `description` フィールド（String?）: サーバーの機能説明
+  - `tags` フィールド（String[]）: カテゴリータグの配列
 - **Tool**: 各サーバーが提供するツール
 - **UserMcpServerConfig**: ユーザー固有の設定（暗号化された環境変数を含む）
 - **UserMcpServerInstance**: 実行中のサーバーインスタンス
@@ -161,6 +346,7 @@ MCP サーバー関連のテーブル：
 ### トランスポートタイプ
 
 Tumiki は以下のトランスポートをサポート：
+
 - **STDIO**: ローカルプロセスとの通信（デフォルト）
 - **SSE**: Server-Sent Events によるリモート通信
 
@@ -176,20 +362,24 @@ Tumiki は以下のトランスポートをサポート：
 ### Task Master AI の追加例
 
 1. **依存関係の追加**:
+
    ```bash
    # packages/scripts に追加
    cd packages/scripts
    pnpm add task-master-ai
-   
+
    # apps/proxyServer に追加
    cd apps/proxyServer
    pnpm add task-master-ai
    ```
 
 2. **サーバー定義の追加**:
+
    ```typescript
    {
      name: "Task Master AI",
+     description: "AIエージェントのタスク管理と実行を支援するMCPサーバー",
+     tags: ["AI", "タスク管理", "自動化"],
      iconPath: "/logos/task-master.svg",
      command: "node",
      args: ["node_modules/task-master-ai/index.js"],
@@ -213,3 +403,40 @@ Tumiki は以下のトランスポートをサポート：
 4. **データベースへの反映**: `pnpm upsertAll` を実行
 
 このプロセスに従うことで、新しい MCP サーバーを Tumiki システムに統合できます。
+
+## カスタムスラッシュコマンド
+
+Claude Code を使用している場合、以下のカスタムスラッシュコマンドが利用可能です：
+
+### /add-mcp-server
+
+MCP サーバーを自動的に追加するコマンドです。
+
+```bash
+# DeepL MCP サーバーを追加する例
+/add-mcp-server https://github.com/DeepLcom/deepl-mcp-server
+
+# npmパッケージ名で追加
+/add-mcp-server task-master-ai "Task Master AI"
+
+# 環境変数を指定して追加
+/add-mcp-server figma-developer-mcp "Figma Context" --env FIGMA_API_KEY
+```
+
+このコマンドは以下を自動的に実行します：
+
+1. 両方のディレクトリへの依存関係追加
+2. サーバー定義の更新
+3. ロゴファイルの生成
+4. データベースへの反映
+
+### その他の利用可能なコマンド
+
+`.claude/commands/` ディレクトリには以下のカスタムコマンドがあります：
+
+- **/commit-and-pr**: コミットとプルリクエストを一度に作成
+- **/pr**: プルリクエストを作成
+- **/pr-review**: プルリクエストのレビューを実行
+- **/weekly-report**: 週次レポートを生成
+
+これらのコマンドは Claude Code で作業を効率化するために設計されています。

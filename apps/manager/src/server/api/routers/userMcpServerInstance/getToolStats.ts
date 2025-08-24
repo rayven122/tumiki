@@ -10,11 +10,11 @@ export const getToolStats = async ({
   input: z.infer<typeof GetToolStatsInput>;
   ctx: ProtectedContext;
 }) => {
-  // ユーザーがそのインスタンスにアクセス権を持っているかチェック
+  // 組織がそのインスタンスにアクセス権を持っているかチェック
   const instance = await db.userMcpServerInstance.findFirst({
     where: {
       id: input.instanceId,
-      userId: ctx.session.user.id,
+      organizationId: ctx.currentOrganizationId,
       deletedAt: null,
     },
   });
