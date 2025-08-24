@@ -245,11 +245,9 @@ runs:
         }
         EOF
 
-        # JSONをGitHub Outputに保存
-        BLOCKS_JSON=$(cat /tmp/slack_blocks.json | tr -d '\n')
-        echo "blocks_json<<EOF" >> $GITHUB_OUTPUT
-        echo "${BLOCKS_JSON}" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        # JSONをGitHub Outputに保存（改行とスペースを削除）
+        BLOCKS_JSON=$(cat /tmp/slack_blocks.json | tr -d '\n' | sed 's/  */ /g')
+        echo "blocks_json=${BLOCKS_JSON}" >> $GITHUB_OUTPUT
 
     - name: 📢 Send summary to Slack
       uses: ./.github/actions/notify-slack
