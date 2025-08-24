@@ -137,7 +137,10 @@ jobs:
   notify:
     name: 📢 結果通知
     needs: [setup, migrate-database, deploy-vercel, deploy-gce]
-    if: always() && needs.setup.outputs.is_pr != 'true'
+    if: |
+      always() && 
+      (needs.setup.outputs.is_pr != 'true' || 
+       contains(github.event.pull_request.labels.*.name, 'test-slack'))
     runs-on: arc-runner-set
     outputs:
       deployment_url: ${{ needs.deploy-vercel.outputs.deployment_url }}

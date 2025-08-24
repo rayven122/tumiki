@@ -1,0 +1,150 @@
+/**
+ * @namespace OAuth
+ * OAuth認証関連のテーブル定義
+ */
+
+/// OAuth クライアント情報（Dynamic Client Registration で取得）
+/// @namespace OAuth
+model OAuthClient {
+  id String @id @default(cuid())
+
+  /// 関連するMCPサーバー
+  mcpServerId String
+  mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+
+  /// DCRで取得したクライアント情報
+  clientId                String /// @encrypted
+  clientSecret            String? /// @encrypted
+  registrationAccessToken String? /// @encrypted
+  registrationClientUri   String?
+
+  /// Authorization Server情報
+  authorizationServerUrl String
+  tokenEndpoint          String
+  authorizationEndpoint  String
+  registrationEndpoint   String?
+  jwksUri                String?
+  revocationEndpoint     String?
+  introspectionEndpoint  String?
+
+  /// Protected Resource情報
+  protectedResourceUrl String?
+  resourceIndicator    String?
+
+  /// メタデータ
+  scopes                  String[]
+  grantTypes              String[]
+  responseTypes           String[]
+  tokenEndpointAuthMethod String   @default("client_secret_basic")
+
+  /// クライアント設定
+  redirectUris    String[]
+  applicationName String?
+  applicationUri  String?
+  logoUri         String?
+  contactEmail    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// トークンのリレーション
+  oauthTokens OAuthToken[]
+
+  /// MCPサーバーごとに1つのOAuthクライアント
+  @@unique([mcpServerId])
+  @@index([clientId])
+}
+
+/// OAuth トークン情報（ユーザーごと）
+/// @namespace OAuth
+model OAuthToken {
+  id String @id @default(cuid())
+
+  /// 関連するユーザーMCPサーバー設定
+  userMcpConfigId String
+  userMcpConfig   UserMcpServerConfig @relation(fields: [userMcpConfigId], references: [id], onDelete: Cascade)
+
+  /// 関連するOAuthクライアント
+  oauthClientId String
+  oauthClient   OAuthClient @relation(fields: [oauthClientId], references: [id], onDelete: Cascade)
+
+  /// トークン情報
+  accessToken  String /// @encrypted
+  refreshToken String? /// @encrypted
+  idToken      String? /// @encrypted
+
+  /// トークンメタデータ
+  tokenType        String    @default("Bearer")
+  scope            String?
+  expiresAt        DateTime?
+  refreshExpiresAt DateTime?
+
+  /// セッション情報（PKCE等）
+  state               String? /// @encrypted
+  nonce               String? /// @encrypted
+  codeVerifier        String? /// @encrypted
+  codeChallenge       String?
+  codeChallengeMethod String? @default("S256")
+
+  /// トークン状態
+  isValid      Boolean   @default(true)
+  lastUsedAt   DateTime?
+  refreshCount Int       @default(0)
+
+  /// エラー情報
+  lastError   String?
+  lastErrorAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// ユーザーMCPサーバー設定ごとに1つのトークン
+  @@unique([userMcpConfigId])
+  @@index([oauthClientId])
+  @@index([expiresAt])
+}
+
+/// OAuth認証セッション（一時的な認証フロー管理）
+/// @namespace OAuth
+model OAuthSession {
+  id String @id @default(cuid())
+
+  /// セッション識別子
+  sessionId String @unique
+
+  /// 関連するユーザー
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 関連するMCPサーバー
+  mcpServerId String
+
+  /// PKCE情報
+  codeVerifier        String /// @encrypted
+  codeChallenge       String
+  codeChallengeMethod String @default("S256")
+
+  /// セッション情報
+  state       String /// @encrypted
+  nonce       String? /// @encrypted
+  redirectUri String
+
+  /// 要求されたスコープ
+  requestedScopes String[]
+
+  /// セッション状態
+  status String @default("pending") // pending, completed, failed, expired
+
+  /// エラー情報
+  errorCode        String?
+  errorDescription String?
+
+  /// タイムスタンプ
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([state])
+  @@index([expiresAt])
+}
