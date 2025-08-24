@@ -1,0 +1,64 @@
+name: Test Slack Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "テスト環境"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+          - preview
+      migration_status:
+        description: "マイグレーション状態"
+        required: true
+        default: "success"
+        type: choice
+        options:
+          - success
+          - failure
+          - skipped
+      vercel_status:
+        description: "Vercelデプロイ状態"
+        required: true
+        default: "success"
+        type: choice
+        options:
+          - success
+          - failure
+      gce_status:
+        description: "GCEデプロイ状態（本番のみ）"
+        required: false
+        default: "skipped"
+        type: choice
+        options:
+          - success
+          - failure
+          - skipped
+
+jobs:
+  test-notification:
+    name: 🧪 Slack通知テスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send test notification
+        uses: ./.github/actions/notify-slack-summary
+        with:
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          environment: ${{ inputs.environment }}
+          migration_status: ${{ inputs.migration_status }}
+          migration_applied: ${{ inputs.migration_status == 'success' && 'true' || 'false' }}
+          migration_names: ${{ inputs.migration_status == 'success' && '20241224120000_add_test_table,20241224120100_update_users' || '' }}
+          preview_migration_applied: ${{ inputs.environment == 'staging' && 'true' || 'false' }}
+          preview_migration_names: ${{ inputs.environment == 'staging' && '20241224120000_add_test_table' || '' }}
+          vercel_status: ${{ inputs.vercel_status }}
+          vercel_url: https://tumiki-test-deployment.vercel.app
+          gce_status: ${{ inputs.gce_status }}
+          actor: ${{ github.actor }}
+          commit_sha: ${{ github.sha }}
+          ref_name: ${{ github.ref_name }}
