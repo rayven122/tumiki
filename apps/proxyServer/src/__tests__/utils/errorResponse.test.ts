@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import type { Response } from "express";
 import {
   sendAuthenticationError,
@@ -23,7 +24,6 @@ describe("エラーレスポンスユーティリティ", () => {
     const res = createMockResponse();
     sendAuthenticationError(res, "Custom auth error");
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(401);
 
     expect(res.json).toHaveBeenCalledWith({
@@ -40,7 +40,6 @@ describe("エラーレスポンスユーティリティ", () => {
     const res = createMockResponse();
     sendBadRequestError(res, "Bad request");
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(400);
 
     expect(res.json).toHaveBeenCalledWith({
@@ -57,7 +56,6 @@ describe("エラーレスポンスユーティリティ", () => {
     const res = createMockResponse();
     sendNotFoundError(res, "Not found");
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(404);
 
     expect(res.json).toHaveBeenCalledWith({
@@ -74,7 +72,6 @@ describe("エラーレスポンスユーティリティ", () => {
     const res = createMockResponse();
     sendMethodNotAllowedError(res, "POST");
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(405);
 
     expect(res.json).toHaveBeenCalledWith({
@@ -91,7 +88,6 @@ describe("エラーレスポンスユーティリティ", () => {
     const res = createMockResponse();
     sendServiceUnavailableError(res, "Service unavailable");
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(503);
 
     expect(res.json).toHaveBeenCalledWith({
@@ -114,7 +110,6 @@ describe("エラーレスポンスユーティリティ", () => {
       "id-123",
     );
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).toHaveBeenCalledWith(500);
 
     expect(res.json).toHaveBeenCalledWith({
@@ -133,7 +128,6 @@ describe("エラーレスポンスユーティリティ", () => {
 
     sendAuthenticationError(res);
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(res.status).not.toHaveBeenCalled();
 
     expect(res.json).not.toHaveBeenCalled();

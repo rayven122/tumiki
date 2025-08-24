@@ -28,9 +28,6 @@ export function useAutoResume({
     if (mostRecentMessage?.role === "user") {
       experimental_resume();
     }
-
-    // we intentionally run this once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
