@@ -75,9 +75,9 @@ runs:
 
         # 全体のステータスを判定
         OVERALL_SUCCESS=true
-        if [ "${{ inputs.migration_status }}" == "failure" ] || \
-           [ "${{ inputs.vercel_status }}" == "failure" ] || \
-           ([ "${{ inputs.environment }}" == "production" ] && [ "${{ inputs.gce_status }}" == "failure" ]); then
+        if [ "${{ inputs.migration_status }}" == "failure" ] || 
+           [ "${{ inputs.vercel_status }}" == "failure" ] || 
+           [ "${{ inputs.environment }}" == "production" -a "${{ inputs.gce_status }}" == "failure" ]; then
           OVERALL_SUCCESS=false
         fi
 
@@ -99,8 +99,9 @@ runs:
             for migration in "${MIGRATIONS[@]}"; do
               if [ -n "$migration" ]; then
                 # タイムスタンプと名前を分離
-                if [[ "$migration" =~ ^([0-9]{14})_(.*)$ ]]; then
-                  NAME="${BASH_REMATCH[2]}"
+                if echo "$migration" | grep -qE '^[0-9]{14}_'; then
+                  # タイムスタンプを削除して名前だけ取得
+                  NAME=$(echo "$migration" | sed 's/^[0-9]\{14\}_//')
                   MIGRATION_LIST="${MIGRATION_LIST}• \`${NAME}\`\\n"
                 else
                   MIGRATION_LIST="${MIGRATION_LIST}• \`${migration}\`\\n"
@@ -133,8 +134,9 @@ runs:
           for migration in "${PREVIEW_MIGRATIONS[@]}"; do
             if [ -n "$migration" ]; then
               # タイムスタンプと名前を分離
-              if [[ "$migration" =~ ^([0-9]{14})_(.*)$ ]]; then
-                NAME="${BASH_REMATCH[2]}"
+              if echo "$migration" | grep -qE '^[0-9]{14}_'; then
+                # タイムスタンプを削除して名前だけ取得
+                NAME=$(echo "$migration" | sed 's/^[0-9]\{14\}_//')
                 PREVIEW_MIGRATION_LIST="${PREVIEW_MIGRATION_LIST}• \`${NAME}\`\\n"
               else
                 PREVIEW_MIGRATION_LIST="${PREVIEW_MIGRATION_LIST}• \`${migration}\`\\n"
@@ -201,7 +203,8 @@ runs:
         CONTEXT_TEXT="実行者: ${{ inputs.actor }} | ブランチ: ${{ inputs.ref_name }} | コミット: \`${COMMIT_SHA_SHORT}\`"
 
         # Block Kit形式のメッセージを作成
-        cat <<EOF > /tmp/slack_blocks.json
+        # ヒアドキュメント内で変数を正しく展開するため、EOFをクォートしない
+        cat > /tmp/slack_blocks.json <<-EOJSON
         {
           "blocks": [
             {
@@ -243,7 +246,7 @@ runs:
             }
           ]
         }
-        EOF
+        EOJSON
 
         # JSONをGitHub Outputに保存（改行とスペースを削除）
         BLOCKS_JSON=$(cat /tmp/slack_blocks.json | tr -d '\n' | sed 's/  */ /g')
