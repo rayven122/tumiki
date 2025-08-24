@@ -1,0 +1,258 @@
+name: Notify Slack Summary
+description: デプロイ結果とマイグレーション情報を統合してSlackに通知します
+
+inputs:
+  slack_webhook_url:
+    description: Slack Webhook URL
+    required: true
+  environment:
+    description: デプロイ環境（staging/production/preview）
+    required: true
+  migration_status:
+    description: マイグレーションジョブの結果
+    required: false
+  migration_applied:
+    description: マイグレーションが適用されたかどうか
+    required: false
+    default: "false"
+  migration_names:
+    description: 適用されたマイグレーション名（カンマ区切り）
+    required: false
+  preview_migration_applied:
+    description: Preview DBにマイグレーションが適用されたかどうか（staging環境時のみ）
+    required: false
+    default: "false"
+  preview_migration_names:
+    description: Preview DBに適用されたマイグレーション名（カンマ区切り）
+    required: false
+  vercel_status:
+    description: Vercelデプロイの結果
+    required: true
+  vercel_url:
+    description: VercelのデプロイメントURL
+    required: false
+  gce_status:
+    description: GCEデプロイの結果（本番環境のみ）
+    required: false
+  actor:
+    description: 実行者
+    required: true
+  commit_sha:
+    description: コミットSHA
+    required: true
+  ref_name:
+    description: ブランチ/タグ名
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: 📋 Prepare summary notification
+      id: prepare
+      shell: bash
+      run: |
+        echo "🔔 Preparing Slack summary notification..."
+
+        # 環境名とアイコンを設定
+        case "${{ inputs.environment }}" in
+          "production")
+            ENV_NAME="本番環境"
+            ENV_EMOJI="🔴"
+            ;;
+          "staging")
+            ENV_NAME="ステージング環境"
+            ENV_EMOJI="🟡"
+            ;;
+          "preview")
+            ENV_NAME="プレビュー環境"
+            ENV_EMOJI="🔵"
+            ;;
+          *)
+            ENV_NAME="${{ inputs.environment }}環境"
+            ENV_EMOJI="⚪"
+            ;;
+        esac
+
+        # 全体のステータスを判定
+        OVERALL_SUCCESS=true
+        if [ "${{ inputs.migration_status }}" == "failure" ] || \
+           [ "${{ inputs.vercel_status }}" == "failure" ] || \
+           ([ "${{ inputs.environment }}" == "production" ] && [ "${{ inputs.gce_status }}" == "failure" ]); then
+          OVERALL_SUCCESS=false
+        fi
+
+        if [ "$OVERALL_SUCCESS" == "true" ]; then
+          HEADER_TEXT="${ENV_EMOJI} デプロイ完了"
+          STATUS_EMOJI="✅"
+        else
+          HEADER_TEXT="${ENV_EMOJI} デプロイ失敗"
+          STATUS_EMOJI="❌"
+        fi
+
+        # マイグレーション情報のセクション
+        MIGRATION_SECTION=""
+        if [ "${{ inputs.migration_status }}" != "" ] && [ "${{ inputs.migration_status }}" != "skipped" ]; then
+          if [ "${{ inputs.migration_applied }}" == "true" ] && [ -n "${{ inputs.migration_names }}" ]; then
+            # マイグレーション名を整形
+            MIGRATION_LIST=""
+            IFS=',' read -ra MIGRATIONS <<< "${{ inputs.migration_names }}"
+            for migration in "${MIGRATIONS[@]}"; do
+              if [ -n "$migration" ]; then
+                # タイムスタンプと名前を分離
+                if [[ "$migration" =~ ^([0-9]{14})_(.*)$ ]]; then
+                  NAME="${BASH_REMATCH[2]}"
+                  MIGRATION_LIST="${MIGRATION_LIST}• \`${NAME}\`\\n"
+                else
+                  MIGRATION_LIST="${MIGRATION_LIST}• \`${migration}\`\\n"
+                fi
+              fi
+            done
+            MIGRATION_TEXT="*マイグレーション:* ✅ 適用済み\\n${MIGRATION_LIST}"
+          elif [ "${{ inputs.migration_status }}" == "success" ]; then
+            MIGRATION_TEXT="*マイグレーション:* ✅ 変更なし"
+          else
+            MIGRATION_TEXT="*マイグレーション:* ❌ 失敗"
+          fi
+          
+          MIGRATION_SECTION=',
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "'"${MIGRATION_TEXT}"'"
+              }
+            }'
+        fi
+
+        # Preview DBマイグレーション情報（staging環境のみ）
+        PREVIEW_MIGRATION_SECTION=""
+        if [ "${{ inputs.environment }}" == "staging" ] && [ "${{ inputs.preview_migration_applied }}" == "true" ] && [ -n "${{ inputs.preview_migration_names }}" ]; then
+          # Preview DBマイグレーション名を整形
+          PREVIEW_MIGRATION_LIST=""
+          IFS=',' read -ra PREVIEW_MIGRATIONS <<< "${{ inputs.preview_migration_names }}"
+          for migration in "${PREVIEW_MIGRATIONS[@]}"; do
+            if [ -n "$migration" ]; then
+              # タイムスタンプと名前を分離
+              if [[ "$migration" =~ ^([0-9]{14})_(.*)$ ]]; then
+                NAME="${BASH_REMATCH[2]}"
+                PREVIEW_MIGRATION_LIST="${PREVIEW_MIGRATION_LIST}• \`${NAME}\`\\n"
+              else
+                PREVIEW_MIGRATION_LIST="${PREVIEW_MIGRATION_LIST}• \`${migration}\`\\n"
+              fi
+            fi
+          done
+          PREVIEW_MIGRATION_TEXT="*Preview DBマイグレーション:* ✅ 適用済み\\n${PREVIEW_MIGRATION_LIST}"
+          
+          PREVIEW_MIGRATION_SECTION=',
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "'"${PREVIEW_MIGRATION_TEXT}"'"
+              }
+            }'
+        elif [ "${{ inputs.environment }}" == "staging" ] && [ "${{ inputs.preview_migration_applied }}" == "false" ]; then
+          PREVIEW_MIGRATION_SECTION=',
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Preview DBマイグレーション:* ✅ 変更なし"
+              }
+            }'
+        fi
+
+        # Vercelデプロイ情報
+        VERCEL_STATUS_TEXT=""
+        if [ "${{ inputs.vercel_status }}" == "success" ]; then
+          VERCEL_STATUS_TEXT="✅ 成功"
+          if [ -n "${{ inputs.vercel_url }}" ]; then
+            VERCEL_STATUS_TEXT="✅ 成功 | <${{ inputs.vercel_url }}|デプロイメントを表示>"
+          fi
+        else
+          VERCEL_STATUS_TEXT="❌ 失敗"
+        fi
+
+        # GCEデプロイ情報（本番環境のみ）
+        GCE_SECTION=""
+        if [ "${{ inputs.environment }}" == "production" ] && [ -n "${{ inputs.gce_status }}" ]; then
+          if [ "${{ inputs.gce_status }}" == "success" ]; then
+            GCE_STATUS_TEXT="✅ 成功"
+          elif [ "${{ inputs.gce_status }}" == "skipped" ]; then
+            GCE_STATUS_TEXT="⏭️ スキップ"
+          else
+            GCE_STATUS_TEXT="❌ 失敗"
+          fi
+          
+          GCE_SECTION=',
+            {
+              "type": "section",
+              "fields": [
+                {
+                  "type": "mrkdwn",
+                  "text": "*GCE ProxyServer:*\\n'"${GCE_STATUS_TEXT}"'"
+                }
+              ]
+            }'
+        fi
+
+        # コンテキスト情報
+        COMMIT_SHA_SHORT=$(echo "${{ inputs.commit_sha }}" | cut -c1-7)
+        CONTEXT_TEXT="実行者: ${{ inputs.actor }} | ブランチ: ${{ inputs.ref_name }} | コミット: \`${COMMIT_SHA_SHORT}\`"
+
+        # Block Kit形式のメッセージを作成
+        cat <<EOF > /tmp/slack_blocks.json
+        {
+          "blocks": [
+            {
+              "type": "header",
+              "text": {
+                "type": "plain_text",
+                "text": "${HEADER_TEXT}",
+                "emoji": true
+              }
+            },
+            {
+              "type": "section",
+              "fields": [
+                {
+                  "type": "mrkdwn",
+                  "text": "*環境:*\\n${ENV_NAME}"
+                },
+                {
+                  "type": "mrkdwn",
+                  "text": "*Vercel:*\\n${VERCEL_STATUS_TEXT}"
+                }
+              ]
+            }${GCE_SECTION}${MIGRATION_SECTION}${PREVIEW_MIGRATION_SECTION},
+            {
+              "type": "divider"
+            },
+            {
+              "type": "context",
+              "elements": [
+                {
+                  "type": "mrkdwn",
+                  "text": "${CONTEXT_TEXT}"
+                },
+                {
+                  "type": "mrkdwn",
+                  "text": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|ワークフロー詳細>"
+                }
+              ]
+            }
+          ]
+        }
+        EOF
+
+        # JSONをGitHub Outputに保存
+        BLOCKS_JSON=$(cat /tmp/slack_blocks.json | tr -d '\n')
+        echo "blocks_json<<EOF" >> $GITHUB_OUTPUT
+        echo "${BLOCKS_JSON}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: 📢 Send summary to Slack
+      uses: ./.github/actions/notify-slack
+      with:
+        slack_webhook_url: ${{ inputs.slack_webhook_url }}
+        blocks: ${{ steps.prepare.outputs.blocks_json }}
