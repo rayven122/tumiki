@@ -16,5 +16,13 @@
     ]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "tsup.config.ts"]
+  "exclude": [
+    "node_modules",
+    "tsup.config.ts",
+    "build",
+    "dist",
+    "**/*.js",
+    "**/*.mjs",
+    "../../packages/*/dist"
+  ]
 }

@@ -4,6 +4,12 @@ import { handleMCPRequest } from "./routes/mcp/index.js";
 import {
   handleOAuthDiscovery,
   handleOpenIDConfiguration,
+  handleOAuthAuthorize,
+  handleOAuthStatus,
+  handleOAuthCallback,
+  handleOAuthRefresh,
+  handleOAuthRevoke,
+  handleOAuthRevokeAll,
 } from "./routes/oauth/index.js";
 import { establishSSEConnection, handleSSEMessage } from "./utils/transport.js";
 import { initializeApplication } from "./libs/startup.js";
@@ -62,11 +68,21 @@ const createApp = (): express.Application => {
   app.get("/.well-known/oauth-authorization-server", handleOAuthDiscovery);
   app.get("/.well-known/openid-configuration", handleOpenIDConfiguration);
 
+  // OAuth コールバックエンドポイント（認証不要）
+  app.get("/oauth/callback/:mcpServerId", handleOAuthCallback);
+
   // メンテナンスモードミドルウェアを適用
   app.use(maintenanceMiddleware());
 
   // ここ以降のすべてのルートに統合認証ミドルウェアを適用
   app.use(integratedAuthMiddleware());
+
+  // OAuth管理エンドポイント（認証必要）
+  app.post("/oauth/authorize", handleOAuthAuthorize);
+  app.get("/oauth/status/:mcpServerId", handleOAuthStatus);
+  app.post("/oauth/refresh", handleOAuthRefresh);
+  app.post("/oauth/revoke", handleOAuthRevoke);
+  app.post("/oauth/revoke/all", handleOAuthRevokeAll);
 
   // 新しいRESTfulエンドポイント（MCPサーバーID指定）
   app.all("/mcp/:userMcpServerInstanceId", handleMCPRequest);

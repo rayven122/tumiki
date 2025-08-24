@@ -286,8 +286,14 @@ export const extractAuthorizationCode = (
 /**
  * セッションが有効かチェック
  */
-export const isSessionValid = (expiresAt: Date): boolean => {
-  return new Date() < expiresAt;
+export const isSessionValid = (session: {
+  expiresAt: Date;
+  status: string;
+}): boolean => {
+  if (session.status !== "pending") {
+    return false;
+  }
+  return new Date() < session.expiresAt;
 };
 
 /**

@@ -49,6 +49,29 @@ export {
   logOAuthFlow,
 } from "./utils.js";
 
+// OAuth Manager
+export {
+  authenticate,
+  handleCallback,
+  refreshToken as refreshOAuthToken,
+  revokeToken as revokeOAuthToken,
+  handleWWWAuthenticateChallenge,
+  createOAuthManager,
+} from "./oauthManager.js";
+
+// Error Handler
+export {
+  isRetryableError,
+  isOAuthError,
+  toOAuthError,
+  calculateExponentialBackoff,
+  withRetry,
+  CircuitState,
+  CircuitBreaker,
+  getCircuitBreaker,
+  withCircuitBreakerAndRetry,
+} from "./errorHandler.js";
+
 // Types
 export type {
   AuthServerMetadata,

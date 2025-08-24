@@ -1,5 +1,11 @@
 import type { RequestHandler } from "express";
 
+// OAuth ルートハンドラーをエクスポート
+export { handleOAuthAuthorize, handleOAuthStatus } from "./authorize.js";
+export { handleOAuthCallback } from "./callback.js";
+export { handleOAuthRefresh } from "./refresh.js";
+export { handleOAuthRevoke, handleOAuthRevokeAll } from "./revoke.js";
+
 /**
  * OAuth 2.0 Authorization Server Metadata
  * RFC 8414準拠のディスカバリーエンドポイント

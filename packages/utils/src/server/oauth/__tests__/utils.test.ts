@@ -341,14 +341,23 @@ describe("extractAuthorizationCode", () => {
 describe("isSessionValid", () => {
   test("有効なセッションを判定する", () => {
     const futureDate = new Date(Date.now() + 10000);
+    const session = { expiresAt: futureDate, status: "pending" };
 
-    expect(isSessionValid(futureDate)).toStrictEqual(true);
+    expect(isSessionValid(session)).toStrictEqual(true);
   });
 
   test("期限切れセッションを判定する", () => {
     const pastDate = new Date(Date.now() - 10000);
+    const session = { expiresAt: pastDate, status: "pending" };
 
-    expect(isSessionValid(pastDate)).toStrictEqual(false);
+    expect(isSessionValid(session)).toStrictEqual(false);
+  });
+
+  test("完了済みのセッションは無効", () => {
+    const futureDate = new Date(Date.now() + 10000);
+    const session = { expiresAt: futureDate, status: "completed" };
+
+    expect(isSessionValid(session)).toStrictEqual(false);
   });
 });
 
