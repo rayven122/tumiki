@@ -34,7 +34,7 @@ APIキー管理テーブル
   - `name`: APIキー名（ユーザーが設定）
   - `apiKey`: 暗号化されたAPIキー（共通鍵暗号化）
   - `apiKeyHash`: APIキーのハッシュ値（検索用）
-  - `isActive`: APIキーが有効か���うか
+  - `isActive`: APIキーが有効かどうか
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
   - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
