@@ -22,9 +22,11 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 3. **サーバー定義の追加**
 
    - `packages/scripts/src/constants/mcpServers.ts` を更新
-   - サーバー名、アイコンパス、実行コマンド、環境変数を設定
+   - サーバー名、説明、タグ、アイコンパス、実行コマンド、環境変数を設定
    - パッケージ構造に基づいて適切な引数を自動設定
    - 環境変数は args 内での置換と子プロセスへの env 設定の両方で利用
+   - READMEから機能説明を抽出してdescriptionに設定
+   - サーバーの機能に基づいてタグを自動推測
 
 4. **ロゴファイルの作成**
 
@@ -80,6 +82,25 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
   1. args 内の文字列置換（例: `--api-key=API_KEY` → `--api-key=実際の値`）
   2. 子プロセスの環境変数として設定（`process.env.API_KEY` でアクセス可能）
 
+### descriptionの自動生成
+
+- READMEファイルからサーバーの機能説明を抽出
+- パッケージのdescriptionフィールドから情報を取得
+- 一般的な機能パターンから説明を自動生成
+- 日本語の説明文を優先的に設定
+
+### tagsの自動推測
+
+- サーバー名やREADMEからカテゴリーを判定
+- 以下のパターンマッチングで推測：
+  - GitHub, GitLab → ["開発", "バージョン管理"]
+  - Slack, Discord → ["コミュニケーション", "チーム"]
+  - Notion, Obsidian → ["ドキュメント", "プロジェクト管理"]
+  - Figma, Adobe → ["デザイン", "UI/UX"]
+  - OpenAI, Claude → ["AI", "自動化"]
+  - DeepL, Google Translate → ["翻訳", "ツール"]
+  - Playwright, Puppeteer → ["テスト", "ブラウザ自動化"]
+
 ### アイコンの自動生成
 
 - サーバー名からカテゴリを推測
@@ -97,6 +118,8 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 
 ⚙️ Step 2: サーバー定義の追加
 ✅ mcpServers.ts に "Task Master AI" を追加完了
+✅ 説明文: "AIエージェントのタスク管理と実行を支援するMCPサーバー"
+✅ タグ: ["AI", "タスク管理", "自動化"]
 
 🎨 Step 3: ロゴファイルの作成
 ✅ /logos/task-master.svg を作成完了
@@ -111,6 +134,8 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 
 - パッケージ: task-master-ai@^0.18.0
 - 実行コマンド: node node_modules/task-master-ai/index.js
+- 説明文: AIエージェントのタスク管理と実行を支援するMCPサーバー
+- タグ: AI, タスク管理, 自動化
 - 環境変数: ANTHROPIC_API_KEY, OPENAI_API_KEY など9つ
 - アイコン: /logos/task-master.svg
 ```

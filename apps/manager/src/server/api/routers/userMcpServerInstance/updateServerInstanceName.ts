@@ -22,6 +22,7 @@ export const updateServerInstanceName = async ({
       },
       data: {
         name: input.name,
+        description: input.description,
         toolGroup: {
           update: {
             name: input.name,
