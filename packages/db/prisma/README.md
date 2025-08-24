@@ -647,7 +647,7 @@ erDiagram
   - `email`: 招待先メールアドレス
   - `token`: 招待トークン
   - `invitedBy`: 招待者のユーザーID
-  - `isAdmin`: 招待された人が管理者��なるか
+  - `isAdmin`: 招待された人が管理者になるか
   - `roleIds`: 付与される予定のロールID配列
   - `groupIds`: 招待時に追加するグループID配列
   - `expires`: 招待の有効期限
