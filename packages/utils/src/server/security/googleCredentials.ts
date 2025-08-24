@@ -85,7 +85,9 @@ export const setupGoogleCredentialsEnv = async (
   if (!credentials) {
     return {
       envVars,
-      cleanup: async () => {},
+      cleanup: async () => {
+        // No cleanup needed when no credentials are provided
+      },
     };
   }
 
