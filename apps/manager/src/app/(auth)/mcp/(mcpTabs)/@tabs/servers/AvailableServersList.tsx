@@ -12,14 +12,14 @@ import { toast } from "@/utils/client/toast";
 
 const AsyncAvailableServersList = () => {
   const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [userOfficialServers] =
     api.userMcpServerInstance.findOfficialServers.useSuspenseQuery();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // 既に追加済みのサーバーIDを取得
-  // userMcpServersが削除されたため、一時的に空のSetを使用
-  const addedServerIds = new Set<string>();
+  const addedServerIds = new Set<string>(
+    userOfficialServers.map((server) => server.mcpServer?.id ?? ""),
+  );
 
   // 未追加のサーバーのみフィルタリング
   const availableServers = mcpServers.filter(
