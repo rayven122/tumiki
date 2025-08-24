@@ -6,24 +6,47 @@
 
 ### デプロイフロー
 
-- **Pull Request作成/更新** → Vercelプレビュー環境へ自動デプロイ
-- **mainブランチへのpush** → Vercelステージング環境へ自動デプロイ
-- **v*タグの作成** → 本番環境へ自動デプロイ（Vercel + GCE）
+- **Pull Request作成/更新** → Vercelプレビュー環境へ自動デプロイ（DBマイグレーションなし）
+- **mainブランチへのpush** → Vercelステージング環境へ自動デプロイ + Staging/Preview DB両方のマイグレーション
+- **v\*タグの作成** → 本番環境へ自動デプロイ（Vercel + GCE + Production DBマイグレーション）
 - **手動トリガー** → 環境を選択してデプロイ
 
-### 環境別デプロイ対象
+### 環境別デプロイ詳細
 
-| 環境 | トリガー | Vercel | GCE ProxyServer |
-|------|---------|---------|-----------------|
-| Preview | Pull Request | ✅ | ❌ |
-| Staging | mainブランチへのpush | ✅ | ❌ |
-| Production | v*タグの作成 | ✅ | ✅ |
+| 環境       | トリガー             | Vercel | GCE ProxyServer | DBマイグレーション            | Slack通知            |
+| ---------- | -------------------- | ------ | --------------- | ----------------------------- | -------------------- |
+| Preview    | Pull Request         | ✅     | ❌              | ❌（スキップ）                | ✅（PR完了時）       |
+| Staging    | mainブランチへのpush | ✅     | ❌              | ✅（Staging DB + Preview DB） | ✅（デプロイ完了時） |
+| Production | v\*タグの作成        | ✅     | ✅              | ✅（Production DB）           | ✅（デプロイ完了時） |
+
+### データベースマイグレーション戦略
+
+#### Pull Request時（Preview環境）
+
+- **マイグレーション**: 実行されません
+- **理由**: Preview環境は既存のPreview DBを使用し、スキーマ変更はmainマージ時に一括適用
+- **メリット**: PR作成時の処理時間短縮、不要なマイグレーション実行の回避
+
+#### mainブランチマージ時（Staging環境）
+
+- **マイグレーション**: Staging DBとPreview DBの両方に実行
+- **理由**:
+  - Staging DB: 最新のスキーマで動作確認
+  - Preview DB: 次のPRで使用するための準備
+- **通知**: 両方のDBへのマイグレーション結果をSlackに通知
+
+#### リリースタグ作成時（Production環境）
+
+- **マイグレーション**: Production DBのみに実行
+- **理由**: 本番環境のスキーマを最新に更新
+- **追加デプロイ**: GCE ProxyServerも同時にデプロイ
 
 ## 必要なGitHub Secrets設定
 
 ### 1. Vercel関連
 
 #### `VERCEL_TOKEN`
+
 Vercel APIトークンを取得して設定します。
 
 ```bash
@@ -33,12 +56,14 @@ Vercel APIトークンを取得して設定します。
 ```
 
 #### `VERCEL_ORG_ID`
+
 ```bash
 # プロジェクトルートで実行
 cat .vercel/project.json | grep orgId
 ```
 
 #### `VERCEL_PROJECT_ID`
+
 ```bash
 # プロジェクトルートで実行
 cat .vercel/project.json | grep projectId
@@ -90,7 +115,16 @@ gcloud iam service-accounts keys create sa-key-production.json \
 
 ### 3. データベース関連
 
+#### `DATABASE_URL_PREVIEW`
+
+プレビュー環境のデータベース接続文字列（PR用）
+
+```
+postgresql://user:password@host:port/preview_db?schema=public
+```
+
 #### `DATABASE_URL_STAGING`
+
 ステージング環境のデータベース接続文字列
 
 ```
@@ -98,10 +132,23 @@ postgresql://user:password@host:port/staging_db?schema=public
 ```
 
 #### `DATABASE_URL_PRODUCTION`
+
 本番環境のデータベース接続文字列
 
 ```
 postgresql://user:password@host:port/production_db?schema=public
+```
+
+### 4. Slack通知関連
+
+#### `SLACK_WEBHOOK_URL`
+
+Slack Incoming Webhook URL（デプロイ結果通知用）
+
+```bash
+# Slack App Directory > Incoming Webhooks
+# 新しいWebhookを作成し、URLをコピー
+https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
 ```
 
 ## GitHub Secretsの登録方法
@@ -128,8 +175,10 @@ gh secret set VERCEL_PROJECT_ID --body="your-project-id"
 gh secret set GCP_PROJECT_ID --body="your-gcp-project-id"
 gh secret set GCE_ZONE --body="asia-northeast2-c"
 gh secret set GCE_INSTANCE_NAME_PRODUCTION --body="tumiki-instance-production"
+gh secret set DATABASE_URL_PREVIEW --body="your-preview-db-url"
 gh secret set DATABASE_URL_STAGING --body="your-staging-db-url"
 gh secret set DATABASE_URL_PRODUCTION --body="your-production-db-url"
+gh secret set SLACK_WEBHOOK_URL --body="your-slack-webhook-url"
 
 # JSONファイルから読み込む場合
 gh secret set GCP_SA_KEY_PRODUCTION < sa-key-production.json
@@ -148,6 +197,7 @@ gh secret set GCP_SA_KEY_PRODUCTION < sa-key-production.json
 ### 環境固有のSecrets設定
 
 各環境で以下のSecretsを設定：
+
 - `DATABASE_URL`
 - `GCP_SA_KEY` (本番環境のみ)
 - `GCE_INSTANCE_NAME` (本番環境のみ)
@@ -155,6 +205,7 @@ gh secret set GCP_SA_KEY_PRODUCTION < sa-key-production.json
 ### デプロイ保護ルール（本番環境）
 
 production環境で以下を設定：
+
 - Required reviewers: レビュアーを指定
 - Wait timer: デプロイ前の待機時間
 - Deployment branches: `v*`タグのみ許可
@@ -164,15 +215,15 @@ production環境で以下を設定：
 ### 自動デプロイ
 
 ```bash
-# Pull Request作成（プレビュー環境へのデプロイ）
+# Pull Request作成（プレビュー環境へのデプロイ、DBマイグレーションなし）
 git checkout -b feature/new-feature
 git push origin feature/new-feature
 # GitHubでPull Requestを作成
 
-# ステージング環境へのデプロイ（Vercelのみ）
+# ステージング環境へのデプロイ（Vercel + Staging/Preview DB両方のマイグレーション）
 git push origin main
 
-# 本番環境へのデプロイ（Vercel + GCE）
+# 本番環境へのデプロイ（Vercel + GCE + Production DBマイグレーション）
 git tag v1.0.0
 git push origin v1.0.0
 ```
@@ -180,9 +231,20 @@ git push origin v1.0.0
 ### Pull Requestプレビュー
 
 Pull Requestを作成すると：
-1. 自動的にVercelへデプロイ
+
+1. 自動的にVercelへデプロイ（DBマイグレーションはスキップ）
 2. PRにプレビューURLがコメントされる
 3. 新しいコミットで自動更新
+4. Preview DBのスキーマは最後のmainマージ時の状態を使用
+
+### mainブランチマージ時の処理
+
+mainブランチにマージすると：
+
+1. Staging DBへのマイグレーション実行
+2. Preview DBへのマイグレーションも同時実行（次のPR用）
+3. Vercelステージング環境へデプロイ
+4. Slack通知（両DBのマイグレーション結果を含む）
 
 ### 手動デプロイ
 
@@ -226,6 +288,28 @@ psql "DATABASE_URL"
 
 # ネットワーク接続確認
 nc -zv DATABASE_HOST DATABASE_PORT
+```
+
+### データベースマイグレーションの問題
+
+#### Preview環境でスキーマが古い場合
+
+- 原因: mainブランチへのマージ時にPreview DBへのマイグレーションが失敗
+- 解決: GitHub Actionsのログを確認し、手動でマイグレーションを実行
+
+```bash
+# 手動でPreview DBにマイグレーションを実行
+cd packages/db
+DATABASE_URL="your-preview-db-url" pnpm db:deploy
+```
+
+#### マイグレーション通知がSlackに来ない場合
+
+- 原因: Slack Webhook URLの設定ミスまたは期限切れ
+- 解決: Webhook URLを再生成して更新
+
+```bash
+gh secret set SLACK_WEBHOOK_URL --body="new-webhook-url"
 ```
 
 ## セキュリティベストプラクティス
