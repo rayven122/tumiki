@@ -175,4 +175,14 @@ export const MCP_SERVERS = [
     envVars: ["CLARITY_API_TOKEN"],
     isPublic: true,
   },
+  {
+    name: "Google Maps Platform",
+    description:
+      "Google Maps Platformの最新ドキュメントとコードサンプルを提供し、地図アプリケーション開発を支援します",
+    tags: ["地図", "API", "開発"],
+    iconPath: "/logos/google-maps.webp",
+    command: "node",
+    args: ["node_modules/@googlemaps/code-assist-mcp/dist/index.js"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
