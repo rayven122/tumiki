@@ -57,15 +57,15 @@ runs:
         case "${{ inputs.environment }}" in
           "production")
             ENV_NAME="本番環境"
-            ENV_EMOJI="🔴"
+            ENV_EMOJI="🚀"
             ;;
           "staging")
             ENV_NAME="ステージング環境"
-            ENV_EMOJI="🟡"
+            ENV_EMOJI="🔧"
             ;;
           "preview")
             ENV_NAME="プレビュー環境"
-            ENV_EMOJI="🔵"
+            ENV_EMOJI="👁️"
             ;;
           *)
             ENV_NAME="${{ inputs.environment }}環境"
@@ -85,7 +85,7 @@ runs:
           HEADER_TEXT="${ENV_EMOJI} デプロイ完了"
           STATUS_EMOJI="✅"
         else
-          HEADER_TEXT="${ENV_EMOJI} デプロイ失敗"
+          HEADER_TEXT="🚨 デプロイ失敗"
           STATUS_EMOJI="❌"
         fi
 
@@ -97,7 +97,7 @@ runs:
             MIGRATION_LIST=""
             IFS=',' read -ra MIGRATIONS <<< "${{ inputs.migration_names }}"
             for migration in "${MIGRATIONS[@]}"; do
-              if [ -n "$migration" ]; then
+              if [ -n "$migration" ] && [ "$migration" != "migration.sql" ]; then
                 # タイムスタンプと名前を分離
                 if echo "$migration" | grep -qE '^[0-9]{14}_'; then
                   # タイムスタンプを削除して名前だけ取得
@@ -108,7 +108,7 @@ runs:
                 fi
               fi
             done
-            MIGRATION_TEXT="*マイグレーション:* ✅ 適用済み\\n${MIGRATION_LIST}"
+            MIGRATION_TEXT="*マイグレーション:* ✅ 適用済み\n${MIGRATION_LIST}"
           elif [ "${{ inputs.migration_status }}" == "success" ]; then
             MIGRATION_TEXT="*マイグレーション:* ✅ 変更なし"
           else
@@ -132,7 +132,7 @@ runs:
           PREVIEW_MIGRATION_LIST=""
           IFS=',' read -ra PREVIEW_MIGRATIONS <<< "${{ inputs.preview_migration_names }}"
           for migration in "${PREVIEW_MIGRATIONS[@]}"; do
-            if [ -n "$migration" ]; then
+            if [ -n "$migration" ] && [ "$migration" != "migration.sql" ]; then
               # タイムスタンプと名前を分離
               if echo "$migration" | grep -qE '^[0-9]{14}_'; then
                 # タイムスタンプを削除して名前だけ取得
@@ -143,7 +143,7 @@ runs:
               fi
             fi
           done
-          PREVIEW_MIGRATION_TEXT="*Preview DBマイグレーション:* ✅ 適用済み\\n${PREVIEW_MIGRATION_LIST}"
+          PREVIEW_MIGRATION_TEXT="*Preview DBマイグレーション:* ✅ 適用済み\n${PREVIEW_MIGRATION_LIST}"
           
           PREVIEW_MIGRATION_SECTION=',
             {
@@ -168,7 +168,12 @@ runs:
         VERCEL_STATUS_TEXT=""
         if [ "${{ inputs.vercel_status }}" == "success" ]; then
           VERCEL_STATUS_TEXT="✅ 成功"
-          if [ -n "${{ inputs.vercel_url }}" ]; then
+          # 環境別のURLを設定
+          if [ "${{ inputs.environment }}" == "production" ]; then
+            VERCEL_STATUS_TEXT="✅ 成功 | <https://www.tumiki.cloud|サイトを表示>"
+          elif [ "${{ inputs.environment }}" == "staging" ]; then
+            VERCEL_STATUS_TEXT="✅ 成功 | <https://stg.tumiki.cloud|サイトを表示>"
+          elif [ -n "${{ inputs.vercel_url }}" ]; then
             VERCEL_STATUS_TEXT="✅ 成功 | <${{ inputs.vercel_url }}|デプロイメントを表示>"
           fi
         else
@@ -192,7 +197,7 @@ runs:
               "fields": [
                 {
                   "type": "mrkdwn",
-                  "text": "*GCE ProxyServer:*\\n'"${GCE_STATUS_TEXT}"'"
+                  "text": "*GCE ProxyServer:*\n'"${GCE_STATUS_TEXT}"'"
                 }
               ]
             }'
@@ -220,11 +225,11 @@ runs:
               "fields": [
                 {
                   "type": "mrkdwn",
-                  "text": "*環境:*\\n${ENV_NAME}"
+                  "text": "*環境:*\n${ENV_NAME}"
                 },
                 {
                   "type": "mrkdwn",
-                  "text": "*Vercel:*\\n${VERCEL_STATUS_TEXT}"
+                  "text": "*Vercel:*\n${VERCEL_STATUS_TEXT}"
                 }
               ]
             }${GCE_SECTION}${MIGRATION_SECTION}${PREVIEW_MIGRATION_SECTION},

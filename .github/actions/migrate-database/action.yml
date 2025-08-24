@@ -55,16 +55,21 @@ runs:
             
             # 適用されたマイグレーション名を抽出
             # パターン1: migrations/の後の行から抽出（└─ 20250823231216_add_tags_description_to_mcpserver/）
-            MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep -A 20 "migrations/" | grep "└─" | sed 's/.*└─ //' | sed 's/\///' | tr '\n' ',' | sed 's/,$//')
+            MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep -A 20 "migrations/" | grep "└─" | sed 's/.*└─ //' | sed 's/\///' | grep -v "migration\.sql" | tr '\n' ',' | sed 's/,$//')
             
             if [ -z "$MIGRATION_NAMES" ]; then
               # パターン2: Applying migration の後から抽出
-              MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep "Applying migration" | sed "s/.*Applying migration \`//" | sed "s/\`//" | tr '\n' ',' | sed 's/,$//')
+              MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep "Applying migration" | sed "s/.*Applying migration \`//" | sed "s/\`//" | grep -v "migration\.sql" | tr '\n' ',' | sed 's/,$//')
             fi
             
             if [ -z "$MIGRATION_NAMES" ]; then
               # パターン3: 数字で始まるマイグレーション名を直接検索
-              MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep -oE "[0-9]{14}_[a-zA-Z0-9_]+" | head -5 | tr '\n' ',' | sed 's/,$//')
+              MIGRATION_NAMES=$(echo "$MIGRATION_OUTPUT" | grep -oE "[0-9]{14}_[a-zA-Z0-9_]+" | grep -v "migration\.sql" | head -5 | tr '\n' ',' | sed 's/,$//')
+            fi
+            
+            # migration.sqlを含むエントリを除外
+            if [ -n "$MIGRATION_NAMES" ]; then
+              MIGRATION_NAMES=$(echo "$MIGRATION_NAMES" | tr ',' '\n' | grep -v "migration\.sql" | tr '\n' ',' | sed 's/,$//')
             fi
             
             echo "migration_names=$MIGRATION_NAMES" >> $GITHUB_OUTPUT
