@@ -1,405 +1,138 @@
 /**
- * OAuth Manager
- * OAuth認証フロー全体の制御と管理
+ * OAuth Manager - Simplified with openid-client
+ * openid-clientの機能を最大限活用した簡潔な実装
  */
+
+import * as client from "openid-client";
 
 import { db } from "@tumiki/db/server";
 
-import type {
-  AuthServerMetadata,
-  OAuthAuthResult,
-  OAuthConfig,
-  TokenResponse,
-  WWWAuthenticateChallenge,
-} from "./types.js";
+import type { OAuthAuthResult, OAuthConfig } from "./types.js";
 import {
-  discoverAuthServer,
-  discoverProtectedResource,
-  parseWWWAuthenticate,
-  registerClient,
+  getExistingConfiguration,
+  performDynamicClientRegistration,
 } from "./dcrClient.js";
 import {
-  getValidToken,
-  refreshToken as refreshTokenUtil,
-  revokeToken as revokeTokenUtil,
-  saveToken,
-} from "./tokenManager.js";
-import {
-  buildAuthorizationUrl,
   buildRedirectUri,
-  buildTokenRequestBody,
-  calculateTokenExpiry,
-  createBasicAuthHeader,
   createOAuthError,
-  generateNonce,
-  generatePKCE,
   generateSessionId,
-  generateState,
-  isSessionValid,
-  logOAuthFlow,
   OAuthErrorCodes,
-  validateTokenResponse,
-} from "./utils.js";
+} from "./minimalUtils.js";
+import { saveToken } from "./tokenManager.js";
 
-/**
- * デフォルト設定
- */
-const DEFAULT_SESSION_TIMEOUT = 600; // 10 minutes
-const DEFAULT_TOKEN_REFRESH_BUFFER = 300; // 5 minutes
-const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_RETRY_DELAY = 1000; // 1 second
-const DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds
-
-/**
- * 設定の初期化
- */
-const initializeConfig = (config: Partial<OAuthConfig>): OAuthConfig => ({
-  callbackBaseUrl: config.callbackBaseUrl ?? "",
-  sessionTimeout: config.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT,
-  tokenRefreshBuffer: config.tokenRefreshBuffer ?? DEFAULT_TOKEN_REFRESH_BUFFER,
-  maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
-  retryDelay: config.retryDelay ?? DEFAULT_RETRY_DELAY,
-  enablePKCE: config.enablePKCE ?? true,
-  enableDCR: config.enableDCR ?? true,
-});
-
-/**
- * 認証コードをトークンに交換
- */
-const exchangeCodeForToken = async (
-  tokenEndpoint: string,
-  body: URLSearchParams,
-  clientId: string,
-  clientSecret?: string,
-): Promise<TokenResponse> => {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/x-www-form-urlencoded",
-    Accept: "application/json",
-  };
-
-  // Basic認証ヘッダーを追加（client_secret_basicの場合）
-  if (clientSecret) {
-    headers.Authorization = createBasicAuthHeader(clientId, clientSecret);
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    DEFAULT_REQUEST_TIMEOUT,
-  );
-
-  try {
-    const response = await fetch(tokenEndpoint, {
-      method: "POST",
-      headers,
-      body: body.toString(),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorData = (await response.json().catch(() => ({
-        error: "invalid_grant",
-        error_description: `HTTP ${response.status} ${response.statusText}`,
-      }))) as { error?: string; error_description?: string };
-
-      throw new Error(
-        errorData.error_description ??
-          errorData.error ??
-          "Token exchange failed",
-      );
-    }
-
-    const tokenResponse = (await response.json()) as TokenResponse;
-    return tokenResponse;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+// デフォルト設定
+const DEFAULT_CONFIG: OAuthConfig = {
+  callbackBaseUrl:
+    process.env.OAUTH_CALLBACK_BASE_URL ?? "http://localhost:8080",
+  sessionTimeout: 600,
+  tokenRefreshBuffer: 300,
+  maxRetries: 3,
+  retryDelay: 1000,
+  enablePKCE: true,
+  enableDCR: true,
 };
+
+// Configurationキャッシュ
+const configCache = new Map<string, client.Configuration>();
 
 /**
  * OAuth認証フローを開始
  */
-export const authenticate = async (
+export const startOAuthFlow = async (
   mcpServerId: string,
   userId: string,
   mcpServerUrl: string,
-  wwwAuthenticateHeader?: string,
+  _wwwAuthenticateHeader?: string,
   config: Partial<OAuthConfig> = {},
 ): Promise<OAuthAuthResult> => {
-  const oauthConfig = initializeConfig(config);
+  const cfg = { ...DEFAULT_CONFIG, ...config };
 
   try {
-    logOAuthFlow("Starting OAuth authentication", {
+    // Configuration取得または作成
+    const clientConfig = await getOrCreateConfiguration(
       mcpServerId,
-      userId,
       mcpServerUrl,
-    });
-
-    // 既存のOAuthクライアント情報を取得
-    let oauthClient = await db.oAuthClient.findUnique({
-      where: { mcpServerId },
-    });
-
-    // 既存のクライアントがある場合、先に有効なトークンをチェック
-    if (oauthClient) {
-      // ユーザーのMCPサーバー設定を確認
-      const userOrganization = await db.organizationMember.findFirst({
-        where: { userId },
-        include: { organization: true },
-      });
-
-      let userMcpConfig = null;
-      if (userOrganization) {
-        userMcpConfig = await db.userMcpServerConfig.findFirst({
-          where: {
-            organizationId: userOrganization.organizationId,
-            mcpServerId: mcpServerId,
-          },
-        });
-      }
-
-      // 既存の有効なトークンをチェック
-      if (userMcpConfig) {
-        const existingToken = await getValidToken(userMcpConfig.id, {
-          tokenRefreshBuffer: oauthConfig.tokenRefreshBuffer,
-        });
-
-        if (existingToken) {
-          logOAuthFlow("Using existing valid token", { mcpServerId });
-          return {
-            success: true,
-            accessToken: existingToken,
-          };
-        }
-      }
-    }
-
-    // Authorization Server情報を取得（新規クライアント登録または新規認証の場合）
-    let authServerMetadata: AuthServerMetadata | null = null;
-    let authServerUrl: string | undefined;
-
-    // WWW-Authenticateヘッダーがある場合はパース
-    if (wwwAuthenticateHeader) {
-      const challenge = parseWWWAuthenticate(wwwAuthenticateHeader);
-      authServerUrl = challenge.as_uri;
-    }
-
-    // Protected Resource Metadataを取得
-    const protectedResourceMetadata =
-      await discoverProtectedResource(mcpServerUrl);
-    if (protectedResourceMetadata?.authorization_servers?.[0]) {
-      authServerUrl =
-        authServerUrl ?? protectedResourceMetadata.authorization_servers[0];
-    }
-
-    // Authorization Server Metadataを取得
-    if (authServerUrl) {
-      authServerMetadata = await discoverAuthServer(authServerUrl);
-    }
-
-    if (!authServerMetadata) {
-      return {
-        success: false,
-        error: createOAuthError(
-          OAuthErrorCodes.DISCOVERY_FAILED,
-          "Failed to discover authorization server",
-        ),
-        requiresUserInteraction: false,
-      };
-    }
-
-    // Dynamic Client Registrationを実行（必要な場合）
-    if (!oauthClient && oauthConfig.enableDCR) {
-      if (!authServerMetadata.registration_endpoint) {
-        return {
-          success: false,
-          error: createOAuthError(
-            OAuthErrorCodes.DCR_FAILED,
-            "DCR endpoint not available",
-          ),
-          requiresUserInteraction: false,
-        };
-      }
-
-      const redirectUri = buildRedirectUri(
-        oauthConfig.callbackBaseUrl,
-        mcpServerId,
-      );
-
-      const clientCredentials = await registerClient(
-        authServerMetadata.registration_endpoint,
-        {
-          redirect_uris: [redirectUri],
-          client_name: `tumiki MCP Client for ${mcpServerId}`,
-          grant_types: ["authorization_code", "refresh_token"],
-          response_types: ["code"],
-          token_endpoint_auth_method: "client_secret_basic",
-          scope: protectedResourceMetadata?.scopes_supported?.join(" ") ?? "",
-          mcp_server_id: mcpServerId,
-          mcp_server_name: mcpServerUrl,
-        },
-      );
-
-      // OAuthクライアント情報を保存
-      oauthClient = await db.oAuthClient.create({
-        data: {
-          mcpServerId,
-          clientId: clientCredentials.client_id,
-          clientSecret: clientCredentials.client_secret,
-          registrationAccessToken:
-            clientCredentials.registration_access_token ?? null,
-          registrationClientUri:
-            clientCredentials.registration_client_uri ?? null,
-          authorizationServerUrl: authServerUrl ?? "",
-          tokenEndpoint: authServerMetadata.token_endpoint,
-          authorizationEndpoint: authServerMetadata.authorization_endpoint,
-          registrationEndpoint: authServerMetadata.registration_endpoint,
-          jwksUri: authServerMetadata.jwks_uri,
-          revocationEndpoint: authServerMetadata.revocation_endpoint,
-          introspectionEndpoint: authServerMetadata.introspection_endpoint,
-          protectedResourceUrl: mcpServerUrl,
-          resourceIndicator: protectedResourceMetadata?.resource,
-          scopes:
-            clientCredentials.scope?.split(" ") ??
-            protectedResourceMetadata?.scopes_supported ??
-            [],
-          grantTypes: clientCredentials.grant_types ?? ["authorization_code"],
-          responseTypes: clientCredentials.response_types ?? ["code"],
-          tokenEndpointAuthMethod:
-            clientCredentials.token_endpoint_auth_method ??
-            "client_secret_basic",
-          redirectUris: clientCredentials.redirect_uris,
-          applicationName: clientCredentials.client_name,
-          applicationUri: clientCredentials.client_uri,
-          logoUri: clientCredentials.logo_uri,
-        },
-      });
-
-      logOAuthFlow("OAuth client registered", {
-        clientId: oauthClient.clientId,
-        mcpServerId,
-      });
-    }
-
-    if (!oauthClient) {
-      return {
-        success: false,
-        error: createOAuthError(
-          OAuthErrorCodes.DCR_FAILED,
-          "Failed to register OAuth client",
-        ),
-        requiresUserInteraction: false,
-      };
-    }
-
-    // OAuth認証セッションを作成
-    const sessionId = generateSessionId();
-    const pkce = oauthConfig.enablePKCE ? generatePKCE() : null;
-    const state = generateState();
-    const nonce = generateNonce();
-    const redirectUri = buildRedirectUri(
-      oauthConfig.callbackBaseUrl,
-      mcpServerId,
+      cfg.callbackBaseUrl,
+      cfg.enableDCR === true,
     );
 
+    // Authorization URL生成（openid-clientがPKCE対応を含めて処理）
+    const redirectUri = buildRedirectUri(cfg.callbackBaseUrl, mcpServerId);
+    const state = client.randomState();
+    const nonce = client.randomNonce();
+
+    const authUrlParams: Record<string, string> = {
+      redirect_uri: redirectUri,
+      scope: "openid profile email",
+      state,
+      nonce,
+    };
+
+    // PKCE対応
+    let codeVerifier: string | undefined;
+    if (cfg.enablePKCE) {
+      codeVerifier = client.randomPKCECodeVerifier();
+      authUrlParams.code_challenge =
+        await client.calculatePKCECodeChallenge(codeVerifier);
+      authUrlParams.code_challenge_method = "S256";
+    }
+
+    const authUrl = client.buildAuthorizationUrl(clientConfig, authUrlParams);
+
+    // セッション保存
     await db.oAuthSession.create({
       data: {
-        sessionId,
+        sessionId: generateSessionId(),
         userId,
         mcpServerId,
-        codeVerifier: pkce?.codeVerifier ?? "",
-        codeChallenge: pkce?.codeChallenge ?? "",
-        codeChallengeMethod: pkce?.codeChallengeMethod ?? "S256",
         state,
         nonce,
+        codeVerifier: codeVerifier ?? "",
+        codeChallenge: authUrlParams.code_challenge ?? "",
+        codeChallengeMethod: cfg.enablePKCE ? "S256" : "",
         redirectUri,
-        requestedScopes: oauthClient.scopes,
+        requestedScopes: ["openid", "profile", "email"],
         status: "pending",
-        expiresAt: new Date(Date.now() + oauthConfig.sessionTimeout * 1000),
+        expiresAt: new Date(Date.now() + cfg.sessionTimeout * 1000),
       },
-    });
-
-    // 認証URLを構築
-    const authorizationUrl = buildAuthorizationUrl(
-      oauthClient.authorizationEndpoint,
-      {
-        client_id: oauthClient.clientId,
-        redirect_uri: redirectUri,
-        response_type: "code",
-        scope: oauthClient.scopes.join(" "),
-        state,
-        ...(pkce && {
-          code_challenge: pkce.codeChallenge,
-          code_challenge_method: pkce.codeChallengeMethod,
-        }),
-        ...(nonce && { nonce }),
-        ...(oauthClient.resourceIndicator && {
-          resource: oauthClient.resourceIndicator,
-        }),
-      },
-    );
-
-    logOAuthFlow("OAuth session created", {
-      sessionId,
-      authorizationUrl,
     });
 
     return {
       success: false,
       requiresUserInteraction: true,
-      authorizationUrl,
+      authorizationUrl: authUrl.href,
     };
   } catch (error) {
-    console.error("OAuth authentication failed", {
-      mcpServerId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
     return {
       success: false,
       error: createOAuthError(
         OAuthErrorCodes.SERVER_ERROR,
-        error instanceof Error ? error.message : "Unknown error",
+        error instanceof Error ? error.message : "OAuth flow failed",
       ),
-      requiresUserInteraction: false,
     };
   }
 };
 
 /**
- * OAuth認証コールバックを処理
+ * OAuthコールバックを処理
  */
-export const handleCallback = async (
+export const handleOAuthCallback = async (
   code: string,
   state: string,
-  _config: Partial<OAuthConfig> = {},
   error?: string,
   errorDescription?: string,
 ): Promise<OAuthAuthResult> => {
+  if (error) {
+    return {
+      success: false,
+      error: createOAuthError(error, errorDescription),
+    };
+  }
+
   try {
-    logOAuthFlow("Handling OAuth callback", {
-      hasCode: !!code,
-      state,
-      error,
-    });
-
-    // エラーレスポンスの処理
-    if (error) {
-      return {
-        success: false,
-        error: createOAuthError(error, errorDescription),
-        requiresUserInteraction: false,
-      };
-    }
-
-    // セッションを取得
+    // セッション取得
     const session = await db.oAuthSession.findFirst({
-      where: { state },
-      include: {
-        user: true,
-      },
+      where: { state, status: "pending" },
     });
 
     if (!session) {
@@ -407,160 +140,59 @@ export const handleCallback = async (
         success: false,
         error: createOAuthError(
           OAuthErrorCodes.SESSION_EXPIRED,
-          "OAuth session not found or expired",
+          "Invalid session",
         ),
-        requiresUserInteraction: false,
       };
     }
 
-    // セッションの有効性をチェック
-    if (
-      !isSessionValid({
-        expiresAt: session.expiresAt,
-        status: session.status,
-      })
-    ) {
-      await db.oAuthSession.update({
-        where: { id: session.id },
-        data: {
-          status: "expired",
-          errorCode: OAuthErrorCodes.SESSION_EXPIRED,
-          errorDescription: "Session expired",
-        },
-      });
+    // Configuration取得
+    const clientConfig =
+      configCache.get(session.mcpServerId) ??
+      (await getExistingConfiguration(session.mcpServerId));
 
-      return {
-        success: false,
-        error: createOAuthError(
-          OAuthErrorCodes.SESSION_EXPIRED,
-          "OAuth session expired",
-        ),
-        requiresUserInteraction: false,
-      };
+    if (!clientConfig) {
+      throw new Error("Configuration not found");
     }
 
-    // OAuthクライアント情報を取得
-    const oauthClient = await db.oAuthClient.findUnique({
-      where: { mcpServerId: session.mcpServerId },
-    });
+    // コールバックURL構築（現在のURL）
+    const callbackUrl = new URL(session.redirectUri);
+    callbackUrl.searchParams.set("code", code);
+    callbackUrl.searchParams.set("state", state);
 
-    if (!oauthClient) {
-      return {
-        success: false,
-        error: createOAuthError(
-          OAuthErrorCodes.INVALID_CLIENT,
-          "OAuth client not found",
-        ),
-        requiresUserInteraction: false,
-      };
-    }
-
-    // トークンエンドポイントにリクエスト
-    const tokenRequestBody = buildTokenRequestBody({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: session.redirectUri,
-      client_id: oauthClient.clientId,
-      client_secret: oauthClient.clientSecret ?? undefined,
-      code_verifier: session.codeVerifier || undefined,
-    });
-
-    const tokenResponse = await exchangeCodeForToken(
-      oauthClient.tokenEndpoint,
-      tokenRequestBody,
-      oauthClient.clientId,
-      oauthClient.clientSecret ?? undefined,
+    // openid-clientでトークン交換（検証を含む）
+    const tokens = await client.authorizationCodeGrant(
+      clientConfig,
+      callbackUrl,
+      {
+        pkceCodeVerifier: session.codeVerifier || undefined,
+        expectedNonce: session.nonce ?? undefined,
+        expectedState: state,
+      },
     );
 
-    // トークンレスポンスを検証
-    if (!validateTokenResponse(tokenResponse)) {
-      return {
-        success: false,
-        error: createOAuthError(
-          OAuthErrorCodes.INVALID_GRANT,
-          "Invalid token response",
-        ),
-        requiresUserInteraction: false,
-      };
-    }
+    // トークン保存
+    await saveTokenToDatabase(session.userId, session.mcpServerId, tokens);
 
-    // ユーザーのMCPサーバー設定を取得または作成
-    const userOrganization = await db.organizationMember.findFirst({
-      where: { userId: session.userId },
-      include: { organization: true },
-    });
-
-    let userMcpConfig = null;
-    if (userOrganization) {
-      userMcpConfig = await db.userMcpServerConfig.findFirst({
-        where: {
-          organizationId: userOrganization.organizationId,
-          mcpServerId: session.mcpServerId,
-        },
-      });
-    }
-
-    if (!userMcpConfig) {
-      return {
-        success: false,
-        error: createOAuthError(
-          OAuthErrorCodes.INVALID_REQUEST,
-          "User MCP configuration not found",
-        ),
-        requiresUserInteraction: false,
-      };
-    }
-
-    // トークンを保存
-    await saveToken({
-      userMcpConfigId: userMcpConfig.id,
-      oauthClientId: oauthClient.id,
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      idToken: tokenResponse.id_token,
-      tokenType: tokenResponse.token_type,
-      scope: tokenResponse.scope,
-      expiresAt: tokenResponse.expires_in
-        ? calculateTokenExpiry(tokenResponse.expires_in)
-        : undefined,
-      refreshExpiresAt: tokenResponse.refresh_expires_in
-        ? calculateTokenExpiry(tokenResponse.refresh_expires_in)
-        : undefined,
-    });
-
-    // セッションを完了状態に更新
+    // セッション完了
     await db.oAuthSession.update({
       where: { id: session.id },
-      data: {
-        status: "completed",
-      },
-    });
-
-    logOAuthFlow("OAuth callback processed successfully", {
-      sessionId: session.sessionId,
-      hasRefreshToken: !!tokenResponse.refresh_token,
+      data: { status: "completed" },
     });
 
     return {
       success: true,
-      accessToken: tokenResponse.access_token,
-      expiresAt: tokenResponse.expires_in
-        ? calculateTokenExpiry(tokenResponse.expires_in)
+      accessToken: tokens.access_token,
+      expiresAt: tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000)
         : undefined,
     };
   } catch (error) {
-    console.error("OAuth callback processing failed", {
-      state,
-      error: error instanceof Error ? error.message : String(error),
-    });
-
     return {
       success: false,
       error: createOAuthError(
         OAuthErrorCodes.SERVER_ERROR,
-        error instanceof Error ? error.message : "Unknown error",
+        error instanceof Error ? error.message : "Callback failed",
       ),
-      requiresUserInteraction: false,
     };
   }
 };
@@ -568,153 +200,164 @@ export const handleCallback = async (
 /**
  * トークンをリフレッシュ
  */
-export const refreshToken = async (
-  tokenId: string,
-  config: Partial<OAuthConfig> = {},
-): Promise<string> => {
-  const oauthConfig = initializeConfig(config);
-
+export const refreshOAuthToken = async (
+  userMcpConfigId: string,
+): Promise<string | null> => {
   try {
-    logOAuthFlow("Refreshing OAuth token", { tokenId });
-
-    const newToken = await refreshTokenUtil(tokenId, {
-      maxRetries: oauthConfig.maxRetries,
-      retryDelay: oauthConfig.retryDelay,
+    const token = await db.oAuthToken.findFirst({
+      where: { userMcpConfigId, isValid: true },
+      include: { oauthClient: true },
     });
 
-    if (!newToken) {
-      throw new Error("Failed to refresh token");
-    }
+    if (!token?.refreshToken) return null;
 
-    logOAuthFlow("OAuth token refreshed successfully", { tokenId });
-    return newToken;
+    const clientConfig = await getExistingConfiguration(
+      token.oauthClient.mcpServerId,
+    );
+    if (!clientConfig) return null;
+
+    // openid-clientでリフレッシュ
+    const newTokens = await client.refreshTokenGrant(
+      clientConfig,
+      token.refreshToken,
+    );
+
+    // 新トークン保存
+    await saveToken(userMcpConfigId, token.oauthClientId, {
+      access_token: newTokens.access_token,
+      token_type: newTokens.token_type || "Bearer",
+      expires_in: newTokens.expires_in,
+      refresh_token: newTokens.refresh_token,
+      id_token: newTokens.id_token,
+      scope: newTokens.scope,
+    });
+
+    return newTokens.access_token;
   } catch (error) {
-    console.error("Token refresh failed", {
-      tokenId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
+    console.error("Refresh failed:", error);
+    return null;
   }
 };
 
 /**
  * トークンを無効化
  */
-export const revokeToken = async (tokenId: string): Promise<void> => {
+export const revokeOAuthToken = async (
+  userMcpConfigId: string,
+): Promise<void> => {
   try {
-    logOAuthFlow("Revoking OAuth token", { tokenId });
-
-    await revokeTokenUtil(tokenId);
-
-    logOAuthFlow("OAuth token revoked successfully", { tokenId });
-  } catch (error) {
-    console.error("Token revocation failed", {
-      tokenId,
-      error: error instanceof Error ? error.message : String(error),
+    const token = await db.oAuthToken.findFirst({
+      where: { userMcpConfigId, isValid: true },
+      include: { oauthClient: true },
     });
-    throw error;
+
+    if (!token) return;
+
+    const clientConfig = await getExistingConfiguration(
+      token.oauthClient.mcpServerId,
+    );
+
+    if (clientConfig && token.accessToken) {
+      // openid-clientでrevoke（エラーは無視）
+      await client
+        .tokenRevocation(clientConfig, token.accessToken)
+        .catch(() => {
+          /* ignore errors */
+        });
+    }
+
+    // DB無効化
+    await db.oAuthToken.update({
+      where: { id: token.id },
+      data: { isValid: false },
+    });
+  } catch (error) {
+    console.error("Revoke failed:", error);
   }
 };
 
+// ===== ヘルパー関数 =====
+
 /**
- * WWW-Authenticateチャレンジを処理
+ * Configuration取得または作成
  */
-export const handleWWWAuthenticateChallenge = async (
-  challenge: WWWAuthenticateChallenge,
+async function getOrCreateConfiguration(
   mcpServerId: string,
-  userId: string,
   mcpServerUrl: string,
-  config: Partial<OAuthConfig> = {},
-): Promise<OAuthAuthResult> => {
-  logOAuthFlow("Handling WWW-Authenticate challenge", {
-    scheme: challenge.scheme,
-    realm: challenge.realm,
-    hasAsUri: !!challenge.as_uri,
+  callbackBaseUrl: string,
+  enableDCR: boolean,
+): Promise<client.Configuration> {
+  // キャッシュ確認
+  const cached = configCache.get(mcpServerId);
+  if (cached) return cached;
+
+  // 既存のConfiguration取得を試みる
+  let config = await getExistingConfiguration(mcpServerId);
+
+  if (!config && enableDCR) {
+    // DCR実行
+    const result = await performDynamicClientRegistration(
+      new URL(mcpServerUrl).origin,
+      mcpServerId,
+      buildRedirectUri(callbackBaseUrl, mcpServerId),
+    );
+    config = result.configuration;
+  }
+
+  if (!config) {
+    throw new Error("Failed to get or create configuration");
+  }
+
+  configCache.set(mcpServerId, config);
+  return config;
+}
+
+/**
+ * トークンをDBに保存
+ */
+async function saveTokenToDatabase(
+  userId: string,
+  mcpServerId: string,
+  tokens: client.TokenEndpointResponse,
+): Promise<void> {
+  // ユーザー設定取得/作成
+  const userOrg = await db.organizationMember.findFirst({ where: { userId } });
+  if (!userOrg) throw new Error("User org not found");
+
+  let userConfig = await db.userMcpServerConfig.findFirst({
+    where: { organizationId: userOrg.organizationId, mcpServerId },
   });
 
-  // Bearer認証の場合のみ処理
-  if (challenge.scheme.toLowerCase() !== "bearer") {
-    return {
-      success: false,
-      error: createOAuthError(
-        OAuthErrorCodes.UNSUPPORTED_RESPONSE_TYPE,
-        `Unsupported authentication scheme: ${challenge.scheme}`,
-      ),
-      requiresUserInteraction: false,
-    };
-  }
-
-  // Authorization Server URIが提供されている場合
-  if (challenge.as_uri || challenge.authorizationUri) {
-    return authenticate(
+  userConfig ??= await db.userMcpServerConfig.create({
+    data: {
+      organizationId: userOrg.organizationId,
       mcpServerId,
-      userId,
-      mcpServerUrl,
-      `${challenge.scheme} as_uri="${challenge.as_uri ?? challenge.authorizationUri}"`,
-      config,
-    );
-  }
+      name: "OAuth Configuration",
+      description: "Auto-created OAuth configuration",
+      envVars: "",
+    },
+  });
 
-  // エラーが含まれている場合
-  if (challenge.error) {
-    return {
-      success: false,
-      error: createOAuthError(
-        challenge.error,
-        challenge.error_description,
-        challenge.error_uri,
-      ),
-      requiresUserInteraction: false,
-    };
-  }
+  const oauthClient = await db.oAuthClient.findUnique({
+    where: { mcpServerId },
+  });
+  if (!oauthClient) throw new Error("OAuth client not found");
 
-  // 必要な情報が不足している場合
-  return {
-    success: false,
-    error: createOAuthError(
-      OAuthErrorCodes.INVALID_REQUEST,
-      "Insufficient information in WWW-Authenticate header",
-    ),
-    requiresUserInteraction: false,
-  };
-};
+  await saveToken(userConfig.id, oauthClient.id, {
+    access_token: tokens.access_token,
+    token_type: tokens.token_type || "Bearer",
+    expires_in: tokens.expires_in,
+    refresh_token: tokens.refresh_token,
+    id_token: tokens.id_token,
+    scope: tokens.scope,
+  });
+}
 
 /**
- * OAuthManagerの作成（後方互換性のため）
+ * 設定検証
  */
-export const createOAuthManager = (config: Partial<OAuthConfig>) => ({
-  authenticate: (
-    mcpServerId: string,
-    userId: string,
-    mcpServerUrl: string,
-    wwwAuthenticateHeader?: string,
-  ) =>
-    authenticate(
-      mcpServerId,
-      userId,
-      mcpServerUrl,
-      wwwAuthenticateHeader,
-      config,
-    ),
-  handleCallback: (
-    code: string,
-    state: string,
-    error?: string,
-    errorDescription?: string,
-  ) => handleCallback(code, state, config, error, errorDescription),
-  refreshToken: (tokenId: string) => refreshToken(tokenId, config),
-  revokeToken: (tokenId: string) => revokeToken(tokenId),
-  handleWWWAuthenticateChallenge: (
-    challenge: WWWAuthenticateChallenge,
-    mcpServerId: string,
-    userId: string,
-    mcpServerUrl: string,
-  ) =>
-    handleWWWAuthenticateChallenge(
-      challenge,
-      mcpServerId,
-      userId,
-      mcpServerUrl,
-      config,
-    ),
-});
+export const validateOAuthConfig = (
+  config: Partial<OAuthConfig>,
+): OAuthConfig => {
+  return { ...DEFAULT_CONFIG, ...config };
+};

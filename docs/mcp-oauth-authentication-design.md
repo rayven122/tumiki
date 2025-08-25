@@ -218,61 +218,143 @@ model OAuthToken {
 
 ## 5. 実装詳細
 
-### 5.1 OAuthManager
+### 5.1 実装ライブラリ
+
+**openid-client v6.x:**
+
+- OpenID Connect/OAuth 2.0の完全な実装
+- TypeScript完全サポート
+- Authorization Server Discovery
+- Dynamic Client Registration（部分的サポート）
+- PKCE、Device Flow、Client Credentialsサポート
+- トークンのイントロスペクションと無効化
+
+### 5.2 OAuthManager
 
 **責務:**
 
 - OAuth認証フロー全体の制御
 - DCRクライアントとトークンマネージャーの調整
 - エラーハンドリングとリトライロジック
+- openid-clientの統合管理
 
 **主要メソッド:**
 
-- `authenticate(mcpServerId: string, userId: string): Promise<string>`
+- `authenticate(mcpServerId: string, userId: string, mcpServerUrl: string, wwwAuthenticateHeader?: string): Promise<OAuthAuthResult>`
+- `handleCallback(code: string, state: string, error?: string): Promise<OAuthAuthResult>`
 - `refreshToken(tokenId: string): Promise<string>`
 - `revokeToken(tokenId: string): Promise<void>`
 
-### 5.2 DCRClient
+### 5.3 DCRClient (openid-client統合)
 
 **責務:**
 
 - Dynamic Client Registrationの実行
 - Authorization Server Metadataの取得
 - Protected Resource Metadataの取得
+- openid-clientのConfiguration管理
 
 **主要メソッド:**
 
-- `discoverAuthServer(mcpServerUrl: string): Promise<AuthServerMetadata>`
-- `registerClient(authServerUrl: string, metadata: ClientMetadata): Promise<ClientCredentials>`
-- `updateClient(registrationUrl: string, accessToken: string, metadata: ClientMetadata): Promise<void>`
+```typescript
+// openid-clientのdiscovery機能を使用
+const discoverServer = async (issuerUrl: string): Promise<client.Configuration> => {
+  return client.discovery(new URL(issuerUrl), clientId, clientSecret);
+};
 
-### 5.3 TokenManager
+// DCR実装（openid-clientと統合）
+const registerOAuthClient = async (
+  config: client.Configuration,
+  metadata: ClientMetadata
+): Promise<ClientCredentials> => {
+  // RFC 7591準拠のDCR実装
+};
+```
+
+### 5.4 TokenManager
 
 **責務:**
 
 - トークンの永続化と暗号化
 - トークンの有効期限管理
 - リフレッシュトークンによる更新
+- openid-clientとの連携
 
 **主要メソッド:**
 
-- `saveToken(token: TokenData): Promise<void>`
-- `getValidToken(configId: string): Promise<string>`
-- `refreshIfNeeded(tokenId: string): Promise<string>`
+```typescript
+// データベースへの保存
+const saveTokenToDb = async (
+  userMcpConfigId: string,
+  oauthClientId: string,
+  tokens: TokenResponse
+): Promise<string>;
 
-### 5.4 PKCE実装
+// 有効なトークンの取得
+const getValidTokenFromDb = async (
+  configId: string
+): Promise<{ accessToken: string; refreshToken?: string } | null>;
+
+// openid-clientを使用したリフレッシュ
+const refreshAccessToken = async (
+  config: client.Configuration,
+  refreshToken: string
+): Promise<TokenResponse>;
+```
+
+### 5.5 PKCE実装 (openid-client組み込み)
 
 ```typescript
-// PKCEチャレンジ生成
-const generatePKCE = () => {
-  const codeVerifier = crypto.randomBytes(96).toString("base64url");
-  const codeChallenge = crypto
-    .createHash("sha256")
-    .update(codeVerifier)
-    .digest("base64url");
+// openid-clientの組み込み関数を使用
+import * as client from "openid-client";
 
-  return { codeVerifier, codeChallenge };
+// PKCE Code Verifier生成
+const generatePKCEVerifier = (): string => {
+  return client.randomPKCECodeVerifier();
 };
+
+// PKCE Code Challenge生成
+const generatePKCEChallenge = async (verifier: string): Promise<string> => {
+  return client.calculatePKCECodeChallenge(verifier);
+};
+
+// Authorization URLにPKCEパラメータを追加
+const buildAuthUrl = async (config, params) => {
+  if (params.usePKCE) {
+    const code_verifier = client.randomPKCECodeVerifier();
+    params.code_challenge = await client.calculatePKCECodeChallenge(code_verifier);
+    params.code_challenge_method = "S256";
+  }
+  return client.buildAuthorizationUrl(config, params);
+};
+```
+
+### 5.6 UnifiedOAuthClient
+
+**統合クライアントクラス:**
+
+```typescript
+export class UnifiedOAuthClient {
+  private config?: client.Configuration;
+
+  // サーバー設定を初期化
+  async initialize(issuerUrl: string, clientId?: string, clientSecret?: string): Promise<void>;
+  
+  // 認証URLを生成
+  async createAuthorizationUrl(params: AuthParams): Promise<AuthResult>;
+  
+  // コールバック処理
+  async handleCallback(callbackUrl: string | URL, options?: CallbackOptions): Promise<TokenResponse>;
+  
+  // トークンリフレッシュ
+  async refresh(refreshToken: string): Promise<TokenResponse>;
+  
+  // トークン無効化
+  async revoke(token: string, hint?: TokenTypeHint): Promise<void>;
+  
+  // トークン検証
+  async introspect(token: string, hint?: TokenTypeHint): Promise<IntrospectionResponse>;
+}
 ```
 
 ## 6. セキュリティ考慮事項
@@ -295,9 +377,32 @@ const generatePKCE = () => {
 - **ログサニタイゼーション**: 機密情報をログに出力しない
 - **レート制限**: 認証試行回数を制限
 
-## 7. エラー処理
+## 7. 実装アーキテクチャ
 
-### 7.1 エラーコード体系
+### 7.1 モジュール構成
+
+```
+packages/utils/src/server/oauth/
+├── index.ts                # メインエクスポート
+├── openidClient.ts         # openid-client統合レイヤー
+├── oauthManager.ts         # 高レベルOAuth管理
+├── tokenManager.ts         # トークン管理
+├── dcrClient.ts           # Dynamic Client Registration
+├── types.ts               # TypeScript型定義
+├── minimalUtils.ts        # ユーティリティ関数
+└── errorHandler.ts        # エラー処理
+```
+
+### 7.2 依存関係
+
+- **openid-client v6.x**: コアOAuth/OIDC実装
+- **cockatiel**: リトライとサーキットブレーカー
+- **@tumiki/db**: データベースアクセス
+- **Prisma暗号化**: トークンの安全な保存
+
+## 8. エラー処理
+
+### 8.1 エラーコード体系
 
 | エラーコード | 説明               | 対処法                 |
 | ------------ | ------------------ | ---------------------- |
@@ -307,86 +412,120 @@ const generatePKCE = () => {
 | AUTH_004     | メタデータ取得失敗 | MCPサーバー設定を確認  |
 | AUTH_005     | PKCE検証失敗       | 認証フローを再実行     |
 
-### 7.2 リトライ戦略
+### 8.2 リトライ戦略 (cockatiel使用)
 
-- **指数バックオフ**: 2, 4, 8, 16秒の間隔でリトライ
-- **最大リトライ回数**: 4回
-- **サーキットブレーカー**: 連続失敗時は一時的に無効化
+```typescript
+import { circuitBreaker, ConsecutiveBreaker, ExponentialBackoff, retry } from "cockatiel";
 
-## 8. テスト計画
+// Circuit Breaker設定
+const breaker = circuitBreaker(handleAll, {
+  halfOpenAfter: 30000,
+  breaker: new ConsecutiveBreaker(5),
+});
 
-### 8.1 単体テスト
+// リトライポリシー
+const retryPolicy = retry(handleAll, {
+  maxAttempts: 3,
+  backoff: new ExponentialBackoff(),
+});
+
+// 使用例
+const discoverServer = async (issuerUrl: string) => {
+  return breaker.execute(async () => {
+    return retryPolicy.execute(async () => {
+      return client.discovery(new URL(issuerUrl));
+    });
+  });
+};
+```
+
+## 9. テスト計画
+
+### 9.1 単体テスト
 
 - OAuthManagerの各メソッド
 - DCRClientのメタデータ取得とクライアント登録
 - TokenManagerのトークン管理機能
 - PKCE生成と検証
 
-### 8.2 統合テスト
+### 9.2 統合テスト
 
 - 完全な認証フロー（モックサーバー使用）
 - トークンリフレッシュフロー
 - エラーケースの処理
 - 複数MCPサーバーの同時接続
 
-### 8.3 E2Eテスト
+### 9.3 E2Eテスト
 
 - 実際のMCPサーバーへの接続（テスト環境）
 - ブラウザベースの認証フロー
 - トークン期限切れのシミュレーション
 
-## 9. 実装スケジュール
+## 10. 実装スケジュール
 
-### Phase 1: 基盤実装（1週目）
+### Phase 1: 基盤実装（完了）
 
-- [ ] データベーススキーマの作成
-- [ ] OAuthManager基本実装
-- [ ] DCRClient実装
+- [x] データベーススキーマの作成（oauth.prisma）
+- [x] openid-client統合基盤（openidClient.ts）
+- [x] 基本的なOAuth機能実装
 
-### Phase 2: 認証フロー実装（2週目）
+### Phase 2: コア機能実装（進行中）
 
-- [ ] 初回認証フロー
-- [ ] トークンリフレッシュ
-- [ ] エラーハンドリング
+- [x] openid-clientベースの認証フロー
+- [x] トークン管理機能
+- [ ] Dynamic Client Registration完全実装
+- [ ] OAuthManagerクラスの完成
 
-### Phase 3: UI実装（3週目）
+### Phase 3: ProxyServer統合（進行中）
 
-- [ ] OAuth設定画面
-- [ ] 認証状態表示
-- [ ] 再認証機能
+- [x] /oauth/authorize エンドポイント
+- [x] /oauth/callback エンドポイント
+- [x] /oauth/refresh エンドポイント
+- [x] /oauth/revoke エンドポイント
+- [x] Discovery エンドポイント
 
-### Phase 4: テストと改善（4週目）
+### Phase 4: テストと改善（計画中）
 
-- [ ] 単体テスト作成
+- [ ] 単体テスト作成（Vitest）
 - [ ] 統合テスト実装
+- [ ] E2Eテスト（MCP Inspector）
 - [ ] パフォーマンス最適化
 
-## 10. 今後の拡張
+## 11. 今後の拡張
 
-### 10.1 短期的拡張
+### 11.1 短期的拡張
 
 - 複数OAuthプロバイダーの同時サポート
 - トークンローテーション機能
 - 認証情報のインポート/エクスポート
 
-### 10.2 長期的拡張
+### 11.2 長期的拡張
 
 - SAML対応
 - WebAuthn統合
 - マルチファクタ認証サポート
 - 認証プロキシサービス化
 
-## 11. 参考資料
+## 12. 参考資料
+
+### 12.1 仕様書
 
 - [MCP Authorization Specification](https://modelcontextprotocol.io/specification/draft/basic/authorization)
 - [OAuth 2.1 Draft](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1)
 - [RFC 7591: Dynamic Client Registration](https://tools.ietf.org/html/rfc7591)
 - [RFC 9728: Protected Resource Metadata](https://tools.ietf.org/html/rfc9728)
 - [RFC 8414: Authorization Server Metadata](https://tools.ietf.org/html/rfc8414)
+- [RFC 7636: Proof Key for Code Exchange (PKCE)](https://tools.ietf.org/html/rfc7636)
+- [RFC 8707: Resource Indicators](https://tools.ietf.org/html/rfc8707)
 
-## 12. 付録
+### 12.2 ライブラリドキュメント
 
-### 12.1 用語集
+- [openid-client Documentation](https://github.com/panva/node-openid-client)
+- [cockatiel Documentation](https://github.com/connor4312/cockatiel)
+
+## 13. 付録
+
+### 13.1 用語集
 
 | 用語 | 説明                                                   |
 | ---- | ------------------------------------------------------ |
@@ -396,7 +535,47 @@ const generatePKCE = () => {
 | JWT  | JSON Web Token - トークン形式                          |
 | JWKS | JSON Web Key Set - 公開鍵セット                        |
 
-### 12.2 設定例
+### 13.2 実装例
+
+#### openid-clientを使用した認証フロー
+
+```typescript
+import * as client from "openid-client";
+
+// 1. Discovery
+const config = await client.discovery(
+  new URL("https://auth.example.com"),
+  "client_id",
+  "client_secret"
+);
+
+// 2. Authorization URL生成
+const code_verifier = client.randomPKCECodeVerifier();
+const code_challenge = await client.calculatePKCECodeChallenge(code_verifier);
+
+const authUrl = client.buildAuthorizationUrl(config, {
+  redirect_uri: "https://app.example.com/callback",
+  scope: "openid profile email",
+  state: client.randomState(),
+  code_challenge,
+  code_challenge_method: "S256",
+});
+
+// 3. トークン交換
+const tokens = await client.authorizationCodeGrant(
+  config,
+  callbackUrl,
+  { pkceCodeVerifier: code_verifier }
+);
+
+// 4. トークンリフレッシュ
+const newTokens = await client.refreshTokenGrant(config, tokens.refresh_token);
+
+// 5. トークン無効化
+await client.tokenRevocation(config, tokens.access_token);
+```
+
+### 13.3 設定例
 
 ```typescript
 // MCPサーバー設定例
@@ -426,5 +605,6 @@ const oauthConfig = {
 
 ---
 
-_最終更新日: 2025年1月23日_
+_最終更新日: 2025年1月24日_
 _作成者: tumiki開発チーム_
+_実装ライブラリ: openid-client v6.x_

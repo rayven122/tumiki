@@ -1,78 +1,92 @@
 /**
- * OAuth Module Index
- * OAuth認証関連のエクスポート（共通パッケージ）
+ * OAuth Module Index - Simplified with openid-client
+ * openid-clientライブラリを使用した簡略化されたOAuth実装
  */
 
-// DCR Client functions
+// Main OpenID Client implementation
 export {
+  // Re-export from openid-client
+  discovery,
+  dynamicClientRegistration,
+  authorizationCodeGrant,
+  refreshTokenGrant,
+  clientCredentialsGrant,
+  tokenRevocation,
+  tokenIntrospection,
+  buildAuthorizationUrl,
+  randomState,
+  randomNonce,
+  randomPKCECodeVerifier,
+  calculatePKCECodeChallenge,
+  ClientSecretBasic,
+  ClientSecretPost,
+  ClientSecretJwt,
+  PrivateKeyJwt,
+  None,
+  TlsClientAuth,
+
+  // Custom implementations
+  saveTokenToDb,
+  getValidTokenFromDb,
+  isOAuth2Error,
+  convertToTokenResponse,
+} from "./openidClient.js";
+
+// DCR Client exports
+export {
+  performDynamicClientRegistration,
+  getExistingConfiguration,
   parseWWWAuthenticate,
-  discoverProtectedResource,
-  discoverAuthServer,
-  registerClient,
-  updateClient,
-  getClient,
-  deleteClient,
+  getExistingClient,
 } from "./dcrClient.js";
 
-// Token Manager functions
+// Token Manager exports
 export {
   saveToken,
   getValidToken,
-  refreshToken,
   invalidateToken,
-  revokeToken,
-  cleanupExpiredTokens,
+  deleteToken,
+  invalidateAllUserTokens,
+  invalidateMcpServerTokens,
+  clearTokenCache,
+  convertFromTokenEndpointResponse,
 } from "./tokenManager.js";
 
-// Utility functions
+// OAuth Manager exports
 export {
-  generatePKCE,
-  generateState,
-  generateNonce,
-  generateSessionId,
-  OAuthErrorCodes,
-  createOAuthError,
-  buildRedirectUri,
-  buildAuthorizationUrl,
-  buildTokenRequestBody,
-  createBasicAuthHeader,
-  calculateTokenExpiry,
-  parseScopes,
-  formatScopes,
-  calculateRetryDelay,
-  parseErrorResponse,
-  extractAuthorizationCode,
-  isSessionValid,
-  validateTokenResponse,
-  validateAuthServerMetadata,
-  hasRequiredScopes,
-  logOAuthFlow,
-} from "./utils.js";
-
-// OAuth Manager
-export {
-  authenticate,
-  handleCallback,
-  refreshToken as refreshOAuthToken,
-  revokeToken as revokeOAuthToken,
-  handleWWWAuthenticateChallenge,
-  createOAuthManager,
+  startOAuthFlow,
+  handleOAuthCallback,
+  refreshOAuthToken,
+  revokeOAuthToken,
+  validateOAuthConfig,
 } from "./oauthManager.js";
 
-// Error Handler
+// Error Handler exports
 export {
-  isRetryableError,
+  classifyError,
+  createRetryPolicy,
+  createCircuitBreakerPolicy,
+  createCombinedPolicy,
+  executeWithErrorHandling,
+  getUserFriendlyErrorMessage,
+  structureErrorLog,
+  createErrorResponse,
   isOAuthError,
   toOAuthError,
-  calculateExponentialBackoff,
-  withRetry,
-  CircuitState,
-  CircuitBreaker,
-  getCircuitBreaker,
-  withCircuitBreakerAndRetry,
 } from "./errorHandler.js";
 
-// Types
+// Minimal utilities that can't be replaced by openid-client
+export {
+  OAuthErrorCodes,
+  createOAuthError,
+  generateSessionId,
+  buildRedirectUri,
+  calculateTokenExpiry,
+  isSessionValid,
+  logOAuthFlow,
+} from "./minimalUtils.js";
+
+// Types (keep all existing types for compatibility)
 export type {
   AuthServerMetadata,
   ProtectedResourceMetadata,
@@ -89,4 +103,73 @@ export type {
   OAuthAuthResult,
   DCRClientOptions,
   TokenManagerOptions,
+  OAuthToken,
 } from "./types.js";
+
+// Re-export openid-client types for convenience
+export type {
+  Configuration,
+  ServerMetadata,
+  TokenEndpointResponse,
+  IntrospectionResponse,
+  ClientAuth,
+  ModifyAssertionOptions,
+  DPoPOptions,
+} from "openid-client";
+
+/**
+ * Legacy createOAuthManager for backward compatibility
+ * 新しい実装（oauthManager.ts）の使用を推奨
+ */
+export const createOAuthManager = async (config: {
+  callbackBaseUrl: string;
+  enablePKCE?: boolean;
+  enableDCR?: boolean;
+}) => {
+  // Import from oauthManager
+  const {
+    startOAuthFlow,
+    handleOAuthCallback,
+    refreshOAuthToken,
+    revokeOAuthToken,
+  } = await import("./oauthManager.js");
+
+  return {
+    authenticate: async (
+      mcpServerId: string,
+      userId: string,
+      mcpServerUrl: string,
+      wwwAuthenticateHeader?: string,
+    ) => {
+      return startOAuthFlow(
+        mcpServerId,
+        userId,
+        mcpServerUrl,
+        wwwAuthenticateHeader,
+        {
+          callbackBaseUrl: config.callbackBaseUrl,
+          enablePKCE: config.enablePKCE ?? true,
+          enableDCR: config.enableDCR ?? true,
+        },
+      );
+    },
+
+    handleCallback: async (
+      code: string,
+      state: string,
+      error?: string,
+      errorDescription?: string,
+    ) => {
+      return handleOAuthCallback(code, state, error, errorDescription);
+    },
+
+    refreshToken: async (userMcpConfigId: string) => {
+      const token = await refreshOAuthToken(userMcpConfigId);
+      return token ?? "";
+    },
+
+    revokeToken: async (userMcpConfigId: string) => {
+      await revokeOAuthToken(userMcpConfigId);
+    },
+  };
+};

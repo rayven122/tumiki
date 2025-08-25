@@ -81,7 +81,7 @@ export const handleOAuthCallback: RequestHandler = async (req, res) => {
 
     // OAuthManagerインスタンスを作成
     const callbackBaseUrl = `${req.protocol}://${req.get("host")}`;
-    const oauthManager = createOAuthManager({
+    const oauthManager = await createOAuthManager({
       callbackBaseUrl,
       enablePKCE: true,
       enableDCR: true,
