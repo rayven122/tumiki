@@ -120,3 +120,6 @@ waitingList.json
 
 # Production configuration files
 *production.json
+
+# serena
+.serena/cache
