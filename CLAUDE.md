@@ -67,6 +67,15 @@ Serenaのシンボリックツールへのアクセスが提供されていま�
   - 開発時のみ使用推奨（プレビュー版のため）
   - エラーや互換性問題が発生した場合は通常のtypecheckを使用
 
+## Python MCP サーバーのサポート
+
+Tumiki は Python ベースの MCP サーバーをサポートしています：
+
+- **自動インストール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
+- **設定方法**: `mcpServers.ts` で `command: "pipx"` と `args: ["run", "package-name"]` を指定
+- **環境変数**: Node.js サーバーと同様に `envVars` で指定
+- **追加方法**: `python-mcp-requirements.txt` に追記して `pnpm install` を実行
+
 ## 開発ガイドライン
 
 ### フロントエンド コーディング規約
