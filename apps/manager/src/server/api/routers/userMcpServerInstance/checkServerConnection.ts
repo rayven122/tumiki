@@ -3,9 +3,9 @@ import type { ProtectedContext } from "../../trpc";
 import type { CheckServerConnectionInput } from ".";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import { getMcpServerToolsSSE } from "@tumiki/utils/server";
+import { getMcpServerToolsHTTP } from "@tumiki/utils/server";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { makeSseProxyServerUrl } from "@/utils/url";
+import { makeHttpProxyServerUrl } from "@/utils/url";
 
 type CheckServerConnectionParams = {
   ctx: ProtectedContext;
@@ -57,11 +57,11 @@ export const checkServerConnection = async ({
     let errorMessage: string | undefined;
 
     try {
-      // getMcpServerToolsSSEを直接使用してツール一覧を取得
-      tools = await getMcpServerToolsSSE(
+      // getMcpServerToolsHTTPを直接使用してツール一覧を取得
+      tools = await getMcpServerToolsHTTP(
         {
           name: "validation",
-          url: makeSseProxyServerUrl(serverInstanceId),
+          url: makeHttpProxyServerUrl(serverInstanceId),
         },
         {
           "x-validation-mode": "true",
