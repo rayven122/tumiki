@@ -1,6 +1,7 @@
 import { unlink, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 /**
@@ -23,42 +24,20 @@ export const GoogleCredentialsSchema = z.object({
 export type GoogleCredentials = z.infer<typeof GoogleCredentialsSchema>;
 
 /**
- * APIキーまたはインスタンスIDから安全なファイル識別子を生成
- * @param apiKeyOrInstanceId TumikiのAPIキーまたはインスタンスID
- * @returns ファイル名に使用する識別子
- */
-const generateFileIdentifier = (apiKeyOrInstanceId?: string): string => {
-  if (apiKeyOrInstanceId) {
-    // ファイル名に使用できない文字を除去し、長さを制限
-    const safeId = apiKeyOrInstanceId
-      .replace(/[^a-zA-Z0-9_-]/g, "")
-      .substring(0, 50);
-    if (safeId) return safeId;
-  }
-  // フォールバック: タイムスタンプベースのID
-  const timestamp = Date.now().toString(36);
-  const randomPart = Math.random().toString(36).substring(2, 15);
-  return `temp_${timestamp}_${randomPart}`;
-};
-
-/**
  * Google認証情報ファイルを一時ディレクトリに作成
  *
  * @param credentials Google認証情報のJSONオブジェクト
- * @param apiKeyOrInstanceId TumikiのAPIキーまたはインスタンスID
  * @returns 作成されたファイルのパス
  */
 export const createGoogleCredentialsFile = async (
   credentials: GoogleCredentials,
-  apiKeyOrInstanceId?: string,
 ): Promise<string> => {
   // 認証情報を検証
   const validatedCredentials = GoogleCredentialsSchema.parse(credentials);
 
-  // 一時ディレクトリにAPIキーまたはインスタンスIDを使用したファイル名で保存
+  // 一時ディレクトリにユニークなファイル名で保存
   const tempDir = os.tmpdir();
-  const fileIdentifier = generateFileIdentifier(apiKeyOrInstanceId);
-  const fileName = `gsc-credentials-${fileIdentifier}.json`;
+  const fileName = `gsc-credentials-${uuidv4()}.json`;
   const filePath = path.join(tempDir, fileName);
 
   // ファイルに書き込み
@@ -94,13 +73,11 @@ export const deleteGoogleCredentialsFile = async (
  *
  * @param envVars 既存の環境変数オブジェクト
  * @param credentials Google認証情報
- * @param apiKeyOrInstanceId TumikiのAPIキーまたはインスタンスID
  * @returns 認証情報ファイルパスが設定された環境変数オブジェクトとクリーンアップ関数
  */
 export const setupGoogleCredentialsEnv = async (
   envVars: Record<string, string>,
   credentials: GoogleCredentials | null,
-  apiKeyOrInstanceId?: string,
 ): Promise<{
   envVars: Record<string, string>;
   cleanup: () => Promise<void>;
@@ -114,10 +91,7 @@ export const setupGoogleCredentialsEnv = async (
     };
   }
 
-  const filePath = await createGoogleCredentialsFile(
-    credentials,
-    apiKeyOrInstanceId,
-  );
+  const filePath = await createGoogleCredentialsFile(credentials);
 
   return {
     envVars: {

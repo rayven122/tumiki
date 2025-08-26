@@ -121,7 +121,6 @@ const createClient = async (
         const { envVars, cleanup } = await setupGoogleCredentialsEnv(
           finalEnv,
           server.googleCredentials as GoogleCredentials,
-          server.apiKeyOrInstanceId,
         );
         finalEnv = envVars;
         credentialsCleanup = cleanup;
@@ -310,10 +309,8 @@ const getServerConfigs = async (apiKey: string) => {
         ) as Record<string, unknown>;
         // envObjから削除（ファイルパスは動的に生成されるため）
         delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
-      } catch (error) {
-        throw new Error(
-          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
-        );
+      } catch {
+        // JSON解析に失敗した場合は、ファイルパスとして扱う（後方互換性）
       }
     }
 
@@ -345,7 +342,6 @@ const getServerConfigs = async (apiKey: string) => {
           env: envObj,
         },
         googleCredentials,
-        apiKeyOrInstanceId: apiKey, // APIキーを追加
       };
 
       return transportConfig;
@@ -442,10 +438,8 @@ const getServerConfigsByInstanceId = async (
         ) as Record<string, unknown>;
         // envObjから削除（ファイルパスは動的に生成されるため）
         delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
-      } catch (error) {
-        throw new Error(
-          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
-        );
+      } catch {
+        // JSON解析に失敗した場合は、ファイルパスとして扱う（後方互換性）
       }
     }
 
@@ -474,7 +468,6 @@ const getServerConfigsByInstanceId = async (
       toolNames,
       transport: transportConfig,
       googleCredentials,
-      apiKeyOrInstanceId: userMcpServerInstanceId, // インスタンスIDを追加
     };
 
     return config;
