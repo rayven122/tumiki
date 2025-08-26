@@ -309,8 +309,10 @@ const getServerConfigs = async (apiKey: string) => {
         ) as Record<string, unknown>;
         // envObjから削除（ファイルパスは動的に生成されるため）
         delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
-      } catch {
-        // JSON解析に失敗した場合は、ファイルパスとして扱う（後方互換性）
+      } catch (error) {
+        throw new Error(
+          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 
@@ -438,8 +440,10 @@ const getServerConfigsByInstanceId = async (
         ) as Record<string, unknown>;
         // envObjから削除（ファイルパスは動的に生成されるため）
         delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
-      } catch {
-        // JSON解析に失敗した場合は、ファイルパスとして扱う（後方互換性）
+      } catch (error) {
+        throw new Error(
+          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 
