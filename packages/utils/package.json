@@ -15,9 +15,9 @@
       "require": "./dist/server/index.js"
     },
     "./server/security": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.mjs",
-      "require": "./dist/server/index.js"
+      "types": "./dist/server/security/index.d.ts",
+      "import": "./dist/server/security/index.mjs",
+      "require": "./dist/server/security/index.js"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",

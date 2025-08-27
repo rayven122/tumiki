@@ -5,7 +5,12 @@ import { libraryTsupConfig } from "@tumiki/tsup-config/library";
 
 export default defineConfig({
   ...libraryTsupConfig,
-  entry: ["src/index.ts", "src/server/index.ts", "src/client/index.ts"],
+  entry: [
+    "src/index.ts",
+    "src/server/index.ts",
+    "src/server/security/index.ts",
+    "src/client/index.ts",
+  ],
   esbuildOptions(options) {
     options.alias = {
       "@": resolve(__dirname, "./src"),

@@ -60,6 +60,7 @@ bun run src/migrateWaitingList.ts <JSONファイルパス> [--dry-run] [--no-ski
 cd packages/scripts
 bun run src/upsertAll.ts
 ```
+
 #### Google Search Console用の環境変数設定
 
 Google Search ConsoleのMCPサーバーを使用する場合、`GOOGLE_APPLICATION_CREDENTIALS`環境変数にJSONファイルのパスを指定します：
