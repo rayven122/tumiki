@@ -57,6 +57,7 @@ type Env = z.infer<typeof envSchema>;
 
 /**
  * 環境変数をバリデーションして返す
+ * GOOGLE_APPLICATION_CREDENTIALSがファイルパスの場合は、ファイルの内容を読み込む
  * @throws {z.ZodError} 環境変数が不正な場合
  */
 export const validateEnv = (): Env => {
