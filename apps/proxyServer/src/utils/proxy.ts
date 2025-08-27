@@ -13,6 +13,10 @@ import {
 import { db } from "@tumiki/db/tcp";
 import { TransportType } from "@tumiki/db";
 import { validateApiKey } from "../libs/validateApiKey.js";
+import {
+  setupGoogleCredentialsEnv,
+  type GoogleCredentials,
+} from "@tumiki/utils/server/security";
 
 import type {
   ServerConfig,
@@ -31,6 +35,7 @@ export type ConnectedClient = {
   cleanup: () => Promise<void>;
   name: string;
   toolNames: string[];
+  credentialsCleanup?: () => Promise<void>;
 };
 
 /**
@@ -82,10 +87,16 @@ export const getSSEConnectionPool = (): SSEConnectionPool => {
  * @param server
  * @returns
  */
-const createClient = (
+const createClient = async (
   server: ServerConfig,
-): { client: Client | undefined; transport: Transport | undefined } => {
+): Promise<{
+  client: Client | undefined;
+  transport: Transport | undefined;
+  credentialsCleanup?: () => Promise<void>;
+}> => {
   let transport: Transport | null = null;
+  let credentialsCleanup: (() => Promise<void>) | undefined;
+
   try {
     if (server.transport.type === "sse") {
       // Type narrowing: when type is "sse", url is guaranteed to be string
@@ -96,14 +107,24 @@ const createClient = (
         throw new Error("SSE transport requires a valid URL");
       }
     } else {
-      const finalEnv = server.transport.env
+      let finalEnv = server.transport.env
         ? Object.fromEntries(
             Object.entries(server.transport.env).map(([key, value]) => [
               key,
               String(value), // DBの値を優先（process.envは使用しない）
             ]),
           )
-        : undefined;
+        : {};
+
+      // Google認証情報の処理
+      if (server.googleCredentials) {
+        const { envVars, cleanup } = await setupGoogleCredentialsEnv(
+          finalEnv,
+          server.googleCredentials as GoogleCredentials,
+        );
+        finalEnv = envVars;
+        credentialsCleanup = cleanup;
+      }
 
       transport = new StdioClientTransport({
         command: server.transport.command,
@@ -113,7 +134,7 @@ const createClient = (
     }
   } catch {
     recordError("transport_creation_failed");
-    return { transport: undefined, client: undefined };
+    return { transport: undefined, client: undefined, credentialsCleanup };
   }
 
   const client = new Client({
@@ -121,7 +142,7 @@ const createClient = (
     version: "1.0.0",
   });
 
-  return { client, transport };
+  return { client, transport, credentialsCleanup };
 };
 
 /**
@@ -138,8 +159,13 @@ const connectToServer = async (
   let retry = true;
 
   while (retry) {
-    const { client, transport } = createClient(server);
+    const { client, transport, credentialsCleanup } =
+      await createClient(server);
     if (!client || !transport) {
+      // 認証情報ファイルのクリーンアップ
+      if (credentialsCleanup) {
+        await credentialsCleanup();
+      }
       return null;
     }
 
@@ -151,8 +177,13 @@ const connectToServer = async (
         name: server.name,
         cleanup: async () => {
           await transport.close();
+          // 認証情報ファイルのクリーンアップ
+          if (credentialsCleanup) {
+            await credentialsCleanup();
+          }
         },
         toolNames: server.toolNames,
+        credentialsCleanup,
       };
     } catch {
       recordError("server_connection_failed");
@@ -163,6 +194,10 @@ const connectToServer = async (
           await client.close();
           // transportも確実にクローズする
           await transport.close();
+          // 認証情報ファイルのクリーンアップ
+          if (credentialsCleanup) {
+            await credentialsCleanup();
+          }
         } catch {
           // クリーンアップ失敗は無視
         } finally {
@@ -256,12 +291,29 @@ const getServerConfigs = async (apiKey: string) => {
       .map(({ tool }) => tool.name);
 
     let envObj: Record<string, string>;
+    let googleCredentials: Record<string, unknown> | null = null;
+
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
     } catch {
       throw new Error(
         `Invalid environment variables configuration for ${serverConfig.name}`,
       );
+    }
+
+    // GOOGLE_APPLICATION_CREDENTIALS が含まれている場合、JSONとして解析
+    if (envObj.GOOGLE_APPLICATION_CREDENTIALS) {
+      try {
+        googleCredentials = JSON.parse(
+          envObj.GOOGLE_APPLICATION_CREDENTIALS,
+        ) as Record<string, unknown>;
+        // envObjから削除（ファイルパスは動的に生成されるため）
+        delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
+      } catch (error) {
+        throw new Error(
+          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     // args 内部に、envObj の key の値と一致するものは、値を置き換える
@@ -291,6 +343,7 @@ const getServerConfigs = async (apiKey: string) => {
           args,
           env: envObj,
         },
+        googleCredentials,
       };
 
       return transportConfig;
@@ -371,10 +424,27 @@ const getServerConfigsByInstanceId = async (
       .map(({ tool }) => tool.name);
 
     let envObj: Record<string, string>;
+    let googleCredentials: Record<string, unknown> | null = null;
+
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
     } catch {
       envObj = {};
+    }
+
+    // GOOGLE_APPLICATION_CREDENTIALS が含まれている場合、JSONとして解析
+    if (envObj.GOOGLE_APPLICATION_CREDENTIALS) {
+      try {
+        googleCredentials = JSON.parse(
+          envObj.GOOGLE_APPLICATION_CREDENTIALS,
+        ) as Record<string, unknown>;
+        // envObjから削除（ファイルパスは動的に生成されるため）
+        delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
+      } catch (error) {
+        throw new Error(
+          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     const transportConfig: TransportConfig = {
@@ -401,6 +471,7 @@ const getServerConfigsByInstanceId = async (
       name: serverConfig.name,
       toolNames,
       transport: transportConfig,
+      googleCredentials,
     };
 
     return config;
