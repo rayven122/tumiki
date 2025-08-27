@@ -142,5 +142,5 @@ pip-delete-this-directory.txt
 dist/
 .pytype/
 
-# pipx
-.local/pipx/
+# uv
+.local/uv/

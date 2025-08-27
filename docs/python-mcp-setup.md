@@ -7,8 +7,7 @@ Tumiki では Node.js ベースの MCP サーバーに加えて、Python ベー�
 ### 必要なソフトウェア
 
 - **Python**: 3.10 以上
-- **pipx**: Python パッケージの独立環境実行ツール
-- **uv** (推奨): 高速な Python パッケージマネージャー
+- **uv**: 高速な Python パッケージマネージャーおよびツール実行環境
 
 ## 環境構築
 
@@ -36,35 +35,18 @@ sudo apt update
 sudo apt install python3.12 python3-pip
 ```
 
-### 2. pipx のインストール
+### 2. uv のインストール
 
-pipx は Python パッケージを独立した環境で実行するためのツールです。
+uv は Rust で書かれた高速な Python パッケージマネージャーです。Python MCP サーバーのインストールと管理が容易になります。
 
 ```bash
-# pipを使用してインストール
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-
-# または、OSのパッケージマネージャーを使用
 # Windows (winget)
-winget install pipx
+winget install astral.uv
 
 # macOS (Homebrew)
-brew install pipx
+brew install uv
 
-# Linux (Ubuntu/Debian)
-sudo apt install pipx
-```
-
-### 3. uv のインストール（推奨）
-
-uv は Rust で書かれた高速な Python パッケージマネージャーです。pipx と組み合わせて使用することで、Python MCP サーバーのインストールと管理が容易になります。
-
-```bash
-# pipxを使用してインストール
-pipx install uv
-
-# またはcurlを使用
+# Linux/macOS (curl)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Windows (PowerShell)
@@ -76,21 +58,21 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ### 1. PyPI パッケージの場合
 
 ```bash
-# pipxを使用してグローバルにインストール
-pipx install <package-name>
+# uvを使用してツールとしてインストール
+uv tool install <package-name>
 
 # 例: Google Analytics MCP
-pipx install analytics-mcp
+uv tool install analytics-mcp
 ```
 
 ### 2. GitHubリポジトリから直接インストール
 
 ```bash
-# pipxを使用してGitHubから直接インストール
-pipx install git+https://github.com/<user>/<repo>.git
+# uvを使用してGitHubから直接インストール
+uv tool install git+https://github.com/<user>/<repo>.git
 
 # 例
-pipx install git+https://github.com/googleanalytics/google-analytics-mcp.git
+uv tool install git+https://github.com/googleanalytics/google-analytics-mcp.git
 ```
 
 ### 3. ローカル開発の場合
@@ -114,8 +96,8 @@ uv pip install -e .
 ```typescript
 {
   name: "Google Analytics",
-  command: "pipx",
-  args: ["run", "analytics-mcp"],
+  command: "uvx",
+  args: ["analytics-mcp"],
   description: "Google Analytics データへのアクセスと分析を行うMCPサーバー",
   // または、直接実行コマンドを指定
   command: "analytics-mcp",
@@ -148,24 +130,24 @@ Python MCP サーバーは通常、以下の方法で環境変数を使用しま
 ### 1. コマンドラインでの確認
 
 ```bash
-# インストール済みパッケージの確認
-pipx list
+# インストール済みツールの確認
+uv tool list
 
 # MCP サーバーの直接実行テスト
-pipx run <package-name> --help
+uvx <package-name> --help
 
 # 例: Google Analytics MCP
-pipx run analytics-mcp --help
+uvx analytics-mcp --help
 ```
 
 ### 2. 依存関係の確認
 
 ```bash
 # パッケージの依存関係を確認
-pipx runpip <package-name> list
+uv tool run --from <package-name> pip list
 
 # 例
-pipx runpip analytics-mcp list
+uv tool run --from analytics-mcp pip list
 ```
 
 ## トラブルシューティング
@@ -178,14 +160,14 @@ python --version
 python3 --version
 
 # 特定バージョンのPythonを使用
-pipx install --python python3.12 <package-name>
+uv tool install --python python3.12 <package-name>
 ```
 
 ### 2. パスの問題
 
 ```bash
-# pipxのパスを確認
-pipx ensurepath
+# uvのパスを確認
+which uvx
 
 # 手動でパスを追加（bash/zshの場合）
 echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
@@ -199,7 +181,7 @@ source ~/.bashrc
 # PowerShellを管理者として開いて実行
 
 # Linux/macOSでsudoが必要な場合
-sudo pipx install <package-name> --global
+sudo uv tool install <package-name>
 ```
 
 ### 4. 仮想環境の競合
@@ -208,8 +190,9 @@ sudo pipx install <package-name> --global
 # 既存の仮想環境を無効化
 deactivate
 
-# pipxの環境を再作成
-pipx reinstall <package-name>
+# uvの環境を再作成
+uv tool uninstall <package-name>
+uv tool install <package-name>
 ```
 
 ## Python MCP サーバーの開発
@@ -279,7 +262,7 @@ if __name__ == "__main__":
 
 ## ベストプラクティス
 
-1. **pipx の使用**: グローバル Python 環境を汚染しないよう、常に pipx を使用
+1. **uv の使用**: グローバル Python 環境を汚染しないよう、常に uv tool を使用
 2. **バージョン管理**: pyproject.toml で Python とパッケージのバージョンを明示
 3. **環境変数**: 機密情報は環境変数で管理し、コードにハードコーディングしない
 4. **エラーハンドリング**: 適切なエラーメッセージとロギングを実装
@@ -289,7 +272,6 @@ if __name__ == "__main__":
 ## 関連リソース
 
 - [MCP Python SDK Documentation](https://github.com/modelcontextprotocol/python-sdk)
-- [pipx Documentation](https://pipx.pypa.io/)
 - [uv Documentation](https://docs.astral.sh/uv/)
 - [Python Packaging User Guide](https://packaging.python.org/)
 
