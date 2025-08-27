@@ -1,0 +1,18 @@
+# Python MCP サーバーの依存関係
+# このファイルは pnpm install 時に自動的に処理されます
+# 
+# フォーマット:
+#   パッケージ名
+#   パッケージ名==バージョン
+#   パッケージ名>=最小バージョン
+#
+# 新しい Python MCP サーバーを追加する場合は、ここに追記してください
+
+# Google Analytics MCP Server
+analytics-mcp>=0.1.1
+
+# 他の Python MCP サーバーの例（必要に応じてコメントアウトを解除）
+# browserbase-mcp>=0.1.0
+# cerebras-mcp>=0.1.0
+# perplexity-mcp>=0.1.0
+# cloudflare-mcp>=0.1.0
