@@ -154,6 +154,17 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
+    name: "Google Search Console",
+    description:
+      "Google Search Consoleのサイトパフォーマンスと検索分析データにアクセスします",
+    tags: ["SEO", "分析"],
+    iconPath: "/logos/google-search-console.svg",
+    command: "node",
+    args: ["node_modules/mcp-server-gsc/dist/index.js"],
+    envVars: ["GOOGLE_APPLICATION_CREDENTIALS"],
+    isPublic: true,
+  },
+  {
     name: "Microsoft Clarity",
     description:
       "Microsoft Clarityの分析データとヒートマップへのアクセスを提供します",

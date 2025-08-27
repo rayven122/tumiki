@@ -46,3 +46,28 @@ export const convertToMcpAuthInfo = (authData: {
     expiresAt: authData.payload.exp as number | undefined,
   };
 };
+
+/**
+ * MCPプロトコルに必要なAcceptヘッダーを確認・追加する関数
+ *
+ * MCP SDKはAcceptヘッダーに"application/json"と"text/event-stream"の
+ * 両方が含まれていることを要求します。
+ *
+ * @param req Express Request オブジェクト
+ * @returns 修正されたリクエストオブジェクト
+ */
+export const ensureMcpAcceptHeader = (req: Request): Request => {
+  const acceptHeader = req.headers.accept;
+  const requiredTypes = ["application/json", "text/event-stream"];
+
+  // Acceptヘッダーがない、または必要な値が含まれていない場合
+  if (
+    !acceptHeader ||
+    !requiredTypes.every((type) => acceptHeader.includes(type))
+  ) {
+    // 必要なAcceptヘッダーを設定
+    req.headers.accept = "application/json, text/event-stream";
+  }
+
+  return req;
+};

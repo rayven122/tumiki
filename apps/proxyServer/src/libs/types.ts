@@ -15,6 +15,7 @@ export type ServerConfig = {
   name: string;
   toolNames: string[];
   transport: TransportConfig;
+  googleCredentials?: Record<string, unknown> | null;
 };
 
 export type Config = {
