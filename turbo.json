@@ -1,6 +1,9 @@
 {
   "$schema": "https://turborepo.org/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "OAUTH_CALLBACK_BASE_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
