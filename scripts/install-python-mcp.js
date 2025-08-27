@@ -32,17 +32,17 @@ function commandExists(cmd) {
 }
 
 /**
- * pipxがインストールされているかチェック
+ * uvxがインストールされているかチェック
  */
-function checkPipx() {
-  if (!commandExists('pipx')) {
+function checkUvx() {
+  if (!commandExists('uvx')) {
     console.warn(`
-⚠️  pipx がインストールされていません。Python MCP サーバーを使用するには pipx が必要です。
+⚠️  uvx がインストールされていません。Python MCP サーバーを使用するには uvx が必要です。
 
 インストール方法:
-  Windows:  winget install pipx
-  macOS:    brew install pipx
-  Linux:    python3 -m pip install --user pipx && python3 -m pipx ensurepath
+  Windows:  winget install astral.uv
+  macOS:    brew install uv
+  Linux:    curl -LsSf https://astral.sh/uv/install.sh | sh
 
 詳細は docs/python-mcp-setup.md を参照してください。
 `);
@@ -94,7 +94,7 @@ function checkPython() {
  */
 function isPackageInstalled(packageName) {
   try {
-    const output = execSync('pipx list', { encoding: 'utf8' });
+    const output = execSync('uv tool list', { encoding: 'utf8' });
     return output.includes(packageName);
   } catch {
     return false;
@@ -114,7 +114,7 @@ function installPythonMcpServers() {
     return;
   }
   
-  if (!checkPipx()) {
+  if (!checkUvx()) {
     return;
   }
   
@@ -141,7 +141,7 @@ function installPythonMcpServers() {
     
     try {
       console.log(`📦 ${requirement} をインストール中...`);
-      execSync(`pipx install ${requirement}`, { 
+      execSync(`uv tool install ${requirement}`, { 
         stdio: 'inherit',
         cwd: rootDir 
       });

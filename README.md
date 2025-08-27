@@ -134,7 +134,7 @@ Tumikiは Node.js ベースの MCP サーバーに加えて、Python ベース�
 node scripts/install-python-mcp.js
 
 # 手動でPython MCPサーバーをインストール
-pipx install analytics-mcp  # Google Analytics MCP
+uv tool install analytics-mcp  # Google Analytics MCP
 
 # Python MCPサーバーの追加
 # python-mcp-requirements.txt に追記して pnpm install を実行
@@ -142,7 +142,7 @@ pipx install analytics-mcp  # Google Analytics MCP
 
 **前提条件**:
 - Python 3.10 以上
-- pipx（Python パッケージマネージャー）
+- uv（高速な Python パッケージマネージャー）
 
 詳細は [docs/python-mcp-setup.md](./docs/python-mcp-setup.md) を参照してください。
 
