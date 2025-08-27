@@ -12,7 +12,7 @@ import {
 import { getServer } from "../../utils/proxy.js";
 import { TransportType } from "@tumiki/db";
 import { logMcpRequest } from "../../libs/requestLogger.js";
-import { toMcpRequest } from "../../utils/mcpAdapter.js";
+import { toMcpRequest, ensureMcpAcceptHeader } from "../../utils/mcpAdapter.js";
 import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 import {
   sendBadRequestError,
@@ -99,6 +99,9 @@ export const handlePOSTRequest = async (
   try {
     // リクエストボディをキャプチャ
     const requestBody = req.body as unknown;
+
+    // Acceptヘッダーを確認・追加
+    ensureMcpAcceptHeader(req);
 
     // レスポンスをインターセプトするためのオリジナルjsonメソッドを保存
     const originalJson = res.json.bind(res);
