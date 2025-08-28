@@ -108,6 +108,12 @@ MCPサーバーの管理画面を提供するNext.js 15 + React 19アプリケ�
 ### 基本操作
 
 ```bash
+# 依存関係のインストール（Python MCPサーバーも自動インストール）
+pnpm install
+
+# Python MCPサーバーのインストールをスキップする場合
+SKIP_PYTHON_MCP=1 pnpm install
+
 # 開発サーバーの起動
 pnpm dev
 
@@ -117,6 +123,28 @@ pnpm build
 # 本番サーバーの起動
 pnpm start
 ```
+
+### Python MCP サーバーのサポート
+
+Tumikiは Node.js ベースの MCP サーバーに加えて、Python ベースの MCP サーバーもサポートしています。
+
+```bash
+# Python MCPサーバーの自動インストール
+# pnpm install 時に自動的に実行されます
+node scripts/install-python-mcp.js
+
+# 手動でPython MCPサーバーをインストール
+uv tool install analytics-mcp  # Google Analytics MCP
+
+# Python MCPサーバーの追加
+# python-mcp-requirements.txt に追記して pnpm install を実行
+```
+
+**前提条件**:
+- Python 3.10 以上
+- uv（高速な Python パッケージマネージャー）
+
+詳細は [docs/python-mcp-setup.md](./docs/python-mcp-setup.md) を参照してください。
 
 ### コード品質
 

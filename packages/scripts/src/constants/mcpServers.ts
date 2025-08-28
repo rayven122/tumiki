@@ -185,4 +185,15 @@ export const MCP_SERVERS = [
     args: ["node_modules/@googlemaps/code-assist-mcp/dist/index.js"],
     isPublic: true,
   },
+  {
+    name: "Google Analytics",
+    description:
+      "Google Analytics APIと連携し、アカウント情報の取得、レポートの実行、カスタムディメンションとメトリクスの管理を提供します",
+    tags: ["分析", "マーケティング", "データ"],
+    iconPath: "/logos/google-analytics.svg",
+    command: "uvx",
+    args: ["analytics-mcp"],
+    envVars: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
