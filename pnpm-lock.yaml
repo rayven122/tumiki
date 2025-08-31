@@ -523,6 +523,9 @@ importers:
       '@modelcontextprotocol/server-github':
         specifier: ^2025.4.8
         version: 2025.4.8
+      '@modelcontextprotocol/server-sequential-thinking':
+        specifier: ^2025.7.1
+        version: 2025.7.1
       '@playwright/mcp':
         specifier: ^0.0.29
         version: 0.0.29(zod@3.25.76)
@@ -875,6 +878,9 @@ importers:
       '@modelcontextprotocol/server-github':
         specifier: ^2025.4.8
         version: 2025.4.8
+      '@modelcontextprotocol/server-sequential-thinking':
+        specifier: ^2025.7.1
+        version: 2025.7.1
       '@playwright/mcp':
         specifier: ^0.0.29
         version: 0.0.29(zod@3.25.76)
@@ -2878,6 +2884,9 @@ packages:
     resolution: {integrity: sha512-MP0MldUYakM/hMQ5MllaZtN264EpUo0nk0pQ6ggXIhUYBcYTPYFm3tdRTfGcXuCxNgZIAjXYn97xUX5sF+yYTg==}
     hasBin: true
 
+  '@modelcontextprotocol/sdk@0.5.0':
+    resolution: {integrity: sha512-RXgulUX6ewvxjAG0kOpLMEdXXWkzWgaoCGaA2CwNW7cQCIphjpJhjpHSiaPdVCnisjRF/0Cm9KWHUuIoeiAblQ==}
+
   '@modelcontextprotocol/sdk@1.0.1':
     resolution: {integrity: sha512-slLdFaxQJ9AlRg+hw28iiTtGvShAOgOKXcD0F91nUcRYiOMuS9ZBYjcdNZRXW9G5JQ511GRTdUy1zQVZDpJ+4w==}
 
@@ -2892,6 +2901,10 @@ packages:
   '@modelcontextprotocol/server-github@2025.4.8':
     resolution: {integrity: sha512-8N43bQw9MlUB0piTZHK2JMh8kYPKxH57d4Z7Wb8PS4by2MkZ0FzI5xPImg3xumpev82VZw2VWHQJJJYp+WkwEw==}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+    hasBin: true
+
+  '@modelcontextprotocol/server-sequential-thinking@2025.7.1':
+    resolution: {integrity: sha512-gEMck99hpP+us6CTGACerxOlCsVL+e53kBev5E64m4yaQhnjIj/+vTttapc7Xc1TsvPnzSmtCwKYvcFPZ0tg/w==}
     hasBin: true
 
   '@napi-rs/wasm-runtime@0.2.12':
@@ -12448,6 +12461,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@modelcontextprotocol/sdk@0.5.0':
+    dependencies:
+      content-type: 1.0.5
+      raw-body: 3.0.0
+      zod: 3.25.76
+
   '@modelcontextprotocol/sdk@1.0.1':
     dependencies:
       content-type: 1.0.5
@@ -12495,6 +12514,12 @@ snapshots:
       universal-user-agent: 7.0.3
       zod: 3.25.76
       zod-to-json-schema: 3.24.6(zod@3.25.76)
+
+  '@modelcontextprotocol/server-sequential-thinking@2025.7.1':
+    dependencies:
+      '@modelcontextprotocol/sdk': 0.5.0
+      chalk: 5.4.1
+      yargs: 17.7.2
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
