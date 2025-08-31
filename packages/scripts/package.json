@@ -57,6 +57,7 @@
     "@line/line-bot-mcp-server": "^0.3.0",
     "@microsoft/clarity-mcp-server": "^1.0.5",
     "@modelcontextprotocol/server-github": "^2025.4.8",
+    "@modelcontextprotocol/server-sequential-thinking": "^2025.7.1",
     "@playwright/mcp": "^0.0.29",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
