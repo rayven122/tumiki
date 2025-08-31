@@ -196,4 +196,21 @@ export const MCP_SERVERS = [
     envVars: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
     isPublic: true,
   },
+  {
+    name: "n8n MCP",
+    description:
+      "n8nワークフローノードのドキュメント、構成検証、タスクテンプレートへのアクセスを提供し、525以上のノードでの自動化を支援します",
+    tags: ["自動化", "ワークフロー", "統合"],
+    iconPath: "/logos/n8n.png",
+    command: "node",
+    args: ["node_modules/n8n-mcp/dist/mcp/index.js"],
+    envVars: [
+      "MCP_MODE",
+      "LOG_LEVEL",
+      "DISABLE_CONSOLE_OUTPUT",
+      "N8N_API_URL",
+      "N8N_API_KEY",
+    ],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
