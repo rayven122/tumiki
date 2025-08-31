@@ -201,7 +201,7 @@ export const MCP_SERVERS = [
     description:
       "Brave Search APIを統合し、Web検索、ローカルビジネス検索、画像検索、動画検索、ニュース検索、AIによる要約生成など包括的な検索機能を提供します",
     tags: ["検索", "Web", "AI"],
-    iconPath: "/logos/brave-search.svg",
+    iconPath: "/logos/brave-search.png",
     command: "node",
     args: ["node_modules/@brave/brave-search-mcp-server/dist/index.js"],
     envVars: ["BRAVE_API_KEY"],
