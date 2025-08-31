@@ -36,6 +36,7 @@
     "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'"
   },
   "dependencies": {
+    "@brave/brave-search-mcp-server": "^1.3.7",
     "@googlemaps/code-assist-mcp": "^0.1.5",
     "@line/line-bot-mcp-server": "^0.3.0",
     "@microsoft/clarity-mcp-server": "^1.0.5",
