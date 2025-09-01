@@ -27,7 +27,11 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { ImageEditModal } from "./ImageEditModal";
 import { NameEditModal } from "./NameEditModal";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
-import { makeHttpProxyServerUrl, makeSseProxyServerUrl } from "@/utils/url";
+import { 
+  getProxyServerUrl,
+  makeSseProxyServerUrl,
+  makeHttpProxyServerUrl 
+} from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -111,15 +115,15 @@ export const UserMcpServerCard = ({
   // userMcpServersが削除されたため、プリフェッチクエリは不要
 
   const copyUrl = async () => {
-    const urlAndHeader = `URL: ${makeSseProxyServerUrl(serverInstance.id)}\nヘッダー: x-api-key: ${apiKey}`;
-    await copyToClipboard(urlAndHeader);
-    toast.success("SSE URLとヘッダー情報をコピーしました");
+    const url = `${getProxyServerUrl()}/sse?api-key=${apiKey}`;
+    await copyToClipboard(url);
+    toast.success("SSE接続URLをコピーしました");
   };
 
   const copyHttpUrl = async () => {
-    const urlAndHeader = `URL: ${makeHttpProxyServerUrl(serverInstance.id)}\nヘッダー: x-api-key: ${apiKey}`;
-    await copyToClipboard(urlAndHeader);
-    toast.success("HTTP URLとヘッダー情報をコピーしました");
+    const url = `${getProxyServerUrl()}/mcp?api-key=${apiKey}`;
+    await copyToClipboard(url);
+    toast.success("HTTP接続URLをコピーしました");
   };
 
   const handleStatusToggle = (checked: boolean) => {
@@ -241,31 +245,6 @@ export const UserMcpServerCard = ({
             <div className="mt-1">
               <div className="flex items-center space-x-2 overflow-hidden">
                 <span className="text-muted-foreground flex-shrink-0 text-xs">
-                  SSE:
-                </span>
-                <span
-                  className="cursor-pointer truncate font-mono text-sm text-blue-600 underline hover:text-blue-800"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyUrl();
-                  }}
-                >
-                  {makeSseProxyServerUrl(serverInstance.id)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 cursor-pointer hover:bg-gray-200"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyUrl();
-                  }}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-              <div className="flex items-center space-x-2 overflow-hidden">
-                <span className="text-muted-foreground flex-shrink-0 text-xs">
                   HTTP:
                 </span>
                 <span
@@ -284,6 +263,31 @@ export const UserMcpServerCard = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     void copyHttpUrl();
+                  }}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2 overflow-hidden">
+                <span className="text-muted-foreground flex-shrink-0 text-xs">
+                  SSE:
+                </span>
+                <span
+                  className="cursor-pointer truncate font-mono text-sm text-blue-600 underline hover:text-blue-800"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyUrl();
+                  }}
+                >
+                  {makeSseProxyServerUrl(serverInstance.id)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 cursor-pointer hover:bg-gray-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyUrl();
                   }}
                 >
                   <Copy className="h-3 w-3" />

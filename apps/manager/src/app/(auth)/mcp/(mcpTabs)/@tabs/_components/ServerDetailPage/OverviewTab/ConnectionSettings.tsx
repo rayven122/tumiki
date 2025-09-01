@@ -67,34 +67,10 @@ claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${instance.id} --h
       }
     }
 
-    // Claude Desktop - mcp-remote経由
+    // Claude Desktop - コネクト機能用のシンプルなURL
     if (clientId === "claude-desktop") {
-      const strategy = connectionType === "http" ? "http-only" : "sse-only";
-      const url =
-        connectionType === "http"
-          ? `${serverUrl}/mcp/${instance.id}`
-          : `${serverUrl}/sse/${instance.id}`;
-
-      return JSON.stringify(
-        {
-          mcpServers: {
-            [serverName]: {
-              command: "npx",
-              args: [
-                "-y",
-                "mcp-remote@latest",
-                url,
-                "--header",
-                `x-api-key: ${apiKey}`,
-                "--strategy",
-                strategy,
-              ],
-            },
-          },
-        },
-        null,
-        2,
-      );
+      const endpoint = connectionType === "http" ? "mcp" : "sse";
+      return `${serverUrl}/${endpoint}?api-key=${apiKey}`;
     }
 
     // Cursor
@@ -292,7 +268,7 @@ Headers:
   const getConfigFilePath = (clientId: string) => {
     switch (clientId) {
       case "claude-desktop":
-        return "~/Library/Application Support/Claude/claude_desktop_config.json (macOS)\n%APPDATA%\\Claude\\claude_desktop_config.json (Windows)";
+        return "Claude Desktopのコネクト機能でURLを直接貼り付け";
       case "claude-code":
         return "コマンドラインで直接実行";
       case "cursor":
@@ -316,6 +292,8 @@ Headers:
     toast.success(
       selectedClient === "claude-code"
         ? `${connectionType.toUpperCase()}接続コマンドをコピーしました`
+        : selectedClient === "claude-desktop"
+        ? `${connectionType.toUpperCase()}接続URLをコピーしました`
         : `${connectionType.toUpperCase()}接続設定をコピーしました`,
     );
   };
@@ -368,7 +346,7 @@ Headers:
                   <FileText className="mt-0.5 h-4 w-4 text-blue-600" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-blue-900">
-                      設定ファイルの場所:
+                      {selectedClient === "claude-desktop" ? "接続方法:" : "設定ファイルの場所:"}
                     </p>
                     <p className="mt-1 text-xs whitespace-pre-wrap text-blue-700">
                       {getConfigFilePath(selectedClient)}
@@ -404,8 +382,18 @@ Headers:
                       </Button>
                     </div>
                   </div>
-                  {(selectedClient === "claude-desktop" ||
-                    selectedClient === "windsurf") && (
+                  {selectedClient === "claude-desktop" && (
+                    <div className="flex items-start space-x-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <Info className="mt-0.5 h-4 w-4 text-blue-600" />
+                      <div className="flex-1">
+                        <p className="text-xs text-blue-800">
+                          <span className="font-medium">コネクト機能:</span>{" "}
+                          このURLをClaude Desktopのコネクト機能に直接貼り付けてください。
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedClient === "windsurf" && (
                     <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <Info className="mt-0.5 h-4 w-4 text-amber-600" />
                       <div className="flex-1">
@@ -439,8 +427,18 @@ Headers:
                       </Button>
                     </div>
                   </div>
-                  {(selectedClient === "claude-desktop" ||
-                    selectedClient === "cursor") && (
+                  {selectedClient === "claude-desktop" && (
+                    <div className="flex items-start space-x-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <Info className="mt-0.5 h-4 w-4 text-blue-600" />
+                      <div className="flex-1">
+                        <p className="text-xs text-blue-800">
+                          <span className="font-medium">コネクト機能:</span>{" "}
+                          このURLをClaude Desktopのコネクト機能に直接貼り付けてください。
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedClient === "cursor" && (
                     <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <Info className="mt-0.5 h-4 w-4 text-amber-600" />
                       <div className="flex-1">
