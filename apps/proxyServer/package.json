@@ -33,7 +33,8 @@
     "verify": "pnpm with-env ./scripts/test-mcp-inspector.sh",
     "inspector": "pnpm dlx @modelcontextprotocol/inspector",
     "inspector:http": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/mcp?api-key=${TEST_API_KEY}\"'",
-    "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'"
+    "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'",
+    "inspector:https": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"https://local-server.tumiki.cloud/mcp?api-key=${TEST_API_KEY}\"'"
   },
   "dependencies": {
     "@googlemaps/code-assist-mcp": "^0.1.5",
