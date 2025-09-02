@@ -293,8 +293,8 @@ Headers:
       selectedClient === "claude-code"
         ? `${connectionType.toUpperCase()}接続コマンドをコピーしました`
         : selectedClient === "claude-desktop"
-        ? `${connectionType.toUpperCase()}接続URLをコピーしました`
-        : `${connectionType.toUpperCase()}接続設定をコピーしました`,
+          ? `${connectionType.toUpperCase()}接続URLをコピーしました`
+          : `${connectionType.toUpperCase()}接続設定をコピーしました`,
     );
   };
 
@@ -346,7 +346,9 @@ Headers:
                   <FileText className="mt-0.5 h-4 w-4 text-blue-600" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-blue-900">
-                      {selectedClient === "claude-desktop" ? "接続方法:" : "設定ファイルの場所:"}
+                      {selectedClient === "claude-desktop"
+                        ? "接続方法:"
+                        : "設定ファイルの場所:"}
                     </p>
                     <p className="mt-1 text-xs whitespace-pre-wrap text-blue-700">
                       {getConfigFilePath(selectedClient)}
@@ -388,7 +390,8 @@ Headers:
                       <div className="flex-1">
                         <p className="text-xs text-blue-800">
                           <span className="font-medium">コネクト機能:</span>{" "}
-                          このURLをClaude Desktopのコネクト機能に直接貼り付けてください。
+                          このURLをClaude
+                          Desktopのコネクト機能に直接貼り付けてください。
                         </p>
                       </div>
                     </div>
@@ -433,7 +436,8 @@ Headers:
                       <div className="flex-1">
                         <p className="text-xs text-blue-800">
                           <span className="font-medium">コネクト機能:</span>{" "}
-                          このURLをClaude Desktopのコネクト機能に直接貼り付けてください。
+                          このURLをClaude
+                          Desktopのコネクト機能に直接貼り付けてください。
                         </p>
                       </div>
                     </div>

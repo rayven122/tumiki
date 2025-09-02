@@ -27,10 +27,10 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { ImageEditModal } from "./ImageEditModal";
 import { NameEditModal } from "./NameEditModal";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
-import { 
+import {
   getProxyServerUrl,
   makeSseProxyServerUrl,
-  makeHttpProxyServerUrl 
+  makeHttpProxyServerUrl,
 } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 import { Switch } from "@/components/ui/switch";
