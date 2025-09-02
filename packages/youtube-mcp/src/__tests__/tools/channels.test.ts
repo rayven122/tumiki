@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ZodError } from "zod";
 
-import type { YouTubeApiService } from "../../services/youtubeApi.js";
-import type { ChannelDetails, SearchResult } from "../../types/index.js";
-import { handleChannelTool } from "../../tools/channels.js";
+import type { YouTubeApiService } from "~/services/youtubeApi.js";
+import type { ChannelDetails, SearchResult } from "~/types/index.js";
+import { handleChannelTool } from "~/tools/channels.js";
 
 // YouTubeApiServiceをモック化
 const mockGetChannel = vi.fn();
