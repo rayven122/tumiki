@@ -43,6 +43,7 @@
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@modelcontextprotocol/server-sequential-thinking": "^2025.7.1",
     "@playwright/mcp": "^0.0.29",
+    "@stripe/mcp": "^0.2.4",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",

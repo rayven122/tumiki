@@ -207,4 +207,15 @@ export const MCP_SERVERS = [
     envVars: ["DISABLE_THOUGHT_LOGGING"],
     isPublic: true,
   },
+  {
+    name: "Stripe MCP",
+    description:
+      "Stripe APIと連携し、支払い処理、顧客管理、請求書作成、サブスクリプション管理などの決済関連機能を提供します",
+    tags: ["決済", "API", "eコマース"],
+    iconPath: "/logos/stripe.svg",
+    command: "node",
+    args: ["node_modules/@stripe/mcp/dist/index.js", "--tools=all"],
+    envVars: ["STRIPE_SECRET_KEY"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
