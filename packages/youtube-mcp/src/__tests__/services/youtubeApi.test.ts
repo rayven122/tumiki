@@ -92,7 +92,7 @@ describe("YouTubeApiService", () => {
     test("正常系: 動画情報を取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockVideoResponse,
+        json: () => mockVideoResponse,
       });
 
       const result = await youtubeService.getVideo("test-video-id");
@@ -126,7 +126,7 @@ describe("YouTubeApiService", () => {
     test("正常系: カスタムpartsパラメータで動画情報を取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockVideoResponse,
+        json: () => mockVideoResponse,
       });
 
       await youtubeService.getVideo("test-video-id", ["snippet"]);
@@ -152,7 +152,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => incompleteResponse,
+        json: () => incompleteResponse,
       });
 
       const result = await youtubeService.getVideo("test-video-id");
@@ -183,7 +183,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => emptyResponse,
+        json: () => emptyResponse,
       });
 
       await expect(youtubeService.getVideo("not-found")).rejects.toThrow(
@@ -200,7 +200,7 @@ describe("YouTubeApiService", () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         statusText: "Bad Request",
-        json: async () => errorResponse,
+        json: () => errorResponse,
       });
 
       await expect(youtubeService.getVideo("test-video-id")).rejects.toThrow(
@@ -217,7 +217,7 @@ describe("YouTubeApiService", () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         statusText: "Bad Request Status",
-        json: async () => errorResponse,
+        json: () => errorResponse,
       });
 
       await expect(youtubeService.getVideo("test-video-id")).rejects.toThrow(
@@ -234,7 +234,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => invalidResponse,
+        json: () => invalidResponse,
       });
 
       await expect(youtubeService.getVideo("test-video-id")).rejects.toThrow(
@@ -276,7 +276,7 @@ describe("YouTubeApiService", () => {
     test("正常系: デフォルトパラメータで動画を検索する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockSearchResponse,
+        json: () => mockSearchResponse,
       });
 
       const result = await youtubeService.searchVideos("test query");
@@ -307,7 +307,7 @@ describe("YouTubeApiService", () => {
     test("正常系: カスタムパラメータで動画を検索する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockSearchResponse,
+        json: () => mockSearchResponse,
       });
 
       await youtubeService.searchVideos("test", 20, "date", "channel");
@@ -335,7 +335,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => stringIdResponse,
+        json: () => stringIdResponse,
       });
 
       const result = await youtubeService.searchVideos("test");
@@ -365,7 +365,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => channelResponse,
+        json: () => channelResponse,
       });
 
       const result = await youtubeService.searchVideos("test");
@@ -395,7 +395,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => playlistResponse,
+        json: () => playlistResponse,
       });
 
       const result = await youtubeService.searchVideos("test");
@@ -413,7 +413,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => invalidResponse,
+        json: () => invalidResponse,
       });
 
       const result = await youtubeService.searchVideos("test");
@@ -440,7 +440,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => unknownKindResponse,
+        json: () => unknownKindResponse,
       });
 
       const result = await youtubeService.searchVideos("test");
@@ -468,7 +468,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => incompleteSearchResponse,
+        json: () => incompleteSearchResponse,
       });
 
       const result = await youtubeService.searchVideos("test");
@@ -522,7 +522,7 @@ describe("YouTubeApiService", () => {
     test("正常系: チャンネル情報を取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockChannelResponse,
+        json: () => mockChannelResponse,
       });
 
       const result = await youtubeService.getChannel("test-channel-id");
@@ -571,7 +571,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => incompleteChannelResponse,
+        json: () => incompleteChannelResponse,
       });
 
       const result = await youtubeService.getChannel("test-channel-id");
@@ -602,7 +602,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => emptyResponse,
+        json: () => emptyResponse,
       });
 
       await expect(youtubeService.getChannel("not-found")).rejects.toThrow(
@@ -619,7 +619,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => invalidResponse,
+        json: () => invalidResponse,
       });
 
       await expect(
@@ -636,7 +636,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => invalidResponse,
+        json: () => invalidResponse,
       });
 
       await expect(
@@ -673,7 +673,7 @@ describe("YouTubeApiService", () => {
     test("正常系: デフォルトパラメータでチャンネル動画を取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockChannelVideosResponse,
+        json: () => mockChannelVideosResponse,
       });
 
       const result = await youtubeService.listChannelVideos("test-channel-id");
@@ -688,7 +688,7 @@ describe("YouTubeApiService", () => {
     test("正常系: カスタムパラメータでチャンネル動画を取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockChannelVideosResponse,
+        json: () => mockChannelVideosResponse,
       });
 
       await youtubeService.listChannelVideos(
@@ -739,7 +739,7 @@ describe("YouTubeApiService", () => {
     test("正常系: プレイリスト情報を取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockPlaylistResponse,
+        json: () => mockPlaylistResponse,
       });
 
       const result = await youtubeService.getPlaylist("test-playlist-id");
@@ -785,7 +785,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => incompletePlaylistResponse,
+        json: () => incompletePlaylistResponse,
       });
 
       const result = await youtubeService.getPlaylist("test-playlist-id");
@@ -812,7 +812,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => emptyResponse,
+        json: () => emptyResponse,
       });
 
       await expect(youtubeService.getPlaylist("not-found")).rejects.toThrow(
@@ -829,7 +829,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => invalidResponse,
+        json: () => invalidResponse,
       });
 
       await expect(
@@ -877,7 +877,7 @@ describe("YouTubeApiService", () => {
     test("正常系: デフォルトパラメータでプレイリストアイテムを取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockPlaylistItemsResponse,
+        json: () => mockPlaylistItemsResponse,
       });
 
       const result = await youtubeService.getPlaylistItems("test-playlist-id");
@@ -909,7 +909,7 @@ describe("YouTubeApiService", () => {
     test("正常系: カスタムmaxResultsでプレイリストアイテムを取得する", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => mockPlaylistItemsResponse,
+        json: () => mockPlaylistItemsResponse,
       });
 
       await youtubeService.getPlaylistItems("test-playlist-id", 25);
@@ -941,7 +941,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => itemWithoutContentDetails,
+        json: () => itemWithoutContentDetails,
       });
 
       const result = await youtubeService.getPlaylistItems("test-playlist-id");
@@ -966,7 +966,7 @@ describe("YouTubeApiService", () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => itemWithoutPosition,
+        json: () => itemWithoutPosition,
       });
 
       const result = await youtubeService.getPlaylistItems("test-playlist-id");
