@@ -59,11 +59,9 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
     // Claude Code - ネイティブサポート
     if (clientId === "claude-code") {
       if (connectionType === "http") {
-        return `# Streamable HTTP Transport
-claude mcp add --transport streamable-http ${serverName} ${serverUrl}/mcp/${instance.id} --header "x-api-key: ${apiKey}"`;
+        return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${instance.id} --header "x-api-key: ${apiKey}"`;
       } else {
-        return `# SSE Transport
-claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${instance.id} --header "x-api-key: ${apiKey}"`;
+        return `claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${instance.id} --header "x-api-key: ${apiKey}"`;
       }
     }
 
