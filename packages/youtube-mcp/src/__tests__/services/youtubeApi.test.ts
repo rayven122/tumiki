@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-
 import type {
   YouTubeApiChannelItem,
   YouTubeApiError,
@@ -8,8 +6,9 @@ import type {
   YouTubeApiResponse,
   YouTubeApiSearchItem,
   YouTubeApiVideoItem,
-} from "~/types/index.js";
-import { YouTubeApiService } from "~/services/youtubeApi.js";
+} from "@/types/index.js";
+import { YouTubeApiService } from "@/services/youtubeApi.js";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // globalThis.fetchをモック化
 const mockFetch = vi.fn();

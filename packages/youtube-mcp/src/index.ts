@@ -2,7 +2,7 @@
 
 import "dotenv/config";
 
-import { startMcpServer } from "./server.js";
+import { startMcpServer } from "@/server.js";
 
 const main = async () => {
   try {

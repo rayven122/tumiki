@@ -11,7 +11,7 @@ import type {
   YouTubeApiResponse,
   YouTubeApiSearchItem,
   YouTubeApiVideoItem,
-} from "~/types/index.js";
+} from "@/types/index.js";
 
 const YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3";
 
