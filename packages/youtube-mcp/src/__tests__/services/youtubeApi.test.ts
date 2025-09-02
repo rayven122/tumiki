@@ -8,8 +8,8 @@ import type {
   YouTubeApiResponse,
   YouTubeApiSearchItem,
   YouTubeApiVideoItem,
-} from "../../types/index.js";
-import { YouTubeApiService } from "../../services/youtubeApi.js";
+} from "~/types/index.js";
+import { YouTubeApiService } from "~/services/youtubeApi.js";
 
 // globalThis.fetchをモック化
 const mockFetch = vi.fn();
