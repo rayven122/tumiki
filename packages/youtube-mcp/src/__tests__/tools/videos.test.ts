@@ -1,9 +1,8 @@
+import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { SearchResult, VideoDetails } from "@/types/index.js";
+import { handleVideoTool } from "@/tools/videos.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ZodError } from "zod";
-
-import type { YouTubeApiService } from "~/services/youtubeApi.js";
-import type { SearchResult, VideoDetails } from "~/types/index.js";
-import { handleVideoTool } from "~/tools/videos.js";
 
 // YouTubeApiServiceをモック化
 const mockGetVideo = vi.fn();

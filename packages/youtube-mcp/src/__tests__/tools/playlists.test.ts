@@ -1,9 +1,8 @@
+import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { PlaylistDetails, PlaylistItem } from "@/types/index.js";
+import { handlePlaylistTool } from "@/tools/playlists.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ZodError } from "zod";
-
-import type { YouTubeApiService } from "~/services/youtubeApi.js";
-import type { PlaylistDetails, PlaylistItem } from "~/types/index.js";
-import { handlePlaylistTool } from "~/tools/playlists.js";
 
 // YouTubeApiServiceをモック化
 const mockGetPlaylist = vi.fn();

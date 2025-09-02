@@ -1,8 +1,7 @@
+import type { YouTubeApiService } from "@/services/youtubeApi.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
-
-import type { YouTubeApiService } from "~/services/youtubeApi.js";
-import { TOOL_NAMES } from "~/constants/toolNames.js";
-import { GetVideoSchema, SearchVideosSchema } from "~/types/index.js";
+import { TOOL_NAMES } from "@/constants/toolNames.js";
+import { GetVideoSchema, SearchVideosSchema } from "@/types/index.js";
 
 export const videoTools: Tool[] = [
   {

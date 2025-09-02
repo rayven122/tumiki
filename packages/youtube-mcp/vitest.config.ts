@@ -10,7 +10,7 @@ export default defineProject({
   },
   resolve: {
     alias: {
-      "~": resolve(__dirname, "./src"),
+      "@": resolve(__dirname, "./src"),
     },
   },
 });
