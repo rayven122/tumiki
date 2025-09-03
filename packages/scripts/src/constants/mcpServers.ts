@@ -201,11 +201,23 @@ export const MCP_SERVERS = [
     description:
       "複雑な問題を段階的に分解し、動的で反復的な思考プロセスを通じて解決策を導き出すMCPサーバー",
     tags: ["AI", "問題解決", "思考支援"],
+    iconPath: "/logos/sequential-thinking.svg",
     command: "node",
     args: [
       "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js",
     ],
     envVars: ["DISABLE_THOUGHT_LOGGING"],
+    isPublic: true,
+  },
+  {
+    name: "Stripe MCP",
+    description:
+      "Stripe APIと連携し、支払い処理、顧客管理、請求書作成、サブスクリプション管理などの決済関連機能を提供します",
+    tags: ["決済", "API", "eコマース"],
+    iconPath: "/logos/stripe.svg",
+    command: "node",
+    args: ["node_modules/@stripe/mcp/dist/index.js", "--tools=all"],
+    envVars: ["STRIPE_SECRET_KEY"],
     isPublic: true,
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
