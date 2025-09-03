@@ -33,7 +33,14 @@
     "verify": "pnpm with-env ./scripts/test-mcp-inspector.sh",
     "inspector": "pnpm dlx @modelcontextprotocol/inspector",
     "inspector:http": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/mcp?api-key=${TEST_API_KEY}\"'",
-    "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'"
+    "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'",
+    "perf": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" baseline",
+    "perf:baseline": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" baseline",
+    "perf:stress": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" stress",
+    "perf:spike": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" spike",
+    "perf:all": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" all",
+    "perf:session": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" baseline --with-session",
+    "perf:direct": "pnpm with-env npx autocannon -c 10 -d 10 -m POST -H \"Content-Type: application/json\" -H \"api-key: ${TEST_API_KEY}\" -b '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}' \"${MCP_PROXY_URL:-http://localhost:8080}/mcp\""
   },
   "dependencies": {
     "@googlemaps/code-assist-mcp": "^0.1.5",
@@ -72,6 +79,7 @@
   },
   "devDependencies": {
     "@tumiki/vitest-config": "workspace:*",
+    "@types/autocannon": "^7.12.7",
     "@types/express": "^5.0.2",
     "@types/express-serve-static-core": "^5.0.7",
     "@types/qs": "^6.14.0",
@@ -79,6 +87,7 @@
     "@types/ws": "^8.18.1",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
+    "autocannon": "^8.0.0",
     "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
