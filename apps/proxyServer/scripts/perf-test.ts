@@ -182,9 +182,9 @@ async function initializeMcpSession(): Promise<string | null> {
  */
 function runLoadTest(
   scenario: string,
-  config: { 
-    connections: number; 
-    duration: number; 
+  config: {
+    connections: number;
+    duration: number;
     sessionId?: string | null;
     title: string;
   },
@@ -195,7 +195,7 @@ function runLoadTest(
   console.log(`📊 設定: ${config.connections}接続, ${config.duration}秒`);
   console.log(`🔗 URL: ${PROXY_URL}/mcp`);
   console.log(`🔑 API Key: ${API_KEY?.substring(0, 8)}***`);
-  
+
   if (config.sessionId) {
     console.log(`🔑 セッションID: ${config.sessionId}`);
   }
@@ -271,7 +271,7 @@ function displaySummary(result: Result): void {
     `✅ 成功率: ${((1 - result.errors / result.requests.total) * 100).toFixed(2)}%`,
   );
   console.log(`🔥 平均RPS: ${result.requests.average} req/sec`);
-  
+
   console.log("\n⏱️  レイテンシ (ms):");
   console.log(`  P50: ${result.latency.p50}ms`);
   console.log(`  P90: ${result.latency.p90}ms`);
@@ -350,17 +350,19 @@ async function main() {
   if (useMcpSession) {
     sessionId = await initializeMcpSession();
     if (!sessionId) {
-      console.warn("⚠️ セッションIDが取得できませんでしたが、テストを続行します");
+      console.warn(
+        "⚠️ セッションIDが取得できませんでしたが、テストを続行します",
+      );
     }
   }
 
   if (TEST_NAME === "all") {
     // 全シナリオ実行
     const results: Record<string, Result> = {};
-    
+
     for (const [name, config] of Object.entries(scenarios)) {
       if (name === "endurance") continue; // 耐久テストはスキップ
-      
+
       results[name] = await runLoadTest(name, {
         ...config,
         sessionId,
@@ -375,7 +377,6 @@ async function main() {
 
     generateComparisonReport(results);
     console.log("\n🎉 パフォーマンステスト完了！");
-    
   } else if (scenarios[TEST_NAME as keyof Scenarios]) {
     // 単一シナリオ実行
     const config = scenarios[TEST_NAME as keyof Scenarios];
@@ -384,7 +385,6 @@ async function main() {
       sessionId,
     });
     console.log("\n✅ テスト完了");
-    
   } else {
     console.error(`❌ エラー: 無効なテスト名 '${TEST_NAME}'`);
     console.error(`有効なテスト名: ${Object.keys(scenarios).join(", ")}, all`);
