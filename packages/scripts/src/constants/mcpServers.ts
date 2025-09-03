@@ -202,7 +202,9 @@ export const MCP_SERVERS = [
       "複雑な問題を段階的に分解し、動的で反復的な思考プロセスを通じて解決策を導き出すMCPサーバー",
     tags: ["AI", "問題解決", "思考支援"],
     command: "node",
-    args: ["node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"],
+    args: [
+      "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js",
+    ],
     envVars: ["DISABLE_THOUGHT_LOGGING"],
     isPublic: true,
   },
