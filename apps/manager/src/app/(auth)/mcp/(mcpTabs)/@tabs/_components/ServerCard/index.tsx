@@ -77,6 +77,11 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         color: "text-blue-800",
         bgColor: "bg-blue-100",
       },
+      YouTube: {
+        type: "API Key",
+        color: "text-blue-800",
+        bgColor: "bg-blue-100",
+      },
 
       // すぐに追加可能
       Docker: {
