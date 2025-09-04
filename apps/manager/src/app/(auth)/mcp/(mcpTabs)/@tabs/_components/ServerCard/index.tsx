@@ -82,6 +82,26 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         color: "text-blue-800",
         bgColor: "bg-blue-100",
       },
+      DeepL: {
+        type: "API Key",
+        color: "text-blue-800",
+        bgColor: "bg-blue-100",
+      },
+      microCMS: {
+        type: "API Key",
+        color: "text-blue-800",
+        bgColor: "bg-blue-100",
+      },
+      LINE: {
+        type: "API Key",
+        color: "text-blue-800",
+        bgColor: "bg-blue-100",
+      },
+      Stripe: {
+        type: "API Key",
+        color: "text-blue-800",
+        bgColor: "bg-blue-100",
+      },
 
       // すぐに追加可能
       Docker: {
@@ -90,6 +110,21 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         bgColor: "bg-purple-100",
       },
       System: {
+        type: "設定不要",
+        color: "text-purple-800",
+        bgColor: "bg-purple-100",
+      },
+      Context7: {
+        type: "設定不要",
+        color: "text-purple-800",
+        bgColor: "bg-purple-100",
+      },
+      Playwright: {
+        type: "設定不要",
+        color: "text-purple-800",
+        bgColor: "bg-purple-100",
+      },
+      "Google Maps": {
         type: "設定不要",
         color: "text-purple-800",
         bgColor: "bg-purple-100",
