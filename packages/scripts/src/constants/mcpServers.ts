@@ -203,7 +203,9 @@ export const MCP_SERVERS = [
     tags: ["AI", "問題解決", "思考支援"],
     iconPath: "/logos/sequential-thinking.svg",
     command: "node",
-    args: ["node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"],
+    args: [
+      "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js",
+    ],
     envVars: ["DISABLE_THOUGHT_LOGGING"],
     isPublic: true,
   },

@@ -1,0 +1,292 @@
+# YouTube MCP Server E2Eテストガイド
+
+## 前提条件
+
+- YouTube Data API v3のAPIキーが設定済み
+- MCPサーバーが正常に接続済み
+- `.mcp.json`に設定が追加済み
+
+## 1. 動画関連ツール (Video Tools)
+
+### youtube_get_video
+
+```yaml
+テストケース1: 通常の動画ID
+  入力: videoId: "dQw4w9WgXcQ"
+  期待: 動画タイトル、説明、再生回数、チャンネル情報が取得できる
+
+テストケース2: 複数パーツ指定
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    parts: ["snippet", "statistics", "contentDetails"]
+  期待: 指定した全パーツの情報が取得できる
+
+テストケース3: 無効な動画ID
+  入力: videoId: "invalid_id_12345"
+  期待: エラーメッセージ「Video not found」
+
+テストケース4: 削除された動画
+  入力: videoId: "deleted_video_id"
+  期待: エラーメッセージまたは空の結果
+
+テストケース5: プライベート動画
+  入力: videoId: "private_video_id"
+  期待: 制限された情報のみ取得
+```
+
+### youtube_search_videos
+
+```yaml
+テストケース1: 基本検索
+  入力: query: "TypeScript tutorial"
+  期待: 関連動画リストが取得できる（デフォルト10件）
+
+テストケース2: 最大件数指定
+  入力:
+    query: "React hooks"
+    maxResults: 50
+  期待: 50件の検索結果
+
+テストケース3: ソート順指定
+  入力:
+    query: "JavaScript"
+    order: "viewCount"
+  期待: 再生回数順でソートされた結果
+
+テストケース4: チャンネル検索
+  入力:
+    query: "Google"
+    type: "channel"
+  期待: チャンネル一覧が返される
+
+テストケース5: 空のクエリ
+  入力: query: ""
+  期待: エラーまたは一般的な結果
+
+テストケース6: 特殊文字を含むクエリ
+  入力: query: "日本語 & English #hashtag"
+  期待: 正常に検索できる
+
+テストケース7: 結果が0件
+  入力: query: "zxcvbnmasdfghjklqwertyuiop12345"
+  期待: 空の結果配列
+```
+
+## 2. チャンネル関連ツール (Channel Tools)
+
+### youtube_get_channel
+
+```yaml
+テストケース1: チャンネルID指定
+  入力: channelId: "UC_x5XG1OV2P6uZZ5FSM9Ttw"
+  期待: Google Developersチャンネル情報
+
+テストケース2: 存在しないチャンネル
+  入力: channelId: "UC_invalid_channel_id"
+  期待: エラー「Channel not found」
+
+テストケース3: 削除されたチャンネル
+  入力: channelId: "deleted_channel_id"
+  期待: エラーまたは制限された情報
+```
+
+### youtube_list_channel_videos
+
+```yaml
+テストケース1: 最新動画順
+  入力:
+    channelId: "UC_x5XG1OV2P6uZZ5FSM9Ttw"
+    order: "date"
+  期待: 投稿日順の動画リスト
+
+テストケース2: 人気順
+  入力:
+    channelId: "UC_x5XG1OV2P6uZZ5FSM9Ttw"
+    order: "viewCount"
+  期待: 再生回数順の動画リスト
+
+テストケース3: 最大件数指定
+  入力:
+    channelId: "UC_x5XG1OV2P6uZZ5FSM9Ttw"
+    maxResults: 5
+  期待: 5件の動画
+
+テストケース4: 動画がないチャンネル
+  入力: channelId: "no_videos_channel"
+  期待: 空の配列
+
+テストケース5: 大量動画のチャンネル
+  入力:
+    channelId: "prolific_channel"
+    maxResults: 50
+  期待: 50件取得（ページネーション処理）
+```
+
+## 3. プレイリスト関連ツール (Playlist Tools)
+
+### youtube_get_playlist
+
+```yaml
+テストケース1: 公開プレイリスト
+  入力: playlistId: "PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf"
+  期待: プレイリスト情報（タイトル、説明、動画数）
+
+テストケース2: プライベートプレイリスト
+  入力: playlistId: "private_playlist_id"
+  期待: アクセス拒否エラー
+
+テストケース3: 削除されたプレイリスト
+  入力: playlistId: "deleted_playlist"
+  期待: エラー「Playlist not found」
+
+テストケース4: 空のプレイリスト
+  入力: playlistId: "empty_playlist"
+  期待: 動画数0の情報
+```
+
+### youtube_get_playlist_items
+
+```yaml
+テストケース1: 基本取得
+  入力: playlistId: "PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf"
+  期待: プレイリスト内の動画リスト
+
+テストケース2: 大規模プレイリスト
+  入力:
+    playlistId: "large_playlist_200videos"
+    maxResults: 50
+  期待: 最初の50件
+
+テストケース3: 削除された動画を含む
+  入力: playlistId: "playlist_with_deleted"
+  期待: 削除された動画はスキップまたは表示
+
+テストケース4: プライベート動画を含む
+  入力: playlistId: "playlist_with_private"
+  期待: プライベート動画の処理
+
+テストケース5: 空のプレイリスト
+  入力: playlistId: "empty_playlist"
+  期待: 空の配列
+```
+
+## 4. エラーケース・エッジケース
+
+### APIキー関連
+
+```yaml
+テストケース1: APIキー未設定
+  環境: YOUTUBE_API_KEY=""
+  期待: "YOUTUBE_API_KEY environment variable is required"
+
+テストケース2: 無効なAPIキー
+  環境: YOUTUBE_API_KEY="invalid_key"
+  期待: "API key not valid"
+
+テストケース3: クォータ超過
+  条件: APIクォータを使い切った状態
+  期待: "Quota exceeded"エラー
+```
+
+### ネットワーク関連
+
+```yaml
+テストケース1: タイムアウト
+  条件: ネットワーク遅延
+  期待: タイムアウトエラー
+
+テストケース2: 接続エラー
+  条件: インターネット未接続
+  期待: ネットワークエラー
+```
+
+### データ検証
+
+```yaml
+テストケース1: 不正な入力型
+  入力: videoId: 123 (数値)
+  期待: 型エラーまたは自動変換
+
+テストケース2: 必須パラメータ欠落
+  入力: {} (空オブジェクト)
+  期待: バリデーションエラー
+
+テストケース3: 範囲外の値
+  入力: maxResults: 100 (上限50)
+  期待: 50に制限または警告
+
+テストケース4: 特殊文字エスケープ
+  入力: query: "<script>alert('xss')</script>"
+  期待: 適切にエスケープされる
+```
+
+## 5. パフォーマンステスト
+
+```yaml
+並行リクエスト:
+  テスト: 同時に10個のツールを実行
+  期待: 全て正常に処理される
+
+大量データ処理:
+  テスト: 3時間動画の字幕取得
+  期待: メモリ使用量が適切、タイムアウトしない
+
+レート制限:
+  テスト: 連続100回のAPI呼び出し
+  期待: 適切なレート制限処理
+```
+
+## 6. 実行手順
+
+### 手動テスト
+
+```bash
+# 1. 環境変数設定
+export YOUTUBE_API_KEY="your-api-key"
+
+# 2. MCPサーバー起動
+cd packages/youtube-mcp
+pnpm start
+
+# 3. 各ツールを順番にテスト
+# Claude/Cursorから各テストケースを実行
+```
+
+### 自動テスト
+
+```bash
+# ユニットテスト実行
+pnpm test
+
+# カバレッジ付き
+pnpm test:coverage
+```
+
+## 7. テスト用動画ID・チャンネルID
+
+```yaml
+テスト用リソース:
+  一般的な動画:
+    - dQw4w9WgXcQ (Rick Astley - Never Gonna Give You Up)
+    - jNQXAC9IVRw (Me at the zoo - YouTube最初の動画)
+
+  日本語コンテンツ:
+    - 任意の日本語字幕付き動画
+
+  チャンネル:
+    - UC_x5XG1OV2P6uZZ5FSM9Ttw (Google Developers)
+    - UCkQX1tChV7Z7l1LFF4L9j_g (YouTube Creators)
+
+  プレイリスト:
+    - PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf (例)
+```
+
+## 8. 検証チェックリスト
+
+- [ ] 全ツールが正常に呼び出せる
+- [ ] 各ツールの必須パラメータが機能する
+- [ ] オプションパラメータが正しく処理される
+- [ ] エラーケースで適切なメッセージが返る
+- [ ] 大量データでメモリリークがない
+- [ ] APIクォータ制限が適切に処理される
+- [ ] 並行実行で問題が発生しない
