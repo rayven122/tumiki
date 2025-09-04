@@ -46,6 +46,7 @@
     "@stripe/mcp": "^0.2.4",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
+    "@tumiki/youtube-mcp": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
     "agents": "^0.0.45",
     "deepl-mcp-server": "^0.1.3-beta.0",
