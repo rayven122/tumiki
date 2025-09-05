@@ -144,6 +144,17 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
+    name: "YouTube MCP",
+    description:
+      "YouTube Data API v3を使用して動画情報、チャンネル、プレイリスト管理をサポート",
+    tags: ["動画", "メディア", "API"],
+    iconPath: "/logos/youtube.svg",
+    command: "node",
+    args: ["node_modules/@tumiki/youtube-mcp/dist/index.js"],
+    envVars: ["YOUTUBE_API_KEY"],
+    isPublic: true,
+  },
+  {
     name: "microCMS MCP",
     description: "microCMSのコンテンツ管理とAPI操作をサポートします",
     tags: ["CMS", "コンテンツ管理"],
@@ -212,6 +223,30 @@ export const MCP_SERVERS = [
       "N8N_API_URL",
       "N8N_API_KEY",
     ],
+    isPublic: true,
+  },
+  {
+    name: "Sequential Thinking",
+    description:
+      "複雑な問題を段階的に分解し、動的で反復的な思考プロセスを通じて解決策を導き出すMCPサーバー",
+    tags: ["AI", "問題解決", "思考支援"],
+    iconPath: "/logos/sequential-thinking.svg",
+    command: "node",
+    args: [
+      "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js",
+    ],
+    envVars: ["DISABLE_THOUGHT_LOGGING"],
+    isPublic: true,
+  },
+  {
+    name: "Stripe MCP",
+    description:
+      "Stripe APIと連携し、支払い処理、顧客管理、請求書作成、サブスクリプション管理などの決済関連機能を提供します",
+    tags: ["決済", "API", "eコマース"],
+    iconPath: "/logos/stripe.svg",
+    command: "node",
+    args: ["node_modules/@stripe/mcp/dist/index.js", "--tools=all"],
+    envVars: ["STRIPE_SECRET_KEY"],
     isPublic: true,
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
