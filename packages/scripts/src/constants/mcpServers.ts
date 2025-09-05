@@ -144,6 +144,17 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
+    name: "YouTube MCP",
+    description:
+      "YouTube Data API v3を使用して動画情報、チャンネル、プレイリスト管理をサポート",
+    tags: ["動画", "メディア", "API"],
+    iconPath: "/logos/youtube.svg",
+    command: "node",
+    args: ["node_modules/@tumiki/youtube-mcp/dist/index.js"],
+    envVars: ["YOUTUBE_API_KEY"],
+    isPublic: true,
+  },
+  {
     name: "microCMS MCP",
     description: "microCMSのコンテンツ管理とAPI操作をサポートします",
     tags: ["CMS", "コンテンツ管理"],
