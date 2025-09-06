@@ -15,8 +15,8 @@
       "mcp__playwright",
       "mcp__linear-server",
       "mcp__ide__getDiagnostics",
-      "mcp__github-mcp",
       "mcp__linear",
+      "mcp__github-mcp",
       "mcp__github-mcp__search_repositories",
       "mcp__figma__get_figma_data",
       "mcp__context7__resolve-library-id",
@@ -36,14 +36,7 @@
       "mcp__serena__list_memories",
       "mcp__serena__find_file",
       "mcp__serena__search_for_pattern",
-      "mcp__serena__find_symbol",
-      "mcp__linear-server__list_teams",
-      "mcp__linear-server__create_project",
-      "mcp__linear-server__list_issue_statuses",
-      "mcp__linear-server__create_issue",
-      "mcp__linear-server__create_issue_label",
-      "mcp__linear-server__list_issue_labels",
-      "mcp__linear-server__update_issue"
+      "mcp__serena__find_symbol"
     ],
     "deny": ["cat:*", "Read(.env)", "Read(.env.*)", "Read(*production.json)"]
   },
