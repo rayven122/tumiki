@@ -2,7 +2,7 @@
   "extends": "@tumiki/tsconfig/node.json",
   "compilerOptions": {
     "verbatimModuleSyntax": true,
-    "rootDir": "./src",
+    "rootDir": "./",
     "outDir": "./build",
     "paths": {
       "@/*": ["./src/*"]
@@ -15,6 +15,6 @@
       "qs"
     ]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
   "exclude": ["node_modules", "tsup.config.ts"]
 }
