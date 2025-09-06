@@ -38,12 +38,6 @@ type ServerInfo = {
   version: string;
 };
 
-type Tool = {
-  name: string;
-  description?: string;
-  inputSchema?: Record<string, unknown>;
-};
-
 type ScenarioConfig = {
   connections: number;
   duration: number;
@@ -100,12 +94,14 @@ async function initializeMcpSession(): Promise<string | null> {
 
     // Content-Typeをチェック
     const contentType = initResponse.headers.get("content-type");
-    let initData: {
-      result?: {
-        serverInfo?: ServerInfo;
-        sessionId?: string;
-      };
-    };
+    let initData:
+      | {
+          result?: {
+            serverInfo?: ServerInfo;
+            sessionId?: string;
+          };
+        }
+      | undefined;
 
     if (contentType?.includes("text/event-stream")) {
       // SSE形式の場合はテキストとして読み込み、パースする
@@ -118,18 +114,23 @@ async function initializeMcpSession(): Promise<string | null> {
           try {
             initData = JSON.parse(line.substring(6)) as typeof initData;
             break;
-          } catch (e) {
+          } catch {
             // パースエラーは無視して次の行へ
           }
         }
       }
-      if (!initData!) {
+      if (!initData) {
         console.warn("SSEレスポンスからJSONデータを抽出できませんでした");
         return null;
       }
     } else {
       // 通常のJSONレスポンス
-      initData = (await initResponse.json()) as typeof initData;
+      initData = (await initResponse.json()) as NonNullable<typeof initData>;
+    }
+
+    if (!initData) {
+      console.error("❌ 初期化データの取得に失敗しました");
+      return null;
     }
 
     console.log(
@@ -172,6 +173,136 @@ async function initializeMcpSession(): Promise<string | null> {
     return sessionId; // セッションIDがあれば返す
   } catch (error) {
     console.error("❌ MCPセッション初期化エラー:", error);
+  }
+
+  return null;
+}
+
+/**
+ * Streamable HTTP専用のMCPプロトコル初期化フロー
+ * JSONレスポンス専用の処理
+ */
+async function initializeMcpHttp(): Promise<string | null> {
+  const initUrl = `${PROXY_URL}/mcp?api-key=${API_KEY}`;
+
+  try {
+    console.log("🔐 HTTP MCP初期化開始...");
+
+    // 1. Initialize Request（初期化リクエスト）
+    const initResponse = await fetch(initUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json", // JSONレスポンス専用
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2024-11-05",
+          capabilities: {
+            tools: {},
+          },
+          clientInfo: {
+            name: "perf-test-http-client",
+            version: "1.0.0",
+          },
+        },
+      }),
+    });
+
+    if (!initResponse.ok) {
+      const errorText = await initResponse.text();
+      console.error(
+        `❌ HTTP Initialize失敗: ${initResponse.status} - ${errorText}`,
+      );
+      return null;
+    }
+
+    // レスポンス形式を判定して適切に処理
+    const contentType = initResponse.headers.get("content-type");
+    let initData:
+      | {
+          result?: {
+            serverInfo?: ServerInfo;
+            sessionId?: string;
+          };
+        }
+      | undefined;
+
+    if (contentType?.includes("text/event-stream")) {
+      console.log("📡 HTTP初期化でSSEレスポンスを受信、パース中...");
+      // SSE形式の場合はテキストとして読み込み、パースする
+      const text = await initResponse.text();
+      // SSEメッセージから実際のJSONデータを抽出
+      const lines = text.split("\n");
+      let found = false;
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            initData = JSON.parse(line.substring(6)) as typeof initData;
+            found = true;
+            break;
+          } catch {
+            // パースエラーは無視して次の行へ
+          }
+        }
+      }
+      if (!found) {
+        console.error("❌ SSEレスポンスからJSONデータを抽出できませんでした");
+        return null;
+      }
+    } else {
+      // 通常のJSONレスポンス
+      initData = (await initResponse.json()) as NonNullable<typeof initData>;
+    }
+
+    if (!initData) {
+      console.error("❌ 初期化データの取得に失敗しました");
+      return null;
+    }
+
+    console.log(
+      `✅ HTTP Initialize成功: サーバー=${initData.result?.serverInfo?.name || "unknown"}`,
+    );
+
+    // セッションIDを取得（ヘッダーまたはレスポンスから）
+    const sessionId =
+      initResponse.headers.get("mcp-session-id") ||
+      initData.result?.sessionId ||
+      null;
+
+    // 2. Initialized Notification（初期化完了通知）
+    const notifyResponse = await fetch(initUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(sessionId ? { "mcp-session-id": sessionId } : {}),
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        // 通知にはidを含めない
+      }),
+    });
+
+    // 通知は通常レスポンスを返さないか、空のレスポンスを返す
+    if (notifyResponse.ok || notifyResponse.status === 204) {
+      console.log("✅ HTTP Initialized通知完了");
+      if (sessionId) {
+        console.log(`🔑 セッションID: ${sessionId}`);
+      }
+      return sessionId;
+    }
+
+    console.warn(
+      `⚠️ HTTP Initialized通知で予期しないステータス: ${notifyResponse.status}`,
+    );
+    return sessionId; // セッションIDがあれば返す
+  } catch (error) {
+    console.error("❌ HTTP MCP初期化エラー:", error);
   }
 
   return null;
@@ -336,58 +467,84 @@ async function main() {
     endurance: { connections: 20, duration: 60, title: "耐久テスト" },
   };
 
-  const useMcpSession = process.argv.includes("--with-session");
-
   console.log("🎯 MCP ProxyServer パフォーマンステスト");
   console.log("=".repeat(60));
   console.log(`📋 実行モード設定:`);
   console.log(`  シナリオ: ${TEST_NAME}`);
-  console.log(`  MCPセッション: ${useMcpSession ? "有効" : "無効"}`);
   console.log(`  プロキシURL: ${PROXY_URL}`);
+  console.log("");
 
-  // MCPセッション初期化（必要な場合）
-  let sessionId: string | null = null;
-  if (useMcpSession) {
-    sessionId = await initializeMcpSession();
-    if (!sessionId) {
-      console.warn(
-        "⚠️ セッションIDが取得できませんでしたが、テストを続行します",
+  // 両方のTransportでテストを実行
+  console.log("🔄 両方のTransportで順次テスト実行:");
+  console.log("  1. SSE Transport (セッション初期化)");
+  console.log("  2. Streamable HTTP Transport (HTTP初期化)");
+  console.log("");
+
+  // Transport別にテスト実行
+  const transportResults: Record<string, Result> = {};
+
+  // 1. SSE Transport テスト
+  console.log("📡 SSE Transport テスト開始...");
+  const sseSessionId = await initializeMcpSession();
+  if (sseSessionId) {
+    console.log("✅ SSE初期化成功、テスト実行中...");
+    if (TEST_NAME === "all") {
+      for (const [name, config] of Object.entries(scenarios)) {
+        if (name === "endurance") continue;
+        transportResults[`${name}_sse`] = await runLoadTest(`${name}_sse`, {
+          ...config,
+          sessionId: sseSessionId,
+        });
+      }
+    } else if (scenarios[TEST_NAME as keyof Scenarios]) {
+      const config = scenarios[TEST_NAME as keyof Scenarios];
+      transportResults[`${TEST_NAME}_sse`] = await runLoadTest(
+        `${TEST_NAME}_sse`,
+        {
+          ...config,
+          sessionId: sseSessionId,
+        },
       );
     }
+  } else {
+    console.warn("⚠️ SSE初期化失敗、スキップします");
   }
 
-  if (TEST_NAME === "all") {
-    // 全シナリオ実行
-    const results: Record<string, Result> = {};
+  console.log("");
 
-    for (const [name, config] of Object.entries(scenarios)) {
-      if (name === "endurance") continue; // 耐久テストはスキップ
-
-      results[name] = await runLoadTest(name, {
-        ...config,
-        sessionId,
-      });
-
-      // シナリオ間で5秒待機
-      if (Object.keys(results).length < 3) {
-        console.log("\n⏳ 次のシナリオまで5秒待機...\n");
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+  // 2. HTTP Transport テスト
+  console.log("🌐 HTTP Transport テスト開始...");
+  const httpSessionId = await initializeMcpHttp();
+  if (httpSessionId) {
+    console.log("✅ HTTP初期化成功、テスト実行中...");
+    if (TEST_NAME === "all") {
+      for (const [name, config] of Object.entries(scenarios)) {
+        if (name === "endurance") continue;
+        transportResults[`${name}_http`] = await runLoadTest(`${name}_http`, {
+          ...config,
+          sessionId: httpSessionId,
+        });
       }
+    } else if (scenarios[TEST_NAME as keyof Scenarios]) {
+      const config = scenarios[TEST_NAME as keyof Scenarios];
+      transportResults[`${TEST_NAME}_http`] = await runLoadTest(
+        `${TEST_NAME}_http`,
+        {
+          ...config,
+          sessionId: httpSessionId,
+        },
+      );
     }
-
-    generateComparisonReport(results);
-    console.log("\n🎉 パフォーマンステスト完了！");
-  } else if (scenarios[TEST_NAME as keyof Scenarios]) {
-    // 単一シナリオ実行
-    const config = scenarios[TEST_NAME as keyof Scenarios];
-    await runLoadTest(TEST_NAME, {
-      ...config,
-      sessionId,
-    });
-    console.log("\n✅ テスト完了");
   } else {
-    console.error(`❌ エラー: 無効なテスト名 '${TEST_NAME}'`);
-    console.error(`有効なテスト名: ${Object.keys(scenarios).join(", ")}, all`);
+    console.warn("⚠️ HTTP初期化失敗、スキップします");
+  }
+
+  // 結果レポート生成
+  if (Object.keys(transportResults).length > 0) {
+    generateComparisonReport(transportResults);
+    console.log("\n🎉 両Transport パフォーマンステスト完了！");
+  } else {
+    console.error("❌ 両Transportとも初期化に失敗しました");
     process.exit(1);
   }
 }
