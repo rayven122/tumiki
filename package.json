@@ -31,7 +31,7 @@
     "docker:up": "docker compose -f docker/compose.dev.yaml up -d",
     "docker:stop": "docker compose -f docker/compose.dev.yaml stop",
     "db:generate": "pnpm --filter @tumiki/db db:generate",
-    "inspector": "pnpm --filter @tumiki/proxy-server inspector",
+    "inspector": "NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm --filter @tumiki/proxy-server inspector",
     "env:pull": "vercel env pull apps/proxyServer/.env",
     "env:push": "bash scripts/vercel-env-push.sh .env development",
     "deploy": "bash scripts/deploy-all.sh",
