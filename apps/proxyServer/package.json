@@ -46,6 +46,7 @@
     "perf:direct": "pnpm with-env npx autocannon -c 10 -d 10 -m POST -H \"Content-Type: application/json\" -H \"api-key: ${TEST_API_KEY}\" -b '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}' \"${MCP_PROXY_URL:-http://localhost:8080}/mcp\""
   },
   "dependencies": {
+    "@brave/brave-search-mcp-server": "^1.3.7",
     "@googlemaps/code-assist-mcp": "^0.1.5",
     "@line/line-bot-mcp-server": "^0.3.0",
     "@microsoft/clarity-mcp-server": "^1.0.5",
