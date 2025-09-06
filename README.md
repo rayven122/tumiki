@@ -6,6 +6,18 @@
 
 初回セットアップの詳細な手順については、[SETUP.md](./SETUP.md) を参照してください。
 
+### Docker開発環境
+
+開発に必要なDockerコンテナを管理：
+
+```bash
+# 開発コンテナを起動（DB、Redis、HTTPSポータル）
+pnpm docker:up
+
+# コンテナを停止
+pnpm docker:stop
+```
+
 ## 主な機能
 
 - 複数のMCPサーバーの一元管理

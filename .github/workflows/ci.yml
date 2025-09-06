@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches: [main]
 
 jobs:
   ci:
@@ -28,3 +30,7 @@ jobs:
 
       - name: ✅ Run lint, format and typecheck
         run: pnpm check
+
+      - name: 🧪 Run tests
+        run: pnpm test
+        # packages/dbのテストは除外（PostgreSQLコンテナが必要なため）
