@@ -1,0 +1,80 @@
+{
+  "defaultUrl": "http://localhost:8080",
+  "scenarios": {
+    "baseline": {
+      "connections": 10,
+      "duration": 10,
+      "pipelining": 1,
+      "title": "ベースラインテスト",
+      "description": "通常負荷での基本性能測定"
+    },
+    "stress": {
+      "connections": 50,
+      "duration": 30,
+      "pipelining": 1,
+      "title": "ストレステスト",
+      "description": "高負荷環境での性能測定"
+    },
+    "spike": {
+      "connections": 100,
+      "duration": 5,
+      "pipelining": 1,
+      "title": "スパイクテスト",
+      "description": "瞬間的な高負荷への対応測定"
+    },
+    "endurance": {
+      "connections": 20,
+      "duration": 60,
+      "pipelining": 1,
+      "title": "耐久テスト",
+      "description": "長時間運用での安定性測定"
+    },
+    "session": {
+      "connections": 10,
+      "duration": 10,
+      "pipelining": 1,
+      "title": "セッション再利用テスト",
+      "description": "セッションIDを使った接続の効率性測定"
+    }
+  },
+  "endpoints": {
+    "toolsList": {
+      "path": "/mcp",
+      "method": "POST",
+      "body": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 1
+      }
+    },
+    "initialize": {
+      "path": "/mcp",
+      "method": "POST",
+      "body": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2024-11-05",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "perf-test-client",
+            "version": "1.0.0"
+          }
+        },
+        "id": 0
+      }
+    }
+  },
+  "reportSettings": {
+    "outputDirectory": "perf-results",
+    "formats": ["json", "csv"],
+    "includeDetailedLatency": true,
+    "saveProgressSnapshots": false
+  },
+  "thresholds": {
+    "maxLatencyP99": 1000,
+    "minSuccessRate": 95,
+    "maxErrorRate": 5,
+    "minRPS": 100
+  }
+}
