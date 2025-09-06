@@ -33,7 +33,7 @@
     "verify": "pnpm with-env ./scripts/test-mcp-inspector.sh",
     "dev:https": "echo '🔒 HTTPS access available via Docker https-portal: https://local-server.tumiki.cloud'",
     "docker:status": "docker ps | grep https-portal",
-    "inspector": "pnpm dlx @modelcontextprotocol/inspector",
+    "inspector": "pnpm exec mcp-inspector",
     "inspector:http": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/mcp?api-key=${TEST_API_KEY}\"'",
     "inspector:sse": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/sse?api-key=${TEST_API_KEY}\"'",
     "inspector:https": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"https://local-server.tumiki.cloud/mcp?api-key=${TEST_API_KEY}\"'",
@@ -84,6 +84,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.16.6",
     "@tumiki/vitest-config": "workspace:*",
     "@types/autocannon": "^7.12.7",
     "@types/express": "^5.0.2",
