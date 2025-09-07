@@ -311,6 +311,22 @@ deploy_to_vm() {
                 echo \"Git $(git --version) が既にインストールされています\"
             fi
             
+            # UV (uvx含む) のインストール
+            if ! command -v uv &>/dev/null; then
+                echo \"UV をインストール中...\"
+                curl -LsSf https://astral.sh/uv/install.sh | sh
+                source ~/.bashrc || export PATH=\"\$HOME/.cargo/bin:\$PATH\"
+                
+                # uvx の動作確認
+                if command -v uvx &>/dev/null; then
+                    echo \"uvx \$(uvx --version) が利用可能です\"
+                else
+                    echo \"警告: uvx コマンドが見つかりません\"
+                fi
+            else
+                echo \"UV \$(uv --version) が既にインストールされています\"
+            fi
+            
             # Git設定（認証プロンプト回避）
             export GIT_TERMINAL_PROMPT=0
             git config --global user.name \"Deployment Bot\"
