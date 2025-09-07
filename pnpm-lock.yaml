@@ -128,7 +128,7 @@ importers:
         version: 5.2.1(react-hook-form@7.62.0(react@19.0.0))
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
-        version: 1.17.1
+        version: 1.17.3
       '@modelcontextprotocol/server-github':
         specifier: ^2025.4.8
         version: 2025.4.8
@@ -508,6 +508,9 @@ importers:
 
   apps/proxyServer:
     dependencies:
+      '@brave/brave-search-mcp-server':
+        specifier: ^1.3.7
+        version: 1.3.7
       '@googlemaps/code-assist-mcp':
         specifier: ^0.1.5
         version: 0.1.5
@@ -519,7 +522,7 @@ importers:
         version: 1.0.5
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
-        version: 1.17.1
+        version: 1.17.3
       '@modelcontextprotocol/server-github':
         specifier: ^2025.4.8
         version: 2025.4.8
@@ -577,6 +580,9 @@ importers:
       just-pick:
         specifier: ^4.2.0
         version: 4.2.0
+      lru-cache:
+        specifier: ^11.2.1
+        version: 11.2.1
       marked:
         specifier: ^15.0.8
         version: 15.0.12
@@ -884,6 +890,9 @@ importers:
 
   packages/scripts:
     dependencies:
+      '@brave/brave-search-mcp-server':
+        specifier: ^1.3.7
+        version: 1.3.7
       '@googlemaps/code-assist-mcp':
         specifier: ^0.1.5
         version: 0.1.5
@@ -992,7 +1001,7 @@ importers:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
-        version: 1.17.1
+        version: 1.17.3
       '@tumiki/db':
         specifier: workspace:*
         version: link:../db
@@ -1047,7 +1056,7 @@ importers:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
-        version: 1.17.1
+        version: 1.17.3
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -1778,6 +1787,10 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@brave/brave-search-mcp-server@1.3.7':
+    resolution: {integrity: sha512-73T2HxBx9p/mDAAUmf2qUZarBpbneYD5ElLNRJUjnO8tm11mS3oG97muMAcHwpzef423F1HbRM6knrtUaXZRSQ==}
+    hasBin: true
 
   '@cfworker/json-schema@4.1.1':
     resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
@@ -3007,8 +3020,8 @@ packages:
     resolution: {integrity: sha512-rb6AMp2DR4SN+kc6L1ta2NCpApyA9WYNx3CrTSZvGxq9wH71bRur+zRqPfg0vQ9mjywR7qZdX2RGHOPq3ss+tA==}
     engines: {node: '>=18'}
 
-  '@modelcontextprotocol/sdk@1.17.1':
-    resolution: {integrity: sha512-CPle1OQehbWqd25La9Ack5B07StKIxh4+Bf19qnpZKJC1oI22Y0czZHbifjw1UoczIfKBwBDAp/dFxvHG13B5A==}
+  '@modelcontextprotocol/sdk@1.17.3':
+    resolution: {integrity: sha512-JPwUKWSsbzx+DLFznf/QZ32Qa+ptfbUlHhRLrBQBAFu9iI1iYvizM4p+zhhRDceSsPutXp4z+R/HPVphlIiclg==}
     engines: {node: '>=18'}
 
   '@modelcontextprotocol/sdk@1.17.5':
@@ -6335,6 +6348,10 @@ packages:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
+  dotenv@17.2.1:
+    resolution: {integrity: sha512-kQhDYKZecqnM0fCnzI5eIv5L4cAe/iRI+HqMbO/hbRdTAeXDG+M9FjipUxNfbARuEg4iHIbhnhs78BCHNbSxEQ==}
+    engines: {node: '>=12'}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -8027,6 +8044,10 @@ packages:
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
+  lru-cache@11.2.1:
+    resolution: {integrity: sha512-r8LA6i4LP4EeWOhqBaZZjDWwehd1xUJPCJd9Sv300H0ZmcUER4+JPh7bqqZeqs1o5pgtgvXm+d9UGrB5zZGDiQ==}
+    engines: {node: 20 || >=22}
+
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
@@ -9296,7 +9317,7 @@ packages:
   puppeteer@23.11.1:
     resolution: {integrity: sha512-53uIX3KR5en8l7Vd8n5DUv90Ae9QDQsyIthaUFVzwV6yU750RjqRznEtNMBT20VthqAdemnJN+hxVdmMHKt7Zw==}
     engines: {node: '>=18'}
-    deprecated: < 24.9.0 is no longer supported
+    deprecated: < 24.10.2 is no longer supported
     hasBin: true
 
   pure-rand@6.1.0:
@@ -11979,6 +12000,16 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
+  '@brave/brave-search-mcp-server@1.3.7':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.17.3
+      commander: 14.0.0
+      dotenv: 17.2.1
+      express: 5.1.0
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - supports-color
+
   '@cfworker/json-schema@4.1.1': {}
 
   '@clack/core@0.3.5':
@@ -12501,12 +12532,12 @@ snapshots:
       - encoding
       - supports-color
 
-  '@google/genai@1.12.0(@modelcontextprotocol/sdk@1.17.1)(bufferutil@4.0.9)':
+  '@google/genai@1.12.0(@modelcontextprotocol/sdk@1.17.3)(bufferutil@4.0.9)':
     dependencies:
       google-auth-library: 9.15.1
       ws: 8.18.3(bufferutil@4.0.9)
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -12516,7 +12547,7 @@ snapshots:
   '@googlemaps/code-assist-mcp@0.1.5':
     dependencies:
       '@google-cloud/vertexai': 1.10.0
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       '@types/node': 22.17.0
       axios: 1.9.0
       cors: 2.8.5
@@ -13096,7 +13127,7 @@ snapshots:
   '@line/line-bot-mcp-server@0.3.0':
     dependencies:
       '@line/bot-sdk': 10.0.0
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       zod: 3.25.76
     transitivePeerDependencies:
       - debug
@@ -13106,7 +13137,7 @@ snapshots:
 
   '@microsoft/clarity-mcp-server@1.0.5':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
@@ -13216,7 +13247,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@modelcontextprotocol/sdk@1.17.1':
+  '@modelcontextprotocol/sdk@1.17.3':
     dependencies:
       ajv: 6.12.6
       content-type: 1.0.5
@@ -13575,7 +13606,7 @@ snapshots:
 
   '@playwright/mcp@0.0.29(zod@3.25.76)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       commander: 13.1.0
       debug: 4.4.1
       mime: 4.0.7
@@ -15152,10 +15183,10 @@ snapshots:
 
   '@standard-schema/utils@0.3.0': {}
 
-  '@stripe/agent-toolkit@0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.1)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@18.3.1)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))':
+  '@stripe/agent-toolkit@0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.5)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@18.3.1)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))':
     dependencies:
       '@langchain/core': 0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.5
       agents: 0.0.45(@cloudflare/workers-types@4.20250802.0)
       ai: 4.3.13(react@18.3.1)(zod@3.25.76)
       openai: 4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)
@@ -15163,10 +15194,10 @@ snapshots:
       zod: 3.25.76
       zod-to-json-schema: 3.24.6(zod@3.25.76)
 
-  '@stripe/agent-toolkit@0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.1)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@19.0.0)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))':
+  '@stripe/agent-toolkit@0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.5)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@19.0.0)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))':
     dependencies:
       '@langchain/core': 0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.5
       agents: 0.0.45(@cloudflare/workers-types@4.20250802.0)
       ai: 4.3.13(react@19.0.0)(zod@3.25.76)
       openai: 4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)
@@ -15176,8 +15207,8 @@ snapshots:
 
   '@stripe/mcp@0.2.4(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@18.3.1)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
-      '@stripe/agent-toolkit': 0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.1)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@18.3.1)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))
+      '@modelcontextprotocol/sdk': 1.17.5
+      '@stripe/agent-toolkit': 0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.5)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@18.3.1)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))
       colors: 1.4.0
     transitivePeerDependencies:
       - '@langchain/core'
@@ -15188,8 +15219,8 @@ snapshots:
 
   '@stripe/mcp@0.2.4(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@19.0.0)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
-      '@stripe/agent-toolkit': 0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.1)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@19.0.0)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))
+      '@modelcontextprotocol/sdk': 1.17.5
+      '@stripe/agent-toolkit': 0.7.11(@langchain/core@0.3.72(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76)))(@modelcontextprotocol/sdk@1.17.5)(agents@0.0.45(@cloudflare/workers-types@4.20250802.0))(ai@4.3.13(react@19.0.0)(zod@3.25.76))(openai@4.104.0(ws@8.18.3(bufferutil@4.0.9))(zod@3.25.76))
       colors: 1.4.0
     transitivePeerDependencies:
       - '@langchain/core'
@@ -15200,7 +15231,7 @@ snapshots:
 
   '@suekou/mcp-notion-server@1.2.4(@types/debug@4.1.12)(@types/node@22.17.0)(jiti@2.5.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.1)(tsx@4.20.3)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       node-fetch: 2.7.0
       vitest: 3.0.9(@types/debug@4.1.12)(@types/node@22.17.0)(jiti@2.5.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.1)(tsx@4.20.3)
       yargs: 17.7.2
@@ -15846,7 +15877,7 @@ snapshots:
 
   '@upstash/context7-mcp@1.0.14':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       commander: 14.0.0
       zod: 3.25.76
     transitivePeerDependencies:
@@ -16963,7 +16994,7 @@ snapshots:
 
   deepl-mcp-server@0.1.3-beta.0:
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       deepl-node: 1.19.0
       zod: 3.25.76
     transitivePeerDependencies:
@@ -17059,7 +17090,7 @@ snapshots:
 
   discord-mcp-server@1.0.1(bufferutil@4.0.9):
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       discord.js: 14.21.0(bufferutil@4.0.9)
       dotenv: 16.6.1
       zod: 3.25.76
@@ -17131,6 +17162,8 @@ snapshots:
   dotenv@16.0.3: {}
 
   dotenv@16.6.1: {}
+
+  dotenv@17.2.1: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -17867,7 +17900,7 @@ snapshots:
 
   fastmcp@1.27.7(effect@3.16.12):
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       '@standard-schema/spec': 1.0.0
       execa: 9.6.0
       file-type: 20.5.0
@@ -17888,7 +17921,7 @@ snapshots:
 
   fastmcp@2.2.4(effect@3.16.12):
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       '@standard-schema/spec': 1.0.0
       execa: 9.6.0
       file-type: 21.0.0
@@ -17938,7 +17971,7 @@ snapshots:
   figma-developer-mcp@0.5.0:
     dependencies:
       '@figma/rest-api-spec': 0.33.0
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       '@types/yargs': 17.0.33
       cross-env: 7.0.3
       dotenv: 16.6.1
@@ -19447,6 +19480,8 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
+  lru-cache@11.2.1: {}
+
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
@@ -19517,8 +19552,8 @@ snapshots:
 
   mcp-gemini-google-search@0.1.1(bufferutil@4.0.9):
     dependencies:
-      '@google/genai': 1.12.0(@modelcontextprotocol/sdk@1.17.1)(bufferutil@4.0.9)
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@google/genai': 1.12.0(@modelcontextprotocol/sdk@1.17.3)(bufferutil@4.0.9)
+      '@modelcontextprotocol/sdk': 1.17.3
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -19527,7 +19562,7 @@ snapshots:
 
   mcp-proxy@2.14.3:
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       eventsource: 4.0.0
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -19535,7 +19570,7 @@ snapshots:
 
   mcp-proxy@3.3.0:
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       eventsource: 4.0.0
       yargs: 17.7.2
     transitivePeerDependencies:
@@ -19544,7 +19579,7 @@ snapshots:
   mcp-server-gsc@0.2.0:
     dependencies:
       '@google-cloud/local-auth': 3.0.1
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       google-auth-library: 9.15.1
       googleapis: 144.0.0
       zod: 3.25.76
@@ -19733,7 +19768,7 @@ snapshots:
 
   microcms-mcp-server@0.3.6:
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       microcms-js-sdk: 3.2.0
     transitivePeerDependencies:
       - supports-color
@@ -20029,7 +20064,7 @@ snapshots:
 
   n8n-mcp@2.10.6:
     dependencies:
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       axios: 1.11.0
       dotenv: 16.6.1
       express: 5.1.0
@@ -22930,7 +22965,7 @@ snapshots:
   workers-mcp@0.1.0-3:
     dependencies:
       '@clack/prompts': 0.8.2
-      '@modelcontextprotocol/sdk': 1.17.1
+      '@modelcontextprotocol/sdk': 1.17.3
       '@silvia-odwyer/photon-node': 0.3.4
       chalk: 5.4.1
       fs-extra: 11.3.0
