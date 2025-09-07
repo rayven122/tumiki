@@ -277,7 +277,7 @@ describe("closeConnection", () => {
   test("エラーハンドリングが機能する", async () => {
     const mockClose = vi.fn().mockRejectedValue(new Error("Close failed"));
     mockClient.close = mockClose;
-    
+
     connection = createMCPConnection(mockClient, mockTransport, {
       userServerConfigInstanceId: "test-instance-id",
       serverName: "test-server",
