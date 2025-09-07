@@ -50,12 +50,14 @@ export const createToolsCache = () => {
       return `tools:${userMcpServerInstanceId}:${serverConfigHash}`;
     },
     generateServerConfigHash: (serverConfigs: ServerConfig[]): string => {
-      // tools/listの結果に影響する最小限の情報のみ使用
-      const essentialData = serverConfigs
-        .map((config) => config.name)
-        .sort()
-        .join(",");
-      return crypto.createHash("sha256").update(essentialData).digest("hex");
+      // 決定論的順序のためソート
+      const sortedConfigs = [...serverConfigs].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+      return crypto
+        .createHash("sha256")
+        .update(JSON.stringify(sortedConfigs))
+        .digest("hex");
     },
   };
 };
