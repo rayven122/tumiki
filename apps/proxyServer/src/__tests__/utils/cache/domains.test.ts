@@ -119,7 +119,7 @@ describe("createToolsCache", () => {
     expect(hash1).toBe(hash2);
   });
 
-  test("コマンド変更時に異なるハッシュを生成する", () => {
+  test("toolNames変更時に異なるハッシュを生成する", () => {
     const cache = createToolsCache();
 
     const originalConfigs: ServerConfig[] = [
@@ -128,7 +128,7 @@ describe("createToolsCache", () => {
         toolNames: ["tool1"],
         transport: {
           type: "stdio" as const,
-          command: "original-command",
+          command: "test-command",
           args: [],
           env: {},
         },
@@ -138,10 +138,10 @@ describe("createToolsCache", () => {
     const modifiedConfigs: ServerConfig[] = [
       {
         name: "server1",
-        toolNames: ["tool1"],
+        toolNames: ["tool1", "tool2"], // toolNames変更
         transport: {
           type: "stdio" as const,
-          command: "modified-command", // コマンド変更
+          command: "test-command",
           args: [],
           env: {},
         },
@@ -154,7 +154,7 @@ describe("createToolsCache", () => {
     expect(hash1).not.toBe(hash2);
   });
 
-  test("URL変更時に異なるハッシュを生成する", () => {
+  test("サーバー名変更時に異なるハッシュを生成する", () => {
     const cache = createToolsCache();
 
     const originalConfigs: ServerConfig[] = [
@@ -170,11 +170,11 @@ describe("createToolsCache", () => {
 
     const modifiedConfigs: ServerConfig[] = [
       {
-        name: "server1",
+        name: "server2", // サーバー名変更
         toolNames: ["tool1"],
         transport: {
           type: "sse" as const,
-          url: "http://localhost:8080/modified", // URL変更
+          url: "http://localhost:8080/modified",
         },
       },
     ];
@@ -185,7 +185,7 @@ describe("createToolsCache", () => {
     expect(hash1).not.toBe(hash2);
   });
 
-  test("トランスポートタイプ変更時に異なるハッシュを生成する", () => {
+  test("transport詳細変更時はハッシュが変わらない（最適化）", () => {
     const cache = createToolsCache();
 
     const stdioConfig: ServerConfig[] = [
@@ -204,7 +204,7 @@ describe("createToolsCache", () => {
     const sseConfig: ServerConfig[] = [
       {
         name: "server1",
-        toolNames: ["tool1"],
+        toolNames: ["tool1"], // 同じtoolNames
         transport: {
           type: "sse" as const,
           url: "http://localhost:8080/sse",
@@ -215,10 +215,11 @@ describe("createToolsCache", () => {
     const hash1 = cache.generateServerConfigHash(stdioConfig);
     const hash2 = cache.generateServerConfigHash(sseConfig);
 
-    expect(hash1).not.toBe(hash2);
+    // toolNamesが同じならハッシュも同じ（最適化）
+    expect(hash1).toBe(hash2);
   });
 
-  test("引数や環境変数の変更でもハッシュが変わる（完全検知）", () => {
+  test("transport詳細（引数・環境変数）変更時はハッシュが変わらない（最適化）", () => {
     const cache = createToolsCache();
 
     const originalConfigs: ServerConfig[] = [
@@ -237,10 +238,10 @@ describe("createToolsCache", () => {
     const modifiedConfigs: ServerConfig[] = [
       {
         name: "server1",
-        toolNames: ["tool1"],
+        toolNames: ["tool1"], // 同じtoolNames
         transport: {
           type: "stdio" as const,
-          command: "test-command",
+          command: "different-command", // コマンド変更
           args: ["--arg2", "value2"], // 引数変更
           env: { ENV_VAR: "value2" }, // 環境変数変更
         },
@@ -250,8 +251,8 @@ describe("createToolsCache", () => {
     const hash1 = cache.generateServerConfigHash(originalConfigs);
     const hash2 = cache.generateServerConfigHash(modifiedConfigs);
 
-    // 完全ハッシュなので引数・環境変数の変更も検知
-    expect(hash1).not.toBe(hash2);
+    // toolNamesが同じなら、transport詳細が変わってもハッシュは同じ（最適化）
+    expect(hash1).toBe(hash2);
   });
 
   test("toolNames変更時にもハッシュが変わる", () => {
