@@ -27,8 +27,12 @@ import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
 import { calculateDataSize } from "../libs/dataCompression.js";
+import { createToolsCache } from "./cache/index.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ToolsCache シングルトンインスタンス
+const toolsCache = createToolsCache();
 
 export type ConnectedClient = {
   client: Client;
@@ -585,6 +589,46 @@ export const getServer = async (
         throw new Error("Server instance not found");
       }
 
+      // 🆕 キャッシュチェック
+      // サーバー設定を取得してキャッシュキーを生成
+      const serverConfigs = await getServerConfigsByInstanceId(
+        userMcpServerInstanceId,
+      );
+      const serverConfigHash =
+        toolsCache.generateServerConfigHash(serverConfigs);
+      const cacheKey = toolsCache.generateKey(
+        userMcpServerInstanceId,
+        serverConfigHash,
+      );
+
+      // キャッシュヒットチェック
+      const cachedTools = toolsCache.getTools(cacheKey);
+      if (cachedTools) {
+        // 🎯 キャッシュヒット: 即座にレスポンス
+        const durationMs = Date.now() - startTime;
+
+        // キャッシュヒット時のログ記録
+        if (userMcpServerInstance && !isValidationMode) {
+          const inputBytes = calculateDataSize(request.params ?? {});
+          const outputBytes = calculateDataSize(cachedTools);
+
+          void logMcpRequest({
+            organizationId: userMcpServerInstance.organizationId,
+            mcpServerInstanceId: userMcpServerInstance.id,
+            toolName: "tools/list",
+            transportType: transportType,
+            method: "tools/list",
+            responseStatus: "200",
+            durationMs,
+            inputBytes,
+            outputBytes,
+            cached: true, // 🆕 キャッシュフラグ
+          });
+        }
+
+        return { tools: cachedTools };
+      }
+
       const result = await measureExecutionTime(
         () =>
           Promise.race([
@@ -641,6 +685,9 @@ export const getServer = async (
 
       await result.cleanup();
 
+      // 🆕 キャッシュミス: 結果をキャッシュに保存
+      toolsCache.setTools(cacheKey, result.tools, serverConfigHash);
+
       const durationMs = Date.now() - startTime;
 
       // 非同期でログ記録（レスポンス返却をブロックしない）
@@ -660,6 +707,7 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
+          cached: false, // 🆕 キャッシュミスフラグ
         });
       }
 
