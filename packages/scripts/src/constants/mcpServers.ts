@@ -256,7 +256,11 @@ export const MCP_SERVERS = [
     tags: ["検索", "Web", "AI"],
     iconPath: "/logos/brave-search.png",
     command: "node",
-    args: ["node_modules/@brave/brave-search-mcp-server/dist/index.js", "--transport", "stdio"],
+    args: [
+      "node_modules/@brave/brave-search-mcp-server/dist/index.js",
+      "--transport",
+      "stdio",
+    ],
     envVars: ["BRAVE_API_KEY"],
     transportType: "STDIO" as const,
     isPublic: true,
