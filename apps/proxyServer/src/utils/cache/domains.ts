@@ -6,8 +6,11 @@
  */
 
 import crypto from "node:crypto";
-import type { Tool } from "@tumiki/db";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { ServerConfig } from "../../libs/types.js";
 import { createLRUCache } from "./core.js";
+
+export type { ServerConfig, Tool };
 
 /**
  * tools/list専用キャッシュエントリ
@@ -17,16 +20,6 @@ export type ToolsCacheEntry = {
   tools: Tool[];
   /** サーバー設定のハッシュ値 */
   serverConfigHash: string;
-};
-
-/**
- * サーバー設定の型定義
- */
-export type ServerConfig = {
-  /** サーバー名 */
-  name: string;
-  /** ツール名一覧（オプション） */
-  toolNames?: string[];
 };
 
 /**
@@ -57,13 +50,16 @@ export const createToolsCache = () => {
       return `tools:${userMcpServerInstanceId}:${serverConfigHash}`;
     },
     generateServerConfigHash: (serverConfigs: ServerConfig[]): string => {
-      const data = serverConfigs.map((config) => ({
-        name: config.name,
-        toolNames: config.toolNames,
-      }));
+      const essentialData = serverConfigs
+        .map((config) => ({
+          name: config.name,
+          toolNames: [...config.toolNames].sort(), // tools/listの結果そのもの
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
       return crypto
         .createHash("sha256")
-        .update(JSON.stringify(data, Object.keys(data).sort()))
+        .update(JSON.stringify(essentialData))
         .digest("hex");
     },
   };

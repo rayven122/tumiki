@@ -38,6 +38,8 @@ type LogRequestParams = {
   outputBytes?: number;
   organizationId: string;
   userAgent?: string;
+  // キャッシュヒット/ミス情報
+  cached?: boolean;
   // 詳細データ用の追加パラメータ
   requestData?: unknown;
   responseData?: unknown;
