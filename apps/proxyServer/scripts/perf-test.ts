@@ -38,12 +38,6 @@ type ServerInfo = {
   version: string;
 };
 
-type Tool = {
-  name: string;
-  description?: string;
-  inputSchema?: Record<string, unknown>;
-};
-
 type ScenarioConfig = {
   connections: number;
   duration: number;
@@ -118,7 +112,7 @@ async function initializeMcpSession(): Promise<string | null> {
           try {
             initData = JSON.parse(line.substring(6)) as typeof initData;
             break;
-          } catch (e) {
+          } catch {
             // パースエラーは無視して次の行へ
           }
         }
