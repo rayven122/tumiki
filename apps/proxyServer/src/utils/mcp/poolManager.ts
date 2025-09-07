@@ -1,4 +1,5 @@
 import { logger } from "../../libs/logger.js";
+import { config } from "../../libs/config.js";
 import type { ServerConfig } from "../../libs/types.js";
 import {
   createConnection,
@@ -12,15 +13,16 @@ import type {
   MCPConnectionOptions,
   PoolConfig,
 } from "./types.js";
+import { metricsCollector } from "./metrics.js";
 
 // グローバル状態
 const connectionPools = new Map<string, MCPConnection[]>();
 
-// 接続プール設定（簡素化）
+// 接続プール設定（config.tsから注入）
 const CONFIG: PoolConfig = {
-  maxConnectionsPerServer: 3, // MCPサーバーは軽量なため
-  idleTimeout: 120000, // 2分
-  cleanupInterval: 30000, // 30秒
+  maxConnectionsPerServer: config.connectionPool.maxConnectionsPerServer,
+  idleTimeout: config.connectionPool.idleTimeout,
+  cleanupInterval: config.connectionPool.cleanupInterval,
 };
 
 let cleanupTimer: NodeJS.Timeout | undefined;
@@ -116,6 +118,9 @@ const startCleanupTimer = (): void => {
     return;
   }
 
+  // メトリクス収集を開始
+  metricsCollector.start();
+
   cleanupTimer = setInterval(() => {
     cleanupIdleConnections().catch((error) => {
       logger.error("Error during idle connection cleanup", {
@@ -177,16 +182,29 @@ export const getConnection = async (
     serverConfig,
   };
 
-  const newConnection = await createConnection(serverConfig, options);
-  markAsActive(newConnection);
+  try {
+    const newConnection = await createConnection(serverConfig, options);
+    markAsActive(newConnection);
 
-  // プールに追加
-  const currentPool = connectionPools.get(poolKey) || [];
-  currentPool.push(newConnection);
-  connectionPools.set(poolKey, currentPool);
+    // プールに追加
+    const currentPool = connectionPools.get(poolKey) || [];
+    currentPool.push(newConnection);
+    connectionPools.set(poolKey, currentPool);
 
-  logger.debug("Created new MCP connection", { serverName });
-  return newConnection;
+    // メトリクス記録
+    metricsCollector.recordConnectionSuccess();
+    logger.debug("Created new MCP connection", { serverName });
+    return newConnection;
+  } catch (error) {
+    // メトリクス記録
+    metricsCollector.recordConnectionFailure();
+    logger.error("Failed to create MCP connection", {
+      serverName,
+      userServerConfigInstanceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 };
 
 /**
@@ -213,6 +231,9 @@ export const cleanup = async (): Promise<void> => {
     cleanupTimer = undefined;
   }
 
+  // メトリクス収集を停止
+  metricsCollector.stop();
+
   // 全ての接続を閉じる
   const allConnections: MCPConnection[] = [];
   for (const pool of connectionPools.values()) {
@@ -226,4 +247,13 @@ export const cleanup = async (): Promise<void> => {
   // プールをクリア
   connectionPools.clear();
   logger.debug("Cleaned up all connection pools");
+};
+
+/**
+ * 現在のプールメトリクスを取得
+ *
+ * @returns プールメトリクス
+ */
+export const getPoolMetrics = () => {
+  return metricsCollector.getPoolMetrics(connectionPools);
 };

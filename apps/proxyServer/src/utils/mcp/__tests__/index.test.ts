@@ -12,6 +12,20 @@ vi.mock("../../../libs/logger.js", () => ({
   },
 }));
 
+vi.mock("../../../libs/config.js", () => ({
+  config: {
+    connectionPool: {
+      maxConnectionsPerServer: 5,
+      idleTimeout: 180000,
+      cleanupInterval: 60000,
+    },
+    metrics: {
+      enabled: true,
+      interval: 60000,
+    },
+  },
+}));
+
 const mockTransportInstance = {
   close: vi.fn().mockResolvedValue(undefined),
   start: vi.fn().mockResolvedValue(undefined),
@@ -324,6 +338,118 @@ describe("MCP Connection API Integration Tests", () => {
 
       expect(operation1).toHaveBeenCalled();
       expect(operation2).toHaveBeenCalled();
+    });
+  });
+
+  describe("enhanced error handling", () => {
+    test("withConnectionでのエラーにコンテキスト情報が含まれる", async () => {
+      const originalError = new Error("Original operation failed");
+      const failingOperation = vi.fn().mockRejectedValue(originalError);
+
+      try {
+        await withConnection(
+          "test-user-id",
+          "test-server",
+          mockServerConfig,
+          failingOperation,
+        );
+        expect.fail("Expected error to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        const err = error as Error & { cause?: unknown };
+        expect(err.message).toContain(
+          "MCP operation failed for server 'test-server'",
+        );
+        expect(err.message).toContain("user: test-user-id");
+        expect(err.message).toContain("Original operation failed");
+        expect(err.cause).toBe(originalError);
+      }
+    });
+
+    test("withConnectionBatchでのエラーにコンテキスト情報が含まれる", async () => {
+      const originalError = new Error("Batch operation failed");
+      const failingOperation = vi.fn().mockRejectedValue(originalError);
+
+      try {
+        await withConnectionBatch(
+          "test-user-id",
+          "test-server",
+          mockServerConfig,
+          [failingOperation],
+        );
+        expect.fail("Expected error to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        const err = error as Error & { cause?: unknown };
+        expect(err.message).toContain(
+          "MCP batch operation failed for server 'test-server'",
+        );
+        expect(err.message).toContain("1 operations");
+        expect(err.message).toContain("user: test-user-id");
+        expect(err.message).toContain("Batch operation failed");
+        expect(err.cause).toBe(originalError);
+      }
+    });
+
+    test("複数操作のバッチでのエラー情報", async () => {
+      const originalError = new Error("One of the operations failed");
+      const operations = [
+        vi.fn().mockResolvedValue("success"),
+        vi.fn().mockRejectedValue(originalError),
+        vi.fn().mockResolvedValue("success"),
+      ];
+
+      try {
+        await withConnectionBatch(
+          "test-user-id",
+          "test-server",
+          mockServerConfig,
+          operations,
+        );
+        expect.fail("Expected error to be thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        const err = error as Error & { cause?: unknown };
+        expect(err.message).toContain("3 operations");
+        expect(err.cause).toBe(originalError);
+      }
+    });
+
+    test("エラーログに詳細な情報が記録される", async () => {
+      const { logger } = await import("../../../libs/logger.js");
+      const mockLogger = logger as unknown as Record<
+        string,
+        ReturnType<typeof vi.fn>
+      >;
+
+      const originalError = new Error("Test error");
+      const failingOperation = vi.fn().mockRejectedValue(originalError);
+
+      try {
+        await withConnection(
+          "test-user-id",
+          "test-server",
+          mockServerConfig,
+          failingOperation,
+        );
+      } catch {
+        // エラーは期待される
+      }
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        "Operation failed with MCP connection",
+        expect.objectContaining({
+          serverName: "test-server",
+          userServerConfigInstanceId: "test-user-id",
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          isActive: expect.any(Boolean),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          lastUsed: expect.any(String),
+          error: "Test error",
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          stack: expect.any(String),
+        }),
+      );
     });
   });
 });
