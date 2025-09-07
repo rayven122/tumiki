@@ -70,6 +70,7 @@
     "figma-developer-mcp": "^0.5.0",
     "hono": "^4.7.4",
     "just-pick": "^4.2.0",
+    "lru-cache": "^11.2.1",
     "marked": "^15.0.8",
     "mcp-gemini-google-search": "^0.1.1",
     "mcp-server-gsc": "^0.2.0",
