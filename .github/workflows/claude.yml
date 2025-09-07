@@ -40,6 +40,13 @@ jobs:
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
 
+      - name: 🛠️ Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
       - name: 🤖 Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
@@ -67,7 +74,17 @@ jobs:
           # assignee_trigger: "claude-bot"
 
           # Optional: Allow Claude to run specific commands
-          allowed_tools: "Bash(pnpm:*) Bash(pnpm *)"
+          allowed_tools: |
+            Bash(pnpm:*)
+            Bash(pnpm *)
+            Bash(git:*)
+            Bash(gh:*)
+            Write
+            Edit
+            MultiEdit
+            Read
+            Glob
+            Grep
 
           # Optional: Add custom instructions for Claude to customize its behavior for your project
           custom_instructions: |
