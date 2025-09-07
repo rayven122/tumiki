@@ -2,6 +2,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { logger } from "../../libs/logger.js";
 import type { ServerConfig } from "../../libs/types.js";
 import { getConnection, releaseConnection } from "./poolManager.js";
+import { measureOperationTime } from "./metrics.js";
 
 // 型定義の再エクスポート
 export type {
@@ -9,6 +10,8 @@ export type {
   MCPConnectionOptions,
   PoolConfig,
 } from "./types.js";
+
+export type { PoolMetrics } from "./metrics.js";
 
 // ユーティリティ関数の再エクスポート（テスト用）
 export {
@@ -21,7 +24,14 @@ export {
 } from "./connectionUtils.js";
 
 // プール管理関数の再エクスポート
-export { getConnection, releaseConnection } from "./poolManager.js";
+export {
+  getConnection,
+  releaseConnection,
+  getPoolMetrics,
+} from "./poolManager.js";
+
+// メトリクス関連の再エクスポート
+export { metricsCollector, measureOperationTime } from "./metrics.js";
 
 /**
  * MCPクライアントを使用した処理を自動的にリソース管理で実行
@@ -46,14 +56,27 @@ export const withConnection = async <T>(
   );
 
   try {
-    const result = await operation(connection.client);
+    const result = await measureOperationTime(() =>
+      operation(connection.client),
+    );
     return result;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Operation failed with MCP connection", {
       serverName: connection.serverName,
-      error: error instanceof Error ? error.message : String(error),
+      userServerConfigInstanceId,
+      isActive: connection.isActive,
+      lastUsed: new Date(connection.lastUsed).toISOString(),
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
     });
-    throw error;
+
+    // Enhanced error with context and cause chaining
+    const contextualError = new Error(
+      `MCP operation failed for server '${serverName}' (user: ${userServerConfigInstanceId}): ${errorMessage}`,
+      { cause: error },
+    );
+    throw contextualError;
   } finally {
     await releaseConnection(connection);
   }
@@ -86,17 +109,28 @@ export const withConnectionBatch = async <T>(
   );
 
   try {
-    const results = await Promise.all(
-      operations.map((operation) => operation(connection.client)),
+    const results = await measureOperationTime(() =>
+      Promise.all(operations.map((operation) => operation(connection.client))),
     );
     return results;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Batch operations failed with MCP connection", {
       serverName: connection.serverName,
+      userServerConfigInstanceId,
       operationCount: operations.length,
-      error: error instanceof Error ? error.message : String(error),
+      isActive: connection.isActive,
+      lastUsed: new Date(connection.lastUsed).toISOString(),
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
     });
-    throw error;
+
+    // Enhanced error with context and cause chaining
+    const contextualError = new Error(
+      `MCP batch operation failed for server '${serverName}' (${operations.length} operations, user: ${userServerConfigInstanceId}): ${errorMessage}`,
+      { cause: error },
+    );
+    throw contextualError;
   } finally {
     await releaseConnection(connection);
   }

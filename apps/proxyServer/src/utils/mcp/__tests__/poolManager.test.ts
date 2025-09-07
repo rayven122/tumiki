@@ -1,5 +1,10 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
-import { getConnection, releaseConnection, cleanup } from "../poolManager.js";
+import {
+  getConnection,
+  releaseConnection,
+  cleanup,
+  getPoolMetrics,
+} from "../poolManager.js";
 import type { MCPConnection } from "../types.js";
 import type { ServerConfig } from "../../../libs/types.js";
 
@@ -9,6 +14,20 @@ vi.mock("../../../libs/logger.js", () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+  },
+}));
+
+vi.mock("../../../libs/config.js", () => ({
+  config: {
+    connectionPool: {
+      maxConnectionsPerServer: 5,
+      idleTimeout: 180000, // 3 minutes
+      cleanupInterval: 60000, // 1 minute
+    },
+    metrics: {
+      enabled: true,
+      interval: 60000,
+    },
   },
 }));
 
@@ -99,11 +118,11 @@ describe("Pool Manager", () => {
       await releaseConnection(connection2);
     });
 
-    test("最大接続数制限が動作する（3接続まで）", async () => {
+    test("最大接続数制限が動作する（5接続まで）", async () => {
       const connections: MCPConnection[] = [];
 
-      // 最大接続数まで接続を作成（CONFIG.maxConnectionsPerServer = 3）
-      for (let i = 0; i < 3; i++) {
+      // 最大接続数まで接続を作成（CONFIG.maxConnectionsPerServer = 5）
+      for (let i = 0; i < 5; i++) {
         const conn = await getConnection(
           "test-instance-id",
           "test-server",
@@ -112,7 +131,7 @@ describe("Pool Manager", () => {
         connections.push(conn);
       }
 
-      // 4番目の接続でエラーが発生することを確認
+      // 6番目の接続でエラーが発生することを確認
       await expect(
         getConnection("test-instance-id", "test-server", mockServerConfig),
       ).rejects.toThrow("Maximum connections");
@@ -273,7 +292,7 @@ describe("Pool Manager", () => {
       await releaseConnection(connection);
 
       // lastUsedを古い時間に設定してアイドル状態をシミュレート
-      connection.lastUsed = Date.now() - 130000; // 130秒前（2分以上前）
+      connection.lastUsed = Date.now() - 190000; // 190秒前（3分以上前）
 
       // クリーンアップを待つ（実際のタイマーは30秒間隔だが、テストでは即座に実行）
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -287,6 +306,90 @@ describe("Pool Manager", () => {
 
       expect(newConnection).toBeDefined();
       await releaseConnection(newConnection);
+    });
+  });
+
+  describe("metrics collection", () => {
+    test("プールメトリクスが正確に取得できる", async () => {
+      // 複数のプールに接続を作成
+      const connection1 = await getConnection(
+        "test-instance-1",
+        "test-server-1",
+        mockServerConfig,
+      );
+      const connection2 = await getConnection(
+        "test-instance-1",
+        "test-server-2",
+        { ...mockServerConfig, name: "test-server-2" },
+      );
+      const connection3 = await getConnection(
+        "test-instance-2",
+        "test-server-1",
+        mockServerConfig,
+      );
+
+      // 1つの接続をリリース（アイドル状態にする）
+      await releaseConnection(connection2);
+
+      const metrics = getPoolMetrics();
+
+      expect(metrics.totalConnections).toBe(3);
+      expect(metrics.activeConnections).toBe(2);
+      expect(metrics.idleConnections).toBe(1);
+      expect(metrics.poolCount).toBe(3); // 3つのプール（instance-1:server-1, instance-1:server-2, instance-2:server-1）
+
+      // クリーンアップ
+      await releaseConnection(connection1);
+      await releaseConnection(connection3);
+    });
+
+    test("メトリクス統計が正確に記録される", async () => {
+      const initialMetrics = getPoolMetrics();
+      const initialSuccesses = initialMetrics.connectionSuccesses;
+
+      // 接続を作成（成功をカウント）
+      const connection = await getConnection(
+        "test-instance-id",
+        "test-server",
+        mockServerConfig,
+      );
+
+      const updatedMetrics = getPoolMetrics();
+      expect(updatedMetrics.connectionSuccesses).toBe(initialSuccesses + 1);
+
+      await releaseConnection(connection);
+    });
+
+    test("接続失敗時のメトリクス記録", async () => {
+      // Client の connect メソッドを失敗させる
+      const { Client } = await import(
+        "@modelcontextprotocol/sdk/client/index.js"
+      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+      const mockClient = Client as any;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const originalImplementation = mockClient.mockImplementation;
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      mockClient.mockImplementationOnce(() => ({
+        request: vi.fn().mockResolvedValue({ tools: [] }),
+        close: vi.fn().mockResolvedValue(undefined),
+        connect: vi.fn().mockRejectedValue(new Error("Connection failed")),
+      }));
+
+      const initialMetrics = getPoolMetrics();
+      const initialFailures = initialMetrics.connectionFailures;
+
+      await expect(
+        getConnection("test-instance-id", "test-server", mockServerConfig),
+      ).rejects.toThrow("Connection failed");
+
+      const updatedMetrics = getPoolMetrics();
+      expect(updatedMetrics.connectionFailures).toBe(initialFailures + 1);
+
+      // モックを復元
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      mockClient.mockImplementation(originalImplementation);
     });
   });
 });
