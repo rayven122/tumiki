@@ -118,6 +118,176 @@ describe("createToolsCache", () => {
     // 順序が異なっても同じハッシュ
     expect(hash1).toBe(hash2);
   });
+
+  test("コマンド変更時に異なるハッシュを生成する", () => {
+    const cache = createToolsCache();
+
+    const originalConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "stdio" as const,
+          command: "original-command",
+          args: [],
+          env: {},
+        },
+      },
+    ];
+
+    const modifiedConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "stdio" as const,
+          command: "modified-command", // コマンド変更
+          args: [],
+          env: {},
+        },
+      },
+    ];
+
+    const hash1 = cache.generateServerConfigHash(originalConfigs);
+    const hash2 = cache.generateServerConfigHash(modifiedConfigs);
+
+    expect(hash1).not.toBe(hash2);
+  });
+
+  test("URL変更時に異なるハッシュを生成する", () => {
+    const cache = createToolsCache();
+
+    const originalConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "sse" as const,
+          url: "http://localhost:8080/original",
+        },
+      },
+    ];
+
+    const modifiedConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "sse" as const,
+          url: "http://localhost:8080/modified", // URL変更
+        },
+      },
+    ];
+
+    const hash1 = cache.generateServerConfigHash(originalConfigs);
+    const hash2 = cache.generateServerConfigHash(modifiedConfigs);
+
+    expect(hash1).not.toBe(hash2);
+  });
+
+  test("トランスポートタイプ変更時に異なるハッシュを生成する", () => {
+    const cache = createToolsCache();
+
+    const stdioConfig: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "stdio" as const,
+          command: "test-command",
+          args: [],
+          env: {},
+        },
+      },
+    ];
+
+    const sseConfig: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "sse" as const,
+          url: "http://localhost:8080/sse",
+        },
+      },
+    ];
+
+    const hash1 = cache.generateServerConfigHash(stdioConfig);
+    const hash2 = cache.generateServerConfigHash(sseConfig);
+
+    expect(hash1).not.toBe(hash2);
+  });
+
+  test("引数や環境変数の変更でもハッシュが変わる（完全検知）", () => {
+    const cache = createToolsCache();
+
+    const originalConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "stdio" as const,
+          command: "test-command",
+          args: ["--arg1", "value1"],
+          env: { ENV_VAR: "value1" },
+        },
+      },
+    ];
+
+    const modifiedConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1"],
+        transport: {
+          type: "stdio" as const,
+          command: "test-command",
+          args: ["--arg2", "value2"], // 引数変更
+          env: { ENV_VAR: "value2" }, // 環境変数変更
+        },
+      },
+    ];
+
+    const hash1 = cache.generateServerConfigHash(originalConfigs);
+    const hash2 = cache.generateServerConfigHash(modifiedConfigs);
+
+    // 完全ハッシュなので引数・環境変数の変更も検知
+    expect(hash1).not.toBe(hash2);
+  });
+
+  test("toolNames変更時にもハッシュが変わる", () => {
+    const cache = createToolsCache();
+
+    const originalConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1", "tool2"],
+        transport: {
+          type: "stdio" as const,
+          command: "test-command",
+          args: [],
+          env: {},
+        },
+      },
+    ];
+
+    const modifiedConfigs: ServerConfig[] = [
+      {
+        name: "server1",
+        toolNames: ["tool1", "tool3"], // toolNames変更
+        transport: {
+          type: "stdio" as const,
+          command: "test-command",
+          args: [],
+          env: {},
+        },
+      },
+    ];
+
+    const hash1 = cache.generateServerConfigHash(originalConfigs);
+    const hash2 = cache.generateServerConfigHash(modifiedConfigs);
+
+    expect(hash1).not.toBe(hash2);
+  });
 });
 
 describe("createAuthCache", () => {

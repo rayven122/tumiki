@@ -172,6 +172,77 @@ describe("ToolsCache統合テスト", () => {
       // 元のキーではまだヒット
       expect(toolsCache.getTools(originalKey)).toStrictEqual(mockTools);
     });
+
+    test("コマンド設定が変更されると新しいキャッシュキーが生成される", () => {
+      const originalHash =
+        toolsCache.generateServerConfigHash(mockServerConfigs);
+      const originalKey = toolsCache.generateKey(testInstanceId, originalHash);
+
+      // オリジナル設定でキャッシュ保存
+      toolsCache.setTools(originalKey, mockTools, originalHash);
+
+      // 設定変更（コマンドを変更）
+      const modifiedConfigs: ServerConfig[] = [
+        {
+          name: "test-server-1",
+          toolNames: ["tool1", "tool2"],
+          transport: {
+            type: "stdio",
+            command: "modified-command-1", // 【変更】test-command-1 → modified-command-1
+            args: [],
+            env: {},
+          },
+          googleCredentials: null,
+        },
+        mockServerConfigs[1]!, // 【変更なし】test-server-2 はそのまま
+      ];
+
+      const modifiedHash = toolsCache.generateServerConfigHash(modifiedConfigs);
+      const modifiedKey = toolsCache.generateKey(testInstanceId, modifiedHash);
+
+      // ハッシュとキーが異なることを確認
+      expect(modifiedHash).not.toBe(originalHash);
+      expect(modifiedKey).not.toBe(originalKey);
+
+      // 新しいキーではキャッシュミス
+      expect(toolsCache.getTools(modifiedKey)).toBeNull();
+      // 元のキーではまだヒット
+      expect(toolsCache.getTools(originalKey)).toStrictEqual(mockTools);
+    });
+
+    test("トランスポートタイプが変更されると新しいキャッシュキーが生成される", () => {
+      const originalHash =
+        toolsCache.generateServerConfigHash(mockServerConfigs);
+      const originalKey = toolsCache.generateKey(testInstanceId, originalHash);
+
+      // オリジナル設定でキャッシュ保存
+      toolsCache.setTools(originalKey, mockTools, originalHash);
+
+      // 設定変更（stdio → sse）
+      const modifiedConfigs: ServerConfig[] = [
+        {
+          name: "test-server-1",
+          toolNames: ["tool1", "tool2"],
+          transport: {
+            type: "sse", // 【変更】stdio → sse
+            url: "http://localhost:8080/sse",
+          },
+          googleCredentials: null,
+        },
+      ];
+
+      const modifiedHash = toolsCache.generateServerConfigHash(modifiedConfigs);
+      const modifiedKey = toolsCache.generateKey(testInstanceId, modifiedHash);
+
+      // ハッシュとキーが異なることを確認
+      expect(modifiedHash).not.toBe(originalHash);
+      expect(modifiedKey).not.toBe(originalKey);
+
+      // 新しいキーではキャッシュミス
+      expect(toolsCache.getTools(modifiedKey)).toBeNull();
+      // 元のキーではまだヒット
+      expect(toolsCache.getTools(originalKey)).toStrictEqual(mockTools);
+    });
   });
 
   describe("キャッシュ無効化", () => {
