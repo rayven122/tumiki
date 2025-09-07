@@ -1,2 +1,3 @@
 logs/
-perf-results/
+perf-results/*
+!perf-results/dashboard.html
