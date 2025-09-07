@@ -32,11 +32,8 @@
     "test:coverage": "vitest run --coverage",
     "verify": "pnpm with-env ./scripts/test-mcp-inspector.sh",
     "inspector:http": "pnpm with-env bash -c 'NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm dlx @modelcontextprotocol/inspector \"${MCP_PROXY_URL:-http://localhost:8080}/mcp?api-key=${TEST_API_KEY}\"'",
-    "perf:baseline": "pnpm with-env npx tsx scripts/perf-test.ts baseline",
-    "perf:stress": "pnpm with-env npx tsx scripts/perf-test.ts stress",
-    "perf:spike": "pnpm with-env npx tsx scripts/perf-test.ts spike",
-    "perf:all": "pnpm with-env npx tsx scripts/perf-test.ts all",
-    "dashboard": "npx tsx watch scripts/dashboard-server.ts"
+    "perf:test": "pnpm with-env npx tsx scripts/perf-test.ts",
+    "perf:dashboard": "npx tsx watch scripts/dashboard-server.ts"
   },
   "dependencies": {
     "@googlemaps/code-assist-mcp": "^0.1.5",

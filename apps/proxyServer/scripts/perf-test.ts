@@ -21,8 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 設定
-const API_KEY = process.env.TEST_API_KEY || process.argv[2];
-const TEST_NAME = process.argv[3] || "baseline";
+const API_KEY = process.env.TEST_API_KEY;
 const PROXY_URL = process.env.MCP_PROXY_URL || "http://localhost:8080";
 const OUTPUT_DIR = path.join(__dirname, "..", "perf-results");
 
@@ -30,8 +29,7 @@ const OUTPUT_DIR = path.join(__dirname, "..", "perf-results");
 if (!API_KEY) {
   console.error("❌ エラー: APIキーが設定されていません");
   console.error("使用方法:");
-  console.error("  環境変数: TEST_API_KEY=your_key pnpm perf:baseline");
-  console.error("  引数: pnpm perf your_key baseline");
+  console.error("  TEST_API_KEY=your_key pnpm perf:test");
   process.exit(1);
 }
 
@@ -57,6 +55,7 @@ type Scenarios = {
   stress: ScenarioConfig;
   spike: ScenarioConfig;
   endurance: ScenarioConfig;
+  session: ScenarioConfig;
 };
 
 /**
@@ -696,46 +695,6 @@ function displaySummary(result: Result): void {
 }
 
 /**
- * セッション検証ログをCSV出力する
- */
-function exportValidationLogsToCSV(
-  summary: SessionValidationSummary,
-  scenario: string,
-): void {
-  const timestamp = new Date().toISOString().replace(/:/g, "-");
-  const csvPath = path.join(
-    OUTPUT_DIR,
-    `validation_logs_${scenario}_${timestamp}.csv`,
-  );
-
-  const csvHeaders = [
-    "Timestamp",
-    "SessionId",
-    "IsValid",
-    "ToolCount",
-    "ResponseTime(ms)",
-    "ErrorMessage",
-    "ToolNames",
-  ].join(",");
-
-  const csvRows = summary.logs.map((log) =>
-    [
-      log.timestamp,
-      log.sessionId || "null",
-      log.isValid,
-      log.toolCount,
-      log.responseTime.toFixed(2),
-      log.errorMessage ? `"${log.errorMessage.replace(/"/g, '""')}"` : "",
-      log.toolNames ? `"${log.toolNames.join(";")}"` : "",
-    ].join(","),
-  );
-
-  const csvContent = [csvHeaders, ...csvRows].join("\n");
-  fs.writeFileSync(csvPath, csvContent);
-  console.log(`📋 検証ログをCSV出力: ${csvPath}`);
-}
-
-/**
  * パフォーマンスメトリクスを追加して保存
  */
 function saveEnhancedResults(
@@ -775,9 +734,6 @@ function saveEnhancedResults(
   const filepath = path.join(OUTPUT_DIR, filename);
   fs.writeFileSync(filepath, JSON.stringify(enhancedResult, null, 2));
   console.log(`📊 拡張結果を保存: ${filepath}`);
-
-  // CSV形式でも保存（サマリー用）
-  exportValidationLogsToCSV(summary, scenario);
 }
 
 /**
@@ -802,17 +758,12 @@ function saveUnifiedJsonReport(
       const totalSent = result.requests.sent || result.requests.total;
       const successRate = ((totalSent - result.errors) / totalSent) * 100;
 
-      // Transport種別を判定
-      const transport = scenario.includes("_sse")
-        ? "SSE"
-        : scenario.includes("_http")
-          ? "HTTP"
-          : "Unknown";
-      const scenarioName = scenario.replace("_sse", "").replace("_http", "");
+      // シナリオ名を抽出（_httpサフィックスを削除）
+      const scenarioName = scenario.replace("_http", "");
 
       return {
         name: scenarioName,
-        transport,
+        transport: "HTTP",
         scenario: scenario,
         performance: {
           duration: result.duration,
@@ -860,62 +811,22 @@ function saveUnifiedJsonReport(
     }),
     summary: {
       totalScenarios: Object.keys(results).length,
-      transportComparison: (() => {
-        const sseResults = Object.entries(results).filter(([key]) =>
-          key.includes("_sse"),
-        );
-        const httpResults = Object.entries(results).filter(([key]) =>
-          key.includes("_http"),
-        );
-
-        if (sseResults.length > 0 && httpResults.length > 0) {
-          const sseAvgRPS =
-            sseResults.reduce(
-              (sum, [, result]) => sum + result.requests.average,
-              0,
-            ) / sseResults.length;
-          const httpAvgRPS =
-            httpResults.reduce(
-              (sum, [, result]) => sum + result.requests.average,
-              0,
-            ) / httpResults.length;
-          const sseAvgLatency =
-            sseResults.reduce(
-              (sum, [, result]) => sum + result.latency.average,
-              0,
-            ) / sseResults.length;
-          const httpAvgLatency =
-            httpResults.reduce(
-              (sum, [, result]) => sum + result.latency.average,
-              0,
-            ) / httpResults.length;
-
-          return {
-            sse: {
-              averageRPS: Number(sseAvgRPS.toFixed(2)),
-              averageLatency: Number(sseAvgLatency.toFixed(2)),
-              scenarios: sseResults.length,
-            },
-            http: {
-              averageRPS: Number(httpAvgRPS.toFixed(2)),
-              averageLatency: Number(httpAvgLatency.toFixed(2)),
-              scenarios: httpResults.length,
-            },
-            improvements: {
-              rpsImprovement: Number(
-                (((httpAvgRPS - sseAvgRPS) / sseAvgRPS) * 100).toFixed(2),
-              ),
-              latencyImprovement: Number(
-                (
-                  ((sseAvgLatency - httpAvgLatency) / sseAvgLatency) *
-                  100
-                ).toFixed(2),
-              ),
-            },
-          };
-        }
-        return null;
-      })(),
+      averageRPS: Number(
+        (
+          Object.entries(results).reduce(
+            (sum, [, result]) => sum + result.requests.average,
+            0,
+          ) / Object.entries(results).length
+        ).toFixed(2),
+      ),
+      averageLatency: Number(
+        (
+          Object.entries(results).reduce(
+            (sum, [, result]) => sum + result.latency.average,
+            0,
+          ) / Object.entries(results).length
+        ).toFixed(2),
+      ),
     },
   };
 
@@ -946,17 +857,12 @@ function generateComparisonReport(
       100
     ).toFixed(2);
 
-    // Transport種別を判定
-    const transport = scenario.includes("_sse")
-      ? "SSE"
-      : scenario.includes("_http")
-        ? "HTTP"
-        : "Unknown";
-    const scenarioName = scenario.replace("_sse", "").replace("_http", "");
+    // シナリオ名を抽出（_httpサフィックスを削除）
+    const scenarioName = scenario.replace("_http", "");
 
     return {
       シナリオ: scenarioName,
-      Transport: transport,
+      Transport: "HTTP",
       平均RPS: Number(result.requests.average.toFixed(2)),
       最大RPS: result.requests.max,
       "P50 (ms)": result.latency.p50,
@@ -979,39 +885,20 @@ function generateComparisonReport(
   // 統計サマリーを追加
   console.log("\n📈 === パフォーマンス統計サマリー ===");
 
-  const sseResults = comparison.filter((r) => r.Transport === "SSE");
   const httpResults = comparison.filter((r) => r.Transport === "HTTP");
 
-  if (sseResults.length > 0 && httpResults.length > 0) {
-    const sseAvgRPS =
-      sseResults.reduce((sum, r) => sum + r.平均RPS, 0) / sseResults.length;
+  if (httpResults.length > 0) {
     const httpAvgRPS =
       httpResults.reduce((sum, r) => sum + r.平均RPS, 0) / httpResults.length;
-    const sseAvgLatency =
-      sseResults.reduce((sum, r) => sum + r["平均レイテンシ (ms)"], 0) /
-      sseResults.length;
     const httpAvgLatency =
       httpResults.reduce((sum, r) => sum + r["平均レイテンシ (ms)"], 0) /
       httpResults.length;
 
     console.log(
-      `🔵 SSE Transport  - 平均RPS: ${sseAvgRPS.toFixed(2)}, 平均レイテンシ: ${sseAvgLatency.toFixed(2)}ms`,
-    );
-    console.log(
       `🟢 HTTP Transport - 平均RPS: ${httpAvgRPS.toFixed(2)}, 平均レイテンシ: ${httpAvgLatency.toFixed(2)}ms`,
     );
-
-    const rpsImprovement = (
-      ((httpAvgRPS - sseAvgRPS) / sseAvgRPS) *
-      100
-    ).toFixed(2);
-    const latencyImprovement = (
-      ((sseAvgLatency - httpAvgLatency) / sseAvgLatency) *
-      100
-    ).toFixed(2);
-
     console.log(
-      `📊 HTTP vs SSE - RPS改善: ${rpsImprovement}%, レイテンシ改善: ${latencyImprovement}%`,
+      `📊 全${httpResults.length}シナリオでのHTTP Transportパフォーマンス`,
     );
   }
 
@@ -1029,52 +916,6 @@ function generateComparisonReport(
     console.log(`\n✅ 全シナリオでエラー0件 - 完全成功!`);
   }
 
-  // 詳細CSV出力
-  const csvPath = path.join(
-    OUTPUT_DIR,
-    `comparison_${new Date().toISOString().replace(/:/g, "-")}.csv`,
-  );
-  const csvHeaders = [
-    "シナリオ",
-    "Transport",
-    "平均RPS",
-    "最大RPS",
-    "P50(ms)",
-    "P90(ms)",
-    "P99(ms)",
-    "平均レイテンシ(ms)",
-    "成功率(%)",
-    "総送信数",
-    "エラー数",
-    "実行時間(s)",
-    "スループット(KB/s)",
-    "接続数",
-  ].join(",");
-
-  const csvRows = comparison.map((row) =>
-    [
-      row.シナリオ,
-      row.Transport,
-      row.平均RPS,
-      row.最大RPS,
-      row["P50 (ms)"],
-      row["P90 (ms)"],
-      row["P99 (ms)"],
-      row["平均レイテンシ (ms)"],
-      row.成功率.replace("%", ""),
-      row.総送信数,
-      row.エラー数,
-      row.実行時間.replace("s", ""),
-      row["スループット (KB/s)"],
-      row.接続数,
-    ].join(","),
-  );
-
-  const csvContent = [csvHeaders, ...csvRows].join("\n");
-
-  fs.writeFileSync(csvPath, csvContent);
-  console.log(`\n📄 詳細CSV比較レポート: ${csvPath}`);
-
   // 統一JSONレポートを生成
   saveUnifiedJsonReport(results, summaries);
 }
@@ -1088,79 +929,40 @@ async function main() {
     stress: { connections: 50, duration: 30, title: "ストレステスト" },
     spike: { connections: 100, duration: 5, title: "スパイクテスト" },
     endurance: { connections: 20, duration: 60, title: "耐久テスト" },
+    session: { connections: 10, duration: 10, title: "セッション再利用テスト" },
   };
 
   console.log("🎯 MCP ProxyServer パフォーマンステスト");
   console.log("=".repeat(60));
-  console.log(`📋 実行モード設定:`);
-  console.log(`  シナリオ: ${TEST_NAME}`);
+  console.log(`📋 設定:`);
+  console.log(`  全シナリオ実行: ${Object.keys(scenarios).join(", ")}`);
   console.log(`  プロキシURL: ${PROXY_URL}`);
   console.log("");
 
-  // 両方のTransportでテストを実行
-  console.log("🔄 両方のTransportで順次テスト実行:");
-  console.log("  1. SSE Transport (セッション初期化)");
-  console.log("  2. Streamable HTTP Transport (HTTP初期化)");
+  // HTTP Transportでテストを実行
+  console.log("🔄 HTTP Transportでテスト実行:");
+  console.log("  Streamable HTTP Transport (HTTP初期化)");
   console.log("");
 
-  // Transport別にテスト実行
+  // HTTP Transport テスト実行
   const transportResults: Record<string, Result> = {};
   const transportSummaries: Record<string, SessionValidationSummary> = {};
 
-  // 1. SSE Transport テスト
-  console.log("📡 SSE Transport テスト開始...");
-  console.log("✅ SSE Transport使用、各接続で個別セッション作成");
-
-  if (TEST_NAME === "all") {
-    for (const [name, config] of Object.entries(scenarios)) {
-      if (name === "endurance") continue;
-      const { result, summary } = await runLoadTest(`${name}_sse`, {
-        ...config,
-      });
-      transportResults[`${name}_sse`] = result;
-      transportSummaries[`${name}_sse`] = summary;
-    }
-  } else if (scenarios[TEST_NAME as keyof Scenarios]) {
-    const config = scenarios[TEST_NAME as keyof Scenarios];
-    const { result, summary } = await runLoadTest(`${TEST_NAME}_sse`, {
-      ...config,
-    });
-    transportResults[`${TEST_NAME}_sse`] = result;
-    transportSummaries[`${TEST_NAME}_sse`] = summary;
-  }
-
-  console.log("");
-
-  // 2. HTTP Transport テスト
   console.log("🌐 HTTP Transport テスト開始...");
   console.log("✅ HTTP Transport使用、各接続で個別セッション作成");
 
-  if (TEST_NAME === "all") {
-    for (const [name, config] of Object.entries(scenarios)) {
-      if (name === "endurance") continue;
-      const { result, summary } = await runLoadTest(`${name}_http`, {
-        ...config,
-      });
-      transportResults[`${name}_http`] = result;
-      transportSummaries[`${name}_http`] = summary;
-    }
-  } else if (scenarios[TEST_NAME as keyof Scenarios]) {
-    const config = scenarios[TEST_NAME as keyof Scenarios];
-    const { result, summary } = await runLoadTest(`${TEST_NAME}_http`, {
+  // 全シナリオを実行
+  for (const [name, config] of Object.entries(scenarios)) {
+    const { result, summary } = await runLoadTest(`${name}_http`, {
       ...config,
     });
-    transportResults[`${TEST_NAME}_http`] = result;
-    transportSummaries[`${TEST_NAME}_http`] = summary;
+    transportResults[`${name}_http`] = result;
+    transportSummaries[`${name}_http`] = summary;
   }
 
   // 結果レポート生成
-  if (Object.keys(transportResults).length > 0) {
-    generateComparisonReport(transportResults, transportSummaries);
-    console.log("\n🎉 両Transport パフォーマンステスト完了！");
-  } else {
-    console.error("❌ 両Transportとも初期化に失敗しました");
-    process.exit(1);
-  }
+  generateComparisonReport(transportResults, transportSummaries);
+  console.log("\n🎉 全シナリオ パフォーマンステスト完了！");
 }
 
 // 実行
