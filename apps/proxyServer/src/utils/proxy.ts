@@ -660,9 +660,6 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          // 詳細ログ記録を追加
-          requestData: JSON.stringify(request),
-          responseData: JSON.stringify({ tools: result.tools }),
         });
       }
 
