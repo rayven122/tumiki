@@ -37,7 +37,7 @@ MCPプロキシサーバーの`tools/list`取得遅延とスケーラビリテ�
 - `tools/list`結果をメモリに保存して高速化
 - キャッシュヒット時は50ms以下で即座にレスポンス
 
-**制約条件**：2GBメモリ、既存機能影響なし、段階的実装
+**制約条件**：4GBメモリ（アップグレード済み）、既存機能影響なし、段階的実装
 
 ---
 
@@ -57,7 +57,7 @@ MCPクライアント接続の再利用基盤を構築し、接続確立オー�
 // メイン接続プール管理クラス
 export class MCPConnectionPool {
   private pools = new Map<string, ServerConnectionPool>();
-  private maxTotalConnections = 30; // 全体で最大30接続（メモリ制約）
+  private maxTotalConnections = 60; // 全体で最大60接続（4GB最適化）
 
   async getConnection(
     userMcpServerInstanceId: string,
@@ -72,7 +72,7 @@ export class MCPConnectionPool {
 class ServerConnectionPool {
   private connections: MCPConnection[] = [];
   private activeConnections = 0;
-  private readonly maxConnections = 3; // サーバーあたり最大3接続
+  private readonly maxConnections = 5; // サーバーあたり最大5接続
   private readonly idleTimeout = 180000; // 3分でタイムアウト
 
   async acquire(): Promise<MCPConnection>;
@@ -100,7 +100,7 @@ export const mcpConnectionPool = new MCPConnectionPool();
 **実装詳細**：
 
 - 接続プールの基本機能（取得・返却・クリーンアップ）
-- メモリ効率を重視した設計（最大30接続）
+- メモリ効率を重視した設計（最大60接続）
 - アイドルタイムアウト機能（3分）
 - ヘルスチェック機能
 - 統計情報取得機能
@@ -153,9 +153,9 @@ export const generateCacheKey = (
 // メインキャッシュクラス
 export class ToolsCache {
   private cache: LRU<string, ToolsCacheEntry>;
-  private readonly maxSize = 50; // 最大50エントリ
-  private readonly ttl = 5 * 60 * 1000; // 5分TTL
-  private readonly maxMemory = 50 * 1024 * 1024; // 50MB制限
+  private readonly maxSize = 100; // 最大100エントリ
+  private readonly ttl = 10 * 60 * 1000; // 10分TTL
+  private readonly maxMemory = 150 * 1024 * 1024; // 150MB制限
 
   constructor();
   set(key: string, tools: Tool[], serverConfigHash: string): void;
@@ -189,7 +189,7 @@ export const toolsCache = new ToolsCache();
 - LRUキャッシュによる効率的なメモリ使用
 - TTL（Time To Live）による自動expiry
 - サーバー設定変更の検知とキャッシュ無効化
-- メモリ使用量制限（50MB）
+- メモリ使用量制限（150MB）
 - 統計情報（ヒット率、エントリ数など）
 
 #### テスト
@@ -621,8 +621,8 @@ describe("LogCleanupService", () => {
 export const config = {
   // 🆕 接続プール設定
   connectionPool: {
-    maxTotalConnections: 30, // 全体最大接続数（メモリ制約考慮）
-    maxConnectionsPerServer: 3, // サーバーあたり最大接続数
+    maxTotalConnections: 60, // 全体最大接続数（4GB最適化）
+    maxConnectionsPerServer: 5, // サーバーあたり最大接続数
     idleTimeout: 180000, // 3分でアイドル接続切断
     healthCheckInterval: 60000, // 1分ごとのヘルスチェック
     maxRetries: 3, // 接続失敗時のリトライ数
@@ -630,9 +630,9 @@ export const config = {
 
   // 🆕 キャッシュ設定
   cache: {
-    maxEntries: 50, // 最大キャッシュエントリ数
-    ttl: 300000, // 5分TTL
-    maxMemoryMB: 50, // 最大メモリ使用量
+    maxEntries: 100, // 最大キャッシュエントリ数
+    ttl: 600000, // 10分TTL
+    maxMemoryMB: 150, // 最大メモリ使用量
     cleanupInterval: 60000, // 1分ごとのクリーンアップ
   },
 
@@ -866,8 +866,8 @@ async function runMemoryStressTest() {
 | -------------------------- | ------ | --------- | ------- |
 | tools/list初回             | 2-3秒  | 500ms     | 80%短縮 |
 | tools/listキャッシュヒット | N/A    | 50ms      | 新機能  |
-| 同時リクエスト処理         | 10     | 50+       | 5倍向上 |
-| メモリ使用量               | 不安定 | 800MB安定 | 安定化  |
+| 同時リクエスト処理         | 10     | 60+       | 6倍向上 |
+| メモリ使用量               | 不安定 | 1.2GB安定 | 安定化  |
 
 ### 段階的改善効果
 
@@ -881,7 +881,7 @@ async function runMemoryStressTest() {
 ### メモリ管理
 
 - 各PRで必ずメモリリーク検証を実行
-- 2GB制約を常に意識した実装
+- 4GB環境を活用した最適化実装
 - 定期的なガベージコレクション監視
 
 ### 後方互換性
@@ -896,7 +896,11 @@ async function runMemoryStressTest() {
 - パフォーマンス劣化の早期検知
 - エラー率の監視強化
 
-この実装計画により、2GBメモリ制約下で最大5倍のパフォーマンス向上を安全に実現できます。
+この実装計画により、4GBメモリ環境で最大6倍のパフォーマンス向上を安全に実現できます。
+
+## 📎 関連ドキュメント
+
+- [4GB環境最適化キャッシュ戦略](./cache-strategy-4gb.md) - 詳細なキャッシュ戦略とメモリ配分計画
 
 ## 📝 実装チェックリスト
 
