@@ -13,16 +13,11 @@ import {
 
 const mockTool = {
   name: "test_tool",
-  id: "test_tool_id",
   description: "A test tool",
   inputSchema: {
-    type: "object",
+    type: "object" as const,
     properties: {},
   },
-  isEnabled: true,
-  mcpServerId: "test_server",
-  createdAt: new Date(),
-  updatedAt: new Date(),
 };
 
 describe("createToolsCache", () => {
@@ -72,13 +67,49 @@ describe("createToolsCache", () => {
     const cache = createToolsCache();
 
     const configs1: ServerConfig[] = [
-      { name: "server1", toolNames: ["tool1", "tool2"] },
-      { name: "server2", toolNames: ["tool3"] },
+      {
+        name: "server1",
+        toolNames: ["tool1", "tool2"],
+        transport: {
+          type: "stdio" as const,
+          command: "test1",
+          args: [],
+          env: {},
+        },
+      },
+      {
+        name: "server2",
+        toolNames: ["tool3"],
+        transport: {
+          type: "stdio" as const,
+          command: "test2",
+          args: [],
+          env: {},
+        },
+      },
     ];
 
     const configs2: ServerConfig[] = [
-      { name: "server2", toolNames: ["tool3"] },
-      { name: "server1", toolNames: ["tool1", "tool2"] },
+      {
+        name: "server2",
+        toolNames: ["tool3"],
+        transport: {
+          type: "stdio" as const,
+          command: "test2",
+          args: [],
+          env: {},
+        },
+      },
+      {
+        name: "server1",
+        toolNames: ["tool1", "tool2"],
+        transport: {
+          type: "stdio" as const,
+          command: "test1",
+          args: [],
+          env: {},
+        },
+      },
     ];
 
     const hash1 = cache.generateServerConfigHash(configs1);

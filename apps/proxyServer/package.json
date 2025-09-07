@@ -43,6 +43,7 @@
     "perf:spike": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" spike",
     "perf:all": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" all",
     "perf:session": "pnpm with-env npx tsx scripts/perf-test.ts \"${TEST_API_KEY}\" baseline --with-session",
+    "perf:cache": "pnpm with-env npx tsx scripts/perf-test-cache-integration.ts",
     "perf:direct": "pnpm with-env npx autocannon -c 10 -d 10 -m POST -H \"Content-Type: application/json\" -H \"api-key: ${TEST_API_KEY}\" -b '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":1}' \"${MCP_PROXY_URL:-http://localhost:8080}/mcp\""
   },
   "dependencies": {
