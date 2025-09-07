@@ -638,9 +638,6 @@ importers:
       '@types/express-serve-static-core':
         specifier: ^5.0.7
         version: 5.0.7
-      '@types/lru-cache':
-        specifier: ^7.10.10
-        version: 7.10.10
       '@types/qs':
         specifier: ^6.14.0
         version: 6.14.0
@@ -4735,10 +4732,6 @@ packages:
 
   '@types/linkify-it@5.0.0':
     resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==}
-
-  '@types/lru-cache@7.10.10':
-    resolution: {integrity: sha512-nEpVRPWW9EBmx2SCfNn3ClYxPL7IktPX12HhIoSc/H5mMjdeW3+YsXIpseLQ2xF35+OcpwKQbEUw5VtqE4PDNA==}
-    deprecated: This is a stub types definition. lru-cache provides its own type definitions, so you do not need this installed.
 
   '@types/markdown-it@14.1.2':
     resolution: {integrity: sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==}
@@ -14783,10 +14776,6 @@ snapshots:
   '@types/json5@0.0.29': {}
 
   '@types/linkify-it@5.0.0': {}
-
-  '@types/lru-cache@7.10.10':
-    dependencies:
-      lru-cache: 11.2.1
 
   '@types/markdown-it@14.1.2':
     dependencies:

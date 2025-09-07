@@ -90,7 +90,6 @@
     "@types/autocannon": "^7.12.7",
     "@types/express": "^5.0.2",
     "@types/express-serve-static-core": "^5.0.7",
-    "@types/lru-cache": "^7.10.10",
     "@types/qs": "^6.14.0",
     "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
