@@ -173,7 +173,7 @@ describe("ToolsCache統合テスト", () => {
       expect(toolsCache.getTools(originalKey)).toStrictEqual(mockTools);
     });
 
-    test("コマンド設定が変更されると新しいキャッシュキーが生成される", () => {
+    test("transport詳細変更時はキャッシュキーが変わらない（最適化）", () => {
       const originalHash =
         toolsCache.generateServerConfigHash(mockServerConfigs);
       const originalKey = toolsCache.generateKey(testInstanceId, originalHash);
@@ -181,36 +181,45 @@ describe("ToolsCache統合テスト", () => {
       // オリジナル設定でキャッシュ保存
       toolsCache.setTools(originalKey, mockTools, originalHash);
 
-      // 設定変更（コマンドを変更）
+      // 設定変更（コマンドを変更、但しtoolNamesは同じ）
       const modifiedConfigs: ServerConfig[] = [
         {
           name: "test-server-1",
-          toolNames: ["tool1", "tool2"],
+          toolNames: ["tool1", "tool2"], // 【変更なし】同じtoolNames
           transport: {
             type: "stdio",
             command: "modified-command-1", // 【変更】test-command-1 → modified-command-1
-            args: [],
-            env: {},
+            args: ["--modified"],
+            env: { MODIFIED: "true" },
           },
           googleCredentials: null,
         },
-        mockServerConfigs[1]!, // 【変更なし】test-server-2 はそのまま
+        {
+          name: "test-server-2",
+          toolNames: ["tool3"], // 【変更なし】同じtoolNames
+          transport: {
+            type: "stdio",
+            command: "modified-command-2", // 【変更】test-command-2 → modified-command-2
+            args: ["--modified2"],
+            env: { MODIFIED2: "true" },
+          },
+          googleCredentials: null,
+        },
       ];
 
       const modifiedHash = toolsCache.generateServerConfigHash(modifiedConfigs);
       const modifiedKey = toolsCache.generateKey(testInstanceId, modifiedHash);
 
-      // ハッシュとキーが異なることを確認
-      expect(modifiedHash).not.toBe(originalHash);
-      expect(modifiedKey).not.toBe(originalKey);
+      // toolNamesが同じなので、ハッシュとキーも同じ（最適化）
+      expect(modifiedHash).toBe(originalHash);
+      expect(modifiedKey).toBe(originalKey);
 
-      // 新しいキーではキャッシュミス
-      expect(toolsCache.getTools(modifiedKey)).toBeNull();
-      // 元のキーではまだヒット
+      // キーが同じなので、キャッシュヒット
+      expect(toolsCache.getTools(modifiedKey)).toStrictEqual(mockTools);
       expect(toolsCache.getTools(originalKey)).toStrictEqual(mockTools);
     });
 
-    test("トランスポートタイプが変更されると新しいキャッシュキーが生成される", () => {
+    test("transport設定変更時はキャッシュキーが変わらない（最適化）", () => {
       const originalHash =
         toolsCache.generateServerConfigHash(mockServerConfigs);
       const originalKey = toolsCache.generateKey(testInstanceId, originalHash);
@@ -218,29 +227,37 @@ describe("ToolsCache統合テスト", () => {
       // オリジナル設定でキャッシュ保存
       toolsCache.setTools(originalKey, mockTools, originalHash);
 
-      // 設定変更（stdio → sse）
+      // 設定変更（stdio → sse、但しtoolNamesは同じ）
       const modifiedConfigs: ServerConfig[] = [
         {
           name: "test-server-1",
-          toolNames: ["tool1", "tool2"],
+          toolNames: ["tool1", "tool2"], // 【変更なし】同じtoolNames
           transport: {
             type: "sse", // 【変更】stdio → sse
             url: "http://localhost:8080/sse",
           },
           googleCredentials: null,
         },
+        {
+          name: "test-server-2",
+          toolNames: ["tool3"], // 【変更なし】同じtoolNames
+          transport: {
+            type: "sse", // 【変更】stdio → sse
+            url: "http://localhost:8080/sse2",
+          },
+          googleCredentials: null,
+        },
       ];
 
       const modifiedHash = toolsCache.generateServerConfigHash(modifiedConfigs);
       const modifiedKey = toolsCache.generateKey(testInstanceId, modifiedHash);
 
-      // ハッシュとキーが異なることを確認
-      expect(modifiedHash).not.toBe(originalHash);
-      expect(modifiedKey).not.toBe(originalKey);
+      // toolNamesが同じなので、ハッシュとキーも同じ（最適化）
+      expect(modifiedHash).toBe(originalHash);
+      expect(modifiedKey).toBe(originalKey);
 
-      // 新しいキーではキャッシュミス
-      expect(toolsCache.getTools(modifiedKey)).toBeNull();
-      // 元のキーではまだヒット
+      // キーが同じなので、キャッシュヒット
+      expect(toolsCache.getTools(modifiedKey)).toStrictEqual(mockTools);
       expect(toolsCache.getTools(originalKey)).toStrictEqual(mockTools);
     });
   });
