@@ -265,4 +265,15 @@ export const MCP_SERVERS = [
     transportType: "STDIO" as const,
     isPublic: true,
   },
+  {
+    name: "AWS CDK MCP",
+    description:
+      "AWS Cloud Development Kit (CDK)のベストプラクティス、Infrastructure as Codeパターン、CDK Nagによるセキュリティコンプライアンスをサポートします",
+    tags: ["AWS", "インフラ", "開発", "セキュリティ"],
+    iconPath: "/logos/aws-cdk.svg",
+    command: "uvx",
+    args: ["awslabs.cdk-mcp-server@latest"],
+    envVars: ["FASTMCP_LOG_LEVEL"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];

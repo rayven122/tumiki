@@ -11,6 +11,9 @@
 # Google Analytics MCP Server
 analytics-mcp>=0.1.1
 
+# AWS CDK MCP Server
+awslabs.cdk-mcp-server
+
 # 他の Python MCP サーバーの例（必要に応じてコメントアウトを解除）
 # browserbase-mcp>=0.1.0
 # cerebras-mcp>=0.1.0
