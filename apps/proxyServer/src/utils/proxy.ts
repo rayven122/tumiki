@@ -373,10 +373,8 @@ export const getMcpClientsByInstanceId = async (
     userMcpServerInstanceId,
   );
 
-  // プールから接続を取得または作成
-  const connectedClients: ConnectedClient[] = [];
-
-  for (const serverConfig of serverConfigs) {
+  // プールから接続を取得または作成（並列処理）
+  const connectionPromises = serverConfigs.map(async (serverConfig) => {
     try {
       const client = await mcpPool.getConnection(
         userMcpServerInstanceId,
@@ -384,7 +382,7 @@ export const getMcpClientsByInstanceId = async (
         serverConfig,
       );
 
-      connectedClients.push({
+      return {
         client,
         name: serverConfig.name,
         cleanup: async () => {
@@ -396,13 +394,24 @@ export const getMcpClientsByInstanceId = async (
           );
         },
         toolNames: serverConfig.toolNames,
-      });
+      };
     } catch (error) {
       // 接続失敗はログして続行
       console.error(`Failed to connect to ${serverConfig.name}:`, error);
       recordError("server_connection_failed");
+      return null;
     }
-  }
+  });
+
+  // Promise.allSettledで全ての接続を並列実行
+  const connectionResults = await Promise.allSettled(connectionPromises);
+  
+  // 成功した接続のみをフィルタリング
+  const connectedClients: ConnectedClient[] = connectionResults
+    .filter((result): result is PromiseFulfilledResult<ConnectedClient | null> => 
+      result.status === "fulfilled" && result.value !== null
+    )
+    .map(result => result.value as ConnectedClient);
 
   const cleanup = async () => {
     // 全ての接続をプールに返却
@@ -541,7 +550,8 @@ export const getServer = async (
                 const allTools: Tool[] = [];
                 const toolToClientMap = new Map<string, ConnectedClient>();
 
-                for (const connectedClient of connectedClients) {
+                // 全クライアントに並列でリクエストを送信
+                const toolsPromises = connectedClients.map(async (connectedClient) => {
                   try {
                     const result = await connectedClient.client.request(
                       {
@@ -559,16 +569,32 @@ export const getServer = async (
                           connectedClient.toolNames.includes(tool.name),
                         )
                         .map((tool) => {
-                          toolToClientMap.set(tool.name, connectedClient);
                           return {
-                            ...tool,
-                            description: `[${connectedClient.name}] ${tool.description}`,
+                            tool: {
+                              ...tool,
+                              description: `[${connectedClient.name}] ${tool.description}`,
+                            },
+                            client: connectedClient,
                           };
                         });
-                      allTools.push(...toolsWithSource);
+                      return toolsWithSource;
                     }
+                    return [];
                   } catch {
                     recordError("tools_list_client_error");
+                    return [];
+                  }
+                });
+
+                // 全ての結果を待って統合
+                const toolsResults = await Promise.allSettled(toolsPromises);
+                
+                for (const result of toolsResults) {
+                  if (result.status === "fulfilled" && result.value) {
+                    for (const { tool, client } of result.value) {
+                      toolToClientMap.set(tool.name, client);
+                      allTools.push(tool);
+                    }
                   }
                 }
 
