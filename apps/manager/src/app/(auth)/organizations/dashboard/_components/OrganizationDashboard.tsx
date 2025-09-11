@@ -1,5 +1,6 @@
 import { BasicInfoSection } from "./BasicInfoSection";
 import { MemberManagementSection } from "./MemberManagementSection";
+import { InvitationManagementSection } from "./InvitationManagementSection";
 import { UsageStatsSection } from "./UsageStatsSection";
 import { type OrganizationId } from "@/schema/ids";
 
@@ -17,6 +18,8 @@ export const OrganizationDashboard = ({
       <BasicInfoSection organizationId={organizationId} />
 
       <MemberManagementSection organizationId={organizationId} />
+
+      <InvitationManagementSection organizationId={organizationId} />
 
       <UsageStatsSection organizationId={organizationId} />
     </div>
