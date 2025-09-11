@@ -226,11 +226,12 @@ describe("MCPConnectionPool", () => {
 
       // 初期状態
       let stats = mcpPool.getStats();
-      expect(stats).toStrictEqual({
-        poolCount: 0,
-        totalConnections: 0,
-        activeConnections: 0,
-      });
+      expect(stats.poolCount).toBe(0);
+      expect(stats.totalConnections).toBe(0);
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.maxTotalConnections).toBe(60);
+      expect(stats.maxConnectionsPerServer).toBe(5);
+      expect(stats.idleTimeout).toBe(180000);
 
       // 接続を作成
       const client1 = await mcpPool.getConnection(
