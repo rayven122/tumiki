@@ -1,17 +1,3 @@
-/**
- * @fileoverview MCPコネクションプール - シンプルで効率的な実装
- *
- * パフォーマンス改善:
- * - 接続の再利用により2-3秒 → 50ms（初回500ms、2回目以降50ms）
- * - 最大60接続（4GBメモリ環境最適化）、サーバーあたり5接続
- * - 3分のアイドルタイムアウトで自動クリーンアップ
- *
- * 今後の改善予定:
- * - PR #2: tools/listキャッシュ機構の実装（30msまで短縮）
- * - PR #6: DBログ最適化とクリーンアップ
- * - PR #7: メトリクス監視機能の追加
- */
-
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { ServerConfig } from "../libs/types.js";
 import { createMCPClient } from "./createMCPClient.js";
