@@ -106,7 +106,59 @@ const createClient = async (
       // Type narrowing: when type is "sse", url is guaranteed to be string
       const sseTransport = server.transport;
       if ("url" in sseTransport && typeof sseTransport.url === "string") {
-        transport = new SSEClientTransport(new URL(sseTransport.url));
+        // SSE transportにヘッダーを設定（認証情報を含む）
+        const headers: Record<string, string> = {};
+
+        // 環境変数から認証情報を取得して設定
+        if (sseTransport.env) {
+          // x-api-keyヘッダーの設定（API_KEYやX_API_KEYなどの環境変数から）
+          if (sseTransport.env.API_KEY) {
+            headers["X-API-Key"] = sseTransport.env.API_KEY;
+          } else if (sseTransport.env.X_API_KEY) {
+            headers["X-API-Key"] = sseTransport.env.X_API_KEY;
+          }
+
+          // Authorizationヘッダーの設定（AUTHORIZATION_TOKENやBEARER_TOKENなどから）
+          if (sseTransport.env.AUTHORIZATION_TOKEN) {
+            headers.Authorization =
+              `Bearer ${sseTransport.env.AUTHORIZATION_TOKEN}`;
+          } else if (sseTransport.env.BEARER_TOKEN) {
+            headers.Authorization =
+              `Bearer ${sseTransport.env.BEARER_TOKEN}`;
+          } else if (sseTransport.env.AUTHORIZATION) {
+            headers.Authorization = sseTransport.env.AUTHORIZATION;
+          }
+
+          // その他のカスタムヘッダー（CUSTOM_HEADER_プレフィックスなど）
+          for (const [key, value] of Object.entries(sseTransport.env)) {
+            if (key.startsWith("HEADER_")) {
+              const headerName = key.substring(7).replace(/_/g, "-");
+              headers[headerName] = value;
+            }
+          }
+        }
+
+        // カスタムfetch実装を使用してヘッダーを設定
+        const customFetch = async (url: string | URL, init: RequestInit) => {
+          const finalInit = {
+            ...init,
+            headers: {
+              ...init.headers,
+              ...headers,
+            },
+          };
+          return fetch(url, finalInit);
+        };
+
+        transport = new SSEClientTransport(new URL(sseTransport.url), {
+          eventSourceInit: {
+            // EventSourceInitはfetchプロパティをサポート
+            fetch: Object.keys(headers).length > 0 ? customFetch : undefined,
+          } as any, // 型定義の互換性のため一時的にanyを使用
+          requestInit: {
+            headers: Object.keys(headers).length > 0 ? headers : undefined,
+          },
+        });
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
@@ -364,6 +416,7 @@ const getServerConfigs = async (apiKey: string) => {
         transport: {
           type: "sse" as const,
           url: serverConfig.mcpServer.url,
+          env: envObj, // 環境変数を追加（認証ヘッダー設定用）
         },
       };
 
