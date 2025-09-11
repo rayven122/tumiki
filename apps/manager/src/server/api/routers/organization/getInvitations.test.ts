@@ -1,49 +1,87 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach, vi, type MockedFunction } from "vitest";
 import { getInvitations } from "./getInvitations";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { type OrganizationId } from "@/schema/ids";
+import type { OrganizationInvitation, User } from "@tumiki/db";
+
+// validateOrganizationAdminAccessのモック
+vi.mock("@/server/utils/organizationPermissions", () => ({
+  validateOrganizationAdminAccess: vi.fn(),
+}));
 
 const mockOrganizationId = "org_test123" as OrganizationId;
 const mockUserId = "user_test456";
 const mockInvitedUserId = "user_invited789";
 
+type MockInvitationWithUser = OrganizationInvitation & {
+  invitedByUser: Pick<User, "id" | "name" | "email" | "image">;
+};
+
+type MockDb = {
+  organizationMember: {
+    findFirst: MockedFunction<() => Promise<unknown>>;
+  };
+  organizationInvitation: {
+    findMany: MockedFunction<() => Promise<MockInvitationWithUser[]>>;
+  };
+  $runWithoutRLS: MockedFunction<(fn: (db: unknown) => Promise<unknown>) => Promise<unknown>>;
+};
+
 describe("getInvitations", () => {
   let mockCtx: ProtectedContext;
+  let mockDb: MockDb;
 
   beforeEach(() => {
-    const mockDb = {
+    mockDb = {
       organizationMember: {
         findFirst: vi.fn(),
       },
       organizationInvitation: {
         findMany: vi.fn(),
       },
+      $runWithoutRLS: vi.fn(),
     };
     
     mockCtx = {
-      db: mockDb,
+      db: mockDb as unknown as ProtectedContext["db"],
       session: {
         user: {
           id: mockUserId,
           email: "test@example.com",
         },
-      },
-    } as unknown as ProtectedContext;
+      } as ProtectedContext["session"],
+    } as ProtectedContext;
   });
 
   test("管理者が招待一覧を取得できる", async () => {
-    // 管理者権限のあるメンバーをモック
-    vi.mocked(mockCtx.db.organizationMember.findFirst).mockResolvedValue({
-      id: "member1",
-      organizationId: mockOrganizationId,
-      userId: mockUserId,
-      isAdmin: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // 権限検証は成功するようモック
+    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
+    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
+      organization: {
+        id: mockOrganizationId,
+        name: "Test Organization",
+        description: null,
+        logoUrl: null,
+        isDeleted: false,
+        isPersonal: false,
+        maxMembers: 10,
+        createdBy: mockUserId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        members: [
+          {
+            id: "member1",
+            userId: mockUserId,
+            isAdmin: true,
+          },
+        ],
+      },
+      userMember: {
+        id: "member1",
+        userId: mockUserId,
+        isAdmin: true,
+      },
     });
 
     const now = new Date();
@@ -51,7 +89,7 @@ describe("getInvitations", () => {
     const pastDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000); // 1日前
 
     // 招待データをモック
-    vi.mocked(mockCtx.db.organizationInvitation.findMany).mockResolvedValue([
+    const mockInvitations: MockInvitationWithUser[] = [
       {
         id: "inv1",
         organizationId: mockOrganizationId,
@@ -70,7 +108,7 @@ describe("getInvitations", () => {
           email: "inviter@example.com",
           image: null,
         },
-      } as any,
+      },
       {
         id: "inv2",
         organizationId: mockOrganizationId,
@@ -89,8 +127,10 @@ describe("getInvitations", () => {
           email: "inviter@example.com",
           image: null,
         },
-      } as any,
-    ]);
+      },
+    ];
+    
+    mockDb.organizationInvitation.findMany.mockResolvedValue(mockInvitations);
 
     const result = await getInvitations({
       input: { organizationId: mockOrganizationId },
@@ -105,15 +145,14 @@ describe("getInvitations", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
-    // 管理者権限のないメンバーをモック
-    vi.mocked(mockCtx.db.organizationMember.findFirst).mockResolvedValue({
-      id: "member1",
-      organizationId: mockOrganizationId,
-      userId: mockUserId,
-      isAdmin: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // 権限検証でエラーを発生させる
+    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
+    vi.mocked(validateOrganizationAdminAccess).mockRejectedValue(
+      new TRPCError({
+        code: "FORBIDDEN",
+        message: "管理者権限が必要です。",
+      }),
+    );
 
     await expect(
       getInvitations({
@@ -124,18 +163,37 @@ describe("getInvitations", () => {
   });
 
   test("招待がない場合は空の配列を返す", async () => {
-    // 管理者権限のあるメンバーをモック
-    vi.mocked(mockCtx.db.organizationMember.findFirst).mockResolvedValue({
-      id: "member1",
-      organizationId: mockOrganizationId,
-      userId: mockUserId,
-      isAdmin: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // 権限検証は成功するようモック
+    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
+    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
+      organization: {
+        id: mockOrganizationId,
+        name: "Test Organization",
+        description: null,
+        logoUrl: null,
+        isDeleted: false,
+        isPersonal: false,
+        maxMembers: 10,
+        createdBy: mockUserId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        members: [
+          {
+            id: "member1",
+            userId: mockUserId,
+            isAdmin: true,
+          },
+        ],
+      },
+      userMember: {
+        id: "member1",
+        userId: mockUserId,
+        isAdmin: true,
+      },
     });
 
     // 招待がない状態をモック
-    vi.mocked(mockCtx.db.organizationInvitation.findMany).mockResolvedValue([]);
+    mockDb.organizationInvitation.findMany.mockResolvedValue([]);
 
     const result = await getInvitations({
       input: { organizationId: mockOrganizationId },

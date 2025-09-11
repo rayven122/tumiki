@@ -25,36 +25,50 @@ export const cancelInvitation = async ({
   input: CancelInvitationInput;
   ctx: ProtectedContext;
 }): Promise<CancelInvitationOutput> => {
-  // 管理者権限を検証
-  await validateOrganizationAdminAccess(
-    ctx.db,
-    input.organizationId,
-    ctx.session.user.id,
-  );
+  try {
+    // 管理者権限を検証
+    await validateOrganizationAdminAccess(
+      ctx.db,
+      input.organizationId,
+      ctx.session.user.id,
+    );
 
-  // 招待が存在するか確認
-  const invitation = await ctx.db.organizationInvitation.findFirst({
-    where: {
-      id: input.invitationId,
-      organizationId: input.organizationId,
-    },
-  });
+    // トランザクションで処理
+    await ctx.db.$transaction(async (tx) => {
+      // 招待が存在するか確認
+      const invitation = await tx.organizationInvitation.findFirst({
+        where: {
+          id: input.invitationId,
+          organizationId: input.organizationId,
+        },
+      });
 
-  if (!invitation) {
+      if (!invitation) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "招待が見つかりません。",
+        });
+      }
+
+      // 招待を削除
+      await tx.organizationInvitation.delete({
+        where: {
+          id: input.invitationId,
+        },
+      });
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+    console.error("招待キャンセルエラー:", error);
     throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "招待が見つかりません。",
+      code: "INTERNAL_SERVER_ERROR",
+      message: "招待のキャンセル中にエラーが発生しました。",
     });
   }
-
-  // 招待を削除
-  await ctx.db.organizationInvitation.delete({
-    where: {
-      id: input.invitationId,
-    },
-  });
-
-  return {
-    success: true,
-  };
 };
