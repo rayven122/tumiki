@@ -20,7 +20,10 @@ export const sendInvitationEmail = async (data: InvitationEmailData) => {
     console.log("📧 招待メール送信（開発環境）:");
     console.log("  宛先:", invitation.email);
     console.log("  組織:", invitation.organization.name);
-    console.log("  招待者:", invitation.invitedByUser.name ?? invitation.invitedByUser.email);
+    console.log(
+      "  招待者:",
+      invitation.invitedByUser.name ?? invitation.invitedByUser.email,
+    );
     console.log("  招待URL:", inviteUrl);
     console.log("  有効期限:", invitation.expires.toLocaleString("ja-JP"));
     return;

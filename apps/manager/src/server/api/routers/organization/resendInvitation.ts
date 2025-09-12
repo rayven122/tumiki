@@ -1,13 +1,10 @@
 import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { validateOrganizationAdminAccess } from "@/server/utils/organizationPermissions";
-import { OrganizationIdSchema } from "@/schema/ids";
 import { TRPCError } from "@trpc/server";
 import { sendInvitationEmail } from "@/server/services/emailService";
 
 export const resendInvitationInputSchema = z.object({
-  organizationId: OrganizationIdSchema,
   invitationId: z.string(),
 });
 
@@ -31,11 +28,12 @@ export const resendInvitation = async ({
 }): Promise<ResendInvitationOutput> => {
   try {
     // 管理者権限を検証
-    await validateOrganizationAdminAccess(
-      ctx.db,
-      input.organizationId,
-      ctx.session.user.id,
-    );
+    if (!ctx.isCurrentOrganizationAdmin) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "この操作を行う権限がありません",
+      });
+    }
 
     // トランザクションで処理
     const result = await ctx.db.$transaction(async (tx) => {
@@ -43,7 +41,7 @@ export const resendInvitation = async ({
       const existingInvitation = await tx.organizationInvitation.findFirst({
         where: {
           id: input.invitationId,
-          organizationId: input.organizationId,
+          organizationId: ctx.currentOrganizationId,
         },
       });
 

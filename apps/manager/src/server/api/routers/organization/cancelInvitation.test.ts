@@ -1,14 +1,16 @@
-import { describe, test, expect, beforeEach, vi, type MockedFunction } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  beforeEach,
+  vi,
+  type MockedFunction,
+} from "vitest";
 import { cancelInvitation } from "./cancelInvitation";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { type OrganizationId } from "@/schema/ids";
 import type { OrganizationInvitation } from "@tumiki/db";
-
-// validateOrganizationAdminAccessのモック
-vi.mock("@/server/utils/organizationPermissions", () => ({
-  validateOrganizationAdminAccess: vi.fn(),
-}));
 
 const mockOrganizationId = "org_test123" as OrganizationId;
 const mockUserId = "user_test456";
@@ -33,8 +35,12 @@ type MockDb = {
     update: MockedFunction<() => Promise<OrganizationInvitation>>;
     delete: MockedFunction<() => Promise<OrganizationInvitation>>;
   };
-  $transaction: MockedFunction<(callback: (tx: MockTransaction) => Promise<unknown>) => Promise<unknown>>;
-  $runWithoutRLS: MockedFunction<(fn: (db: unknown) => Promise<unknown>) => Promise<unknown>>;
+  $transaction: MockedFunction<
+    (callback: (tx: MockTransaction) => Promise<unknown>) => Promise<unknown>
+  >;
+  $runWithoutRLS: MockedFunction<
+    (fn: (db: unknown) => Promise<unknown>) => Promise<unknown>
+  >;
 };
 
 describe("cancelInvitation", () => {
@@ -44,7 +50,7 @@ describe("cancelInvitation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockTx = {
       organizationInvitation: {
         findFirst: vi.fn(),
@@ -67,7 +73,7 @@ describe("cancelInvitation", () => {
       $transaction: vi.fn((callback) => callback(mockTx)),
       $runWithoutRLS: vi.fn(),
     };
-    
+
     mockCtx = {
       db: mockDb as unknown as ProtectedContext["db"],
       session: {
@@ -76,39 +82,13 @@ describe("cancelInvitation", () => {
           email: "test@example.com",
         },
       } as ProtectedContext["session"],
+      currentOrganizationId: mockOrganizationId,
+      isCurrentOrganizationAdmin: true,
+      headers: new Headers(),
     } as ProtectedContext;
   });
 
   test("管理者が招待をキャンセルできる", async () => {
-    // 権限検証は成功するようモック
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
-      organization: {
-        id: mockOrganizationId,
-        name: "Test Organization",
-        description: null,
-        logoUrl: null,
-        isDeleted: false,
-        isPersonal: false,
-        maxMembers: 10,
-        createdBy: mockUserId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        members: [
-          {
-            id: "member1",
-            userId: mockUserId,
-            isAdmin: true,
-          },
-        ],
-      },
-      userMember: {
-        id: "member1",
-        userId: mockUserId,
-        isAdmin: true,
-      },
-    });
-
     const now = new Date();
 
     // 既存の招待データをモック
@@ -125,14 +105,15 @@ describe("cancelInvitation", () => {
       createdAt: now,
       updatedAt: now,
     };
-    mockTx.organizationInvitation.findFirst.mockResolvedValue(existingInvitation);
+    mockTx.organizationInvitation.findFirst.mockResolvedValue(
+      existingInvitation,
+    );
 
     // 削除操作をモック
     mockTx.organizationInvitation.delete.mockResolvedValue(existingInvitation);
 
     const result = await cancelInvitation({
       input: {
-        organizationId: mockOrganizationId,
         invitationId: mockInvitationId,
       },
       ctx: mockCtx,
@@ -145,42 +126,12 @@ describe("cancelInvitation", () => {
   });
 
   test("存在しない招待はエラーになる", async () => {
-    // 権限検証は成功するようモック
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
-      organization: {
-        id: mockOrganizationId,
-        name: "Test Organization",
-        description: null,
-        logoUrl: null,
-        isDeleted: false,
-        isPersonal: false,
-        maxMembers: 10,
-        createdBy: mockUserId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        members: [
-          {
-            id: "member1",
-            userId: mockUserId,
-            isAdmin: true,
-          },
-        ],
-      },
-      userMember: {
-        id: "member1",
-        userId: mockUserId,
-        isAdmin: true,
-      },
-    });
-
     // 招待が見つからない
     mockTx.organizationInvitation.findFirst.mockResolvedValue(null);
 
     await expect(
       cancelInvitation({
         input: {
-          organizationId: mockOrganizationId,
           invitationId: mockInvitationId,
         },
         ctx: mockCtx,
@@ -189,63 +140,29 @@ describe("cancelInvitation", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
-    // 権限検証でエラーを発生させる
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockRejectedValue(
-      new TRPCError({
-        code: "FORBIDDEN",
-        message: "管理者権限が必要です。",
-      }),
-    );
+    // 管理者でないコンテキストを作成
+    const nonAdminCtx = {
+      ...mockCtx,
+      isCurrentOrganizationAdmin: false,
+    };
 
     await expect(
       cancelInvitation({
         input: {
-          organizationId: mockOrganizationId,
           invitationId: mockInvitationId,
         },
-        ctx: mockCtx,
+        ctx: nonAdminCtx,
       }),
     ).rejects.toThrow(TRPCError);
   });
 
   test("トランザクション内でのエラーが適切に処理される", async () => {
-    // 権限検証は成功するようモック
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
-      organization: {
-        id: mockOrganizationId,
-        name: "Test Organization",
-        description: null,
-        logoUrl: null,
-        isDeleted: false,
-        isPersonal: false,
-        maxMembers: 10,
-        createdBy: mockUserId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        members: [
-          {
-            id: "member1",
-            userId: mockUserId,
-            isAdmin: true,
-          },
-        ],
-      },
-      userMember: {
-        id: "member1",
-        userId: mockUserId,
-        isAdmin: true,
-      },
-    });
-
     // トランザクションでエラーが発生
     mockDb.$transaction.mockRejectedValue(new Error("Database error"));
 
     await expect(
       cancelInvitation({
         input: {
-          organizationId: mockOrganizationId,
           invitationId: mockInvitationId,
         },
         ctx: mockCtx,

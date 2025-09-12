@@ -1,53 +1,55 @@
 import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { validateOrganizationAdminAccess } from "@/server/utils/organizationPermissions";
-import { OrganizationIdSchema } from "@/schema/ids";
-
-export const getInvitationsInputSchema = z.object({
-  organizationId: OrganizationIdSchema,
-});
-
-export const invitationStatusSchema = z.enum(["pending", "expired"]);
+import { TRPCError } from "@trpc/server";
+import {
+  OrganizationInvitationIdSchema,
+  OrganizationIdSchema,
+  UserIdSchema,
+  InvitationTokenSchema,
+  OrganizationRoleIdSchema,
+  OrganizationGroupIdSchema,
+} from "@/schema/ids";
 
 export const getInvitationsOutputSchema = z.array(
   z.object({
-    id: z.string(),
-    email: z.string(),
-    invitedBy: z.object({
-      id: z.string(),
+    id: OrganizationInvitationIdSchema,
+    organizationId: OrganizationIdSchema,
+    email: z.string().email(),
+    token: InvitationTokenSchema,
+    invitedBy: UserIdSchema,
+    invitedByUser: z.object({
+      id: UserIdSchema,
       name: z.string().nullable(),
-      email: z.string().nullable(),
-      image: z.string().nullable(),
+      email: z.string().email().nullable(),
+      image: z.string().url().nullable(),
     }),
     isAdmin: z.boolean(),
-    roleIds: z.array(z.string()),
-    groupIds: z.array(z.string()),
+    roleIds: z.array(OrganizationRoleIdSchema),
+    groupIds: z.array(OrganizationGroupIdSchema),
     expires: z.date(),
     createdAt: z.date(),
-    status: invitationStatusSchema,
+    updatedAt: z.date(),
   }),
 );
 
-export type GetInvitationsInput = z.infer<typeof getInvitationsInputSchema>;
 export type GetInvitationsOutput = z.infer<typeof getInvitationsOutputSchema>;
 
 export const getInvitations = async ({
-  input,
   ctx,
 }: {
-  input: GetInvitationsInput;
   ctx: ProtectedContext;
 }): Promise<GetInvitationsOutput> => {
   // 管理者権限を検証
-  await validateOrganizationAdminAccess(
-    ctx.db,
-    input.organizationId,
-    ctx.session.user.id,
-  );
+  if (!ctx.isCurrentOrganizationAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "この操作を行う権限がありません",
+    });
+  }
 
   const invitations = await ctx.db.organizationInvitation.findMany({
     where: {
-      organizationId: input.organizationId,
+      organizationId: ctx.currentOrganizationId,
     },
     include: {
       invitedByUser: {
@@ -64,22 +66,5 @@ export const getInvitations = async ({
     },
   });
 
-  const now = new Date();
-
-  return invitations.map((invitation) => ({
-    id: invitation.id,
-    email: invitation.email,
-    invitedBy: {
-      id: invitation.invitedByUser.id,
-      name: invitation.invitedByUser.name,
-      email: invitation.invitedByUser.email,
-      image: invitation.invitedByUser.image,
-    },
-    isAdmin: invitation.isAdmin,
-    roleIds: invitation.roleIds,
-    groupIds: invitation.groupIds,
-    expires: invitation.expires,
-    createdAt: invitation.createdAt,
-    status: invitation.expires < now ? "expired" : "pending",
-  }));
+  return getInvitationsOutputSchema.parse(invitations);
 };

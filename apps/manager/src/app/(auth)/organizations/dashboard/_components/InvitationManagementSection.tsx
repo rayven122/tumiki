@@ -26,6 +26,12 @@ type InvitationManagementSectionProps = {
   organizationId: OrganizationId;
 };
 
+// クライアントサイドでステータスを計算するヘルパー関数
+const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
+  const now = new Date();
+  return expiresDate < now ? "expired" : "pending";
+};
+
 export const InvitationManagementSection = ({
   organizationId,
 }: InvitationManagementSectionProps) => {
@@ -36,9 +42,7 @@ export const InvitationManagementSection = ({
   });
 
   const { data: invitations, isLoading } =
-    api.organization.getInvitations.useQuery({
-      organizationId,
-    });
+    api.organization.getInvitations.useQuery();
 
   const { data: organization } = api.organization.getById.useQuery({
     id: organizationId,
@@ -54,9 +58,7 @@ export const InvitationManagementSection = ({
           description: "新しい招待メールが送信されました。",
         });
         setShowSuccessAnimation(true);
-        void utils.organization.getInvitations.invalidate({
-          organizationId,
-        });
+        void utils.organization.getInvitations.invalidate();
         setTimeout(() => {
           setShowSuccessAnimation(false);
         }, 3000);
@@ -71,9 +73,7 @@ export const InvitationManagementSection = ({
           description: "この招待は無効になりました。",
         });
         setShowSuccessAnimation(true);
-        void utils.organization.getInvitations.invalidate({
-          organizationId,
-        });
+        void utils.organization.getInvitations.invalidate();
         setTimeout(() => {
           setShowSuccessAnimation(false);
         }, 3000);
@@ -82,14 +82,12 @@ export const InvitationManagementSection = ({
 
   const handleResendInvitation = (invitationId: string) => {
     resendInvitationMutation.mutate({
-      organizationId,
       invitationId,
     });
   };
 
   const handleCancelInvitation = (invitationId: string) => {
     cancelInvitationMutation.mutate({
-      organizationId,
       invitationId,
     });
   };
@@ -126,9 +124,13 @@ export const InvitationManagementSection = ({
   }
 
   const pendingInvitations =
-    invitations?.filter((inv) => inv.status === "pending") ?? [];
+    invitations?.filter(
+      (inv) => getInvitationStatus(new Date(inv.expires)) === "pending",
+    ) ?? [];
   const expiredInvitations =
-    invitations?.filter((inv) => inv.status === "expired") ?? [];
+    invitations?.filter(
+      (inv) => getInvitationStatus(new Date(inv.expires)) === "expired",
+    ) ?? [];
 
   return (
     <>
@@ -185,7 +187,7 @@ export const InvitationManagementSection = ({
                         </div>
                         <div className="mt-1 flex items-center gap-4 text-xs text-gray-600">
                           <span>
-                            招待者: {invitation.invitedBy.name ?? "不明"}
+                            招待者: {invitation.invitedByUser.name ?? "不明"}
                           </span>
                           <span>
                             送信日時:{" "}
@@ -274,7 +276,7 @@ export const InvitationManagementSection = ({
                         <div className="font-medium">{invitation.email}</div>
                         <div className="mt-1 flex items-center gap-4 text-xs text-gray-600">
                           <span>
-                            招待者: {invitation.invitedBy.name ?? "不明"}
+                            招待者: {invitation.invitedByUser.name ?? "不明"}
                           </span>
                           <span>
                             期限切れ:{" "}

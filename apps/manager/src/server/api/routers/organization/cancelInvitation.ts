@@ -1,11 +1,8 @@
 import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { validateOrganizationAdminAccess } from "@/server/utils/organizationPermissions";
-import { OrganizationIdSchema } from "@/schema/ids";
 import { TRPCError } from "@trpc/server";
 
 export const cancelInvitationInputSchema = z.object({
-  organizationId: OrganizationIdSchema,
   invitationId: z.string(),
 });
 
@@ -27,11 +24,12 @@ export const cancelInvitation = async ({
 }): Promise<CancelInvitationOutput> => {
   try {
     // 管理者権限を検証
-    await validateOrganizationAdminAccess(
-      ctx.db,
-      input.organizationId,
-      ctx.session.user.id,
-    );
+    if (!ctx.isCurrentOrganizationAdmin) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "この操作を行う権限がありません",
+      });
+    }
 
     // トランザクションで処理
     await ctx.db.$transaction(async (tx) => {
@@ -39,7 +37,7 @@ export const cancelInvitation = async ({
       const invitation = await tx.organizationInvitation.findFirst({
         where: {
           id: input.invitationId,
-          organizationId: input.organizationId,
+          organizationId: ctx.currentOrganizationId,
         },
       });
 

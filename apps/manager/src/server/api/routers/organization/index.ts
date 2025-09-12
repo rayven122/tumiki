@@ -24,11 +24,7 @@ import {
   inviteMemberInputSchema,
   inviteMemberOutputSchema,
 } from "./inviteMember";
-import {
-  getInvitations,
-  getInvitationsInputSchema,
-  getInvitationsOutputSchema,
-} from "./getInvitations";
+import { getInvitations, getInvitationsOutputSchema } from "./getInvitations";
 import {
   resendInvitation,
   resendInvitationInputSchema,
@@ -116,7 +112,6 @@ export const organizationRouter = createTRPCRouter({
 
   // 招待一覧取得
   getInvitations: protectedProcedure
-    .input(getInvitationsInputSchema)
     .output(getInvitationsOutputSchema)
     .query(getInvitations),
 
