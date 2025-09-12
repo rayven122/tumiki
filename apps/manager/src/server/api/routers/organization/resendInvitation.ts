@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { sendInvitationEmail } from "@/server/services/emailService";
+import { createMailClient, sendInvitation } from "@tumiki/mailer";
 
 export const resendInvitationInputSchema = z.object({
   invitationId: z.string(),
@@ -18,6 +18,75 @@ export type ResendInvitationInput = z.infer<typeof resendInvitationInputSchema>;
 export type ResendInvitationOutput = z.infer<
   typeof resendInvitationOutputSchema
 >;
+
+const RESEND_MESSAGES = {
+  EMAIL_SEND_FAILED: "招待再送信メール送信に失敗しました:",
+} as const;
+
+/**
+ * メールクライアントを初期化する
+ */
+function initializeMailClient() {
+  return createMailClient({
+    host: process.env.SMTP_HOST ?? "",
+    port: Number(process.env.SMTP_PORT),
+    secure: Number(process.env.SMTP_PORT) === 465,
+    auth: {
+      user: process.env.SMTP_USER ?? "",
+      pass: process.env.SMTP_PASS ?? "",
+    },
+    from: process.env.FROM_EMAIL ?? "",
+  });
+}
+
+/**
+ * 招待URLを生成する
+ */
+function generateInviteUrl(token: string): string {
+  const baseUrl = process.env.NODE_ENV === "production"
+    ? process.env.NEXTAUTH_URL
+    : "http://localhost:3000";
+  return `${baseUrl}/invite/${token}`;
+}
+
+/**
+ * 招待再送信メールを送信する（最適化版）
+ */
+async function sendResendInvitationEmail(
+  email: string,
+  inviteUrl: string,
+  organizationName: string,
+  isAdmin = false,
+  roleIds: string[] = [],
+  expiresAt?: string,
+): Promise<void> {
+  try {
+    initializeMailClient();
+    
+    // 再送信であることを明記し、役割情報も含む
+    const roleInfo = isAdmin 
+      ? "管理者として" 
+      : roleIds.length > 0 
+        ? `${roleIds.length}個の役割と共に` 
+        : "";
+    
+    const customName = roleInfo 
+      ? `${email}（${roleInfo}再招待）`
+      : `${email}（再招待）`;
+    
+    await sendInvitation({
+      email,
+      name: customName,
+      inviteUrl,
+      appName: organizationName,
+      expiresAt,
+    });
+  } catch (emailError: unknown) {
+    console.error(RESEND_MESSAGES.EMAIL_SEND_FAILED, emailError);
+    // メール送信失敗でもユーザーには再送信成功を返す
+    // （グレースフルデグラデーション）
+  }
+}
 
 export const resendInvitation = async ({
   input,
@@ -79,16 +148,16 @@ export const resendInvitation = async ({
     });
 
     // メール送信処理（トランザクション外で実行）
-    try {
-      await sendInvitationEmail({
-        invitation: result,
-        inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invite/${result.token}`,
-      });
-    } catch (emailError) {
-      console.error("メール送信エラー:", emailError);
-      // メール送信に失敗してもトランザクションはロールバックしない
-      // ユーザーには警告を表示
-    }
+    const inviteUrl = generateInviteUrl(result.token);
+    
+    await sendResendInvitationEmail(
+      result.email,
+      inviteUrl,
+      result.organization.name,
+      result.isAdmin,
+      result.roleIds,
+      result.expires.toISOString(),
+    );
 
     return {
       id: result.id,
