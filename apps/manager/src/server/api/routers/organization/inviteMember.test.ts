@@ -6,11 +6,11 @@ import {
   vi,
   type MockedFunction,
 } from "vitest";
-import { resendInvitation } from "./resendInvitation";
+import { inviteMember } from "./inviteMember";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { type OrganizationId } from "@/schema/ids";
-import type { Organization, OrganizationInvitation, User } from "@tumiki/db";
+import type { Organization, OrganizationInvitation } from "@tumiki/db";
 
 // メール送信サービスのモック
 vi.mock("@tumiki/mailer", () => ({
@@ -23,19 +23,18 @@ vi.mock("@paralleldrive/cuid2", () => ({
   createId: vi.fn(() => "new_token_123"),
 }));
 
-const mockOrganizationId = "org_test123" as OrganizationId;
+const mockOrganizationId = "cm123456789abcdefghij" as OrganizationId;
 const mockUserId = "user_test456";
-const mockInvitationId = "inv_test789";
+const mockInvitationEmail = "invited@example.com";
 
-type MockInvitation = OrganizationInvitation & {
+type MockInvitationWithOrg = OrganizationInvitation & {
   organization: Organization;
-  invitedByUser: Pick<User, "id" | "name" | "email" | "image">;
 };
 
 type MockTransaction = {
   organizationInvitation: {
     findFirst: MockedFunction<() => Promise<OrganizationInvitation | null>>;
-    update: MockedFunction<() => Promise<MockInvitation>>;
+    create: MockedFunction<() => Promise<MockInvitationWithOrg>>;
   };
 };
 
@@ -45,19 +44,17 @@ type MockDb = {
   };
   organizationInvitation: {
     findFirst: MockedFunction<() => Promise<OrganizationInvitation | null>>;
-    update: MockedFunction<() => Promise<MockInvitation>>;
+    create: MockedFunction<() => Promise<MockInvitationWithOrg>>;
   };
   $transaction: MockedFunction<
-    (
-      callback: (tx: MockTransaction) => Promise<MockInvitation>,
-    ) => Promise<MockInvitation>
+    (callback: (tx: MockTransaction) => Promise<unknown>) => Promise<unknown>
   >;
   $runWithoutRLS: MockedFunction<
     (fn: (db: unknown) => Promise<unknown>) => Promise<unknown>
   >;
 };
 
-describe("resendInvitation", () => {
+describe("inviteMember", () => {
   let mockCtx: ProtectedContext;
   let mockTx: MockTransaction;
   let mockDb: MockDb;
@@ -68,7 +65,7 @@ describe("resendInvitation", () => {
     mockTx = {
       organizationInvitation: {
         findFirst: vi.fn(),
-        update: vi.fn(),
+        create: vi.fn(),
       },
     };
 
@@ -78,7 +75,7 @@ describe("resendInvitation", () => {
       },
       organizationInvitation: {
         findFirst: vi.fn(),
-        update: vi.fn(),
+        create: vi.fn(),
       },
       $transaction: vi.fn((callback) => callback(mockTx)),
       $runWithoutRLS: vi.fn(),
@@ -98,33 +95,18 @@ describe("resendInvitation", () => {
     } as ProtectedContext;
   });
 
-  test("管理者が招待を再送信できる", async () => {
+  test("管理者が新しいメンバーを招待できる", async () => {
     const now = new Date();
     const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // 既存の招待データをモック
-    const existingInvitation: OrganizationInvitation = {
-      id: mockInvitationId,
-      organizationId: mockOrganizationId,
-      email: "invited@example.com",
-      token: "old_token",
-      invitedBy: mockUserId,
-      isAdmin: false,
-      roleIds: [],
-      groupIds: [],
-      expires: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1日前
-      createdAt: now,
-      updatedAt: now,
-    };
-    mockTx.organizationInvitation.findFirst.mockResolvedValue(
-      existingInvitation,
-    );
+    // 既存の招待がないことを確認
+    mockTx.organizationInvitation.findFirst.mockResolvedValue(null);
 
-    // 更新後の招待データをモック
-    const updatedInvitation: MockInvitation = {
-      id: mockInvitationId,
+    // 新しい招待データをモック
+    const mockInvitation: MockInvitationWithOrg = {
+      id: "cm123456789abcdefghi3",
       organizationId: mockOrganizationId,
-      email: "invited@example.com",
+      email: mockInvitationEmail,
       token: "new_token_123",
       invitedBy: mockUserId,
       isAdmin: false,
@@ -136,55 +118,74 @@ describe("resendInvitation", () => {
       organization: {
         id: mockOrganizationId,
         name: "Test Organization",
-        description: null,
+        description: "Test Description",
         logoUrl: null,
         isDeleted: false,
         isPersonal: false,
-        maxMembers: 10,
+        maxMembers: 100,
         createdBy: mockUserId,
         createdAt: now,
         updatedAt: now,
       },
-      invitedByUser: {
-        id: mockUserId,
-        name: "Test User",
-        email: "test@example.com",
-        image: null,
-      },
     };
-    mockTx.organizationInvitation.update.mockResolvedValue(updatedInvitation);
 
-    const result = await resendInvitation({
+    mockTx.organizationInvitation.create.mockResolvedValue(mockInvitation);
+
+    const result = await inviteMember({
       input: {
-        invitationId: mockInvitationId,
+        email: mockInvitationEmail,
+        isAdmin: false,
+        roleIds: [],
+        groupIds: [],
       },
       ctx: mockCtx,
     });
 
-    expect(result.id).toStrictEqual(mockInvitationId);
-    expect(result.email).toStrictEqual("invited@example.com");
-    expect(mockTx.organizationInvitation.update).toHaveBeenCalledWith({
-      where: { id: mockInvitationId },
+    expect(result.id).toStrictEqual("cm123456789abcdefghi3");
+    expect(result.email).toStrictEqual(mockInvitationEmail);
+    expect(result.expires).toStrictEqual(futureDate);
+    expect(mockTx.organizationInvitation.create).toHaveBeenCalledWith({
       data: {
+        organizationId: mockOrganizationId,
+        email: mockInvitationEmail,
         token: "new_token_123",
-        expires: expect.any(Date) as Date,
         invitedBy: mockUserId,
+        isAdmin: false,
+        roleIds: [],
+        groupIds: [],
+        expires: expect.any(Date) as Date,
       },
       include: {
         organization: true,
-        invitedByUser: true,
       },
     });
   });
 
-  test("存在しない招待はエラーになる", async () => {
-    // 招待が見つからない
-    mockTx.organizationInvitation.findFirst.mockResolvedValue(null);
+  test("重複する招待はエラーになる", async () => {
+    // 既存の招待があることをモック
+    const existingInvitation: OrganizationInvitation = {
+      id: "existing_invitation_id",
+      organizationId: mockOrganizationId,
+      email: mockInvitationEmail,
+      token: "existing_token",
+      invitedBy: mockUserId,
+      isAdmin: false,
+      roleIds: [],
+      groupIds: [],
+      expires: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    mockTx.organizationInvitation.findFirst.mockResolvedValue(existingInvitation);
 
     await expect(
-      resendInvitation({
+      inviteMember({
         input: {
-          invitationId: mockInvitationId,
+          email: mockInvitationEmail,
+          isAdmin: false,
+          roleIds: [],
+          groupIds: [],
         },
         ctx: mockCtx,
       }),
@@ -199,11 +200,31 @@ describe("resendInvitation", () => {
     };
 
     await expect(
-      resendInvitation({
+      inviteMember({
         input: {
-          invitationId: mockInvitationId,
+          email: mockInvitationEmail,
+          isAdmin: false,
+          roleIds: [],
+          groupIds: [],
         },
         ctx: nonAdminCtx,
+      }),
+    ).rejects.toThrow(TRPCError);
+  });
+
+  test("トランザクション内でのエラーが適切に処理される", async () => {
+    // トランザクションでエラーが発生
+    mockDb.$transaction.mockRejectedValue(new Error("Database error"));
+
+    await expect(
+      inviteMember({
+        input: {
+          email: mockInvitationEmail,
+          isAdmin: false,
+          roleIds: [],
+          groupIds: [],
+        },
+        ctx: mockCtx,
       }),
     ).rejects.toThrow(TRPCError);
   });
