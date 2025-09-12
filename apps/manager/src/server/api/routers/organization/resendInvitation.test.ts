@@ -1,4 +1,11 @@
-import { describe, test, expect, beforeEach, vi, type MockedFunction } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  beforeEach,
+  vi,
+  type MockedFunction,
+} from "vitest";
 import { resendInvitation } from "./resendInvitation";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
@@ -8,11 +15,6 @@ import type { Organization, OrganizationInvitation, User } from "@tumiki/db";
 // メール送信サービスのモック
 vi.mock("@/server/services/emailService", () => ({
   sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
-}));
-
-// validateOrganizationAdminAccessのモック
-vi.mock("@/server/utils/organizationPermissions", () => ({
-  validateOrganizationAdminAccess: vi.fn(),
 }));
 
 // cuid2のモック
@@ -44,8 +46,14 @@ type MockDb = {
     findFirst: MockedFunction<() => Promise<OrganizationInvitation | null>>;
     update: MockedFunction<() => Promise<MockInvitation>>;
   };
-  $transaction: MockedFunction<(callback: (tx: MockTransaction) => Promise<MockInvitation>) => Promise<MockInvitation>>;
-  $runWithoutRLS: MockedFunction<(fn: (db: unknown) => Promise<unknown>) => Promise<unknown>>;
+  $transaction: MockedFunction<
+    (
+      callback: (tx: MockTransaction) => Promise<MockInvitation>,
+    ) => Promise<MockInvitation>
+  >;
+  $runWithoutRLS: MockedFunction<
+    (fn: (db: unknown) => Promise<unknown>) => Promise<unknown>
+  >;
 };
 
 describe("resendInvitation", () => {
@@ -55,7 +63,7 @@ describe("resendInvitation", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockTx = {
       organizationInvitation: {
         findFirst: vi.fn(),
@@ -74,7 +82,7 @@ describe("resendInvitation", () => {
       $transaction: vi.fn((callback) => callback(mockTx)),
       $runWithoutRLS: vi.fn(),
     };
-    
+
     mockCtx = {
       db: mockDb as unknown as ProtectedContext["db"],
       session: {
@@ -83,39 +91,13 @@ describe("resendInvitation", () => {
           email: "test@example.com",
         },
       } as ProtectedContext["session"],
+      currentOrganizationId: mockOrganizationId,
+      isCurrentOrganizationAdmin: true,
+      headers: new Headers(),
     } as ProtectedContext;
   });
 
   test("管理者が招待を再送信できる", async () => {
-    // 権限検証は成功するようモック
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
-      organization: {
-        id: mockOrganizationId,
-        name: "Test Organization",
-        description: null,
-        logoUrl: null,
-        isDeleted: false,
-        isPersonal: false,
-        maxMembers: 10,
-        createdBy: mockUserId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        members: [
-          {
-            id: "member1",
-            userId: mockUserId,
-            isAdmin: true,
-          },
-        ],
-      },
-      userMember: {
-        id: "member1",
-        userId: mockUserId,
-        isAdmin: true,
-      },
-    });
-
     const now = new Date();
     const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -133,7 +115,9 @@ describe("resendInvitation", () => {
       createdAt: now,
       updatedAt: now,
     };
-    mockTx.organizationInvitation.findFirst.mockResolvedValue(existingInvitation);
+    mockTx.organizationInvitation.findFirst.mockResolvedValue(
+      existingInvitation,
+    );
 
     // 更新後の招待データをモック
     const updatedInvitation: MockInvitation = {
@@ -171,7 +155,6 @@ describe("resendInvitation", () => {
 
     const result = await resendInvitation({
       input: {
-        organizationId: mockOrganizationId,
         invitationId: mockInvitationId,
       },
       ctx: mockCtx,
@@ -194,42 +177,12 @@ describe("resendInvitation", () => {
   });
 
   test("存在しない招待はエラーになる", async () => {
-    // 権限検証は成功するようモック
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockResolvedValue({
-      organization: {
-        id: mockOrganizationId,
-        name: "Test Organization",
-        description: null,
-        logoUrl: null,
-        isDeleted: false,
-        isPersonal: false,
-        maxMembers: 10,
-        createdBy: mockUserId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        members: [
-          {
-            id: "member1",
-            userId: mockUserId,
-            isAdmin: true,
-          },
-        ],
-      },
-      userMember: {
-        id: "member1",
-        userId: mockUserId,
-        isAdmin: true,
-      },
-    });
-
     // 招待が見つからない
     mockTx.organizationInvitation.findFirst.mockResolvedValue(null);
 
     await expect(
       resendInvitation({
         input: {
-          organizationId: mockOrganizationId,
           invitationId: mockInvitationId,
         },
         ctx: mockCtx,
@@ -238,22 +191,18 @@ describe("resendInvitation", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
-    // 権限検証でエラーを発生させる
-    const { validateOrganizationAdminAccess } = await import("@/server/utils/organizationPermissions");
-    vi.mocked(validateOrganizationAdminAccess).mockRejectedValue(
-      new TRPCError({
-        code: "FORBIDDEN",
-        message: "管理者権限が必要です。",
-      }),
-    );
+    // 管理者でないコンテキストを作成
+    const nonAdminCtx = {
+      ...mockCtx,
+      isCurrentOrganizationAdmin: false,
+    };
 
     await expect(
       resendInvitation({
         input: {
-          organizationId: mockOrganizationId,
           invitationId: mockInvitationId,
         },
-        ctx: mockCtx,
+        ctx: nonAdminCtx,
       }),
     ).rejects.toThrow(TRPCError);
   });
