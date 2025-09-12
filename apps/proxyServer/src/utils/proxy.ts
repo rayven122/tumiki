@@ -405,13 +405,14 @@ export const getMcpClientsByInstanceId = async (
 
   // Promise.allSettledで全ての接続を並列実行
   const connectionResults = await Promise.allSettled(connectionPromises);
-  
+
   // 成功した接続のみをフィルタリング
   const connectedClients: ConnectedClient[] = connectionResults
-    .filter((result): result is PromiseFulfilledResult<ConnectedClient | null> => 
-      result.status === "fulfilled" && result.value !== null
+    .filter(
+      (result): result is PromiseFulfilledResult<ConnectedClient | null> =>
+        result.status === "fulfilled" && result.value !== null,
     )
-    .map(result => result.value as ConnectedClient);
+    .map((result) => result.value!);
 
   const cleanup = async () => {
     // 全ての接続をプールに返却
@@ -551,44 +552,46 @@ export const getServer = async (
                 const toolToClientMap = new Map<string, ConnectedClient>();
 
                 // 全クライアントに並列でリクエストを送信
-                const toolsPromises = connectedClients.map(async (connectedClient) => {
-                  try {
-                    const result = await connectedClient.client.request(
-                      {
-                        method: "tools/list",
-                        params: {
-                          _meta: request.params?._meta,
+                const toolsPromises = connectedClients.map(
+                  async (connectedClient) => {
+                    try {
+                      const result = await connectedClient.client.request(
+                        {
+                          method: "tools/list",
+                          params: {
+                            _meta: request.params?._meta,
+                          },
                         },
-                      },
-                      ListToolsResultSchema,
-                    );
+                        ListToolsResultSchema,
+                      );
 
-                    if (result.tools) {
-                      const toolsWithSource = result.tools
-                        .filter((tool) =>
-                          connectedClient.toolNames.includes(tool.name),
-                        )
-                        .map((tool) => {
-                          return {
-                            tool: {
-                              ...tool,
-                              description: `[${connectedClient.name}] ${tool.description}`,
-                            },
-                            client: connectedClient,
-                          };
-                        });
-                      return toolsWithSource;
+                      if (result.tools) {
+                        const toolsWithSource = result.tools
+                          .filter((tool) =>
+                            connectedClient.toolNames.includes(tool.name),
+                          )
+                          .map((tool) => {
+                            return {
+                              tool: {
+                                ...tool,
+                                description: `[${connectedClient.name}] ${tool.description}`,
+                              },
+                              client: connectedClient,
+                            };
+                          });
+                        return toolsWithSource;
+                      }
+                      return [];
+                    } catch {
+                      recordError("tools_list_client_error");
+                      return [];
                     }
-                    return [];
-                  } catch {
-                    recordError("tools_list_client_error");
-                    return [];
-                  }
-                });
+                  },
+                );
 
                 // 全ての結果を待って統合
                 const toolsResults = await Promise.allSettled(toolsPromises);
-                
+
                 for (const result of toolsResults) {
                   if (result.status === "fulfilled" && result.value) {
                     for (const { tool, client } of result.value) {

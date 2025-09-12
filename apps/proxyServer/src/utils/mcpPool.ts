@@ -2,6 +2,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { ServerConfig } from "../libs/types.js";
 import { createMCPClient } from "./createMCPClient.js";
 import { logger } from "../libs/logger.js";
+import { AtomicCounter } from "./atomicCounter.js";
 
 /**
  * MCP接続情報
@@ -27,13 +28,24 @@ class MCPConnectionPool {
   private readonly MAX_TOTAL_CONNECTIONS = 60; // 全体で最大60接続（4GB最適化）
   private readonly IDLE_TIMEOUT = 180000; // 3分でアイドル接続切断
   private cleanupTimer?: NodeJS.Timeout;
-  private totalConnections = 0;
+  private readonly connectionCounter = new AtomicCounter(); // 原子的カウンター
 
   /**
-   * プールキーを生成
+   * Connection stateを原子的に更新
+   */
+  private updateConnectionState(conn: MCPConnection, isActive: boolean): void {
+    conn.isActive = isActive;
+    conn.lastUsed = Date.now();
+  }
+
+  /**
+   * プールキーを生成（セキュア版）
    */
   private getPoolKey(instanceId: string, serverName: string): string {
-    return `${instanceId}:${serverName}`;
+    // セキュリティ: コロンを安全な区切り文字に置換してから結合
+    const safeInstanceId = instanceId.replace(/:/g, "_COLON_");
+    const safeServerName = serverName.replace(/:/g, "_COLON_");
+    return `${safeInstanceId}:${safeServerName}`;
   }
 
   /**
@@ -60,9 +72,7 @@ class MCPConnectionPool {
 
     if (available) {
       // 既存接続を再利用
-      available.isActive = true;
-      available.lastUsed = now;
-      logger.debug("Reused connection from pool", { serverName });
+      this.updateConnectionState(available, true);
       return available.client;
     }
 
@@ -71,17 +81,16 @@ class MCPConnectionPool {
       // アイドル接続を強制的に再利用
       const idle = pool.find((conn) => !conn.isActive);
       if (idle) {
-        idle.isActive = true;
-        idle.lastUsed = now;
+        this.updateConnectionState(idle, true);
         return idle.client;
       }
       throw new Error(
-        `Maximum connections (${this.MAX_CONNECTIONS_PER_SERVER}) reached for server: ${serverName}`,
+        `Maximum connections (${this.MAX_CONNECTIONS_PER_SERVER}) reached for server`,
       );
     }
 
     // 全体の接続数制限チェック
-    if (this.totalConnections >= this.MAX_TOTAL_CONNECTIONS) {
+    if (this.connectionCounter.get() >= this.MAX_TOTAL_CONNECTIONS) {
       // 最も古いアイドル接続を探して強制的に再利用
       let oldestIdle: MCPConnection | null = null;
       let oldestPoolKey: string | null = null;
@@ -107,7 +116,7 @@ class MCPConnectionPool {
           const index = oldPool.indexOf(oldestIdle);
           if (index > -1) {
             oldPool.splice(index, 1);
-            this.totalConnections--;
+            await this.connectionCounter.decrement();
           }
         }
       } else {
@@ -137,16 +146,11 @@ class MCPConnectionPool {
 
       pool.push(connection);
       this.pools.set(poolKey, pool);
-      this.totalConnections++;
+      await this.connectionCounter.increment();
 
-      logger.debug("Created new connection", {
-        serverName,
-        poolSize: pool.length,
-      });
       return client;
     } catch (error) {
       logger.error("Failed to create connection", {
-        serverName,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -168,9 +172,7 @@ class MCPConnectionPool {
 
     const connection = pool.find((conn) => conn.client === client);
     if (connection) {
-      connection.isActive = false;
-      connection.lastUsed = Date.now();
-      logger.debug("Released connection to pool", { serverName });
+      this.updateConnectionState(connection, false);
     }
   }
 
@@ -209,8 +211,6 @@ class MCPConnectionPool {
 
     if (connectionsToClose.length === 0) return;
 
-    logger.debug(`Cleaning up ${connectionsToClose.length} idle connections`);
-
     // 接続を閉じて削除
     for (const { conn, poolKey } of connectionsToClose) {
       try {
@@ -229,7 +229,7 @@ class MCPConnectionPool {
         const index = pool.indexOf(conn);
         if (index > -1) {
           pool.splice(index, 1);
-          this.totalConnections--;
+          await this.connectionCounter.decrement();
           if (pool.length === 0) {
             this.pools.delete(poolKey);
           }
@@ -266,35 +266,7 @@ class MCPConnectionPool {
     );
 
     this.pools.clear();
-    this.totalConnections = 0;
-    logger.debug("Cleaned up all connections");
-  }
-
-  /**
-   * 統計情報を取得（デバッグ用）
-   */
-  getStats(): {
-    poolCount: number;
-    totalConnections: number;
-    activeConnections: number;
-    maxTotalConnections: number;
-    maxConnectionsPerServer: number;
-    idleTimeout: number;
-  } {
-    let activeConnections = 0;
-
-    for (const pool of this.pools.values()) {
-      activeConnections += pool.filter((c) => c.isActive).length;
-    }
-
-    return {
-      poolCount: this.pools.size,
-      totalConnections: this.totalConnections,
-      activeConnections,
-      maxTotalConnections: this.MAX_TOTAL_CONNECTIONS,
-      maxConnectionsPerServer: this.MAX_CONNECTIONS_PER_SERVER,
-      idleTimeout: this.IDLE_TIMEOUT,
-    };
+    await this.connectionCounter.reset();
   }
 }
 
