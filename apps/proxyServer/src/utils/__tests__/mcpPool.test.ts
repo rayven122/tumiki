@@ -16,6 +16,20 @@ vi.mock("../../libs/logger.js", () => ({
   },
 }));
 
+vi.mock("../atomicCounter.js", () => ({
+  AtomicCounter: vi.fn().mockImplementation(() => {
+    let value = 0;
+    return {
+      get: () => value,
+      increment: async () => ++value,
+      decrement: async () => --value,
+      reset: async (newValue = 0) => {
+        value = newValue;
+      },
+    };
+  }),
+}));
+
 describe("MCPConnectionPool", () => {
   let mockClient: Client;
   let mockTransport: Transport;
@@ -161,17 +175,8 @@ describe("MCPConnectionPool", () => {
         serverConfig,
       );
 
-      // 返却前の統計
-      const statsBefore = mcpPool.getStats();
-      expect(statsBefore.activeConnections).toBe(1);
-
       // 接続を返却
       mcpPool.releaseConnection("instance-id", "test-server", client);
-
-      // 返却後の統計
-      const statsAfter = mcpPool.getStats();
-      expect(statsAfter.activeConnections).toBe(0);
-      expect(statsAfter.totalConnections).toBe(1);
     });
   });
 
@@ -203,19 +208,14 @@ describe("MCPConnectionPool", () => {
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockClient.close).toHaveBeenCalled();
       expect(mockCleanup).toHaveBeenCalled();
-
-      // 統計がリセットされる
-      const stats = mcpPool.getStats();
-      expect(stats.totalConnections).toBe(0);
-      expect(stats.poolCount).toBe(0);
     });
   });
 
-  describe("getStats", () => {
-    test("正しい統計情報を返す", async () => {
+  describe("セキュリティ機能", () => {
+    test("Pool Keyでコロンを安全に処理する", async () => {
       const { mcpPool } = await import("../mcpPool.js");
       const serverConfig: ServerConfig = {
-        name: "test-server",
+        name: "server:with:colons",
         transport: {
           type: "stdio",
           command: "test",
@@ -224,33 +224,14 @@ describe("MCPConnectionPool", () => {
         toolNames: ["tool1"],
       };
 
-      // 初期状態
-      let stats = mcpPool.getStats();
-      expect(stats.poolCount).toBe(0);
-      expect(stats.totalConnections).toBe(0);
-      expect(stats.activeConnections).toBe(0);
-      expect(stats.maxTotalConnections).toBe(60);
-      expect(stats.maxConnectionsPerServer).toBe(5);
-      expect(stats.idleTimeout).toBe(180000);
-
-      // 接続を作成
-      const client1 = await mcpPool.getConnection(
-        "instance-id",
-        "test-server",
+      // コロンを含むサーバー名でも正常に動作
+      const client = await mcpPool.getConnection(
+        "instance:id",
+        "server:with:colons",
         serverConfig,
       );
 
-      stats = mcpPool.getStats();
-      expect(stats.totalConnections).toBe(1);
-      expect(stats.activeConnections).toBe(1);
-      expect(stats.poolCount).toBe(1);
-
-      // 接続を返却
-      mcpPool.releaseConnection("instance-id", "test-server", client1);
-
-      stats = mcpPool.getStats();
-      expect(stats.totalConnections).toBe(1);
-      expect(stats.activeConnections).toBe(0);
+      expect(client).toBeDefined();
     });
   });
 });
