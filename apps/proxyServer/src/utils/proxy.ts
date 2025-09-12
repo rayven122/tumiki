@@ -87,12 +87,60 @@ export const getSSEConnectionPool = (): SSEConnectionPool => {
 };
 
 /**
+ * URL内のプレースホルダーを実際の値で置換する
+ */
+const replaceUrlPlaceholders = (
+  url: string,
+  placeholders: Record<string, string>,
+): string => {
+  let replacedUrl = url;
+  for (const [key, value] of Object.entries(placeholders)) {
+    replacedUrl = replacedUrl.replace(`{${key}}`, value);
+  }
+  return replacedUrl;
+};
+
+/**
+ * URLにx-api-keyをクエリパラメータとして追加する
+ */
+const addApiKeyToUrl = (
+  url: string,
+  headers: Record<string, string>,
+): string => {
+  const urlObj = new URL(url);
+
+  // x-api-keyヘッダーがある場合、クエリパラメータとして追加
+  if (headers["X-API-Key"]) {
+    urlObj.searchParams.set("x-api-key", headers["X-API-Key"]);
+  }
+
+  // Authorizationヘッダーがある場合
+  if (headers.Authorization) {
+    urlObj.searchParams.set("authorization", headers.Authorization);
+  }
+
+  // 他の認証関連ヘッダーも同様に処理
+  for (const [key, value] of Object.entries(headers)) {
+    if (
+      key.toLowerCase().includes("bearer") ||
+      key.toLowerCase().includes("token")
+    ) {
+      urlObj.searchParams.set(key.toLowerCase(), value);
+    }
+  }
+
+  return urlObj.toString();
+};
+
+/**
  * MCP サーバーに接続する(stdio か sse のどちらか)
- * @param server
+ * @param server - サーバー設定
+ * @param instanceId - インスタンスID（URL置換用）
  * @returns
  */
 const createClient = async (
   server: ServerConfig,
+  instanceId?: string,
 ): Promise<{
   client: Client | undefined;
   transport: Transport | undefined;
@@ -106,7 +154,37 @@ const createClient = async (
       // Type narrowing: when type is "sse", url is guaranteed to be string
       const sseTransport = server.transport;
       if ("url" in sseTransport && typeof sseTransport.url === "string") {
-        transport = new SSEClientTransport(new URL(sseTransport.url));
+        // URL内のプレースホルダーを置換
+        let processedUrl = sseTransport.url;
+        if (instanceId) {
+          processedUrl = replaceUrlPlaceholders(processedUrl, {
+            instanceId,
+          });
+        }
+
+        // envVarsからx-api-keyヘッダーを取得してURLに追加
+        const headers: Record<string, string> = {};
+        if (sseTransport.env && typeof sseTransport.env === "object") {
+          const envVars = sseTransport.env;
+          // x-api-keyヘッダーの設定
+          if (envVars["X-API-KEY"]) {
+            headers["X-API-Key"] = envVars["X-API-KEY"];
+          }
+          // 他の認証ヘッダーも同様に処理
+          for (const [key, value] of Object.entries(envVars)) {
+            if (
+              key.toLowerCase().includes("authorization") ||
+              key.toLowerCase().includes("bearer") ||
+              key.toLowerCase().includes("token")
+            ) {
+              headers[key] = value;
+            }
+          }
+        }
+
+        // 認証情報をクエリパラメータとしてURLに追加
+        const finalUrl = addApiKeyToUrl(processedUrl, headers);
+        transport = new SSEClientTransport(new URL(finalUrl));
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
@@ -151,11 +229,13 @@ const createClient = async (
 
 /**
  * 単一のサーバーに接続する（リトライロジック付き）
- * @param server
+ * @param server - サーバー設定
+ * @param instanceId - インスタンスID（URL置換用）
  * @returns
  */
 const connectToServer = async (
   server: ServerConfig,
+  instanceId?: string,
 ): Promise<ConnectedClient | null> => {
   const waitFor = config.retry.delayMs;
   const retries = config.retry.maxAttempts;
@@ -163,8 +243,10 @@ const connectToServer = async (
   let retry = true;
 
   while (retry) {
-    const { client, transport, credentialsCleanup } =
-      await createClient(server);
+    const { client, transport, credentialsCleanup } = await createClient(
+      server,
+      instanceId,
+    );
     if (!client || !transport) {
       // 認証情報ファイルのクリーンアップ
       if (credentialsCleanup) {
@@ -226,14 +308,18 @@ const connectToServer = async (
  * 複数のサーバーに並列で接続する
  * 接続に失敗したら、2.5秒待ってから再接続を試みる
  * 3回失敗したら、そのサーバーはスキップする
- * @param servers
+ * @param servers - サーバー設定配列
+ * @param instanceId - インスタンスID（URL置換用）
  * @returns
  */
 export const createClients = async (
   servers: ServerConfig[],
+  instanceId?: string,
 ): Promise<ConnectedClient[]> => {
   // 全てのサーバーに対して並列で接続を試みる
-  const connectionPromises = servers.map((server) => connectToServer(server));
+  const connectionPromises = servers.map((server) =>
+    connectToServer(server, instanceId),
+  );
 
   // Promise.allSettledを使用して、全ての接続試行の結果を取得
   const results = await Promise.allSettled(connectionPromises);
@@ -451,34 +537,57 @@ const getServerConfigsByInstanceId = async (
       }
     }
 
-    const transportConfig: TransportConfig = {
-      type: "stdio",
-      command: serverConfig.mcpServer.command || "",
-      args: serverConfig.mcpServer.args ?? [],
-      env: {
-        ...process.env,
-        ...envObj,
-      } as Record<string, string>,
-    } satisfies TransportConfigStdio;
+    // transportTypeに応じて設定を生成
+    if (serverConfig.mcpServer.transportType === TransportType.STDIO) {
+      const transportConfig: TransportConfig = {
+        type: "stdio",
+        command: serverConfig.mcpServer.command || "",
+        args: serverConfig.mcpServer.args ?? [],
+        env: {
+          ...process.env,
+          ...envObj,
+        } as Record<string, string>,
+      } satisfies TransportConfigStdio;
 
-    if (
-      transportConfig.type === "stdio" &&
-      transportConfig.args &&
-      transportConfig.args.length > 0
-    ) {
-      transportConfig.args = JSON.parse(
-        JSON.stringify(transportConfig.args),
-      ) as string[];
+      if (
+        transportConfig.type === "stdio" &&
+        transportConfig.args &&
+        transportConfig.args.length > 0
+      ) {
+        transportConfig.args = JSON.parse(
+          JSON.stringify(transportConfig.args),
+        ) as string[];
+      }
+
+      const config: ServerConfig = {
+        name: serverConfig.name,
+        toolNames,
+        transport: transportConfig,
+        googleCredentials,
+      };
+
+      return config;
+    } else {
+      // SSE transport の場合
+      if (!serverConfig.mcpServer.url) {
+        throw new Error(
+          `SSE transport URL is required for ${serverConfig.name}`,
+        );
+      }
+
+      const transportConfig = {
+        name: serverConfig.name,
+        toolNames,
+        transport: {
+          type: "sse" as const,
+          url: serverConfig.mcpServer.url,
+          env: envObj, // ヘッダー情報をenvとして渡す
+        },
+        googleCredentials,
+      };
+
+      return transportConfig;
     }
-
-    const config: ServerConfig = {
-      name: serverConfig.name,
-      toolNames,
-      transport: transportConfig,
-      googleCredentials,
-    };
-
-    return config;
   });
 
   return serverConfigList;
@@ -492,7 +601,10 @@ export const getMcpClientsByInstanceId = async (
     userMcpServerInstanceId,
   );
 
-  const connectedClients = await createClients(serverConfigs);
+  const connectedClients = await createClients(
+    serverConfigs,
+    userMcpServerInstanceId,
+  );
   // デバッグログを削除（メモリ使用量削減）
 
   const cleanup = async () => {

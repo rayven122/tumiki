@@ -8,6 +8,7 @@ export type TransportConfigStdio = {
 export type TransportConfigSSE = {
   type: "sse";
   url: string;
+  env?: Record<string, string>;
 };
 
 export type TransportConfig = TransportConfigSSE | TransportConfigStdio;

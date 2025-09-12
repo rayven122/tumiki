@@ -12,6 +12,52 @@ import { CompatibilityCallToolResultSchema } from "@modelcontextprotocol/sdk/typ
 import type { MCPConnection, MCPConnectionOptions } from "./types.js";
 
 /**
+ * URLにx-api-keyをクエリパラメータとして追加する
+ */
+const addApiKeyToUrl = (
+  url: string,
+  headers: Record<string, string>,
+): string => {
+  const urlObj = new URL(url);
+
+  // x-api-keyヘッダーがある場合、クエリパラメータとして追加
+  if (headers["X-API-Key"]) {
+    urlObj.searchParams.set("x-api-key", headers["X-API-Key"]);
+  }
+
+  // Authorizationヘッダーがある場合
+  if (headers.Authorization) {
+    urlObj.searchParams.set("authorization", headers.Authorization);
+  }
+
+  // 他の認証関連ヘッダーも同様に処理
+  for (const [key, value] of Object.entries(headers)) {
+    if (
+      key.toLowerCase().includes("bearer") ||
+      key.toLowerCase().includes("token")
+    ) {
+      urlObj.searchParams.set(key.toLowerCase(), value);
+    }
+  }
+
+  return urlObj.toString();
+};
+
+/**
+ * URL内のプレースホルダーを実際の値で置換する
+ */
+const replaceUrlPlaceholders = (
+  url: string,
+  placeholders: Record<string, string>,
+): string => {
+  let replacedUrl = url;
+  for (const [key, value] of Object.entries(placeholders)) {
+    replacedUrl = replacedUrl.replace(`{${key}}`, value);
+  }
+  return replacedUrl;
+};
+
+/**
  * MCP接続を作成
  *
  * @param client - MCPクライアント
@@ -109,10 +155,12 @@ export const closeConnection = async (
  * MCPクライアントとトランスポートを作成
  *
  * @param serverConfig - サーバー設定
+ * @param options - 接続オプション (Instance ID など)
  * @returns クライアント、トランスポート、クリーンアップ関数
  */
 export const createMCPClient = async (
   serverConfig: ServerConfig,
+  options?: MCPConnectionOptions,
 ): Promise<{
   client: Client | undefined;
   transport: Transport | undefined;
@@ -125,7 +173,37 @@ export const createMCPClient = async (
     if (serverConfig.transport.type === "sse") {
       const sseTransport = serverConfig.transport;
       if ("url" in sseTransport && typeof sseTransport.url === "string") {
-        transport = new SSEClientTransport(new URL(sseTransport.url));
+        // URL内のプレースホルダーを置換
+        let processedUrl = sseTransport.url;
+        if (options?.userServerConfigInstanceId) {
+          processedUrl = replaceUrlPlaceholders(processedUrl, {
+            instanceId: options.userServerConfigInstanceId,
+          });
+        }
+
+        // envVarsからx-api-keyヘッダーを取得してURLに追加
+        const headers: Record<string, string> = {};
+        if (sseTransport.env && typeof sseTransport.env === "object") {
+          const envVars = sseTransport.env;
+          // x-api-keyヘッダーの設定
+          if (envVars["X-API-KEY"]) {
+            headers["X-API-Key"] = envVars["X-API-KEY"];
+          }
+          // 他の認証ヘッダーも同様に処理
+          for (const [key, value] of Object.entries(envVars)) {
+            if (
+              key.toLowerCase().includes("authorization") ||
+              key.toLowerCase().includes("bearer") ||
+              key.toLowerCase().includes("token")
+            ) {
+              headers[key] = value;
+            }
+          }
+        }
+
+        // 認証情報をクエリパラメータとしてURLに追加
+        const finalUrl = addApiKeyToUrl(processedUrl, headers);
+        transport = new SSEClientTransport(new URL(finalUrl));
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
@@ -179,8 +257,10 @@ export const createConnection = async (
   serverConfig: ServerConfig,
   options: MCPConnectionOptions,
 ): Promise<MCPConnection> => {
-  const { client, transport, credentialsCleanup } =
-    await createMCPClient(serverConfig);
+  const { client, transport, credentialsCleanup } = await createMCPClient(
+    serverConfig,
+    options,
+  );
 
   if (!client || !transport) {
     throw new Error("Failed to create client or transport");
