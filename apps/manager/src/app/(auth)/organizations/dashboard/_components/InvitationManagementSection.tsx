@@ -15,16 +15,24 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Mail, Clock, RefreshCw, X } from "lucide-react";
+import { Mail, Clock, RefreshCw, X, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-import { type OrganizationId } from "@/schema/ids";
+import {
+  type OrganizationId,
+  type OrganizationInvitationId,
+} from "@/schema/ids";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
+import { useUser } from "@tumiki/auth/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type InvitationManagementSectionProps = {
   organizationId: OrganizationId;
 };
+
+// 定数定義
+const ANIMATION_DURATION = 3000; // アニメーション表示時間（ミリ秒）
 
 // クライアントサイドでステータスを計算するヘルパー関数
 const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
@@ -35,11 +43,14 @@ const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
 export const InvitationManagementSection = ({
   organizationId,
 }: InvitationManagementSectionProps) => {
+  const { user } = useUser();
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState({
     title: "",
     description: "",
   });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showErrorAnimation, setShowErrorAnimation] = useState(false);
 
   const { data: invitations, isLoading } =
     api.organization.getInvitations.useQuery();
@@ -61,7 +72,17 @@ export const InvitationManagementSection = ({
         void utils.organization.getInvitations.invalidate();
         setTimeout(() => {
           setShowSuccessAnimation(false);
-        }, 3000);
+        }, ANIMATION_DURATION);
+      },
+      onError: (error) => {
+        setErrorMessage(
+          error.message || "招待の再送信中にエラーが発生しました。",
+        );
+        setShowErrorAnimation(true);
+        setTimeout(() => {
+          setShowErrorAnimation(false);
+          setErrorMessage(null);
+        }, ANIMATION_DURATION);
       },
     });
 
@@ -76,26 +97,37 @@ export const InvitationManagementSection = ({
         void utils.organization.getInvitations.invalidate();
         setTimeout(() => {
           setShowSuccessAnimation(false);
-        }, 3000);
+        }, ANIMATION_DURATION);
+      },
+      onError: (error) => {
+        setErrorMessage(
+          error.message || "招待のキャンセル中にエラーが発生しました。",
+        );
+        setShowErrorAnimation(true);
+        setTimeout(() => {
+          setShowErrorAnimation(false);
+          setErrorMessage(null);
+        }, ANIMATION_DURATION);
       },
     });
 
-  const handleResendInvitation = (invitationId: string) => {
+  const handleResendInvitation = (invitationId: OrganizationInvitationId) => {
     resendInvitationMutation.mutate({
       invitationId,
     });
   };
 
-  const handleCancelInvitation = (invitationId: string) => {
+  const handleCancelInvitation = (invitationId: OrganizationInvitationId) => {
     cancelInvitationMutation.mutate({
       invitationId,
     });
   };
 
-  const userMember = organization?.members.find(
-    (member) => member.user.id === organization.createdBy,
+  // 現在のログインユーザーの権限を確認
+  const currentUserMember = organization?.members.find(
+    (member) => member.user.id === user?.sub,
   );
-  const isAdmin = userMember?.isAdmin ?? false;
+  const isAdmin = currentUserMember?.isAdmin ?? false;
 
   if (isLoading) {
     return (
@@ -142,6 +174,16 @@ export const InvitationManagementSection = ({
             description={successMessage.description}
             className=""
           />
+        </div>
+      )}
+
+      {/* エラー表示 */}
+      {showErrorAnimation && errorMessage && (
+        <div className="fixed right-4 bottom-4 z-50 max-w-md">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
         </div>
       )}
 

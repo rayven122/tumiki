@@ -9,12 +9,15 @@ import {
 import { cancelInvitation } from "./cancelInvitation";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { type OrganizationId } from "@/schema/ids";
+import {
+  type OrganizationId,
+  type OrganizationInvitationId,
+} from "@/schema/ids";
 import type { OrganizationInvitation } from "@tumiki/db";
 
 const mockOrganizationId = "org_test123" as OrganizationId;
 const mockUserId = "user_test456";
-const mockInvitationId = "inv_test789";
+const mockInvitationId = "inv_test789" as OrganizationInvitationId;
 
 type MockTransaction = {
   organizationInvitation: {
