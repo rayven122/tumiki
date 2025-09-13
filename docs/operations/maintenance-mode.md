@@ -284,4 +284,4 @@ middleware.tsの設定を確認：
 
 - [ProxyServer デプロイガイド](./proxy-server-deployment.md)
 - [データベース設計](../architecture/DB設計.md)
-- [セキュリティガイド](../security/README.md)
+- [セキュリティガイド](../security/CLAUDE.md)
