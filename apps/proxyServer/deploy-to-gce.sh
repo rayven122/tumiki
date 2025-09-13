@@ -315,9 +315,22 @@ deploy_to_vm() {
             if ! command -v uv &>/dev/null; then
                 echo \"UV をインストール中...\"
                 curl -LsSf https://astral.sh/uv/install.sh | sh
-                source ~/.bashrc || export PATH=\"\$HOME/.cargo/bin:\$PATH\"
-                
-                # uvx の動作確認
+
+                # PATHを即座に設定（uvは.local/binにインストールされる）
+                export PATH=\"\$HOME/.local/bin:\$PATH\"
+
+                # bashrcに永続的に追加（既に追加されていない場合のみ）
+                if ! grep -q '.local/bin' ~/.bashrc; then
+                    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc
+                fi
+
+                # 動作確認
+                if command -v uv &>/dev/null; then
+                    echo \"UV \$(uv --version) が正常にインストールされました\"
+                else
+                    echo \"警告: uv コマンドが見つかりません\"
+                fi
+
                 if command -v uvx &>/dev/null; then
                     echo \"uvx \$(uvx --version) が利用可能です\"
                 else
@@ -325,6 +338,15 @@ deploy_to_vm() {
                 fi
             else
                 echo \"UV \$(uv --version) が既にインストールされています\"
+                # 既存インストールでもPATHを確認（.local/binと.cargo/bin両方をチェック）
+                export PATH=\"\$HOME/.local/bin:\$HOME/.cargo/bin:\$PATH\"
+
+                # uvxの確認
+                if command -v uvx &>/dev/null; then
+                    echo \"uvx \$(uvx --version) が利用可能です\"
+                else
+                    echo \"警告: uvx コマンドが見つかりません。PATHを確認してください。\"
+                fi
             fi
             
             # Git設定（認証プロンプト回避）
@@ -419,7 +441,17 @@ deploy_to_vm() {
             echo '=============================='
             echo '依存関係をインストール中...'
             echo '=============================='
+            # PATHにuvが含まれていることを確認（.local/binと.cargo/bin両方）
+            export PATH=\"\$HOME/.local/bin:\$HOME/.cargo/bin:\$PATH\"
             export NODE_OPTIONS='--max-old-space-size=1536'
+
+            # uvxが利用可能かチェック
+            if command -v uvx &>/dev/null; then
+                echo \"uvx が利用可能です: \$(uvx --version)\"
+            else
+                echo \"警告: uvx が見つかりません。Python MCPサーバーのインストールがスキップされる可能性があります。\"
+            fi
+
             if ! pnpm install --frozen-lockfile; then
                 echo '警告: frozen-lockfileでのインストールに失敗しました。lockfileを更新してリトライします...'
                 pnpm install --no-frozen-lockfile
