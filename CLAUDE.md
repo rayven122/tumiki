@@ -195,6 +195,18 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **PM2管理**: 本番環境でのプロセス管理と自動復旧
 - **メトリクス収集**: リアルタイムパフォーマンス監視
 
+## 実装後の必須アクション
+
+**重要**: 実装が完了したら、必ず以下のコマンドを実行してください：
+
+1. **`pnpm format:fix`** - コードフォーマットの自動修正（必須）
+2. `pnpm lint:fix` - リントエラーの自動修正
+3. `pnpm typecheck` - 型チェック
+4. `pnpm build` - ビルド確認
+5. `pnpm test` - テスト実行
+
+これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
+
 ## 完了条件
 
 - `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
