@@ -4,7 +4,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-import type { McpServer } from "@tumiki/db/prisma";
+import type { McpServer } from "@tumiki/db/server";
 
 /**
  * MCPサーバーからツール一覧を取得する
