@@ -265,4 +265,15 @@ export const MCP_SERVERS = [
     transportType: "STDIO" as const,
     isPublic: true,
   },
+  {
+    name: "Kubernetes MCP",
+    description:
+      "Kubernetesクラスターに接続してkubectlやHelmによるクラスター管理をサポートし、非破壊モードでの安全な操作も可能です",
+    tags: ["DevOps", "コンテナ", "インフラ"],
+    iconPath: "/logos/kubernetes.svg",
+    command: "node",
+    args: ["node_modules/mcp-server-kubernetes/dist/index.js"],
+    envVars: ["ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS"],
+    isPublic: true,
+  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
