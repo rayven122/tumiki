@@ -435,7 +435,9 @@ export const getMcpClients = async (apiKey: string) => {
   if (cachedAuth) {
     // キャッシュヒット
     if (!cachedAuth.valid || !cachedAuth.userMcpServerInstanceId) {
-      throw new Error(`Invalid API key: ${cachedAuth.error || "Unknown error"}`);
+      throw new Error(
+        `Invalid API key: ${cachedAuth.error || "Unknown error"}`,
+      );
     }
     // プール版の関数を使用
     return getMcpClientsByInstanceId(cachedAuth.userMcpServerInstanceId);
@@ -880,7 +882,9 @@ export const invalidateCacheByInstanceId = (instanceId: string): number => {
 /**
  * 組織IDに関連する全てのキャッシュをクリア
  */
-export const invalidateCacheByOrganizationId = (organizationId: string): number => {
+export const invalidateCacheByOrganizationId = (
+  organizationId: string,
+): number => {
   return authCache.clearByOrganizationId(organizationId);
 };
 
