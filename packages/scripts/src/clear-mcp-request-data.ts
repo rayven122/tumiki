@@ -9,9 +9,8 @@
  * または直接実行:
  * cd scripts && tsx clear-mcp-request-data.ts
  */
-
-import { PrismaClient } from "@prisma/client";
 import { createInterface } from "readline";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 

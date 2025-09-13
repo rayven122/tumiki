@@ -399,21 +399,8 @@ const getServerConfigsByInstanceId = async (
       type: "stdio",
       command: serverConfig.mcpServer.command || "",
       args: serverConfig.mcpServer.args ?? [],
-      env: {
-        ...process.env,
-        ...envObj,
-      } as Record<string, string>,
+      env: envObj,
     } satisfies TransportConfigStdio;
-
-    if (
-      transportConfig.type === "stdio" &&
-      transportConfig.args &&
-      transportConfig.args.length > 0
-    ) {
-      transportConfig.args = JSON.parse(
-        JSON.stringify(transportConfig.args),
-      ) as string[];
-    }
 
     const config: ServerConfig = {
       name: serverConfig.name,
