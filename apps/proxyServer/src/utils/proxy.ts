@@ -27,13 +27,23 @@ import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
 import { calculateDataSize } from "../libs/dataCompression.js";
-import { createToolsCache } from "./cache/index.js";
+import { createToolsCache, createDataCache } from "./cache/index.js";
 import { mcpPool } from "./mcpPool.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ToolsCache シングルトンインスタンス
 const toolsCache = createToolsCache();
+
+// ConfigCache シングルトンインスタンス（サーバー設定キャッシュ）
+const configCache = createDataCache<{ configs: ServerConfig[] }>("config");
+
+// キャッシュ無効化関数をエクスポート
+export const invalidateConfigCache = (userMcpServerInstanceId: string) => {
+  // configCacheのキーは "config:${userMcpServerInstanceId}" の形式
+  const cacheKey = configCache.generateKey(userMcpServerInstanceId);
+  configCache.delete(cacheKey);
+};
 
 export type ConnectedClient = {
   client: Client;
@@ -256,9 +266,18 @@ export const createClients = async (
 };
 
 // MCPサーバーインスタンスIDから設定を取得
-const getServerConfigsByInstanceId = async (
+export const getServerConfigsByInstanceId = async (
   userMcpServerInstanceId: string,
 ) => {
+  // キャッシュキーを生成
+  const cacheKey = configCache.generateKey(userMcpServerInstanceId);
+
+  // キャッシュヒットチェック
+  const cached = configCache.get(cacheKey);
+  if (cached) {
+    return cached.configs;
+  }
+
   // MCPサーバーインスタンスを取得
   const serverInstance = await db.userMcpServerInstance.findUnique({
     where: {
@@ -361,6 +380,9 @@ const getServerConfigsByInstanceId = async (
 
     return config;
   });
+
+  // キャッシュに保存
+  configCache.set(cacheKey, { configs: serverConfigList });
 
   return serverConfigList;
 };
