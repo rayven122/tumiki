@@ -12,7 +12,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db";
-import { validateApiKey } from "../libs/validateApiKey.js";
+import { validateApiKey, setAuthCache } from "../libs/validateApiKey.js";
 import {
   setupGoogleCredentialsEnv,
   type GoogleCredentials,
@@ -29,6 +29,7 @@ import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
 import { calculateDataSize } from "../libs/dataCompression.js";
 import { createToolsCache, createDataCache } from "./cache/index.js";
+import { createAuthCache } from "./cache/authCache.js";
 import { mcpPool } from "./mcpPool.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,6 +46,12 @@ const configCache = createDataCache<ConfigCacheEntry>("config");
 
 // ネガティブキャッシュ（存在しないインスタンスID用）
 const negativeCache = createDataCache<{ notFound: boolean }>("negative");
+
+// AuthCache シングルトンインスタンス
+const authCache = createAuthCache();
+
+// validateApiKeyにAuthCacheインスタンスを設定
+setAuthCache(authCache);
 
 // キャッシュ無効化関数をエクスポート
 export const invalidateConfigCache = (userMcpServerInstanceId: string) => {
@@ -572,8 +579,25 @@ export const getMcpClientsByInstanceId = async (
 
 // APIキーからMCPクライアントを取得（後方互換性）
 export const getMcpClients = async (apiKey: string) => {
-  // APIキーからuserMcpServerInstanceIdを取得
+  // 🎯 AuthCacheチェック
+  const cachedAuth = authCache.get(apiKey);
+  if (cachedAuth) {
+    // キャッシュヒット
+    if (!cachedAuth.valid || !cachedAuth.userMcpServerInstanceId) {
+      throw new Error(
+        `Invalid API key: ${cachedAuth.error || "Unknown error"}`,
+      );
+    }
+    // プール版の関数を使用
+    return getMcpClientsByInstanceId(cachedAuth.userMcpServerInstanceId);
+  }
+
+  // キャッシュミス: APIキーからuserMcpServerInstanceIdを取得
   const validation = await validateApiKey(apiKey);
+
+  // 結果をキャッシュに保存
+  authCache.set(apiKey, validation);
+
   if (!validation.valid || !validation.userMcpServerInstance) {
     throw new Error(`Invalid API key: ${validation.error || "Unknown error"}`);
   }
@@ -591,14 +615,30 @@ export const getServer = async (
   let userMcpServerInstanceId: string;
   const apiKeyPrefix = process.env.API_KEY_PREFIX;
   if (apiKeyPrefix && serverIdentifier.startsWith(apiKeyPrefix)) {
-    // APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
-    const validation = await validateApiKey(serverIdentifier);
-    if (!validation.valid || !validation.userMcpServerInstance) {
-      throw new Error(
-        `Invalid API key: ${validation.error || "Unknown error"}`,
-      );
+    // 🎯 AuthCacheチェック
+    const cachedAuth = authCache.get(serverIdentifier);
+    if (cachedAuth) {
+      // キャッシュヒット
+      if (!cachedAuth.valid || !cachedAuth.userMcpServerInstanceId) {
+        throw new Error(
+          `Invalid API key: ${cachedAuth.error || "Unknown error"}`,
+        );
+      }
+      userMcpServerInstanceId = cachedAuth.userMcpServerInstanceId;
+    } else {
+      // キャッシュミス: APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
+      const validation = await validateApiKey(serverIdentifier);
+
+      // 結果をキャッシュに保存
+      authCache.set(serverIdentifier, validation);
+
+      if (!validation.valid || !validation.userMcpServerInstance) {
+        throw new Error(
+          `Invalid API key: ${validation.error || "Unknown error"}`,
+        );
+      }
+      userMcpServerInstanceId = validation.userMcpServerInstance.id;
     }
-    userMcpServerInstanceId = validation.userMcpServerInstance.id;
   } else {
     // 直接userMcpServerInstanceIdとして扱う
     userMcpServerInstanceId = serverIdentifier;
@@ -969,6 +1009,29 @@ export const getServer = async (
   });
 
   return { server };
+};
+
+/**
+ * APIキーの無効化時にキャッシュをクリア
+ */
+export const invalidateApiKeyCache = (apiKey: string): boolean => {
+  return authCache.delete(apiKey);
+};
+
+/**
+ * インスタンスIDに関連する全てのキャッシュをクリア
+ */
+export const invalidateCacheByInstanceId = (instanceId: string): number => {
+  return authCache.clearByInstanceId(instanceId);
+};
+
+/**
+ * 組織IDに関連する全てのキャッシュをクリア
+ */
+export const invalidateCacheByOrganizationId = (
+  organizationId: string,
+): number => {
+  return authCache.clearByOrganizationId(organizationId);
 };
 
 // プロセス終了時のクリーンアップ
