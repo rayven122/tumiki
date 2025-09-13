@@ -6,18 +6,18 @@ YouTube Data API v3 を使用した MCP (Model Context Protocol) サーバーで
 
 ### 動画関連
 
-- `youtube_get_video` - YouTube動画の詳細情報を取得
-- `youtube_search_videos` - YouTube動画を検索
+- `get_video` - YouTube動画の詳細情報を取得
+- `search_videos` - YouTube動画を検索
 
 ### チャンネル関連
 
-- `youtube_get_channel` - チャンネル情報を取得
-- `youtube_list_channel_videos` - チャンネルの動画一覧を取得
+- `get_channel` - チャンネル情報を取得
+- `list_channel_videos` - チャンネルの動画一覧を取得
 
 ### プレイリスト関連
 
-- `youtube_get_playlist` - プレイリスト情報を取得
-- `youtube_get_playlist_items` - プレイリスト内の動画一覧を取得
+- `get_playlist` - プレイリスト情報を取得
+- `get_playlist_items` - プレイリスト内の動画一覧を取得
 
 ## セットアップ
 
