@@ -27,7 +27,7 @@ describe("handleVideoTool", () => {
     mockSearchVideos.mockClear();
   });
 
-  describe("youtube_get_video", () => {
+  describe("get_video", () => {
     const mockVideoDetails: VideoDetails = {
       id: "test-video-id",
       title: "テスト動画",
@@ -54,7 +54,7 @@ describe("handleVideoTool", () => {
       mockGetVideo.mockResolvedValueOnce(mockVideoDetails);
 
       const result = await handleVideoTool(
-        "youtube_get_video",
+        "get_video",
         { videoId: "test-video-id" },
         mockYouTubeApiService,
       );
@@ -74,7 +74,7 @@ describe("handleVideoTool", () => {
       mockGetVideo.mockResolvedValueOnce(mockVideoDetails);
 
       const result = await handleVideoTool(
-        "youtube_get_video",
+        "get_video",
         {
           videoId: "test-video-id",
           parts: ["snippet", "statistics"],
@@ -98,11 +98,7 @@ describe("handleVideoTool", () => {
 
     test("異常系: videoIdが不正な場合にZodErrorが発生する", async () => {
       await expect(
-        handleVideoTool(
-          "youtube_get_video",
-          { videoId: 123 },
-          mockYouTubeApiService,
-        ),
+        handleVideoTool("get_video", { videoId: 123 }, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockGetVideo).not.toHaveBeenCalled();
@@ -110,11 +106,7 @@ describe("handleVideoTool", () => {
 
     test("異常系: videoIdが空文字列の場合にZodErrorが発生する", async () => {
       await expect(
-        handleVideoTool(
-          "youtube_get_video",
-          { videoId: "" },
-          mockYouTubeApiService,
-        ),
+        handleVideoTool("get_video", { videoId: "" }, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockGetVideo).not.toHaveBeenCalled();
@@ -122,7 +114,7 @@ describe("handleVideoTool", () => {
 
     test("異常系: videoIdが未定義の場合にZodErrorが発生する", async () => {
       await expect(
-        handleVideoTool("youtube_get_video", {}, mockYouTubeApiService),
+        handleVideoTool("get_video", {}, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockGetVideo).not.toHaveBeenCalled();
@@ -131,7 +123,7 @@ describe("handleVideoTool", () => {
     test("異常系: partsに不正な値が含まれる場合にZodErrorが発生する", async () => {
       await expect(
         handleVideoTool(
-          "youtube_get_video",
+          "get_video",
           {
             videoId: "test-video-id",
             parts: ["invalid-part"],
@@ -149,7 +141,7 @@ describe("handleVideoTool", () => {
 
       await expect(
         handleVideoTool(
-          "youtube_get_video",
+          "get_video",
           { videoId: "test-video-id" },
           mockYouTubeApiService,
         ),
@@ -159,7 +151,7 @@ describe("handleVideoTool", () => {
     });
   });
 
-  describe("youtube_search_videos", () => {
+  describe("search_videos", () => {
     const mockSearchResults: SearchResult[] = [
       {
         id: "search-video-id-1",
@@ -199,7 +191,7 @@ describe("handleVideoTool", () => {
       mockSearchVideos.mockResolvedValueOnce(mockSearchResults);
 
       const result = await handleVideoTool(
-        "youtube_search_videos",
+        "search_videos",
         { query: "test search" },
         mockYouTubeApiService,
       );
@@ -224,7 +216,7 @@ describe("handleVideoTool", () => {
       mockSearchVideos.mockResolvedValueOnce(mockSearchResults);
 
       const result = await handleVideoTool(
-        "youtube_search_videos",
+        "search_videos",
         {
           query: "test search",
           maxResults: 20,
@@ -254,7 +246,7 @@ describe("handleVideoTool", () => {
       mockSearchVideos.mockResolvedValueOnce([mockSearchResults[0]!]);
 
       await handleVideoTool(
-        "youtube_search_videos",
+        "search_videos",
         {
           query: "test search",
           maxResults: 1,
@@ -274,7 +266,7 @@ describe("handleVideoTool", () => {
       mockSearchVideos.mockResolvedValueOnce(mockSearchResults);
 
       await handleVideoTool(
-        "youtube_search_videos",
+        "search_videos",
         {
           query: "test search",
           maxResults: 50,
@@ -303,7 +295,7 @@ describe("handleVideoTool", () => {
         mockSearchVideos.mockResolvedValueOnce(mockSearchResults);
 
         await handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           {
             query: "test search",
             order,
@@ -329,7 +321,7 @@ describe("handleVideoTool", () => {
         mockSearchVideos.mockResolvedValueOnce(mockSearchResults);
 
         await handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           {
             query: "test search",
             type,
@@ -350,11 +342,7 @@ describe("handleVideoTool", () => {
 
     test("異常系: queryが不正な場合にZodErrorが発生する", async () => {
       await expect(
-        handleVideoTool(
-          "youtube_search_videos",
-          { query: 123 },
-          mockYouTubeApiService,
-        ),
+        handleVideoTool("search_videos", { query: 123 }, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockSearchVideos).not.toHaveBeenCalled();
@@ -362,11 +350,7 @@ describe("handleVideoTool", () => {
 
     test("異常系: queryが空文字列の場合にZodErrorが発生する", async () => {
       await expect(
-        handleVideoTool(
-          "youtube_search_videos",
-          { query: "" },
-          mockYouTubeApiService,
-        ),
+        handleVideoTool("search_videos", { query: "" }, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockSearchVideos).not.toHaveBeenCalled();
@@ -374,7 +358,7 @@ describe("handleVideoTool", () => {
 
     test("異常系: queryが未定義の場合にZodErrorが発生する", async () => {
       await expect(
-        handleVideoTool("youtube_search_videos", {}, mockYouTubeApiService),
+        handleVideoTool("search_videos", {}, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockSearchVideos).not.toHaveBeenCalled();
@@ -383,7 +367,7 @@ describe("handleVideoTool", () => {
     test("異常系: maxResultsが範囲外（0）の場合にZodErrorが発生する", async () => {
       await expect(
         handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           {
             query: "test search",
             maxResults: 0,
@@ -398,7 +382,7 @@ describe("handleVideoTool", () => {
     test("異常系: maxResultsが範囲外（51）の場合にZodErrorが発生する", async () => {
       await expect(
         handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           {
             query: "test search",
             maxResults: 51,
@@ -413,7 +397,7 @@ describe("handleVideoTool", () => {
     test("異常系: orderが不正な値の場合にZodErrorが発生する", async () => {
       await expect(
         handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           {
             query: "test search",
             order: "invalid-order",
@@ -428,7 +412,7 @@ describe("handleVideoTool", () => {
     test("異常系: typeが不正な値の場合にZodErrorが発生する", async () => {
       await expect(
         handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           {
             query: "test search",
             type: "invalid-type",
@@ -446,7 +430,7 @@ describe("handleVideoTool", () => {
 
       await expect(
         handleVideoTool(
-          "youtube_search_videos",
+          "search_videos",
           { query: "test search" },
           mockYouTubeApiService,
         ),

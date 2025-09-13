@@ -27,7 +27,7 @@ describe("handlePlaylistTool", () => {
     mockGetPlaylistItems.mockClear();
   });
 
-  describe("youtube_get_playlist", () => {
+  describe("get_playlist", () => {
     const mockPlaylistDetails: PlaylistDetails = {
       id: "test-playlist-id",
       title: "テストプレイリスト",
@@ -70,7 +70,7 @@ describe("handlePlaylistTool", () => {
       mockGetPlaylist.mockResolvedValueOnce(mockPlaylistDetails);
 
       const result = await handlePlaylistTool(
-        "youtube_get_playlist",
+        "get_playlist",
         { playlistId: "test-playlist-id" },
         mockYouTubeApiService,
       );
@@ -89,7 +89,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: playlistIdが不正な場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist",
+          "get_playlist",
           { playlistId: 123 },
           mockYouTubeApiService,
         ),
@@ -101,7 +101,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: playlistIdが空文字列の場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist",
+          "get_playlist",
           { playlistId: "" },
           mockYouTubeApiService,
         ),
@@ -112,7 +112,7 @@ describe("handlePlaylistTool", () => {
 
     test("異常系: playlistIdが未定義の場合にZodErrorが発生する", async () => {
       await expect(
-        handlePlaylistTool("youtube_get_playlist", {}, mockYouTubeApiService),
+        handlePlaylistTool("get_playlist", {}, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockGetPlaylist).not.toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe("handlePlaylistTool", () => {
 
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist",
+          "get_playlist",
           { playlistId: "test-playlist-id" },
           mockYouTubeApiService,
         ),
@@ -134,7 +134,7 @@ describe("handlePlaylistTool", () => {
     });
   });
 
-  describe("youtube_get_playlist_items", () => {
+  describe("get_playlist_items", () => {
     const mockPlaylistItems: PlaylistItem[] = [
       {
         id: "playlist-item-id-1",
@@ -198,7 +198,7 @@ describe("handlePlaylistTool", () => {
       mockGetPlaylistItems.mockResolvedValueOnce(mockPlaylistItems);
 
       const result = await handlePlaylistTool(
-        "youtube_get_playlist_items",
+        "get_playlist_items",
         { playlistId: "test-playlist-id" },
         mockYouTubeApiService,
       );
@@ -218,7 +218,7 @@ describe("handlePlaylistTool", () => {
       mockGetPlaylistItems.mockResolvedValueOnce(mockPlaylistItems);
 
       const result = await handlePlaylistTool(
-        "youtube_get_playlist_items",
+        "get_playlist_items",
         {
           playlistId: "test-playlist-id",
           maxResults: 25,
@@ -241,7 +241,7 @@ describe("handlePlaylistTool", () => {
       mockGetPlaylistItems.mockResolvedValueOnce([mockPlaylistItems[0]!]);
 
       await handlePlaylistTool(
-        "youtube_get_playlist_items",
+        "get_playlist_items",
         {
           playlistId: "test-playlist-id",
           maxResults: 1,
@@ -256,7 +256,7 @@ describe("handlePlaylistTool", () => {
       mockGetPlaylistItems.mockResolvedValueOnce(mockPlaylistItems);
 
       await handlePlaylistTool(
-        "youtube_get_playlist_items",
+        "get_playlist_items",
         {
           playlistId: "test-playlist-id",
           maxResults: 50,
@@ -270,7 +270,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: playlistIdが不正な場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist_items",
+          "get_playlist_items",
           { playlistId: 123 },
           mockYouTubeApiService,
         ),
@@ -282,7 +282,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: playlistIdが空文字列の場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist_items",
+          "get_playlist_items",
           { playlistId: "" },
           mockYouTubeApiService,
         ),
@@ -293,11 +293,7 @@ describe("handlePlaylistTool", () => {
 
     test("異常系: playlistIdが未定義の場合にZodErrorが発生する", async () => {
       await expect(
-        handlePlaylistTool(
-          "youtube_get_playlist_items",
-          {},
-          mockYouTubeApiService,
-        ),
+        handlePlaylistTool("get_playlist_items", {}, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockGetPlaylistItems).not.toHaveBeenCalled();
@@ -306,7 +302,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: maxResultsが範囲外（0）の場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist_items",
+          "get_playlist_items",
           {
             playlistId: "test-playlist-id",
             maxResults: 0,
@@ -321,7 +317,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: maxResultsが範囲外（51）の場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist_items",
+          "get_playlist_items",
           {
             playlistId: "test-playlist-id",
             maxResults: 51,
@@ -336,7 +332,7 @@ describe("handlePlaylistTool", () => {
     test("異常系: maxResultsが文字列の場合にZodErrorが発生する", async () => {
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist_items",
+          "get_playlist_items",
           {
             playlistId: "test-playlist-id",
             maxResults: "invalid",
@@ -354,7 +350,7 @@ describe("handlePlaylistTool", () => {
 
       await expect(
         handlePlaylistTool(
-          "youtube_get_playlist_items",
+          "get_playlist_items",
           { playlistId: "test-playlist-id" },
           mockYouTubeApiService,
         ),

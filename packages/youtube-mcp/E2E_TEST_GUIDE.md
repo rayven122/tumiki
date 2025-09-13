@@ -8,7 +8,7 @@
 
 ## 1. 動画関連ツール (Video Tools)
 
-### youtube_get_video
+### get_video
 
 ```yaml
 テストケース1: 通常の動画ID
@@ -34,7 +34,7 @@
   期待: 制限された情報のみ取得
 ```
 
-### youtube_search_videos
+### search_videos
 
 ```yaml
 テストケース1: 基本検索
@@ -74,7 +74,7 @@
 
 ## 2. チャンネル関連ツール (Channel Tools)
 
-### youtube_get_channel
+### get_channel
 
 ```yaml
 テストケース1: チャンネルID指定
@@ -90,7 +90,7 @@
   期待: エラーまたは制限された情報
 ```
 
-### youtube_list_channel_videos
+### list_channel_videos
 
 ```yaml
 テストケース1: 最新動画順
@@ -124,7 +124,7 @@
 
 ## 3. プレイリスト関連ツール (Playlist Tools)
 
-### youtube_get_playlist
+### get_playlist
 
 ```yaml
 テストケース1: 公開プレイリスト
@@ -144,7 +144,7 @@
   期待: 動画数0の情報
 ```
 
-### youtube_get_playlist_items
+### get_playlist_items
 
 ```yaml
 テストケース1: 基本取得

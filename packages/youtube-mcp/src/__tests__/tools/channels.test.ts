@@ -27,7 +27,7 @@ describe("handleChannelTool", () => {
     mockListChannelVideos.mockClear();
   });
 
-  describe("youtube_get_channel", () => {
+  describe("get_channel", () => {
     const mockChannelDetails: ChannelDetails = {
       id: "test-channel-id",
       title: "テストチャンネル",
@@ -64,7 +64,7 @@ describe("handleChannelTool", () => {
       mockGetChannel.mockResolvedValueOnce(mockChannelDetails);
 
       const result = await handleChannelTool(
-        "youtube_get_channel",
+        "get_channel",
         { channelId: "test-channel-id" },
         mockYouTubeApiService,
       );
@@ -83,7 +83,7 @@ describe("handleChannelTool", () => {
     test("異常系: channelIdが不正な場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_get_channel",
+          "get_channel",
           { channelId: 123 },
           mockYouTubeApiService,
         ),
@@ -95,7 +95,7 @@ describe("handleChannelTool", () => {
     test("異常系: channelIdが空文字列の場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_get_channel",
+          "get_channel",
           { channelId: "" },
           mockYouTubeApiService,
         ),
@@ -106,7 +106,7 @@ describe("handleChannelTool", () => {
 
     test("異常系: channelIdが未定義の場合にZodErrorが発生する", async () => {
       await expect(
-        handleChannelTool("youtube_get_channel", {}, mockYouTubeApiService),
+        handleChannelTool("get_channel", {}, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockGetChannel).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe("handleChannelTool", () => {
 
       await expect(
         handleChannelTool(
-          "youtube_get_channel",
+          "get_channel",
           { channelId: "test-channel-id" },
           mockYouTubeApiService,
         ),
@@ -128,7 +128,7 @@ describe("handleChannelTool", () => {
     });
   });
 
-  describe("youtube_list_channel_videos", () => {
+  describe("list_channel_videos", () => {
     const mockChannelVideos: SearchResult[] = [
       {
         id: "channel-video-id-1",
@@ -178,7 +178,7 @@ describe("handleChannelTool", () => {
       mockListChannelVideos.mockResolvedValueOnce(mockChannelVideos);
 
       const result = await handleChannelTool(
-        "youtube_list_channel_videos",
+        "list_channel_videos",
         { channelId: "test-channel-id" },
         mockYouTubeApiService,
       );
@@ -202,7 +202,7 @@ describe("handleChannelTool", () => {
       mockListChannelVideos.mockResolvedValueOnce(mockChannelVideos);
 
       const result = await handleChannelTool(
-        "youtube_list_channel_videos",
+        "list_channel_videos",
         {
           channelId: "test-channel-id",
           maxResults: 25,
@@ -230,7 +230,7 @@ describe("handleChannelTool", () => {
       mockListChannelVideos.mockResolvedValueOnce([mockChannelVideos[0]!]);
 
       await handleChannelTool(
-        "youtube_list_channel_videos",
+        "list_channel_videos",
         {
           channelId: "test-channel-id",
           maxResults: 1,
@@ -249,7 +249,7 @@ describe("handleChannelTool", () => {
       mockListChannelVideos.mockResolvedValueOnce(mockChannelVideos);
 
       await handleChannelTool(
-        "youtube_list_channel_videos",
+        "list_channel_videos",
         {
           channelId: "test-channel-id",
           maxResults: 50,
@@ -271,7 +271,7 @@ describe("handleChannelTool", () => {
         mockListChannelVideos.mockResolvedValueOnce(mockChannelVideos);
 
         await handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           {
             channelId: "test-channel-id",
             order,
@@ -292,7 +292,7 @@ describe("handleChannelTool", () => {
     test("異常系: channelIdが不正な場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           { channelId: 123 },
           mockYouTubeApiService,
         ),
@@ -304,7 +304,7 @@ describe("handleChannelTool", () => {
     test("異常系: channelIdが空文字列の場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           { channelId: "" },
           mockYouTubeApiService,
         ),
@@ -315,11 +315,7 @@ describe("handleChannelTool", () => {
 
     test("異常系: channelIdが未定義の場合にZodErrorが発生する", async () => {
       await expect(
-        handleChannelTool(
-          "youtube_list_channel_videos",
-          {},
-          mockYouTubeApiService,
-        ),
+        handleChannelTool("list_channel_videos", {}, mockYouTubeApiService),
       ).rejects.toThrow(ZodError);
 
       expect(mockListChannelVideos).not.toHaveBeenCalled();
@@ -328,7 +324,7 @@ describe("handleChannelTool", () => {
     test("異常系: maxResultsが範囲外（0）の場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           {
             channelId: "test-channel-id",
             maxResults: 0,
@@ -343,7 +339,7 @@ describe("handleChannelTool", () => {
     test("異常系: maxResultsが範囲外（51）の場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           {
             channelId: "test-channel-id",
             maxResults: 51,
@@ -358,7 +354,7 @@ describe("handleChannelTool", () => {
     test("異常系: orderが不正な値の場合にZodErrorが発生する", async () => {
       await expect(
         handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           {
             channelId: "test-channel-id",
             order: "invalid-order",
@@ -376,7 +372,7 @@ describe("handleChannelTool", () => {
 
       await expect(
         handleChannelTool(
-          "youtube_list_channel_videos",
+          "list_channel_videos",
           { channelId: "test-channel-id" },
           mockYouTubeApiService,
         ),
@@ -408,7 +404,7 @@ describe("handleChannelTool", () => {
 
       await expect(
         handleChannelTool(
-          "youtube_get_channel",
+          "get_channel",
           { channelId: "invalid_channel" },
           mockYouTubeApiService,
         ),
@@ -422,7 +418,7 @@ describe("handleChannelTool", () => {
 
       await expect(
         handleChannelTool(
-          "youtube_get_channel",
+          "get_channel",
           { channelId: "test_channel" },
           mockYouTubeApiService,
         ),
