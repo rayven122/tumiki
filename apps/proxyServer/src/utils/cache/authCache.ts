@@ -1,4 +1,6 @@
 import { LRUCache } from "lru-cache";
+import { logger } from "../../libs/logger.js";
+import type { ValidationResult } from "../../libs/validateApiKey.js";
 
 /**
  * 認証キャッシュのエントリー型
@@ -11,6 +13,8 @@ export type AuthCacheEntry = {
   // 追加のメタデータ
   createdAt: number;
   hitCount: number;
+  // 完全なデータをキャッシュするための追加フィールド
+  fullData?: unknown; // 完全なUserMcpServerInstanceデータを保持
 };
 
 /**
@@ -65,34 +69,22 @@ export class AuthCache {
       const entry = this.cache.get(apiKey);
       if (entry) {
         this.stats.hits++;
-        // ヒットカウントを増やす
-        const updatedEntry = {
-          ...entry,
-          hitCount: entry.hitCount + 1,
-        };
-        this.cache.set(apiKey, updatedEntry);
-        return updatedEntry;
+        return entry;
       }
       this.stats.misses++;
       return undefined;
     } catch (error) {
       this.stats.errors++;
-      console.error("[AuthCache] Error getting entry:", error);
+      logger.error("AuthCache error getting entry", { error });
       return undefined;
     }
   }
 
   /**
    * キャッシュに認証情報を設定
+   * ValidationResult型を受け取る
    */
-  set(
-    apiKey: string,
-    validation: {
-      valid: boolean;
-      userMcpServerInstance?: { id: string; organizationId: string };
-      error?: string;
-    },
-  ): void {
+  set(apiKey: string, validation: ValidationResult): void {
     try {
       const entry: AuthCacheEntry = {
         valid: validation.valid,
@@ -101,12 +93,13 @@ export class AuthCache {
         error: validation.error,
         createdAt: Date.now(),
         hitCount: 0,
+        fullData: validation.userMcpServerInstance, // 完全なデータを保持
       };
       this.cache.set(apiKey, entry);
       this.stats.sets++;
     } catch (error) {
       this.stats.errors++;
-      console.error("[AuthCache] Error setting entry:", error);
+      logger.error("AuthCache error setting entry", { error });
     }
   }
 
@@ -122,7 +115,7 @@ export class AuthCache {
       return result;
     } catch (error) {
       this.stats.errors++;
-      console.error("[AuthCache] Error deleting entry:", error);
+      logger.error("AuthCache error deleting entry", { error });
       return false;
     }
   }
@@ -143,7 +136,10 @@ export class AuthCache {
       }
     } catch (error) {
       this.stats.errors++;
-      console.error("[AuthCache] Error clearing by instance ID:", error);
+      logger.error("AuthCache error clearing by instance ID", {
+        error,
+        instanceId,
+      });
     }
     return cleared;
   }
@@ -164,7 +160,10 @@ export class AuthCache {
       }
     } catch (error) {
       this.stats.errors++;
-      console.error("[AuthCache] Error clearing by organization ID:", error);
+      logger.error("AuthCache error clearing by organization ID", {
+        error,
+        organizationId,
+      });
     }
     return cleared;
   }
@@ -174,56 +173,13 @@ export class AuthCache {
    */
   clear(): void {
     try {
+      const sizeBeforeClear = this.cache.size;
       this.cache.clear();
-      this.stats.deletes += this.cache.size;
+      this.stats.deletes += sizeBeforeClear;
     } catch (error) {
       this.stats.errors++;
-      console.error("[AuthCache] Error clearing cache:", error);
+      logger.error("AuthCache error clearing cache", { error });
     }
-  }
-
-  /**
-   * キャッシュの統計情報を取得
-   */
-  getStats() {
-    return {
-      ...this.stats,
-      size: this.cache.size,
-      hitRate:
-        this.stats.hits + this.stats.misses > 0
-          ? this.stats.hits / (this.stats.hits + this.stats.misses)
-          : 0,
-    };
-  }
-
-  /**
-   * キャッシュ情報を取得（デバッグ用）
-   */
-  getInfo() {
-    const entries: Array<{
-      apiKey: string;
-      valid: boolean;
-      instanceId?: string;
-      organizationId?: string;
-      age: number;
-      hitCount: number;
-    }> = [];
-
-    for (const [key, entry] of this.cache.entries()) {
-      entries.push({
-        apiKey: key.substring(0, 10) + "...", // セキュリティのため一部のみ表示
-        valid: entry.valid,
-        instanceId: entry.userMcpServerInstanceId,
-        organizationId: entry.organizationId,
-        age: Date.now() - entry.createdAt,
-        hitCount: entry.hitCount,
-      });
-    }
-
-    return {
-      stats: this.getStats(),
-      entries,
-    };
   }
 }
 
