@@ -11,7 +11,7 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-import { TransportType } from "@tumiki/db";
+import { type TransportType } from "@tumiki/db";
 import { validateApiKey } from "../libs/validateApiKey.js";
 import {
   setupGoogleCredentialsEnv,
@@ -28,6 +28,7 @@ import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
 import { calculateDataSize } from "../libs/dataCompression.js";
 import { createToolsCache } from "./cache/index.js";
+import { mcpPool } from "./mcpPool.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -120,11 +121,9 @@ const createClient = async (
 
           // Authorizationヘッダーの設定（AUTHORIZATION_TOKENやBEARER_TOKENなどから）
           if (sseTransport.env.AUTHORIZATION_TOKEN) {
-            headers.Authorization =
-              `Bearer ${sseTransport.env.AUTHORIZATION_TOKEN}`;
+            headers.Authorization = `Bearer ${sseTransport.env.AUTHORIZATION_TOKEN}`;
           } else if (sseTransport.env.BEARER_TOKEN) {
-            headers.Authorization =
-              `Bearer ${sseTransport.env.BEARER_TOKEN}`;
+            headers.Authorization = `Bearer ${sseTransport.env.BEARER_TOKEN}`;
           } else if (sseTransport.env.AUTHORIZATION) {
             headers.Authorization = sseTransport.env.AUTHORIZATION;
           }
@@ -306,127 +305,6 @@ export const createClients = async (
   return clients;
 };
 
-const getServerConfigs = async (apiKey: string) => {
-  // APIキー検証
-  const validation = await validateApiKey(apiKey);
-
-  if (!validation.valid) {
-    throw new Error(`Invalid API key: ${validation.error}`);
-  }
-
-  const { userMcpServerInstance: serverInstance } = validation;
-
-  if (!serverInstance) {
-    throw new Error("Server instance not found");
-  }
-
-  const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
-    ({ userMcpServerConfigId }) => userMcpServerConfigId,
-  );
-
-  const serverConfigs = await db.userMcpServerConfig.findMany({
-    where: {
-      id: {
-        in: serverConfigIds,
-      },
-    },
-    omit: {
-      envVars: false,
-    },
-    include: {
-      mcpServer: true,
-    },
-  });
-
-  const serverConfigList: ServerConfig[] = serverConfigs.map((serverConfig) => {
-    const toolNames = serverInstance.toolGroup.toolGroupTools
-      .filter(
-        ({ userMcpServerConfigId }) =>
-          userMcpServerConfigId === serverConfig.id,
-      )
-      .map(({ tool }) => tool.name);
-
-    let envObj: Record<string, string>;
-    let googleCredentials: Record<string, unknown> | null = null;
-
-    try {
-      envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
-    } catch {
-      throw new Error(
-        `Invalid environment variables configuration for ${serverConfig.name}`,
-      );
-    }
-
-    // GOOGLE_APPLICATION_CREDENTIALS が含まれている場合、JSONとして解析
-    if (envObj.GOOGLE_APPLICATION_CREDENTIALS) {
-      try {
-        googleCredentials = JSON.parse(
-          envObj.GOOGLE_APPLICATION_CREDENTIALS,
-        ) as Record<string, unknown>;
-        // envObjから削除（ファイルパスは動的に生成されるため）
-        delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
-      } catch (error) {
-        throw new Error(
-          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    // args 内部に、envObj の key の値と一致するものは、値を置き換える
-    // 例: --api-key=API_KEY の場合、envObj["API_KEY"] の値に置き換える
-    // ただし、envObj に存在しない場合はそのまま使用する
-    const args = serverConfig.mcpServer.args.map((arg) => {
-      for (const [key, value] of Object.entries(envObj)) {
-        // 置き換え対象のキーが arg に含まれているかチェック
-        if (arg.includes(key)) {
-          const newArg = arg.replace(key, value);
-          return newArg;
-        }
-      }
-      return arg;
-    });
-
-    if (serverConfig.mcpServer.transportType === TransportType.STDIO) {
-      const transportConfig = {
-        name: serverConfig.name,
-        toolNames,
-        transport: {
-          type: "stdio" as const,
-          command:
-            serverConfig.mcpServer.command === "node"
-              ? process.execPath
-              : (serverConfig.mcpServer.command ?? ""),
-          args,
-          env: envObj,
-        },
-        googleCredentials,
-      };
-
-      return transportConfig;
-    } else {
-      if (!serverConfig.mcpServer.url) {
-        throw new Error(
-          `SSE transport URL is required for ${serverConfig.name}`,
-        );
-      }
-
-      const transportConfig = {
-        name: serverConfig.name,
-        toolNames,
-        transport: {
-          type: "sse" as const,
-          url: serverConfig.mcpServer.url,
-          env: envObj, // 環境変数を追加（認証ヘッダー設定用）
-        },
-      };
-
-      return transportConfig;
-    }
-  });
-
-  return serverConfigList;
-};
-
 // MCPサーバーインスタンスIDから設定を取得
 const getServerConfigsByInstanceId = async (
   userMcpServerInstanceId: string,
@@ -537,7 +415,7 @@ const getServerConfigsByInstanceId = async (
   return serverConfigList;
 };
 
-// MCPサーバーインスタンスIDからMCPクライアントを取得
+// MCPサーバーインスタンスIDからMCPクライアントを取得（プール使用版）
 export const getMcpClientsByInstanceId = async (
   userMcpServerInstanceId: string,
 ) => {
@@ -545,15 +423,51 @@ export const getMcpClientsByInstanceId = async (
     userMcpServerInstanceId,
   );
 
-  const connectedClients = await createClients(serverConfigs);
-  // デバッグログを削除（メモリ使用量削減）
+  // プールから接続を取得または作成（並列処理）
+  const connectionPromises = serverConfigs.map(async (serverConfig) => {
+    try {
+      const client = await mcpPool.getConnection(
+        userMcpServerInstanceId,
+        serverConfig.name,
+        serverConfig,
+      );
+
+      return {
+        client,
+        name: serverConfig.name,
+        cleanup: async () => {
+          // プールに返却
+          mcpPool.releaseConnection(
+            userMcpServerInstanceId,
+            serverConfig.name,
+            client,
+          );
+        },
+        toolNames: serverConfig.toolNames,
+      };
+    } catch (error) {
+      // 接続失敗はログして続行
+      console.error(`Failed to connect to ${serverConfig.name}:`, error);
+      recordError("server_connection_failed");
+      return null;
+    }
+  });
+
+  // Promise.allSettledで全ての接続を並列実行
+  const connectionResults = await Promise.allSettled(connectionPromises);
+
+  // 成功した接続のみをフィルタリング
+  const connectedClients: ConnectedClient[] = connectionResults
+    .filter(
+      (result): result is PromiseFulfilledResult<ConnectedClient | null> =>
+        result.status === "fulfilled" && result.value !== null,
+    )
+    .map((result) => result.value!);
 
   const cleanup = async () => {
-    try {
-      // デバッグログを削除（メモリ使用量削減）
-      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch {
-      // クリーンアップ失敗は無視
+    // 全ての接続をプールに返却
+    for (const { name, client } of connectedClients) {
+      mcpPool.releaseConnection(userMcpServerInstanceId, name, client);
     }
   };
 
@@ -562,21 +476,14 @@ export const getMcpClientsByInstanceId = async (
 
 // APIキーからMCPクライアントを取得（後方互換性）
 export const getMcpClients = async (apiKey: string) => {
-  const serverConfigs = await getServerConfigs(apiKey);
+  // APIキーからuserMcpServerInstanceIdを取得
+  const validation = await validateApiKey(apiKey);
+  if (!validation.valid || !validation.userMcpServerInstance) {
+    throw new Error(`Invalid API key: ${validation.error || "Unknown error"}`);
+  }
 
-  const connectedClients = await createClients(serverConfigs);
-  // デバッグログを削除（メモリ使用量削減）
-
-  const cleanup = async () => {
-    try {
-      // デバッグログを削除（メモリ使用量削減）
-      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch {
-      // クリーンアップ失敗は無視
-    }
-  };
-
-  return { connectedClients, cleanup };
+  // プール版の関数を使用
+  return getMcpClientsByInstanceId(validation.userMcpServerInstance.id);
 };
 
 export const getServer = async (
@@ -694,34 +601,53 @@ export const getServer = async (
                 const allTools: Tool[] = [];
                 const toolToClientMap = new Map<string, ConnectedClient>();
 
-                for (const connectedClient of connectedClients) {
-                  try {
-                    const result = await connectedClient.client.request(
-                      {
-                        method: "tools/list",
-                        params: {
-                          _meta: request.params?._meta,
+                // 全クライアントに並列でリクエストを送信
+                const toolsPromises = connectedClients.map(
+                  async (connectedClient) => {
+                    try {
+                      const result = await connectedClient.client.request(
+                        {
+                          method: "tools/list",
+                          params: {
+                            _meta: request.params?._meta,
+                          },
                         },
-                      },
-                      ListToolsResultSchema,
-                    );
+                        ListToolsResultSchema,
+                      );
 
-                    if (result.tools) {
-                      const toolsWithSource = result.tools
-                        .filter((tool) =>
-                          connectedClient.toolNames.includes(tool.name),
-                        )
-                        .map((tool) => {
-                          toolToClientMap.set(tool.name, connectedClient);
-                          return {
-                            ...tool,
-                            description: `[${connectedClient.name}] ${tool.description}`,
-                          };
-                        });
-                      allTools.push(...toolsWithSource);
+                      if (result.tools) {
+                        const toolsWithSource = result.tools
+                          .filter((tool) =>
+                            connectedClient.toolNames.includes(tool.name),
+                          )
+                          .map((tool) => {
+                            return {
+                              tool: {
+                                ...tool,
+                                description: `[${connectedClient.name}] ${tool.description}`,
+                              },
+                              client: connectedClient,
+                            };
+                          });
+                        return toolsWithSource;
+                      }
+                      return [];
+                    } catch {
+                      recordError("tools_list_client_error");
+                      return [];
                     }
-                  } catch {
-                    recordError("tools_list_client_error");
+                  },
+                );
+
+                // 全ての結果を待って統合
+                const toolsResults = await Promise.allSettled(toolsPromises);
+
+                for (const result of toolsResults) {
+                  if (result.status === "fulfilled" && result.value) {
+                    for (const { tool, client } of result.value) {
+                      toolToClientMap.set(tool.name, client);
+                      allTools.push(tool);
+                    }
                   }
                 }
 
