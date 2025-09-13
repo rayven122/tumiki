@@ -43,9 +43,10 @@ function initializeMailClient() {
  * 招待URLを生成する
  */
 function generateInviteUrl(token: string): string {
-  const baseUrl = process.env.NODE_ENV === "production"
-    ? process.env.NEXTAUTH_URL
-    : "http://localhost:3000";
+  const baseUrl =
+    process.env.NODE_ENV === "production"
+      ? process.env.NEXTAUTH_URL
+      : "http://localhost:3000";
   return `${baseUrl}/invite/${token}`;
 }
 
@@ -62,18 +63,18 @@ async function sendResendInvitationEmail(
 ): Promise<void> {
   try {
     initializeMailClient();
-    
+
     // 再送信であることを明記し、役割情報も含む
-    const roleInfo = isAdmin 
-      ? "管理者として" 
-      : roleIds.length > 0 
-        ? `${roleIds.length}個の役割と共に` 
+    const roleInfo = isAdmin
+      ? "管理者として"
+      : roleIds.length > 0
+        ? `${roleIds.length}個の役割と共に`
         : "";
-    
-    const customName = roleInfo 
+
+    const customName = roleInfo
       ? `${email}（${roleInfo}再招待）`
       : `${email}（再招待）`;
-    
+
     await sendInvitation({
       email,
       name: customName,
@@ -149,7 +150,7 @@ export const resendInvitation = async ({
 
     // メール送信処理（トランザクション外で実行）
     const inviteUrl = generateInviteUrl(result.token);
-    
+
     await sendResendInvitationEmail(
       result.email,
       inviteUrl,
