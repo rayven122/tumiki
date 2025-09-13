@@ -8,6 +8,7 @@ export default tseslint.config(
       "dist/**",
       "node_modules/**",
       "mcp/**",
+      "scripts/**",
       "tsup.config.ts",
       "vitest.config.ts",
     ],
