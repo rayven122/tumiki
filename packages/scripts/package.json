@@ -39,6 +39,7 @@
     "upsertAll": "pnpm with-env-all tsx src/upsertAll.ts",
     "migrateWaitingList": "pnpm with-env tsx src/migrateWaitingList.ts",
     "test-auth0-api": "pnpm with-env tsx src/test-auth0-api.ts",
+    "clear-mcp-data": "pnpm with-env tsx src/clear-mcp-request-data.ts",
     "with-env": "dotenv -e ../../.env --",
     "with-env-upsert": "dotenv -e ../../.env.upsert --",
     "with-env-all": "dotenv -e ../../.env -- dotenv -e ../../.env.upsert --",
