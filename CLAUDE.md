@@ -172,17 +172,6 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 - **GitHub Actions**: `.github/workflows/ci.yml`
 - **品質チェック**: `pnpm check` で lint + format + typecheck
-- **Node メモリ**: `NODE_OPTIONS: --max-old-space-size=4096`
-
-### Turbo タスク管理
-
-並列実行とキャッシュ活用により高速化：
-
-- `pnpm build` - アプリケーションビルド
-- `pnpm dev` - 開発サーバー起動
-- `pnpm lint` - ESLint実行
-- `pnpm format` - Prettier実行
-- `pnpm typecheck` - TypeScript型チェック
 
 ### 重要な実装パターン
 
@@ -207,6 +196,29 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 
+## CI/CD - Claude Code Review
+
+### 自動コードレビュー機能
+
+プルリクエストに対してClaude Code Reviewが自動実行されます：
+
+#### レビュー内容
+
+**2段階レビュープロセス**:
+
+1. **第1段階 - 詳細分析**:
+   - コード品質とベストプラクティス
+   - 設計原則（SOLID、DRY、KISS、YAGNI）の遵守
+   - 潜在的なバグとエラーハンドリング
+   - パフォーマンスとスケーラビリティ
+   - セキュリティリスク評価
+   - テストカバレッジ
+
+2. **第2段階 - 優先順位付け**:
+   - 重要度スコア（1-10）での評価
+   - 具体的な改善コード例の提示
+   - 実装すべきアクションの明確化
+
 ## 完了条件
 
 - `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
@@ -214,3 +226,4 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - 関連ドキュメントの更新完了させること
 - PM2での本番環境デプロイが正常に動作すること
 - MCPサーバーの統合テストが成功すること
+- Claude Code Reviewによる自動レビューで重要度8以上の指摘が解決されていること
