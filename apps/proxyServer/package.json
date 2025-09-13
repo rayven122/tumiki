@@ -68,6 +68,7 @@
     "marked": "^15.0.8",
     "mcp-gemini-google-search": "^0.1.1",
     "mcp-server-gsc": "^0.2.0",
+    "mcp-server-kubernetes": "^2.9.1",
     "microcms-mcp-server": "^0.3.6",
     "n8n-mcp": "^2.10.6",
     "octokit": "^4.1.2",
