@@ -1,6 +1,4 @@
 import { db } from "@tumiki/db/tcp";
-import pMemoize from "p-memoize";
-import ExpiryMap from "expiry-map";
 import type {
   UserMcpServerInstance,
   UserToolGroup,
@@ -8,6 +6,7 @@ import type {
   Tool,
   McpApiKey,
 } from "@tumiki/db/prisma";
+import type { AuthCache } from "../utils/cache/authCache.js";
 
 export interface ValidationResult {
   valid: boolean;
@@ -24,7 +23,14 @@ export interface ValidationResult {
   };
 }
 
-// 内部のvalidateApiKey関数（メモ化されない元の実装）
+// AuthCacheインスタンスを受け取る
+let authCacheInstance: AuthCache | null = null;
+
+export const setAuthCache = (cache: AuthCache) => {
+  authCacheInstance = cache;
+};
+
+// 内部のvalidateApiKey関数（キャッシュなしの実装）
 const _validateApiKey = async (
   providedKey: string,
 ): Promise<ValidationResult> => {
@@ -109,21 +115,46 @@ const _validateApiKey = async (
   }
 };
 
-// 5分間でキャッシュが期限切れになるExpiryMapを作成
-const cache = new ExpiryMap(5 * 60 * 1000); // 5分間キャッシュ
+// AuthCacheを使用するvalidateApiKey関数
+export const validateApiKey = async (
+  providedKey: string,
+): Promise<ValidationResult> => {
+  // AuthCacheが設定されていない場合は直接実行
+  if (!authCacheInstance) {
+    return _validateApiKey(providedKey);
+  }
 
-// p-memoizeを使ってvalidateApiKeyをメモ化
-export const validateApiKey = pMemoize(_validateApiKey, {
-  cache,
-  cacheKey: ([providedKey]) => providedKey, // APIキーをキャッシュキーとして使用
-});
+  // キャッシュから取得を試みる
+  const cachedEntry = authCacheInstance.get(providedKey);
+  if (cachedEntry) {
+    // キャッシュエントリーからValidationResultを構築
+    return {
+      valid: cachedEntry.valid,
+      error: cachedEntry.error,
+      userMcpServerInstance:
+        cachedEntry.fullData as ValidationResult["userMcpServerInstance"],
+    };
+  }
 
-// キャッシュクリア用の関数をエクスポート
-export const clearValidationCache = () => {
-  cache.clear();
+  // キャッシュミスの場合はDBから取得
+  const result = await _validateApiKey(providedKey);
+
+  // 結果をキャッシュに保存
+  authCacheInstance.set(providedKey, result);
+
+  return result;
 };
 
-// 特定のAPIキーのキャッシュを削除
+// キャッシュクリア用の関数をエクスポート（AuthCache経由）
+export const clearValidationCache = () => {
+  if (authCacheInstance) {
+    authCacheInstance.clear();
+  }
+};
+
+// 特定のAPIキーのキャッシュを削除（AuthCache経由）
 export const clearValidationCacheForKey = (apiKey: string) => {
-  cache.delete(apiKey);
+  if (authCacheInstance) {
+    authCacheInstance.delete(apiKey);
+  }
 };
