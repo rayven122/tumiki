@@ -3,6 +3,7 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "./dist",
+    "emitDeclarationOnly": false,
     "types": ["vitest/globals", "vitest-environment-vprisma"]
   },
   "include": [
