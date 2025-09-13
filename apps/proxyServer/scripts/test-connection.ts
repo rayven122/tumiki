@@ -4,7 +4,6 @@
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 // 環境変数から設定を取得
 const API_KEY = process.env.TEST_API_KEY || "tumiki_mcp_xxxxxx";
@@ -44,60 +43,6 @@ function recordResult(
   details?: Record<string, unknown>,
 ) {
   testResults.push({ name, success, duration, error, details });
-}
-
-/**
- * レガシー認証テスト（既存の実装）
- */
-async function testLegacyAuth() {
-  console.log("🧪 Testing Legacy Authentication (Query Parameter)...");
-  console.log(
-    `📍 URL: ${PROXY_URL}/mcp?api-key=${API_KEY.substring(0, 20)}...`,
-  );
-
-  const startTime = Date.now();
-
-  try {
-    const transport = new StreamableHTTPClientTransport(
-      new URL(`${PROXY_URL}/mcp?api-key=${API_KEY}`),
-    );
-
-    const client = new Client(
-      {
-        name: "test-client-legacy",
-        version: "1.0.0",
-      },
-      {
-        capabilities: {
-          tools: {},
-          sampling: {},
-        },
-      },
-    );
-
-    await client.connect(transport);
-    console.log("✅ Legacy auth: Connected successfully!");
-
-    const toolsResponse = await client.listTools();
-    console.log(
-      `✅ Legacy auth: Found ${toolsResponse.tools?.length || 0} tools`,
-    );
-
-    await client.close();
-
-    const duration = Date.now() - startTime;
-    recordResult("Legacy Auth", true, duration, undefined, {
-      toolsCount: toolsResponse.tools?.length || 0,
-    });
-
-    return true;
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Legacy auth failed: ${errorMsg}`);
-    recordResult("Legacy Auth", false, duration, errorMsg);
-    return false;
-  }
 }
 
 /**
@@ -190,88 +135,6 @@ async function testInstanceIdAuth() {
 }
 
 /**
- * SSE Instance ID認証テスト
- */
-async function testSSEInstanceIdAuth() {
-  if (!INSTANCE_ID) {
-    console.log(
-      "⚠️ Skipping SSE Instance ID auth test (MCP_INSTANCE_ID not set)",
-    );
-    return false;
-  }
-
-  console.log("🧪 Testing Instance ID Authentication (SSE Transport)...");
-  console.log(`📍 URL: ${PROXY_URL}/sse/${INSTANCE_ID}`);
-  console.log(`🔑 API Key: ${API_KEY.substring(0, 20)}...`);
-
-  const startTime = Date.now();
-
-  try {
-    debugLog("Creating SSE transport with headers:", { "x-api-key": API_KEY });
-
-    const transport = new SSEClientTransport(
-      new URL(`${PROXY_URL}/sse/${INSTANCE_ID}`),
-      {
-        requestInit: {
-          headers: {
-            "x-api-key": API_KEY,
-          },
-        },
-      },
-    );
-
-    const client = new Client(
-      {
-        name: "test-client-sse-instance-id",
-        version: "1.0.0",
-      },
-      {
-        capabilities: {
-          tools: {},
-          sampling: {},
-        },
-      },
-    );
-
-    await client.connect(transport);
-    console.log("✅ SSE Instance ID auth: Connected successfully!");
-
-    const toolsResponse = await client.listTools();
-    console.log(
-      `✅ SSE Instance ID auth: Found ${toolsResponse.tools?.length || 0} tools`,
-    );
-
-    await client.close();
-
-    const duration = Date.now() - startTime;
-    recordResult("Instance ID Auth (SSE)", true, duration, undefined, {
-      instanceId: INSTANCE_ID,
-      toolsCount: toolsResponse.tools?.length || 0,
-    });
-
-    return true;
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`❌ SSE Instance ID auth failed: ${errorMsg}`);
-
-    // SSE固有のエラー情報
-    if (error instanceof Error) {
-      if (error.message.includes("401")) {
-        console.error(
-          "💡 SSE認証エラー: ヘッダーが正しく転送されていない可能性があります",
-        );
-      }
-    }
-
-    recordResult("Instance ID Auth (SSE)", false, duration, errorMsg, {
-      instanceId: INSTANCE_ID,
-    });
-    return false;
-  }
-}
-
-/**
  * クエリパラメータ認証テスト（レガシーエンドポイント）
  */
 async function testQueryParamAuth() {
@@ -324,71 +187,6 @@ async function testQueryParamAuth() {
     recordResult("Query Param Auth", false, duration, errorMsg, {
       instanceId: INSTANCE_ID,
     });
-    return false;
-  }
-}
-
-/**
- * ヘッダーとクエリパラメータの優先順位テスト
- */
-async function testAuthPriority() {
-  if (!INSTANCE_ID) {
-    console.log("⚠️ Skipping auth priority test (MCP_INSTANCE_ID not set)");
-    return false;
-  }
-
-  console.log("🧪 Testing Authentication Priority (Header vs Query)...");
-  console.log("📝 Testing with both header and query parameter...");
-
-  const startTime = Date.now();
-  const wrongApiKey = "tumiki_mcp_wrong_key";
-
-  try {
-    debugLog("Using correct key in header, wrong key in query");
-
-    // ヘッダーに正しいキー、クエリに間違ったキー
-    const transport = new StreamableHTTPClientTransport(
-      new URL(`${PROXY_URL}/mcp/${INSTANCE_ID}?api-key=${wrongApiKey}`),
-      {
-        requestInit: {
-          headers: {
-            "x-api-key": API_KEY, // 正しいキー
-          },
-        },
-      },
-    );
-
-    const client = new Client(
-      {
-        name: "test-client-priority",
-        version: "1.0.0",
-      },
-      {
-        capabilities: {
-          tools: {},
-          sampling: {},
-        },
-      },
-    );
-
-    await client.connect(transport);
-    console.log("✅ Auth priority: Header takes precedence over query!");
-
-    await client.close();
-
-    const duration = Date.now() - startTime;
-    recordResult("Auth Priority Test", true, duration, undefined, {
-      result: "Header takes precedence",
-    });
-
-    return true;
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.log(
-      "⚠️ Auth priority test result: Query might take precedence or both failed",
-    );
-    recordResult("Auth Priority Test", false, duration, errorMsg);
     return false;
   }
 }
