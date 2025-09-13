@@ -72,7 +72,6 @@ export const MemberManagementSection = ({
   const handleInvite = () => {
     if (inviteEmail.trim()) {
       inviteMutation.mutate({
-        organizationId,
         email: inviteEmail.trim(),
         isAdmin: false,
       });
