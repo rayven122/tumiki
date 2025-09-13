@@ -17,6 +17,7 @@ import {
   setupGoogleCredentialsEnv,
   type GoogleCredentials,
 } from "@tumiki/utils/server/security";
+import * as crypto from "node:crypto";
 
 import type {
   ServerConfig,
@@ -36,13 +37,38 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const toolsCache = createToolsCache();
 
 // ConfigCache シングルトンインスタンス（サーバー設定キャッシュ）
-const configCache = createDataCache<{ configs: ServerConfig[] }>("config");
+type ConfigCacheEntry = {
+  configs: ServerConfig[];
+  configMeta: Array<{ id: string; updatedAt: Date }>;
+};
+const configCache = createDataCache<ConfigCacheEntry>("config");
+
+// ネガティブキャッシュ（存在しないインスタンスID用）
+const negativeCache = createDataCache<{ notFound: boolean }>("negative");
 
 // キャッシュ無効化関数をエクスポート
 export const invalidateConfigCache = (userMcpServerInstanceId: string) => {
-  // configCacheのキーは "config:${userMcpServerInstanceId}" の形式
-  const cacheKey = configCache.generateKey(userMcpServerInstanceId);
-  configCache.delete(cacheKey);
+  // configCacheとnegativeCacheの両方を無効化
+  configCache.invalidateNamespace(userMcpServerInstanceId);
+  negativeCache.delete(negativeCache.generateKey(userMcpServerInstanceId));
+};
+
+// テスト用：すべてのキャッシュをクリア
+export const clearAllCaches = () => {
+  configCache.clear();
+  negativeCache.clear();
+  toolsCache.clear();
+};
+
+// Config メタデータのハッシュを生成
+const generateConfigHash = (
+  configs: Array<{ id: string; updatedAt: Date }>,
+): string => {
+  const data = configs
+    .map((c) => `${c.id}:${c.updatedAt.toISOString()}`)
+    .sort()
+    .join(",");
+  return crypto.createHash("sha256").update(data).digest("hex").slice(0, 16);
 };
 
 export type ConnectedClient = {
@@ -325,13 +351,11 @@ export const createClients = async (
 export const getServerConfigsByInstanceId = async (
   userMcpServerInstanceId: string,
 ) => {
-  // キャッシュキーを生成
-  const cacheKey = configCache.generateKey(userMcpServerInstanceId);
-
-  // キャッシュヒットチェック
-  const cached = configCache.get(cacheKey);
-  if (cached) {
-    return cached.configs;
+  // ネガティブキャッシュをチェック
+  const negativeKey = negativeCache.generateKey(userMcpServerInstanceId);
+  const negativeCached = negativeCache.get(negativeKey);
+  if (negativeCached?.notFound) {
+    throw new Error("Server instance not found (cached)");
   }
 
   // MCPサーバーインスタンスを取得
@@ -354,7 +378,48 @@ export const getServerConfigsByInstanceId = async (
   });
 
   if (!serverInstance) {
+    // ネガティブキャッシュに保存（1分間）
+    negativeCache.set(negativeKey, { notFound: true });
     throw new Error("Server instance not found");
+  }
+
+  // Config のメタデータを取得して検証
+  const configMeta = await db.userMcpServerConfig.findMany({
+    where: {
+      id: {
+        in: serverInstance.toolGroup.toolGroupTools.map(
+          ({ userMcpServerConfigId }) => userMcpServerConfigId,
+        ),
+      },
+    },
+    select: {
+      id: true,
+      updatedAt: true,
+    },
+  });
+
+  // キャッシュキーを生成（メタデータのハッシュを含む）
+  const configHash = generateConfigHash(configMeta);
+  const cacheKey = configCache.generateKey(userMcpServerInstanceId, configHash);
+
+  // キャッシュヒットチェック（更新検証付き）
+  const cached = configCache.get(cacheKey);
+  if (cached) {
+    // メタデータが一致するか確認
+    const isSame =
+      cached.configMeta.length === configMeta.length &&
+      cached.configMeta.every((meta) => {
+        const newMeta = configMeta.find((m) => m.id === meta.id);
+        return (
+          newMeta && meta.updatedAt.getTime() === newMeta.updatedAt.getTime()
+        );
+      });
+
+    if (isSame) {
+      return cached.configs;
+    }
+    // メタデータが異なる場合は古いキャッシュを削除
+    configCache.delete(cacheKey);
   }
 
   const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
@@ -437,8 +502,11 @@ export const getServerConfigsByInstanceId = async (
     return config;
   });
 
-  // キャッシュに保存
-  configCache.set(cacheKey, { configs: serverConfigList });
+  // キャッシュに保存（メタデータも含む）
+  configCache.set(cacheKey, {
+    configs: serverConfigList,
+    configMeta: configMeta,
+  });
 
   return serverConfigList;
 };

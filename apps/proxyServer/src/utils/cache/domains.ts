@@ -114,8 +114,8 @@ export const createDataCache = <T extends object = Record<string, unknown>>(
   namespace: string,
 ) => {
   const baseCache = createLRUCache<T>({
-    max: 500,
-    ttl: 30 * 60 * 1000, // 30分
+    max: 100, // 現実的なサーバーインスタンス数に調整
+    ttl: 10 * 60 * 1000, // 10分（設定更新頻度を考慮）
   });
 
   return {

@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ServerConfig } from "../../libs/types.js";
+import type { createDataCache } from "../cache/index.js";
 
 // proxy.tsのモックを設定
 vi.mock("../proxy.js", async () => {
@@ -51,9 +52,7 @@ describe("configCache", () => {
     | undefined;
   let invalidateConfigCache: ((instanceId: string) => void) | undefined;
   let configCache: ReturnType<
-    typeof import("../cache/index.js").createDataCache<{
-      configs: ServerConfig[];
-    }>
+    typeof createDataCache<{ configs: ServerConfig[] }>
   >;
 
   beforeEach(async () => {
@@ -61,8 +60,14 @@ describe("configCache", () => {
     const proxyModule = await import("../proxy.js");
     getServerConfigsByInstanceId = proxyModule.getServerConfigsByInstanceId;
     invalidateConfigCache = proxyModule.invalidateConfigCache;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    configCache = (proxyModule as any)._configCache;
+    // Test用のキャッシュを取得
+    configCache = (
+      proxyModule as unknown as {
+        _configCache: ReturnType<
+          typeof createDataCache<{ configs: ServerConfig[] }>
+        >;
+      }
+    )._configCache;
     configCache.clear(); // キャッシュをクリア
   });
 
