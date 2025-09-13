@@ -57,6 +57,7 @@ export const OrganizationMemberIdSchema = z
 export const OrganizationInvitationIdSchema = z
   .string()
   .brand<"OrganizationInvitationId">();
+export const InvitationTokenSchema = z.string().brand<"InvitationToken">();
 export const OrganizationGroupIdSchema = z
   .string()
   .brand<"OrganizationGroupId">();
@@ -73,6 +74,7 @@ export type OrganizationMemberId = z.infer<typeof OrganizationMemberIdSchema>;
 export type OrganizationInvitationId = z.infer<
   typeof OrganizationInvitationIdSchema
 >;
+export type InvitationToken = z.infer<typeof InvitationTokenSchema>;
 export type OrganizationGroupId = z.infer<typeof OrganizationGroupIdSchema>;
 export type OrganizationRoleId = z.infer<typeof OrganizationRoleIdSchema>;
 export type RolePermissionId = z.infer<typeof RolePermissionIdSchema>;

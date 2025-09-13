@@ -51,4 +51,15 @@ export const config = {
       10,
     ), // 1分ごとのクリーンアップ
   },
+
+  // キャッシュ設定（4GB最適化）
+  cache: {
+    maxEntries: parseInt(process.env.CACHE_MAX_ENTRIES || "100", 10), // 最大100エントリ
+    ttl: parseInt(process.env.CACHE_TTL_MS || "600000", 10), // 10分TTL
+    maxMemoryMB: parseInt(process.env.CACHE_MAX_MEMORY_MB || "150", 10), // 最大150MBメモリ使用
+    cleanupInterval: parseInt(
+      process.env.CACHE_CLEANUP_INTERVAL_MS || "60000",
+      10,
+    ), // 1分ごとのクリーンアップ
+  },
 } as const;

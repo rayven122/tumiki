@@ -3,21 +3,25 @@ import { createId } from "@paralleldrive/cuid2";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendInvitation } from "@tumiki/mailer";
-import { inviteMemberInput } from "@/server/utils/organizationSchemas";
+import { OrganizationInvitationIdSchema } from "@/schema/ids";
 
-export const inviteMemberInputSchema = inviteMemberInput;
+export const resendInvitationInputSchema = z.object({
+  invitationId: OrganizationInvitationIdSchema,
+});
 
-export const inviteMemberOutputSchema = z.object({
+export const resendInvitationOutputSchema = z.object({
   id: z.string(),
   email: z.string(),
   expires: z.date(),
 });
 
-export type InviteMemberInput = z.infer<typeof inviteMemberInput>;
-export type InviteMemberOutput = z.infer<typeof inviteMemberOutputSchema>;
+export type ResendInvitationInput = z.infer<typeof resendInvitationInputSchema>;
+export type ResendInvitationOutput = z.infer<
+  typeof resendInvitationOutputSchema
+>;
 
-const INVITATION_MESSAGES = {
-  EMAIL_SEND_FAILED: "招待メール送信に失敗しました:",
+const RESEND_MESSAGES = {
+  EMAIL_SEND_FAILED: "招待再送信メール送信に失敗しました:",
 } as const;
 
 /**
@@ -48,9 +52,9 @@ function generateInviteUrl(token: string): string {
 }
 
 /**
- * 招待メールを送信する（最適化版）
+ * 招待再送信メールを送信する（最適化版）
  */
-async function sendInvitationEmail(
+async function sendResendInvitationEmail(
   email: string,
   inviteUrl: string,
   organizationName: string,
@@ -61,14 +65,16 @@ async function sendInvitationEmail(
   try {
     initializeMailClient();
 
-    // 役割情報を含むカスタマイズメッセージ
+    // 再送信であることを明記し、役割情報も含む
     const roleInfo = isAdmin
       ? "管理者として"
       : roleIds.length > 0
         ? `${roleIds.length}個の役割と共に`
         : "";
 
-    const customName = roleInfo ? `${email}（${roleInfo}招待）` : email;
+    const customName = roleInfo
+      ? `${email}（${roleInfo}再招待）`
+      : `${email}（再招待）`;
 
     await sendInvitation({
       email,
@@ -78,21 +84,21 @@ async function sendInvitationEmail(
       expiresAt,
     });
   } catch (emailError: unknown) {
-    console.error(INVITATION_MESSAGES.EMAIL_SEND_FAILED, emailError);
-    // メール送信失敗でもユーザーには招待成功を返す
+    console.error(RESEND_MESSAGES.EMAIL_SEND_FAILED, emailError);
+    // メール送信失敗でもユーザーには再送信成功を返す
     // （グレースフルデグラデーション）
   }
 }
 
-export const inviteMember = async ({
+export const resendInvitation = async ({
   input,
   ctx,
 }: {
-  input: InviteMemberInput;
+  input: ResendInvitationInput;
   ctx: ProtectedContext;
-}): Promise<InviteMemberOutput> => {
+}): Promise<ResendInvitationOutput> => {
   try {
-    // 管理者権限を検証（最適化されたバージョン）
+    // 管理者権限を検証
     if (!ctx.isCurrentOrganizationAdmin) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -102,52 +108,51 @@ export const inviteMember = async ({
 
     // トランザクションで処理
     const result = await ctx.db.$transaction(async (tx) => {
-      // 既存の招待をチェック
+      // 既存の招待を取得
       const existingInvitation = await tx.organizationInvitation.findFirst({
         where: {
-          email: input.email,
+          id: input.invitationId,
           organizationId: ctx.currentOrganizationId,
         },
       });
 
-      if (existingInvitation) {
+      if (!existingInvitation) {
         throw new TRPCError({
-          code: "CONFLICT",
-          message: "このメールアドレスは既に招待されています",
+          code: "NOT_FOUND",
+          message: "招待が見つかりません。",
         });
       }
 
-      // 有効期限を設定（7日後）
+      // 新しい有効期限を設定（7日後）
       const expires = new Date();
       expires.setDate(expires.getDate() + 7);
 
       // 新しいトークンを生成
-      const token = createId();
+      const newToken = createId();
 
-      // 招待を作成
-      const invitation = await tx.organizationInvitation.create({
+      // 招待を更新（新しいトークンと有効期限）
+      const updatedInvitation = await tx.organizationInvitation.update({
+        where: {
+          id: input.invitationId,
+        },
         data: {
-          organizationId: ctx.currentOrganizationId,
-          email: input.email,
-          token,
-          invitedBy: ctx.session.user.id,
-          isAdmin: input.isAdmin,
-          roleIds: input.roleIds,
-          groupIds: input.groupIds,
+          token: newToken,
           expires,
+          invitedBy: ctx.session.user.id, // 再招待者を更新
         },
         include: {
           organization: true,
+          invitedByUser: true,
         },
       });
 
-      return invitation;
+      return updatedInvitation;
     });
 
     // メール送信処理（トランザクション外で実行）
     const inviteUrl = generateInviteUrl(result.token);
 
-    await sendInvitationEmail(
+    await sendResendInvitationEmail(
       result.email,
       inviteUrl,
       result.organization.name,
@@ -165,10 +170,10 @@ export const inviteMember = async ({
     if (error instanceof TRPCError) {
       throw error;
     }
-    console.error("招待作成エラー:", error);
+    console.error("招待再送信エラー:", error);
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "招待の作成中にエラーが発生しました。",
+      message: "招待の再送信中にエラーが発生しました。",
     });
   }
 };
