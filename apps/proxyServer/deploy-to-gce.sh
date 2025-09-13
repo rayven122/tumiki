@@ -450,7 +450,15 @@ deploy_to_vm() {
             echo '=============================='
             cd ../../packages/utils
             pnpm build
-            
+
+            # @tumiki/youtube-mcp ビルド
+            echo ''
+            echo '=============================='
+            echo '@tumiki/youtube-mcp パッケージをビルド中...'
+            echo '=============================='
+            cd ../youtube-mcp
+            pnpm build
+
             # データベースマイグレーション実行
             echo ''
             echo '=============================='
