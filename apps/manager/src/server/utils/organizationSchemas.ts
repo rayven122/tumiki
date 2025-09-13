@@ -131,7 +131,7 @@ export const updateOrganizationInput = baseOrganizationIdInput.extend({
 /**
  * メンバー招待入力スキーマ
  */
-export const inviteMemberInput = organizationIdParamInput.extend({
+export const inviteMemberInput = z.object({
   email: z.string().email(),
   isAdmin: z.boolean().default(false),
   roleIds: z.array(z.string()).default([]),
