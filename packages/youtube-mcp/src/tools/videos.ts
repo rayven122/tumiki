@@ -1,11 +1,11 @@
 import type { YouTubeApiService } from "@/services/youtubeApi.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
-import { TOOL_NAMES } from "@/constants/toolNames.js";
+import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { GetVideoSchema, SearchVideosSchema } from "@/types/index.js";
 
 export const videoTools: Tool[] = [
   {
-    name: TOOL_NAMES.GET_VIDEO,
+    name: YOU_TUBE_TOOL_NAMES.GET_VIDEO,
     description: "YouTube動画の詳細情報を取得します",
     inputSchema: {
       type: "object",
@@ -27,7 +27,7 @@ export const videoTools: Tool[] = [
     },
   },
   {
-    name: TOOL_NAMES.SEARCH_VIDEOS,
+    name: YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS,
     description: "YouTube動画を検索します",
     inputSchema: {
       type: "object",
@@ -67,7 +67,7 @@ export const handleVideoTool = async (
   youtubeApi: YouTubeApiService,
 ): Promise<CallToolResult> => {
   switch (toolName) {
-    case TOOL_NAMES.GET_VIDEO: {
+    case YOU_TUBE_TOOL_NAMES.GET_VIDEO: {
       const validatedArgs = GetVideoSchema.parse(args);
       const video = await youtubeApi.getVideo(
         validatedArgs.videoId,
@@ -84,7 +84,7 @@ export const handleVideoTool = async (
       };
     }
 
-    case TOOL_NAMES.SEARCH_VIDEOS: {
+    case YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS: {
       const validatedArgs = SearchVideosSchema.parse(args);
       const results = await youtubeApi.searchVideos(
         validatedArgs.query,
