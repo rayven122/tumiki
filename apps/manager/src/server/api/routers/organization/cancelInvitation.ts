@@ -1,9 +1,10 @@
 import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import { OrganizationInvitationIdSchema } from "@/schema/ids";
 
 export const cancelInvitationInputSchema = z.object({
-  invitationId: z.string(),
+  invitationId: OrganizationInvitationIdSchema,
 });
 
 export const cancelInvitationOutputSchema = z.object({

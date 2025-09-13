@@ -3,9 +3,10 @@ import { createId } from "@paralleldrive/cuid2";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendInvitation } from "@tumiki/mailer";
+import { OrganizationInvitationIdSchema } from "@/schema/ids";
 
 export const resendInvitationInputSchema = z.object({
-  invitationId: z.string(),
+  invitationId: OrganizationInvitationIdSchema,
 });
 
 export const resendInvitationOutputSchema = z.object({
