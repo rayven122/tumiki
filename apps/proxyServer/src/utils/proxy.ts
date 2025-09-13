@@ -12,7 +12,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db";
-import { validateApiKey } from "../libs/validateApiKey.js";
+import { validateApiKey, setAuthCache } from "../libs/validateApiKey.js";
 import {
   setupGoogleCredentialsEnv,
   type GoogleCredentials,
@@ -38,6 +38,9 @@ const toolsCache = createToolsCache();
 
 // AuthCache シングルトンインスタンス
 const authCache = createAuthCache();
+
+// validateApiKeyにAuthCacheインスタンスを設定
+setAuthCache(authCache);
 
 export type ConnectedClient = {
   client: Client;
@@ -520,7 +523,6 @@ export const getServer = async (
 ) => {
   // 後方互換性: APIキー形式（tumiki_mcp_で始まる）かどうかをチェック
   let userMcpServerInstanceId: string;
-  let organizationId: string | undefined;
   const apiKeyPrefix = process.env.API_KEY_PREFIX;
   if (apiKeyPrefix && serverIdentifier.startsWith(apiKeyPrefix)) {
     // 🎯 AuthCacheチェック
@@ -533,7 +535,6 @@ export const getServer = async (
         );
       }
       userMcpServerInstanceId = cachedAuth.userMcpServerInstanceId;
-      organizationId = cachedAuth.organizationId;
     } else {
       // キャッシュミス: APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
       const validation = await validateApiKey(serverIdentifier);
@@ -547,7 +548,6 @@ export const getServer = async (
         );
       }
       userMcpServerInstanceId = validation.userMcpServerInstance.id;
-      organizationId = validation.userMcpServerInstance.organizationId;
     }
   } else {
     // 直接userMcpServerInstanceIdとして扱う
@@ -942,20 +942,6 @@ export const invalidateCacheByOrganizationId = (
   organizationId: string,
 ): number => {
   return authCache.clearByOrganizationId(organizationId);
-};
-
-/**
- * 認証キャッシュの統計情報を取得
- */
-export const getAuthCacheStats = () => {
-  return authCache.getStats();
-};
-
-/**
- * 認証キャッシュの詳細情報を取得（デバッグ用）
- */
-export const getAuthCacheInfo = () => {
-  return authCache.getInfo();
 };
 
 // プロセス終了時のクリーンアップ

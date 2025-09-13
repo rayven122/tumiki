@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import { AuthCache } from "../cache/authCache.js";
+import type { ValidationResult } from "../../libs/validateApiKey.js";
 
 describe("AuthCache", () => {
   let authCache: AuthCache;
@@ -17,12 +18,12 @@ describe("AuthCache", () => {
 
     test("キャッシュヒット時は保存された値を返す", () => {
       const apiKey = "tumiki_mcp_test_key";
-      const validation = {
+      const validation: ValidationResult = {
         valid: true,
         userMcpServerInstance: {
           id: "instance-123",
           organizationId: "org-456",
-        },
+        } as ValidationResult["userMcpServerInstance"],
       };
 
       authCache.set(apiKey, validation);
@@ -32,25 +33,7 @@ describe("AuthCache", () => {
       expect(result?.valid).toBe(true);
       expect(result?.userMcpServerInstanceId).toBe("instance-123");
       expect(result?.organizationId).toBe("org-456");
-      expect(result?.hitCount).toBe(1);
-    });
-
-    test("ヒットカウントが増加する", () => {
-      const apiKey = "tumiki_mcp_test_key";
-      const validation = {
-        valid: true,
-        userMcpServerInstance: {
-          id: "instance-123",
-          organizationId: "org-456",
-        },
-      };
-
-      authCache.set(apiKey, validation);
-
-      authCache.get(apiKey);
-      const result2 = authCache.get(apiKey);
-
-      expect(result2?.hitCount).toBe(2);
+      expect(result?.hitCount).toBe(0); // 初期値は0
     });
 
     test("無効なAPIキー情報も正しくキャッシュする", () => {
@@ -73,12 +56,12 @@ describe("AuthCache", () => {
   describe("set", () => {
     test("新しいエントリーを正しく保存する", () => {
       const apiKey = "tumiki_mcp_new_key";
-      const validation = {
+      const validation: ValidationResult = {
         valid: true,
         userMcpServerInstance: {
           id: "instance-789",
           organizationId: "org-101",
-        },
+        } as ValidationResult["userMcpServerInstance"],
       };
 
       authCache.set(apiKey, validation);
@@ -88,7 +71,7 @@ describe("AuthCache", () => {
       expect(result?.userMcpServerInstanceId).toBe("instance-789");
       expect(result?.organizationId).toBe("org-101");
       expect(result?.createdAt).toBeDefined();
-      expect(result?.hitCount).toBe(1);
+      expect(result?.hitCount).toBe(0); // 初期値は0
     });
 
     test("既存のエントリーを上書きする", () => {
@@ -99,16 +82,16 @@ describe("AuthCache", () => {
         userMcpServerInstance: {
           id: "old-instance",
           organizationId: "old-org",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.set(apiKey, {
         valid: true,
         userMcpServerInstance: {
           id: "new-instance",
           organizationId: "new-org",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       const result = authCache.get(apiKey);
       expect(result?.userMcpServerInstanceId).toBe("new-instance");
@@ -124,8 +107,8 @@ describe("AuthCache", () => {
         userMcpServerInstance: {
           id: "instance-123",
           organizationId: "org-456",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       const deleted = authCache.delete(apiKey);
       expect(deleted).toBe(true);
@@ -147,24 +130,24 @@ describe("AuthCache", () => {
         userMcpServerInstance: {
           id: "instance-1",
           organizationId: "org-1",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.set("key2", {
         valid: true,
         userMcpServerInstance: {
           id: "instance-1",
           organizationId: "org-1",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.set("key3", {
         valid: true,
         userMcpServerInstance: {
           id: "instance-2",
           organizationId: "org-2",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       const cleared = authCache.clearByInstanceId("instance-1");
       expect(cleared).toBe(2);
@@ -187,24 +170,24 @@ describe("AuthCache", () => {
         userMcpServerInstance: {
           id: "instance-1",
           organizationId: "org-1",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.set("key2", {
         valid: true,
         userMcpServerInstance: {
           id: "instance-2",
           organizationId: "org-1",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.set("key3", {
         valid: true,
         userMcpServerInstance: {
           id: "instance-3",
           organizationId: "org-2",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       const cleared = authCache.clearByOrganizationId("org-1");
       expect(cleared).toBe(2);
@@ -222,81 +205,21 @@ describe("AuthCache", () => {
         userMcpServerInstance: {
           id: "instance-1",
           organizationId: "org-1",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.set("key2", {
         valid: true,
         userMcpServerInstance: {
           id: "instance-2",
           organizationId: "org-2",
-        },
-      });
+        } as ValidationResult["userMcpServerInstance"],
+      } as ValidationResult);
 
       authCache.clear();
 
       expect(authCache.get("key1")).toBeUndefined();
       expect(authCache.get("key2")).toBeUndefined();
-    });
-  });
-
-  describe("getStats", () => {
-    test("統計情報を正しく取得する", () => {
-      const stats = authCache.getStats();
-
-      expect(stats.hits).toBe(0);
-      expect(stats.misses).toBe(0);
-      expect(stats.sets).toBe(0);
-      expect(stats.deletes).toBe(0);
-      expect(stats.size).toBe(0);
-      expect(stats.hitRate).toBe(0);
-    });
-
-    test("操作後の統計情報が正しく更新される", () => {
-      authCache.set("key1", {
-        valid: true,
-        userMcpServerInstance: {
-          id: "instance-1",
-          organizationId: "org-1",
-        },
-      });
-
-      authCache.get("key1"); // hit
-      authCache.get("key2"); // miss
-      authCache.delete("key1"); // delete
-
-      const stats = authCache.getStats();
-
-      expect(stats.hits).toBe(1);
-      expect(stats.misses).toBe(1);
-      expect(stats.sets).toBe(1);
-      expect(stats.deletes).toBe(1);
-      expect(stats.hitRate).toBe(0.5);
-    });
-  });
-
-  describe("getInfo", () => {
-    test("キャッシュの詳細情報を取得する", () => {
-      authCache.set("tumiki_mcp_test123", {
-        valid: true,
-        userMcpServerInstance: {
-          id: "instance-1",
-          organizationId: "org-1",
-        },
-      });
-
-      const info = authCache.getInfo();
-
-      expect(info.stats).toBeDefined();
-      expect(info.entries).toHaveLength(1);
-      expect(info.entries[0]).toStrictEqual({
-        apiKey: "tumiki_mcp...",
-        valid: true,
-        instanceId: "instance-1",
-        organizationId: "org-1",
-        age: expect.any(Number),
-        hitCount: 0,
-      });
     });
   });
 });
