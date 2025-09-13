@@ -31,8 +31,10 @@ async function testInstanceIdAuth() {
       new URL(`${PROXY_URL}/mcp/${INSTANCE_ID}`),
       {
         // x-api-keyヘッダーを設定
-        headers: {
-          "x-api-key": API_KEY,
+        requestInit: {
+          headers: {
+            "x-api-key": API_KEY,
+          },
         },
       },
     );
@@ -99,7 +101,7 @@ async function testInstanceIdAuth() {
 
         try {
           const params = {};
-          
+
           // inputSchemaがある場合は、必須パラメータを確認
           if (
             firstTool.inputSchema &&
@@ -163,7 +165,9 @@ async function testInstanceIdAuth() {
         console.error("💡 Authentication error troubleshooting:");
         console.error("  - Verify the API key is valid for this Instance ID");
         console.error("  - Check if the Instance ID exists and is active");
-        console.error("  - Ensure the API key has permission for this instance");
+        console.error(
+          "  - Ensure the API key has permission for this instance",
+        );
       } else if (error.message.includes("404")) {
         console.error("");
         console.error("💡 Not found error troubleshooting:");

@@ -149,15 +149,21 @@ const createClient = async (
           return fetch(url, finalInit);
         };
 
-        transport = new SSEClientTransport(new URL(sseTransport.url), {
+        const sseOptions: unknown = {
           eventSourceInit: {
             // EventSourceInitはfetchプロパティをサポート
             fetch: Object.keys(headers).length > 0 ? customFetch : undefined,
-          } as any, // 型定義の互換性のため一時的にanyを使用
+          },
           requestInit: {
             headers: Object.keys(headers).length > 0 ? headers : undefined,
           },
-        });
+        };
+
+        transport = new SSEClientTransport(
+          new URL(sseTransport.url),
+          // @ts-expect-error - SSEClientTransportOptionsの型定義にfetchプロパティが含まれていないため
+          sseOptions,
+        );
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
