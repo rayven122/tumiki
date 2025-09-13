@@ -3,6 +3,8 @@ import type { ServerConfig } from "../libs/types.js";
 import { createMCPClient } from "./createMCPClient.js";
 import { logger } from "../libs/logger.js";
 import { AtomicCounter } from "./atomicCounter.js";
+import { createSessionCache, type SessionCache } from "./sessionCache.js";
+import { sessions, type SessionInfo } from "./session.js";
 
 /**
  * MCP接続情報
@@ -12,6 +14,7 @@ type MCPConnection = {
   lastUsed: number;
   isActive: boolean;
   cleanup?: () => Promise<void>;
+  sessionId?: string; // 関連するセッションID
 };
 
 /**
@@ -29,6 +32,7 @@ class MCPConnectionPool {
   private readonly IDLE_TIMEOUT = 180000; // 3分でアイドル接続切断
   private cleanupTimer?: NodeJS.Timeout;
   private readonly connectionCounter = new AtomicCounter(); // 原子的カウンター
+  private readonly sessionCache: SessionCache = createSessionCache(); // セッションキャッシュ
 
   /**
    * Connection stateを原子的に更新
@@ -49,12 +53,40 @@ class MCPConnectionPool {
   }
 
   /**
+   * アクティブなセッションIDを高速検索
+   */
+  findActiveSessionId(userMcpServerInstanceId: string): string | undefined {
+    // キャッシュから高速検索（O(1)）
+    const sessionIds = this.sessionCache.getSessionIds(userMcpServerInstanceId);
+
+    // セッションの有効性を確認
+    for (const sessionId of sessionIds) {
+      const session = sessions.get(sessionId);
+      if (session && this.isSessionActive(session)) {
+        return sessionId;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * セッションがアクティブかチェック
+   */
+  private isSessionActive(session: SessionInfo): boolean {
+    const now = Date.now();
+    const timeSinceActivity = now - session.lastActivity;
+    return timeSinceActivity <= this.IDLE_TIMEOUT;
+  }
+
+  /**
    * 接続を取得（既存または新規作成）
    */
   async getConnection(
     userServerConfigInstanceId: string,
     serverName: string,
     serverConfig: ServerConfig,
+    sessionId?: string,
   ): Promise<Client> {
     const poolKey = this.getPoolKey(userServerConfigInstanceId, serverName);
     const pool = this.pools.get(poolKey) || [];
@@ -142,7 +174,13 @@ class MCPConnectionPool {
         lastUsed: now,
         isActive: true,
         cleanup: credentialsCleanup,
+        sessionId,
       };
+
+      // セッションキャッシュに追加
+      if (sessionId && userServerConfigInstanceId) {
+        this.sessionCache.add(sessionId, userServerConfigInstanceId);
+      }
 
       pool.push(connection);
       this.pools.set(poolKey, pool);
@@ -164,6 +202,7 @@ class MCPConnectionPool {
     userServerConfigInstanceId: string,
     serverName: string,
     client: Client,
+    sessionId?: string,
   ): void {
     const poolKey = this.getPoolKey(userServerConfigInstanceId, serverName);
     const pool = this.pools.get(poolKey);
@@ -230,6 +269,12 @@ class MCPConnectionPool {
         if (index > -1) {
           pool.splice(index, 1);
           await this.connectionCounter.decrement();
+
+          // セッションキャッシュからも削除
+          if (conn.sessionId) {
+            this.sessionCache.remove(conn.sessionId);
+          }
+
           if (pool.length === 0) {
             this.pools.delete(poolKey);
           }
@@ -267,6 +312,14 @@ class MCPConnectionPool {
 
     this.pools.clear();
     await this.connectionCounter.reset();
+    this.sessionCache.clear();
+  }
+
+  /**
+   * セッションキャッシュの統計情報を取得
+   */
+  getSessionCacheStats() {
+    return this.sessionCache.getStats();
   }
 }
 
