@@ -1,34 +1,35 @@
-# Instance ID Authentication Fix
+# Instance ID 認証修正
 
-## Issue Description
+## 問題の説明
 
-Claude Code could not connect to MCP Server Instance ID URLs with x-api-key header authentication, receiving 401 errors.
+Claude Code が x-api-key ヘッダー認証を使用した MCP Server Instance ID URL に接続できず、401 エラーを受け取っていました。
 
-### Problem
+### 問題
 
-The Tumiki proxy server acts as an intermediary between clients (like Claude Code) and backend MCP servers:
+Tumiki プロキシサーバーは、クライアント（Claude Code など）とバックエンドの MCP サーバー間の仲介役として機能します：
 
 ```
-Claude Code → Tumiki Proxy Server → Backend MCP Server
+Claude Code → Tumiki プロキシサーバー → バックエンド MCP サーバー
 ```
 
-The issue occurred because:
-1. Claude Code successfully authenticated to the Tumiki proxy with x-api-key headers
-2. However, when the proxy connected to backend MCP servers (SSE transport), it didn't forward authentication headers
-3. Backend MCP servers requiring authentication would reject the connection with 401 errors
+問題の原因：
 
-## Solution Implemented
+1. Claude Code は x-api-key ヘッダーで Tumiki プロキシへの認証に成功していました
+2. しかし、プロキシがバックエンド MCP サーバー（SSE トランスポート）に接続する際、認証ヘッダーを転送していませんでした
+3. 認証が必要なバックエンド MCP サーバーは 401 エラーで接続を拒否していました
 
-### SSE Transport Fix
+## 実装された解決策
 
-Modified `/apps/proxyServer/src/utils/proxy.ts` to add header forwarding for SSE transport connections:
+### SSE トランスポートの修正
 
-1. **Environment Variable to Header Mapping**: Added logic to extract authentication credentials from environment variables and map them to appropriate headers:
-   - `API_KEY` or `X_API_KEY` → `X-API-Key` header
-   - `BEARER_TOKEN` or `AUTHORIZATION` → `Authorization: Bearer` header
-   - `X_*` environment variables → corresponding headers
+`/apps/proxyServer/src/utils/proxy.ts` を修正し、SSE トランスポート接続にヘッダー転送を追加しました：
 
-2. **Custom Fetch Implementation**: Created a custom fetch function for SSEClientTransport that includes authentication headers:
+1. **環境変数からヘッダーへのマッピング**: 環境変数から認証情報を抽出し、適切なヘッダーにマッピングするロジックを追加：
+   - `API_KEY` または `X_API_KEY` → `X-API-Key` ヘッダー
+   - `BEARER_TOKEN` または `AUTHORIZATION` → `Authorization: Bearer` ヘッダー
+   - `X_*` 環境変数 → 対応するヘッダー
+
+2. **カスタム Fetch 実装**: 認証ヘッダーを含む SSEClientTransport 用のカスタム fetch 関数を作成：
 
 ```typescript
 const customFetch = async (url: string | URL, init: RequestInit) => {
@@ -43,7 +44,7 @@ const customFetch = async (url: string | URL, init: RequestInit) => {
 };
 ```
 
-3. **Updated TransportConfigSSE Type**: Added `env` property to support environment variables:
+3. **TransportConfigSSE 型の更新**: 環境変数をサポートするため `env` プロパティを追加：
 
 ```typescript
 export type TransportConfigSSE = {
@@ -53,97 +54,104 @@ export type TransportConfigSSE = {
 };
 ```
 
-## Testing
+## テスト
 
-### Test Scripts
+### テストスクリプト
 
-Two test scripts have been created to verify the authentication fix:
+認証修正を検証するため、2つのテストスクリプトを作成しました：
 
-#### 1. Streamable HTTP Transport Test
+#### 1. Streamable HTTP トランスポートテスト
+
 `scripts/test-instance-id-auth.ts`
 
-Tests Instance ID URL authentication with x-api-key header using StreamableHTTPClientTransport.
+StreamableHTTPClientTransport を使用して、x-api-key ヘッダーによる Instance ID URL 認証をテストします。
 
 ```bash
-# Run test with environment variables
+# 環境変数を設定してテストを実行
 MCP_INSTANCE_ID=your-instance-id TEST_API_KEY=your-api-key pnpm test:instance-id
 ```
 
-#### 2. SSE Transport Test
+#### 2. SSE トランスポートテスト
+
 `scripts/test-sse-instance-id-auth.ts`
 
-Tests Instance ID URL authentication with x-api-key header using SSEClientTransport.
+SSEClientTransport を使用して、x-api-key ヘッダーによる Instance ID URL 認証をテストします。
 
 ```bash
-# Run test with environment variables
+# 環境変数を設定してテストを実行
 MCP_INSTANCE_ID=your-instance-id TEST_API_KEY=your-api-key pnpm test:sse-instance-id
 ```
 
-### Test Process
+### テストプロセス
 
-1. **Start the proxy server**:
+1. **プロキシサーバーを起動**：
+
 ```bash
 pnpm start
 ```
 
-2. **Set environment variables**:
+2. **環境変数を設定**：
+
 ```bash
 export MCP_INSTANCE_ID=your-actual-instance-id
 export TEST_API_KEY=your-actual-api-key
 export MCP_PROXY_URL=http://localhost:8080
 ```
 
-3. **Run tests**:
+3. **テストを実行**：
+
 ```bash
-# Test Streamable HTTP transport
+# Streamable HTTP トランスポートのテスト
 pnpm test:instance-id
 
-# Test SSE transport
+# SSE トランスポートのテスト
 pnpm test:sse-instance-id
 ```
 
-### Expected Results
+### 期待される結果
 
-When authentication is working correctly:
-- ✅ Successfully connected with Instance ID authentication
-- ✅ Tools list retrieved successfully
-- ✅ Tool calls executed (where applicable)
+認証が正常に動作している場合：
 
-When authentication fails:
-- ❌ 401 Unauthorized error
-- Troubleshooting hints provided in error output
+- ✅ Instance ID 認証で正常に接続
+- ✅ ツールリストを正常に取得
+- ✅ ツール呼び出しが実行される（該当する場合）
 
-## Architecture Overview
+認証が失敗した場合：
 
-### Transport Types
+- ❌ 401 Unauthorized エラー
+- エラー出力にトラブルシューティングのヒントが表示される
 
-The proxy server supports two levels of transport:
+## アーキテクチャ概要
 
-1. **Client to Proxy**: How clients connect to Tumiki
+### トランスポートタイプ
+
+プロキシサーバーは2つのレベルのトランスポートをサポートしています：
+
+1. **クライアントからプロキシ**: クライアントが Tumiki に接続する方法
    - Streamable HTTP (`/mcp/{instanceId}`)
    - SSE (`/sse/{instanceId}`)
 
-2. **Proxy to Backend**: How Tumiki connects to actual MCP servers
-   - STDIO (command-line based)
-   - SSE (with authentication header support)
+2. **プロキシからバックエンド**: Tumiki が実際の MCP サーバーに接続する方法
+   - STDIO（コマンドラインベース）
+   - SSE（認証ヘッダーサポート付き）
 
-### Authentication Flow
+### 認証フロー
 
-1. **Client Authentication**: Claude Code sends x-api-key header to Tumiki proxy
-2. **Proxy Validation**: Tumiki validates the API key and identifies the MCP server instance
-3. **Backend Connection**: Tumiki connects to the backend MCP server
-   - For STDIO: Environment variables passed to process
-   - For SSE: Headers extracted from env vars and included in HTTP requests
+1. **クライアント認証**: Claude Code が Tumiki プロキシに x-api-key ヘッダーを送信
+2. **プロキシ検証**: Tumiki が API キーを検証し、MCP サーバーインスタンスを特定
+3. **バックエンド接続**: Tumiki がバックエンド MCP サーバーに接続
+   - STDIO の場合: 環境変数をプロセスに渡す
+   - SSE の場合: 環境変数からヘッダーを抽出し、HTTP リクエストに含める
 
-## Limitations
+## 制限事項
 
-- The fix currently only applies to SSE transport backend connections
-- STDIO transport uses environment variables directly (no HTTP headers needed)
-- There is no HTTP transport type for backend connections (only SSE and STDIO)
+- 現在の修正は SSE トランスポートのバックエンド接続にのみ適用されます
+- STDIO トランスポートは環境変数を直接使用します（HTTP ヘッダーは不要）
+- バックエンド接続用の HTTP トランスポートタイプは存在しません（SSE と STDIO のみ）
 
-## Future Improvements
+## 今後の改善点
 
-1. Support additional authentication methods (OAuth, JWT)
-2. Add configuration for custom header mappings
-3. Implement connection pooling for better performance
-4. Add comprehensive integration tests for all transport combinations
+1. 追加の認証方法のサポート（OAuth、JWT）
+2. カスタムヘッダーマッピングの設定追加
+3. パフォーマンス向上のための接続プーリングの実装
+4. すべてのトランスポートの組み合わせに対する包括的な統合テストの追加

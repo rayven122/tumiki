@@ -57,7 +57,9 @@ async function testSSEInstanceIdAuth() {
     // 3. サーバーに接続
     console.log("3️⃣ Connecting to SSE server with x-api-key header...");
     await Promise.race([client.connect(transport), timeoutPromise]);
-    console.log("✅ Successfully connected via SSE with Instance ID authentication!");
+    console.log(
+      "✅ Successfully connected via SSE with Instance ID authentication!",
+    );
     console.log("");
 
     // 4. 利用可能なツールを取得
@@ -101,7 +103,7 @@ async function testSSEInstanceIdAuth() {
 
         try {
           const params = {};
-          
+
           // inputSchemaがある場合は、必須パラメータを確認
           if (
             firstTool.inputSchema &&
@@ -132,7 +134,9 @@ async function testSSEInstanceIdAuth() {
             console.log("⚠️ Tool returned an error:", result.content);
           }
         } catch (error) {
-          console.log("⚠️ SSE tool call failed (this is expected for some tools):");
+          console.log(
+            "⚠️ SSE tool call failed (this is expected for some tools):",
+          );
           console.log(
             `   ${error instanceof Error ? error.message : String(error)}`,
           );
@@ -147,7 +151,9 @@ async function testSSEInstanceIdAuth() {
     console.log("✅ SSE connection closed successfully!");
     console.log("");
 
-    console.log("🎉 SSE Instance ID authentication test completed successfully!");
+    console.log(
+      "🎉 SSE Instance ID authentication test completed successfully!",
+    );
     process.exit(0);
   } catch (error) {
     console.error("❌ SSE test failed:");
@@ -165,14 +171,20 @@ async function testSSEInstanceIdAuth() {
         console.error("💡 SSE Authentication error troubleshooting:");
         console.error("  - Verify the API key is valid for this Instance ID");
         console.error("  - Check if the Instance ID exists and is active");
-        console.error("  - Ensure the API key has permission for this instance");
-        console.error("  - Check if SSE backend server requires authentication headers");
+        console.error(
+          "  - Ensure the API key has permission for this instance",
+        );
+        console.error(
+          "  - Check if SSE backend server requires authentication headers",
+        );
       } else if (error.message.includes("404")) {
         console.error("");
         console.error("💡 SSE Not found error troubleshooting:");
         console.error("  - Verify the Instance ID is correct");
         console.error("  - Check if the MCP server instance exists");
-        console.error("  - Verify SSE endpoint is configured for this instance");
+        console.error(
+          "  - Verify SSE endpoint is configured for this instance",
+        );
       } else if (error.message.includes("timeout")) {
         console.error("");
         console.error("💡 SSE Timeout troubleshooting:");
