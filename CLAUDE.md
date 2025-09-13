@@ -172,17 +172,6 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 - **GitHub Actions**: `.github/workflows/ci.yml`
 - **品質チェック**: `pnpm check` で lint + format + typecheck
-- **Node メモリ**: `NODE_OPTIONS: --max-old-space-size=4096`
-
-### Turbo タスク管理
-
-並列実行とキャッシュ活用により高速化：
-
-- `pnpm build` - アプリケーションビルド
-- `pnpm dev` - 開発サーバー起動
-- `pnpm lint` - ESLint実行
-- `pnpm format` - Prettier実行
-- `pnpm typecheck` - TypeScript型チェック
 
 ### 重要な実装パターン
 
@@ -194,6 +183,18 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **リクエストログ**: ProxyServerでのMCPリクエスト監視・分析
 - **PM2管理**: 本番環境でのプロセス管理と自動復旧
 - **メトリクス収集**: リアルタイムパフォーマンス監視
+
+## 実装後の必須アクション
+
+**重要**: 実装が完了したら、必ず以下のコマンドを実行してください：
+
+1. **`pnpm format:fix`** - コードフォーマットの自動修正（必須）
+2. `pnpm lint:fix` - リントエラーの自動修正
+3. `pnpm typecheck` - 型チェック
+4. `pnpm build` - ビルド確認
+5. `pnpm test` - テスト実行
+
+これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 
 ## CI/CD - Claude Code Review
 
@@ -217,18 +218,6 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
    - 重要度スコア（1-10）での評価
    - 具体的な改善コード例の提示
    - 実装すべきアクションの明確化
-
-#### レビュー出力形式
-
-- **重要度別分類**: 🔴緊急（8-10）、🟡重要（5-7）、🟢軽微（1-4）
-- **設計原則評価**: 5段階（⭐）での視覚的評価
-- **品質メトリクス**: コード品質スコア、保守性、パフォーマンス影響度
-- **具体的な改善案**: 現在のコード → 改善後のコードの対比
-
-#### Sticky Comment機能
-
-- PRへの複数プッシュ時も同じコメントスレッドを維持
-- レビュー履歴と改善の進捗を追跡可能
 
 ## 完了条件
 
