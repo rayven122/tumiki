@@ -177,7 +177,9 @@ describe("inviteMember", () => {
       updatedAt: new Date(),
     };
 
-    mockTx.organizationInvitation.findFirst.mockResolvedValue(existingInvitation);
+    mockTx.organizationInvitation.findFirst.mockResolvedValue(
+      existingInvitation,
+    );
 
     await expect(
       inviteMember({
