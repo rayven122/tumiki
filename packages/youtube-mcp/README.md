@@ -27,6 +27,15 @@ YouTube Data API v3 を使用した MCP (Model Context Protocol) サーバーで
 ### 字幕関連
 
 - `get_transcript_metadata` - 動画で利用可能な字幕のメタデータを取得（言語、種類、更新日時など）
+- `get_transcript` - 動画の字幕を取得（要: yt-dlp）
+
+## 前提条件
+
+- YouTube Data API v3のAPIキー
+- yt-dlp（`get_transcript`機能を使用する場合）
+  - インストール方法: https://github.com/yt-dlp/yt-dlp/wiki/Installation
+    - macOS: `brew install yt-dlp`
+    - Windows: `winget install yt-dlp`
 
 ## セットアップ
 

@@ -86,7 +86,10 @@ export const startMcpServer = async () => {
       }
 
       // 字幕関連ツール
-      if (toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA) {
+      if (
+        toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA ||
+        toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT
+      ) {
         return await handleTranscriptTool(toolName, args ?? {}, youtubeApi);
       }
 
