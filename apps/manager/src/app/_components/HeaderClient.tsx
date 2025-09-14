@@ -14,6 +14,7 @@ import Image from "next/image";
 import { logout } from "@/lib/auth";
 import { useMemo } from "react";
 import { guestRegex } from "@/lib/constants";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface HeaderClientProps {
   user?: {
@@ -30,6 +31,9 @@ export const HeaderClient = ({ user }: HeaderClientProps) => {
 
   return (
     <div className="flex items-center space-x-3">
+      {/* 通知 */}
+      <NotificationDropdown />
+
       {/* ユーザーメニュー */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
