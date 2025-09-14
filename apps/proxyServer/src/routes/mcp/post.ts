@@ -1,5 +1,6 @@
 import { type Response } from "express";
 import { type StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import {
   createStreamableTransport,
   getStreamableTransportBySessionId,
@@ -40,6 +41,15 @@ export const handlePOSTRequest = async (
 
   // セッションIDがある場合は既存セッションを確認
   if (sessionId) {
+    // セッションがある場合はInitialize Requestを許可しない
+    if (isInitializeRequest(req.body)) {
+      sendBadRequestError(
+        res,
+        "Initialize request cannot be sent to existing session",
+      );
+      return;
+    }
+
     if (!isSessionValid(sessionId)) {
       sendBadRequestError(res, "Invalid or expired session");
       return;
@@ -55,7 +65,12 @@ export const handlePOSTRequest = async (
     // セッションアクティビティを更新
     updateSessionActivity(sessionId, clientId);
   } else {
-    // 新しいセッションの作成
+    // 新しいセッションの作成はInitialize Requestでのみ許可
+    if (!isInitializeRequest(req.body)) {
+      sendBadRequestError(res, "New session requires initialize request");
+      return;
+    }
+
     if (!canCreateNewSession()) {
       sendServiceUnavailableError(res, "Server at capacity");
       return;
@@ -95,10 +110,11 @@ export const handlePOSTRequest = async (
   const startTime = Date.now();
   let responseData: unknown = undefined;
   let success = false;
+  let requestBody: unknown = undefined;
 
   try {
     // リクエストボディをキャプチャ
-    const requestBody = req.body as unknown;
+    requestBody = req.body as unknown;
 
     // Acceptヘッダーを確認・追加
     ensureMcpAcceptHeader(req);
@@ -128,6 +144,29 @@ export const handlePOSTRequest = async (
   } finally {
     // リクエスト完了時にログ記録
     const durationMs = Date.now() - startTime;
+
+    // ツール名を抽出（型安全性を保ちつつシンプル化）
+    let toolName = "unknown";
+    if (
+      requestBody &&
+      typeof requestBody === "object" &&
+      "method" in requestBody
+    ) {
+      const method = (requestBody as Record<string, unknown>).method;
+      if (typeof method === "string") {
+        toolName = method;
+        // tools/callの場合は実際のツール名を使用
+        if (method === "tools/call") {
+          const params = (requestBody as Record<string, unknown>).params;
+          if (params && typeof params === "object" && "name" in params) {
+            const name = (params as Record<string, unknown>).name;
+            if (typeof name === "string") {
+              toolName = name;
+            }
+          }
+        }
+      }
+    }
 
     // データサイズ制限チェック（圧縮前の生データサイズで5MB制限）
     const maxLogSize = 5 * 1024 * 1024; // 5MB（圧縮前）
@@ -159,7 +198,7 @@ export const handlePOSTRequest = async (
       void logMcpRequest({
         mcpServerInstanceId: req.authInfo.userMcpServerInstanceId,
         organizationId: req.authInfo.organizationId,
-        toolName: "http_transport",
+        toolName,
         transportType: TransportType.STREAMABLE_HTTPS,
         method: req.method,
         responseStatus: success ? "200" : "500",

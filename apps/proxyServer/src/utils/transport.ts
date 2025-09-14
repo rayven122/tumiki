@@ -398,6 +398,14 @@ export const createStreamableTransport = (
 
       streamableConnections.set(sessionId, connectionInfo);
     },
+    // DNS Rebinding Protection
+    enableDnsRebindingProtection: true,
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "::1",
+      process.env.ALLOWED_HOST,
+    ].filter((host): host is string => Boolean(host)),
   });
 
   return transport;

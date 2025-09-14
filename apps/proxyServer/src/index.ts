@@ -45,8 +45,9 @@ const createApp = (): express.Application => {
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, mcp-session-id, api-key, x-api-key, x-client-id, Authorization",
+      "Content-Type, mcp-session-id, api-key, x-api-key, x-client-id, x-validation-mode, Authorization",
     );
+    res.header("Access-Control-Expose-Headers", "mcp-session-id");
 
     if (req.method === "OPTIONS") {
       res.sendStatus(200);

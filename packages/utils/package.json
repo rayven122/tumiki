@@ -39,7 +39,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.10.1",
+    "@modelcontextprotocol/sdk": "^1.18.0",
     "@tumiki/db": "workspace:*",
     "next": "^15.3.3",
     "server-only": "^0.0.1",
