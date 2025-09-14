@@ -156,7 +156,7 @@ uv tool install analytics-mcp  # Google Analytics MCP
 - Python 3.10 以上
 - uv（高速な Python パッケージマネージャー）
 
-詳細は [docs/python-mcp-setup.md](./docs/python-mcp-setup.md) を参照してください。
+詳細は [docs/development/python-mcp-setup.md](./docs/development/python-mcp-setup.md) を参照してください。
 
 ### コード品質
 

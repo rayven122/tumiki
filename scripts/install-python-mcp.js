@@ -44,7 +44,7 @@ function checkUvx() {
   macOS:    brew install uv
   Linux:    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-詳細は docs/python-mcp-setup.md を参照してください。
+詳細は docs/development/python-mcp-setup.md を参照してください。
 `);
     return false;
   }
@@ -84,7 +84,7 @@ function checkPython() {
   macOS:    brew install python@3.12
   Linux:    sudo apt install python3.12
 
-詳細は docs/python-mcp-setup.md を参照してください。
+詳細は docs/development/python-mcp-setup.md を参照してください。
 `);
   return false;
 }
@@ -164,7 +164,7 @@ function installPythonMcpServers() {
   if (failedCount > 0) {
     console.log(`  ❌ 失敗: ${failedCount} 個`);
     console.log('\n失敗したパッケージは手動でインストールしてください。');
-    console.log('詳細は docs/python-mcp-setup.md を参照してください。');
+    console.log('詳細は docs/development/python-mcp-setup.md を参照してください。');
   }
   
   if (installedCount === 0 && skippedCount > 0 && failedCount === 0) {

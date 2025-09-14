@@ -83,5 +83,5 @@ AIと企業システムがシームレスに連携する世界を実現する
 ## 🔗 関連ドキュメント
 
 - [プロジェクト概要](../../README.md)
-- [技術仕様](../architecture/README.md)
-- [開発計画](../development/README.md)
+- [技術仕様](../architecture/CLAUDE.md)
+- [開発計画](../development/CLAUDE.md)
