@@ -11,7 +11,7 @@ export type NotificationPriority = "low" | "medium" | "high" | "urgent";
 
 export type NotificationAction = {
   label: string;
-  action: () => void;
+  action: () => void | Promise<void>;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost";
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,23 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Bell,
-  CheckCircle,
-  Info,
-  AlertTriangle,
-  XCircle,
-  AlertCircle,
-  RefreshCw,
-  Shield,
-  Check,
-  Trash2,
-} from "lucide-react";
+import { Bell, Check, Trash2 } from "lucide-react";
 import type { Notification } from "@/types/notification";
 import { NotificationDetailModal } from "./NotificationDetailModal";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
+import { NOTIFICATION_TYPE_CONFIG } from "@/constants/notificationConfig";
 
 type NotificationListProps = {
   notifications: Notification[];
@@ -36,44 +26,6 @@ type NotificationListProps = {
   onMarkAllAsRead?: () => void;
   onDelete?: (id: string) => void;
   onClearAll?: () => void;
-};
-
-const typeConfig = {
-  info: {
-    icon: Info,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-  },
-  success: {
-    icon: CheckCircle,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-  },
-  warning: {
-    icon: AlertTriangle,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-  },
-  error: {
-    icon: XCircle,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-  },
-  system: {
-    icon: AlertCircle,
-    color: "text-gray-500",
-    bgColor: "bg-gray-500/10",
-  },
-  update: {
-    icon: RefreshCw,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-  },
-  security: {
-    icon: Shield,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-  },
 };
 
 export const NotificationList = ({
@@ -100,11 +52,11 @@ export const NotificationList = ({
     return () => clearInterval(interval);
   }, []);
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = useCallback((notification: Notification) => {
     setSelectedNotification(notification);
     setModalOpen(true);
     setIsOpen(false);
-  };
+  }, []);
 
   const handleMarkAsRead = (id: string) => {
     onMarkAsRead?.(id);
@@ -169,7 +121,7 @@ export const NotificationList = ({
             ) : (
               <div className="space-y-1 p-1">
                 {notifications.map((notification) => {
-                  const config = typeConfig[notification.type];
+                  const config = NOTIFICATION_TYPE_CONFIG[notification.type];
                   const Icon = config.icon;
 
                   return (

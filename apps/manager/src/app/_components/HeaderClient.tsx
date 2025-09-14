@@ -17,13 +17,13 @@ import { guestRegex } from "@/lib/constants";
 import { NotificationList } from "./NotificationList";
 import { useNotifications } from "@/hooks/useNotifications";
 
-interface HeaderClientProps {
+type HeaderClientProps = {
   user?: {
     name?: string | null;
     email?: string | null;
     picture?: string | null;
   };
-}
+};
 
 export const HeaderClient = ({ user }: HeaderClientProps) => {
   const isGuest = useMemo(() => {

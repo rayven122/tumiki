@@ -22,12 +22,19 @@ export const mockNotifications: Notification[] = [
     actions: [
       {
         label: "変更履歴を確認",
-        action: () => console.log("変更履歴を表示"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.open("/changelog", "_blank", "noopener,noreferrer");
+          }
+        },
         variant: "default",
       },
       {
         label: "既読にする",
-        action: () => console.log("既読にする"),
+        action: () => {
+          // 実際の実装では親コンポーネントのonMarkAsReadを呼び出す
+          // この関数は通知詳細モーダルでオーバーライドされるため、プレースホルダー
+        },
         variant: "ghost",
       },
     ],
@@ -58,12 +65,20 @@ export const mockNotifications: Notification[] = [
     actions: [
       {
         label: "プランをアップグレード",
-        action: () => console.log("プランページへ移動"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/settings/billing";
+          }
+        },
         variant: "default",
       },
       {
         label: "使用状況を確認",
-        action: () => console.log("使用状況ページへ移動"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/settings/usage";
+          }
+        },
         variant: "outline",
       },
     ],
@@ -84,12 +99,20 @@ export const mockNotifications: Notification[] = [
     actions: [
       {
         label: "今すぐインストール",
-        action: () => console.log("インストール開始"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/mcp-servers/install/openai";
+          }
+        },
         variant: "default",
       },
       {
         label: "詳細を見る",
-        action: () => console.log("詳細ページへ移動"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/mcp-servers/openai";
+          }
+        },
         variant: "ghost",
       },
     ],
@@ -116,12 +139,20 @@ export const mockNotifications: Notification[] = [
     actions: [
       {
         label: "パスワードを変更",
-        action: () => console.log("パスワード変更ページへ"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/profile/security";
+          }
+        },
         variant: "destructive",
       },
       {
         label: "アクティビティを確認",
-        action: () => console.log("セキュリティログを表示"),
+        action: () => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/profile/security/activity";
+          }
+        },
         variant: "outline",
       },
     ],

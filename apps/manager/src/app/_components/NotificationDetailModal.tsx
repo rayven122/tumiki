@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,13 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertCircle,
-  CheckCircle,
   Info,
-  AlertTriangle,
-  XCircle,
-  Shield,
-  RefreshCw,
   Clock,
   Calendar,
   TrendingUp,
@@ -32,6 +26,10 @@ import {
 } from "lucide-react";
 import type { Notification } from "@/types/notification";
 import { cn } from "@/lib/utils";
+import {
+  NOTIFICATION_TYPE_CONFIG,
+  NOTIFICATION_PRIORITY_CONFIG,
+} from "@/constants/notificationConfig";
 import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import {
@@ -52,74 +50,6 @@ type NotificationDetailModalProps = {
   onDelete?: (id: string) => void;
 };
 
-const typeConfig = {
-  info: {
-    icon: Info,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    borderColor: "border-blue-500/20",
-  },
-  success: {
-    icon: CheckCircle,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-    borderColor: "border-green-500/20",
-  },
-  warning: {
-    icon: AlertTriangle,
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-    borderColor: "border-yellow-500/20",
-  },
-  error: {
-    icon: XCircle,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/20",
-  },
-  system: {
-    icon: AlertCircle,
-    color: "text-gray-500",
-    bgColor: "bg-gray-500/10",
-    borderColor: "border-gray-500/20",
-  },
-  update: {
-    icon: RefreshCw,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    borderColor: "border-purple-500/20",
-  },
-  security: {
-    icon: Shield,
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    borderColor: "border-orange-500/20",
-  },
-};
-
-const priorityConfig = {
-  low: {
-    label: "低",
-    color: "default" as const,
-    className: "",
-  },
-  medium: {
-    label: "中",
-    color: "secondary" as const,
-    className: "",
-  },
-  high: {
-    label: "高",
-    color: "default" as const,
-    className: "bg-orange-500 text-white hover:bg-orange-600",
-  },
-  urgent: {
-    label: "緊急",
-    color: "destructive" as const,
-    className: "",
-  },
-};
-
 export const NotificationDetailModal = ({
   notification,
   open,
@@ -129,10 +59,12 @@ export const NotificationDetailModal = ({
 }: NotificationDetailModalProps) => {
   const [showAbsoluteTime, setShowAbsoluteTime] = useState(false);
 
-  const config = notification ? typeConfig[notification.type] : null;
+  const config = notification
+    ? NOTIFICATION_TYPE_CONFIG[notification.type]
+    : null;
   const Icon = config?.icon ?? Info;
   const priorityInfo = notification
-    ? priorityConfig[notification.priority]
+    ? NOTIFICATION_PRIORITY_CONFIG[notification.priority]
     : null;
 
   const formattedTime = useMemo(() => {
@@ -164,12 +96,21 @@ export const NotificationDetailModal = ({
     }
   }, [notification?.data?.trend]);
 
-  const handleAction = (action: () => void, closeModal = false) => {
-    action();
-    if (closeModal) {
-      onOpenChange(false);
-    }
-  };
+  const handleAction = useCallback(
+    async (action: () => void | Promise<void>, closeModal = false) => {
+      try {
+        await action();
+        if (closeModal) {
+          onOpenChange(false);
+        }
+      } catch (error) {
+        console.error("Action execution failed:", error);
+        // TODO: トースト通知やエラー表示を実装
+        alert("アクションの実行に失敗しました。再度お試しください。");
+      }
+    },
+    [onOpenChange],
+  );
 
   if (!notification) return null;
 
