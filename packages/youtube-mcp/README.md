@@ -19,6 +19,15 @@ YouTube Data API v3 を使用した MCP (Model Context Protocol) サーバーで
 - `get_playlist` - プレイリスト情報を取得
 - `get_playlist_items` - プレイリスト内の動画一覧を取得
 
+### コメント関連
+
+- `get_comment_threads` - 動画のコメントスレッドを取得（ページネーション対応）
+- `get_comments` - コメントへの返信を取得（ページネーション対応）
+
+### 字幕関連
+
+- `get_transcript_metadata` - 動画で利用可能な字幕のメタデータを取得（言語、種類、更新日時など）
+
 ## セットアップ
 
 ### 1. YouTube Data API v3 キーの取得

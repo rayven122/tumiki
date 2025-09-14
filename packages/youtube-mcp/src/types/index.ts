@@ -9,6 +9,9 @@ import { z } from "zod";
  * - Playlists: https://developers.google.com/youtube/v3/docs/playlists
  * - PlaylistItems: https://developers.google.com/youtube/v3/docs/playlistItems
  * - Search: https://developers.google.com/youtube/v3/docs/search
+ * - CommentThreads: https://developers.google.com/youtube/v3/docs/commentThreads
+ * - Comments: https://developers.google.com/youtube/v3/docs/comments
+ * - Captions: https://developers.google.com/youtube/v3/docs/captions
  *
  * Response Schema Reference:
  * - API Response Structure: https://developers.google.com/youtube/v3/docs#resource-types
@@ -107,6 +110,32 @@ export type SearchResult = {
   type: "video" | "channel" | "playlist";
 };
 
+export type CommentThread = {
+  id: string;
+  videoId: string;
+  topLevelComment: Comment;
+  canReply: boolean;
+  totalReplyCount: number;
+  isPublic: boolean;
+};
+
+export type Comment = {
+  id: string;
+  videoId: string;
+  textDisplay: string;
+  textOriginal: string;
+  authorDisplayName: string;
+  authorProfileImageUrl: string;
+  authorChannelUrl: string;
+  authorChannelId: string;
+  canRate: boolean;
+  viewerRating: string;
+  likeCount: number;
+  publishedAt: string;
+  updatedAt: string;
+  parentId?: string;
+};
+
 // Tool Input Schemas (Zod)
 export const GetVideoSchema = z.object({
   videoId: z.string().min(1).describe("YouTube動画のID"),
@@ -172,6 +201,35 @@ export const GetPlaylistItemsSchema = z.object({
     .describe("最大取得件数"),
 });
 
+export const GetCommentThreadsSchema = z.object({
+  videoId: z.string().min(1).describe("YouTube動画のID"),
+  maxResults: z
+    .number()
+    .min(1)
+    .max(100)
+    .optional()
+    .default(20)
+    .describe("最大取得件数"),
+  pageToken: z.string().optional().describe("ページネーショントークン"),
+  order: z
+    .enum(["relevance", "time"])
+    .optional()
+    .default("relevance")
+    .describe("並び順"),
+});
+
+export const GetCommentsSchema = z.object({
+  parentId: z.string().min(1).describe("親コメントのID"),
+  maxResults: z
+    .number()
+    .min(1)
+    .max(100)
+    .optional()
+    .default(20)
+    .describe("最大取得件数"),
+  pageToken: z.string().optional().describe("ページネーショントークン"),
+});
+
 // Tool Input Types
 export type GetVideoInput = z.infer<typeof GetVideoSchema>;
 export type SearchVideosInput = z.infer<typeof SearchVideosSchema>;
@@ -179,6 +237,28 @@ export type GetChannelInput = z.infer<typeof GetChannelSchema>;
 export type ListChannelVideosInput = z.infer<typeof ListChannelVideosSchema>;
 export type GetPlaylistInput = z.infer<typeof GetPlaylistSchema>;
 export type GetPlaylistItemsInput = z.infer<typeof GetPlaylistItemsSchema>;
+export type GetCommentThreadsInput = z.infer<typeof GetCommentThreadsSchema>;
+export type GetCommentsInput = z.infer<typeof GetCommentsSchema>;
+
+// Transcript Types
+export type TranscriptMetadata = {
+  id: string;
+  language: string;
+  name: string;
+  trackKind: "standard" | "asr";
+  isAutoSynced: boolean;
+  lastUpdated: string;
+};
+
+// Transcript Input Schemas
+export const GetTranscriptMetadataSchema = z.object({
+  videoId: z.string().min(1).describe("YouTube動画のID"),
+});
+
+// Transcript Input Types
+export type GetTranscriptMetadataInput = z.infer<
+  typeof GetTranscriptMetadataSchema
+>;
 
 // YouTube API Error Types
 export type YouTubeApiError = {
@@ -308,5 +388,84 @@ export type YouTubeApiPlaylistItemItem = {
   };
   contentDetails?: {
     videoId?: string;
+  };
+};
+
+export type YouTubeApiCommentThreadItem = {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet?: {
+    channelId?: string;
+    videoId?: string;
+    topLevelComment?: {
+      kind: string;
+      etag: string;
+      id: string;
+      snippet?: {
+        channelId?: string;
+        videoId?: string;
+        textDisplay?: string;
+        textOriginal?: string;
+        authorDisplayName?: string;
+        authorProfileImageUrl?: string;
+        authorChannelUrl?: string;
+        authorChannelId?: {
+          value: string;
+        };
+        canRate?: boolean;
+        viewerRating?: string;
+        likeCount?: number;
+        publishedAt?: string;
+        updatedAt?: string;
+      };
+    };
+    canReply?: boolean;
+    totalReplyCount?: number;
+    isPublic?: boolean;
+  };
+};
+
+export type YouTubeApiCommentItem = {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet?: {
+    channelId?: string;
+    videoId?: string;
+    textDisplay?: string;
+    textOriginal?: string;
+    parentId?: string;
+    authorDisplayName?: string;
+    authorProfileImageUrl?: string;
+    authorChannelUrl?: string;
+    authorChannelId?: {
+      value: string;
+    };
+    canRate?: boolean;
+    viewerRating?: string;
+    likeCount?: number;
+    publishedAt?: string;
+    updatedAt?: string;
+  };
+};
+
+export type YouTubeApiCaptionItem = {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet?: {
+    videoId?: string;
+    lastUpdated?: string;
+    trackKind?: string;
+    language?: string;
+    name?: string;
+    audioTrackType?: string;
+    isCC?: boolean;
+    isLarge?: boolean;
+    isEasyReader?: boolean;
+    isDraft?: boolean;
+    isAutoSynced?: boolean;
+    status?: string;
   };
 };

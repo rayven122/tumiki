@@ -1,10 +1,16 @@
 import type {
   ChannelDetails,
+  Comment,
+  CommentThread,
   PlaylistDetails,
   PlaylistItem,
   SearchResult,
+  TranscriptMetadata,
   VideoDetails,
+  YouTubeApiCaptionItem,
   YouTubeApiChannelItem,
+  YouTubeApiCommentItem,
+  YouTubeApiCommentThreadItem,
   YouTubeApiError,
   YouTubeApiPlaylistItem,
   YouTubeApiPlaylistItemItem,
@@ -272,6 +278,149 @@ export class YouTubeApiService {
       publishedAt: item.snippet?.publishedAt ?? "",
       thumbnails: item.snippet?.thumbnails ?? {},
       type,
+    };
+  }
+
+  async getCommentThreads(
+    videoId: string,
+    maxResults = 20,
+    pageToken?: string,
+    order: "relevance" | "time" = "relevance",
+  ): Promise<{
+    threads: CommentThread[];
+    nextPageToken?: string;
+  }> {
+    const params: Record<string, string> = {
+      part: "snippet",
+      videoId,
+      maxResults: maxResults.toString(),
+      order,
+    };
+
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+
+    const response = await this.fetchApi<
+      YouTubeApiResponse<YouTubeApiCommentThreadItem>
+    >("commentThreads", params);
+
+    const threads = (response.items ?? []).map((item) =>
+      this.mapCommentThreadResponse(item),
+    );
+
+    return {
+      threads,
+      nextPageToken: response.nextPageToken,
+    };
+  }
+
+  async getComments(
+    parentId: string,
+    maxResults = 20,
+    pageToken?: string,
+  ): Promise<{
+    comments: Comment[];
+    nextPageToken?: string;
+  }> {
+    const params: Record<string, string> = {
+      part: "snippet",
+      parentId,
+      maxResults: maxResults.toString(),
+    };
+
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+
+    const response = await this.fetchApi<
+      YouTubeApiResponse<YouTubeApiCommentItem>
+    >("comments", params);
+
+    const comments = (response.items ?? []).map((item) =>
+      this.mapCommentResponse(item),
+    );
+
+    return {
+      comments,
+      nextPageToken: response.nextPageToken,
+    };
+  }
+
+  private mapCommentThreadResponse(
+    item: YouTubeApiCommentThreadItem,
+  ): CommentThread {
+    const topLevelComment = item.snippet?.topLevelComment;
+    return {
+      id: item.id,
+      videoId: item.snippet?.videoId ?? "",
+      topLevelComment: {
+        id: topLevelComment?.id ?? "",
+        videoId: topLevelComment?.snippet?.videoId ?? "",
+        textDisplay: topLevelComment?.snippet?.textDisplay ?? "",
+        textOriginal: topLevelComment?.snippet?.textOriginal ?? "",
+        authorDisplayName: topLevelComment?.snippet?.authorDisplayName ?? "",
+        authorProfileImageUrl:
+          topLevelComment?.snippet?.authorProfileImageUrl ?? "",
+        authorChannelUrl: topLevelComment?.snippet?.authorChannelUrl ?? "",
+        authorChannelId: topLevelComment?.snippet?.authorChannelId?.value ?? "",
+        canRate: topLevelComment?.snippet?.canRate ?? false,
+        viewerRating: topLevelComment?.snippet?.viewerRating ?? "none",
+        likeCount: topLevelComment?.snippet?.likeCount ?? 0,
+        publishedAt: topLevelComment?.snippet?.publishedAt ?? "",
+        updatedAt: topLevelComment?.snippet?.updatedAt ?? "",
+      },
+      canReply: item.snippet?.canReply ?? false,
+      totalReplyCount: item.snippet?.totalReplyCount ?? 0,
+      isPublic: item.snippet?.isPublic ?? true,
+    };
+  }
+
+  private mapCommentResponse(item: YouTubeApiCommentItem): Comment {
+    return {
+      id: item.id,
+      videoId: item.snippet?.videoId ?? "",
+      textDisplay: item.snippet?.textDisplay ?? "",
+      textOriginal: item.snippet?.textOriginal ?? "",
+      authorDisplayName: item.snippet?.authorDisplayName ?? "",
+      authorProfileImageUrl: item.snippet?.authorProfileImageUrl ?? "",
+      authorChannelUrl: item.snippet?.authorChannelUrl ?? "",
+      authorChannelId: item.snippet?.authorChannelId?.value ?? "",
+      canRate: item.snippet?.canRate ?? false,
+      viewerRating: item.snippet?.viewerRating ?? "none",
+      likeCount: item.snippet?.likeCount ?? 0,
+      publishedAt: item.snippet?.publishedAt ?? "",
+      updatedAt: item.snippet?.updatedAt ?? "",
+      parentId: item.snippet?.parentId,
+    };
+  }
+
+  /**
+   * 動画で利用可能な字幕のメタデータを取得
+   * @param videoId YouTube動画のID
+   * @returns 字幕メタデータの配列
+   */
+  async getTranscriptMetadata(videoId: string): Promise<TranscriptMetadata[]> {
+    const params: Record<string, string> = {
+      part: "snippet",
+      videoId,
+    };
+
+    const response = await this.fetchApi<
+      YouTubeApiResponse<YouTubeApiCaptionItem>
+    >("captions", params);
+
+    return (response.items ?? []).map((item) => this.mapCaptionResponse(item));
+  }
+
+  private mapCaptionResponse(item: YouTubeApiCaptionItem): TranscriptMetadata {
+    return {
+      id: item.id,
+      language: item.snippet?.language ?? "",
+      name: item.snippet?.name ?? "",
+      trackKind: item.snippet?.trackKind === "asr" ? "asr" : "standard",
+      isAutoSynced: item.snippet?.isAutoSynced ?? false,
+      lastUpdated: item.snippet?.lastUpdated ?? "",
     };
   }
 }

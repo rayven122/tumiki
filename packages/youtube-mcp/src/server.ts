@@ -1,7 +1,9 @@
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { YouTubeApiService } from "@/services/youtubeApi.js";
 import { channelTools, handleChannelTool } from "@/tools/channels.js";
+import { commentTools, handleCommentTool } from "@/tools/comments.js";
 import { handlePlaylistTool, playlistTools } from "@/tools/playlists.js";
+import { handleTranscriptTool, transcriptTools } from "@/tools/transcripts.js";
 import { handleVideoTool, videoTools } from "@/tools/videos.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -36,7 +38,13 @@ export const startMcpServer = async () => {
   // ツール一覧の取得ハンドラー
   server.setRequestHandler(ListToolsRequestSchema, () => {
     return {
-      tools: [...videoTools, ...channelTools, ...playlistTools],
+      tools: [
+        ...videoTools,
+        ...channelTools,
+        ...playlistTools,
+        ...commentTools,
+        ...transcriptTools,
+      ],
     };
   });
 
@@ -67,6 +75,19 @@ export const startMcpServer = async () => {
         toolName === YOU_TUBE_TOOL_NAMES.GET_PLAYLIST_ITEMS
       ) {
         return await handlePlaylistTool(toolName, args ?? {}, youtubeApi);
+      }
+
+      // コメント関連ツール
+      if (
+        toolName === YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS ||
+        toolName === YOU_TUBE_TOOL_NAMES.GET_COMMENTS
+      ) {
+        return await handleCommentTool(toolName, args ?? {}, youtubeApi);
+      }
+
+      // 字幕関連ツール
+      if (toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA) {
+        return await handleTranscriptTool(toolName, args ?? {}, youtubeApi);
       }
 
       throw new Error(`Unknown tool: ${toolName}`);

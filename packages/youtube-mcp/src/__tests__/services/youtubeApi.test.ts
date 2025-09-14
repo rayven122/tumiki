@@ -1,5 +1,8 @@
 import type {
+  YouTubeApiCaptionItem,
   YouTubeApiChannelItem,
+  YouTubeApiCommentItem,
+  YouTubeApiCommentThreadItem,
   YouTubeApiError,
   YouTubeApiPlaylistItem,
   YouTubeApiPlaylistItemItem,
@@ -971,6 +974,260 @@ describe("YouTubeApiService", () => {
       const result = await youtubeService.getPlaylistItems("test-playlist-id");
 
       expect(result[0]?.position).toBe(0);
+    });
+  });
+
+  describe("getCommentThreads", () => {
+    const mockCommentThreadsResponse: YouTubeApiResponse<YouTubeApiCommentThreadItem> =
+      {
+        kind: "youtube#commentThreadListResponse",
+        etag: "test-etag",
+        nextPageToken: "next-page-token",
+        items: [
+          {
+            kind: "youtube#commentThread",
+            etag: "test-etag",
+            id: "thread1",
+            snippet: {
+              videoId: "test-video",
+              topLevelComment: {
+                kind: "youtube#comment",
+                etag: "comment-etag",
+                id: "comment1",
+                snippet: {
+                  videoId: "test-video",
+                  textDisplay: "Test comment",
+                  textOriginal: "Test comment",
+                  authorDisplayName: "Test User",
+                  authorProfileImageUrl: "https://example.com/avatar.jpg",
+                  authorChannelUrl: "https://youtube.com/c/testuser",
+                  authorChannelId: {
+                    value: "channel123",
+                  },
+                  canRate: true,
+                  viewerRating: "none",
+                  likeCount: 10,
+                  publishedAt: "2023-01-01T00:00:00Z",
+                  updatedAt: "2023-01-01T00:00:00Z",
+                },
+              },
+              canReply: true,
+              totalReplyCount: 5,
+              isPublic: true,
+            },
+          },
+        ],
+      };
+
+    test("正常系: コメントスレッドを取得する", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => mockCommentThreadsResponse,
+      });
+
+      const result = await youtubeService.getCommentThreads("test-video");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/youtube/v3/commentThreads?key=test-api-key&part=snippet&videoId=test-video&maxResults=20&order=relevance",
+      );
+      expect(result.threads).toHaveLength(1);
+      expect(result.threads[0]?.topLevelComment.textDisplay).toBe(
+        "Test comment",
+      );
+      expect(result.nextPageToken).toBe("next-page-token");
+    });
+
+    test("正常系: ページトークンとカスタムパラメータでコメントスレッドを取得する", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => mockCommentThreadsResponse,
+      });
+
+      await youtubeService.getCommentThreads(
+        "test-video",
+        50,
+        "page-token",
+        "time",
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/youtube/v3/commentThreads?key=test-api-key&part=snippet&videoId=test-video&maxResults=50&order=time&pageToken=page-token",
+      );
+    });
+
+    test("正常系: itemsがundefinedの場合は空配列を返す", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => ({
+          kind: "youtube#commentThreadListResponse",
+          etag: "test-etag",
+        }),
+      });
+
+      const result = await youtubeService.getCommentThreads("test-video");
+
+      expect(result.threads).toStrictEqual([]);
+      expect(result.nextPageToken).toBeUndefined();
+    });
+  });
+
+  describe("getComments", () => {
+    const mockCommentsResponse: YouTubeApiResponse<YouTubeApiCommentItem> = {
+      kind: "youtube#commentListResponse",
+      etag: "test-etag",
+      nextPageToken: "next-page-token",
+      items: [
+        {
+          kind: "youtube#comment",
+          etag: "test-etag",
+          id: "reply1",
+          snippet: {
+            videoId: "test-video",
+            textDisplay: "Reply comment",
+            textOriginal: "Reply comment",
+            parentId: "parent-comment",
+            authorDisplayName: "Reply User",
+            authorProfileImageUrl: "https://example.com/avatar.jpg",
+            authorChannelUrl: "https://youtube.com/c/replyuser",
+            authorChannelId: {
+              value: "channel456",
+            },
+            canRate: true,
+            viewerRating: "none",
+            likeCount: 5,
+            publishedAt: "2023-01-02T00:00:00Z",
+            updatedAt: "2023-01-02T00:00:00Z",
+          },
+        },
+      ],
+    };
+
+    test("正常系: 返信コメントを取得する", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => mockCommentsResponse,
+      });
+
+      const result = await youtubeService.getComments("parent-comment");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/youtube/v3/comments?key=test-api-key&part=snippet&parentId=parent-comment&maxResults=20",
+      );
+      expect(result.comments).toHaveLength(1);
+      expect(result.comments[0]?.textDisplay).toBe("Reply comment");
+      expect(result.comments[0]?.parentId).toBe("parent-comment");
+      expect(result.nextPageToken).toBe("next-page-token");
+    });
+
+    test("正常系: ページトークンとカスタムパラメータで返信コメントを取得する", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => mockCommentsResponse,
+      });
+
+      await youtubeService.getComments("parent-comment", 100, "page-token");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/youtube/v3/comments?key=test-api-key&part=snippet&parentId=parent-comment&maxResults=100&pageToken=page-token",
+      );
+    });
+  });
+
+  describe("getTranscriptMetadata", () => {
+    const mockCaptionsResponse: YouTubeApiResponse<YouTubeApiCaptionItem> = {
+      kind: "youtube#captionListResponse",
+      etag: "test-etag",
+      items: [
+        {
+          kind: "youtube#caption",
+          etag: "test-etag",
+          id: "caption1",
+          snippet: {
+            videoId: "test-video",
+            lastUpdated: "2024-01-01T00:00:00Z",
+            trackKind: "standard",
+            language: "ja",
+            name: "日本語",
+            audioTrackType: "unknown",
+            isCC: false,
+            isLarge: false,
+            isEasyReader: false,
+            isDraft: false,
+            isAutoSynced: false,
+            status: "serving",
+          },
+        },
+        {
+          kind: "youtube#caption",
+          etag: "test-etag",
+          id: "caption2",
+          snippet: {
+            videoId: "test-video",
+            lastUpdated: "2024-01-01T00:00:00Z",
+            trackKind: "asr",
+            language: "en",
+            name: "English",
+            audioTrackType: "unknown",
+            isCC: false,
+            isLarge: false,
+            isEasyReader: false,
+            isDraft: false,
+            isAutoSynced: true,
+            status: "serving",
+          },
+        },
+      ],
+    };
+
+    test("正常系: 字幕メタデータを取得する", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => mockCaptionsResponse,
+      });
+
+      const result = await youtubeService.getTranscriptMetadata("test-video");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/youtube/v3/captions?key=test-api-key&part=snippet&videoId=test-video",
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]?.language).toBe("ja");
+      expect(result[0]?.trackKind).toBe("standard");
+      expect(result[0]?.isAutoSynced).toBe(false);
+      expect(result[1]?.language).toBe("en");
+      expect(result[1]?.trackKind).toBe("asr");
+      expect(result[1]?.isAutoSynced).toBe(true);
+    });
+
+    test("正常系: itemsがundefinedの場合は空配列を返す", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => ({
+          kind: "youtube#captionListResponse",
+          etag: "test-etag",
+        }),
+      });
+
+      const result = await youtubeService.getTranscriptMetadata("test-video");
+
+      expect(result).toStrictEqual([]);
+    });
+
+    test("異常系: APIエラーが発生した場合", async () => {
+      const errorResponse: YouTubeApiError = {
+        code: 403,
+        message: "Forbidden",
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        statusText: "Forbidden",
+        json: () => errorResponse,
+      });
+
+      await expect(
+        youtubeService.getTranscriptMetadata("test-video"),
+      ).rejects.toThrow("YouTube API Error: Forbidden");
     });
   });
 });
