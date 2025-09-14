@@ -1,10 +1,72 @@
 # YouTube MCP Server E2Eテストガイド
 
+## 重要な注意事項
+
+**このE2Eテストは、MCPツール（youtube-mcp）を直接使用して実行します。**
+- e2e-test-runnerエージェントは使用しません
+- `/mcp`コマンドで表示されるyoutube-mcpツールを直接呼び出してテストを実行してください
+- 各テストケースは実際のYouTube APIを呼び出すため、APIキーが必要です
+
+## テスト実行方法
+
+1. **事前チェック**: 
+   - `.mcp.json`にyoutube-mcpの設定があることを確認
+   - APIキーが正しく設定されていることを確認
+   - ツールが利用可能か確認（利用できない場合は設定を見直し）
+
+2. **テスト実行**:
+   - 各テストケースのツールを直接呼び出す
+   - ツール名の形式: `mcp__youtube-mcp__<tool_name>`
+   - 例: `mcp__youtube-mcp__get_comment_threads`
+
+3. **結果検証**:
+   - レスポンスを確認し、期待値と比較
+   - エラーの場合はエラーメッセージを確認
+
+### トラブルシューティング
+
+- **ツールが見つからない場合**:
+  - `.mcp.json`の設定を確認
+  - エディタを再起動
+  - `pnpm build`でビルドを実行
+
+- **APIエラーが発生する場合**:
+  - APIキーの有効性を確認
+  - APIクォータの残量を確認
+  - YouTube APIコンソールでキーの制限を確認
+
 ## 前提条件
 
-- YouTube Data API v3のAPIキーが設定済み
-- MCPサーバーが正常に接続済み
-- `.mcp.json`に設定が追加済み
+### 必須: .mcp.jsonの設定
+
+`.mcp.json`に以下の設定が必要です：
+
+```json
+{
+  "mcpServers": {
+    "youtube-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["packages/youtube-mcp/dist/index.js"],
+      "env": {
+        "YOUTUBE_API_KEY": "YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+**重要**: 
+- `YOUTUBE_API_KEY`には有効なYouTube Data API v3のキーを設定してください
+- APIキーが設定されていない、または無効な場合はテストが実行できません
+- ビルド済み（`pnpm build`実行済み）であることを確認してください
+
+### 設定確認手順
+
+1. `.mcp.json`にyoutube-mcpエントリがあることを確認
+2. APIキーが正しく設定されていることを確認
+3. `packages/youtube-mcp/dist/index.js`が存在することを確認（なければ`pnpm build`を実行）
+4. エディタを再起動してMCPサーバーを再接続
 
 ## 1. 動画関連ツール (Video Tools)
 
