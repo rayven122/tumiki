@@ -1,11 +1,11 @@
 import type { YouTubeApiService } from "@/services/youtubeApi.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
-import { TOOL_NAMES } from "@/constants/toolNames.js";
+import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { GetChannelSchema, ListChannelVideosSchema } from "@/types/index.js";
 
 export const channelTools: Tool[] = [
   {
-    name: TOOL_NAMES.GET_CHANNEL,
+    name: YOU_TUBE_TOOL_NAMES.GET_CHANNEL,
     description: "YouTubeチャンネルの詳細情報を取得します",
     inputSchema: {
       type: "object",
@@ -19,7 +19,7 @@ export const channelTools: Tool[] = [
     },
   },
   {
-    name: TOOL_NAMES.LIST_CHANNEL_VIDEOS,
+    name: YOU_TUBE_TOOL_NAMES.LIST_CHANNEL_VIDEOS,
     description: "指定したYouTubeチャンネルの動画一覧を取得します",
     inputSchema: {
       type: "object",
@@ -54,7 +54,7 @@ export const handleChannelTool = async (
 ): Promise<CallToolResult> => {
   try {
     switch (toolName) {
-      case TOOL_NAMES.GET_CHANNEL: {
+      case YOU_TUBE_TOOL_NAMES.GET_CHANNEL: {
         const validatedArgs = GetChannelSchema.parse(args);
         const channel = await youtubeApi.getChannel(validatedArgs.channelId);
 
@@ -68,7 +68,7 @@ export const handleChannelTool = async (
         };
       }
 
-      case TOOL_NAMES.LIST_CHANNEL_VIDEOS: {
+      case YOU_TUBE_TOOL_NAMES.LIST_CHANNEL_VIDEOS: {
         const validatedArgs = ListChannelVideosSchema.parse(args);
         const videos = await youtubeApi.listChannelVideos(
           validatedArgs.channelId,
