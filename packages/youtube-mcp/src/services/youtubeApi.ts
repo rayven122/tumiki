@@ -5,7 +5,9 @@ import type {
   PlaylistDetails,
   PlaylistItem,
   SearchResult,
+  TranscriptMetadata,
   VideoDetails,
+  YouTubeApiCaptionItem,
   YouTubeApiChannelItem,
   YouTubeApiCommentItem,
   YouTubeApiCommentThreadItem,
@@ -390,6 +392,35 @@ export class YouTubeApiService {
       publishedAt: item.snippet?.publishedAt ?? "",
       updatedAt: item.snippet?.updatedAt ?? "",
       parentId: item.snippet?.parentId,
+    };
+  }
+
+  /**
+   * 動画で利用可能な字幕のメタデータを取得
+   * @param videoId YouTube動画のID
+   * @returns 字幕メタデータの配列
+   */
+  async getTranscriptMetadata(videoId: string): Promise<TranscriptMetadata[]> {
+    const params: Record<string, string> = {
+      part: "snippet",
+      videoId,
+    };
+
+    const response = await this.fetchApi<
+      YouTubeApiResponse<YouTubeApiCaptionItem>
+    >("captions", params);
+
+    return (response.items ?? []).map((item) => this.mapCaptionResponse(item));
+  }
+
+  private mapCaptionResponse(item: YouTubeApiCaptionItem): TranscriptMetadata {
+    return {
+      id: item.id,
+      language: item.snippet?.language ?? "",
+      name: item.snippet?.name ?? "",
+      trackKind: item.snippet?.trackKind === "asr" ? "asr" : "standard",
+      isAutoSynced: item.snippet?.isAutoSynced ?? false,
+      lastUpdated: item.snippet?.lastUpdated ?? "",
     };
   }
 }

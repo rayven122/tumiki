@@ -1,4 +1,5 @@
 import type {
+  YouTubeApiCaptionItem,
   YouTubeApiChannelItem,
   YouTubeApiCommentItem,
   YouTubeApiCommentThreadItem,
@@ -1129,6 +1130,104 @@ describe("YouTubeApiService", () => {
       expect(mockFetch).toHaveBeenCalledWith(
         "https://www.googleapis.com/youtube/v3/comments?key=test-api-key&part=snippet&parentId=parent-comment&maxResults=100&pageToken=page-token",
       );
+    });
+  });
+
+  describe("getTranscriptMetadata", () => {
+    const mockCaptionsResponse: YouTubeApiResponse<YouTubeApiCaptionItem> = {
+      kind: "youtube#captionListResponse",
+      etag: "test-etag",
+      items: [
+        {
+          kind: "youtube#caption",
+          etag: "test-etag",
+          id: "caption1",
+          snippet: {
+            videoId: "test-video",
+            lastUpdated: "2024-01-01T00:00:00Z",
+            trackKind: "standard",
+            language: "ja",
+            name: "日本語",
+            audioTrackType: "unknown",
+            isCC: false,
+            isLarge: false,
+            isEasyReader: false,
+            isDraft: false,
+            isAutoSynced: false,
+            status: "serving",
+          },
+        },
+        {
+          kind: "youtube#caption",
+          etag: "test-etag",
+          id: "caption2",
+          snippet: {
+            videoId: "test-video",
+            lastUpdated: "2024-01-01T00:00:00Z",
+            trackKind: "asr",
+            language: "en",
+            name: "English",
+            audioTrackType: "unknown",
+            isCC: false,
+            isLarge: false,
+            isEasyReader: false,
+            isDraft: false,
+            isAutoSynced: true,
+            status: "serving",
+          },
+        },
+      ],
+    };
+
+    test("正常系: 字幕メタデータを取得する", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => mockCaptionsResponse,
+      });
+
+      const result = await youtubeService.getTranscriptMetadata("test-video");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/youtube/v3/captions?key=test-api-key&part=snippet&videoId=test-video",
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]?.language).toBe("ja");
+      expect(result[0]?.trackKind).toBe("standard");
+      expect(result[0]?.isAutoSynced).toBe(false);
+      expect(result[1]?.language).toBe("en");
+      expect(result[1]?.trackKind).toBe("asr");
+      expect(result[1]?.isAutoSynced).toBe(true);
+    });
+
+    test("正常系: itemsがundefinedの場合は空配列を返す", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => ({
+          kind: "youtube#captionListResponse",
+          etag: "test-etag",
+        }),
+      });
+
+      const result = await youtubeService.getTranscriptMetadata("test-video");
+
+      expect(result).toStrictEqual([]);
+    });
+
+    test("異常系: APIエラーが発生した場合", async () => {
+      const errorResponse: YouTubeApiError = {
+        code: 403,
+        message: "Forbidden",
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        statusText: "Forbidden",
+        json: () => errorResponse,
+      });
+
+      await expect(
+        youtubeService.getTranscriptMetadata("test-video"),
+      ).rejects.toThrow("YouTube API Error: Forbidden");
     });
   });
 });

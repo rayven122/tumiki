@@ -3,13 +3,14 @@
 ## 重要な注意事項
 
 **このE2Eテストは、MCPツール（youtube-mcp）を直接使用して実行します。**
+
 - e2e-test-runnerエージェントは使用しません
 - `/mcp`コマンドで表示されるyoutube-mcpツールを直接呼び出してテストを実行してください
 - 各テストケースは実際のYouTube APIを呼び出すため、APIキーが必要です
 
 ## テスト実行方法
 
-1. **事前チェック**: 
+1. **事前チェック**:
    - `.mcp.json`にyoutube-mcpの設定があることを確認
    - APIキーが正しく設定されていることを確認
    - ツールが利用可能か確認（利用できない場合は設定を見直し）
@@ -56,7 +57,8 @@
 }
 ```
 
-**重要**: 
+**重要**:
+
 - `YOUTUBE_API_KEY`には有効なYouTube Data API v3のキーを設定してください
 - APIキーが設定されていない、または無効な場合はテストが実行できません
 - ビルド済み（`pnpm build`実行済み）であることを確認してください
@@ -424,3 +426,65 @@ pnpm test:coverage
 - [ ] 大量データでメモリリークがない
 - [ ] APIクォータ制限が適切に処理される
 - [ ] 並行実行で問題が発生しない
+
+## 11. 字幕メタデータ関連ツール (Transcript Metadata Tools)
+
+### get_transcript_metadata
+
+```yaml
+テストケース1: 字幕が利用可能な動画
+  入力: videoId: "dQw4w9WgXcQ"
+  期待: 利用可能な字幕の言語リスト、種類（手動/自動）、最終更新日時
+
+テストケース2: 複数言語の字幕がある動画
+  入力: videoId: "多言語対応動画ID"
+  期待: 複数の言語エントリ（日本語、英語など）
+
+テストケース3: 自動生成字幕のみの動画
+  入力: videoId: "自動字幕のみ動画ID"
+  期待: trackKind: "asr"（自動音声認識）の字幕
+
+テストケース4: 字幕がない動画
+  入力: videoId: "字幕なし動画ID"
+  期待: 空の配列[]
+
+テストケース5: 削除された/プライベート動画
+  入力: videoId: "削除された動画ID"
+  期待: エラーメッセージまたは空の結果
+
+テストケース6: 無効な動画ID
+  入力: videoId: "invalid_id_12345"
+  期待: エラーメッセージ「Video not found」
+```
+
+### 手動テスト実行例
+
+```bash
+# MCP経由でツールを直接呼び出す場合
+# ツール名: mcp__youtube-mcp__get_transcript_metadata
+
+# 基本的な使用例
+mcp__youtube-mcp__get_transcript_metadata({
+  "videoId": "dQw4w9WgXcQ"
+})
+
+# 期待される戻り値の例
+[
+  {
+    "id": "caption_id_1",
+    "language": "en",
+    "name": "English",
+    "trackKind": "standard",
+    "isAutoSynced": false,
+    "lastUpdated": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "caption_id_2",
+    "language": "ja",
+    "name": "日本語",
+    "trackKind": "standard",
+    "isAutoSynced": false,
+    "lastUpdated": "2024-01-01T00:00:00Z"
+  }
+]
+```

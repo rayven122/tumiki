@@ -11,6 +11,7 @@ import { z } from "zod";
  * - Search: https://developers.google.com/youtube/v3/docs/search
  * - CommentThreads: https://developers.google.com/youtube/v3/docs/commentThreads
  * - Comments: https://developers.google.com/youtube/v3/docs/comments
+ * - Captions: https://developers.google.com/youtube/v3/docs/captions
  *
  * Response Schema Reference:
  * - API Response Structure: https://developers.google.com/youtube/v3/docs#resource-types
@@ -239,6 +240,26 @@ export type GetPlaylistItemsInput = z.infer<typeof GetPlaylistItemsSchema>;
 export type GetCommentThreadsInput = z.infer<typeof GetCommentThreadsSchema>;
 export type GetCommentsInput = z.infer<typeof GetCommentsSchema>;
 
+// Transcript Types
+export type TranscriptMetadata = {
+  id: string;
+  language: string;
+  name: string;
+  trackKind: "standard" | "asr";
+  isAutoSynced: boolean;
+  lastUpdated: string;
+};
+
+// Transcript Input Schemas
+export const GetTranscriptMetadataSchema = z.object({
+  videoId: z.string().min(1).describe("YouTube動画のID"),
+});
+
+// Transcript Input Types
+export type GetTranscriptMetadataInput = z.infer<
+  typeof GetTranscriptMetadataSchema
+>;
+
 // YouTube API Error Types
 export type YouTubeApiError = {
   code: number;
@@ -426,5 +447,25 @@ export type YouTubeApiCommentItem = {
     likeCount?: number;
     publishedAt?: string;
     updatedAt?: string;
+  };
+};
+
+export type YouTubeApiCaptionItem = {
+  kind: string;
+  etag: string;
+  id: string;
+  snippet?: {
+    videoId?: string;
+    lastUpdated?: string;
+    trackKind?: string;
+    language?: string;
+    name?: string;
+    audioTrackType?: string;
+    isCC?: boolean;
+    isLarge?: boolean;
+    isEasyReader?: boolean;
+    isDraft?: boolean;
+    isAutoSynced?: boolean;
+    status?: string;
   };
 };
