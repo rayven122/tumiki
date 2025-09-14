@@ -1,4 +1,4 @@
-import { TOOL_NAMES } from "@/constants/toolNames.js";
+import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { YouTubeApiService } from "@/services/youtubeApi.js";
 import { channelTools, handleChannelTool } from "@/tools/channels.js";
 import { handlePlaylistTool, playlistTools } from "@/tools/playlists.js";
@@ -47,24 +47,24 @@ export const startMcpServer = async () => {
     try {
       // 動画関連ツール
       if (
-        toolName === TOOL_NAMES.GET_VIDEO ||
-        toolName === TOOL_NAMES.SEARCH_VIDEOS
+        toolName === YOU_TUBE_TOOL_NAMES.GET_VIDEO ||
+        toolName === YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS
       ) {
         return await handleVideoTool(toolName, args ?? {}, youtubeApi);
       }
 
       // チャンネル関連ツール
       if (
-        toolName === TOOL_NAMES.GET_CHANNEL ||
-        toolName === TOOL_NAMES.LIST_CHANNEL_VIDEOS
+        toolName === YOU_TUBE_TOOL_NAMES.GET_CHANNEL ||
+        toolName === YOU_TUBE_TOOL_NAMES.LIST_CHANNEL_VIDEOS
       ) {
         return await handleChannelTool(toolName, args ?? {}, youtubeApi);
       }
 
       // プレイリスト関連ツール
       if (
-        toolName === TOOL_NAMES.GET_PLAYLIST ||
-        toolName === TOOL_NAMES.GET_PLAYLIST_ITEMS
+        toolName === YOU_TUBE_TOOL_NAMES.GET_PLAYLIST ||
+        toolName === YOU_TUBE_TOOL_NAMES.GET_PLAYLIST_ITEMS
       ) {
         return await handlePlaylistTool(toolName, args ?? {}, youtubeApi);
       }
