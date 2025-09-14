@@ -170,7 +170,79 @@
   期待: 空の配列
 ```
 
-## 4. エラーケース・エッジケース
+## 4. コメント関連ツール (Comment Tools)
+
+### get_comment_threads
+
+```yaml
+テストケース1: 基本的なコメント取得
+  入力: videoId: "dQw4w9WgXcQ"
+  期待: 動画のコメントスレッド一覧（デフォルト20件）
+
+テストケース2: ページネーション
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    maxResults: 100
+  期待: 最大100件のコメント
+
+テストケース3: 時系列順
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    order: "time"
+  期待: 投稿時刻順のコメント
+
+テストケース4: 関連性順
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    order: "relevance"
+  期待: 関連性順（いいね数など）のコメント
+
+テストケース5: ページトークン使用
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    pageToken: "次ページトークン"
+  期待: 次ページのコメント
+
+テストケース6: コメント無効動画
+  入力: videoId: "comments_disabled_video"
+  期待: 空の配列またはエラー
+
+テストケース7: 大量コメント動画
+  入力:
+    videoId: "viral_video_id"
+    maxResults: 100
+  期待: 100件取得、nextPageTokenあり
+```
+
+### get_comments
+
+```yaml
+テストケース1: 返信取得
+  入力: parentId: "Ugx7mRZlM1pPUfW5pHJ4AaABAg"
+  期待: 指定コメントへの返信リスト
+
+テストケース2: 大量返信
+  入力:
+    parentId: "popular_comment_id"
+    maxResults: 100
+  期待: 最大100件の返信
+
+テストケース3: 返信なし
+  入力: parentId: "no_replies_comment_id"
+  期待: 空の配列
+
+テストケース4: 削除されたコメント
+  入力: parentId: "deleted_comment_id"
+  期待: エラーまたは空の結果
+
+テストケース5: ページネーション
+  入力:
+    parentId: "many_replies_comment_id"
+    pageToken: "次ページトークン"
+  期待: 次ページの返信
+```
+
+## 5. エラーケース・エッジケース
 
 ### APIキー関連
 
@@ -220,7 +292,7 @@
   期待: 適切にエスケープされる
 ```
 
-## 5. パフォーマンステスト
+## 7. パフォーマンステスト
 
 ```yaml
 並行リクエスト:
@@ -228,7 +300,7 @@
   期待: 全て正常に処理される
 
 大量データ処理:
-  テスト: 3時間動画の字幕取得
+  テスト: 3時間動画のコメント取得
   期待: メモリ使用量が適切、タイムアウトしない
 
 レート制限:
@@ -236,7 +308,7 @@
   期待: 適切なレート制限処理
 ```
 
-## 6. 実行手順
+## 8. 実行手順
 
 ### 手動テスト
 
@@ -262,7 +334,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-## 7. テスト用動画ID・チャンネルID
+## 9. テスト用動画ID・チャンネルID
 
 ```yaml
 テスト用リソース:
@@ -271,7 +343,7 @@ pnpm test:coverage
     - jNQXAC9IVRw (Me at the zoo - YouTube最初の動画)
 
   日本語コンテンツ:
-    - 任意の日本語字幕付き動画
+    - 任意の日本語コメント付き動画
 
   チャンネル:
     - UC_x5XG1OV2P6uZZ5FSM9Ttw (Google Developers)
@@ -281,7 +353,7 @@ pnpm test:coverage
     - PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf (例)
 ```
 
-## 8. 検証チェックリスト
+## 10. 検証チェックリスト
 
 - [ ] 全ツールが正常に呼び出せる
 - [ ] 各ツールの必須パラメータが機能する
