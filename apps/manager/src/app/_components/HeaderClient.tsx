@@ -14,6 +14,8 @@ import Image from "next/image";
 import { logout } from "@/lib/auth";
 import { useMemo } from "react";
 import { guestRegex } from "@/lib/constants";
+import { NotificationList } from "./NotificationList";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface HeaderClientProps {
   user?: {
@@ -28,8 +30,24 @@ export const HeaderClient = ({ user }: HeaderClientProps) => {
     return guestRegex.test(user?.email ?? "");
   }, [user?.email]);
 
+  const {
+    notifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+  } = useNotifications();
+
   return (
     <div className="flex items-center space-x-3">
+      {/* 通知アイコン */}
+      <NotificationList
+        notifications={notifications}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onDelete={deleteNotification}
+        onClearAll={clearAll}
+      />
       {/* ユーザーメニュー */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

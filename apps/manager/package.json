@@ -113,6 +113,7 @@
     "react-markdown": "^9.0.1",
     "react-resizable-panels": "^2.1.7",
     "react-toastify": "^11.0.5",
+    "recharts": "^3.2.0",
     "redis": "^5.0.1",
     "remark-gfm": "^4.0.0",
     "resumable-stream": "^2.0.0",
