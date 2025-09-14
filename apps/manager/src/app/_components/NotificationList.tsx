@@ -16,8 +16,7 @@ import { Bell, Check, Trash2 } from "lucide-react";
 import type { Notification } from "@/types/notification";
 import { NotificationDetailModal } from "./NotificationDetailModal";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
-import { ja } from "date-fns/locale";
+import { formatNotificationTime } from "@/utils/dateFormatting";
 import { NOTIFICATION_TYPE_CONFIG } from "@/constants/notificationConfig";
 
 type NotificationListProps = {
@@ -155,10 +154,7 @@ export const NotificationList = ({
                         </p>
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground text-xs">
-                            {formatDistanceToNow(notification.timestamp, {
-                              addSuffix: true,
-                              locale: ja,
-                            })}
+                            {formatNotificationTime(notification.timestamp)}
                           </span>
                           {notification.priority === "urgent" && (
                             <Badge

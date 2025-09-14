@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +30,7 @@ import {
   NOTIFICATION_TYPE_CONFIG,
   NOTIFICATION_PRIORITY_CONFIG,
 } from "@/constants/notificationConfig";
-import { formatDistanceToNow, format } from "date-fns";
-import { ja } from "date-fns/locale";
+import { formatNotificationTime } from "@/utils/dateFormatting";
 import {
   LineChart,
   Line,
@@ -41,6 +40,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useNotificationActions } from "@/hooks/useNotificationActions";
 
 type NotificationDetailModalProps = {
   notification: Notification | null;
@@ -59,6 +59,11 @@ export const NotificationDetailModal = ({
 }: NotificationDetailModalProps) => {
   const [showAbsoluteTime, setShowAbsoluteTime] = useState(false);
 
+  const { handleAction, handleMarkAsRead, handleDelete } =
+    useNotificationActions({
+      onOpenChange,
+    });
+
   const config = notification
     ? NOTIFICATION_TYPE_CONFIG[notification.type]
     : null;
@@ -70,14 +75,8 @@ export const NotificationDetailModal = ({
   const formattedTime = useMemo(() => {
     if (!notification) return "";
 
-    if (showAbsoluteTime) {
-      return format(notification.timestamp, "yyyy年MM月dd日 HH:mm:ss", {
-        locale: ja,
-      });
-    }
-    return formatDistanceToNow(notification.timestamp, {
-      addSuffix: true,
-      locale: ja,
+    return formatNotificationTime(notification.timestamp, {
+      showAbsolute: showAbsoluteTime,
     });
   }, [notification, showAbsoluteTime]);
 
@@ -95,22 +94,6 @@ export const NotificationDetailModal = ({
         return null;
     }
   }, [notification?.data?.trend]);
-
-  const handleAction = useCallback(
-    async (action: () => void | Promise<void>, closeModal = false) => {
-      try {
-        await action();
-        if (closeModal) {
-          onOpenChange(false);
-        }
-      } catch (error) {
-        console.error("Action execution failed:", error);
-        // TODO: トースト通知やエラー表示を実装
-        alert("アクションの実行に失敗しました。再度お試しください。");
-      }
-    },
-    [onOpenChange],
-  );
 
   if (!notification) return null;
 
@@ -252,15 +235,33 @@ export const NotificationDetailModal = ({
                   <h4 className="text-sm font-semibold">追加情報</h4>
                   <div className="rounded-lg border p-3">
                     {Object.entries(notification.data.metadata).map(
-                      ([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex justify-between py-1 text-sm"
-                        >
-                          <span className="text-muted-foreground">{key}:</span>
-                          <span className="font-medium">{String(value)}</span>
-                        </div>
-                      ),
+                      ([key, value]) => {
+                        // 型安全性を保証するため、value が有効な値であることをチェック
+                        let displayValue = "—";
+
+                        if (value !== null && value !== undefined) {
+                          if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+                            displayValue = String(value);
+                          } else if (typeof value === "object") {
+                            displayValue = JSON.stringify(value);
+                          } else {
+                            // eslint-disable-next-line @typescript-eslint/no-base-to-string
+                            displayValue = String(value);
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={key}
+                            className="flex justify-between py-1 text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              {key}:
+                            </span>
+                            <span className="font-medium">{displayValue}</span>
+                          </div>
+                        );
+                      },
                     )}
                   </div>
                 </div>
@@ -302,10 +303,7 @@ export const NotificationDetailModal = ({
             {!notification.read && onMarkAsRead && (
               <Button
                 variant="outline"
-                onClick={() => {
-                  onMarkAsRead(notification.id);
-                  onOpenChange(false);
-                }}
+                onClick={() => handleMarkAsRead(notification.id, onMarkAsRead)}
                 className="flex-1 sm:flex-initial"
               >
                 <Eye className="mr-2 h-4 w-4" />
@@ -315,10 +313,7 @@ export const NotificationDetailModal = ({
             {onDelete && (
               <Button
                 variant="ghost"
-                onClick={() => {
-                  onDelete(notification.id);
-                  onOpenChange(false);
-                }}
+                onClick={() => handleDelete(notification.id, onDelete)}
                 className="flex-1 sm:flex-initial"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
