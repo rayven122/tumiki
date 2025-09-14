@@ -1,20 +1,24 @@
-import { exec } from "child_process";
+import { spawn } from "child_process";
 import { promises as fs } from "fs";
-import { promisify } from "util";
 import type { TranscriptResponse, TranscriptSegment } from "@/types/index.js";
 
-const execAsync = promisify(exec);
-
 export class YtdlpService {
-  private readonly tempDir = "/tmp";
+  private readonly tempDir: string;
+
+  constructor(tempDir?: string) {
+    this.tempDir = tempDir ?? process.env.YTDLP_TEMP_DIR ?? "/tmp";
+  }
 
   async checkYtdlpInstalled(): Promise<boolean> {
-    try {
-      await execAsync("yt-dlp --version");
-      return true;
-    } catch {
-      return false;
-    }
+    return new Promise((resolve) => {
+      const child = spawn("yt-dlp", ["--version"]);
+      child.on("close", (code) => {
+        resolve(code === 0);
+      });
+      child.on("error", () => {
+        resolve(false);
+      });
+    });
   }
 
   async getTranscript(
@@ -30,11 +34,11 @@ export class YtdlpService {
       );
     }
 
+    await this.ensureDirectoryExists();
     const outputPath = `${this.tempDir}/transcript_${videoId}_${language}_${Date.now()}`;
-    const command = this.buildCommand(videoId, language, outputPath);
 
     try {
-      await execAsync(command);
+      await this.executeYtdlp(videoId, language, outputPath);
       const vttPath = `${outputPath}.${language}.vtt`;
       const vttContent = await fs.readFile(vttPath, "utf-8");
       await fs.unlink(vttPath).catch(() => {
@@ -89,13 +93,53 @@ export class YtdlpService {
     }
   }
 
-  private buildCommand(
+  private async ensureDirectoryExists(): Promise<void> {
+    try {
+      await fs.access(this.tempDir);
+    } catch {
+      await fs.mkdir(this.tempDir, { recursive: true });
+    }
+  }
+
+  private async executeYtdlp(
     videoId: string,
     language: string,
     outputPath: string,
-  ): string {
+  ): Promise<void> {
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    return `yt-dlp --write-subs --write-auto-subs --skip-download --sub-format vtt --sub-langs ${language} "${videoUrl}" --output "${outputPath}" 2>&1`;
+    const args = [
+      "--write-subs",
+      "--write-auto-subs",
+      "--skip-download",
+      "--sub-format",
+      "vtt",
+      "--sub-langs",
+      language,
+      "--output",
+      outputPath,
+      videoUrl,
+    ];
+
+    return new Promise((resolve, reject) => {
+      const child = spawn("yt-dlp", args);
+      let stderr = "";
+
+      child.stderr.on("data", (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      child.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(stderr || `yt-dlp exited with code ${code}`));
+        }
+      });
+
+      child.on("error", (error) => {
+        reject(error);
+      });
+    });
   }
 
   private parseVtt(
@@ -168,10 +212,17 @@ export class YtdlpService {
   }
 
   private parseTimestamp(timestamp: string): number {
+    if (!timestamp) return 0;
+
     const parts = timestamp.split(":");
-    const seconds = parts[2] ? parseFloat(parts[2]) : 0;
-    const minutes = parts[1] ? parseInt(parts[1], 10) : 0;
-    const hours = parts[0] ? parseInt(parts[0], 10) : 0;
+    const seconds = parts[2] !== undefined ? parseFloat(parts[2]) : 0;
+    const minutes = parts[1] !== undefined ? parseInt(parts[1], 10) : 0;
+    const hours = parts[0] !== undefined ? parseInt(parts[0], 10) : 0;
+
+    if (isNaN(seconds) || isNaN(minutes) || isNaN(hours)) {
+      return 0;
+    }
+
     return hours * 3600 + minutes * 60 + seconds;
   }
 
