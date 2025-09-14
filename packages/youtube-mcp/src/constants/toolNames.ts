@@ -19,6 +19,13 @@ export const YOU_TUBE_TOOL_NAMES = {
   // Playlist tools
   GET_PLAYLIST: "get_playlist",
   GET_PLAYLIST_ITEMS: "get_playlist_items",
+
+  // Comment tools
+  GET_COMMENTS: "get_comments",
+  GET_COMMENT_THREADS: "get_comment_threads",
+
+  // Transcript tools
+  GET_TRANSCRIPT_METADATA: "get_transcript_metadata",
 } as const satisfies Record<string, ToolName>;
 
 // ツールカテゴリ定義
@@ -26,4 +33,6 @@ export const TOOL_CATEGORIES = {
   VIDEO: "video",
   CHANNEL: "channel",
   PLAYLIST: "playlist",
+  COMMENT: "comment",
+  TRANSCRIPT: "transcript",
 } as const;
