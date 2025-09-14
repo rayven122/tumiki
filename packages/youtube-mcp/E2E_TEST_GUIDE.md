@@ -488,3 +488,85 @@ mcp__youtube-mcp__get_transcript_metadata({
   }
 ]
 ```
+
+## 12. 字幕テキストの取得
+
+**注意**: この機能はyt-dlpのインストールが必要です。
+
+### インストール確認
+
+```bash
+# yt-dlpがインストールされているか確認
+yt-dlp --version
+```
+
+### 基本テストケース
+
+```yaml
+テストケース1: 英語字幕の取得
+  入力:
+    videoId: "dQw4w9WgXcQ"  # Rick Astley - Never Gonna Give You Up
+    language: "en"
+  期待: 英語字幕のセグメント配列（タイムスタンプ付き）
+
+テストケース2: 日本語字幕の取得
+  入力:
+    videoId: "RCltAg_iK0E"  # AKASAKI - Bunny Girl
+    language: "ja"
+  期待: 日本語字幕のセグメント配列
+
+テストケース3: 時間範囲指定
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    language: "en"
+    startTime: 60
+    endTime: 120
+  期待: 1分〜2分の字幕のみ
+
+テストケース4: 存在しない言語
+  入力:
+    videoId: "dQw4w9WgXcQ"
+    language: "xx"
+  期待: エラー「No subtitles available for language: xx」
+
+テストケース5: yt-dlp未インストール
+  前提: yt-dlpがインストールされていない環境
+  期待: エラー「yt-dlp is not installed. Please install it first: https://github.com/yt-dlp/yt-dlp/wiki/Installation」
+```
+
+### 手動テスト実行例
+
+```bash
+# MCP経由でツールを直接呼び出す場合
+# ツール名: mcp__youtube-mcp__get_transcript
+
+# 基本的な使用例
+mcp__youtube-mcp__get_transcript({
+  "videoId": "dQw4w9WgXcQ",
+  "language": "en"
+})
+
+# 時間範囲指定の例
+mcp__youtube-mcp__get_transcript({
+  "videoId": "dQw4w9WgXcQ",
+  "language": "en",
+  "startTime": 30,
+  "endTime": 60
+})
+
+# 期待される戻り値の例
+{
+  "segments": [
+    {
+      "start": 0.84,
+      "end": 3.629,
+      "text": "We're no strangers to love"
+    },
+    {
+      "start": 3.639,
+      "end": 6.67,
+      "text": "You know the rules and so do I"
+    }
+  ]
+}
+```

@@ -1,25 +1,40 @@
 import type { YouTubeApiService } from "@/services/youtubeApi.js";
-import type { TranscriptMetadata } from "@/types/index.js";
+import type { YtdlpService } from "@/services/ytdlpService.js";
+import type { TranscriptMetadata, TranscriptResponse } from "@/types/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
-import { handleTranscriptTool, transcriptTools } from "@/tools/transcripts.js";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  _setYtdlpServiceForTesting,
+  handleTranscriptTool,
+  transcriptTools,
+} from "@/tools/transcripts.js";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 describe("transcriptTools", () => {
   let mockYoutubeApi: Partial<YouTubeApiService>;
+  let mockYtdlpService: Partial<YtdlpService>;
 
   beforeEach(() => {
     mockYoutubeApi = {
       getTranscriptMetadata: vi.fn(),
     };
+    mockYtdlpService = {
+      getTranscript: vi.fn(),
+    };
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    // テスト後にサービスをリセット
+    _setYtdlpServiceForTesting(null);
+  });
+
   describe("ツール定義", () => {
-    test("1つの字幕ツールが定義されている", () => {
-      expect(transcriptTools).toHaveLength(1);
+    test("2つの字幕ツールが定義されている", () => {
+      expect(transcriptTools).toHaveLength(2);
       expect(transcriptTools[0]?.name).toBe(
         YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
       );
+      expect(transcriptTools[1]?.name).toBe(YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT);
     });
 
     test("GET_TRANSCRIPT_METADATAツールの定義が正しい", () => {
@@ -108,6 +123,121 @@ describe("transcriptTools", () => {
       });
     });
 
+    describe("GET_TRANSCRIPT", () => {
+      test("正常系: 字幕を取得する", async () => {
+        const mockTranscript: TranscriptResponse = {
+          segments: [
+            {
+              start: 0,
+              end: 3,
+              text: "Test transcript",
+            },
+          ],
+        };
+
+        vi.mocked(mockYtdlpService.getTranscript!).mockResolvedValue(
+          mockTranscript,
+        );
+        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
+
+        const result = await handleTranscriptTool(
+          YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
+          { videoId: "test-video-id", language: "en" },
+          mockYoutubeApi as YouTubeApiService,
+        );
+
+        expect(mockYtdlpService.getTranscript).toHaveBeenCalledWith(
+          "test-video-id",
+          "en",
+          undefined,
+          undefined,
+        );
+
+        const textContent = result.content[0] as { type: string; text: string };
+        expect(textContent.type).toBe("text");
+
+        const parsed = JSON.parse(textContent.text) as TranscriptResponse;
+        expect(parsed.segments).toHaveLength(1);
+        expect(parsed.segments[0]).toMatchObject({
+          start: 0,
+          end: 3,
+          text: "Test transcript",
+        });
+      });
+
+      test("正常系: 時間範囲指定で字幕を取得する", async () => {
+        const mockTranscript: TranscriptResponse = {
+          segments: [
+            {
+              start: 10,
+              end: 15,
+              text: "Filtered transcript",
+            },
+          ],
+        };
+
+        vi.mocked(mockYtdlpService.getTranscript!).mockResolvedValue(
+          mockTranscript,
+        );
+        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
+
+        const result = await handleTranscriptTool(
+          YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
+          {
+            videoId: "test-video-id",
+            language: "en",
+            startTime: 10,
+            endTime: 20,
+          },
+          mockYoutubeApi as YouTubeApiService,
+        );
+
+        expect(mockYtdlpService.getTranscript).toHaveBeenCalledWith(
+          "test-video-id",
+          "en",
+          10,
+          20,
+        );
+
+        const textContent = result.content[0] as { type: string; text: string };
+        const parsed = JSON.parse(textContent.text) as TranscriptResponse;
+        expect(parsed.segments[0]?.text).toBe("Filtered transcript");
+      });
+
+      test("異常系: 必須パラメータが不足している", async () => {
+        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
+
+        const result = await handleTranscriptTool(
+          YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
+          { videoId: "test-video-id" }, // languageが不足
+          mockYoutubeApi as YouTubeApiService,
+        );
+
+        const textContent = result.content[0] as { type: string; text: string };
+        const parsed = JSON.parse(textContent.text) as { error: string };
+        expect(parsed.error).toBeDefined();
+      });
+
+      test("異常系: YtdlpServiceがエラーを投げる", async () => {
+        vi.mocked(mockYtdlpService.getTranscript!).mockRejectedValue(
+          new Error("No subtitles available for language: xx"),
+        );
+        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
+
+        const result = await handleTranscriptTool(
+          YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
+          { videoId: "test-video-id", language: "xx" },
+          mockYoutubeApi as YouTubeApiService,
+        );
+
+        const textContent = result.content[0] as { type: string; text: string };
+        const parsed = JSON.parse(textContent.text) as { error: string };
+        expect(parsed.error).toContain(
+          "No subtitles available for language: xx",
+        );
+      });
+    });
+
     test("異常系: 不明なツール名", async () => {
       const result = await handleTranscriptTool(
         "unknown-tool",
@@ -118,6 +248,23 @@ describe("transcriptTools", () => {
       const textContent = result.content[0] as { type: string; text: string };
       const parsed = JSON.parse(textContent.text) as { error: string };
       expect(parsed.error).toContain("Unknown transcript tool");
+    });
+
+    test("異常系: Error以外の値がthrowされた場合", async () => {
+      // getTranscriptMetadataがError以外の値をthrowするようにモック
+      vi.mocked(mockYoutubeApi.getTranscriptMetadata!).mockRejectedValue(
+        "string error",
+      );
+
+      const result = await handleTranscriptTool(
+        YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
+        { videoId: "test-video-id" },
+        mockYoutubeApi as YouTubeApiService,
+      );
+
+      const textContent = result.content[0] as { type: string; text: string };
+      const parsed = JSON.parse(textContent.text) as { error: string };
+      expect(parsed.error).toBe("string error");
     });
   });
 });
