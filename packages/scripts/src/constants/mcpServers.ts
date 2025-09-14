@@ -69,12 +69,7 @@ export const MCP_SERVERS = [
     tags: ["デザイン", "UI/UX"],
     iconPath: "/logos/figma.svg",
     command: "node",
-    args: [
-      "node_modules/figma-developer-mcp/dist/index.js",
-      "--figma-api-key=FIGMA_API_KEY",
-      "--figma-oauth-token=FIGMA_OAUTH_TOKEN",
-      "--stdio",
-    ],
+    args: ["node_modules/figma-developer-mcp/dist/index.js", "--stdio"],
     envVars: ["FIGMA_API_KEY", "FIGMA_OAUTH_TOKEN"],
     isPublic: true,
   },
@@ -93,14 +88,16 @@ export const MCP_SERVERS = [
   //   envVars: [],
   //   isPublic: true,
   // },
-  // {
-  //   name: "Gemini Google Search",
-  //   iconPath: "/logos/gemini-search.png",
-  //   command: "node",
-  //   args: ["node_modules/mcp-gemini-google-search/dist/index.js"],
-  //   envVars: ["GEMINI_API_KEY", "GEMINI_MODEL"],
-  //   isPublic: true,
-  // },
+  {
+    name: "Gemini Google Search",
+    iconPath: "/logos/gemini-search.png",
+    description: "Google Geminiモデルを使用した高度な検索機能を提供します",
+    tags: ["検索", "AI", "情報取得"],
+    command: "node",
+    args: ["node_modules/mcp-gemini-google-search/dist/index.js"],
+    envVars: ["GEMINI_API_KEY", "GEMINI_MODEL"],
+    isPublic: true,
+  },
   {
     name: "Slack MCP",
     description:
