@@ -1,13 +1,9 @@
 import type { YouTubeApiService } from "@/services/youtubeApi.js";
-import type { YtdlpService } from "@/services/ytdlpService.js";
+import type { YtdlpService } from "@/services/YtdlpService/index.js";
 import type { TranscriptMetadata, TranscriptResponse } from "@/types/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
-import {
-  _setYtdlpServiceForTesting,
-  handleTranscriptTool,
-  transcriptTools,
-} from "@/tools/transcripts.js";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { handleTranscriptTool, transcriptTools } from "@/tools/transcripts.js";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 describe("transcriptTools", () => {
   let mockYoutubeApi: Partial<YouTubeApiService>;
@@ -21,11 +17,6 @@ describe("transcriptTools", () => {
       getTranscript: vi.fn(),
     };
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    // テスト後にサービスをリセット
-    _setYtdlpServiceForTesting(null);
   });
 
   describe("ツール定義", () => {
@@ -78,6 +69,7 @@ describe("transcriptTools", () => {
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
           { videoId: "test-video-id" },
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         expect(mockYoutubeApi.getTranscriptMetadata).toHaveBeenCalledWith(
@@ -103,6 +95,7 @@ describe("transcriptTools", () => {
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
           { videoId: "test-video-id" },
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         const textContent = result.content[0] as { type: string; text: string };
@@ -115,6 +108,7 @@ describe("transcriptTools", () => {
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
           {},
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         const textContent = result.content[0] as { type: string; text: string };
@@ -138,12 +132,12 @@ describe("transcriptTools", () => {
         vi.mocked(mockYtdlpService.getTranscript!).mockResolvedValue(
           mockTranscript,
         );
-        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
 
         const result = await handleTranscriptTool(
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
           { videoId: "test-video-id", language: "en" },
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         expect(mockYtdlpService.getTranscript).toHaveBeenCalledWith(
@@ -179,7 +173,6 @@ describe("transcriptTools", () => {
         vi.mocked(mockYtdlpService.getTranscript!).mockResolvedValue(
           mockTranscript,
         );
-        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
 
         const result = await handleTranscriptTool(
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
@@ -190,6 +183,7 @@ describe("transcriptTools", () => {
             endTime: 20,
           },
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         expect(mockYtdlpService.getTranscript).toHaveBeenCalledWith(
@@ -205,12 +199,11 @@ describe("transcriptTools", () => {
       });
 
       test("異常系: 必須パラメータが不足している", async () => {
-        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
-
         const result = await handleTranscriptTool(
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
           { videoId: "test-video-id" }, // languageが不足
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         const textContent = result.content[0] as { type: string; text: string };
@@ -222,12 +215,12 @@ describe("transcriptTools", () => {
         vi.mocked(mockYtdlpService.getTranscript!).mockRejectedValue(
           new Error("No subtitles available for language: xx"),
         );
-        _setYtdlpServiceForTesting(mockYtdlpService as YtdlpService);
 
         const result = await handleTranscriptTool(
           YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
           { videoId: "test-video-id", language: "xx" },
           mockYoutubeApi as YouTubeApiService,
+          mockYtdlpService as YtdlpService,
         );
 
         const textContent = result.content[0] as { type: string; text: string };
@@ -243,6 +236,7 @@ describe("transcriptTools", () => {
         "unknown-tool",
         {},
         mockYoutubeApi as YouTubeApiService,
+        mockYtdlpService as YtdlpService,
       );
 
       const textContent = result.content[0] as { type: string; text: string };
@@ -260,6 +254,7 @@ describe("transcriptTools", () => {
         YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
         { videoId: "test-video-id" },
         mockYoutubeApi as YouTubeApiService,
+        mockYtdlpService as YtdlpService,
       );
 
       const textContent = result.content[0] as { type: string; text: string };
