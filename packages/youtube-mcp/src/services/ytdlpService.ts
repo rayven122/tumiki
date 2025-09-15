@@ -1,16 +1,35 @@
 import { spawn } from "child_process";
-import { promises as fs } from "fs";
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import type { TranscriptResponse, TranscriptSegment } from "@/types/index.js";
+import { parse as parseVtt } from "@plussub/srt-vtt-parser";
+
+// Result type for error handling
+export type Result<T, E = Error> =
+  | { ok: true; value: T }
+  | { ok: false; error: E };
+
+export type TranscriptError =
+  | { type: "NOT_INSTALLED"; message: string }
+  | { type: "RATE_LIMITED"; message: string }
+  | { type: "NO_SUBTITLES"; message: string }
+  | { type: "VIDEO_UNAVAILABLE"; message: string }
+  | { type: "NETWORK_ERROR"; message: string }
+  | { type: "UNKNOWN"; message: string };
+
+type VttParsedResult = {
+  entries: { id: string; from: number; to: number; text: string }[];
+};
 
 export class YtdlpService {
-  private readonly tempDir: string;
-
-  constructor(tempDir?: string) {
-    this.tempDir = tempDir ?? process.env.YTDLP_TEMP_DIR ?? "/tmp";
+  constructor() {
+    // Service handles temporary file operations internally
   }
 
-  async checkYtdlpInstalled(): Promise<boolean> {
-    return new Promise((resolve) => {
+  async checkYtdlpInstalled(): Promise<Result<void, TranscriptError>> {
+    const isInstalled = await new Promise<boolean>((resolve) => {
       const child = spawn("yt-dlp", ["--version"]);
       child.on("close", (code) => {
         resolve(code === 0);
@@ -19,6 +38,19 @@ export class YtdlpService {
         resolve(false);
       });
     });
+
+    if (!isInstalled) {
+      return {
+        ok: false,
+        error: {
+          type: "NOT_INSTALLED",
+          message:
+            "yt-dlp is not installed. Please install it first: https://github.com/yt-dlp/yt-dlp/wiki/Installation",
+        },
+      };
+    }
+
+    return { ok: true, value: undefined };
   }
 
   async getTranscript(
@@ -27,101 +59,184 @@ export class YtdlpService {
     startTime?: number,
     endTime?: number,
   ): Promise<TranscriptResponse> {
-    const isInstalled = await this.checkYtdlpInstalled();
-    if (!isInstalled) {
-      throw new Error(
-        "yt-dlp is not installed. Please install it first: https://github.com/yt-dlp/yt-dlp/wiki/Installation",
+    // Check yt-dlp installation
+    const installResult = await this.checkYtdlpInstalled();
+    if (!installResult.ok) {
+      throw new Error(installResult.error.message);
+    }
+
+    // Validate video ID
+    const videoIdResult = this.validateVideoId(videoId);
+    if (!videoIdResult.ok) {
+      throw new Error(videoIdResult.error.message);
+    }
+
+    // Validate language code
+    const languageResult = this.validateLanguageCode(language);
+    if (!languageResult.ok) {
+      throw new Error(languageResult.error.message);
+    }
+
+    // Create temp directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "yt-dlp-"));
+    const tempFilename = `subtitle_${crypto.randomBytes(8).toString("hex")}`;
+    const outputPath = path.join(tempDir, tempFilename);
+
+    try {
+      const downloadResult = await this.downloadSubtitleWithYtdlp(
+        videoId,
+        languageResult.value,
+        outputPath,
       );
-    }
-
-    await this.ensureDirectoryExists();
-    const outputPath = `${this.tempDir}/transcript_${videoId}_${language}_${Date.now()}`;
-
-    try {
-      await this.executeYtdlp(videoId, language, outputPath);
-      const vttPath = `${outputPath}.${language}.vtt`;
-      const vttContent = await fs.readFile(vttPath, "utf-8");
-      await fs.unlink(vttPath).catch(() => {
-        // Ignore cleanup errors
-      });
-
-      const segments = this.parseVtt(vttContent, startTime, endTime);
-      return { segments };
-    } catch (error) {
-      if (error instanceof Error) {
-        // レート制限エラー
-        if (error.message.includes("HTTP Error 429")) {
-          throw new Error("Rate limited by YouTube. Please try again later.");
-        }
-        // 字幕が存在しない
-        if (error.message.includes("There are no subtitles")) {
-          throw new Error(`No subtitles available for language: ${language}`);
-        }
-        // VTTファイルが見つからない（字幕が存在しない）
-        if (
-          error.message.includes("ENOENT") &&
-          error.message.includes(".vtt")
-        ) {
-          throw new Error(`No subtitles available for language: ${language}`);
-        }
-        // 動画が見つからない・アクセスできない
-        if (
-          error.message.includes("Video unavailable") ||
-          error.message.includes("ERROR: [youtube]") ||
-          error.message.includes("does not exist")
-        ) {
-          throw new Error(
-            `Video not found or unavailable (ID: ${videoId}). Please check if the video ID is correct and the video is publicly accessible.`,
-          );
-        }
-        // ネットワークエラー
-        if (
-          error.message.includes("ECONNREFUSED") ||
-          error.message.includes("ETIMEDOUT") ||
-          error.message.includes("ENOTFOUND")
-        ) {
-          throw new Error(
-            "Network error occurred while fetching transcript. Please check your internet connection and try again.",
-          );
-        }
-        // 予期しないエラーの場合、ユーザーフレンドリーなメッセージと詳細を両方含める
-        throw new Error(
-          `Failed to retrieve transcript: ${error.message}. Please check if the video exists and has subtitles available.`,
-        );
+      if (!downloadResult.ok) {
+        throw new Error(downloadResult.error.message);
       }
-      throw error;
+
+      // Parse VTT content
+      const vttContent = fs.readFileSync(downloadResult.value, "utf-8");
+      const parsed = parseVtt(vttContent) as VttParsedResult;
+
+      // Convert to our segment format
+      const segments = this.mapParsedEntriesToSegments(
+        parsed,
+        startTime,
+        endTime,
+      );
+
+      return { segments };
+    } finally {
+      // Clean up temp directory
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 
-  private async ensureDirectoryExists(): Promise<void> {
-    try {
-      await fs.access(this.tempDir);
-    } catch {
-      await fs.mkdir(this.tempDir, { recursive: true });
-    }
+  mapParsedEntriesToSegments(
+    parsed: VttParsedResult,
+    startTime?: number,
+    endTime?: number,
+  ): TranscriptSegment[] {
+    return parsed.entries
+      .filter((entry) => {
+        const entryStart = entry.from / 1000; // Convert ms to seconds
+        const entryEnd = entry.to / 1000;
+
+        // Filter by time range if specified
+        if (startTime !== undefined && entryEnd < startTime) return false;
+        if (endTime !== undefined && entryStart > endTime) return false;
+
+        return true;
+      })
+      .map((entry) => ({
+        start: entry.from / 1000, // Convert ms to seconds
+        end: entry.to / 1000,
+        text: entry.text.trim(),
+      }));
   }
 
-  private async executeYtdlp(
+  // YouTube Video ID format: exactly 11 characters
+  // Allowed characters: a-z, A-Z, 0-9, hyphen (-), and underscore (_)
+  // Reference: https://webapps.stackexchange.com/questions/54443/format-for-id-of-youtube-video
+  // Note: This is not an official specification. YouTube states:
+  // "We don't make any public guarantees about the format for video ids"
+  validateVideoId(videoId: string): Result<void, TranscriptError> {
+    if (!videoId || typeof videoId !== "string") {
+      return {
+        ok: false,
+        error: {
+          type: "UNKNOWN",
+          message: "Video ID must be a non-empty string",
+        },
+      };
+    }
+
+    const videoIdPattern = /^[0-9A-Za-z_-]{11}$/;
+    if (!videoIdPattern.test(videoId)) {
+      return {
+        ok: false,
+        error: {
+          type: "UNKNOWN",
+          message: "Invalid video ID format",
+        },
+      };
+    }
+
+    return { ok: true, value: undefined };
+  }
+
+  // Validate language code format to ensure it matches YouTube API output formats
+  // Accepts: ISO 639-1 (en, ja), ISO 639-2 (fil), BCP-47 (zh-Hans, pt-BR, es-419)
+  // Security: Strict pattern matching prevents command injection attacks
+  validateLanguageCode(language: string): Result<string, TranscriptError> {
+    // Basic validation to prevent code injection
+    if (!language || typeof language !== "string") {
+      return {
+        ok: false,
+        error: {
+          type: "UNKNOWN",
+          message: "Language code must be a non-empty string",
+        },
+      };
+    }
+
+    const trimmed = language.trim();
+    if (!trimmed) {
+      return {
+        ok: false,
+        error: {
+          type: "UNKNOWN",
+          message: "Language code cannot be empty",
+        },
+      };
+    }
+
+    // Validate format: Only allow YouTube API language code formats
+    // ISO 639-1: 2-3 lowercase letters (en, ja, hi, fil)
+    // BCP-47: language-region format (zh-Hans, zh-Hant, pt-BR, es-419)
+    // Security: Prevent command injection by strict pattern matching
+    const languagePattern = /^[a-z]{2,3}(-[A-Z][a-z]{3}|-[A-Z]{2}|-\d{3})?$/;
+
+    if (!languagePattern.test(trimmed)) {
+      return {
+        ok: false,
+        error: {
+          type: "UNKNOWN",
+          message: `Invalid language code format: "${language}". Expected formats: ISO 639-1 (e.g., "en", "ja") or BCP-47 (e.g., "zh-Hans", "pt-BR", "es-419")`,
+        },
+      };
+    }
+
+    // Return validated language code
+    return { ok: true, value: trimmed };
+  }
+
+  async downloadSubtitleWithYtdlp(
     videoId: string,
-    language: string,
+    languageCode: string,
     outputPath: string,
-  ): Promise<void> {
+  ): Promise<Result<string, TranscriptError>> {
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
     const args = [
-      "--write-subs",
-      "--write-auto-subs",
-      "--skip-download",
+      "--write-subs", // Try manual subtitles first
+      "--write-auto-subs", // Fall back to auto-generated subtitles
+      "--skip-download", // Don't download the video
       "--sub-format",
-      "vtt",
+      "vtt", // Force VTT format
       "--sub-langs",
-      language,
+      languageCode,
       "--output",
-      outputPath,
+      outputPath, // Output path without extension
       videoUrl,
     ];
 
-    return new Promise((resolve, reject) => {
-      const child = spawn("yt-dlp", args);
+    return new Promise((resolve) => {
+      const child = spawn("yt-dlp", args, {
+        env: { ...process.env, PYTHONWARNINGS: "ignore" },
+      });
       let stderr = "";
 
       child.stderr.on("data", (data: Buffer) => {
@@ -130,107 +245,79 @@ export class YtdlpService {
 
       child.on("close", (code) => {
         if (code === 0) {
-          resolve();
+          // Check if subtitle file was created
+          const expectedPath = `${outputPath}.${languageCode}.vtt`;
+          if (!fs.existsSync(expectedPath)) {
+            resolve({
+              ok: false,
+              error: {
+                type: "NO_SUBTITLES",
+                message: `No subtitles available for language: ${languageCode}`,
+              },
+            });
+          } else {
+            resolve({ ok: true, value: expectedPath });
+          }
         } else {
-          reject(new Error(stderr || `yt-dlp exited with code ${code}`));
+          // Parse yt-dlp error messages
+          const error = this.parseYtdlpError(
+            stderr,
+            videoId,
+            languageCode,
+            code,
+          );
+          resolve({ ok: false, error });
         }
       });
 
-      child.on("error", (error) => {
-        reject(error);
+      child.on("error", () => {
+        resolve({
+          ok: false,
+          error: {
+            type: "UNKNOWN",
+            message: "Failed to execute yt-dlp",
+          },
+        });
       });
     });
   }
 
-  private parseVtt(
-    vttContent: string,
-    startTime?: number,
-    endTime?: number,
-  ): TranscriptSegment[] {
-    const segments: TranscriptSegment[] = [];
-    const lines = vttContent.split("\n");
-    let i = 0;
-
-    // Skip headers
-    while (i < lines.length && !lines[i]?.includes("-->")) {
-      i++;
+  parseYtdlpError(
+    stderr: string,
+    videoId: string,
+    language: string,
+    exitCode: number | null,
+  ): TranscriptError {
+    if (
+      stderr.includes("Video unavailable") ||
+      stderr.includes("ERROR: [youtube]")
+    ) {
+      return {
+        type: "VIDEO_UNAVAILABLE",
+        message: `Video not found or unavailable (ID: ${videoId}). Please check if the video ID is correct and the video is publicly accessible.`,
+      };
     }
 
-    while (i < lines.length) {
-      const line = lines[i];
-      if (line?.includes("-->")) {
-        const parts = line.split("-->");
-        if (parts.length < 2) {
-          i++;
-          continue;
-        }
-        const startStr = parts[0]?.trim();
-        const endStr = parts[1]?.trim();
-        if (!startStr || !endStr) {
-          i++;
-          continue;
-        }
-        const start = this.parseTimestamp(startStr.split(" ")[0] ?? "");
-        const end = this.parseTimestamp(endStr.split(" ")[0] ?? "");
-
-        // Skip if outside time range
-        if (startTime !== undefined && end < startTime) {
-          i++;
-          continue;
-        }
-        if (endTime !== undefined && start > endTime) {
-          break;
-        }
-
-        // Collect text lines
-        const textLines: string[] = [];
-        i++;
-        while (i < lines.length && lines[i] && !lines[i]?.includes("-->")) {
-          const currentLine = lines[i];
-          if (currentLine) {
-            const cleanedLine = this.cleanVttText(currentLine);
-            if (cleanedLine) {
-              textLines.push(cleanedLine);
-            }
-          }
-          i++;
-        }
-
-        if (textLines.length > 0) {
-          segments.push({
-            start,
-            end,
-            text: textLines.join(" "),
-          });
-        }
-      } else {
-        i++;
-      }
+    if (stderr.includes("HTTP Error 429")) {
+      return {
+        type: "RATE_LIMITED",
+        message: "Rate limited by YouTube. Please try again later.",
+      };
     }
 
-    return segments;
-  }
-
-  private parseTimestamp(timestamp: string): number {
-    if (!timestamp) return 0;
-
-    const parts = timestamp.split(":");
-    const seconds = parts[2] !== undefined ? parseFloat(parts[2]) : 0;
-    const minutes = parts[1] !== undefined ? parseInt(parts[1], 10) : 0;
-    const hours = parts[0] !== undefined ? parseInt(parts[0], 10) : 0;
-
-    if (isNaN(seconds) || isNaN(minutes) || isNaN(hours)) {
-      return 0;
+    if (
+      stderr.includes("There are no subtitles") ||
+      stderr.includes("no subtitles")
+    ) {
+      return {
+        type: "NO_SUBTITLES",
+        message: `No subtitles available for language: ${language}`,
+      };
     }
 
-    return hours * 3600 + minutes * 60 + seconds;
-  }
-
-  private cleanVttText(text: string): string {
-    // Remove VTT tags and timestamps
-    return text
-      .replace(/<[^>]*>/g, "") // Remove HTML-like tags
-      .replace(/\d{2}:\d{2}:\d{2}\.\d{3}/g, "") // Remove timestamps
-      .trim();
+    return {
+      type: "UNKNOWN",
+      message: stderr || `yt-dlp exited with code ${exitCode}`,
+    };
   }
 }
