@@ -484,7 +484,7 @@ describe("YtdlpService", () => {
   });
 
   describe("downloadSubtitleWithYtdlp", () => {
-    const videoId = "test123";
+    const videoId = "dQw4w9WgXcQ"; // 11文字の有効なvideo ID
     const languageCode = "en";
     const outputPath = "/tmp/subtitle_test";
 
@@ -616,6 +616,34 @@ describe("YtdlpService", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.type).toBe("UNKNOWN");
+      }
+    });
+
+    test("無効なvideoIdの場合", async () => {
+      const result = await service.downloadSubtitleWithYtdlp(
+        "invalid", // 無効なvideoId
+        languageCode,
+        outputPath,
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe("UNKNOWN");
+        expect(result.error.message).toContain("Invalid video ID");
+      }
+    });
+
+    test("無効な言語コードの場合", async () => {
+      const result = await service.downloadSubtitleWithYtdlp(
+        videoId,
+        "invalid!", // 無効な言語コード
+        outputPath,
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe("UNKNOWN");
+        expect(result.error.message).toContain("Invalid language code");
       }
     });
   });
