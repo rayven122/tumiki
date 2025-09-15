@@ -1,5 +1,9 @@
 import type { OrganizationId } from "@/schema/ids";
 
+// Branded types for type safety
+export type RoleId = string & { __brand: "RoleId" };
+export type EmailAddress = string & { __brand: "EmailAddress" };
+
 // ロール関連の型定義
 export type Role = {
   id: string;

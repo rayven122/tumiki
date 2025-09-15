@@ -35,8 +35,9 @@ import {
 } from "lucide-react";
 import { api } from "@/trpc/react";
 import type { OrganizationId } from "@/schema/ids";
-import type { InvitationFormData, ValidationError, Role } from "./types";
-import { mockRoles } from "./mockData";
+import type { ValidationError, RoleId } from "./types";
+import { validateEmail, parseEmails } from "./utils/emailValidation";
+import { useInviteMembers } from "./hooks/useInviteMembers";
 import { clsx } from "clsx";
 
 type InviteMemberModalProps = {
@@ -44,20 +45,6 @@ type InviteMemberModalProps = {
   onClose: () => void;
   organizationId: OrganizationId;
   onSuccess?: () => void;
-};
-
-// メールアドレスのバリデーション
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-// 複数メールアドレスのパース（カンマ、改行、スペース区切り対応）
-const parseEmails = (input: string): string[] => {
-  return input
-    .split(/[,\n\s]+/)
-    .map((email) => email.trim())
-    .filter((email) => email.length > 0);
 };
 
 export const InviteMemberModal = ({
@@ -68,21 +55,22 @@ export const InviteMemberModal = ({
 }: InviteMemberModalProps) => {
   const [emailInput, setEmailInput] = useState("");
   const [parsedEmails, setParsedEmails] = useState<string[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+  const [selectedRoleId, setSelectedRoleId] = useState<RoleId | "">("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [customMessage, setCustomMessage] = useState("");
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
     [],
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [invitationResults, setInvitationResults] = useState<
-    Array<{ email: string; success: boolean; error?: string }>
-  >([]);
 
-  const utils = api.useUtils();
+  const { inviteMembers, isSubmitting, invitationResults, resetResults } =
+    useInviteMembers(organizationId);
 
-  // デモ用のロールデータ（実際の実装ではAPIから取得）
-  const availableRoles: Role[] = mockRoles;
+  // 組織のロールを取得
+  const { data: availableRoles = [] } =
+    api.organizationRole.getByOrganization.useQuery(
+      { organizationId },
+      { enabled: isOpen && !!organizationId },
+    );
 
   // メールアドレスの追加
   const handleAddEmails = useCallback(() => {
@@ -144,58 +132,18 @@ export const InviteMemberModal = ({
       return;
     }
 
-    setIsSubmitting(true);
     setValidationErrors([]);
 
-    // デモ用の処理（実際にはAPIを呼び出す）
-    try {
-      // 各メールアドレスに対して招待を送信
-      const results = await Promise.all(
-        parsedEmails.map(async (email) => {
-          try {
-            // 実際のAPI呼び出しをここに実装
-            // const result = await api.organization.inviteMember.mutate({
-            //   organizationId,
-            //   email,
-            //   roleId: selectedRoleId,
-            //   isAdmin,
-            //   customMessage,
-            // });
+    // 招待を送信
+    const results = await inviteMembers(parsedEmails, selectedRoleId, isAdmin);
 
-            // デモ用のダミー処理
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            // ランダムに成功/失敗を決定（デモ用）
-            if (Math.random() > 0.8) {
-              throw new Error("既に招待されています");
-            }
-
-            return { email, success: true };
-          } catch (error) {
-            return {
-              email,
-              success: false,
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "招待の送信に失敗しました",
-            };
-          }
-        }),
-      );
-
-      setInvitationResults(results);
-
-      // 全て成功した場合は閉じる
-      const allSuccess = results.every((r) => r.success);
-      if (allSuccess) {
-        setTimeout(() => {
-          onSuccess?.();
-          handleClose();
-        }, 2000);
-      }
-    } finally {
-      setIsSubmitting(false);
+    // 全て成功した場合は閉じる
+    const allSuccess = results.every((r) => r.success);
+    if (allSuccess) {
+      setTimeout(() => {
+        onSuccess?.();
+        handleClose();
+      }, 2000);
     }
   };
 
@@ -207,7 +155,7 @@ export const InviteMemberModal = ({
     setIsAdmin(false);
     setCustomMessage("");
     setValidationErrors([]);
-    setInvitationResults([]);
+    resetResults();
     onClose();
   };
 
@@ -294,7 +242,7 @@ export const InviteMemberModal = ({
             <Label htmlFor="role">ロール</Label>
             <Select
               value={selectedRoleId}
-              onValueChange={setSelectedRoleId}
+              onValueChange={(value) => setSelectedRoleId(value as RoleId)}
               disabled={isAdmin || isSubmitting}
             >
               <SelectTrigger id="role">
@@ -305,9 +253,9 @@ export const InviteMemberModal = ({
                   <SelectItem key={role.id} value={role.id}>
                     <div className="flex w-full items-center justify-between">
                       <span>{role.name}</span>
-                      {role.isSystem && (
+                      {'isDefault' in role && role.isDefault && (
                         <Badge variant="outline" className="ml-2 text-xs">
-                          システム
+                          デフォルト
                         </Badge>
                       )}
                     </div>

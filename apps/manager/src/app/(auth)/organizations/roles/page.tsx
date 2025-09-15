@@ -5,12 +5,9 @@ import { api } from "@/trpc/react";
 import { redirect } from "next/navigation";
 import {
   Users,
-  Shield,
   Settings,
-  Code,
   UserPlus,
   Search,
-  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +24,6 @@ import type { OrganizationMember, Role } from "./_components/types";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { OrganizationId } from "@/schema/ids";
 
 const RolesPage = () => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -263,10 +259,9 @@ const RolesPage = () => {
         <InviteMemberModal
           isOpen={isInviteModalOpen}
           onClose={() => setIsInviteModalOpen(false)}
-          organizationId={defaultOrg.id as OrganizationId}
+          organizationId={defaultOrg.id}
           onSuccess={() => {
             // 成功時の処理（例：メンバーリストを再取得）
-            console.log("招待が送信されました");
           }}
         />
       </div>
