@@ -65,18 +65,6 @@ export class YtdlpService {
       throw new Error(installResult.error.message);
     }
 
-    // Validate video ID
-    const videoIdResult = this.validateVideoId(videoId);
-    if (!videoIdResult.ok) {
-      throw new Error(videoIdResult.error.message);
-    }
-
-    // Validate language code
-    const languageResult = this.validateLanguageCode(language);
-    if (!languageResult.ok) {
-      throw new Error(languageResult.error.message);
-    }
-
     // Create temp directory
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "yt-dlp-"));
     const tempFilename = `subtitle_${crypto.randomBytes(8).toString("hex")}`;
@@ -85,7 +73,7 @@ export class YtdlpService {
     try {
       const downloadResult = await this.downloadSubtitleWithYtdlp(
         videoId,
-        languageResult.value,
+        language,
         outputPath,
       );
       if (!downloadResult.ok) {
@@ -218,6 +206,18 @@ export class YtdlpService {
     languageCode: string,
     outputPath: string,
   ): Promise<Result<string, TranscriptError>> {
+    // Validate video ID
+    const videoIdResult = this.validateVideoId(videoId);
+    if (!videoIdResult.ok) {
+      return { ok: false, error: videoIdResult.error };
+    }
+
+    // Validate language code
+    const languageResult = this.validateLanguageCode(languageCode);
+    if (!languageResult.ok) {
+      return { ok: false, error: languageResult.error };
+    }
+
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
     const args = [
