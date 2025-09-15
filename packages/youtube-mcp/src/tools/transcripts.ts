@@ -1,7 +1,7 @@
 import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { YtdlpService } from "@/services/YtdlpService/index.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
-import { YtdlpService } from "@/services/ytdlpService.js";
 import {
   GetTranscriptMetadataSchema,
   GetTranscriptSchema,
@@ -53,32 +53,19 @@ export const transcriptTools = [
   },
 ];
 
-// YtdlpService インスタンス（シングルトン）
-let ytdlpService: YtdlpService | null = null;
-
-const getYtdlpService = (): YtdlpService => {
-  ytdlpService ??= new YtdlpService();
-  return ytdlpService;
-};
-
-// テスト用のサービス設定関数
-export const _setYtdlpServiceForTesting = (
-  service: YtdlpService | null,
-): void => {
-  ytdlpService = service;
-};
-
 /**
  * 字幕ツールのハンドラー
  * @param toolName ツール名
  * @param args 引数
  * @param youtubeApi YouTubeAPIサービス
+ * @param ytdlpService YtdlpService インスタンス
  * @returns ツールの実行結果
  */
 export async function handleTranscriptTool(
   toolName: string,
   args: unknown,
   youtubeApi: YouTubeApiService,
+  ytdlpService: YtdlpService,
 ): Promise<CallToolResult> {
   try {
     switch (toolName) {
@@ -98,8 +85,7 @@ export async function handleTranscriptTool(
 
       case YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT: {
         const input = GetTranscriptSchema.parse(args);
-        const service = getYtdlpService();
-        const transcript = await service.getTranscript(
+        const transcript = await ytdlpService.getTranscript(
           input.videoId,
           input.language,
           input.startTime,
