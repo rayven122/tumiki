@@ -1,6 +1,15 @@
 export {
   runMcpSecurityScan,
-  type McpIssue,
+  runMcpSecurityScanWithUrl,
+  type ToolCategory,
+  type RiskLevel,
+  type ToolIssue,
+  type ToolAnalysis,
+  type ServerIssue,
+  type McpServerAnalysis,
+  type ToolReference,
+  type ToxicFlow,
+  type McpScanSummary,
   type McpScanResult,
 } from "./mcpScan";
 
