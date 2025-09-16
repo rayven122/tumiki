@@ -120,3 +120,27 @@ waitingList.json
 
 # Production configuration files
 *production.json
+
+# serena
+.serena/cache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+.coverage.*
+*.egg-info/
+dist/
+.pytype/
+
+# uv
+.local/uv/

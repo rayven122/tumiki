@@ -31,8 +31,9 @@ import { db } from "@tumiki/db/server";
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
 
-  // ユーザーの現在の組織を取得
+  // ユーザーの現在の組織と権限を取得
   let currentOrganizationId: string | null = null;
+  let isCurrentOrganizationAdmin = false;
 
   if (session?.user?.sub) {
     // ユーザーのdefaultOrganizationIdをチェック（優先度1）
@@ -44,6 +45,18 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     if (user?.defaultOrganizationId) {
       // defaultOrganizationIdが設定されている場合は使用
       currentOrganizationId = user.defaultOrganizationId;
+
+      // 管理者権限を確認
+      const membership = await db.organizationMember.findFirst({
+        where: {
+          userId: session.user.sub,
+          organizationId: user.defaultOrganizationId,
+        },
+        select: {
+          isAdmin: true,
+        },
+      });
+      isCurrentOrganizationAdmin = membership?.isAdmin ?? false;
     } else {
       // フォールバック：個人組織を検索（優先度2）
       const firstMembership = await db.organizationMember.findFirst({
@@ -60,11 +73,13 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
         },
         select: {
           organizationId: true,
+          isAdmin: true,
         },
       });
 
       if (firstMembership?.organizationId) {
         currentOrganizationId = firstMembership.organizationId;
+        isCurrentOrganizationAdmin = firstMembership.isAdmin;
 
         // 見つかった個人組織をdefaultOrganizationIdに設定
         try {
@@ -78,6 +93,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
         }
       } else {
         currentOrganizationId = null;
+        isCurrentOrganizationAdmin = false;
       }
     }
   }
@@ -86,6 +102,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     db,
     session,
     currentOrganizationId,
+    isCurrentOrganizationAdmin,
     ...opts,
   };
 };

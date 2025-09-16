@@ -33,6 +33,7 @@ const createApp = (): express.Application => {
     const allowedOrigins = [
       "http://localhost:8080",
       "http://local-server.tumiki.cloud:8080",
+      "https://local-server.tumiki.cloud",
       "https://server.tumiki.cloud",
     ];
 

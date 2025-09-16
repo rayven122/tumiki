@@ -74,6 +74,7 @@ const createMockContext = (): ProtectedContext => {
     db: mockDb,
     session: sessionWithId,
     currentOrganizationId: mockOrganizationId,
+    isCurrentOrganizationAdmin: false,
     headers: new Headers(),
   };
 };

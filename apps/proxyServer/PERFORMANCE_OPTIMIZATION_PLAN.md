@@ -2,9 +2,9 @@
 
 ## 🎯 分析結果サマリー
 
-- **既存キャッシュ**: validateApiKey.tsのみ実装済み（p-memoize + ExpiryMap）
+- **既存キャッシュ**: AuthCacheクラスで統一管理（LRUCache使用）
 - **主要ボトルネック**: DBアクセス（キャッシュなし）、ログ処理（32箇所）、JSON.stringify（12箇所）
-- **利用可能ツール**: p-memoize（^7.1.1）、expiry-map（^2.0.0）既にインストール済み
+- **利用可能ツール**: lru-cache（^11.0.5）を使用した統一キャッシュシステム
 
 ## 📋 実装計画（優先度順）
 
@@ -13,28 +13,19 @@
 #### 1.1 integratedAuth.ts
 
 ```typescript
-// キャッシュ実装を追加
-import pMemoize from "p-memoize";
-import ExpiryMap from "expiry-map";
+// AuthCacheを使用した統一キャッシュ実装
+import { AuthCache } from "../utils/cache/authCache";
+import { validateApiKey, setAuthCache } from "../libs/validateApiKey";
 
-// MCPサーバーインスタンス情報のキャッシュ（5分間）
-const mcpInstanceCache = new ExpiryMap(5 * 60 * 1000);
+// AuthCacheインスタンスを作成
+const authCache = new AuthCache();
+setAuthCache(authCache);
 
-// getMcpServerInstance関数をメモ化
-const getMcpServerInstance = pMemoize(_getMcpServerInstance, {
-  cache: mcpInstanceCache,
-  cacheKey: ([id]) => id,
-});
-
-// getMcpServerInstanceIdFromApiKey関数をメモ化
-const apiKeyToInstanceIdCache = new ExpiryMap(5 * 60 * 1000);
-const getMcpServerInstanceIdFromApiKey = pMemoize(
-  _getMcpServerInstanceIdFromApiKey,
-  {
-    cache: apiKeyToInstanceIdCache,
-    cacheKey: ([key]) => key,
-  }
-);
+// validateApiKey関数が内部でAuthCacheを使用
+// - 自動的にキャッシュから取得を試みる
+// - キャッシュミスの場合はDBから取得してキャッシュに保存
+// - TTL: 5分間（設定可能）
+// - 最大エントリー数: 100（設定可能）
 
 // selectの最適化: includeを削除し、必要最小限のフィールドのみ取得
 select: {
@@ -48,16 +39,16 @@ select: {
 #### 1.2 proxy.ts
 
 ```typescript
-// キャッシュ実装を追加
-import pMemoize from "p-memoize";
-import ExpiryMap from "expiry-map";
+// AuthCacheを使用した統一キャッシュ実装
+import { createAuthCache } from "../utils/cache/authCache";
+import { validateApiKey, setAuthCache } from "../libs/validateApiKey";
 
-// サーバー設定キャッシュ（5分間）
-const serverConfigCache = new ExpiryMap(5 * 60 * 1000);
+// AuthCacheインスタンスを作成して設定
+const authCache = createAuthCache();
+setAuthCache(authCache);
 
-// getServerConfigsByInstanceId関数をメモ化
-const getServerConfigsByInstanceId = pMemoize(_getServerConfigsByInstanceId, {
-  cache: serverConfigCache,
+// APIキー検証時に自動的にキャッシュが使用される
+const validation = await validateApiKey(apiKey);
   cacheKey: ([id]) => id,
 });
 

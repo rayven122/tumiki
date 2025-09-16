@@ -32,4 +32,34 @@ export const config = {
       process.env.MAINTENANCE_ALLOWED_IPS?.split(",").map((ip) => ip.trim()) ||
       [],
   },
+
+  // 接続プール設定（4GB最適化）
+  connectionPool: {
+    maxTotalConnections: parseInt(process.env.MCP_POOL_MAX_TOTAL || "60", 10), // 全体で最大60接続
+    maxConnectionsPerServer: parseInt(
+      process.env.MCP_POOL_MAX_PER_SERVER || "5",
+      10,
+    ), // サーバーあたり最大5接続
+    idleTimeout: parseInt(process.env.MCP_POOL_IDLE_TIMEOUT_MS || "180000", 10), // 3分でタイムアウト
+    healthCheckInterval: parseInt(
+      process.env.MCP_POOL_HEALTH_CHECK_MS || "60000",
+      10,
+    ), // 1分ごとのヘルスチェック
+    maxRetries: parseInt(process.env.MCP_POOL_MAX_RETRIES || "3", 10), // 接続失敗時のリトライ数
+    cleanupInterval: parseInt(
+      process.env.MCP_POOL_CLEANUP_INTERVAL_MS || "60000",
+      10,
+    ), // 1分ごとのクリーンアップ
+  },
+
+  // キャッシュ設定（4GB最適化）
+  cache: {
+    maxEntries: parseInt(process.env.CACHE_MAX_ENTRIES || "100", 10), // 最大100エントリ
+    ttl: parseInt(process.env.CACHE_TTL_MS || "600000", 10), // 10分TTL
+    maxMemoryMB: parseInt(process.env.CACHE_MAX_MEMORY_MB || "150", 10), // 最大150MBメモリ使用
+    cleanupInterval: parseInt(
+      process.env.CACHE_CLEANUP_INTERVAL_MS || "60000",
+      10,
+    ), // 1分ごとのクリーンアップ
+  },
 } as const;

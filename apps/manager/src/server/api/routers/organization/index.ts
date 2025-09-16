@@ -24,6 +24,17 @@ import {
   inviteMemberInputSchema,
   inviteMemberOutputSchema,
 } from "./inviteMember";
+import { getInvitations, getInvitationsOutputSchema } from "./getInvitations";
+import {
+  resendInvitation,
+  resendInvitationInputSchema,
+  resendInvitationOutputSchema,
+} from "./resendInvitation";
+import {
+  cancelInvitation,
+  cancelInvitationInputSchema,
+  cancelInvitationOutputSchema,
+} from "./cancelInvitation";
 import {
   removeMember,
   removeMemberInputSchema,
@@ -98,6 +109,23 @@ export const organizationRouter = createTRPCRouter({
     .input(inviteMemberInputSchema)
     .output(inviteMemberOutputSchema)
     .mutation(inviteMember),
+
+  // 招待一覧取得
+  getInvitations: protectedProcedure
+    .output(getInvitationsOutputSchema)
+    .query(getInvitations),
+
+  // 招待再送信
+  resendInvitation: protectedProcedure
+    .input(resendInvitationInputSchema)
+    .output(resendInvitationOutputSchema)
+    .mutation(resendInvitation),
+
+  // 招待キャンセル
+  cancelInvitation: protectedProcedure
+    .input(cancelInvitationInputSchema)
+    .output(cancelInvitationOutputSchema)
+    .mutation(cancelInvitation),
 
   // メンバー削除
   removeMember: protectedProcedure

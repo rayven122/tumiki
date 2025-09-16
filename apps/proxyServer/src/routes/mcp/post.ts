@@ -11,8 +11,7 @@ import {
 } from "../../utils/session.js";
 import { getServer } from "../../utils/proxy.js";
 import { TransportType } from "@tumiki/db";
-import { logMcpRequest } from "../../libs/requestLogger.js";
-import { toMcpRequest } from "../../utils/mcpAdapter.js";
+import { toMcpRequest, ensureMcpAcceptHeader } from "../../utils/mcpAdapter.js";
 import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 import {
   sendBadRequestError,
@@ -91,24 +90,15 @@ export const handlePOSTRequest = async (
     }
   }
 
-  // リクエストをtransportに転送（詳細ログ記録付き）
-  const startTime = Date.now();
-  let responseData: unknown = undefined;
-  let success = false;
-
+  // リクエストをtransportに転送
   try {
     // リクエストボディをキャプチャ
     const requestBody = req.body as unknown;
 
-    // レスポンスをインターセプトするためのオリジナルjsonメソッドを保存
-    const originalJson = res.json.bind(res);
-    res.json = function (body: unknown) {
-      responseData = body;
-      return originalJson(body);
-    };
+    // Acceptヘッダーを確認・追加
+    ensureMcpAcceptHeader(req);
 
     await transport.handleRequest(toMcpRequest(req), res, requestBody);
-    success = true;
   } catch {
     if (!res.headersSent) {
       const errorResponse = {
@@ -119,54 +109,7 @@ export const handlePOSTRequest = async (
         },
         id: null,
       };
-      responseData = errorResponse;
       res.status(500).json(errorResponse);
-    }
-  } finally {
-    // リクエスト完了時にログ記録
-    const durationMs = Date.now() - startTime;
-
-    // データサイズ制限チェック（圧縮前の生データサイズで5MB制限）
-    const maxLogSize = 5 * 1024 * 1024; // 5MB（圧縮前）
-
-    // リクエストデータのサイズチェック
-    const requestStr = JSON.stringify(req.body || {});
-    const requestData =
-      requestStr.length > maxLogSize
-        ? `[Data too large: ${requestStr.length} bytes]`
-        : requestStr;
-
-    // レスポンスデータのサイズチェック
-    const responseStr = responseData ? JSON.stringify(responseData) : "";
-    const responseDataForLog =
-      responseStr.length > maxLogSize
-        ? `[Data too large: ${responseStr.length} bytes]`
-        : responseStr;
-
-    const inputBytes = requestStr.length;
-    const outputBytes = responseStr.length;
-
-    // 検証モードでない場合のみログ記録
-    if (
-      !isValidationMode &&
-      req.authInfo?.userMcpServerInstanceId &&
-      req.authInfo?.organizationId
-    ) {
-      // 非同期でログ記録（レスポンス返却をブロックしない）
-      void logMcpRequest({
-        mcpServerInstanceId: req.authInfo.userMcpServerInstanceId,
-        organizationId: req.authInfo.organizationId,
-        toolName: "http_transport",
-        transportType: TransportType.STREAMABLE_HTTPS,
-        method: req.method,
-        responseStatus: success ? "200" : "500",
-        durationMs,
-        inputBytes,
-        outputBytes,
-        // 詳細ログ記録を追加（サイズ制限付き）
-        requestData: requestData,
-        responseData: responseDataForLog || undefined,
-      });
     }
   }
 };

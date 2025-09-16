@@ -11,8 +11,12 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/tcp";
-import { TransportType } from "@tumiki/db";
-import { validateApiKey } from "../libs/validateApiKey.js";
+import { type TransportType } from "@tumiki/db";
+import { validateApiKey, setAuthCache } from "../libs/validateApiKey.js";
+import {
+  setupGoogleCredentialsEnv,
+  type GoogleCredentials,
+} from "@tumiki/utils/server/security";
 
 import type {
   ServerConfig,
@@ -23,14 +27,27 @@ import { config } from "../libs/config.js";
 import { recordError, measureExecutionTime } from "../libs/metrics.js";
 import { logMcpRequest } from "../libs/requestLogger.js";
 import { calculateDataSize } from "../libs/dataCompression.js";
+import { createToolsCache } from "./cache/index.js";
+import { createAuthCache } from "./cache/authCache.js";
+import { mcpPool } from "./mcpPool.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ToolsCache シングルトンインスタンス
+const toolsCache = createToolsCache();
+
+// AuthCache シングルトンインスタンス
+const authCache = createAuthCache();
+
+// validateApiKeyにAuthCacheインスタンスを設定
+setAuthCache(authCache);
 
 export type ConnectedClient = {
   client: Client;
   cleanup: () => Promise<void>;
   name: string;
   toolNames: string[];
+  credentialsCleanup?: () => Promise<void>;
 };
 
 /**
@@ -82,28 +99,100 @@ export const getSSEConnectionPool = (): SSEConnectionPool => {
  * @param server
  * @returns
  */
-const createClient = (
+const createClient = async (
   server: ServerConfig,
-): { client: Client | undefined; transport: Transport | undefined } => {
+): Promise<{
+  client: Client | undefined;
+  transport: Transport | undefined;
+  credentialsCleanup?: () => Promise<void>;
+}> => {
   let transport: Transport | null = null;
+  let credentialsCleanup: (() => Promise<void>) | undefined;
+
   try {
     if (server.transport.type === "sse") {
       // Type narrowing: when type is "sse", url is guaranteed to be string
       const sseTransport = server.transport;
       if ("url" in sseTransport && typeof sseTransport.url === "string") {
-        transport = new SSEClientTransport(new URL(sseTransport.url));
+        // SSE transportにヘッダーを設定（認証情報を含む）
+        const headers: Record<string, string> = {};
+
+        // 環境変数から認証情報を取得して設定
+        if (sseTransport.env) {
+          // x-api-keyヘッダーの設定（API_KEYやX_API_KEYなどの環境変数から）
+          if (sseTransport.env.API_KEY) {
+            headers["X-API-Key"] = sseTransport.env.API_KEY;
+          } else if (sseTransport.env.X_API_KEY) {
+            headers["X-API-Key"] = sseTransport.env.X_API_KEY;
+          }
+
+          // Authorizationヘッダーの設定（AUTHORIZATION_TOKENやBEARER_TOKENなどから）
+          if (sseTransport.env.AUTHORIZATION_TOKEN) {
+            headers.Authorization = `Bearer ${sseTransport.env.AUTHORIZATION_TOKEN}`;
+          } else if (sseTransport.env.BEARER_TOKEN) {
+            headers.Authorization = `Bearer ${sseTransport.env.BEARER_TOKEN}`;
+          } else if (sseTransport.env.AUTHORIZATION) {
+            headers.Authorization = sseTransport.env.AUTHORIZATION;
+          }
+
+          // その他のカスタムヘッダー（CUSTOM_HEADER_プレフィックスなど）
+          for (const [key, value] of Object.entries(sseTransport.env)) {
+            if (key.startsWith("HEADER_")) {
+              const headerName = key.substring(7).replace(/_/g, "-");
+              headers[headerName] = value;
+            }
+          }
+        }
+
+        // カスタムfetch実装を使用してヘッダーを設定
+        const customFetch = async (url: string | URL, init: RequestInit) => {
+          const finalInit = {
+            ...init,
+            headers: {
+              ...init.headers,
+              ...headers,
+            },
+          };
+          return fetch(url, finalInit);
+        };
+
+        const sseOptions: unknown = {
+          eventSourceInit: {
+            // EventSourceInitはfetchプロパティをサポート
+            fetch: Object.keys(headers).length > 0 ? customFetch : undefined,
+          },
+          requestInit: {
+            headers: Object.keys(headers).length > 0 ? headers : undefined,
+          },
+        };
+
+        transport = new SSEClientTransport(
+          new URL(sseTransport.url),
+          // @ts-expect-error - SSEClientTransportOptionsの型定義にfetchプロパティが含まれていないため
+          sseOptions,
+        );
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
     } else {
-      const finalEnv = server.transport.env
+      let finalEnv = server.transport.env
         ? Object.fromEntries(
             Object.entries(server.transport.env).map(([key, value]) => [
               key,
               String(value), // DBの値を優先（process.envは使用しない）
             ]),
           )
-        : undefined;
+        : {};
+
+      // Google認証情報の処理
+      if (server.googleCredentials) {
+        const { envVars, cleanup } = await setupGoogleCredentialsEnv(
+          finalEnv,
+          server.googleCredentials as GoogleCredentials,
+        );
+        finalEnv = envVars;
+        credentialsCleanup = cleanup;
+      }
 
       transport = new StdioClientTransport({
         command: server.transport.command,
@@ -113,7 +202,7 @@ const createClient = (
     }
   } catch {
     recordError("transport_creation_failed");
-    return { transport: undefined, client: undefined };
+    return { transport: undefined, client: undefined, credentialsCleanup };
   }
 
   const client = new Client({
@@ -121,7 +210,7 @@ const createClient = (
     version: "1.0.0",
   });
 
-  return { client, transport };
+  return { client, transport, credentialsCleanup };
 };
 
 /**
@@ -138,8 +227,13 @@ const connectToServer = async (
   let retry = true;
 
   while (retry) {
-    const { client, transport } = createClient(server);
+    const { client, transport, credentialsCleanup } =
+      await createClient(server);
     if (!client || !transport) {
+      // 認証情報ファイルのクリーンアップ
+      if (credentialsCleanup) {
+        await credentialsCleanup();
+      }
       return null;
     }
 
@@ -151,8 +245,13 @@ const connectToServer = async (
         name: server.name,
         cleanup: async () => {
           await transport.close();
+          // 認証情報ファイルのクリーンアップ
+          if (credentialsCleanup) {
+            await credentialsCleanup();
+          }
         },
         toolNames: server.toolNames,
+        credentialsCleanup,
       };
     } catch {
       recordError("server_connection_failed");
@@ -163,6 +262,10 @@ const connectToServer = async (
           await client.close();
           // transportも確実にクローズする
           await transport.close();
+          // 認証情報ファイルのクリーンアップ
+          if (credentialsCleanup) {
+            await credentialsCleanup();
+          }
         } catch {
           // クリーンアップ失敗は無視
         } finally {
@@ -213,108 +316,6 @@ export const createClients = async (
   });
 
   return clients;
-};
-
-const getServerConfigs = async (apiKey: string) => {
-  // APIキー検証
-  const validation = await validateApiKey(apiKey);
-
-  if (!validation.valid) {
-    throw new Error(`Invalid API key: ${validation.error}`);
-  }
-
-  const { userMcpServerInstance: serverInstance } = validation;
-
-  if (!serverInstance) {
-    throw new Error("Server instance not found");
-  }
-
-  const serverConfigIds = serverInstance.toolGroup.toolGroupTools.map(
-    ({ userMcpServerConfigId }) => userMcpServerConfigId,
-  );
-
-  const serverConfigs = await db.userMcpServerConfig.findMany({
-    where: {
-      id: {
-        in: serverConfigIds,
-      },
-    },
-    omit: {
-      envVars: false,
-    },
-    include: {
-      mcpServer: true,
-    },
-  });
-
-  const serverConfigList: ServerConfig[] = serverConfigs.map((serverConfig) => {
-    const toolNames = serverInstance.toolGroup.toolGroupTools
-      .filter(
-        ({ userMcpServerConfigId }) =>
-          userMcpServerConfigId === serverConfig.id,
-      )
-      .map(({ tool }) => tool.name);
-
-    let envObj: Record<string, string>;
-    try {
-      envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
-    } catch {
-      throw new Error(
-        `Invalid environment variables configuration for ${serverConfig.name}`,
-      );
-    }
-
-    // args 内部に、envObj の key の値と一致するものは、値を置き換える
-    // 例: --api-key=API_KEY の場合、envObj["API_KEY"] の値に置き換える
-    // ただし、envObj に存在しない場合はそのまま使用する
-    const args = serverConfig.mcpServer.args.map((arg) => {
-      for (const [key, value] of Object.entries(envObj)) {
-        // 置き換え対象のキーが arg に含まれているかチェック
-        if (arg.includes(key)) {
-          const newArg = arg.replace(key, value);
-          return newArg;
-        }
-      }
-      return arg;
-    });
-
-    if (serverConfig.mcpServer.transportType === TransportType.STDIO) {
-      const transportConfig = {
-        name: serverConfig.name,
-        toolNames,
-        transport: {
-          type: "stdio" as const,
-          command:
-            serverConfig.mcpServer.command === "node"
-              ? process.execPath
-              : (serverConfig.mcpServer.command ?? ""),
-          args,
-          env: envObj,
-        },
-      };
-
-      return transportConfig;
-    } else {
-      if (!serverConfig.mcpServer.url) {
-        throw new Error(
-          `SSE transport URL is required for ${serverConfig.name}`,
-        );
-      }
-
-      const transportConfig = {
-        name: serverConfig.name,
-        toolNames,
-        transport: {
-          type: "sse" as const,
-          url: serverConfig.mcpServer.url,
-        },
-      };
-
-      return transportConfig;
-    }
-  });
-
-  return serverConfigList;
 };
 
 // MCPサーバーインスタンスIDから設定を取得
@@ -371,36 +372,41 @@ const getServerConfigsByInstanceId = async (
       .map(({ tool }) => tool.name);
 
     let envObj: Record<string, string>;
+    let googleCredentials: Record<string, unknown> | null = null;
+
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
     } catch {
       envObj = {};
     }
 
+    // GOOGLE_APPLICATION_CREDENTIALS が含まれている場合、JSONとして解析
+    if (envObj.GOOGLE_APPLICATION_CREDENTIALS) {
+      try {
+        googleCredentials = JSON.parse(
+          envObj.GOOGLE_APPLICATION_CREDENTIALS,
+        ) as Record<string, unknown>;
+        // envObjから削除（ファイルパスは動的に生成されるため）
+        delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
+      } catch (error) {
+        throw new Error(
+          `Invalid GOOGLE_APPLICATION_CREDENTIALS format for ${serverConfig.name}: Must be valid JSON. ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
     const transportConfig: TransportConfig = {
       type: "stdio",
       command: serverConfig.mcpServer.command || "",
       args: serverConfig.mcpServer.args ?? [],
-      env: {
-        ...process.env,
-        ...envObj,
-      } as Record<string, string>,
+      env: envObj,
     } satisfies TransportConfigStdio;
-
-    if (
-      transportConfig.type === "stdio" &&
-      transportConfig.args &&
-      transportConfig.args.length > 0
-    ) {
-      transportConfig.args = JSON.parse(
-        JSON.stringify(transportConfig.args),
-      ) as string[];
-    }
 
     const config: ServerConfig = {
       name: serverConfig.name,
       toolNames,
       transport: transportConfig,
+      googleCredentials,
     };
 
     return config;
@@ -409,7 +415,7 @@ const getServerConfigsByInstanceId = async (
   return serverConfigList;
 };
 
-// MCPサーバーインスタンスIDからMCPクライアントを取得
+// MCPサーバーインスタンスIDからMCPクライアントを取得（プール使用版）
 export const getMcpClientsByInstanceId = async (
   userMcpServerInstanceId: string,
 ) => {
@@ -417,15 +423,51 @@ export const getMcpClientsByInstanceId = async (
     userMcpServerInstanceId,
   );
 
-  const connectedClients = await createClients(serverConfigs);
-  // デバッグログを削除（メモリ使用量削減）
+  // プールから接続を取得または作成（並列処理）
+  const connectionPromises = serverConfigs.map(async (serverConfig) => {
+    try {
+      const client = await mcpPool.getConnection(
+        userMcpServerInstanceId,
+        serverConfig.name,
+        serverConfig,
+      );
+
+      return {
+        client,
+        name: serverConfig.name,
+        cleanup: async () => {
+          // プールに返却
+          mcpPool.releaseConnection(
+            userMcpServerInstanceId,
+            serverConfig.name,
+            client,
+          );
+        },
+        toolNames: serverConfig.toolNames,
+      };
+    } catch (error) {
+      // 接続失敗はログして続行
+      console.error(`Failed to connect to ${serverConfig.name}:`, error);
+      recordError("server_connection_failed");
+      return null;
+    }
+  });
+
+  // Promise.allSettledで全ての接続を並列実行
+  const connectionResults = await Promise.allSettled(connectionPromises);
+
+  // 成功した接続のみをフィルタリング
+  const connectedClients: ConnectedClient[] = connectionResults
+    .filter(
+      (result): result is PromiseFulfilledResult<ConnectedClient | null> =>
+        result.status === "fulfilled" && result.value !== null,
+    )
+    .map((result) => result.value!);
 
   const cleanup = async () => {
-    try {
-      // デバッグログを削除（メモリ使用量削減）
-      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch {
-      // クリーンアップ失敗は無視
+    // 全ての接続をプールに返却
+    for (const { name, client } of connectedClients) {
+      mcpPool.releaseConnection(userMcpServerInstanceId, name, client);
     }
   };
 
@@ -434,21 +476,31 @@ export const getMcpClientsByInstanceId = async (
 
 // APIキーからMCPクライアントを取得（後方互換性）
 export const getMcpClients = async (apiKey: string) => {
-  const serverConfigs = await getServerConfigs(apiKey);
-
-  const connectedClients = await createClients(serverConfigs);
-  // デバッグログを削除（メモリ使用量削減）
-
-  const cleanup = async () => {
-    try {
-      // デバッグログを削除（メモリ使用量削減）
-      await Promise.all(connectedClients.map(({ cleanup }) => cleanup()));
-    } catch {
-      // クリーンアップ失敗は無視
+  // 🎯 AuthCacheチェック
+  const cachedAuth = authCache.get(apiKey);
+  if (cachedAuth) {
+    // キャッシュヒット
+    if (!cachedAuth.valid || !cachedAuth.userMcpServerInstanceId) {
+      throw new Error(
+        `Invalid API key: ${cachedAuth.error || "Unknown error"}`,
+      );
     }
-  };
+    // プール版の関数を使用
+    return getMcpClientsByInstanceId(cachedAuth.userMcpServerInstanceId);
+  }
 
-  return { connectedClients, cleanup };
+  // キャッシュミス: APIキーからuserMcpServerInstanceIdを取得
+  const validation = await validateApiKey(apiKey);
+
+  // 結果をキャッシュに保存
+  authCache.set(apiKey, validation);
+
+  if (!validation.valid || !validation.userMcpServerInstance) {
+    throw new Error(`Invalid API key: ${validation.error || "Unknown error"}`);
+  }
+
+  // プール版の関数を使用
+  return getMcpClientsByInstanceId(validation.userMcpServerInstance.id);
 };
 
 export const getServer = async (
@@ -460,14 +512,30 @@ export const getServer = async (
   let userMcpServerInstanceId: string;
   const apiKeyPrefix = process.env.API_KEY_PREFIX;
   if (apiKeyPrefix && serverIdentifier.startsWith(apiKeyPrefix)) {
-    // APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
-    const validation = await validateApiKey(serverIdentifier);
-    if (!validation.valid || !validation.userMcpServerInstance) {
-      throw new Error(
-        `Invalid API key: ${validation.error || "Unknown error"}`,
-      );
+    // 🎯 AuthCacheチェック
+    const cachedAuth = authCache.get(serverIdentifier);
+    if (cachedAuth) {
+      // キャッシュヒット
+      if (!cachedAuth.valid || !cachedAuth.userMcpServerInstanceId) {
+        throw new Error(
+          `Invalid API key: ${cachedAuth.error || "Unknown error"}`,
+        );
+      }
+      userMcpServerInstanceId = cachedAuth.userMcpServerInstanceId;
+    } else {
+      // キャッシュミス: APIキーの場合、validateApiKeyを使ってuserMcpServerInstanceIdを取得
+      const validation = await validateApiKey(serverIdentifier);
+
+      // 結果をキャッシュに保存
+      authCache.set(serverIdentifier, validation);
+
+      if (!validation.valid || !validation.userMcpServerInstance) {
+        throw new Error(
+          `Invalid API key: ${validation.error || "Unknown error"}`,
+        );
+      }
+      userMcpServerInstanceId = validation.userMcpServerInstance.id;
     }
-    userMcpServerInstanceId = validation.userMcpServerInstance.id;
   } else {
     // 直接userMcpServerInstanceIdとして扱う
     userMcpServerInstanceId = serverIdentifier;
@@ -514,6 +582,46 @@ export const getServer = async (
         throw new Error("Server instance not found");
       }
 
+      // 🆕 キャッシュチェック
+      // サーバー設定を取得してキャッシュキーを生成
+      const serverConfigs = await getServerConfigsByInstanceId(
+        userMcpServerInstanceId,
+      );
+      const serverConfigHash =
+        toolsCache.generateServerConfigHash(serverConfigs);
+      const cacheKey = toolsCache.generateKey(
+        userMcpServerInstanceId,
+        serverConfigHash,
+      );
+
+      // キャッシュヒットチェック
+      const cachedTools = toolsCache.getTools(cacheKey);
+      if (cachedTools) {
+        // 🎯 キャッシュヒット: 即座にレスポンス
+        const durationMs = Date.now() - startTime;
+
+        // キャッシュヒット時のログ記録
+        if (userMcpServerInstance && !isValidationMode) {
+          const inputBytes = calculateDataSize(request.params ?? {});
+          const outputBytes = calculateDataSize(cachedTools);
+
+          void logMcpRequest({
+            organizationId: userMcpServerInstance.organizationId,
+            mcpServerInstanceId: userMcpServerInstance.id,
+            toolName: "tools/list",
+            transportType: transportType,
+            method: "tools/list",
+            responseStatus: "200",
+            durationMs,
+            inputBytes,
+            outputBytes,
+            cached: true, // 🆕 キャッシュフラグ
+          });
+        }
+
+        return { tools: cachedTools };
+      }
+
       const result = await measureExecutionTime(
         () =>
           Promise.race([
@@ -526,34 +634,53 @@ export const getServer = async (
                 const allTools: Tool[] = [];
                 const toolToClientMap = new Map<string, ConnectedClient>();
 
-                for (const connectedClient of connectedClients) {
-                  try {
-                    const result = await connectedClient.client.request(
-                      {
-                        method: "tools/list",
-                        params: {
-                          _meta: request.params?._meta,
+                // 全クライアントに並列でリクエストを送信
+                const toolsPromises = connectedClients.map(
+                  async (connectedClient) => {
+                    try {
+                      const result = await connectedClient.client.request(
+                        {
+                          method: "tools/list",
+                          params: {
+                            _meta: request.params?._meta,
+                          },
                         },
-                      },
-                      ListToolsResultSchema,
-                    );
+                        ListToolsResultSchema,
+                      );
 
-                    if (result.tools) {
-                      const toolsWithSource = result.tools
-                        .filter((tool) =>
-                          connectedClient.toolNames.includes(tool.name),
-                        )
-                        .map((tool) => {
-                          toolToClientMap.set(tool.name, connectedClient);
-                          return {
-                            ...tool,
-                            description: `[${connectedClient.name}] ${tool.description}`,
-                          };
-                        });
-                      allTools.push(...toolsWithSource);
+                      if (result.tools) {
+                        const toolsWithSource = result.tools
+                          .filter((tool) =>
+                            connectedClient.toolNames.includes(tool.name),
+                          )
+                          .map((tool) => {
+                            return {
+                              tool: {
+                                ...tool,
+                                description: `[${connectedClient.name}] ${tool.description}`,
+                              },
+                              client: connectedClient,
+                            };
+                          });
+                        return toolsWithSource;
+                      }
+                      return [];
+                    } catch {
+                      recordError("tools_list_client_error");
+                      return [];
                     }
-                  } catch {
-                    recordError("tools_list_client_error");
+                  },
+                );
+
+                // 全ての結果を待って統合
+                const toolsResults = await Promise.allSettled(toolsPromises);
+
+                for (const result of toolsResults) {
+                  if (result.status === "fulfilled" && result.value) {
+                    for (const { tool, client } of result.value) {
+                      toolToClientMap.set(tool.name, client);
+                      allTools.push(tool);
+                    }
                   }
                 }
 
@@ -569,6 +696,9 @@ export const getServer = async (
       );
 
       await result.cleanup();
+
+      // 🆕 キャッシュミス: 結果をキャッシュに保存
+      toolsCache.setTools(cacheKey, result.tools, serverConfigHash);
 
       const durationMs = Date.now() - startTime;
 
@@ -589,9 +719,7 @@ export const getServer = async (
           durationMs,
           inputBytes,
           outputBytes,
-          // 詳細ログ記録を追加
-          requestData: JSON.stringify(request),
-          responseData: JSON.stringify({ tools: result.tools }),
+          cached: false, // 🆕 キャッシュミスフラグ
         });
       }
 
@@ -778,6 +906,29 @@ export const getServer = async (
   });
 
   return { server };
+};
+
+/**
+ * APIキーの無効化時にキャッシュをクリア
+ */
+export const invalidateApiKeyCache = (apiKey: string): boolean => {
+  return authCache.delete(apiKey);
+};
+
+/**
+ * インスタンスIDに関連する全てのキャッシュをクリア
+ */
+export const invalidateCacheByInstanceId = (instanceId: string): number => {
+  return authCache.clearByInstanceId(instanceId);
+};
+
+/**
+ * 組織IDに関連する全てのキャッシュをクリア
+ */
+export const invalidateCacheByOrganizationId = (
+  organizationId: string,
+): number => {
+  return authCache.clearByOrganizationId(organizationId);
 };
 
 // プロセス終了時のクリーンアップ

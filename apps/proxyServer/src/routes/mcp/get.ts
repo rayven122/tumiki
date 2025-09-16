@@ -2,7 +2,7 @@ import { type Response } from "express";
 import type { AuthenticatedRequest } from "../../middleware/integratedAuth.js";
 import { getStreamableTransportBySessionId } from "../../utils/transport.js";
 import { updateSessionActivity, isSessionValid } from "../../utils/session.js";
-import { toMcpRequest } from "../../utils/mcpAdapter.js";
+import { toMcpRequest, ensureMcpAcceptHeader } from "../../utils/mcpAdapter.js";
 import {
   sendBadRequestError,
   sendNotFoundError,
@@ -38,6 +38,9 @@ export const handleGETRequest = async (
 
   // SSE ストリームとして処理
   try {
+    // Acceptヘッダーを確認・追加
+    ensureMcpAcceptHeader(req);
+
     await transport.handleRequest(toMcpRequest(req), res);
   } catch {
     if (!res.headersSent) {

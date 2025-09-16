@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { getStreamableTransportBySessionId } from "../../utils/transport.js";
-import { toMcpRequest } from "../../utils/mcpAdapter.js";
+import { toMcpRequest, ensureMcpAcceptHeader } from "../../utils/mcpAdapter.js";
 import {
   sendBadRequestError,
   sendNotFoundError,
@@ -28,6 +28,9 @@ export const handleDELETERequest: (
   }
 
   try {
+    // Acceptヘッダーを確認・追加
+    ensureMcpAcceptHeader(req);
+
     // セッション終了処理をtransportに委譲
     await transport.handleRequest(toMcpRequest(req), res);
   } catch {
