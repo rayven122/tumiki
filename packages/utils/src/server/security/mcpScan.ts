@@ -304,15 +304,23 @@ const determineToolCategories = (
 };
 
 /**
- * 生のスキャン結果を整形されたデータ構造に変換
+ * サーバーの分析を処理
  */
-const transformRawScanOutput = (
-  rawOutput: z.infer<typeof RawMcpScanOutputSchema>,
-): McpScanResult => {
+const processServers = (
+  rawServers: z.infer<typeof RawMcpServerSchema>[],
+  issues: z.infer<typeof RawIssueSchema>[],
+): {
+  servers: McpServerAnalysis[];
+  stats: {
+    totalTools: number;
+    toolsWithIssues: number;
+    criticalIssues: number;
+    warnings: number;
+    serversStarted: number;
+    serversFailed: number;
+  };
+} => {
   const servers: McpServerAnalysis[] = [];
-  const toxicFlows: ToxicFlow[] = [];
-
-  // サマリー統計の初期化
   let totalTools = 0;
   let toolsWithIssues = 0;
   let criticalIssues = 0;
@@ -320,8 +328,7 @@ const transformRawScanOutput = (
   let serversStarted = 0;
   let serversFailed = 0;
 
-  // サーバーごとの分析
-  rawOutput.servers.forEach((rawServer, serverIndex) => {
+  rawServers.forEach((rawServer, serverIndex) => {
     const serverIssues: ServerIssue[] = [];
     const toolAnalyses: ToolAnalysis[] = [];
     let serverRiskLevel: RiskLevel = "safe";
@@ -345,11 +352,11 @@ const transformRawScanOutput = (
       const categories = determineToolCategories(
         serverIndex,
         toolIndex,
-        rawOutput.issues,
+        issues,
       );
 
       // このツールに関する問題を収集
-      rawOutput.issues.forEach((issue) => {
+      issues.forEach((issue) => {
         if (
           issue.reference &&
           issue.reference[0] === serverIndex &&
@@ -422,8 +429,29 @@ const transformRawScanOutput = (
     });
   });
 
-  // Toxic Flowの処理
-  rawOutput.issues.forEach((issue) => {
+  return {
+    servers,
+    stats: {
+      totalTools,
+      toolsWithIssues,
+      criticalIssues,
+      warnings,
+      serversStarted,
+      serversFailed,
+    },
+  };
+};
+
+/**
+ * Toxic Flowの処理
+ */
+const processToxicFlows = (
+  issues: z.infer<typeof RawIssueSchema>[],
+  rawServers: z.infer<typeof RawMcpServerSchema>[],
+): ToxicFlow[] => {
+  const toxicFlows: ToxicFlow[] = [];
+
+  issues.forEach((issue) => {
     if (issue.code.startsWith("TF") && issue.extra_data) {
       const affectedServers = new Set<string>();
       const toolReferences: ToolReference[] = [];
@@ -435,7 +463,7 @@ const transformRawScanOutput = (
         if (!refs) return;
 
         refs.forEach((ref) => {
-          const server = rawOutput.servers[ref.reference[0]];
+          const server = rawServers[ref.reference[0]];
           const tool = server?.signature?.tools[ref.reference[1]];
           if (server && tool) {
             affectedServers.add(server.name);
@@ -481,17 +509,46 @@ const transformRawScanOutput = (
     }
   });
 
-  // サマリーを作成
-  const summary: McpScanSummary = {
-    totalServers: rawOutput.servers.length,
-    serversStarted,
-    serversFailed,
-    totalTools,
-    toolsWithIssues,
-    criticalIssues,
-    warnings,
-    toxicFlowsDetected: toxicFlows.length,
-  };
+  return toxicFlows;
+};
+
+/**
+ * サマリー統計を作成
+ */
+const createSummaryStats = (
+  servers: McpServerAnalysis[],
+  toxicFlows: ToxicFlow[],
+  stats: {
+    totalTools: number;
+    toolsWithIssues: number;
+    criticalIssues: number;
+    warnings: number;
+    serversStarted: number;
+    serversFailed: number;
+  },
+): McpScanSummary => ({
+  totalServers: servers.length,
+  serversStarted: stats.serversStarted,
+  serversFailed: stats.serversFailed,
+  totalTools: stats.totalTools,
+  toolsWithIssues: stats.toolsWithIssues,
+  criticalIssues: stats.criticalIssues,
+  warnings: stats.warnings,
+  toxicFlowsDetected: toxicFlows.length,
+});
+
+/**
+ * 生のスキャン結果を整形されたデータ構造に変換
+ */
+const transformRawScanOutput = (
+  rawOutput: z.infer<typeof RawMcpScanOutputSchema>,
+): McpScanResult => {
+  const { servers, stats } = processServers(
+    rawOutput.servers,
+    rawOutput.issues,
+  );
+  const toxicFlows = processToxicFlows(rawOutput.issues, rawOutput.servers);
+  const summary = createSummaryStats(servers, toxicFlows, stats);
 
   return {
     success: true,
@@ -500,6 +557,102 @@ const transformRawScanOutput = (
     toxicFlows,
     error: undefined,
   };
+};
+
+/**
+ * エラーメッセージから機密情報を除去
+ */
+const sanitizeErrorMessage = (error: unknown): string => {
+  if (!(error instanceof Error)) return "Unknown error";
+
+  // 既知の安全なエラーパターン
+  const safePatterns = [
+    /^File not found:/,
+    /^Permission denied/,
+    /^Timeout/,
+    /^Parse error:/,
+    /^Schema validation failed:/,
+  ];
+
+  if (safePatterns.some((pattern) => pattern.test(error.message))) {
+    return error.message;
+  }
+
+  // その他は一般的なメッセージに変換
+  if (error.message.includes("Command failed")) {
+    return "セキュリティスキャンツールの実行に失敗しました";
+  }
+
+  if (error.message.includes("ETIMEDOUT")) {
+    return "Scan timeout";
+  }
+
+  return "予期しないエラーが発生しました";
+};
+
+/**
+ * 空のサマリーを作成
+ */
+const createEmptySummary = (): McpScanSummary => ({
+  totalServers: 0,
+  serversStarted: 0,
+  serversFailed: 0,
+  totalTools: 0,
+  toolsWithIssues: 0,
+  criticalIssues: 0,
+  warnings: 0,
+  toxicFlowsDetected: 0,
+});
+
+/**
+ * 共通のMCPスキャン実行ロジック
+ */
+const executeMcpScan = async (
+  configFile: string,
+  timeout: number,
+): Promise<McpScanResult> => {
+  // mcp-scanを実行（JSONフォーマットで結果を取得、--full-toxic-flowsで全情報取得）
+  const { stdout, stderr } = await execAsync(
+    `uvx mcp-scan@latest "${configFile}" --json --full-toxic-flows --server-timeout 30 --suppress-mcpserver-io true`,
+    { timeout },
+  );
+
+  if (stderr && !stderr.includes("warning")) {
+    console.error("mcp-scan stderr:", stderr);
+  }
+
+  // JSON出力をパース
+  const scanOutput: unknown = JSON.parse(stdout);
+
+  // Zodスキーマで安全に検証と変換
+  const parseResult = z.record(RawMcpScanOutputSchema).safeParse(scanOutput);
+
+  if (!parseResult.success) {
+    console.error("Schema validation failed:", parseResult.error);
+    return {
+      success: false,
+      summary: createEmptySummary(),
+      servers: [],
+      toxicFlows: [],
+      error: `スキャン結果の形式が不正です: ${parseResult.error.message}`,
+    };
+  }
+
+  const parsedResult = parseResult.data;
+  const rawScanOutput = parsedResult[configFile];
+
+  if (!rawScanOutput) {
+    return {
+      success: false,
+      summary: createEmptySummary(),
+      servers: [],
+      toxicFlows: [],
+      error: "スキャン結果が取得できませんでした",
+    };
+  }
+
+  // 生データを整形された構造に変換
+  return transformRawScanOutput(rawScanOutput);
 };
 
 /**
@@ -526,135 +679,66 @@ export const runMcpSecurityScan = async (
     } catch {
       return {
         success: false,
-        summary: {
-          totalServers: 0,
-          serversStarted: 0,
-          serversFailed: 0,
-          totalTools: 0,
-          toolsWithIssues: 0,
-          criticalIssues: 0,
-          warnings: 0,
-          toxicFlowsDetected: 0,
-        },
+        summary: createEmptySummary(),
         servers: [],
         toxicFlows: [],
         error: `設定ファイルが見つかりません: ${configFilePath}`,
       };
     }
 
-    // mcp-scanを実行（JSONフォーマットで結果を取得、--full-toxic-flowsで全情報取得）
-    const { stdout, stderr } = await execAsync(
-      `uvx mcp-scan@latest "${configFilePath}" --json --full-toxic-flows --server-timeout 30 --suppress-mcpserver-io true`,
-      { timeout },
-    );
-
-    if (stderr && !stderr.includes("warning")) {
-      console.error("mcp-scan stderr:", stderr);
-    }
-
-    try {
-      // JSON出力をパース
-      const scanOutput: unknown = JSON.parse(stdout);
-
-      // Zodスキーマで検証と変換
-      const parsedResult = z.record(RawMcpScanOutputSchema).parse(scanOutput);
-      const rawScanOutput = parsedResult[configFilePath];
-
-      if (!rawScanOutput) {
-        // スキャン結果が空の場合のデフォルト値
-        return {
-          success: false,
-          summary: {
-            totalServers: 0,
-            serversStarted: 0,
-            serversFailed: 0,
-            totalTools: 0,
-            toolsWithIssues: 0,
-            criticalIssues: 0,
-            warnings: 0,
-            toxicFlowsDetected: 0,
-          },
-          servers: [],
-          toxicFlows: [],
-          error: "スキャン結果が取得できませんでした",
-        };
-      }
-
-      // 生データを整形された構造に変換
-      return transformRawScanOutput(rawScanOutput);
-    } catch (parseError) {
-      console.error("Parse error:", parseError);
-
-      return {
-        success: false,
-        summary: {
-          totalServers: 0,
-          serversStarted: 0,
-          serversFailed: 0,
-          totalTools: 0,
-          toolsWithIssues: 0,
-          criticalIssues: 0,
-          warnings: 0,
-          toxicFlowsDetected: 0,
-        },
-        servers: [],
-        toxicFlows: [],
-        error:
-          parseError instanceof Error
-            ? parseError.message
-            : "Unknown parse error",
-      };
-    }
+    return await executeMcpScan(configFilePath, timeout);
   } catch (error) {
     console.error("mcp-scan execution error:", error);
 
-    // タイムアウトエラーの場合
-    if (error instanceof Error && error.message.includes("ETIMEDOUT")) {
-      return {
-        success: false,
-        summary: {
-          totalServers: 0,
-          serversStarted: 0,
-          serversFailed: 0,
-          totalTools: 0,
-          toolsWithIssues: 0,
-          criticalIssues: 0,
-          warnings: 0,
-          toxicFlowsDetected: 0,
-        },
-        servers: [],
-        toxicFlows: [],
-        error: "Scan timeout",
-      };
-    }
-
-    // エラーメッセージから機密情報を除去
-    let errorMessage = "Unknown error";
-    if (error instanceof Error) {
-      // コマンドラインの詳細を含まないエラーメッセージに変換
-      if (error.message.includes("Command failed")) {
-        errorMessage = "セキュリティスキャンツールの実行に失敗しました";
-      } else {
-        errorMessage = error.message;
-      }
-    }
+    const errorMessage = sanitizeErrorMessage(error);
 
     return {
       success: false,
-      summary: {
-        totalServers: 0,
-        serversStarted: 0,
-        serversFailed: 0,
-        totalTools: 0,
-        toolsWithIssues: 0,
-        criticalIssues: 0,
-        warnings: 0,
-        toxicFlowsDetected: 0,
-      },
+      summary: createEmptySummary(),
       servers: [],
       toxicFlows: [],
       error: errorMessage,
     };
+  }
+};
+
+/**
+ * 一時設定ファイルを作成
+ */
+const createTempConfig = async (
+  serverUrl: string,
+  apiKey: string,
+): Promise<string> => {
+  const tempDir = os.tmpdir();
+  const configFile = path.join(tempDir, `mcp-config-${uuidv4()}.json`);
+
+  const config = {
+    mcpServers: {
+      "temp-server": {
+        url: serverUrl,
+        transport: {
+          type: "sse",
+        },
+        headers: {
+          "api-key": apiKey,
+          "x-validation-mode": "true", // 検証モードを有効化
+        },
+      },
+    },
+  };
+
+  await writeFile(configFile, JSON.stringify(config, null, 2));
+  return configFile;
+};
+
+/**
+ * 一時ファイルをクリーンアップ
+ */
+const cleanupTempFile = async (configFile: string): Promise<void> => {
+  try {
+    await unlink(configFile);
+  } catch {
+    console.warn(`Failed to delete temporary file: ${configFile}`);
   }
 };
 
@@ -678,148 +762,29 @@ export const runMcpSecurityScanWithUrl = async (
   apiKey: string,
   timeout = 60000,
 ): Promise<McpScanResult> => {
-  const tempDir = os.tmpdir();
-  const configFile = path.join(tempDir, `mcp-config-${uuidv4()}.json`);
+  let configFile: string | null = null;
 
   try {
     // 一時的な設定ファイルを作成
-    const config = {
-      mcpServers: {
-        "temp-server": {
-          url: serverUrl,
-          transport: {
-            type: "sse",
-          },
-          headers: {
-            "api-key": apiKey,
-            "x-validation-mode": "true", // 検証モードを有効化
-          },
-        },
-      },
-    };
+    configFile = await createTempConfig(serverUrl, apiKey);
 
-    await writeFile(configFile, JSON.stringify(config, null, 2));
-
-    // mcp-scanを実行（JSONフォーマットで結果を取得、--full-toxic-flowsで全情報取得）
-    const { stdout, stderr } = await execAsync(
-      `uvx mcp-scan@latest "${configFile}" --json --full-toxic-flows --server-timeout 30 --suppress-mcpserver-io true`,
-      { timeout },
-    );
-
-    if (stderr && !stderr.includes("warning")) {
-      console.error("mcp-scan stderr:", stderr);
-    }
-
-    try {
-      // JSON出力をパース
-      const scanOutput: unknown = JSON.parse(stdout);
-
-      // Zodスキーマで検証と変換
-      const parsedResult = z.record(RawMcpScanOutputSchema).parse(scanOutput);
-      const rawScanOutput = parsedResult[configFile];
-
-      if (!rawScanOutput) {
-        // スキャン結果が空の場合のデフォルト値
-        return {
-          success: false,
-          summary: {
-            totalServers: 0,
-            serversStarted: 0,
-            serversFailed: 0,
-            totalTools: 0,
-            toolsWithIssues: 0,
-            criticalIssues: 0,
-            warnings: 0,
-            toxicFlowsDetected: 0,
-          },
-          servers: [],
-          toxicFlows: [],
-          error: "スキャン結果が取得できませんでした",
-        };
-      }
-
-      // 生データを整形された構造に変換
-      return transformRawScanOutput(rawScanOutput);
-    } catch (parseError) {
-      console.error("Parse error:", parseError);
-
-      return {
-        success: false,
-        summary: {
-          totalServers: 0,
-          serversStarted: 0,
-          serversFailed: 0,
-          totalTools: 0,
-          toolsWithIssues: 0,
-          criticalIssues: 0,
-          warnings: 0,
-          toxicFlowsDetected: 0,
-        },
-        servers: [],
-        toxicFlows: [],
-        error:
-          parseError instanceof Error
-            ? parseError.message
-            : "Unknown parse error",
-      };
-    }
+    return await executeMcpScan(configFile, timeout);
   } catch (error) {
     console.error("mcp-scan execution error:", error);
 
-    // タイムアウトエラーの場合
-    if (error instanceof Error && error.message.includes("ETIMEDOUT")) {
-      return {
-        success: false,
-        summary: {
-          totalServers: 0,
-          serversStarted: 0,
-          serversFailed: 0,
-          totalTools: 0,
-          toolsWithIssues: 0,
-          criticalIssues: 0,
-          warnings: 0,
-          toxicFlowsDetected: 0,
-        },
-        servers: [],
-        toxicFlows: [],
-        error: "Scan timeout",
-      };
-    }
-
-    // エラーメッセージから機密情報を除去
-    let errorMessage = "Unknown error";
-    if (error instanceof Error) {
-      // コマンドラインの詳細を含まないエラーメッセージに変換
-      if (error.message.includes("Command failed")) {
-        errorMessage = "セキュリティスキャンツールの実行に失敗しました";
-      } else {
-        errorMessage = error.message;
-      }
-    }
+    const errorMessage = sanitizeErrorMessage(error);
 
     return {
       success: false,
-      summary: {
-        totalServers: 0,
-        serversStarted: 0,
-        serversFailed: 0,
-        totalTools: 0,
-        toolsWithIssues: 0,
-        criticalIssues: 0,
-        warnings: 0,
-        toxicFlowsDetected: 0,
-      },
+      summary: createEmptySummary(),
       servers: [],
       toxicFlows: [],
       error: errorMessage,
     };
   } finally {
     // 一時ファイルを削除
-    try {
-      await unlink(configFile);
-    } catch {
-      // エラーを無視
-      console.warn(`Failed to delete temporary file`);
+    if (configFile) {
+      await cleanupTempFile(configFile);
     }
   }
 };
