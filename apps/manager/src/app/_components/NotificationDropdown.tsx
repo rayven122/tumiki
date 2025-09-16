@@ -28,27 +28,39 @@ export const NotificationDropdown = () => {
 
   // 通知を既読にする
   const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, isRead: true }
-          : notification,
-      ),
-    );
+    try {
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification.id === id
+            ? { ...notification, isRead: true }
+            : notification,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
   }, []);
 
   // すべての通知を既読にする
   const markAllAsRead = useCallback(() => {
-    setNotifications((prev) =>
-      prev.map((notification) => ({ ...notification, isRead: true })),
-    );
+    try {
+      setNotifications((prev) =>
+        prev.map((notification) => ({ ...notification, isRead: true })),
+      );
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
   }, []);
 
   // 通知を削除する
   const deleteNotification = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.filter((notification) => notification.id !== id),
-    );
+    try {
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== id),
+      );
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+    }
   }, []);
 
   return (

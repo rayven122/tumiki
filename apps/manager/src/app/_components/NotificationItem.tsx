@@ -2,7 +2,8 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 import type { Notification, NotificationType } from "@/types/notification";
 import {
@@ -56,6 +57,7 @@ export const NotificationItem = ({
   onMarkAsRead,
   onDelete,
 }: NotificationItemProps) => {
+  const router = useRouter();
   const {
     icon: Icon,
     iconClass,
@@ -63,50 +65,75 @@ export const NotificationItem = ({
   } = getNotificationStyle(notification.type);
 
   const handleClick = () => {
-    if (!notification.isRead) {
-      onMarkAsRead(notification.id);
-    }
-    if (notification.link) {
-      window.location.href = notification.link;
+    try {
+      if (!notification.isRead) {
+        onMarkAsRead(notification.id);
+      }
+      if (notification.link) {
+        router.push(notification.link);
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
     }
   };
 
   const handleAction = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!notification.isRead) {
-      onMarkAsRead(notification.id);
-    }
-    if (notification.actionCallback) {
-      notification.actionCallback();
-    } else if (notification.link) {
-      window.location.href = notification.link;
+    e.preventDefault();
+    try {
+      if (!notification.isRead) {
+        onMarkAsRead(notification.id);
+      }
+      if (notification.actionCallback) {
+        notification.actionCallback();
+      } else if (notification.link) {
+        router.push(notification.link);
+      }
+    } catch (error) {
+      console.error("Action error:", error);
     }
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete(notification.id);
+    e.preventDefault();
+    try {
+      onDelete(notification.id);
+    } catch (error) {
+      console.error("Delete error:", error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleClick();
+    }
   };
 
   return (
     <div
-      className={cn(
+      className={clsx(
         "group hover:bg-accent relative cursor-pointer px-4 py-3 transition-colors",
         !notification.isRead && "bg-blue-50/50",
       )}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label={`通知: ${notification.title}`}
     >
       <div className="flex gap-3">
-        <div className={cn("rounded-lg p-2", bgClass)}>
-          <Icon className={cn("h-4 w-4", iconClass)} />
+        <div className={clsx("rounded-lg p-2", bgClass)}>
+          <Icon className={clsx("h-4 w-4", iconClass)} />
         </div>
         <div className="flex-1 space-y-1">
           <div className="flex items-start justify-between">
             <p
-              className={cn("text-sm", !notification.isRead && "font-semibold")}
+              className={clsx(
+                "text-sm",
+                !notification.isRead && "font-semibold",
+              )}
             >
               {notification.title}
             </p>
