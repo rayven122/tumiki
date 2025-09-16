@@ -137,11 +137,12 @@ export const InviteMemberModal = ({
     // 招待を送信
     const results = await inviteMembers(parsedEmails, selectedRoleId, isAdmin);
 
-    // 全て成功した場合は閉じる
+    // 全て成功した場合は即座に成功処理を実行
     const allSuccess = results.every((r) => r.success);
     if (allSuccess) {
+      onSuccess?.();
+      // 2秒後にモーダルを閉じる（ユーザーが結果を確認できるように）
       setTimeout(() => {
-        onSuccess?.();
         handleClose();
       }, 2000);
     }
@@ -242,7 +243,12 @@ export const InviteMemberModal = ({
             <Label htmlFor="role">ロール</Label>
             <Select
               value={selectedRoleId}
-              onValueChange={(value) => setSelectedRoleId(value as RoleId)}
+              onValueChange={(value: string) => {
+                // 安全な型ガードを使用
+                if (availableRoles.find((role) => role.id === value)) {
+                  setSelectedRoleId(value as RoleId);
+                }
+              }}
               disabled={isAdmin || isSubmitting}
             >
               <SelectTrigger id="role">
@@ -253,7 +259,7 @@ export const InviteMemberModal = ({
                   <SelectItem key={role.id} value={role.id}>
                     <div className="flex w-full items-center justify-between">
                       <span>{role.name}</span>
-                      {'isDefault' in role && role.isDefault && (
+                      {"isDefault" in role && role.isDefault && (
                         <Badge variant="outline" className="ml-2 text-xs">
                           デフォルト
                         </Badge>

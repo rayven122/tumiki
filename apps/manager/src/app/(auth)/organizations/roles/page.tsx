@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { redirect } from "next/navigation";
-import {
-  Users,
-  Settings,
-  UserPlus,
-  Search,
-} from "lucide-react";
+import { Users, Settings, UserPlus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,8 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InviteMemberModal } from "./_components/InviteMemberModal";
-import { mockMembers, mockRoles } from "./_components/mockData";
-import type { OrganizationMember, Role } from "./_components/types";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,9 +31,33 @@ const RolesPage = () => {
   // デフォルト組織を探す
   const defaultOrg = organizations?.find((org) => org.isDefault);
 
-  // デモ用のデータ（実際の実装ではAPIから取得）
-  const members: OrganizationMember[] = mockMembers;
-  const roles: Role[] = mockRoles;
+  // 組織の使用統計（メンバー情報含む）とロールを取得
+  const { data: usageStats, isLoading: membersLoading } =
+    api.organization.getUsageStats.useQuery(
+      { organizationId: defaultOrg?.id ?? "" },
+      { enabled: !!defaultOrg?.id },
+    );
+
+  const { data: roles = [], isLoading: rolesLoading } =
+    api.organizationRole.getByOrganization.useQuery(
+      { organizationId: defaultOrg?.id ?? "" },
+      { enabled: !!defaultOrg?.id },
+    );
+
+  // メンバー情報をレガシー形式に変換（一時的）
+  const members =
+    usageStats?.memberStats.map((memberStat) => ({
+      id: memberStat.user.id,
+      userId: memberStat.user.id,
+      name: memberStat.user.name ?? "名前なし",
+      email: memberStat.user.email ?? "",
+      avatarUrl: memberStat.user.image ?? undefined,
+      role: { id: "unknown", name: "メンバー" }, // デフォルトロール
+      status: "active" as const,
+      joinedAt: new Date(), // 実際の実装では organization_member テーブルから取得
+      invitedAt: undefined,
+      isAdmin: false, // 実際の実装では organization_member テーブルから取得
+    })) ?? [];
 
   // フィルタリング
   const filteredMembers = members.filter((member) => {
@@ -57,13 +74,13 @@ const RolesPage = () => {
   // 統計情報
   const stats = {
     totalMembers: members.length,
-    activeMembers: members.filter((m) => m.status === "active").length,
-    invitedMembers: members.filter((m) => m.status === "invited").length,
+    activeMembers: members.length, // 現在は全てactiveとして扱う
+    invitedMembers: 0, // 実際の実装では招待中メンバー数を取得
     totalRoles: roles.length,
   };
 
   // ローディング中の表示
-  if (isLoading) {
+  if (isLoading || membersLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -217,16 +234,7 @@ const RolesPage = () => {
                               管理者
                             </Badge>
                           )}
-                          {member.status === "invited" && (
-                            <Badge variant="secondary" className="text-xs">
-                              招待中
-                            </Badge>
-                          )}
-                          {member.status === "inactive" && (
-                            <Badge variant="outline" className="text-xs">
-                              非アクティブ
-                            </Badge>
-                          )}
+                          {/* 現在は全てactiveなので、招待中・非アクティブのバッジは表示しない */}
                         </div>
                         <div className="text-sm text-gray-500">
                           {member.email}
@@ -239,9 +247,7 @@ const RolesPage = () => {
                         <div className="text-xs text-gray-500">
                           {member.joinedAt
                             ? `参加日: ${member.joinedAt.toLocaleDateString("ja-JP")}`
-                            : member.invitedAt
-                              ? `招待日: ${member.invitedAt.toLocaleDateString("ja-JP")}`
-                              : ""}
+                            : "参加日情報なし"}
                         </div>
                       </div>
                       <Button variant="ghost" size="sm">

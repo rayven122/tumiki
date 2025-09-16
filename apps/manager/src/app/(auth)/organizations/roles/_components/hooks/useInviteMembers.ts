@@ -1,14 +1,26 @@
 import { useState, useCallback } from "react";
 import { api } from "@/trpc/react";
 import type { OrganizationId } from "@/schema/ids";
-import type { RoleId } from "../types";
+import type { RoleId, InvitationResult } from "../types";
 import { TRPCClientError } from "@trpc/client";
 
-export type InvitationResult = {
-  email: string;
-  success: boolean;
-  error?: string;
-  invitationId?: string;
+// 統一されたエラーハンドリング関数
+const getInvitationErrorMessage = (error: unknown): string => {
+  if (error instanceof TRPCClientError) {
+    const message = error.message;
+    if (message.includes("既に招待")) {
+      return "このメールアドレスは既に招待されています";
+    } else if (message.includes("権限")) {
+      return "招待を送信する権限がありません";
+    } else if (message.includes("無効")) {
+      return "無効なメールアドレスです";
+    } else {
+      return message;
+    }
+  } else if (error instanceof Error) {
+    return error.message;
+  }
+  return "招待の送信に失敗しました";
 };
 
 export const useInviteMembers = (_organizationId: OrganizationId) => {
@@ -45,29 +57,10 @@ export const useInviteMembers = (_organizationId: OrganizationId) => {
                 invitationId: result.id,
               };
             } catch (error) {
-              // 統一されたエラーハンドリング
-              let errorMessage = "招待の送信に失敗しました";
-
-              if (error instanceof TRPCClientError) {
-                // TRPCエラーの場合
-                const message = error.message;
-                if (message.includes("既に招待")) {
-                  errorMessage = "このメールアドレスは既に招待されています";
-                } else if (message.includes("権限")) {
-                  errorMessage = "招待を送信する権限がありません";
-                } else if (message.includes("無効")) {
-                  errorMessage = "無効なメールアドレスです";
-                } else {
-                  errorMessage = message;
-                }
-              } else if (error instanceof Error) {
-                errorMessage = error.message;
-              }
-
               return {
                 email,
                 success: false,
-                error: errorMessage,
+                error: getInvitationErrorMessage(error),
               };
             }
           }),
