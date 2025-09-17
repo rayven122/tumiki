@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * MCPサーバーのセキュリティスキャンスクリプト
  *
@@ -12,7 +10,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
-import { config as loadEnv } from "dotenv";
+import { fileURLToPath } from "url";
 import pc from "picocolors";
 import { v4 as uuidv4 } from "uuid";
 
@@ -20,8 +18,8 @@ import { ServerType, TransportType } from "@tumiki/db";
 import { db } from "@tumiki/db/server";
 import { runMcpSecurityScan } from "@tumiki/utils/server";
 
-// 環境変数を読み込み
-loadEnv({ path: path.resolve(__dirname, "../../../.env") });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface ScanResult {
   serverId: string;
@@ -33,6 +31,36 @@ interface ScanResult {
   scanResult: Awaited<ReturnType<typeof runMcpSecurityScan>>;
   scanTime: Date;
 }
+
+/**
+ * URLからAPIキーをマスクする
+ */
+const maskApiKey = (url: string | null): string => {
+  if (!url) return "N/A";
+
+  // URLパラメータのapi-keyをマスク
+  const maskedUrl = url.replace(
+    /(\?|&)(api[-_]?key)=([^&]+)/gi,
+    (match: string, separator: string, keyName: string, value: string) => {
+      if (value.length <= 10) {
+        return `${separator}${keyName}=****`;
+      }
+      const prefix = value.substring(0, 8);
+      const suffix = value.substring(value.length - 4);
+      return `${separator}${keyName}=${prefix}...${suffix}`;
+    },
+  );
+
+  // パスに含まれるトークン風の文字列もマスク（40文字以上の英数字）
+  return maskedUrl.replace(
+    /\/([a-zA-Z0-9_-]{40,})/g,
+    (_match: string, token: string) => {
+      const prefix = token.substring(0, 8);
+      const suffix = token.substring(token.length - 4);
+      return `/${prefix}...${suffix}`;
+    },
+  );
+};
 
 interface ScanSummary {
   totalServers: number;
@@ -59,12 +87,9 @@ const createTempConfigFile = async (
   const config = {
     mcpServers: {
       [serverName]: {
+        type: transportType === TransportType.SSE ? "sse" : "http",
         url,
-        transport: {
-          type:
-            transportType === TransportType.SSE ? "sse" : "streamable_https",
-        },
-        headers: envVars,
+        env: envVars,
       },
     },
   };
@@ -74,30 +99,58 @@ const createTempConfigFile = async (
 };
 
 /**
- * スキャン結果をマークダウン形式で出力
+ * 組織別のスキャン結果を生成
  */
-const generateMarkdownReport = (summary: ScanSummary): string => {
+const generateOrganizationReport = (
+  organizationName: string,
+  organizationId: string,
+  results: ScanResult[],
+): string => {
   const now = new Date().toISOString();
-  let markdown = `# MCPサーバー セキュリティスキャンレポート\n\n`;
+  let markdown = `# MCPサーバー セキュリティスキャンレポート - ${organizationName}\n\n`;
+  markdown += `**組織ID**: ${organizationId}\n`;
   markdown += `**実行日時**: ${now}\n\n`;
+
+  // 組織のサマリー計算
+  const orgSummary = {
+    totalServers: results.length,
+    scannedServers: results.filter((r) => r.scanResult.success).length,
+    failedScans: results.filter((r) => !r.scanResult.success).length,
+    criticalIssues: results.reduce(
+      (sum, r) =>
+        sum + (r.scanResult.success ? r.scanResult.summary.criticalIssues : 0),
+      0,
+    ),
+    warnings: results.reduce(
+      (sum, r) =>
+        sum + (r.scanResult.success ? r.scanResult.summary.warnings : 0),
+      0,
+    ),
+    toxicFlows: results.reduce(
+      (sum, r) =>
+        sum +
+        (r.scanResult.success ? r.scanResult.summary.toxicFlowsDetected : 0),
+      0,
+    ),
+  };
+
   markdown += `## 📊 サマリー\n\n`;
   markdown += `| 項目 | 値 |\n`;
   markdown += `|------|----|\n`;
-  markdown += `| 総サーバー数 | ${summary.totalServers} |\n`;
-  markdown += `| スキャン完了 | ${summary.scannedServers} |\n`;
-  markdown += `| スキャン失敗 | ${summary.failedScans} |\n`;
-  markdown += `| 重大な問題 | ${summary.criticalIssues} |\n`;
-  markdown += `| 警告 | ${summary.warnings} |\n`;
-  markdown += `| Toxic Flows | ${summary.toxicFlows} |\n\n`;
+  markdown += `| 総サーバー数 | ${orgSummary.totalServers} |\n`;
+  markdown += `| スキャン完了 | ${orgSummary.scannedServers} |\n`;
+  markdown += `| スキャン失敗 | ${orgSummary.failedScans} |\n`;
+  markdown += `| 重大な問題 | ${orgSummary.criticalIssues} |\n`;
+  markdown += `| 警告 | ${orgSummary.warnings} |\n`;
+  markdown += `| Toxic Flows | ${orgSummary.toxicFlows} |\n\n`;
 
   markdown += `## 📝 詳細結果\n\n`;
 
-  for (const result of summary.scanResults) {
+  for (const result of results) {
     markdown += `### ${result.serverName}\n\n`;
     markdown += `- **サーバーID**: ${result.serverId}\n`;
-    markdown += `- **組織**: ${result.organizationName} (${result.organizationId})\n`;
     markdown += `- **トランスポート**: ${result.transportType}\n`;
-    markdown += `- **URL**: ${result.url ?? "N/A"}\n`;
+    markdown += `- **URL**: ${maskApiKey(result.url)}\n`;
     markdown += `- **スキャン時刻**: ${result.scanTime.toISOString()}\n\n`;
 
     const scan = result.scanResult;
@@ -167,13 +220,73 @@ const generateMarkdownReport = (summary: ScanSummary): string => {
 };
 
 /**
+ * 統合レポートを生成（全組織のサマリー）
+ */
+const generateSummaryReport = (
+  summary: ScanSummary,
+  organizationReports: Map<string, { name: string; results: ScanResult[] }>,
+): string => {
+  const now = new Date().toISOString();
+  let markdown = `# MCPサーバー セキュリティスキャンレポート - 統合サマリー\n\n`;
+  markdown += `**実行日時**: ${now}\n\n`;
+  markdown += `## 📊 全体サマリー\n\n`;
+  markdown += `| 項目 | 値 |\n`;
+  markdown += `|------|----|\n`;
+  markdown += `| 総サーバー数 | ${summary.totalServers} |\n`;
+  markdown += `| スキャン完了 | ${summary.scannedServers} |\n`;
+  markdown += `| スキャン失敗 | ${summary.failedScans} |\n`;
+  markdown += `| 重大な問題 | ${summary.criticalIssues} |\n`;
+  markdown += `| 警告 | ${summary.warnings} |\n`;
+  markdown += `| Toxic Flows | ${summary.toxicFlows} |\n\n`;
+
+  markdown += `## 🏢 組織別サマリー\n\n`;
+  markdown += `| 組織 | サーバー数 | スキャン成功 | 重大な問題 | 警告 | Toxic Flows |\n`;
+  markdown += `|------|------------|--------------|------------|------|-------------|\n`;
+
+  for (const [, orgData] of organizationReports) {
+    const orgResults = orgData.results;
+    const successCount = orgResults.filter((r) => r.scanResult.success).length;
+    const criticalCount = orgResults.reduce(
+      (sum, r) =>
+        sum + (r.scanResult.success ? r.scanResult.summary.criticalIssues : 0),
+      0,
+    );
+    const warningCount = orgResults.reduce(
+      (sum, r) =>
+        sum + (r.scanResult.success ? r.scanResult.summary.warnings : 0),
+      0,
+    );
+    const toxicCount = orgResults.reduce(
+      (sum, r) =>
+        sum +
+        (r.scanResult.success ? r.scanResult.summary.toxicFlowsDetected : 0),
+      0,
+    );
+
+    markdown += `| ${orgData.name} | ${orgResults.length} | ${successCount} | ${criticalCount} | ${warningCount} | ${toxicCount} |\n`;
+  }
+
+  markdown += `\n## 📁 生成されたレポート\n\n`;
+  markdown += `各組織の詳細レポートは以下のファイルに保存されています:\n\n`;
+
+  for (const [, orgData] of organizationReports) {
+    const safeOrgName = orgData.name
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .toLowerCase();
+    markdown += `- **${orgData.name}**: \`mcp-security-scan-${safeOrgName}-${new Date().toISOString().split("T")[0]}.md\`\n`;
+  }
+
+  return markdown;
+};
+
+/**
  * メイン処理
  */
 const main = async () => {
   console.log(pc.cyan("🔍 MCPサーバー セキュリティスキャン開始...\n"));
 
   try {
-    // 対象のMCPサーバーを取得
+    // 対象のMCPサーバーを取得（削除されていない設定のみ）
     const servers = await db.mcpServer.findMany({
       where: {
         serverType: ServerType.OFFICIAL,
@@ -189,6 +302,34 @@ const main = async () => {
         },
       },
     });
+
+    // 削除されていないインスタンスがあるかチェック
+    const activeInstances = await db.userMcpServerInstance.findMany({
+      where: {
+        deletedAt: null,
+        serverType: ServerType.OFFICIAL,
+      },
+      select: {
+        organizationId: true,
+        toolGroup: {
+          select: {
+            toolGroupTools: {
+              select: {
+                userMcpServerConfigId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // アクティブなインスタンスに関連する設定IDのセットを作成
+    const activeConfigIds = new Set<string>();
+    for (const instance of activeInstances) {
+      for (const tool of instance.toolGroup.toolGroupTools) {
+        activeConfigIds.add(tool.userMcpServerConfigId);
+      }
+    }
 
     console.log(pc.yellow(`📋 スキャン対象: ${servers.length} サーバー\n`));
 
@@ -207,34 +348,42 @@ const main = async () => {
       console.log(pc.blue(`\n🔄 スキャン中: ${server.name}`));
       console.log(pc.gray(`  - ID: ${server.id}`));
       console.log(pc.gray(`  - Transport: ${server.transportType}`));
-      console.log(pc.gray(`  - URL: ${server.url ?? "N/A"}`));
+      console.log(pc.gray(`  - URL: ${maskApiKey(server.url)}`));
 
       if (!server.url) {
         console.log(pc.red(`  ⏭️  URLが設定されていないためスキップ`));
         continue;
       }
 
-      // 各設定に対してスキャンを実行
+      // 各設定に対してスキャンを実行（アクティブなインスタンスがある設定のみ）
       for (const config of server.mcpServerConfigs) {
-        console.log(
-          pc.gray(`  - Config: ${config.name} (${config.organization.name})`),
-        );
+        // アクティブなインスタンスに関連しない設定はスキップ
+        if (!activeConfigIds.has(config.id)) {
+          continue;
+        }
+
+        console.log(pc.cyan(`  📁 Organization: ${config.organization.name}`));
+        console.log(pc.gray(`     - Config: ${config.name}`));
 
         try {
-          // envVarsをデコード（暗号化されているため、実際の実装では復号化が必要）
+          // envVarsをパース（Prismaの暗号化フィールドは自動的に復号化される）
           let envVarsObj: Record<string, string> = {};
-          try {
-            // 注意：実際の実装では暗号化されたデータの復号化が必要
-            // ここではダミーの処理として空オブジェクトを使用
-            console.log(
-              pc.yellow(
-                `    ⚠️  環境変数の復号化はスキップ（暗号化対応未実装）`,
-              ),
-            );
-            envVarsObj = {};
-          } catch {
-            console.log(pc.red(`    ❌ 環境変数の復号化に失敗`));
-            continue;
+          if (config.envVars) {
+            try {
+              // envVarsはJSONとして保存されている
+              envVarsObj = JSON.parse(config.envVars) as Record<string, string>;
+              if (Object.keys(envVarsObj).length > 0) {
+                console.log(
+                  pc.gray(
+                    `    - 環境変数: ${Object.keys(envVarsObj).length}個`,
+                  ),
+                );
+              }
+            } catch {
+              console.log(pc.yellow(`    ⚠️  環境変数のパースに失敗`));
+              // 環境変数なしで続行
+              envVarsObj = {};
+            }
           }
 
           // 一時設定ファイルを作成
@@ -309,20 +458,74 @@ const main = async () => {
       }
     }
 
+    // 組織別にスキャン結果をグループ化
+    const organizationReports = new Map<
+      string,
+      { name: string; results: ScanResult[] }
+    >();
+
+    for (const result of summary.scanResults) {
+      const orgId = result.organizationId;
+      if (!organizationReports.has(orgId)) {
+        organizationReports.set(orgId, {
+          name: result.organizationName,
+          results: [],
+        });
+      }
+      organizationReports.get(orgId)?.results.push(result);
+    }
+
     // レポート生成
     console.log(pc.cyan("\n\n📊 レポート生成中..."));
 
     const reportDir = path.join(__dirname, "../../../reports");
     await mkdir(reportDir, { recursive: true });
 
-    const reportFile = path.join(
-      reportDir,
-      `mcp-security-scan-${new Date().toISOString().split("T")[0]}.md`,
-    );
-    const markdownReport = generateMarkdownReport(summary);
-    await writeFile(reportFile, markdownReport, "utf-8");
+    const dateStr = new Date().toISOString().split("T")[0];
 
-    console.log(pc.green(`\n✅ レポート生成完了: ${reportFile}`));
+    // 各組織のレポートを生成
+    for (const [orgId, orgData] of organizationReports) {
+      const safeOrgName = orgData.name
+        .replace(/[^a-zA-Z0-9]/g, "_")
+        .toLowerCase();
+      const orgReportFile = path.join(
+        reportDir,
+        `mcp-security-scan-${safeOrgName}-${dateStr}.md`,
+      );
+      const orgMarkdown = generateOrganizationReport(
+        orgData.name,
+        orgId,
+        orgData.results,
+      );
+      await writeFile(orgReportFile, orgMarkdown, "utf-8");
+      console.log(pc.green(`✅ 組織レポート生成: ${orgReportFile}`));
+
+      // 組織別のJSON形式でも保存
+      const orgJsonFile = path.join(
+        reportDir,
+        `mcp-security-scan-${safeOrgName}-${dateStr}.json`,
+      );
+      const orgJsonData = {
+        organizationId: orgId,
+        organizationName: orgData.name,
+        scanDate: new Date().toISOString(),
+        results: orgData.results,
+      };
+      await writeFile(
+        orgJsonFile,
+        JSON.stringify(orgJsonData, null, 2),
+        "utf-8",
+      );
+    }
+
+    // 統合サマリーレポートを生成
+    const summaryReportFile = path.join(
+      reportDir,
+      `mcp-security-scan-summary-${dateStr}.md`,
+    );
+    const summaryMarkdown = generateSummaryReport(summary, organizationReports);
+    await writeFile(summaryReportFile, summaryMarkdown, "utf-8");
+    console.log(pc.green(`\n✅ 統合レポート生成: ${summaryReportFile}`));
 
     // サマリー表示
     console.log(pc.cyan("\n\n=== スキャンサマリー ==="));
@@ -333,10 +536,39 @@ const main = async () => {
     console.log(`警告: ${pc.yellow(String(summary.warnings))}`);
     console.log(`Toxic Flows: ${pc.magenta(String(summary.toxicFlows))}`);
 
-    // JSON形式でも保存
+    console.log(pc.cyan("\n=== 組織別サマリー ==="));
+    for (const [, orgData] of organizationReports) {
+      const orgResults = orgData.results;
+      const successCount = orgResults.filter(
+        (r) => r.scanResult.success,
+      ).length;
+      const criticalCount = orgResults.reduce(
+        (sum, r) =>
+          sum +
+          (r.scanResult.success ? r.scanResult.summary.criticalIssues : 0),
+        0,
+      );
+      const warningCount = orgResults.reduce(
+        (sum, r) =>
+          sum + (r.scanResult.success ? r.scanResult.summary.warnings : 0),
+        0,
+      );
+
+      console.log(`\n${pc.blue(orgData.name)}:`);
+      console.log(`  サーバー数: ${orgResults.length}`);
+      console.log(`  スキャン成功: ${pc.green(String(successCount))}`);
+      console.log(
+        `  重大な問題: ${criticalCount > 0 ? pc.red(String(criticalCount)) : pc.gray("0")}`,
+      );
+      console.log(
+        `  警告: ${warningCount > 0 ? pc.yellow(String(warningCount)) : pc.gray("0")}`,
+      );
+    }
+
+    // 統合JSON形式でも保存
     const jsonFile = path.join(
       reportDir,
-      `mcp-security-scan-${new Date().toISOString().split("T")[0]}.json`,
+      `mcp-security-scan-summary-${dateStr}.json`,
     );
     await writeFile(jsonFile, JSON.stringify(summary, null, 2), "utf-8");
     console.log(pc.green(`\n✅ JSON出力: ${jsonFile}`));
