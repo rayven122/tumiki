@@ -69,10 +69,11 @@ apps/proxyServer/
 
 ### セッション管理
 
-- セッションマネージャー（`utils/sessionManager.ts`）が管理
+- セッションマネージャー（`utils/session.ts`）が管理
 - MCPサーバーとの永続的接続を保持
-- 5分のアイドルタイムアウト
-- ExpireMapを使用した自動クリーンアップ
+- セッション独立型MCPプール管理（`utils/mcpPool.ts`）
+- タイムアウト設定が同期化（デフォルト60秒）
+- 自動クリーンアップとヘルスチェック機能
 
 ### エラーハンドリング
 
@@ -183,6 +184,18 @@ pnpm pm2:restart    # 再起動
 # サーバー設定
 PORT=8080
 NODE_ENV=production
+
+# セッション管理
+MAX_SESSIONS=200                      # 最大セッション数
+CONNECTION_TIMEOUT_MS=60000           # セッションタイムアウト（60秒）
+
+# MCPプール設定
+MCP_POOL_MAX_TOTAL=60                 # 全体の最大接続数
+MCP_POOL_MAX_PER_SERVER=5             # サーバーあたり最大接続数
+MAX_CONNECTIONS_PER_SESSION=3         # セッションあたり最大接続数
+MCP_CONNECTION_TIMEOUT_MS=60000       # MCPプールタイムアウト（セッションと同期）
+MCP_POOL_CLEANUP_INTERVAL_MS=30000    # クリーンアップ間隔（30秒）
+SESSION_POOL_SYNC=true                 # セッション独立プール有効化
 
 # Auth0設定（OAuth認証使用時）
 AUTH0_DOMAIN=your-auth0-domain.com
