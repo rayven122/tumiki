@@ -349,10 +349,10 @@ pnpm run deploy:gce
 
 ```bash
 # Vercelのみデプロイ
-bash scripts/deploy-all.sh --skip-gce
+SKIP_GCE=true pnpm deploy
 
 # GCEのみデプロイ
-bash scripts/deploy-all.sh --skip-vercel
+SKIP_VERCEL=true pnpm deploy
 
 ```
 
@@ -380,14 +380,14 @@ ProxyServer を既存の GCE VM にデプロイして PM2 で管理する詳細�
 #### クイックスタート
 
 ```bash
-# ProxyServer ディレクトリに移動
-cd apps/proxyServer
+# GCEデプロイ実行
+pnpm deploy:gce
 
-# デプロイ実行
-./deploy-to-gce.sh
+# 本番環境へデプロイ
+pnpm deploy:production
 
 # ドライラン（実行内容の確認）
-DRY_RUN=true ./deploy-to-gce.sh
+pnpm deploy:dry-run
 ```
 
 デプロイメントガイドには以下の詳細情報が含まれています：
