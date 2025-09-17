@@ -1057,6 +1057,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.10.1
         version: 1.17.5
+      '@plussub/srt-vtt-parser':
+        specifier: ^2.0.5
+        version: 2.0.5
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -3372,6 +3375,9 @@ packages:
     resolution: {integrity: sha512-tTwgNsn+xhRVXJ1OhkC34sD/ozFsC4kpZx4l9UwO2BpOIaNNSv72/CezP6Fxigh53VM7NRShptvxk4XRL42tVQ==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@plussub/srt-vtt-parser@2.0.5':
+    resolution: {integrity: sha512-cOedEgu7gyea9k+ixkPCQGf8ABBctFWWsBYnVCzzmuoHz45awc9vKtveHzn7VugR36fzFqgkXaLEn2HdZnzFdQ==}
 
   '@prisma/adapter-neon@6.13.0':
     resolution: {integrity: sha512-pJ1f21C/iWpuVhj4R7A6VtkewUJbqwgdzrvFRR9pxSbSSAl+WG3P1HIbR/Ho9uJShjGsJ2Y96FdW83VaGr5O4Q==}
@@ -13710,6 +13716,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - zod
+
+  '@plussub/srt-vtt-parser@2.0.5': {}
 
   '@prisma/adapter-neon@6.13.0':
     dependencies:
