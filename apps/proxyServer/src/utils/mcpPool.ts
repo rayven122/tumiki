@@ -4,6 +4,7 @@ import type { ServerConfig } from "../libs/types.js";
 import { createMCPClient } from "./createMCPClient.js";
 import { logger } from "../libs/logger.js";
 import { AtomicCounter } from "./atomicCounter.js";
+import { config } from "../libs/config.js";
 
 /**
  * MCP接続情報
@@ -27,26 +28,16 @@ type MCPConnection = {
 class MCPConnectionPool {
   private readonly pools = new Map<string, MCPConnection[]>();
   private readonly sessionConnections = new Map<string, Set<string>>(); // セッションID -> 接続キーのマッピング
-  private readonly MAX_CONNECTIONS_PER_SERVER = parseInt(
-    process.env.MCP_POOL_MAX_PER_SERVER || "5",
-    10,
-  ); // サーバーあたり最大接続数
-  private readonly MAX_CONNECTIONS_PER_SESSION = parseInt(
-    process.env.MAX_CONNECTIONS_PER_SESSION || "3",
-    10,
-  ); // セッションあたり最大接続数
-  private readonly MAX_TOTAL_CONNECTIONS = parseInt(
-    process.env.MCP_POOL_MAX_TOTAL || "60",
-    10,
-  ); // 全体で最大接続数（4GB最適化）
-  private readonly IDLE_TIMEOUT = parseInt(
-    process.env.MCP_CONNECTION_TIMEOUT_MS ||
-      process.env.CONNECTION_TIMEOUT_MS ||
-      "60000",
-    10,
-  ); // MCPプールのタイムアウト（セッションタイムアウトと同期）
+  private readonly MAX_CONNECTIONS_PER_SERVER =
+    config.connectionPool.maxConnectionsPerServer; // サーバーあたり最大接続数
+  private readonly MAX_CONNECTIONS_PER_SESSION =
+    config.connectionPool.maxConnectionsPerSession; // セッションあたり最大接続数
+  private readonly MAX_TOTAL_CONNECTIONS =
+    config.connectionPool.maxTotalConnections; // 全体で最大接続数（4GB最適化）
+  private readonly IDLE_TIMEOUT = config.connectionPool.idleTimeout; // MCPプールのタイムアウト（セッションタイムアウトと同期）
+  private readonly CLEANUP_INTERVAL = config.connectionPool.cleanupInterval; // クリーンアップ間隔
   private cleanupTimer?: NodeJS.Timeout;
-  private readonly connectionCounter = new AtomicCounter(); // 原子的カウンター
+  private readonly connectionCounter = new AtomicCounter(); // 同期カウンター
 
   /**
    * Connection stateを原子的に更新
@@ -70,7 +61,7 @@ class MCPConnectionPool {
     const safeSessionId = sessionId?.replace(/:/g, "_COLON_") || "shared";
 
     // セッション独立モードが有効な場合、セッションIDを含める
-    const useSessionPool = process.env.SESSION_POOL_SYNC === "true";
+    const useSessionPool = config.connectionPool.sessionPoolSync;
     if (useSessionPool && sessionId) {
       return `${safeInstanceId}:${safeServerName}:${safeSessionId}`;
     }
@@ -95,7 +86,7 @@ class MCPConnectionPool {
     const pool = this.pools.get(poolKey) || [];
 
     // セッション接続数の制限チェック
-    if (sessionId && process.env.SESSION_POOL_SYNC === "true") {
+    if (sessionId && config.connectionPool.sessionPoolSync) {
       const sessionConns = this.sessionConnections.get(sessionId) || new Set();
       if (sessionConns.size >= this.MAX_CONNECTIONS_PER_SESSION) {
         // 既存のセッション接続から利用可能なものを探す
@@ -172,7 +163,7 @@ class MCPConnectionPool {
           const index = oldPool.indexOf(oldestIdle);
           if (index > -1) {
             oldPool.splice(index, 1);
-            await this.connectionCounter.decrement();
+            this.connectionCounter.decrement();
           }
         }
       } else {
@@ -202,10 +193,10 @@ class MCPConnectionPool {
 
       pool.push(connection);
       this.pools.set(poolKey, pool);
-      await this.connectionCounter.increment();
+      this.connectionCounter.increment();
 
       // セッション接続マッピングを更新
-      if (sessionId && process.env.SESSION_POOL_SYNC === "true") {
+      if (sessionId && config.connectionPool.sessionPoolSync) {
         const sessionConns =
           this.sessionConnections.get(sessionId) || new Set();
         sessionConns.add(poolKey);
@@ -255,7 +246,7 @@ class MCPConnectionPool {
           error: error instanceof Error ? error.message : String(error),
         });
       });
-    }, 60000); // 1分ごと
+    }, this.CLEANUP_INTERVAL);
 
     // プロセス終了を妨げないように
     this.cleanupTimer.unref?.();
@@ -298,7 +289,7 @@ class MCPConnectionPool {
         const index = pool.indexOf(conn);
         if (index > -1) {
           pool.splice(index, 1);
-          await this.connectionCounter.decrement();
+          this.connectionCounter.decrement();
           if (pool.length === 0) {
             this.pools.delete(poolKey);
           }
@@ -322,9 +313,14 @@ class MCPConnectionPool {
           try {
             await conn.client.close();
             await conn.cleanup?.();
-            await this.connectionCounter.decrement();
-          } catch {
-            // エラーは無視
+            this.connectionCounter.decrement();
+          } catch (error) {
+            // エラーをログに記録
+            logger.warn("Failed to cleanup session connection", {
+              sessionId,
+              poolKey,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
           }
         }
         this.pools.delete(poolKey);
@@ -381,7 +377,7 @@ class MCPConnectionPool {
     );
 
     this.pools.clear();
-    await this.connectionCounter.reset();
+    this.connectionCounter.reset();
   }
 }
 
