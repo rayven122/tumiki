@@ -114,11 +114,8 @@ deploy_vercel() {
     cd apps/manager
 
     if [ -n "${VERCEL_TOKEN:-}" ]; then
-        # CI環境
+        # CI環境（Vercel CLIが環境変数を自動読込）
         log_info "CI環境でVercelデプロイを実行"
-
-        # 環境変数でトークンを渡し、コマンドラインに露出させない
-        export VERCEL_TOKEN
 
         if [ "$STAGE" = "production" ]; then
             deployment_url=$(vercel deploy --prod --yes 2>&1 | tail -1)
