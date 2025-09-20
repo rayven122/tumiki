@@ -108,33 +108,54 @@ deploy_vercel() {
         return 0
     fi
 
-    local deployment_url=""
+    # Vercel CLIの存在確認
+    if ! command -v vercel &> /dev/null; then
+        log_error "Vercel CLIが見つかりません"
+        log_error "GitHub ActionsでVercel CLIのインストールが必要です"
+        return 1
+    fi
 
-    # managerアプリケーションのディレクトリに移動
-    cd apps/manager
+    local deployment_url=""
+    local deploy_output=""
+
+    log_info "プロジェクトルートからVercelデプロイを実行"
+    log_info "現在のディレクトリ: $(pwd)"
 
     if [ -n "${VERCEL_TOKEN:-}" ]; then
         # CI環境（Vercel CLIが環境変数を自動読込）
         log_info "CI環境でVercelデプロイを実行"
 
         if [ "$STAGE" = "production" ]; then
-            deployment_url=$(vercel deploy --prod --yes 2>&1 | tail -1)
+            log_info "本番環境にデプロイ中..."
+            deploy_output=$(vercel deploy --prod --yes 2>&1)
         else
-            deployment_url=$(vercel deploy --yes 2>&1 | tail -1)
+            log_info "ステージング環境にデプロイ中..."
+            deploy_output=$(vercel deploy --yes 2>&1)
         fi
     else
         # ローカル環境
         log_info "ローカル環境でVercelデプロイを実行"
 
         if [ "$STAGE" = "production" ]; then
-            deployment_url=$(vercel deploy --prod 2>&1 | tail -1)
+            deploy_output=$(vercel deploy --prod 2>&1)
         else
-            deployment_url=$(vercel deploy 2>&1 | tail -1)
+            deploy_output=$(vercel deploy 2>&1)
         fi
     fi
 
-    # プロジェクトルートに戻る
-    cd ../..
+    # デプロイ結果の確認
+    local deploy_exit_code=$?
+    if [ $deploy_exit_code -ne 0 ]; then
+        log_error "Vercelデプロイが失敗しました (exit code: $deploy_exit_code)"
+        log_error "デプロイ出力:"
+        echo "$deploy_output" | while IFS= read -r line; do
+            log_error "  $line"
+        done
+        return 1
+    fi
+
+    # 最後の行をデプロイURLとして取得
+    deployment_url=$(echo "$deploy_output" | tail -1)
 
     log_info "Vercelデプロイ完了"
     log_info "URL: $deployment_url"
