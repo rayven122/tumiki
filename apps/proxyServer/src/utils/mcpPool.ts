@@ -5,6 +5,7 @@ import { createMCPClient } from "./createMCPClient.js";
 import { logger } from "../libs/logger.js";
 import { AtomicCounter } from "./atomicCounter.js";
 import { config } from "../libs/config.js";
+import { i18n, createErrorWithCode } from "./i18n.js";
 
 /**
  * MCP接続情報
@@ -274,8 +275,12 @@ class MCPConnectionPool {
             }
           }
         }
-        throw new Error(
-          `Maximum connections per session (${this.MAX_CONNECTIONS_PER_SESSION}) reached for session ${sessionId}`,
+        throw createErrorWithCode(
+          "MAX_CONNECTIONS_PER_SESSION",
+          i18n.maxConnectionsPerSession(
+            this.MAX_CONNECTIONS_PER_SESSION,
+            sessionId,
+          ),
         );
       }
     }

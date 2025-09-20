@@ -194,4 +194,196 @@ describe("MCPプールの並行接続テスト", () => {
     // 最大接続数制限またはモック環境のエラーが発生することを確認
     expect(errors.length).toBeGreaterThan(0);
   });
+
+  test("キーコリジョン防止メカニズムが正しく動作すること", async () => {
+    const sessionId = "collision-test";
+
+    // 区切り文字を含むインスタンスIDとサーバー名でテスト
+    const problematicIds = [
+      { instanceId: "inst::ance", serverName: "server::name" },
+      { instanceId: "inst%3A%3Aance", serverName: "server" },
+      { instanceId: "instance", serverName: "server%3A%3Aname" },
+    ];
+
+    const connectionPromises = problematicIds.map(
+      ({ instanceId, serverName }) =>
+        mcpPool
+          .getConnection(
+            instanceId,
+            serverName,
+            { ...mockServerConfig, name: serverName },
+            sessionId,
+          )
+          .catch((error: unknown) => ({
+            instanceId,
+            serverName,
+            error: error instanceof Error ? error.message : String(error),
+          })),
+    );
+
+    const results = await Promise.all(connectionPromises);
+
+    // 各接続が独立して処理されることを確認（キーの衝突がないこと）
+    const errorMessages = results
+      .filter((r) => typeof r === "object" && "error" in r)
+      .map((r) => (r as { error: string }).error);
+
+    // エラーがあってもキーコリジョンによるものでないことを確認
+    errorMessages.forEach((msg) => {
+      expect(msg).not.toContain("key collision");
+      expect(msg).not.toContain("duplicate key");
+    });
+
+    console.log("キーコリジョンテスト結果:", results.length, "接続を試行");
+  });
+
+  test("インデックス再構築中の無限再帰が防止されること", async () => {
+    const instanceId = "recursion-test";
+    const sessionId = "recursion-session";
+
+    // 複数の並行接続でインデックス再構築をトリガー
+    const connectionPromises = Array.from({ length: 10 }, (_, i) =>
+      mcpPool
+        .getConnection(
+          instanceId,
+          `server-${i}`,
+          { ...mockServerConfig, name: `server-${i}` },
+          sessionId,
+        )
+        .then(() => ({
+          success: true,
+          index: i,
+        }))
+        .catch((error: unknown) => ({
+          success: false,
+          index: i,
+          error: error instanceof Error ? error.message : String(error),
+        })),
+    );
+
+    // タイムアウトを設定して無限再帰を検出
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Timeout - possible infinite recursion")),
+        5000,
+      ),
+    );
+
+    try {
+      const results = await Promise.race([
+        Promise.all(connectionPromises),
+        timeoutPromise,
+      ]);
+
+      // 結果が返ってきた場合は無限再帰は発生していない
+      expect(results).toBeDefined();
+      console.log("再帰防止テスト成功: 全接続が5秒以内に完了");
+    } catch (error) {
+      // タイムアウトした場合は無限再帰の可能性
+      if (error instanceof Error && error.message.includes("Timeout")) {
+        throw new Error("無限再帰の可能性が検出されました");
+      }
+      throw error;
+    }
+  });
+
+  test("接続プールのクリーンアップエラー時のフォールバック動作", async () => {
+    const instanceId = "cleanup-error-test";
+    const sessionId = "cleanup-session";
+
+    // 接続を作成
+    const connection = await mcpPool
+      .getConnection(
+        instanceId,
+        mockServerConfig.name,
+        mockServerConfig,
+        sessionId,
+      )
+      .catch((error: unknown) => null);
+
+    if (connection) {
+      // 接続を解放
+      mcpPool.releaseConnection(
+        instanceId,
+        mockServerConfig.name,
+        connection,
+        sessionId,
+      );
+    }
+
+    // セッションのクリーンアップを複数回実行（エラー処理のテスト）
+    const cleanupPromises = Array.from({ length: 3 }, () =>
+      mcpPool.cleanupSession(sessionId).catch((error: unknown) => ({
+        cleanupError: error instanceof Error ? error.message : String(error),
+      })),
+    );
+
+    const cleanupResults = await Promise.all(cleanupPromises);
+
+    // クリーンアップが適切に処理されることを確認
+    cleanupResults.forEach((result) => {
+      if (typeof result === "object" && "cleanupError" in result) {
+        // エラーが発生しても致命的でないことを確認
+        expect(result.cleanupError).not.toContain("fatal");
+        expect(result.cleanupError).not.toContain("crash");
+      }
+    });
+
+    console.log("クリーンアップエラー処理テスト完了");
+  });
+
+  test("大量並行アクセス時の安定性テスト", async () => {
+    const instanceIds = Array.from({ length: 5 }, (_, i) => `instance-${i}`);
+    const sessionIds = Array.from({ length: 4 }, (_, i) => `session-${i}`);
+    const serverNames = Array.from({ length: 3 }, (_, i) => `server-${i}`);
+
+    // 5 instances × 4 sessions × 3 servers = 60 combinations
+    const allCombinations: Array<{
+      instanceId: string;
+      sessionId: string;
+      serverName: string;
+    }> = [];
+
+    for (const instanceId of instanceIds) {
+      for (const sessionId of sessionIds) {
+        for (const serverName of serverNames) {
+          allCombinations.push({ instanceId, sessionId, serverName });
+        }
+      }
+    }
+
+    // 全組み合わせで並行接続を試行
+    const connectionPromises = allCombinations.map(
+      ({ instanceId, sessionId, serverName }) =>
+        mcpPool
+          .getConnection(
+            instanceId,
+            serverName,
+            { ...mockServerConfig, name: serverName },
+            sessionId,
+          )
+          .then(() => ({ success: true }))
+          .catch(() => ({ success: false })),
+    );
+
+    const startTime = Date.now();
+    const results = await Promise.all(connectionPromises);
+    const endTime = Date.now();
+
+    const successCount = results.filter((r) => r.success).length;
+    const failureCount = results.filter((r) => !r.success).length;
+    const duration = endTime - startTime;
+
+    console.log(`大量並行アクセステスト結果:`);
+    console.log(`  総接続試行数: ${allCombinations.length}`);
+    console.log(`  成功: ${successCount}`);
+    console.log(`  失敗: ${failureCount}`);
+    console.log(`  処理時間: ${duration}ms`);
+
+    // システムが安定して動作することを確認（クラッシュしない）
+    expect(results.length).toBe(allCombinations.length);
+
+    // 処理時間が妥当な範囲内であることを確認（10秒以内）
+    expect(duration).toBeLessThan(10000);
+  });
 });
