@@ -1,118 +1,46 @@
-name: 🔧 Claude Auto-Fix Loop
+name: Claude Auto-Fix Loop
 
 on:
   pull_request:
-    types: [labeled, opened, synchronize]
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR番号'
-        required: true
-        type: number
-      dry_run:
-        description: 'ドライランモード（修正をコミットしない）'
-        required: false
-        default: false
-        type: boolean
+    types: [labeled]
 
 jobs:
-  auto-fix-loop:
-    name: 🤖 自動修正ループ
-    if: |
-      (github.event_name == 'workflow_dispatch') ||
-      (contains(github.event.label.name, 'auto-fix') ||
-       contains(github.event.label.name, 'claude-auto-fix') ||
-       contains(github.event.pull_request.title, '[AUTO-FIX]') ||
-       contains(github.event.pull_request.title, '[CLAUDE-FIX]'))
-
-    runs-on: arc-runner-set
+  auto-fix:
+    if: contains(github.event.label.name, 'auto-fix')
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
       pull-requests: write
       issues: write
-      id-token: write
-
-    env:
-      MAX_LOOP_COUNT: 5
-      AUTO_FIX_THRESHOLD: 7
-      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-      PR_NUMBER: ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
 
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: 🔍 Checkout PR branch
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          gh pr checkout ${{ env.PR_NUMBER }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: ⚙️ Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
-          npm install @anthropic-ai/sdk@latest
-          npm install @octokit/rest@latest
-          npm install js-yaml@latest
+          npm install @anthropic-ai/sdk @octokit/rest typescript tsx
 
-      - name: 🎯 Initialize loop state
-        id: init
-        run: |
-          echo "loop_count=0" >> $GITHUB_OUTPUT
-          echo "continue_loop=true" >> $GITHUB_OUTPUT
-          echo "commit_count=0" >> $GITHUB_OUTPUT
-
-      - name: 📝 Post initial comment
-        run: |
-          node .github/scripts/post-comment.js "start"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-
-      - name: 🔄 Auto-fix loop
-        id: loop
-        run: |
-          node .github/scripts/loop-controller.js
+      - name: Run auto-fix loop
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-          MAX_LOOP_COUNT: ${{ env.MAX_LOOP_COUNT }}
-          AUTO_FIX_THRESHOLD: ${{ env.AUTO_FIX_THRESHOLD }}
-          DRY_RUN: ${{ env.DRY_RUN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          npx tsx .github/scripts/auto-fix.ts
 
-      - name: 📊 Generate summary report
+      - name: Summary
         if: always()
         run: |
-          node .github/scripts/generate-summary.js
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-          LOOP_RESULTS: ${{ steps.loop.outputs.results }}
-
-      - name: 🏷️ Update labels
-        if: success() && steps.loop.outputs.all_fixed == 'true'
-        run: |
-          gh pr edit ${{ env.PR_NUMBER }} --add-label "auto-fixed" --remove-label "auto-fix,claude-auto-fix"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: ⚠️ Handle failure
-        if: failure()
-        run: |
-          node .github/scripts/post-comment.js "error"
-          gh pr edit ${{ env.PR_NUMBER }} --add-label "auto-fix-failed"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "✅ Auto-fix process completed" >> $GITHUB_STEP_SUMMARY
