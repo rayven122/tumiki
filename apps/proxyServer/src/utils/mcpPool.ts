@@ -27,6 +27,12 @@ type MCPConnection = {
  * - 環境変数による柔軟な設定
  */
 class MCPConnectionPool {
+  // 定数定義
+  private static readonly POOL_KEY_SEPARATOR = "::";
+  private static readonly POOL_KEY_ESCAPE_PATTERN = /::/g;
+  private static readonly POOL_KEY_ESCAPE_REPLACEMENT = "%3A%3A";
+  private static readonly SHARED_SESSION_KEY = "shared";
+  private static readonly INSTANCE_ID_RANDOM_LENGTH = 7;
   private readonly pools = new Map<string, MCPConnection[]>();
   private readonly sessionConnections = new Map<string, Set<string>>(); // セッションID -> 接続キーのマッピング
   private readonly sessionLocks = new Map<string, Promise<Client | null>>(); // セッション単位の排他制御
@@ -47,6 +53,48 @@ class MCPConnectionPool {
   private readonly connectionCounter = new AtomicCounter(); // 同期カウンター
 
   /**
+   * エラーハンドリングのヘルパーメソッド
+   */
+  private handleError(
+    error: unknown,
+    context: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(context, {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      ...metadata,
+    });
+  }
+
+  /**
+   * クリティカルエラー時のインデックス再構築処理
+   */
+  private handleCriticalIndexError(
+    error: unknown,
+    context: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    this.handleError(error, `Critical error in ${context}`, metadata);
+
+    // 再帰防止のためのフラグを追加
+    if (!this.isRebuilding) {
+      this.isRebuilding = true;
+      try {
+        this.rebuildConnectionIndex();
+      } catch (rebuildError) {
+        this.handleError(
+          rebuildError,
+          "Failed to rebuild connection index during critical error recovery",
+        );
+      } finally {
+        this.isRebuilding = false;
+      }
+    }
+  }
+
+  /**
    * Connection stateを原子的に更新
    */
   private updateConnectionState(
@@ -54,7 +102,7 @@ class MCPConnectionPool {
     isActive: boolean,
     poolKey: string,
   ): void {
-    const connectionId = `${poolKey}::${conn.instanceId}`;
+    const connectionId = `${poolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${conn.instanceId}`;
 
     // 原子的な状態更新
     const currentTime = Date.now();
@@ -73,26 +121,9 @@ class MCPConnectionPool {
         }
       }
     } catch (error) {
-      logger.error("Failed to update connection index", {
+      this.handleCriticalIndexError(error, "connection state update", {
         connectionId,
-        error,
       });
-      // 再帰防止のためのフラグを追加
-      if (!this.isRebuilding) {
-        this.isRebuilding = true;
-        try {
-          this.rebuildConnectionIndex();
-        } catch (rebuildError) {
-          logger.error("Failed to rebuild connection index", {
-            error:
-              rebuildError instanceof Error
-                ? rebuildError.message
-                : String(rebuildError),
-          });
-        } finally {
-          this.isRebuilding = false;
-        }
-      }
     }
   }
 
@@ -106,7 +137,7 @@ class MCPConnectionPool {
     for (const [poolKey, pool] of this.pools) {
       for (const conn of pool) {
         if (!conn.isActive) {
-          const connectionId = `${poolKey}::${conn.instanceId}`;
+          const connectionId = `${poolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${conn.instanceId}`;
           this.idleConnectionsIndex.set(connectionId, { conn, poolKey });
         }
       }
@@ -136,6 +167,16 @@ class MCPConnectionPool {
   }
 
   /**
+   * 安全なエンコーディング（区切り文字の衝突防止）
+   */
+  private safeEncode(value: string): string {
+    return encodeURIComponent(value).replace(
+      MCPConnectionPool.POOL_KEY_ESCAPE_PATTERN,
+      MCPConnectionPool.POOL_KEY_ESCAPE_REPLACEMENT,
+    );
+  }
+
+  /**
    * プールキーを生成（セッション対応版）
    */
   private getPoolKey(
@@ -143,32 +184,18 @@ class MCPConnectionPool {
     serverName: string,
     sessionId?: string,
   ): string {
-    // 区切り文字の衝突を防ぐため、エンコード後に区切り文字を再エスケープ
-    const safeInstanceId = encodeURIComponent(instanceId).replace(
-      /::/g,
-      "%3A%3A",
-    );
-    const safeServerName = encodeURIComponent(serverName).replace(
-      /::/g,
-      "%3A%3A",
-    );
-
-    const parts = [safeInstanceId, safeServerName];
+    const parts = [this.safeEncode(instanceId), this.safeEncode(serverName)];
 
     // セッション独立モードが有効な場合、セッションIDを含める
     const useSessionPool = config.connectionPool.sessionPoolSync;
     if (useSessionPool && sessionId) {
-      const safeSessionId = encodeURIComponent(sessionId).replace(
-        /::/g,
-        "%3A%3A",
-      );
-      parts.push(safeSessionId);
+      parts.push(this.safeEncode(sessionId));
     } else if (useSessionPool) {
-      parts.push("shared");
+      parts.push(MCPConnectionPool.SHARED_SESSION_KEY);
     }
 
     // より衝突しにくい区切り文字を使用
-    return parts.join("::");
+    return parts.join(MCPConnectionPool.POOL_KEY_SEPARATOR);
   }
 
   /**
@@ -300,7 +327,7 @@ class MCPConnectionPool {
             oldPool.splice(index, 1);
             this.connectionCounter.decrement();
             // インデックスから削除
-            const connectionId = `${oldestPoolKey}::${oldestIdle.instanceId}`;
+            const connectionId = `${oldestPoolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${oldestIdle.instanceId}`;
             this.idleConnectionsIndex.delete(connectionId);
 
             // セッション接続マッピングからもクリーンアップ
@@ -351,7 +378,9 @@ class MCPConnectionPool {
         client,
         lastUsed: now,
         isActive: true,
-        instanceId: `${userServerConfigInstanceId}_${serverName}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        instanceId: `${userServerConfigInstanceId}_${serverName}_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2, 2 + MCPConnectionPool.INSTANCE_ID_RANDOM_LENGTH)}`,
         cleanup: credentialsCleanup,
       };
 
@@ -360,19 +389,15 @@ class MCPConnectionPool {
       this.connectionCounter.increment();
 
       // 初期状態はアイドルとしてインデックスに登録
-      const connectionId = `${poolKey}::${connection.instanceId}`;
+      const connectionId = `${poolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${connection.instanceId}`;
       try {
         this.idleConnectionsIndex.set(connectionId, {
           conn: connection,
           poolKey,
         });
       } catch (indexError) {
-        logger.error("Failed to register connection in index", {
+        this.handleError(indexError, "Failed to register connection in index", {
           connectionId,
-          error:
-            indexError instanceof Error
-              ? indexError.message
-              : String(indexError),
         });
         // インデックス登録失敗でも接続は有効
       }
@@ -385,13 +410,9 @@ class MCPConnectionPool {
           sessionConns.add(poolKey);
           this.sessionConnections.set(sessionId, sessionConns);
         } catch (sessionError) {
-          logger.error("Failed to update session mapping", {
+          this.handleError(sessionError, "Failed to update session mapping", {
             sessionId,
             poolKey,
-            error:
-              sessionError instanceof Error
-                ? sessionError.message
-                : String(sessionError),
           });
           // セッションマッピング失敗でも接続は有効
         }
@@ -422,13 +443,13 @@ class MCPConnectionPool {
           await connection.client?.close();
           await connection.cleanup?.();
         } catch (cleanupError) {
-          logger.warn("Failed to cleanup partially created connection", {
-            instanceId: connection.instanceId,
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : String(cleanupError),
-          });
+          this.handleError(
+            cleanupError,
+            "Failed to cleanup partially created connection",
+            {
+              instanceId: connection.instanceId,
+            },
+          );
         }
       }
 
@@ -528,7 +549,7 @@ class MCPConnectionPool {
             this.connectionCounter.decrement();
 
             // インデックスからも確実に削除
-            const connectionId = `${poolKey}::${conn.instanceId}`;
+            const connectionId = `${poolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${conn.instanceId}`;
             this.idleConnectionsIndex.delete(connectionId);
 
             if (pool.length === 0) {
@@ -543,21 +564,7 @@ class MCPConnectionPool {
           instanceId: conn.instanceId,
         });
         // インデックス破損の可能性があるため再構築（再帰防止付き）
-        if (!this.isRebuilding) {
-          this.isRebuilding = true;
-          try {
-            this.rebuildConnectionIndex();
-          } catch (rebuildError) {
-            logger.error("Failed to rebuild connection index during cleanup", {
-              error:
-                rebuildError instanceof Error
-                  ? rebuildError.message
-                  : String(rebuildError),
-            });
-          } finally {
-            this.isRebuilding = false;
-          }
-        }
+        this.handleCriticalIndexError(error, "connection pool cleanup");
       }
     }
 
@@ -579,7 +586,7 @@ class MCPConnectionPool {
     for (const [poolKey, pool] of this.pools) {
       for (const conn of pool) {
         if (!conn.isActive) {
-          const connectionId = `${poolKey}::${conn.instanceId}`;
+          const connectionId = `${poolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${conn.instanceId}`;
           actualIdleConnections.add(connectionId);
         }
       }
@@ -597,7 +604,7 @@ class MCPConnectionPool {
     for (const connectionId of actualIdleConnections) {
       if (!this.idleConnectionsIndex.has(connectionId)) {
         // プールから接続を見つけて追加
-        const parts = connectionId.split("::");
+        const parts = connectionId.split(MCPConnectionPool.POOL_KEY_SEPARATOR);
         if (parts.length >= 2) {
           const poolKey = parts[0];
           const instanceId = parts[1];
@@ -659,15 +666,14 @@ class MCPConnectionPool {
             this.connectionCounter.decrement();
 
             // アイドル接続インデックスからも削除
-            const connectionId = `${poolKey}::${conn.instanceId}`;
+            const connectionId = `${poolKey}${MCPConnectionPool.POOL_KEY_SEPARATOR}${conn.instanceId}`;
             this.idleConnectionsIndex.delete(connectionId);
           } catch (error) {
             // エラーをログに記録（セッションクリーンアップ失敗は重要なのでerrorレベル）
-            logger.error("Failed to cleanup session connection", {
+            this.handleError(error, "Failed to cleanup session connection", {
               sessionId,
               poolKey,
               instanceId: conn.instanceId,
-              error: error instanceof Error ? error.message : String(error),
             });
             // 接続状態を強制的に無効化
             conn.isActive = false;
