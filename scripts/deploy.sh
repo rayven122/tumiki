@@ -150,6 +150,12 @@ check_vercel_prerequisites() {
             log_error "VERCEL_ORG_IDまたはVERCEL_PROJECT_IDが設定されていません"
             exit 1
         fi
+        # CI環境でもvercel CLIが必要
+        if ! command -v vercel &> /dev/null; then
+            log_error "Vercel CLIが見つかりません"
+            log_error "GitHub Actionsのsetupアクションでインストールが必要です"
+            exit 1
+        fi
     else
         # ローカル環境
         if ! command -v vercel &> /dev/null; then
@@ -407,19 +413,8 @@ if ! command -v pm2 &>/dev/null; then
     exit 1
 fi
 
-# Git設定（環境変数で制御可能）
+# 環境設定
 export GIT_TERMINAL_PROMPT=0
-if [ -n "${GIT_CONFIG_LOCAL:-true}" ]; then
-    # リポジトリローカルで設定（推奨）
-    cd REMOTE_PATH_VAR 2>/dev/null && {
-        git config user.name "CI Deploy Bot"
-        git config user.email "ci@tumiki.local"
-    }
-else
-    # グローバル設定（後方互換性のため）
-    git config --global user.name "CI Deploy Bot"
-    git config --global user.email "ci@tumiki.local"
-fi
 
 # SSHキー確認
 if [ ! -f ~/.ssh/id_rsa ] && [ ! -f ~/.ssh/id_ed25519 ]; then
@@ -437,7 +432,10 @@ fi
 # リポジトリのクローンまたは更新
 if [ -d "REMOTE_PATH_VAR/.git" ]; then
     echo "リポジトリを更新中..."
-    cd REMOTE_PATH_VAR
+    cd REMOTE_PATH_VAR || {
+        echo "エラー: リポジトリディレクトリにアクセスできません"
+        exit 1
+    }
     git fetch origin
     git reset --hard origin/BRANCH_VAR
     git clean -fd
@@ -449,12 +447,28 @@ else
     fi
     mkdir -p /opt
     git clone -b BRANCH_VAR REPO_URL_VAR REMOTE_PATH_VAR
-    cd REMOTE_PATH_VAR
+    cd REMOTE_PATH_VAR || {
+        echo "エラー: クローンしたリポジトリにアクセスできません"
+        exit 1
+    }
     echo "リポジトリをクローンしました: $(git log -1 --format='%h %s')"
 fi
 
+# Git設定（リポジトリが確実に存在する状態で実行）
+if [ -d ".git" ]; then
+    git config user.name "CI Deploy Bot"
+    git config user.email "ci@tumiki.local"
+    echo "Git設定を適用しました"
+else
+    echo "エラー: Gitリポジトリが見つかりません"
+    exit 1
+fi
+
 # 作業ディレクトリに移動
-cd REMOTE_PATH_VAR
+cd REMOTE_PATH_VAR || {
+    echo "エラー: 作業ディレクトリにアクセスできません"
+    exit 1
+}
 
 # 環境変数ファイルの配置
 if [ -f /tmp/.env.deploy ]; then
@@ -595,17 +609,32 @@ deploy_parallel() {
     # 両方の完了を待機
     log_info "デプロイの完了を待機中..."
 
-    # waitの戻り値でプロセスの成功/失敗を判定
-    wait $VERCEL_PID || vercel_success=1
-    wait $GCE_PID || gce_success=1
+    # プロセス完了を待機し、適切にエラーを検知
+    if ! wait $VERCEL_PID; then
+        log_error "Vercelデプロイプロセスが異常終了しました (PID: $VERCEL_PID)"
+        vercel_success=1
+    fi
 
-    # ステータスファイルから結果を読み取り
+    if ! wait $GCE_PID; then
+        log_error "GCEデプロイプロセスが異常終了しました (PID: $GCE_PID)"
+        gce_success=1
+    fi
+
+    # ステータスファイルから結果を読み取り（プロセスが正常に完了した場合）
     if [ -f "$TEMP_DIR/vercel_status" ]; then
         vercel_success=$(cat "$TEMP_DIR/vercel_status" 2>/dev/null || echo "1")
+        [ "$vercel_success" != "0" ] && log_error "Vercelデプロイが失敗しました (status: $vercel_success)"
+    else
+        log_error "Vercelデプロイのステータスファイルが見つかりません"
+        vercel_success=1
     fi
 
     if [ -f "$TEMP_DIR/gce_status" ]; then
         gce_success=$(cat "$TEMP_DIR/gce_status" 2>/dev/null || echo "1")
+        [ "$gce_success" != "0" ] && log_error "GCEデプロイが失敗しました (status: $gce_success)"
+    else
+        log_error "GCEデプロイのステータスファイルが見つかりません"
+        gce_success=1
     fi
 
     # クリーンアップ
