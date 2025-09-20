@@ -1,93 +1,199 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeEach } from "vitest";
 import { AtomicCounter } from "../atomicCounter.js";
 
 describe("AtomicCounter", () => {
-  test("初期値は0である", () => {
-    const counter = new AtomicCounter();
-    expect(counter.get()).toBe(0);
+  let counter: AtomicCounter;
+
+  beforeEach(() => {
+    counter = new AtomicCounter();
   });
 
-  test("incrementで値が1増加する", async () => {
-    const counter = new AtomicCounter();
-    const result = await counter.increment();
-
-    expect(result).toBe(1);
-    expect(counter.get()).toBe(1);
+  describe("初期化", () => {
+    test("初期値が0であること", () => {
+      expect(counter.get()).toStrictEqual(0);
+    });
   });
 
-  test("decrementで値が1減少する", async () => {
-    const counter = new AtomicCounter();
-    await counter.increment();
-    await counter.increment();
+  describe("increment", () => {
+    test("値が1増加すること", () => {
+      const result = counter.increment();
+      expect(result).toStrictEqual(1);
+      expect(counter.get()).toStrictEqual(1);
+    });
 
-    const result = await counter.decrement();
+    test("複数回インクリメントが正しく動作すること", () => {
+      counter.increment();
+      counter.increment();
+      const result = counter.increment();
+      expect(result).toStrictEqual(3);
+      expect(counter.get()).toStrictEqual(3);
+    });
 
-    expect(result).toBe(1);
-    expect(counter.get()).toBe(1);
+    test("インクリメント後の値を返すこと", () => {
+      const result1 = counter.increment();
+      const result2 = counter.increment();
+      expect(result1).toStrictEqual(1);
+      expect(result2).toStrictEqual(2);
+    });
   });
 
-  test("resetで値が指定値に設定される", async () => {
-    const counter = new AtomicCounter();
-    await counter.increment();
-    await counter.increment();
-    await counter.increment();
+  describe("decrement", () => {
+    test("値が1減少すること", () => {
+      counter.increment(); // 1にする
+      const result = counter.decrement();
+      expect(result).toStrictEqual(0);
+      expect(counter.get()).toStrictEqual(0);
+    });
 
-    await counter.reset(10);
+    test("負の値にも対応すること", () => {
+      const result = counter.decrement();
+      expect(result).toStrictEqual(-1);
+      expect(counter.get()).toStrictEqual(-1);
+    });
 
-    expect(counter.get()).toBe(10);
+    test("デクリメント後の値を返すこと", () => {
+      counter.increment(); // 1
+      counter.increment(); // 2
+      const result1 = counter.decrement(); // 1
+      const result2 = counter.decrement(); // 0
+      expect(result1).toStrictEqual(1);
+      expect(result2).toStrictEqual(0);
+    });
   });
 
-  test("resetで引数なしの場合は0に設定される", async () => {
-    const counter = new AtomicCounter();
-    await counter.increment();
-    await counter.increment();
+  describe("get", () => {
+    test("現在の値を正しく返すこと", () => {
+      expect(counter.get()).toStrictEqual(0);
+      counter.increment();
+      expect(counter.get()).toStrictEqual(1);
+      counter.increment();
+      expect(counter.get()).toStrictEqual(2);
+      counter.decrement();
+      expect(counter.get()).toStrictEqual(1);
+    });
 
-    await counter.reset();
-
-    expect(counter.get()).toBe(0);
+    test("getは値を変更しないこと", () => {
+      counter.increment();
+      const value1 = counter.get();
+      const value2 = counter.get();
+      expect(value1).toStrictEqual(value2);
+      expect(value1).toStrictEqual(1);
+    });
   });
 
-  test("複数の操作を順序正しく実行する", async () => {
-    const counter = new AtomicCounter();
+  describe("reset", () => {
+    test("値を0にリセットすること", () => {
+      counter.increment();
+      counter.increment();
+      counter.reset();
+      expect(counter.get()).toStrictEqual(0);
+    });
 
-    await counter.increment(); // 1
-    await counter.increment(); // 2
-    await counter.decrement(); // 1
-    await counter.increment(); // 2
-    await counter.increment(); // 3
+    test("特定の値にリセットできること", () => {
+      counter.increment();
+      counter.reset(10);
+      expect(counter.get()).toStrictEqual(10);
+    });
 
-    expect(counter.get()).toBe(3);
+    test("負の値にもリセットできること", () => {
+      counter.reset(-5);
+      expect(counter.get()).toStrictEqual(-5);
+    });
   });
 
-  test("並行操作時の整合性を確認", async () => {
-    const counter = new AtomicCounter();
-    const promises = [];
+  describe("同期的な動作の検証", () => {
+    test("連続したインクリメント操作が正しく動作すること", () => {
+      const results: number[] = [];
+      for (let i = 0; i < 1000; i++) {
+        results.push(counter.increment());
+      }
 
-    // 10回のincrementを並行実行
-    for (let i = 0; i < 10; i++) {
-      promises.push(counter.increment());
-    }
+      // 各結果が連続した数値であることを確認
+      for (let i = 0; i < results.length; i++) {
+        expect(results[i]).toStrictEqual(i + 1);
+      }
 
-    await Promise.all(promises);
+      expect(counter.get()).toStrictEqual(1000);
+    });
 
-    expect(counter.get()).toBe(10);
+    test("インクリメントとデクリメントの混在操作が正しく動作すること", () => {
+      const operations = [
+        () => counter.increment(),
+        () => counter.increment(),
+        () => counter.decrement(),
+        () => counter.increment(),
+        () => counter.decrement(),
+        () => counter.decrement(),
+        () => counter.increment(),
+      ];
+
+      const results = operations.map((op) => op());
+
+      // 期待される結果: 1, 2, 1, 2, 1, 0, 1
+      expect(results).toStrictEqual([1, 2, 1, 2, 1, 0, 1]);
+      expect(counter.get()).toStrictEqual(1);
+    });
+
+    test("大量の操作でも一貫性が保たれること", () => {
+      const increments = 5000;
+      const decrements = 3000;
+
+      for (let i = 0; i < increments; i++) {
+        counter.increment();
+      }
+
+      for (let i = 0; i < decrements; i++) {
+        counter.decrement();
+      }
+
+      expect(counter.get()).toStrictEqual(increments - decrements);
+    });
+
+    test("リセット後の操作が正しく動作すること", () => {
+      counter.increment();
+      counter.increment();
+      counter.reset(100);
+
+      const afterReset1 = counter.increment();
+      const afterReset2 = counter.decrement();
+      const afterReset3 = counter.decrement();
+
+      expect(afterReset1).toStrictEqual(101);
+      expect(afterReset2).toStrictEqual(100);
+      expect(afterReset3).toStrictEqual(99);
+      expect(counter.get()).toStrictEqual(99);
+    });
   });
 
-  test("increment/decrementの混在操作の整合性", async () => {
-    const counter = new AtomicCounter();
-    const incrementPromises = [];
-    const decrementPromises = [];
+  describe("エッジケース", () => {
+    test("最大値付近での動作", () => {
+      const maxSafeInt = Number.MAX_SAFE_INTEGER;
+      counter.reset(maxSafeInt - 1);
 
-    // 15回のincrementと5回のdecrementを並行実行
-    for (let i = 0; i < 15; i++) {
-      incrementPromises.push(counter.increment());
-    }
-    for (let i = 0; i < 5; i++) {
-      decrementPromises.push(counter.decrement());
-    }
+      const result = counter.increment();
+      expect(result).toStrictEqual(maxSafeInt);
+      expect(counter.get()).toStrictEqual(maxSafeInt);
+    });
 
-    await Promise.all([...incrementPromises, ...decrementPromises]);
+    test("最小値付近での動作", () => {
+      const minSafeInt = Number.MIN_SAFE_INTEGER;
+      counter.reset(minSafeInt + 1);
 
-    expect(counter.get()).toBe(10); // 15 - 5 = 10
+      const result = counter.decrement();
+      expect(result).toStrictEqual(minSafeInt);
+      expect(counter.get()).toStrictEqual(minSafeInt);
+    });
+
+    test("ゼロを跨ぐ操作", () => {
+      counter.reset(2);
+      counter.decrement(); // 1
+      counter.decrement(); // 0
+      const belowZero = counter.decrement(); // -1
+      const furtherBelow = counter.decrement(); // -2
+
+      expect(belowZero).toStrictEqual(-1);
+      expect(furtherBelow).toStrictEqual(-2);
+      expect(counter.get()).toStrictEqual(-2);
+    });
   });
 });
