@@ -299,7 +299,7 @@ describe("MCPプールの並行接続テスト", () => {
         mockServerConfig,
         sessionId,
       )
-      .catch((error: unknown) => null);
+      .catch((_error: unknown) => null);
 
     if (connection) {
       // 接続を解放
