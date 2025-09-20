@@ -1,28 +1,17 @@
-import { describe, test, beforeEach, afterEach } from "vitest";
+import { describe, test, afterEach } from "vitest";
 import { expect } from "vitest";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { mcpPool } from "../src/utils/mcpPool.js";
 import type { ServerConfig } from "../src/libs/types.js";
 
 // モックサーバー設定
 const mockServerConfig: ServerConfig = {
   name: "test-server",
-  command: "node",
-  args: ["test-server.js"],
-  env: {},
-  cwd: process.cwd(),
-  transportType: "stdio",
-  retryCount: 3,
-  retryDelay: 1000,
-  timeout: 30000,
   toolNames: [],
-  resourceTemplateNames: [],
-  metricStats: {
-    totalCalls: 0,
-    successCalls: 0,
-    errorCalls: 0,
-    totalDuration: 0,
-    errors: [],
+  transport: {
+    type: "stdio",
+    command: "node",
+    args: ["test-server.js"],
+    env: {},
   },
 };
 
@@ -45,7 +34,9 @@ describe("MCPプールの並行接続テスト", () => {
           mockServerConfig,
           sessionId,
         )
-        .catch((error) => ({ error: error.message })),
+        .catch((error: unknown) => ({
+          error: error instanceof Error ? error.message : String(error),
+        })),
     );
 
     const results = await Promise.allSettled(connectionPromises);
@@ -73,7 +64,9 @@ describe("MCPプールの並行接続テスト", () => {
         mockServerConfig,
         sessionId,
       )
-      .catch((error) => ({ error: error.message }));
+      .catch((error: unknown) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }));
 
     // エラーの場合はテストをスキップ（モック環境のため）
     if ("error" in connectionResult) {
@@ -81,7 +74,7 @@ describe("MCPプールの並行接続テスト", () => {
       return;
     }
 
-    const client = connectionResult as Client;
+    const client = connectionResult;
 
     // 接続を解放
     mcpPool.releaseConnection(
@@ -103,7 +96,9 @@ describe("MCPプールの並行接続テスト", () => {
         mockServerConfig,
         sessionId,
       )
-      .catch((error) => ({ error: error.message }));
+      .catch((error: unknown) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }));
 
     // 新しい接続が取得できることを確認（エラーでもOK - モック環境のため）
     expect(newConnectionResult).toBeDefined();
@@ -122,7 +117,9 @@ describe("MCPプールの並行接続テスト", () => {
         mockServerConfig,
         session1,
       )
-      .catch((error) => ({ error: error.message }));
+      .catch((error: unknown) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }));
 
     const conn2Promise = mcpPool
       .getConnection(
@@ -131,7 +128,9 @@ describe("MCPプールの並行接続テスト", () => {
         mockServerConfig,
         session2,
       )
-      .catch((error) => ({ error: error.message }));
+      .catch((error: unknown) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }));
 
     const [result1, result2] = await Promise.all([conn1Promise, conn2Promise]);
 
@@ -160,7 +159,9 @@ describe("MCPプールの並行接続テスト", () => {
         mockServerConfig,
         session2,
       )
-      .catch((error) => ({ error: error.message }));
+      .catch((error: unknown) => ({
+        error: error instanceof Error ? error.message : String(error),
+      }));
 
     expect(conn2AfterCleanup).toBeDefined();
   });
@@ -178,18 +179,15 @@ describe("MCPプールの並行接続テスト", () => {
           { ...mockServerConfig, name: `server-${i}` },
           sessionId,
         )
-        .catch((error) => error.message),
+        .catch((error: unknown) =>
+          error instanceof Error ? error.message : String(error),
+        ),
     );
 
     const results = await Promise.all(connectionPromises);
 
     // エラーメッセージを確認
     const errors = results.filter((r) => typeof r === "string");
-    const hasMaxConnectionError = errors.some(
-      (e) =>
-        e.includes("Maximum connections per session") ||
-        e.includes("Failed to create client or transport"),
-    );
 
     console.log("接続結果:", results);
 
