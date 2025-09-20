@@ -125,8 +125,10 @@ deploy_vercel() {
     log_info "プロジェクトルートからVercelデプロイを実行"
     log_info "現在のディレクトリ: $(pwd)"
 
-    # 一時ファイルでエラーログを保存
+    # 一時ファイルでエラーログを保存（セキュリティ：権限設定と自動削除）
     local temp_log=$(mktemp)
+    chmod 600 "$temp_log"  # 所有者のみ読み書き可能
+    trap 'rm -f "$temp_log"' EXIT ERR INT TERM
     local deploy_exit_code=0
 
     if [ -n "${VERCEL_TOKEN:-}" ]; then
