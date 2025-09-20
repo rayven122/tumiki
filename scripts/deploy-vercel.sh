@@ -117,10 +117,13 @@ deploy_vercel() {
         # CI環境
         log_info "CI環境でVercelデプロイを実行"
 
+        # 環境変数でトークンを渡し、コマンドラインに露出させない
+        export VERCEL_TOKEN
+
         if [ "$STAGE" = "production" ]; then
-            deployment_url=$(vercel deploy --prod --token="$VERCEL_TOKEN" --yes 2>&1 | tail -1)
+            deployment_url=$(vercel deploy --prod --yes 2>&1 | tail -1)
         else
-            deployment_url=$(vercel deploy --token="$VERCEL_TOKEN" --yes 2>&1 | tail -1)
+            deployment_url=$(vercel deploy --yes 2>&1 | tail -1)
         fi
     else
         # ローカル環境

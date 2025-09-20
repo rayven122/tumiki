@@ -30,8 +30,23 @@ check_deploy_results() {
         return 0
     else
         log_error "❌ 並列デプロイで問題が発生しました"
-        [ "$vercel_status" != "0" ] && log_error "  - Vercelデプロイが失敗"
-        [ "$gce_status" != "0" ] && log_error "  - GCEデプロイが失敗"
+
+        # 詳細なエラー分析と対処法の提示
+        if [ "$vercel_status" != "0" ]; then
+            log_error "  - Vercelデプロイが失敗 (exit code: $vercel_status)"
+            log_error "    対処法: Vercelトークンの確認、プロジェクト設定の確認を行ってください"
+        fi
+
+        if [ "$gce_status" != "0" ]; then
+            log_error "  - GCEデプロイが失敗 (exit code: $gce_status)"
+            log_error "    対処法: GCPサービスアカウントキーの確認、権限設定の確認を行ってください"
+        fi
+
+        # 部分的な成功の場合の情報提供
+        if [ "$vercel_status" = "0" ] || [ "$gce_status" = "0" ]; then
+            log_warn "⚠️  注意: 一部のデプロイは成功しています。失敗したサービスのみ再実行してください"
+        fi
+
         return 1
     fi
 }
@@ -66,22 +81,25 @@ cleanup_parallel() {
     local exit_code=$?
 
     # 子プロセスのクリーンアップ（プロセスグループ全体を確実に停止）
-    if [ -n "$VERCEL_PID" ] && kill -0 "$VERCEL_PID" 2>/dev/null; then
+    # PIDレースコンディションを防ぐため、ローカル変数に保存
+    local vercel_pid_to_check="$VERCEL_PID"
+    if [ -n "$vercel_pid_to_check" ] && kill -0 "$vercel_pid_to_check" 2>/dev/null; then
         log_warn "Vercelデプロイプロセスを停止中..."
         # プロセスグループ全体にシグナルを送信
-        kill -TERM -"$VERCEL_PID" 2>/dev/null || kill -TERM "$VERCEL_PID" 2>/dev/null || true
+        kill -TERM -"$vercel_pid_to_check" 2>/dev/null || kill -TERM "$vercel_pid_to_check" 2>/dev/null || true
         sleep 1
         # まだ残っている場合は強制終了
-        kill -KILL -"$VERCEL_PID" 2>/dev/null || kill -KILL "$VERCEL_PID" 2>/dev/null || true
+        kill -KILL -"$vercel_pid_to_check" 2>/dev/null || kill -KILL "$vercel_pid_to_check" 2>/dev/null || true
     fi
 
-    if [ -n "$GCE_PID" ] && kill -0 "$GCE_PID" 2>/dev/null; then
+    local gce_pid_to_check="$GCE_PID"
+    if [ -n "$gce_pid_to_check" ] && kill -0 "$gce_pid_to_check" 2>/dev/null; then
         log_warn "GCEデプロイプロセスを停止中..."
         # プロセスグループ全体にシグナルを送信
-        kill -TERM -"$GCE_PID" 2>/dev/null || kill -TERM "$GCE_PID" 2>/dev/null || true
+        kill -TERM -"$gce_pid_to_check" 2>/dev/null || kill -TERM "$gce_pid_to_check" 2>/dev/null || true
         sleep 1
         # まだ残っている場合は強制終了
-        kill -KILL -"$GCE_PID" 2>/dev/null || kill -KILL "$GCE_PID" 2>/dev/null || true
+        kill -KILL -"$gce_pid_to_check" 2>/dev/null || kill -KILL "$gce_pid_to_check" 2>/dev/null || true
     fi
 
     # 一時ファイル/ディレクトリのクリーンアップ
@@ -129,8 +147,10 @@ execute_parallel_deploy() {
         set -m
         if deploy_vercel; then
             echo "0" > "$TEMP_DIR/vercel_status"
+            chmod 600 "$TEMP_DIR/vercel_status"
         else
             echo "1" > "$TEMP_DIR/vercel_status"
+            chmod 600 "$TEMP_DIR/vercel_status"
         fi
     ) &
     VERCEL_PID=$!
@@ -141,8 +161,10 @@ execute_parallel_deploy() {
         set -m
         if deploy_gce; then
             echo "0" > "$TEMP_DIR/gce_status"
+            chmod 600 "$TEMP_DIR/gce_status"
         else
             echo "1" > "$TEMP_DIR/gce_status"
+            chmod 600 "$TEMP_DIR/gce_status"
         fi
     ) &
     GCE_PID=$!
