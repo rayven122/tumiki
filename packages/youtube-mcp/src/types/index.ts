@@ -250,15 +250,35 @@ export type TranscriptMetadata = {
   lastUpdated: string;
 };
 
+// Transcript types for yt-dlp integration
+export type TranscriptSegment = {
+  start: number;
+  end: number;
+  text: string;
+};
+
+export type TranscriptResponse = {
+  segments: TranscriptSegment[];
+};
+
 // Transcript Input Schemas
 export const GetTranscriptMetadataSchema = z.object({
   videoId: z.string().min(1).describe("YouTube動画のID"),
+});
+
+export const GetTranscriptSchema = z.object({
+  videoId: z.string().min(1).describe("YouTube動画のID"),
+  language: z.string().min(1).describe("言語コード（例: ja, en）"),
+  startTime: z.number().min(0).optional().describe("開始時間（秒）"),
+  endTime: z.number().min(0).optional().describe("終了時間（秒）"),
 });
 
 // Transcript Input Types
 export type GetTranscriptMetadataInput = z.infer<
   typeof GetTranscriptMetadataSchema
 >;
+
+export type GetTranscriptInput = z.infer<typeof GetTranscriptSchema>;
 
 // YouTube API Error Types
 export type YouTubeApiError = {
