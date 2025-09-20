@@ -34,11 +34,8 @@ source "${SCRIPT_DIR}/deploy-parallel.sh"
 cleanup() {
     local exit_code=$?
 
-    # 環境変数ファイルのクリーンアップ（機密情報を含むため安全に削除）
-    if [ -f ".env.deploy" ]; then
-        shred -u .env.deploy 2>/dev/null || rm -f .env.deploy
-        log_info "環境変数ファイルを安全に削除しました"
-    fi
+    # 環境変数ファイルのクリーンアップ
+    [ -f ".env.deploy" ] && rm -f .env.deploy
 
     if [ $exit_code -ne 0 ]; then
         log_error "デプロイが失敗しました (exit code: $exit_code)"
@@ -119,11 +116,8 @@ main() {
             ;;
     esac
 
-    # クリーンアップ（機密情報を含むため安全に削除）
-    if [ -f ".env.deploy" ]; then
-        shred -u .env.deploy 2>/dev/null || rm -f .env.deploy
-        log_info "環境変数ファイルを安全に削除しました"
-    fi
+    # クリーンアップ
+    [ -f ".env.deploy" ] && rm -f .env.deploy
 
     log_info "==============================="
     log_info "✅ デプロイ完了!"
