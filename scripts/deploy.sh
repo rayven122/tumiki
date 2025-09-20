@@ -71,18 +71,40 @@ log_dry_run() {
     echo -e "${YELLOW}[DRY RUN]${NC} $1"
 }
 
+# グローバル変数（プロセス管理用）
+VERCEL_PID=""
+GCE_PID=""
+TEMP_DIR=""
+
 # エラーハンドリング
 cleanup() {
     local exit_code=$?
+
+    # 子プロセスのクリーンアップ
+    if [ -n "$VERCEL_PID" ] && kill -0 "$VERCEL_PID" 2>/dev/null; then
+        log_warn "Vercelデプロイプロセスを停止中..."
+        kill -TERM "$VERCEL_PID" 2>/dev/null || true
+    fi
+
+    if [ -n "$GCE_PID" ] && kill -0 "$GCE_PID" 2>/dev/null; then
+        log_warn "GCEデプロイプロセスを停止中..."
+        kill -TERM "$GCE_PID" 2>/dev/null || true
+    fi
+
+    # 一時ファイル/ディレクトリのクリーンアップ
+    if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
+    fi
+
+    rm -f .env.deploy
+
     if [ $exit_code -ne 0 ]; then
         log_error "デプロイが失敗しました (exit code: $exit_code)"
-        # クリーンアップ
-        rm -f .env.deploy
         exit $exit_code
     fi
 }
 
-trap cleanup EXIT ERR
+trap cleanup EXIT ERR INT TERM
 
 # =============================================================================
 # 共通関数
@@ -385,10 +407,19 @@ if ! command -v pm2 &>/dev/null; then
     exit 1
 fi
 
-# Git設定
+# Git設定（環境変数で制御可能）
 export GIT_TERMINAL_PROMPT=0
-git config --global user.name "CI Deploy Bot"
-git config --global user.email "ci@tumiki.local"
+if [ -n "${GIT_CONFIG_LOCAL:-true}" ]; then
+    # リポジトリローカルで設定（推奨）
+    cd REMOTE_PATH_VAR 2>/dev/null && {
+        git config user.name "CI Deploy Bot"
+        git config user.email "ci@tumiki.local"
+    }
+else
+    # グローバル設定（後方互換性のため）
+    git config --global user.name "CI Deploy Bot"
+    git config --global user.email "ci@tumiki.local"
+fi
 
 # SSHキー確認
 if [ ! -f ~/.ssh/id_rsa ] && [ ! -f ~/.ssh/id_ed25519 ]; then
@@ -531,47 +562,57 @@ show_gce_results() {
 deploy_parallel() {
     log_step "並列デプロイを開始します..."
 
-    local vercel_pid=""
-    local gce_pid=""
     local vercel_success=1
     local gce_success=1
 
+    # 安全な一時ディレクトリを作成
+    TEMP_DIR=$(mktemp -d -t tumiki-deploy-XXXXXX) || {
+        log_error "一時ディレクトリの作成に失敗しました"
+        return 1
+    }
+    chmod 700 "$TEMP_DIR"
+
     # Vercelデプロイをバックグラウンドで開始
     {
-        deploy_vercel
-        echo $? > /tmp/vercel_deploy_status.$$
+        if deploy_vercel; then
+            echo "0" > "$TEMP_DIR/vercel_status"
+        else
+            echo "1" > "$TEMP_DIR/vercel_status"
+        fi
     } &
-    vercel_pid=$!
+    VERCEL_PID=$!
 
     # GCEデプロイをバックグラウンドで開始
     {
-        deploy_gce
-        echo $? > /tmp/gce_deploy_status.$$
+        if deploy_gce; then
+            echo "0" > "$TEMP_DIR/gce_status"
+        else
+            echo "1" > "$TEMP_DIR/gce_status"
+        fi
     } &
-    gce_pid=$!
+    GCE_PID=$!
 
     # 両方の完了を待機
     log_info "デプロイの完了を待機中..."
 
-    # Vercelの完了を待つ
-    if wait $vercel_pid; then
-        if [ -f "/tmp/vercel_deploy_status.$$" ]; then
-            vercel_success=$(cat /tmp/vercel_deploy_status.$$)
-            rm -f /tmp/vercel_deploy_status.$$
-        fi
-    else
-        vercel_success=1
+    # waitの戻り値でプロセスの成功/失敗を判定
+    wait $VERCEL_PID || vercel_success=1
+    wait $GCE_PID || gce_success=1
+
+    # ステータスファイルから結果を読み取り
+    if [ -f "$TEMP_DIR/vercel_status" ]; then
+        vercel_success=$(cat "$TEMP_DIR/vercel_status" 2>/dev/null || echo "1")
     fi
 
-    # GCEの完了を待つ
-    if wait $gce_pid; then
-        if [ -f "/tmp/gce_deploy_status.$$" ]; then
-            gce_success=$(cat /tmp/gce_deploy_status.$$)
-            rm -f /tmp/gce_deploy_status.$$
-        fi
-    else
-        gce_success=1
+    if [ -f "$TEMP_DIR/gce_status" ]; then
+        gce_success=$(cat "$TEMP_DIR/gce_status" 2>/dev/null || echo "1")
     fi
+
+    # クリーンアップ
+    rm -rf "$TEMP_DIR"
+    TEMP_DIR=""
+    VERCEL_PID=""
+    GCE_PID=""
 
     # 結果を確認
     if [ "$vercel_success" = "0" ] && [ "$gce_success" = "0" ]; then
