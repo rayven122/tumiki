@@ -78,6 +78,20 @@ build_packages() {
     log_info "パッケージビルドが完了しました"
 }
 
+# 設定値を取得するヘルパー関数
+get_config() {
+    local key=$1
+    local default_value=$2
+    local env_file=".env"
+
+    # .envファイルから設定値を読み込み
+    if [ -f "$env_file" ] && grep -q "^${key}=" "$env_file"; then
+        grep "^${key}=" "$env_file" | cut -d'=' -f2- | tr -d '"'
+    else
+        echo "$default_value"
+    fi
+}
+
 # 環境変数エクスポート
 export_common_vars() {
     export TARGET="${DEPLOY_TARGET:-vercel}"
@@ -85,12 +99,12 @@ export_common_vars() {
     export IS_CI="${CI:-false}"
     export DRY_RUN="${DRY_RUN:-false}"
 
-    # GCE設定（デフォルト値）
-    export GCE_INSTANCE_NAME="${GCE_INSTANCE_NAME:-tumiki-instance-20250601}"
-    export GCE_ZONE="${GCE_ZONE:-asia-northeast2-c}"
-    export GCP_PROJECT_ID="${GCP_PROJECT_ID:-mcp-server-455206}"
-    export DEPLOY_USER="${DEPLOY_USER:-tumiki-deploy}"
-    export REMOTE_PATH="${REMOTE_PATH:-/opt/tumiki}"
-    export REPO_URL="${REPO_URL:-git@github.com:rayven122/tumiki.git}"
-    export BRANCH="${BRANCH:-main}"
+    # GCE設定（設定ファイルまたは環境変数から取得）
+    export GCE_INSTANCE_NAME="${GCE_INSTANCE_NAME:-$(get_config 'GCE_INSTANCE_NAME' 'tumiki-instance-default')}"
+    export GCE_ZONE="${GCE_ZONE:-$(get_config 'GCE_ZONE' 'asia-northeast2-c')}"
+    export GCP_PROJECT_ID="${GCP_PROJECT_ID:-$(get_config 'GCP_PROJECT_ID' '')}"
+    export DEPLOY_USER="${DEPLOY_USER:-$(get_config 'DEPLOY_USER' 'tumiki-deploy')}"
+    export REMOTE_PATH="${REMOTE_PATH:-$(get_config 'REMOTE_PATH' '/opt/tumiki')}"
+    export REPO_URL="${REPO_URL:-$(get_config 'REPO_URL' 'git@github.com:rayven122/tumiki.git')}"
+    export BRANCH="${BRANCH:-$(get_config 'BRANCH' 'main')}"
 }
