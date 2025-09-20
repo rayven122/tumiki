@@ -65,14 +65,16 @@ fetch_vercel_env_variables() {
             vercel_env="preview"
         fi
 
-        if vercel env pull "$env_file" \
+        local env_output
+        if env_output=$(vercel env pull "$env_file" \
             --environment="$vercel_env" \
             --token="$VERCEL_TOKEN" \
-            --yes; then
+            --yes 2>&1); then
             log_info "環境変数ファイルを取得しました"
             return 0
         else
             log_warn "Vercel環境変数の取得に失敗しました"
+            log_warn "エラー詳細: $env_output"
             return 1
         fi
     elif command -v vercel &>/dev/null; then
@@ -85,11 +87,13 @@ fetch_vercel_env_variables() {
             vercel_env="preview"
         fi
 
-        if vercel env pull "$env_file" --environment="$vercel_env"; then
+        local env_output
+        if env_output=$(vercel env pull "$env_file" --environment="$vercel_env" 2>&1); then
             log_info "環境変数ファイルを取得しました"
             return 0
         else
             log_warn "Vercel環境変数の取得に失敗しました"
+            log_warn "エラー詳細: $env_output"
             return 1
         fi
     else
@@ -121,30 +125,46 @@ deploy_vercel() {
     log_info "プロジェクトルートからVercelデプロイを実行"
     log_info "現在のディレクトリ: $(pwd)"
 
+    # 一時ファイルでエラーログを保存
+    local temp_log=$(mktemp)
+    local deploy_exit_code=0
+
     if [ -n "${VERCEL_TOKEN:-}" ]; then
         # CI環境（Vercel CLIが環境変数を自動読込）
         log_info "CI環境でVercelデプロイを実行"
 
         if [ "$STAGE" = "production" ]; then
             log_info "本番環境にデプロイ中..."
-            deploy_output=$(vercel deploy --prod --yes 2>&1)
+            if ! vercel deploy --prod --yes > "$temp_log" 2>&1; then
+                deploy_exit_code=$?
+            fi
         else
             log_info "ステージング環境にデプロイ中..."
-            deploy_output=$(vercel deploy --yes 2>&1)
+            if ! vercel deploy --yes > "$temp_log" 2>&1; then
+                deploy_exit_code=$?
+            fi
         fi
     else
         # ローカル環境
         log_info "ローカル環境でVercelデプロイを実行"
 
         if [ "$STAGE" = "production" ]; then
-            deploy_output=$(vercel deploy --prod 2>&1)
+            log_info "本番環境にデプロイ中..."
+            if ! vercel deploy --prod > "$temp_log" 2>&1; then
+                deploy_exit_code=$?
+            fi
         else
-            deploy_output=$(vercel deploy 2>&1)
+            if ! vercel deploy > "$temp_log" 2>&1; then
+                deploy_exit_code=$?
+            fi
         fi
     fi
 
+    # ログ内容を読み込み
+    deploy_output=$(cat "$temp_log")
+    rm -f "$temp_log"
+
     # デプロイ結果の確認
-    local deploy_exit_code=$?
     if [ $deploy_exit_code -ne 0 ]; then
         log_error "Vercelデプロイが失敗しました (exit code: $deploy_exit_code)"
         log_error "デプロイ出力:"
