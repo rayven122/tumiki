@@ -13,6 +13,7 @@ type MCPConnection = {
   client: Client;
   lastUsed: number;
   isActive: boolean;
+  instanceId: string; // 接続の一意識別子
   cleanup?: () => Promise<void>;
 };
 
@@ -28,6 +29,10 @@ type MCPConnection = {
 class MCPConnectionPool {
   private readonly pools = new Map<string, MCPConnection[]>();
   private readonly sessionConnections = new Map<string, Set<string>>(); // セッションID -> 接続キーのマッピング
+  private readonly idleConnectionsIndex = new Map<
+    string,
+    { conn: MCPConnection; poolKey: string }
+  >(); // アイドル接続のインデックス
   private readonly MAX_CONNECTIONS_PER_SERVER =
     config.connectionPool.maxConnectionsPerServer; // サーバーあたり最大接続数
   private readonly MAX_CONNECTIONS_PER_SESSION =
@@ -42,9 +47,42 @@ class MCPConnectionPool {
   /**
    * Connection stateを原子的に更新
    */
-  private updateConnectionState(conn: MCPConnection, isActive: boolean): void {
+  private updateConnectionState(
+    conn: MCPConnection,
+    isActive: boolean,
+    poolKey: string,
+  ): void {
+    const connectionId = `${poolKey}::${conn.instanceId}`;
+
+    // アイドル接続インデックスを更新
+    if (isActive) {
+      // アクティブになったら、インデックスから削除
+      this.idleConnectionsIndex.delete(connectionId);
+    } else {
+      // アイドルになったら、インデックスに追加
+      this.idleConnectionsIndex.set(connectionId, { conn, poolKey });
+    }
+
     conn.isActive = isActive;
     conn.lastUsed = Date.now();
+  }
+
+  /**
+   * 最古のアイドル接続を効率的に取得
+   */
+  private getOldestIdleConnection(): {
+    conn: MCPConnection;
+    poolKey: string;
+  } | null {
+    let oldest: { conn: MCPConnection; poolKey: string } | null = null;
+
+    for (const item of this.idleConnectionsIndex.values()) {
+      if (!oldest || item.conn.lastUsed < oldest.conn.lastUsed) {
+        oldest = item;
+      }
+    }
+
+    return oldest;
   }
 
   /**
@@ -55,18 +93,22 @@ class MCPConnectionPool {
     serverName: string,
     sessionId?: string,
   ): string {
-    // セキュリティ: コロンを安全な区切り文字に置換してから結合
-    const safeInstanceId = instanceId.replace(/:/g, "_COLON_");
-    const safeServerName = serverName.replace(/:/g, "_COLON_");
-    const safeSessionId = sessionId?.replace(/:/g, "_COLON_") || "shared";
+    // より安全なキー生成: URLエンコーディングを使用
+    const parts = [
+      encodeURIComponent(instanceId),
+      encodeURIComponent(serverName),
+    ];
 
     // セッション独立モードが有効な場合、セッションIDを含める
     const useSessionPool = config.connectionPool.sessionPoolSync;
     if (useSessionPool && sessionId) {
-      return `${safeInstanceId}:${safeServerName}:${safeSessionId}`;
+      parts.push(encodeURIComponent(sessionId));
+    } else if (useSessionPool) {
+      parts.push("shared");
     }
 
-    return `${safeInstanceId}:${safeServerName}`;
+    // より衝突しにくい区切り文字を使用
+    return parts.join("::");
   }
 
   /**
@@ -95,7 +137,7 @@ class MCPConnectionPool {
           if (connPool) {
             const available = connPool.find((conn) => !conn.isActive);
             if (available) {
-              this.updateConnectionState(available, true);
+              this.updateConnectionState(available, true, connKey);
               return available.client;
             }
           }
@@ -119,7 +161,7 @@ class MCPConnectionPool {
 
     if (available) {
       // 既存接続を再利用
-      this.updateConnectionState(available, true);
+      this.updateConnectionState(available, true, poolKey);
       return available.client;
     }
 
@@ -128,7 +170,7 @@ class MCPConnectionPool {
       // アイドル接続を強制的に再利用
       const idle = pool.find((conn) => !conn.isActive);
       if (idle) {
-        this.updateConnectionState(idle, true);
+        this.updateConnectionState(idle, true, poolKey);
         return idle.client;
       }
       throw new Error(
@@ -138,23 +180,11 @@ class MCPConnectionPool {
 
     // 全体の接続数制限チェック
     if (this.connectionCounter.get() >= this.MAX_TOTAL_CONNECTIONS) {
-      // 最も古いアイドル接続を探して強制的に再利用
-      let oldestIdle: MCPConnection | null = null;
-      let oldestPoolKey: string | null = null;
+      // 効率的に最も古いアイドル接続を取得
+      const oldest = this.getOldestIdleConnection();
 
-      for (const [key, p] of this.pools) {
-        for (const conn of p) {
-          if (
-            !conn.isActive &&
-            (!oldestIdle || conn.lastUsed < oldestIdle.lastUsed)
-          ) {
-            oldestIdle = conn;
-            oldestPoolKey = key;
-          }
-        }
-      }
-
-      if (oldestIdle && oldestPoolKey) {
+      if (oldest) {
+        const { conn: oldestIdle, poolKey: oldestPoolKey } = oldest;
         // 古い接続を閉じて削除
         await oldestIdle.client.close();
         await oldestIdle.cleanup?.();
@@ -164,6 +194,9 @@ class MCPConnectionPool {
           if (index > -1) {
             oldPool.splice(index, 1);
             this.connectionCounter.decrement();
+            // インデックスからも削除
+            const connectionId = `${oldestPoolKey}::${oldestIdle.instanceId}`;
+            this.idleConnectionsIndex.delete(connectionId);
           }
         }
       } else {
@@ -188,12 +221,20 @@ class MCPConnectionPool {
         client,
         lastUsed: now,
         isActive: true,
+        instanceId: `${userServerConfigInstanceId}_${serverName}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
         cleanup: credentialsCleanup,
       };
 
       pool.push(connection);
       this.pools.set(poolKey, pool);
       this.connectionCounter.increment();
+
+      // 初期状態はアイドルとしてインデックスに登録
+      const connectionId = `${poolKey}::${connection.instanceId}`;
+      this.idleConnectionsIndex.set(connectionId, {
+        conn: connection,
+        poolKey,
+      });
 
       // セッション接続マッピングを更新
       if (sessionId && config.connectionPool.sessionPoolSync) {
@@ -232,7 +273,7 @@ class MCPConnectionPool {
 
     const connection = pool.find((conn) => conn.client === client);
     if (connection) {
-      this.updateConnectionState(connection, false);
+      this.updateConnectionState(connection, false, poolKey);
     }
   }
 
@@ -277,10 +318,14 @@ class MCPConnectionPool {
         await conn.client.close();
         await conn.cleanup?.();
       } catch (error) {
-        // エラーはログに記録するが続行
-        logger.warn("Failed to close connection", {
+        // エラーをログに記録
+        logger.error("Failed to close connection during cleanup", {
           error: error instanceof Error ? error.message : String(error),
+          poolKey,
+          instanceId: conn.instanceId,
         });
+        // 重要: エラーが発生してもクリーンアップを続行するが、
+        // 接続は強制的に削除する（次の処理で削除される）
       }
 
       // プールから削除
@@ -290,6 +335,9 @@ class MCPConnectionPool {
         if (index > -1) {
           pool.splice(index, 1);
           this.connectionCounter.decrement();
+          // インデックスからも削除
+          const connectionId = `${poolKey}::${conn.instanceId}`;
+          this.idleConnectionsIndex.delete(connectionId);
           if (pool.length === 0) {
             this.pools.delete(poolKey);
           }
@@ -314,6 +362,10 @@ class MCPConnectionPool {
             await conn.client.close();
             await conn.cleanup?.();
             this.connectionCounter.decrement();
+
+            // アイドル接続インデックスからも削除
+            const connectionId = `${poolKey}::${conn.instanceId}`;
+            this.idleConnectionsIndex.delete(connectionId);
           } catch (error) {
             // エラーをログに記録
             logger.warn("Failed to cleanup session connection", {
@@ -377,6 +429,8 @@ class MCPConnectionPool {
     );
 
     this.pools.clear();
+    this.idleConnectionsIndex.clear();
+    this.sessionConnections.clear();
     this.connectionCounter.reset();
   }
 }
