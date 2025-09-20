@@ -161,20 +161,31 @@ const validateConfig = () => {
 
   // リトライ設定の検証
   if (config.retry.maxAttempts < 0 || config.retry.maxAttempts > 10) {
-    errors.push(`retry.maxAttempts must be between 0-10, got: ${config.retry.maxAttempts}`);
+    errors.push(
+      `retry.maxAttempts must be between 0-10, got: ${config.retry.maxAttempts}`,
+    );
   }
 
   if (config.retry.delayMs < 100 || config.retry.delayMs > 60000) {
-    errors.push(`retry.delayMs must be between 100ms-60s (100-60000ms), got: ${config.retry.delayMs}`);
+    errors.push(
+      `retry.delayMs must be between 100ms-60s (100-60000ms), got: ${config.retry.delayMs}`,
+    );
   }
 
   // タイムアウト設定の検証
   if (config.timeouts.request < 1000 || config.timeouts.request > 300000) {
-    errors.push(`timeouts.request must be between 1s-5min (1000-300000ms), got: ${config.timeouts.request}`);
+    errors.push(
+      `timeouts.request must be between 1s-5min (1000-300000ms), got: ${config.timeouts.request}`,
+    );
   }
 
-  if (config.timeouts.connection < 1000 || config.timeouts.connection > 300000) {
-    errors.push(`timeouts.connection must be between 1s-5min (1000-300000ms), got: ${config.timeouts.connection}`);
+  if (
+    config.timeouts.connection < 1000 ||
+    config.timeouts.connection > 300000
+  ) {
+    errors.push(
+      `timeouts.connection must be between 1s-5min (1000-300000ms), got: ${config.timeouts.connection}`,
+    );
   }
 
   if (errors.length > 0) {

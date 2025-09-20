@@ -34,6 +34,7 @@ class MCPConnectionPool {
     string,
     { conn: MCPConnection; poolKey: string }
   >(); // アイドル接続のインデックス
+  private isRebuilding = false; // 再帰防止フラグ
   private readonly MAX_CONNECTIONS_PER_SERVER =
     config.connectionPool.maxConnectionsPerServer; // サーバーあたり最大接続数
   private readonly MAX_CONNECTIONS_PER_SESSION =
@@ -76,8 +77,22 @@ class MCPConnectionPool {
         connectionId,
         error,
       });
-      // インデックス破損時の復旧処理
-      this.rebuildConnectionIndex();
+      // 再帰防止のためのフラグを追加
+      if (!this.isRebuilding) {
+        this.isRebuilding = true;
+        try {
+          this.rebuildConnectionIndex();
+        } catch (rebuildError) {
+          logger.error("Failed to rebuild connection index", {
+            error:
+              rebuildError instanceof Error
+                ? rebuildError.message
+                : String(rebuildError),
+          });
+        } finally {
+          this.isRebuilding = false;
+        }
+      }
     }
   }
 
@@ -128,16 +143,26 @@ class MCPConnectionPool {
     serverName: string,
     sessionId?: string,
   ): string {
-    // より安全なキー生成: URLエンコーディングを使用
-    const parts = [
-      encodeURIComponent(instanceId),
-      encodeURIComponent(serverName),
-    ];
+    // 区切り文字の衝突を防ぐため、エンコード後に区切り文字を再エスケープ
+    const safeInstanceId = encodeURIComponent(instanceId).replace(
+      /::/g,
+      "%3A%3A",
+    );
+    const safeServerName = encodeURIComponent(serverName).replace(
+      /::/g,
+      "%3A%3A",
+    );
+
+    const parts = [safeInstanceId, safeServerName];
 
     // セッション独立モードが有効な場合、セッションIDを含める
     const useSessionPool = config.connectionPool.sessionPoolSync;
     if (useSessionPool && sessionId) {
-      parts.push(encodeURIComponent(sessionId));
+      const safeSessionId = encodeURIComponent(sessionId).replace(
+        /::/g,
+        "%3A%3A",
+      );
+      parts.push(safeSessionId);
     } else if (useSessionPool) {
       parts.push("shared");
     }
@@ -183,7 +208,7 @@ class MCPConnectionPool {
 
     if (sessionId) {
       this.sessionLocks.set(sessionId, connectionPromise);
-      connectionPromise.finally(() => {
+      void connectionPromise.finally(() => {
         this.sessionLocks.delete(sessionId);
       });
     }
@@ -517,8 +542,22 @@ class MCPConnectionPool {
           poolKey,
           instanceId: conn.instanceId,
         });
-        // インデックス破損の可能性があるため再構築
-        this.rebuildConnectionIndex();
+        // インデックス破損の可能性があるため再構築（再帰防止付き）
+        if (!this.isRebuilding) {
+          this.isRebuilding = true;
+          try {
+            this.rebuildConnectionIndex();
+          } catch (rebuildError) {
+            logger.error("Failed to rebuild connection index during cleanup", {
+              error:
+                rebuildError instanceof Error
+                  ? rebuildError.message
+                  : String(rebuildError),
+            });
+          } finally {
+            this.isRebuilding = false;
+          }
+        }
       }
     }
 
