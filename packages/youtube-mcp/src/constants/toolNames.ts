@@ -26,6 +26,7 @@ export const YOU_TUBE_TOOL_NAMES = {
 
   // Transcript tools
   GET_TRANSCRIPT_METADATA: "get_transcript_metadata",
+  GET_TRANSCRIPT: "get_transcript",
 } as const satisfies Record<string, ToolName>;
 
 // ツールカテゴリ定義

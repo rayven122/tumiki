@@ -1,5 +1,6 @@
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { YouTubeApiService } from "@/services/youtubeApi.js";
+import { YtdlpService } from "@/services/YtdlpService/index.js";
 import { channelTools, handleChannelTool } from "@/tools/channels.js";
 import { commentTools, handleCommentTool } from "@/tools/comments.js";
 import { handlePlaylistTool, playlistTools } from "@/tools/playlists.js";
@@ -21,6 +22,7 @@ export const startMcpServer = async () => {
 
   // サービスのインスタンス化
   const youtubeApi = new YouTubeApiService(apiKey);
+  const ytdlpService = new YtdlpService();
 
   // MCP サーバーの初期化
   const server = new Server(
@@ -86,8 +88,16 @@ export const startMcpServer = async () => {
       }
 
       // 字幕関連ツール
-      if (toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA) {
-        return await handleTranscriptTool(toolName, args ?? {}, youtubeApi);
+      if (
+        toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA ||
+        toolName === YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT
+      ) {
+        return await handleTranscriptTool(
+          toolName,
+          args ?? {},
+          youtubeApi,
+          ytdlpService,
+        );
       }
 
       throw new Error(`Unknown tool: ${toolName}`);
