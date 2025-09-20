@@ -10,7 +10,7 @@ const mockServerConfig: ServerConfig = {
   transport: {
     type: "stdio",
     command: "node",
-    args: ["test-server.js"],
+    args: ["./apps/proxyServer/tests/mock-mcp-server.js"],
     env: {},
   },
 };
