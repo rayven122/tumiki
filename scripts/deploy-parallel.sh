@@ -61,18 +61,32 @@ wait_for_deploy_process() {
     echo "$result"
 }
 
+# プロセスグループを安全に終了する関数
+terminate_process_group() {
+    local pid=$1
+    local name=$2
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        log_info "${name}プロセスグループを終了中 (PID: $pid)"
+        kill -TERM -"$pid" 2>/dev/null || true
+        local count=0
+        while [ $count -lt 5 ] && kill -0 "$pid" 2>/dev/null; do
+            sleep 1
+            count=$((count + 1))
+        done
+        if kill -0 "$pid" 2>/dev/null; then
+            log_warn "${name}プロセスを強制終了します"
+            kill -KILL -"$pid" 2>/dev/null || true
+        fi
+    fi
+}
+
 # エラーハンドリング
 cleanup_parallel() {
     local exit_code=$?
 
     # 子プロセスのクリーンアップ
-    [ -n "$VERCEL_PID" ] && kill -TERM -"$VERCEL_PID" 2>/dev/null || true
-    [ -n "$GCE_PID" ] && kill -TERM -"$GCE_PID" 2>/dev/null || true
-
-    # 1秒待って強制終了
-    sleep 1
-    [ -n "$VERCEL_PID" ] && kill -KILL -"$VERCEL_PID" 2>/dev/null || true
-    [ -n "$GCE_PID" ] && kill -KILL -"$GCE_PID" 2>/dev/null || true
+    [ -n "$VERCEL_PID" ] && terminate_process_group "$VERCEL_PID" "Vercel"
+    [ -n "$GCE_PID" ] && terminate_process_group "$GCE_PID" "GCE"
 
     # 一時ファイル/ディレクトリのクリーンアップ
     if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
