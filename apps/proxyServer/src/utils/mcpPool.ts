@@ -29,6 +29,7 @@ type MCPConnection = {
 class MCPConnectionPool {
   private readonly pools = new Map<string, MCPConnection[]>();
   private readonly sessionConnections = new Map<string, Set<string>>(); // セッションID -> 接続キーのマッピング
+  private readonly sessionLocks = new Map<string, Promise<Client | null>>(); // セッション単位の排他制御
   private readonly idleConnectionsIndex = new Map<
     string,
     { conn: MCPConnection; poolKey: string }
@@ -59,14 +60,46 @@ class MCPConnectionPool {
     conn.lastUsed = currentTime;
     conn.isActive = isActive;
 
-    // インデックス更新（状態変更後に実行）
-    if (isActive) {
-      // アクティブになったら、インデックスから削除
-      this.idleConnectionsIndex.delete(connectionId);
-    } else {
-      // アイドルになったら、インデックスに追加
-      this.idleConnectionsIndex.set(connectionId, { conn, poolKey });
+    // インデックス更新を try-catch で保護
+    try {
+      if (isActive) {
+        // アクティブになったら、インデックスから削除
+        this.idleConnectionsIndex.delete(connectionId);
+      } else {
+        // 既存エントリの重複チェック
+        if (!this.idleConnectionsIndex.has(connectionId)) {
+          this.idleConnectionsIndex.set(connectionId, { conn, poolKey });
+        }
+      }
+    } catch (error) {
+      logger.error("Failed to update connection index", {
+        connectionId,
+        error,
+      });
+      // インデックス破損時の復旧処理
+      this.rebuildConnectionIndex();
     }
+  }
+
+  /**
+   * インデックスを再構築（エラー復旧用）
+   */
+  private rebuildConnectionIndex(): void {
+    logger.info("Rebuilding connection index");
+    this.idleConnectionsIndex.clear();
+
+    for (const [poolKey, pool] of this.pools) {
+      for (const conn of pool) {
+        if (!conn.isActive) {
+          const connectionId = `${poolKey}::${conn.instanceId}`;
+          this.idleConnectionsIndex.set(connectionId, { conn, poolKey });
+        }
+      }
+    }
+
+    logger.info("Connection index rebuilt", {
+      idleConnections: this.idleConnectionsIndex.size,
+    });
   }
 
   /**
@@ -117,6 +150,51 @@ class MCPConnectionPool {
    * 接続を取得（既存または新規作成）
    */
   async getConnection(
+    userServerConfigInstanceId: string,
+    serverName: string,
+    serverConfig: ServerConfig,
+    sessionId?: string,
+  ): Promise<Client> {
+    // セッション単位での排他制御
+    if (sessionId && this.sessionLocks.has(sessionId)) {
+      const existingLock = this.sessionLocks.get(sessionId);
+      if (existingLock) {
+        try {
+          logger.debug("Waiting for existing session connection to complete", {
+            sessionId,
+          });
+          await existingLock; // 既存の接続処理の完了を待つ
+        } catch (error) {
+          logger.warn("Existing session connection failed", {
+            sessionId,
+            error,
+          });
+          // 失敗した場合は続行（新しい接続を試す）
+        }
+      }
+    }
+
+    const connectionPromise = this.getConnectionInternal(
+      userServerConfigInstanceId,
+      serverName,
+      serverConfig,
+      sessionId,
+    );
+
+    if (sessionId) {
+      this.sessionLocks.set(sessionId, connectionPromise);
+      connectionPromise.finally(() => {
+        this.sessionLocks.delete(sessionId);
+      });
+    }
+
+    return connectionPromise;
+  }
+
+  /**
+   * 内部的な接続取得処理（排他制御なし）
+   */
+  private async getConnectionInternal(
     userServerConfigInstanceId: string,
     serverName: string,
     serverConfig: ServerConfig,
@@ -225,17 +303,26 @@ class MCPConnectionPool {
     }
 
     // 新規接続を作成
+    let connection: MCPConnection | null = null;
     try {
+      logger.debug("Creating new MCP connection", {
+        poolKey,
+        sessionId,
+        serverName,
+      });
+
       const { client, transport, credentialsCleanup } =
         await createMCPClient(serverConfig);
 
       if (!client || !transport) {
-        throw new Error("Failed to create client or transport");
+        throw new Error(
+          "Failed to create client or transport - null values returned",
+        );
       }
 
       await client.connect(transport);
 
-      const connection: MCPConnection = {
+      connection = {
         client,
         lastUsed: now,
         isActive: true,
@@ -249,25 +336,83 @@ class MCPConnectionPool {
 
       // 初期状態はアイドルとしてインデックスに登録
       const connectionId = `${poolKey}::${connection.instanceId}`;
-      this.idleConnectionsIndex.set(connectionId, {
-        conn: connection,
-        poolKey,
-      });
+      try {
+        this.idleConnectionsIndex.set(connectionId, {
+          conn: connection,
+          poolKey,
+        });
+      } catch (indexError) {
+        logger.error("Failed to register connection in index", {
+          connectionId,
+          error:
+            indexError instanceof Error
+              ? indexError.message
+              : String(indexError),
+        });
+        // インデックス登録失敗でも接続は有効
+      }
 
       // セッション接続マッピングを更新
       if (sessionId && config.connectionPool.sessionPoolSync) {
-        const sessionConns =
-          this.sessionConnections.get(sessionId) || new Set();
-        sessionConns.add(poolKey);
-        this.sessionConnections.set(sessionId, sessionConns);
+        try {
+          const sessionConns =
+            this.sessionConnections.get(sessionId) || new Set();
+          sessionConns.add(poolKey);
+          this.sessionConnections.set(sessionId, sessionConns);
+        } catch (sessionError) {
+          logger.error("Failed to update session mapping", {
+            sessionId,
+            poolKey,
+            error:
+              sessionError instanceof Error
+                ? sessionError.message
+                : String(sessionError),
+          });
+          // セッションマッピング失敗でも接続は有効
+        }
       }
+
+      logger.debug("MCP connection created successfully", {
+        poolKey,
+        sessionId,
+        instanceId: connection.instanceId,
+      });
 
       return client;
     } catch (error) {
-      logger.error("Failed to create connection", {
-        error: error instanceof Error ? error.message : String(error),
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.error("Failed to create MCP connection", {
+        poolKey,
+        sessionId,
+        serverName,
+        userServerConfigInstanceId,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      throw error;
+
+      // 部分的に作成された接続をクリーンアップ
+      if (connection) {
+        try {
+          await connection.client?.close();
+          await connection.cleanup?.();
+        } catch (cleanupError) {
+          logger.warn("Failed to cleanup partially created connection", {
+            instanceId: connection.instanceId,
+            error:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : String(cleanupError),
+          });
+        }
+      }
+
+      // 具体的なエラーメッセージでrethrow
+      if (error instanceof Error) {
+        throw new Error(`MCP connection creation failed: ${errorMessage}`);
+      } else {
+        throw new Error(`MCP connection creation failed: ${errorMessage}`);
+      }
     }
   }
 
@@ -328,7 +473,11 @@ class MCPConnectionPool {
       }
     }
 
-    if (connectionsToClose.length === 0) return;
+    if (connectionsToClose.length === 0) {
+      // インデックスの整合性チェック（定期メンテナンス）
+      this.validateConnectionIndex();
+      return;
+    }
 
     // 接続を閉じて削除
     for (const { conn, poolKey } of connectionsToClose) {
@@ -342,26 +491,98 @@ class MCPConnectionPool {
           poolKey,
           instanceId: conn.instanceId,
         });
-        // 接続状態を強制的に無効化
-        conn.isActive = false;
-        this.updateConnectionState(conn, false, poolKey);
       }
 
-      // プールから削除
-      const pool = this.pools.get(poolKey);
-      if (pool) {
-        const index = pool.indexOf(conn);
-        if (index > -1) {
-          pool.splice(index, 1);
-          this.connectionCounter.decrement();
-          // インデックスからも削除
+      // プールから削除（エラーが発生してもクリーンアップを継続）
+      try {
+        const pool = this.pools.get(poolKey);
+        if (pool) {
+          const index = pool.indexOf(conn);
+          if (index > -1) {
+            pool.splice(index, 1);
+            this.connectionCounter.decrement();
+
+            // インデックスからも確実に削除
+            const connectionId = `${poolKey}::${conn.instanceId}`;
+            this.idleConnectionsIndex.delete(connectionId);
+
+            if (pool.length === 0) {
+              this.pools.delete(poolKey);
+            }
+          }
+        }
+      } catch (error) {
+        logger.error("Failed to remove connection from pool", {
+          error: error instanceof Error ? error.message : String(error),
+          poolKey,
+          instanceId: conn.instanceId,
+        });
+        // インデックス破損の可能性があるため再構築
+        this.rebuildConnectionIndex();
+      }
+    }
+
+    logger.debug("Cleanup completed", {
+      cleanedConnections: connectionsToClose.length,
+      activeConnections: this.connectionCounter.get(),
+      idleIndexSize: this.idleConnectionsIndex.size,
+    });
+  }
+
+  /**
+   * インデックスの整合性を検証（定期メンテナンス）
+   */
+  private validateConnectionIndex(): void {
+    let inconsistencies = 0;
+
+    // 実際のアイドル接続とインデックスを比較
+    const actualIdleConnections = new Set<string>();
+    for (const [poolKey, pool] of this.pools) {
+      for (const conn of pool) {
+        if (!conn.isActive) {
           const connectionId = `${poolKey}::${conn.instanceId}`;
-          this.idleConnectionsIndex.delete(connectionId);
-          if (pool.length === 0) {
-            this.pools.delete(poolKey);
+          actualIdleConnections.add(connectionId);
+        }
+      }
+    }
+
+    // インデックスに存在するが実際にはない接続を検出
+    for (const connectionId of this.idleConnectionsIndex.keys()) {
+      if (!actualIdleConnections.has(connectionId)) {
+        this.idleConnectionsIndex.delete(connectionId);
+        inconsistencies++;
+      }
+    }
+
+    // 実際にあるがインデックスにない接続を検出
+    for (const connectionId of actualIdleConnections) {
+      if (!this.idleConnectionsIndex.has(connectionId)) {
+        // プールから接続を見つけて追加
+        const parts = connectionId.split("::");
+        if (parts.length >= 2) {
+          const poolKey = parts[0];
+          const instanceId = parts[1];
+          if (poolKey && instanceId) {
+            const pool = this.pools.get(poolKey);
+            if (pool) {
+              const conn = pool.find(
+                (c) => c.instanceId === instanceId && !c.isActive,
+              );
+              if (conn) {
+                this.idleConnectionsIndex.set(connectionId, { conn, poolKey });
+                inconsistencies++;
+              }
+            }
           }
         }
       }
+    }
+
+    if (inconsistencies > 0) {
+      logger.warn("Connection index inconsistencies detected and fixed", {
+        inconsistencies,
+        indexSize: this.idleConnectionsIndex.size,
+      });
     }
   }
 
@@ -369,6 +590,22 @@ class MCPConnectionPool {
    * セッションのクリーンアップ
    */
   async cleanupSession(sessionId: string): Promise<void> {
+    // セッションロックがある場合は先に削除
+    if (this.sessionLocks.has(sessionId)) {
+      const existingLock = this.sessionLocks.get(sessionId);
+      if (existingLock) {
+        try {
+          await existingLock; // 実行中の処理を待つ
+        } catch (error) {
+          logger.warn("Session connection failed during cleanup", {
+            sessionId,
+            error,
+          });
+        }
+      }
+      this.sessionLocks.delete(sessionId);
+    }
+
     const sessionConns = this.sessionConnections.get(sessionId);
     if (!sessionConns) return;
 
@@ -433,6 +670,16 @@ class MCPConnectionPool {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = undefined;
     }
+
+    // 実行中のセッションロックを全て待機してからクリア
+    const lockPromises = Array.from(this.sessionLocks.values());
+    if (lockPromises.length > 0) {
+      logger.info("Waiting for session locks to complete before cleanup", {
+        pendingLocks: lockPromises.length,
+      });
+      await Promise.allSettled(lockPromises);
+    }
+    this.sessionLocks.clear();
 
     // 全接続を閉じる
     const allConnections: MCPConnection[] = [];

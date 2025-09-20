@@ -73,3 +73,127 @@ export const config = {
     ), // 1分ごとのクリーンアップ
   },
 } as const;
+
+/**
+ * 設定値の妥当性を検証
+ */
+const validateConfig = () => {
+  const errors: string[] = [];
+
+  // 接続プール設定の検証
+  const pool = config.connectionPool;
+
+  if (pool.maxTotalConnections <= 0 || pool.maxTotalConnections > 1000) {
+    errors.push(
+      `maxTotalConnections must be between 1-1000, got: ${pool.maxTotalConnections}`,
+    );
+  }
+
+  if (pool.maxConnectionsPerServer <= 0 || pool.maxConnectionsPerServer > 100) {
+    errors.push(
+      `maxConnectionsPerServer must be between 1-100, got: ${pool.maxConnectionsPerServer}`,
+    );
+  }
+
+  if (
+    pool.maxConnectionsPerSession <= 0 ||
+    pool.maxConnectionsPerSession > 50
+  ) {
+    errors.push(
+      `maxConnectionsPerSession must be between 1-50, got: ${pool.maxConnectionsPerSession}`,
+    );
+  }
+
+  if (pool.maxConnectionsPerServer > pool.maxTotalConnections) {
+    errors.push(
+      `maxConnectionsPerServer (${pool.maxConnectionsPerServer}) cannot exceed maxTotalConnections (${pool.maxTotalConnections})`,
+    );
+  }
+
+  if (pool.idleTimeout < 1000 || pool.idleTimeout > 3600000) {
+    errors.push(
+      `idleTimeout must be between 1s-1h (1000-3600000ms), got: ${pool.idleTimeout}`,
+    );
+  }
+
+  if (pool.cleanupInterval < 1000 || pool.cleanupInterval > 300000) {
+    errors.push(
+      `cleanupInterval must be between 1s-5min (1000-300000ms), got: ${pool.cleanupInterval}`,
+    );
+  }
+
+  if (pool.healthCheckInterval < 5000 || pool.healthCheckInterval > 600000) {
+    errors.push(
+      `healthCheckInterval must be between 5s-10min (5000-600000ms), got: ${pool.healthCheckInterval}`,
+    );
+  }
+
+  if (pool.maxRetries < 0 || pool.maxRetries > 10) {
+    errors.push(`maxRetries must be between 0-10, got: ${pool.maxRetries}`);
+  }
+
+  // キャッシュ設定の検証
+  const cache = config.cache;
+
+  if (cache.maxEntries <= 0 || cache.maxEntries > 10000) {
+    errors.push(
+      `cache.maxEntries must be between 1-10000, got: ${cache.maxEntries}`,
+    );
+  }
+
+  if (cache.ttl < 1000 || cache.ttl > 86400000) {
+    errors.push(
+      `cache.ttl must be between 1s-24h (1000-86400000ms), got: ${cache.ttl}`,
+    );
+  }
+
+  if (cache.maxMemoryMB <= 0 || cache.maxMemoryMB > 2048) {
+    errors.push(
+      `cache.maxMemoryMB must be between 1-2048MB, got: ${cache.maxMemoryMB}`,
+    );
+  }
+
+  if (cache.cleanupInterval < 1000 || cache.cleanupInterval > 600000) {
+    errors.push(
+      `cache.cleanupInterval must be between 1s-10min (1000-600000ms), got: ${cache.cleanupInterval}`,
+    );
+  }
+
+  // リトライ設定の検証
+  if (config.retry.maxAttempts < 0 || config.retry.maxAttempts > 10) {
+    errors.push(`retry.maxAttempts must be between 0-10, got: ${config.retry.maxAttempts}`);
+  }
+
+  if (config.retry.delayMs < 100 || config.retry.delayMs > 60000) {
+    errors.push(`retry.delayMs must be between 100ms-60s (100-60000ms), got: ${config.retry.delayMs}`);
+  }
+
+  // タイムアウト設定の検証
+  if (config.timeouts.request < 1000 || config.timeouts.request > 300000) {
+    errors.push(`timeouts.request must be between 1s-5min (1000-300000ms), got: ${config.timeouts.request}`);
+  }
+
+  if (config.timeouts.connection < 1000 || config.timeouts.connection > 300000) {
+    errors.push(`timeouts.connection must be between 1s-5min (1000-300000ms), got: ${config.timeouts.connection}`);
+  }
+
+  if (errors.length > 0) {
+    const errorMessage = `Configuration validation failed:\n${errors.join("\n")}`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
+// 設定を検証して警告を出力
+try {
+  validateConfig();
+  console.log("✅ Configuration validation passed");
+} catch (error) {
+  console.error(
+    "❌ Configuration validation failed:",
+    error instanceof Error ? error.message : String(error),
+  );
+  if (process.env.NODE_ENV === "production") {
+    process.exit(1);
+  }
+}
