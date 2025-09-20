@@ -19,14 +19,18 @@ check_gce_prerequisites() {
         exit 1
     fi
 
-    # gcloud認証確認
-    if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" &>/dev/null; then
+    # gcloud認証確認（改善：詳細なエラー情報を提供）
+    local auth_accounts
+    if ! auth_accounts=$(gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null) || [ -z "$auth_accounts" ]; then
         log_error "Google Cloud認証が設定されていません"
         if [ "$IS_CI" != "true" ]; then
             log_error "gcloud auth login を実行してください"
+        else
+            log_error "CI環境でのサービスアカウント認証を確認してください"
         fi
         exit 1
     fi
+    log_info "認証済みアカウント: $auth_accounts"
 
     # インスタンス確認
     if ! gcloud compute instances describe "$GCE_INSTANCE_NAME" \
@@ -218,11 +222,17 @@ echo "再起動: pm2 restart tumiki-proxy-server"
 DEPLOY_SCRIPT
 )
 
-    # 変数置換
-    deploy_script="${deploy_script//REMOTE_PATH_VAR/$REMOTE_PATH}"
-    deploy_script="${deploy_script//REPO_URL_VAR/$REPO_URL}"
-    deploy_script="${deploy_script//BRANCH_VAR/$BRANCH}"
-    deploy_script="${deploy_script//STAGE_VAR/$STAGE}"
+    # 変数置換（セキュリティ：特殊文字をエスケープ）
+    # 環境変数値をエスケープしてから置換
+    ESCAPED_REMOTE_PATH=$(printf '%s\n' "$REMOTE_PATH" | sed 's/[[\.*^$()+?{|]/\\&/g')
+    ESCAPED_REPO_URL=$(printf '%s\n' "$REPO_URL" | sed 's/[[\.*^$()+?{|]/\\&/g')
+    ESCAPED_BRANCH=$(printf '%s\n' "$BRANCH" | sed 's/[[\.*^$()+?{|]/\\&/g')
+    ESCAPED_STAGE=$(printf '%s\n' "$STAGE" | sed 's/[[\.*^$()+?{|]/\\&/g')
+
+    deploy_script="${deploy_script//REMOTE_PATH_VAR/$ESCAPED_REMOTE_PATH}"
+    deploy_script="${deploy_script//REPO_URL_VAR/$ESCAPED_REPO_URL}"
+    deploy_script="${deploy_script//BRANCH_VAR/$ESCAPED_BRANCH}"
+    deploy_script="${deploy_script//STAGE_VAR/$ESCAPED_STAGE}"
 
     # SSHでデプロイスクリプト実行
     if ! gcloud compute ssh "$DEPLOY_USER@$GCE_INSTANCE_NAME" \

@@ -120,8 +120,8 @@ execute_parallel_deploy() {
     # trapハンドラーを設定
     trap cleanup_parallel EXIT ERR INT TERM
 
-    # 安全な一時ディレクトリを作成
-    TEMP_DIR=$(mktemp -d -t tumiki-deploy-XXXXXX) || {
+    # 安全な一時ディレクトリを作成（プロセスIDとタイムスタンプを含むユニークな名前）
+    TEMP_DIR=$(mktemp -d -t "tumiki-deploy-$$-$(date +%s)-XXXXXX") || {
         log_error "一時ディレクトリの作成に失敗しました"
         return 1
     }
