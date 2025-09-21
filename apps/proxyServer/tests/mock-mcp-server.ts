@@ -3,18 +3,17 @@
 // より堅牢なモックMCPサーバー実装
 // MCPプロトコルに準拠した正しいJSON-RPC通信を実装
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const readline = require("readline");
+import * as readline from "readline";
 
 // デバッグログを標準エラーに出力（テストの邪魔にならない）
-function debug(message) {
+function debug(message: string): void {
   if (process.env.DEBUG_MCP_MOCK) {
     process.stderr.write(`[mock-mcp-server] ${message}\n`);
   }
 }
 
 // JSON-RPCレスポンスを送信
-function sendResponse(id, result) {
+function sendResponse(id: number | string | null, result: unknown): void {
   const response = {
     jsonrpc: "2.0",
     id: id,
@@ -26,7 +25,11 @@ function sendResponse(id, result) {
 }
 
 // JSON-RPCエラーを送信
-function sendError(id, code, message) {
+function sendError(
+  id: number | string | null,
+  code: number,
+  message: string,
+): void {
   const response = {
     jsonrpc: "2.0",
     id: id,
@@ -49,16 +52,24 @@ const rl = readline.createInterface({
   terminal: false,
 });
 
-rl.on("line", (line) => {
+rl.on("line", (line: string) => {
   debug(`Received: ${line}`);
 
   try {
-    const request = JSON.parse(line);
+    const request = JSON.parse(line) as {
+      jsonrpc?: string;
+      id?: number | string | null;
+      method?: string;
+      params?: {
+        name?: string;
+        arguments?: Record<string, unknown>;
+      };
+    };
 
     // JSON-RPCリクエストの基本検証
     if (request.jsonrpc !== "2.0") {
       sendError(
-        request.id || null,
+        request.id ?? null,
         -32600,
         "Invalid Request: jsonrpc must be 2.0",
       );
@@ -67,7 +78,7 @@ rl.on("line", (line) => {
 
     if (!request.method) {
       sendError(
-        request.id || null,
+        request.id ?? null,
         -32600,
         "Invalid Request: method is required",
       );
@@ -78,10 +89,10 @@ rl.on("line", (line) => {
     switch (request.method) {
       case "initialize":
         if (initialized) {
-          sendError(request.id, -32603, "Already initialized");
+          sendError(request.id ?? null, -32603, "Already initialized");
         } else {
           initialized = true;
-          sendResponse(request.id, {
+          sendResponse(request.id ?? null, {
             protocolVersion: "0.1.0",
             serverInfo: {
               name: "mock-mcp-server",
@@ -97,9 +108,9 @@ rl.on("line", (line) => {
 
       case "tools/list":
         if (!initialized) {
-          sendError(request.id, -32603, "Not initialized");
+          sendError(request.id ?? null, -32603, "Not initialized");
         } else {
-          sendResponse(request.id, {
+          sendResponse(request.id ?? null, {
             tools: [
               {
                 name: "echo",
@@ -130,22 +141,22 @@ rl.on("line", (line) => {
 
       case "tools/call":
         if (!initialized) {
-          sendError(request.id, -32603, "Not initialized");
+          sendError(request.id ?? null, -32603, "Not initialized");
         } else {
           const toolName = request.params?.name;
-          const args = request.params?.arguments || {};
+          const args = request.params?.arguments ?? {};
 
           if (toolName === "echo") {
-            sendResponse(request.id, {
+            sendResponse(request.id ?? null, {
               content: [
                 {
                   type: "text",
-                  text: `Echo: ${args.message || "No message provided"}`,
+                  text: `Echo: ${(args as { message?: string }).message ?? "No message provided"}`,
                 },
               ],
             });
           } else if (toolName === "ping") {
-            sendResponse(request.id, {
+            sendResponse(request.id ?? null, {
               content: [
                 {
                   type: "text",
@@ -154,16 +165,16 @@ rl.on("line", (line) => {
               ],
             });
           } else {
-            sendError(request.id, -32602, `Unknown tool: ${toolName}`);
+            sendError(request.id ?? null, -32602, `Unknown tool: ${toolName}`);
           }
         }
         break;
 
       case "resources/list":
         if (!initialized) {
-          sendError(request.id, -32603, "Not initialized");
+          sendError(request.id ?? null, -32603, "Not initialized");
         } else {
-          sendResponse(request.id, {
+          sendResponse(request.id ?? null, {
             resources: [],
           });
         }
@@ -171,20 +182,26 @@ rl.on("line", (line) => {
 
       case "ping":
         // Keep-alive ping
-        sendResponse(request.id, {});
+        sendResponse(request.id ?? null, {});
         break;
 
       default:
-        sendError(request.id, -32601, `Method not found: ${request.method}`);
+        sendError(
+          request.id ?? null,
+          -32601,
+          `Method not found: ${request.method}`,
+        );
     }
   } catch (error) {
-    debug(`Parse error: ${error.message}`);
+    debug(
+      `Parse error: ${error instanceof Error ? error.message : String(error)}`,
+    );
     sendError(null, -32700, "Parse error");
   }
 });
 
 // エラーハンドリング
-rl.on("error", (error) => {
+rl.on("error", (error: Error) => {
   debug(`Readline error: ${error.message}`);
 });
 
@@ -199,7 +216,7 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-process.on("uncaughtException", (error) => {
+process.on("uncaughtException", (error: Error) => {
   debug(`Uncaught exception: ${error.message}`);
   process.exit(1);
 });
