@@ -32,6 +32,14 @@ inputs:
     description: 'GCP project ID'
     required: false
 
+outputs:
+  vercel_url:
+    description: 'Vercel deployment URL'
+    value: ${{ steps.deploy.outputs.vercel_url }}
+  gce_url:
+    description: 'GCE deployment URL'
+    value: ${{ steps.deploy.outputs.gce_url }}
+
 runs:
   using: 'composite'
   steps:
@@ -46,6 +54,7 @@ runs:
       uses: google-github-actions/setup-gcloud@v2
 
     - name: Run Unified Deploy Script
+      id: deploy
       shell: bash
       env:
         # デプロイ設定
