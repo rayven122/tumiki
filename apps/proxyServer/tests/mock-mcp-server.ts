@@ -93,7 +93,7 @@ rl.on("line", (line: string) => {
         } else {
           initialized = true;
           sendResponse(request.id ?? null, {
-            protocolVersion: "0.1.0",
+            protocolVersion: "2024-11-05",
             serverInfo: {
               name: "mock-mcp-server",
               version: "1.0.0",
