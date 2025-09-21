@@ -184,12 +184,12 @@ deploy_vercel() {
     # 方法1: "Preview: https://..." または "Production: https://..." の行を探す
     deployment_url=$(echo "$deploy_output" | grep -E "^(Preview|Production):" | grep -oE 'https://[^ \[]+' | head -1)
 
-    # 方法2: 上記で見つからない場合、https://で始まる行を探す（ステータス表示を除外）
+    # 方法2: 上記で見つからない場合、https://で始まる行を探す
     if [ -z "$deployment_url" ]; then
-        deployment_url=$(echo "$deploy_output" | grep -E '^https://' | grep -v "Queued\|Building\|Completing" | head -1)
+        deployment_url=$(echo "$deploy_output" | grep -E '^https://' | sed 's/\(https:\/\/[^ ]*\).*/\1/' | head -1)
     fi
 
-    # 方法3: それでも見つからない場合、https://を含む任意の行から抽出
+    # 方法3: それでも見つからない場合、https://を含む任意の行から抽出（URLパターンのみ）
     if [ -z "$deployment_url" ]; then
         deployment_url=$(echo "$deploy_output" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
     fi
