@@ -180,14 +180,25 @@ deploy_vercel() {
         fi
     fi
 
-    # Vercel CLIは最終的なデプロイURLを最後の行に出力する（従来の方法と同じ）
-    deployment_url=$(echo "$deploy_output" | tail -1)
+    # Vercel CLIの出力からURLを抽出
+    # 方法1: "Preview: https://..." または "Production: https://..." の行を探す
+    deployment_url=$(echo "$deploy_output" | grep -E "^(Preview|Production):" | grep -oE 'https://[^ \[]+' | head -1)
 
-    # 出力全体をデバッグ用にログ出力（URLが取得できない場合の調査用）
+    # 方法2: 上記で見つからない場合、https://で始まる行を探す（ステータス表示を除外）
+    if [ -z "$deployment_url" ]; then
+        deployment_url=$(echo "$deploy_output" | grep -E '^https://' | grep -v "Queued\|Building\|Completing" | head -1)
+    fi
+
+    # 方法3: それでも見つからない場合、https://を含む任意の行から抽出
+    if [ -z "$deployment_url" ]; then
+        deployment_url=$(echo "$deploy_output" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
+    fi
+
+    # デバッグ用ログ
     if [ -z "$deployment_url" ] || [[ ! "$deployment_url" =~ ^https:// ]]; then
         log_warn "URLの抽出に問題がある可能性があります"
-        log_warn "Vercel出力の最後の5行:"
-        echo "$deploy_output" | tail -5
+        log_warn "Vercel出力の最後の10行:"
+        echo "$deploy_output" | tail -10
     fi
 
     # URLが取得できたか確認
