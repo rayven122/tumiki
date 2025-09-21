@@ -1,0 +1,85 @@
+name: 'Unified Deploy'
+description: 'Deploy to Vercel and/or GCE'
+inputs:
+  target:
+    description: 'Deployment target (vercel|gce|all)'
+    default: 'all'
+    required: false
+  stage:
+    description: 'Deployment stage (staging|production)'
+    default: 'staging'
+    required: false
+  vercel_token:
+    description: 'Vercel authentication token'
+    required: false
+  vercel_org_id:
+    description: 'Vercel organization ID'
+    required: false
+  vercel_project_id:
+    description: 'Vercel project ID'
+    required: false
+  gcp_credentials:
+    description: 'GCP service account key JSON'
+    required: false
+  gce_instance_name:
+    description: 'GCE instance name'
+    required: false
+  gce_zone:
+    description: 'GCE zone'
+    required: false
+    default: 'asia-northeast2-c'
+  gcp_project_id:
+    description: 'GCP project ID'
+    required: false
+
+outputs:
+  vercel_url:
+    description: 'Vercel deployment URL'
+    value: ${{ steps.deploy.outputs.vercel_url }}
+  gce_url:
+    description: 'GCE deployment URL'
+    value: ${{ steps.deploy.outputs.gce_url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup GCP Authentication
+      if: (contains(inputs.target, 'gce') || inputs.target == 'all') && inputs.gcp_credentials != ''
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+
+    - name: Setup Cloud SDK
+      if: (contains(inputs.target, 'gce') || inputs.target == 'all') && inputs.gcp_credentials != ''
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Run Unified Deploy Script
+      id: deploy
+      shell: bash
+      env:
+        # デプロイ設定
+        DEPLOY_TARGET: ${{ inputs.target }}
+        DEPLOY_STAGE: ${{ inputs.stage }}
+        CI: 'true'
+
+        # Vercel設定
+        VERCEL_TOKEN: ${{ inputs.vercel_token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel_org_id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel_project_id }}
+
+        # GCE設定
+        GCE_INSTANCE_NAME: ${{ inputs.gce_instance_name }}
+        GCE_ZONE: ${{ inputs.gce_zone }}
+        GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+      run: |
+        echo "🚀 統合デプロイを開始"
+        echo "ターゲット: $DEPLOY_TARGET"
+        echo "ステージ: $DEPLOY_STAGE"
+
+        # スクリプトに実行権限を付与
+        chmod +x scripts/deploy.sh
+
+        # デプロイ実行
+        bash scripts/deploy.sh
+
+        echo "✅ デプロイが完了しました"

@@ -220,8 +220,7 @@ Vercel上で環境変数を更新した場合、再デプロイで最新の値�
 
 ```bash
 # 最新の環境変数で再デプロイ
-cd apps/proxyServer
-./deploy-to-gce.sh
+pnpm deploy:gce
 ```
 
 ### 設定変更後の再起動
