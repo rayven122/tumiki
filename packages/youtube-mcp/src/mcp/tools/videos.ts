@@ -1,7 +1,10 @@
-import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
+import type { YoutubeApiKey } from "@/api/apiKey.js";
+import type { Result } from "@/lib/result.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
-import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
-import { GetVideoSchema, SearchVideosSchema } from "@/types/index.js";
+import { getVideo, searchVideos } from "@/api/videos/index.js";
+import { err, ok } from "@/lib/result.js";
+import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
+import { GetVideoSchema, SearchVideosSchema } from "@/mcp/types.js";
 
 export const videoTools: Tool[] = [
   {
@@ -63,47 +66,41 @@ export const videoTools: Tool[] = [
 
 export const handleVideoTool = async (
   toolName: string,
-  args: Record<string, unknown>,
-  youtubeApi: YouTubeApiService,
-): Promise<CallToolResult> => {
-  switch (toolName) {
-    case YOU_TUBE_TOOL_NAMES.GET_VIDEO: {
-      const validatedArgs = GetVideoSchema.parse(args);
-      const video = await youtubeApi.getVideo(
-        validatedArgs.videoId,
-        validatedArgs.parts,
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(video, null, 2),
-          },
-        ],
-      };
+  args: unknown,
+  apiKey: YoutubeApiKey,
+): Promise<Result<CallToolResult>> => {
+  try {
+    switch (toolName) {
+      case YOU_TUBE_TOOL_NAMES.GET_VIDEO: {
+        const input = GetVideoSchema.parse(args);
+        const result = await getVideo(input.videoId, apiKey, input.parts);
+        if (!result.success) {
+          return err(result.error);
+        }
+        return ok({
+          content: [{ type: "text", text: JSON.stringify(result.data) }],
+        });
+      }
+      case YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS: {
+        const input = SearchVideosSchema.parse(args);
+        const result = await searchVideos(
+          input.query,
+          apiKey,
+          input.maxResults,
+          input.order,
+          input.type,
+        );
+        if (!result.success) {
+          return err(result.error);
+        }
+        return ok({
+          content: [{ type: "text", text: JSON.stringify(result.data) }],
+        });
+      }
+      default:
+        return err(new Error(`Unknown tool: ${toolName}`));
     }
-
-    case YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS: {
-      const validatedArgs = SearchVideosSchema.parse(args);
-      const results = await youtubeApi.searchVideos(
-        validatedArgs.query,
-        validatedArgs.maxResults,
-        validatedArgs.order,
-        validatedArgs.type,
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(results, null, 2),
-          },
-        ],
-      };
-    }
-
-    default:
-      throw new Error(`Unknown video tool: ${toolName}`);
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)));
   }
 };
