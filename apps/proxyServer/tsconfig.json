@@ -15,6 +15,11 @@
       "qs"
     ]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
+  ],
   "exclude": ["node_modules", "tsup.config.ts"]
 }
