@@ -118,6 +118,7 @@ jobs:
 
       - name: Comment deployment URL
         uses: ./.github/actions/comment-deployment
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.vercel_url != ''
         with:
           deployment_url: ${{ steps.deploy.outputs.vercel_url }}
           environment: ${{ needs.setup.outputs.environment }}

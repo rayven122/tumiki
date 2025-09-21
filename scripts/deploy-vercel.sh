@@ -177,15 +177,33 @@ deploy_vercel() {
         return 1
     fi
 
-    # 最後の行をデプロイURLとして取得
-    deployment_url=$(echo "$deploy_output" | tail -1)
+    # デプロイURLを抽出（https://で始まる行を探す）
+    deployment_url=$(echo "$deploy_output" | grep -E '^https://' | tail -1)
 
-    log_info "Vercelデプロイ完了"
-    log_info "URL: $deployment_url"
+    # URLが取得できない場合は、Vercel CLIの新しい出力形式を試す
+    if [ -z "$deployment_url" ]; then
+        # "Ready! Deployed to https://..." パターンを探す
+        deployment_url=$(echo "$deploy_output" | grep -oE 'https://[^ ]+' | tail -1)
+    fi
+
+    # URLが取得できたか確認
+    if [ -z "$deployment_url" ]; then
+        log_warn "デプロイは成功しましたが、URLを抽出できませんでした"
+        log_warn "デプロイ出力:"
+        echo "$deploy_output" | head -20
+    else
+        log_info "Vercelデプロイ完了"
+        log_info "URL: $deployment_url"
+    fi
 
     # GitHub Actions出力
     if [ -n "${GITHUB_OUTPUT:-}" ]; then
-        echo "vercel_url=$deployment_url" >> "$GITHUB_OUTPUT"
+        if [ -n "$deployment_url" ]; then
+            echo "vercel_url=$deployment_url" >> "$GITHUB_OUTPUT"
+        else
+            # URLが取得できない場合でもエラーにしない（デプロイ自体は成功）
+            log_warn "GitHub Actions出力にURLを設定できませんでした"
+        fi
     fi
 
     return 0
