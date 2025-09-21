@@ -12,7 +12,7 @@ YouTube Data API v3 を使用した MCP (Model Context Protocol) サーバーで
 ### チャンネル関連
 
 - `get_channel` - チャンネル情報を取得
-- `list_channel_videos` - チャンネルの動画一覧を取得
+- `get_channel_videos` - チャンネルの動画一覧を取得
 
 ### プレイリスト関連
 
@@ -22,7 +22,7 @@ YouTube Data API v3 を使用した MCP (Model Context Protocol) サーバーで
 ### コメント関連
 
 - `get_comment_threads` - 動画のコメントスレッドを取得（ページネーション対応）
-- `get_comments` - コメントへの返信を取得（ページネーション対応）
+- `get_comment_replies` - コメントへの返信を取得（ページネーション対応）
 
 ### 字幕関連
 
@@ -77,6 +77,18 @@ pnpm build
 ```
 
 環境変数を設定してエディタを再起動すると、YouTube MCPツールが利用可能になります。
+
+## ディレクトリ構成(src/)
+
+```
+packages/youtube-mcp/src/
+├── index.ts        # エントリポイント
+├── api/            # YouTube API
+├── lib/            # 外部ライブラリ連携
+├── mcp/            # MCPプロトコル実装
+│   └── tools/      # ツール定義
+└── __tests__/      # テスト
+```
 
 ## 制限事項
 

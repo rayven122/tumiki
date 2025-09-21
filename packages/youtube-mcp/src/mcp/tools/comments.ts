@@ -1,7 +1,13 @@
-import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
+import type { YoutubeApiKey } from "@/api/apiKey.js";
+import type { Result } from "@/lib/result.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
-import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
-import { GetCommentsSchema, GetCommentThreadsSchema } from "@/types/index.js";
+import { getCommentReplies, getCommentThreads } from "@/api/comments/index.js";
+import { err, ok } from "@/lib/result.js";
+import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
+import {
+  GetCommentRepliesSchema,
+  GetCommentThreadsSchema,
+} from "@/mcp/types.js";
 
 export const commentTools: Tool[] = [
   {
@@ -64,48 +70,46 @@ export const commentTools: Tool[] = [
 
 export const handleCommentTool = async (
   toolName: string,
-  args: Record<string, unknown>,
-  youtubeApi: YouTubeApiService,
-): Promise<CallToolResult> => {
-  switch (toolName) {
-    case YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS: {
-      const validatedArgs = GetCommentThreadsSchema.parse(args);
-      const result = await youtubeApi.getCommentThreads(
-        validatedArgs.videoId,
-        validatedArgs.maxResults,
-        validatedArgs.pageToken,
-        validatedArgs.order,
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
+  args: unknown,
+  apiKey: YoutubeApiKey,
+): Promise<Result<CallToolResult>> => {
+  try {
+    switch (toolName) {
+      case YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS: {
+        const input = GetCommentThreadsSchema.parse(args);
+        const result = await getCommentThreads(
+          input.videoId,
+          apiKey,
+          input.maxResults,
+          input.pageToken,
+          input.order,
+        );
+        if (!result.success) {
+          return err(result.error);
+        }
+        return ok({
+          content: [{ type: "text", text: JSON.stringify(result.data) }],
+        });
+      }
+      case YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES: {
+        const input = GetCommentRepliesSchema.parse(args);
+        const result = await getCommentReplies(
+          input.parentId,
+          apiKey,
+          input.maxResults,
+          input.pageToken,
+        );
+        if (!result.success) {
+          return err(result.error);
+        }
+        return ok({
+          content: [{ type: "text", text: JSON.stringify(result.data) }],
+        });
+      }
+      default:
+        return err(new Error(`Unknown tool: ${toolName}`));
     }
-
-    case YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES: {
-      const validatedArgs = GetCommentsSchema.parse(args);
-      const result = await youtubeApi.getCommentReplies(
-        validatedArgs.parentId,
-        validatedArgs.maxResults,
-        validatedArgs.pageToken,
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    }
-
-    default:
-      throw new Error(`Unknown comment tool: ${toolName}`);
+  } catch (error) {
+    return err(error instanceof Error ? error : new Error(String(error)));
   }
 };

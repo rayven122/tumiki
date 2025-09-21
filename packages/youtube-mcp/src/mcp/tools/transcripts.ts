@@ -1,11 +1,14 @@
-import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
-import type { YtdlpService } from "@/services/YtdlpService/index.js";
+import type { YoutubeApiKey } from "@/api/apiKey.js";
+import type { Result } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
+import { getTranscriptMetadata } from "@/api/transcripts/index.js";
+import { err, ok } from "@/lib/result.js";
+import { getTranscript as getTranscriptYtdlp } from "@/lib/ytdlp/index.js";
+import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import {
   GetTranscriptMetadataSchema,
   GetTranscriptSchema,
-} from "@/types/index.js";
+} from "@/mcp/types.js";
 
 /**
  * 字幕ツールの定義
@@ -55,71 +58,49 @@ export const transcriptTools = [
 
 /**
  * 字幕ツールのハンドラー
- * @param toolName ツール名
- * @param args 引数
- * @param youtubeApi YouTubeAPIサービス
- * @param ytdlpService YtdlpService インスタンス
- * @returns ツールの実行結果
  */
-export async function handleTranscriptTool(
+export const handleTranscriptTool = async (
   toolName: string,
   args: unknown,
-  youtubeApi: YouTubeApiService,
-  ytdlpService: YtdlpService,
-): Promise<CallToolResult> {
+  apiKey: YoutubeApiKey,
+): Promise<Result<CallToolResult>> => {
   try {
     switch (toolName) {
       case YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA: {
         const input = GetTranscriptMetadataSchema.parse(args);
-        const metadata = await youtubeApi.getTranscriptMetadata(input.videoId);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(metadata, null, 2),
-            },
-          ],
-        };
+        const result = await getTranscriptMetadata(input.videoId, apiKey);
+        if (!result.success) {
+          return err(result.error);
+        }
+        return ok({
+          content: [{ type: "text", text: JSON.stringify(result.data) }],
+        });
       }
 
       case YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT: {
         const input = GetTranscriptSchema.parse(args);
-        const transcript = await ytdlpService.getTranscript(
+        const transcriptResult = await getTranscriptYtdlp(
           input.videoId,
           input.language,
           input.startTime,
           input.endTime,
         );
 
-        return {
+        if (!transcriptResult.success) {
+          return err(transcriptResult.error);
+        }
+
+        return ok({
           content: [
-            {
-              type: "text",
-              text: JSON.stringify(transcript, null, 2),
-            },
+            { type: "text", text: JSON.stringify(transcriptResult.data) },
           ],
-        };
+        });
       }
 
       default:
-        throw new Error(`Unknown transcript tool: ${toolName}`);
+        return err(new Error(`Unknown tool: ${toolName}`));
     }
   } catch (error) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: error instanceof Error ? error.message : String(error),
-              toolName,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return err(error instanceof Error ? error : new Error(String(error)));
   }
-}
+};

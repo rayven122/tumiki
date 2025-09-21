@@ -50,7 +50,7 @@
       "command": "node",
       "args": ["packages/youtube-mcp/dist/index.js"],
       "env": {
-        "YOUTUBE_API_KEY": "YOUR_API_KEY_HERE"
+        "YOUTUBE_API_KEY": "${YOUTUBE_API_KEY}"
       }
     }
   }
@@ -154,7 +154,7 @@
   期待: エラーまたは制限された情報
 ```
 
-### list_channel_videos
+### get_channel_videos
 
 ```yaml
 テストケース1: 最新動画順
@@ -278,7 +278,7 @@
   期待: 100件取得、nextPageTokenあり
 ```
 
-### get_comments
+### get_comment_replies
 
 ```yaml
 テストケース1: 返信取得
