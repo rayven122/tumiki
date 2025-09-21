@@ -107,7 +107,7 @@ jobs:
         uses: ./.github/actions/deploy
         with:
           target: ${{ steps.target.outputs.target }}
-          stage: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
+          stage: ${{ needs.setup.outputs.stage }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}

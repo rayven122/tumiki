@@ -61,7 +61,7 @@ fetch_vercel_env_variables() {
 
         # 環境に応じて取得
         local vercel_env="production"
-        if [ "$STAGE" = "staging" ]; then
+        if [ "$STAGE" = "staging" ] || [ "$STAGE" = "preview" ]; then
             vercel_env="preview"
         fi
 
@@ -83,7 +83,7 @@ fetch_vercel_env_variables() {
 
         # プロジェクトルートでvercel env pullを実行
         local vercel_env="production"
-        if [ "$STAGE" = "staging" ]; then
+        if [ "$STAGE" = "staging" ] || [ "$STAGE" = "preview" ]; then
             vercel_env="preview"
         fi
 
@@ -128,21 +128,22 @@ deploy_vercel() {
     # 一時ファイルでエラーログを保存（セキュリティ：権限設定と自動削除）
     local temp_log=$(mktemp)
     chmod 600 "$temp_log"  # 所有者のみ読み書き可能
-    trap 'rm -f "$temp_log"' EXIT ERR INT TERM
+    # trapは変数が定義された後に設定
+    trap "rm -f '$temp_log'" EXIT ERR INT TERM
     local deploy_exit_code=0
 
     if [ -n "${VERCEL_TOKEN:-}" ]; then
-        # CI環境（Vercel CLIが環境変数を自動読込）
+        # CI環境（トークンを明示的に渡す）
         log_info "CI環境でVercelデプロイを実行"
 
         if [ "$STAGE" = "production" ]; then
             log_info "本番環境にデプロイ中..."
-            if ! vercel deploy --prod --yes > "$temp_log" 2>&1; then
+            if ! vercel deploy --prod --yes --token="$VERCEL_TOKEN" > "$temp_log" 2>&1; then
                 deploy_exit_code=$?
             fi
         else
-            log_info "ステージング環境にデプロイ中..."
-            if ! vercel deploy --yes > "$temp_log" 2>&1; then
+            log_info "${STAGE}環境にデプロイ中..."
+            if ! vercel deploy --yes --token="$VERCEL_TOKEN" > "$temp_log" 2>&1; then
                 deploy_exit_code=$?
             fi
         fi
