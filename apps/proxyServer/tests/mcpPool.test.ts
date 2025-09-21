@@ -25,11 +25,11 @@ describe.skip("MCPプールの並行接続テスト", () => {
     await mcpPool.cleanup();
   });
 
-  test("10並列接続でのtool/list取得が成功すること", async () => {
+  test("30並列接続でのtool/list取得が成功すること", async () => {
     const instanceId = "test-instance-001";
-    const sessionIds = Array.from({ length: 10 }, (_, i) => `session-${i}`);
+    const sessionIds = Array.from({ length: 30 }, (_, i) => `session-${i}`);
 
-    // 10並列でgetConnectionを実行
+    // 30並列でgetConnectionを実行
     const connectionPromises = sessionIds.map((sessionId) =>
       mcpPool
         .getConnection(
@@ -52,8 +52,8 @@ describe.skip("MCPプールの並行接続テスト", () => {
     console.log(`成功: ${successCount}, 失敗: ${failureCount}`);
 
     // CI環境では接続が制限されるため、成功数のチェックを緩和
-    // セッションあたりの最大接続数（3）×サーバーあたりの最大接続数（5）の範囲内で成功すること
-    expect(successCount + failureCount).toBe(10);
+    // セッションあたりの最大接続数（30）で成功すること
+    expect(successCount + failureCount).toBe(30);
   }, 15000); // CI環境用にタイムアウトを延長
 
   test("60秒以上の長期接続でタイムアウト処理が動作すること", async () => {
@@ -216,8 +216,8 @@ describe.skip("MCPプールの並行接続テスト", () => {
     const instanceId = "recursion-test";
     const sessionId = "recursion-session";
 
-    // CI環境用に接続数を減らす
-    const connectionCount = 5;
+    // CI環境用に接続数を調整
+    const connectionCount = 10;
 
     // 複数の並行接続でインデックス再構築をトリガー
     const connectionPromises = Array.from({ length: connectionCount }, (_, i) =>
