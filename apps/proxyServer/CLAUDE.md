@@ -190,9 +190,9 @@ MAX_SESSIONS=200                      # 最大セッション数
 CONNECTION_TIMEOUT_MS=60000           # セッションタイムアウト（60秒）
 
 # MCPプール設定
-MCP_POOL_MAX_TOTAL=60                 # 全体の最大接続数
+MCP_POOL_MAX_TOTAL=6000               # 全体の最大接続数（30接続×200セッション想定）
 MCP_POOL_MAX_PER_SERVER=5             # サーバーあたり最大接続数
-MAX_CONNECTIONS_PER_SESSION=3         # セッションあたり最大接続数
+MAX_CONNECTIONS_PER_SESSION=30        # セッションあたり最大接続数
 MCP_CONNECTION_TIMEOUT_MS=60000       # MCPプールタイムアウト（セッションと同期）
 MCP_POOL_CLEANUP_INTERVAL_MS=30000    # クリーンアップ間隔（30秒）
 SESSION_POOL_SYNC=true                 # セッション独立プール有効化

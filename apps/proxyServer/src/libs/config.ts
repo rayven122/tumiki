@@ -35,15 +35,15 @@ export const config = {
 
   // 接続プール設定（4GB最適化）
   connectionPool: {
-    maxTotalConnections: parseInt(process.env.MCP_POOL_MAX_TOTAL || "60", 10), // 全体で最大60接続
+    maxTotalConnections: parseInt(process.env.MCP_POOL_MAX_TOTAL || "6000", 10), // 全体で最大6000接続（30接続×200セッション想定）
     maxConnectionsPerServer: parseInt(
       process.env.MCP_POOL_MAX_PER_SERVER || "5",
       10,
     ), // サーバーあたり最大5接続
     maxConnectionsPerSession: parseInt(
-      process.env.MAX_CONNECTIONS_PER_SESSION || "3",
+      process.env.MAX_CONNECTIONS_PER_SESSION || "30",
       10,
-    ), // セッションあたり最大3接続
+    ), // セッションあたり最大30接続
     idleTimeout: parseInt(
       process.env.MCP_CONNECTION_TIMEOUT_MS ||
         process.env.MCP_POOL_IDLE_TIMEOUT_MS ||
