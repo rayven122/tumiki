@@ -1,4 +1,4 @@
-name: Claude Auto-Fix Loop
+name: Claude Auto-Fix
 
 on:
   pull_request:
@@ -12,40 +12,24 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install dependencies
-        run: |
-          pnpm add -D @anthropic-ai/sdk@latest @octokit/rest typescript tsx
-
-      - name: Run auto-fix loop
+      - name: Run Auto-Fix Loop
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          REPO: ${{ github.repository }}
         run: |
-          npx tsx .github/scripts/auto-fix.ts
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "✅ Auto-fix process completed" >> $GITHUB_STEP_SUMMARY
+          node .github/scripts/claude-auto-fix.js
