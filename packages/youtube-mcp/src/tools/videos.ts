@@ -1,4 +1,4 @@
-import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { GetVideoSchema, SearchVideosSchema } from "@/types/index.js";

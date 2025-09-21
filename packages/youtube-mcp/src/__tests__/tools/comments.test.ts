@@ -1,4 +1,4 @@
-import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { commentTools, handleCommentTool } from "@/tools/comments.js";
 import { describe, expect, test, vi } from "vitest";
@@ -12,7 +12,7 @@ describe("commentTools", () => {
       YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS,
     );
     expect(commentTools[1]?.name).toStrictEqual(
-      YOU_TUBE_TOOL_NAMES.GET_COMMENTS,
+      YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES,
     );
   });
 
@@ -50,9 +50,9 @@ describe("commentTools", () => {
     });
   });
 
-  test("GET_COMMENTSツールのスキーマが正しい", () => {
+  test("GET_COMMENT_REPLIESツールのスキーマが正しい", () => {
     const tool = commentTools.find(
-      (t) => t.name === YOU_TUBE_TOOL_NAMES.GET_COMMENTS,
+      (t) => t.name === YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES,
     );
     expect(tool).toBeDefined();
     expect(tool?.inputSchema).toStrictEqual({
@@ -156,10 +156,10 @@ describe("handleCommentTool", () => {
     });
   });
 
-  describe("GET_COMMENTS", () => {
+  describe("GET_COMMENT_REPLIES", () => {
     test("正常系: 返信コメントを取得できる", async () => {
       const mockApi = {
-        getComments: vi.fn().mockResolvedValue({
+        getCommentReplies: vi.fn().mockResolvedValue({
           comments: [
             {
               id: "reply1",
@@ -175,12 +175,12 @@ describe("handleCommentTool", () => {
       } as unknown as YouTubeApiService;
 
       const result = await handleCommentTool(
-        YOU_TUBE_TOOL_NAMES.GET_COMMENTS,
+        YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES,
         { parentId: "parent-comment", maxResults: 50 },
         mockApi,
       );
 
-      expect(mockApi.getComments).toHaveBeenCalledWith(
+      expect(mockApi.getCommentReplies).toHaveBeenCalledWith(
         "parent-comment",
         50,
         undefined,
@@ -199,7 +199,7 @@ describe("handleCommentTool", () => {
       const mockApi = {} as YouTubeApiService;
 
       await expect(
-        handleCommentTool(YOU_TUBE_TOOL_NAMES.GET_COMMENTS, {}, mockApi),
+        handleCommentTool(YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES, {}, mockApi),
       ).rejects.toThrow();
     });
   });

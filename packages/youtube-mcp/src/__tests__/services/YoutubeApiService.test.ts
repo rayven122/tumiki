@@ -10,7 +10,7 @@ import type {
   YouTubeApiSearchItem,
   YouTubeApiVideoItem,
 } from "@/types/index.js";
-import { YouTubeApiService } from "@/services/youtubeApi.js";
+import { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // globalThis.fetchをモック化
@@ -647,7 +647,7 @@ describe("YouTubeApiService", () => {
     });
   });
 
-  describe("listChannelVideos", () => {
+  describe("getChannelVideos", () => {
     const mockChannelVideosResponse: YouTubeApiResponse<YouTubeApiSearchItem> =
       {
         kind: "youtube#searchListResponse",
@@ -678,7 +678,7 @@ describe("YouTubeApiService", () => {
         json: () => mockChannelVideosResponse,
       });
 
-      const result = await youtubeService.listChannelVideos("test-channel-id");
+      const result = await youtubeService.getChannelVideos("test-channel-id");
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://www.googleapis.com/youtube/v3/search?key=test-api-key&channelId=test-channel-id&part=snippet&maxResults=10&order=date&type=video",
@@ -693,11 +693,7 @@ describe("YouTubeApiService", () => {
         json: () => mockChannelVideosResponse,
       });
 
-      await youtubeService.listChannelVideos(
-        "test-channel-id",
-        20,
-        "viewCount",
-      );
+      await youtubeService.getChannelVideos("test-channel-id", 20, "viewCount");
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://www.googleapis.com/youtube/v3/search?key=test-api-key&channelId=test-channel-id&part=snippet&maxResults=20&order=viewCount&type=video",
@@ -1071,7 +1067,7 @@ describe("YouTubeApiService", () => {
     });
   });
 
-  describe("getComments", () => {
+  describe("getCommentReplies", () => {
     const mockCommentsResponse: YouTubeApiResponse<YouTubeApiCommentItem> = {
       kind: "youtube#commentListResponse",
       etag: "test-etag",
@@ -1108,7 +1104,7 @@ describe("YouTubeApiService", () => {
         json: () => mockCommentsResponse,
       });
 
-      const result = await youtubeService.getComments("parent-comment");
+      const result = await youtubeService.getCommentReplies("parent-comment");
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://www.googleapis.com/youtube/v3/comments?key=test-api-key&part=snippet&parentId=parent-comment&maxResults=20",
@@ -1125,7 +1121,11 @@ describe("YouTubeApiService", () => {
         json: () => mockCommentsResponse,
       });
 
-      await youtubeService.getComments("parent-comment", 100, "page-token");
+      await youtubeService.getCommentReplies(
+        "parent-comment",
+        100,
+        "page-token",
+      );
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://www.googleapis.com/youtube/v3/comments?key=test-api-key&part=snippet&parentId=parent-comment&maxResults=100&pageToken=page-token",
