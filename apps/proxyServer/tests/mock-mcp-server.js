@@ -3,6 +3,7 @@
 // より堅牢なモックMCPサーバー実装
 // MCPプロトコルに準拠した正しいJSON-RPC通信を実装
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const readline = require("readline");
 
 // デバッグログを標準エラーに出力（テストの邪魔にならない）
