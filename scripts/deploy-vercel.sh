@@ -125,12 +125,8 @@ deploy_vercel() {
     log_info "プロジェクトルートからVercelデプロイを実行"
     log_info "現在のディレクトリ: $(pwd)"
 
-    # 一時ファイルでエラーログを保存（セキュリティ：権限設定と自動削除）
-    local temp_log=$(mktemp)
-    chmod 600 "$temp_log"  # 所有者のみ読み書き可能
-    # trapは変数が定義された後に設定
-    trap "rm -f '$temp_log'" EXIT ERR INT TERM
-    local deploy_exit_code=0
+    local deployment_url=""
+    local deploy_output=""
 
     if [ -n "${VERCEL_TOKEN:-}" ]; then
         # CI環境（トークンを明示的に渡す）
@@ -138,14 +134,25 @@ deploy_vercel() {
 
         if [ "$STAGE" = "production" ]; then
             log_info "本番環境にデプロイ中..."
-            if ! vercel deploy --prod --yes --token="$VERCEL_TOKEN" > "$temp_log" 2>&1; then
-                deploy_exit_code=$?
-            fi
+            # Vercel CLIの出力を直接キャプチャ（従来の方法と同じ）
+            deploy_output=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1) || {
+                log_error "Vercelデプロイが失敗しました"
+                log_error "デプロイ出力:"
+                echo "$deploy_output" | while IFS= read -r line; do
+                    log_error "  $line"
+                done
+                return 1
+            }
         else
             log_info "${STAGE}環境にデプロイ中..."
-            if ! vercel deploy --yes --token="$VERCEL_TOKEN" > "$temp_log" 2>&1; then
-                deploy_exit_code=$?
-            fi
+            deploy_output=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1) || {
+                log_error "Vercelデプロイが失敗しました"
+                log_error "デプロイ出力:"
+                echo "$deploy_output" | while IFS= read -r line; do
+                    log_error "  $line"
+                done
+                return 1
+            }
         fi
     else
         # ローカル環境
@@ -153,44 +160,41 @@ deploy_vercel() {
 
         if [ "$STAGE" = "production" ]; then
             log_info "本番環境にデプロイ中..."
-            if ! vercel deploy --prod > "$temp_log" 2>&1; then
-                deploy_exit_code=$?
-            fi
+            deploy_output=$(vercel deploy --prod 2>&1) || {
+                log_error "Vercelデプロイが失敗しました"
+                log_error "デプロイ出力:"
+                echo "$deploy_output" | while IFS= read -r line; do
+                    log_error "  $line"
+                done
+                return 1
+            }
         else
-            if ! vercel deploy > "$temp_log" 2>&1; then
-                deploy_exit_code=$?
-            fi
+            deploy_output=$(vercel deploy 2>&1) || {
+                log_error "Vercelデプロイが失敗しました"
+                log_error "デプロイ出力:"
+                echo "$deploy_output" | while IFS= read -r line; do
+                    log_error "  $line"
+                done
+                return 1
+            }
         fi
     fi
 
-    # ログ内容を読み込み
-    deploy_output=$(cat "$temp_log")
-    rm -f "$temp_log"
+    # Vercel CLIは最終的なデプロイURLを最後の行に出力する（従来の方法と同じ）
+    deployment_url=$(echo "$deploy_output" | tail -1)
 
-    # デプロイ結果の確認
-    if [ $deploy_exit_code -ne 0 ]; then
-        log_error "Vercelデプロイが失敗しました (exit code: $deploy_exit_code)"
-        log_error "デプロイ出力:"
-        echo "$deploy_output" | while IFS= read -r line; do
-            log_error "  $line"
-        done
-        return 1
-    fi
-
-    # デプロイURLを抽出（https://で始まる行を探す）
-    deployment_url=$(echo "$deploy_output" | grep -E '^https://' | tail -1)
-
-    # URLが取得できない場合は、Vercel CLIの新しい出力形式を試す
-    if [ -z "$deployment_url" ]; then
-        # "Ready! Deployed to https://..." パターンを探す
-        deployment_url=$(echo "$deploy_output" | grep -oE 'https://[^ ]+' | tail -1)
+    # 出力全体をデバッグ用にログ出力（URLが取得できない場合の調査用）
+    if [ -z "$deployment_url" ] || [[ ! "$deployment_url" =~ ^https:// ]]; then
+        log_warn "URLの抽出に問題がある可能性があります"
+        log_warn "Vercel出力の最後の5行:"
+        echo "$deploy_output" | tail -5
     fi
 
     # URLが取得できたか確認
-    if [ -z "$deployment_url" ]; then
-        log_warn "デプロイは成功しましたが、URLを抽出できませんでした"
-        log_warn "デプロイ出力:"
-        echo "$deploy_output" | head -20
+    if [ -z "$deployment_url" ] || [[ ! "$deployment_url" =~ ^https:// ]]; then
+        log_error "デプロイは成功しましたが、URLを抽出できませんでした"
+        log_error "予期されるURL形式: https://[project-name]-[hash].vercel.app"
+        return 1
     else
         log_info "Vercelデプロイ完了"
         log_info "URL: $deployment_url"
