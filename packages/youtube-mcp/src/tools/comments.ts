@@ -1,4 +1,4 @@
-import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
 import { GetCommentsSchema, GetCommentThreadsSchema } from "@/types/index.js";
@@ -36,7 +36,7 @@ export const commentTools: Tool[] = [
     },
   },
   {
-    name: YOU_TUBE_TOOL_NAMES.GET_COMMENTS,
+    name: YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES,
     description: "コメントスレッドへの返信を取得します",
     inputSchema: {
       type: "object",
@@ -87,9 +87,9 @@ export const handleCommentTool = async (
       };
     }
 
-    case YOU_TUBE_TOOL_NAMES.GET_COMMENTS: {
+    case YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES: {
       const validatedArgs = GetCommentsSchema.parse(args);
-      const result = await youtubeApi.getComments(
+      const result = await youtubeApi.getCommentReplies(
         validatedArgs.parentId,
         validatedArgs.maxResults,
         validatedArgs.pageToken,

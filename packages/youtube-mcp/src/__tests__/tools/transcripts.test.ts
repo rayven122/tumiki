@@ -1,4 +1,4 @@
-import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import type { YtdlpService } from "@/services/YtdlpService/index.js";
 import type { TranscriptMetadata, TranscriptResponse } from "@/types/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";

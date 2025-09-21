@@ -123,7 +123,7 @@ export class YouTubeApiService {
     return this.mapChannelResponse(item);
   }
 
-  async listChannelVideos(
+  async getChannelVideos(
     channelId: string,
     maxResults = 10,
     order = "date",
@@ -315,7 +315,7 @@ export class YouTubeApiService {
     };
   }
 
-  async getComments(
+  async getCommentReplies(
     parentId: string,
     maxResults = 20,
     pageToken?: string,

@@ -1,4 +1,4 @@
-import type { YouTubeApiService } from "@/services/youtubeApi.js";
+import type { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import type { SearchResult, VideoDetails } from "@/types/index.js";
 import { handleVideoTool } from "@/tools/videos.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -13,7 +13,7 @@ const createMockYouTubeApiService = (): YouTubeApiService =>
     getVideo: mockGetVideo,
     searchVideos: mockSearchVideos,
     getChannel: vi.fn(),
-    listChannelVideos: vi.fn(),
+    getChannelVideos: vi.fn(),
     getPlaylist: vi.fn(),
     getPlaylistItems: vi.fn(),
   }) as any;

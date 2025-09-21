@@ -1,5 +1,5 @@
 import { YOU_TUBE_TOOL_NAMES } from "@/constants/toolNames.js";
-import { YouTubeApiService } from "@/services/youtubeApi.js";
+import { YouTubeApiService } from "@/services/YoutubeApiService/index.js";
 import { YtdlpService } from "@/services/YtdlpService/index.js";
 import { channelTools, handleChannelTool } from "@/tools/channels.js";
 import { commentTools, handleCommentTool } from "@/tools/comments.js";
@@ -66,7 +66,7 @@ export const startMcpServer = async () => {
       // チャンネル関連ツール
       if (
         toolName === YOU_TUBE_TOOL_NAMES.GET_CHANNEL ||
-        toolName === YOU_TUBE_TOOL_NAMES.LIST_CHANNEL_VIDEOS
+        toolName === YOU_TUBE_TOOL_NAMES.GET_CHANNEL_VIDEOS
       ) {
         return await handleChannelTool(toolName, args ?? {}, youtubeApi);
       }
@@ -82,7 +82,7 @@ export const startMcpServer = async () => {
       // コメント関連ツール
       if (
         toolName === YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS ||
-        toolName === YOU_TUBE_TOOL_NAMES.GET_COMMENTS
+        toolName === YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES
       ) {
         return await handleCommentTool(toolName, args ?? {}, youtubeApi);
       }
