@@ -3,6 +3,7 @@
 // テスト用のモックMCPサーバー
 // MCPプロトコルに従ったシンプルなstdioサーバー
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const readline = require("readline");
 
 const rl = readline.createInterface({
@@ -90,7 +91,8 @@ rl.on("line", (line) => {
       default:
         sendError(request.id, -32601, "Method not found");
     }
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_error) {
     // パースエラーなど
     sendError(null, -32700, "Parse error");
   }
