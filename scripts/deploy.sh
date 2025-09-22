@@ -65,6 +65,34 @@ check_prerequisites() {
     log_info "前提条件チェック完了"
 }
 
+# デプロイ実行関数
+run_deploy() {
+    local target=$1
+    local stage=$2
+
+    # 共通準備処理（GCEまたは全体デプロイの場合）
+    if [ "$target" = "gce" ] || [ "$target" = "all" ]; then
+        fetch_vercel_env_variables || log_warn "環境変数取得をスキップ"
+        build_packages
+    fi
+
+    # デプロイ実行
+    if [ "$target" = "all" ] && [ "$stage" = "production" ]; then
+        log_info "本番環境へのデプロイのため、並列実行します"
+        deploy_parallel
+    elif [ "$target" = "all" ]; then
+        deploy_vercel
+        deploy_gce
+    elif [ "$target" = "vercel" ]; then
+        deploy_vercel
+    elif [ "$target" = "gce" ]; then
+        deploy_gce
+    else
+        log_error "不明なターゲット: $target"
+        return 1
+    fi
+}
+
 # メイン処理
 main() {
     log_info "==============================="
@@ -74,50 +102,16 @@ main() {
     log_info "ステージ: $STAGE"
     log_info "環境: ${IS_CI:+CI}${IS_CI:-ローカル}"
 
-    if [ "$DRY_RUN" = "true" ]; then
-        log_dry_run "ドライランモードで実行します"
-    fi
+    [ "$DRY_RUN" = "true" ] && log_dry_run "ドライランモードで実行"
 
     # 前提条件チェック
     check_prerequisites
 
-    # ターゲット別デプロイ
-    case "$TARGET" in
-        vercel)
-            deploy_vercel
-            ;;
-        gce)
-            # GCEの場合は環境変数とビルドが必要
-            if ! fetch_vercel_env_variables; then
-                log_warn "環境変数の取得に失敗しましたが続行します"
-            fi
-            build_packages
-            deploy_gce
-            ;;
-        all)
-            # productionの場合は並列実行、それ以外は順次実行
-            if [ "$STAGE" = "production" ]; then
-                log_info "本番環境へのデプロイのため、並列実行します"
-                # deploy_parallelが準備処理も含めて実行
-                deploy_parallel
-            else
-                # 順次実行の場合
-                if ! fetch_vercel_env_variables; then
-                    log_warn "環境変数の取得に失敗しましたが続行します"
-                fi
-                build_packages
-                deploy_vercel
-                deploy_gce
-            fi
-            ;;
-        *)
-            log_error "不明なターゲット: $TARGET"
-            exit 1
-            ;;
-    esac
+    # デプロイ実行
+    run_deploy "$TARGET" "$STAGE"
 
     # クリーンアップ
-    [ -f ".env.deploy" ] && rm -f .env.deploy
+    rm -f .env.deploy 2>/dev/null || true
 
     log_info "==============================="
     log_info "✅ デプロイ完了!"

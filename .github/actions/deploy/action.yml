@@ -53,33 +53,17 @@ runs:
       if: (contains(inputs.target, 'gce') || inputs.target == 'all') && inputs.gcp_credentials != ''
       uses: google-github-actions/setup-gcloud@v2
 
-    - name: Run Unified Deploy Script
+    - name: Run Deploy
       id: deploy
       shell: bash
       env:
-        # デプロイ設定
         DEPLOY_TARGET: ${{ inputs.target }}
         DEPLOY_STAGE: ${{ inputs.stage }}
         CI: 'true'
-
-        # Vercel設定
         VERCEL_TOKEN: ${{ inputs.vercel_token }}
         VERCEL_ORG_ID: ${{ inputs.vercel_org_id }}
         VERCEL_PROJECT_ID: ${{ inputs.vercel_project_id }}
-
-        # GCE設定
         GCE_INSTANCE_NAME: ${{ inputs.gce_instance_name }}
         GCE_ZONE: ${{ inputs.gce_zone }}
         GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
-      run: |
-        echo "🚀 統合デプロイを開始"
-        echo "ターゲット: $DEPLOY_TARGET"
-        echo "ステージ: $DEPLOY_STAGE"
-
-        # スクリプトに実行権限を付与
-        chmod +x scripts/deploy.sh
-
-        # デプロイ実行
-        bash scripts/deploy.sh
-
-        echo "✅ デプロイが完了しました"
+      run: bash scripts/deploy.sh
