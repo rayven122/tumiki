@@ -286,50 +286,67 @@ const main = async () => {
   console.log(pc.cyan("🔍 MCPサーバー セキュリティスキャン開始...\n"));
 
   try {
-    // 対象のMCPサーバーを取得（削除されていない設定のみ）
+    // アクティブなインスタンスのあるサーバーのみを効率的に取得
+    // UserMcpServerInstance → UserToolGroup → UserToolGroupTool → UserMcpServerConfig → McpServer の関係
     const servers = await db.mcpServer.findMany({
       where: {
         serverType: ServerType.OFFICIAL,
         transportType: {
           in: [TransportType.SSE, TransportType.STREAMABLE_HTTPS],
         },
-      },
-      include: {
         mcpServerConfigs: {
-          include: {
-            organization: true,
+          some: {
+            userToolGroupTools: {
+              some: {
+                toolGroup: {
+                  mcpServerInstance: {
+                    deletedAt: null,
+                  },
+                },
+              },
+            },
           },
         },
       },
-    });
-
-    // 削除されていないインスタンスがあるかチェック
-    const activeInstances = await db.userMcpServerInstance.findMany({
-      where: {
-        deletedAt: null,
-        serverType: ServerType.OFFICIAL,
-      },
-      select: {
-        organizationId: true,
-        toolGroup: {
-          select: {
-            toolGroupTools: {
+      include: {
+        mcpServerConfigs: {
+          where: {
+            userToolGroupTools: {
+              some: {
+                toolGroup: {
+                  mcpServerInstance: {
+                    deletedAt: null,
+                  },
+                },
+              },
+            },
+          },
+          include: {
+            organization: true,
+            userToolGroupTools: {
+              where: {
+                toolGroup: {
+                  mcpServerInstance: {
+                    deletedAt: null,
+                  },
+                },
+              },
               select: {
-                userMcpServerConfigId: true,
+                toolGroup: {
+                  select: {
+                    mcpServerInstance: {
+                      select: {
+                        id: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
         },
       },
     });
-
-    // アクティブなインスタンスに関連する設定IDのセットを作成
-    const activeConfigIds = new Set<string>();
-    for (const instance of activeInstances) {
-      for (const tool of instance.toolGroup.toolGroupTools) {
-        activeConfigIds.add(tool.userMcpServerConfigId);
-      }
-    }
 
     console.log(pc.yellow(`📋 スキャン対象: ${servers.length} サーバー\n`));
 
@@ -355,15 +372,16 @@ const main = async () => {
         continue;
       }
 
-      // 各設定に対してスキャンを実行（アクティブなインスタンスがある設定のみ）
+      // 各設定に対してスキャンを実行（既にアクティブなインスタンスがある設定のみ取得済み）
       for (const config of server.mcpServerConfigs) {
-        // アクティブなインスタンスに関連しない設定はスキップ
-        if (!activeConfigIds.has(config.id)) {
-          continue;
-        }
-
         console.log(pc.cyan(`  📁 Organization: ${config.organization.name}`));
         console.log(pc.gray(`     - Config: ${config.name}`));
+        const activeInstanceCount = config.userToolGroupTools.filter(
+          (tool) => tool.toolGroup.mcpServerInstance,
+        ).length;
+        console.log(
+          pc.gray(`     - アクティブインスタンス: ${activeInstanceCount}個`),
+        );
 
         try {
           // envVarsをパース（Prismaの暗号化フィールドは自動的に復号化される）
