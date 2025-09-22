@@ -418,6 +418,7 @@ const getServerConfigsByInstanceId = async (
 // MCPサーバーインスタンスIDからMCPクライアントを取得（プール使用版）
 export const getMcpClientsByInstanceId = async (
   userMcpServerInstanceId: string,
+  sessionId?: string,
 ) => {
   const serverConfigs = await getServerConfigsByInstanceId(
     userMcpServerInstanceId,
@@ -430,6 +431,7 @@ export const getMcpClientsByInstanceId = async (
         userMcpServerInstanceId,
         serverConfig.name,
         serverConfig,
+        sessionId, // セッションIDを渡す
       );
 
       return {
@@ -441,6 +443,7 @@ export const getMcpClientsByInstanceId = async (
             userMcpServerInstanceId,
             serverConfig.name,
             client,
+            sessionId, // セッションIDを渡す
           );
         },
         toolNames: serverConfig.toolNames,
@@ -467,7 +470,12 @@ export const getMcpClientsByInstanceId = async (
   const cleanup = async () => {
     // 全ての接続をプールに返却
     for (const { name, client } of connectedClients) {
-      mcpPool.releaseConnection(userMcpServerInstanceId, name, client);
+      mcpPool.releaseConnection(
+        userMcpServerInstanceId,
+        name,
+        client,
+        sessionId,
+      );
     }
   };
 
@@ -507,6 +515,7 @@ export const getServer = async (
   serverIdentifier: string,
   transportType: TransportType,
   isValidationMode = false,
+  sessionId?: string,
 ) => {
   // 後方互換性: APIキー形式（tumiki_mcp_で始まる）かどうかをチェック
   let userMcpServerInstanceId: string;
@@ -627,7 +636,10 @@ export const getServer = async (
           Promise.race([
             (async () => {
               const { connectedClients, cleanup } =
-                await getMcpClientsByInstanceId(userMcpServerInstanceId);
+                await getMcpClientsByInstanceId(
+                  userMcpServerInstanceId,
+                  sessionId,
+                );
               clientsCleanup = cleanup;
 
               try {
@@ -798,7 +810,10 @@ export const getServer = async (
           Promise.race([
             (async () => {
               const { connectedClients, cleanup } =
-                await getMcpClientsByInstanceId(userMcpServerInstanceId);
+                await getMcpClientsByInstanceId(
+                  userMcpServerInstanceId,
+                  sessionId,
+                );
               clientsCleanup = cleanup;
 
               try {

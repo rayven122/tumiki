@@ -35,21 +35,31 @@ export const config = {
 
   // 接続プール設定（4GB最適化）
   connectionPool: {
-    maxTotalConnections: parseInt(process.env.MCP_POOL_MAX_TOTAL || "60", 10), // 全体で最大60接続
+    maxTotalConnections: parseInt(process.env.MCP_POOL_MAX_TOTAL || "6000", 10), // 全体で最大6000接続（30接続×200セッション想定）
     maxConnectionsPerServer: parseInt(
       process.env.MCP_POOL_MAX_PER_SERVER || "5",
       10,
     ), // サーバーあたり最大5接続
-    idleTimeout: parseInt(process.env.MCP_POOL_IDLE_TIMEOUT_MS || "180000", 10), // 3分でタイムアウト
+    maxConnectionsPerSession: parseInt(
+      process.env.MAX_CONNECTIONS_PER_SESSION || "30",
+      10,
+    ), // セッションあたり最大30接続
+    idleTimeout: parseInt(
+      process.env.MCP_CONNECTION_TIMEOUT_MS ||
+        process.env.MCP_POOL_IDLE_TIMEOUT_MS ||
+        "60000",
+      10,
+    ), // MCPプールタイムアウト（セッションと同期）
     healthCheckInterval: parseInt(
       process.env.MCP_POOL_HEALTH_CHECK_MS || "60000",
       10,
     ), // 1分ごとのヘルスチェック
     maxRetries: parseInt(process.env.MCP_POOL_MAX_RETRIES || "3", 10), // 接続失敗時のリトライ数
     cleanupInterval: parseInt(
-      process.env.MCP_POOL_CLEANUP_INTERVAL_MS || "60000",
+      process.env.MCP_POOL_CLEANUP_INTERVAL_MS || "30000",
       10,
-    ), // 1分ごとのクリーンアップ
+    ), // 30秒ごとのクリーンアップ（セッションクリーンアップと同期）
+    sessionPoolSync: process.env.SESSION_POOL_SYNC === "true", // セッション独立プール有効化
   },
 
   // キャッシュ設定（4GB最適化）

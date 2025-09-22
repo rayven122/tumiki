@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { config } from "../libs/config.js";
+import { mcpPool } from "./mcpPool.js";
 
 // Transport種別
 export enum TransportType {
@@ -126,6 +127,11 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 
   // クリーンアップ関数を実行
   await session.cleanup?.();
+
+  // MCPプールのセッション接続もクリーンアップ
+  if (config.connectionPool.sessionPoolSync) {
+    await mcpPool.cleanupSession(sessionId);
+  }
 
   sessions.delete(sessionId);
 };
