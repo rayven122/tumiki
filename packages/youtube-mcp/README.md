@@ -94,3 +94,101 @@ packages/youtube-mcp/src/
 
 - YouTube Data API v3 のクォータ制限があります（デフォルト: 10,000ユニット/日）
 - APIキーは適切に管理し、公開しないよう注意してください
+
+## テストコーディング規約
+
+### Result型の検証パターン
+
+完全比較の原則：
+
+```typescript
+// ✅ 正しい - toStrictEqualで完全なオブジェクトを比較 + satisfiesで型安全性を確保
+expect(result).toStrictEqual({
+  success: true,
+  data: expectedData,
+} satisfies Success<ExpectedType>);
+
+// ❌ 避ける - 個別プロパティの検証やif文での分岐
+expect(result.success).toBe(true);
+if (result.success) {
+  expect(result.data).toStrictEqual(expectedData);
+}
+```
+
+### 型安全な検証の推奨パターン
+
+```typescript
+import type { Failure, Success } from "@/lib/result.js";
+
+// 成功ケースの検証
+expect(result).toStrictEqual({
+  success: true,
+  data: {
+    /* 期待値 */
+  },
+} satisfies Success<DataType>);
+
+// エラーケースの検証（完全一致）
+expect(result).toStrictEqual({
+  success: false,
+  error: new SpecificError("message"),
+} satisfies Failure<SpecificError>);
+
+// エラーケースの検証（部分一致）
+expect(result).toStrictEqual({
+  success: false,
+  error: expect.objectContaining({
+    type: "ERROR_TYPE",
+    message: expect.stringContaining("partial message"),
+  }),
+} satisfies Failure<ErrorType>);
+```
+
+### エラー検証の使い分け
+
+#### ビジネスロジックエラー → 具体的なエラーインスタンス
+
+```typescript
+// 仕様として定められたエラーメッセージ
+expect(result).toStrictEqual({
+  success: false,
+  error: new YouTubeApiError("Channel not found: not-found"),
+});
+```
+
+#### バリデーションエラー → expect.any(Error)
+
+```typescript
+// Zodなどライブラリが生成するエラー
+expect(result).toStrictEqual({
+  success: false,
+  error: expect.any(Error),
+});
+```
+
+**判断基準**:
+
+- エラーメッセージが仕様の一部 → 具体的なインスタンス
+- ライブラリ依存のエラー → expect.any(Error)
+
+### MCPツールテストの特殊ケース
+
+動的コンテンツ検証時のみ型アサーションを許可：
+
+```typescript
+expect(result.success).toStrictEqual(true);
+const successResult = result as {
+  success: true;
+  data: { content: { text?: string }[] };
+};
+const text = successResult.data.content[0]?.text;
+const parsed = JSON.parse(text as string);
+expect(parsed.someProperty).toBe("expected-value");
+```
+
+### エラークラスの使い分け
+
+- `Error`: 一般的なビジネスロジックエラー
+- `YouTubeApiError`: YouTube API固有のエラー（statusCode付き）
+- `NetworkError`: ネットワーク層のエラー（cause付き）
+- `ValidationError`: ドメイン固有のバリデーションエラー
