@@ -144,3 +144,5 @@ dist/
 
 # uv
 .local/uv/
+
+reports/
