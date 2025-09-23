@@ -17,7 +17,8 @@
     "typecheck:dev": "tsgo --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --check . --ignore-path ../../.gitignore --write",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "format:fix": "prettier --write . --ignore-path ../../.gitignore",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
