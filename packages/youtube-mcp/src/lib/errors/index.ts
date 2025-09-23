@@ -1,16 +1,4 @@
 export type { Result, Success, Failure } from "@/lib/result.js";
-export { ok, err, isOk, isErr, mapResult } from "@/lib/result.js";
-
-export class YouTubeApiError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode?: number,
-    public readonly response?: string,
-  ) {
-    super(message);
-    this.name = "YouTubeApiError";
-  }
-}
 
 export class ValidationError extends Error {
   constructor(

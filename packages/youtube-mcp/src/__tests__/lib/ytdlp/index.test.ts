@@ -2,12 +2,12 @@ import * as fs from "fs";
 import type { TranscriptResponse } from "@/api/types.js";
 import type { Failure, Success } from "@/lib/result.js";
 import { err, ok } from "@/lib/result.js";
+import { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import {
   checkYtdlpInstalled,
   downloadSubtitleWithYtdlp,
 } from "@/lib/ytdlp/helper.js";
 import { getTranscript } from "@/lib/ytdlp/index.js";
-import { TranscriptError } from "@/lib/ytdlp/types.js";
 import { parse as parseVtt } from "@plussub/srt-vtt-parser";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 

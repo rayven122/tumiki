@@ -7,9 +7,9 @@ import type {
   YouTubeApiResponse,
 } from "@/api/types.js";
 import type { Failure, Success } from "@/lib/result.js";
+import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { getPlaylist, getPlaylistItems } from "@/api/playlists/index.js";
-import { YouTubeApiError } from "@/lib/errors/index.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // fetchApiをモック化

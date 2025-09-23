@@ -6,9 +6,9 @@ import type {
   YouTubeApiVideoItem,
 } from "@/api/types.js";
 import type { Result } from "@/lib/result.js";
+import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { mapSearchResult, mapVideoResponse } from "@/api/mappers.js";
-import { YouTubeApiError } from "@/lib/errors/index.js";
 import { err, isOk, mapResult } from "@/lib/result.js";
 
 export const getVideo = async (
