@@ -1,7 +1,8 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
 import type { Failure, Success } from "@/lib/result.js";
+import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
-import { NetworkError, YouTubeApiError } from "@/lib/errors/index.js";
+import { NetworkError } from "@/lib/errors/index.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // globalThis.fetchをモック化

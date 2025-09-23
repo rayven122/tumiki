@@ -8,12 +8,12 @@ import { err, ok } from "@/lib/result.js";
 import { parse as parseVtt } from "@plussub/srt-vtt-parser";
 
 import type { VttParsedResult } from "./types.js";
+import { TranscriptError } from "./errors/index.js";
 import {
   checkYtdlpInstalled,
   downloadSubtitleWithYtdlp,
   mapParsedEntriesToSegments,
 } from "./helper.js";
-import { TranscriptError } from "./types.js";
 
 /**
  * Get transcript for a YouTube video using yt-dlp

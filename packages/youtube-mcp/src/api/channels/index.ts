@@ -6,9 +6,9 @@ import type {
   YouTubeApiSearchItem,
 } from "@/api/types.js";
 import type { Result } from "@/lib/result.js";
+import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { mapChannelResponse, mapSearchResult } from "@/api/mappers.js";
-import { YouTubeApiError } from "@/lib/errors/index.js";
 import { err, isOk, mapResult } from "@/lib/result.js";
 
 export const getChannel = async (

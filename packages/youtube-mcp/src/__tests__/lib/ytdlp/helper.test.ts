@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import * as fs from "fs";
 import type { Failure, Success } from "@/lib/result.js";
-import type { TranscriptError } from "@/lib/ytdlp/types.js";
+import type { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import {
   checkYtdlpInstalled,
   downloadSubtitleWithYtdlp,

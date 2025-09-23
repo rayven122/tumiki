@@ -5,7 +5,7 @@ import type { Result } from "@/lib/result.js";
 import { err, ok } from "@/lib/result.js";
 
 import type { VttParsedResult } from "./types.js";
-import { TranscriptError } from "./types.js";
+import { TranscriptError } from "./errors/index.js";
 
 /**
  * Check if yt-dlp is installed
