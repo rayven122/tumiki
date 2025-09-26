@@ -1,7 +1,7 @@
-import type { GoogleAuth } from "./auth/index.js";
-import type { AuthConfig } from "./types.js";
 import type { AuthenticationError } from "../lib/errors/index.js";
 import type { Result } from "../lib/result/index.js";
+import type { GoogleAuth } from "./auth/index.js";
+import type { AuthConfig } from "./types.js";
 import { err } from "../lib/result/index.js";
 import { createAuthClient } from "./auth/index.js";
 import { DriveApi } from "./drive/index.js";

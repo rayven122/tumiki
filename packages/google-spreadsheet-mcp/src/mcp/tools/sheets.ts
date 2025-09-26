@@ -5,6 +5,7 @@ import type {
   SheetId,
   SpreadsheetId,
 } from "../../api/types.js";
+import type { Result } from "../../lib/result/index.js";
 import type {
   AppendRowsInput,
   BatchUpdateCellsInput,
@@ -15,7 +16,6 @@ import type {
   ListSheetsInput,
   UpdateCellsInput,
 } from "../types.js";
-import type { Result } from "../../lib/result/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export const handleListSheets = async (

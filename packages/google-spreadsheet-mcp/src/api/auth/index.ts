@@ -1,9 +1,9 @@
 import type { OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
 
+import type { Result } from "../../lib/result/index.js";
 import type { AuthConfig, ServiceAccountCredentials } from "../types.js";
 import { AuthenticationError } from "../../lib/errors/index.js";
-import type { Result } from "../../lib/result/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export type GoogleAuth = OAuth2Client | ReturnType<typeof google.auth.fromJSON>;

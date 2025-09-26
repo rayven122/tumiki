@@ -1,6 +1,7 @@
-import type { drive_v3} from "googleapis";
+import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 
+import type { Result } from "../../lib/result/index.js";
 import type { GoogleAuth } from "../auth/index.js";
 import type {
   Email,
@@ -9,7 +10,6 @@ import type {
   SpreadsheetId,
 } from "../types.js";
 import { GoogleSheetsApiError } from "../../lib/errors/index.js";
-import type { Result } from "../../lib/result/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export class DriveApi {

@@ -1,11 +1,11 @@
 import type { GoogleSheetsClient } from "../../api/index.js";
 import type { Email, Permission, SpreadsheetId } from "../../api/types.js";
+import type { Result } from "../../lib/result/index.js";
 import type {
   GetPermissionsInput,
   RemovePermissionInput,
   ShareSpreadsheetInput,
 } from "../types.js";
-import type { Result } from "../../lib/result/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export const handleShareSpreadsheet = async (

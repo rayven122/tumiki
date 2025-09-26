@@ -1,11 +1,11 @@
 import type { GoogleSheetsClient } from "../../api/index.js";
 import type { SpreadsheetId } from "../../api/types.js";
+import type { Result } from "../../lib/result/index.js";
 import type {
   CreateSpreadsheetInput,
   GetSpreadsheetInput,
   ListSpreadsheetsInput,
 } from "../types.js";
-import type { Result } from "../../lib/result/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export const handleListSpreadsheets = async (

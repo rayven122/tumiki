@@ -1,6 +1,7 @@
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 
+import type { Result } from "../../lib/result/index.js";
 import type { GoogleAuth } from "../auth/index.js";
 // Import missing types
 import type {
@@ -20,7 +21,6 @@ import {
   GoogleSheetsApiError,
   ValidationError,
 } from "../../lib/errors/index.js";
-import type { Result } from "../../lib/result/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export class SpreadsheetsApi {
@@ -57,8 +57,11 @@ export class SpreadsheetsApi {
             rowCount: sheet.properties?.gridProperties?.rowCount || 0,
             columnCount: sheet.properties?.gridProperties?.columnCount || 0,
             frozen: {
-              rows: sheet.properties?.gridProperties?.frozenRowCount ?? undefined,
-              columns: sheet.properties?.gridProperties?.frozenColumnCount ?? undefined,
+              rows:
+                sheet.properties?.gridProperties?.frozenRowCount ?? undefined,
+              columns:
+                sheet.properties?.gridProperties?.frozenColumnCount ??
+                undefined,
             },
           }),
         ),
