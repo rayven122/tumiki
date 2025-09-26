@@ -18,7 +18,9 @@ const getAuthConfig = (): AuthConfig => {
         credentials,
       };
     } catch (error) {
-      console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:", error);
+      console.error(
+        "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY: Invalid JSON format",
+      );
     }
   }
 

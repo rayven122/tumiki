@@ -27,7 +27,7 @@ export class SpreadsheetsApi {
   private sheets: sheets_v4.Sheets;
 
   constructor(auth: GoogleAuth) {
-    this.sheets = google.sheets({ version: "v4", auth: auth as any });
+    this.sheets = google.sheets({ version: "v4", auth });
   }
 
   async getSpreadsheet(
@@ -49,34 +49,39 @@ export class SpreadsheetsApi {
         title: data.properties.title,
         locale: data.properties.locale ?? undefined,
         timeZone: data.properties.timeZone ?? undefined,
-        sheets: data.sheets.map(
-          (sheet): Sheet => ({
-            sheetId: sheet.properties?.sheetId! as SheetId,
-            title: sheet.properties?.title || "",
-            index: sheet.properties?.index || 0,
-            rowCount: sheet.properties?.gridProperties?.rowCount || 0,
-            columnCount: sheet.properties?.gridProperties?.columnCount || 0,
-            frozen: {
-              rows:
-                sheet.properties?.gridProperties?.frozenRowCount ?? undefined,
-              columns:
-                sheet.properties?.gridProperties?.frozenColumnCount ??
-                undefined,
-            },
-          }),
-        ),
+        sheets: data.sheets
+          .filter((sheet) => sheet.properties?.sheetId !== undefined)
+          .map(
+            (sheet): Sheet => ({
+              sheetId: sheet.properties!.sheetId as SheetId,
+              title: sheet.properties!.title || "",
+              index: sheet.properties!.index || 0,
+              rowCount: sheet.properties!.gridProperties?.rowCount || 0,
+              columnCount: sheet.properties!.gridProperties?.columnCount || 0,
+              frozen: {
+                rows:
+                  sheet.properties!.gridProperties?.frozenRowCount ?? undefined,
+                columns:
+                  sheet.properties!.gridProperties?.frozenColumnCount ??
+                  undefined,
+              },
+            }),
+          ),
         url:
           data.spreadsheetUrl ||
           `https://docs.google.com/spreadsheets/d/${spreadsheetId}`,
       };
 
       return ok(spreadsheet);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to get spreadsheet: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to get spreadsheet: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -118,12 +123,15 @@ export class SpreadsheetsApi {
         spreadsheetId: response.data.spreadsheetId as SpreadsheetId,
         spreadsheetUrl: response.data.spreadsheetUrl,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to create spreadsheet: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to create spreadsheet: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -142,12 +150,15 @@ export class SpreadsheetsApi {
 
       const values = response.data.values || [];
       return ok(values as CellValue[][]);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to get values: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to get values: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -178,12 +189,15 @@ export class SpreadsheetsApi {
         updatedColumns: response.data.updatedColumns || 0,
         updatedRange: response.data.updatedRange as Range,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to update values: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to update values: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -223,12 +237,15 @@ export class SpreadsheetsApi {
         totalUpdatedCells: response.data.totalUpdatedCells || 0,
         responses,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to batch update: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to batch update: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -260,12 +277,15 @@ export class SpreadsheetsApi {
         updatedColumns: response.data.updates.updatedColumns || 0,
         updatedRange: response.data.updates.updatedRange as Range,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to append rows: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to append rows: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -284,12 +304,15 @@ export class SpreadsheetsApi {
       return ok({
         clearedRange: (response.data.clearedRange || range) as Range,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to clear values: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to clear values: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -326,8 +349,12 @@ export class SpreadsheetsApi {
         return err(new GoogleSheetsApiError("Failed to add sheet"));
       }
 
+      if (addedSheet.sheetId === undefined || addedSheet.sheetId === null) {
+        return err(new GoogleSheetsApiError("Sheet ID is missing in response"));
+      }
+
       const sheet: Sheet = {
-        sheetId: addedSheet.sheetId! as SheetId,
+        sheetId: addedSheet.sheetId as SheetId,
         title: addedSheet.title || title,
         index: addedSheet.index || 0,
         rowCount: addedSheet.gridProperties?.rowCount || rowCount,
@@ -335,12 +362,15 @@ export class SpreadsheetsApi {
       };
 
       return ok(sheet);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to add sheet: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to add sheet: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -365,12 +395,15 @@ export class SpreadsheetsApi {
       });
 
       return ok(undefined);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to delete sheet: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to delete sheet: ${message}`,
+          status,
+          data,
         ),
       );
     }

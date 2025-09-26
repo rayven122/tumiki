@@ -16,7 +16,7 @@ export class DriveApi {
   private drive: drive_v3.Drive;
 
   constructor(auth: GoogleAuth) {
-    this.drive = google.drive({ version: "v3", auth: auth as any });
+    this.drive = google.drive({ version: "v3", auth });
   }
 
   async shareSpreadsheet(
@@ -68,12 +68,15 @@ export class DriveApi {
       }
 
       return ok({ permissionId: response.data.id });
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to share spreadsheet: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to share spreadsheet: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -102,12 +105,15 @@ export class DriveApi {
       );
 
       return ok(permissions);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to get permissions: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to get permissions: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -124,12 +130,15 @@ export class DriveApi {
       });
 
       return ok(undefined);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to remove permission: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to remove permission: ${message}`,
+          status,
+          data,
         ),
       );
     }
@@ -144,7 +153,7 @@ export class DriveApi {
       const mimeType = "application/vnd.google-apps.spreadsheet";
       let q = `mimeType='${mimeType}'`;
 
-      if (query) {
+      if (query && query.trim() !== "") {
         q += ` and name contains '${query}'`;
       }
 
@@ -165,12 +174,15 @@ export class DriveApi {
       }));
 
       return ok(files);
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const status = (error as any)?.response?.status;
+      const data = (error as any)?.response?.data;
       return err(
         new GoogleSheetsApiError(
-          `Failed to list spreadsheets: ${error.message}`,
-          error.response?.status,
-          error.response?.data,
+          `Failed to list spreadsheets: ${message}`,
+          status,
+          data,
         ),
       );
     }
