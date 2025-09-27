@@ -3,7 +3,6 @@ import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
 import type { GoogleAuth } from "../auth/index.js";
-
 /*
  * Google API関連のany型使用について：
  *
@@ -24,16 +23,17 @@ import type {
   ShareRequest,
   SpreadsheetId,
 } from "../types.js";
+import type { GoogleApiAuth } from "../types/google-api.js";
 import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 import { err, ok } from "../../lib/result/index.js";
+import { handleApiError } from "../../utils/errorHandler.js";
 
 export class DriveApi {
   private drive: drive_v3.Drive;
 
   constructor(auth: GoogleAuth) {
-    // Google Drive API クライアントが期待する認証オブジェクト型との不一致のため any を使用
-    // googleapis ライブラリの型定義の制限による必要な型キャスト
-    this.drive = google.drive({ version: "v3", auth: auth as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    // Google Drive API クライアントが期待する認証オブジェクト型との不一致のため型アサーションを使用
+    this.drive = google.drive({ version: "v3", auth: auth as GoogleApiAuth });
   }
 
   async shareSpreadsheet(
@@ -86,16 +86,7 @@ export class DriveApi {
 
       return ok({ permissionId: response.data.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to share spreadsheet: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "share spreadsheet");
     }
   }
 
@@ -123,16 +114,7 @@ export class DriveApi {
 
       return ok(permissions);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to get permissions: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "get permissions");
     }
   }
 
@@ -148,16 +130,7 @@ export class DriveApi {
 
       return ok(undefined);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to remove permission: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "remove permission");
     }
   }
 
@@ -192,16 +165,7 @@ export class DriveApi {
 
       return ok(files);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to list spreadsheets: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "list spreadsheets");
     }
   }
 }

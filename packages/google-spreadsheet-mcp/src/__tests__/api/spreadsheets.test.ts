@@ -1,7 +1,7 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { google } from "googleapis";
-import { SpreadsheetsApi } from "../../api/spreadsheets/index.js";
-import { GoogleSheetsApiError } from "../../lib/errors/index.js";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { GoogleAuth } from "../../api/auth/index.js";
 import type {
   BatchUpdateRequest,
   CellValue,
@@ -10,7 +10,9 @@ import type {
   SheetId,
   SpreadsheetId,
 } from "../../api/types.js";
-import type { GoogleAuth } from "../../api/auth/index.js";
+import type { MockSheetsApi } from "../types/mocks.js";
+import { SpreadsheetsApi } from "../../api/spreadsheets/index.js";
+import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 
 // Googleライブラリのモック
 vi.mock("googleapis");
@@ -18,7 +20,7 @@ vi.mock("googleapis");
 describe("SpreadsheetsApi", () => {
   let spreadsheetsApi: SpreadsheetsApi;
   let mockAuth: GoogleAuth;
-  let mockSheets: any;
+  let mockSheets: MockSheetsApi;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,9 +39,9 @@ describe("SpreadsheetsApi", () => {
           clear: vi.fn(),
         },
       },
-    };
+    } as unknown as MockSheetsApi;
 
-    vi.mocked(google.sheets).mockReturnValue(mockSheets);
+    vi.mocked(google.sheets).mockReturnValue(mockSheets as any);
     spreadsheetsApi = new SpreadsheetsApi(mockAuth);
   });
 
@@ -95,7 +97,9 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.get.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.getSpreadsheet("sheet-123" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "sheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -103,7 +107,9 @@ describe("SpreadsheetsApi", () => {
         expect(result.value.title).toStrictEqual("Test Spreadsheet");
         expect(result.value.locale).toStrictEqual("ja_JP");
         expect(result.value.timeZone).toStrictEqual("Asia/Tokyo");
-        expect(result.value.url).toStrictEqual("https://docs.google.com/spreadsheets/d/sheet-123");
+        expect(result.value.url).toStrictEqual(
+          "https://docs.google.com/spreadsheets/d/sheet-123",
+        );
         expect(result.value.sheets).toHaveLength(2);
         expect(result.value.sheets[0]).toStrictEqual({
           sheetId: 0,
@@ -154,7 +160,9 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.get.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.getSpreadsheet("sheet-minimal" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "sheet-minimal" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -162,7 +170,9 @@ describe("SpreadsheetsApi", () => {
         expect(result.value.title).toStrictEqual("Minimal Sheet");
         expect(result.value.locale).toStrictEqual(undefined);
         expect(result.value.timeZone).toStrictEqual(undefined);
-        expect(result.value.url).toStrictEqual("https://docs.google.com/spreadsheets/d/sheet-minimal");
+        expect(result.value.url).toStrictEqual(
+          "https://docs.google.com/spreadsheets/d/sheet-minimal",
+        );
         expect(result.value.sheets).toHaveLength(1);
         expect(result.value.sheets[0]).toStrictEqual({
           sheetId: 0,
@@ -204,7 +214,9 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.get.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.getSpreadsheet("sheet-123" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "sheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -225,12 +237,16 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.get.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.getSpreadsheet("invalid" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "invalid" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Invalid spreadsheet response");
+        expect(result.error.message).toStrictEqual(
+          "Invalid spreadsheet response",
+        );
       }
     });
 
@@ -245,12 +261,16 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.get.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.getSpreadsheet("sheet-123" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "sheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Invalid spreadsheet response");
+        expect(result.error.message).toStrictEqual(
+          "Invalid spreadsheet response",
+        );
       }
     });
 
@@ -266,12 +286,16 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.get.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.getSpreadsheet("sheet-123" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "sheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Invalid spreadsheet response");
+        expect(result.error.message).toStrictEqual(
+          "Invalid spreadsheet response",
+        );
       }
     });
 
@@ -283,7 +307,9 @@ describe("SpreadsheetsApi", () => {
       };
       mockSheets.spreadsheets.get.mockRejectedValue(error);
 
-      const result = await spreadsheetsApi.getSpreadsheet("not-found" as SpreadsheetId);
+      const result = await spreadsheetsApi.getSpreadsheet(
+        "not-found" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
@@ -301,7 +327,8 @@ describe("SpreadsheetsApi", () => {
       const mockResponse = {
         data: {
           spreadsheetId: "new-sheet-123",
-          spreadsheetUrl: "https://docs.google.com/spreadsheets/d/new-sheet-123",
+          spreadsheetUrl:
+            "https://docs.google.com/spreadsheets/d/new-sheet-123",
         },
       };
 
@@ -312,7 +339,9 @@ describe("SpreadsheetsApi", () => {
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
         expect(result.value.spreadsheetId).toStrictEqual("new-sheet-123");
-        expect(result.value.spreadsheetUrl).toStrictEqual("https://docs.google.com/spreadsheets/d/new-sheet-123");
+        expect(result.value.spreadsheetUrl).toStrictEqual(
+          "https://docs.google.com/spreadsheets/d/new-sheet-123",
+        );
       }
 
       expect(mockSheets.spreadsheets.create).toHaveBeenCalledWith({
@@ -328,13 +357,18 @@ describe("SpreadsheetsApi", () => {
       const mockResponse = {
         data: {
           spreadsheetId: "new-sheet-456",
-          spreadsheetUrl: "https://docs.google.com/spreadsheets/d/new-sheet-456",
+          spreadsheetUrl:
+            "https://docs.google.com/spreadsheets/d/new-sheet-456",
         },
       };
 
       mockSheets.spreadsheets.create.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.createSpreadsheet("Multi Sheet", ["Data", "Analysis", "Summary"]);
+      const result = await spreadsheetsApi.createSpreadsheet("Multi Sheet", [
+        "Data",
+        "Analysis",
+        "Summary",
+      ]);
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -392,7 +426,10 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.create.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.createSpreadsheet("Empty Sheets", []);
+      const result = await spreadsheetsApi.createSpreadsheet(
+        "Empty Sheets",
+        [],
+      );
 
       expect(result.ok).toStrictEqual(true);
 
@@ -414,12 +451,15 @@ describe("SpreadsheetsApi", () => {
 
       mockSheets.spreadsheets.create.mockResolvedValue(mockResponse);
 
-      const result = await spreadsheetsApi.createSpreadsheet("Invalid Response");
+      const result =
+        await spreadsheetsApi.createSpreadsheet("Invalid Response");
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Failed to create spreadsheet");
+        expect(result.error.message).toStrictEqual(
+          "Failed to create spreadsheet",
+        );
       }
     });
 
@@ -437,7 +477,9 @@ describe("SpreadsheetsApi", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Failed to create spreadsheet");
+        expect(result.error.message).toStrictEqual(
+          "Failed to create spreadsheet",
+        );
       }
     });
 
@@ -773,18 +815,26 @@ describe("SpreadsheetsApi", () => {
         },
       };
 
-      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(mockResponse);
+      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(
+        mockResponse,
+      );
 
       const request: BatchUpdateRequest = {
         spreadsheetId: "sheet-123" as SpreadsheetId,
         ranges: [
           {
             range: "Sheet1!A1:C2" as Range,
-            values: [["A", "B", "C"], ["1", "2", "3"]],
+            values: [
+              ["A", "B", "C"],
+              ["1", "2", "3"],
+            ],
           },
           {
             range: "Sheet1!D1:E2" as Range,
-            values: [["D", "E"], ["4", "5"]],
+            values: [
+              ["D", "E"],
+              ["4", "5"],
+            ],
           },
         ],
       };
@@ -816,11 +866,17 @@ describe("SpreadsheetsApi", () => {
           data: [
             {
               range: "Sheet1!A1:C2",
-              values: [["A", "B", "C"], ["1", "2", "3"]],
+              values: [
+                ["A", "B", "C"],
+                ["1", "2", "3"],
+              ],
             },
             {
               range: "Sheet1!D1:E2",
-              values: [["D", "E"], ["4", "5"]],
+              values: [
+                ["D", "E"],
+                ["4", "5"],
+              ],
             },
           ],
         },
@@ -834,7 +890,9 @@ describe("SpreadsheetsApi", () => {
         },
       };
 
-      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(mockResponse);
+      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(
+        mockResponse,
+      );
 
       const request: BatchUpdateRequest = {
         spreadsheetId: "sheet-123" as SpreadsheetId,
@@ -868,7 +926,9 @@ describe("SpreadsheetsApi", () => {
         },
       };
 
-      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(mockResponse);
+      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(
+        mockResponse,
+      );
 
       const request: BatchUpdateRequest = {
         spreadsheetId: "sheet-123" as SpreadsheetId,
@@ -908,7 +968,9 @@ describe("SpreadsheetsApi", () => {
         },
       };
 
-      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(mockResponse);
+      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(
+        mockResponse,
+      );
 
       const request: BatchUpdateRequest = {
         spreadsheetId: "sheet-123" as SpreadsheetId,
@@ -966,7 +1028,9 @@ describe("SpreadsheetsApi", () => {
         },
       };
 
-      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(mockResponse);
+      mockSheets.spreadsheets.values.batchUpdate.mockResolvedValue(
+        mockResponse,
+      );
 
       const request: BatchUpdateRequest = {
         spreadsheetId: "sheet-123" as SpreadsheetId,
@@ -1430,7 +1494,9 @@ describe("SpreadsheetsApi", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Sheet ID is missing in response");
+        expect(result.error.message).toStrictEqual(
+          "Sheet ID is missing in response",
+        );
       }
     });
 
@@ -1460,7 +1526,9 @@ describe("SpreadsheetsApi", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Sheet ID is missing in response");
+        expect(result.error.message).toStrictEqual(
+          "Sheet ID is missing in response",
+        );
       }
     });
 

@@ -1,14 +1,16 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { google } from "googleapis";
-import { DriveApi } from "../../api/drive/index.js";
-import { GoogleSheetsApiError } from "../../lib/errors/index.js";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { GoogleAuth } from "../../api/auth/index.js";
 import type {
+  Email,
   Permission,
   ShareRequest,
   SpreadsheetId,
-  Email,
 } from "../../api/types.js";
-import type { GoogleAuth } from "../../api/auth/index.js";
+import type { MockDriveApi } from "../types/mocks.js";
+import { DriveApi } from "../../api/drive/index.js";
+import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 
 // Googleライブラリのモック
 vi.mock("googleapis");
@@ -16,7 +18,7 @@ vi.mock("googleapis");
 describe("DriveApi", () => {
   let driveApi: DriveApi;
   let mockAuth: GoogleAuth;
-  let mockDrive: any;
+  let mockDrive: MockDriveApi;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -31,9 +33,9 @@ describe("DriveApi", () => {
       files: {
         list: vi.fn(),
       },
-    };
+    } as unknown as MockDriveApi;
 
-    vi.mocked(google.drive).mockReturnValue(mockDrive);
+    vi.mocked(google.drive).mockReturnValue(mockDrive as any);
     driveApi = new DriveApi(mockAuth);
   });
 
@@ -262,7 +264,9 @@ describe("DriveApi", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(GoogleSheetsApiError);
-        expect(result.error.message).toStrictEqual("Failed to create permission");
+        expect(result.error.message).toStrictEqual(
+          "Failed to create permission",
+        );
       }
     });
 
@@ -350,7 +354,9 @@ describe("DriveApi", () => {
         data: { permissions: mockPermissions },
       });
 
-      const result = await driveApi.getPermissions("spreadsheet-123" as SpreadsheetId);
+      const result = await driveApi.getPermissions(
+        "spreadsheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -392,7 +398,9 @@ describe("DriveApi", () => {
         data: {},
       });
 
-      const result = await driveApi.getPermissions("spreadsheet-123" as SpreadsheetId);
+      const result = await driveApi.getPermissions(
+        "spreadsheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -405,7 +413,9 @@ describe("DriveApi", () => {
         data: { permissions: [] },
       });
 
-      const result = await driveApi.getPermissions("spreadsheet-123" as SpreadsheetId);
+      const result = await driveApi.getPermissions(
+        "spreadsheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -421,7 +431,9 @@ describe("DriveApi", () => {
       };
       mockDrive.permissions.list.mockRejectedValue(error);
 
-      const result = await driveApi.getPermissions("spreadsheet-123" as SpreadsheetId);
+      const result = await driveApi.getPermissions(
+        "spreadsheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
@@ -436,7 +448,9 @@ describe("DriveApi", () => {
     test("異常系: 非Errorオブジェクトが投げられる", async () => {
       mockDrive.permissions.list.mockRejectedValue(null);
 
-      const result = await driveApi.getPermissions("spreadsheet-123" as SpreadsheetId);
+      const result = await driveApi.getPermissions(
+        "spreadsheet-123" as SpreadsheetId,
+      );
 
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
@@ -546,9 +560,7 @@ describe("DriveApi", () => {
     });
 
     test("正常系: クエリ文字列でフィルタしてスプレッドシート一覧を取得する", async () => {
-      const mockFiles = [
-        { id: "sheet-1", name: "Project Report" },
-      ];
+      const mockFiles = [{ id: "sheet-1", name: "Project Report" }];
 
       mockDrive.files.list.mockResolvedValue({
         data: { files: mockFiles },
@@ -673,7 +685,9 @@ describe("DriveApi", () => {
         expect(result.error.message).toContain("Failed to list spreadsheets");
         expect(result.error.message).toContain("Network error");
         expect(result.error.statusCode).toStrictEqual(500);
-        expect(result.error.details).toStrictEqual({ error: "Internal Server Error" });
+        expect(result.error.details).toStrictEqual({
+          error: "Internal Server Error",
+        });
       }
     });
 

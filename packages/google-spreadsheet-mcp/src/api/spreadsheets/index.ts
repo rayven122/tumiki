@@ -3,7 +3,6 @@ import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
 import type { GoogleAuth } from "../auth/index.js";
-
 /*
  * Google API関連のany型使用について：
  *
@@ -23,16 +22,17 @@ import type {
   SpreadsheetId,
   UpdateResponse,
 } from "../types.js";
+import type { GoogleApiAuth } from "../types/google-api.js";
 import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 import { err, ok } from "../../lib/result/index.js";
+import { handleApiError } from "../../utils/errorHandler.js";
 
 export class SpreadsheetsApi {
   private sheets: sheets_v4.Sheets;
 
   constructor(auth: GoogleAuth) {
-    // Google Sheets API クライアントが期待する認証オブジェクト型との不一致のため any を使用
-    // googleapis ライブラリの型定義の制限による必要な型キャスト
-    this.sheets = google.sheets({ version: "v4", auth: auth as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    // Google Sheets API クライアントが期待する認証オブジェクト型との不一致のため型アサーションを使用
+    this.sheets = google.sheets({ version: "v4", auth: auth as GoogleApiAuth });
   }
 
   async getSpreadsheet(
@@ -79,16 +79,7 @@ export class SpreadsheetsApi {
 
       return ok(spreadsheet);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to get spreadsheet: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "get spreadsheet");
     }
   }
 
@@ -129,16 +120,7 @@ export class SpreadsheetsApi {
         spreadsheetUrl: response.data.spreadsheetUrl,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to create spreadsheet: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "create spreadsheet");
     }
   }
 
@@ -156,16 +138,7 @@ export class SpreadsheetsApi {
       const values = response.data.values ?? [];
       return ok(values as CellValue[][]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to get values: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "get values");
     }
   }
 
@@ -195,16 +168,7 @@ export class SpreadsheetsApi {
         updatedRange: response.data.updatedRange as Range,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to update values: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "update values");
     }
   }
 
@@ -243,16 +207,7 @@ export class SpreadsheetsApi {
         responses,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to batch update: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "batch update");
     }
   }
 
@@ -283,16 +238,7 @@ export class SpreadsheetsApi {
         updatedRange: response.data.updates.updatedRange as Range,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to append rows: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "append rows");
     }
   }
 
@@ -310,16 +256,7 @@ export class SpreadsheetsApi {
         clearedRange: (response.data.clearedRange ?? range) as Range,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to clear values: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "clear values");
     }
   }
 
@@ -368,16 +305,7 @@ export class SpreadsheetsApi {
 
       return ok(sheet);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to add sheet: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "add sheet");
     }
   }
 
@@ -401,16 +329,7 @@ export class SpreadsheetsApi {
 
       return ok(undefined);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = (error as any)?.response?.status; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const data = (error as any)?.response?.data; // eslint-disable-line @typescript-eslint/no-explicit-any
-      return err(
-        new GoogleSheetsApiError(
-          `Failed to delete sheet: ${message}`,
-          status,
-          data,
-        ),
-      );
+      return handleApiError(error, "delete sheet");
     }
   }
 }

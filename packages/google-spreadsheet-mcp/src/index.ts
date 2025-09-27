@@ -3,14 +3,17 @@ import dotenv from "dotenv";
 
 import type { AuthConfig } from "./api/types.js";
 import { runServer } from "./mcp/index.js";
+import { getOptionalEnvVar } from "./utils/env.js";
 
 // Load environment variables
 dotenv.config();
 
 const getAuthConfig = (): AuthConfig => {
   // Check for Service Account credentials
-  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
-  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  const serviceAccountKey = getOptionalEnvVar(
+    // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY,
+  );
   if (serviceAccountKey) {
     try {
       const credentials = JSON.parse(serviceAccountKey);
@@ -26,12 +29,18 @@ const getAuthConfig = (): AuthConfig => {
   }
 
   // Check for OAuth2 credentials
-  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
-  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  const clientId = getOptionalEnvVar(
+    // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
+    process.env.GOOGLE_OAUTH_CLIENT_ID,
+  );
+  const clientSecret = getOptionalEnvVar(
+    // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  );
+  const refreshToken = getOptionalEnvVar(
+    // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
+    process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
+  );
 
   if (clientId && clientSecret && refreshToken) {
     return {
@@ -43,8 +52,10 @@ const getAuthConfig = (): AuthConfig => {
   }
 
   // Check for API Key (limited functionality)
-  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = getOptionalEnvVar(
+    // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
+    process.env.GOOGLE_API_KEY,
+  );
   if (apiKey) {
     return {
       type: "api-key",

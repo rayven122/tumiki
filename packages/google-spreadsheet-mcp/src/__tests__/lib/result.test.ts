@@ -1,14 +1,15 @@
-import { describe, test, expect } from "vitest";
+import { describe, expect, test } from "vitest";
+
+import type { Result } from "../../lib/result/index.js";
 import {
-  type Result,
-  ok,
   err,
-  isOk,
   isErr,
-  unwrap,
-  unwrapOr,
+  isOk,
   map,
   mapErr,
+  ok,
+  unwrap,
+  unwrapOr,
 } from "../../lib/result/index.js";
 
 describe("ok", () => {
@@ -330,9 +331,7 @@ describe("mapErr", () => {
 
     expect(mapped.ok).toStrictEqual(false);
     expect(mapped.error).toBeInstanceOf(Error);
-    expect((mapped.error as Error).message).toStrictEqual(
-      "wrapped: original",
-    );
+    expect((mapped.error as Error).message).toStrictEqual("wrapped: original");
   });
 
   test("正常系: okの場合は変換せずにそのまま返す", () => {

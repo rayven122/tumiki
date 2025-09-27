@@ -1,19 +1,20 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
-import {
-  handleListSpreadsheets,
-  handleGetSpreadsheet,
-  handleCreateSpreadsheet,
-} from "../../mcp/tools/spreadsheets.js";
-import type { GoogleSheetsClient } from "../../api/index.js";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
 import type { DriveApi } from "../../api/drive/index.js";
+import type { GoogleSheetsClient } from "../../api/index.js";
 import type { SpreadsheetsApi } from "../../api/spreadsheets/index.js";
-import { err, ok } from "../../lib/result/index.js";
-import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 import type {
+  CreateSpreadsheetResponse,
   Spreadsheet,
   SpreadsheetId,
-  CreateSpreadsheetResponse,
 } from "../../api/types.js";
+import { GoogleSheetsApiError } from "../../lib/errors/index.js";
+import { err, ok } from "../../lib/result/index.js";
+import {
+  handleCreateSpreadsheet,
+  handleGetSpreadsheet,
+  handleListSpreadsheets,
+} from "../../mcp/tools/spreadsheets.js";
 
 describe("MCP Tools - Spreadsheets", () => {
   let mockClient: GoogleSheetsClient;
@@ -58,7 +59,9 @@ describe("MCP Tools - Spreadsheets", () => {
         { id: "sheet-2" as SpreadsheetId, name: "Test Sheet 2" },
       ];
 
-      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(ok(mockSpreadsheets));
+      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(
+        ok(mockSpreadsheets),
+      );
 
       const result = await handleListSpreadsheets(mockClient, {});
 
@@ -89,9 +92,13 @@ describe("MCP Tools - Spreadsheets", () => {
         { id: "sheet-1" as SpreadsheetId, name: "Project Report" },
       ];
 
-      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(ok(mockSpreadsheets));
+      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(
+        ok(mockSpreadsheets),
+      );
 
-      const result = await handleListSpreadsheets(mockClient, { query: "Project" });
+      const result = await handleListSpreadsheets(mockClient, {
+        query: "Project",
+      });
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
@@ -151,7 +158,9 @@ describe("MCP Tools - Spreadsheets", () => {
     });
 
     test("異常系: 文字列例外が発生する", async () => {
-      vi.mocked(mockDriveApi.listSpreadsheets).mockRejectedValue("String error");
+      vi.mocked(mockDriveApi.listSpreadsheets).mockRejectedValue(
+        "String error",
+      );
 
       const result = await handleListSpreadsheets(mockClient, {});
 
@@ -180,7 +189,9 @@ describe("MCP Tools - Spreadsheets", () => {
         name: `Sheet ${i}`,
       }));
 
-      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(ok(mockSpreadsheets));
+      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(
+        ok(mockSpreadsheets),
+      );
 
       const result = await handleListSpreadsheets(mockClient, {});
 
@@ -196,13 +207,17 @@ describe("MCP Tools - Spreadsheets", () => {
         { id: "sheet-1" as SpreadsheetId, name: "Test & 日本語 (Special)" },
       ];
 
-      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(ok(mockSpreadsheets));
+      vi.mocked(mockDriveApi.listSpreadsheets).mockResolvedValue(
+        ok(mockSpreadsheets),
+      );
 
       const result = await handleListSpreadsheets(mockClient, {});
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
-        expect(result.value.spreadsheets[0].name).toStrictEqual("Test & 日本語 (Special)");
+        expect(result.value.spreadsheets[0].name).toStrictEqual(
+          "Test & 日本語 (Special)",
+        );
       }
     });
   });
@@ -233,7 +248,9 @@ describe("MCP Tools - Spreadsheets", () => {
         url: "https://docs.google.com/spreadsheets/d/sheet-123",
       };
 
-      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(ok(mockSpreadsheet));
+      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(
+        ok(mockSpreadsheet),
+      );
 
       const result = await handleGetSpreadsheet(mockClient, {
         spreadsheetId: "sheet-123",
@@ -247,7 +264,9 @@ describe("MCP Tools - Spreadsheets", () => {
         });
       }
 
-      expect(mockSpreadsheetsApi.getSpreadsheet).toHaveBeenCalledWith("sheet-123");
+      expect(mockSpreadsheetsApi.getSpreadsheet).toHaveBeenCalledWith(
+        "sheet-123",
+      );
     });
 
     test("正常系: シートが0個のスプレッドシート", async () => {
@@ -258,7 +277,9 @@ describe("MCP Tools - Spreadsheets", () => {
         url: "https://docs.google.com/spreadsheets/d/empty-sheet",
       };
 
-      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(ok(mockSpreadsheet));
+      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(
+        ok(mockSpreadsheet),
+      );
 
       const result = await handleGetSpreadsheet(mockClient, {
         spreadsheetId: "empty-sheet",
@@ -275,7 +296,9 @@ describe("MCP Tools - Spreadsheets", () => {
 
     test("異常系: SpreadsheetsApi呼び出しでエラーが発生する", async () => {
       const error = new GoogleSheetsApiError("Spreadsheet not found");
-      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(err(error));
+      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(
+        err(error),
+      );
 
       const result = await handleGetSpreadsheet(mockClient, {
         spreadsheetId: "not-found",
@@ -286,7 +309,9 @@ describe("MCP Tools - Spreadsheets", () => {
         expect(result.error).toStrictEqual(error);
       }
 
-      expect(mockSpreadsheetsApi.getSpreadsheet).toHaveBeenCalledWith("not-found");
+      expect(mockSpreadsheetsApi.getSpreadsheet).toHaveBeenCalledWith(
+        "not-found",
+      );
     });
 
     test("異常系: 例外が発生する", async () => {
@@ -304,7 +329,9 @@ describe("MCP Tools - Spreadsheets", () => {
     });
 
     test("異常系: 文字列例外が発生する", async () => {
-      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockRejectedValue("String error");
+      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockRejectedValue(
+        "String error",
+      );
 
       const result = await handleGetSpreadsheet(mockClient, {
         spreadsheetId: "sheet-123",
@@ -334,7 +361,9 @@ describe("MCP Tools - Spreadsheets", () => {
         url: "https://docs.google.com/spreadsheets/d/long-title",
       };
 
-      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(ok(mockSpreadsheet));
+      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(
+        ok(mockSpreadsheet),
+      );
 
       const result = await handleGetSpreadsheet(mockClient, {
         spreadsheetId: "long-title",
@@ -348,7 +377,9 @@ describe("MCP Tools - Spreadsheets", () => {
 
     test("境界値: 空文字のspreadsheetId", async () => {
       const error = new GoogleSheetsApiError("Invalid spreadsheet ID");
-      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(err(error));
+      vi.mocked(mockSpreadsheetsApi.getSpreadsheet).mockResolvedValue(
+        err(error),
+      );
 
       const result = await handleGetSpreadsheet(mockClient, {
         spreadsheetId: "",
@@ -370,7 +401,9 @@ describe("MCP Tools - Spreadsheets", () => {
         spreadsheetUrl: "https://docs.google.com/spreadsheets/d/new-sheet-123",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "New Spreadsheet",
@@ -393,10 +426,13 @@ describe("MCP Tools - Spreadsheets", () => {
     test("正常系: シートタイトルを指定してスプレッドシートを作成する", async () => {
       const mockResponse: CreateSpreadsheetResponse = {
         spreadsheetId: "multi-sheet-456" as SpreadsheetId,
-        spreadsheetUrl: "https://docs.google.com/spreadsheets/d/multi-sheet-456",
+        spreadsheetUrl:
+          "https://docs.google.com/spreadsheets/d/multi-sheet-456",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "Multi Sheet",
@@ -423,7 +459,9 @@ describe("MCP Tools - Spreadsheets", () => {
         spreadsheetUrl: "https://docs.google.com/spreadsheets/d/empty-sheets",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "Empty Sheets",
@@ -446,7 +484,9 @@ describe("MCP Tools - Spreadsheets", () => {
 
     test("異常系: SpreadsheetsApi呼び出しでエラーが発生する", async () => {
       const error = new GoogleSheetsApiError("Permission denied");
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(err(error));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        err(error),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "Forbidden Sheet",
@@ -478,7 +518,9 @@ describe("MCP Tools - Spreadsheets", () => {
     });
 
     test("異常系: 非Error例外が発生する", async () => {
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockRejectedValue("String error");
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockRejectedValue(
+        "String error",
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "String Error Sheet",
@@ -497,7 +539,9 @@ describe("MCP Tools - Spreadsheets", () => {
         spreadsheetUrl: "https://docs.google.com/spreadsheets/d/empty-title",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "",
@@ -524,7 +568,9 @@ describe("MCP Tools - Spreadsheets", () => {
         spreadsheetUrl: "https://docs.google.com/spreadsheets/d/long-title",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: longTitle,
@@ -532,7 +578,9 @@ describe("MCP Tools - Spreadsheets", () => {
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
-        expect(result.value.message).toStrictEqual(`Successfully created spreadsheet "${longTitle}"`);
+        expect(result.value.message).toStrictEqual(
+          `Successfully created spreadsheet "${longTitle}"`,
+        );
       }
 
       expect(mockSpreadsheetsApi.createSpreadsheet).toHaveBeenCalledWith(
@@ -542,13 +590,15 @@ describe("MCP Tools - Spreadsheets", () => {
     });
 
     test("境界値: 特殊文字を含むタイトル", async () => {
-      const specialTitle = "Test & 日本語 (Special) \"Quotes\" <Tags>";
+      const specialTitle = 'Test & 日本語 (Special) "Quotes" <Tags>';
       const mockResponse: CreateSpreadsheetResponse = {
         spreadsheetId: "special-title" as SpreadsheetId,
         spreadsheetUrl: "https://docs.google.com/spreadsheets/d/special-title",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: specialTitle,
@@ -556,7 +606,9 @@ describe("MCP Tools - Spreadsheets", () => {
 
       expect(result.ok).toStrictEqual(true);
       if (result.ok) {
-        expect(result.value.message).toStrictEqual(`Successfully created spreadsheet "${specialTitle}"`);
+        expect(result.value.message).toStrictEqual(
+          `Successfully created spreadsheet "${specialTitle}"`,
+        );
       }
 
       expect(mockSpreadsheetsApi.createSpreadsheet).toHaveBeenCalledWith(
@@ -566,13 +618,18 @@ describe("MCP Tools - Spreadsheets", () => {
     });
 
     test("境界値: 大量のシートタイトル", async () => {
-      const sheetTitles = Array.from({ length: 100 }, (_, i) => `Sheet ${i + 1}`);
+      const sheetTitles = Array.from(
+        { length: 100 },
+        (_, i) => `Sheet ${i + 1}`,
+      );
       const mockResponse: CreateSpreadsheetResponse = {
         spreadsheetId: "many-sheets" as SpreadsheetId,
         spreadsheetUrl: "https://docs.google.com/spreadsheets/d/many-sheets",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "Many Sheets",
@@ -597,10 +654,13 @@ describe("MCP Tools - Spreadsheets", () => {
       const sheetTitles = ["Valid Sheet", "", "Another Sheet"];
       const mockResponse: CreateSpreadsheetResponse = {
         spreadsheetId: "empty-sheet-title" as SpreadsheetId,
-        spreadsheetUrl: "https://docs.google.com/spreadsheets/d/empty-sheet-title",
+        spreadsheetUrl:
+          "https://docs.google.com/spreadsheets/d/empty-sheet-title",
       };
 
-      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(ok(mockResponse));
+      vi.mocked(mockSpreadsheetsApi.createSpreadsheet).mockResolvedValue(
+        ok(mockResponse),
+      );
 
       const result = await handleCreateSpreadsheet(mockClient, {
         title: "Mixed Sheet Titles",

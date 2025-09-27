@@ -1,9 +1,27 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
-import { handleToolCall } from "../../mcp/handlers.js";
-import { TOOL_NAMES } from "../../mcp/types.js";
+
 import type { GoogleSheetsClient } from "../../api/index.js";
 import { err, ok } from "../../lib/result/index.js";
+import { handleToolCall } from "../../mcp/handlers.js";
+// モックされたハンドラーをインポート
+import {
+  handleAppendRows,
+  handleBatchUpdateCells,
+  handleClearRange,
+  handleCreateSheet,
+  handleCreateSpreadsheet,
+  handleDeleteSheet,
+  handleGetPermissions,
+  handleGetSheetData,
+  handleGetSpreadsheet,
+  handleListSheets,
+  handleListSpreadsheets,
+  handleRemovePermission,
+  handleShareSpreadsheet,
+  handleUpdateCells,
+} from "../../mcp/tools/index.js";
+import { TOOL_NAMES } from "../../mcp/types.js";
 
 // MCPツールハンドラーのモック
 vi.mock("../../mcp/tools/index.js", () => ({
@@ -22,24 +40,6 @@ vi.mock("../../mcp/tools/index.js", () => ({
   handleGetPermissions: vi.fn(),
   handleRemovePermission: vi.fn(),
 }));
-
-// モックされたハンドラーをインポート
-import {
-  handleListSpreadsheets,
-  handleGetSpreadsheet,
-  handleCreateSpreadsheet,
-  handleListSheets,
-  handleCreateSheet,
-  handleDeleteSheet,
-  handleGetSheetData,
-  handleUpdateCells,
-  handleBatchUpdateCells,
-  handleAppendRows,
-  handleClearRange,
-  handleShareSpreadsheet,
-  handleGetPermissions,
-  handleRemovePermission,
-} from "../../mcp/tools/index.js";
 
 describe("handleToolCall", () => {
   let mockClient: GoogleSheetsClient;
@@ -81,7 +81,9 @@ describe("handleToolCall", () => {
       const result = await handleToolCall(mockClient, request);
 
       expect(result).toStrictEqual(mockResult);
-      expect(handleListSpreadsheets).toHaveBeenCalledWith(mockClient, { query: "Project" });
+      expect(handleListSpreadsheets).toHaveBeenCalledWith(mockClient, {
+        query: "Project",
+      });
     });
 
     test("異常系: 無効な引数でZodエラーが発生する", async () => {
@@ -123,7 +125,9 @@ describe("handleToolCall", () => {
       const result = await handleToolCall(mockClient, request);
 
       expect(result).toStrictEqual(mockResult);
-      expect(handleGetSpreadsheet).toHaveBeenCalledWith(mockClient, { spreadsheetId: "sheet-123" });
+      expect(handleGetSpreadsheet).toHaveBeenCalledWith(mockClient, {
+        spreadsheetId: "sheet-123",
+      });
     });
 
     test("異常系: spreadsheetIdが不足している", async () => {
@@ -163,7 +167,9 @@ describe("handleToolCall", () => {
       const result = await handleToolCall(mockClient, request);
 
       expect(result).toStrictEqual(mockResult);
-      expect(handleCreateSpreadsheet).toHaveBeenCalledWith(mockClient, { title: "New Spreadsheet" });
+      expect(handleCreateSpreadsheet).toHaveBeenCalledWith(mockClient, {
+        title: "New Spreadsheet",
+      });
     });
 
     test("正常系: シートタイトルを指定してスプレッドシートを作成する", async () => {
@@ -214,7 +220,13 @@ describe("handleToolCall", () => {
   describe("LIST_SHEETS", () => {
     test("正常系: シート一覧を取得する", async () => {
       const mockResult = ok([
-        { sheetId: 0, title: "Sheet1", index: 0, rowCount: 1000, columnCount: 26 },
+        {
+          sheetId: 0,
+          title: "Sheet1",
+          index: 0,
+          rowCount: 1000,
+          columnCount: 26,
+        },
       ]);
       vi.mocked(handleListSheets).mockResolvedValue(mockResult);
 
@@ -228,7 +240,9 @@ describe("handleToolCall", () => {
       const result = await handleToolCall(mockClient, request);
 
       expect(result).toStrictEqual(mockResult);
-      expect(handleListSheets).toHaveBeenCalledWith(mockClient, { spreadsheetId: "sheet-123" });
+      expect(handleListSheets).toHaveBeenCalledWith(mockClient, {
+        spreadsheetId: "sheet-123",
+      });
     });
 
     test("異常系: spreadsheetIdが不足している", async () => {
@@ -429,7 +443,10 @@ describe("handleToolCall", () => {
             updates: [
               {
                 range: "Sheet1!A1:B2",
-                values: [["A", "B"], ["1", "2"]],
+                values: [
+                  ["A", "B"],
+                  ["1", "2"],
+                ],
               },
             ],
           },
@@ -444,7 +461,10 @@ describe("handleToolCall", () => {
         updates: [
           {
             range: "Sheet1!A1:B2",
-            values: [["A", "B"], ["1", "2"]],
+            values: [
+              ["A", "B"],
+              ["1", "2"],
+            ],
           },
         ],
       });
@@ -612,7 +632,9 @@ describe("handleToolCall", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(Error);
-        expect(result.error.message).toStrictEqual("Unknown tool: unknown_tool");
+        expect(result.error.message).toStrictEqual(
+          "Unknown tool: unknown_tool",
+        );
       }
     });
 
@@ -739,7 +761,9 @@ describe("handleToolCall", () => {
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(Error);
         expect(result.error.message).toContain("Invalid arguments");
-        expect(result.error.message).toContain("Expected string, received number");
+        expect(result.error.message).toContain(
+          "Expected string, received number",
+        );
       }
     });
   });

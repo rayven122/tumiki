@@ -1,15 +1,10 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
 import { google } from "googleapis";
-import {
-  createAuthClient,
-  getApiKeyAuth,
-  type GoogleAuth,
-} from "../../api/auth/index.js";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import type { GoogleAuth } from "../../api/auth/index.js";
+import type { AuthConfig, ServiceAccountCredentials } from "../../api/types.js";
+import { createAuthClient, getApiKeyAuth } from "../../api/auth/index.js";
 import { AuthenticationError } from "../../lib/errors/index.js";
-import type {
-  AuthConfig,
-  ServiceAccountCredentials,
-} from "../../api/types.js";
 
 // Googleライブラリのモック
 vi.mock("googleapis");
@@ -29,13 +24,16 @@ describe("createAuthClient", () => {
         type: "service_account",
         project_id: "test-project",
         private_key_id: "key-id",
-        private_key: "-----BEGIN PRIVATE KEY-----\\ntest\\n-----END PRIVATE KEY-----\\n",
+        private_key:
+          "-----BEGIN PRIVATE KEY-----\\ntest\\n-----END PRIVATE KEY-----\\n",
         client_email: "test@test-project.iam.gserviceaccount.com",
         client_id: "123456789",
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
-        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-        client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
+        auth_provider_x509_cert_url:
+          "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url:
+          "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
       };
 
       const config: AuthConfig = {
@@ -67,8 +65,10 @@ describe("createAuthClient", () => {
         client_id: "123456789",
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
-        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-        client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
+        auth_provider_x509_cert_url:
+          "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url:
+          "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
       };
 
       const config: AuthConfig = {
@@ -271,7 +271,9 @@ describe("createAuthClient", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
-        expect(result.error.message).toContain("Failed to get Application Default Credentials");
+        expect(result.error.message).toContain(
+          "Failed to get Application Default Credentials",
+        );
         expect(result.error.message).toContain("GoogleAuth constructor failed");
       }
     });
@@ -289,7 +291,9 @@ describe("createAuthClient", () => {
       expect(result.ok).toStrictEqual(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(AuthenticationError);
-        expect(result.error.message).toStrictEqual("Unknown authentication type");
+        expect(result.error.message).toStrictEqual(
+          "Unknown authentication type",
+        );
       }
     });
   });
@@ -310,8 +314,10 @@ describe("createAuthClient", () => {
         client_id: "123456789",
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
-        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-        client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
+        auth_provider_x509_cert_url:
+          "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url:
+          "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
       };
 
       const config: AuthConfig = {
@@ -344,8 +350,10 @@ describe("createAuthClient", () => {
         client_id: "123456789",
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
-        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-        client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
+        auth_provider_x509_cert_url:
+          "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url:
+          "https://www.googleapis.com/robot/v1/metadata/x509/test%40test-project.iam.gserviceaccount.com",
       };
 
       const config: AuthConfig = {

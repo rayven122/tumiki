@@ -3,7 +3,7 @@ import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
 import type { AuthConfig, ServiceAccountCredentials } from "../types.js";
-
+import type { GoogleApiAuth } from "../types/google-api.js";
 /*
  * Google認証関連のany型使用について：
  *
@@ -58,9 +58,8 @@ export const createAuthClient = async (
 const createServiceAccountAuth = (
   credentials: ServiceAccountCredentials,
 ): GoogleAuth => {
-  // Google API の fromJSON の戻り値型が不明確なため any を使用
-  // google-auth-library の型定義の制限による必要な型キャスト
-  const auth = google.auth.fromJSON(credentials as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+  // Google API の fromJSON の戻り値型が不明確なため型アサーションを使用
+  const auth = google.auth.fromJSON(credentials) as GoogleApiAuth;
   return auth as GoogleAuth;
 };
 
