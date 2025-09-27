@@ -1,72 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-empty-function */
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-// getAuthConfig関数をテストするためにモジュールを直接インポート
-// process.exitをモックするためにテスト用の関数を作成
-const mockProcessExit = vi.fn();
-const mockConsoleError = vi.fn();
-
-// process.exitとconsole.errorをモック
-vi.mock("process", () => ({
-  env: {},
-  exit: mockProcessExit,
-}));
-
-vi.mock("console", () => ({
-  error: mockConsoleError,
-}));
-
-// getAuthConfig関数をテスト用に分離
-const getAuthConfig = (): any => {
-  // Check for Service Account credentials
-  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-  if (serviceAccountKey) {
-    try {
-      const credentials = JSON.parse(serviceAccountKey);
-      return {
-        type: "service-account",
-        credentials,
-      };
-    } catch (error) {
-      console.error(
-        "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:",
-        error instanceof Error ? error.message : error,
-      );
-      process.exit(1);
-    }
-  }
-
-  // Check for OAuth2 credentials
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
-
-  if (clientId && clientSecret && refreshToken) {
-    return {
-      type: "oauth2",
-      clientId,
-      clientSecret,
-      refreshToken,
-    };
-  }
-
-  // Check for API Key (limited functionality)
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (apiKey) {
-    return {
-      type: "api-key",
-      apiKey,
-    };
-  }
-
-  // Default to Application Default Credentials
-  console.error(
-    "No explicit credentials provided, using Application Default Credentials",
-  );
-  return {
-    type: "adc",
-  };
-};
+import { getAuthConfig } from "../lib/auth-config.js";
 
 describe("getAuthConfig - 環境変数処理", () => {
   beforeEach(() => {
@@ -105,21 +40,15 @@ describe("getAuthConfig - 環境変数処理", () => {
       type: "service-account",
       credentials: validServiceAccount,
     });
-    expect(mockProcessExit).not.toHaveBeenCalled();
-    expect(mockConsoleError).not.toHaveBeenCalled();
   });
 
   test("無効なService Account JSONで例外が発生する", () => {
     process.env.GOOGLE_SERVICE_ACCOUNT_KEY = "invalid json";
 
-    // JSON.parseエラーによる例外をキャッチできることを確認
+    // getAuthConfig関数が適切にエラーを投げることを確認
     expect(() => {
-      try {
-        JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "");
-      } catch (error) {
-        throw error;
-      }
-    }).toThrow();
+      getAuthConfig();
+    }).toThrow("Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:");
   });
 
   test("OAuth2認証情報でoauth2設定を返す", () => {

@@ -8,7 +8,7 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { AuthConfig } from "../api/index.js";
-import { GoogleCalendarClient } from "../api/index.js";
+import { createGoogleCalendarClient, type createCalendarApi } from "../api/index.js";
 import { SERVER_INFO, TOOL_DESCRIPTIONS } from "./constants.js";
 import { handleToolCall } from "./handlers.js";
 import {
@@ -31,16 +31,16 @@ export const createServer = (config: AuthConfig): Server => {
     },
   });
 
-  const client = new GoogleCalendarClient(config);
-
   // Initialize client on server start
+  let client: ReturnType<typeof createCalendarApi>;
   let isInitialized = false;
   const ensureInitialized = async () => {
     if (!isInitialized) {
-      const result = await client.initialize();
+      const result = await createGoogleCalendarClient(config);
       if (!result.ok) {
         throw result.error;
       }
+      client = result.value;
       isInitialized = true;
     }
   };

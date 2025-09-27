@@ -1,4 +1,4 @@
-import type { GoogleCalendarClient } from "../../api/index.js";
+import type { createCalendarApi } from "../../api/index.js";
 import type { CalendarError } from "../../lib/errors/index.js";
 import type { Result } from "../../lib/result/index.js";
 import type {
@@ -13,10 +13,10 @@ import type {
 import { err, ok } from "../../lib/result/index.js";
 
 export const listEvents = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: ListEventsInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.calendar.listEvents(input.calendarId, {
+  const result = await client.listEvents(input.calendarId, {
     timeMin: input.timeMin,
     timeMax: input.timeMax,
     maxResults: input.maxResults,
@@ -39,10 +39,10 @@ export const listEvents = async (
 };
 
 export const getEvent = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: GetEventInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.calendar.getEvent(
+  const result = await client.getEvent(
     input.calendarId,
     input.eventId,
   );
@@ -55,12 +55,12 @@ export const getEvent = async (
 };
 
 export const createEvent = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: CreateEventInput,
 ): Promise<Result<unknown, CalendarError>> => {
   const { calendarId, sendNotifications, sendUpdates, ...eventData } = input;
 
-  const result = await client.calendar.createEvent(calendarId, eventData, {
+  const result = await client.createEvent(calendarId, eventData, {
     sendNotifications,
     sendUpdates,
   });
@@ -73,13 +73,13 @@ export const createEvent = async (
 };
 
 export const updateEvent = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: UpdateEventInput,
 ): Promise<Result<unknown, CalendarError>> => {
   const { calendarId, eventId, sendNotifications, sendUpdates, ...eventData } =
     input;
 
-  const result = await client.calendar.updateEvent(
+  const result = await client.updateEvent(
     calendarId,
     eventId,
     eventData,
@@ -97,10 +97,10 @@ export const updateEvent = async (
 };
 
 export const deleteEvent = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: DeleteEventInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.calendar.deleteEvent(
+  const result = await client.deleteEvent(
     input.calendarId,
     input.eventId,
     {
@@ -117,10 +117,10 @@ export const deleteEvent = async (
 };
 
 export const searchEvents = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: SearchEventsInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.calendar.listEvents(input.calendarId, {
+  const result = await client.listEvents(input.calendarId, {
     q: input.q,
     timeMin: input.timeMin,
     timeMax: input.timeMax,
@@ -141,7 +141,7 @@ export const searchEvents = async (
 };
 
 export const getFreeBusy = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: GetFreeBusyInput,
 ): Promise<Result<unknown, CalendarError>> => {
   const freeBusyRequest = {
@@ -151,7 +151,7 @@ export const getFreeBusy = async (
     items: input.calendarIds.map((id) => ({ id })),
   };
 
-  const result = await client.calendar.getFreeBusy(freeBusyRequest);
+  const result = await client.getFreeBusy(freeBusyRequest);
 
   if (!result.ok) {
     return err(result.error);

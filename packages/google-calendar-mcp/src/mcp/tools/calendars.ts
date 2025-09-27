@@ -1,14 +1,14 @@
-import type { GoogleCalendarClient } from "../../api/index.js";
+import type { createCalendarApi } from "../../api/index.js";
 import type { CalendarError } from "../../lib/errors/index.js";
 import type { Result } from "../../lib/result/index.js";
 import type { GetCalendarInput, ListCalendarsInput } from "../types.js";
 import { err, ok } from "../../lib/result/index.js";
 
 export const listCalendars = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: ListCalendarsInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.calendar.listCalendars({
+  const result = await client.listCalendars({
     maxResults: input.maxResults,
     pageToken: input.pageToken,
     showDeleted: input.showDeleted,
@@ -27,10 +27,10 @@ export const listCalendars = async (
 };
 
 export const getCalendar = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   input: GetCalendarInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.calendar.getCalendar(input.calendarId);
+  const result = await client.getCalendar(input.calendarId);
 
   if (!result.ok) {
     return err(result.error);

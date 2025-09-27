@@ -1,6 +1,6 @@
 import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
 
-import type { GoogleCalendarClient } from "../api/index.js";
+import type { createCalendarApi } from "../api/index.js";
 import type { CalendarError } from "../lib/errors/index.js";
 import type { Result } from "../lib/result/index.js";
 import { ValidationError } from "../lib/errors/index.js";
@@ -31,7 +31,7 @@ import {
 } from "./types.js";
 
 export const handleToolCall = async (
-  client: GoogleCalendarClient,
+  client: ReturnType<typeof createCalendarApi>,
   request: CallToolRequest,
 ): Promise<Result<unknown, CalendarError>> => {
   const { name, arguments: args } = request.params;
