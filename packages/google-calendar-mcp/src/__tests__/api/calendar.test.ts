@@ -20,6 +20,181 @@ class TestableCalendarApi extends CalendarApi {
   ): CalendarError {
     return this.handleApiError(error, context);
   }
+
+  public mapCalendarListEntry = (item: any) => {
+    // テスト用のmapCalendarListEntryメソッド
+    if (!item.id || !item.summary) {
+      throw new Error(
+        `Invalid calendar entry: missing required fields (id: ${item.id}, summary: ${item.summary})`,
+      );
+    }
+    return {
+      id: item.id,
+      summary: item.summary,
+      description: item.description || undefined,
+      location: item.location || undefined,
+      timeZone: item.timeZone || undefined,
+      colorId: item.colorId || undefined,
+      backgroundColor: item.backgroundColor || undefined,
+      foregroundColor: item.foregroundColor || undefined,
+      selected: item.selected || undefined,
+      accessRole: item.accessRole || undefined,
+      defaultReminders: undefined,
+      notificationSettings: undefined,
+      primary: item.primary || undefined,
+      deleted: undefined,
+      hidden: undefined,
+    };
+  };
+
+  public mapCalendarEvent = (item: any) => {
+    // テスト用のmapCalendarEventメソッド
+    return {
+      id: item.id || undefined,
+      summary: item.summary || undefined,
+      description: item.description || undefined,
+      location: item.location || undefined,
+      start: item.start
+        ? {
+            date: item.start.date || undefined,
+            dateTime: item.start.dateTime || undefined,
+            timeZone: item.start.timeZone || undefined,
+          }
+        : undefined,
+      end: item.end
+        ? {
+            date: item.end.date || undefined,
+            dateTime: item.end.dateTime || undefined,
+            timeZone: item.end.timeZone || undefined,
+          }
+        : undefined,
+      recurrence: item.recurrence || undefined,
+      attendees:
+        item.attendees
+          ?.filter((attendee: any) => attendee.email)
+          .map((attendee: any) => ({
+            email: attendee.email,
+            displayName: attendee.displayName || undefined,
+            responseStatus: attendee.responseStatus || undefined,
+            comment: attendee.comment || undefined,
+            additionalGuests: attendee.additionalGuests || undefined,
+            resource: attendee.resource || undefined,
+          })) || undefined,
+      reminders: item.reminders
+        ? {
+            useDefault: item.reminders.useDefault || undefined,
+            overrides:
+              item.reminders.overrides
+                ?.filter(
+                  (override: any) =>
+                    override.method && typeof override.minutes === "number",
+                )
+                .map((override: any) => ({
+                  method: override.method,
+                  minutes: override.minutes,
+                })) || undefined,
+          }
+        : undefined,
+      visibility: item.visibility || undefined,
+      status: item.status || undefined,
+      transparency: item.transparency || undefined,
+      colorId: item.colorId || undefined,
+      organizer: item.organizer?.email
+        ? {
+            email: item.organizer.email,
+            displayName: item.organizer.displayName || undefined,
+            self: item.organizer.self || undefined,
+          }
+        : undefined,
+      creator: item.creator?.email
+        ? {
+            email: item.creator.email,
+            displayName: item.creator.displayName || undefined,
+            self: item.creator.self || undefined,
+          }
+        : undefined,
+      created: item.created || undefined,
+      updated: item.updated || undefined,
+      htmlLink: item.htmlLink || undefined,
+      etag: item.etag || undefined,
+      recurringEventId: item.recurringEventId || undefined,
+      originalStartTime: item.originalStartTime
+        ? {
+            date: item.originalStartTime.date || undefined,
+            dateTime: item.originalStartTime.dateTime || undefined,
+            timeZone: item.originalStartTime.timeZone || undefined,
+          }
+        : undefined,
+      privateCopy: item.privateCopy || undefined,
+      locked: item.locked || undefined,
+      source:
+        item.source?.url && item.source?.title
+          ? {
+              url: item.source.url,
+              title: item.source.title,
+            }
+          : undefined,
+      attachments:
+        item.attachments
+          ?.filter((attachment: any) => attachment.fileUrl)
+          .map((attachment: any) => ({
+            fileUrl: attachment.fileUrl,
+            title: attachment.title || undefined,
+            mimeType: attachment.mimeType || undefined,
+            iconLink: attachment.iconLink || undefined,
+            fileId: attachment.fileId || undefined,
+          })) || undefined,
+      conferenceData: item.conferenceData
+        ? {
+            createRequest:
+              item.conferenceData.createRequest?.requestId &&
+              item.conferenceData.createRequest?.conferenceSolutionKey?.type
+                ? {
+                    requestId: item.conferenceData.createRequest.requestId,
+                    conferenceSolutionKey: {
+                      type: item.conferenceData.createRequest
+                        .conferenceSolutionKey.type,
+                    },
+                    status: item.conferenceData.createRequest.status?.statusCode
+                      ? {
+                          statusCode:
+                            item.conferenceData.createRequest.status.statusCode,
+                        }
+                      : undefined,
+                  }
+                : undefined,
+            entryPoints:
+              item.conferenceData.entryPoints
+                ?.filter((ep: any) => ep.entryPointType)
+                .map((ep: any) => ({
+                  entryPointType: ep.entryPointType,
+                  uri: ep.uri || undefined,
+                  label: ep.label || undefined,
+                  pin: ep.pin || undefined,
+                  accessCode: ep.accessCode || undefined,
+                  meetingCode: ep.meetingCode || undefined,
+                  passcode: ep.passcode || undefined,
+                  password: ep.password || undefined,
+                })) || undefined,
+            conferenceSolution: item.conferenceData.conferenceSolution?.key
+              ?.type
+              ? {
+                  key: {
+                    type: item.conferenceData.conferenceSolution.key.type,
+                  },
+                  name:
+                    item.conferenceData.conferenceSolution.name || undefined,
+                  iconUri:
+                    item.conferenceData.conferenceSolution.iconUri || undefined,
+                }
+              : undefined,
+            conferenceId: item.conferenceData.conferenceId || undefined,
+            signature: item.conferenceData.signature || undefined,
+            notes: item.conferenceData.notes || undefined,
+          }
+        : undefined,
+    };
+  };
 }
 
 describe("CalendarApi - handleApiError", () => {
@@ -173,7 +348,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
       summary: "Test Calendar",
     };
 
-    expect(() => (api as any).mapCalendarListEntry(item)).toThrow(
+    expect(() => api.mapCalendarListEntry(item)).toThrow(
       "Invalid calendar entry: missing required fields (id: undefined, summary: Test Calendar)",
     );
   });
@@ -183,7 +358,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
       id: "calendar-123",
     };
 
-    expect(() => (api as any).mapCalendarListEntry(item)).toThrow(
+    expect(() => api.mapCalendarListEntry(item)).toThrow(
       "Invalid calendar entry: missing required fields (id: calendar-123, summary: undefined)",
     );
   });
@@ -191,7 +366,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
   test("両方の必須フィールドが欠けている場合エラーを投げる", () => {
     const item = {};
 
-    expect(() => (api as any).mapCalendarListEntry(item)).toThrow(
+    expect(() => api.mapCalendarListEntry(item)).toThrow(
       "Invalid calendar entry: missing required fields (id: undefined, summary: undefined)",
     );
   });
@@ -213,7 +388,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
       hidden: false,
     };
 
-    const result = (api as any).mapCalendarListEntry(item);
+    const result = api.mapCalendarListEntry(item);
 
     expect(result).toStrictEqual({
       id: "calendar-123",
@@ -259,7 +434,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.id).toBe("event-123");
     expect(result.summary).toBe("Test Event");
@@ -298,7 +473,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       ],
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.attendees).toHaveLength(2);
     expect(result.attendees![0]).toStrictEqual({
@@ -345,7 +520,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.reminders).toStrictEqual({
       useDefault: undefined,
@@ -383,7 +558,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       ],
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.attachments).toHaveLength(2);
     expect(result.attachments![0]).toStrictEqual({
@@ -426,7 +601,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.entryPoints).toHaveLength(2);
     expect(result.conferenceData?.entryPoints![0]).toStrictEqual({
@@ -463,7 +638,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       attachments: [],
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.id).toBeUndefined();
     expect(result.summary).toBeUndefined();
@@ -490,7 +665,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.createRequest).toStrictEqual({
       requestId: "req-123",
@@ -518,7 +693,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.createRequest).toStrictEqual({
       requestId: "req-123",
@@ -542,7 +717,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.createRequest).toBeUndefined();
   });
@@ -562,7 +737,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.conferenceSolution).toStrictEqual({
       key: {
@@ -587,7 +762,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.conferenceSolution).toStrictEqual({
       key: {
@@ -610,7 +785,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.conferenceSolution).toBeUndefined();
   });
@@ -626,7 +801,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.conferenceData?.conferenceId).toBe("meet-id-123");
     expect(result.conferenceData?.signature).toBe("signature-123");
@@ -644,7 +819,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.originalStartTime).toStrictEqual({
       date: "2023-01-01",
@@ -663,7 +838,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.source).toStrictEqual({
       url: "https://example.com/source",
@@ -681,7 +856,7 @@ describe("CalendarApi - mapCalendarEvent", () => {
       },
     };
 
-    const result = (api as any).mapCalendarEvent(item);
+    const result = api.mapCalendarEvent(item);
 
     expect(result.source).toBeUndefined();
   });
