@@ -5,6 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { AuthConfig } from "../api/index.js";
 import { GoogleCalendarClient } from "../api/index.js";
@@ -51,43 +52,43 @@ export const createServer = (config: AuthConfig): Server => {
       tools: [
         {
           ...TOOL_DESCRIPTIONS.list_calendars,
-          inputSchema: zodToJsonSchema(ListCalendarsSchema),
+          inputSchema: convertZodToJsonSchema(ListCalendarsSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.get_calendar,
-          inputSchema: zodToJsonSchema(GetCalendarSchema),
+          inputSchema: convertZodToJsonSchema(GetCalendarSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.list_events,
-          inputSchema: zodToJsonSchema(ListEventsSchema),
+          inputSchema: convertZodToJsonSchema(ListEventsSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.get_event,
-          inputSchema: zodToJsonSchema(GetEventSchema),
+          inputSchema: convertZodToJsonSchema(GetEventSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.create_event,
-          inputSchema: zodToJsonSchema(CreateEventSchema),
+          inputSchema: convertZodToJsonSchema(CreateEventSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.update_event,
-          inputSchema: zodToJsonSchema(UpdateEventSchema),
+          inputSchema: convertZodToJsonSchema(UpdateEventSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.delete_event,
-          inputSchema: zodToJsonSchema(DeleteEventSchema),
+          inputSchema: convertZodToJsonSchema(DeleteEventSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.search_events,
-          inputSchema: zodToJsonSchema(SearchEventsSchema),
+          inputSchema: convertZodToJsonSchema(SearchEventsSchema),
         },
         {
           ...TOOL_DESCRIPTIONS.get_freebusy,
-          inputSchema: zodToJsonSchema(GetFreeBusySchema),
+          inputSchema: convertZodToJsonSchema(GetFreeBusySchema),
         },
         {
           ...TOOL_DESCRIPTIONS.get_colors,
-          inputSchema: zodToJsonSchema(GetColorsSchema),
+          inputSchema: convertZodToJsonSchema(GetColorsSchema),
         },
       ],
     };
@@ -132,108 +133,10 @@ export const runServer = async (config: AuthConfig): Promise<void> => {
   console.error(`${SERVER_INFO.name} v${SERVER_INFO.version} running`);
 };
 
-// Helper function to convert Zod schema to JSON Schema
-interface JsonSchema {
-  type?: string | string[];
-  properties?: Record<string, JsonSchema>;
-  required?: string[];
-  items?: JsonSchema;
-  anyOf?: JsonSchema[];
-  enum?: unknown[];
-  default?: unknown;
-  description?: string;
-}
-
-const zodToJsonSchema = (schema: z.ZodTypeAny): JsonSchema => {
-  if (schema instanceof z.ZodObject) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const shape = schema.shape;
-    const properties: Record<string, JsonSchema> = {};
-    const required: string[] = [];
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    for (const [key, value] of Object.entries(shape)) {
-      const fieldSchema = value as z.ZodTypeAny;
-      properties[key] = zodToJsonSchema(fieldSchema);
-
-      // Check if field is required
-      if (!(fieldSchema instanceof z.ZodOptional)) {
-        required.push(key);
-      }
-
-      // Add description if available
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (fieldSchema._def.description) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        properties[key].description = fieldSchema._def.description;
-      }
-    }
-
-    return {
-      type: "object",
-      properties,
-      required: required.length > 0 ? required : undefined,
-    };
-  }
-
-  if (schema instanceof z.ZodOptional) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return zodToJsonSchema(schema._def.innerType);
-  }
-
-  if (schema instanceof z.ZodDefault) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const inner = zodToJsonSchema(schema._def.innerType);
-
-    inner.default = schema._def.defaultValue();
-    return inner;
-  }
-
-  if (schema instanceof z.ZodArray) {
-    return {
-      type: "array",
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      items: zodToJsonSchema(schema._def.type),
-    };
-  }
-
-  if (schema instanceof z.ZodString) {
-    return { type: "string" };
-  }
-
-  if (schema instanceof z.ZodNumber) {
-    return { type: "number" };
-  }
-
-  if (schema instanceof z.ZodBoolean) {
-    return { type: "boolean" };
-  }
-
-  if (schema instanceof z.ZodNull) {
-    return { type: "null" };
-  }
-
-  if (schema instanceof z.ZodUnion) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const types = schema._def.options.map(zodToJsonSchema);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    if (types.every((t: JsonSchema) => typeof t.type === "string")) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const simpleTypes = types.map((t: JsonSchema) => t.type as string);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      return { type: simpleTypes };
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    return { anyOf: types };
-  }
-
-  if (schema instanceof z.ZodEnum) {
-    return {
-      type: "string",
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      enum: schema._def.values,
-    };
-  }
-
-  return { type: "string" };
+// Convert Zod schema to JSON Schema using the official library
+const convertZodToJsonSchema = (schema: z.ZodTypeAny) => {
+  return zodToJsonSchema(schema, {
+    target: "openApi3",
+    $refStrategy: "none",
+  });
 };
