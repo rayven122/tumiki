@@ -135,7 +135,8 @@ deploy_vercel() {
         if [ "$STAGE" = "production" ]; then
             log_info "本番環境にデプロイ中..."
             # Vercel CLIの出力を直接キャプチャ（従来の方法と同じ）
-            deploy_output=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1) || {
+            # --scope オプションでチーム名を明示的に指定
+            deploy_output=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" --scope=rayven 2>&1) || {
                 log_error "Vercelデプロイが失敗しました"
                 log_error "デプロイ出力:"
                 echo "$deploy_output" | while IFS= read -r line; do
@@ -145,7 +146,8 @@ deploy_vercel() {
             }
         else
             log_info "${STAGE}環境にデプロイ中..."
-            deploy_output=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1) || {
+            # --scope オプションでチーム名を明示的に指定
+            deploy_output=$(vercel deploy --yes --token="$VERCEL_TOKEN" --scope=rayven 2>&1) || {
                 log_error "Vercelデプロイが失敗しました"
                 log_error "デプロイ出力:"
                 echo "$deploy_output" | while IFS= read -r line; do
@@ -160,7 +162,8 @@ deploy_vercel() {
 
         if [ "$STAGE" = "production" ]; then
             log_info "本番環境にデプロイ中..."
-            deploy_output=$(vercel deploy --prod 2>&1) || {
+            # --scope オプションでチーム名を明示的に指定
+            deploy_output=$(vercel deploy --prod --scope=rayven 2>&1) || {
                 log_error "Vercelデプロイが失敗しました"
                 log_error "デプロイ出力:"
                 echo "$deploy_output" | while IFS= read -r line; do
@@ -169,7 +172,8 @@ deploy_vercel() {
                 return 1
             }
         else
-            deploy_output=$(vercel deploy 2>&1) || {
+            # --scope オプションでチーム名を明示的に指定
+            deploy_output=$(vercel deploy --scope=rayven 2>&1) || {
                 log_error "Vercelデプロイが失敗しました"
                 log_error "デプロイ出力:"
                 echo "$deploy_output" | while IFS= read -r line; do
