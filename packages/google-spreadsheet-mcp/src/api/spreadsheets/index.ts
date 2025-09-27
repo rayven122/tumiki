@@ -3,6 +3,13 @@ import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
 import type { GoogleAuth } from "../auth/index.js";
+
+/*
+ * Google API関連のany型使用について：
+ *
+ * このファイルでは googleapis ライブラリとの互換性のために any型を限定的に使用しています。
+ * 詳細は drive/index.ts のコメントを参照してください。
+ */
 // Import missing types
 import type {
   BatchUpdateRequest,
@@ -23,6 +30,8 @@ export class SpreadsheetsApi {
   private sheets: sheets_v4.Sheets;
 
   constructor(auth: GoogleAuth) {
+    // Google Sheets API クライアントが期待する認証オブジェクト型との不一致のため any を使用
+    // googleapis ライブラリの型定義の制限による必要な型キャスト
     this.sheets = google.sheets({ version: "v4", auth: auth as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 

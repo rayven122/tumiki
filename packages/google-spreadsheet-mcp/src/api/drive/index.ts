@@ -3,6 +3,21 @@ import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
 import type { GoogleAuth } from "../auth/index.js";
+
+/*
+ * Google API関連のany型使用について：
+ *
+ * このファイルでは以下の理由でany型を限定的に使用しています：
+ *
+ * 1. Google APIクライアント初期化時の型不一致
+ *    - googleapis ライブラリの型定義と実際のGoogleAuth型の間に不一致があるため
+ *
+ * 2. Google APIエラーレスポンスの構造
+ *    - Google APIのエラーオブジェクトは独自の構造を持ちますが、
+ *      TypeScriptの型定義では完全にカバーされていないため
+ *
+ * これらは外部ライブラリとの互換性のために必要な制限的なany使用です。
+ */
 import type {
   Email,
   Permission,
@@ -16,6 +31,8 @@ export class DriveApi {
   private drive: drive_v3.Drive;
 
   constructor(auth: GoogleAuth) {
+    // Google Drive API クライアントが期待する認証オブジェクト型との不一致のため any を使用
+    // googleapis ライブラリの型定義の制限による必要な型キャスト
     this.drive = google.drive({ version: "v3", auth: auth as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 
