@@ -273,21 +273,4 @@ export const MCP_SERVERS = [
     envVars: ["ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS"],
     isPublic: true,
   },
-  {
-    name: "Google Spreadsheet MCP",
-    description:
-      "Google Sheetsの読み書き、管理、共有機能を提供し、スプレッドシート操作を自動化します",
-    tags: ["スプレッドシート", "Google", "ドキュメント"],
-    iconPath: "/logos/google-sheets.svg",
-    command: "node",
-    args: ["node_modules/@tumiki/google-spreadsheet-mcp/dist/index.js"],
-    envVars: [
-      "GOOGLE_SERVICE_ACCOUNT_KEY",
-      "GOOGLE_OAUTH_CLIENT_ID",
-      "GOOGLE_OAUTH_CLIENT_SECRET",
-      "GOOGLE_OAUTH_REFRESH_TOKEN",
-      "GOOGLE_API_KEY",
-    ],
-    isPublic: true,
-  },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
