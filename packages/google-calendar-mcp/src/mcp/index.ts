@@ -1,10 +1,10 @@
+import type { z } from "zod";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { AuthConfig } from "../api/index.js";
@@ -135,7 +135,8 @@ export const runServer = async (config: AuthConfig): Promise<void> => {
 
 // Convert Zod schema to JSON Schema using the official library
 const convertZodToJsonSchema = (schema: z.ZodTypeAny) => {
-  return zodToJsonSchema(schema, {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+  return zodToJsonSchema(schema as any, {
     target: "openApi3",
     $refStrategy: "none",
   });

@@ -18,10 +18,12 @@ const getAuthConfig = (): AuthConfig => {
         type: "service-account",
         credentials,
       };
-    } catch {
+    } catch (error) {
       console.error(
-        "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY: Invalid JSON format",
+        "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:",
+        error instanceof Error ? error.message : error,
       );
+      process.exit(1);
     }
   }
 

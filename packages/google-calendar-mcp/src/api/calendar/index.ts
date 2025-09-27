@@ -74,10 +74,7 @@ export class CalendarApi {
 
       return ok(this.mapCalendarEntry(response.data));
     } catch (error) {
-      if (this.isNotFoundError(error)) {
-        return err(new CalendarNotFoundError(calendarId));
-      }
-      return err(this.handleApiError(error));
+      return err(this.handleApiError(error, { calendarId }));
     }
   }
 
@@ -119,10 +116,7 @@ export class CalendarApi {
         nextPageToken: response.data.nextPageToken || undefined,
       });
     } catch (error) {
-      if (this.isNotFoundError(error)) {
-        return err(new CalendarNotFoundError(calendarId));
-      }
-      return err(this.handleApiError(error));
+      return err(this.handleApiError(error, { calendarId }));
     }
   }
 
@@ -138,10 +132,7 @@ export class CalendarApi {
 
       return ok(this.mapCalendarEvent(response.data));
     } catch (error) {
-      if (this.isNotFoundError(error)) {
-        return err(new EventNotFoundError(eventId, calendarId));
-      }
-      return err(this.handleApiError(error));
+      return err(this.handleApiError(error, { calendarId, eventId }));
     }
   }
 
@@ -169,10 +160,7 @@ export class CalendarApi {
 
       return ok(this.mapCalendarEvent(response.data));
     } catch (error) {
-      if (this.isNotFoundError(error)) {
-        return err(new CalendarNotFoundError(calendarId));
-      }
-      return err(this.handleApiError(error));
+      return err(this.handleApiError(error, { calendarId }));
     }
   }
 
@@ -202,10 +190,7 @@ export class CalendarApi {
 
       return ok(this.mapCalendarEvent(response.data));
     } catch (error) {
-      if (this.isNotFoundError(error)) {
-        return err(new EventNotFoundError(eventId, calendarId));
-      }
-      return err(this.handleApiError(error));
+      return err(this.handleApiError(error, { calendarId, eventId }));
     }
   }
 
@@ -227,10 +212,7 @@ export class CalendarApi {
 
       return ok(undefined);
     } catch (error) {
-      if (this.isNotFoundError(error)) {
-        return err(new EventNotFoundError(eventId, calendarId));
-      }
-      return err(this.handleApiError(error));
+      return err(this.handleApiError(error, { calendarId, eventId }));
     }
   }
 
@@ -261,9 +243,15 @@ export class CalendarApi {
   private mapCalendarListEntry(
     item: calendar_v3.Schema$CalendarListEntry,
   ): CalendarListEntry {
+    // idとsummaryは必須フィールドなので、ない場合はエラーを投げる
+    if (!item.id || !item.summary) {
+      throw new Error(
+        `Invalid calendar entry: missing required fields (id: ${item.id}, summary: ${item.summary})`,
+      );
+    }
     return {
-      id: item.id!,
-      summary: item.summary!,
+      id: item.id,
+      summary: item.summary,
       description: item.description || undefined,
       location: item.location || undefined,
       timeZone: item.timeZone || undefined,
@@ -465,16 +453,10 @@ export class CalendarApi {
     };
   }
 
-  private isNotFoundError(error: unknown): boolean {
-    return !!(
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === 404
-    );
-  }
-
-  private handleApiError(error: unknown): CalendarError {
+  private handleApiError(
+    error: unknown,
+    context?: { calendarId?: string; eventId?: string },
+  ): CalendarError {
     if (error && typeof error === "object" && "code" in error) {
       const code = error.code as number;
       const message =
@@ -488,6 +470,13 @@ export class CalendarApi {
         case 403:
           return new PermissionDeniedError(message);
         case 404:
+          // contextに応じて適切なエラーメッセージを返す
+          if (context?.eventId) {
+            return new EventNotFoundError(context.eventId, context.calendarId);
+          }
+          if (context?.calendarId) {
+            return new CalendarNotFoundError(context.calendarId);
+          }
           return new CalendarNotFoundError("Resource not found");
         case 429:
           return new QuotaExceededError(message);
