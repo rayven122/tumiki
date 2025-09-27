@@ -116,7 +116,7 @@ export const handleGetSheetData = async (
       range: input.range,
       values: result.value,
       rows: result.value.length,
-      columns: result.value[0]?.length || 0,
+      columns: result.value[0]?.length ?? 0,
     });
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));

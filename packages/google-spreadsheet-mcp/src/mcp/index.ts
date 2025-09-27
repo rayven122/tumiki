@@ -50,6 +50,7 @@ export const createServer = (config: AuthConfig): Server => {
 
   // List available tools
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    await ensureInitialized();
     return {
       tools: [
         {
@@ -152,14 +153,25 @@ export const runServer = async (config: AuthConfig): Promise<void> => {
 };
 
 // Helper function to convert Zod schema to JSON Schema
-const zodToJsonSchema = (schema: z.ZodType<any, any>): any => {
+interface JsonSchema {
+  type?: string | string[];
+  properties?: Record<string, JsonSchema>;
+  required?: string[];
+  items?: JsonSchema;
+  anyOf?: JsonSchema[];
+  enum?: unknown[];
+  default?: unknown;
+  description?: string;
+}
+
+const zodToJsonSchema = (schema: z.ZodTypeAny): JsonSchema => {
   if (schema instanceof z.ZodObject) {
     const shape = schema.shape;
-    const properties: any = {};
+    const properties: Record<string, JsonSchema> = {};
     const required: string[] = [];
 
     for (const [key, value] of Object.entries(shape)) {
-      const fieldSchema = value as z.ZodType<any, any>;
+      const fieldSchema = value as z.ZodTypeAny;
       properties[key] = zodToJsonSchema(fieldSchema);
 
       // Check if field is required
@@ -215,8 +227,8 @@ const zodToJsonSchema = (schema: z.ZodType<any, any>): any => {
 
   if (schema instanceof z.ZodUnion) {
     const types = schema._def.options.map(zodToJsonSchema);
-    if (types.every((t: any) => typeof t.type === "string")) {
-      const simpleTypes = types.map((t: any) => t.type);
+    if (types.every((t: JsonSchema) => typeof t.type === "string")) {
+      const simpleTypes = types.map((t: JsonSchema) => t.type as string);
       return { type: simpleTypes };
     }
     return { anyOf: types };

@@ -32,7 +32,7 @@ export const handleShareSpreadsheet = async (
 
     return ok({
       permissionId: result.value.permissionId,
-      message: `Successfully shared spreadsheet with ${input.type} ${input.email || input.domain || "anyone"}`,
+      message: `Successfully shared spreadsheet with ${input.type} ${input.email ?? input.domain ?? "anyone"}`,
     });
   } catch (error) {
     return err(error instanceof Error ? error : new Error(String(error)));

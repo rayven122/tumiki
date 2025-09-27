@@ -9,6 +9,7 @@ dotenv.config();
 
 const getAuthConfig = (): AuthConfig => {
   // Check for Service Account credentials
+  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (serviceAccountKey) {
     try {
@@ -17,7 +18,7 @@ const getAuthConfig = (): AuthConfig => {
         type: "service-account",
         credentials,
       };
-    } catch (error) {
+    } catch {
       console.error(
         "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY: Invalid JSON format",
       );
@@ -25,8 +26,11 @@ const getAuthConfig = (): AuthConfig => {
   }
 
   // Check for OAuth2 credentials
+  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
   const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
   if (clientId && clientSecret && refreshToken) {
@@ -39,6 +43,7 @@ const getAuthConfig = (): AuthConfig => {
   }
 
   // Check for API Key (limited functionality)
+  // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties
   const apiKey = process.env.GOOGLE_API_KEY;
   if (apiKey) {
     return {

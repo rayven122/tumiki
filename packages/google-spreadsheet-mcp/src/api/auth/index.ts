@@ -51,7 +51,7 @@ export const createAuthClient = async (
 const createServiceAccountAuth = (
   credentials: ServiceAccountCredentials,
 ): GoogleAuth => {
-  const auth = google.auth.fromJSON(credentials as any);
+  const auth = google.auth.fromJSON(credentials as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   return auth as GoogleAuth;
 };
 

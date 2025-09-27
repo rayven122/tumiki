@@ -24,7 +24,9 @@ export const unwrap = <T, E>(result: Result<T, E>): T => {
   if (isOk(result)) {
     return result.value;
   }
-  throw result.error;
+  throw result.error instanceof Error
+    ? result.error
+    : new Error(String(result.error));
 };
 
 export const unwrapOr = <T, E>(result: Result<T, E>, defaultValue: T): T => {
