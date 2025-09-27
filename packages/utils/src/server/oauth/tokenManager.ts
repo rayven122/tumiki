@@ -221,7 +221,7 @@ export const refreshToken = async (
       },
     });
 
-    if (!token?.refreshToken || !token.oauthClient.clientSecret) {
+    if (!token || !token.refreshToken || !token.oauthClient.clientSecret) {
       console.error("Cannot refresh token: missing required data", {
         tokenId,
       });
