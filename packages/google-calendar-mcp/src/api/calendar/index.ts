@@ -67,9 +67,8 @@ export type DeleteEventOptions = {
 };
 
 // 内部ユーティリティ関数
-const mapCalendarListEntry = (
-  item: calendar_v3.Schema$CalendarListEntry,
-): CalendarListEntry => {
+// Helper functions for mapping calendar list entries
+const mapBasicCalendarInfo = (item: calendar_v3.Schema$CalendarListEntry) => {
   // idとsummaryは必須フィールドなので、ない場合はエラーを投げる
   if (!item.id || !item.summary) {
     throw new Error(
@@ -82,36 +81,62 @@ const mapCalendarListEntry = (
     description: item.description || undefined,
     location: item.location || undefined,
     timeZone: item.timeZone || undefined,
-    colorId: item.colorId || undefined,
-    backgroundColor: item.backgroundColor || undefined,
-    foregroundColor: item.foregroundColor || undefined,
-    selected: item.selected || undefined,
-    accessRole: item.accessRole || undefined,
-    defaultReminders:
-      item.defaultReminders
-        ?.filter(
-          (reminder) => reminder.method && typeof reminder.minutes === "number",
-        )
-        .map((reminder) => ({
-          method: reminder.method!,
-          minutes: reminder.minutes!,
-        })) || undefined,
-    notificationSettings: item.notificationSettings
-      ? {
-          notifications:
-            item.notificationSettings.notifications
-              ?.filter((notif) => notif.type && notif.method)
-              .map((notif) => ({
-                type: notif.type!,
-                method: notif.method!,
-              })) || [],
-        }
-      : undefined,
-    primary: item.primary || undefined,
-    deleted: item.deleted || undefined,
-    hidden: item.hidden || undefined,
   };
 };
+
+const mapCalendarColors = (item: calendar_v3.Schema$CalendarListEntry) => ({
+  colorId: item.colorId || undefined,
+  backgroundColor: item.backgroundColor || undefined,
+  foregroundColor: item.foregroundColor || undefined,
+});
+
+const mapCalendarSettings = (item: calendar_v3.Schema$CalendarListEntry) => ({
+  selected: item.selected || undefined,
+  accessRole: item.accessRole || undefined,
+  primary: item.primary || undefined,
+  deleted: item.deleted || undefined,
+  hidden: item.hidden || undefined,
+});
+
+const mapDefaultReminders = (item: calendar_v3.Schema$CalendarListEntry) => {
+  if (!item.defaultReminders) return undefined;
+  
+  const validReminders = item.defaultReminders.filter(
+    (reminder) => reminder.method && typeof reminder.minutes === "number",
+  );
+  
+  return validReminders.length > 0
+    ? validReminders.map((reminder) => ({
+        method: reminder.method!,
+        minutes: reminder.minutes!,
+      }))
+    : undefined;
+};
+
+const mapNotificationSettings = (item: calendar_v3.Schema$CalendarListEntry) => {
+  if (!item.notificationSettings) return undefined;
+  
+  const notifications = item.notificationSettings.notifications
+    ?.filter((notif) => notif.type && notif.method)
+    .map((notif) => ({
+      type: notif.type!,
+      method: notif.method!,
+    })) || [];
+    
+  return notifications.length > 0 ? { notifications } : undefined;
+};
+
+const mapCalendarListEntry = (
+  item: calendar_v3.Schema$CalendarListEntry,
+): CalendarListEntry => {
+  return {
+    ...mapBasicCalendarInfo(item),
+    ...mapCalendarColors(item),
+    ...mapCalendarSettings(item),
+    defaultReminders: mapDefaultReminders(item),
+    notificationSettings: mapNotificationSettings(item),
+  };
+};;
 
 const mapCalendarEntry = (
   item: calendar_v3.Schema$Calendar,
@@ -125,157 +150,196 @@ const mapCalendarEntry = (
   };
 };
 
-const mapCalendarEvent = (item: calendar_v3.Schema$Event): CalendarEvent => {
+// Helper functions for mapping calendar events
+const mapEventBasicInfo = (item: calendar_v3.Schema$Event) => ({
+  id: item.id || undefined,
+  summary: item.summary || undefined,
+  description: item.description || undefined,
+  location: item.location || undefined,
+});
+
+const mapEventDateTime = (dateTime: calendar_v3.Schema$EventDateTime | undefined) => {
+  if (!dateTime) return undefined;
   return {
-    id: item.id || undefined,
-    summary: item.summary || undefined,
-    description: item.description || undefined,
-    location: item.location || undefined,
-    start: item.start
-      ? {
-          date: item.start.date || undefined,
-          dateTime: item.start.dateTime || undefined,
-          timeZone: item.start.timeZone || undefined,
-        }
-      : undefined,
-    end: item.end
-      ? {
-          date: item.end.date || undefined,
-          dateTime: item.end.dateTime || undefined,
-          timeZone: item.end.timeZone || undefined,
-        }
-      : undefined,
-    recurrence: item.recurrence || undefined,
-    attendees:
-      item.attendees
-        ?.filter((attendee) => attendee.email)
-        .map((attendee) => ({
-          email: attendee.email!,
-          displayName: attendee.displayName || undefined,
-          responseStatus:
-            (attendee.responseStatus as
-              | "needsAction"
-              | "declined"
-              | "tentative"
-              | "accepted") || undefined,
-          comment: attendee.comment || undefined,
-          additionalGuests: attendee.additionalGuests || undefined,
-          resource: attendee.resource || undefined,
-        })) || undefined,
-    reminders: item.reminders
-      ? {
-          useDefault: item.reminders.useDefault || undefined,
-          overrides:
-            item.reminders.overrides
-              ?.filter(
-                (override) =>
-                  override.method && typeof override.minutes === "number",
-              )
-              .map((override) => ({
-                method: override.method!,
-                minutes: override.minutes!,
-              })) || undefined,
-        }
-      : undefined,
-    visibility: (item.visibility as CalendarEvent["visibility"]) || undefined,
-    status: (item.status as CalendarEvent["status"]) || undefined,
-    transparency:
-      (item.transparency as CalendarEvent["transparency"]) || undefined,
-    colorId: item.colorId || undefined,
-    organizer: item.organizer?.email
-      ? {
-          email: item.organizer.email,
-          displayName: item.organizer.displayName || undefined,
-          self: item.organizer.self || undefined,
-        }
-      : undefined,
-    creator: item.creator?.email
-      ? {
-          email: item.creator.email,
-          displayName: item.creator.displayName || undefined,
-          self: item.creator.self || undefined,
-        }
-      : undefined,
-    created: item.created || undefined,
-    updated: item.updated || undefined,
-    htmlLink: item.htmlLink || undefined,
-    etag: item.etag || undefined,
-    recurringEventId: item.recurringEventId || undefined,
-    originalStartTime: item.originalStartTime
-      ? {
-          date: item.originalStartTime.date || undefined,
-          dateTime: item.originalStartTime.dateTime || undefined,
-          timeZone: item.originalStartTime.timeZone || undefined,
-        }
-      : undefined,
-    privateCopy: item.privateCopy || undefined,
-    locked: item.locked || undefined,
-    source:
-      item.source?.url && item.source?.title
-        ? {
-            url: item.source.url,
-            title: item.source.title,
-          }
-        : undefined,
-    attachments:
-      item.attachments
-        ?.filter((attachment) => attachment.fileUrl)
-        .map((attachment) => ({
-          fileUrl: attachment.fileUrl!,
-          title: attachment.title || undefined,
-          mimeType: attachment.mimeType || undefined,
-          iconLink: attachment.iconLink || undefined,
-          fileId: attachment.fileId || undefined,
-        })) || undefined,
-    conferenceData: item.conferenceData
-      ? {
-          createRequest:
-            item.conferenceData.createRequest?.requestId &&
-            item.conferenceData.createRequest?.conferenceSolutionKey?.type
-              ? {
-                  requestId: item.conferenceData.createRequest.requestId,
-                  conferenceSolutionKey: {
-                    type: item.conferenceData.createRequest
-                      .conferenceSolutionKey.type,
-                  },
-                  status: item.conferenceData.createRequest.status?.statusCode
-                    ? {
-                        statusCode:
-                          item.conferenceData.createRequest.status.statusCode,
-                      }
-                    : undefined,
-                }
-              : undefined,
-          entryPoints:
-            item.conferenceData.entryPoints
-              ?.filter((ep) => ep.entryPointType)
-              .map((ep) => ({
-                entryPointType: ep.entryPointType!,
-                uri: ep.uri || undefined,
-                label: ep.label || undefined,
-                pin: ep.pin || undefined,
-                accessCode: ep.accessCode || undefined,
-                meetingCode: ep.meetingCode || undefined,
-                passcode: ep.passcode || undefined,
-                password: ep.password || undefined,
-              })) || undefined,
-          conferenceSolution: item.conferenceData.conferenceSolution?.key?.type
-            ? {
-                key: {
-                  type: item.conferenceData.conferenceSolution.key.type,
-                },
-                name: item.conferenceData.conferenceSolution.name || undefined,
-                iconUri:
-                  item.conferenceData.conferenceSolution.iconUri || undefined,
-              }
-            : undefined,
-          conferenceId: item.conferenceData.conferenceId || undefined,
-          signature: item.conferenceData.signature || undefined,
-          notes: item.conferenceData.notes || undefined,
-        }
-      : undefined,
+    date: dateTime.date || undefined,
+    dateTime: dateTime.dateTime || undefined,
+    timeZone: dateTime.timeZone || undefined,
   };
 };
+
+const mapEventTimes = (item: calendar_v3.Schema$Event) => ({
+  start: mapEventDateTime(item.start),
+  end: mapEventDateTime(item.end),
+  originalStartTime: mapEventDateTime(item.originalStartTime),
+});
+
+const mapEventAttendees = (item: calendar_v3.Schema$Event) => {
+  if (!item.attendees) return undefined;
+  
+  const validAttendees = item.attendees.filter((attendee) => attendee.email);
+  
+  return validAttendees.length > 0
+    ? validAttendees.map((attendee) => ({
+        email: attendee.email!,
+        displayName: attendee.displayName || undefined,
+        responseStatus:
+          (attendee.responseStatus as
+            | "needsAction"
+            | "declined"
+            | "tentative"
+            | "accepted") || undefined,
+        comment: attendee.comment || undefined,
+        additionalGuests: attendee.additionalGuests || undefined,
+        resource: attendee.resource || undefined,
+      }))
+    : undefined;
+};
+
+const mapEventReminders = (item: calendar_v3.Schema$Event) => {
+  if (!item.reminders) return undefined;
+  
+  const overrides = item.reminders.overrides
+    ?.filter(
+      (override) =>
+        override.method && typeof override.minutes === "number",
+    )
+    .map((override) => ({
+      method: override.method!,
+      minutes: override.minutes!,
+    }));
+    
+  return {
+    useDefault: item.reminders.useDefault || undefined,
+    overrides: (overrides && overrides.length > 0) ? overrides : undefined,
+  };
+};
+
+const mapEventPeople = (item: calendar_v3.Schema$Event) => ({
+  organizer: item.organizer?.email
+    ? {
+        email: item.organizer.email,
+        displayName: item.organizer.displayName || undefined,
+        self: item.organizer.self || undefined,
+      }
+    : undefined,
+  creator: item.creator?.email
+    ? {
+        email: item.creator.email,
+        displayName: item.creator.displayName || undefined,
+        self: item.creator.self || undefined,
+      }
+    : undefined,
+});
+
+const mapEventMetadata = (item: calendar_v3.Schema$Event) => ({
+  created: item.created || undefined,
+  updated: item.updated || undefined,
+  htmlLink: item.htmlLink || undefined,
+  etag: item.etag || undefined,
+  recurringEventId: item.recurringEventId || undefined,
+  privateCopy: item.privateCopy || undefined,
+  locked: item.locked || undefined,
+});
+
+const mapEventProperties = (item: calendar_v3.Schema$Event) => ({
+  recurrence: item.recurrence || undefined,
+  visibility: (item.visibility as CalendarEvent["visibility"]) || undefined,
+  status: (item.status as CalendarEvent["status"]) || undefined,
+  transparency:
+    (item.transparency as CalendarEvent["transparency"]) || undefined,
+  colorId: item.colorId || undefined,
+});
+
+const mapEventSource = (item: calendar_v3.Schema$Event) => {
+  return item.source?.url && item.source?.title
+    ? {
+        url: item.source.url,
+        title: item.source.title,
+      }
+    : undefined;
+};
+
+const mapEventAttachments = (item: calendar_v3.Schema$Event) => {
+  if (!item.attachments) return undefined;
+  
+  const validAttachments = item.attachments.filter((attachment) => attachment.fileUrl);
+  
+  return validAttachments.length > 0
+    ? validAttachments.map((attachment) => ({
+        fileUrl: attachment.fileUrl!,
+        title: attachment.title || undefined,
+        mimeType: attachment.mimeType || undefined,
+        iconLink: attachment.iconLink || undefined,
+        fileId: attachment.fileId || undefined,
+      }))
+    : undefined;
+};
+
+const mapConferenceData = (item: calendar_v3.Schema$Event) => {
+  if (!item.conferenceData) return undefined;
+  
+  const createRequest = item.conferenceData.createRequest?.requestId &&
+    item.conferenceData.createRequest?.conferenceSolutionKey?.type
+    ? {
+        requestId: item.conferenceData.createRequest.requestId,
+        conferenceSolutionKey: {
+          type: item.conferenceData.createRequest.conferenceSolutionKey.type,
+        },
+        status: item.conferenceData.createRequest.status?.statusCode
+          ? {
+              statusCode: item.conferenceData.createRequest.status.statusCode,
+            }
+          : undefined,
+      }
+    : undefined;
+    
+  const entryPoints = item.conferenceData.entryPoints
+    ?.filter((ep) => ep.entryPointType)
+    .map((ep) => ({
+      entryPointType: ep.entryPointType!,
+      uri: ep.uri || undefined,
+      label: ep.label || undefined,
+      pin: ep.pin || undefined,
+      accessCode: ep.accessCode || undefined,
+      meetingCode: ep.meetingCode || undefined,
+      passcode: ep.passcode || undefined,
+      password: ep.password || undefined,
+    }));
+    
+  const conferenceSolution = item.conferenceData.conferenceSolution?.key?.type
+    ? {
+        key: {
+          type: item.conferenceData.conferenceSolution.key.type,
+        },
+        name: item.conferenceData.conferenceSolution.name || undefined,
+        iconUri: item.conferenceData.conferenceSolution.iconUri || undefined,
+      }
+    : undefined;
+    
+  return {
+    createRequest,
+    entryPoints: (entryPoints && entryPoints.length > 0) ? entryPoints : undefined,
+    conferenceSolution,
+    conferenceId: item.conferenceData.conferenceId || undefined,
+    signature: item.conferenceData.signature || undefined,
+    notes: item.conferenceData.notes || undefined,
+  };
+};
+
+const mapCalendarEvent = (item: calendar_v3.Schema$Event): CalendarEvent => {
+  return {
+    ...mapEventBasicInfo(item),
+    ...mapEventTimes(item),
+    ...mapEventProperties(item),
+    ...mapEventPeople(item),
+    ...mapEventMetadata(item),
+    attendees: mapEventAttendees(item),
+    reminders: mapEventReminders(item),
+    source: mapEventSource(item),
+    attachments: mapEventAttachments(item),
+    conferenceData: mapConferenceData(item),
+  };
+};;
 
 const handleApiError = (
   error: unknown,

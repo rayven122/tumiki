@@ -19,11 +19,8 @@ const getAuthConfig = (): AuthConfig => {
         credentials,
       };
     } catch (error) {
-      console.error(
-        "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:",
-        error instanceof Error ? error.message : error,
-      );
-      process.exit(1);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY: ${message}`);
     }
   }
 
