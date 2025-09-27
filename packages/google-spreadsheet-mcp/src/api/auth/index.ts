@@ -17,13 +17,15 @@ export type GoogleAuth = OAuth2Client | JWT;
 
 /**
  * GoogleAuth オブジェクトが有効かどうかをチェックする型ガード
+ * @param auth - チェック対象のオブジェクト
+ * @returns GoogleAuthオブジェクトとして有効かどうか
  */
-const isValidAuth = (auth: unknown): auth is GoogleAuth => {
+export const isValidAuth = (auth: unknown): auth is GoogleAuth => {
   return Boolean(
     auth &&
-    typeof auth === "object" &&
-    "getAccessToken" in auth &&
-    typeof (auth as any).getAccessToken === "function", // eslint-disable-line @typescript-eslint/no-explicit-any
+      typeof auth === "object" &&
+      "getAccessToken" in auth &&
+      typeof (auth as any).getAccessToken === "function", // eslint-disable-line @typescript-eslint/no-explicit-any
   );
 };
 
