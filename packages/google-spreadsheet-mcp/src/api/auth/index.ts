@@ -1,4 +1,4 @@
-import type { OAuth2Client } from "google-auth-library";
+import type { JWT, OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
@@ -6,7 +6,7 @@ import type { AuthConfig, ServiceAccountCredentials } from "../types.js";
 import { AuthenticationError } from "../../lib/errors/index.js";
 import { err, ok } from "../../lib/result/index.js";
 
-export type GoogleAuth = OAuth2Client | ReturnType<typeof google.auth.fromJSON>;
+export type GoogleAuth = OAuth2Client | JWT;
 
 export const createAuthClient = async (
   config: AuthConfig,
@@ -51,7 +51,8 @@ export const createAuthClient = async (
 const createServiceAccountAuth = (
   credentials: ServiceAccountCredentials,
 ): GoogleAuth => {
-  return google.auth.fromJSON(credentials as any);
+  const auth = google.auth.fromJSON(credentials as any);
+  return auth as GoogleAuth;
 };
 
 const createOAuth2Auth = (
@@ -84,7 +85,7 @@ const createADCAuth = async (): Promise<
     });
 
     const client = await auth.getClient();
-    return ok(client as OAuth2Client);
+    return ok(client as GoogleAuth);
   } catch (error) {
     return err(
       new AuthenticationError(

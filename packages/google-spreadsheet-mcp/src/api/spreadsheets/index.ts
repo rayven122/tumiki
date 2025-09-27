@@ -27,7 +27,7 @@ export class SpreadsheetsApi {
   private sheets: sheets_v4.Sheets;
 
   constructor(auth: GoogleAuth) {
-    this.sheets = google.sheets({ version: "v4", auth });
+    this.sheets = google.sheets({ version: "v4", auth: auth as any });
   }
 
   async getSpreadsheet(

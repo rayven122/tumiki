@@ -16,7 +16,7 @@ export class DriveApi {
   private drive: drive_v3.Drive;
 
   constructor(auth: GoogleAuth) {
-    this.drive = google.drive({ version: "v3", auth });
+    this.drive = google.drive({ version: "v3", auth: auth as any });
   }
 
   async shareSpreadsheet(
