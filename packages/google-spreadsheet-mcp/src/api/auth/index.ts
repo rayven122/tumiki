@@ -15,6 +15,18 @@ import { err, ok } from "../../lib/result/index.js";
 
 export type GoogleAuth = OAuth2Client | JWT;
 
+/**
+ * GoogleAuth オブジェクトが有効かどうかをチェックする型ガード
+ */
+const isValidAuth = (auth: unknown): auth is GoogleAuth => {
+  return Boolean(
+    auth &&
+    typeof auth === "object" &&
+    "getAccessToken" in auth &&
+    typeof (auth as any).getAccessToken === "function", // eslint-disable-line @typescript-eslint/no-explicit-any
+  );
+};
+
 export const createAuthClient = async (
   config: AuthConfig,
 ): Promise<Result<GoogleAuth, AuthenticationError>> => {
@@ -58,9 +70,14 @@ export const createAuthClient = async (
 const createServiceAccountAuth = (
   credentials: ServiceAccountCredentials,
 ): GoogleAuth => {
-  // Google API の fromJSON の戻り値型が不明確なため型アサーションを使用
-  const auth = google.auth.fromJSON(credentials) as GoogleApiAuth;
-  return auth as GoogleAuth;
+  // Google API の fromJSON の戻り値型が不明確なため型ガードで安全にチェック
+  const auth = google.auth.fromJSON(credentials);
+  if (!isValidAuth(auth)) {
+    throw new AuthenticationError(
+      "Invalid authentication object returned from Google API",
+    );
+  }
+  return auth;
 };
 
 const createOAuth2Auth = (
@@ -93,7 +110,14 @@ const createADCAuth = async (): Promise<
     });
 
     const client = await auth.getClient();
-    return ok(client as GoogleAuth);
+    if (!isValidAuth(client)) {
+      return err(
+        new AuthenticationError(
+          "Invalid authentication client from Application Default Credentials",
+        ),
+      );
+    }
+    return ok(client);
   } catch (error) {
     return err(
       new AuthenticationError(
