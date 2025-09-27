@@ -15,6 +15,7 @@ tumiki/
 │   └── proxyServer/          # Express MCPプロキシサーバー
 │       ├── src/
 │       │   └── index.ts     # メインエントリーポイント
+│       └── deploy-to-gce.sh # GCEデプロイスクリプト
 │
 ├── packages/                  # 共有パッケージ
 │   ├── db/                  # Prisma データベース

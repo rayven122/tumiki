@@ -7,7 +7,7 @@ module.exports = async ({
 }) => {
   if (isPR) {
     const comment = `🚀 **Preview deployment ready!**
-
+    
 🔗 **URL:** ${deploymentUrl}
 📦 **Environment:** ${environment}
 🔄 **Status:** Ready

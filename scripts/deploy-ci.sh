@@ -1,0 +1,454 @@
+#!/bin/bash
+set -euo pipefail
+
+# =============================================================================
+# Tumiki ProxyServer - CI/CD用GCEデプロイメントスクリプト
+# =============================================================================
+#
+# このスクリプトはGitHub ActionsからGCE VMにデプロイするために最適化されています。
+# 非対話的実行、サービスアカウント認証、環境変数による設定管理をサポートします。
+#
+# 使用方法:
+#   INSTANCE_NAME=xxx ZONE=xxx PROJECT_ID=xxx bash scripts/deploy-ci.sh
+#
+# 必須環境変数:
+#   INSTANCE_NAME  - GCEインスタンス名
+#   ZONE          - GCEゾーン
+#   PROJECT_ID    - GCEプロジェクトID
+#
+# オプション環境変数:
+#   REMOTE_PATH   - デプロイ先パス (デフォルト: /opt/tumiki)
+#   DEPLOY_USER   - デプロイ用ユーザー (デフォルト: tumiki-deploy)
+#   REPO_URL      - リポジトリURL (デフォルト: git@github.com:rayven122/tumiki.git)
+#   DEPLOY_STAGE  - デプロイステージ (staging/production)
+#   BRANCH        - デプロイするブランチ (デフォルト: main)
+#
+# =============================================================================
+
+# 設定変数
+INSTANCE_NAME="${INSTANCE_NAME:?INSTANCE_NAME is required}"
+ZONE="${ZONE:?ZONE is required}"
+PROJECT_ID="${PROJECT_ID:?PROJECT_ID is required}"
+REMOTE_PATH="${REMOTE_PATH:-/opt/tumiki}"
+DEPLOY_USER="${DEPLOY_USER:-tumiki-deploy}"
+REPO_URL="${REPO_URL:-git@github.com:rayven122/tumiki.git}"
+DEPLOY_STAGE="${DEPLOY_STAGE:-staging}"
+BRANCH="${BRANCH:-main}"
+DRY_RUN="${DRY_RUN:-false}"
+
+# 色付きログ出力（CI環境でも動作）
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+fi
+
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_step() {
+    echo -e "${BLUE}[STEP]${NC} $1"
+}
+
+log_dry_run() {
+    echo -e "${YELLOW}[DRY RUN]${NC} $1"
+}
+
+# エラーハンドリング
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log_error "デプロイが失敗しました (exit code: $exit_code)"
+        exit $exit_code
+    fi
+}
+
+trap cleanup EXIT ERR
+
+# 前提条件チェック
+check_prerequisites() {
+    log_step "前提条件をチェックしています..."
+    
+    # gcloud CLI の確認
+    if ! command -v gcloud &> /dev/null; then
+        log_error "gcloud CLI が見つかりません"
+        exit 1
+    fi
+    
+    # gcloud 認証確認（サービスアカウントまたはユーザー認証）
+    if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" &>/dev/null; then
+        log_error "Google Cloud 認証が設定されていません"
+        exit 1
+    fi
+    
+    log_info "デプロイ先: $INSTANCE_NAME ($ZONE)"
+    log_info "デプロイユーザー: $DEPLOY_USER"
+    log_info "デプロイステージ: $DEPLOY_STAGE"
+    log_info "ブランチ: $BRANCH"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "ドライランモードで実行します（実際の変更は行いません）"
+        
+        # インスタンス確認とSSH接続テスト
+        log_dry_run "GCEインスタンスの存在確認中..."
+        log_dry_run "  インスタンス名: $INSTANCE_NAME"
+        log_dry_run "  ゾーン: $ZONE"
+        log_dry_run "  プロジェクト: $PROJECT_ID"
+        
+        if gcloud compute instances describe "$INSTANCE_NAME" \
+            --zone="$ZONE" \
+            --project="$PROJECT_ID" &>/dev/null; then
+            log_dry_run "GCEインスタンス: ✅ 存在確認済み"
+            
+            # SSH接続テスト
+            log_dry_run "GCEインスタンスへの接続を検証中..."
+            if gcloud compute ssh "$DEPLOY_USER@$INSTANCE_NAME" \
+                --zone="$ZONE" \
+                --project="$PROJECT_ID" \
+                --command="echo '✅ SSH接続成功'" 2>/dev/null; then
+                log_dry_run "GCEインスタンスへの接続: ✅ 成功"
+            else
+                log_warn "GCEインスタンスへのSSH接続に失敗しました"
+                log_warn "SSH鍵の設定またはファイアウォールルールを確認してください"
+            fi
+        else
+            log_error "❌ GCEインスタンスが見つかりません"
+            log_error ""
+            log_error "設定値:"
+            log_error "  インスタンス名: $INSTANCE_NAME"
+            log_error "  ゾーン: $ZONE"
+            log_error "  プロジェクトID: $PROJECT_ID"
+            log_error ""
+            log_error "確認事項:"
+            log_error "1. GitHub Secretsに正しい値が設定されているか"
+            log_error "2. GCEインスタンスが実際に存在し、起動しているか"
+            log_error "3. GCP認証とプロジェクトへのアクセス権限があるか"
+            log_error ""
+            log_error "ドライラン検証失敗 - GCEインスタンスへのアクセスは必須要件です"
+            exit 1
+        fi
+    else
+        # 実際のデプロイ時はインスタンス確認が必須
+        if ! gcloud compute instances describe "$INSTANCE_NAME" \
+            --zone="$ZONE" \
+            --project="$PROJECT_ID" &>/dev/null; then
+            log_error "インスタンス $INSTANCE_NAME が見つかりません"
+            log_error "Zone: $ZONE, Project: $PROJECT_ID"
+            exit 1
+        fi
+    fi
+}
+
+# Vercel環境変数の検証（ドライラン用）
+verify_vercel_env() {
+    if [ "$DRY_RUN" != "true" ]; then
+        return 0
+    fi
+    
+    log_dry_run "Vercel環境変数の取得を検証中..."
+    
+    # Vercel CLIの確認
+    if ! command -v vercel &> /dev/null; then
+        log_error "Vercel CLI が見つかりません"
+        log_error "npm install -g vercel でインストールしてください"
+        exit 1
+    fi
+    
+    # VERCEL_TOKEN環境変数の確認
+    if [ -z "${VERCEL_TOKEN:-}" ]; then
+        log_warn "VERCEL_TOKEN環境変数が設定されていません"
+        log_warn "GitHub ActionsではSecretsから自動的に設定されます"
+    else
+        log_dry_run "VERCEL_TOKEN: ✅ 設定済み"
+    fi
+    
+    # プロジェクト設定の確認
+    if [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+        log_warn "VERCEL_ORG_IDまたはVERCEL_PROJECT_IDが設定されていません"
+        log_warn "GitHub ActionsではSecretsから自動的に設定されます"
+    else
+        log_dry_run "Vercelプロジェクト設定: ✅ 確認済み"
+    fi
+    
+    # プロジェクトリンクの確認
+    if [ ! -f ".vercel/project.json" ]; then
+        log_warn "Vercelプロジェクトがローカルにリンクされていません"
+        log_warn "CI環境では環境変数で設定されるため問題ありません"
+    else
+        log_dry_run "Vercelプロジェクトリンク: ✅ 確認済み"
+    fi
+    
+    # 環境変数の取得テスト（実際には取得しない）
+    log_dry_run "Vercel環境変数取得コマンドの検証:"
+    log_dry_run "  vercel env pull --environment=production .env.deploy --token=\$VERCEL_TOKEN"
+    log_dry_run "Vercel環境変数取得: ✅ 検証完了（実際の取得はスキップ）"
+}
+
+# 環境変数ファイルの転送
+transfer_env_file() {
+    if [ "$DRY_RUN" = "true" ]; then
+        verify_vercel_env
+        log_dry_run "環境変数ファイルの転送をスキップ（ドライラン）"
+        return 0
+    fi
+    
+    log_step "環境変数ファイルを転送しています..."
+    
+    local env_file=".env.deploy"
+    
+    if [ ! -f "$env_file" ]; then
+        log_warn "環境変数ファイル $env_file が見つかりません"
+        log_info "VM上で環境変数を手動で設定する必要があります"
+        return 0
+    fi
+    
+    # 一時ファイルとして転送
+    if gcloud compute scp "$env_file" \
+        "$DEPLOY_USER@$INSTANCE_NAME:/tmp/.env.deploy" \
+        --zone="$ZONE" \
+        --project="$PROJECT_ID"; then
+        log_info "環境変数ファイルを転送しました"
+    else
+        log_warn "環境変数ファイルの転送に失敗しました"
+        log_info "VM上で環境変数を手動で設定する必要があります"
+    fi
+}
+
+# VMへのデプロイ
+deploy_to_vm() {
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "VMへのデプロイをシミュレート（ドライラン）"
+        log_dry_run "以下のパラメータでデプロイを実行予定:"
+        log_dry_run "  - インスタンス: $INSTANCE_NAME"
+        log_dry_run "  - ゾーン: $ZONE"
+        log_dry_run "  - プロジェクト: $PROJECT_ID"
+        log_dry_run "  - デプロイ先: $REMOTE_PATH"
+        log_dry_run "  - リポジトリ: $REPO_URL"
+        log_dry_run "  - ブランチ: $BRANCH"
+        log_dry_run "  - ステージ: $DEPLOY_STAGE"
+        log_dry_run "実際のVM操作はスキップされました"
+        return 0
+    fi
+    
+    log_step "VMにGitベースデプロイを実行しています..."
+    
+    # デプロイコマンドの作成
+    local deploy_script=$(cat <<'DEPLOY_SCRIPT'
+set -e
+
+# 環境情報表示
+echo "=============================="
+echo "デプロイ情報:"
+echo "=============================="
+echo "現在のユーザー: $USER"
+echo "デプロイ先: REMOTE_PATH_VAR"
+echo "リポジトリ: REPO_URL_VAR"
+echo "ブランチ: BRANCH_VAR"
+echo "ステージ: DEPLOY_STAGE_VAR"
+echo "=============================="
+
+# 既存のアプリ停止
+echo "既存のアプリケーションを停止中..."
+if command -v pm2 &>/dev/null; then
+    pm2 delete tumiki-proxy-server 2>/dev/null || true
+    pm2 kill 2>/dev/null || true
+fi
+
+# Node.js環境確認
+if ! command -v node &>/dev/null; then
+    echo "エラー: Node.jsがインストールされていません"
+    exit 1
+fi
+
+if ! command -v pnpm &>/dev/null; then
+    echo "エラー: pnpmがインストールされていません"
+    exit 1
+fi
+
+if ! command -v pm2 &>/dev/null; then
+    echo "エラー: PM2がインストールされていません"
+    exit 1
+fi
+
+# Git設定
+export GIT_TERMINAL_PROMPT=0
+git config --global user.name "CI Deploy Bot"
+git config --global user.email "ci@tumiki.local"
+
+# SSHキー確認
+if [ ! -f ~/.ssh/id_rsa ] && [ ! -f ~/.ssh/id_ed25519 ]; then
+    echo "エラー: SSHキーが設定されていません"
+    exit 1
+fi
+
+# GitHubへのSSH接続テスト
+echo "GitHubへの接続を確認中..."
+if ! ssh -o StrictHostKeyChecking=no -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    echo "エラー: GitHubへのSSH接続に失敗しました"
+    exit 1
+fi
+
+# リポジトリのクローンまたは更新
+if [ -d "REMOTE_PATH_VAR/.git" ]; then
+    echo "リポジトリを更新中..."
+    cd REMOTE_PATH_VAR
+    git fetch origin
+    git reset --hard origin/BRANCH_VAR
+    git clean -fd
+    echo "リポジトリを更新しました: $(git log -1 --format='%h %s')"
+else
+    echo "リポジトリをクローン中..."
+    if [ -d "REMOTE_PATH_VAR" ]; then
+        rm -rf REMOTE_PATH_VAR
+    fi
+    mkdir -p /opt
+    git clone -b BRANCH_VAR REPO_URL_VAR REMOTE_PATH_VAR
+    cd REMOTE_PATH_VAR
+    echo "リポジトリをクローンしました: $(git log -1 --format='%h %s')"
+fi
+
+# 作業ディレクトリに移動
+cd REMOTE_PATH_VAR
+
+# 環境変数ファイルの配置
+if [ -f /tmp/.env.deploy ]; then
+    echo "環境変数ファイルを配置中..."
+    cp /tmp/.env.deploy apps/proxyServer/.env
+    rm -f /tmp/.env.deploy
+else
+    echo "警告: 環境変数ファイルが見つかりません"
+    if [ ! -f apps/proxyServer/.env ]; then
+        echo "エラー: .envファイルが存在しません"
+        exit 1
+    fi
+fi
+
+# 依存関係インストール
+echo "=============================="
+echo "依存関係をインストール中..."
+echo "=============================="
+export NODE_OPTIONS='--max-old-space-size=2048'
+pnpm install --frozen-lockfile || pnpm install
+
+# 必要なパッケージのビルド
+echo "=============================="
+echo "パッケージをビルド中..."
+echo "=============================="
+
+cd packages/db
+pnpm db:generate
+pnpm build
+
+cd ../../tooling/tsup-config
+pnpm build
+
+# ProxyServerビルド
+cd ../../apps/proxyServer
+echo "=============================="
+echo "ProxyServerをビルド中..."
+echo "=============================="
+pnpm build
+
+# PM2で起動
+echo "=============================="
+echo "アプリケーションを起動中..."
+echo "=============================="
+export NODE_ENV=DEPLOY_STAGE_VAR
+pnpm pm2:start
+pm2 save
+
+# ステータス表示
+echo "=============================="
+echo "デプロイ完了！"
+echo "=============================="
+pm2 status
+echo ""
+echo "ログ確認: pm2 logs tumiki-proxy-server"
+echo "再起動: pm2 restart tumiki-proxy-server"
+DEPLOY_SCRIPT
+)
+    
+    # 変数置換
+    deploy_script="${deploy_script//REMOTE_PATH_VAR/$REMOTE_PATH}"
+    deploy_script="${deploy_script//REPO_URL_VAR/$REPO_URL}"
+    deploy_script="${deploy_script//BRANCH_VAR/$BRANCH}"
+    deploy_script="${deploy_script//DEPLOY_STAGE_VAR/$DEPLOY_STAGE}"
+    
+    # SSHでデプロイスクリプト実行
+    if ! gcloud compute ssh "$DEPLOY_USER@$INSTANCE_NAME" \
+        --zone="$ZONE" \
+        --project="$PROJECT_ID" \
+        --command="$deploy_script"; then
+        log_error "デプロイスクリプトの実行に失敗しました"
+        exit 1
+    fi
+}
+
+# 外部IPアドレス取得
+get_external_ip() {
+    local external_ip
+    external_ip=$(gcloud compute instances describe "$INSTANCE_NAME" \
+        --zone="$ZONE" \
+        --format='get(networkInterfaces[0].accessConfigs[0].natIP)' \
+        --project="$PROJECT_ID")
+    echo "$external_ip"
+}
+
+# メイン処理
+main() {
+    log_info "CI/CDデプロイメントを開始します..."
+    log_info "=============================="
+    
+    check_prerequisites
+    transfer_env_file
+    deploy_to_vm
+    
+    if [ "$DRY_RUN" = "true" ]; then
+        log_dry_run "=============================="
+        log_dry_run "ドライラン完了"
+        log_dry_run "=============================="
+        log_dry_run "実際のデプロイは実行されませんでした"
+        log_dry_run "スクリプトの検証が正常に完了しました"
+        return 0
+    fi
+    
+    # デプロイ結果表示
+    local external_ip
+    external_ip=$(get_external_ip)
+    
+    log_info "✅ デプロイメント完了!"
+    log_info ""
+    log_info "=============================="
+    log_info "アクセス情報:"
+    log_info "=============================="
+    log_info "環境: $DEPLOY_STAGE"
+    log_info "URL: http://$external_ip:8080"
+    log_info "ヘルスチェック: http://$external_ip:8080/health"
+    log_info "=============================="
+    
+    # GitHub Actions出力（実行環境がGitHub Actionsの場合）
+    if [ -n "${GITHUB_OUTPUT:-}" ]; then
+        echo "deployment_url=http://$external_ip:8080" >> "$GITHUB_OUTPUT"
+        echo "health_check_url=http://$external_ip:8080/health" >> "$GITHUB_OUTPUT"
+    fi
+}
+
+# スクリプト実行
+main "$@"

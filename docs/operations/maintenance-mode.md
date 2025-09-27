@@ -181,7 +181,7 @@ echo "Vercelへデプロイ中..."
 vercel --prod
 
 echo "ProxyServerへデプロイ中..."
-pnpm deploy:gce
+./apps/proxyServer/deploy-to-gce.sh
 
 echo "メンテナンスモードが有効になりました"
 ```
@@ -206,7 +206,7 @@ echo "Vercelへデプロイ中..."
 vercel --prod
 
 echo "ProxyServerへデプロイ中..."
-pnpm deploy:gce
+./apps/proxyServer/deploy-to-gce.sh
 
 echo "メンテナンスモードが終了しました"
 ```
