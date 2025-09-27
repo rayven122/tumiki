@@ -1,4 +1,5 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-empty-function */
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // getAuthConfig関数をテストするためにモジュールを直接インポート
 // process.exitをモックするためにテスト用の関数を作成
@@ -87,14 +88,16 @@ describe("getAuthConfig - 環境変数処理", () => {
       type: "service_account",
       project_id: "test-project",
       private_key_id: "key-id",
-      private_key: "-----BEGIN PRIVATE KEY-----\\ntest\\n-----END PRIVATE KEY-----\\n",
+      private_key:
+        "-----BEGIN PRIVATE KEY-----\\ntest\\n-----END PRIVATE KEY-----\\n",
       client_email: "test@test-project.iam.gserviceaccount.com",
       client_id: "123456789",
       auth_uri: "https://accounts.google.com/o/oauth2/auth",
       token_uri: "https://oauth2.googleapis.com/token",
     };
 
-    process.env.GOOGLE_SERVICE_ACCOUNT_KEY = JSON.stringify(validServiceAccount);
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY =
+      JSON.stringify(validServiceAccount);
 
     const result = getAuthConfig();
 
@@ -112,7 +115,7 @@ describe("getAuthConfig - 環境変数処理", () => {
     // JSON.parseエラーによる例外をキャッチできることを確認
     expect(() => {
       try {
-        JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+        JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "");
       } catch (error) {
         throw error;
       }
@@ -163,7 +166,7 @@ describe("getAuthConfig - 環境変数処理", () => {
 
   test("認証情報が何も設定されていない場合ADCにフォールバック", () => {
     // console.errorがテスト内で直接呼ばれるように実装
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = getAuthConfig();
 
@@ -171,7 +174,7 @@ describe("getAuthConfig - 環境変数処理", () => {
       type: "adc",
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      "No explicit credentials provided, using Application Default Credentials"
+      "No explicit credentials provided, using Application Default Credentials",
     );
 
     consoleSpy.mockRestore();
@@ -185,7 +188,8 @@ describe("getAuthConfig - 環境変数処理", () => {
       client_email: "test@test-project.iam.gserviceaccount.com",
     };
 
-    process.env.GOOGLE_SERVICE_ACCOUNT_KEY = JSON.stringify(validServiceAccount);
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY =
+      JSON.stringify(validServiceAccount);
     process.env.GOOGLE_OAUTH_CLIENT_ID = "client-id";
     process.env.GOOGLE_OAUTH_CLIENT_SECRET = "client-secret";
     process.env.GOOGLE_OAUTH_REFRESH_TOKEN = "refresh-token";

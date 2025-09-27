@@ -453,7 +453,7 @@ export class CalendarApi {
     };
   }
 
-  private handleApiError(
+  protected handleApiError(
     error: unknown,
     context?: { calendarId?: string; eventId?: string },
   ): CalendarError {

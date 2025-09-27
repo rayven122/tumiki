@@ -1,4 +1,5 @@
-import { describe, expect, test, vi } from "vitest";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
+import { describe, expect, test } from "vitest";
 
 import { CalendarApi } from "../../api/calendar/index.js";
 import {
@@ -10,7 +11,6 @@ import {
   QuotaExceededError,
   ValidationError,
 } from "../../lib/errors/index.js";
-import type { GoogleAuth } from "../../api/auth/index.js";
 
 // CalendarApiクラスのhandleApiErrorメソッドをテストするためのヘルパー
 class TestableCalendarApi extends CalendarApi {
@@ -23,10 +23,10 @@ class TestableCalendarApi extends CalendarApi {
 }
 
 describe("CalendarApi - handleApiError", () => {
-  const mockAuth: GoogleAuth = {
+  const mockAuth = {
     type: "api-key",
     apiKey: "test-key",
-  };
+  } as any;
 
   const api = new TestableCalendarApi(mockAuth);
 
@@ -66,7 +66,9 @@ describe("CalendarApi - handleApiError", () => {
     });
 
     expect(result).toBeInstanceOf(EventNotFoundError);
-    expect(result.message).toBe("Event not found: event-456 in calendar calendar-123");
+    expect(result.message).toBe(
+      "Event not found: event-456 in calendar calendar-123",
+    );
   });
 
   test("404エラー - カレンダーIDのみの場合CalendarNotFoundErrorを返す", () => {
@@ -159,10 +161,10 @@ describe("CalendarApi - handleApiError", () => {
 });
 
 describe("CalendarApi - mapCalendarListEntry", () => {
-  const mockAuth: GoogleAuth = {
+  const mockAuth = {
     type: "api-key",
     apiKey: "test-key",
-  };
+  } as any;
 
   const api = new TestableCalendarApi(mockAuth);
 
@@ -172,7 +174,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
     };
 
     expect(() => (api as any).mapCalendarListEntry(item)).toThrow(
-      "Invalid calendar entry: missing required fields (id: undefined, summary: Test Calendar)"
+      "Invalid calendar entry: missing required fields (id: undefined, summary: Test Calendar)",
     );
   });
 
@@ -182,7 +184,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
     };
 
     expect(() => (api as any).mapCalendarListEntry(item)).toThrow(
-      "Invalid calendar entry: missing required fields (id: calendar-123, summary: undefined)"
+      "Invalid calendar entry: missing required fields (id: calendar-123, summary: undefined)",
     );
   });
 
@@ -190,7 +192,7 @@ describe("CalendarApi - mapCalendarListEntry", () => {
     const item = {};
 
     expect(() => (api as any).mapCalendarListEntry(item)).toThrow(
-      "Invalid calendar entry: missing required fields (id: undefined, summary: undefined)"
+      "Invalid calendar entry: missing required fields (id: undefined, summary: undefined)",
     );
   });
 
@@ -234,10 +236,10 @@ describe("CalendarApi - mapCalendarListEntry", () => {
 });
 
 describe("CalendarApi - mapCalendarEvent", () => {
-  const mockAuth: GoogleAuth = {
+  const mockAuth = {
     type: "api-key",
     apiKey: "test-key",
-  };
+  } as any;
 
   const api = new TestableCalendarApi(mockAuth);
 
@@ -469,5 +471,218 @@ describe("CalendarApi - mapCalendarEvent", () => {
     expect(result.attendees).toStrictEqual([]);
     expect(result.reminders?.overrides).toStrictEqual([]);
     expect(result.attachments).toStrictEqual([]);
+  });
+
+  test("conferenceData.createRequestの完全なマッピングテスト", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        createRequest: {
+          requestId: "req-123",
+          conferenceSolutionKey: {
+            type: "hangoutsMeet",
+          },
+          status: {
+            statusCode: "success",
+          },
+        },
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.createRequest).toStrictEqual({
+      requestId: "req-123",
+      conferenceSolutionKey: {
+        type: "hangoutsMeet",
+      },
+      status: {
+        statusCode: "success",
+      },
+    });
+  });
+
+  test("conferenceData.createRequestのstatus無しパターン", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        createRequest: {
+          requestId: "req-123",
+          conferenceSolutionKey: {
+            type: "hangoutsMeet",
+          },
+          // statusなし
+        },
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.createRequest).toStrictEqual({
+      requestId: "req-123",
+      conferenceSolutionKey: {
+        type: "hangoutsMeet",
+      },
+      status: undefined,
+    });
+  });
+
+  test("conferenceData.createRequestが無効な場合undefinedになる", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        createRequest: {
+          // requestIdまたはconferenceSolutionKey.typeが欠けている
+          requestId: "req-123",
+          // conferenceSolutionKeyなし
+        },
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.createRequest).toBeUndefined();
+  });
+
+  test("conferenceData.conferenceSolutionの完全なマッピングテスト", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        conferenceSolution: {
+          key: {
+            type: "hangoutsMeet",
+          },
+          name: "Google Meet",
+          iconUri: "https://example.com/icon.png",
+        },
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.conferenceSolution).toStrictEqual({
+      key: {
+        type: "hangoutsMeet",
+      },
+      name: "Google Meet",
+      iconUri: "https://example.com/icon.png",
+    });
+  });
+
+  test("conferenceData.conferenceSolutionの最小限パターン", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        conferenceSolution: {
+          key: {
+            type: "hangoutsMeet",
+          },
+          // nameとiconUriなし
+        },
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.conferenceSolution).toStrictEqual({
+      key: {
+        type: "hangoutsMeet",
+      },
+      name: undefined,
+      iconUri: undefined,
+    });
+  });
+
+  test("conferenceData.conferenceSolutionが無効な場合undefinedになる", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        conferenceSolution: {
+          // key.typeが欠けている
+          key: {},
+        },
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.conferenceSolution).toBeUndefined();
+  });
+
+  test("conferenceDataの追加プロパティマッピングテスト", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      conferenceData: {
+        conferenceId: "meet-id-123",
+        signature: "signature-123",
+        notes: "Meeting notes",
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.conferenceData?.conferenceId).toBe("meet-id-123");
+    expect(result.conferenceData?.signature).toBe("signature-123");
+    expect(result.conferenceData?.notes).toBe("Meeting notes");
+  });
+
+  test("originalStartTimeマッピングテスト", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      originalStartTime: {
+        date: "2023-01-01",
+        dateTime: "2023-01-01T10:00:00Z",
+        timeZone: "UTC",
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.originalStartTime).toStrictEqual({
+      date: "2023-01-01",
+      dateTime: "2023-01-01T10:00:00Z",
+      timeZone: "UTC",
+    });
+  });
+
+  test("sourceマッピングテスト（完全な情報）", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      source: {
+        url: "https://example.com/source",
+        title: "Source Title",
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.source).toStrictEqual({
+      url: "https://example.com/source",
+      title: "Source Title",
+    });
+  });
+
+  test("sourceマッピングテスト（不完全な情報）", () => {
+    const item = {
+      id: "event-123",
+      summary: "Test Event",
+      source: {
+        url: "https://example.com/source",
+        // titleなし
+      },
+    };
+
+    const result = (api as any).mapCalendarEvent(item);
+
+    expect(result.source).toBeUndefined();
   });
 });

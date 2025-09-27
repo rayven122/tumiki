@@ -22,7 +22,7 @@ export const toggleTool = async ({ ctx, input }: ToggleToolInput) => {
     },
   });
 
-  if (!instance || !instance.toolGroup) {
+  if (!instance?.toolGroup) {
     throw new Error("サーバーインスタンスが見つかりません");
   }
 
