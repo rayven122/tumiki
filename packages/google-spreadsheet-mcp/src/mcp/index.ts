@@ -6,8 +6,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import type { AuthConfig } from "../api/index.js";
-import { GoogleSheetsClient } from "../api/index.js";
+import type { AuthConfig, GoogleSheetsClient } from "../api/index.js";
+import { createGoogleSheetsClient } from "../api/index.js";
 import { SERVER_INFO, TOOL_DESCRIPTIONS } from "./constants.js";
 import { handleToolCall } from "./handlers.js";
 import {
@@ -34,17 +34,16 @@ export const createServer = (config: AuthConfig): Server => {
     },
   });
 
-  const client = new GoogleSheetsClient(config);
+  let client: GoogleSheetsClient | null = null;
 
   // Initialize client on server start
-  let isInitialized = false;
   const ensureInitialized = async () => {
-    if (!isInitialized) {
-      const result = await client.initialize();
+    if (!client) {
+      const result = await createGoogleSheetsClient(config);
       if (!result.ok) {
         throw result.error;
       }
-      isInitialized = true;
+      client = result.value;
     }
   };
 
@@ -117,6 +116,18 @@ export const createServer = (config: AuthConfig): Server => {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     await ensureInitialized();
 
+    if (!client) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Error: Client not initialized",
+          },
+        ],
+        isError: true,
+      };
+    }
+
     const result = await handleToolCall(client, request);
 
     if (!result.ok) {
@@ -153,7 +164,7 @@ export const runServer = async (config: AuthConfig): Promise<void> => {
 };
 
 // Helper function to convert Zod schema to JSON Schema
-interface JsonSchema {
+type JsonSchema = {
   type?: string | string[];
   properties?: Record<string, JsonSchema>;
   required?: string[];
@@ -162,7 +173,7 @@ interface JsonSchema {
   enum?: unknown[];
   default?: unknown;
   description?: string;
-}
+};
 
 const zodToJsonSchema = (schema: z.ZodTypeAny): JsonSchema => {
   if (schema instanceof z.ZodObject) {

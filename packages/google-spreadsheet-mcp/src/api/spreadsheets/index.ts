@@ -27,19 +27,15 @@ import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 import { err, ok } from "../../lib/result/index.js";
 import { handleApiError } from "../../utils/errorHandler.js";
 
-export class SpreadsheetsApi {
-  private sheets: sheets_v4.Sheets;
+export const createSpreadsheetsApi = (auth: GoogleAuth) => {
+  // Google Sheets API クライアントが期待する認証オブジェクト型との不一致のため型アサーションを使用
+  const sheets = google.sheets({ version: "v4", auth: auth as GoogleApiAuth });
 
-  constructor(auth: GoogleAuth) {
-    // Google Sheets API クライアントが期待する認証オブジェクト型との不一致のため型アサーションを使用
-    this.sheets = google.sheets({ version: "v4", auth: auth as GoogleApiAuth });
-  }
-
-  async getSpreadsheet(
+  const getSpreadsheet = async (
     spreadsheetId: SpreadsheetId,
-  ): Promise<Result<Spreadsheet, GoogleSheetsApiError>> {
+  ): Promise<Result<Spreadsheet, GoogleSheetsApiError>> => {
     try {
-      const response = await this.sheets.spreadsheets.get({
+      const response = await sheets.spreadsheets.get({
         spreadsheetId,
         includeGridData: false,
       });
@@ -81,12 +77,12 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "get spreadsheet");
     }
-  }
+  };
 
-  async createSpreadsheet(
+  const createSpreadsheet = async (
     title: string,
     sheetTitles?: string[],
-  ): Promise<Result<CreateSpreadsheetResponse, GoogleSheetsApiError>> {
+  ): Promise<Result<CreateSpreadsheetResponse, GoogleSheetsApiError>> => {
     try {
       const requestBody: sheets_v4.Schema$Spreadsheet = {
         properties: {
@@ -107,7 +103,7 @@ export class SpreadsheetsApi {
         }));
       }
 
-      const response = await this.sheets.spreadsheets.create({
+      const response = await sheets.spreadsheets.create({
         requestBody,
       });
 
@@ -122,17 +118,16 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "create spreadsheet");
     }
-  }
+  };
 
-  async getValues(
+  const getValues = async (
     spreadsheetId: SpreadsheetId,
     range: Range,
-  ): Promise<Result<CellValue[][], GoogleSheetsApiError>> {
+  ): Promise<Result<CellValue[][], GoogleSheetsApiError>> => {
     try {
-      const response = await this.sheets.spreadsheets.values.get({
+      const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range,
-        valueRenderOption: "UNFORMATTED_VALUE",
       });
 
       const values = response.data.values ?? [];
@@ -140,15 +135,15 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "get values");
     }
-  }
+  };
 
-  async updateValues(
+  const updateValues = async (
     spreadsheetId: SpreadsheetId,
     range: Range,
     values: CellValue[][],
-  ): Promise<Result<UpdateResponse, GoogleSheetsApiError>> {
+  ): Promise<Result<UpdateResponse, GoogleSheetsApiError>> => {
     try {
-      const response = await this.sheets.spreadsheets.values.update({
+      const response = await sheets.spreadsheets.values.update({
         spreadsheetId,
         range,
         valueInputOption: "USER_ENTERED",
@@ -170,18 +165,18 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "update values");
     }
-  }
+  };
 
-  async batchUpdate(
+  const batchUpdate = async (
     request: BatchUpdateRequest,
-  ): Promise<Result<BatchUpdateResponse, GoogleSheetsApiError>> {
+  ): Promise<Result<BatchUpdateResponse, GoogleSheetsApiError>> => {
     try {
       const data = request.ranges.map((item) => ({
         range: item.range,
         values: item.values,
       }));
 
-      const response = await this.sheets.spreadsheets.values.batchUpdate({
+      const response = await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: request.spreadsheetId,
         requestBody: {
           valueInputOption: "USER_ENTERED",
@@ -209,15 +204,15 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "batch update");
     }
-  }
+  };
 
-  async appendRows(
+  const appendRows = async (
     spreadsheetId: SpreadsheetId,
     range: Range,
     values: CellValue[][],
-  ): Promise<Result<UpdateResponse, GoogleSheetsApiError>> {
+  ): Promise<Result<UpdateResponse, GoogleSheetsApiError>> => {
     try {
-      const response = await this.sheets.spreadsheets.values.append({
+      const response = await sheets.spreadsheets.values.append({
         spreadsheetId,
         range,
         valueInputOption: "USER_ENTERED",
@@ -240,14 +235,14 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "append rows");
     }
-  }
+  };
 
-  async clearValues(
+  const clearValues = async (
     spreadsheetId: SpreadsheetId,
     range: Range,
-  ): Promise<Result<{ clearedRange: Range }, GoogleSheetsApiError>> {
+  ): Promise<Result<{ clearedRange: Range }, GoogleSheetsApiError>> => {
     try {
-      const response = await this.sheets.spreadsheets.values.clear({
+      const response = await sheets.spreadsheets.values.clear({
         spreadsheetId,
         range,
       });
@@ -258,16 +253,16 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "clear values");
     }
-  }
+  };
 
-  async addSheet(
+  const addSheet = async (
     spreadsheetId: SpreadsheetId,
     title: string,
     rowCount = 1000,
     columnCount = 26,
-  ): Promise<Result<Sheet, GoogleSheetsApiError>> {
+  ): Promise<Result<Sheet, GoogleSheetsApiError>> => {
     try {
-      const response = await this.sheets.spreadsheets.batchUpdate({
+      const response = await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: {
           requests: [
@@ -301,20 +296,24 @@ export class SpreadsheetsApi {
         index: addedSheet.index ?? 0,
         rowCount: addedSheet.gridProperties?.rowCount ?? rowCount,
         columnCount: addedSheet.gridProperties?.columnCount ?? columnCount,
+        frozen: {
+          rows: addedSheet.gridProperties?.frozenRowCount ?? undefined,
+          columns: addedSheet.gridProperties?.frozenColumnCount ?? undefined,
+        },
       };
 
       return ok(sheet);
     } catch (error) {
       return handleApiError(error, "add sheet");
     }
-  }
+  };
 
-  async deleteSheet(
+  const deleteSheet = async (
     spreadsheetId: SpreadsheetId,
     sheetId: SheetId,
-  ): Promise<Result<void, GoogleSheetsApiError>> {
+  ): Promise<Result<void, GoogleSheetsApiError>> => {
     try {
-      await this.sheets.spreadsheets.batchUpdate({
+      await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: {
           requests: [
@@ -331,5 +330,19 @@ export class SpreadsheetsApi {
     } catch (error) {
       return handleApiError(error, "delete sheet");
     }
-  }
-}
+  };
+
+  return {
+    getSpreadsheet,
+    createSpreadsheet,
+    getValues,
+    updateValues,
+    batchUpdate,
+    appendRows,
+    clearValues,
+    addSheet,
+    deleteSheet,
+  };
+};
+
+export type SpreadsheetsApi = ReturnType<typeof createSpreadsheetsApi>;

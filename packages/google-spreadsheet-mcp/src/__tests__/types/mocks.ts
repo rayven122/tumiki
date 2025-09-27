@@ -4,7 +4,7 @@ import type { Mock } from "vitest";
 /**
  * Google Sheets API のモック型定義
  */
-export interface MockSheetsApi {
+export type MockSheetsApi = {
   spreadsheets: {
     get: Mock<
       [sheets_v4.Params$Resource$Spreadsheets$Get],
@@ -41,12 +41,12 @@ export interface MockSheetsApi {
       >;
     };
   };
-}
+};
 
 /**
  * Google Drive API のモック型定義
  */
-export interface MockDriveApi {
+export type MockDriveApi = {
   permissions: {
     create: Mock<
       [drive_v3.Params$Resource$Permissions$Create],
@@ -64,13 +64,13 @@ export interface MockDriveApi {
       Promise<{ data: drive_v3.Schema$FileList }>
     >;
   };
-}
+};
 
 /**
  * Google Auth のモック型定義
  */
-export interface MockGoogleAuth {
+export type MockGoogleAuth = {
   fromJSON: Mock<[unknown], unknown>;
   OAuth2: Mock<[string, string, string], unknown>;
   GoogleAuth: Mock<[unknown], { getClient: () => Promise<unknown> }>;
-}
+};

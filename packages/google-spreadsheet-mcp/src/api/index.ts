@@ -1,46 +1,40 @@
 import type { AuthenticationError } from "../lib/errors/index.js";
 import type { Result } from "../lib/result/index.js";
 import type { GoogleAuth } from "./auth/index.js";
+import type { DriveApi } from "./drive/index.js";
+import type { SpreadsheetsApi } from "./spreadsheets/index.js";
 import type { AuthConfig } from "./types.js";
-import { err } from "../lib/result/index.js";
+import { err, ok } from "../lib/result/index.js";
 import { createAuthClient } from "./auth/index.js";
-import { DriveApi } from "./drive/index.js";
-import { SpreadsheetsApi } from "./spreadsheets/index.js";
+import { createDriveApi } from "./drive/index.js";
+import { createSpreadsheetsApi } from "./spreadsheets/index.js";
 
-export class GoogleSheetsClient {
-  private auth: GoogleAuth | null = null;
-  private spreadsheetsApi: SpreadsheetsApi | null = null;
-  private driveApi: DriveApi | null = null;
-
-  constructor(private config: AuthConfig) {}
-
-  async initialize(): Promise<Result<void, AuthenticationError>> {
-    const authResult = await createAuthClient(this.config);
-    if (!authResult.ok) {
-      return err(authResult.error);
-    }
-
-    this.auth = authResult.value;
-    this.spreadsheetsApi = new SpreadsheetsApi(this.auth);
-    this.driveApi = new DriveApi(this.auth);
-
-    return { ok: true, value: undefined };
+export const createGoogleSheetsClient = async (
+  config: AuthConfig,
+): Promise<Result<GoogleSheetsClient, AuthenticationError>> => {
+  const authResult = await createAuthClient(config);
+  if (!authResult.ok) {
+    return err(authResult.error);
   }
 
-  get spreadsheets(): SpreadsheetsApi {
-    if (!this.spreadsheetsApi) {
-      throw new Error("Client not initialized. Call initialize() first.");
-    }
-    return this.spreadsheetsApi;
-  }
+  const auth = authResult.value;
+  const spreadsheets = createSpreadsheetsApi(auth);
+  const drive = createDriveApi(auth);
 
-  get drive(): DriveApi {
-    if (!this.driveApi) {
-      throw new Error("Client not initialized. Call initialize() first.");
-    }
-    return this.driveApi;
-  }
-}
+  return ok({
+    auth,
+    spreadsheets,
+    drive,
+    config,
+  });
+};
+
+export type GoogleSheetsClient = {
+  auth: GoogleAuth;
+  spreadsheets: SpreadsheetsApi;
+  drive: DriveApi;
+  config: AuthConfig;
+};
 
 export * from "./types.js";
 export * from "./auth/index.js";

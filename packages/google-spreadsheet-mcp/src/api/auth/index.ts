@@ -3,7 +3,6 @@ import { google } from "googleapis";
 
 import type { Result } from "../../lib/result/index.js";
 import type { AuthConfig, ServiceAccountCredentials } from "../types.js";
-import type { GoogleApiAuth } from "../types/google-api.js";
 /*
  * Google認証関連のany型使用について：
  *

@@ -24,7 +24,7 @@ export type AuthConfig =
       type: "adc"; // Application Default Credentials
     };
 
-export interface ServiceAccountCredentials {
+export type ServiceAccountCredentials = {
   type: string;
   project_id: string;
   private_key_id: string;
@@ -36,10 +36,10 @@ export interface ServiceAccountCredentials {
   auth_provider_x509_cert_url: string;
   client_x509_cert_url: string;
   universe_domain?: string;
-}
+};
 
 // Spreadsheet Types
-export interface Spreadsheet {
+export type Spreadsheet = {
   spreadsheetId: SpreadsheetId;
   title: string;
   locale?: string;
@@ -48,9 +48,9 @@ export interface Spreadsheet {
   createdTime?: string;
   modifiedTime?: string;
   url: string;
-}
+};
 
-export interface Sheet {
+export type Sheet = {
   sheetId: SheetId;
   title: string;
   index: number;
@@ -60,66 +60,66 @@ export interface Sheet {
     rows?: number;
     columns?: number;
   };
-}
+};
 
 // Cell and Range Types
 export type CellValue = string | number | boolean | null;
-export interface CellData {
+export type CellData = {
   value: CellValue;
   formula?: string;
   note?: string;
   hyperlink?: string;
-}
+};
 
-export interface RangeData {
+export type RangeData = {
   range: Range;
   values: CellValue[][];
-}
+};
 
-export interface BatchUpdateRequest {
+export type BatchUpdateRequest = {
   spreadsheetId: SpreadsheetId;
   ranges: {
     range: Range;
     values: CellValue[][];
   }[];
-}
+};
 
 // Sharing Types
-export interface Permission {
+export type Permission = {
   type: "user" | "group" | "domain" | "anyone";
   role: "owner" | "writer" | "reader" | "commenter";
   email?: Email;
   domain?: string;
-}
+};
 
-export interface ShareRequest {
+export type ShareRequest = {
   spreadsheetId: SpreadsheetId;
   permission: Permission;
   sendNotificationEmails?: boolean;
-}
+};
 
 // Response Types
-export interface CreateSpreadsheetResponse {
+export type CreateSpreadsheetResponse = {
   spreadsheetId: SpreadsheetId;
   spreadsheetUrl: string;
-}
+};
 
-export interface UpdateResponse {
+export type UpdateResponse = {
   updatedCells: number;
   updatedRows: number;
   updatedColumns: number;
   updatedRange: Range;
-}
+};
 
-export interface BatchUpdateResponse {
+export type BatchUpdateResponse = {
   totalUpdatedCells: number;
   responses: UpdateResponse[];
-}
+};
 
 // Filter and Sort Types
 export type SortOrder = "ASCENDING" | "DESCENDING";
 
-export interface FilterCriteria {
+export type FilterCriteria = {
   columnIndex: number;
   condition: {
     type:
@@ -135,25 +135,25 @@ export interface FilterCriteria {
       | "DATE_EQUALS";
     value: CellValue;
   };
-}
+};
 
 // Format Types
-export interface CellFormat {
+export type CellFormat = {
   backgroundColor?: Color;
   textFormat?: TextFormat;
   horizontalAlignment?: "LEFT" | "CENTER" | "RIGHT";
   verticalAlignment?: "TOP" | "MIDDLE" | "BOTTOM";
   wrapStrategy?: "OVERFLOW_CELL" | "WRAP" | "CLIP";
-}
+};
 
-export interface Color {
+export type Color = {
   red: number; // 0-1
   green: number; // 0-1
   blue: number; // 0-1
   alpha?: number; // 0-1
-}
+};
 
-export interface TextFormat {
+export type TextFormat = {
   foregroundColor?: Color;
   fontFamily?: string;
   fontSize?: number;
@@ -161,4 +161,4 @@ export interface TextFormat {
   italic?: boolean;
   strikethrough?: boolean;
   underline?: boolean;
-}
+};

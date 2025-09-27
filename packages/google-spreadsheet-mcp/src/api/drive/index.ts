@@ -28,17 +28,13 @@ import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 import { err, ok } from "../../lib/result/index.js";
 import { handleApiError } from "../../utils/errorHandler.js";
 
-export class DriveApi {
-  private drive: drive_v3.Drive;
+export const createDriveApi = (auth: GoogleAuth) => {
+  // Google Drive API クライアントが期待する認証オブジェクト型との不一致のため型アサーションを使用
+  const drive = google.drive({ version: "v3", auth: auth as GoogleApiAuth });
 
-  constructor(auth: GoogleAuth) {
-    // Google Drive API クライアントが期待する認証オブジェクト型との不一致のため型アサーションを使用
-    this.drive = google.drive({ version: "v3", auth: auth as GoogleApiAuth });
-  }
-
-  async shareSpreadsheet(
+  const shareSpreadsheet = async (
     request: ShareRequest,
-  ): Promise<Result<{ permissionId: string }, GoogleSheetsApiError>> {
+  ): Promise<Result<{ permissionId: string }, GoogleSheetsApiError>> => {
     try {
       const {
         spreadsheetId,
@@ -73,7 +69,7 @@ export class DriveApi {
         permissionBody.domain = permission.domain;
       }
 
-      const response = await this.drive.permissions.create({
+      const response = await drive.permissions.create({
         fileId: spreadsheetId,
         requestBody: permissionBody,
         sendNotificationEmail: sendNotificationEmails,
@@ -88,13 +84,13 @@ export class DriveApi {
     } catch (error) {
       return handleApiError(error, "share spreadsheet");
     }
-  }
+  };
 
-  async getPermissions(
+  const getPermissions = async (
     spreadsheetId: SpreadsheetId,
-  ): Promise<Result<Permission[], GoogleSheetsApiError>> {
+  ): Promise<Result<Permission[], GoogleSheetsApiError>> => {
     try {
-      const response = await this.drive.permissions.list({
+      const response = await drive.permissions.list({
         fileId: spreadsheetId,
         fields: "permissions(id,type,role,emailAddress,domain)",
       });
@@ -116,14 +112,14 @@ export class DriveApi {
     } catch (error) {
       return handleApiError(error, "get permissions");
     }
-  }
+  };
 
-  async removePermission(
+  const removePermission = async (
     spreadsheetId: SpreadsheetId,
     permissionId: string,
-  ): Promise<Result<void, GoogleSheetsApiError>> {
+  ): Promise<Result<void, GoogleSheetsApiError>> => {
     try {
-      await this.drive.permissions.delete({
+      await drive.permissions.delete({
         fileId: spreadsheetId,
         permissionId,
       });
@@ -132,22 +128,20 @@ export class DriveApi {
     } catch (error) {
       return handleApiError(error, "remove permission");
     }
-  }
+  };
 
-  async listSpreadsheets(
+  const listSpreadsheets = async (
     query?: string,
   ): Promise<
     Result<{ id: SpreadsheetId; name: string }[], GoogleSheetsApiError>
-  > {
+  > => {
     try {
-      const mimeType = "application/vnd.google-apps.spreadsheet";
-      let q = `mimeType='${mimeType}'`;
-
-      if (query && query.trim() !== "") {
+      let q = "mimeType='application/vnd.google-apps.spreadsheet'";
+      if (query) {
         q += ` and name contains '${query}'`;
       }
 
-      const response = await this.drive.files.list({
+      const response = await drive.files.list({
         q,
         fields: "files(id, name)",
         orderBy: "modifiedTime desc",
@@ -167,5 +161,14 @@ export class DriveApi {
     } catch (error) {
       return handleApiError(error, "list spreadsheets");
     }
-  }
-}
+  };
+
+  return {
+    shareSpreadsheet,
+    getPermissions,
+    removePermission,
+    listSpreadsheets,
+  };
+};
+
+export type DriveApi = ReturnType<typeof createDriveApi>;
