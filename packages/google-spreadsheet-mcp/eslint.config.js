@@ -10,7 +10,7 @@ export default [
   {
     languageOptions: {
       parserOptions: {
-        project: true
+        project: true,
       },
     },
     rules: {

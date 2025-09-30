@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { GoogleAuth } from "../../api/auth/index.js";
+import type { DriveApi } from "../../api/drive/index.js";
 import type {
   Email,
   Permission,
@@ -9,7 +10,7 @@ import type {
   SpreadsheetId,
 } from "../../api/types.js";
 import type { MockDriveApi } from "../types/mocks.js";
-import { DriveApi } from "../../api/drive/index.js";
+import { createDriveApi } from "../../api/drive/index.js";
 import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 
 // Googleライブラリのモック
@@ -36,16 +37,17 @@ describe("DriveApi", () => {
     } as unknown as MockDriveApi;
 
     vi.mocked(google.drive).mockReturnValue(mockDrive as any);
-    driveApi = new DriveApi(mockAuth);
+    driveApi = createDriveApi(mockAuth);
   });
 
-  describe("constructor", () => {
-    test("正常系: DriveApiインスタンスを作成する", () => {
+  describe("createDriveApi", () => {
+    test("正常系: DriveApiを作成する", () => {
       expect(google.drive).toHaveBeenCalledWith({
         version: "v3",
         auth: mockAuth,
       });
-      expect(driveApi).toBeInstanceOf(DriveApi);
+      expect(driveApi).toBeDefined();
+      expect(typeof driveApi.shareSpreadsheet).toBe("function");
     });
   });
 

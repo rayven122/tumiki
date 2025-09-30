@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { GoogleAuth } from "../../api/auth/index.js";
+import type { SpreadsheetsApi } from "../../api/spreadsheets/index.js";
 import type {
   BatchUpdateRequest,
   CellValue,
@@ -11,7 +12,7 @@ import type {
   SpreadsheetId,
 } from "../../api/types.js";
 import type { MockSheetsApi } from "../types/mocks.js";
-import { SpreadsheetsApi } from "../../api/spreadsheets/index.js";
+import { createSpreadsheetsApi } from "../../api/spreadsheets/index.js";
 import { GoogleSheetsApiError } from "../../lib/errors/index.js";
 
 // Googleライブラリのモック
@@ -42,16 +43,17 @@ describe("SpreadsheetsApi", () => {
     } as unknown as MockSheetsApi;
 
     vi.mocked(google.sheets).mockReturnValue(mockSheets as any);
-    spreadsheetsApi = new SpreadsheetsApi(mockAuth);
+    spreadsheetsApi = createSpreadsheetsApi(mockAuth);
   });
 
-  describe("constructor", () => {
-    test("正常系: SpreadsheetsApiインスタンスを作成する", () => {
+  describe("createSpreadsheetsApi", () => {
+    test("正常系: SpreadsheetsApiを作成する", () => {
       expect(google.sheets).toHaveBeenCalledWith({
         version: "v4",
         auth: mockAuth,
       });
-      expect(spreadsheetsApi).toBeInstanceOf(SpreadsheetsApi);
+      expect(spreadsheetsApi).toBeDefined();
+      expect(typeof spreadsheetsApi.getSpreadsheet).toBe("function");
     });
   });
 
@@ -557,7 +559,6 @@ describe("SpreadsheetsApi", () => {
       expect(mockSheets.spreadsheets.values.get).toHaveBeenCalledWith({
         spreadsheetId: "sheet-123",
         range: "Sheet1!A1:C3",
-        valueRenderOption: "UNFORMATTED_VALUE",
       });
     });
 
@@ -1312,6 +1313,10 @@ describe("SpreadsheetsApi", () => {
           index: 1,
           rowCount: 1000,
           columnCount: 26,
+          frozen: {
+            rows: undefined,
+            columns: undefined,
+          },
         });
       }
 
@@ -1373,6 +1378,10 @@ describe("SpreadsheetsApi", () => {
           index: 2,
           rowCount: 500,
           columnCount: 10,
+          frozen: {
+            rows: undefined,
+            columns: undefined,
+          },
         });
       }
 

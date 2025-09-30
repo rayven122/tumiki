@@ -137,7 +137,7 @@ export const createDriveApi = (auth: GoogleAuth) => {
   > => {
     try {
       let q = "mimeType='application/vnd.google-apps.spreadsheet'";
-      if (query) {
+      if (query && query.trim() !== "") {
         q += ` and name contains '${query}'`;
       }
 

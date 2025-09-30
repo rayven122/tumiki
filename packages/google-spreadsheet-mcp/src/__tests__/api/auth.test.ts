@@ -16,7 +16,10 @@ describe("createAuthClient", () => {
 
   describe("service-account認証", () => {
     test("正常系: サービスアカウント認証クライアントを作成する", async () => {
-      const mockAuth = { type: "service-account" };
+      const mockAuth = {
+        type: "service-account",
+        getAccessToken: vi.fn(),
+      };
       const mockFromJSON = vi.fn().mockReturnValue(mockAuth);
       vi.mocked(google.auth).fromJSON = mockFromJSON;
 
@@ -207,7 +210,10 @@ describe("createAuthClient", () => {
 
   describe("adc認証", () => {
     test("正常系: Application Default Credentials認証クライアントを作成する", async () => {
-      const mockClient = { type: "adc-client" };
+      const mockClient = {
+        type: "adc-client",
+        getAccessToken: vi.fn(),
+      };
       const mockGoogleAuth = {
         getClient: vi.fn().mockResolvedValue(mockClient),
       };

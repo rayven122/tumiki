@@ -9,9 +9,9 @@ import { err } from "../lib/result/index.js";
  * @returns GoogleSheetsApiError を含む Result.err
  */
 export const handleApiError = (error: unknown, operation: string) => {
-  const googleError = error as GoogleApiError;
-  const status = googleError.response?.status;
-  const data = googleError.response?.data;
+  const googleError = error as GoogleApiError | null | undefined;
+  const status = googleError?.response?.status;
+  const data = googleError?.response?.data;
   const message = error instanceof Error ? error.message : "Unknown error";
 
   return err(
