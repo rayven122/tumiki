@@ -2,9 +2,7 @@
 import { describe, expect, test } from "vitest";
 
 import { createCalendarApi } from "../../api/calendar/index.js";
-import {
-  CalendarError,
-} from "../../lib/errors/index.js";
+import { CalendarError } from "../../lib/errors/index.js";
 
 describe("関数型Calendar API - エラーハンドリング", () => {
   const mockAuth = {
@@ -16,7 +14,6 @@ describe("関数型Calendar API - エラーハンドリング", () => {
 
   describe("API エラーの適切な変換", () => {
     test("404エラーがCalendarNotFoundErrorに変換される（カレンダーID指定時）", async () => {
-
       // getCalendarを呼び出してエラーレスポンスを確認
       // 実際のAPIコールではなく、エラーハンドリングロジックをテスト
       const result = await api.getCalendar("nonexistent-calendar");

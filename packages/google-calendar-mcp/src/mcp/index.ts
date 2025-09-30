@@ -7,8 +7,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import type { AuthConfig } from "../api/index.js";
-import { createGoogleCalendarClient, type createCalendarApi } from "../api/index.js";
+import type { AuthConfig, createCalendarApi } from "../api/index.js";
+import { createGoogleCalendarClient } from "../api/index.js";
 import { SERVER_INFO, TOOL_DESCRIPTIONS } from "./constants.js";
 import { handleToolCall } from "./handlers.js";
 import {

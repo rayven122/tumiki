@@ -100,11 +100,11 @@ const mapCalendarSettings = (item: calendar_v3.Schema$CalendarListEntry) => ({
 
 const mapDefaultReminders = (item: calendar_v3.Schema$CalendarListEntry) => {
   if (!item.defaultReminders) return undefined;
-  
+
   const validReminders = item.defaultReminders.filter(
     (reminder) => reminder.method && typeof reminder.minutes === "number",
   );
-  
+
   return validReminders.length > 0
     ? validReminders.map((reminder) => ({
         method: reminder.method!,
@@ -113,16 +113,19 @@ const mapDefaultReminders = (item: calendar_v3.Schema$CalendarListEntry) => {
     : undefined;
 };
 
-const mapNotificationSettings = (item: calendar_v3.Schema$CalendarListEntry) => {
+const mapNotificationSettings = (
+  item: calendar_v3.Schema$CalendarListEntry,
+) => {
   if (!item.notificationSettings) return undefined;
-  
-  const notifications = item.notificationSettings.notifications
-    ?.filter((notif) => notif.type && notif.method)
-    .map((notif) => ({
-      type: notif.type!,
-      method: notif.method!,
-    })) || [];
-    
+
+  const notifications =
+    item.notificationSettings.notifications
+      ?.filter((notif) => notif.type && notif.method)
+      .map((notif) => ({
+        type: notif.type!,
+        method: notif.method!,
+      })) || [];
+
   return notifications.length > 0 ? { notifications } : undefined;
 };
 
@@ -136,7 +139,7 @@ const mapCalendarListEntry = (
     defaultReminders: mapDefaultReminders(item),
     notificationSettings: mapNotificationSettings(item),
   };
-};;
+};
 
 const mapCalendarEntry = (
   item: calendar_v3.Schema$Calendar,
@@ -158,7 +161,9 @@ const mapEventBasicInfo = (item: calendar_v3.Schema$Event) => ({
   location: item.location || undefined,
 });
 
-const mapEventDateTime = (dateTime: calendar_v3.Schema$EventDateTime | undefined) => {
+const mapEventDateTime = (
+  dateTime: calendar_v3.Schema$EventDateTime | undefined,
+) => {
   if (!dateTime) return undefined;
   return {
     date: dateTime.date || undefined,
@@ -175,9 +180,9 @@ const mapEventTimes = (item: calendar_v3.Schema$Event) => ({
 
 const mapEventAttendees = (item: calendar_v3.Schema$Event) => {
   if (!item.attendees) return undefined;
-  
+
   const validAttendees = item.attendees.filter((attendee) => attendee.email);
-  
+
   return validAttendees.length > 0
     ? validAttendees.map((attendee) => ({
         email: attendee.email!,
@@ -197,20 +202,19 @@ const mapEventAttendees = (item: calendar_v3.Schema$Event) => {
 
 const mapEventReminders = (item: calendar_v3.Schema$Event) => {
   if (!item.reminders) return undefined;
-  
+
   const overrides = item.reminders.overrides
     ?.filter(
-      (override) =>
-        override.method && typeof override.minutes === "number",
+      (override) => override.method && typeof override.minutes === "number",
     )
     .map((override) => ({
       method: override.method!,
       minutes: override.minutes!,
     }));
-    
+
   return {
     useDefault: item.reminders.useDefault || undefined,
-    overrides: (overrides && overrides.length > 0) ? overrides : undefined,
+    overrides: overrides && overrides.length > 0 ? overrides : undefined,
   };
 };
 
@@ -261,9 +265,11 @@ const mapEventSource = (item: calendar_v3.Schema$Event) => {
 
 const mapEventAttachments = (item: calendar_v3.Schema$Event) => {
   if (!item.attachments) return undefined;
-  
-  const validAttachments = item.attachments.filter((attachment) => attachment.fileUrl);
-  
+
+  const validAttachments = item.attachments.filter(
+    (attachment) => attachment.fileUrl,
+  );
+
   return validAttachments.length > 0
     ? validAttachments.map((attachment) => ({
         fileUrl: attachment.fileUrl!,
@@ -277,22 +283,23 @@ const mapEventAttachments = (item: calendar_v3.Schema$Event) => {
 
 const mapConferenceData = (item: calendar_v3.Schema$Event) => {
   if (!item.conferenceData) return undefined;
-  
-  const createRequest = item.conferenceData.createRequest?.requestId &&
+
+  const createRequest =
+    item.conferenceData.createRequest?.requestId &&
     item.conferenceData.createRequest?.conferenceSolutionKey?.type
-    ? {
-        requestId: item.conferenceData.createRequest.requestId,
-        conferenceSolutionKey: {
-          type: item.conferenceData.createRequest.conferenceSolutionKey.type,
-        },
-        status: item.conferenceData.createRequest.status?.statusCode
-          ? {
-              statusCode: item.conferenceData.createRequest.status.statusCode,
-            }
-          : undefined,
-      }
-    : undefined;
-    
+      ? {
+          requestId: item.conferenceData.createRequest.requestId,
+          conferenceSolutionKey: {
+            type: item.conferenceData.createRequest.conferenceSolutionKey.type,
+          },
+          status: item.conferenceData.createRequest.status?.statusCode
+            ? {
+                statusCode: item.conferenceData.createRequest.status.statusCode,
+              }
+            : undefined,
+        }
+      : undefined;
+
   const entryPoints = item.conferenceData.entryPoints
     ?.filter((ep) => ep.entryPointType)
     .map((ep) => ({
@@ -305,7 +312,7 @@ const mapConferenceData = (item: calendar_v3.Schema$Event) => {
       passcode: ep.passcode || undefined,
       password: ep.password || undefined,
     }));
-    
+
   const conferenceSolution = item.conferenceData.conferenceSolution?.key?.type
     ? {
         key: {
@@ -315,10 +322,11 @@ const mapConferenceData = (item: calendar_v3.Schema$Event) => {
         iconUri: item.conferenceData.conferenceSolution.iconUri || undefined,
       }
     : undefined;
-    
+
   return {
     createRequest,
-    entryPoints: (entryPoints && entryPoints.length > 0) ? entryPoints : undefined,
+    entryPoints:
+      entryPoints && entryPoints.length > 0 ? entryPoints : undefined,
     conferenceSolution,
     conferenceId: item.conferenceData.conferenceId || undefined,
     signature: item.conferenceData.signature || undefined,
@@ -339,7 +347,7 @@ const mapCalendarEvent = (item: calendar_v3.Schema$Event): CalendarEvent => {
     attachments: mapEventAttachments(item),
     conferenceData: mapConferenceData(item),
   };
-};;
+};
 
 const handleApiError = (
   error: unknown,
@@ -575,4 +583,3 @@ export const createCalendarApi = (config: CalendarApiConfig) => {
     getColors,
   };
 };
-

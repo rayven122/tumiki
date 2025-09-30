@@ -42,10 +42,7 @@ export const getEvent = async (
   client: ReturnType<typeof createCalendarApi>,
   input: GetEventInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.getEvent(
-    input.calendarId,
-    input.eventId,
-  );
+  const result = await client.getEvent(input.calendarId, input.eventId);
 
   if (!result.ok) {
     return err(result.error);
@@ -79,15 +76,10 @@ export const updateEvent = async (
   const { calendarId, eventId, sendNotifications, sendUpdates, ...eventData } =
     input;
 
-  const result = await client.updateEvent(
-    calendarId,
-    eventId,
-    eventData,
-    {
-      sendNotifications,
-      sendUpdates,
-    },
-  );
+  const result = await client.updateEvent(calendarId, eventId, eventData, {
+    sendNotifications,
+    sendUpdates,
+  });
 
   if (!result.ok) {
     return err(result.error);
@@ -100,14 +92,10 @@ export const deleteEvent = async (
   client: ReturnType<typeof createCalendarApi>,
   input: DeleteEventInput,
 ): Promise<Result<unknown, CalendarError>> => {
-  const result = await client.deleteEvent(
-    input.calendarId,
-    input.eventId,
-    {
-      sendNotifications: input.sendNotifications,
-      sendUpdates: input.sendUpdates,
-    },
-  );
+  const result = await client.deleteEvent(input.calendarId, input.eventId, {
+    sendNotifications: input.sendNotifications,
+    sendUpdates: input.sendUpdates,
+  });
 
   if (!result.ok) {
     return err(result.error);

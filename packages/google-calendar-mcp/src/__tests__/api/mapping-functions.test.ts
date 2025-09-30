@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
-import { describe, expect, test } from "vitest";
 import type { calendar_v3 } from "googleapis";
+import { describe, expect, test } from "vitest";
 
 import { createCalendarApi } from "../../api/calendar/index.js";
 
@@ -143,7 +143,7 @@ describe("マッピング関数のリファクタリング - 基本テスト", (
       ];
 
       // emailがない出席者の確認
-      const validAttendees = mockAttendees.filter(a => a.email);
+      const validAttendees = mockAttendees.filter((a) => a.email);
       expect(validAttendees).toHaveLength(1);
       expect(validAttendees[0]?.email).toBe("test1@example.com");
     });
@@ -192,7 +192,8 @@ describe("マッピング関数のリファクタリング - 基本テスト", (
 
       // 有効なoverrideのみをフィルター
       const validOverrides = mockReminders.overrides?.filter(
-        (override: any) => override.method && typeof override.minutes === "number"
+        (override: any) =>
+          override.method && typeof override.minutes === "number",
       );
       expect(validOverrides).toHaveLength(1);
       expect(validOverrides?.[0]?.method).toBe("email");
@@ -235,7 +236,9 @@ describe("マッピング関数のリファクタリング - 基本テスト", (
       ];
 
       // 有効なエントリーポイントのみをフィルター
-      const validEntryPoints = mockEntryPoints.filter(ep => ep.entryPointType);
+      const validEntryPoints = mockEntryPoints.filter(
+        (ep) => ep.entryPointType,
+      );
       expect(validEntryPoints).toHaveLength(1);
       expect(validEntryPoints[0]?.entryPointType).toBe("video");
     });

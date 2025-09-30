@@ -11,8 +11,10 @@ import { createCalendarApi } from "./calendar/index.js";
  * @returns Promise resolving to Result containing the calendar API functions or error
  */
 export const createGoogleCalendarClient = async (
-  config: AuthConfig
-): Promise<Result<ReturnType<typeof createCalendarApi>, AuthenticationError>> => {
+  config: AuthConfig,
+): Promise<
+  Result<ReturnType<typeof createCalendarApi>, AuthenticationError>
+> => {
   const authResult = await createAuthClient(config);
   if (!authResult.ok) {
     return err(authResult.error);
