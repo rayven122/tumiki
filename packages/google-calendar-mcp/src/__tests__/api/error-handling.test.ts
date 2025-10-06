@@ -19,8 +19,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
       const result = await api.getCalendar("nonexistent-calendar");
 
       // エラーが適切に処理されることを確認
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         // CalendarNotFoundErrorまたは適切なエラータイプが返されることを期待
         expect(result.error).toBeInstanceOf(CalendarError);
       }
@@ -29,8 +29,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
     test("404エラーがEventNotFoundErrorに変換される（イベントID指定時）", async () => {
       const result = await api.getEvent("calendar-id", "nonexistent-event");
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         expect(result.error).toBeInstanceOf(CalendarError);
       }
     });
@@ -39,8 +39,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
       const result = await api.listCalendars();
 
       // 403エラーの場合の適切な処理を確認
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         expect(result.error).toBeInstanceOf(CalendarError);
       }
     });
@@ -48,8 +48,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
     test("429エラーがQuotaExceededErrorに変換される", async () => {
       const result = await api.listEvents("calendar-id");
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         expect(result.error).toBeInstanceOf(CalendarError);
       }
     });
@@ -63,8 +63,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
 
       const result = await api.createEvent("calendar-id", invalidEvent);
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         expect(result.error).toBeInstanceOf(CalendarError);
       }
     });
@@ -72,8 +72,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
     test("その他のHTTPエラーがApiErrorに変換される", async () => {
       const result = await api.getColors();
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         expect(result.error).toBeInstanceOf(CalendarError);
       }
     });
@@ -81,8 +81,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
     test("ネットワークエラーが適切に処理される", async () => {
       const result = await api.listCalendars();
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         expect(result.error).toBeInstanceOf(CalendarError);
       }
     });
@@ -93,8 +93,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
       const calendarId = "test-calendar-id";
       const result = await api.getCalendar(calendarId);
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         // authClient.request is not a function エラーが期待される動作
         expect(result.error.message).toBeDefined();
         expect(typeof result.error.message).toBe("string");
@@ -106,8 +106,8 @@ describe("関数型Calendar API - エラーハンドリング", () => {
       const eventId = "test-event-id";
       const result = await api.getEvent(calendarId, eventId);
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
         // authClient.request is not a function エラーが期待される動作
         expect(result.error.message).toBeDefined();
         expect(typeof result.error.message).toBe("string");
@@ -131,11 +131,11 @@ describe("関数型Calendar API - エラーハンドリング", () => {
     test("Result型を返すことを確認", async () => {
       const result = await api.listCalendars();
 
-      expect(result).toHaveProperty("ok");
-      expect(typeof result.ok).toBe("boolean");
+      expect(result).toHaveProperty("success");
+      expect(typeof result.success).toBe("boolean");
 
-      if (result.ok) {
-        expect(result).toHaveProperty("value");
+      if (result.success) {
+        expect(result).toHaveProperty("data");
       } else {
         expect(result).toHaveProperty("error");
       }

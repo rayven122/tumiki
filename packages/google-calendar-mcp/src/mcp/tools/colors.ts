@@ -1,8 +1,8 @@
 import type { createCalendarApi } from "../../api/index.js";
 import type { CalendarError } from "../../lib/errors/index.js";
-import type { Result } from "../../lib/result/index.js";
+import type { Result } from "../../lib/result.js";
 import type { GetColorsInput } from "../types.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 export const getColors = async (
   client: ReturnType<typeof createCalendarApi>,
@@ -10,9 +10,9 @@ export const getColors = async (
 ): Promise<Result<unknown, CalendarError>> => {
   const result = await client.getColors();
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
-  return ok(result.value);
+  return ok(result.data);
 };

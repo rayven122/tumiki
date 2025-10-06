@@ -37,10 +37,10 @@ export const createServer = (config: AuthConfig): Server => {
   const ensureInitialized = async () => {
     if (!isInitialized) {
       const result = await createGoogleCalendarClient(config);
-      if (!result.ok) {
+      if (!result.success) {
         throw result.error;
       }
-      client = result.value;
+      client = result.data;
       isInitialized = true;
     }
   };
@@ -100,7 +100,7 @@ export const createServer = (config: AuthConfig): Server => {
 
     const result = await handleToolCall(client, request);
 
-    if (!result.ok) {
+    if (!result.success) {
       return {
         content: [
           {
@@ -116,7 +116,7 @@ export const createServer = (config: AuthConfig): Server => {
       content: [
         {
           type: "text",
-          text: JSON.stringify(result.value, null, 2),
+          text: JSON.stringify(result.data, null, 2),
         },
       ],
     };

@@ -1,7 +1,7 @@
 import type { calendar_v3 } from "googleapis";
 import { google } from "googleapis";
 
-import type { Result } from "../../lib/result/index.js";
+import type { Result } from "../../lib/result.js";
 import type { GoogleAuth } from "../auth/index.js";
 import type {
   CalendarColors,
@@ -19,7 +19,7 @@ import {
   QuotaExceededError,
   ValidationError,
 } from "../../lib/errors/index.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 export type CalendarApiConfig = {
   auth: GoogleAuth;

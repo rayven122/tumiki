@@ -9,24 +9,24 @@ import {
   QuotaExceededError,
   ValidationError,
 } from "../../lib/errors/index.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 describe("Calendar API - 基本テスト", () => {
   test("成功したResult型の基本動作確認", () => {
     const successResult = ok({ events: [], nextPageToken: "token" });
 
-    expect(successResult.ok).toBe(true);
-    if (successResult.ok) {
-      expect(successResult.value.events).toEqual([]);
-      expect(successResult.value.nextPageToken).toBe("token");
+    expect(successResult.success).toBe(true);
+    if (successResult.success) {
+      expect(successResult.data.events).toEqual([]);
+      expect(successResult.data.nextPageToken).toBe("token");
     }
   });
 
   test("エラー状況でのResult型動作確認", () => {
     const errorResult = err(new CalendarNotFoundError("calendar-123"));
 
-    expect(errorResult.ok).toBe(false);
-    if (!errorResult.ok) {
+    expect(errorResult.success).toBe(false);
+    if (!errorResult.success) {
       expect(errorResult.error).toBeInstanceOf(CalendarNotFoundError);
       expect(errorResult.error.message).toBe(
         "Calendar not found: calendar-123",

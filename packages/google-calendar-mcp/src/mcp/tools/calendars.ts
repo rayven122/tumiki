@@ -1,8 +1,8 @@
 import type { createCalendarApi } from "../../api/index.js";
 import type { CalendarError } from "../../lib/errors/index.js";
-import type { Result } from "../../lib/result/index.js";
+import type { Result } from "../../lib/result.js";
 import type { GetCalendarInput, ListCalendarsInput } from "../types.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 export const listCalendars = async (
   client: ReturnType<typeof createCalendarApi>,
@@ -15,14 +15,14 @@ export const listCalendars = async (
     showHidden: input.showHidden,
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
   return ok({
-    calendars: result.value.calendars,
-    nextPageToken: result.value.nextPageToken,
-    totalCalendars: result.value.calendars.length,
+    calendars: result.data.calendars,
+    nextPageToken: result.data.nextPageToken,
+    totalCalendars: result.data.calendars.length,
   });
 };
 
@@ -32,9 +32,9 @@ export const getCalendar = async (
 ): Promise<Result<unknown, CalendarError>> => {
   const result = await client.getCalendar(input.calendarId);
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
-  return ok(result.value);
+  return ok(result.data);
 };

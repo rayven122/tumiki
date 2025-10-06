@@ -1,6 +1,6 @@
 import type { createCalendarApi } from "../../api/index.js";
 import type { CalendarError } from "../../lib/errors/index.js";
-import type { Result } from "../../lib/result/index.js";
+import type { Result } from "../../lib/result.js";
 import type {
   CreateEventInput,
   DeleteEventInput,
@@ -10,7 +10,7 @@ import type {
   SearchEventsInput,
   UpdateEventInput,
 } from "../types.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 export const listEvents = async (
   client: ReturnType<typeof createCalendarApi>,
@@ -27,14 +27,14 @@ export const listEvents = async (
     showDeleted: input.showDeleted,
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
   return ok({
-    events: result.value.events,
-    nextPageToken: result.value.nextPageToken,
-    totalEvents: result.value.events.length,
+    events: result.data.events,
+    nextPageToken: result.data.nextPageToken,
+    totalEvents: result.data.events.length,
   });
 };
 
@@ -44,11 +44,11 @@ export const getEvent = async (
 ): Promise<Result<unknown, CalendarError>> => {
   const result = await client.getEvent(input.calendarId, input.eventId);
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
-  return ok(result.value);
+  return ok(result.data);
 };
 
 export const createEvent = async (
@@ -62,11 +62,11 @@ export const createEvent = async (
     sendUpdates,
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
-  return ok(result.value);
+  return ok(result.data);
 };
 
 export const updateEvent = async (
@@ -81,11 +81,11 @@ export const updateEvent = async (
     sendUpdates,
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
-  return ok(result.value);
+  return ok(result.data);
 };
 
 export const deleteEvent = async (
@@ -97,7 +97,7 @@ export const deleteEvent = async (
     sendUpdates: input.sendUpdates,
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
@@ -117,13 +117,13 @@ export const searchEvents = async (
     orderBy: "startTime",
   });
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
   return ok({
-    events: result.value.events,
-    totalEvents: result.value.events.length,
+    events: result.data.events,
+    totalEvents: result.data.events.length,
     searchQuery: input.q,
   });
 };
@@ -141,9 +141,9 @@ export const getFreeBusy = async (
 
   const result = await client.getFreeBusy(freeBusyRequest);
 
-  if (!result.ok) {
+  if (!result.success) {
     return err(result.error);
   }
 
-  return ok(result.value);
+  return ok(result.data);
 };

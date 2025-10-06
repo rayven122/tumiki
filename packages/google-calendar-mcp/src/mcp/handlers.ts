@@ -2,9 +2,9 @@ import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
 
 import type { createCalendarApi } from "../api/index.js";
 import type { CalendarError } from "../lib/errors/index.js";
-import type { Result } from "../lib/result/index.js";
+import type { Result } from "../lib/result.js";
 import { ValidationError } from "../lib/errors/index.js";
-import { err } from "../lib/result/index.js";
+import { err } from "../lib/result.js";
 import { getCalendar, listCalendars } from "./tools/calendars.js";
 import { getColors } from "./tools/colors.js";
 import {

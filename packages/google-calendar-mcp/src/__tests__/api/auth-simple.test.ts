@@ -2,23 +2,23 @@
 import { describe, expect, test } from "vitest";
 
 import { AuthenticationError } from "../../lib/errors/index.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 describe("認証ロジック - 基本テスト", () => {
   test("成功したResult型の基本動作確認", () => {
     const successResult = ok("success");
 
-    expect(successResult.ok).toBe(true);
-    if (successResult.ok) {
-      expect(successResult.value).toBe("success");
+    expect(successResult.success).toBe(true);
+    if (successResult.success) {
+      expect(successResult.data).toBe("success");
     }
   });
 
   test("失敗したResult型の基本動作確認", () => {
     const errorResult = err(new AuthenticationError("test error"));
 
-    expect(errorResult.ok).toBe(false);
-    if (!errorResult.ok) {
+    expect(errorResult.success).toBe(false);
+    if (!errorResult.success) {
       expect(errorResult.error).toBeInstanceOf(AuthenticationError);
       expect(errorResult.error.message).toBe("test error");
     }

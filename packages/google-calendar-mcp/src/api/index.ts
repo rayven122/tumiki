@@ -1,7 +1,7 @@
 import type { AuthenticationError } from "../lib/errors/index.js";
-import type { Result } from "../lib/result/index.js";
+import type { Result } from "../lib/result.js";
 import type { AuthConfig } from "./types.js";
-import { err, ok } from "../lib/result/index.js";
+import { err, ok } from "../lib/result.js";
 import { createAuthClient } from "./auth/index.js";
 import { createCalendarApi } from "./calendar/index.js";
 
@@ -16,11 +16,11 @@ export const createGoogleCalendarClient = async (
   Result<ReturnType<typeof createCalendarApi>, AuthenticationError>
 > => {
   const authResult = await createAuthClient(config);
-  if (!authResult.ok) {
+  if (!authResult.success) {
     return err(authResult.error);
   }
 
-  const calendarApi = createCalendarApi({ auth: authResult.value });
+  const calendarApi = createCalendarApi({ auth: authResult.data });
   return ok(calendarApi);
 };
 

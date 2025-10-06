@@ -29,6 +29,18 @@
     "linear-server": {
       "type": "sse",
       "url": "https://mcp.linear.app/sse"
+    },
+    "google-calendar": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["packages/google-calendar-mcp/dist/index.js"],
+      "env": {
+        "GOOGLE_SERVICE_ACCOUNT_KEY": "${GOOGLE_SERVICE_ACCOUNT_KEY}",
+        "GOOGLE_OAUTH_CLIENT_ID": "${GOOGLE_OAUTH_CLIENT_ID}",
+        "GOOGLE_OAUTH_CLIENT_SECRET": "${GOOGLE_OAUTH_CLIENT_SECRET}",
+        "GOOGLE_OAUTH_REFRESH_TOKEN": "${GOOGLE_OAUTH_REFRESH_TOKEN}",
+        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}"
+      }
     }
   }
 }

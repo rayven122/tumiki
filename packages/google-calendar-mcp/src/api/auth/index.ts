@@ -1,9 +1,9 @@
 import { GoogleAuth } from "google-auth-library";
 
-import type { Result } from "../../lib/result/index.js";
+import type { Result } from "../../lib/result.js";
 import type { AuthConfig } from "../types.js";
 import { AuthenticationError } from "../../lib/errors/index.js";
-import { err, ok } from "../../lib/result/index.js";
+import { err, ok } from "../../lib/result.js";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar",
