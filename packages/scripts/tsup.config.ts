@@ -9,6 +9,7 @@ export default defineConfig({
     "src/cleanUserMcp.ts",
     "src/createUserMcpServer.ts",
     "src/migrateWaitingList.ts",
+    "src/security-scan-mcp.ts",
     "src/upsertAll.ts",
     "src/upsertMcpServers.ts",
     "src/upsertMcpTools.ts",

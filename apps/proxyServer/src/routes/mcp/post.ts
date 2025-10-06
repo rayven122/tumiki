@@ -77,6 +77,7 @@ export const handlePOSTRequest = async (
         req.authInfo!.userMcpServerInstanceId!,
         TransportType.STREAMABLE_HTTPS,
         isValidationMode,
+        sessionId, // セッションIDを渡す
       );
       await server.connect(transport);
     } catch {
