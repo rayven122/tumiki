@@ -378,21 +378,60 @@
 
 ## 6. 実行手順
 
-### 手動テスト
+### E2Eテスト（推奨）
+
+自動E2Eテストスクリプト`e2e-test.js`を使用して、全ツールを一括テストできます：
 
 ```bash
-# 1. 環境変数設定
-export GOOGLE_SERVICE_ACCOUNT_KEY="$(cat path/to/service-account-key.json)"
+# 1. プロジェクトルートで環境変数が設定されていることを確認
+# .envファイルにGOOGLE_SERVICE_ACCOUNT_KEYが設定されている必要があります
 
-# 2. MCPサーバー起動
+# 2. MCPサーバーをビルド（まだの場合）
 cd packages/google-calendar-mcp
-pnpm start
+pnpm build
 
-# 3. 各ツールを順番にテスト
-# Claude/Cursorから各テストケースを実行
+# 3. E2Eテストを実行
+node e2e-test.js
 ```
 
-### 自動テスト
+テストは以下の順序で自動実行されます：
+
+1. カレンダー一覧取得
+2. プライマリカレンダー詳細取得
+3. イベント一覧取得（今後7日間）
+4. テストイベント作成
+5. イベント詳細取得
+6. イベント更新
+7. イベント検索
+8. 空き時間取得
+9. 利用可能な色取得
+10. テストイベント削除
+
+### 認証テスト
+
+Service Account認証が正しく機能するかテストできます：
+
+```bash
+cd packages/google-calendar-mcp
+node test-auth.js
+```
+
+### 手動テスト
+
+個別のツールを手動でテストする場合：
+
+```bash
+# 1. MCPサーバー起動
+cd packages/google-calendar-mcp
+pnpm build
+node dist/index.js
+
+# 2. 別のターミナルでMCPクライアントから各ツールを実行
+# または test-mcp-manual.js を使用
+node test-mcp-manual.js
+```
+
+### ユニットテスト
 
 ```bash
 # ユニットテスト実行
