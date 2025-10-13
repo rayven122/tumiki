@@ -21,7 +21,8 @@ jobs:
   # 環境判定
   setup:
     name: 🔧 環境設定
-    runs-on: arc-runner-set
+    runs-on:
+      group: self-arc
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       stage: ${{ steps.env.outputs.stage }}
@@ -36,7 +37,8 @@ jobs:
     name: 🗄️ データベースマイグレーション
     needs: setup
     if: needs.setup.outputs.environment != 'preview'
-    runs-on: arc-runner-set
+    runs-on:
+      group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
       migration_applied: ${{ steps.migrate.outputs.migration_applied }}
@@ -78,7 +80,8 @@ jobs:
       always() &&
       needs.setup.result == 'success' &&
       (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
-    runs-on: arc-runner-set
+    runs-on:
+      group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
       vercel_url: ${{ steps.deploy.outputs.vercel_url }}
@@ -132,7 +135,8 @@ jobs:
       always() &&
       (needs.setup.outputs.is_pr != 'true' ||
        contains(github.event.pull_request.labels.*.name, 'test-slack'))
-    runs-on: arc-runner-set
+    runs-on:
+      group: self-arc
     outputs:
       deployment_url: ${{ needs.deploy.outputs.deployment_url }}
     steps:
