@@ -10,7 +10,9 @@ on:
 jobs:
   ci:
     name: 🚀 CI
-    runs-on: arc-runner-set
+    runs-on:
+      group: self-arc
+
     env:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
