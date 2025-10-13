@@ -18,8 +18,8 @@ jobs:
     #   github.event.pull_request.user.login == 'external-contributor' ||
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
-    runs-on: arc-runner-set
+    runs-on:
+      group: self-arc
     permissions:
       contents: read
       pull-requests: read
@@ -198,7 +198,8 @@ jobs:
     name: 🔧 Auto-Fix Issues
     needs: claude-review
     if: contains(github.event.pull_request.labels.*.name, 'auto-fix')
-    runs-on: ubuntu-latest
+    runs-on:
+      group: self-arc
 
     permissions:
       contents: write
@@ -214,7 +215,7 @@ jobs:
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: 🔧 Configure Git
         run: |
