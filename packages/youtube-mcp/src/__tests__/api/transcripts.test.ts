@@ -1,10 +1,10 @@
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { YoutubeApiKey } from "@/api/apiKey.js";
 import type {
   TranscriptMetadata,
   YouTubeApiCaptionItem,
   YouTubeApiResponse,
 } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { getTranscriptMetadata } from "@/api/transcripts/index.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";

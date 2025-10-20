@@ -5,16 +5,16 @@ import type {
   YouTubeApiChannelItem,
   YouTubeApiSearchItem,
 } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
+import type { Result } from "neverthrow";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { mapChannelResponse, mapSearchResult } from "@/api/mappers.js";
-import { err, isOk, mapResult } from "@/lib/result.js";
+import { err } from "neverthrow";
 
 export const getChannel = async (
   channelId: string,
   apiKey: YoutubeApiKey,
-): Promise<Result<ChannelDetails>> => {
+): Promise<Result<ChannelDetails, Error>> => {
   const result = await fetchApi<{
     items?: YouTubeApiChannelItem[];
   }>(
@@ -26,8 +26,8 @@ export const getChannel = async (
     apiKey,
   );
 
-  if (!isOk(result)) {
-    return result;
+  if (result.isErr()) {
+    return err(result.error as Error);
   }
 
   const { items } = result.value;
@@ -39,7 +39,7 @@ export const getChannel = async (
     return err(new YouTubeApiError(`Channel not found: ${channelId}`));
   }
 
-  return mapResult(result, () => mapChannelResponse(firstItem));
+  return result.map(() => mapChannelResponse(firstItem));
 };
 
 export const getChannelVideos = async (
@@ -47,7 +47,7 @@ export const getChannelVideos = async (
   apiKey: YoutubeApiKey,
   maxResults = 10,
   order: "date" | "rating" | "viewCount" | "title" = "date",
-): Promise<Result<SearchResult[]>> => {
+): Promise<Result<SearchResult[], Error>> => {
   const result = await fetchApi<{
     items?: YouTubeApiSearchItem[];
   }>(
@@ -62,7 +62,7 @@ export const getChannelVideos = async (
     apiKey,
   );
 
-  return mapResult(result, (data) => {
+  return result.map((data) => {
     if (!data.items) {
       return [];
     }

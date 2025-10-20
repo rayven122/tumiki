@@ -1,5 +1,5 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import { err, ok } from "@/lib/result.js";
+import { err, ok } from "@/__tests__/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { handleToolRequest } from "@/mcp/handlers.js";
 import { handleChannelTool } from "@/mcp/tools/channels.js";

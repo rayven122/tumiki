@@ -1,8 +1,8 @@
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { err, ok } from "@/__tests__/result.js";
 import { getTranscriptMetadata } from "@/api/transcripts/index.js";
-import { err, ok } from "@/lib/result.js";
 import { getTranscript } from "@/lib/ytdlp/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { handleTranscriptTool } from "@/mcp/tools/transcripts.js";

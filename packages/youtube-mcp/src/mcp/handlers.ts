@@ -1,7 +1,7 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { err } from "@/lib/result.js";
+import type { Result } from "neverthrow";
+import { err } from "neverthrow";
 
 import { YOU_TUBE_TOOL_NAMES } from "./constants.js";
 import { handleChannelTool } from "./tools/channels.js";
@@ -17,7 +17,7 @@ export const handleToolRequest = async (
   toolName: string,
   args: unknown,
   apiKey: YoutubeApiKey,
-): Promise<Result<CallToolResult>> => {
+): Promise<Result<CallToolResult, Error>> => {
   switch (toolName) {
     // Videos
     case YOU_TUBE_TOOL_NAMES.GET_VIDEO:

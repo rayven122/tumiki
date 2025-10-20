@@ -3,9 +3,9 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import type { TranscriptResponse } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
-import { err, ok } from "@/lib/result.js";
+import type { Result } from "neverthrow";
 import { parse as parseVtt } from "@plussub/srt-vtt-parser";
+import { err, ok } from "neverthrow";
 
 import type { VttParsedResult } from "./types.js";
 import { TranscriptError } from "./errors/index.js";
@@ -28,10 +28,10 @@ export const getTranscript = async (
   language: string,
   startTime?: number,
   endTime?: number,
-): Promise<Result<TranscriptResponse>> => {
+): Promise<Result<TranscriptResponse, Error>> => {
   // Check yt-dlp installation
   const installResult = await checkYtdlpInstalled();
-  if (!installResult.success) {
+  if (installResult.isErr()) {
     return err(installResult.error);
   }
 
@@ -46,7 +46,7 @@ export const getTranscript = async (
       language,
       outputPath,
     );
-    if (!downloadResult.success) {
+    if (downloadResult.isErr()) {
       return err(downloadResult.error);
     }
 

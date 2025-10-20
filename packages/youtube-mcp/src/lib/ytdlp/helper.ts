@@ -1,8 +1,8 @@
 import { spawn } from "child_process";
 import * as fs from "fs";
 import type { TranscriptSegment } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
-import { err, ok } from "@/lib/result.js";
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 
 import type { VttParsedResult } from "./types.js";
 import { TranscriptError } from "./errors/index.js";
@@ -128,13 +128,13 @@ export const downloadSubtitleWithYtdlp = async (
 ): Promise<Result<string, TranscriptError>> => {
   // Validate video ID
   const videoIdResult = validateVideoId(videoId);
-  if (!videoIdResult.success) {
-    return videoIdResult;
+  if (videoIdResult.isErr()) {
+    return err(videoIdResult.error);
   }
 
   // Validate language code
   const languageResult = validateLanguageCode(languageCode);
-  if (!languageResult.success) {
+  if (languageResult.isErr()) {
     return err(languageResult.error);
   }
 
