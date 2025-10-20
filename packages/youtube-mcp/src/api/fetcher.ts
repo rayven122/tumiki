@@ -1,8 +1,8 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
+import type { Result } from "neverthrow";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { NetworkError } from "@/lib/errors/index.js";
-import { err, ok } from "@/lib/result.js";
+import { err, ok } from "neverthrow";
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 

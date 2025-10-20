@@ -18,7 +18,7 @@ import { videoTools } from "./tools/videos.js";
 export const startServer = async () => {
   // 環境変数から YouTube API キーを取得して検証
   const apiKeyResult = youtubeApi.getApiKeyFromEnv(process.env);
-  if (!apiKeyResult.success) {
+  if (apiKeyResult.isErr()) {
     throw new McpError(ErrorCode.InvalidParams, apiKeyResult.error.message);
   }
   const apiKey = apiKeyResult.value;
@@ -57,7 +57,7 @@ export const startServer = async () => {
     const result = await handleToolRequest(toolName, args, apiKey);
 
     // Result型のエラーチェック
-    if (!result.success) {
+    if (result.isErr()) {
       throw new McpError(
         ErrorCode.InternalError,
         result.error instanceof Error

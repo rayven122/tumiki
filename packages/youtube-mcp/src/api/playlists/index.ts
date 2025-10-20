@@ -5,16 +5,16 @@ import type {
   YouTubeApiPlaylistItem,
   YouTubeApiPlaylistItemResource,
 } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
+import type { Result } from "neverthrow";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { mapPlaylistItem, mapPlaylistResponse } from "@/api/mappers.js";
-import { err, isOk, mapResult } from "@/lib/result.js";
+import { err } from "neverthrow";
 
 export const getPlaylist = async (
   playlistId: string,
   apiKey: YoutubeApiKey,
-): Promise<Result<PlaylistDetails>> => {
+): Promise<Result<PlaylistDetails, Error>> => {
   const result = await fetchApi<{
     items?: YouTubeApiPlaylistItem[];
   }>(
@@ -26,8 +26,8 @@ export const getPlaylist = async (
     apiKey,
   );
 
-  if (!isOk(result)) {
-    return result;
+  if (result.isErr()) {
+    return err(result.error as Error);
   }
 
   const { items } = result.value;
@@ -39,14 +39,14 @@ export const getPlaylist = async (
     return err(new YouTubeApiError(`Playlist not found: ${playlistId}`));
   }
 
-  return mapResult(result, () => mapPlaylistResponse(firstItem));
+  return result.map(() => mapPlaylistResponse(firstItem));
 };
 
 export const getPlaylistItems = async (
   playlistId: string,
   apiKey: YoutubeApiKey,
   maxResults = 10,
-): Promise<Result<PlaylistItem[]>> => {
+): Promise<Result<PlaylistItem[], Error>> => {
   const result = await fetchApi<{
     items?: YouTubeApiPlaylistItemResource[];
   }>(
@@ -59,7 +59,7 @@ export const getPlaylistItems = async (
     apiKey,
   );
 
-  return mapResult(result, (data) => {
+  return result.map((data) => {
     if (!data.items) {
       return [];
     }

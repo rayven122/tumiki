@@ -1,5 +1,5 @@
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { NetworkError } from "@/lib/errors/index.js";

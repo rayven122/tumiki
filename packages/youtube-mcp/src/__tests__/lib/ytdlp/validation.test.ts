@@ -1,4 +1,4 @@
-import type { Failure, Success } from "@/lib/result.js";
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import { validateLanguageCode, validateVideoId } from "@/lib/ytdlp/helper.js";
 import { describe, expect, test } from "vitest";

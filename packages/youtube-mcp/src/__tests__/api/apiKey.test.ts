@@ -1,5 +1,5 @@
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { getApiKeyFromEnv } from "@/api/apiKey.js";
 import { describe, expect, test } from "vitest";
 

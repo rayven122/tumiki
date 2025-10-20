@@ -1,3 +1,4 @@
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { YoutubeApiKey } from "@/api/apiKey.js";
 import type {
   ChannelDetails,
@@ -6,7 +7,6 @@ import type {
   YouTubeApiResponse,
   YouTubeApiSearchItem,
 } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { getChannel, getChannelVideos } from "@/api/channels/index.js";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";

@@ -1,7 +1,7 @@
 import * as fs from "fs";
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { TranscriptResponse } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
-import { err, ok } from "@/lib/result.js";
+import { err, ok } from "@/__tests__/result.js";
 import { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import {
   checkYtdlpInstalled,

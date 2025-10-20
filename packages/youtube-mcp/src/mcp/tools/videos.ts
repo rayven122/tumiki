@@ -1,10 +1,10 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Result } from "neverthrow";
 import { getVideo, searchVideos } from "@/api/videos/index.js";
-import { err, ok } from "@/lib/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { GetVideoSchema, SearchVideosSchema } from "@/mcp/types.js";
+import { err, ok } from "neverthrow";
 
 export const videoTools: Tool[] = [
   {
@@ -68,13 +68,13 @@ export const handleVideoTool = async (
   toolName: string,
   args: unknown,
   apiKey: YoutubeApiKey,
-): Promise<Result<CallToolResult>> => {
+): Promise<Result<CallToolResult, Error>> => {
   try {
     switch (toolName) {
       case YOU_TUBE_TOOL_NAMES.GET_VIDEO: {
         const input = GetVideoSchema.parse(args);
         const result = await getVideo(input.videoId, apiKey, input.parts);
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
@@ -90,7 +90,7 @@ export const handleVideoTool = async (
           input.order,
           input.type,
         );
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({

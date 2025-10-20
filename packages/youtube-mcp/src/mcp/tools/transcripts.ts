@@ -1,14 +1,14 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { Result } from "neverthrow";
 import { getTranscriptMetadata } from "@/api/transcripts/index.js";
-import { err, ok } from "@/lib/result.js";
 import { getTranscript as getTranscriptYtdlp } from "@/lib/ytdlp/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import {
   GetTranscriptMetadataSchema,
   GetTranscriptSchema,
 } from "@/mcp/types.js";
+import { err, ok } from "neverthrow";
 
 /**
  * 字幕ツールの定義
@@ -63,13 +63,13 @@ export const handleTranscriptTool = async (
   toolName: string,
   args: unknown,
   apiKey: YoutubeApiKey,
-): Promise<Result<CallToolResult>> => {
+): Promise<Result<CallToolResult, Error>> => {
   try {
     switch (toolName) {
       case YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA: {
         const input = GetTranscriptMetadataSchema.parse(args);
         const result = await getTranscriptMetadata(input.videoId, apiKey);
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
@@ -86,7 +86,7 @@ export const handleTranscriptTool = async (
           input.endTime,
         );
 
-        if (!transcriptResult.success) {
+        if (transcriptResult.isErr()) {
           return err(transcriptResult.error);
         }
 

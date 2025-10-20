@@ -1,8 +1,8 @@
+import type { Failure, Success } from "@/__tests__/result.js";
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { err, ok } from "@/__tests__/result.js";
 import { getPlaylist, getPlaylistItems } from "@/api/playlists/index.js";
-import { err, ok } from "@/lib/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { handlePlaylistTool } from "@/mcp/tools/playlists.js";
 import { beforeEach, describe, expect, test, vi } from "vitest";
