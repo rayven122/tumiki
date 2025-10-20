@@ -30,7 +30,7 @@ export const getChannel = async (
     return result;
   }
 
-  const { items } = result.data;
+  const { items } = result.value;
   if (!items || items.length === 0) {
     return err(new YouTubeApiError(`Channel not found: ${channelId}`));
   }

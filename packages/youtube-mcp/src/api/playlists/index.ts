@@ -30,7 +30,7 @@ export const getPlaylist = async (
     return result;
   }
 
-  const { items } = result.data;
+  const { items } = result.value;
   if (!items || items.length === 0) {
     return err(new YouTubeApiError(`Playlist not found: ${playlistId}`));
   }

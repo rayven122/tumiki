@@ -58,7 +58,7 @@ export const handlePlaylistTool = async (
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       case YOU_TUBE_TOOL_NAMES.GET_PLAYLIST_ITEMS: {
@@ -72,7 +72,7 @@ export const handlePlaylistTool = async (
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       default:

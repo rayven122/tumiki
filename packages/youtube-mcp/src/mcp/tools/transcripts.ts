@@ -73,7 +73,7 @@ export const handleTranscriptTool = async (
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
 
@@ -92,7 +92,7 @@ export const handleTranscriptTool = async (
 
         return ok({
           content: [
-            { type: "text", text: JSON.stringify(transcriptResult.data) },
+            { type: "text", text: JSON.stringify(transcriptResult.value) },
           ],
         });
       }
