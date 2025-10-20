@@ -21,7 +21,7 @@ export const startServer = async () => {
   if (!apiKeyResult.success) {
     throw new McpError(ErrorCode.InvalidParams, apiKeyResult.error.message);
   }
-  const apiKey = apiKeyResult.data;
+  const apiKey = apiKeyResult.value;
 
   // MCP サーバーの初期化
   const server = new Server(
@@ -67,7 +67,7 @@ export const startServer = async () => {
     }
 
     // MCPの期待する形式でレスポンスを返す
-    return result.data;
+    return result.value;
   });
 
   // トランスポートの初期化と接続

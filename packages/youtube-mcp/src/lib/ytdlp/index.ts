@@ -51,7 +51,7 @@ export const getTranscript = async (
     }
 
     // Parse VTT content
-    const vttContent = fs.readFileSync(downloadResult.data, "utf-8");
+    const vttContent = fs.readFileSync(downloadResult.value, "utf-8");
     const parsed = parseVtt(vttContent) as VttParsedResult;
 
     // Convert to our segment format

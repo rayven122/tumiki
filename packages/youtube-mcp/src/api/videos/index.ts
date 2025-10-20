@@ -31,7 +31,7 @@ export const getVideo = async (
     return result;
   }
 
-  const { items } = result.data;
+  const { items } = result.value;
   if (!items || items.length === 0) {
     return err(new YouTubeApiError(`Video not found: ${videoId}`));
   }

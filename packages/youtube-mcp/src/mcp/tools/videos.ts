@@ -78,7 +78,7 @@ export const handleVideoTool = async (
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       case YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS: {
@@ -94,7 +94,7 @@ export const handleVideoTool = async (
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       default:

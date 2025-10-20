@@ -147,7 +147,7 @@ export const downloadSubtitleWithYtdlp = async (
     "--sub-format",
     "vtt", // Force VTT format
     "--sub-langs",
-    languageResult.data,
+    languageResult.value,
     "--output",
     outputPath, // Output path without extension
     videoUrl,
@@ -166,10 +166,10 @@ export const downloadSubtitleWithYtdlp = async (
     child.on("close", (code) => {
       if (code === 0) {
         // Check if subtitle file was created
-        const expectedPath = `${outputPath}.${languageResult.data}.vtt`;
+        const expectedPath = `${outputPath}.${languageResult.value}.vtt`;
         if (!fs.existsSync(expectedPath)) {
           resolve(
-            err(TranscriptError.noSubtitles(videoId, languageResult.data)),
+            err(TranscriptError.noSubtitles(videoId, languageResult.value)),
           );
         } else {
           resolve(ok(expectedPath));
@@ -179,7 +179,7 @@ export const downloadSubtitleWithYtdlp = async (
         const error = parseYtdlpError(
           stderr,
           videoId,
-          languageResult.data,
+          languageResult.value,
           code,
         );
         resolve(err(error));
