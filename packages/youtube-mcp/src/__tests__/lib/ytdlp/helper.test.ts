@@ -1,7 +1,6 @@
 import { spawn } from "child_process";
 import * as fs from "fs";
-import type { Failure, Success } from "@/__tests__/result.js";
-import type { TranscriptError } from "@/lib/ytdlp/errors/index.js";
+import { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import {
   checkYtdlpInstalled,
   downloadSubtitleWithYtdlp,
@@ -56,10 +55,9 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: undefined,
-      } satisfies Success<void>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toBeUndefined();
       expect(mockSpawn).toHaveBeenCalledWith("yt-dlp", ["--version"]);
     });
 
@@ -77,13 +75,13 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "NOT_INSTALLED",
-          message: expect.stringContaining("yt-dlp is not installed"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.notInstalled(
+          "yt-dlp is not installed. Please install it first: https://github.com/yt-dlp/yt-dlp/wiki/Installation",
+        ),
+      );
     });
 
     test("異常系: yt-dlpがゼロ以外の終了コードで終了した場合にErrorを返す", async () => {
@@ -100,13 +98,13 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "NOT_INSTALLED",
-          message: expect.stringContaining("yt-dlp is not installed"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.notInstalled(
+          "yt-dlp is not installed. Please install it first: https://github.com/yt-dlp/yt-dlp/wiki/Installation",
+        ),
+      );
     });
   });
 
@@ -130,10 +128,9 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: "/tmp/output.en.vtt",
-      } satisfies Success<string>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual("/tmp/output.en.vtt");
       expect(mockSpawn).toHaveBeenCalledWith(
         "yt-dlp",
         [
@@ -180,13 +177,11 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "RATE_LIMITED",
-          message: expect.stringContaining("YouTube rate limit exceeded"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.rateLimited(),
+      );
     });
 
     test("異常系: 字幕が利用できない場合にNoSubtitles Errorを返す", async () => {
@@ -213,13 +208,11 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "NO_SUBTITLES",
-          message: expect.stringContaining("No subtitles available"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.noSubtitles("dQw4w9WgXcQ", "en"),
+      );
     });
 
     test("異常系: 動画が利用できない場合にVideoUnavailable Errorを返す", async () => {
@@ -246,13 +239,11 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "VIDEO_UNAVAILABLE",
-          message: expect.stringContaining("is unavailable or private"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.videoUnavailable("dQw4w9WgXcQ"),
+      );
     });
 
     test("異常系: ネットワークエラーが発生した場合にNetworkError Errorを返す", async () => {
@@ -279,13 +270,11 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "UNKNOWN",
-          message: expect.stringContaining("Connection timed out"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.unknown("Connection timed out"),
+      );
     });
 
     test("異常系: 無効なvideo IDの場合エラーを返す", async () => {
@@ -295,13 +284,11 @@ describe("ytdlp helper", () => {
         "/tmp/output",
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "UNKNOWN",
-          message: "Invalid video ID format",
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.unknown("Invalid video ID format"),
+      );
     });
 
     test("異常系: 無効な言語コードの場合エラーを返す", async () => {
@@ -311,13 +298,12 @@ describe("ytdlp helper", () => {
         "/tmp/output",
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "UNKNOWN",
-          message: expect.stringContaining("Invalid language code format"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      const error = result._unsafeUnwrapErr();
+      expect(error).toBeInstanceOf(TranscriptError);
+      expect(error.type).toBe("UNKNOWN");
+      expect(error.message).toContain("Invalid language code format");
     });
 
     test("異常系: 字幕ファイルが作成されなかった場合エラーを返す", async () => {
@@ -339,14 +325,11 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "NO_SUBTITLES",
-          message:
-            "No subtitles available for video dQw4w9WgXcQ in language en",
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.noSubtitles("dQw4w9WgXcQ", "en"),
+      );
     });
 
     test("異常系: 一般的なエラーが発生した場合にUnknown Errorを返す", async () => {
@@ -373,13 +356,11 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "UNKNOWN",
-          message: expect.stringContaining("Unknown error occurred"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        TranscriptError.unknown("Unknown error occurred"),
+      );
     });
 
     test("異常系: プロセスエラーが発生した場合にErrorを返す", async () => {
@@ -400,13 +381,12 @@ describe("ytdlp helper", () => {
 
       const result = await promise;
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.objectContaining({
-          type: "UNKNOWN",
-          message: expect.stringContaining("Failed to execute yt-dlp"),
-        }),
-      } satisfies Failure<TranscriptError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      const error = result._unsafeUnwrapErr();
+      expect(error).toBeInstanceOf(TranscriptError);
+      expect(error.type).toBe("UNKNOWN");
+      expect(error.message).toContain("Failed to execute yt-dlp");
     });
   });
 

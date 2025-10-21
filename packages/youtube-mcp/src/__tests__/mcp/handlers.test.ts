@@ -1,5 +1,4 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import { err, ok } from "@/__tests__/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { handleToolRequest } from "@/mcp/handlers.js";
 import { handleChannelTool } from "@/mcp/tools/channels.js";
@@ -7,6 +6,7 @@ import { handleCommentTool } from "@/mcp/tools/comments.js";
 import { handlePlaylistTool } from "@/mcp/tools/playlists.js";
 import { handleTranscriptTool } from "@/mcp/tools/transcripts.js";
 import { handleVideoTool } from "@/mcp/tools/videos.js";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // ツールハンドラーをモック化
@@ -56,10 +56,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleVideoTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_VIDEO,
         { videoId: "test-video-id" },
@@ -79,10 +78,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleVideoTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.SEARCH_VIDEOS,
         { query: "test query" },
@@ -101,10 +99,11 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Video tool error"),
-      });
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Video tool error"),
+      );
     });
   });
 
@@ -121,10 +120,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleChannelTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_CHANNEL,
         { channelId: "test-channel-id" },
@@ -144,10 +142,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleChannelTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_CHANNEL_VIDEOS,
         { channelId: "test-channel-id" },
@@ -166,10 +163,11 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Channel tool error"),
-      });
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Channel tool error"),
+      );
     });
   });
 
@@ -186,10 +184,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandlePlaylistTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_PLAYLIST,
         { playlistId: "test-playlist-id" },
@@ -209,10 +206,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandlePlaylistTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_PLAYLIST_ITEMS,
         { playlistId: "test-playlist-id" },
@@ -231,10 +227,11 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Playlist tool error"),
-      });
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Playlist tool error"),
+      );
     });
   });
 
@@ -251,10 +248,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleCommentTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS,
         { videoId: "test-video-id" },
@@ -274,10 +270,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleCommentTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES,
         { parentId: "parent-comment-id" },
@@ -296,10 +291,11 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Comment tool error"),
-      });
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Comment tool error"),
+      );
     });
   });
 
@@ -316,10 +312,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleTranscriptTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT_METADATA,
         { videoId: "test-video-id" },
@@ -339,10 +334,9 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: mockResponse,
-      });
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
       expect(mockHandleTranscriptTool).toHaveBeenCalledWith(
         YOU_TUBE_TOOL_NAMES.GET_TRANSCRIPT,
         { videoId: "test-video-id", language: "en" },
@@ -361,10 +355,11 @@ describe("handleToolRequest", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Transcript tool error"),
-      });
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Transcript tool error"),
+      );
     });
   });
 
@@ -372,10 +367,11 @@ describe("handleToolRequest", () => {
     test("異常系: 不明なツール名の場合にエラーを返す", async () => {
       const result = await handleToolRequest("unknown_tool", {}, mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Unknown tool: unknown_tool"),
-      });
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Unknown tool: unknown_tool"),
+      );
 
       // 各ハンドラーが呼ばれていないことを確認
       expect(mockHandleVideoTool).not.toHaveBeenCalled();
