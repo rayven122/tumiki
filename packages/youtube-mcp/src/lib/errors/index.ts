@@ -1,4 +1,4 @@
-export type { Result, Success, Failure } from "@/lib/result.js";
+export type { Result, Ok as Success, Err as Failure } from "neverthrow";
 
 export class ValidationError extends Error {
   constructor(

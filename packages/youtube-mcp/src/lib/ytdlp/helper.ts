@@ -1,8 +1,8 @@
 import { spawn } from "child_process";
 import * as fs from "fs";
 import type { TranscriptSegment } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
-import { err, ok } from "@/lib/result.js";
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 
 import type { VttParsedResult } from "./types.js";
 import { TranscriptError } from "./errors/index.js";
@@ -128,13 +128,13 @@ export const downloadSubtitleWithYtdlp = async (
 ): Promise<Result<string, TranscriptError>> => {
   // Validate video ID
   const videoIdResult = validateVideoId(videoId);
-  if (!videoIdResult.success) {
-    return videoIdResult;
+  if (videoIdResult.isErr()) {
+    return err(videoIdResult.error);
   }
 
   // Validate language code
   const languageResult = validateLanguageCode(languageCode);
-  if (!languageResult.success) {
+  if (languageResult.isErr()) {
     return err(languageResult.error);
   }
 
@@ -147,7 +147,7 @@ export const downloadSubtitleWithYtdlp = async (
     "--sub-format",
     "vtt", // Force VTT format
     "--sub-langs",
-    languageResult.data,
+    languageResult.value,
     "--output",
     outputPath, // Output path without extension
     videoUrl,
@@ -166,10 +166,10 @@ export const downloadSubtitleWithYtdlp = async (
     child.on("close", (code) => {
       if (code === 0) {
         // Check if subtitle file was created
-        const expectedPath = `${outputPath}.${languageResult.data}.vtt`;
+        const expectedPath = `${outputPath}.${languageResult.value}.vtt`;
         if (!fs.existsSync(expectedPath)) {
           resolve(
-            err(TranscriptError.noSubtitles(videoId, languageResult.data)),
+            err(TranscriptError.noSubtitles(videoId, languageResult.value)),
           );
         } else {
           resolve(ok(expectedPath));
@@ -179,7 +179,7 @@ export const downloadSubtitleWithYtdlp = async (
         const error = parseYtdlpError(
           stderr,
           videoId,
-          languageResult.data,
+          languageResult.value,
           code,
         );
         resolve(err(error));

@@ -6,10 +6,10 @@ import type {
   YouTubeApiResponse,
   YouTubeApiSearchItem,
 } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { getChannel, getChannelVideos } from "@/api/channels/index.js";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // fetchApiをモック化
@@ -59,34 +59,30 @@ describe("channels API", () => {
     };
 
     test("正常系: チャンネル情報を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockChannelResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockChannelResponse));
 
       const result = await getChannel("test-channel-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          id: "test-channel-id",
-          title: "テストチャンネル",
-          description: "テストチャンネルの説明",
-          customUrl: "@testchannel",
-          publishedAt: "2020-01-01T00:00:00Z",
-          thumbnails: {
-            default: {
-              url: "https://example.com/channel-thumb.jpg",
-              width: 88,
-              height: 88,
-            },
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        id: "test-channel-id",
+        title: "テストチャンネル",
+        description: "テストチャンネルの説明",
+        customUrl: "@testchannel",
+        publishedAt: "2020-01-01T00:00:00Z",
+        thumbnails: {
+          default: {
+            url: "https://example.com/channel-thumb.jpg",
+            width: 88,
+            height: 88,
           },
-          viewCount: "10000",
-          subscriberCount: "1000",
-          videoCount: "100",
-          uploads: undefined,
-        } satisfies ChannelDetails,
-      } satisfies Success<ChannelDetails>);
+        },
+        viewCount: "10000",
+        subscriberCount: "1000",
+        videoCount: "100",
+        uploads: undefined,
+      } satisfies ChannelDetails);
       expect(mockFetchApi).toHaveBeenCalledWith(
         "channels",
         { id: "test-channel-id", part: "snippet,statistics" },
@@ -109,28 +105,24 @@ describe("channels API", () => {
         ],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: incompleteResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(incompleteResponse));
 
       const result = await getChannel("test-channel-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          id: "test-channel-id",
-          title: "",
-          description: "",
-          customUrl: undefined,
-          publishedAt: "",
-          thumbnails: {},
-          viewCount: "0",
-          subscriberCount: "0",
-          videoCount: "0",
-          uploads: undefined,
-        } satisfies ChannelDetails,
-      } satisfies Success<ChannelDetails>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        id: "test-channel-id",
+        title: "",
+        description: "",
+        customUrl: undefined,
+        publishedAt: "",
+        thumbnails: {},
+        viewCount: "0",
+        subscriberCount: "0",
+        videoCount: "0",
+        uploads: undefined,
+      } satisfies ChannelDetails);
     });
 
     test("異常系: チャンネルが見つからない場合にエラーを返す", async () => {
@@ -140,31 +132,25 @@ describe("channels API", () => {
         items: [],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: emptyResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(emptyResponse));
 
       const result = await getChannel("not-found", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new YouTubeApiError("Channel not found: not-found"),
-      } satisfies Failure<YouTubeApiError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new YouTubeApiError("Channel not found: not-found"),
+      );
     });
 
     test("異常系: fetchエラーの場合にエラーを返す", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: false,
-        error: new Error("API Error"),
-      });
+      mockFetchApi.mockResolvedValueOnce(err(new Error("API Error")));
 
       const result = await getChannel("test-channel-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(new Error("API Error"));
     });
   });
 
@@ -194,28 +180,24 @@ describe("channels API", () => {
       };
 
     test("正常系: デフォルトパラメータでチャンネル動画を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockChannelVideosResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockChannelVideosResponse));
 
       const result = await getChannelVideos("test-channel-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: [
-          {
-            id: "channel-video-id",
-            title: "チャンネル動画",
-            description: "チャンネル動画の説明",
-            publishedAt: "2023-01-01T00:00:00Z",
-            channelId: "test-channel-id",
-            channelTitle: "テストチャンネル",
-            thumbnails: {},
-            type: "video",
-          } satisfies SearchResult,
-        ],
-      } satisfies Success<SearchResult[]>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual([
+        {
+          id: "channel-video-id",
+          title: "チャンネル動画",
+          description: "チャンネル動画の説明",
+          publishedAt: "2023-01-01T00:00:00Z",
+          channelId: "test-channel-id",
+          channelTitle: "テストチャンネル",
+          thumbnails: {},
+          type: "video",
+        } satisfies SearchResult,
+      ]);
       expect(mockFetchApi).toHaveBeenCalledWith(
         "search",
         {
@@ -230,10 +212,7 @@ describe("channels API", () => {
     });
 
     test("正常系: カスタムパラメータでチャンネル動画を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockChannelVideosResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockChannelVideosResponse));
 
       await getChannelVideos("test-channel-id", mockApiKey, 20, "viewCount");
 
@@ -251,17 +230,17 @@ describe("channels API", () => {
     });
 
     test("異常系: fetchエラーの場合にエラーを返す", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: false,
-        error: new Error("Channel Videos API Error"),
-      });
+      mockFetchApi.mockResolvedValueOnce(
+        err(new Error("Channel Videos API Error")),
+      );
 
       const result = await getChannelVideos("test-channel-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Channel Videos API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Channel Videos API Error"),
+      );
     });
   });
 });

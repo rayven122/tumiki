@@ -1,5 +1,4 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { getApiKeyFromEnv } from "@/api/apiKey.js";
 import { describe, expect, test } from "vitest";
 
@@ -12,10 +11,11 @@ describe("getApiKeyFromEnv", () => {
 
       const result = getApiKeyFromEnv(mockEnv);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: "test-api-key-from-env" as YoutubeApiKey,
-      } satisfies Success<YoutubeApiKey>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(
+        "test-api-key-from-env" as YoutubeApiKey,
+      );
     });
 
     test("両端に空白があるAPIキーが設定されている場合にトリムしてOKを返す", () => {
@@ -25,10 +25,11 @@ describe("getApiKeyFromEnv", () => {
 
       const result = getApiKeyFromEnv(mockEnv);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: "test-api-key" as YoutubeApiKey,
-      } satisfies Success<YoutubeApiKey>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual(
+        "test-api-key" as YoutubeApiKey,
+      );
     });
   });
 
@@ -38,10 +39,11 @@ describe("getApiKeyFromEnv", () => {
 
       const result = getApiKeyFromEnv(mockEnv);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("API key is required"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("API key is required"),
+      );
     });
 
     test.each([
@@ -57,10 +59,11 @@ describe("getApiKeyFromEnv", () => {
 
       const result = getApiKeyFromEnv(mockEnv);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("API key is required"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("API key is required"),
+      );
     });
   });
 });

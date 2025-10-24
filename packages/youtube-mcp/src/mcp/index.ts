@@ -18,10 +18,10 @@ import { videoTools } from "./tools/videos.js";
 export const startServer = async () => {
   // 環境変数から YouTube API キーを取得して検証
   const apiKeyResult = youtubeApi.getApiKeyFromEnv(process.env);
-  if (!apiKeyResult.success) {
+  if (apiKeyResult.isErr()) {
     throw new McpError(ErrorCode.InvalidParams, apiKeyResult.error.message);
   }
-  const apiKey = apiKeyResult.data;
+  const apiKey = apiKeyResult.value;
 
   // MCP サーバーの初期化
   const server = new Server(
@@ -57,7 +57,7 @@ export const startServer = async () => {
     const result = await handleToolRequest(toolName, args, apiKey);
 
     // Result型のエラーチェック
-    if (!result.success) {
+    if (result.isErr()) {
       throw new McpError(
         ErrorCode.InternalError,
         result.error instanceof Error
@@ -67,7 +67,7 @@ export const startServer = async () => {
     }
 
     // MCPの期待する形式でレスポンスを返す
-    return result.data;
+    return result.value;
   });
 
   // トランスポートの初期化と接続

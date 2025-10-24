@@ -1,5 +1,4 @@
-import type { Failure, Success } from "@/lib/result.js";
-import type { TranscriptError } from "@/lib/ytdlp/errors/index.js";
+import { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import { validateLanguageCode, validateVideoId } from "@/lib/ytdlp/helper.js";
 import { describe, expect, test } from "vitest";
 
@@ -14,23 +13,20 @@ describe("ytdlp validation", () => {
         "a_b-c_d-e_f", // 混在
       ])("正常系: %s は有効なIDとして受け入れられる", (videoId) => {
         const result = validateVideoId(videoId);
-        expect(result).toStrictEqual({
-          success: true,
-          data: undefined,
-        } satisfies Success<void>);
+        expect(result.isOk()).toBe(true);
+        expect(result.isErr()).toBe(false);
+        expect(result._unsafeUnwrap()).toBeUndefined();
       });
     });
 
     describe("無効なVideo ID", () => {
       test("異常系: 空文字列は拒否される", () => {
         const result = validateVideoId("");
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            type: "UNKNOWN",
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result.isErr()).toBe(true);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Video ID must be a non-empty string"),
+        );
       });
 
       test.each([
@@ -42,43 +38,38 @@ describe("ytdlp validation", () => {
         ["watch?v=dQw4w9WgXcQ", "クエリパラメータ形式"],
       ])("異常系: %s (%s) は拒否される", (videoId, _description) => {
         const result = validateVideoId(videoId);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            type: "UNKNOWN",
-            message: expect.stringContaining("Invalid video ID"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result.isErr()).toBe(true);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Invalid video ID format"),
+        );
       });
 
       test("異常系: nullを拒否する", () => {
         const result = validateVideoId(null as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result.isErr()).toBe(true);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Video ID must be a non-empty string"),
+        );
       });
 
       test("異常系: undefinedを拒否する", () => {
         const result = validateVideoId(undefined as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result.isErr()).toBe(true);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Video ID must be a non-empty string"),
+        );
       });
 
       test("異常系: 数値を拒否する", () => {
         const result = validateVideoId(12345678901 as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result.isErr()).toBe(true);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Video ID must be a non-empty string"),
+        );
       });
     });
   });
@@ -97,17 +88,29 @@ describe("ytdlp validation", () => {
         "es-419", // 地域コード付き（ラテンアメリカ）
       ])("正常系: %s は有効な言語コードとして受け入れられる", (code) => {
         const result = validateLanguageCode(code);
-        expect(result).toStrictEqual({
-          success: true,
-          data: code,
-        } satisfies Success<string>);
+        expect(result.isOk()).toBe(true);
+        expect(result._unsafeUnwrap()).toStrictEqual(code);
       });
     });
 
     describe("無効な言語コード", () => {
+      test("異常系: 空文字列は拒否される", () => {
+        const result = validateLanguageCode("");
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Language code must be a non-empty string"),
+        );
+      });
+
+      test("異常系: 空白のみは拒否される", () => {
+        const result = validateLanguageCode("   ");
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Language code cannot be empty"),
+        );
+      });
+
       test.each([
-        ["", "空文字列"],
-        ["   ", "空白のみ"],
         ["e", "1文字"],
         ["english", "長すぎる"],
         ["EN", "大文字のみ（ISO 639-1は小文字）"],
@@ -120,70 +123,58 @@ describe("ytdlp validation", () => {
         ["日本語", "非ASCII文字"],
       ])("異常系: %s (%s) は拒否される", (code, _description) => {
         const result = validateLanguageCode(code);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            type: "UNKNOWN",
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown(
+            `Invalid language code format: "${code}". Expected formats: ISO 639-1 (e.g., "en", "ja") or BCP-47 (e.g., "zh-Hans", "pt-BR", "es-419")`,
+          ),
+        );
       });
 
       test("異常系: nullを拒否する", () => {
         const result = validateLanguageCode(null as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Language code must be a non-empty string"),
+        );
       });
 
       test("異常系: undefinedを拒否する", () => {
         const result = validateLanguageCode(undefined as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Language code must be a non-empty string"),
+        );
       });
 
       test("異常系: 数値を拒否する", () => {
         const result = validateLanguageCode(123 as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Language code must be a non-empty string"),
+        );
       });
 
       test("異常系: オブジェクトを拒否する", () => {
         const result = validateLanguageCode({ code: "en" } as any);
-        expect(result).toStrictEqual({
-          success: false,
-          error: expect.objectContaining({
-            message: expect.stringContaining("must be a non-empty string"),
-          }),
-        } satisfies Failure<TranscriptError>);
+        expect(result.isOk()).toBe(false);
+        expect(result._unsafeUnwrapErr()).toStrictEqual(
+          TranscriptError.unknown("Language code must be a non-empty string"),
+        );
       });
     });
 
     describe("正規化とトリム", () => {
       test("前後の空白をトリムする", () => {
         const result = validateLanguageCode("  en  ");
-        expect(result).toStrictEqual({
-          success: true,
-          data: "en",
-        } satisfies Success<string>);
+        expect(result.isOk()).toBe(true);
+        expect(result._unsafeUnwrap()).toStrictEqual("en");
       });
 
       test("タブと改行もトリムする", () => {
         const result = validateLanguageCode("\t\nen-US\n\t");
-        expect(result).toStrictEqual({
-          success: true,
-          data: "en-US",
-        } satisfies Success<string>);
+        expect(result.isOk()).toBe(true);
+        expect(result._unsafeUnwrap()).toStrictEqual("en-US");
       });
     });
   });

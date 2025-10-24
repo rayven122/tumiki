@@ -6,9 +6,9 @@ import type {
   YouTubeApiCommentThreadItem,
   YouTubeApiResponse,
 } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { getCommentReplies, getCommentThreads } from "@/api/comments/index.js";
 import { fetchApi } from "@/api/fetcher.js";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // fetchApiをモック化
@@ -67,41 +67,37 @@ describe("comments API", () => {
       };
 
     test("正常系: デフォルトパラメータでコメントスレッドを取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockCommentThreadsResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockCommentThreadsResponse));
 
       const result = await getCommentThreads("test-video", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          items: [
-            {
-              id: "thread1",
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        items: [
+          {
+            id: "thread1",
+            videoId: "test-video",
+            topLevelComment: {
+              id: "comment1",
               videoId: "test-video",
-              topLevelComment: {
-                id: "comment1",
-                videoId: "test-video",
-                textDisplay: "Test comment",
-                textOriginal: "Test comment",
-                authorDisplayName: "Test User",
-                authorProfileImageUrl: "https://example.com/avatar.jpg",
-                authorChannelUrl: "https://youtube.com/c/testuser",
-                authorChannelId: "channel123",
-                likeCount: 10,
-                publishedAt: "2023-01-01T00:00:00Z",
-                updatedAt: "2023-01-01T00:00:00Z",
-                parentId: undefined,
-              } satisfies Comment,
-              totalReplyCount: 5,
-              isPublic: true,
-            } satisfies CommentThread,
-          ],
-          nextPageToken: "next-page-token",
-        } satisfies { items: CommentThread[]; nextPageToken?: string },
-      } satisfies Success<{ items: CommentThread[]; nextPageToken?: string }>);
+              textDisplay: "Test comment",
+              textOriginal: "Test comment",
+              authorDisplayName: "Test User",
+              authorProfileImageUrl: "https://example.com/avatar.jpg",
+              authorChannelUrl: "https://youtube.com/c/testuser",
+              authorChannelId: "channel123",
+              likeCount: 10,
+              publishedAt: "2023-01-01T00:00:00Z",
+              updatedAt: "2023-01-01T00:00:00Z",
+              parentId: undefined,
+            } satisfies Comment,
+            totalReplyCount: 5,
+            isPublic: true,
+          } satisfies CommentThread,
+        ],
+        nextPageToken: "next-page-token",
+      } satisfies { items: CommentThread[]; nextPageToken?: string });
       expect(mockFetchApi).toHaveBeenCalledWith(
         "commentThreads",
         {
@@ -115,10 +111,7 @@ describe("comments API", () => {
     });
 
     test("正常系: カスタムパラメータでコメントスレッドを取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockCommentThreadsResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockCommentThreadsResponse));
 
       await getCommentThreads(
         "test-video",
@@ -147,41 +140,37 @@ describe("comments API", () => {
         nextPageToken: undefined,
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: responseWithoutNextPage,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(responseWithoutNextPage));
 
       const result = await getCommentThreads("test-video", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          items: [
-            {
-              id: "thread1",
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        items: [
+          {
+            id: "thread1",
+            videoId: "test-video",
+            topLevelComment: {
+              id: "comment1",
               videoId: "test-video",
-              topLevelComment: {
-                id: "comment1",
-                videoId: "test-video",
-                textDisplay: "Test comment",
-                textOriginal: "Test comment",
-                authorDisplayName: "Test User",
-                authorProfileImageUrl: "https://example.com/avatar.jpg",
-                authorChannelUrl: "https://youtube.com/c/testuser",
-                authorChannelId: "channel123",
-                likeCount: 10,
-                publishedAt: "2023-01-01T00:00:00Z",
-                updatedAt: "2023-01-01T00:00:00Z",
-                parentId: undefined,
-              } satisfies Comment,
-              totalReplyCount: 5,
-              isPublic: true,
-            } satisfies CommentThread,
-          ],
-          nextPageToken: undefined,
-        } satisfies { items: CommentThread[]; nextPageToken?: string },
-      } satisfies Success<{ items: CommentThread[]; nextPageToken?: string }>);
+              textDisplay: "Test comment",
+              textOriginal: "Test comment",
+              authorDisplayName: "Test User",
+              authorProfileImageUrl: "https://example.com/avatar.jpg",
+              authorChannelUrl: "https://youtube.com/c/testuser",
+              authorChannelId: "channel123",
+              likeCount: 10,
+              publishedAt: "2023-01-01T00:00:00Z",
+              updatedAt: "2023-01-01T00:00:00Z",
+              parentId: undefined,
+            } satisfies Comment,
+            totalReplyCount: 5,
+            isPublic: true,
+          } satisfies CommentThread,
+        ],
+        nextPageToken: undefined,
+      } satisfies { items: CommentThread[]; nextPageToken?: string });
     });
 
     test("正常系: コメントデータが部分的に欠けている場合にデフォルト値でマップされる", async () => {
@@ -206,55 +195,51 @@ describe("comments API", () => {
           ],
         };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: incompleteResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(incompleteResponse));
 
       const result = await getCommentThreads("test-video", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          items: [
-            {
-              id: "thread1",
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        items: [
+          {
+            id: "thread1",
+            videoId: "",
+            topLevelComment: {
+              id: "comment1",
               videoId: "",
-              topLevelComment: {
-                id: "comment1",
-                videoId: "",
-                textDisplay: "",
-                textOriginal: "",
-                authorDisplayName: "",
-                authorProfileImageUrl: "",
-                authorChannelUrl: "",
-                authorChannelId: "",
-                likeCount: 0,
-                publishedAt: "",
-                updatedAt: "",
-                parentId: undefined,
-              } satisfies Comment,
-              totalReplyCount: 0,
-              isPublic: true,
-            } satisfies CommentThread,
-          ],
-          nextPageToken: undefined,
-        } satisfies { items: CommentThread[]; nextPageToken?: string },
-      } satisfies Success<{ items: CommentThread[]; nextPageToken?: string }>);
+              textDisplay: "",
+              textOriginal: "",
+              authorDisplayName: "",
+              authorProfileImageUrl: "",
+              authorChannelUrl: "",
+              authorChannelId: "",
+              likeCount: 0,
+              publishedAt: "",
+              updatedAt: "",
+              parentId: undefined,
+            } satisfies Comment,
+            totalReplyCount: 0,
+            isPublic: true,
+          } satisfies CommentThread,
+        ],
+        nextPageToken: undefined,
+      } satisfies { items: CommentThread[]; nextPageToken?: string });
     });
 
     test("異常系: fetchエラーの場合にエラーを返す", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: false,
-        error: new Error("Comment Threads API Error"),
-      });
+      mockFetchApi.mockResolvedValueOnce(
+        err(new Error("Comment Threads API Error")),
+      );
 
       const result = await getCommentThreads("test-video", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Comment Threads API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Comment Threads API Error"),
+      );
     });
   });
 
@@ -290,35 +275,31 @@ describe("comments API", () => {
       };
 
     test("正常系: デフォルトパラメータでコメント返信を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockCommentRepliesResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockCommentRepliesResponse));
 
       const result = await getCommentReplies("parent-comment-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          items: [
-            {
-              id: "reply1",
-              videoId: "",
-              textDisplay: "Reply comment",
-              textOriginal: "Reply comment",
-              authorDisplayName: "Reply User",
-              authorProfileImageUrl: "https://example.com/reply-avatar.jpg",
-              authorChannelUrl: "https://youtube.com/c/replyuser",
-              authorChannelId: "replychannel123",
-              likeCount: 5,
-              publishedAt: "2023-01-02T00:00:00Z",
-              updatedAt: "2023-01-02T00:00:00Z",
-              parentId: "parent-comment-id",
-            } satisfies Comment,
-          ],
-          nextPageToken: "replies-next-token",
-        } satisfies { items: Comment[]; nextPageToken?: string },
-      } satisfies Success<{ items: Comment[]; nextPageToken?: string }>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        items: [
+          {
+            id: "reply1",
+            videoId: "",
+            textDisplay: "Reply comment",
+            textOriginal: "Reply comment",
+            authorDisplayName: "Reply User",
+            authorProfileImageUrl: "https://example.com/reply-avatar.jpg",
+            authorChannelUrl: "https://youtube.com/c/replyuser",
+            authorChannelId: "replychannel123",
+            likeCount: 5,
+            publishedAt: "2023-01-02T00:00:00Z",
+            updatedAt: "2023-01-02T00:00:00Z",
+            parentId: "parent-comment-id",
+          } satisfies Comment,
+        ],
+        nextPageToken: "replies-next-token",
+      } satisfies { items: Comment[]; nextPageToken?: string });
       expect(mockFetchApi).toHaveBeenCalledWith(
         "comments",
         {
@@ -331,10 +312,7 @@ describe("comments API", () => {
     });
 
     test("正常系: カスタムパラメータでコメント返信を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockCommentRepliesResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockCommentRepliesResponse));
 
       await getCommentReplies(
         "parent-comment-id",
@@ -361,35 +339,31 @@ describe("comments API", () => {
         nextPageToken: undefined,
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: responseWithoutNextPage,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(responseWithoutNextPage));
 
       const result = await getCommentReplies("parent-comment-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          items: [
-            {
-              id: "reply1",
-              videoId: "",
-              textDisplay: "Reply comment",
-              textOriginal: "Reply comment",
-              authorDisplayName: "Reply User",
-              authorProfileImageUrl: "https://example.com/reply-avatar.jpg",
-              authorChannelUrl: "https://youtube.com/c/replyuser",
-              authorChannelId: "replychannel123",
-              likeCount: 5,
-              publishedAt: "2023-01-02T00:00:00Z",
-              updatedAt: "2023-01-02T00:00:00Z",
-              parentId: "parent-comment-id",
-            } satisfies Comment,
-          ],
-          nextPageToken: undefined,
-        } satisfies { items: Comment[]; nextPageToken?: string },
-      } satisfies Success<{ items: Comment[]; nextPageToken?: string }>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        items: [
+          {
+            id: "reply1",
+            videoId: "",
+            textDisplay: "Reply comment",
+            textOriginal: "Reply comment",
+            authorDisplayName: "Reply User",
+            authorProfileImageUrl: "https://example.com/reply-avatar.jpg",
+            authorChannelUrl: "https://youtube.com/c/replyuser",
+            authorChannelId: "replychannel123",
+            likeCount: 5,
+            publishedAt: "2023-01-02T00:00:00Z",
+            updatedAt: "2023-01-02T00:00:00Z",
+            parentId: "parent-comment-id",
+          } satisfies Comment,
+        ],
+        nextPageToken: undefined,
+      } satisfies { items: Comment[]; nextPageToken?: string });
     });
 
     test("正常系: 返信データが部分的に欠けている場合にデフォルト値でマップされる", async () => {
@@ -406,49 +380,45 @@ describe("comments API", () => {
         ],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: incompleteResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(incompleteResponse));
 
       const result = await getCommentReplies("parent-comment-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          items: [
-            {
-              id: "reply1",
-              videoId: "",
-              textDisplay: "",
-              textOriginal: "",
-              authorDisplayName: "",
-              authorProfileImageUrl: "",
-              authorChannelUrl: "",
-              authorChannelId: "",
-              likeCount: 0,
-              publishedAt: "",
-              updatedAt: "",
-              parentId: undefined,
-            } satisfies Comment,
-          ],
-          nextPageToken: undefined,
-        } satisfies { items: Comment[]; nextPageToken?: string },
-      } satisfies Success<{ items: Comment[]; nextPageToken?: string }>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        items: [
+          {
+            id: "reply1",
+            videoId: "",
+            textDisplay: "",
+            textOriginal: "",
+            authorDisplayName: "",
+            authorProfileImageUrl: "",
+            authorChannelUrl: "",
+            authorChannelId: "",
+            likeCount: 0,
+            publishedAt: "",
+            updatedAt: "",
+            parentId: undefined,
+          } satisfies Comment,
+        ],
+        nextPageToken: undefined,
+      } satisfies { items: Comment[]; nextPageToken?: string });
     });
 
     test("異常系: fetchエラーの場合にエラーを返す", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: false,
-        error: new Error("Comment Replies API Error"),
-      });
+      mockFetchApi.mockResolvedValueOnce(
+        err(new Error("Comment Replies API Error")),
+      );
 
       const result = await getCommentReplies("parent-comment-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Comment Replies API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Comment Replies API Error"),
+      );
     });
   });
 });
