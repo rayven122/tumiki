@@ -110,6 +110,10 @@ jobs:
           git config --global user.email "efficient122@gmail.com"
           git config --global user.name "Tumiki Deploy Bot"
 
+      - name: Create deploy commit
+        run: |
+          git commit --allow-empty -m "chore: deploy commit for ${{ needs.setup.outputs.environment }} [skip ci]"
+
       - name: Deploy to Vercel and/or GCE
         id: deploy
         uses: ./.github/actions/deploy
