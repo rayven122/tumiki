@@ -1,13 +1,13 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Result } from "neverthrow";
 import { getCommentReplies, getCommentThreads } from "@/api/comments/index.js";
-import { err, ok } from "@/lib/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import {
   GetCommentRepliesSchema,
   GetCommentThreadsSchema,
 } from "@/mcp/types.js";
+import { err, ok } from "neverthrow";
 
 export const commentTools: Tool[] = [
   {
@@ -72,7 +72,7 @@ export const handleCommentTool = async (
   toolName: string,
   args: unknown,
   apiKey: YoutubeApiKey,
-): Promise<Result<CallToolResult>> => {
+): Promise<Result<CallToolResult, Error>> => {
   try {
     switch (toolName) {
       case YOU_TUBE_TOOL_NAMES.GET_COMMENT_THREADS: {
@@ -84,11 +84,11 @@ export const handleCommentTool = async (
           input.pageToken,
           input.order,
         );
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       case YOU_TUBE_TOOL_NAMES.GET_COMMENT_REPLIES: {
@@ -99,11 +99,11 @@ export const handleCommentTool = async (
           input.maxResults,
           input.pageToken,
         );
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       default:

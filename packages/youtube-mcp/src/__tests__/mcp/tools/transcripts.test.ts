@@ -1,11 +1,10 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { getTranscriptMetadata } from "@/api/transcripts/index.js";
-import { err, ok } from "@/lib/result.js";
 import { getTranscript } from "@/lib/ytdlp/index.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { handleTranscriptTool } from "@/mcp/tools/transcripts.js";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // モック化
@@ -51,17 +50,17 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toStrictEqual({
           content: [
             {
               type: "text",
               text: JSON.stringify(mockTranscriptMetadata),
             },
           ],
-        },
-      } satisfies Success<CallToolResult>);
+        } satisfies CallToolResult);
+      }
       expect(mockGetTranscriptMetadata).toHaveBeenCalledWith(
         "test-video-id",
         mockApiKey,
@@ -75,10 +74,9 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.any(Error),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(expect.any(Error));
     });
 
     test("異常系: API呼び出しが失敗した場合にエラーを返す", async () => {
@@ -92,10 +90,11 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Transcript Metadata API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Transcript Metadata API Error"),
+      );
     });
   });
 
@@ -126,9 +125,9 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toStrictEqual({
           content: [
             {
               type: "text",
@@ -137,8 +136,8 @@ describe("handleTranscriptTool", () => {
               }),
             },
           ],
-        },
-      } satisfies Success<CallToolResult>);
+        } satisfies CallToolResult);
+      }
       expect(mockGetTranscript).toHaveBeenCalledWith(
         "test-video-id",
         "en",
@@ -167,14 +166,12 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result.success).toStrictEqual(true);
-      const successResult = result as {
-        success: true;
-        data: { content: { text?: string }[] };
-      };
-      const text = successResult.data.content[0]?.text;
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+      const text = result.value.content[0]?.text;
       expect(typeof text).toBe("string");
-      const responseData = JSON.parse(text!) as unknown as any as {
+      if (typeof text !== "string") return;
+      const responseData = JSON.parse(text) as {
         segments: { text?: string }[];
       };
       expect(responseData.segments).toHaveLength(2);
@@ -207,14 +204,12 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result.success).toStrictEqual(true);
-      const successResult = result as {
-        success: true;
-        data: { content: { text?: string }[] };
-      };
-      const text = successResult.data.content[0]?.text;
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+      const text = result.value.content[0]?.text;
       expect(typeof text).toBe("string");
-      const responseData = JSON.parse(text!) as unknown as any as {
+      if (typeof text !== "string") return;
+      const responseData = JSON.parse(text) as {
         segments: { text?: string }[];
       };
       expect(responseData.segments).toHaveLength(2);
@@ -247,14 +242,12 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result.success).toStrictEqual(true);
-      const successResult = result as {
-        success: true;
-        data: { content: { text?: string }[] };
-      };
-      const text = successResult.data.content[0]?.text;
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) return;
+      const text = result.value.content[0]?.text;
       expect(typeof text).toBe("string");
-      const responseData = JSON.parse(text!) as unknown as any as {
+      if (typeof text !== "string") return;
+      const responseData = JSON.parse(text) as {
         segments: { text?: string }[];
       };
       expect(responseData.segments).toHaveLength(2);
@@ -275,10 +268,9 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.any(Error),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(expect.any(Error));
     });
 
     test("異常系: yt-dlp関数が失敗した場合にエラーを返す", async () => {
@@ -290,10 +282,11 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("yt-dlp error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("yt-dlp error"),
+      );
     });
   });
 
@@ -301,10 +294,11 @@ describe("handleTranscriptTool", () => {
     test("異常系: 不明なツール名の場合にエラーを返す", async () => {
       const result = await handleTranscriptTool("unknown_tool", {}, mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Unknown tool: unknown_tool"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Unknown tool: unknown_tool"),
+      );
     });
   });
 
@@ -320,10 +314,11 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Unexpected error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Unexpected error"),
+      );
     });
 
     test("異常系: 非Errorオブジェクトが投げられた場合に文字列化してエラーを返す", async () => {
@@ -335,10 +330,11 @@ describe("handleTranscriptTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("string error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("string error"),
+      );
     });
   });
 });

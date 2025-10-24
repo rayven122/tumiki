@@ -1,10 +1,9 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { getVideo, searchVideos } from "@/api/videos/index.js";
-import { err, ok } from "@/lib/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { handleVideoTool } from "@/mcp/tools/videos.js";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // videosAPIをモック化
@@ -48,17 +47,17 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toStrictEqual({
           content: [
             {
               type: "text",
               text: JSON.stringify(mockVideoData),
             },
           ],
-        },
-      } satisfies Success<CallToolResult>);
+        } satisfies CallToolResult);
+      }
       expect(mockGetVideo).toHaveBeenCalledWith(
         "test-video-id",
         mockApiKey,
@@ -87,10 +86,9 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.any(Error),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(expect.any(Error));
     });
 
     test("異常系: API呼び出しが失敗した場合にエラーを返す", async () => {
@@ -102,10 +100,9 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(new Error("API Error"));
     });
   });
 
@@ -132,17 +129,17 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toStrictEqual({
           content: [
             {
               type: "text",
               text: JSON.stringify(mockSearchResults),
             },
           ],
-        },
-      } satisfies Success<CallToolResult>);
+        } satisfies CallToolResult);
+      }
       expect(mockSearchVideos).toHaveBeenCalledWith(
         "test query",
         mockApiKey,
@@ -182,10 +179,9 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: expect.any(Error),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(expect.any(Error));
     });
 
     test("異常系: API呼び出しが失敗した場合にエラーを返す", async () => {
@@ -199,10 +195,11 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Search API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Search API Error"),
+      );
     });
   });
 
@@ -210,10 +207,11 @@ describe("handleVideoTool", () => {
     test("異常系: 不明なツール名の場合にエラーを返す", async () => {
       const result = await handleVideoTool("unknown_tool", {}, mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Unknown tool: unknown_tool"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Unknown tool: unknown_tool"),
+      );
     });
   });
 
@@ -227,10 +225,11 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Unexpected error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Unexpected error"),
+      );
     });
 
     test("異常系: 非Errorオブジェクトが投げられた場合に文字列化してエラーを返す", async () => {
@@ -242,10 +241,11 @@ describe("handleVideoTool", () => {
         mockApiKey,
       );
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("string error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("string error"),
+      );
     });
   });
 });

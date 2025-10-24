@@ -6,10 +6,10 @@ import type {
   YouTubeApiSearchItem,
   YouTubeApiVideoItem,
 } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { getVideo, searchVideos } from "@/api/videos/index.js";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // fetchApiをモック化
@@ -63,37 +63,33 @@ describe("videos API", () => {
     };
 
     test("正常系: デフォルトパラメータで動画情報を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockVideoResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockVideoResponse));
 
       const result = await getVideo("test-video-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          id: "test-video-id",
-          title: "テスト動画",
-          description: "テスト動画の説明",
-          channelId: "test-channel-id",
-          channelTitle: "テストチャンネル",
-          publishedAt: "2023-01-01T00:00:00Z",
-          duration: "PT10M30S",
-          viewCount: "1000",
-          likeCount: "100",
-          commentCount: "10",
-          thumbnails: {
-            default: {
-              url: "https://example.com/thumb.jpg",
-              width: 120,
-              height: 90,
-            },
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        id: "test-video-id",
+        title: "テスト動画",
+        description: "テスト動画の説明",
+        channelId: "test-channel-id",
+        channelTitle: "テストチャンネル",
+        publishedAt: "2023-01-01T00:00:00Z",
+        duration: "PT10M30S",
+        viewCount: "1000",
+        likeCount: "100",
+        commentCount: "10",
+        thumbnails: {
+          default: {
+            url: "https://example.com/thumb.jpg",
+            width: 120,
+            height: 90,
           },
-          tags: ["test", "video"],
-          categoryId: "22",
-        } satisfies VideoDetails,
-      } satisfies Success<VideoDetails>);
+        },
+        tags: ["test", "video"],
+        categoryId: "22",
+      } satisfies VideoDetails);
       expect(mockFetchApi).toHaveBeenCalledWith(
         "videos",
         { id: "test-video-id", part: "snippet,statistics,contentDetails" },
@@ -102,10 +98,7 @@ describe("videos API", () => {
     });
 
     test("正常系: カスタムpartsで動画情報を取得する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockVideoResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockVideoResponse));
 
       await getVideo("test-video-id", mockApiKey, ["snippet"]);
 
@@ -130,31 +123,27 @@ describe("videos API", () => {
         ],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: incompleteResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(incompleteResponse));
 
       const result = await getVideo("test-video-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: {
-          id: "test-video-id",
-          title: "",
-          description: "",
-          channelId: "",
-          channelTitle: "",
-          publishedAt: "",
-          duration: "",
-          viewCount: "0",
-          likeCount: "0",
-          commentCount: "0",
-          thumbnails: {},
-          tags: [],
-          categoryId: "",
-        } satisfies VideoDetails,
-      } satisfies Success<VideoDetails>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual({
+        id: "test-video-id",
+        title: "",
+        description: "",
+        channelId: "",
+        channelTitle: "",
+        publishedAt: "",
+        duration: "",
+        viewCount: "0",
+        likeCount: "0",
+        commentCount: "0",
+        thumbnails: {},
+        tags: [],
+        categoryId: "",
+      } satisfies VideoDetails);
     });
 
     test("異常系: 動画が見つからない場合にエラーを返す", async () => {
@@ -164,31 +153,25 @@ describe("videos API", () => {
         items: [],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: emptyResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(emptyResponse));
 
       const result = await getVideo("not-found", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new YouTubeApiError("Video not found: not-found"),
-      } satisfies Failure<YouTubeApiError>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new YouTubeApiError("Video not found: not-found"),
+      );
     });
 
     test("異常系: fetchエラーの場合にエラーを返す", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: false,
-        error: new Error("API Error"),
-      });
+      mockFetchApi.mockResolvedValueOnce(err(new Error("API Error")));
 
       const result = await getVideo("test-video-id", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(new Error("API Error"));
     });
   });
 
@@ -223,34 +206,30 @@ describe("videos API", () => {
     };
 
     test("正常系: デフォルトパラメータで動画を検索する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockSearchResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockSearchResponse));
 
       const result = await searchVideos("test query", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: [
-          {
-            id: "search-video-id",
-            title: "検索結果動画",
-            description: "検索結果の説明",
-            channelId: "search-channel-id",
-            channelTitle: "検索チャンネル",
-            publishedAt: "2023-01-01T00:00:00Z",
-            thumbnails: {
-              default: {
-                url: "https://example.com/search-thumb.jpg",
-                width: 120,
-                height: 90,
-              },
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual([
+        {
+          id: "search-video-id",
+          title: "検索結果動画",
+          description: "検索結果の説明",
+          channelId: "search-channel-id",
+          channelTitle: "検索チャンネル",
+          publishedAt: "2023-01-01T00:00:00Z",
+          thumbnails: {
+            default: {
+              url: "https://example.com/search-thumb.jpg",
+              width: 120,
+              height: 90,
             },
-            type: "video",
-          } satisfies SearchResult,
-        ],
-      } satisfies Success<SearchResult[]>);
+          },
+          type: "video",
+        } satisfies SearchResult,
+      ]);
       expect(mockFetchApi).toHaveBeenCalledWith(
         "search",
         {
@@ -265,10 +244,7 @@ describe("videos API", () => {
     });
 
     test("正常系: カスタムパラメータで検索する", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: mockSearchResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(mockSearchResponse));
 
       await searchVideos("test", mockApiKey, 20, "date", "channel");
 
@@ -304,28 +280,24 @@ describe("videos API", () => {
         ],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: channelResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(channelResponse));
 
       const result = await searchVideos("test", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: [
-          {
-            id: "channel-id",
-            type: "channel",
-            title: "チャンネル結果",
-            description: "",
-            publishedAt: "",
-            channelId: "",
-            channelTitle: "",
-            thumbnails: {},
-          } satisfies SearchResult,
-        ],
-      } satisfies Success<SearchResult[]>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual([
+        {
+          id: "channel-id",
+          type: "channel",
+          title: "チャンネル結果",
+          description: "",
+          publishedAt: "",
+          channelId: "",
+          channelTitle: "",
+          thumbnails: {},
+        } satisfies SearchResult,
+      ]);
     });
 
     test("正常系: 空の結果の場合に空配列を返す", async () => {
@@ -335,31 +307,25 @@ describe("videos API", () => {
         items: [],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: emptyResponse,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(emptyResponse));
 
       const result = await searchVideos("no results", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: [],
-      } satisfies Success<SearchResult[]>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual([]);
     });
 
     test("異常系: fetchエラーの場合にエラーを返す", async () => {
-      mockFetchApi.mockResolvedValueOnce({
-        success: false,
-        error: new Error("Search API Error"),
-      });
+      mockFetchApi.mockResolvedValueOnce(err(new Error("Search API Error")));
 
       const result = await searchVideos("test", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: false,
-        error: new Error("Search API Error"),
-      } satisfies Failure<Error>);
+      expect(result.isOk()).toBe(false);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toStrictEqual(
+        new Error("Search API Error"),
+      );
     });
 
     test("正常系: idが文字列の検索結果もマップされる", async () => {
@@ -383,28 +349,24 @@ describe("videos API", () => {
         ],
       };
 
-      mockFetchApi.mockResolvedValueOnce({
-        success: true,
-        data: responseWithStringId,
-      });
+      mockFetchApi.mockResolvedValueOnce(ok(responseWithStringId));
 
       const result = await searchVideos("test", mockApiKey);
 
-      expect(result).toStrictEqual({
-        success: true,
-        data: [
-          {
-            id: "string-id-12345",
-            title: "Test Video with String ID",
-            description: "Description",
-            channelId: "test-channel",
-            channelTitle: "Test Channel",
-            publishedAt: "2023-01-01T00:00:00Z",
-            thumbnails: {},
-            type: "video",
-          } satisfies SearchResult,
-        ],
-      } satisfies Success<SearchResult[]>);
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
+      expect(result._unsafeUnwrap()).toStrictEqual([
+        {
+          id: "string-id-12345",
+          title: "Test Video with String ID",
+          description: "Description",
+          channelId: "test-channel",
+          channelTitle: "Test Channel",
+          publishedAt: "2023-01-01T00:00:00Z",
+          thumbnails: {},
+          type: "video",
+        } satisfies SearchResult,
+      ]);
     });
   });
 });

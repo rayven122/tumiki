@@ -1,5 +1,4 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Failure, Success } from "@/lib/result.js";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { NetworkError } from "@/lib/errors/index.js";
@@ -25,10 +24,9 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: true,
-      data: mockResponse,
-    } satisfies Success<{ data: string }>);
+    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(false);
+    expect(result._unsafeUnwrap()).toStrictEqual(mockResponse);
     expect(mockFetch).toHaveBeenCalledWith(
       "https://www.googleapis.com/youtube/v3/test?key=test-api-key",
     );
@@ -72,14 +70,11 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: new YouTubeApiError(
-        "YouTube API Error: Not Found",
-        404,
-        "Not Found",
-      ),
-    } satisfies Failure<YouTubeApiError>);
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      new YouTubeApiError("YouTube API Error: Not Found", 404, "Not Found"),
+    );
   });
 
   test("異常系: ネットワークエラーの場合にFailureを返す", async () => {
@@ -87,13 +82,14 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: new NetworkError(
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      new NetworkError(
         "Network error occurred: Network error",
         new Error("Network error"),
       ),
-    } satisfies Failure<NetworkError>);
+    );
   });
 
   test("異常系: JSONパースエラーの場合にFailureを返す", async () => {
@@ -104,13 +100,14 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: new NetworkError(
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      new NetworkError(
         "Network error occurred: Invalid JSON",
         new Error("Invalid JSON"),
       ),
-    } satisfies Failure<NetworkError>);
+    );
   });
 
   test("異常系: Error以外の値でリジェクトされた場合にデフォルトメッセージを使用", async () => {
@@ -118,13 +115,11 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: new NetworkError(
-        "Network error occurred: Unknown error",
-        "String error",
-      ),
-    } satisfies Failure<NetworkError>);
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      new NetworkError("Network error occurred: Unknown error", "String error"),
+    );
   });
 
   test("異常系: response.text()が失敗した場合にstatusTextまたはデフォルトメッセージを使用", async () => {
@@ -137,14 +132,15 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: new YouTubeApiError(
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      new YouTubeApiError(
         "YouTube API Error: Internal Server Error",
         500,
         "Internal Server Error",
       ),
-    } satisfies Failure<YouTubeApiError>);
+    );
   });
 
   test("異常系: response.text()が失敗しstatusTextも空の場合にデフォルトメッセージを使用", async () => {
@@ -157,13 +153,14 @@ describe("fetchApi", () => {
 
     const result = await fetchApi("test", {}, mockApiKey);
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: new YouTubeApiError(
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      new YouTubeApiError(
         "YouTube API Error: Unknown error",
         500,
         "Unknown error",
       ),
-    } satisfies Failure<YouTubeApiError>);
+    );
   });
 });

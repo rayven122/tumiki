@@ -5,10 +5,9 @@ import type {
   YouTubeApiCommentItem,
   YouTubeApiCommentThreadItem,
 } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
+import type { Result } from "neverthrow";
 import { fetchApi } from "@/api/fetcher.js";
 import { mapCommentResponse, mapCommentThreadResponse } from "@/api/mappers.js";
-import { mapResult } from "@/lib/result.js";
 
 export const getCommentThreads = async (
   videoId: string,
@@ -17,10 +16,13 @@ export const getCommentThreads = async (
   pageToken?: string,
   order: "relevance" | "time" = "relevance",
 ): Promise<
-  Result<{
-    items: CommentThread[];
-    nextPageToken?: string;
-  }>
+  Result<
+    {
+      items: CommentThread[];
+      nextPageToken?: string;
+    },
+    Error
+  >
 > => {
   const result = await fetchApi<{
     items?: YouTubeApiCommentThreadItem[];
@@ -37,7 +39,7 @@ export const getCommentThreads = async (
     apiKey,
   );
 
-  return mapResult(result, (data) => {
+  return result.map((data) => {
     if (!data.items) {
       return {
         items: [],
@@ -57,10 +59,13 @@ export const getCommentReplies = async (
   maxResults = 20,
   pageToken?: string,
 ): Promise<
-  Result<{
-    items: Comment[];
-    nextPageToken?: string;
-  }>
+  Result<
+    {
+      items: Comment[];
+      nextPageToken?: string;
+    },
+    Error
+  >
 > => {
   const result = await fetchApi<{
     items?: YouTubeApiCommentItem[];
@@ -76,7 +81,7 @@ export const getCommentReplies = async (
     apiKey,
   );
 
-  return mapResult(result, (data) => {
+  return result.map((data) => {
     if (!data.items) {
       return {
         items: [],

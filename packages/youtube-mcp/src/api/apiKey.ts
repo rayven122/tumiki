@@ -1,5 +1,5 @@
-import type { Result } from "@/lib/result.js";
-import { err, ok } from "@/lib/result.js";
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { z } from "zod";
 
 const YoutubeApiKeySchema = z
@@ -25,7 +25,7 @@ export type YoutubeApiKey = z.infer<typeof YoutubeApiKeySchema> & {
  */
 export const getApiKeyFromEnv = (
   env: NodeJS.ProcessEnv,
-): Result<YoutubeApiKey> => {
+): Result<YoutubeApiKey, Error> => {
   const result = YoutubeApiKeySchema.safeParse(env.YOUTUBE_API_KEY);
 
   if (!result.success) {

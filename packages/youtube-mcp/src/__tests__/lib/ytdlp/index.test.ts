@@ -1,7 +1,4 @@
 import * as fs from "fs";
-import type { TranscriptResponse } from "@/api/types.js";
-import type { Failure, Success } from "@/lib/result.js";
-import { err, ok } from "@/lib/result.js";
 import { TranscriptError } from "@/lib/ytdlp/errors/index.js";
 import {
   checkYtdlpInstalled,
@@ -9,6 +6,7 @@ import {
 } from "@/lib/ytdlp/helper.js";
 import { getTranscript } from "@/lib/ytdlp/index.js";
 import { parse as parseVtt } from "@plussub/srt-vtt-parser";
+import { err, ok } from "neverthrow";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // モジュールをモック化
@@ -92,25 +90,24 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en");
 
-    expect(result).toStrictEqual({
-      success: true,
-      data: {
-        segments: [
-          {
-            start: 0,
-            end: 3,
-            duration: 3,
-            text: "We're no strangers to love",
-          },
-          {
-            start: 3,
-            end: 6,
-            duration: 3,
-            text: "You know the rules and so do I",
-          },
-        ],
-      },
-    } satisfies Success<TranscriptResponse>);
+    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(false);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      segments: [
+        {
+          start: 0,
+          end: 3,
+          duration: 3,
+          text: "We're no strangers to love",
+        },
+        {
+          start: 3,
+          end: 6,
+          duration: 3,
+          text: "You know the rules and so do I",
+        },
+      ],
+    });
 
     expect(mockCheckYtdlpInstalled).toHaveBeenCalledOnce();
     expect(mockDownloadSubtitleWithYtdlp).toHaveBeenCalledWith(
@@ -136,25 +133,24 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en", 1, 4);
 
-    expect(result).toStrictEqual({
-      success: true,
-      data: {
-        segments: [
-          {
-            start: 0,
-            end: 3,
-            duration: 3,
-            text: "We're no strangers to love",
-          },
-          {
-            start: 3,
-            end: 6,
-            duration: 3,
-            text: "You know the rules and so do I",
-          },
-        ],
-      },
-    } satisfies Success<TranscriptResponse>);
+    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(false);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      segments: [
+        {
+          start: 0,
+          end: 3,
+          duration: 3,
+          text: "We're no strangers to love",
+        },
+        {
+          start: 3,
+          end: 6,
+          duration: 3,
+          text: "You know the rules and so do I",
+        },
+      ],
+    });
   });
 
   test("正常系: 開始時間のみを指定して字幕を取得する", async () => {
@@ -165,25 +161,24 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en", 3);
 
-    expect(result).toStrictEqual({
-      success: true,
-      data: {
-        segments: [
-          {
-            start: 0,
-            end: 3,
-            duration: 3,
-            text: "We're no strangers to love",
-          },
-          {
-            start: 3,
-            end: 6,
-            duration: 3,
-            text: "You know the rules and so do I",
-          },
-        ],
-      },
-    } satisfies Success<TranscriptResponse>);
+    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(false);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      segments: [
+        {
+          start: 0,
+          end: 3,
+          duration: 3,
+          text: "We're no strangers to love",
+        },
+        {
+          start: 3,
+          end: 6,
+          duration: 3,
+          text: "You know the rules and so do I",
+        },
+      ],
+    });
   });
 
   test("正常系: 終了時間のみを指定して字幕を取得する", async () => {
@@ -194,25 +189,24 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en", undefined, 3);
 
-    expect(result).toStrictEqual({
-      success: true,
-      data: {
-        segments: [
-          {
-            start: 0,
-            end: 3,
-            duration: 3,
-            text: "We're no strangers to love",
-          },
-          {
-            start: 3,
-            end: 6,
-            duration: 3,
-            text: "You know the rules and so do I",
-          },
-        ],
-      },
-    } satisfies Success<TranscriptResponse>);
+    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(false);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      segments: [
+        {
+          start: 0,
+          end: 3,
+          duration: 3,
+          text: "We're no strangers to love",
+        },
+        {
+          start: 3,
+          end: 6,
+          duration: 3,
+          text: "You know the rules and so do I",
+        },
+      ],
+    });
   });
 
   test("異常系: yt-dlpがインストールされていない場合にエラーを返す", async () => {
@@ -222,13 +216,11 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en");
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: expect.objectContaining({
-        type: "NOT_INSTALLED",
-        message: "yt-dlp is not installed",
-      }),
-    } satisfies Failure<TranscriptError>);
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      TranscriptError.notInstalled("yt-dlp is not installed"),
+    );
 
     expect(mockCheckYtdlpInstalled).toHaveBeenCalledOnce();
     expect(mockDownloadSubtitleWithYtdlp).not.toHaveBeenCalled();
@@ -242,15 +234,11 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en");
 
-    expect(result).toStrictEqual({
-      success: false,
-      error: expect.objectContaining({
-        type: "NO_SUBTITLES",
-        message: expect.stringContaining(
-          "No subtitles available for video test-video-id",
-        ),
-      }),
-    } satisfies Failure<TranscriptError>);
+    expect(result.isOk()).toBe(false);
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toStrictEqual(
+      TranscriptError.noSubtitles("test-video-id", "en"),
+    );
 
     expect(mockCheckYtdlpInstalled).toHaveBeenCalledOnce();
     expect(mockDownloadSubtitleWithYtdlp).toHaveBeenCalledOnce();
@@ -268,15 +256,24 @@ You know the rules and so do I`;
 
     const result = await getTranscript("test-video-id", "en");
 
-    expect(result).toStrictEqual({
-      success: true,
-      data: {
-        segments: expect.arrayContaining([
-          expect.objectContaining({ text: "We're no strangers to love" }),
-          expect.objectContaining({ text: "You know the rules and so do I" }),
-        ]),
-      },
-    } satisfies Success<TranscriptResponse>);
+    expect(result.isOk()).toBe(true);
+    expect(result.isErr()).toBe(false);
+    expect(result._unsafeUnwrap()).toStrictEqual({
+      segments: [
+        {
+          start: 0,
+          end: 3,
+          duration: 3,
+          text: "We're no strangers to love",
+        },
+        {
+          start: 3,
+          end: 6,
+          duration: 3,
+          text: "You know the rules and so do I",
+        },
+      ],
+    });
     expect(mockRmSync).toHaveBeenCalledWith("/tmp/yt-dlp-test", {
       recursive: true,
       force: true,

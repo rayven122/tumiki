@@ -1,10 +1,10 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Result } from "neverthrow";
 import { getPlaylist, getPlaylistItems } from "@/api/playlists/index.js";
-import { err, ok } from "@/lib/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { GetPlaylistItemsSchema, GetPlaylistSchema } from "@/mcp/types.js";
+import { err, ok } from "neverthrow";
 
 export const playlistTools: Tool[] = [
   {
@@ -48,17 +48,17 @@ export const handlePlaylistTool = async (
   toolName: string,
   args: unknown,
   apiKey: YoutubeApiKey,
-): Promise<Result<CallToolResult>> => {
+): Promise<Result<CallToolResult, Error>> => {
   try {
     switch (toolName) {
       case YOU_TUBE_TOOL_NAMES.GET_PLAYLIST: {
         const input = GetPlaylistSchema.parse(args);
         const result = await getPlaylist(input.playlistId, apiKey);
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       case YOU_TUBE_TOOL_NAMES.GET_PLAYLIST_ITEMS: {
@@ -68,11 +68,11 @@ export const handlePlaylistTool = async (
           apiKey,
           input.maxResults,
         );
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       default:

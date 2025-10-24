@@ -1,10 +1,10 @@
 import type { YoutubeApiKey } from "@/api/apiKey.js";
-import type { Result } from "@/lib/result.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Result } from "neverthrow";
 import { getChannel, getChannelVideos } from "@/api/channels/index.js";
-import { err, ok } from "@/lib/result.js";
 import { YOU_TUBE_TOOL_NAMES } from "@/mcp/constants.js";
 import { GetChannelSchema, GetChannelVideosSchema } from "@/mcp/types.js";
+import { err, ok } from "neverthrow";
 
 export const channelTools: Tool[] = [
   {
@@ -54,17 +54,17 @@ export const handleChannelTool = async (
   toolName: string,
   args: unknown,
   apiKey: YoutubeApiKey,
-): Promise<Result<CallToolResult>> => {
+): Promise<Result<CallToolResult, Error>> => {
   try {
     switch (toolName) {
       case YOU_TUBE_TOOL_NAMES.GET_CHANNEL: {
         const input = GetChannelSchema.parse(args);
         const result = await getChannel(input.channelId, apiKey);
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       case YOU_TUBE_TOOL_NAMES.GET_CHANNEL_VIDEOS: {
@@ -75,11 +75,11 @@ export const handleChannelTool = async (
           input.maxResults,
           input.order,
         );
-        if (!result.success) {
+        if (result.isErr()) {
           return err(result.error);
         }
         return ok({
-          content: [{ type: "text", text: JSON.stringify(result.data) }],
+          content: [{ type: "text", text: JSON.stringify(result.value) }],
         });
       }
       default:

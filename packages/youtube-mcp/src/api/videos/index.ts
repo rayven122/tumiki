@@ -5,17 +5,17 @@ import type {
   YouTubeApiSearchItem,
   YouTubeApiVideoItem,
 } from "@/api/types.js";
-import type { Result } from "@/lib/result.js";
+import type { Result } from "neverthrow";
 import { YouTubeApiError } from "@/api/errors/index.js";
 import { fetchApi } from "@/api/fetcher.js";
 import { mapSearchResult, mapVideoResponse } from "@/api/mappers.js";
-import { err, isOk, mapResult } from "@/lib/result.js";
+import { err } from "neverthrow";
 
 export const getVideo = async (
   videoId: string,
   apiKey: YoutubeApiKey,
   parts: string[] = ["snippet", "statistics", "contentDetails"],
-): Promise<Result<VideoDetails>> => {
+): Promise<Result<VideoDetails, Error>> => {
   const result = await fetchApi<{
     items?: YouTubeApiVideoItem[];
   }>(
@@ -27,11 +27,11 @@ export const getVideo = async (
     apiKey,
   );
 
-  if (!isOk(result)) {
-    return result;
+  if (result.isErr()) {
+    return err(result.error as Error);
   }
 
-  const { items } = result.data;
+  const { items } = result.value;
   if (!items || items.length === 0) {
     return err(new YouTubeApiError(`Video not found: ${videoId}`));
   }
@@ -40,7 +40,7 @@ export const getVideo = async (
     return err(new YouTubeApiError(`Video not found: ${videoId}`));
   }
 
-  return mapResult(result, () => mapVideoResponse(firstItem));
+  return result.map(() => mapVideoResponse(firstItem));
 };
 
 export const searchVideos = async (
@@ -49,7 +49,7 @@ export const searchVideos = async (
   maxResults = 10,
   order: "relevance" | "date" | "rating" | "viewCount" | "title" = "relevance",
   type: "video" | "channel" | "playlist" = "video",
-): Promise<Result<SearchResult[]>> => {
+): Promise<Result<SearchResult[], Error>> => {
   const result = await fetchApi<{
     items?: YouTubeApiSearchItem[];
   }>(
@@ -64,7 +64,7 @@ export const searchVideos = async (
     apiKey,
   );
 
-  return mapResult(result, (data) => {
+  return result.map((data) => {
     if (!data.items) {
       return [];
     }
