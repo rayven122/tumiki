@@ -105,6 +105,11 @@ jobs:
             echo "target=vercel" >> $GITHUB_OUTPUT
           fi
 
+      - name: Configure git user for deployment
+        run: |
+          git config --global user.email "efficient122@gmail.com"
+          git config --global user.name "Tumiki Deploy Bot"
+
       - name: Deploy to Vercel and/or GCE
         id: deploy
         uses: ./.github/actions/deploy
