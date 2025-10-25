@@ -6,19 +6,12 @@
     "emitDeclarationOnly": false,
     "types": ["vitest/globals", "vitest-environment-vprisma"]
   },
-  "include": [
-    "src",
-    "prisma/generated",
-    "src/testing/**/*"
-  ],
+  "include": ["src", "prisma/generated", "src/testing/**/*"],
   "exclude": [
     "node_modules",
     "dist",
     "prisma/generated/fabbrica",
     "prisma.config.ts",
-    "vitest.config.ts",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "src/__tests__/**/*"
+    "vitest.config.ts"
   ]
 }
