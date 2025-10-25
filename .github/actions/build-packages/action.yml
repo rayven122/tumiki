@@ -1,5 +1,5 @@
 name: Build Packages
-description: デプロイに必要なパッケージ（tsup-config、vitest-config、db、auth、utils、mailer）をビルドします
+description: デプロイに必要なパッケージ（vitest-config、db、auth、utils、mailer）をビルドします
 
 runs:
   using: composite
@@ -8,7 +8,6 @@ runs:
       shell: bash
       run: |
         echo "Building tooling packages..."
-        pnpm run --filter @tumiki/tsup-config build
         pnpm run --filter @tumiki/vitest-config build
 
     - name: 📦 Build core packages
@@ -24,7 +23,7 @@ runs:
       shell: bash
       run: |
         echo "Verifying package builds..."
-        for pkg in tsup-config vitest-config db auth utils mailer; do
+        for pkg in vitest-config db auth utils mailer; do
           if [ ! -d "packages/$pkg/dist" ] && [ ! -d "tooling/$pkg/dist" ]; then
             echo "Warning: Build output not found for @tumiki/$pkg"
           else

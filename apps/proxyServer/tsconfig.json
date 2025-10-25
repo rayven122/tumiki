@@ -4,6 +4,8 @@
     "verbatimModuleSyntax": true,
     "rootDir": "./",
     "outDir": "./build",
+    "declaration": true,
+    "declarationMap": true,
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -18,8 +20,13 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "scripts/**/*.ts",
-    "tests/**/*.ts"
+    "scripts/**/*.ts"
   ],
-  "exclude": ["node_modules", "tsup.config.ts"]
+  "exclude": [
+    "node_modules",
+    "build",
+    "tests/**/*.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
