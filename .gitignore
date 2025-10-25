@@ -65,6 +65,16 @@ apps/proxyServer/mcp
 # Additional build outputs
 *.tgz
 
+# Electron
+dist-electron/
+*.app
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+.vite/
+
 # Runtime data
 pids
 *.pid
