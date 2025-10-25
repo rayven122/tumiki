@@ -22,7 +22,6 @@
     "build": "tsup",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
-    "typecheck:dev": "tsgo --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
