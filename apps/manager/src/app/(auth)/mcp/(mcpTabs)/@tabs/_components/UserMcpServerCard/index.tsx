@@ -35,7 +35,7 @@ import {
 import { toast } from "@/utils/client/toast";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { debounce } from "@tumiki/utils/client";
+import { debounce } from "@/utils/debounce";
 
 import { type RouterOutputs, api } from "@/trpc/react";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";

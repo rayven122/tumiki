@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, BarChart3 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { decompressGzipData } from "@/utils/dataDecompression";
-import { formatDataSize } from "@tumiki/utils";
+import { formatDataSize } from "@/utils/formatters";
 import { JsonViewer } from "@/components/JsonViewer";
 
 type RequestDataDetailModalProps = {
