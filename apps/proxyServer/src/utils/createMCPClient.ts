@@ -6,10 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import {
-  setupGoogleCredentialsEnv,
-  type GoogleCredentials,
-} from "@tumiki/utils/server/security";
+import { setupGoogleCredentialsEnv } from "@tumiki/utils/server/security";
 import type { ServerConfig } from "../libs/types.js";
 import { recordError } from "../libs/metrics.js";
 
@@ -48,12 +45,14 @@ export const createMCPClient = async (
 
       // Google認証情報の処理
       if (server.googleCredentials) {
-        const { envVars, cleanup } = await setupGoogleCredentialsEnv(
-          finalEnv,
-          server.googleCredentials as GoogleCredentials,
-        );
-        finalEnv = envVars;
-        credentialsCleanup = cleanup;
+        /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
+        const result: {
+          envVars: Record<string, string>;
+          cleanup: () => Promise<void>;
+        } = await setupGoogleCredentialsEnv(finalEnv, server.googleCredentials);
+        finalEnv = result.envVars;
+        credentialsCleanup = result.cleanup;
+        /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
       }
 
       transport = new StdioClientTransport({
