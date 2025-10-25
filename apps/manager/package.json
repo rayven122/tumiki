@@ -10,7 +10,6 @@
     "preview": "next build && next start",
     "clean": "git clean -xdf .cache .next .turbo node_modules",
     "typecheck": "tsc --noEmit",
-    "typecheck:dev": "tsgo --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
     "lint:fix": "next lint --fix",
