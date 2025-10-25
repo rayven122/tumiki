@@ -35,6 +35,9 @@ export default defineConfig({
         "@": resolve(__dirname, "src/renderer"),
       },
     },
+    css: {
+      postcss: "./postcss.config.js",
+    },
     plugins: [react()],
   },
 });
