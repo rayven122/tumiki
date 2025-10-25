@@ -29,6 +29,10 @@
     "linear-server": {
       "type": "sse",
       "url": "https://mcp.linear.app/sse"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
     }
   }
 }
