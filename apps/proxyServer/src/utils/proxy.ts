@@ -13,10 +13,7 @@ import {
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db";
 import { validateApiKey, setAuthCache } from "../libs/validateApiKey.js";
-import {
-  setupGoogleCredentialsEnv,
-  type GoogleCredentials,
-} from "@tumiki/utils/server/security";
+import { setupGoogleCredentialsEnv } from "@tumiki/utils/server/security";
 
 import type {
   ServerConfig,
@@ -186,12 +183,14 @@ const createClient = async (
 
       // Google認証情報の処理
       if (server.googleCredentials) {
-        const { envVars, cleanup } = await setupGoogleCredentialsEnv(
-          finalEnv,
-          server.googleCredentials as GoogleCredentials,
-        );
-        finalEnv = envVars;
-        credentialsCleanup = cleanup;
+        /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
+        const result: {
+          envVars: Record<string, string>;
+          cleanup: () => Promise<void>;
+        } = await setupGoogleCredentialsEnv(finalEnv, server.googleCredentials);
+        finalEnv = result.envVars;
+        credentialsCleanup = result.cleanup;
+        /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
       }
 
       transport = new StdioClientTransport({
