@@ -21,7 +21,6 @@
     "pm2:delete": "pm2 delete tumiki-proxy-server",
     "clean": "git clean -xdf .cache .turbo node_modules build",
     "typecheck": "tsc --noEmit",
-    "typecheck:dev": "tsgo --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
