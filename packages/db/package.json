@@ -39,7 +39,7 @@
   },
   "scripts": {
     "dev": "tsc",
-    "build": "pnpm db:generate && tsc",
+    "build": "pnpm db:generate && tsc --project tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",

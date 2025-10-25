@@ -5,21 +5,21 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "default": "./dist/src/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./emails": {
-      "types": "./dist/src/emails/index.d.ts",
-      "default": "./dist/src/emails/index.js"
+      "types": "./dist/emails/index.d.ts",
+      "default": "./dist/emails/index.js"
     },
     "./templates": {
-      "types": "./dist/src/templates/index.d.ts",
-      "default": "./dist/src/templates/index.js"
+      "types": "./dist/templates/index.d.ts",
+      "default": "./dist/templates/index.js"
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "tsup",
+    "dev": "tsc --watch",
+    "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -53,7 +53,6 @@
     "eslint": "catalog:",
     "prettier": "catalog:",
     "react-email": "^3.0.3",
-    "tsup": "^8.3.5",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
     "vitest": "catalog:"

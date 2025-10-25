@@ -1,13 +1,16 @@
 {
   "extends": "@tumiki/tsconfig/internal-package.json",
   "compilerOptions": {
-    "noEmit": true
+    "emitDeclarationOnly": false
   },
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
-    "tsup.config.ts",
-    "src/migration-completed/**/*"
+    "src/migration-completed/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

@@ -54,7 +54,6 @@ jobs:
       - name: Build packages (database only)
         shell: bash
         run: |
-          pnpm run --filter @tumiki/tsup-config build
           pnpm run --filter @tumiki/db build
 
       - name: Migrate staging/production database
