@@ -105,8 +105,7 @@ pnpm dev
 pnpm build
 
 # 型チェック
-pnpm typecheck      # 安定版（tsc）
-pnpm typecheck:dev  # 高速版（tsgo）
+pnpm typecheck      # tsc使用
 
 # テスト
 pnpm test           # 単体テスト実行
