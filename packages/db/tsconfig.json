@@ -9,16 +9,16 @@
   "include": [
     "src",
     "prisma/generated",
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts",
-    "src/__tests__/**/*",
     "src/testing/**/*"
   ],
   "exclude": [
     "node_modules",
+    "dist",
     "prisma/generated/fabbrica",
-    "tsup.config.ts",
     "prisma.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/__tests__/**/*"
   ]
 }
