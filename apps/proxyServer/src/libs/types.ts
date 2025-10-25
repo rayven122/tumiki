@@ -1,3 +1,5 @@
+import type { GoogleCredentials } from "../utils/googleCredentials.js";
+
 export type TransportConfigStdio = {
   type?: "stdio";
   command: string;
@@ -16,7 +18,7 @@ export type ServerConfig = {
   name: string;
   toolNames: string[];
   transport: TransportConfig;
-  googleCredentials?: Record<string, unknown> | null;
+  googleCredentials?: GoogleCredentials | null;
 };
 
 export type Config = {

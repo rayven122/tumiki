@@ -24,7 +24,6 @@
   "dependencies": {
     "@tumiki/auth": "workspace:*",
     "@tumiki/db": "workspace:*",
-    "@tumiki/utils": "workspace:*",
     "clsx": "^2.1.1",
     "electron-store": "^10.0.0",
     "electron-updater": "^6.3.9",
