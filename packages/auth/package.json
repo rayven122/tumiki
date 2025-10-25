@@ -5,29 +5,25 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "import": "./dist/src/index.js",
-      "require": "./dist/src/index.cjs"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./client": {
-      "types": "./dist/src/client.d.ts",
-      "import": "./dist/src/client.js",
-      "require": "./dist/src/client.cjs"
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
     },
     "./server": {
-      "types": "./dist/src/server.d.ts",
-      "import": "./dist/src/server.js",
-      "require": "./dist/src/server.cjs"
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     },
     "./edge": {
-      "types": "./dist/src/edge.d.ts",
-      "import": "./dist/src/edge.js",
-      "require": "./dist/src/edge.cjs"
+      "types": "./dist/edge.d.ts",
+      "import": "./dist/edge.js"
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "tsup",
+    "dev": "tsc --watch",
+    "build": "tsc",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
@@ -52,7 +48,6 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "tsup": "^8.3.5",
     "typescript": "catalog:",
     "typescript-eslint": "^8.33.0",
     "vitest": "catalog:"

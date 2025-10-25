@@ -5,37 +5,37 @@
   "type": "module",
   "exports": {
     "./cleanUserMcp": {
-      "types": "./dist/src/cleanUserMcp.d.ts",
-      "default": "./dist/src/cleanUserMcp.js"
+      "types": "./dist/cleanUserMcp.d.ts",
+      "default": "./dist/cleanUserMcp.js"
     },
     "./createUserMcpServer": {
-      "types": "./dist/src/createUserMcpServer.d.ts",
-      "default": "./dist/src/createUserMcpServer.js"
+      "types": "./dist/createUserMcpServer.d.ts",
+      "default": "./dist/createUserMcpServer.js"
     },
     "./migrateWaitingList": {
-      "types": "./dist/src/migrateWaitingList.d.ts",
-      "default": "./dist/src/migrateWaitingList.js"
+      "types": "./dist/migrateWaitingList.d.ts",
+      "default": "./dist/migrateWaitingList.js"
     },
     "./upsertAll": {
-      "types": "./dist/src/upsertAll.d.ts",
-      "default": "./dist/src/upsertAll.js"
+      "types": "./dist/upsertAll.d.ts",
+      "default": "./dist/upsertAll.js"
     },
     "./upsertMcpServers": {
-      "types": "./dist/src/upsertMcpServers.d.ts",
-      "default": "./dist/src/upsertMcpServers.js"
+      "types": "./dist/upsertMcpServers.d.ts",
+      "default": "./dist/upsertMcpServers.js"
     },
     "./upsertMcpTools": {
-      "types": "./dist/src/upsertMcpTools.d.ts",
-      "default": "./dist/src/upsertMcpTools.js"
+      "types": "./dist/upsertMcpTools.d.ts",
+      "default": "./dist/upsertMcpTools.js"
     },
     "./test-auth0-api": {
-      "types": "./dist/src/test-auth0-api.d.ts",
-      "default": "./dist/src/test-auth0-api.js"
+      "types": "./dist/test-auth0-api.d.ts",
+      "default": "./dist/test-auth0-api.js"
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "tsup",
+    "dev": "tsc --watch",
+    "build": "tsc",
     "upsertAll": "pnpm with-env-all tsx src/upsertAll.ts",
     "migrateWaitingList": "pnpm with-env tsx src/migrateWaitingList.ts",
     "test-auth0-api": "pnpm with-env tsx src/test-auth0-api.ts",
@@ -89,7 +89,6 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
-    "tsup": "^8.3.5",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

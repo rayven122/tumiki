@@ -77,7 +77,7 @@ export const deleteGoogleCredentialsFile = async (
  */
 export const setupGoogleCredentialsEnv = async (
   envVars: Record<string, string>,
-  credentials: GoogleCredentials | null,
+  credentials: Record<string, unknown> | GoogleCredentials | null | undefined,
 ): Promise<{
   envVars: Record<string, string>;
   cleanup: () => Promise<void>;
@@ -91,7 +91,9 @@ export const setupGoogleCredentialsEnv = async (
     };
   }
 
-  const filePath = await createGoogleCredentialsFile(credentials);
+  // バリデーションを実行してGoogleCredentials型に変換
+  const validatedCredentials = GoogleCredentialsSchema.parse(credentials);
+  const filePath = await createGoogleCredentialsFile(validatedCredentials);
 
   return {
     envVars: {

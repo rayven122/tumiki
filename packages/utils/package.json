@@ -6,28 +6,24 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.mjs",
-      "require": "./dist/server/index.js"
+      "import": "./dist/server/index.js"
     },
     "./server/security": {
       "types": "./dist/server/security/index.d.ts",
-      "import": "./dist/server/security/index.mjs",
-      "require": "./dist/server/security/index.js"
+      "import": "./dist/server/security/index.js"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.mjs",
-      "require": "./dist/client/index.js"
+      "import": "./dist/client/index.js"
     }
   },
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "tsup",
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "build": "tsc --project tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",

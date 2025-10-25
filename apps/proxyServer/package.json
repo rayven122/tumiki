@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env pnpm build && pnpm start",
-    "build": "pnpm build:clean && tsup && chmod +x build/index.js",
-    "build:clean": "rm -rf build",
-    "start": "pnpm with-env node build/index.js",
+    "build": "pnpm build:clean && tsc --project tsconfig.build.json && chmod +x build/src/index.js",
+    "build:clean": "rm -rf build .cache",
+    "start": "pnpm with-env node build/src/index.js",
     "pm2:start": "pnpm with-env pm2 start ecosystem.config.cjs",
     "pm2:logs": "pm2 logs tumiki-proxy-server",
     "pm2:logs:remote": "./scripts/stream-pm2-logs.sh",
@@ -51,6 +51,7 @@
     "@stripe/mcp": "^0.2.4",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
+    "@tumiki/utils": "workspace:*",
     "@tumiki/youtube-mcp": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
     "agents": "^0.0.45",
@@ -94,7 +95,6 @@
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
     "supertest": "^7.1.4",
-    "tsup": "^8.3.5",
     "typescript-eslint": "^8.33.0",
     "vitest": "catalog:",
     "vitest-mock-extended": "^3.1.0"

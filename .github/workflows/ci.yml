@@ -23,7 +23,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: 🔧 Build tooling packages
-        run: pnpm run --filter @tumiki/tsup-config build && pnpm run --filter @tumiki/vitest-config build
+        run: pnpm run --filter @tumiki/vitest-config build
         # toolingパッケージを先にビルド
 
       - name: 🔧 Build dependencies
