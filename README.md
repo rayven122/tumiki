@@ -39,7 +39,6 @@ tumiki/
 ├── packages/             # 共有パッケージ
 │   ├── db/              # Prisma データベースパッケージ
 │   ├── auth/            # Auth0 認証パッケージ
-│   ├── utils/           # ユーティリティ関数
 │   ├── mailer/          # メール送信機能
 │   └── scripts/         # データベーススクリプト
 ├── tooling/              # 開発ツール設定
