@@ -4,7 +4,7 @@ import { ServerType, ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import { generateApiKey } from "@/utils/server";
 import type { CreateMcpServerInput } from ".";
-import { getMcpServerToolsSSE } from "@tumiki/utils/server";
+import { getMcpServerToolsSSE } from "@/utils/getMcpServerTools";
 
 type CreateMcpServerInputProps = {
   ctx: ProtectedContext;

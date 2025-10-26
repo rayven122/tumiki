@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { getFaviconUrlsFromUrl } from "@tumiki/utils";
+import { getFaviconUrlsFromUrl } from "@/utils/faviconUtils";
 
 interface FaviconImageProps {
   /** MCPサーバーのURL（ファビコンを抽出するため） */
