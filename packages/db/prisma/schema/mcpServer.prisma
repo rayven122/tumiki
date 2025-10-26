@@ -60,6 +60,7 @@ model McpServer {
   url              String?
   /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
   /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+  /// Cloud Run: HTTPヘッダー名（X-DeepL-API-Keyなど）を直接指定し、同名の環境変数から値を取得
   envVars          String[]
   /// 認証タイプ
   authType         AuthType              @default(NONE)
