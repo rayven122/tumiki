@@ -1,6 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { URL_HEADER_KEY } from "./constants/url";
-import { auth0, auth0OAuth } from "@tumiki/auth/edge";
+import {
+  auth0,
+  auth0OAuth,
+  getAvailableVerificationUserIds,
+  getDefaultVerificationUserId,
+  isVerificationModeEnabled,
+  validateVerificationMode,
+} from "@tumiki/auth/edge";
 
 // 認証不要のパス定数
 const PUBLIC_PATHS = [
@@ -49,6 +56,56 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // 検証モードチェック
+  if (isVerificationModeEnabled()) {
+    try {
+      validateVerificationMode();
+
+      // Cookie から現在のセッションを確認
+      const currentSessionUserId = request.cookies.get(
+        "__verification_session",
+      )?.value;
+
+      // クエリパラメータからユーザーIDを取得（オプション）
+      // パラメータがある場合のみ、それを使用してセッションを更新
+      const queryUserId = request.nextUrl.searchParams.get("verification_user");
+
+      // セッション更新が必要なユーザーID
+      const verificationUserId =
+        queryUserId ?? currentSessionUserId ?? getDefaultVerificationUserId();
+
+      // 利用可能なユーザーIDかチェック
+      const availableIds = getAvailableVerificationUserIds();
+      if (!availableIds.includes(verificationUserId)) {
+        console.warn(
+          `[VERIFICATION MODE] Invalid user ID: ${verificationUserId}`,
+        );
+      } else {
+        // セッションがない、または異なるユーザーの場合
+        if (currentSessionUserId !== verificationUserId) {
+          // 簡易セッション Cookie を設定
+          const response = NextResponse.next();
+          response.cookies.set("__verification_session", verificationUserId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24, // 24時間
+          });
+
+          // コンソールに警告を出力
+          console.warn(
+            `⚠️  [VERIFICATION MODE] Auto-login as: ${verificationUserId}`,
+          );
+
+          return response;
+        }
+      }
+    } catch (error) {
+      console.error("[VERIFICATION MODE] Error:", error);
+    }
+  }
+
   // OAuth専用パスの判定
   const isOAuthPath =
     pathname === "/oauth" || // OAuth設定ページ
@@ -70,6 +127,22 @@ export async function middleware(request: NextRequest) {
 
   // 認証必要パスでのセッションチェック
   const session = await auth0.getSession(request);
+
+  // 検証モードの場合、Cookie セッションを優先
+  if (isVerificationModeEnabled()) {
+    const verificationUserId = request.cookies.get(
+      "__verification_session",
+    )?.value;
+    if (verificationUserId) {
+      // 検証モードのセッションがある場合、認証済みとして扱う
+      console.log(
+        `[VERIFICATION MODE] Using verification session: ${verificationUserId}`,
+      );
+      // Auth0 認証をスキップして次に進む
+      return NextResponse.next();
+    }
+  }
+
   if (session) {
     return auth0.middleware(request);
   }
