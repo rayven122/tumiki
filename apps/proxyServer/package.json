@@ -57,6 +57,7 @@
     "express-oauth2-jwt-bearer": "^1.6.1",
     "fastmcp": "^1.27.6",
     "figma-developer-mcp": "^0.5.0",
+    "google-auth-library": "^10.4.2",
     "hono": "^4.7.4",
     "just-pick": "^4.2.0",
     "lru-cache": "^11.2.1",
