@@ -13,7 +13,11 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "@tumiki/auth/server";
+import {
+  auth,
+  isVerificationModeEnabled,
+  type SessionReturnType,
+} from "@tumiki/auth/server";
 import { db } from "@tumiki/db/server";
 
 /**
@@ -29,7 +33,54 @@ import { db } from "@tumiki/db/server";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  let session = await auth();
+
+  // 検証モードチェック
+  if (isVerificationModeEnabled()) {
+    const cookies = opts.headers.get("cookie");
+    if (cookies) {
+      const cookieValue = cookies
+        .split(";")
+        .find((c) => c.trim().startsWith("__verification_session="))
+        ?.split("=")[1];
+
+      if (cookieValue) {
+        // URLデコードを適用
+        const verificationUserId = decodeURIComponent(cookieValue);
+
+        // 検証ユーザー情報のマッピング
+        const verificationUsers = {
+          "verification|admin": {
+            email: "admin@verification.local",
+            name: "Admin User (Verification)",
+          },
+          "verification|user": {
+            email: "user@verification.local",
+            name: "Regular User (Verification)",
+          },
+        } as const;
+
+        const userInfo =
+          verificationUsers[
+            verificationUserId as keyof typeof verificationUsers
+          ];
+
+        if (userInfo) {
+          // 検証モード用のモックセッションを作成
+          session = {
+            user: {
+              sub: verificationUserId,
+              email: userInfo.email,
+              name: userInfo.name,
+            },
+          } as SessionReturnType;
+          console.log(
+            `[VERIFICATION MODE] tRPC context using: ${verificationUserId}`,
+          );
+        }
+      }
+    }
+  }
 
   // ユーザーの現在の組織と権限を取得
   let currentOrganizationId: string | null = null;
