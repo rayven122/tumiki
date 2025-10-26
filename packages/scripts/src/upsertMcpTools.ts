@@ -1,9 +1,9 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 import { db } from "@tumiki/db/server";
-import { getMcpServerTools } from "@tumiki/utils/server";
 
 import { MCP_SERVERS } from "./constants/mcpServers";
+import { getMcpServerTools } from "./utils/getMcpServerTools";
 
 /**
  * MCP サーバーからツールを取得してデータベースに書き込む

@@ -3,7 +3,7 @@ import type { ProtectedContext } from "../../trpc";
 import type { CheckServerConnectionInput } from ".";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import { getMcpServerToolsHTTP } from "@tumiki/utils/server";
+import { getMcpServerToolsHTTP } from "@/utils/getMcpServerTools";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { makeHttpProxyServerUrl } from "@/utils/url";
 

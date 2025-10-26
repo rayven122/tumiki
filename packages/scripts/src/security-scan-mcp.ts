@@ -16,7 +16,8 @@ import { v4 as uuidv4 } from "uuid";
 
 import { ServerType, TransportType } from "@tumiki/db";
 import { db } from "@tumiki/db/server";
-import { runMcpSecurityScan } from "@tumiki/utils/server";
+
+import { runMcpSecurityScan } from "./utils/mcpScan";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +42,7 @@ const maskApiKey = (url: string | null): string => {
   // URLパラメータのapi-keyをマスク
   const maskedUrl = url.replace(
     /(\?|&)(api[-_]?key)=([^&]+)/gi,
-    (match: string, separator: string, keyName: string, value: string) => {
+    (_match: string, separator: string, keyName: string, value: string) => {
       if (value.length <= 10) {
         return `${separator}${keyName}=****`;
       }

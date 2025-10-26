@@ -13,7 +13,11 @@ import {
 import { db } from "@tumiki/db/tcp";
 import { type TransportType } from "@tumiki/db";
 import { validateApiKey, setAuthCache } from "../libs/validateApiKey.js";
-import { setupGoogleCredentialsEnv } from "@tumiki/utils/server/security";
+import {
+  setupGoogleCredentialsEnv,
+  GoogleCredentialsSchema,
+  type GoogleCredentials,
+} from "./googleCredentials.js";
 
 import type {
   ServerConfig,
@@ -183,14 +187,12 @@ const createClient = async (
 
       // Google認証情報の処理
       if (server.googleCredentials) {
-        /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
-        const result: {
-          envVars: Record<string, string>;
-          cleanup: () => Promise<void>;
-        } = await setupGoogleCredentialsEnv(finalEnv, server.googleCredentials);
+        const result = await setupGoogleCredentialsEnv(
+          finalEnv,
+          server.googleCredentials,
+        );
         finalEnv = result.envVars;
         credentialsCleanup = result.cleanup;
-        /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
       }
 
       transport = new StdioClientTransport({
@@ -371,7 +373,7 @@ const getServerConfigsByInstanceId = async (
       .map(({ tool }) => tool.name);
 
     let envObj: Record<string, string>;
-    let googleCredentials: Record<string, unknown> | null = null;
+    let googleCredentials: GoogleCredentials | null = null;
 
     try {
       envObj = JSON.parse(serverConfig.envVars) as Record<string, string>;
@@ -382,9 +384,10 @@ const getServerConfigsByInstanceId = async (
     // GOOGLE_APPLICATION_CREDENTIALS が含まれている場合、JSONとして解析
     if (envObj.GOOGLE_APPLICATION_CREDENTIALS) {
       try {
-        googleCredentials = JSON.parse(
+        const parsedCredentials: unknown = JSON.parse(
           envObj.GOOGLE_APPLICATION_CREDENTIALS,
-        ) as Record<string, unknown>;
+        );
+        googleCredentials = GoogleCredentialsSchema.parse(parsedCredentials);
         // envObjから削除（ファイルパスは動的に生成されるため）
         delete envObj.GOOGLE_APPLICATION_CREDENTIALS;
       } catch (error) {
