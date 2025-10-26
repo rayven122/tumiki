@@ -4,3 +4,4 @@
  */
 
 export { auth0, auth0OAuth } from "./clients.js";
+export * from "./verification.js";
