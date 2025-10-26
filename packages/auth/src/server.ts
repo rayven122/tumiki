@@ -7,9 +7,10 @@ import { auth0 } from "./clients.js";
 // サーバー専用のエクスポート
 export * from "./oauth.js";
 export * from "./providers.js";
+export * from "./verification.js";
 export { auth0, auth0OAuth, managementClient } from "./clients.js";
 
-type SessionReturnType = Awaited<ReturnType<Auth0Client["getSession"]>>;
+export type SessionReturnType = Awaited<ReturnType<Auth0Client["getSession"]>>;
 
 const auth: () => Promise<SessionReturnType> = cache(() => auth0.getSession());
 
