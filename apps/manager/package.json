@@ -12,12 +12,9 @@
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
-    "lint:fix": "next lint --fix",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "check": "concurrently --kill-others-on-fail --names \"lint,format,typecheck\" \"pnpm run lint\" \"pnpm run format\" \"pnpm run typecheck\"",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest"
   },
   "dependencies": {
     "@ai-sdk/react": "^1.2.11",

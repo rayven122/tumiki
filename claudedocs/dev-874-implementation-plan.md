@@ -349,6 +349,121 @@ pnpm test
 # GitHub Actionsが全て成功することを確認
 ```
 
+### Phase 5: npm scripts の最適化
+
+#### 5.1 重複scriptsの削除
+
+**タスク**: 各パッケージのpackage.jsonから重複したscriptsを削除
+
+**問題点**:
+- `lint` と `lint:fix` が全パッケージに重複（`--fix`オプションの有無のみ）
+- `format` と `format:fix` が全パッケージに重複（`--write`オプションの有無のみ）
+- `test`, `test:watch`, `test:coverage` が全パッケージに重複（vitestオプションの違いのみ）
+
+**対象パッケージ**:
+- `apps/manager/package.json`
+- `apps/proxyServer/package.json`
+- `apps/desktop/package.json`
+- `packages/db/package.json`
+- `packages/auth/package.json`
+- `packages/mailer/package.json`
+- `packages/youtube-mcp/package.json`
+- `packages/scripts/package.json`
+- `tooling/eslint/package.json`
+- `tooling/prettier/package.json`
+- `tooling/tailwind/package.json`
+- `tooling/vitest/package.json`
+
+#### 5.2 各パッケージのpackage.json更新
+
+**タスク**: scriptsを基本コマンドのみに簡素化
+
+**変更前の例**:
+```json
+{
+  "scripts": {
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  }
+}
+```
+
+**変更後**:
+```json
+{
+  "scripts": {
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "test": "vitest"
+  }
+}
+```
+
+**削除するscripts**:
+- `lint:fix` → ルートで `--fix` オプション付きで実行
+- `format:fix` → 存在しない（元から format のみ）
+- `test:watch` → ルートで引数なしで実行
+- `test:coverage` → ルートで `--coverage` オプション付きで実行
+
+#### 5.3 ルートpackage.json更新
+
+**タスク**: オプション付きで各パッケージのscriptsを実行
+
+**変更前**:
+```json
+{
+  "scripts": {
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint --continue -- --fix",
+    "format": "turbo run format",
+    "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
+    "test": "vitest run"
+  }
+}
+```
+
+**変更後**:
+```json
+{
+  "scripts": {
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint --continue -- --fix",
+    "format": "turbo run format",
+    "format:fix": "turbo run format --continue -- --write --cache --cache-location .cache/.prettiercache",
+    "test": "turbo run test -- run",
+    "test:watch": "turbo run test",
+    "test:coverage": "turbo run test -- run --coverage"
+  }
+}
+```
+
+**注意**: ルート `package.json` の `test` は vitest ではなく turbo 経由で実行
+
+#### 5.4 検証
+
+**検証項目**:
+```bash
+# 1. Lint系コマンド
+pnpm lint        # 各パッケージで eslint 実行
+pnpm lint:fix    # 各パッケージで eslint --fix 実行
+
+# 2. Format系コマンド
+pnpm format      # 各パッケージで prettier --check 実行
+pnpm format:fix  # 各パッケージで prettier --write 実行
+
+# 3. Test系コマンド
+pnpm test        # 各パッケージで vitest run 実行
+pnpm test:watch  # 各パッケージで vitest 実行（watchモード）
+pnpm test:coverage  # 各パッケージで vitest run --coverage 実行
+
+# 4. 全体チェック
+pnpm check       # lint + format + typecheck が成功
+```
+
 ## ⚠️ 実装時の注意事項
 
 ### 段階的な実施
@@ -420,9 +535,21 @@ pnpm test
 
 ### Phase 4完了条件
 
-- [ ] README.mdが更新されている
-- [ ] CLAUDE.mdが更新されている
-- [ ] ドキュメントの内容が実際の状態と一致している
+- [x] README.mdが更新されている
+- [x] CLAUDE.mdが更新されている
+- [x] ドキュメントの内容が実際の状態と一致している
+
+### Phase 5完了条件
+
+- [x] 12パッケージ全ての `lint:fix` スクリプトが削除されている
+- [x] 12パッケージ全ての `test:watch`, `test:coverage` スクリプトが削除されている
+- [x] 各パッケージの `test` スクリプトが `vitest` のみに変更されている
+- [x] ルート `package.json` の `test` スクリプトが `turbo run test -- run` に変更されている
+- [x] ルート `package.json` の `test:watch`, `test:coverage` が更新されている
+- [x] `pnpm lint:fix` が正常に動作する
+- [x] `pnpm test` が正常に動作する
+- [x] `pnpm test:watch` が正常に動作する
+- [x] `pnpm test:coverage` が正常に動作する
 
 ### 全体完了条件
 
@@ -439,11 +566,12 @@ pnpm test
 
 | Phase | タスク数 | 完了 | 進捗率 | 担当者 |
 |-------|---------|------|--------|--------|
-| Phase 1 | 2 | 0 | 0% | 鈴山英寿 |
-| Phase 2 | 2 | 0 | 0% | 鈴山英寿 |
-| Phase 3 | 3 | 0 | 0% | 鈴山英寿 |
-| Phase 4 | 3 | 0 | 0% | 鈴山英寿 |
-| **合計** | **10** | **0** | **0%** | - |
+| Phase 1 | 2 | 2 | 100% | 鈴山英寿 |
+| Phase 2 | 2 | 2 | 100% | 鈴山英寿 |
+| Phase 3 | 3 | 3 | 100% | 鈴山英寿 |
+| Phase 4 | 3 | 3 | 100% | 鈴山英寿 |
+| Phase 5 | 4 | 4 | 100% | 鈴山英寿 |
+| **合計** | **14** | **14** | **100%** | - |
 
 ## 📊 期待される改善効果
 
@@ -452,7 +580,12 @@ pnpm test
 - **削除されるパッケージ**:
   - `tooling/tsup-config`
   - `packages/utils`
-- **削除されるスクリプト**: 9箇所の `typecheck:dev`
+- **削除されるスクリプト**:
+  - 9箇所の `typecheck:dev`
+  - 12箇所の `lint:fix`
+  - 12箇所の `test:watch`
+  - 12箇所の `test:coverage`
+  - **合計**: 45箇所のスクリプトを削減
 - **削除される設定ファイル**: 6箇所の `tsup.config.ts`
 
 ### 保守性の向上
@@ -460,12 +593,20 @@ pnpm test
 - 型チェックツールをtscに統一（TSGO不要）
 - ビルドツールをtscに統一（tsup不要）
 - utilsパッケージの抽象化を解消
+- **npm scriptsの一元管理**: ルートpackage.jsonでオプション管理
+- **DRY原則の徹底**: 重複scriptsの完全削除
 
 ### 依存関係の簡素化
 
 - tsup関連の依存関係を削除
 - tsgo関連の依存関係を削除
 - @tumiki/utils への依存を削除
+
+### 開発体験の向上
+
+- scriptsの変更が1箇所で済む（メンテナンス性向上）
+- 各パッケージのpackage.jsonがシンプルで読みやすい
+- 新規パッケージ追加時のボイラープレート削減
 
 ## 🔗 関連リソース
 
@@ -475,11 +616,12 @@ pnpm test
 
 ## 📅 スケジュール（目安）
 
-- **Phase 1**: 0.5日（typecheck:dev削除）
-- **Phase 2**: 1.5日（tsup削除とtsc移行）
-- **Phase 3**: 1.5日（utils統合）
-- **Phase 4**: 0.5日（ドキュメント更新）
-- **合計**: 約4日
+- **Phase 1**: 0.5日（typecheck:dev削除）✅ 完了
+- **Phase 2**: 1.5日（tsup削除とtsc移行）✅ 完了
+- **Phase 3**: 1.5日（utils統合）✅ 完了
+- **Phase 4**: 0.5日（ドキュメント更新）✅ 完了
+- **Phase 5**: 0.5日（npm scripts最適化）
+- **合計**: 約4.5日
 
 ## 📋 詳細タスクリスト
 
@@ -575,12 +717,39 @@ pnpm test
 
 ### Phase 4: ドキュメント更新
 
-- [ ] `README.md` から `typecheck:dev` の記述を削除
-- [ ] `README.md` のビルドシステム説明を更新
-- [ ] `README.md` から utilsパッケージの記述を削除
-- [ ] `CLAUDE.md` から `typecheck:dev` セクションを削除
-- [ ] `CLAUDE.md` の開発コマンド一覧を更新
-- [ ] ドキュメントと実際の状態の整合性を確認
+- [x] `README.md` から `typecheck:dev` の記述を削除
+- [x] `README.md` のビルドシステム説明を更新
+- [x] `README.md` から utilsパッケージの記述を削除
+- [x] `CLAUDE.md` から `typecheck:dev` セクションを削除
+- [x] `CLAUDE.md` の開発コマンド一覧を更新
+- [x] ドキュメントと実際の状態の整合性を確認
+
+### Phase 5: npm scripts最適化
+
+**12パッケージのpackage.json更新**:
+- [ ] `apps/manager/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `apps/proxyServer/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `apps/desktop/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `packages/db/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `packages/auth/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `packages/mailer/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `packages/youtube-mcp/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `packages/scripts/package.json` から `lint:fix`, `test:watch`, `test:coverage` 削除、`test` を `vitest` に変更
+- [ ] `tooling/eslint/package.json` から `lint:fix` 削除
+- [ ] `tooling/prettier/package.json` から `lint:fix` 削除
+- [ ] `tooling/tailwind/package.json` から `lint:fix` 削除
+- [ ] `tooling/vitest/package.json` から `lint:fix` 削除
+
+**ルートpackage.json更新**:
+- [ ] `test` スクリプトを `turbo run test -- run` に変更
+- [ ] `test:watch` スクリプトを追加: `turbo run test`
+- [ ] `test:coverage` スクリプトを追加: `turbo run test -- run --coverage`
+
+**検証**:
+- [ ] `pnpm lint:fix` が正常に動作する
+- [ ] `pnpm test` が正常に動作する（vitest run）
+- [ ] `pnpm test:watch` が正常に動作する（watchモード）
+- [ ] `pnpm test:coverage` が正常に動作する（カバレッジ）
 
 ### 最終検証
 
@@ -597,6 +766,6 @@ pnpm test
 ---
 
 **作成日**: 2025-10-25
-**最終更新**: 2025-10-25
-**ステータス**: Planning
-**改訂**: 第2版（要件に基づき全面改訂）
+**最終更新**: 2025-10-26
+**ステータス**: 完了 (Phase 1-5 全完了)
+**改訂**: 第3版（Phase 5完了: npm scripts最適化）
