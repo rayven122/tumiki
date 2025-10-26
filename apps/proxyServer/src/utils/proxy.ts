@@ -2,6 +2,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
   CallToolRequestSchema,
@@ -18,6 +19,7 @@ import {
   GoogleCredentialsSchema,
   type GoogleCredentials,
 } from "./googleCredentials.js";
+import { createCloudRunHeaders } from "./cloudRunAuth.js";
 
 import type {
   ServerConfig,
@@ -175,7 +177,49 @@ const createClient = async (
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
+    } else if (server.transport.type === "streamable_https") {
+      // Streamable HTTPSトランスポート（Cloud Run対応）
+      const streamableTransport = server.transport;
+      if (
+        "url" in streamableTransport &&
+        typeof streamableTransport.url === "string"
+      ) {
+        const url = new URL(streamableTransport.url);
+
+        // Cloud Run IAM認証が必要な場合、認証ヘッダーを作成
+        const customHeaders: Record<string, string> = {};
+
+        if (streamableTransport.requireCloudRunAuth) {
+          const authHeaders = await createCloudRunHeaders();
+          Object.assign(customHeaders, authHeaders);
+        }
+
+        // 環境変数からHTTPヘッダーを設定（APIキーなど）
+        if (streamableTransport.env) {
+          Object.assign(customHeaders, streamableTransport.env);
+        }
+
+        // カスタムfetch関数を使用してヘッダーを追加
+        const customFetch: typeof fetch = async (input, init) => {
+          const mergedHeaders = {
+            ...customHeaders,
+            ...(init?.headers as Record<string, string>),
+          };
+
+          return fetch(input, {
+            ...init,
+            headers: mergedHeaders,
+          });
+        };
+
+        transport = new StreamableHTTPClientTransport(url, {
+          fetch: customFetch,
+        });
+      } else {
+        throw new Error("Streamable HTTPS transport requires a valid URL");
+      }
     } else {
+      // Stdioトランスポート
       let finalEnv = server.transport.env
         ? Object.fromEntries(
             Object.entries(server.transport.env).map(([key, value]) => [
@@ -195,11 +239,18 @@ const createClient = async (
         credentialsCleanup = result.cleanup;
       }
 
-      transport = new StdioClientTransport({
-        command: server.transport.command,
-        args: server.transport.args,
-        env: finalEnv,
-      });
+      if (
+        "command" in server.transport &&
+        typeof server.transport.command === "string"
+      ) {
+        transport = new StdioClientTransport({
+          command: server.transport.command,
+          args: server.transport.args,
+          env: finalEnv,
+        });
+      } else {
+        throw new Error("Stdio transport requires a valid command");
+      }
     }
   } catch {
     recordError("transport_creation_failed");
