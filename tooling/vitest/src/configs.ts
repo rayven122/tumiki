@@ -4,6 +4,7 @@ import type { InlineConfig } from "vitest";
 export const baseTestConfig: InlineConfig = {
   globals: true,
   setupFiles: ["@tumiki/vitest-config/setup"],
+  passWithNoTests: true,
   exclude: [
     "**/node_modules/**",
     "**/dist/**",
