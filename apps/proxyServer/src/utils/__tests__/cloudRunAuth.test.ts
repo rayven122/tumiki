@@ -17,7 +17,7 @@ vi.mock("google-auth-library", () => ({
 
 describe("cloudRunAuth", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     resetAuthClient(); // シングルトンをリセット
   });
 

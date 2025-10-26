@@ -16,7 +16,7 @@ export type TransportConfigSSE = {
 export type TransportConfigStreamableHTTPS = {
   type: "streamable_https";
   url: string;
-  env?: Record<string, string>; // 環境変数（APIキーなどHTTPヘッダーとして送信）
+  env?: Record<string, string>; // 環境変数（認証ヘッダー設定用）
   requireCloudRunAuth?: boolean; // Cloud Run IAM認証が必要かどうか
 };
 

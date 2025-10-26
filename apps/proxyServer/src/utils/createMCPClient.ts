@@ -53,7 +53,11 @@ export const createMCPClient = async (
 
         // 環境変数からHTTPヘッダーを設定（APIキーなど）
         if (streamableTransport.env) {
-          Object.assign(customHeaders, streamableTransport.env);
+          Object.entries(streamableTransport.env).forEach(
+            ([headerName, value]) => {
+              customHeaders[headerName] = value;
+            },
+          );
         }
 
         // カスタムfetch関数を使用してヘッダーを追加
