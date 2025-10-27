@@ -79,9 +79,9 @@ class RemoteMcpPool {
    */
   private async createConnection(namespace: string): Promise<Client> {
     const servers = getEnabledServers();
-    const serverConfig = servers.find((s) => s.namespace === namespace);
+    const serverInfo = servers.find((s) => s.namespace === namespace);
 
-    if (!serverConfig) {
+    if (!serverInfo) {
       throw new Error(
         `Server configuration not found for namespace: ${namespace}`,
       );
@@ -90,7 +90,10 @@ class RemoteMcpPool {
     try {
       logger.logInfo("Creating new MCP connection", { namespace });
 
-      const { client } = await createRemoteMcpClient(serverConfig);
+      const { client } = await createRemoteMcpClient(
+        namespace,
+        serverInfo.config,
+      );
 
       const connection: MCPConnection = {
         client,
