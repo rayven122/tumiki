@@ -5,10 +5,9 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { setupGoogleCredentialsEnv } from "./googleCredentials.js";
-import { createCloudRunHeaders } from "./cloudRunAuth.js";
+import { createStreamableHttpsTransport } from "./transportFactory.js";
 import type { ServerConfig } from "../libs/types.js";
 import { recordError } from "../libs/metrics.js";
 
@@ -41,41 +40,8 @@ export const createMCPClient = async (
         "url" in streamableTransport &&
         typeof streamableTransport.url === "string"
       ) {
-        const url = new URL(streamableTransport.url);
-
-        // Cloud Run IAM認証が必要な場合、認証ヘッダーを作成
-        const customHeaders: Record<string, string> = {};
-
-        if (streamableTransport.requireCloudRunAuth) {
-          const authHeaders = await createCloudRunHeaders();
-          Object.assign(customHeaders, authHeaders);
-        }
-
-        // 環境変数からHTTPヘッダーを設定（APIキーなど）
-        if (streamableTransport.env) {
-          Object.entries(streamableTransport.env).forEach(
-            ([headerName, value]) => {
-              customHeaders[headerName] = value;
-            },
-          );
-        }
-
-        // カスタムfetch関数を使用してヘッダーを追加
-        const customFetch: typeof fetch = async (input, init) => {
-          const mergedHeaders = {
-            ...customHeaders,
-            ...(init?.headers as Record<string, string>),
-          };
-
-          return fetch(input, {
-            ...init,
-            headers: mergedHeaders,
-          });
-        };
-
-        transport = new StreamableHTTPClientTransport(url, {
-          fetch: customFetch,
-        });
+        // 共通ファクトリ関数を使用してトランスポートを作成
+        transport = await createStreamableHttpsTransport(streamableTransport);
       } else {
         throw new Error("Streamable HTTPS transport requires a valid URL");
       }
