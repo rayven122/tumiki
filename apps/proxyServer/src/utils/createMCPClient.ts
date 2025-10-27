@@ -7,6 +7,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { setupGoogleCredentialsEnv } from "./googleCredentials.js";
+import { createStreamableHttpsTransport } from "./transportFactory.js";
 import type { ServerConfig } from "../libs/types.js";
 import { recordError } from "../libs/metrics.js";
 
@@ -31,6 +32,18 @@ export const createMCPClient = async (
         transport = new SSEClientTransport(new URL(sseTransport.url));
       } else {
         throw new Error("SSE transport requires a valid URL");
+      }
+    } else if (server.transport.type === "streamable_https") {
+      // Streamable HTTPSトランスポート（Cloud Run対応）
+      const streamableTransport = server.transport;
+      if (
+        "url" in streamableTransport &&
+        typeof streamableTransport.url === "string"
+      ) {
+        // 共通ファクトリ関数を使用してトランスポートを作成
+        transport = await createStreamableHttpsTransport(streamableTransport);
+      } else {
+        throw new Error("Streamable HTTPS transport requires a valid URL");
       }
     } else {
       // Stdioトランスポート

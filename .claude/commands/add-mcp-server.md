@@ -7,6 +7,8 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 
 ## 実行手順
 
+### ローカル MCP サーバーの場合
+
 1. **MCPサーバー情報の取得**
 
    - GitHubリポジトリのURLからパッケージ情報を取得
@@ -38,7 +40,47 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
    - `pnpm upsertAll` を実行してMCPサーバーをデータベースに登録
    - ツール情報の取得と登録
 
+### Cloud Run MCP サーバーの場合
+
+1. **サーバー定義の追加**
+
+   `packages/scripts/src/constants/mcpServers.ts` に以下の形式で手動追加：
+   ```typescript
+   {
+     name: "サーバー名 (Cloud Run)",
+     description: "説明文",
+     tags: ["タグ1", "タグ2", "リモート"],  // 必ず"リモート"タグを含める
+     iconPath: "/logos/icon.svg",
+     url: "https://service-name-PROJECT_ID.REGION.run.app/mcp",
+     transportType: "STREAMABLE_HTTPS" as const,
+     // Cloud Run認証はgoogle-auth-libraryで自動取得
+     // envVarsはMCPサーバー用のカスタムヘッダーのみ
+     envVars: ["X-API-Key-Name"],  // MCPサーバーの外部API用APIキー
+     authType: "CLOUD_RUN_IAM" as const,
+     isPublic: true,
+   }
+   ```
+
+2. **環境変数の設定**
+
+   `.env.upsert` に MCP サーバー用の API キーを追加：
+   ```bash
+   X-API-Key-Name="your-api-key-value"
+   ```
+
+3. **データベースへの反映**
+
+   ```bash
+   pnpm upsertAll
+   ```
+
+   - Cloud Run IAM 認証は google-auth-library で自動取得
+   - 事前に `gcloud auth application-default login` を実行
+   - MCP サーバーのツール情報も自動登録される
+
 ## 使用例
+
+### ローカル MCP サーバーの追加
 
 ```bash
 # DeepL MCP サーバーを追加
@@ -57,7 +99,13 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 /add-mcp-server my-mcp-server "My Server" --command npx --args "my-mcp-server --stdio"
 ```
 
+### Cloud Run MCP サーバーの追加
+
+Cloud Run MCP サーバーは `packages/scripts/src/constants/mcpServers.ts` に手動で定義を追加してから `pnpm upsertAll` を実行します。詳細は上記の「Cloud Run MCP サーバーの場合」セクションを参照してください。
+
 ## パラメータ
+
+### ローカル MCP サーバー
 
 - `repository_or_package`: GitHubリポジトリURL または npmパッケージ名 (必須)
 - `server_name`: サーバーの表示名 (省略時はパッケージ名から生成)
@@ -109,6 +157,8 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 
 ## 出力フォーマット
 
+### ローカル MCP サーバー
+
 ```markdown
 🚀 MCPサーバー追加を開始しています...
 
@@ -156,7 +206,18 @@ description: "新しいMCPサーバーをTumikiシステムに追加する自動
 
 ## 注意事項
 
+### 共通
+
 - 追加したMCPサーバーは即座に利用可能になります
 - 環境変数は後からダッシュボードで設定する必要があります
 - ロゴファイルは必要に応じて手動で調整してください
 - セキュリティの観点から、信頼できるソースからのみ追加してください
+
+### Cloud Run MCP サーバー特有
+
+- **手動設定**: `mcpServers.ts` に手動で定義を追加してから `pnpm upsertAll` を実行
+- **認証方式**: Cloud Run IAM 認証は `google-auth-library` で自動取得（事前に `gcloud auth application-default login` を実行）
+- **URL 形式**: `https://<service-name>-<project-number>.<region>.run.app/mcp`（必ず `/mcp` を含める）
+- **環境変数**: MCP サーバーの外部 API 用 API キーのみ `.env.upsert` に設定（例: `X-DeepL-API-Key`）
+- **タグ**: 必ず "リモート" タグを含めて、ローカル版と区別する
+- **デプロイ**: [tumiki-mcp-cloudrun](https://github.com/rayven122/tumiki-mcp-cloudrun) を使用してデプロイ

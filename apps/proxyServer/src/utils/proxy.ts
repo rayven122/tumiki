@@ -18,6 +18,7 @@ import {
   GoogleCredentialsSchema,
   type GoogleCredentials,
 } from "./googleCredentials.js";
+import { createStreamableHttpsTransport } from "./transportFactory.js";
 
 import type {
   ServerConfig,
@@ -175,7 +176,20 @@ const createClient = async (
       } else {
         throw new Error("SSE transport requires a valid URL");
       }
+    } else if (server.transport.type === "streamable_https") {
+      // Streamable HTTPSトランスポート（Cloud Run対応）
+      const streamableTransport = server.transport;
+      if (
+        "url" in streamableTransport &&
+        typeof streamableTransport.url === "string"
+      ) {
+        // 共通ファクトリ関数を使用してトランスポートを作成
+        transport = await createStreamableHttpsTransport(streamableTransport);
+      } else {
+        throw new Error("Streamable HTTPS transport requires a valid URL");
+      }
     } else {
+      // Stdioトランスポート
       let finalEnv = server.transport.env
         ? Object.fromEntries(
             Object.entries(server.transport.env).map(([key, value]) => [
@@ -195,11 +209,18 @@ const createClient = async (
         credentialsCleanup = result.cleanup;
       }
 
-      transport = new StdioClientTransport({
-        command: server.transport.command,
-        args: server.transport.args,
-        env: finalEnv,
-      });
+      if (
+        "command" in server.transport &&
+        typeof server.transport.command === "string"
+      ) {
+        transport = new StdioClientTransport({
+          command: server.transport.command,
+          args: server.transport.args,
+          env: finalEnv,
+        });
+      } else {
+        throw new Error("Stdio transport requires a valid command");
+      }
     }
   } catch {
     recordError("transport_creation_failed");
