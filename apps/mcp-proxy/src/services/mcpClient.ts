@@ -9,7 +9,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { RemoteMcpServerConfig } from "../config/mcpServers.js";
-import { logInfo, logError } from "../utils/logger.js";
+import { logInfo, logError, logWarn } from "../utils/logger.js";
 
 /**
  * Remote MCPサーバーに接続するクライアントを作成
@@ -48,8 +48,9 @@ export const createMcpClient = async (
 
     // ヘッダーが設定されている場合は警告を表示
     if (Object.keys(headers).length > 0) {
-      console.warn(
+      logWarn(
         `Authentication headers specified for ${namespace}, but SSEClientTransport does not support custom headers yet.`,
+        { namespace, headerCount: Object.keys(headers).length },
       );
     }
 
