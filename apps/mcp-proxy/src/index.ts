@@ -2,10 +2,14 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
-import { ToolRouter } from "./services/toolRouter.js";
-import { logInfo, logError } from "./utils/logger.js";
-import { createJsonRpcError, createJsonRpcSuccess } from "./utils/jsonrpc.js";
+import { ToolRouter } from "./libs/mcp/index.js";
+import { logInfo, logError } from "./libs/logger/index.js";
+import {
+  createJsonRpcError,
+  createJsonRpcSuccess,
+} from "./libs/jsonrpc/index.js";
 import type { HonoEnv } from "./types/index.js";
+import { DEFAULT_PORT } from "./constants/server.js";
 
 // JSON-RPCリクエストの型定義
 type JsonRpcRequest = {
@@ -169,7 +173,7 @@ process.on("SIGTERM", () => void shutdown());
 process.on("SIGINT", () => void shutdown());
 
 // サーバー起動
-const port = Number(process.env.PORT) || 8080;
+const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
   nodeEnv: process.env.NODE_ENV,

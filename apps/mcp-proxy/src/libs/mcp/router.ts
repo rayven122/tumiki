@@ -11,10 +11,10 @@ import {
   ListToolsResultSchema,
   CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { getEnabledServers } from "../config/mcpServers.js";
-import type { NamespacedTool, ToolCallResult } from "../types/index.js";
-import { logInfo, logError } from "../utils/logger.js";
-import { withMcpClient } from "../utils/mcpWrapper.js";
+import { getEnabledServers } from "../../server/config.js";
+import type { NamespacedTool, ToolCallResult } from "../../types/index.js";
+import { logInfo, logError } from "../logger/index.js";
+import { withMcpClient } from "./wrapper.js";
 
 /**
  * ツールルーター

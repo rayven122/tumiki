@@ -8,8 +8,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { RemoteMcpServerConfig } from "../config/mcpServers.js";
-import { logInfo, logError, logWarn } from "../utils/logger.js";
+import type { RemoteMcpServerConfig } from "../../server/config.js";
+import { logInfo, logError, logWarn } from "../logger/index.js";
 
 /**
  * Remote MCPサーバーに接続するクライアントを作成

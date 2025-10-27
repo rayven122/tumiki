@@ -1,7 +1,7 @@
 import type { Context, Next } from "hono";
 import { db } from "@tumiki/db/server";
 import type { AuthInfo, HonoEnv } from "../types/index.js";
-import { logError } from "../utils/logger.js";
+import { logError } from "../libs/logger/index.js";
 
 /**
  * APIキーを抽出
