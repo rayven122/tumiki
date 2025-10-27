@@ -9,6 +9,13 @@
 - **APIキー認証**: データベースベース検証、LRUキャッシング
 - **構造化ログ**: Cloud Logging/BigQuery自動連携
 
+## Phase 2 機能（実装済み）
+
+- **高可用性**: Circuit Breaker, Retry with Exponential Backoff, Fallback戦略
+- **レート制限**: 組織/APIキーごとのレート制限（Redis対応）
+- **分散キャッシュ**: Redisベースの分散キャッシュ（LRUフォールバック）
+- **可観測性**: OpenTelemetry統合、分散トレーシング、Prometheusメトリクス
+
 ## 技術スタック
 
 - **Hono**: 軽量Webフレームワーク
@@ -61,6 +68,22 @@ HEALTH_CHECK_INTERVAL=60000    # ヘルスチェック間隔（1分）
 # キャッシュ設定
 CACHE_TTL=300                  # キャッシュTTL（5分）
 CACHE_ENABLED=true
+
+# Phase 2: Redis設定
+REDIS_ENABLED=true             # Redis有効化
+REDIS_HOST=localhost           # Redisホスト
+REDIS_PORT=6379                # Redisポート
+REDIS_PASSWORD=                # Redisパスワード（オプション）
+REDIS_DB=0                     # Redis DB番号
+
+# Phase 2: OpenTelemetry設定
+OTEL_ENABLED=true              # OpenTelemetry有効化
+OTEL_SERVICE_NAME=mcp-proxy-server  # サービス名
+OTEL_SERVICE_VERSION=1.0.0     # サービスバージョン
+OTEL_EXPORTER_OTLP_ENDPOINT=   # トレーシングエンドポイント（オプション）
+OTEL_METRICS_PORT=9464         # Prometheusメトリクスポート
+OTEL_ENABLE_TRACING=true       # トレーシング有効化
+OTEL_ENABLE_METRICS=true       # メトリクス有効化
 
 # ログ設定
 LOG_LEVEL=info

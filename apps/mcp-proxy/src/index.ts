@@ -1,76 +1,36 @@
 #!/usr/bin/env node
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 import { authMiddleware } from "./middleware/auth.js";
+import {
+  createApiKeyRateLimiter,
+  createOrganizationRateLimiter,
+} from "./middleware/rateLimit.js";
 import { McpLogger } from "./services/mcpLogger.js";
+import { ToolRouter } from "./services/toolRouter.js";
+import { remoteMcpPool } from "./services/remoteMcpPool.js";
 import type { HonoEnv } from "./types/hono.js";
+import { initializeRedis, closeRedis } from "./libs/redis.js";
+import { initializeTelemetry, shutdownTelemetry } from "./libs/telemetry.js";
+
+// Phase 2: OpenTelemetryとRedisの初期化
+initializeTelemetry();
+initializeRedis();
 
 const logger = new McpLogger();
-
-// MCP Server の作成（ツール登録に使用）
-const server = new McpServer({
-  name: "tumiki-mcp-proxy",
-  version: "1.0.0",
-});
-
-/**
- * サンプルツール: Echo
- * 実際の Remote MCP サーバーへの接続は Phase 2 で実装
- */
-server.registerTool(
-  "echo",
-  {
-    title: "Echo Tool",
-    description: "Echoes back the provided message",
-    inputSchema: {
-      message: z.string().describe("Message to echo"),
-    },
-    outputSchema: {
-      echo: z.string(),
-    },
-  },
-  async ({ message }) => {
-    const output = { echo: `Proxy echo: ${message}` };
-    return {
-      content: [{ type: "text", text: JSON.stringify(output) }],
-      structuredContent: output,
-    };
-  },
-);
-
-/**
- * サンプルツール: Health Check
- */
-server.registerTool(
-  "health",
-  {
-    title: "Health Check",
-    description: "Check the health status of the proxy",
-    inputSchema: {},
-    outputSchema: {
-      status: z.string(),
-      timestamp: z.string(),
-    },
-  },
-  async () => {
-    const output = {
-      status: "ok",
-      timestamp: new Date().toISOString(),
-    };
-    return {
-      content: [{ type: "text", text: JSON.stringify(output) }],
-      structuredContent: output,
-    };
-  },
-);
+const toolRouter = new ToolRouter();
 
 // Hono アプリケーションの作成
 const app = new Hono<HonoEnv>();
 
 // CORS設定
 app.use("/*", cors());
+
+// Phase 2: レート制限ミドルウェア（認証前に適用）
+const orgRateLimiter = createOrganizationRateLimiter();
+const apiKeyRateLimiter = createApiKeyRateLimiter();
+app.use("/*", orgRateLimiter);
+app.use("/*", apiKeyRateLimiter);
 
 // ヘルスチェック（基本）
 app.get("/health", (c) => {
@@ -242,14 +202,21 @@ app.post("/mcp", authMiddleware, async (c) => {
   }
 });
 
-// Graceful Shutdown
-const shutdown = () => {
+// Graceful Shutdown (Phase 2: RedisとTelemetryのクリーンアップを追加)
+const shutdown = async () => {
   logger.logInfo("Shutting down gracefully...");
+
+  // Phase 2: Redisクリーンアップ
+  await closeRedis();
+
+  // Phase 2: Telemetryシャットダウン
+  await shutdownTelemetry();
+
   process.exit(0);
 };
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+process.on("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown());
 
 // サーバー起動
 const port = Number(process.env.PORT) || 8080;
