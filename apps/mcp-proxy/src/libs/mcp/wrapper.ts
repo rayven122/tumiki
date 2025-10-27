@@ -5,8 +5,8 @@
  */
 
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { createMcpClient } from "../services/mcpClient.js";
-import type { RemoteMcpServerConfig } from "../config/mcpServers.js";
+import { createMcpClient } from "./client.js";
+import type { RemoteMcpServerConfig } from "../../server/config.js";
 
 /**
  * MCP クライアントを使用した操作を安全に実行
