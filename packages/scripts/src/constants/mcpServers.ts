@@ -283,23 +283,27 @@ export const MCP_SERVERS = [
   {
     name: "DeepL MCP (Cloud Run)",
     description: "Cloud Run にデプロイされた DeepL 翻訳サービス",
-    tags: ["翻訳", "ツール", "Cloud Run", "リモート"],
+    tags: ["翻訳", "ツール", "リモート"],
     iconPath: "/logos/deepl.svg",
-    url: "https://deepl-mcp-67726874216.asia-northeast1.run.app",
+    url: "https://deepl-mcp-67726874216.asia-northeast1.run.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
+    // Cloud Run認証はgoogle-auth-libraryで自動取得（authType: CLOUD_RUN_IAM）
+    // envVarsはMCPサーバー用のカスタムヘッダーのみ
     envVars: ["X-DeepL-API-Key"],
-    authType: "API_KEY" as const,
+    authType: "CLOUD_RUN_IAM" as const,
     isPublic: true,
   },
   {
     name: "Figma (Cloud Run)",
     description: "Cloud Run にデプロイされた Figma デザイン連携",
-    tags: ["デザイン", "UI/UX", "Cloud Run", "リモート"],
+    tags: ["デザイン", "UI/UX", "リモート"],
     iconPath: "/logos/figma.svg",
-    url: "https://figma-mcp-67726874216.asia-northeast1.run.app",
+    url: "https://figma-mcp-67726874216.asia-northeast1.run.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
+    // Cloud Run認証はgoogle-auth-libraryで自動取得（authType: CLOUD_RUN_IAM）
+    // envVarsはMCPサーバー用のカスタムヘッダーのみ
     envVars: ["X-Figma-API-Key"],
-    authType: "API_KEY" as const,
+    authType: "CLOUD_RUN_IAM" as const,
     isPublic: true,
   },
 ] as const satisfies Prisma.McpServerCreateWithoutToolsInput[];
