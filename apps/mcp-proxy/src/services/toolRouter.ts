@@ -51,8 +51,8 @@ export class ToolRouter {
       name: `${namespace}.${tool.name}`,
       namespace,
       originalName: tool.name,
-      description: tool.description || "",
-      inputSchema: tool.inputSchema || {},
+      description: tool.description ?? "",
+      inputSchema: tool.inputSchema ?? {},
     }));
   }
 

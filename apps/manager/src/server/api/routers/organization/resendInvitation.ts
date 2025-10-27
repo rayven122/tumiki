@@ -27,8 +27,8 @@ const RESEND_MESSAGES = {
 /**
  * メールクライアントを初期化する
  */
-function initializeMailClient() {
-  return createMailClient({
+function initializeMailClient(): void {
+  createMailClient({
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT),
     secure: Number(process.env.SMTP_PORT) === 465,
@@ -76,12 +76,14 @@ async function sendResendInvitationEmail(
       ? `${email}（${roleInfo}再招待）`
       : `${email}（再招待）`;
 
-    await sendInvitation({
+    void sendInvitation({
       email,
       name: customName,
       inviteUrl,
       appName: organizationName,
       expiresAt,
+    }).catch(() => {
+      // エラーハンドリングは既に関数内で行われている
     });
   } catch (emailError: unknown) {
     console.error(RESEND_MESSAGES.EMAIL_SEND_FAILED, emailError);

@@ -6,6 +6,14 @@ import { ToolRouter } from "./services/toolRouter.js";
 import { logInfo, logError } from "./utils/logger.js";
 import type { HonoEnv } from "./types/hono.js";
 
+// JSON-RPCリクエストの型定義
+type JsonRpcRequest = {
+  jsonrpc: string;
+  id?: string | number | null;
+  method: string;
+  params?: unknown;
+};
+
 const toolRouter = new ToolRouter();
 
 // Hono アプリケーションの作成
@@ -29,7 +37,7 @@ app.post("/mcp", authMiddleware, async (c) => {
   const authInfo = c.get("authInfo");
 
   try {
-    const request = await c.req.json();
+    const request: JsonRpcRequest = await c.req.json();
 
     // リクエスト検証
     if (!request.jsonrpc || request.jsonrpc !== "2.0") {
@@ -92,10 +100,12 @@ app.post("/mcp", authMiddleware, async (c) => {
       }
 
       case "tools/call": {
-        const params = request.params as {
-          name: string;
-          arguments: Record<string, unknown>;
-        };
+        const params = request.params as
+          | {
+              name: string;
+              arguments: Record<string, unknown>;
+            }
+          | undefined;
 
         if (!params?.name) {
           return c.json({
