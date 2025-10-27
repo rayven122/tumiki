@@ -23,8 +23,8 @@ const INVITATION_MESSAGES = {
 /**
  * メールクライアントを初期化する
  */
-function initializeMailClient() {
-  return createMailClient({
+function initializeMailClient(): void {
+  createMailClient({
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT),
     secure: Number(process.env.SMTP_PORT) === 465,
@@ -70,12 +70,14 @@ async function sendInvitationEmail(
 
     const customName = roleInfo ? `${email}（${roleInfo}招待）` : email;
 
-    await sendInvitation({
+    void sendInvitation({
       email,
       name: customName,
       inviteUrl,
       appName: organizationName,
       expiresAt,
+    }).catch(() => {
+      // エラーハンドリングは既に関数内で行われている
     });
   } catch (emailError: unknown) {
     console.error(INVITATION_MESSAGES.EMAIL_SEND_FAILED, emailError);

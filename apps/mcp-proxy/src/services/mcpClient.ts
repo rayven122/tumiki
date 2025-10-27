@@ -36,7 +36,7 @@ export const createMcpClient = async (
     const headers: Record<string, string> = {};
 
     if (config.authType === "bearer" && config.authToken) {
-      headers["Authorization"] = `Bearer ${config.authToken}`;
+      headers.Authorization = `Bearer ${config.authToken}`;
     } else if (config.authType === "api_key" && config.authToken) {
       headers["X-API-Key"] = config.authToken;
     }

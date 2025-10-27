@@ -37,7 +37,7 @@ const validateApiKey = async (
       where: { apiKey },
     });
 
-    if (!mcpApiKey || !mcpApiKey.isActive) {
+    if (!mcpApiKey?.isActive) {
       return undefined;
     }
 
