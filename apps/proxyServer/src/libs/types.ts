@@ -13,7 +13,17 @@ export type TransportConfigSSE = {
   env?: Record<string, string>; // 環境変数（認証ヘッダー設定用）
 };
 
-export type TransportConfig = TransportConfigSSE | TransportConfigStdio;
+export type TransportConfigStreamableHTTPS = {
+  type: "streamable_https";
+  url: string;
+  env?: Record<string, string>; // 環境変数（認証ヘッダー設定用）
+  requireCloudRunAuth?: boolean; // Cloud Run IAM認証が必要かどうか
+};
+
+export type TransportConfig =
+  | TransportConfigSSE
+  | TransportConfigStdio
+  | TransportConfigStreamableHTTPS;
 export type ServerConfig = {
   name: string;
   toolNames: string[];

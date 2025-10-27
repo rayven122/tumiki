@@ -223,6 +223,7 @@ transportType に応じて接続方式を選択
   - `envVars`
     > STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
     > SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+    > Cloud Run: HTTPヘッダー名（X-DeepL-API-Keyなど）を直接指定し、同名の環境変数から値を取得
   - `authType`: 認証タイプ
   - `oauthProvider`
     > OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
