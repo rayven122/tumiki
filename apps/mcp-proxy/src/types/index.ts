@@ -28,17 +28,3 @@ export type ToolCallResult = {
     text: string;
   }>;
 };
-
-/**
- * 接続プール統計情報
- */
-export type PoolStats = {
-  totalConnections: number;
-  healthyConnections: number;
-  connections: Array<{
-    namespace: string;
-    lastUsed: number;
-    isHealthy: boolean;
-    idleTime: number;
-  }>;
-};

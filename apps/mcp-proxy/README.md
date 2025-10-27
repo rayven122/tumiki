@@ -9,9 +9,11 @@
 - **APIキー認証**: データベースベース検証
 - **構造化ログ**: Cloud Logging/BigQuery自動連携
 
-## 高可用性機能
+## アーキテクチャ特性
 
-- **Circuit Breaker, Retry, Fallback**: CocketielによるリモートMCPサーバーへの高可用性接続
+- **完全ステートレス**: 接続プールなし、リクエストごとに接続を作成・破棄
+- **キャッシュレス**: インメモリキャッシュなし、シンプルで予測可能な動作
+- **Cloud Run最適化**: スケールtoゼロ、水平スケール、マルチインスタンス対応
 
 ## インフラストラクチャ機能
 
@@ -20,7 +22,7 @@
 
 ## 技術スタック
 
-- **Hono**: 軽量Webフレームワーク
+- **Hono**: 軽量Webフレームワーク（50KB）
 - **@modelcontextprotocol/sdk**: MCPプロトコル実装
 - **Zod**: スキーマ検証
 - **@tumiki/db**: Prisma DBクライアント
@@ -48,9 +50,10 @@ pnpm start
 
 ## エンドポイント
 
-- `GET /health` - 基本ヘルスチェック
-- `GET /health/detailed` - 詳細ヘルスチェック（接続プール統計）
+- `GET /health` - ヘルスチェック
 - `POST /mcp` - MCPプロトコルハンドラー（認証必須）
+  - `tools/list` - 利用可能なツールのリスト取得
+  - `tools/call` - ツールの実行
 
 ## 環境変数
 
@@ -62,13 +65,8 @@ NODE_ENV=production
 # データベース
 DATABASE_URL=postgresql://...
 
-# 接続プール設定
-MAX_IDLE_TIME=300000           # アイドルタイムアウト（5分）
-CONNECTION_TIMEOUT=30000       # 接続タイムアウト（30秒）
-HEALTH_CHECK_INTERVAL=60000    # ヘルスチェック間隔（1分）
-
 # ログ設定
-LOG_LEVEL=info
+LOG_LEVEL=info  # info, warn, error, debug
 ```
 
 ## Remote MCPサーバーの追加
