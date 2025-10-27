@@ -73,12 +73,3 @@ export const getEnabledServers = (): Array<{
     .filter(([_, config]) => config.enabled)
     .map(([namespace, config]) => ({ namespace, config }));
 };
-
-/**
- * 名前空間からサーバー設定を取得
- */
-export const getServerByNamespace = (
-  namespace: string,
-): RemoteMcpServerConfig | undefined => {
-  return REMOTE_MCP_SERVERS_CONFIG.mcpServers[namespace];
-};

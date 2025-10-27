@@ -11,10 +11,10 @@ import {
   ListToolsResultSchema,
   CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { createMcpClient } from "./mcpClient.js";
 import { getEnabledServers } from "../config/mcpServers.js";
 import type { NamespacedTool, ToolCallResult } from "../types/index.js";
 import { logInfo, logError } from "../utils/logger.js";
+import { withMcpClient } from "../utils/mcpWrapper.js";
 
 /**
  * ツールルーター
@@ -66,22 +66,19 @@ export class ToolRouter {
 
     // 全サーバーから並列でツールリストを取得
     const toolPromises = servers.map(async (server) => {
-      let client;
       try {
-        const { client: mcpClient } = await createMcpClient(
+        const result = await withMcpClient(
           server.namespace,
           server.config,
-        );
-        client = mcpClient;
-
-        const result = await client.request(
-          {
-            method: "tools/list",
+          async (client) => {
+            return await client.request(
+              {
+                method: "tools/list",
+              },
+              ListToolsResultSchema,
+            );
           },
-          ListToolsResultSchema,
         );
-
-        await client.close();
 
         return this.addNamespace(result.tools, server.namespace);
       } catch (error) {
@@ -89,11 +86,6 @@ export class ToolRouter {
           `Failed to get tools from ${server.namespace}`,
           error as Error,
         );
-        if (client) {
-          await client.close().catch(() => {
-            /* ignore cleanup errors */
-          });
-        }
         return [];
       }
     });
@@ -122,22 +114,19 @@ export class ToolRouter {
       );
     }
 
-    let client;
     try {
-      const { client: mcpClient } = await createMcpClient(
+      const result = await withMcpClient(
         namespace,
         serverInfo.config,
-      );
-      client = mcpClient;
-
-      const result = await client.request(
-        {
-          method: "tools/list",
+        async (client) => {
+          return await client.request(
+            {
+              method: "tools/list",
+            },
+            ListToolsResultSchema,
+          );
         },
-        ListToolsResultSchema,
       );
-
-      await client.close();
 
       const namespacedTools = this.addNamespace(result.tools, namespace);
 
@@ -149,11 +138,6 @@ export class ToolRouter {
       return namespacedTools;
     } catch (error) {
       logError(`Failed to get tools for ${namespace}`, error as Error);
-      if (client) {
-        await client.close().catch(() => {
-          /* ignore cleanup errors */
-        });
-      }
       throw error;
     }
   }
@@ -175,31 +159,28 @@ export class ToolRouter {
       );
     }
 
-    let client;
     try {
-      const { client: mcpClient } = await createMcpClient(
-        namespace,
-        serverInfo.config,
-      );
-      client = mcpClient;
-
       logInfo("Calling tool", {
         namespace,
         toolName: originalName,
       });
 
-      const result = await client.request(
-        {
-          method: "tools/call",
-          params: {
-            name: originalName,
-            arguments: args,
-          },
+      const result = await withMcpClient(
+        namespace,
+        serverInfo.config,
+        async (client) => {
+          return await client.request(
+            {
+              method: "tools/call",
+              params: {
+                name: originalName,
+                arguments: args,
+              },
+            },
+            CallToolResultSchema,
+          );
         },
-        CallToolResultSchema,
       );
-
-      await client.close();
 
       logInfo("Tool call completed", {
         namespace,
@@ -217,11 +198,6 @@ export class ToolRouter {
         `Failed to call tool ${namespace}.${originalName}`,
         error as Error,
       );
-      if (client) {
-        await client.close().catch(() => {
-          /* ignore cleanup errors */
-        });
-      }
       throw error;
     }
   }

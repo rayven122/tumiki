@@ -1,7 +1,6 @@
 import type { Context, Next } from "hono";
 import { db } from "@tumiki/db/server";
-import type { AuthInfo } from "../types/index.js";
-import type { HonoEnv } from "../types/hono.js";
+import type { AuthInfo, HonoEnv } from "../types/index.js";
 import { logError } from "../utils/logger.js";
 
 /**

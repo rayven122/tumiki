@@ -4,7 +4,8 @@ import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
 import { ToolRouter } from "./services/toolRouter.js";
 import { logInfo, logError } from "./utils/logger.js";
-import type { HonoEnv } from "./types/hono.js";
+import { createJsonRpcError, createJsonRpcSuccess } from "./utils/jsonrpc.js";
+import type { HonoEnv } from "./types/index.js";
 
 // JSON-RPCリクエストの型定義
 type JsonRpcRequest = {
@@ -41,25 +42,23 @@ app.post("/mcp", authMiddleware, async (c) => {
 
     // リクエスト検証
     if (!request.jsonrpc || request.jsonrpc !== "2.0") {
-      return c.json({
-        jsonrpc: "2.0",
-        id: request.id ?? null,
-        error: {
-          code: -32600,
-          message: "Invalid Request: jsonrpc must be 2.0",
-        },
-      });
+      return c.json(
+        createJsonRpcError(
+          request.id,
+          -32600,
+          "Invalid Request: jsonrpc must be 2.0",
+        ),
+      );
     }
 
     if (!request.method) {
-      return c.json({
-        jsonrpc: "2.0",
-        id: request.id ?? null,
-        error: {
-          code: -32600,
-          message: "Invalid Request: method is required",
-        },
-      });
+      return c.json(
+        createJsonRpcError(
+          request.id,
+          -32600,
+          "Invalid Request: method is required",
+        ),
+      );
     }
 
     // tools/list, tools/call の実装
@@ -68,34 +67,25 @@ app.post("/mcp", authMiddleware, async (c) => {
         try {
           const tools = await toolRouter.getAllTools();
 
-          return c.json({
-            jsonrpc: "2.0",
-            id: request.id ?? null,
-            result: {
+          return c.json(
+            createJsonRpcSuccess(request.id, {
               tools: tools.map((tool) => ({
                 name: tool.name,
                 description: tool.description,
                 inputSchema: tool.inputSchema,
               })),
-            },
-          });
+            }),
+          );
         } catch (error) {
           logError("Failed to list tools", error as Error, {
             organizationId: authInfo.organizationId,
           });
 
-          return c.json({
-            jsonrpc: "2.0",
-            id: request.id ?? null,
-            error: {
-              code: -32603,
-              message: "Failed to list tools",
-              data: {
-                message:
-                  error instanceof Error ? error.message : "Unknown error",
-              },
-            },
-          });
+          return c.json(
+            createJsonRpcError(request.id, -32603, "Failed to list tools", {
+              message: error instanceof Error ? error.message : "Unknown error",
+            }),
+          );
         }
       }
 
@@ -108,14 +98,13 @@ app.post("/mcp", authMiddleware, async (c) => {
           | undefined;
 
         if (!params?.name) {
-          return c.json({
-            jsonrpc: "2.0",
-            id: request.id ?? null,
-            error: {
-              code: -32602,
-              message: "Invalid params: name is required",
-            },
-          });
+          return c.json(
+            createJsonRpcError(
+              request.id,
+              -32602,
+              "Invalid params: name is required",
+            ),
+          );
         }
 
         try {
@@ -124,43 +113,33 @@ app.post("/mcp", authMiddleware, async (c) => {
             params.arguments ?? {},
           );
 
-          return c.json({
-            jsonrpc: "2.0",
-            id: request.id ?? null,
-            result: {
+          return c.json(
+            createJsonRpcSuccess(request.id, {
               content: result.content,
-            },
-          });
+            }),
+          );
         } catch (error) {
           logError("Failed to call tool", error as Error, {
             organizationId: authInfo.organizationId,
             toolName: params.name,
           });
 
-          return c.json({
-            jsonrpc: "2.0",
-            id: request.id ?? null,
-            error: {
-              code: -32603,
-              message: "Tool execution failed",
-              data: {
-                message:
-                  error instanceof Error ? error.message : "Unknown error",
-              },
-            },
-          });
+          return c.json(
+            createJsonRpcError(request.id, -32603, "Tool execution failed", {
+              message: error instanceof Error ? error.message : "Unknown error",
+            }),
+          );
         }
       }
 
       default: {
-        return c.json({
-          jsonrpc: "2.0",
-          id: request.id ?? null,
-          error: {
-            code: -32601,
-            message: `Method not found: ${request.method}`,
-          },
-        });
+        return c.json(
+          createJsonRpcError(
+            request.id,
+            -32601,
+            `Method not found: ${request.method}`,
+          ),
+        );
       }
     }
   } catch (error) {
@@ -171,17 +150,11 @@ app.post("/mcp", authMiddleware, async (c) => {
       organizationId: authInfo.organizationId,
     });
 
-    return c.json({
-      jsonrpc: "2.0",
-      id: null,
-      error: {
-        code: -32603,
-        message: "Internal error",
-        data: {
-          message: errorMessage,
-        },
-      },
-    });
+    return c.json(
+      createJsonRpcError(null, -32603, "Internal error", {
+        message: errorMessage,
+      }),
+    );
   }
 });
 
