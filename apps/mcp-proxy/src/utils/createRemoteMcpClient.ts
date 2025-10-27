@@ -10,10 +10,12 @@ import type { RemoteMcpServerConfig } from "../config/mcpServers.js";
 /**
  * Remote MCPサーバーに接続するクライアントを作成
  *
+ * @param namespace サーバーの名前空間
  * @param config Remote MCPサーバー設定
  * @returns クライアントとトランスポート
  */
 export const createRemoteMcpClient = async (
+  namespace: string,
   config: RemoteMcpServerConfig,
 ): Promise<{
   client: Client;
@@ -44,7 +46,7 @@ export const createRemoteMcpClient = async (
     // ヘッダーが設定されている場合は警告を表示
     if (Object.keys(headers).length > 0) {
       console.warn(
-        `Authentication headers specified for ${config.namespace}, but SSEClientTransport does not support custom headers yet. Consider using URL-based authentication or implementing a custom transport.`,
+        `Authentication headers specified for ${namespace}, but SSEClientTransport does not support custom headers yet. Consider using URL-based authentication or implementing a custom transport.`,
       );
     }
 
@@ -53,7 +55,7 @@ export const createRemoteMcpClient = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Failed to create transport for ${config.namespace}: ${errorMessage}`,
+      `Failed to create transport for ${namespace}: ${errorMessage}`,
     );
   }
 
@@ -69,7 +71,7 @@ export const createRemoteMcpClient = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Failed to connect to Remote MCP server ${config.namespace}: ${errorMessage}`,
+      `Failed to connect to Remote MCP server ${namespace}: ${errorMessage}`,
     );
   }
 

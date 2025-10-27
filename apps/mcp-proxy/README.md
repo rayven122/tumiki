@@ -6,15 +6,17 @@
 
 - **複数Remote MCP統合**: 名前空間ベースルーティング、接続プール管理
 - **ステートレス設計**: Cloud Run対応、水平スケール可能
-- **APIキー認証**: データベースベース検証、LRUキャッシング
+- **APIキー認証**: データベースベース検証
 - **構造化ログ**: Cloud Logging/BigQuery自動連携
 
-## Phase 2 機能（実装済み）
+## 高可用性機能
 
-- **高可用性**: Circuit Breaker, Retry with Exponential Backoff, Fallback戦略
-- **レート制限**: 組織/APIキーごとのレート制限（Redis対応）
-- **分散キャッシュ**: Redisベースの分散キャッシュ（LRUフォールバック）
-- **可観測性**: OpenTelemetry統合、分散トレーシング、Prometheusメトリクス
+- **Circuit Breaker, Retry, Fallback**: CocketielによるリモートMCPサーバーへの高可用性接続
+
+## インフラストラクチャ機能
+
+- **レート制限**: Cloud Armor（Load Balancer経由）またはAPI Gatewayにて実施
+- **可観測性**: Cloud LoggingおよびCloud Traceにて実施
 
 ## 技術スタック
 
@@ -65,46 +67,64 @@ MAX_IDLE_TIME=300000           # アイドルタイムアウト（5分）
 CONNECTION_TIMEOUT=30000       # 接続タイムアウト（30秒）
 HEALTH_CHECK_INTERVAL=60000    # ヘルスチェック間隔（1分）
 
-# キャッシュ設定
-CACHE_TTL=300                  # キャッシュTTL（5分）
-CACHE_ENABLED=true
-
-# Phase 2: Redis設定
-REDIS_ENABLED=true             # Redis有効化
-REDIS_HOST=localhost           # Redisホスト
-REDIS_PORT=6379                # Redisポート
-REDIS_PASSWORD=                # Redisパスワード（オプション）
-REDIS_DB=0                     # Redis DB番号
-
-# Phase 2: OpenTelemetry設定
-OTEL_ENABLED=true              # OpenTelemetry有効化
-OTEL_SERVICE_NAME=mcp-proxy-server  # サービス名
-OTEL_SERVICE_VERSION=1.0.0     # サービスバージョン
-OTEL_EXPORTER_OTLP_ENDPOINT=   # トレーシングエンドポイント（オプション）
-OTEL_METRICS_PORT=9464         # Prometheusメトリクスポート
-OTEL_ENABLE_TRACING=true       # トレーシング有効化
-OTEL_ENABLE_METRICS=true       # メトリクス有効化
-
 # ログ設定
 LOG_LEVEL=info
 ```
 
 ## Remote MCPサーバーの追加
 
+### Named Servers形式
+
+[sparfenyuk/mcp-proxy](https://github.com/sparfenyuk/mcp-proxy)の標準MCP設定形式を採用しています。
+
 `src/config/mcpServers.ts` に設定を追加：
 
 ```typescript
-{
-  namespace: "github",              // 一意の名前空間
-  name: "GitHub MCP Server",        // 表示名
-  url: "https://mcp.example.com",   // エンドポイント
-  authType: "bearer",               // none | bearer | api_key
-  authToken: process.env.GITHUB_TOKEN,
-  headers: {                        // 追加ヘッダー（オプション）
-    "X-Custom-Header": "value",
+export const REMOTE_MCP_SERVERS_CONFIG: RemoteMcpServersConfig = {
+  mcpServers: {
+    github: {
+      // 名前空間（オブジェクトのキー）
+      enabled: true, // 有効/無効フラグ
+      name: "GitHub MCP Server", // 表示名
+      url: "https://mcp.example.com/sse", // SSEエンドポイント
+      authType: "bearer", // none | bearer | api_key
+      authToken: process.env.GITHUB_TOKEN,
+      headers: {
+        // 追加ヘッダー（オプション）
+        "X-Custom-Header": "value",
+      },
+    },
+    slack: {
+      enabled: false, // 無効化する場合
+      name: "Slack MCP Server",
+      url: "https://slack-mcp.example.com/sse",
+      authType: "bearer",
+      authToken: process.env.SLACK_TOKEN,
+      headers: {},
+    },
   },
-  enabled: true,                    // 有効/無効
-}
+};
+```
+
+### ツール名の形式
+
+プロキシは名前空間付きのツール名を使用します：
+
+```text
+github.create_issue
+slack.send_message
+postgres.execute_query
+```
+
+各ツールは `{namespace}.{originalToolName}` の形式でアクセスできます。
+
+### 設定例
+
+`config.example.json` に実例があります。環境変数を使用して認証トークンを設定してください：
+
+```bash
+export GITHUB_TOKEN=your_token_here
+export SLACK_TOKEN=your_token_here
 ```
 
 ## 認証

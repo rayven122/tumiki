@@ -19,20 +19,9 @@
   "dependencies": {
     "@hono/node-server": "^1.13.7",
     "@modelcontextprotocol/sdk": "^1.10.1",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.66.0",
-    "@opentelemetry/exporter-prometheus": "^0.207.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.207.0",
-    "@opentelemetry/resources": "^2.2.0",
-    "@opentelemetry/sdk-metrics": "^1.29.0",
-    "@opentelemetry/sdk-node": "^0.207.0",
-    "@opentelemetry/sdk-trace-node": "^1.29.0",
     "@tumiki/db": "workspace:*",
     "cockatiel": "^3.2.1",
     "hono": "^4.7.4",
-    "hono-rate-limiter": "^0.4.0",
-    "ioredis": "^5.4.2",
-    "lru-cache": "^11.2.1",
     "zod": "catalog:"
   },
   "devDependencies": {
