@@ -1,11 +1,15 @@
 /**
- * @fileoverview Remote MCPクライアント作成ユーティリティ
+ * @fileoverview シンプルなRemote MCPクライアント作成
+ *
+ * プール管理なし、リクエストごとに接続を作成・破棄
+ * Cloud Runステートレス環境に最適化
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { RemoteMcpServerConfig } from "../config/mcpServers.js";
+import { logInfo, logError } from "../utils/logger.js";
 
 /**
  * Remote MCPサーバーに接続するクライアントを作成
@@ -14,7 +18,7 @@ import type { RemoteMcpServerConfig } from "../config/mcpServers.js";
  * @param config Remote MCPサーバー設定
  * @returns クライアントとトランスポート
  */
-export const createRemoteMcpClient = async (
+export const createMcpClient = async (
   namespace: string,
   config: RemoteMcpServerConfig,
 ): Promise<{
@@ -28,8 +32,7 @@ export const createRemoteMcpClient = async (
     const url = new URL(config.url);
 
     // 認証ヘッダーの設定
-    // TODO: MCP SDKのSSEClientTransportは現在カスタムヘッダーをサポートしていません
-    // 認証が必要な場合は、URLパラメータまたは別のトランスポート実装を検討する必要があります
+    // 注意: MCP SDKのSSEClientTransportは現在カスタムヘッダーをサポートしていません
     const headers: Record<string, string> = {};
 
     if (config.authType === "bearer" && config.authToken) {
@@ -46,11 +49,11 @@ export const createRemoteMcpClient = async (
     // ヘッダーが設定されている場合は警告を表示
     if (Object.keys(headers).length > 0) {
       console.warn(
-        `Authentication headers specified for ${namespace}, but SSEClientTransport does not support custom headers yet. Consider using URL-based authentication or implementing a custom transport.`,
+        `Authentication headers specified for ${namespace}, but SSEClientTransport does not support custom headers yet.`,
       );
     }
 
-    // SSEClientTransportの作成（現在はヘッダーなし）
+    // SSEClientTransportの作成
     transport = new SSEClientTransport(url);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -66,10 +69,18 @@ export const createRemoteMcpClient = async (
   });
 
   try {
+    logInfo("Creating MCP connection", { namespace });
+
     // トランスポートに接続
     await client.connect(transport);
+
+    logInfo("MCP connection created successfully", { namespace });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(
+      `Failed to connect to Remote MCP server ${namespace}`,
+      error as Error,
+    );
     throw new Error(
       `Failed to connect to Remote MCP server ${namespace}: ${errorMessage}`,
     );

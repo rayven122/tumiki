@@ -1,36 +1,25 @@
 /**
- * @fileoverview ツールルーティングと名前空間管理
+ * @fileoverview ツールルーティングと名前空間管理（シンプル版）
  *
  * 複数のRemote MCPサーバーからのツールを統合し、
- * 名前空間ベースのルーティングとキャッシングを提供
+ * 名前空間ベースのルーティングを提供
+ *
+ * キャッシュなし - Cloud Runステートレス環境に最適化
  */
 
 import {
   ListToolsResultSchema,
   CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { remoteMcpPool } from "./remoteMcpPool.js";
+import { createMcpClient } from "./mcpClient.js";
 import { getEnabledServers } from "../config/mcpServers.js";
 import type { NamespacedTool, ToolCallResult } from "../types/index.js";
-import { McpLogger } from "./mcpLogger.js";
-
-const logger = new McpLogger();
-
-/**
- * キャッシュエントリー
- */
-type CacheEntry = {
-  tools: NamespacedTool[];
-  timestamp: number;
-};
+import { logInfo, logError } from "../utils/logger.js";
 
 /**
  * ツールルーター
  */
 export class ToolRouter {
-  private cache = new Map<string, CacheEntry>();
-  private readonly CACHE_TTL = Number(process.env.CACHE_TTL) || 300; // 5分（秒）
-
   /**
    * ツール名をパース（名前空間と元の名前に分割）
    */
@@ -68,35 +57,22 @@ export class ToolRouter {
   }
 
   /**
-   * キャッシュが有効かチェック
-   */
-  private isCacheValid(entry: CacheEntry): boolean {
-    const now = Date.now();
-    const age = (now - entry.timestamp) / 1000; // 秒に変換
-    return age < this.CACHE_TTL;
-  }
-
-  /**
-   * 全ツールリストを取得（キャッシュ付き）
+   * 全ツールリストを取得
+   * キャッシュなし - 毎回Remote MCPサーバーから取得
    */
   async getAllTools(): Promise<NamespacedTool[]> {
-    const cacheKey = "all";
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && this.isCacheValid(cached)) {
-      logger.logInfo("Returning cached tools list", {
-        toolCount: cached.tools.length,
-      });
-      return cached.tools;
-    }
-
     const servers = getEnabledServers();
     const allTools: NamespacedTool[] = [];
 
     // 全サーバーから並列でツールリストを取得
     const toolPromises = servers.map(async (server) => {
+      let client;
       try {
-        const client = await remoteMcpPool.getConnection(server.namespace);
+        const { client: mcpClient } = await createMcpClient(
+          server.namespace,
+          server.config,
+        );
+        client = mcpClient;
 
         const result = await client.request(
           {
@@ -105,11 +81,19 @@ export class ToolRouter {
           ListToolsResultSchema,
         );
 
-        remoteMcpPool.releaseConnection(server.namespace);
+        await client.close();
 
         return this.addNamespace(result.tools, server.namespace);
       } catch (error) {
-        logger.logError(server.namespace, "getAllTools", error as Error);
+        logError(
+          `Failed to get tools from ${server.namespace}`,
+          error as Error,
+        );
+        if (client) {
+          await client.close().catch(() => {
+            /* ignore cleanup errors */
+          });
+        }
         return [];
       }
     });
@@ -117,13 +101,7 @@ export class ToolRouter {
     const toolsArrays = await Promise.all(toolPromises);
     toolsArrays.forEach((tools) => allTools.push(...tools));
 
-    // キャッシュに保存
-    this.cache.set(cacheKey, {
-      tools: allTools,
-      timestamp: Date.now(),
-    });
-
-    logger.logInfo("Tools list aggregated", {
+    logInfo("Tools list aggregated", {
       serverCount: servers.length,
       toolCount: allTools.length,
     });
@@ -135,18 +113,22 @@ export class ToolRouter {
    * 名前空間ごとのツールリストを取得
    */
   async getToolsByNamespace(namespace: string): Promise<NamespacedTool[]> {
-    const cached = this.cache.get(namespace);
+    const servers = getEnabledServers();
+    const serverInfo = servers.find((s) => s.namespace === namespace);
 
-    if (cached && this.isCacheValid(cached)) {
-      logger.logInfo("Returning cached tools for namespace", {
-        namespace,
-        toolCount: cached.tools.length,
-      });
-      return cached.tools;
+    if (!serverInfo) {
+      throw new Error(
+        `Server configuration not found for namespace: ${namespace}`,
+      );
     }
 
+    let client;
     try {
-      const client = await remoteMcpPool.getConnection(namespace);
+      const { client: mcpClient } = await createMcpClient(
+        namespace,
+        serverInfo.config,
+      );
+      client = mcpClient;
 
       const result = await client.request(
         {
@@ -155,24 +137,23 @@ export class ToolRouter {
         ListToolsResultSchema,
       );
 
-      remoteMcpPool.releaseConnection(namespace);
+      await client.close();
 
       const namespacedTools = this.addNamespace(result.tools, namespace);
 
-      // キャッシュに保存
-      this.cache.set(namespace, {
-        tools: namespacedTools,
-        timestamp: Date.now(),
-      });
-
-      logger.logInfo("Tools list retrieved for namespace", {
+      logInfo("Tools list retrieved for namespace", {
         namespace,
         toolCount: namespacedTools.length,
       });
 
       return namespacedTools;
     } catch (error) {
-      logger.logError(namespace, "getToolsByNamespace", error as Error);
+      logError(`Failed to get tools for ${namespace}`, error as Error);
+      if (client) {
+        await client.close().catch(() => {
+          /* ignore cleanup errors */
+        });
+      }
       throw error;
     }
   }
@@ -185,11 +166,24 @@ export class ToolRouter {
     args: Record<string, unknown>,
   ): Promise<ToolCallResult> {
     const { namespace, originalName } = this.parseToolName(toolName);
+    const servers = getEnabledServers();
+    const serverInfo = servers.find((s) => s.namespace === namespace);
 
+    if (!serverInfo) {
+      throw new Error(
+        `Server configuration not found for namespace: ${namespace}`,
+      );
+    }
+
+    let client;
     try {
-      const client = await remoteMcpPool.getConnection(namespace);
+      const { client: mcpClient } = await createMcpClient(
+        namespace,
+        serverInfo.config,
+      );
+      client = mcpClient;
 
-      logger.logInfo("Calling tool", {
+      logInfo("Calling tool", {
         namespace,
         toolName: originalName,
       });
@@ -205,9 +199,9 @@ export class ToolRouter {
         CallToolResultSchema,
       );
 
-      remoteMcpPool.releaseConnection(namespace);
+      await client.close();
 
-      logger.logInfo("Tool call completed", {
+      logInfo("Tool call completed", {
         namespace,
         toolName: originalName,
       });
@@ -219,18 +213,16 @@ export class ToolRouter {
         })),
       };
     } catch (error) {
-      logger.logError(namespace, "callTool", error as Error, {
-        toolName: originalName,
-      });
+      logError(
+        `Failed to call tool ${namespace}.${originalName}`,
+        error as Error,
+      );
+      if (client) {
+        await client.close().catch(() => {
+          /* ignore cleanup errors */
+        });
+      }
       throw error;
     }
-  }
-
-  /**
-   * キャッシュをクリア
-   */
-  clearCache(): void {
-    this.cache.clear();
-    logger.logInfo("Tool cache cleared");
   }
 }

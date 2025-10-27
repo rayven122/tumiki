@@ -2,9 +2,7 @@ import type { Context, Next } from "hono";
 import { db } from "@tumiki/db/server";
 import type { AuthInfo } from "../types/index.js";
 import type { HonoEnv } from "../types/hono.js";
-import { McpLogger } from "../services/mcpLogger.js";
-
-const logger = new McpLogger();
+import { logError } from "../utils/logger.js";
 
 /**
  * APIキーを抽出
@@ -62,7 +60,7 @@ const validateApiKey = async (
         data: { lastUsedAt: new Date() },
       })
       .catch((error: unknown) => {
-        logger.logError("auth", "updateLastUsedAt", error as Error);
+        logError("Failed to update lastUsedAt", error as Error);
       });
 
     return {
@@ -72,7 +70,7 @@ const validateApiKey = async (
       apiKey: mcpApiKey.apiKey,
     };
   } catch (error: unknown) {
-    logger.logError("auth", "validateApiKey", error as Error);
+    logError("Failed to validate API key", error as Error);
     return undefined;
   }
 };

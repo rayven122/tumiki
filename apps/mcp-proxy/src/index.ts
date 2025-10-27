@@ -2,12 +2,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
-import { McpLogger } from "./services/mcpLogger.js";
 import { ToolRouter } from "./services/toolRouter.js";
-import { remoteMcpPool } from "./services/remoteMcpPool.js";
+import { logInfo, logError } from "./utils/logger.js";
 import type { HonoEnv } from "./types/hono.js";
 
-const logger = new McpLogger();
 const toolRouter = new ToolRouter();
 
 // Hono アプリケーションの作成
@@ -74,7 +72,7 @@ app.post("/mcp", authMiddleware, async (c) => {
             },
           });
         } catch (error) {
-          logger.logError("proxy", "tools/list", error as Error, {
+          logError("Failed to list tools", error as Error, {
             organizationId: authInfo.organizationId,
           });
 
@@ -124,7 +122,7 @@ app.post("/mcp", authMiddleware, async (c) => {
             },
           });
         } catch (error) {
-          logger.logError("proxy", "tools/call", error as Error, {
+          logError("Failed to call tool", error as Error, {
             organizationId: authInfo.organizationId,
             toolName: params.name,
           });
@@ -159,7 +157,7 @@ app.post("/mcp", authMiddleware, async (c) => {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
-    logger.logError("proxy", "handleRequest", error as Error, {
+    logError("Failed to handle request", error as Error, {
       organizationId: authInfo.organizationId,
     });
 
@@ -179,10 +177,7 @@ app.post("/mcp", authMiddleware, async (c) => {
 
 // Graceful Shutdown
 const shutdown = async () => {
-  logger.logInfo("Shutting down gracefully...");
-
-  // MCP接続プールのクリーンアップ
-  await remoteMcpPool.cleanup();
+  logInfo("Shutting down gracefully...");
 
   process.exit(0);
 };
@@ -193,7 +188,7 @@ process.on("SIGINT", () => void shutdown());
 // サーバー起動
 const port = Number(process.env.PORT) || 8080;
 
-logger.logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
+logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
   nodeEnv: process.env.NODE_ENV,
   mode: "stateless (Hono + MCP SDK)",
 });
@@ -202,7 +197,7 @@ logger.logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
 if (process.env.NODE_ENV !== "test") {
   const { serve } = await import("@hono/node-server");
   serve({ fetch: app.fetch, port }, (info) => {
-    logger.logInfo(`Server is running on http://localhost:${info.port}`);
+    logInfo(`Server is running on http://localhost:${info.port}`);
   });
 }
 
