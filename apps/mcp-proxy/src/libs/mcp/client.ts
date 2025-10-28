@@ -14,6 +14,74 @@ import type { RemoteMcpServerConfig } from "../../server/config.js";
 import { logInfo, logError } from "../logger/index.js";
 
 /**
+ * 接続タイムアウト（ミリ秒）
+ */
+const CONNECTION_TIMEOUT_MS = 10000;
+
+/**
+ * タイムアウト付きで接続を試行
+ */
+const connectWithTimeout = async (
+  client: Client,
+  transport: Transport,
+  timeoutMs: number,
+): Promise<void> => {
+  return Promise.race([
+    client.connect(transport),
+    new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error("Connection timeout")), timeoutMs),
+    ),
+  ]);
+};
+
+/**
+ * HTTPからSSEへのフォールバック処理
+ */
+const fallbackToSSE = async (
+  namespace: string,
+  config: RemoteMcpServerConfig,
+  client: Client,
+  originalTransport: Transport,
+): Promise<{ client: Client; transport: Transport }> => {
+  logInfo("Streamable HTTP connection failed, falling back to SSE transport", {
+    namespace,
+  });
+
+  try {
+    // トランスポートをクローズ（エラーは無視）
+    await originalTransport.close().catch(() => {
+      // クローズエラーは無視（フォールバック処理のため）
+    });
+
+    // SSEトランスポートで再試行
+    const url = new URL(config.url);
+    const sseTransport = new SSEClientTransport(url);
+
+    logInfo("Retrying with SSE transport", { namespace });
+    await connectWithTimeout(client, sseTransport, CONNECTION_TIMEOUT_MS);
+
+    logInfo("MCP connection created successfully with SSE fallback", {
+      namespace,
+    });
+
+    return { client, transport: sseTransport };
+  } catch (fallbackError) {
+    const errorMessage =
+      fallbackError instanceof Error
+        ? fallbackError.message
+        : String(fallbackError);
+    logError(
+      `Failed to connect to Remote MCP server ${namespace} (SSE fallback also failed)`,
+      fallbackError as Error,
+      { namespace, url: config.url },
+    );
+    throw new Error(
+      `Failed to connect to Remote MCP server ${namespace}: ${errorMessage}`,
+    );
+  }
+};
+
+/**
  * Remote MCPサーバーに接続するクライアントを作成
  *
  * @param namespace サーバーの名前空間
@@ -95,55 +163,22 @@ export const createMcpClient = async (
   try {
     logInfo("Creating MCP connection", { namespace });
 
-    // トランスポートに接続
-    await client.connect(transport);
+    // タイムアウト付きでトランスポートに接続
+    await connectWithTimeout(client, transport, CONNECTION_TIMEOUT_MS);
 
     logInfo("MCP connection created successfully", { namespace });
   } catch (error) {
     // HTTPトランスポートが失敗した場合、SSEにフォールバック
     const transportType = config.transportType ?? "sse";
     if (transportType === "http") {
-      logInfo(
-        "Streamable HTTP connection failed, falling back to SSE transport",
-        { namespace },
-      );
-      try {
-        // トランスポートをクローズ（エラーは無視）
-        await transport.close().catch(() => {
-          // クローズエラーは無視（フォールバック処理のため）
-        });
-
-        // SSEトランスポートで再試行
-        const url = new URL(config.url);
-        transport = new SSEClientTransport(url);
-
-        logInfo("Retrying with SSE transport", { namespace });
-        await client.connect(transport);
-
-        logInfo("MCP connection created successfully with SSE fallback", {
-          namespace,
-        });
-
-        return { client, transport };
-      } catch (fallbackError) {
-        const errorMessage =
-          fallbackError instanceof Error
-            ? fallbackError.message
-            : String(fallbackError);
-        logError(
-          `Failed to connect to Remote MCP server ${namespace} (SSE fallback also failed)`,
-          fallbackError as Error,
-        );
-        throw new Error(
-          `Failed to connect to Remote MCP server ${namespace}: ${errorMessage}`,
-        );
-      }
+      return await fallbackToSSE(namespace, config, client, transport);
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError(
       `Failed to connect to Remote MCP server ${namespace}`,
       error as Error,
+      { namespace, url: config.url, transportType },
     );
     throw new Error(
       `Failed to connect to Remote MCP server ${namespace}: ${errorMessage}`,
