@@ -29,6 +29,8 @@ const mapTransportType = (
       return "http";
     case "STDIO":
       return "stdio";
+    default:
+      throw new Error(`Unknown transport type: ${String(dbTransportType)}`);
   }
 };
 
@@ -43,6 +45,8 @@ const mapAuthType = (dbAuthType: AuthType): "none" | "bearer" | "api_key" => {
       return "api_key";
     case "OAUTH":
       return "bearer";
+    default:
+      throw new Error(`Unknown auth type: ${String(dbAuthType)}`);
   }
 };
 
