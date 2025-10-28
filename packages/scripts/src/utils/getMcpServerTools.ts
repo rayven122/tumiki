@@ -17,8 +17,7 @@ const getCloudRunIdToken = async (targetAudience: string): Promise<string> => {
   const client = await auth.getIdTokenClient(targetAudience);
   const headers = await client.getRequestHeaders();
 
-  const authHeader =
-    headers.get("Authorization") ?? headers.get("authorization");
+  const authHeader = headers.Authorization ?? headers.authorization;
   const idToken = authHeader?.replace("Bearer ", "");
 
   if (!idToken) {

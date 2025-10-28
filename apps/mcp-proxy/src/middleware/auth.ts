@@ -32,25 +32,24 @@ const validateApiKey = async (
   apiKey: string,
 ): Promise<AuthInfo | undefined> => {
   try {
+    // 1つのクエリで mcpApiKey と userMcpServerInstance を取得（最適化）
     const mcpApiKey = await db.mcpApiKey.findUnique({
       where: { apiKey },
-    });
-
-    if (!mcpApiKey?.isActive) {
-      return undefined;
-    }
-
-    // UserMcpServerInstanceを取得して組織IDを取得
-    const instance = await db.userMcpServerInstance.findUnique({
-      where: { id: mcpApiKey.userMcpServerInstanceId },
-      select: {
-        organizationId: true,
+      include: {
+        userMcpServerInstance: {
+          select: {
+            organizationId: true,
+          },
+        },
       },
     });
 
-    if (!instance) {
+    if (!mcpApiKey?.isActive || !mcpApiKey.userMcpServerInstance) {
       return undefined;
     }
+
+    // includeで取得したインスタンス情報
+    const instance = mcpApiKey.userMcpServerInstance;
 
     // 最終使用日時を非同期で更新（レスポンスをブロックしない）
     void db.mcpApiKey
