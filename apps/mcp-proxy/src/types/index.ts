@@ -9,16 +9,6 @@ export type AuthInfo = {
 };
 
 /**
- * セッション認証情報（汎用）
- */
-export type SessionAuthInfo = {
-  type: "api_key" | "oauth";
-  userId?: string;
-  userMcpServerInstanceId?: string;
-  organizationId?: string;
-};
-
-/**
  * 名前空間付きツール
  */
 export type NamespacedTool = {
