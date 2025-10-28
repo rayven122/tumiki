@@ -7,9 +7,10 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { RemoteMcpServerConfig } from "../../server/config.js";
-import { logInfo, logError, logWarn } from "../logger/index.js";
+import { logInfo, logError } from "../logger/index.js";
 
 /**
  * Remote MCPサーバーに接続するクライアントを作成
@@ -28,34 +29,56 @@ export const createMcpClient = async (
   let transport: Transport;
 
   try {
-    // SSEトランスポートを使用してRemote MCPサーバーに接続
-    const url = new URL(config.url);
+    const transportType = config.transportType ?? "sse"; // デフォルトはSSE
 
-    // 認証ヘッダーの設定
-    // 注意: MCP SDKのSSEClientTransportは現在カスタムヘッダーをサポートしていません
-    const headers: Record<string, string> = {};
+    switch (transportType) {
+      case "sse": {
+        // SSEトランスポートを使用してRemote MCPサーバーに接続
+        const url = new URL(config.url);
+        transport = new SSEClientTransport(url);
+        logInfo("Using SSE transport", { namespace, url: config.url });
+        break;
+      }
 
-    if (config.authType === "bearer" && config.authToken) {
-      headers.Authorization = `Bearer ${config.authToken}`;
-    } else if (config.authType === "api_key" && config.authToken) {
-      headers["X-API-Key"] = config.authToken;
+      case "http": {
+        // HTTPトランスポート（Streamable HTTP）
+        // 注: MCP SDKにはHTTPClientTransportがないため、SSEを使用
+        // 将来的にHTTPClientTransportが追加された場合に対応
+        const url = new URL(config.url);
+        transport = new SSEClientTransport(url);
+        logInfo("Using HTTP transport (via SSE)", {
+          namespace,
+          url: config.url,
+        });
+        break;
+      }
+
+      case "stdio": {
+        // Stdioトランスポート（ローカルプロセス起動）
+        // urlをコマンドとして解釈
+        const [command, ...args] = config.url.split(" ");
+        if (!command) {
+          throw new Error(
+            "Stdio transport requires a command in the url field",
+          );
+        }
+        transport = new StdioClientTransport({
+          command,
+          args,
+        });
+        logInfo("Using Stdio transport", {
+          namespace,
+          command,
+          args,
+        });
+        break;
+      }
+
+      default:
+        throw new Error(
+          `Unsupported transport type: ${transportType as string}`,
+        );
     }
-
-    // カスタムヘッダーの追加
-    if (config.headers) {
-      Object.assign(headers, config.headers);
-    }
-
-    // ヘッダーが設定されている場合は警告を表示
-    if (Object.keys(headers).length > 0) {
-      logWarn(
-        `Authentication headers specified for ${namespace}, but SSEClientTransport does not support custom headers yet.`,
-        { namespace, headerCount: Object.keys(headers).length },
-      );
-    }
-
-    // SSEClientTransportの作成
-    transport = new SSEClientTransport(url);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(

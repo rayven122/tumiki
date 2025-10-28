@@ -35,11 +35,10 @@ app.get("/health", (c) => {
   });
 });
 
-// MCP エンドポイント（認証必須、ステートレス）
-// 注意: MCP SDK の StreamableHTTPServerTransport は Express 専用のため、
-// Hono では JSON-RPC を手動処理
-app.post("/mcp", authMiddleware, async (c) => {
+// MCP エンドポイント（新しいRESTful形式）
+app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
   const authInfo = c.get("authInfo");
+  const userMcpServerInstanceId = c.req.param("userMcpServerInstanceId");
 
   try {
     const request: JsonRpcRequest = await c.req.json();
@@ -65,11 +64,27 @@ app.post("/mcp", authMiddleware, async (c) => {
       );
     }
 
-    // tools/list, tools/call の実装
+    // tools/list, tools/call, initialize の実装
     switch (request.method) {
+      case "initialize": {
+        // MCP protocol initialization handshake
+        return c.json(
+          createJsonRpcSuccess(request.id, {
+            protocolVersion: "2024-11-05",
+            capabilities: {
+              tools: {},
+            },
+            serverInfo: {
+              name: "Tumiki MCP Proxy",
+              version: "0.1.0",
+            },
+          }),
+        );
+      }
+
       case "tools/list": {
         try {
-          const tools = await toolRouter.getAllTools();
+          const tools = await toolRouter.getAllTools(userMcpServerInstanceId);
 
           return c.json(
             createJsonRpcSuccess(request.id, {
@@ -83,6 +98,7 @@ app.post("/mcp", authMiddleware, async (c) => {
         } catch (error) {
           logError("Failed to list tools", error as Error, {
             organizationId: authInfo.organizationId,
+            userMcpServerInstanceId,
           });
 
           return c.json(
@@ -113,6 +129,7 @@ app.post("/mcp", authMiddleware, async (c) => {
 
         try {
           const result = await toolRouter.callTool(
+            userMcpServerInstanceId,
             params.name,
             params.arguments ?? {},
           );
@@ -126,6 +143,7 @@ app.post("/mcp", authMiddleware, async (c) => {
           logError("Failed to call tool", error as Error, {
             organizationId: authInfo.organizationId,
             toolName: params.name,
+            userMcpServerInstanceId,
           });
 
           return c.json(
@@ -152,6 +170,7 @@ app.post("/mcp", authMiddleware, async (c) => {
 
     logError("Failed to handle request", error as Error, {
       organizationId: authInfo.organizationId,
+      userMcpServerInstanceId,
     });
 
     return c.json(
@@ -162,22 +181,15 @@ app.post("/mcp", authMiddleware, async (c) => {
   }
 });
 
-// Graceful Shutdown
-const shutdown = async () => {
-  logInfo("Shutting down gracefully...");
-
-  process.exit(0);
-};
-
-process.on("SIGTERM", () => void shutdown());
-process.on("SIGINT", () => void shutdown());
-
 // サーバー起動
 const port = Number(process.env.PORT) || DEFAULT_PORT;
+
+const devMode = process.env.DEV_MODE === "true";
 
 logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
   nodeEnv: process.env.NODE_ENV,
   mode: "stateless (Hono + MCP SDK)",
+  devMode: devMode ? "enabled (auth bypass, fixed Context7 MCP)" : "disabled",
 });
 
 // Node.js環境用のHTTPサーバー起動
