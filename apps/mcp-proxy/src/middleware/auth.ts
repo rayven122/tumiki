@@ -53,13 +53,17 @@ const validateApiKey = async (
     }
 
     // 最終使用日時を非同期で更新（レスポンスをブロックしない）
-    db.mcpApiKey
+    void db.mcpApiKey
       .update({
         where: { id: mcpApiKey.id },
         data: { lastUsedAt: new Date() },
       })
       .catch((error: unknown) => {
-        logError("Failed to update lastUsedAt", error as Error);
+        logError("Failed to update lastUsedAt", error as Error, {
+          apiKeyId: mcpApiKey.id,
+          organizationId: instance.organizationId,
+          userMcpServerInstanceId: mcpApiKey.userMcpServerInstanceId,
+        });
       });
 
     return {
@@ -91,7 +95,11 @@ export const authMiddleware = async (
   next: Next,
 ): Promise<Response | void> => {
   // 開発環境モード: 認証バイパス
-  if (process.env.DEV_MODE === "true") {
+  // 本番環境では NODE_ENV=production のため、DEV_MODE は無視される
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.DEV_MODE === "true"
+  ) {
     // ダミーの認証情報を設定
     c.set("authInfo", {
       organizationId: "dev-org-id",
