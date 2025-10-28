@@ -4,6 +4,8 @@ import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
 import { ToolRouter } from "./libs/mcp/index.js";
 import { logInfo, logError } from "./libs/logger/index.js";
+import { closeRedisClient } from "./libs/cache/redis.js";
+import { db } from "@tumiki/db/server";
 import {
   createJsonRpcError,
   createJsonRpcSuccess,
@@ -199,6 +201,47 @@ if (process.env.NODE_ENV !== "test") {
     logInfo(`Server is running on http://localhost:${info.port}`);
   });
 }
+
+// Graceful shutdown handlers
+const gracefulShutdown = async (): Promise<void> => {
+  logInfo("Starting graceful shutdown");
+
+  const shutdownTimeout = 9000; // 9秒（Cloud Runの10秒猶予内）
+
+  const shutdownPromise = (async () => {
+    // Redis接続をクローズ
+    logInfo("Closing Redis connection");
+    await closeRedisClient();
+
+    // Prisma DB接続をクローズ
+    logInfo("Closing database connection");
+    await db.$disconnect();
+
+    logInfo("Graceful shutdown completed");
+  })();
+
+  // タイムアウト付きで実行
+  await Promise.race([
+    shutdownPromise,
+    new Promise((resolve) => setTimeout(resolve, shutdownTimeout)),
+  ]);
+};
+
+// SIGTERMハンドラー（Cloud Run終了時）
+process.on("SIGTERM", () => {
+  logInfo("SIGTERM received");
+  void gracefulShutdown().then(() => {
+    process.exit(0);
+  });
+});
+
+// SIGINTハンドラー（ローカル開発用、Ctrl+C）
+process.on("SIGINT", () => {
+  logInfo("SIGINT received");
+  void gracefulShutdown().then(() => {
+    process.exit(0);
+  });
+});
 
 export default {
   port,

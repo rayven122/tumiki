@@ -21,6 +21,7 @@
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@tumiki/db": "workspace:*",
     "hono": "^4.7.4",
+    "redis": "^5.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {
