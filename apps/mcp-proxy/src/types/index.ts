@@ -1,11 +1,21 @@
 /**
- * 認証情報
+ * 認証情報（APIキー認証）
  */
 export type AuthInfo = {
   organizationId: string;
   mcpServerInstanceId: string;
   apiKeyId: string;
   apiKey: string;
+};
+
+/**
+ * セッション認証情報（汎用）
+ */
+export type SessionAuthInfo = {
+  type: "api_key" | "oauth";
+  userId?: string;
+  userMcpServerInstanceId?: string;
+  organizationId?: string;
 };
 
 /**

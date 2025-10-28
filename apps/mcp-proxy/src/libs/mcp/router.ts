@@ -11,7 +11,7 @@ import {
   ListToolsResultSchema,
   CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { getEnabledServers } from "../../server/config.js";
+import { getEnabledServersForInstance } from "../../server/config.js";
 import type { NamespacedTool, ToolCallResult } from "../../types/index.js";
 import { logInfo, logError } from "../logger/index.js";
 import { withMcpClient } from "./wrapper.js";
@@ -59,9 +59,13 @@ export class ToolRouter {
   /**
    * 全ツールリストを取得
    * キャッシュなし - 毎回Remote MCPサーバーから取得
+   *
+   * @param userMcpServerInstanceId - UserMcpServerInstanceのID
    */
-  async getAllTools(): Promise<NamespacedTool[]> {
-    const servers = getEnabledServers();
+  async getAllTools(
+    userMcpServerInstanceId: string,
+  ): Promise<NamespacedTool[]> {
+    const servers = await getEnabledServersForInstance(userMcpServerInstanceId);
     const allTools: NamespacedTool[] = [];
 
     // 全サーバーから並列でツールリストを取得
@@ -94,6 +98,7 @@ export class ToolRouter {
     toolsArrays.forEach((tools) => allTools.push(...tools));
 
     logInfo("Tools list aggregated", {
+      userMcpServerInstanceId,
       serverCount: servers.length,
       toolCount: allTools.length,
     });
@@ -103,9 +108,15 @@ export class ToolRouter {
 
   /**
    * 名前空間ごとのツールリストを取得
+   *
+   * @param userMcpServerInstanceId - UserMcpServerInstanceのID
+   * @param namespace - 名前空間
    */
-  async getToolsByNamespace(namespace: string): Promise<NamespacedTool[]> {
-    const servers = getEnabledServers();
+  async getToolsByNamespace(
+    userMcpServerInstanceId: string,
+    namespace: string,
+  ): Promise<NamespacedTool[]> {
+    const servers = await getEnabledServersForInstance(userMcpServerInstanceId);
     const serverInfo = servers.find((s) => s.namespace === namespace);
 
     if (!serverInfo) {
@@ -131,6 +142,7 @@ export class ToolRouter {
       const namespacedTools = this.addNamespace(result.tools, namespace);
 
       logInfo("Tools list retrieved for namespace", {
+        userMcpServerInstanceId,
         namespace,
         toolCount: namespacedTools.length,
       });
@@ -144,13 +156,18 @@ export class ToolRouter {
 
   /**
    * ツールを実行
+   *
+   * @param userMcpServerInstanceId - UserMcpServerInstanceのID
+   * @param toolName - ツール名（namespace.toolName形式）
+   * @param args - ツール引数
    */
   async callTool(
+    userMcpServerInstanceId: string,
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<ToolCallResult> {
     const { namespace, originalName } = this.parseToolName(toolName);
-    const servers = getEnabledServers();
+    const servers = await getEnabledServersForInstance(userMcpServerInstanceId);
     const serverInfo = servers.find((s) => s.namespace === namespace);
 
     if (!serverInfo) {
@@ -161,6 +178,7 @@ export class ToolRouter {
 
     try {
       logInfo("Calling tool", {
+        userMcpServerInstanceId,
         namespace,
         toolName: originalName,
       });
@@ -183,6 +201,7 @@ export class ToolRouter {
       );
 
       logInfo("Tool call completed", {
+        userMcpServerInstanceId,
         namespace,
         toolName: originalName,
       });
