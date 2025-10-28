@@ -1,6 +1,7 @@
 import { db } from "@tumiki/db/server";
 import type { TransportType, AuthType } from "@tumiki/db";
 import { logError } from "../libs/logger/index.js";
+import { getCachedConfig } from "../libs/cache/configCache.js";
 
 /**
  * Remote MCP サーバー設定型
@@ -51,15 +52,9 @@ const mapAuthType = (dbAuthType: AuthType): "none" | "bearer" | "api_key" => {
 };
 
 /**
- * UserMcpServerInstanceに対応するRemote MCPサーバー設定を取得
- *
- * 開発環境モード:
- * - DEV_MODE=true の場合、固定のContext7 MCPサーバー設定を返す
- *
- * @param userMcpServerInstanceId - UserMcpServerInstanceのID
- * @returns 有効なRemote MCPサーバーの配列
+ * UserMcpServerInstanceに対応するRemote MCPサーバー設定をDBから取得（内部関数）
  */
-export const getEnabledServersForInstance = async (
+const _getEnabledServersForInstanceFromDB = async (
   userMcpServerInstanceId: string,
 ): Promise<
   Array<{
@@ -67,23 +62,6 @@ export const getEnabledServersForInstance = async (
     config: RemoteMcpServerConfig;
   }>
 > => {
-  // 開発環境モード: 固定のContext7 MCPサーバー設定を返す
-  if (process.env.DEV_MODE === "true") {
-    return [
-      {
-        namespace: "context7",
-        config: {
-          enabled: true,
-          name: "Context7 (Dev Mode)",
-          url: "https://mcp.context7.com/mcp",
-          transportType: "http",
-          authType: "none",
-          headers: {},
-        },
-      },
-    ];
-  }
-
   try {
     // UserMcpServerInstanceからToolGroupを取得
     const instance = await db.userMcpServerInstance.findUnique({
@@ -175,4 +153,49 @@ export const getEnabledServersForInstance = async (
     );
     return [];
   }
+};
+
+/**
+ * UserMcpServerInstanceに対応するRemote MCPサーバー設定を取得
+ *
+ * 開発環境モード:
+ * - DEV_MODE=true の場合、固定のContext7 MCPサーバー設定を返す
+ *
+ * キャッシュ:
+ * - Redis経由でキャッシュを使用（REDIS_URL環境変数が設定されている場合）
+ * - キャッシュTTL: 300秒（CACHE_TTL環境変数でカスタマイズ可能）
+ * - キャッシュミス時はDBから取得してキャッシュに保存
+ *
+ * @param userMcpServerInstanceId - UserMcpServerInstanceのID
+ * @returns 有効なRemote MCPサーバーの配列
+ */
+export const getEnabledServersForInstance = async (
+  userMcpServerInstanceId: string,
+): Promise<
+  Array<{
+    namespace: string;
+    config: RemoteMcpServerConfig;
+  }>
+> => {
+  // 開発環境モード: 固定のContext7 MCPサーバー設定を返す
+  if (process.env.DEV_MODE === "true") {
+    return [
+      {
+        namespace: "context7",
+        config: {
+          enabled: true,
+          name: "Context7 (Dev Mode)",
+          url: "https://mcp.context7.com/mcp",
+          transportType: "http",
+          authType: "none",
+          headers: {},
+        },
+      },
+    ];
+  }
+
+  // キャッシュ経由でDB取得
+  return await getCachedConfig(userMcpServerInstanceId, () =>
+    _getEnabledServersForInstanceFromDB(userMcpServerInstanceId),
+  );
 };
