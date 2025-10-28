@@ -49,6 +49,65 @@ pnpm test:coverage  # カバレッジ
 pnpm start
 ```
 
+### 開発モード（認証バイパス + Context7固定接続）
+
+開発環境で簡単に動作検証を行うための開発モードが用意されています。
+
+**機能:**
+
+- **認証バイパス**: APIキーなしでアクセス可能
+- **MCP接続先固定**: `https://mcp.context7.com/mcp` に固定接続
+
+**使用方法:**
+
+環境変数 `DEV_MODE=true` を設定して起動:
+
+```bash
+# 環境変数を設定して起動
+DEV_MODE=true pnpm dev
+```
+
+または、`.env` ファイルに追加:
+
+```bash
+# .env
+DEV_MODE=true
+```
+
+**動作確認:**
+
+```bash
+# ツールリスト取得（認証なし）
+curl -X POST http://localhost:8080/mcp/dev-instance-id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list"
+  }'
+
+# ツール実行（認証なし）
+curl -X POST http://localhost:8080/mcp/dev-instance-id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "context7.resolve-library-id",
+      "arguments": {
+        "libraryName": "react"
+      }
+    }
+  }'
+```
+
+**⚠️ 注意:**
+
+- **開発環境でのみ使用してください**
+- 本番環境では絶対に `DEV_MODE=true` を設定しないでください
+- 開発モードではセキュリティチェックがバイパスされます
+
 ## エンドポイント
 
 ### ヘルスチェック
@@ -76,9 +135,9 @@ NODE_ENV=production
 # データベース
 DATABASE_URL=postgresql://...
 
-# Redis（セッション管理）
-REDIS_URL=redis://localhost:6379  # ローカル開発時
-# REDIS_URL=redis://10.0.0.3:6379  # GCP Memorystore（内部IP）
+# Upstash Redis（セッション管理）
+UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ
 
 # セッション設定
 CONNECTION_TIMEOUT_MS=60000  # セッションタイムアウト（デフォルト: 60秒）
@@ -88,127 +147,26 @@ MAX_SESSIONS=200             # 最大セッション数（デフォルト: 200�
 LOG_LEVEL=info  # info, warn, error, debug
 ```
 
-## Remote MCPサーバーの追加
+## MCPサーバー設定
 
-### Named Servers形式
+本番環境では、MCPサーバーの設定はデータベース（UserMcpServerInstance、ToolGroup）で管理されます。
 
-[sparfenyuk/mcp-proxy](https://github.com/sparfenyuk/mcp-proxy)の標準MCP設定形式を採用しています。
+### サポートされるトランスポート
 
-`src/config/mcpServers.ts` に設定を追加：
-
-```typescript
-export const REMOTE_MCP_SERVERS_CONFIG: RemoteMcpServersConfig = {
-  mcpServers: {
-    github: {
-      // 名前空間（オブジェクトのキー）
-      enabled: true, // 有効/無効フラグ
-      name: "GitHub MCP Server", // 表示名
-      url: "https://mcp.example.com/sse", // エンドポイントURL
-      transportType: "sse", // sse（デフォルト） | http | stdio
-      authType: "bearer", // none | bearer | api_key
-      authToken: process.env.GITHUB_TOKEN,
-      headers: {
-        // 追加ヘッダー（オプション）
-        "X-Custom-Header": "value",
-      },
-    },
-    slack: {
-      enabled: false, // 無効化する場合
-      name: "Slack MCP Server",
-      url: "https://slack-mcp.example.com/sse",
-      transportType: "sse",
-      authType: "bearer",
-      authToken: process.env.SLACK_TOKEN,
-      headers: {},
-    },
-    "local-server": {
-      enabled: true,
-      name: "Local MCP Server",
-      url: "npx -y @modelcontextprotocol/server-everything", // Stdioの場合はコマンド
-      transportType: "stdio", // ローカルプロセス起動
-      authType: "none",
-      headers: {},
-    },
-  },
-};
-```
-
-### トランスポートタイプ
-
-`transportType`でリモートMCPサーバーへの接続方法を選択できます：
-
-#### SSE Transport（デフォルト）
-
-Server-Sent Eventsを使用したリモートMCPサーバーへの接続：
-
-```typescript
-{
-  "github": {
-    "enabled": true,
-    "name": "GitHub MCP Server",
-    "url": "https://github-mcp.example.com/sse",
-    "transportType": "sse",
-    "authType": "bearer",
-    "authToken": "${GITHUB_TOKEN}"
-  }
-}
-```
-
-#### HTTP Transport
-
-標準的なHTTP/HTTPS接続（現在はSSEClientTransportを使用）：
-
-```typescript
-{
-  "custom": {
-    "enabled": true,
-    "name": "Custom MCP Server",
-    "url": "https://custom-mcp.example.com/mcp",
-    "transportType": "http",
-    "authType": "api_key",
-    "authToken": "${API_KEY}"
-  }
-}
-```
-
-> **注意**: MCP SDKに`HTTPClientTransport`が追加された場合、自動的に対応します。
-
-#### Stdio Transport
-
-ローカルプロセスとして起動するMCPサーバー（`url`にコマンドを指定）：
-
-```typescript
-{
-  "local-server": {
-    "enabled": true,
-    "name": "Local MCP Server",
-    "url": "npx -y @modelcontextprotocol/server-everything",
-    "transportType": "stdio",
-    "authType": "none"
-  }
-}
-```
+- **Streamable HTTP**: 最新のMCPプロトコル（推奨）
+- **SSE (Server-Sent Events)**: レガシーサポート（自動フォールバック）
+- **Stdio**: ローカルプロセス起動
 
 ### ツール名の形式
 
 プロキシは名前空間付きのツール名を使用します：
 
 ```text
-github.create_issue
-slack.send_message
-postgres.execute_query
+context7.resolve-library-id
+context7.get-library-docs
 ```
 
 各ツールは `{namespace}.{originalToolName}` の形式でアクセスできます。
-
-### 設定例
-
-`config.example.json` に実例があります。環境変数を使用して認証トークンを設定してください：
-
-```bash
-export GITHUB_TOKEN=your_token_here
-export SLACK_TOKEN=your_token_here
-```
 
 ## 使用例
 
@@ -293,66 +251,62 @@ pnpm build
 gcloud builds submit
 ```
 
-### GCP Memorystore for Redis のセットアップ
+### Upstash Redis のセットアップ
 
-Cloud Run からセッション管理に Redis を使用するには、以下の設定が必要です：
+セッション管理には Upstash Redis（サーバーレス Redis）を使用します。無料プランで開始できます。
 
-#### 1. Memorystore インスタンスの作成
+#### 1. Upstash アカウント作成
+
+1. [Upstash Console](https://console.upstash.com/) にアクセス
+2. GitHub または Google アカウントでサインアップ
+3. 無料プラン（500K コマンド/月、256MB）を選択
+
+#### 2. Redis データベースの作成
 
 ```bash
-# Basic tier（開発・テスト用）
-gcloud redis instances create mcp-proxy-sessions \
-  --size=1 \
-  --region=asia-northeast1 \
-  --redis-version=redis_7_0 \
-  --tier=BASIC
-
-# Standard tier（本番用、高可用性）
-gcloud redis instances create mcp-proxy-sessions \
-  --size=2 \
-  --region=asia-northeast1 \
-  --redis-version=redis_7_0 \
-  --tier=STANDARD_HA
+# Upstash Console で以下を実行:
+1. "Create Database" をクリック
+2. Database Name: mcp-proxy-sessions
+3. Region: Asia Pacific (Tokyo) または最寄りのリージョン
+4. Type: Regional（無料プラン）
+5. "Create" をクリック
 ```
 
-#### 2. Serverless VPC Access の設定
+#### 3. 環境変数の取得
 
-Cloud Run から Memorystore に接続するには VPC コネクタが必要です：
+作成したデータベースの詳細ページから以下をコピー：
 
 ```bash
-# VPC コネクタの作成
-gcloud compute networks vpc-access connectors create mcp-proxy-connector \
-  --region=asia-northeast1 \
-  --network=default \
-  --range=10.8.0.0/28
+# REST API 情報
+UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ
 ```
 
-#### 3. Cloud Run への環境変数設定
+#### 4. Cloud Run への環境変数設定
 
 ```bash
-# Memorystore の内部 IP を取得
-REDIS_HOST=$(gcloud redis instances describe mcp-proxy-sessions \
-  --region=asia-northeast1 \
-  --format="value(host)")
-
 # Cloud Run に環境変数を設定
 gcloud run services update mcp-proxy \
   --region=asia-northeast1 \
-  --set-env-vars="REDIS_URL=redis://${REDIS_HOST}:6379" \
-  --vpc-connector=mcp-proxy-connector \
-  --vpc-egress=private-ranges-only
+  --set-env-vars="UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io,UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ"
 ```
 
-#### 4. ローカル開発時の設定
+**特徴:**
 
-ローカル開発では、Docker で Redis を起動：
+- ✅ **完全無料**: 50万コマンド/月まで無料
+- ✅ **VPC 不要**: HTTP REST API のため VPC コネクタ不要
+- ✅ **グローバル**: 自動レプリケーション
+- ✅ **低レイテンシ**: エッジ配信で高速アクセス
+- ✅ **スケール**: 従量課金で自動スケール
+
+#### 5. ローカル開発時の設定
+
+ローカル開発でも同じ Upstash Redis を使用：
 
 ```bash
-# Docker Compose で Redis を起動
-docker run -d -p 6379:6379 redis:7-alpine
-
-# 環境変数を設定
-export REDIS_URL=redis://localhost:6379
+# .env ファイルに追加
+UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ
 ```
 
 ## アーキテクチャ
