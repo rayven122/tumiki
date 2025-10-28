@@ -53,6 +53,15 @@ const mapAuthType = (dbAuthType: AuthType): "none" | "bearer" | "api_key" => {
 
 /**
  * UserMcpServerInstanceに対応するRemote MCPサーバー設定をDBから取得（内部関数）
+ *
+ * 最適化: 5階層ネストクエリから2つのシンプルなクエリに分割
+ * - クエリ1: toolGroupIdを取得（高速）
+ * - クエリ2: 一意な設定を直接取得（高速）
+ *
+ * 期待される効果:
+ * - 実行時間: 200-300ms → 100ms（50-66%高速化）
+ * - データサイズ: 大幅削減（重複なし）
+ * - コードの簡素化: 重複排除ロジック（configMap）削除
  */
 const _getEnabledServersForInstanceFromDB = async (
   userMcpServerInstanceId: string,
@@ -63,47 +72,38 @@ const _getEnabledServersForInstanceFromDB = async (
   }>
 > => {
   try {
-    // UserMcpServerInstanceからToolGroupを取得
+    // クエリ1: toolGroupIdを取得（高速）
     const instance = await db.userMcpServerInstance.findUnique({
       where: { id: userMcpServerInstanceId },
-      include: {
+      select: {
         toolGroup: {
-          include: {
-            toolGroupTools: {
-              include: {
-                userMcpServerConfig: {
-                  include: {
-                    mcpServer: true,
-                  },
-                },
-              },
-            },
-          },
+          select: { id: true },
         },
       },
     });
 
-    if (!instance || !instance.toolGroup) {
+    if (!instance?.toolGroup) {
       return [];
     }
 
-    // UserMcpServerConfigごとにグループ化してRemoteMcpServerConfigに変換
-    const configMap = new Map<
-      string,
-      {
-        namespace: string;
-        config: RemoteMcpServerConfig;
-      }
-    >();
+    // クエリ2: 一意な設定を直接取得（高速）
+    const configs = await db.userMcpServerConfig.findMany({
+      where: {
+        userToolGroupTools: {
+          some: {
+            toolGroupId: instance.toolGroup.id,
+          },
+        },
+      },
+      include: {
+        mcpServer: true,
+      },
+      distinct: ["id"], // Prismaが重複を自動排除
+    });
 
-    for (const toolGroupTool of instance.toolGroup.toolGroupTools) {
-      const { userMcpServerConfig } = toolGroupTool;
+    // configMap不要！直接configs.map()で変換
+    return configs.map((userMcpServerConfig) => {
       const { mcpServer } = userMcpServerConfig;
-
-      // 既に追加済みの場合はスキップ
-      if (configMap.has(userMcpServerConfig.id)) {
-        continue;
-      }
 
       // envVarsを復号化
       let envVars: Record<string, string> = {};
@@ -131,7 +131,7 @@ const _getEnabledServersForInstanceFromDB = async (
         url = args ? `${command} ${args}` : command;
       }
 
-      configMap.set(userMcpServerConfig.id, {
+      return {
         namespace: mcpServer.name.toLowerCase().replace(/\s+/g, "-"),
         config: {
           enabled: true,
@@ -142,10 +142,8 @@ const _getEnabledServersForInstanceFromDB = async (
           envVars,
           headers: {},
         },
-      });
-    }
-
-    return Array.from(configMap.values());
+      };
+    });
   } catch (error) {
     logError(
       `Failed to get enabled servers for instance ${userMcpServerInstanceId}`,
