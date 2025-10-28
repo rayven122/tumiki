@@ -30,8 +30,8 @@ interface WaitingListResponse {
 /**
  * メールクライアントを初期化する
  */
-function initializeMailClient() {
-  return createMailClient({
+function initializeMailClient(): void {
+  createMailClient({
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT),
     secure: Number(process.env.SMTP_PORT) === 465,
@@ -88,12 +88,14 @@ async function sendConfirmationEmail(
         : "http://localhost:3000";
     const confirmUrl = language === "ja" ? `${baseUrl}/jp` : `${baseUrl}`;
 
-    await sendWaitingListConfirmation({
+    void sendWaitingListConfirmation({
       email,
       name,
       confirmUrl,
       appName: "Tumiki",
       language,
+    }).catch(() => {
+      // エラーハンドリングは既に関数内で行われている
     });
   } catch (emailError: unknown) {
     console.error(WAITING_LIST_MESSAGES.EMAIL_SEND_FAILED, emailError);
