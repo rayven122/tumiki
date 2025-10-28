@@ -6,7 +6,7 @@
 
 - **複数Remote MCP統合**: 名前空間ベースルーティング、マルチトランスポート対応
 - **ステートレス設計**: Cloud Run対応、水平スケール可能
-- **マルチトランスポート**: SSE/HTTP/Stdioクライアント対応
+- **HTTP Transport**: クライアント向けHTTPインターフェース（JSON-RPC over HTTP）
 - **APIキー認証**: データベースベース検証
 - **構造化ログ**: Cloud Logging/BigQuery自動連携
 
@@ -57,6 +57,7 @@ pnpm start
 
 - **認証バイパス**: APIキーなしでアクセス可能
 - **MCP接続先固定**: `https://mcp.context7.com/mcp` に固定接続
+- **固定インスタンスID**: `dev-instance-id` を使用
 
 **使用方法:**
 
@@ -77,12 +78,29 @@ DEV_MODE=true
 **動作確認:**
 
 ```bash
-# ツールリスト取得（認証なし）
+# 初期化（MCPプロトコルハンドシェイク）
 curl -X POST http://localhost:8080/mcp/dev-instance-id \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
     "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "test-client",
+        "version": "1.0.0"
+      }
+    }
+  }'
+
+# ツールリスト取得（認証なし）
+curl -X POST http://localhost:8080/mcp/dev-instance-id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
     "method": "tools/list"
   }'
 
@@ -91,7 +109,7 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": 2,
+    "id": 3,
     "method": "tools/call",
     "params": {
       "name": "context7.resolve-library-id",
@@ -114,16 +132,25 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
 
 - `GET /health` - ヘルスチェック
 
-### MCP Streamable HTTP Transport
+### MCP HTTP Transport
 
-- `POST /mcp/:userMcpServerInstanceId` - MCPプロトコルハンドラー（RESTful形式、認証必須）
+- `POST /mcp/:userMcpServerInstanceId` - MCPプロトコルハンドラー（JSON-RPC over HTTP、認証必須）
+  - `initialize` - MCPプロトコル初期化ハンドシェイク
   - `tools/list` - 利用可能なツールのリスト取得
   - `tools/call` - ツールの実行
-- `POST /mcp` - MCPプロトコルハンドラー（レガシー形式、認証必須）
 
-> **注意**: このプロキシサーバーはリモートMCPサーバーへの接続にSSE/HTTP/Stdioクライアントを使用します。
-> クライアント向けのインターフェースはHTTP Transport（`POST /mcp`）のみです。
-> SSEクライアント機能の詳細は `claudedocs/mcp-proxy-sse-client.md` を参照してください。
+### トランスポートアーキテクチャ
+
+**クライアント向けインターフェース:**
+
+- HTTP Transport（JSON-RPC over HTTP）のみ提供
+
+**リモートMCPサーバー接続:**
+このプロキシサーバーは以下のトランスポートを使用してリモートMCPサーバーに接続します：
+
+- **Streamable HTTP**: 最新のMCPプロトコル（推奨）
+- **SSE (Server-Sent Events)**: レガシーサポート（HTTPからの自動フォールバック）
+- **Stdio**: ローカルプロセス起動
 
 ## 環境変数
 
@@ -131,6 +158,9 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
 # サーバー設定
 PORT=8080
 NODE_ENV=production
+
+# 開発モード（開発環境のみ）
+DEV_MODE=false  # true で認証バイパス + Context7固定接続
 
 # データベース
 DATABASE_URL=postgresql://...
@@ -143,12 +173,6 @@ LOG_LEVEL=info  # info, warn, error, debug
 
 本番環境では、MCPサーバーの設定はデータベース（UserMcpServerInstance、ToolGroup）で管理されます。
 
-### サポートされるトランスポート
-
-- **Streamable HTTP**: 最新のMCPプロトコル（推奨）
-- **SSE (Server-Sent Events)**: レガシーサポート（自動フォールバック）
-- **Stdio**: ローカルプロセス起動
-
 ### ツール名の形式
 
 プロキシは名前空間付きのツール名を使用します：
@@ -156,22 +180,32 @@ LOG_LEVEL=info  # info, warn, error, debug
 ```text
 context7.resolve-library-id
 context7.get-library-docs
+github.create_issue
+slack.send_message
 ```
 
 各ツールは `{namespace}.{originalToolName}` の形式でアクセスできます。
 
 ## 使用例
 
-### ツールリストの取得
+### 初期化
 
 ```bash
-curl -X POST http://localhost:8080/mcp \
+curl -X POST http://localhost:8080/mcp/your-instance-id \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
     "id": 1,
-    "method": "tools/list"
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "my-client",
+        "version": "1.0.0"
+      }
+    }
   }'
 ```
 
@@ -181,6 +215,38 @@ curl -X POST http://localhost:8080/mcp \
 {
   "jsonrpc": "2.0",
   "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "tools": {}
+    },
+    "serverInfo": {
+      "name": "Tumiki MCP Proxy",
+      "version": "0.1.0"
+    }
+  }
+}
+```
+
+### ツールリストの取得
+
+```bash
+curl -X POST http://localhost:8080/mcp/your-instance-id \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list"
+  }'
+```
+
+レスポンス例：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
   "result": {
     "tools": [
       {
@@ -201,12 +267,12 @@ curl -X POST http://localhost:8080/mcp \
 ### ツールの実行
 
 ```bash
-curl -X POST http://localhost:8080/mcp \
+curl -X POST http://localhost:8080/mcp/your-instance-id \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": 2,
+    "id": 3,
     "method": "tools/call",
     "params": {
       "name": "github.create_issue",
@@ -248,7 +314,4 @@ gcloud builds submit
 詳細な設計については以下のドキュメントを参照してください：
 
 - **設計概要**: `claudedocs/mcp-proxy-design.md`
-- **SSEクライアント機能**: `claudedocs/mcp-proxy-sse-client.md`
-- **トランスポート実装状況**: `claudedocs/mcp-proxy-transport-implementation.md`
-- **ProxyServerとの比較**: `claudedocs/mcp-proxy-vs-proxyserver-comparison.md`
 - **動作検証レポート**: `claudedocs/mcp-proxy-verification-report.md`
