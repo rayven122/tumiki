@@ -81,11 +81,28 @@ const validateApiKey = async (
  * - インメモリキャッシュなし（各インスタンスで異なるため）
  * - 毎回DBチェック
  * - 必要に応じてPhase 2でRedis/Memcachedキャッシュを追加
+ *
+ * 開発環境モード:
+ * - DEV_MODE=true の場合、認証をバイパス
+ * - ダミーの認証情報を設定
  */
 export const authMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
+  // 開発環境モード: 認証バイパス
+  if (process.env.DEV_MODE === "true") {
+    // ダミーの認証情報を設定
+    c.set("authInfo", {
+      organizationId: "dev-org-id",
+      mcpServerInstanceId: "dev-instance-id",
+      apiKeyId: "dev-api-key-id",
+      apiKey: "dev-api-key",
+    });
+    await next();
+    return;
+  }
+
   const apiKey = extractApiKey(c);
 
   if (!apiKey) {

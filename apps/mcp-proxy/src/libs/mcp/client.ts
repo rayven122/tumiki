@@ -7,6 +7,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { RemoteMcpServerConfig } from "../../server/config.js";
@@ -42,11 +43,10 @@ export const createMcpClient = async (
 
       case "http": {
         // HTTPトランスポート（Streamable HTTP）
-        // 注: MCP SDKにはHTTPClientTransportがないため、SSEを使用
-        // 将来的にHTTPClientTransportが追加された場合に対応
+        // 下位互換性のため、失敗した場合はSSEにフォールバック
         const url = new URL(config.url);
-        transport = new SSEClientTransport(url);
-        logInfo("Using HTTP transport (via SSE)", {
+        transport = new StreamableHTTPClientTransport(url);
+        logInfo("Using Streamable HTTP transport", {
           namespace,
           url: config.url,
         });
@@ -100,6 +100,46 @@ export const createMcpClient = async (
 
     logInfo("MCP connection created successfully", { namespace });
   } catch (error) {
+    // HTTPトランスポートが失敗した場合、SSEにフォールバック
+    const transportType = config.transportType ?? "sse";
+    if (transportType === "http") {
+      logInfo(
+        "Streamable HTTP connection failed, falling back to SSE transport",
+        { namespace },
+      );
+      try {
+        // トランスポートをクローズ（エラーは無視）
+        await transport.close().catch(() => {
+          // クローズエラーは無視（フォールバック処理のため）
+        });
+
+        // SSEトランスポートで再試行
+        const url = new URL(config.url);
+        transport = new SSEClientTransport(url);
+
+        logInfo("Retrying with SSE transport", { namespace });
+        await client.connect(transport);
+
+        logInfo("MCP connection created successfully with SSE fallback", {
+          namespace,
+        });
+
+        return { client, transport };
+      } catch (fallbackError) {
+        const errorMessage =
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : String(fallbackError);
+        logError(
+          `Failed to connect to Remote MCP server ${namespace} (SSE fallback also failed)`,
+          fallbackError as Error,
+        );
+        throw new Error(
+          `Failed to connect to Remote MCP server ${namespace}: ${errorMessage}`,
+        );
+      }
+    }
+
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError(
       `Failed to connect to Remote MCP server ${namespace}`,
