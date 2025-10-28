@@ -51,20 +51,6 @@ const validateApiKey = async (
     // includeで取得したインスタンス情報
     const instance = mcpApiKey.userMcpServerInstance;
 
-    // 最終使用日時を非同期で更新（レスポンスをブロックしない）
-    void db.mcpApiKey
-      .update({
-        where: { id: mcpApiKey.id },
-        data: { lastUsedAt: new Date() },
-      })
-      .catch((error: unknown) => {
-        logError("Failed to update lastUsedAt", error as Error, {
-          apiKeyId: mcpApiKey.id,
-          organizationId: instance.organizationId,
-          userMcpServerInstanceId: mcpApiKey.userMcpServerInstanceId,
-        });
-      });
-
     return {
       organizationId: instance.organizationId,
       mcpServerInstanceId: mcpApiKey.userMcpServerInstanceId,

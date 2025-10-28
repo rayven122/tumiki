@@ -31,6 +31,11 @@ app.use("/*", cors());
 
 // ヘルスチェック（基本）
 app.get("/health", (c) => {
+  logInfo("Health check accessed", {
+    userAgent: c.req.header("User-Agent"),
+    ip: c.req.header("X-Forwarded-For"),
+  });
+
   return c.json({
     status: "ok",
     timestamp: new Date().toISOString(),
