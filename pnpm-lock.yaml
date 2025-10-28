@@ -511,9 +511,6 @@ importers:
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@upstash/redis':
-        specifier: ^1.34.4
-        version: 1.35.6
       hono:
         specifier: ^4.7.4
         version: 4.8.12
@@ -5176,9 +5173,6 @@ packages:
   '@upstash/context7-mcp@1.0.14':
     resolution: {integrity: sha512-3e+LpGFQ/p9YRVQMwMbcWns2sfXWO5Aifx904AhkzXfbbAhVnjiAmFkpXHJMhBVou6ewyodxLL6aCu7F+eF32Q==}
     hasBin: true
-
-  '@upstash/redis@1.35.6':
-    resolution: {integrity: sha512-aSEIGJgJ7XUfTYvhQcQbq835re7e/BXjs8Janq6Pvr6LlmTZnyqwT97RziZLO/8AVUL037RLXqqiQC6kCt+5pA==}
 
   '@vercel/analytics@1.5.0':
     resolution: {integrity: sha512-MYsBzfPki4gthY5HnYN7jgInhAZ7Ac1cYDoRWFomwGHWEX7odTEzbtg9kf/QSo7XEsEAqlQugA6gJ2WS2DEa3g==}
@@ -10448,9 +10442,6 @@ packages:
 
   unbzip2-stream@1.4.3:
     resolution: {integrity: sha512-mlExGW4w71ebDJviH16lQLtZS32VKqsSfk80GCfUlwT/4/hNRFsoscrF/c++9xinkMzECL1uL9DDwXqFWkruPg==}
-
-  uncrypto@0.1.3:
-    resolution: {integrity: sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==}
 
   underscore@1.13.7:
     resolution: {integrity: sha512-GMXzWtsc57XAtguZgaQViUOzs0KTkk8ojr3/xAxXLITqf/3EMwxC0inyETfDFjH/Krbhuep0HNbbjI9i/q3F3g==}
@@ -15967,10 +15958,6 @@ snapshots:
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
-
-  '@upstash/redis@1.35.6':
-    dependencies:
-      uncrypto: 0.1.3
 
   '@vercel/analytics@1.5.0(next@15.4.5(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     optionalDependencies:
@@ -22538,8 +22525,6 @@ snapshots:
     dependencies:
       buffer: 5.7.1
       through: 2.3.8
-
-  uncrypto@0.1.3: {}
 
   underscore@1.13.7: {}
 

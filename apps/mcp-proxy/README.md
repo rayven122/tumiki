@@ -135,14 +135,6 @@ NODE_ENV=production
 # データベース
 DATABASE_URL=postgresql://...
 
-# Upstash Redis（セッション管理）
-UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ
-
-# セッション設定
-CONNECTION_TIMEOUT_MS=60000  # セッションタイムアウト（デフォルト: 60秒）
-MAX_SESSIONS=200             # 最大セッション数（デフォルト: 200）
-
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
 ```
@@ -249,64 +241,6 @@ pnpm build
 
 # デプロイ（Cloud Build）
 gcloud builds submit
-```
-
-### Upstash Redis のセットアップ
-
-セッション管理には Upstash Redis（サーバーレス Redis）を使用します。無料プランで開始できます。
-
-#### 1. Upstash アカウント作成
-
-1. [Upstash Console](https://console.upstash.com/) にアクセス
-2. GitHub または Google アカウントでサインアップ
-3. 無料プラン（500K コマンド/月、256MB）を選択
-
-#### 2. Redis データベースの作成
-
-```bash
-# Upstash Console で以下を実行:
-1. "Create Database" をクリック
-2. Database Name: mcp-proxy-sessions
-3. Region: Asia Pacific (Tokyo) または最寄りのリージョン
-4. Type: Regional（無料プラン）
-5. "Create" をクリック
-```
-
-#### 3. 環境変数の取得
-
-作成したデータベースの詳細ページから以下をコピー：
-
-```bash
-# REST API 情報
-UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ
-```
-
-#### 4. Cloud Run への環境変数設定
-
-```bash
-# Cloud Run に環境変数を設定
-gcloud run services update mcp-proxy \
-  --region=asia-northeast1 \
-  --set-env-vars="UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io,UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ"
-```
-
-**特徴:**
-
-- ✅ **完全無料**: 50万コマンド/月まで無料
-- ✅ **VPC 不要**: HTTP REST API のため VPC コネクタ不要
-- ✅ **グローバル**: 自動レプリケーション
-- ✅ **低レイテンシ**: エッジ配信で高速アクセス
-- ✅ **スケール**: 従量課金で自動スケール
-
-#### 5. ローカル開発時の設定
-
-ローカル開発でも同じ Upstash Redis を使用：
-
-```bash
-# .env ファイルに追加
-UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ
 ```
 
 ## アーキテクチャ
