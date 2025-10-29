@@ -165,9 +165,36 @@ DEV_MODE=false  # true で認証バイパス + Context7固定接続
 # データベース
 DATABASE_URL=postgresql://...
 
+# Redis（キャッシュ）
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=...
+
+# キャッシュ暗号化
+CACHE_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
+
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
 ```
+
+### キャッシュ暗号化キーの生成
+
+Redis に保存されるキャッシュデータ（MCP サーバー設定、API キー、環境変数等）は AES-256-GCM で暗号化されます。
+
+新しい暗号化キーを生成：
+
+```bash
+# Node.js を使用
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# または openssl を使用
+openssl rand -hex 32
+```
+
+⚠️ **セキュリティ上の注意:**
+
+- **開発環境と本番環境で異なるキーを使用してください**
+- **キーは厳重に管理し、決してリポジトリにコミットしないでください**
+- **キーを変更すると既存のキャッシュは復号化できなくなりますが、自動的にクリアされます**
 
 ## MCPサーバー設定
 
