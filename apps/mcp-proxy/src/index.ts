@@ -5,6 +5,7 @@ import { authMiddleware } from "./middleware/auth.js";
 import { ToolRouter } from "./libs/mcp/index.js";
 import { logInfo, logError } from "./libs/logger/index.js";
 import { closeRedisClient } from "./libs/cache/redis.js";
+import { handleError } from "./libs/error/handler.js";
 import { db } from "@tumiki/db/server";
 import {
   createJsonRpcError,
@@ -103,17 +104,14 @@ app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
             }),
           );
         } catch (error) {
-          // エラーログでは機密情報をフィルタリング（IDの一部のみ表示）
-          logError("Failed to list tools", error as Error, {
-            organizationId: authInfo.organizationId.slice(0, 8),
-            instanceId: userMcpServerInstanceId.slice(0, 8),
+          return handleError(c, error as Error, {
+            requestId: request.id,
+            errorCode: -32603,
+            errorMessage: "Failed to list tools",
+            authInfo,
+            instanceId: userMcpServerInstanceId,
+            logMessage: "Failed to list tools",
           });
-
-          return c.json(
-            createJsonRpcError(request.id, -32603, "Failed to list tools", {
-              message: error instanceof Error ? error.message : "Unknown error",
-            }),
-          );
         }
       }
 
@@ -148,18 +146,17 @@ app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
             }),
           );
         } catch (error) {
-          // エラーログでは機密情報をフィルタリング（IDの一部のみ表示）
-          logError("Failed to call tool", error as Error, {
-            organizationId: authInfo.organizationId.slice(0, 8),
-            toolName: params.name,
-            instanceId: userMcpServerInstanceId.slice(0, 8),
+          return handleError(c, error as Error, {
+            requestId: request.id,
+            errorCode: -32603,
+            errorMessage: "Tool execution failed",
+            authInfo,
+            instanceId: userMcpServerInstanceId,
+            logMessage: "Failed to call tool",
+            additionalMetadata: {
+              toolName: params.name,
+            },
           });
-
-          return c.json(
-            createJsonRpcError(request.id, -32603, "Tool execution failed", {
-              message: error instanceof Error ? error.message : "Unknown error",
-            }),
-          );
         }
       }
 
@@ -174,20 +171,14 @@ app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
       }
     }
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    // エラーログでは機密情報をフィルタリング（IDの一部のみ表示）
-    logError("Failed to handle request", error as Error, {
-      organizationId: authInfo.organizationId.slice(0, 8),
-      instanceId: userMcpServerInstanceId.slice(0, 8),
+    return handleError(c, error as Error, {
+      requestId: null,
+      errorCode: -32603,
+      errorMessage: "Internal error",
+      authInfo,
+      instanceId: userMcpServerInstanceId,
+      logMessage: "Failed to handle request",
     });
-
-    return c.json(
-      createJsonRpcError(null, -32603, "Internal error", {
-        message: errorMessage,
-      }),
-    );
   }
 });
 

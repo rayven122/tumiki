@@ -30,7 +30,7 @@ const getEncryptionKey = (): Buffer => {
   // 入力検証: 64文字の16進数文字列かチェック
   if (!/^[0-9a-fA-F]{64}$/.test(key)) {
     throw new Error(
-      "CACHE_ENCRYPTION_KEY must be a valid 64-character hex string",
+      "CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
     );
   }
 

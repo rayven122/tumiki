@@ -80,9 +80,9 @@ export const authMiddleware = async (
   next: Next,
 ): Promise<Response | void> => {
   // 開発環境モード: 認証バイパス
-  // 本番環境では NODE_ENV=production のため、DEV_MODE は無視される
+  // development環境のみで有効（staging/test環境では無効）
   if (
-    process.env.NODE_ENV !== "production" &&
+    process.env.NODE_ENV === "development" &&
     process.env.DEV_MODE === "true"
   ) {
     // ダミーの認証情報を設定
