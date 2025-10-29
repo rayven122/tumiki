@@ -24,18 +24,22 @@ const getEncryptionKey = (): Buffer => {
   const key = process.env.CACHE_ENCRYPTION_KEY;
 
   if (!key) {
+    throw new Error("CACHE_ENCRYPTION_KEY environment variable is not set");
+  }
+
+  // 入力検証: 64文字の16進数文字列かチェック
+  if (!/^[0-9a-fA-F]{64}$/.test(key)) {
     throw new Error(
-      "CACHE_ENCRYPTION_KEY environment variable is not set. Please set a 64-character hex string (32 bytes).",
+      "CACHE_ENCRYPTION_KEY must be a valid 64-character hex string",
     );
   }
 
   // 16進数文字列からBufferに変換
   const keyBuffer = Buffer.from(key, "hex");
 
-  if (keyBuffer.length !== 32) {
-    throw new Error(
-      `CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters). Got ${keyBuffer.length} bytes.`,
-    );
+  // セキュリティチェック: キーが全て0ではないことを確認
+  if (keyBuffer.every((byte) => byte === 0)) {
+    throw new Error("CACHE_ENCRYPTION_KEY cannot be all zeros");
   }
 
   return keyBuffer;

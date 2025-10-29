@@ -2,7 +2,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "node_modules", "vitest.config.ts"],
+    ignores: ["dist", "node_modules", "vitest.config.ts", "coverage"],
   },
   {
     files: ["**/*.ts", "**/*.tsx"],
@@ -28,8 +28,6 @@ export default tseslint.config(
         { checksVoidReturn: { attributes: false } },
       ],
     },
-  },
-  {
     linterOptions: {
       reportUnusedDisableDirectives: true,
     },

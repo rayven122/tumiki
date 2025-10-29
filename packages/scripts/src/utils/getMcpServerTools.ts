@@ -17,11 +17,31 @@ const getCloudRunIdToken = async (targetAudience: string): Promise<string> => {
   const client = await auth.getIdTokenClient(targetAudience);
   const headers = await client.getRequestHeaders();
 
-  const authHeader = headers.Authorization ?? headers.authorization;
-  const idToken = authHeader?.replace("Bearer ", "");
+  // ヘッダーから認証トークンを取得（型安全なアクセス）
+  const authHeaderKey = Object.keys(headers).find(
+    (key) => key.toLowerCase() === "authorization",
+  );
+
+  if (!authHeaderKey) {
+    throw new Error(
+      "Failed to get Cloud Run ID token: Authorization header not found",
+    );
+  }
+
+  const authHeader = headers[authHeaderKey as keyof typeof headers];
+
+  if (typeof authHeader !== "string") {
+    throw new Error(
+      "Failed to get Cloud Run ID token: Invalid Authorization header type",
+    );
+  }
+
+  // 型アサーションで明示的に文字列として扱う
+  const authHeaderString = authHeader as string;
+  const idToken = authHeaderString.replace("Bearer ", "");
 
   if (!idToken) {
-    throw new Error("Failed to get Cloud Run ID token");
+    throw new Error("Failed to get Cloud Run ID token: Empty token");
   }
 
   return idToken;
