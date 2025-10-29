@@ -7,6 +7,7 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { createMcpClient } from "./client.js";
 import type { RemoteMcpServerConfig } from "../../server/config.js";
+import { DEFAULT_MCP_TIMEOUT } from "../../constants/server.js";
 
 /**
  * タイムアウト付きPromise実行
@@ -52,7 +53,7 @@ export const withMcpClient = async <T>(
   namespace: string,
   config: RemoteMcpServerConfig,
   operation: (client: Client) => Promise<T>,
-  timeoutMs = 120000,
+  timeoutMs = DEFAULT_MCP_TIMEOUT,
 ): Promise<T> => {
   let client: Client | undefined;
 

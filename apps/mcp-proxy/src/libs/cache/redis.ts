@@ -1,46 +1,21 @@
 import { createClient } from "redis";
-import type { RedisClientType } from "redis";
 import { logError, logInfo } from "../logger/index.js";
 
-let redisClient: RedisClientType | null = null;
-let isConnecting = false;
+// createClientの戻り値の型を直接使用してモジュール解決の問題を回避
+type RedisClient = ReturnType<typeof createClient>;
+
+let redisClient: RedisClient | null = null;
+let connectingPromise: Promise<RedisClient | null> | null = null;
 
 /**
- * Redisクライアントのシングルトンインスタンスを取得
- * REDIS_URL環境変数が設定されていない場合はnullを返す（キャッシュ無効）
+ * Redis接続を作成する内部関数
  */
-export const getRedisClient = async (): Promise<RedisClientType | null> => {
-  const redisUrl = process.env.REDIS_URL;
-
-  // Redis URLが設定されていない場合はキャッシュを使用しない
-  if (!redisUrl) {
-    logInfo("Redis URL not configured, cache disabled");
-    return null;
-  }
-
-  // 既に接続済みの場合はそのまま返す
-  if (redisClient?.isOpen) {
-    return redisClient;
-  }
-
-  // 接続中の場合は待機
-  if (isConnecting) {
-    // 最大5秒待機
-    const maxWaitTime = 5000;
-    const startTime = Date.now();
-    while (isConnecting && Date.now() - startTime < maxWaitTime) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    if (redisClient?.isOpen) {
-      return redisClient;
-    }
-  }
-
+const createConnection = async (
+  redisUrl: string,
+): Promise<RedisClient | null> => {
   try {
-    isConnecting = true;
-
     // 新しいクライアントを作成
-    redisClient = createClient({
+    const client = createClient({
       url: redisUrl,
       socket: {
         // Upstash Redisはタイムアウトが長めでも問題ない
@@ -61,34 +36,68 @@ export const getRedisClient = async (): Promise<RedisClientType | null> => {
     });
 
     // エラーハンドリング
-    redisClient.on("error", (err: Error) => {
+    client.on("error", (err: Error) => {
       logError("Redis client error", err);
     });
 
-    redisClient.on("connect", () => {
+    client.on("connect", () => {
       logInfo("Redis client connected");
     });
 
-    redisClient.on("ready", () => {
+    client.on("ready", () => {
       logInfo("Redis client ready");
     });
 
-    redisClient.on("reconnecting", () => {
+    client.on("reconnecting", () => {
       logInfo("Redis client reconnecting");
     });
 
     // 接続
-    await redisClient.connect();
+    await client.connect();
 
     logInfo("Redis client initialized successfully");
 
-    return redisClient;
+    // 接続成功したらグローバル変数に保存
+    redisClient = client;
+    return client;
   } catch (error) {
     logError("Failed to initialize Redis client", error as Error);
     redisClient = null;
     return null;
+  }
+};
+
+/**
+ * Redisクライアントのシングルトンインスタンスを取得
+ * REDIS_URL環境変数が設定されていない場合はnullを返す（キャッシュ無効）
+ */
+export const getRedisClient = async (): Promise<RedisClient | null> => {
+  const redisUrl = process.env.REDIS_URL;
+
+  // Redis URLが設定されていない場合はキャッシュを使用しない
+  if (!redisUrl) {
+    logInfo("Redis URL not configured, cache disabled");
+    return null;
+  }
+
+  // 既に接続済みの場合はそのまま返す
+  if (redisClient?.isOpen) {
+    return redisClient;
+  }
+
+  // 接続中の場合は既存のPromiseを返す（競合状態を回避）
+  if (connectingPromise) {
+    return connectingPromise;
+  }
+
+  // 新しい接続を開始
+  connectingPromise = createConnection(redisUrl);
+
+  try {
+    const client = await connectingPromise;
+    return client;
   } finally {
-    isConnecting = false;
+    connectingPromise = null;
   }
 };
 

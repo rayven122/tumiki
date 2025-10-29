@@ -111,16 +111,26 @@ const _getEnabledServersForInstanceFromDB = async (
         if (userMcpServerConfig.envVars) {
           // envVarsは暗号化されたJSON文字列
           // 復号化はPrismaのミドルウェアで自動的に行われる
-          envVars = JSON.parse(userMcpServerConfig.envVars) as Record<
-            string,
-            string
-          >;
+          const parsed: unknown = JSON.parse(userMcpServerConfig.envVars);
+
+          // 型チェック: オブジェクトであり、配列でないことを確認
+          if (
+            typeof parsed === "object" &&
+            parsed !== null &&
+            !Array.isArray(parsed)
+          ) {
+            envVars = parsed as Record<string, string>;
+          } else {
+            throw new Error("envVars must be an object");
+          }
         }
       } catch (error) {
-        logError(
-          `Failed to parse envVars for ${userMcpServerConfig.id}`,
-          error as Error,
-        );
+        // エラーログでは設定IDの一部のみを出力（セキュリティ考慮）
+        logError("Failed to parse envVars for config", error as Error, {
+          configId: userMcpServerConfig.id.slice(0, 8),
+        });
+        // 明示的にデフォルト値を設定
+        envVars = {};
       }
 
       // Stdioの場合はcommandとargsからURLを構築

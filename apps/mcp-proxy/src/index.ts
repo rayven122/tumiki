@@ -103,9 +103,10 @@ app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
             }),
           );
         } catch (error) {
+          // エラーログでは機密情報をフィルタリング（IDの一部のみ表示）
           logError("Failed to list tools", error as Error, {
-            organizationId: authInfo.organizationId,
-            userMcpServerInstanceId,
+            organizationId: authInfo.organizationId.slice(0, 8),
+            instanceId: userMcpServerInstanceId.slice(0, 8),
           });
 
           return c.json(
@@ -147,10 +148,11 @@ app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
             }),
           );
         } catch (error) {
+          // エラーログでは機密情報をフィルタリング（IDの一部のみ表示）
           logError("Failed to call tool", error as Error, {
-            organizationId: authInfo.organizationId,
+            organizationId: authInfo.organizationId.slice(0, 8),
             toolName: params.name,
-            userMcpServerInstanceId,
+            instanceId: userMcpServerInstanceId.slice(0, 8),
           });
 
           return c.json(
@@ -175,9 +177,10 @@ app.post("/mcp/:userMcpServerInstanceId", authMiddleware, async (c) => {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
+    // エラーログでは機密情報をフィルタリング（IDの一部のみ表示）
     logError("Failed to handle request", error as Error, {
-      organizationId: authInfo.organizationId,
-      userMcpServerInstanceId,
+      organizationId: authInfo.organizationId.slice(0, 8),
+      instanceId: userMcpServerInstanceId.slice(0, 8),
     });
 
     return c.json(
@@ -214,22 +217,33 @@ const gracefulShutdown = async (): Promise<void> => {
   const shutdownTimeout = 9000; // 9秒（Cloud Runの10秒猶予内）
 
   const shutdownPromise = (async () => {
-    // Redis接続をクローズ
-    logInfo("Closing Redis connection");
-    await closeRedisClient();
+    try {
+      // Redis接続をクローズ
+      logInfo("Closing Redis connection");
+      await closeRedisClient();
 
-    // Prisma DB接続をクローズ
-    logInfo("Closing database connection");
-    await db.$disconnect();
+      // Prisma DB接続をクローズ
+      logInfo("Closing database connection");
+      await db.$disconnect();
 
-    logInfo("Graceful shutdown completed");
+      logInfo("Graceful shutdown completed successfully");
+    } catch (error) {
+      logError("Error during graceful shutdown", error as Error);
+    }
   })();
 
-  // タイムアウト付きで実行
-  await Promise.race([
-    shutdownPromise,
-    new Promise((resolve) => setTimeout(resolve, shutdownTimeout)),
-  ]);
+  // タイムアウト監視用Promise
+  const timeoutPromise = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      logInfo(
+        `Shutdown timeout reached (${shutdownTimeout}ms), but waiting for cleanup to complete`,
+      );
+      resolve();
+    }, shutdownTimeout);
+  });
+
+  // タイムアウトをログに記録しつつ、実際のクリーンアップ完了を待つ
+  await Promise.all([timeoutPromise, shutdownPromise]);
 };
 
 // SIGTERMハンドラー（Cloud Run終了時）

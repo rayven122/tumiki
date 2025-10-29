@@ -186,9 +186,11 @@ describe("encrypt and decrypt integration", () => {
     const plaintext = JSON.stringify(cacheData);
     const encrypted = encrypt(plaintext);
     const decrypted = decrypt(encrypted);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const parsed = JSON.parse(decrypted);
 
     expect(parsed).toStrictEqual(cacheData);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(parsed[0]?.config.transport.envVars?.API_KEY).toStrictEqual(
       "secret-key-12345",
     );
