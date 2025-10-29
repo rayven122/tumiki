@@ -1,4 +1,5 @@
 import type { RemoteMcpServerConfig } from "../../server/config.js";
+import { decrypt, encrypt } from "../crypto/index.js";
 import { getRedisClient } from "./redis.js";
 import { logError, logInfo } from "../logger/index.js";
 
@@ -59,17 +60,23 @@ export const getCachedConfig = async (
     if (cached) {
       // キャッシュヒット
       try {
-        const data = JSON.parse(cached) as CachedConfigData;
+        // 暗号化されたデータを復号化
+        const decrypted = decrypt(cached);
+        const data = JSON.parse(decrypted) as CachedConfigData;
         logInfo("Config cache hit", {
           userMcpServerInstanceId,
           serverCount: data.length,
         });
         return data;
-      } catch (parseError) {
-        logError("Failed to parse cached config", parseError as Error, {
-          userMcpServerInstanceId,
-        });
-        // パースエラーの場合はキャッシュを削除してDBから取得
+      } catch (decryptError) {
+        logError(
+          "Failed to decrypt or parse cached config",
+          decryptError as Error,
+          {
+            userMcpServerInstanceId,
+          },
+        );
+        // 復号化エラーの場合はキャッシュを削除してDBから取得
         await redis.del(cacheKey).catch(() => {
           // 削除エラーは無視
         });
@@ -81,20 +88,28 @@ export const getCachedConfig = async (
     const data = await fetchFromDb();
 
     // キャッシュに保存（非同期、エラーは無視）
-    redis
-      .setEx(cacheKey, ttl, JSON.stringify(data))
-      .then(() => {
-        logInfo("Config cached", {
-          userMcpServerInstanceId,
-          serverCount: data.length,
-          ttl,
+    // データを暗号化してから保存
+    try {
+      const encrypted = encrypt(JSON.stringify(data));
+      redis
+        .setEx(cacheKey, ttl, encrypted)
+        .then(() => {
+          logInfo("Config cached (encrypted)", {
+            userMcpServerInstanceId,
+            serverCount: data.length,
+            ttl,
+          });
+        })
+        .catch((cacheError: Error) => {
+          logError("Failed to cache config", cacheError, {
+            userMcpServerInstanceId,
+          });
         });
-      })
-      .catch((cacheError: Error) => {
-        logError("Failed to cache config", cacheError, {
-          userMcpServerInstanceId,
-        });
+    } catch (encryptError) {
+      logError("Failed to encrypt config for caching", encryptError as Error, {
+        userMcpServerInstanceId,
       });
+    }
 
     return data;
   } catch (error) {
