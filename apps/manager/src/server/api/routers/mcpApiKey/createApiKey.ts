@@ -41,6 +41,7 @@ export const createApiKey = async ({ ctx, input }: CreateApiKeyProps) => {
       name,
       apiKey: fullKey,
       expiresAt,
+      userId: ctx.session.user.id,
       userMcpServerInstanceId,
     },
   });
