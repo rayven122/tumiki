@@ -1,13 +1,14 @@
 /**
  * OAuth Token Cache Manager
  *
- * Redisキャッシュを使用したトークン管理（純粋関数 + 依存性注入）
+ * Redisキャッシュを使用したトークン管理（暗号化 + バリデーション対応）
  */
 
-import type { RedisClientType } from "redis";
-
 import type { DecryptedToken } from "./types.js";
+import { decrypt, encrypt } from "./crypto.js";
 import { logger } from "./logger.js";
+import { getRedisClient } from "./redis-connection.js";
+import { decryptedTokenSchema } from "./types.js";
 
 /**
  * キャッシュキーを生成
@@ -23,24 +24,31 @@ export const getCacheKey = (userId: string, mcpServerId: string): string => {
 /**
  * Redisキャッシュからトークンを取得
  *
- * @param client Redisクライアント
  * @param key キャッシュキー
  * @returns トークン（存在しない場合はnull）
  */
 export const getFromCache = async (
-  client: RedisClientType | null,
   key: string,
 ): Promise<DecryptedToken | null> => {
+  const client = await getRedisClient();
   if (!client) {
     return null;
   }
 
   try {
-    const value = await client.get(key);
-    if (!value) {
+    const encryptedValue = await client.get(key);
+    if (!encryptedValue) {
       return null;
     }
-    return JSON.parse(value) as DecryptedToken;
+
+    // 復号化
+    const decryptedValue = decrypt(encryptedValue);
+
+    // JSONパース & Zodバリデーション
+    const parsed: unknown = JSON.parse(decryptedValue);
+    const validated = decryptedTokenSchema.parse(parsed);
+
+    return validated;
   } catch (error) {
     logger.error("Redis get error", { key, error });
     return null;
@@ -50,23 +58,34 @@ export const getFromCache = async (
 /**
  * トークンをRedisキャッシュに保存
  *
- * @param client Redisクライアント
  * @param key キャッシュキー
  * @param token トークン
  */
 export const cacheToken = async (
-  client: RedisClientType | null,
   key: string,
   token: DecryptedToken,
 ): Promise<void> => {
+  const client = await getRedisClient();
   if (!client) {
     return;
   }
 
   try {
-    const ttl = calculateTTL(token.expiresAt);
-    await client.set(key, JSON.stringify(token), { EX: ttl });
-    logger.debug("Token cached", { key, ttl });
+    // Zodバリデーション（保存前のデータ検証）
+    const validated = decryptedTokenSchema.parse(token);
+
+    // JSON文字列化
+    const jsonString = JSON.stringify(validated);
+
+    // 暗号化
+    const encryptedValue = encrypt(jsonString);
+
+    // TTL計算
+    const ttl = calculateTTL(validated.expiresAt);
+
+    // Redis保存
+    await client.set(key, encryptedValue, { EX: ttl });
+    logger.debug("Token cached (encrypted)", { key, ttl });
   } catch (error) {
     logger.error("Redis set error", { key, error });
   }
@@ -75,15 +94,14 @@ export const cacheToken = async (
 /**
  * キャッシュを無効化
  *
- * @param client Redisクライアント
  * @param userId ユーザーID
  * @param mcpServerId MCPサーバーID
  */
 export const invalidateCache = async (
-  client: RedisClientType | null,
   userId: string,
   mcpServerId: string,
 ): Promise<void> => {
+  const client = await getRedisClient();
   if (!client) {
     return;
   }

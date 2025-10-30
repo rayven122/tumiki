@@ -927,6 +927,9 @@ importers:
       redis:
         specifier: ^5.0.1
         version: 5.7.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@tumiki/eslint-config':
         specifier: workspace:*

@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@tumiki/db": "workspace:*",
-    "redis": "^5.0.1"
+    "redis": "^5.0.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tumiki/eslint-config": "workspace:*",
