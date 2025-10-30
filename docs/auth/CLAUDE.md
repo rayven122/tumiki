@@ -16,6 +16,9 @@ Tumiki の認証・認可システムに関するドキュメント。
 - [OAuth Separate App Guide](./oauth/OAUTH_SEPARATE_APP_GUIDE.md) - 独立アプリケーションでの OAuth
 
 ### 認証設計
+- [Two-Tier OAuth Architecture](./two-tier-oauth-architecture.md) - 二層OAuth認証アーキテクチャ（推奨）
+- [Two-Tier OAuth Implementation Plan](./two-tier-oauth-implementation-plan.md) - 二層OAuth認証実装計画
+- [MCP OAuth Authentication Design](./mcp-oauth-authentication-design.md) - MCP OAuth認証実装設計
 - [MCP Compliant Auth Design](./mcp-compliant-auth-design.md) - MCP 準拠の認証設計
 - [OAuth Authentication Guide](./oauth-authentication-guide.md) - OAuth 認証ガイド
 

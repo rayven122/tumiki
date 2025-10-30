@@ -72,16 +72,21 @@ Tumiki プロジェクトの技術ドキュメントとガイドラインの集�
 
 ### セキュリティ・認証
 - [MCP セキュリティガイド](./security/MCP_SECURITY_GUIDE.md)
+- [二層OAuth認証アーキテクチャ](./auth/two-tier-oauth-architecture.md) - **推奨設計**
+- [二層OAuth認証実装計画](./auth/two-tier-oauth-implementation-plan.md) - **実装ガイド**
 - [APIキー認証](./auth/apikey-auth.md)
 - [OAuth 実装](./auth/oauth/CLAUDE.md)
 - [MCP OAuth 認証設計](./auth/mcp-oauth-authentication-design.md)
 
 ### パフォーマンス・最適化
+
 - [ProxyServer パフォーマンス最適化](./operations/proxyServer-performance-optimization.md)
 - [パフォーマンスチューニング要約](./operations/proxy-server-performance-tuning-summary.md)
 
 ## 📋 メモ・備考
+
 - [開発メモ](./memo.md)
 
 ## 🔄 更新履歴
+
 ドキュメントの最新更新状況は各ディレクトリのCLAUDE.mdを参照してください。
