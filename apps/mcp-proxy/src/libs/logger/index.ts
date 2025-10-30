@@ -70,3 +70,6 @@ export const logDebug = (message: string, metadata?: LogMetadata): void => {
     log("debug", message, metadata);
   }
 };
+
+// エクスポート
+export { sanitizeIdForLog } from "./sanitize.js";
