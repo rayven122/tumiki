@@ -514,9 +514,9 @@ importers:
       hono:
         specifier: ^4.7.4
         version: 4.8.12
-      zod:
-        specifier: 'catalog:'
-        version: 3.25.76
+      redis:
+        specifier: ^5.0.1
+        version: 5.7.0
     devDependencies:
       '@tumiki/vitest-config':
         specifier: workspace:*
