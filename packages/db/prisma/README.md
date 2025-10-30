@@ -21,6 +21,8 @@ erDiagram
   Boolean isActive
   DateTime lastUsedAt "nullable"
   DateTime expiresAt "nullable"
+  String scopes
+  String userId FK
   String userMcpServerInstanceId FK
   DateTime createdAt
   DateTime updatedAt
@@ -33,11 +35,13 @@ APIキー管理テーブル
 **Properties**
   - `id`: 
   - `name`: APIキー名（ユーザーが設定）
-  - `apiKey`: 暗号化されたAPIキー（共通鍵暗号化）
-  - `apiKeyHash`: APIキーのハッシュ値（検索用）
+  - `apiKey`: 暗号化されたAPIキー（client_id として使用）
+  - `apiKeyHash`: client_secret の bcrypt ハッシュ（OAuth 2.0 client_credentials フロー用）
   - `isActive`: APIキーが有効かどうか
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
+  - `scopes`: スコープ情報（例: ["mcp:access:notion", "mcp:access:figma"]）
+  - `userId`: 関連するユーザー
   - `userMcpServerInstanceId`: 関連するUserMcpServerInstanceのID
   - `createdAt`: 
   - `updatedAt`: 
@@ -385,7 +389,7 @@ erDiagram
 }
 "OAuthToken" {
   String id PK
-  String userMcpConfigId FK,UK
+  String userMcpConfigId FK
   String oauthClientId FK
   String accessToken
   String refreshToken "nullable"
@@ -404,6 +408,7 @@ erDiagram
   Int refreshCount
   String lastError "nullable"
   DateTime lastErrorAt "nullable"
+  TokenPurpose tokenPurpose
   DateTime createdAt
   DateTime updatedAt
 }
@@ -484,6 +489,7 @@ OAuth トークン情報（ユーザーごと）
   - `refreshCount`: 
   - `lastError`: エラー情報
   - `lastErrorAt`: 
+  - `tokenPurpose`: トークンの用途を明確化
   - `createdAt`: 
   - `updatedAt`: 
 

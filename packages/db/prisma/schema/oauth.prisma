@@ -3,6 +3,15 @@
  * OAuth認証関連のテーブル定義
  */
 
+/// トークンの用途
+/// @namespace OAuth
+enum TokenPurpose {
+  /// AIクライアントが使用するTumikiトークン
+  TUMIKI_CLIENT
+  /// Backend MCPサーバーへのアクセストークン
+  BACKEND_MCP
+}
+
 /// OAuth クライアント情報（Dynamic Client Registration で取得）
 /// @namespace OAuth
 model OAuthClient {
@@ -95,13 +104,18 @@ model OAuthToken {
   lastError   String?
   lastErrorAt DateTime?
 
+  /// トークンの用途を明確化
+  tokenPurpose TokenPurpose @default(BACKEND_MCP)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// ユーザーMCPサーバー設定ごとに1つのトークン
-  @@unique([userMcpConfigId])
+  /// ユーザーMCPサーバー設定ごと、かつトークン用途ごとに1つのトークン
+  @@unique([userMcpConfigId, tokenPurpose])
   @@index([oauthClientId])
   @@index([expiresAt])
+  @@index([isValid])
+  @@index([tokenPurpose])
 }
 
 /// OAuth認証セッション（一時的な認証フロー管理）

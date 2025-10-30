@@ -55,6 +55,7 @@ export const addCustomServer = async ({
           create: {
             name: `${input.name} API Key`,
             apiKey: fullKey,
+            userId: ctx.session.user.id,
           },
         },
         // TODO: mcpServerInstanceToolGroups を追加する

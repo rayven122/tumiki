@@ -84,6 +84,7 @@ export const addOfficialServer = async ({
                 create: {
                   name: `${input.name} API Key`,
                   apiKey: fullKey,
+                  userId: ctx.session.user.id,
                 },
               },
       },

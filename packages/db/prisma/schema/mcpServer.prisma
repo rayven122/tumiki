@@ -85,9 +85,9 @@ model McpServer {
   isPublic         Boolean               @default(false)
   tools            Tool[]
   mcpServerConfigs UserMcpServerConfig[]
-  
+
   /// OAuth Client リレーション
-  oauthClient      OAuthClient?
+  oauthClient OAuthClient?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,20 +98,20 @@ model McpServer {
 /// MCP サーバーのツール一覧
 /// @namespace McpServer
 model Tool {
-  id               String                @id @default(cuid())
+  id             String              @id @default(cuid())
   /// ツールの名前
   /// @zod.string.min(1)
-  name             String
+  name           String
   /// ツールの説明
-  description      String
+  description    String
   /// ツールの入力スキーマ（JSON Schema形式）
-  inputSchema      Json
+  inputSchema    Json
   /// ツールを有効にするか
-  isEnabled        Boolean               @default(true)
-  mcpServerId      String
-  mcpServer        McpServer             @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  isEnabled      Boolean             @default(true)
+  mcpServerId    String
+  mcpServer      McpServer           @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
   /// ToolGroup との関連を表す中間テーブル
-  toolGroupTools   UserToolGroupTool[]
+  toolGroupTools UserToolGroupTool[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

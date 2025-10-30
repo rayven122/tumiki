@@ -34,7 +34,17 @@ const setupVerificationUsers = async () => {
 		console.log(`ℹ️  Old organization not found: ${oldOrgId}`);
 	}
 
-	// 2. 共有組織を作成（既存の場合はスキップ）
+	// 2. 先にユーザーを作成（組織のcreatedBy制約を満たすため）
+	for (const user of users) {
+		await db.user.upsert({
+			where: { id: user.id },
+			update: {},
+			create: user,
+		});
+		console.log(`✅ Created verification user: ${user.email}`);
+	}
+
+	// 3. 共有組織を作成（既存の場合はスキップ）
 	const organization = await db.organization.upsert({
 		where: { id: organizationId },
 		update: {},
@@ -49,16 +59,8 @@ const setupVerificationUsers = async () => {
 	});
 	console.log(`✅ Created shared organization: ${organization.name}`);
 
-	// 3. 各ユーザーを作成して組織に追加
+	// 4. 各ユーザーを組織に追加
 	for (const user of users) {
-		// ユーザーを作成または更新
-		await db.user.upsert({
-			where: { id: user.id },
-			update: {},
-			create: user,
-		});
-		console.log(`✅ Created verification user: ${user.email}`);
-
 		// 組織メンバーシップを作成（既存の場合はスキップ）
 		await db.organizationMember.upsert({
 			where: {
