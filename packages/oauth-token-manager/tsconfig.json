@@ -1,0 +1,11 @@
+{
+  "extends": "@tumiki/tsconfig/node.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "emitDeclarationOnly": false,
+    "types": ["vitest/globals"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "vitest.config.ts"]
+}
