@@ -47,6 +47,7 @@
     "@stripe/mcp": "^0.2.4",
     "@suekou/mcp-notion-server": "^1.2.4",
     "@tumiki/db": "workspace:*",
+    "@tumiki/oauth-token-manager": "workspace:*",
     "@tumiki/youtube-mcp": "workspace:*",
     "@upstash/context7-mcp": "^1.0.14",
     "agents": "^0.0.45",
