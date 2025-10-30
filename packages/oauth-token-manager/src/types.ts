@@ -2,22 +2,29 @@
  * OAuth Token Manager - 型定義とエラークラス
  */
 
+import { z } from "zod";
+
+/**
+ * トークン情報のZodスキーマ
+ */
+export const decryptedTokenSchema = z.object({
+  id: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string().nullable(),
+  tokenType: z.string(),
+  scope: z.string().nullable(),
+  expiresAt: z.coerce.date().nullable(),
+  refreshExpiresAt: z.coerce.date().nullable(),
+  isValid: z.boolean(),
+  lastUsedAt: z.coerce.date().nullable(),
+  refreshCount: z.number(),
+  oauthClientId: z.string(),
+});
+
 /**
  * トークン情報（復号化済み）
  */
-export type DecryptedToken = {
-  id: string;
-  accessToken: string;
-  refreshToken: string | null;
-  tokenType: string;
-  scope: string | null;
-  expiresAt: Date | null;
-  refreshExpiresAt: Date | null;
-  isValid: boolean;
-  lastUsedAt: Date | null;
-  refreshCount: number;
-  oauthClientId: string;
-};
+export type DecryptedToken = z.infer<typeof decryptedTokenSchema>;
 
 /**
  * OAuthクライアント情報

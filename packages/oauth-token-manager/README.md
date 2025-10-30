@@ -143,9 +143,36 @@ try {
 
 ## 環境変数
 
-### ログレベル
+### 必須
 
 ```env
+# Redis接続URL
+REDIS_URL=redis://localhost:6379
+
+# Redis暗号化キー（32バイト = 64文字の16進数文字列）
+REDIS_ENCRYPTION_KEY=<64文字の16進数文字列>
+```
+
+### 暗号化キーの生成方法
+
+Node.js を使用して暗号化キーを生成できます：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+または、OpenSSL を使用：
+
+```bash
+openssl rand -hex 32
+```
+
+生成された64文字の16進数文字列を `REDIS_ENCRYPTION_KEY` に設定してください。
+
+### オプション
+
+```env
+# ログレベル
 LOG_LEVEL=debug  # debug, info, warn, error
 ```
 

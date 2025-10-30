@@ -9,7 +9,6 @@
 
 import type { DecryptedToken } from "./types.js";
 import { logger } from "./logger.js";
-import { getRedisClient } from "./redis-connection.js";
 import {
   cacheToken,
   getCacheKey,
@@ -43,11 +42,10 @@ export const getValidToken = async (
   mcpServerId: string,
   userId: string,
 ): Promise<DecryptedToken> => {
-  const redisClient = await getRedisClient();
   const cacheKey = getCacheKey(userId, mcpServerId);
 
   // 1. Redisキャッシュから取得
-  const cachedToken = await getFromCache(redisClient, cacheKey);
+  const cachedToken = await getFromCache(cacheKey);
   if (cachedToken) {
     logger.debug("Token retrieved from cache", { mcpServerId, userId });
     return cachedToken;
@@ -92,7 +90,7 @@ export const getValidToken = async (
     });
     try {
       const refreshedToken = await refreshToken(token.id);
-      await cacheToken(redisClient, cacheKey, refreshedToken);
+      await cacheToken(cacheKey, refreshedToken);
       return refreshedToken;
     } catch (error) {
       logger.error("Failed to refresh token", {
@@ -111,7 +109,7 @@ export const getValidToken = async (
 
   // 5. キャッシュに保存して返却
   const decryptedToken = toDecryptedToken(token);
-  await cacheToken(redisClient, cacheKey, decryptedToken);
+  await cacheToken(cacheKey, decryptedToken);
 
   // lastUsedAtを更新（非同期）
   updateLastUsedAt(token.id).catch((error: unknown) => {
@@ -144,6 +142,5 @@ export const invalidateCache = async (
   userId: string,
   mcpServerId: string,
 ): Promise<void> => {
-  const redisClient = await getRedisClient();
-  await invalidateCacheInternal(redisClient, userId, mcpServerId);
+  await invalidateCacheInternal(userId, mcpServerId);
 };
