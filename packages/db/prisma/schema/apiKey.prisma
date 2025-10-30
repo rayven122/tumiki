@@ -9,16 +9,21 @@ model McpApiKey {
   id                      String                @id @default(cuid())
   /// APIキー名（ユーザーが設定）
   name                    String
-  /// 暗号化されたAPIキー（共通鍵暗号化）
+  /// 暗号化されたAPIキー（client_id として使用）
   apiKey                  String                @unique /// @encrypted
-  /// APIキーのハッシュ値（検索用）
-  apiKeyHash              String?               @unique /// @encryption:hash(apiKey)
+  /// client_secret の bcrypt ハッシュ（OAuth 2.0 client_credentials フロー用）
+  apiKeyHash              String?               @unique
   /// APIキーが有効かどうか
   isActive                Boolean               @default(true)
   /// 最後に使用された日時
   lastUsedAt              DateTime?
   /// APIキーの有効期限
   expiresAt               DateTime?
+  /// スコープ情報（例: ["mcp:access:notion", "mcp:access:figma"]）
+  scopes                  String[]              @default([])
+  /// 関連するユーザー
+  userId                  String
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 関連するUserMcpServerInstanceのID
   userMcpServerInstanceId String
   userMcpServerInstance   UserMcpServerInstance @relation(fields: [userMcpServerInstanceId], references: [id], onDelete: Cascade)
@@ -26,5 +31,7 @@ model McpApiKey {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
   @@index([userMcpServerInstanceId])
+  @@index([apiKeyHash])
 }

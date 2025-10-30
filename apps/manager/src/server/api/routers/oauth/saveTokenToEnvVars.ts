@@ -114,6 +114,7 @@ export const saveTokenToEnvVars = async ({
         data: {
           name: `${instance.name} API Key`,
           apiKey: fullKey,
+          userId: ctx.session.user.id,
           userMcpServerInstanceId: instance.id,
         },
       });
