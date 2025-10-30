@@ -8,28 +8,51 @@ import { genericOAuth } from "better-auth/plugins";
 
 import { db } from "@tumiki/db/server";
 
-if (!process.env.BETTER_AUTH_SECRET) {
-  throw new Error("BETTER_AUTH_SECRET is not set");
-}
+/**
+ * 環境変数の検証を遅延実行
+ * ビルド時やテスト時の問題を回避するため、実際に使用するタイミングで検証
+ */
+const validateEnvVars = (): {
+  BETTER_AUTH_SECRET: string;
+  KEYCLOAK_ISSUER: string;
+  KEYCLOAK_CLIENT_ID: string;
+  KEYCLOAK_CLIENT_SECRET: string;
+} => {
+  const required = {
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    KEYCLOAK_ISSUER: process.env.KEYCLOAK_ISSUER,
+    KEYCLOAK_CLIENT_ID: process.env.KEYCLOAK_CLIENT_ID,
+    KEYCLOAK_CLIENT_SECRET: process.env.KEYCLOAK_CLIENT_SECRET,
+  };
 
-if (!process.env.KEYCLOAK_ISSUER) {
-  throw new Error("KEYCLOAK_ISSUER is not set");
-}
+  const missing = Object.entries(required)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
 
-if (!process.env.KEYCLOAK_CLIENT_ID) {
-  throw new Error("KEYCLOAK_CLIENT_ID is not set");
-}
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`,
+    );
+  }
 
-if (!process.env.KEYCLOAK_CLIENT_SECRET) {
-  throw new Error("KEYCLOAK_CLIENT_SECRET is not set");
-}
+  // 検証済みなので全ての値がstringとして存在することを保証
+  return required as {
+    BETTER_AUTH_SECRET: string;
+    KEYCLOAK_ISSUER: string;
+    KEYCLOAK_CLIENT_ID: string;
+    KEYCLOAK_CLIENT_SECRET: string;
+  };
+};
+
+// 環境変数を検証して取得
+const envVars = validateEnvVars();
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
 
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: envVars.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL ?? "https://local.tumiki.cloud:3000",
 
   session: {
@@ -44,11 +67,21 @@ export const auth = betterAuth({
       config: [
         {
           providerId: "keycloak",
-          clientId: process.env.KEYCLOAK_CLIENT_ID,
-          clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
-          discoveryUrl: `${process.env.KEYCLOAK_ISSUER}/.well-known/openid-configuration`,
+          clientId: envVars.KEYCLOAK_CLIENT_ID,
+          clientSecret: envVars.KEYCLOAK_CLIENT_SECRET,
+          discoveryUrl: `${envVars.KEYCLOAK_ISSUER}/.well-known/openid-configuration`,
           scopes: ["openid", "email", "profile"],
           pkce: true,
+          // Keycloakのプロファイル情報をユーザーフィールドにマッピング
+          mapProfileToUser: (profile) => {
+            return {
+              email: profile.email,
+              name: profile.name,
+              image: profile.picture,
+              emailVerified: true, // Keycloak認証済みユーザーはメール確認済み
+              keycloakId: profile.sub, // OIDCのsubクレームをkeycloakIdに設定
+            };
+          },
         },
       ],
     }),
@@ -81,35 +114,6 @@ export const auth = betterAuth({
       trustedProviders: ["keycloak"],
     },
   },
-
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user): Promise<void> => {
-          // ユーザー作成後の処理
-          // Keycloakからの同期の場合、keycloakIdが設定されている
-          const keycloakId = (user as { keycloakId?: string }).keycloakId;
-          const email = (user as { email?: string }).email;
-          const name = (user as { name?: string }).name;
-          const image = (user as { image?: string | null }).image;
-
-          if (keycloakId && email && name) {
-            // 既に作成されているユーザーの情報を更新
-            await db.user.update({
-              where: { keycloakId },
-              data: {
-                email,
-                name,
-                image,
-                emailVerified: true, // Keycloak認証済みユーザーはメール確認済み
-              },
-            });
-          }
-        },
-      },
-    },
-  },
-
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
     cookiePrefix: "better-auth",
@@ -117,9 +121,9 @@ export const auth = betterAuth({
       enabled: false,
     },
   },
-
   logger: {
-    level: process.env.NODE_ENV === "development" ? "debug" : "error",
+    // 機密情報（トークン、シークレット）のログ出力を防ぐため、infoレベルを使用
+    level: process.env.NODE_ENV === "development" ? "info" : "error",
   },
 });
 
