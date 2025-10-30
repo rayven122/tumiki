@@ -9,6 +9,17 @@ import { genericOAuth } from "better-auth/plugins";
 import { db } from "@tumiki/db/server";
 
 /**
+ * Keycloak OIDCプロファイル型定義
+ */
+type KeycloakProfile = {
+  sub: string;
+  email: string;
+  name: string;
+  picture?: string;
+  email_verified?: boolean;
+};
+
+/**
  * 環境変数の検証を遅延実行
  * ビルド時やテスト時の問題を回避するため、実際に使用するタイミングで検証
  */
@@ -74,12 +85,13 @@ export const auth = betterAuth({
           pkce: true,
           // Keycloakのプロファイル情報をユーザーフィールドにマッピング
           mapProfileToUser: (profile) => {
+            const keycloakProfile = profile as KeycloakProfile;
             return {
-              email: profile.email,
-              name: profile.name,
-              image: profile.picture,
+              email: keycloakProfile.email,
+              name: keycloakProfile.name,
+              image: keycloakProfile.picture,
               emailVerified: true, // Keycloak認証済みユーザーはメール確認済み
-              keycloakId: profile.sub, // OIDCのsubクレームをkeycloakIdに設定
+              keycloakId: keycloakProfile.sub, // OIDCのsubクレームをkeycloakIdに設定
             };
           },
         },
