@@ -14,12 +14,14 @@ const createConnection = async (
   redisUrl: string,
 ): Promise<RedisClient | null> => {
   try {
+    // タイムアウト値を環境変数から取得（デフォルト: 5秒）
+    const connectTimeout = Number(process.env.REDIS_CONNECT_TIMEOUT) || 5000;
+
     // 新しいクライアントを作成
     const client = createClient({
       url: redisUrl,
       socket: {
-        // Upstash Redisはタイムアウトが長めでも問題ない
-        connectTimeout: 10000, // 10秒
+        connectTimeout, // 環境変数で設定可能
         reconnectStrategy: (retries) => {
           // 最大5回まで再接続を試みる
           if (retries > 5) {

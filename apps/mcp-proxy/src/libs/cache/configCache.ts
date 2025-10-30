@@ -1,7 +1,7 @@
 import type { RemoteMcpServerConfig } from "../../server/config.js";
 import { decrypt, encrypt } from "../crypto/index.js";
 import { getRedisClient } from "./redis.js";
-import { logError, logInfo } from "../logger/index.js";
+import { logError, logInfo, sanitizeIdForLog } from "../logger/index.js";
 
 /**
  * キャッシュされた設定データの型
@@ -68,12 +68,13 @@ export const getCachedConfig = async (
           serverCount: data.length,
         });
         return data;
-      } catch (decryptError) {
+      } catch {
+        // セキュリティ: 元のエラーメッセージを隠蔽し、暗号化データの内容推測を防止
         logError(
-          "Failed to decrypt or parse cached config",
-          decryptError as Error,
+          "Failed to decrypt cached config",
+          new Error("Decryption failed"),
           {
-            userMcpServerInstanceId,
+            userMcpServerInstanceId: sanitizeIdForLog(userMcpServerInstanceId),
           },
         );
         // 復号化エラーの場合はキャッシュを削除してDBから取得
