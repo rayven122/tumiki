@@ -1,0 +1,76 @@
+{
+  "realm": "tumiki",
+  "displayName": "Tumiki Platform",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "clients": [
+    {
+      "clientId": "tumiki-manager",
+      "name": "Tumiki Manager Application",
+      "description": "Next.js Manager Application",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "tumiki-manager-secret-change-in-production",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://local.tumiki.cloud:3000/*",
+        "https://manager.tumiki.cloud/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://local.tumiki.cloud:3000",
+        "https://manager.tumiki.cloud"
+      ],
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator role"
+      },
+      {
+        "name": "user",
+        "description": "Regular user role"
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only user role"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin@tumiki.local",
+      "email": "admin@tumiki.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    }
+  ]
+}
