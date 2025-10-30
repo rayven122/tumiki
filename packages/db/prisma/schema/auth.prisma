@@ -14,12 +14,16 @@ enum Role {
 /// @namespace UserMcpServer
 /// @namespace Chat
 model User {
-  /// Auth0のユーザーID (sub) - 主キーとして使用
-  id                    String                   @id
+  /// ユーザーの一意識別子 (CUID)
+  id                    String                   @id @default(cuid())
+  /// KeycloakのユーザーID (sub)
+  keycloakId            String?                  @unique
   /// ユーザー名
   name                  String?
   /// メールアドレス
   email                 String?                  @unique
+  /// メール認証済みフラグ
+  emailVerified         Boolean                  @default(false)
   /// プロフィール画像のURL
   image                 String?
   /// ユーザーの権限
@@ -35,13 +39,105 @@ model User {
   Chat                  Chat[]
   Document              Document[]
   Suggestion            Suggestion[]
-  /// OAuth Sessions リレーション
-  oauthSessions         OAuthSession[]
+
+  /// OAuth Sessions リレーション (MCPサーバー用)
+  oauthSessions            OAuthSession[]
+  /// Better Auth OAuth Sessions リレーション
+  betterAuthOauthSessions  BetterAuthOAuthSession[]
+  /// Better Auth Session リレーション
+  sessions                 Session[]
+  /// Better Auth Account リレーション
+  accounts                 Account[]
+  /// 外部OAuth接続
+  externalOAuthConnections ExternalOAuthConnection[]
 
   /// API Keys リレーション
-  apiKeys McpApiKey[]
-
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  apiKeys    McpApiKey[]
   mcpServers McpServer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// @namespace Auth
+/// Better Auth セッション管理
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// @namespace Auth
+/// Better Auth アカウント管理（OAuth Provider連携）
+model Account {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId    String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
+  expiresAt    BigInt?
+  scope        String?
+  password     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+/// @namespace Auth
+/// Better Auth 認証コード・トークン検証
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+/// @namespace Auth
+/// 外部OAuth接続管理（Notion、Figma等）
+model ExternalOAuthConnection {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String // "notion", "figma", "github"
+  accessToken  String // @encrypted
+  refreshToken String? // @encrypted
+  expiresAt    DateTime?
+  scope        String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+}
+
+/// @namespace Auth
+/// Better Auth用 OAuth一時セッション（PKCE用）
+model BetterAuthOAuthSession {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String
+  state        String   @unique
+  codeVerifier String
+  callbackUrl  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

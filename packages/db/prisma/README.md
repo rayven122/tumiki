@@ -52,32 +52,161 @@ APIキー管理テーブル
 erDiagram
 "User" {
   String id PK
+  String keycloakId UK "nullable"
   String name "nullable"
   String email UK "nullable"
+  Boolean emailVerified
   String image "nullable"
   Role role
   String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
+"Session" {
+  String id PK
+  String userId FK
+  String token UK
+  DateTime expiresAt
+  String ipAddress "nullable"
+  String userAgent "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"Account" {
+  String id PK
+  String userId FK
+  String accountId
+  String providerId
+  String accessToken "nullable"
+  String refreshToken "nullable"
+  String idToken "nullable"
+  BigInt expiresAt "nullable"
+  String scope "nullable"
+  String password "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"Verification" {
+  String id PK
+  String identifier
+  String value
+  DateTime expiresAt
+  DateTime createdAt
+  DateTime updatedAt
+}
+"ExternalOAuthConnection" {
+  String id PK
+  String userId FK
+  String provider
+  String accessToken
+  String refreshToken "nullable"
+  DateTime expiresAt "nullable"
+  String scope "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"BetterAuthOAuthSession" {
+  String id PK
+  String userId FK
+  String provider
+  String state UK
+  String codeVerifier
+  String callbackUrl
+  DateTime expiresAt
+  DateTime createdAt
+}
 "_OrganizationToUser" {
   String A FK
   String B FK
 }
+"Session" }o--|| "User" : user
+"Account" }o--|| "User" : user
+"ExternalOAuthConnection" }o--|| "User" : user
+"BetterAuthOAuthSession" }o--|| "User" : user
 "_OrganizationToUser" }o--|| "User" : User
 ```
 
 ### `User`
 
 **Properties**
-  - `id`: Auth0のユーザーID (sub) - 主キーとして使用
+  - `id`: ユーザーの一意識別子 (CUID)
+  - `keycloakId`: KeycloakのユーザーID (sub)
   - `name`: ユーザー名
   - `email`: メールアドレス
+  - `emailVerified`: メール認証済みフラグ
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
   - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
+
+### `Session`
+Better Auth セッション管理
+
+**Properties**
+  - `id`: 
+  - `userId`: 
+  - `token`: 
+  - `expiresAt`: 
+  - `ipAddress`: 
+  - `userAgent`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `Account`
+Better Auth アカウント管理（OAuth Provider連携）
+
+**Properties**
+  - `id`: 
+  - `userId`: 
+  - `accountId`: 
+  - `providerId`: 
+  - `accessToken`: 
+  - `refreshToken`: 
+  - `idToken`: 
+  - `expiresAt`: 
+  - `scope`: 
+  - `password`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `Verification`
+Better Auth 認証コード・トークン検証
+
+**Properties**
+  - `id`: 
+  - `identifier`: 
+  - `value`: 
+  - `expiresAt`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `ExternalOAuthConnection`
+外部OAuth接続管理（Notion、Figma等）
+
+**Properties**
+  - `id`: 
+  - `userId`: 
+  - `provider`: 
+  - `accessToken`: 
+  - `refreshToken`: 
+  - `expiresAt`: 
+  - `scope`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `BetterAuthOAuthSession`
+Better Auth用 OAuth一時セッション（PKCE用）
+
+**Properties**
+  - `id`: 
+  - `userId`: 
+  - `provider`: 
+  - `state`: 
+  - `codeVerifier`: 
+  - `callbackUrl`: 
+  - `expiresAt`: 
+  - `createdAt`: 
 
 ### `_OrganizationToUser`
 Pair relationship table between [Organization](#Organization) and [User](#User)
@@ -749,8 +878,10 @@ erDiagram
 }
 "User" {
   String id PK
+  String keycloakId UK "nullable"
   String name "nullable"
   String email UK "nullable"
+  Boolean emailVerified
   String image "nullable"
   Role role
   String defaultOrganizationId FK "nullable"
@@ -853,9 +984,11 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
 ### `User`
 
 **Properties**
-  - `id`: Auth0のユーザーID (sub) - 主キーとして使用
+  - `id`: ユーザーの一意識別子 (CUID)
+  - `keycloakId`: KeycloakのユーザーID (sub)
   - `name`: ユーザー名
   - `email`: メールアドレス
+  - `emailVerified`: メール認証済みフラグ
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
   - `defaultOrganizationId`: デフォルトの組織ID
@@ -967,8 +1100,10 @@ Pair relationship table between [Organization](#Organization) and [User](#User)
 erDiagram
 "User" {
   String id PK
+  String keycloakId UK "nullable"
   String name "nullable"
   String email UK "nullable"
+  Boolean emailVerified
   String image "nullable"
   Role role
   String defaultOrganizationId FK "nullable"
@@ -985,9 +1120,11 @@ erDiagram
 ### `User`
 
 **Properties**
-  - `id`: Auth0のユーザーID (sub) - 主キーとして使用
+  - `id`: ユーザーの一意識別子 (CUID)
+  - `keycloakId`: KeycloakのユーザーID (sub)
   - `name`: ユーザー名
   - `email`: メールアドレス
+  - `emailVerified`: メール認証済みフラグ
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
   - `defaultOrganizationId`: デフォルトの組織ID
