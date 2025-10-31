@@ -84,6 +84,9 @@ main() {
     # ターゲット別デプロイ
     case "$TARGET" in
         vercel)
+            if ! fetch_vercel_env_variables; then
+                log_warn "環境変数の取得に失敗しましたが続行します"
+            fi
             deploy_vercel
             ;;
         gce)
