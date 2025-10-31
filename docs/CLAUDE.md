@@ -4,89 +4,73 @@ Tumiki プロジェクトの技術ドキュメントとガイドラインの集�
 
 ## 📁 ディレクトリ構成
 
-### 🏗️ [architecture/](./architecture/CLAUDE.md)
+### 🏗️ architecture/
 システム設計・アーキテクチャ関連のドキュメント
 - データベース設計
-- MCP サーバー管理設計
-- マイグレーション計画
-- 外部サービス接続設計
+- MCP Proxy 設計・検証
+- デスクトップアプリ設計
+- リクエストログシステム設計
 
-### 🔐 [auth/](./auth/CLAUDE.md)
+### 🔐 auth/
 認証・認可関連のドキュメント
-- Auth0 設定・統合
-- OAuth 実装ガイド
-- MCP 準拠認証設計
+- 二層OAuth認証実装計画（推奨）
+- MCP準拠認証設計
+- Auth0/Keycloak設定
+- APIキー認証
 
-### 💼 [business/](./business/CLAUDE.md)
-ビジネス・マーケティング関連のドキュメント
-- ブランドブック
-- ランディングページ設計
-- ビジネスモデル・戦略
-
-### 🚀 [deployment/](./deployment/CLAUDE.md)
-デプロイメント・インフラ関連のドキュメント
-- GitHub Actions 設定
-- コンテナ利用ガイド
-- ProxyServer デプロイメント
-
-### 🛠️ [development/](./development/CLAUDE.md)
-開発ガイド・環境設定のドキュメント
-- MCP サーバー追加方法
+### 📚 guides/
+セットアップ・開発ガイド
+- MCPサーバー追加方法
+- Python MCP セットアップ
 - テスト環境構築
-- 開発環境設定
-
-### 🔌 [integrations/](./integrations/CLAUDE.md)
-外部サービス連携のドキュメント
-- Auth0 OAuth 設定（Figma、Notion）
 - Stripe 統合
-- サードパーティAPI連携
+- GitHub Actions CI/CD
+- コンテナ利用ガイド
 
-### ⚙️ [operations/](./operations/CLAUDE.md)
+### 🔌 integrations/
+外部サービス連携のドキュメント
+- Cloud Run MCP 連携
+
+### 📝 migration/
+マイグレーション関連のドキュメント
+- PostgreSQL → Cloud Storage 移行
+- 組織化改修計画
+- Prismaマイグレーション管理
+
+### ⚙️ operations/
 運用・保守関連のドキュメント
+- プロキシサーバー運用・デプロイ
+- パフォーマンス最適化
 - メンテナンスモード
-- プロキシサーバー運用
-- スクリプト管理
+- メール送信機能
 
-### 🛡️ [security/](./security/CLAUDE.md)
+### 🛡️ security/
 セキュリティ関連のドキュメント
 - MCP セキュリティガイド
-- 脆弱性対応
 - ロール管理
-- AI 安全性研究
 
-### 📊 [weekly-reports/](./weekly-reports/CLAUDE.md)
+### 📊 weekly-reports/
 週次業務報告書
-
-### 🎯 [demo/](./demo/CLAUDE.md)
-デモ・プレゼンテーション資料
-
-### 📝 [migration/](./migration/CLAUDE.md)
-マイグレーション関連のドキュメント
 
 ## 🔍 クイックアクセス
 
-### セットアップ・導入
-- [Python MCP セットアップ](./development/python-mcp-setup.md)
-- [コンテナ利用ガイド](./deployment/container-use-guide.md)
-- [開発環境構築](./development/CLAUDE.md)
+### 🚀 セットアップ・導入
+- [MCPサーバー追加方法](./guides/mcp-server-setup.md)
+- [Python MCP セットアップ](./guides/python-mcp-setup.md)
+- [テスト環境構築](./guides/testing-environment.md)
+- [コンテナ利用ガイド](./guides/container-use-guide.md)
 
-### セキュリティ・認証
-- [MCP セキュリティガイド](./security/MCP_SECURITY_GUIDE.md)
-- [二層OAuth認証アーキテクチャ](./auth/two-tier-oauth-architecture.md) - **推奨設計**
-- [二層OAuth認証実装計画](./auth/two-tier-oauth-implementation-plan.md) - **実装ガイド**
+### 🔐 認証・セキュリティ
+- [二層OAuth認証実装計画](./auth/two-tier-oauth-implementation-plan.md) - **推奨設計**
+- [MCP準拠認証設計](./auth/mcp-compliant-auth-design.md) - **詳細仕様**
+- [MCPセキュリティガイド](./security/MCP_SECURITY_GUIDE.md)
 - [APIキー認証](./auth/apikey-auth.md)
-- [OAuth 実装](./auth/oauth/CLAUDE.md)
-- [MCP OAuth 認証設計](./auth/mcp-oauth-authentication-design.md)
 
-### パフォーマンス・最適化
+### ⚡ 運用・パフォーマンス
+- [ProxyServerパフォーマンス最適化](./operations/proxyServer-performance-optimization.md)
+- [接続遅延改善](./operations/proxyserver-connection-delay-improvement.md)
+- [ProxyServerデプロイ](./operations/proxy-server-deployment.md)
 
-- [ProxyServer パフォーマンス最適化](./operations/proxyServer-performance-optimization.md)
-- [パフォーマンスチューニング要約](./operations/proxy-server-performance-tuning-summary.md)
-
-## 📋 メモ・備考
-
-- [開発メモ](./memo.md)
-
-## 🔄 更新履歴
-
-ドキュメントの最新更新状況は各ディレクトリのCLAUDE.mdを参照してください。
+### 🔌 統合・連携
+- [Cloud Run MCP連携](./integrations/cloudrun/integration-guide.md)
+- [Stripe統合](./guides/stripe-setup.md)
