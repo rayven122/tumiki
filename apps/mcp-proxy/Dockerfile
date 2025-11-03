@@ -35,6 +35,9 @@ COPY packages/db/prisma ./packages/db/prisma
 # Create a minimal .env file for Prisma (postinstall needs it but won't use the value)
 RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
 
+# Set CI environment variable to skip Python MCP installation
+ENV CI=true
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile --prod=false
 
@@ -84,6 +87,9 @@ COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma ./packages/db/pr
 
 # Create a minimal .env file for Prisma (postinstall needs it but won't use the value)
 RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
+
+# Set CI environment variable to skip Python MCP installation
+ENV CI=true
 
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
