@@ -28,8 +28,12 @@ COPY .npmrc ./
 COPY packages/db/package.json ./packages/db/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
 
-# Copy Prisma schema BEFORE install (required for postinstall script)
+# Copy Prisma config and schema BEFORE install (required for postinstall script)
+COPY packages/db/prisma.config.ts ./packages/db/
 COPY packages/db/prisma ./packages/db/prisma
+
+# Create a minimal .env file for Prisma (postinstall needs it but won't use the value)
+RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile --prod=false
@@ -74,8 +78,12 @@ COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
 
-# Copy Prisma schema BEFORE install (required for postinstall script)
+# Copy Prisma config and schema BEFORE install (required for postinstall script)
+COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma.config.ts ./packages/db/
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma ./packages/db/prisma
+
+# Create a minimal .env file for Prisma (postinstall needs it but won't use the value)
+RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
 
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
