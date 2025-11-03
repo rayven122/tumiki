@@ -202,15 +202,24 @@ gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 #### 2. デプロイ実行
 
+**推奨: GitHub Actions を使用**
+
+プルリクエストをマージすると自動的にデプロイされます。
+
+**ローカルから手動デプロイする場合:**
+
 ```bash
-# ステージング環境
-pnpm deploy:cloudrun --stage staging
+# Docker ビルド
+docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  -f apps/mcp-proxy/Dockerfile .
 
-# 本番環境
-pnpm deploy:cloudrun --stage production
+# Artifact Registry へプッシュ
+docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest
 
-# または統合デプロイスクリプト
-./scripts/deploy.sh --target cloudrun --stage staging
+# Cloud Run へデプロイ
+gcloud run deploy tumiki-mcp-proxy-staging \
+  --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  --region=asia-northeast1
 ```
 
 ---

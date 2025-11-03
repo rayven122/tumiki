@@ -1,0 +1,46 @@
+name: 'Deploy to Vercel'
+description: 'Deploy to Vercel (staging or production)'
+
+inputs:
+  stage:
+    description: 'staging or production'
+    required: true
+  vercel_token:
+    description: 'Vercel token'
+    required: true
+
+outputs:
+  url:
+    description: 'Deployment URL'
+    value: ${{ steps.deploy.outputs.url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Deploy
+      id: deploy
+      shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel_token }}
+      run: |
+        # Install Vercel CLI if needed
+        command -v vercel >/dev/null || npm install -g vercel
+
+        # Deploy
+        if [ "${{ inputs.stage }}" = "production" ]; then
+          OUTPUT=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1)
+        else
+          OUTPUT=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1)
+        fi
+
+        # Extract URL (try multiple patterns)
+        URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
+
+        if [ -z "$URL" ]; then
+          echo "❌ Deployment failed or URL not found"
+          echo "$OUTPUT" | tail -20
+          exit 1
+        fi
+
+        echo "✅ Deployed to: $URL"
+        echo "url=$URL" >> $GITHUB_OUTPUT

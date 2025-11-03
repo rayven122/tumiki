@@ -338,11 +338,15 @@ Authorization: Bearer tumiki_live_abc123...
 #### ローカルから手動デプロイ
 
 ```bash
-# ステージング環境
-./scripts/deploy.sh --target cloudrun --stage staging
+# Docker イメージのビルドとプッシュ
+docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  -f apps/mcp-proxy/Dockerfile .
+docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest
 
-# 本番環境
-./scripts/deploy.sh --target cloudrun --stage production
+# Cloud Run へデプロイ
+gcloud run deploy tumiki-mcp-proxy-staging \
+  --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  --region=asia-northeast1
 ```
 
 #### 詳細ガイド
