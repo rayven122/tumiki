@@ -24,21 +24,41 @@ runs:
         VERCEL_TOKEN: ${{ inputs.vercel_token }}
       run: |
         # Install Vercel CLI if needed
-        command -v vercel >/dev/null || npm install -g vercel
+        echo "🔍 Checking Vercel CLI..."
+        if ! command -v vercel >/dev/null; then
+          echo "📦 Installing Vercel CLI..."
+          npm install -g vercel
+        else
+          echo "✅ Vercel CLI already installed"
+        fi
 
         # Deploy
+        echo "🚀 Starting deployment (stage: ${{ inputs.stage }})..."
         if [ "${{ inputs.stage }}" = "production" ]; then
-          OUTPUT=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1)
+          echo "📍 Production deployment"
+          OUTPUT=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
         else
-          OUTPUT=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1)
+          echo "📍 Preview deployment"
+          OUTPUT=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
+        fi
+
+        # Show deployment output
+        echo "📋 Deployment output:"
+        echo "$OUTPUT"
+
+        # Check if deployment failed
+        if [ -n "$DEPLOY_EXIT_CODE" ] && [ "$DEPLOY_EXIT_CODE" -ne 0 ]; then
+          echo "❌ Vercel deployment failed with exit code: $DEPLOY_EXIT_CODE"
+          exit 1
         fi
 
         # Extract URL (try multiple patterns)
         URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
 
         if [ -z "$URL" ]; then
-          echo "❌ Deployment failed or URL not found"
-          echo "$OUTPUT" | tail -20
+          echo "❌ Deployment URL not found in output"
+          echo "Full output:"
+          echo "$OUTPUT"
           exit 1
         fi
 

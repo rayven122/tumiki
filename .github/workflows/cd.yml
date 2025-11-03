@@ -139,7 +139,7 @@ jobs:
         with:
           environment: ${{ needs.setup.outputs.environment }}
           pr_number: ${{ needs.setup.outputs.pr_number }}
-          gcp_credentials: ${{ needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION || secrets.GCP_SA_KEY_STAGING }}
+          gcp_credentials: ${{ (needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION) || secrets.GCP_SA_KEY_STAGING }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           region: asia-northeast1
           min_instances: '0'
