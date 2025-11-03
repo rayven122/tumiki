@@ -66,18 +66,41 @@ graph TB
 
 ### 🔵 Preview環境
 - **目的**: PR確認・コードレビュー
-- **DB**: なし（Cloud RunはstagingのDBを参照）
-- **デプロイ先**: Vercel（一時URL）、Cloud Run（staging環境）
+- **DB**: なし（マイグレーションスキップ）
+- **デプロイ先**:
+  - Vercel: 一時プレビューURL
+  - Cloud Run: `tumiki-mcp-proxy-preview` サービス
 
 ### 🟡 Staging環境
 - **目的**: 統合テスト・QA
 - **DB**: staging DB + preview DB の両方をマイグレート
-- **デプロイ先**: Vercel（staging）、Cloud Run（staging）
+- **デプロイ先**:
+  - Vercel: staging URL
+  - Cloud Run: `tumiki-mcp-proxy-staging` サービス
 
 ### 🔴 Production環境
 - **目的**: 本番リリース
 - **DB**: production DB のみマイグレート
-- **デプロイ先**: Vercel（production）、Cloud Run（production）
+- **デプロイ先**:
+  - Vercel: production URL
+  - Cloud Run: `tumiki-mcp-proxy-production` サービス (`https://server.tumiki.cloud`)
+
+## 🌐 Cloud Run サービス一覧
+
+| サービス名 | 環境 | カスタムドメイン | URL形式 | 用途 |
+|-----------|-----|----------------|---------|------|
+| `tumiki-mcp-proxy-pr-{PR番号}` | Preview | なし | `https://tumiki-mcp-proxy-pr-{PR番号}-*.a.run.app` | PR確認（PRごとに個別） |
+| `tumiki-mcp-proxy-staging` | Staging | `https://stg-server.tumiki.cloud` | `https://tumiki-mcp-proxy-staging-*.a.run.app` | 統合テスト |
+| `tumiki-mcp-proxy-production` | Production | `https://server.tumiki.cloud` | `https://server.tumiki.cloud` | 本番環境 |
+
+**重要**:
+- **Preview環境**: 各PRごとに独立したCloud Runサービスを作成（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
+  - 複数のPRが同時に存在可能
+  - カスタムドメインは使用せず、自動生成URLを使用
+  - PRクローズ時は手動でCloud Runサービスを削除
+- **Staging/Production環境**: 固定のCloud Runサービスを使用
+  - **カスタムドメインは初回デプロイ時に自動設定されます**（GitHub Actionsで実行）
+  - DNS設定が必要な場合は、デプロイログに手順が表示されます
 
 ## 📦 デプロイ処理の詳細
 
@@ -92,9 +115,13 @@ graph TB
 1. GCP認証 & Docker設定
 2. Dockerイメージビルド & プッシュ
 3. Cloud Runデプロイ（環境変数、Secrets、VPC設定）
-4. ヘルスチェック（最大5回リトライ）
+4. **カスタムドメイン自動設定** 🆕
+   - 各環境にカスタムドメインを自動マッピング
+   - DNS設定が必要な場合は手順を表示
+   - SSL証明書の自動プロビジョニング
+5. ヘルスチェック（最大5回リトライ）
 
-**実装**: `.github/actions/deploy-cloudrun/action.yml` (175行)
+**実装**: `.github/actions/deploy-cloudrun/action.yml` (255行)
 
 **セキュリティ**:
 - Secret Manager: DATABASE_URL, REDIS_URL等
@@ -136,10 +163,39 @@ gcloud run deploy tumiki-mcp-proxy-production \
 - [ ] データベース接続情報が正しいか
 - [ ] Dockerイメージのビルドが成功しているか
 
+## ⚙️ Vercel環境変数の設定
+
+### Preview環境
+
+Preview環境では、各PRごとに異なるCloud Run URLが生成されるため、**Vercel環境変数の自動設定は困難**です。
+
+**対応方法**:
+1. **ローカル開発**: `http://localhost:8080` を使用
+2. **PR環境**: 自動生成されたCloud Run URLを確認し、必要に応じて手動設定
+   - URLはGitHub ActionsのCloud Runデプロイログに表示されます
+   - 例: `https://tumiki-mcp-proxy-pr-372-xxxxx.a.run.app`
+
+### Staging/Production環境
+
+カスタムドメインを使用することで、URLが固定され、**環境変数の再設定が不要**になります。
+
+| 環境 | 変数名 | 値（カスタムドメイン） |
+|-----|-------|---------------------|
+| Production | `NEXT_PUBLIC_MCP_PROXY_URL` | `https://server.tumiki.cloud` |
+
+**利点**:
+- ✅ 1回設定すれば、以降の手動設定が不要
+- ✅ URLが変更されないため、安定した運用が可能
+- ✅ GitHub Actionsで自動的にカスタムドメインが設定される
+
+**前提条件**: DNS設定が必要（初回のみ）
+詳細は [Vercel環境変数セットアップガイド](../../docs/vercel-environment-setup.md) を参照
+
 ## 📚 関連ドキュメント
 
 - [deploy-vercel action](../actions/deploy-vercel/action.yml)
 - [deploy-cloudrun action](../actions/deploy-cloudrun/action.yml)
+- [Vercel環境変数セットアップ](../../docs/vercel-environment-setup.md) ⚠️ **重要**
 - [Cloud Run デプロイメントガイド](../../docs/cloudrun-mcp-proxy-deployment.md)
 - [MCP Proxy README](../../apps/mcp-proxy/README.md)
 

@@ -27,6 +27,7 @@ jobs:
       environment: ${{ steps.env.outputs.environment }}
       stage: ${{ steps.env.outputs.stage }}
       is_pr: ${{ steps.env.outputs.is_pr }}
+      pr_number: ${{ steps.env.outputs.pr_number }}
     steps:
       - uses: actions/checkout@v4
       - id: env
@@ -137,6 +138,7 @@ jobs:
         uses: ./.github/actions/deploy-cloudrun
         with:
           environment: ${{ needs.setup.outputs.environment }}
+          pr_number: ${{ needs.setup.outputs.pr_number }}
           gcp_credentials: ${{ needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION || secrets.GCP_SA_KEY_STAGING }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           region: asia-northeast1

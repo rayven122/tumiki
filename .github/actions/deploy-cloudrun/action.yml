@@ -3,8 +3,12 @@ description: 'Deploy MCP Proxy to Google Cloud Run'
 
 inputs:
   environment:
-    description: 'Deployment environment (staging|production)'
+    description: 'Deployment environment (preview|staging|production)'
     required: true
+  pr_number:
+    description: 'PR number for preview deployments (optional, used to create unique service names)'
+    required: false
+    default: ''
   gcp_credentials:
     description: 'GCP service account credentials JSON'
     required: true
@@ -91,15 +95,24 @@ runs:
       shell: bash
       env:
         ENVIRONMENT: ${{ inputs.environment }}
+        PR_NUMBER: ${{ inputs.pr_number }}
         GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
         REGION: ${{ inputs.region }}
         MIN_INSTANCES: ${{ inputs.min_instances }}
         MAX_INSTANCES: ${{ inputs.max_instances }}
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
-        SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
+
+        # Determine service name based on environment
+        if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
+          SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
+          echo "🔵 Preview deployment for PR #$PR_NUMBER"
+        else
+          SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
+        fi
 
         echo "🚀 Deploying to Cloud Run..."
+        echo "Service: $SERVICE_NAME"
         echo "Region: $REGION"
         echo "Scaling: Min $MIN_INSTANCES / Max $MAX_INSTANCES"
 
@@ -158,17 +171,101 @@ runs:
         echo "❌ Health check failed"
         exit 1
 
+    - name: Setup custom domain
+      if: inputs.environment == 'staging' || inputs.environment == 'production'
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+        REGION: ${{ inputs.region }}
+      run: |
+        # Define custom domain for staging/production only
+        if [ "$ENVIRONMENT" = "production" ]; then
+          CUSTOM_DOMAIN="server.tumiki.cloud"
+        else
+          CUSTOM_DOMAIN="stg-server.tumiki.cloud"
+        fi
+
+        SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
+
+        echo "🌐 Setting up custom domain: $CUSTOM_DOMAIN"
+
+        # Check if domain mapping already exists
+        if gcloud run domain-mappings describe "$CUSTOM_DOMAIN" \
+            --region="$REGION" \
+            --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+          echo "✅ Custom domain already configured"
+
+          # Check certificate status
+          CERT_STATUS=$(gcloud run domain-mappings describe "$CUSTOM_DOMAIN" \
+            --region="$REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --format='value(status.conditions[0].status)' 2>/dev/null || echo "Unknown")
+
+          if [ "$CERT_STATUS" = "True" ]; then
+            echo "✅ SSL certificate is ready"
+          else
+            echo "⏳ SSL certificate is provisioning (this may take several minutes)"
+            echo "   Current status: $CERT_STATUS"
+          fi
+        else
+          echo "⚠️  Custom domain not configured yet"
+          echo "📝 Creating domain mapping..."
+
+          # Create domain mapping
+          if gcloud run domain-mappings create \
+              --service="$SERVICE_NAME" \
+              --domain="$CUSTOM_DOMAIN" \
+              --region="$REGION" \
+              --project="$GCP_PROJECT_ID"; then
+            echo "✅ Domain mapping created"
+            echo ""
+            echo "⚠️  DNS CONFIGURATION REQUIRED"
+            echo "================================================"
+            echo "Please add the following DNS record:"
+            echo ""
+            echo "  Type:  CNAME"
+            echo "  Name:  ${CUSTOM_DOMAIN%%.*}"
+            echo "  Value: ghs.googlehosted.com"
+            echo "  TTL:   3600"
+            echo ""
+            echo "SSL certificate will be automatically provisioned"
+            echo "after DNS propagation (may take up to 48 hours)."
+            echo "================================================"
+          else
+            echo "❌ Failed to create domain mapping"
+            echo "   This is not critical - deployment will continue"
+            echo "   You can set up custom domain manually later"
+            echo "   See: docs/cloudrun-custom-domain.md"
+          fi
+        fi
+
     - name: Display deployment info
       shell: bash
       env:
         SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
         HEALTH_URL: ${{ steps.deploy.outputs.health_url }}
         ENVIRONMENT: ${{ inputs.environment }}
+        PR_NUMBER: ${{ inputs.pr_number }}
       run: |
         echo "========================================="
         echo "🎉 Cloud Run Deployment Successful"
         echo "========================================="
         echo "Environment: $ENVIRONMENT"
+
+        if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
+          echo "PR: #$PR_NUMBER"
+          echo "Service: tumiki-mcp-proxy-pr-$PR_NUMBER"
+        fi
+
         echo "Service URL: $SERVICE_URL"
+
+        # Display custom domain for staging/production
+        if [ "$ENVIRONMENT" = "production" ]; then
+          echo "Custom Domain: https://server.tumiki.cloud"
+        elif [ "$ENVIRONMENT" = "staging" ]; then
+          echo "Custom Domain: https://stg-server.tumiki.cloud"
+        fi
+
         echo "Health Check: $HEALTH_URL"
         echo "========================================="

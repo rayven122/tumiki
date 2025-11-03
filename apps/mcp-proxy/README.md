@@ -330,10 +330,27 @@ Authorization: Bearer tumiki_live_abc123...
 
 本番環境での推奨デプロイ方法です。
 
+#### カスタムドメイン（Staging/Production環境のみ）
+
+Staging/Production環境には自動的にカスタムドメインが設定されます：
+
+| 環境       | Cloud Runサービス              | カスタムドメイン                  | URL形式                                            |
+| ---------- | ------------------------------ | --------------------------------- | -------------------------------------------------- |
+| Preview    | `tumiki-mcp-proxy-pr-{PR番号}` | なし                              | `https://tumiki-mcp-proxy-pr-{PR番号}-*.a.run.app` |
+| Staging    | `tumiki-mcp-proxy-staging`     | `https://stg-server.tumiki.cloud` | `https://tumiki-mcp-proxy-staging-*.a.run.app`     |
+| Production | `tumiki-mcp-proxy-production`  | `https://server.tumiki.cloud`     | `https://server.tumiki.cloud`                      |
+
+**Preview環境**: 各PRごとに独立したCloud Runサービスが作成されます（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
+
+**Staging/Production**: 初回デプロイ時にGitHub Actionsが自動的にカスタムドメインを設定します。
+
+詳細は [Cloud Run カスタムドメイン設定](../../docs/cloudrun-custom-domain.md) を参照。
+
 #### GitHub Actions経由（自動）
 
-- **ステージング**: Pull Request作成時に自動デプロイ
-- **本番**: `main` ブランチへマージ時に自動デプロイ
+- **Preview**: Pull Request作成時に自動デプロイ
+- **Staging**: `main` ブランチへマージ時に自動デプロイ
+- **Production**: `v*` タグプッシュ時に自動デプロイ
 
 #### ローカルから手動デプロイ
 
