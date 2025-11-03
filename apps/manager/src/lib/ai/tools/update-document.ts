@@ -2,7 +2,7 @@ import { type DataStreamWriter, tool } from "ai";
 import { z } from "zod";
 import { getDocumentById } from "@/lib/db/queries";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 interface UpdateDocumentProps {
   session: SessionData;

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 import { CheckCircleFillIcon, ChevronDownIcon } from "./icons";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 export function ModelSelector({
   session: _,

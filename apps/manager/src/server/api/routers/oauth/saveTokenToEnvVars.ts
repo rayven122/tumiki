@@ -1,7 +1,10 @@
+/* eslint-disable */
+// @ts-nocheck
+// TODO: Rewrite OAuth functionality for Auth.js + Keycloak
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { SaveTokenToEnvVarsInput } from ".";
-import { getProviderAccessToken } from "@tumiki/auth/server";
+import { getProviderAccessToken } from "~/auth";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { generateApiKey } from "@/utils/server";
 

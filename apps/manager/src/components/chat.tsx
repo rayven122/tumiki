@@ -19,7 +19,7 @@ import { useSearchParams } from "next/navigation";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { ChatSDKError } from "@/lib/errors";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 export function Chat({
   id,

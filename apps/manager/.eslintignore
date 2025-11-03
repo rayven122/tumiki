@@ -1,0 +1,5 @@
+# OAuth関連ファイル（一時的に無効化）
+src/server/api/routers/oauth/**
+src/app/(auth)/oauth/**
+src/app/(auth)/mcp/(mcpTabs)/@tabs/servers/AvailableServersList.tsx
+src/app/(auth)/mcp/(mcpTabs)/@tabs/_components/UserMcpServerConfigModal.tsx

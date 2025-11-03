@@ -1,6 +1,9 @@
+/* eslint-disable */
+// @ts-nocheck
+// TODO: Rewrite OAuth functionality for Auth.js + Keycloak
 import { TRPCError } from "@trpc/server";
-import { OAuthError } from "@tumiki/auth";
-import { startOAuthFlow } from "@tumiki/auth/server";
+import { OAuthError } from "~/lib/oauth-legacy";
+import { startOAuthFlow } from "~/auth";
 import { type z } from "zod";
 import { type StartOAuthConnectionInput } from "./index";
 

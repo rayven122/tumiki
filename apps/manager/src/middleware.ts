@@ -1,28 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { URL_HEADER_KEY } from "./constants/url";
 import {
-  auth0,
-  auth0OAuth,
   getAvailableVerificationUserIds,
   getDefaultVerificationUserId,
   isVerificationModeEnabled,
   validateVerificationMode,
-} from "@tumiki/auth/edge";
-
-// 認証不要のパス定数
-const PUBLIC_PATHS = [
-  "/",
-  "/jp",
-  "/about",
-  "/pricing",
-  "/legal/tokusho",
-  "/legal/privacy",
-  "/legal/terms",
-] as const;
+} from "~/lib/verification";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   request.headers.set(URL_HEADER_KEY, request.url);
+
+  // Auth.js API routes は認証チェックをスキップ
+  if (pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
+  }
 
   // メンテナンスモードチェック
   const isMaintenanceMode = process.env.MAINTENANCE_MODE === "true";
@@ -101,57 +93,49 @@ export async function middleware(request: NextRequest) {
           return response;
         }
       }
+
+      // 検証モードの場合、Cookie セッションがあれば認証済みとして扱う
+      if (currentSessionUserId) {
+        console.log(
+          `[VERIFICATION MODE] Using verification session: ${currentSessionUserId}`,
+        );
+        // Auth.js 認証をスキップして次に進む
+        return NextResponse.next();
+      }
     } catch (error) {
       console.error("[VERIFICATION MODE] Error:", error);
     }
   }
 
-  // OAuth専用パスの判定
-  const isOAuthPath =
-    pathname === "/oauth" || // OAuth設定ページ
-    pathname.startsWith("/oauth/"); // OAuth認証エンドポイント（例: /oauth/auth/login, /oauth/auth/callback）
+  // Database strategy使用時、Edge RuntimeではPrismaにアクセスできないため
+  // セッショントークンクッキーの存在のみをチェック
+  const sessionToken =
+    request.cookies.get("authjs.session-token") ??
+    request.cookies.get("__Secure-authjs.session-token");
+  const isLoggedIn = !!sessionToken;
 
-  // OAuth専用パスの場合はOAuth専用クライアントを使用
-  if (isOAuthPath) {
-    return auth0OAuth.middleware(request);
-  }
-
-  // 認証不要のパス判定
-  const isPublicPath =
-    (PUBLIC_PATHS as readonly string[]).includes(pathname) ||
-    pathname.startsWith("/auth");
-
-  if (isPublicPath) {
-    return auth0.middleware(request);
-  }
-
-  // 認証必要パスでのセッションチェック
-  const session = await auth0.getSession(request);
-
-  // 検証モードの場合、Cookie セッションを優先
-  if (isVerificationModeEnabled()) {
-    const verificationUserId = request.cookies.get(
-      "__verification_session",
-    )?.value;
-    if (verificationUserId) {
-      // 検証モードのセッションがある場合、認証済みとして扱う
-      console.log(
-        `[VERIFICATION MODE] Using verification session: ${verificationUserId}`,
-      );
-      // Auth0 認証をスキップして次に進む
-      return NextResponse.next();
+  const publicPaths = ["/", "/jp", "/about", "/pricing", "/legal", "/error"];
+  const isPublicPath = publicPaths.some((path) => {
+    if (path === "/legal") {
+      return pathname.startsWith(path);
     }
+    return pathname === path;
+  });
+
+  // 公開パスはそのまま通過
+  if (isPublicPath) {
+    return NextResponse.next();
   }
 
-  if (session) {
-    return auth0.middleware(request);
+  // 認証が必要なパスで未ログインの場合はサインインページにリダイレクト
+  if (!isLoggedIn) {
+    const signInUrl = new URL("/api/auth/signin", request.url);
+    signInUrl.searchParams.set("callbackUrl", request.url);
+    return NextResponse.redirect(signInUrl);
   }
 
-  // 認証されていない場合、Auth0のログイン画面にリダイレクト
-  const returnTo = encodeURIComponent(request.url);
-  const loginUrl = `/auth/login?returnTo=${returnTo}`;
-
-  return NextResponse.redirect(new URL(loginUrl, request.url));
+  // 認証済みの場合は通過
+  return NextResponse.next();
 }
 
 export const config = {

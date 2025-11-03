@@ -13,12 +13,10 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import {
-  auth,
-  isVerificationModeEnabled,
-  type SessionReturnType,
-} from "@tumiki/auth/server";
+import { isVerificationModeEnabled } from "~/auth";
+import type { SessionReturnType } from "~/auth";
 import { db } from "@tumiki/db/server";
+import { auth } from "~/auth";
 
 /**
  * 1. コンテキスト

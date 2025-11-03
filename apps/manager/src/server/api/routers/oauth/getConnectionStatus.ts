@@ -1,7 +1,10 @@
+/* eslint-disable */
+// @ts-nocheck
+// TODO: Rewrite OAuth functionality for Auth.js + Keycloak
 import { TRPCError } from "@trpc/server";
 import { type z } from "zod";
-import { OAuthError, OAuthErrorCode } from "@tumiki/auth";
-import { checkOAuthConnection } from "@tumiki/auth/server";
+import { OAuthError, OAuthErrorCode } from "~/lib/oauth-legacy";
+import { checkOAuthConnection } from "~/auth";
 import { type GetConnectionStatusInput } from "./index";
 
 export const getConnectionStatus = async ({
