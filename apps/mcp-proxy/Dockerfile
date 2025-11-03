@@ -71,6 +71,9 @@ COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
 
+# Copy Prisma schema BEFORE install (required for postinstall script)
+COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma ./packages/db/prisma
+
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
@@ -78,9 +81,6 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/node_modules/.prisma ./packages/db/node_modules/.prisma
 COPY --from=build --chown=nodejs:nodejs /app/apps/mcp-proxy/dist ./apps/mcp-proxy/dist
-
-# Copy Prisma schema for runtime
-COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma ./packages/db/prisma
 
 # Switch to non-root user
 USER nodejs
