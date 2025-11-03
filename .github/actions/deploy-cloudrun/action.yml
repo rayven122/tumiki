@@ -52,6 +52,19 @@ runs:
       run: |
         gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
+    - name: Debug - Check directory structure
+      shell: bash
+      run: |
+        echo "📁 Current directory: $(pwd)"
+        echo "📂 Directory structure:"
+        ls -la
+        echo ""
+        echo "📂 tooling directory:"
+        ls -la tooling/ || echo "tooling directory not found"
+        echo ""
+        echo "📂 tooling/tsup-config:"
+        ls -la tooling/tsup-config/ || echo "tooling/tsup-config not found"
+
     - name: Build Docker image
       shell: bash
       env:
