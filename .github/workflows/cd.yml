@@ -120,7 +120,8 @@ jobs:
       (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
     runs-on:
       group: self-arc
-    environment: ${{ needs.setup.outputs.environment }}
+    # Note: environment フィールドを削除してRepository Secretsにアクセスできるようにしました
+    # 各環境のSecretsは条件式で選択されます
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
       cloudrun_health_url: ${{ steps.deploy-cloudrun.outputs.health_url }}
@@ -139,7 +140,7 @@ jobs:
         with:
           environment: ${{ needs.setup.outputs.environment }}
           pr_number: ${{ needs.setup.outputs.pr_number }}
-          gcp_credentials: ${{ (needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION) || secrets.GCP_SA_KEY_STAGING }}
+          gcp_credentials: ${{ needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION || secrets.GCP_SA_KEY_STAGING }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           region: asia-northeast1
           min_instances: '0'
