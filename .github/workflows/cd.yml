@@ -134,6 +134,14 @@ jobs:
       - name: Build packages
         uses: ./.github/actions/build-packages
 
+      - name: Debug - Check environment and secrets
+        shell: bash
+        run: |
+          echo "Environment: ${{ needs.setup.outputs.environment }}"
+          echo "Is production: ${{ needs.setup.outputs.environment == 'production' }}"
+          echo "GCP_SA_KEY_STAGING exists: ${{ secrets.GCP_SA_KEY_STAGING != '' }}"
+          echo "GCP_SA_KEY_PRODUCTION exists: ${{ secrets.GCP_SA_KEY_PRODUCTION != '' }}"
+
       - name: Deploy to Cloud Run
         id: deploy-cloudrun
         uses: ./.github/actions/deploy-cloudrun
