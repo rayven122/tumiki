@@ -24,9 +24,10 @@ FROM base AS dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY .npmrc ./
 
-# Copy all package.json files from packages and apps
+# Copy all package.json files from packages, apps, and tooling
 COPY packages/db/package.json ./packages/db/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
+COPY tooling/typescript/package.json ./tooling/typescript/
 
 # Copy Prisma config and schema BEFORE install (required for postinstall script)
 COPY packages/db/prisma.config.ts ./packages/db/
@@ -47,6 +48,7 @@ RUN pnpm install --frozen-lockfile --prod=false
 FROM dependencies AS build
 
 # Copy source code
+COPY tooling/typescript ./tooling/typescript
 COPY packages/db ./packages/db
 COPY apps/mcp-proxy ./apps/mcp-proxy
 
@@ -80,6 +82,7 @@ COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
+COPY --chown=nodejs:nodejs tooling/typescript/package.json ./tooling/typescript/
 
 # Copy Prisma config and schema BEFORE install (required for postinstall script)
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma.config.ts ./packages/db/
