@@ -31,8 +31,11 @@ inputs:
   vercel_url:
     description: VercelのデプロイメントURL
     required: false
-  gce_status:
-    description: GCEデプロイの結果（本番環境のみ）
+  cloudrun_status:
+    description: Cloud Runデプロイの結果
+    required: false
+  cloudrun_url:
+    description: Cloud RunのデプロイメントURL
     required: false
   actor:
     description: 実行者
@@ -75,9 +78,9 @@ runs:
 
         # 全体のステータスを判定
         OVERALL_SUCCESS=true
-        if [ "${{ inputs.migration_status }}" == "failure" ] || 
-           [ "${{ inputs.vercel_status }}" == "failure" ] || 
-           [ "${{ inputs.environment }}" == "production" -a "${{ inputs.gce_status }}" == "failure" ]; then
+        if [ "${{ inputs.migration_status }}" == "failure" ] ||
+           [ "${{ inputs.vercel_status }}" == "failure" ] ||
+           [ "${{ inputs.cloudrun_status }}" == "failure" ]; then
           OVERALL_SUCCESS=false
         fi
 
@@ -180,24 +183,28 @@ runs:
           VERCEL_STATUS_TEXT="❌ 失敗"
         fi
 
-        # GCEデプロイ情報（本番環境のみ）
-        GCE_SECTION=""
-        if [ "${{ inputs.environment }}" == "production" ] && [ -n "${{ inputs.gce_status }}" ]; then
-          if [ "${{ inputs.gce_status }}" == "success" ]; then
-            GCE_STATUS_TEXT="✅ 成功"
-          elif [ "${{ inputs.gce_status }}" == "skipped" ]; then
-            GCE_STATUS_TEXT="⏭️ スキップ"
+        # Cloud Runデプロイ情報
+        CLOUDRUN_SECTION=""
+        if [ -n "${{ inputs.cloudrun_status }}" ]; then
+          if [ "${{ inputs.cloudrun_status }}" == "success" ]; then
+            if [ -n "${{ inputs.cloudrun_url }}" ]; then
+              CLOUDRUN_STATUS_TEXT="✅ 成功 | <${{ inputs.cloudrun_url }}|サービスを表示>"
+            else
+              CLOUDRUN_STATUS_TEXT="✅ 成功"
+            fi
+          elif [ "${{ inputs.cloudrun_status }}" == "skipped" ]; then
+            CLOUDRUN_STATUS_TEXT="⏭️ スキップ"
           else
-            GCE_STATUS_TEXT="❌ 失敗"
+            CLOUDRUN_STATUS_TEXT="❌ 失敗"
           fi
-          
-          GCE_SECTION=',
+
+          CLOUDRUN_SECTION=',
             {
               "type": "section",
               "fields": [
                 {
                   "type": "mrkdwn",
-                  "text": "*GCE ProxyServer:*\n'"${GCE_STATUS_TEXT}"'"
+                  "text": "*Cloud Run (MCP Proxy):*\n'"${CLOUDRUN_STATUS_TEXT}"'"
                 }
               ]
             }'
@@ -232,7 +239,7 @@ runs:
                   "text": "*Vercel:*\n${VERCEL_STATUS_TEXT}"
                 }
               ]
-            }${GCE_SECTION}${MIGRATION_SECTION}${PREVIEW_MIGRATION_SECTION},
+            }${CLOUDRUN_SECTION}${MIGRATION_SECTION}${PREVIEW_MIGRATION_SECTION},
             {
               "type": "divider"
             },

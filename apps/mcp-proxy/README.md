@@ -326,15 +326,28 @@ Authorization: Bearer tumiki_live_abc123...
 
 ## デプロイ
 
-Cloud Run向けに設計されています：
+### Cloud Run（推奨）
+
+本番環境での推奨デプロイ方法です。
+
+#### GitHub Actions経由（自動）
+
+- **ステージング**: Pull Request作成時に自動デプロイ
+- **本番**: `main` ブランチへマージ時に自動デプロイ
+
+#### ローカルから手動デプロイ
 
 ```bash
-# ビルド
-pnpm build
+# ステージング環境
+./scripts/deploy.sh --target cloudrun --stage staging
 
-# デプロイ（Cloud Build）
-gcloud builds submit
+# 本番環境
+./scripts/deploy.sh --target cloudrun --stage production
 ```
+
+#### 詳細ガイド
+
+詳細なセットアップ手順、運用管理、トラブルシューティングについては、[Cloud Run デプロイメントガイド](../../docs/cloudrun-mcp-proxy-deployment.md)を参照してください。
 
 ## アーキテクチャ
 
