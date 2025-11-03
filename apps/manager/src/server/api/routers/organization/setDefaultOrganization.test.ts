@@ -2,10 +2,24 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { type OrganizationId } from "@/schema/ids";
 import { type Db } from "@tumiki/db/server";
-import { type SessionData } from "~/auth";
+
+// SessionData型定義（~/authからの依存を回避するため）
+type SessionData = {
+  user: {
+    id: string;
+    sub: string;
+    email: string | null;
+    name: string | null;
+    image: string | null;
+  };
+  expires: string;
+};
 
 // server-onlyモジュールをモック
 vi.mock("server-only", () => ({}));
+
+// ~/authモジュールをモック（next-auth依存を回避）
+vi.mock("~/auth", () => ({}));
 
 // tRPCモジュールをモック
 vi.mock("@/server/api/trpc", () => ({
