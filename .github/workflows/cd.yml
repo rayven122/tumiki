@@ -71,9 +71,9 @@ jobs:
           database_url: ${{ secrets.DATABASE_URL_PREVIEW }}
           environment: preview
 
-  # 統合デプロイ（VercelとGCE）
+  # Vercelデプロイ
   deploy:
-    name: 🚀 統合デプロイ
+    name: 🚀 Vercelデプロイ
     needs: [setup, migrate-database]
     if: |
       always() &&
@@ -83,8 +83,8 @@ jobs:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
-      vercel_url: ${{ steps.deploy.outputs.vercel_url }}
-      deployment_url: ${{ steps.deploy.outputs.vercel_url }}
+      vercel_url: ${{ steps.deploy.outputs.url }}
+      deployment_url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -94,35 +94,18 @@ jobs:
       - name: Build packages
         uses: ./.github/actions/build-packages
 
-      - name: Determine deploy target
-        id: target
-        run: |
-          echo "target=vercel" >> $GITHUB_OUTPUT
-
-      - name: Configure git user for deployment
-        run: |
-          git config --global user.email "efficient122@gmail.com"
-          git config --global user.name "Tumiki Deploy Bot"
-
-      - name: Create deploy commit
-        run: |
-          git commit --allow-empty -m "chore: deploy commit for ${{ needs.setup.outputs.environment }} [skip ci]"
-
       - name: Deploy to Vercel
         id: deploy
-        uses: ./.github/actions/deploy
+        uses: ./.github/actions/deploy-vercel
         with:
-          target: ${{ steps.target.outputs.target }}
           stage: ${{ needs.setup.outputs.stage }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Comment deployment URL
         uses: ./.github/actions/comment-deployment
-        if: github.event_name == 'pull_request' && steps.deploy.outputs.vercel_url != ''
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.url != ''
         with:
-          deployment_url: ${{ steps.deploy.outputs.vercel_url }}
+          deployment_url: ${{ steps.deploy.outputs.url }}
           environment: ${{ needs.setup.outputs.environment }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
