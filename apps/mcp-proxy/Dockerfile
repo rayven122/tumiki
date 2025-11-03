@@ -97,9 +97,11 @@ ENV CI=true
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
+# Generate Prisma Client in production
+RUN cd packages/db && pnpm db:generate
+
 # Copy built artifacts
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
-COPY --from=build --chown=nodejs:nodejs /app/packages/db/node_modules/.prisma ./packages/db/node_modules/.prisma
 COPY --from=build --chown=nodejs:nodejs /app/apps/mcp-proxy/dist ./apps/mcp-proxy/dist
 
 # Switch to non-root user
