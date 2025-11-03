@@ -28,6 +28,9 @@ COPY .npmrc ./
 COPY packages/db/package.json ./packages/db/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
 
+# Copy Prisma schema BEFORE install (required for postinstall script)
+COPY packages/db/prisma ./packages/db/prisma
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile --prod=false
 
