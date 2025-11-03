@@ -143,30 +143,13 @@ jobs:
       - name: Build packages
         uses: ./.github/actions/build-packages
 
-      - name: Debug - Check Secrets availability
-        run: |
-          echo "Environment: ${{ needs.setup.outputs.environment }}"
-          if [ -n "$GCP_SA_KEY_STAGING" ]; then
-            echo "✅ GCP_SA_KEY_STAGING is available (length: ${#GCP_SA_KEY_STAGING})"
-          else
-            echo "❌ GCP_SA_KEY_STAGING is NOT available"
-          fi
-          if [ -n "$GCP_SA_KEY_PRODUCTION" ]; then
-            echo "✅ GCP_SA_KEY_PRODUCTION is available (length: ${#GCP_SA_KEY_PRODUCTION})"
-          else
-            echo "❌ GCP_SA_KEY_PRODUCTION is NOT available"
-          fi
-        env:
-          GCP_SA_KEY_STAGING: ${{ secrets.GCP_SA_KEY_STAGING }}
-          GCP_SA_KEY_PRODUCTION: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
-
       - name: Deploy to Cloud Run
         id: deploy-cloudrun
         uses: ./.github/actions/deploy-cloudrun
         with:
           environment: ${{ needs.setup.outputs.environment }}
           pr_number: ${{ needs.setup.outputs.pr_number }}
-          gcp_credentials: ${{ needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION || secrets.GCP_SA_KEY_STAGING }}
+          gcp_credentials: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           region: asia-northeast1
           min_instances: '0'
