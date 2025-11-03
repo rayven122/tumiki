@@ -6,7 +6,7 @@ import type { ArtifactKind } from "@/components/artifact";
 import type { DataStreamWriter } from "ai";
 import type { Document } from "@tumiki/db/prisma";
 import { saveDocument } from "../db/queries";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 export interface SaveDocumentProps {
   id: string;

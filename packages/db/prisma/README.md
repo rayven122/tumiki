@@ -54,16 +54,48 @@ erDiagram
   String id PK
   String name "nullable"
   String email UK "nullable"
+  DateTime emailVerified "nullable"
   String image "nullable"
   Role role
   String defaultOrganizationId FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
+"Account" {
+  String id PK
+  String userId FK
+  String type
+  String provider
+  String providerAccountId
+  String refresh_token "nullable"
+  String access_token "nullable"
+  Int expires_at "nullable"
+  String token_type "nullable"
+  String scope "nullable"
+  String id_token "nullable"
+  String session_state "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"Session" {
+  String id PK
+  String sessionToken UK
+  String userId FK
+  DateTime expires
+  DateTime createdAt
+  DateTime updatedAt
+}
+"VerificationToken" {
+  String identifier
+  String token
+  DateTime expires
+}
 "_OrganizationToUser" {
   String A FK
   String B FK
 }
+"Account" }o--|| "User" : user
+"Session" }o--|| "User" : user
 "_OrganizationToUser" }o--|| "User" : User
 ```
 
@@ -73,11 +105,50 @@ erDiagram
   - `id`: Auth0のユーザーID (sub) - 主キーとして使用
   - `name`: ユーザー名
   - `email`: メールアドレス
+  - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
   - `defaultOrganizationId`: デフォルトの組織ID
   - `createdAt`: 
   - `updatedAt`: 
+
+### `Account`
+Auth.js Adapter: OAuth プロバイダー連携情報
+
+**Properties**
+  - `id`: 
+  - `userId`: 
+  - `type`: 
+  - `provider`: 
+  - `providerAccountId`: 
+  - `refresh_token`: 
+  - `access_token`: 
+  - `expires_at`: 
+  - `token_type`: 
+  - `scope`: 
+  - `id_token`: 
+  - `session_state`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `Session`
+Auth.js Adapter: セッション情報
+
+**Properties**
+  - `id`: 
+  - `sessionToken`: 
+  - `userId`: 
+  - `expires`: 
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `VerificationToken`
+Auth.js Adapter: メール検証トークン
+
+**Properties**
+  - `identifier`: 
+  - `token`: 
+  - `expires`: 
 
 ### `_OrganizationToUser`
 Pair relationship table between [Organization](#Organization) and [User](#User)
@@ -751,6 +822,7 @@ erDiagram
   String id PK
   String name "nullable"
   String email UK "nullable"
+  DateTime emailVerified "nullable"
   String image "nullable"
   Role role
   String defaultOrganizationId FK "nullable"
@@ -856,6 +928,7 @@ MCPサーバーインスタンスとツールグループの関連を管理す�
   - `id`: Auth0のユーザーID (sub) - 主キーとして使用
   - `name`: ユーザー名
   - `email`: メールアドレス
+  - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
   - `defaultOrganizationId`: デフォルトの組織ID
@@ -969,6 +1042,7 @@ erDiagram
   String id PK
   String name "nullable"
   String email UK "nullable"
+  DateTime emailVerified "nullable"
   String image "nullable"
   Role role
   String defaultOrganizationId FK "nullable"
@@ -988,6 +1062,7 @@ erDiagram
   - `id`: Auth0のユーザーID (sub) - 主キーとして使用
   - `name`: ユーザー名
   - `email`: メールアドレス
+  - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
   - `defaultOrganizationId`: デフォルトの組織ID

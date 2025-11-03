@@ -20,6 +20,8 @@ model User {
   name                  String?
   /// メールアドレス
   email                 String?                  @unique
+  /// メールアドレス検証日時 (Auth.js required)
+  emailVerified         DateTime?
   /// プロフィール画像のURL
   image                 String?
   /// ユーザーの権限
@@ -44,4 +46,58 @@ model User {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   mcpServers McpServer[]
+
+  /// Auth.js adapter
+  accounts Account[]
+  sessions Session[]
+}
+
+/// @namespace Auth
+/// Auth.js Adapter: OAuth プロバイダー連携情報
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// @namespace Auth
+/// Auth.js Adapter: セッション情報
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// @namespace Auth
+/// Auth.js Adapter: メール検証トークン
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

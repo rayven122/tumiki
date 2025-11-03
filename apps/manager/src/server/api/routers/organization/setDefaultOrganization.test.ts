@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { type OrganizationId } from "@/schema/ids";
 import { type Db } from "@tumiki/db/server";
-import { type SessionData } from "@tumiki/auth";
+import { type SessionData } from "~/auth";
 
 // server-onlyモジュールをモック
 vi.mock("server-only", () => ({}));
@@ -34,23 +34,13 @@ const mockUserUpdate = vi.fn();
 const createMockContext = (): ProtectedContext => {
   const mockSession: SessionData = {
     user: {
+      id: mockUserId,
       sub: mockUserId,
-      email: undefined,
-      emailVerified: undefined,
-      name: undefined,
-      image: undefined,
+      email: null,
+      name: null,
+      image: null,
     },
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    tokenSet: {
-      accessToken: "mock_access_token",
-      idToken: "mock_id_token",
-      refreshToken: "mock_refresh_token",
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    },
-    internal: {
-      sid: "mock_session_id",
-      createdAt: Math.floor(Date.now() / 1000),
-    },
   };
 
   const mockDb = {
