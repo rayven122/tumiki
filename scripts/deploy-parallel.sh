@@ -11,27 +11,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 共通関数を読み込み
 source "${SCRIPT_DIR}/deploy-common.sh"
 
-# Vercel/GCEデプロイスクリプトを読み込み
+# Vercel/Cloud Runデプロイスクリプトを読み込み
 source "${SCRIPT_DIR}/deploy-vercel.sh"
-source "${SCRIPT_DIR}/deploy-gce.sh"
+source "${SCRIPT_DIR}/deploy-cloudrun.sh"
 
 # グローバル変数（プロセス管理用）
 VERCEL_PID=""
-GCE_PID=""
+CLOUDRUN_PID=""
 TEMP_DIR=""
 
 # 並列デプロイの結果を確認する
 check_deploy_results() {
     local vercel_status=$1
-    local gce_status=$2
+    local cloudrun_status=$2
 
-    if [ "$vercel_status" = "0" ] && [ "$gce_status" = "0" ]; then
+    if [ "$vercel_status" = "0" ] && [ "$cloudrun_status" = "0" ]; then
         log_info "✅ 並列デプロイが正常に完了しました"
         return 0
     else
         log_error "❌ 並列デプロイで問題が発生しました"
         [ "$vercel_status" != "0" ] && log_error "  - Vercelデプロイが失敗"
-        [ "$gce_status" != "0" ] && log_error "  - GCEデプロイが失敗"
+        [ "$cloudrun_status" != "0" ] && log_error "  - Cloud Runデプロイが失敗"
         return 1
     fi
 }
@@ -86,7 +86,7 @@ cleanup_parallel() {
 
     # 子プロセスのクリーンアップ
     [ -n "$VERCEL_PID" ] && terminate_process_group "$VERCEL_PID" "Vercel"
-    [ -n "$GCE_PID" ] && terminate_process_group "$GCE_PID" "GCE"
+    [ -n "$CLOUDRUN_PID" ] && terminate_process_group "$CLOUDRUN_PID" "Cloud Run"
 
     # 一時ファイル/ディレクトリのクリーンアップ
     if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
@@ -115,7 +115,7 @@ execute_parallel_deploy() {
     log_step "並列デプロイを開始します..."
 
     local vercel_success=1
-    local gce_success=1
+    local cloudrun_success=1
 
     # trapハンドラーを設定
     trap cleanup_parallel EXIT ERR INT TERM
@@ -139,33 +139,33 @@ execute_parallel_deploy() {
     ) &
     VERCEL_PID=$!
 
-    # GCEデプロイをバックグラウンドで開始（新しいプロセスグループとして）
+    # Cloud Runデプロイをバックグラウンドで開始（新しいプロセスグループとして）
     (
         # 新しいプロセスグループを作成
         set -m
-        if deploy_gce; then
-            echo "0" > "$TEMP_DIR/gce_status"
+        if deploy_cloudrun; then
+            echo "0" > "$TEMP_DIR/cloudrun_status"
         else
-            echo "1" > "$TEMP_DIR/gce_status"
+            echo "1" > "$TEMP_DIR/cloudrun_status"
         fi
     ) &
-    GCE_PID=$!
+    CLOUDRUN_PID=$!
 
     # 両方の完了を待機
     log_info "デプロイの完了を待機中..."
 
     # 各デプロイプロセスの完了を待機し、結果を取得
     vercel_success=$(wait_for_deploy_process "$VERCEL_PID" "Vercel" "$TEMP_DIR/vercel_status")
-    gce_success=$(wait_for_deploy_process "$GCE_PID" "GCE" "$TEMP_DIR/gce_status")
+    cloudrun_success=$(wait_for_deploy_process "$CLOUDRUN_PID" "Cloud Run" "$TEMP_DIR/cloudrun_status")
 
     # クリーンアップ
     rm -rf "$TEMP_DIR"
     TEMP_DIR=""
     VERCEL_PID=""
-    GCE_PID=""
+    CLOUDRUN_PID=""
 
     # 結果を確認
-    check_deploy_results "$vercel_success" "$gce_success"
+    check_deploy_results "$vercel_success" "$cloudrun_success"
 }
 
 # 並列デプロイ（外部から呼び出されるインターフェース）
@@ -188,7 +188,7 @@ deploy_parallel() {
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     export_common_vars
     check_vercel_prerequisites
-    check_gce_prerequisites
+    check_cloudrun_prerequisites
 
     # 並列デプロイ実行（準備処理を含む）
     deploy_parallel
