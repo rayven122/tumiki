@@ -26,7 +26,6 @@ COPY .npmrc ./
 
 # Copy all package.json files from packages and apps
 COPY packages/db/package.json ./packages/db/
-COPY tooling/tsup-config/package.json ./tooling/tsup-config/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
 
 # Install dependencies
@@ -39,15 +38,11 @@ FROM dependencies AS build
 
 # Copy source code
 COPY packages/db ./packages/db
-COPY tooling/tsup-config ./tooling/tsup-config
 COPY apps/mcp-proxy ./apps/mcp-proxy
 
 # Build packages in correct order
 WORKDIR /app/packages/db
 RUN pnpm db:generate && pnpm build
-
-WORKDIR /app/tooling/tsup-config
-RUN pnpm build
 
 # Build mcp-proxy
 WORKDIR /app/apps/mcp-proxy
@@ -74,7 +69,6 @@ WORKDIR /app
 COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
-COPY --chown=nodejs:nodejs tooling/tsup-config/package.json ./tooling/tsup-config/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
 
 # Install production dependencies only
@@ -83,7 +77,6 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy built artifacts
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/node_modules/.prisma ./packages/db/node_modules/.prisma
-COPY --from=build --chown=nodejs:nodejs /app/tooling/tsup-config/dist ./tooling/tsup-config/dist
 COPY --from=build --chown=nodejs:nodejs /app/apps/mcp-proxy/dist ./apps/mcp-proxy/dist
 
 # Copy Prisma schema for runtime
