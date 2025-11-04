@@ -6,6 +6,7 @@ import {
   isVerificationModeEnabled,
   validateVerificationMode,
 } from "~/lib/verification";
+import { getSessionToken } from "~/lib/session-utils";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -109,9 +110,7 @@ export async function middleware(request: NextRequest) {
 
   // Database strategy使用時、Edge RuntimeではPrismaにアクセスできないため
   // セッショントークンクッキーの存在のみをチェック
-  const sessionToken =
-    request.cookies.get("authjs.session-token") ??
-    request.cookies.get("__Secure-authjs.session-token");
+  const sessionToken = getSessionToken(request.cookies);
   const isLoggedIn = !!sessionToken;
 
   const publicPaths = ["/", "/jp", "/about", "/pricing", "/legal", "/error"];

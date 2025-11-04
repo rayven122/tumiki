@@ -1,5 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
+import { getKeycloakEnv } from "~/utils/env";
+import { getSessionToken } from "~/lib/session-utils";
+
+const keycloakEnv = getKeycloakEnv();
 
 /**
  * Auth.js設定 (Edge Runtime互換)
@@ -8,23 +12,16 @@ import Keycloak from "next-auth/providers/keycloak";
 export default {
   providers: [
     Keycloak({
-      clientId: process.env.KEYCLOAK_ID,
-      clientSecret: process.env.KEYCLOAK_SECRET,
-      issuer: process.env.KEYCLOAK_ISSUER,
+      clientId: keycloakEnv.KEYCLOAK_ID,
+      clientSecret: keycloakEnv.KEYCLOAK_SECRET,
+      issuer: keycloakEnv.KEYCLOAK_ISSUER,
     }),
   ],
-  trustHost: true,
-  pages: {
-    // signIn: "/" removed to allow Auth.js to handle OAuth flow automatically
-    error: "/error",
-  },
   callbacks: {
     authorized: ({ request: { nextUrl, cookies } }) => {
       // Database strategy使用時、middlewareではセッションの内容を検証できない
       // セッショントークンクッキーの存在のみをチェック
-      const sessionToken =
-        cookies.get("authjs.session-token") ??
-        cookies.get("__Secure-authjs.session-token");
+      const sessionToken = getSessionToken(cookies);
       const isLoggedIn = !!sessionToken;
 
       const publicPaths = [
