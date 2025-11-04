@@ -158,6 +158,89 @@ SELECT * FROM "Session" ORDER BY "expires" DESC LIMIT 5;
 SELECT id, email, name, image FROM "User" ORDER BY "createdAt" DESC LIMIT 5;
 ```
 
+#### 3.5 新規ユーザー登録機能の確認
+
+Keycloak設定で**ユーザー登録が有効化**されているため、新規ユーザーは以下の方法で登録できます。
+
+##### 登録ページへのアクセス方法
+
+1. **自動リダイレクト（推奨）**
+   - 未認証状態でTumikiアプリケーション（`https://local.tumiki.cloud:3000`）にアクセス
+   - NextAuth.jsが自動的にKeycloakログインページにリダイレクト
+   - Keycloakログインページの下部に「Register」リンクが表示される
+
+2. **直接アクセス**
+   - 開発環境: `http://localhost:8443/realms/tumiki/protocol/openid-connect/registrations?client_id=tumiki-manager&redirect_uri=https://local.tumiki.cloud:3000`
+   - 本番環境: Keycloakサーバーの設定に応じて適切なURLを使用
+
+##### 登録フロー
+
+1. **ユーザー情報の入力**
+   - メールアドレス（必須）
+   - パスワード（必須）
+   - 名前（オプション）
+
+2. **メール検証**
+   - `verifyEmail: true` が有効化されているため、登録後に確認メールが送信される
+   - ユーザーはメール内のリンクをクリックしてメールアドレスを検証
+
+3. **自動ユーザー作成**
+   - 初回ログイン時に `apps/manager/src/auth.ts:34-78` の `createUser` メソッドが呼ばれる
+   - Keycloakの`sub` IDを使用してUserテーブルにレコードが作成される
+   - メールアドレスが必須フィールドとして検証される
+
+##### 動作確認項目
+
+- [ ] 未認証状態でKeycloak登録ページが表示される
+- [ ] 新規ユーザー情報を入力して登録できる
+- [ ] メール検証が機能する（開発環境ではメールサーバー設定が必要）
+- [ ] 登録後、初回ログインでUserテーブルにレコードが作成される
+- [ ] Accountテーブルに認証情報が保存される
+- [ ] Sessionテーブルにセッションが作成される
+
+##### 開発環境でのメール設定（オプション）
+
+メール検証を開発環境でテストする場合、Keycloakのメールサーバー設定が必要です：
+
+1. Keycloak Admin Console（`http://localhost:8443/admin`）にログイン
+2. Realm Settings → Email タブを選択
+3. SMTP設定を入力（MailHog等のローカルメールサーバーを推奨）
+
+**MailHogの使用例**:
+```bash
+# MailHogをDockerで起動
+docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
+
+# Keycloak Email設定
+# Host: host.docker.internal (Dockerコンテナから)
+# Port: 1025
+# From: noreply@tumiki.cloud
+# Enable SSL: No
+# Enable Auth: No
+```
+
+メール確認は `http://localhost:8025` でアクセス可能。
+
+##### 注意事項
+
+⚠️ **メール検証を無効化する場合**
+
+開発環境でメール検証をスキップしたい場合：
+
+```json
+// docker/keycloak/tumiki-realm.json
+{
+  "verifyEmail": false  // メール検証を無効化
+}
+```
+
+変更後、Keycloakコンテナを再起動：
+```bash
+cd docker/keycloak
+docker compose down -v  # データも削除
+docker compose up -d
+```
+
 ### フェーズ4: 本番環境へのデプロイ
 
 #### 4.1 段階的ロールアウト（推奨）
