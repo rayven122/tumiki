@@ -92,6 +92,30 @@ gcloud artifacts repositories create tumiki \
   --description="Tumiki container images"
 ```
 
+#### クリーンアップポリシーの設定
+
+古いイメージを自動削除してストレージコストを削減します。
+
+```bash
+# クリーンアップポリシーを適用
+gcloud artifacts repositories set-cleanup-policies tumiki \
+  --location=asia-northeast1 \
+  --policy=.github/gcp/artifact-registry-cleanup-policy.json
+```
+
+**保持期間**:
+- Preview環境: 1日（86,400秒）
+- Staging環境: 3日（259,200秒）
+- Production環境: 7日（604,800秒）
+- Untaggedイメージ: 1日（86,400秒）
+
+**ポリシー確認**:
+```bash
+gcloud artifacts repositories describe tumiki \
+  --location=asia-northeast1 \
+  --format="value(cleanupPolicies)"
+```
+
 ### 2. Secret Manager でシークレット作成
 
 ```bash
