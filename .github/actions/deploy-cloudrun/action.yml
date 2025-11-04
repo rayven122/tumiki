@@ -142,7 +142,7 @@ runs:
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
           --set-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
-          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
+          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --no-cpu-throttling \
           $VPC_ARGS
