@@ -5,7 +5,7 @@ import {
   artifactKinds,
   documentHandlersByArtifactKind,
 } from "@/lib/artifacts/server";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 interface CreateDocumentProps {
   session: SessionData;

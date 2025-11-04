@@ -2,10 +2,24 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { type OrganizationId } from "@/schema/ids";
 import { type Db } from "@tumiki/db/server";
-import { type SessionData } from "@tumiki/auth";
+
+// SessionData型定義（~/authからの依存を回避するため）
+type SessionData = {
+  user: {
+    id: string;
+    sub: string;
+    email: string | null;
+    name: string | null;
+    image: string | null;
+  };
+  expires: string;
+};
 
 // server-onlyモジュールをモック
 vi.mock("server-only", () => ({}));
+
+// ~/authモジュールをモック（next-auth依存を回避）
+vi.mock("~/auth", () => ({}));
 
 // tRPCモジュールをモック
 vi.mock("@/server/api/trpc", () => ({
@@ -34,23 +48,13 @@ const mockUserUpdate = vi.fn();
 const createMockContext = (): ProtectedContext => {
   const mockSession: SessionData = {
     user: {
+      id: mockUserId,
       sub: mockUserId,
-      email: undefined,
-      emailVerified: undefined,
-      name: undefined,
-      image: undefined,
+      email: null,
+      name: null,
+      image: null,
     },
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    tokenSet: {
-      accessToken: "mock_access_token",
-      idToken: "mock_id_token",
-      refreshToken: "mock_refresh_token",
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    },
-    internal: {
-      sid: "mock_session_id",
-      createdAt: Math.floor(Date.now() / 1000),
-    },
   };
 
   const mockDb = {
