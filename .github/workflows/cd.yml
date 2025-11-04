@@ -126,14 +126,15 @@ jobs:
           environment: ${{ needs.setup.outputs.environment }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Cloud Runデプロイ（ステージング・本番両方で実行）
+  # Cloud Runデプロイ（ステージング・本番のみ。Preview環境はスキップ）
   deploy-cloudrun:
     name: 🚀 Cloud Runデプロイ
     needs: [setup, migrate-database]
     if: |
       always() &&
       needs.setup.result == 'success' &&
-      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
+      needs.setup.outputs.environment != 'preview' &&
+      (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
     runs-on:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
