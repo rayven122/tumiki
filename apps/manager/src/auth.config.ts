@@ -19,8 +19,16 @@ export default {
   ],
   callbacks: {
     authorized: ({ request: { nextUrl, cookies } }) => {
-      // Database strategy使用時、middlewareではセッションの内容を検証できない
-      // セッショントークンクッキーの存在のみをチェック
+      // ⚠️ セキュリティ上の制限:
+      // Database strategy使用時、Edge Runtimeで動作するmiddlewareでは
+      // Prismaにアクセスできないため、セッションの内容を検証できません。
+      // ここではセッショントークンクッキーの存在のみをチェックしています。
+      //
+      // 実際のセッション検証は、Node.js Runtimeで実行される各ルート
+      // （API routes、Server Components等）で auth() を呼び出す際に行われます。
+      //
+      // この実装では、悪意のあるユーザーが偽のクッキーを設定できる可能性がありますが、
+      // 実際のデータアクセスは各ルートでの auth() による検証で保護されます。
       const sessionToken = getSessionToken(cookies);
       const isLoggedIn = !!sessionToken;
 

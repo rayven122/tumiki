@@ -32,25 +32,49 @@ export const {
   adapter: {
     ...PrismaAdapter(db),
     createUser: async (user) => {
-      // KeycloakのsubをユーザーIDとして使用
-      const userId = user.id || crypto.randomUUID();
-      const createdUser = await db.user.create({
-        data: {
-          id: userId,
-          name: user.name,
-          email: user.email,
-          emailVerified: user.emailVerified,
-          image: user.image,
-        },
-      });
-      // AdapterUser型に変換（emailは必須）
-      return {
-        id: createdUser.id,
-        email: createdUser.email!,
-        emailVerified: createdUser.emailVerified,
-        name: createdUser.name,
-        image: createdUser.image,
-      };
+      try {
+        // KeycloakのsubをユーザーIDとして使用
+        const userId = user.id || crypto.randomUUID();
+
+        // emailの検証（必須フィールド）
+        if (!user.email) {
+          throw new Error(
+            "Email is required for user creation. Keycloak must be configured to provide email.",
+          );
+        }
+
+        const createdUser = await db.user.create({
+          data: {
+            id: userId,
+            name: user.name,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            image: user.image,
+          },
+        });
+
+        // データベースからのemailも検証（念のため）
+        if (!createdUser.email) {
+          throw new Error(
+            "User was created but email is null in database. This should not happen.",
+          );
+        }
+
+        // AdapterUser型に変換（emailは必須）
+        return {
+          id: createdUser.id,
+          email: createdUser.email,
+          emailVerified: createdUser.emailVerified,
+          name: createdUser.name,
+          image: createdUser.image,
+        };
+      } catch (error) {
+        console.error("[Auth] Failed to create user:", error);
+        // エラーを再スローして、Auth.jsが適切にハンドリングできるようにする
+        throw error instanceof Error
+          ? error
+          : new Error("User creation failed");
+      }
     },
   },
   session: {
