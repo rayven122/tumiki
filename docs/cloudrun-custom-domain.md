@@ -237,6 +237,8 @@ gcloud run services describe tumiki-mcp-proxy-pr-372 \
   --format='value(status.url)'
 ```
 
+**注意**: Preview環境のCloud Runサービスは、PRクローズ時に自動的に削除されます（`.github/workflows/cleanup-pr.yml` で実行）
+
 ## 🔍 トラブルシューティング
 
 ### SSL証明書が発行されない
@@ -259,6 +261,17 @@ gcloud run services describe tumiki-mcp-proxy-pr-372 \
 ```bash
 # 間違って設定した場合
 gcloud run domain-mappings delete stg-server.tumiki.cloud \
+  --region=asia-northeast1
+```
+
+### Preview環境のCloud Runサービス削除
+
+Preview環境のCloud Runサービスは、PRクローズ時に自動的に削除されます。
+
+手動で削除する場合：
+```bash
+# PR #372の例
+gcloud run services delete tumiki-mcp-proxy-pr-372 \
   --region=asia-northeast1
 ```
 

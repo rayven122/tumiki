@@ -49,11 +49,12 @@ graph TB
 
 ### トリガー → 環境判定
 
-| トリガー | 環境 | DB Migration |
-|---------|------|-------------|
-| PR作成/更新 | Preview | なし |
-| main push | Staging | staging + preview DB |
-| v* tag | Production | production DB |
+| トリガー | 環境 | DB Migration | Cloud Run |
+|---------|------|-------------|-----------|
+| PR作成/更新 | Preview | なし | PRごとのサービス作成 |
+| **PR クローズ** | - | - | **PRサービス自動削除** |
+| main push | Staging | staging + preview DB | staging サービス更新 |
+| v* tag | Production | production DB | production サービス更新 |
 
 ### ジョブの流れ
 
@@ -97,7 +98,7 @@ graph TB
 - **Preview環境**: 各PRごとに独立したCloud Runサービスを作成（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
   - 複数のPRが同時に存在可能
   - カスタムドメインは使用せず、自動生成URLを使用
-  - PRクローズ時は手動でCloud Runサービスを削除
+  - **PRクローズ時に自動的にCloud Runサービスを削除**（`cleanup-pr.yml` ワークフローで実行）
 - **Staging/Production環境**: 固定のCloud Runサービスを使用
   - **カスタムドメインは初回デプロイ時に自動設定されます**（GitHub Actionsで実行）
   - DNS設定が必要な場合は、デプロイログに手順が表示されます
@@ -191,10 +192,36 @@ Preview環境では、各PRごとに異なるCloud Run URLが生成されるた�
 **前提条件**: DNS設定が必要（初回のみ）
 詳細は [Vercel環境変数セットアップガイド](../../docs/vercel-environment-setup.md) を参照
 
+## 🧹 PR環境のクリーンアップ
+
+PRをクローズ（マージまたは単なるクローズ）すると、自動的にCloud Runサービスが削除されます。
+
+### 動作
+
+1. **トリガー**: PRのクローズ（`pull_request.closed` イベント）
+2. **処理**: 対応するCloud Runサービス（`tumiki-mcp-proxy-pr-{PR番号}`）を削除
+3. **結果**: リソースが自動的にクリーンアップされ、コストを削減
+
+### ワークフロー
+
+実装: `.github/workflows/cleanup-pr.yml`
+
+```yaml
+on:
+  pull_request:
+    types: [closed]
+```
+
+**利点**:
+- ✅ PRクローズ時に自動的にリソースを削除
+- ✅ 手動クリーンアップが不要
+- ✅ コスト削減（使用していないサービスを削除）
+
 ## 📚 関連ドキュメント
 
 - [deploy-vercel action](../actions/deploy-vercel/action.yml)
 - [deploy-cloudrun action](../actions/deploy-cloudrun/action.yml)
+- [cleanup-pr workflow](../workflows/cleanup-pr.yml) 🆕
 - [Vercel環境変数セットアップ](../../docs/vercel-environment-setup.md) ⚠️ **重要**
 - [Cloud Run デプロイメントガイド](../../docs/cloudrun-mcp-proxy-deployment.md)
 - [MCP Proxy README](../../apps/mcp-proxy/README.md)
