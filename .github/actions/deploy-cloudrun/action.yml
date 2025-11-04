@@ -124,7 +124,8 @@ runs:
           VPC_ARGS="--vpc-connector=tumiki-vpc-connector --vpc-egress=private-ranges-only"
           echo "VPC: tumiki-vpc-connector (private-ranges-only)"
         else
-          echo "VPC: Not using VPC connector for preview environment"
+          VPC_ARGS="--clear-vpc-connector"
+          echo "VPC: Clearing VPC connector for preview environment"
         fi
 
         # Deploy to Cloud Run
