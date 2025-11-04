@@ -1,0 +1,67 @@
+name: Cleanup PR Environment
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    name: 🧹 Cloud Run クリーンアップ
+    runs-on:
+      group: self-arc
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Delete Cloud Run service
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
+          REGION="asia-northeast1"
+
+          echo "🧹 Cleaning up Cloud Run service for PR #$PR_NUMBER"
+          echo "Service: $SERVICE_NAME"
+
+          # Check if service exists
+          if gcloud run services describe "$SERVICE_NAME" \
+              --region="$REGION" \
+              --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+
+            echo "🗑️  Deleting Cloud Run service..."
+
+            if gcloud run services delete "$SERVICE_NAME" \
+                --region="$REGION" \
+                --project="$GCP_PROJECT_ID" \
+                --quiet; then
+              echo "✅ Cloud Run service deleted successfully"
+            else
+              echo "❌ Failed to delete Cloud Run service"
+              exit 1
+            fi
+          else
+            echo "ℹ️  Cloud Run service not found (may not have been deployed)"
+            echo "   This is normal if the PR was closed before deployment completed"
+          fi
+
+      - name: Cleanup summary
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          echo "========================================="
+          echo "🧹 PR Environment Cleanup Complete"
+          echo "========================================="
+          echo "PR: #$PR_NUMBER"
+          echo "Merged: $PR_MERGED"
+          echo "Service: tumiki-mcp-proxy-pr-$PR_NUMBER"
+          echo "Status: Cleaned up"
+          echo "========================================="

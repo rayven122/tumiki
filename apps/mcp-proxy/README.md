@@ -342,6 +342,8 @@ Staging/Production環境には自動的にカスタムドメインが設定さ�
 
 **Preview環境**: 各PRごとに独立したCloud Runサービスが作成されます（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
 
+- PRクローズ時に自動的にCloud Runサービスが削除されます
+
 **Staging/Production**: 初回デプロイ時にGitHub Actionsが自動的にカスタムドメインを設定します。
 
 詳細は [Cloud Run カスタムドメイン設定](../../docs/cloudrun-custom-domain.md) を参照。

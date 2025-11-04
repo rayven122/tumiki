@@ -25,7 +25,7 @@ Artifact Registry の自動クリーンアップポリシー定義。
 
 ```bash
 # クリーンアップポリシーを適用
-gcloud artifacts repositories set-cleanup-policies tumiki \
+gcloud artifacts repositories set-cleanup-policies tumiki-mcp \
   --location=asia-northeast1 \
   --policy=.github/gcp/artifact-registry-cleanup-policy.json
 ```
@@ -34,7 +34,7 @@ gcloud artifacts repositories set-cleanup-policies tumiki \
 
 ```bash
 # 適用されたポリシーを確認
-gcloud artifacts repositories describe tumiki \
+gcloud artifacts repositories describe tumiki-mcp \
   --location=asia-northeast1 \
   --format="value(cleanupPolicies)"
 ```

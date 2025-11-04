@@ -4,17 +4,19 @@ Vercelの各環境で適切なCloud Run URLにアクセスするための設定�
 
 ## 🎯 環境別のCloud Run URL
 
-| Vercel環境     | Cloud Runサービス             | URLパターン | カスタムドメイン |
-| -------------- | ----------------------------- | ----------- | --------------- |
-| **Preview**    | `tumiki-mcp-proxy-pr-{PR番号}` | `https://tumiki-mcp-proxy-pr-{PR番号}-xxxxx.a.run.app` | なし（各PRごとに異なる） |
-| **Production** | `tumiki-mcp-proxy-production` | `https://tumiki-mcp-proxy-production-xxxxx.a.run.app` | `https://server.tumiki.cloud` |
+| Vercel環境     | Cloud Runサービス              | URLパターン                                            | カスタムドメイン              |
+| -------------- | ------------------------------ | ------------------------------------------------------ | ----------------------------- |
+| **Preview**    | `tumiki-mcp-proxy-pr-{PR番号}` | `https://tumiki-mcp-proxy-pr-{PR番号}-xxxxx.a.run.app` | なし（各PRごとに異なる）      |
+| **Production** | `tumiki-mcp-proxy-production`  | `https://tumiki-mcp-proxy-production-xxxxx.a.run.app`  | `https://server.tumiki.cloud` |
 
 **Preview環境の注意**:
+
 - 各PRごとに独立したCloud Runサービスが作成されます（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
 - URLはPRごとに異なるため、固定のカスタムドメインは使用しません
 - PR環境のCloud Run URLはGitHub Actionsのデプロイログで確認できます
 
 **Staging/Production環境**:
+
 - カスタムドメインは初回デプロイ時に自動的に設定されます（GitHub Actionsで実行）
 - DNS設定が必要な場合は、GitHub Actionsのログに手順が表示されます
 - DNS設定完了後、SSL証明書が自動発行されます（最大48時間）
@@ -26,10 +28,12 @@ Vercelの各環境で適切なCloud Run URLにアクセスするための設定�
 Preview環境では、各PRごとに異なるCloud Run URLが生成されます。
 
 **推奨アプローチ**:
+
 1. **ローカル開発**: `http://localhost:8080` を使用（`apps/manager/src/utils/url.ts` のデフォルト値）
 2. **PR環境での動作確認**: 必要に応じてGitHub Actionsのログから自動生成URLを確認
 
 **PR環境のCloud Run URLの確認方法**:
+
 ```bash
 # PR #372の例
 gcloud run services describe tumiki-mcp-proxy-pr-372 \
@@ -69,6 +73,7 @@ vercel env add NEXT_PUBLIC_MCP_PROXY_URL production
 ```
 
 **利点**:
+
 - ✅ 1回設定すれば、以降の手動設定は不要
 - ✅ URLが変更されないため、安定した運用が可能
 - ✅ GitHub Actionsで自動的にカスタムドメインが設定される

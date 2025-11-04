@@ -68,8 +68,8 @@ runs:
         # Build Docker image
         echo "🔨 Building Docker image..."
         docker build \
-          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
-          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:$ENVIRONMENT-latest \
+          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
+          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest \
           -f apps/mcp-proxy/Dockerfile \
           .
 
@@ -85,8 +85,8 @@ runs:
 
         # Push images to Artifact Registry
         echo "📦 Pushing Docker images to Artifact Registry..."
-        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:$ENVIRONMENT-$SHORT_SHA
-        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:$ENVIRONMENT-latest
+        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA
+        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest
 
         echo "✅ Docker images pushed successfully"
 
@@ -118,7 +118,7 @@ runs:
 
         # Deploy to Cloud Run
         gcloud run deploy "$SERVICE_NAME" \
-          --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
+          --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
           --region="$REGION" \
           --platform=managed \
           --allow-unauthenticated \

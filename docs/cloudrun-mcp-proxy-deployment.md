@@ -86,7 +86,7 @@ GitHub Actions → Docker Build → Artifact Registry → Cloud Run
 
 ```bash
 # Dockerイメージリポジトリを作成
-gcloud artifacts repositories create tumiki \
+gcloud artifacts repositories create tumiki-mcp \
   --repository-format=docker \
   --location=asia-northeast1 \
   --description="Tumiki container images"
@@ -98,7 +98,7 @@ gcloud artifacts repositories create tumiki \
 
 ```bash
 # クリーンアップポリシーを適用
-gcloud artifacts repositories set-cleanup-policies tumiki \
+gcloud artifacts repositories set-cleanup-policies tumiki-mcp \
   --location=asia-northeast1 \
   --policy=.github/gcp/artifact-registry-cleanup-policy.json
 ```
@@ -111,7 +111,7 @@ gcloud artifacts repositories set-cleanup-policies tumiki \
 
 **ポリシー確認**:
 ```bash
-gcloud artifacts repositories describe tumiki \
+gcloud artifacts repositories describe tumiki-mcp \
   --location=asia-northeast1 \
   --format="value(cleanupPolicies)"
 ```
@@ -234,15 +234,15 @@ gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 ```bash
 # Docker ビルド
-docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:staging-latest \
   -f apps/mcp-proxy/Dockerfile .
 
 # Artifact Registry へプッシュ
-docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest
+docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:staging-latest
 
 # Cloud Run へデプロイ
 gcloud run deploy tumiki-mcp-proxy-staging \
-  --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:staging-latest \
   --region=asia-northeast1
 ```
 
