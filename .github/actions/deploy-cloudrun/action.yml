@@ -103,12 +103,14 @@ runs:
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
 
-        # Determine service name based on environment
+        # Determine service name and secret environment based on environment
         if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
           SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
-          echo "🔵 Preview deployment for PR #$PR_NUMBER"
+          SECRET_ENV="staging"  # Preview環境ではstagingのシークレットを使用
+          echo "🔵 Preview deployment for PR #$PR_NUMBER (using staging secrets)"
         else
           SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
+          SECRET_ENV="$ENVIRONMENT"
         fi
 
         echo "🚀 Deploying to Cloud Run..."
@@ -130,7 +132,7 @@ runs:
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
           --set-env-vars=NODE_ENV=production,LOG_LEVEL=info \
-          --set-secrets=DATABASE_URL=tumiki-database-url-$ENVIRONMENT:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$ENVIRONMENT:latest \
+          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --vpc-connector=tumiki-vpc-connector \
           --vpc-egress=private-ranges-only
