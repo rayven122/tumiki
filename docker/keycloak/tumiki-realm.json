@@ -3,12 +3,13 @@
   "displayName": "Tumiki Platform",
   "enabled": true,
   "sslRequired": "external",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
   "resetPasswordAllowed": true,
   "rememberMe": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "verifyEmail": false,
+  "verifyEmail": true,
   "clients": [
     {
       "clientId": "tumiki-manager",
