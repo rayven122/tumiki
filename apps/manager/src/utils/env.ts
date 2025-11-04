@@ -12,12 +12,20 @@ const keycloakEnvSchema = z.object({
 /**
  * Keycloak環境変数を検証して取得
  * 環境変数が未設定または不正な場合はエラーをスロー
+ * CI環境ではダミー値を使用（ビルド時のみ必要、実際の認証は行われない）
  */
 export const getKeycloakEnv = () => {
+  // CI環境ではダミー値を使用
+  const isCI = process.env.CI === "true" || process.env.VERCEL === "1";
+
   const result = keycloakEnvSchema.safeParse({
-    KEYCLOAK_ID: process.env.KEYCLOAK_ID,
-    KEYCLOAK_SECRET: process.env.KEYCLOAK_SECRET,
-    KEYCLOAK_ISSUER: process.env.KEYCLOAK_ISSUER,
+    KEYCLOAK_ID:
+      process.env.KEYCLOAK_ID || (isCI ? "dummy-client-id" : undefined),
+    KEYCLOAK_SECRET:
+      process.env.KEYCLOAK_SECRET || (isCI ? "dummy-client-secret" : undefined),
+    KEYCLOAK_ISSUER:
+      process.env.KEYCLOAK_ISSUER ||
+      (isCI ? "https://dummy.keycloak.local/realms/tumiki" : undefined),
   });
 
   if (!result.success) {
