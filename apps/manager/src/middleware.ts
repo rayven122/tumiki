@@ -108,8 +108,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ⚠️ セキュリティ上の制限:
   // Database strategy使用時、Edge RuntimeではPrismaにアクセスできないため
-  // セッショントークンクッキーの存在のみをチェック
+  // セッショントークンクッキーの存在のみをチェックしています。
+  //
+  // 実際のセッション検証は、各保護されたルート（Server Components、API routes等）で
+  // auth() を呼び出す際に行われます。middleware はルーティング制御のみを担当します。
   const sessionToken = getSessionToken(request.cookies);
   const isLoggedIn = !!sessionToken;
 
