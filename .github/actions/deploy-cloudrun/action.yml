@@ -129,7 +129,7 @@ runs:
           --concurrency=80 \
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
-          --set-env-vars=NODE_ENV=production,PORT=8080,LOG_LEVEL=info \
+          --set-env-vars=NODE_ENV=production,LOG_LEVEL=info \
           --set-secrets=DATABASE_URL=tumiki-database-url-$ENVIRONMENT:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$ENVIRONMENT:latest \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --vpc-connector=tumiki-vpc-connector \
