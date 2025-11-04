@@ -39,6 +39,7 @@ export default {
         "/pricing",
         "/legal",
         "/error",
+        "/register",
       ];
 
       // 公開パスはログイン不要
