@@ -20,11 +20,11 @@ export const getKeycloakEnv = () => {
 
   const result = keycloakEnvSchema.safeParse({
     KEYCLOAK_ID:
-      process.env.KEYCLOAK_ID || (isCI ? "dummy-client-id" : undefined),
+      process.env.KEYCLOAK_ID ?? (isCI ? "dummy-client-id" : undefined),
     KEYCLOAK_SECRET:
-      process.env.KEYCLOAK_SECRET || (isCI ? "dummy-client-secret" : undefined),
+      process.env.KEYCLOAK_SECRET ?? (isCI ? "dummy-client-secret" : undefined),
     KEYCLOAK_ISSUER:
-      process.env.KEYCLOAK_ISSUER ||
+      process.env.KEYCLOAK_ISSUER ??
       (isCI ? "https://dummy.keycloak.local/realms/tumiki" : undefined),
   });
 
