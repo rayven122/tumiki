@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "id": "delete-preview-images",
+      "action": "delete",
+      "condition": {
+        "tagState": "TAGGED",
+        "tagPrefixes": ["preview-"],
+        "olderThan": "86400s"
+      }
+    },
+    {
+      "id": "delete-staging-images",
+      "action": "delete",
+      "condition": {
+        "tagState": "TAGGED",
+        "tagPrefixes": ["staging-"],
+        "olderThan": "259200s"
+      }
+    },
+    {
+      "id": "delete-production-images",
+      "action": "delete",
+      "condition": {
+        "tagState": "TAGGED",
+        "tagPrefixes": ["production-"],
+        "olderThan": "604800s"
+      }
+    },
+    {
+      "id": "delete-untagged-images",
+      "action": "delete",
+      "condition": {
+        "tagState": "UNTAGGED",
+        "olderThan": "86400s"
+      }
+    }
+  ]
+}
