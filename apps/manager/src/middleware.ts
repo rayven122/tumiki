@@ -117,7 +117,15 @@ export async function middleware(request: NextRequest) {
   const sessionToken = getSessionToken(request.cookies);
   const isLoggedIn = !!sessionToken;
 
-  const publicPaths = ["/", "/jp", "/about", "/pricing", "/legal", "/error"];
+  const publicPaths = [
+    "/",
+    "/jp",
+    "/about",
+    "/pricing",
+    "/legal",
+    "/error",
+    "/register",
+  ];
   const isPublicPath = publicPaths.some((path) => {
     if (path === "/legal") {
       return pathname.startsWith(path);
