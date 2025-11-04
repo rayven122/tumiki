@@ -1,0 +1,139 @@
+name: 'Deploy to Cloud Run'
+description: 'Deploy MCP Proxy to Google Cloud Run'
+
+inputs:
+  environment:
+    description: 'Deployment environment (preview|staging|production)'
+    required: true
+  pr_number:
+    description: 'Pull request number (for preview deployments)'
+    required: false
+  gcp_credentials:
+    description: 'GCP service account credentials JSON'
+    required: true
+  gcp_project_id:
+    description: 'GCP project ID'
+    required: true
+  region:
+    description: 'Cloud Run region'
+    required: false
+    default: 'asia-northeast1'
+  min_instances:
+    description: 'Minimum number of instances'
+    required: false
+    default: '0'
+  max_instances:
+    description: 'Maximum number of instances'
+    required: false
+    default: '3'
+
+outputs:
+  service_url:
+    description: 'Deployed Cloud Run service URL'
+    value: ${{ steps.deploy.outputs.service_url }}
+  health_url:
+    description: 'Health check URL'
+    value: ${{ steps.deploy.outputs.health_url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for GCP
+      shell: bash
+      run: |
+        gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+    - name: Build and Deploy
+      id: deploy
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+        REGION: ${{ inputs.region }}
+        MIN_INSTANCES: ${{ inputs.min_instances }}
+        MAX_INSTANCES: ${{ inputs.max_instances }}
+      run: |
+        echo "🚀 Starting Cloud Run deployment"
+        echo "Environment: $ENVIRONMENT"
+
+        # Get short SHA
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        echo "Commit SHA: $SHORT_SHA"
+
+        # Build Docker image
+        echo "🔨 Building Docker image..."
+        docker build \
+          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
+          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest \
+          -f apps/mcp-proxy/Dockerfile \
+          .
+
+        echo "✅ Docker image built successfully"
+
+        # Push images
+        echo "📤 Pushing Docker images to Artifact Registry..."
+        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA
+        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest
+
+        echo "✅ Docker images pushed successfully"
+
+        # Determine service name and secret environment based on environment
+        if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
+          SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
+          SECRET_ENV="staging"  # Preview環境ではstagingのシークレットを使用
+          echo "🔵 Preview deployment for PR #$PR_NUMBER (using staging secrets)"
+        else
+          SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
+          SECRET_ENV="$ENVIRONMENT"
+        fi
+
+        echo "🚀 Deploying to Cloud Run..."
+        echo "Service: $SERVICE_NAME"
+        echo "Region: $REGION"
+        echo "Scaling: Min $MIN_INSTANCES / Max $MAX_INSTANCES"
+
+        # VPCコネクターの設定（preview環境では使用しない）
+        VPC_ARGS=""
+        if [ "$ENVIRONMENT" != "preview" ]; then
+          VPC_ARGS="--vpc-connector=tumiki-vpc-connector --vpc-egress=private-ranges-only"
+        fi
+
+        # Deploy to Cloud Run
+        gcloud run deploy "$SERVICE_NAME" \
+          --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
+          --region="$REGION" \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8080 \
+          --memory=512Mi \
+          --cpu=1 \
+          --timeout=60s \
+          --concurrency=80 \
+          --min-instances="$MIN_INSTANCES" \
+          --max-instances="$MAX_INSTANCES" \
+          --set-env-vars=NODE_ENV=production,LOG_LEVEL=info \
+          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
+          --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
+          $VPC_ARGS
+
+        # Get service URL
+        SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
+          --region="$REGION" \
+          --project="$GCP_PROJECT_ID" \
+          --format='value(status.url)')
+
+        echo "✅ Deployment completed"
+        echo "Service URL: $SERVICE_URL"
+
+        # Output for GitHub Actions
+        echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
+        echo "health_url=$SERVICE_URL/health" >> $GITHUB_OUTPUT
