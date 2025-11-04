@@ -118,6 +118,15 @@ runs:
         echo "Region: $REGION"
         echo "Scaling: Min $MIN_INSTANCES / Max $MAX_INSTANCES"
 
+        # VPCコネクターの設定（preview環境では使用しない）
+        VPC_ARGS=""
+        if [ "$ENVIRONMENT" != "preview" ]; then
+          VPC_ARGS="--vpc-connector=tumiki-vpc-connector --vpc-egress=private-ranges-only"
+          echo "VPC: tumiki-vpc-connector (private-ranges-only)"
+        else
+          echo "VPC: Not using VPC connector for preview environment"
+        fi
+
         # Deploy to Cloud Run
         gcloud run deploy "$SERVICE_NAME" \
           --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
@@ -134,8 +143,7 @@ runs:
           --set-env-vars=NODE_ENV=production,LOG_LEVEL=info \
           --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
-          --vpc-connector=tumiki-vpc-connector \
-          --vpc-egress=private-ranges-only
+          $VPC_ARGS
 
         # Get service URL
         SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
