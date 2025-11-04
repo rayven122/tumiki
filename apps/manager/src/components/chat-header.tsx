@@ -12,7 +12,7 @@ import { useSidebar } from "./ui/chat/sidebar";
 import { memo } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
 import { type VisibilityType, VisibilitySelector } from "./visibility-selector";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 function PureChatHeader({
   chatId,

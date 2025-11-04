@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { useUser } from "@tumiki/auth/client";
+import { useSession } from "next-auth/react";
 import {
   Settings,
   Bell,
@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 
 const SettingsPage = () => {
-  const { user } = useUser();
+  const { data: session } = useSession();
+  const user = session?.user;
 
   return (
     <div className="relative container mx-auto space-y-6 py-6">
