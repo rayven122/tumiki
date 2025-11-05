@@ -52,7 +52,7 @@ describe("devKeycloakAuth", () => {
       const res = await app.request("/test");
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as { jwtPayload: unknown };
       expect(body.jwtPayload).toStrictEqual({
         sub: "dev-user-id",
         azp: "dev-client-id",
@@ -93,13 +93,19 @@ describe("devKeycloakAuth", () => {
       const res = await app.request("/test");
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as { jwtPayload: unknown };
 
       // ダミーペイロードの内容を確認
-      expect(body.jwtPayload.sub).toBe("dev-user-id");
-      expect(body.jwtPayload.azp).toBe("dev-client-id");
-      expect(body.jwtPayload.scope).toBe("mcp:access:*");
-      expect(body.jwtPayload.organization_id).toBe("dev-org-id");
+      const jwtPayload = body.jwtPayload as {
+        sub: string;
+        azp: string;
+        scope: string;
+        organization_id: string;
+      };
+      expect(jwtPayload.sub).toBe("dev-user-id");
+      expect(jwtPayload.azp).toBe("dev-client-id");
+      expect(jwtPayload.scope).toBe("mcp:access:*");
+      expect(jwtPayload.organization_id).toBe("dev-org-id");
     });
   });
 });

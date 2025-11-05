@@ -196,6 +196,7 @@ export const integratedAuthMiddleware = async (
       };
 
       c.set("authInfo", authInfo);
+      await next();
       return;
     } catch (error) {
       logError("JWT authentication failed", error as Error);
