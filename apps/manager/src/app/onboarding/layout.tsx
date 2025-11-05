@@ -1,6 +1,6 @@
 import { Header } from "@/app/_components/Header";
 import { redirect } from "next/navigation";
-import { auth } from "@tumiki/auth/server";
+import { auth } from "~/auth";
 
 export default async function OnboardingLayout({
   children,

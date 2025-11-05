@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { OrganizationNavigation } from "@/app/_components/OrganizationNavigation";
 import { HeaderClient } from "@/app/_components/HeaderClient";
-import { auth } from "@tumiki/auth/server";
+import { auth } from "~/auth";
 
 export const Header = async () => {
   const session = await auth();
@@ -11,7 +11,7 @@ export const Header = async () => {
     ? {
         name: session.user.name,
         email: session.user.email,
-        picture: session.user.picture,
+        picture: session.user.image,
       }
     : undefined;
   return (

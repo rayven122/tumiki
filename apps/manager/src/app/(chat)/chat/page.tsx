@@ -5,7 +5,7 @@ import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateCUID } from "@/lib/utils";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { redirect } from "next/navigation";
-import { auth } from "@tumiki/auth/server";
+import { auth } from "~/auth";
 
 export default async function Page() {
   const session = await auth();

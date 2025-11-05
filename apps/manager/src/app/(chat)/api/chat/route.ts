@@ -5,7 +5,7 @@ import {
   smoothStream,
   streamText,
 } from "ai";
-import { auth } from "@tumiki/auth/server";
+import { auth } from "~/auth";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import {
   createStreamId,

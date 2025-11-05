@@ -18,6 +18,7 @@ const mockInvalidate = vi.fn();
 const mockUseUtils = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
+const mockUseSession = vi.fn();
 
 // tRPC APIのモック
 vi.mock("@/trpc/react", () => ({
@@ -40,6 +41,12 @@ vi.mock("@/utils/client/toast", () => ({
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
+}));
+
+// next-authのモック
+vi.mock("next-auth/react", () => ({
+  useSession: () => mockUseSession(),
+  SessionProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
 // window.location.reloadのモック
@@ -87,6 +94,16 @@ describe("useOrganizationContext", () => {
           invalidate: mockInvalidate,
         },
       },
+    });
+    // mockUseSessionのデフォルト実装
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          id: "user_1",
+          email: "test@example.com",
+        },
+      },
+      status: "authenticated",
     });
   });
 

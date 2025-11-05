@@ -4,7 +4,7 @@ import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@tumiki/db/prisma";
 import { generateCUID } from "@/lib/utils";
 import { myProvider } from "../providers";
-import type { SessionData } from "@tumiki/auth";
+import type { SessionData } from "~/auth";
 
 interface RequestSuggestionsProps {
   session: SessionData;
