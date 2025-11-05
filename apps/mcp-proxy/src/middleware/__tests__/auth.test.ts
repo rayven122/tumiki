@@ -141,7 +141,9 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { authInfo: { organizationId: string } };
+      const body = (await res.json()) as {
+        authInfo: { organizationId: string };
+      };
       expect(body.authInfo.organizationId).toBe("org-id");
     });
 
@@ -173,7 +175,9 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { authInfo: { organizationId: string } };
+      const body = (await res.json()) as {
+        authInfo: { organizationId: string };
+      };
       expect(body.authInfo.organizationId).toBe("org-id-2");
     });
   });
