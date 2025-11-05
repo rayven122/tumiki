@@ -1,11 +1,12 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { integratedAuthMiddleware } from "../auth.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定
 vi.mock("../keycloakAuth.js", () => ({
-  devKeycloakAuth: vi.fn(async (c, next) => {
+  devKeycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
     // モック JWT ペイロード
     c.set("jwtPayload", {
       sub: "test-user-id",
@@ -13,7 +14,7 @@ vi.mock("../keycloakAuth.js", () => ({
       scope: "mcp:access:*",
       organization_id: "test-org-id",
     });
-    await next();
+    // next() は integratedAuthMiddleware が呼び出す
   }),
 }));
 
@@ -52,7 +53,7 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as { authInfo: unknown };
       expect(body.authInfo).toStrictEqual({
         organizationId: "test-org-id",
         mcpServerInstanceId: "jwt-instance",
@@ -64,9 +65,8 @@ describe("integratedAuthMiddleware", () => {
     test("JWTペイロードがない場合は401エラー", async () => {
       // devKeycloakAuth がペイロードを設定しない場合をモック
       const { devKeycloakAuth } = await import("../keycloakAuth.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(async (c, next) => {
+      vi.mocked(devKeycloakAuth).mockImplementationOnce(async () => {
         // jwtPayload を設定しない
-        await next();
       });
 
       const res = await app.request("/test", {
@@ -117,16 +117,22 @@ describe("integratedAuthMiddleware", () => {
       const { db } = await import("@tumiki/db/server");
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
         id: "api-key-id",
+        name: "test-key",
         apiKey: "tumiki_test_key",
+        apiKeyHash: null,
         userMcpServerInstanceId: "instance-id",
+        userId: "user-id",
         isActive: true,
+        lastUsedAt: null,
+        expiresAt: null,
         userMcpServerInstance: {
           organizationId: "org-id",
         },
         createdAt: new Date(),
         updatedAt: new Date(),
         scopes: [],
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const res = await app.request("/test", {
         headers: {
@@ -135,7 +141,7 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as { authInfo: { organizationId: string } };
       expect(body.authInfo.organizationId).toBe("org-id");
     });
 
@@ -143,16 +149,22 @@ describe("integratedAuthMiddleware", () => {
       const { db } = await import("@tumiki/db/server");
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
         id: "api-key-id",
+        name: "test-key",
         apiKey: "test-api-key",
+        apiKeyHash: null,
         userMcpServerInstanceId: "instance-id",
+        userId: "user-id",
         isActive: true,
+        lastUsedAt: null,
+        expiresAt: null,
         userMcpServerInstance: {
           organizationId: "org-id-2",
         },
         createdAt: new Date(),
         updatedAt: new Date(),
         scopes: [],
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const res = await app.request("/test", {
         headers: {
@@ -161,7 +173,7 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as { authInfo: { organizationId: string } };
       expect(body.authInfo.organizationId).toBe("org-id-2");
     });
   });
@@ -193,7 +205,7 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(401);
-      const body = await res.json();
+      const body = (await res.json()) as { error: { message: string } };
       expect(body.error.message).toBe("Authentication required");
     });
   });
@@ -207,7 +219,9 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        authInfo: { mcpServerInstanceId: string };
+      };
       // JWT 認証の結果を確認
       expect(body.authInfo.mcpServerInstanceId).toBe("jwt-instance");
     });
@@ -216,16 +230,22 @@ describe("integratedAuthMiddleware", () => {
       const { db } = await import("@tumiki/db/server");
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
         id: "api-key-id",
+        name: "test-key",
         apiKey: "tumiki_test",
+        apiKeyHash: null,
         userMcpServerInstanceId: "api-instance-id",
+        userId: "user-id",
         isActive: true,
+        lastUsedAt: null,
+        expiresAt: null,
         userMcpServerInstance: {
           organizationId: "api-org-id",
         },
         createdAt: new Date(),
         updatedAt: new Date(),
         scopes: [],
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const res = await app.request("/test", {
         headers: {
@@ -234,7 +254,9 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        authInfo: { mcpServerInstanceId: string };
+      };
       // API Key 認証の結果を確認
       expect(body.authInfo.mcpServerInstanceId).toBe("api-instance-id");
     });
