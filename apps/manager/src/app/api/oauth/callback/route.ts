@@ -136,7 +136,10 @@ const exchangeCodeForToken = async (
 
     return { tokenData: result.token as OAuthTokenData };
   } catch (error) {
-    console.error("[Token Request Error]", error);
+    console.error("[Token Request Error]", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      // トークンやセンシティブな情報は除外
+    });
 
     await db.oAuthSession.update({
       where: { id: oauthSession.id },
