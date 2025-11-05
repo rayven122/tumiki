@@ -111,7 +111,21 @@ const injectApiKeyHeaders = (
 ): void => {
   try {
     // envVarsをパース
-    const envVars = JSON.parse(userMcpConfig.envVars) as Record<string, string>;
+    let envVars: Record<string, string>;
+    try {
+      const parsed: unknown = JSON.parse(userMcpConfig.envVars);
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        throw new Error("Invalid envVars format");
+      }
+      envVars = parsed as Record<string, string>;
+    } catch (parseError) {
+      logError("Failed to parse envVars", parseError as Error);
+      throw new Error("Invalid environment variables configuration");
+    }
 
     // MCPサーバーで定義されたenvVarsのキー名を使用
     // 例: ["X-API-Key"] → headers["X-API-Key"] = envVars["X-API-Key"]

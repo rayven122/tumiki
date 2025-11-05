@@ -157,13 +157,20 @@ export const POST = async (request: Request) => {
       expiresAt: oauthSession.expiresAt.toISOString(),
     });
   } catch (error) {
-    console.error("[OAuth Authorize Error]", error);
+    console.error("[OAuth Authorize Error]", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      // センシティブな情報は除外
+    });
     return NextResponse.json(
       {
         error: "Failed to initiate OAuth flow",
-        ...(process.env.NODE_ENV === "development" && {
-          details: error instanceof Error ? error.message : "Unknown error",
-        }),
+        // 本番環境では一般的なエラーメッセージのみ
+        details:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.message
+              : "Unknown error"
+            : undefined,
       },
       { status: 500 },
     );
