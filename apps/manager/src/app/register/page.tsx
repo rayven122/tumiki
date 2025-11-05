@@ -78,8 +78,9 @@ const RegisterPage = () => {
         return;
       }
 
-      // 登録成功 - サインインページにリダイレクト
-      router.push("/api/auth/signin");
+      // 登録成功 - 自動ログイン完了、オンボーディングページにリダイレクト
+      router.push("/onboarding");
+      router.refresh(); // セッション状態を更新
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setLoading(false);

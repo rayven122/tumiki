@@ -8,7 +8,6 @@ import { createRemoteMcpServer } from "./create";
 import { initiateOAuth } from "./initiateOAuth";
 import { updateCredentials } from "./updateCredentials";
 import { testConnection } from "./testConnection";
-import { listTemplates } from "./listTemplates";
 
 /**
  * リモートMCPサーバー作成の入力スキーマ
@@ -100,9 +99,4 @@ export const remoteMcpServerRouter = createTRPCRouter({
   testConnection: protectedProcedure
     .input(TestConnectionInput)
     .query(testConnection),
-
-  /**
-   * テンプレート一覧を取得
-   */
-  listTemplates: protectedProcedure.query(listTemplates),
 });

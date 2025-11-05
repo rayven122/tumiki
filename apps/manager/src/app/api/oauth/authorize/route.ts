@@ -98,9 +98,14 @@ export const POST = async (request: Request) => {
     const pkceParams = await generatePKCEParams();
 
     // リダイレクトURI（環境変数から取得）
+    // 注: DCR登録時と同じロジックを使用して一貫性を保つ
+    const baseUrl =
+      process.env.NEXTAUTH_URL ??
+      request.headers.get("origin") ??
+      "https://local.tumiki.cloud:3000";
     const redirectUri =
       process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI ??
-      `${request.headers.get("origin")}/api/oauth/callback`;
+      `${baseUrl}/api/oauth/callback`;
 
     // スコープ（指定されていなければデフォルト）
     const requestedScopes =
