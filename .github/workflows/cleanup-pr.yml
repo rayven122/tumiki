@@ -27,28 +27,28 @@ jobs:
           SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
           REGION="asia-northeast1"
 
-          echo "🧹 Cleaning up Cloud Run service for PR #$PR_NUMBER"
-          echo "Service: $SERVICE_NAME"
+          echo "🧹 PR #$PR_NUMBER のCloud Runサービスをクリーンアップ中"
+          echo "サービス: $SERVICE_NAME"
 
           # Check if service exists
           if gcloud run services describe "$SERVICE_NAME" \
               --region="$REGION" \
               --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
 
-            echo "🗑️  Deleting Cloud Run service..."
+            echo "🗑️  Cloud Runサービスを削除中..."
 
             if gcloud run services delete "$SERVICE_NAME" \
                 --region="$REGION" \
                 --project="$GCP_PROJECT_ID" \
                 --quiet; then
-              echo "✅ Cloud Run service deleted successfully"
+              echo "✅ Cloud Runサービスの削除が完了しました"
             else
-              echo "❌ Failed to delete Cloud Run service"
+              echo "❌ Cloud Runサービスの削除に失敗しました"
               exit 1
             fi
           else
-            echo "ℹ️  Cloud Run service not found (may not have been deployed)"
-            echo "   This is normal if the PR was closed before deployment completed"
+            echo "ℹ️  Cloud Runサービスが見つかりません（デプロイされていない可能性があります）"
+            echo "   PRがデプロイ完了前にクローズされた場合、これは正常な状態です"
           fi
 
       - name: Cleanup summary
@@ -58,10 +58,10 @@ jobs:
           PR_MERGED: ${{ github.event.pull_request.merged }}
         run: |
           echo "========================================="
-          echo "🧹 PR Environment Cleanup Complete"
+          echo "🧹 PR環境のクリーンアップが完了しました"
           echo "========================================="
           echo "PR: #$PR_NUMBER"
-          echo "Merged: $PR_MERGED"
-          echo "Service: tumiki-mcp-proxy-pr-$PR_NUMBER"
-          echo "Status: Cleaned up"
+          echo "マージ済み: $PR_MERGED"
+          echo "サービス: tumiki-mcp-proxy-pr-$PR_NUMBER"
+          echo "ステータス: クリーンアップ完了"
           echo "========================================="
