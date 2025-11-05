@@ -7,6 +7,7 @@ import { type ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { type CreateRemoteMcpServerInput } from ".";
 import { performDCR, DCRError } from "@/lib/oauth/dcr";
+import { getOAuthRedirectUri } from "@/lib/oauth/utils";
 
 type CreateRemoteMcpServerProps = {
   ctx: ProtectedContext;
@@ -93,11 +94,7 @@ export const createRemoteMcpServer = async ({
       try {
         // リダイレクトURIを構築
         // 注: 環境変数が未設定の場合はデフォルト値を使用
-        const baseUrl =
-          process.env.NEXTAUTH_URL ?? "https://local.tumiki.cloud:3000";
-        const redirectUri =
-          process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI ??
-          `${baseUrl}/api/oauth/callback`;
+        const redirectUri = getOAuthRedirectUri();
 
         // DCRを実行
         const dcrResult = await performDCR(
