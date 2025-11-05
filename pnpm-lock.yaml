@@ -207,6 +207,9 @@ importers:
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@tumiki/oauth-token-manager':
+        specifier: workspace:*
+        version: link:../../packages/oauth-token-manager
       '@uiw/react-json-view':
         specifier: 2.0.0-alpha.34
         version: 2.0.0-alpha.34(@babel/runtime@7.28.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
