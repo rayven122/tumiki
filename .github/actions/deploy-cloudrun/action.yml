@@ -118,14 +118,14 @@ runs:
         echo "リージョン: $REGION"
         echo "スケーリング: 最小 $MIN_INSTANCES / 最大 $MAX_INSTANCES"
 
-        # VPCコネクターの設定（preview環境では使用しない）
+        # VPCコネクターの設定（production環境のみ使用）
         VPC_ARGS=""
-        if [ "$ENVIRONMENT" != "preview" ]; then
+        if [ "$ENVIRONMENT" = "production" ]; then
           VPC_ARGS="--vpc-connector=tumiki-vpc-connector --vpc-egress=private-ranges-only"
           echo "VPC: tumiki-vpc-connector (private-ranges-only)"
         else
           VPC_ARGS="--clear-vpc-connector"
-          echo "VPC: Preview環境ではVPCコネクターをクリアします"
+          echo "VPC: $ENVIRONMENT 環境ではVPCコネクターを使用しません"
         fi
 
         # Deploy to Cloud Run
