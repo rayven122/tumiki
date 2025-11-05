@@ -40,7 +40,7 @@ export const GET = async (request: NextRequest) => {
       console.error("[OAuth Callback Error]", error, errorDescription);
       return NextResponse.redirect(
         new URL(
-          `/dashboard/mcp-servers?error=${encodeURIComponent(error)}`,
+          `/mcp/servers?error=${encodeURIComponent(error)}`,
           request.url,
         ),
       );
@@ -48,10 +48,7 @@ export const GET = async (request: NextRequest) => {
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL(
-          "/dashboard/mcp-servers?error=Missing+code+or+state",
-          request.url,
-        ),
+        new URL("/mcp/servers?error=Missing+code+or+state", request.url),
       );
     }
 
@@ -65,7 +62,7 @@ export const GET = async (request: NextRequest) => {
 
     if (!oauthSession) {
       return NextResponse.redirect(
-        new URL("/dashboard/mcp-servers?error=Invalid+session", request.url),
+        new URL("/mcp/servers?error=Invalid+session", request.url),
       );
     }
 
@@ -77,14 +74,14 @@ export const GET = async (request: NextRequest) => {
       });
 
       return NextResponse.redirect(
-        new URL("/dashboard/mcp-servers?error=Session+expired", request.url),
+        new URL("/mcp/servers?error=Session+expired", request.url),
       );
     }
 
     // ユーザーID確認
     if (oauthSession.userId !== userId) {
       return NextResponse.redirect(
-        new URL("/dashboard/mcp-servers?error=User+mismatch", request.url),
+        new URL("/mcp/servers?error=User+mismatch", request.url),
       );
     }
 
@@ -105,7 +102,7 @@ export const GET = async (request: NextRequest) => {
       });
 
       return NextResponse.redirect(
-        new URL("/dashboard/mcp-servers?error=Server+not+found", request.url),
+        new URL("/mcp/servers?error=Server+not+found", request.url),
       );
     }
 
@@ -153,10 +150,7 @@ export const GET = async (request: NextRequest) => {
       });
 
       return NextResponse.redirect(
-        new URL(
-          "/dashboard/mcp-servers?error=Token+request+failed",
-          request.url,
-        ),
+        new URL("/mcp/servers?error=Token+request+failed", request.url),
       );
     }
 
@@ -169,10 +163,7 @@ export const GET = async (request: NextRequest) => {
 
     if (!userOrg) {
       return NextResponse.redirect(
-        new URL(
-          "/dashboard/mcp-servers?error=Organization+not+found",
-          request.url,
-        ),
+        new URL("/mcp/servers?error=Organization+not+found", request.url),
       );
     }
 
@@ -246,10 +237,10 @@ export const GET = async (request: NextRequest) => {
       },
     });
 
-    // 成功時、ダッシュボードにリダイレクト
+    // 成功時、MCPサーバー一覧ページにリダイレクト
     return NextResponse.redirect(
       new URL(
-        `/dashboard/mcp-servers?success=OAuth+authentication+completed`,
+        `/mcp/servers?success=OAuth+authentication+completed`,
         request.url,
       ),
     );
@@ -257,7 +248,7 @@ export const GET = async (request: NextRequest) => {
     console.error("[OAuth Callback Error]", error);
     return NextResponse.redirect(
       new URL(
-        `/dashboard/mcp-servers?error=${encodeURIComponent(
+        `/mcp/servers?error=${encodeURIComponent(
           error instanceof Error ? error.message : "Unknown error",
         )}`,
         request.url,
