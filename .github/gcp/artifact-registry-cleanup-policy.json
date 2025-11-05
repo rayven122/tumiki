@@ -1,0 +1,37 @@
+[
+  {
+    "name": "delete-preview-images",
+    "action": {"type": "Delete"},
+    "condition": {
+      "tagState": "TAGGED",
+      "tagPrefixes": ["preview-"],
+      "olderThan": "86400s"
+    }
+  },
+  {
+    "name": "delete-staging-images",
+    "action": {"type": "Delete"},
+    "condition": {
+      "tagState": "TAGGED",
+      "tagPrefixes": ["staging-"],
+      "olderThan": "259200s"
+    }
+  },
+  {
+    "name": "delete-production-images",
+    "action": {"type": "Delete"},
+    "condition": {
+      "tagState": "TAGGED",
+      "tagPrefixes": ["production-"],
+      "olderThan": "604800s"
+    }
+  },
+  {
+    "name": "delete-untagged-images",
+    "action": {"type": "Delete"},
+    "condition": {
+      "tagState": "UNTAGGED",
+      "olderThan": "86400s"
+    }
+  }
+]
