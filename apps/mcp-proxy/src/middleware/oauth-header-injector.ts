@@ -85,7 +85,7 @@ const injectOAuthHeaders = async (
   } catch (error) {
     if (error instanceof ReAuthRequiredError) {
       // 再認証が必要な場合
-      logError("OAuth re-authentication required", error);
+      logError("OAuth re-authentication required", error as Error);
 
       throw new Error(
         `OAuth token expired or invalid. Please re-authenticate in the Tumiki dashboard. ` +

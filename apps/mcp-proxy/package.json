@@ -20,6 +20,7 @@
     "@hono/node-server": "^1.13.7",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@tumiki/db": "workspace:*",
+    "@tumiki/oauth-token-manager": "workspace:*",
     "hono": "^4.7.4",
     "redis": "^5.0.1"
   },
