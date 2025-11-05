@@ -94,11 +94,17 @@ RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/place
 # Set CI environment variable to skip Python MCP installation
 ENV CI=true
 
-# Install all dependencies (required for Prisma generators)
+# Install production dependencies first
+RUN pnpm install --frozen-lockfile --prod
+
+# Install dev dependencies temporarily for Prisma Client generation
 RUN pnpm install --frozen-lockfile --prod=false
 
 # Generate Prisma Client in production
 RUN cd packages/db && pnpm db:generate
+
+# Remove dev dependencies to reduce image size
+RUN pnpm prune --prod
 
 # Copy built artifacts
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
