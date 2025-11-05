@@ -84,8 +84,8 @@ jobs:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
-      vercel_url: ${{ steps.deploy.outputs.vercel_url }}
-      deployment_url: ${{ steps.deploy.outputs.vercel_url }}
+      vercel_url: ${{ steps.deploy.outputs.url }}
+      deployment_url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
 
