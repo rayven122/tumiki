@@ -84,8 +84,7 @@ jobs:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
-      vercel_url: ${{ steps.deploy.outputs.vercel_url }}
-      deployment_url: ${{ steps.deploy.outputs.vercel_url }}
+      vercel_url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -126,7 +125,6 @@ jobs:
     environment: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
-      cloudrun_health_url: ${{ steps.deploy-cloudrun.outputs.health_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -155,8 +153,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      needs.deploy.result == 'success' &&
-      needs.deploy.outputs.vercel_url != ''
+      (needs.deploy.result == 'success' || needs.deploy-cloudrun.result == 'success')
     runs-on:
       group: self-arc
     steps:
@@ -180,8 +177,6 @@ jobs:
        contains(github.event.pull_request.labels.*.name, 'test-slack'))
     runs-on:
       group: self-arc
-    outputs:
-      deployment_url: ${{ needs.deploy.outputs.deployment_url }}
     steps:
       - uses: actions/checkout@v4
 
