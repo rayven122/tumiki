@@ -8,6 +8,7 @@ import { waitingListRouter } from "./routers/waitingList";
 import { mcpApiKeyRouter } from "./routers/mcpApiKey";
 import { organizationRouter } from "./routers/organization/index";
 import { organizationRoleRouter } from "./routers/organizationRole";
+import { remoteMcpServerRouter } from "./routers/remoteMcpServer";
 // TODO: Rewrite OAuth token management for Auth.js
 // import { oauthRouter } from "./routers/oauth/index";
 
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
   mcpApiKey: mcpApiKeyRouter,
   organization: organizationRouter,
   organizationRole: organizationRoleRouter,
+  remoteMcpServer: remoteMcpServerRouter,
   // TODO: Rewrite OAuth token management for Auth.js
   // oauth: oauthRouter,
 });
