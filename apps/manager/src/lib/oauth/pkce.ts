@@ -18,10 +18,20 @@ const generateRandomString = (length: number): string => {
 
 /**
  * Code Verifierを生成
- * 43-128文字のランダムな文字列
+ * RFC 7636準拠: 43-128文字のBase64URL形式の文字列
+ * エントロピー: 256ビット（32バイト = 43文字のBase64URL）
  */
 export const generateCodeVerifier = (): string => {
-  return generateRandomString(64); // 128文字（64バイト）
+  // RFC 7636推奨の最小長43文字に対応する32バイトを生成
+  const array = new Uint8Array(32);
+  webcrypto.getRandomValues(array);
+
+  // Base64URL形式に変換（RFC 7636準拠の文字セット）
+  return Buffer.from(array)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
 };
 
 /**
