@@ -39,10 +39,7 @@ export const GET = async (request: NextRequest) => {
     if (error) {
       console.error("[OAuth Callback Error]", error, errorDescription);
       return NextResponse.redirect(
-        new URL(
-          `/mcp/servers?error=${encodeURIComponent(error)}`,
-          request.url,
-        ),
+        new URL(`/mcp/servers?error=${encodeURIComponent(error)}`, request.url),
       );
     }
 

@@ -9,11 +9,7 @@ import {
   getValidToken,
   ReAuthRequiredError,
 } from "@tumiki/oauth-token-manager";
-import type {
-  McpServer,
-  UserMcpServerConfig,
-  AuthType,
-} from "@tumiki/db/prisma";
+import type { McpServer, UserMcpServerConfig } from "@tumiki/db/prisma";
 import { logInfo, logError } from "../libs/logger/index.js";
 
 /**
@@ -59,7 +55,7 @@ export const injectAuthHeaders = async (
 
     default: {
       const _exhaustiveCheck: never = authType;
-      throw new Error(`Unknown auth type: ${_exhaustiveCheck}`);
+      throw new Error(`Unknown auth type: ${String(_exhaustiveCheck)}`);
     }
   }
 };
@@ -80,7 +76,7 @@ const injectOAuthHeaders = async (
     );
 
     // Authorization: Bearer ヘッダーを追加
-    headers["Authorization"] = `Bearer ${token.accessToken}`;
+    headers.Authorization = `Bearer ${token.accessToken}`;
 
     logInfo("OAuth token injected successfully", {
       userMcpConfigId: userMcpConfig.id,
@@ -135,7 +131,7 @@ const injectApiKeyHeaders = (
     } else {
       // デフォルトヘッダー名を使用
       const defaultHeaderName = "X-API-Key";
-      const apiKey = envVars[defaultHeaderName] || envVars["API_KEY"];
+      const apiKey = envVars[defaultHeaderName] || envVars.API_KEY;
 
       if (apiKey) {
         headers[defaultHeaderName] = apiKey;

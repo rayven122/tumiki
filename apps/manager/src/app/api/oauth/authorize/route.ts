@@ -53,7 +53,7 @@ export const POST = async (request: Request) => {
       );
     }
 
-    const { mcpServerId, userMcpConfigId, scopes } = requestBody;
+    const { mcpServerId, scopes } = requestBody;
 
     // MCPサーバー情報を取得
     const mcpServer = await db.mcpServer.findUnique({
