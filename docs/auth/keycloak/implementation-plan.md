@@ -1279,6 +1279,21 @@ async signIn({ user, account, profile }) {
 
 ---
 
+## 関連ドキュメント
+
+### Tumiki内部ドキュメント
+
+- [JWT認証 設計改善実装計画](./jwt-authentication-improvement-plan.md) - JWT認証のハードコード値削除と権限管理の実装計画
+- [JWT Claims設計仕様書](./jwt-claims-design.md) - Keycloak JWTトークンの構造設計とProtocol Mapper設定
+- [Tumiki 権限管理アーキテクチャ](../permission-management.md) - ハイブリッド権限管理アーキテクチャの全体像
+
+### 認証関連ドキュメント
+
+- [二層OAuth認証実装計画](../two-tier-oauth-implementation-plan.md) - 配信機能のOAuth設計
+- [MCP準拠認証設計](../mcp-compliant-auth-design.md) - MCP標準に準拠した認証設計
+
+---
+
 ## 参考資料
 
 ### Keycloak公式ドキュメント
