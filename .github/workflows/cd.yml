@@ -155,8 +155,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' &&
-      needs.deploy.result == 'success' &&
-      needs.deploy.outputs.vercel_url != ''
+      (needs.deploy.result == 'success' || needs.deploy-cloudrun.result == 'success')
     runs-on:
       group: self-arc
     steps:
