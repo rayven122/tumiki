@@ -1,0 +1,66 @@
+name: 'Deploy to Vercel'
+description: 'Deploy to Vercel (staging or production)'
+
+inputs:
+  stage:
+    description: 'staging or production'
+    required: true
+  vercel_token:
+    description: 'Vercel token'
+    required: true
+
+outputs:
+  url:
+    description: 'Deployment URL'
+    value: ${{ steps.deploy.outputs.url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Deploy
+      id: deploy
+      shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel_token }}
+      run: |
+        # Install Vercel CLI if needed
+        echo "🔍 Vercel CLIを確認中..."
+        if ! command -v vercel >/dev/null; then
+          echo "📦 Vercel CLIをインストール中..."
+          npm install -g vercel
+        else
+          echo "✅ Vercel CLIは既にインストールされています"
+        fi
+
+        # Deploy
+        echo "🚀 デプロイを開始します（ステージ: ${{ inputs.stage }}）..."
+        if [ "${{ inputs.stage }}" = "production" ]; then
+          echo "📍 本番環境へデプロイ"
+          OUTPUT=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
+        else
+          echo "📍 プレビュー環境へデプロイ"
+          OUTPUT=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
+        fi
+
+        # Show deployment output
+        echo "📋 デプロイ出力:"
+        echo "$OUTPUT"
+
+        # Check if deployment failed
+        if [ -n "$DEPLOY_EXIT_CODE" ] && [ "$DEPLOY_EXIT_CODE" -ne 0 ]; then
+          echo "❌ Vercelデプロイが失敗しました（終了コード: $DEPLOY_EXIT_CODE）"
+          exit 1
+        fi
+
+        # Extract URL (try multiple patterns)
+        URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
+
+        if [ -z "$URL" ]; then
+          echo "❌ デプロイURLが出力から見つかりませんでした"
+          echo "完全な出力:"
+          echo "$OUTPUT"
+          exit 1
+        fi
+
+        echo "✅ デプロイ完了: $URL"
+        echo "url=$URL" >> $GITHUB_OUTPUT

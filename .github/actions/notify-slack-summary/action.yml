@@ -187,9 +187,10 @@ runs:
         CLOUDRUN_SECTION=""
         if [ -n "${{ inputs.cloudrun_status }}" ]; then
           if [ "${{ inputs.cloudrun_status }}" == "success" ]; then
-            CLOUDRUN_STATUS_TEXT="✅ 成功"
             if [ -n "${{ inputs.cloudrun_url }}" ]; then
               CLOUDRUN_STATUS_TEXT="✅ 成功 | <${{ inputs.cloudrun_url }}|サービスを表示>"
+            else
+              CLOUDRUN_STATUS_TEXT="✅ 成功"
             fi
           elif [ "${{ inputs.cloudrun_status }}" == "skipped" ]; then
             CLOUDRUN_STATUS_TEXT="⏭️ スキップ"

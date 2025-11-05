@@ -6,8 +6,9 @@ inputs:
     description: 'Deployment environment (preview|staging|production)'
     required: true
   pr_number:
-    description: 'Pull request number (for preview deployments)'
+    description: 'PR number for preview deployments (optional, used to create unique service names)'
     required: false
+    default: ''
   gcp_credentials:
     description: 'GCP service account credentials JSON'
     required: true
@@ -16,20 +17,20 @@ inputs:
     required: true
   region:
     description: 'Cloud Run region'
-    required: false
     default: 'asia-northeast1'
+    required: false
   min_instances:
     description: 'Minimum number of instances'
-    required: false
     default: '0'
+    required: false
   max_instances:
     description: 'Maximum number of instances'
-    required: false
     default: '3'
+    required: false
 
 outputs:
   service_url:
-    description: 'Deployed Cloud Run service URL'
+    description: 'Cloud Run service URL'
     value: ${{ steps.deploy.outputs.service_url }}
   health_url:
     description: 'Health check URL'
@@ -46,12 +47,50 @@ runs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
 
-    - name: Configure Docker for GCP
+    - name: Configure Docker for Artifact Registry
       shell: bash
       run: |
         gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
-    - name: Build and Deploy
+    - name: Build Docker image
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+      run: |
+        echo "🚀 Cloud Runデプロイを開始します"
+        echo "環境: $ENVIRONMENT"
+
+        # Get short SHA
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        echo "コミットSHA: $SHORT_SHA"
+
+        # Build Docker image
+        echo "🔨 Dockerイメージをビルド中..."
+        docker build \
+          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
+          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest \
+          -f apps/mcp-proxy/Dockerfile \
+          .
+
+        echo "✅ Dockerイメージのビルドが完了しました"
+
+    - name: Push Docker image
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+
+        # Push images to Artifact Registry
+        echo "📦 Artifact RegistryにDockerイメージをプッシュ中..."
+        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA
+        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest
+
+        echo "✅ Dockerイメージのプッシュが完了しました"
+
+    - name: Deploy to Cloud Run
       id: deploy
       shell: bash
       env:
@@ -62,49 +101,31 @@ runs:
         MIN_INSTANCES: ${{ inputs.min_instances }}
         MAX_INSTANCES: ${{ inputs.max_instances }}
       run: |
-        echo "🚀 Starting Cloud Run deployment"
-        echo "Environment: $ENVIRONMENT"
-
-        # Get short SHA
         SHORT_SHA=$(git rev-parse --short HEAD)
-        echo "Commit SHA: $SHORT_SHA"
-
-        # Build Docker image
-        echo "🔨 Building Docker image..."
-        docker build \
-          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
-          -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest \
-          -f apps/mcp-proxy/Dockerfile \
-          .
-
-        echo "✅ Docker image built successfully"
-
-        # Push images
-        echo "📤 Pushing Docker images to Artifact Registry..."
-        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA
-        docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-latest
-
-        echo "✅ Docker images pushed successfully"
 
         # Determine service name and secret environment based on environment
         if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
           SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
           SECRET_ENV="staging"  # Preview環境ではstagingのシークレットを使用
-          echo "🔵 Preview deployment for PR #$PR_NUMBER (using staging secrets)"
+          echo "🔵 PR #$PR_NUMBER のPreviewデプロイ（stagingのシークレットを使用）"
         else
           SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
           SECRET_ENV="$ENVIRONMENT"
         fi
 
-        echo "🚀 Deploying to Cloud Run..."
-        echo "Service: $SERVICE_NAME"
-        echo "Region: $REGION"
-        echo "Scaling: Min $MIN_INSTANCES / Max $MAX_INSTANCES"
+        echo "🚀 Cloud Runにデプロイ中..."
+        echo "サービス: $SERVICE_NAME"
+        echo "リージョン: $REGION"
+        echo "スケーリング: 最小 $MIN_INSTANCES / 最大 $MAX_INSTANCES"
 
-        # VPCコネクターの設定（preview環境では使用しない）
+        # VPCコネクターの設定（production環境のみ使用）
         VPC_ARGS=""
-        if [ "$ENVIRONMENT" != "preview" ]; then
+        if [ "$ENVIRONMENT" = "production" ]; then
           VPC_ARGS="--vpc-connector=tumiki-vpc-connector --vpc-egress=private-ranges-only"
+          echo "VPC: tumiki-vpc-connector (private-ranges-only)"
+        else
+          VPC_ARGS="--clear-vpc-connector"
+          echo "VPC: $ENVIRONMENT 環境ではVPCコネクターを使用しません"
         fi
 
         # Deploy to Cloud Run
@@ -120,9 +141,10 @@ runs:
           --concurrency=80 \
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
-          --set-env-vars=NODE_ENV=production,LOG_LEVEL=info \
-          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,CACHE_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
+          --set-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
+          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,PRISMA_FIELD_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
+          --no-cpu-throttling \
           $VPC_ARGS
 
         # Get service URL
@@ -131,9 +153,55 @@ runs:
           --project="$GCP_PROJECT_ID" \
           --format='value(status.url)')
 
-        echo "✅ Deployment completed"
-        echo "Service URL: $SERVICE_URL"
+        echo "✅ デプロイが完了しました"
+        echo "サービスURL: $SERVICE_URL"
 
         # Output for GitHub Actions
         echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
         echo "health_url=$SERVICE_URL/health" >> $GITHUB_OUTPUT
+
+    - name: Verify deployment
+      shell: bash
+      env:
+        SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
+      run: |
+        echo "🔍 デプロイを検証中..."
+
+        # Wait for service to be ready (increased for cold start)
+        echo "⏳ サービス初期化を待機中（コールドスタートには時間がかかる場合があります）..."
+        sleep 15
+
+        # Health check with retries
+        for i in {1..5}; do
+          if curl -f -s "$SERVICE_URL/health" > /dev/null; then
+            echo "✅ ヘルスチェックが成功しました"
+            exit 0
+          fi
+          echo "⏳ サービスの準備完了を待機中（試行 $i/5）..."
+          sleep 5
+        done
+
+        echo "❌ ヘルスチェックが失敗しました"
+        exit 1
+
+    - name: Display deployment info
+      shell: bash
+      env:
+        SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
+        HEALTH_URL: ${{ steps.deploy.outputs.health_url }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+      run: |
+        echo "========================================="
+        echo "🎉 Cloud Runデプロイが成功しました"
+        echo "========================================="
+        echo "環境: $ENVIRONMENT"
+
+        if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
+          echo "PR: #$PR_NUMBER"
+          echo "サービス: tumiki-mcp-proxy-pr-$PR_NUMBER"
+        fi
+
+        echo "サービスURL: $SERVICE_URL"
+        echo "ヘルスチェック: $HEALTH_URL"
+        echo "========================================="
