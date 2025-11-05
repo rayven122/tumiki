@@ -151,8 +151,8 @@ export const POST = async (request: Request) => {
     const cookieStore = await cookies();
     const isProduction = process.env.NODE_ENV === "production";
     const cookieName = isProduction
-      ? "__Secure-next-auth.session-token"
-      : "next-auth.session-token";
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
 
     cookieStore.set(cookieName, result.sessionToken, {
       expires: result.sessionExpiry,
