@@ -2,6 +2,7 @@ import { db } from "@tumiki/db/server";
 import type { TransportType, AuthType } from "@tumiki/db";
 import { logError } from "../libs/logger/index.js";
 import { getCachedConfig } from "../libs/cache/configCache.js";
+import { injectAuthHeaders } from "../middleware/oauth-header-injector.js";
 
 /**
  * Remote MCP サーバー設定型
@@ -101,8 +102,8 @@ const _getEnabledServersForInstanceFromDB = async (
       distinct: ["id"], // Prismaが重複を自動排除
     });
 
-    // configMap不要！直接configs.map()で変換
-    return configs.map((userMcpServerConfig) => {
+    // configMap不要！直接configs.map()で変換（非同期処理）
+    const configPromises = configs.map(async (userMcpServerConfig) => {
       const { mcpServer } = userMcpServerConfig;
 
       // envVarsを復号化
@@ -141,6 +142,18 @@ const _getEnabledServersForInstanceFromDB = async (
         url = args ? `${command} ${args}` : command;
       }
 
+      // 認証ヘッダーを注入
+      const headers: Record<string, string> = {};
+      try {
+        await injectAuthHeaders(mcpServer, userMcpServerConfig, headers);
+      } catch (error) {
+        logError("Failed to inject auth headers", error as Error, {
+          mcpServerId: mcpServer.id.slice(0, 8),
+          configId: userMcpServerConfig.id.slice(0, 8),
+        });
+        // ヘッダー注入失敗時もサーバー設定は返す（ツールリスト取得などで使用される可能性があるため）
+      }
+
       return {
         namespace: mcpServer.name.toLowerCase().replace(/\s+/g, "-"),
         config: {
@@ -150,10 +163,12 @@ const _getEnabledServersForInstanceFromDB = async (
           transportType: mapTransportType(mcpServer.transportType),
           authType: mapAuthType(mcpServer.authType),
           envVars,
-          headers: {},
+          headers,
         },
       };
     });
+
+    return await Promise.all(configPromises);
   } catch (error) {
     logError(
       `Failed to get enabled servers for instance ${userMcpServerInstanceId}`,

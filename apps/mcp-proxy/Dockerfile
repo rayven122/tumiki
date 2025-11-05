@@ -26,6 +26,7 @@ COPY .npmrc ./
 
 # Copy all package.json files from packages, apps, and tooling
 COPY packages/db/package.json ./packages/db/
+COPY packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
 COPY tooling/typescript/package.json ./tooling/typescript/
 
@@ -50,11 +51,16 @@ FROM dependencies AS build
 # Copy source code
 COPY tooling/typescript ./tooling/typescript
 COPY packages/db ./packages/db
+COPY packages/oauth-token-manager ./packages/oauth-token-manager
 COPY apps/mcp-proxy ./apps/mcp-proxy
 
 # Build packages in correct order
 WORKDIR /app/packages/db
 RUN pnpm db:generate && pnpm build
+
+# Build oauth-token-manager
+WORKDIR /app/packages/oauth-token-manager
+RUN pnpm build
 
 # Build mcp-proxy
 WORKDIR /app/apps/mcp-proxy
@@ -81,6 +87,7 @@ WORKDIR /app
 COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
+COPY --chown=nodejs:nodejs packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
 COPY --chown=nodejs:nodejs tooling/typescript/package.json ./tooling/typescript/
 
@@ -105,6 +112,7 @@ RUN pnpm prune --prod
 
 # Copy built artifacts
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
+COPY --from=build --chown=nodejs:nodejs /app/packages/oauth-token-manager/dist ./packages/oauth-token-manager/dist
 COPY --from=build --chown=nodejs:nodejs /app/apps/mcp-proxy/dist ./apps/mcp-proxy/dist
 
 # Switch to non-root user
