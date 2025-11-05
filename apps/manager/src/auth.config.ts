@@ -12,8 +12,8 @@ const keycloakEnv = getKeycloakEnv();
 export default {
   providers: [
     Keycloak({
-      clientId: keycloakEnv.KEYCLOAK_ID,
-      clientSecret: keycloakEnv.KEYCLOAK_SECRET,
+      clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
+      clientSecret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
     }),
   ],

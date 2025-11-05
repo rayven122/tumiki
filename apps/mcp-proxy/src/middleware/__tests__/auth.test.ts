@@ -115,6 +115,7 @@ describe("integratedAuthMiddleware", () => {
   describe("APIキー認証", () => {
     test("Bearer tumiki_ 形式のAPIキーで認証を試行", async () => {
       const { db } = await import("@tumiki/db/server");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
         id: "api-key-id",
         name: "test-key",
@@ -149,6 +150,7 @@ describe("integratedAuthMiddleware", () => {
 
     test("X-API-Key ヘッダーで認証を試行", async () => {
       const { db } = await import("@tumiki/db/server");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
         id: "api-key-id",
         name: "test-key",
@@ -232,6 +234,7 @@ describe("integratedAuthMiddleware", () => {
 
     test("Bearer tumiki_ で始まる場合はAPIキー認証を使用", async () => {
       const { db } = await import("@tumiki/db/server");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
         id: "api-key-id",
         name: "test-key",

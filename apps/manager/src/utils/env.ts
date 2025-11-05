@@ -4,8 +4,10 @@ import { z } from "zod";
  * Keycloak認証用の環境変数スキーマ
  */
 const keycloakEnvSchema = z.object({
-  KEYCLOAK_ID: z.string().min(1, "KEYCLOAK_ID is required"),
-  KEYCLOAK_SECRET: z.string().min(1, "KEYCLOAK_SECRET is required"),
+  KEYCLOAK_CLIENT_ID: z.string().min(1, "KEYCLOAK_CLIENT_ID is required"),
+  KEYCLOAK_CLIENT_SECRET: z
+    .string()
+    .min(1, "KEYCLOAK_CLIENT_SECRET is required"),
   KEYCLOAK_ISSUER: z.string().url("KEYCLOAK_ISSUER must be a valid URL"),
 });
 
@@ -19,10 +21,11 @@ export const getKeycloakEnv = () => {
   const isCI = process.env.CI === "true" || process.env.VERCEL === "1";
 
   const result = keycloakEnvSchema.safeParse({
-    KEYCLOAK_ID:
-      process.env.KEYCLOAK_ID ?? (isCI ? "dummy-client-id" : undefined),
-    KEYCLOAK_SECRET:
-      process.env.KEYCLOAK_SECRET ?? (isCI ? "dummy-client-secret" : undefined),
+    KEYCLOAK_CLIENT_ID:
+      process.env.KEYCLOAK_CLIENT_ID ?? (isCI ? "dummy-client-id" : undefined),
+    KEYCLOAK_CLIENT_SECRET:
+      process.env.KEYCLOAK_CLIENT_SECRET ??
+      (isCI ? "dummy-client-secret" : undefined),
     KEYCLOAK_ISSUER:
       process.env.KEYCLOAK_ISSUER ??
       (isCI ? "https://dummy.keycloak.local/realms/tumiki" : undefined),
