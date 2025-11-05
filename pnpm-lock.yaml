@@ -514,6 +514,9 @@ importers:
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@tumiki/oauth-token-manager':
+        specifier: workspace:*
+        version: link:../../packages/oauth-token-manager
       hono:
         specifier: ^4.7.4
         version: 4.8.12
