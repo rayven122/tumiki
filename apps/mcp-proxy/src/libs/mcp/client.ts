@@ -55,7 +55,10 @@ const fallbackToSSE = async (
 
     // SSEトランスポートで再試行
     const url = new URL(config.url);
-    const sseTransport = new SSEClientTransport(url);
+    const headers = config.headers ?? {};
+    const sseTransport = new SSEClientTransport(url, {
+      requestInit: { headers },
+    });
 
     logInfo("Retrying with SSE transport", { namespace });
     await connectWithTimeout(client, sseTransport, CONNECTION_TIMEOUT_MS);
@@ -104,7 +107,8 @@ export const createMcpClient = async (
       case "sse": {
         // SSEトランスポートを使用してRemote MCPサーバーに接続
         const url = new URL(config.url);
-        transport = new SSEClientTransport(url);
+        const headers = config.headers ?? {};
+        transport = new SSEClientTransport(url, { requestInit: { headers } });
         logInfo("Using SSE transport", { namespace, url: config.url });
         break;
       }
@@ -113,7 +117,10 @@ export const createMcpClient = async (
         // HTTPトランスポート（Streamable HTTP）
         // 下位互換性のため、失敗した場合はSSEにフォールバック
         const url = new URL(config.url);
-        transport = new StreamableHTTPClientTransport(url);
+        const headers = config.headers ?? {};
+        transport = new StreamableHTTPClientTransport(url, {
+          requestInit: { headers },
+        });
         logInfo("Using Streamable HTTP transport", {
           namespace,
           url: config.url,
