@@ -24,7 +24,7 @@ import {
 } from "@/schema/ids";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { useUser } from "@tumiki/auth/client";
+import { useSession } from "next-auth/react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type InvitationManagementSectionProps = {
@@ -43,7 +43,8 @@ const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
 export const InvitationManagementSection = ({
   organizationId,
 }: InvitationManagementSectionProps) => {
-  const { user } = useUser();
+  const { data: session } = useSession();
+  const user = session?.user;
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState({
     title: "",

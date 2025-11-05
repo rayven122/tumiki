@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { useUser } from "@tumiki/auth/client";
+import { useSession } from "next-auth/react";
 import {
   User,
   Camera,
@@ -24,15 +24,15 @@ import { guestRegex } from "@/lib/constants";
 import { useMemo } from "react";
 
 const ProfilePage = () => {
-  const { user } = useUser();
+  const { data: session } = useSession();
+  const user = session?.user;
 
   const isGuest = useMemo(() => {
     return guestRegex.test(user?.email ?? "");
   }, [user?.email]);
 
-  const createdAt = user?.updated_at
-    ? new Date(String(user.updated_at)).toLocaleDateString("ja-JP")
-    : "不明";
+  // Auth.jsではcreatedAt情報は直接取得できないため"不明"を表示
+  const createdAt = "不明";
 
   return (
     <div className="relative container mx-auto space-y-6 py-6">
@@ -62,9 +62,9 @@ const ProfilePage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col items-center space-y-4">
-                  {user?.picture ? (
+                  {user?.image ? (
                     <Image
-                      src={user.picture}
+                      src={user.image}
                       alt={user.name ?? "プロフィール画像"}
                       width={120}
                       height={120}

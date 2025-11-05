@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import { useSession } from "next-auth/react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
@@ -30,10 +31,13 @@ export const OrganizationProvider = ({
   children,
 }: OrganizationProviderProps) => {
   const utils = api.useUtils();
+  const { data: session, status } = useSession();
 
-  // 組織リストを取得（既にdefaultOrgが設定済み）
+  // 認証済みユーザーのみ組織リストを取得
   const { data: organizations, isLoading } =
-    api.organization.getUserOrganizations.useQuery();
+    api.organization.getUserOrganizations.useQuery(undefined, {
+      enabled: status === "authenticated" && !!session?.user,
+    });
 
   // 現在の組織はorganizationsから取得
   const currentOrganization =

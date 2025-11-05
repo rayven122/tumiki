@@ -152,6 +152,7 @@ uv tool install analytics-mcp  # Google Analytics MCP
 ```
 
 **前提条件**:
+
 - Python 3.10 以上
 - uv（高速な Python パッケージマネージャー）
 
@@ -240,6 +241,7 @@ pnpm clean:workspaces # 各ワークスペースのクリーンアップ
 ### 有効化方法
 
 1. 環境変数を設定:
+
 ```bash
 MAINTENANCE_MODE=true
 MAINTENANCE_ALLOWED_IPS="管理者IP1,管理者IP2"
@@ -248,6 +250,7 @@ NEXT_PUBLIC_MAINTENANCE_END_TIME="2025-01-11T03:00:00Z"
 ```
 
 2. デプロイ実行:
+
 ```bash
 pnpm run deploy
 ```
@@ -255,11 +258,13 @@ pnpm run deploy
 ### 無効化方法
 
 1. 環境変数を変更:
+
 ```bash
 MAINTENANCE_MODE=false
 ```
 
 2. 再デプロイ:
+
 ```bash
 pnpm run deploy
 ```
@@ -271,11 +276,13 @@ pnpm run deploy
 本プロジェクトではStripeを使用した決済機能を実装しています。
 
 #### 必要な環境変数
+
 - `STRIPE_SECRET_KEY`: StripeのシークレットAPIキー
 - `STRIPE_WEBHOOK_SECRET`: Webhook署名検証用のシークレット
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`: クライアント側で使用する公開可能キー
 
 #### 開発環境でのWebhookテスト
+
 ```bash
 # Stripe環境変数の検証
 pnpm verify:stripe
