@@ -18,6 +18,9 @@ outputs:
   is_pr:
     description: PRデプロイかどうかのフラグ
     value: ${{ steps.determine.outputs.is_pr }}
+  pr_number:
+    description: PR番号（PRでない場合は空文字）
+    value: ${{ steps.determine.outputs.pr_number }}
 
 runs:
   using: composite
@@ -34,26 +37,30 @@ runs:
           echo "environment=preview" >> $GITHUB_OUTPUT
           echo "stage=preview" >> $GITHUB_OUTPUT
           echo "is_pr=true" >> $GITHUB_OUTPUT
-          echo "🔵 Pull Request detected → preview環境"
+          echo "pr_number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          echo "🔵 Pull Request #${{ github.event.pull_request.number }} detected → preview環境"
           
         # 手動実行 → 選択した環境
         elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
           echo "stage=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
           echo "is_pr=false" >> $GITHUB_OUTPUT
+          echo "pr_number=" >> $GITHUB_OUTPUT
           echo "🟣 Manual dispatch → ${{ github.event.inputs.environment }}環境"
-          
+
         # v*タグ → production環境
         elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
           echo "environment=production" >> $GITHUB_OUTPUT
           echo "stage=production" >> $GITHUB_OUTPUT
           echo "is_pr=false" >> $GITHUB_OUTPUT
+          echo "pr_number=" >> $GITHUB_OUTPUT
           echo "🔴 Version tag detected → production環境"
-          
+
         # その他（mainブランチへのpush等） → staging環境
         else
           echo "environment=staging" >> $GITHUB_OUTPUT
           echo "stage=staging" >> $GITHUB_OUTPUT
           echo "is_pr=false" >> $GITHUB_OUTPUT
+          echo "pr_number=" >> $GITHUB_OUTPUT
           echo "🟡 Default (main branch push) → staging環境"
         fi

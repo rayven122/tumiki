@@ -326,15 +326,51 @@ Authorization: Bearer tumiki_live_abc123...
 
 ## デプロイ
 
-Cloud Run向けに設計されています：
+### Cloud Run（推奨）
+
+本番環境での推奨デプロイ方法です。
+
+#### カスタムドメイン（Staging/Production環境のみ）
+
+Staging/Production環境には自動的にカスタムドメインが設定されます：
+
+| 環境       | Cloud Runサービス              | カスタムドメイン                  | URL形式                                            |
+| ---------- | ------------------------------ | --------------------------------- | -------------------------------------------------- |
+| Preview    | `tumiki-mcp-proxy-pr-{PR番号}` | なし                              | `https://tumiki-mcp-proxy-pr-{PR番号}-*.a.run.app` |
+| Staging    | `tumiki-mcp-proxy-staging`     | `https://stg-server.tumiki.cloud` | `https://tumiki-mcp-proxy-staging-*.a.run.app`     |
+| Production | `tumiki-mcp-proxy-production`  | `https://server.tumiki.cloud`     | `https://server.tumiki.cloud`                      |
+
+**Preview環境**: 各PRごとに独立したCloud Runサービスが作成されます（例: PR #372 → `tumiki-mcp-proxy-pr-372`）
+
+- PRクローズ時に自動的にCloud Runサービスが削除されます
+
+**Staging/Production**: 初回デプロイ時にGitHub Actionsが自動的にカスタムドメインを設定します。
+
+詳細は [Cloud Run カスタムドメイン設定](../../docs/cloudrun-custom-domain.md) を参照。
+
+#### GitHub Actions経由（自動）
+
+- **Preview**: Pull Request作成時に自動デプロイ
+- **Staging**: `main` ブランチへマージ時に自動デプロイ
+- **Production**: `v*` タグプッシュ時に自動デプロイ
+
+#### ローカルから手動デプロイ
 
 ```bash
-# ビルド
-pnpm build
+# Docker イメージのビルドとプッシュ
+docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  -f apps/mcp-proxy/Dockerfile .
+docker push asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest
 
-# デプロイ（Cloud Build）
-gcloud builds submit
+# Cloud Run へデプロイ
+gcloud run deploy tumiki-mcp-proxy-staging \
+  --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki/mcp-proxy:staging-latest \
+  --region=asia-northeast1
 ```
+
+#### 詳細ガイド
+
+詳細なセットアップ手順、運用管理、トラブルシューティングについては、[Cloud Run デプロイメントガイド](../../docs/cloudrun-mcp-proxy-deployment.md)を参照してください。
 
 ## アーキテクチャ
 

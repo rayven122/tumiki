@@ -2,8 +2,11 @@ name: Comment Deployment URL
 description: デプロイURLをPRまたはコミットにコメントします。PRの場合は既存コメントを更新
 
 inputs:
-  deployment_url:
-    description: デプロイ先URL
+  vercel_url:
+    description: Vercel デプロイURL
+    required: true
+  cloudrun_url:
+    description: Cloud Run デプロイURL
     required: true
   environment:
     description: デプロイ環境
@@ -25,7 +28,8 @@ runs:
           await script({
             github,
             context,
-            deploymentUrl: '${{ inputs.deployment_url }}',
+            vercelUrl: '${{ inputs.vercel_url }}',
+            cloudrunUrl: '${{ inputs.cloudrun_url }}',
             environment: '${{ inputs.environment }}',
             isPR: true
           });
@@ -40,5 +44,5 @@ runs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             commit_sha: context.sha,
-            body: `✅ Vercel ${{ inputs.environment }} deployment completed: ${{ inputs.deployment_url }}`
+            body: `✅ Deployment to ${{ inputs.environment }} completed:\n🔗 Vercel: ${{ inputs.vercel_url }}\n🔗 Cloud Run: ${{ inputs.cloudrun_url }}`
           });

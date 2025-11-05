@@ -1,16 +1,34 @@
 module.exports = async ({
   github,
   context,
-  deploymentUrl,
+  vercelUrl,
+  cloudrunUrl,
   environment,
   isPR,
 }) => {
   if (isPR) {
+    // URLが空の場合の処理
+    const vercelLine = vercelUrl
+      ? `🔗 **Manager (Vercel):** ${vercelUrl}`
+      : `❌ **Manager (Vercel):** デプロイ失敗`;
+
+    const cloudrunLine = cloudrunUrl
+      ? `🔗 **MCP Proxy (Cloud Run):** ${cloudrunUrl}`
+      : `❌ **MCP Proxy (Cloud Run):** デプロイ失敗`;
+
+    const status =
+      vercelUrl && cloudrunUrl
+        ? "Ready"
+        : vercelUrl || cloudrunUrl
+          ? "Partially Ready"
+          : "Failed";
+
     const comment = `🚀 **Preview deployment ready!**
 
-🔗 **URL:** ${deploymentUrl}
+${vercelLine}
+${cloudrunLine}
 📦 **Environment:** ${environment}
-🔄 **Status:** Ready
+🔄 **Status:** ${status}
 
 *This preview will be updated automatically on new commits.*`;
 
