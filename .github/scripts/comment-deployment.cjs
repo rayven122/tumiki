@@ -1,14 +1,16 @@
 module.exports = async ({
   github,
   context,
-  deploymentUrl,
+  vercelUrl,
+  cloudrunUrl,
   environment,
   isPR,
 }) => {
   if (isPR) {
     const comment = `🚀 **Preview deployment ready!**
 
-🔗 **URL:** ${deploymentUrl}
+🔗 **Manager (Vercel):** ${vercelUrl}
+🔗 **MCP Proxy (Cloud Run):** ${cloudrunUrl}
 📦 **Environment:** ${environment}
 🔄 **Status:** Ready
 

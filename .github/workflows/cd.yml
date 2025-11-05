@@ -27,6 +27,7 @@ jobs:
       environment: ${{ steps.env.outputs.environment }}
       stage: ${{ steps.env.outputs.stage }}
       is_pr: ${{ steps.env.outputs.is_pr }}
+      pr_number: ${{ steps.env.outputs.pr_number }}
     steps:
       - uses: actions/checkout@v4
       - id: env
@@ -71,7 +72,7 @@ jobs:
           database_url: ${{ secrets.DATABASE_URL_PREVIEW }}
           environment: preview
 
-  # 統合デプロイ（Vercelのみ）
+  # Vercelデプロイ
   deploy:
     name: 🚀 Vercelデプロイ
     needs: [setup, migrate-database]
@@ -94,11 +95,6 @@ jobs:
       - name: Build packages
         uses: ./.github/actions/build-packages
 
-      - name: Determine deploy target
-        id: target
-        run: |
-          echo "target=vercel" >> $GITHUB_OUTPUT
-
       - name: Configure git user for deployment
         run: |
           git config --global user.email "efficient122@gmail.com"
@@ -110,34 +106,24 @@ jobs:
 
       - name: Deploy to Vercel
         id: deploy
-        uses: ./.github/actions/deploy
+        uses: ./.github/actions/deploy-vercel
         with:
-          target: ${{ steps.target.outputs.target }}
           stage: ${{ needs.setup.outputs.stage }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Comment deployment URL
-        uses: ./.github/actions/comment-deployment
-        if: github.event_name == 'pull_request' && steps.deploy.outputs.vercel_url != ''
-        with:
-          deployment_url: ${{ steps.deploy.outputs.vercel_url }}
-          environment: ${{ needs.setup.outputs.environment }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Cloud Runデプロイ（ステージング・本番のみ。Preview環境はスキップ）
+  # Cloud Runデプロイ（全環境対応）
   deploy-cloudrun:
     name: 🚀 Cloud Runデプロイ
     needs: [setup, migrate-database]
     if: |
       always() &&
       needs.setup.result == 'success' &&
-      needs.setup.outputs.environment != 'preview' &&
       (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
     runs-on:
       group: self-arc
-    environment: ${{ needs.setup.outputs.environment }}
+    # Preview環境ではstagingのシークレットを使用するため、environmentをstagingに設定
+    environment: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
       cloudrun_health_url: ${{ steps.deploy-cloudrun.outputs.health_url }}
@@ -155,12 +141,34 @@ jobs:
         uses: ./.github/actions/deploy-cloudrun
         with:
           environment: ${{ needs.setup.outputs.environment }}
-          pr_number: ${{ github.event.pull_request.number }}
-          gcp_credentials: ${{ needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION || secrets.GCP_SA_KEY_STAGING }}
+          pr_number: ${{ needs.setup.outputs.pr_number }}
+          gcp_credentials: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           region: asia-northeast1
           min_instances: '0'
           max_instances: '3'
+
+  # PRへのデプロイURLコメント
+  comment-deployment:
+    name: 💬 デプロイURLコメント
+    needs: [setup, deploy, deploy-cloudrun]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.deploy.result == 'success' &&
+      needs.deploy.outputs.vercel_url != ''
+    runs-on:
+      group: self-arc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comment deployment URLs
+        uses: ./.github/actions/comment-deployment
+        with:
+          vercel_url: ${{ needs.deploy.outputs.vercel_url }}
+          cloudrun_url: ${{ needs.deploy-cloudrun.outputs.cloudrun_url }}
+          environment: ${{ needs.setup.outputs.environment }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
   # デプロイ結果通知
   notify:

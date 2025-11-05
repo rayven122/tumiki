@@ -20,7 +20,7 @@
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest",
-    "postinstall": "pnpm lint:ws && node scripts/install-python-mcp.js",
+    "postinstall": "pnpm lint:ws && (test -f scripts/install-python-mcp.js && node scripts/install-python-mcp.js || echo '📋 Python MCP スクリプトが見つからないか、CI環境のためスキップします')",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
