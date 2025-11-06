@@ -9,6 +9,27 @@ export type AuthInfo = {
 };
 
 /**
+ * JWT ペイロード（Keycloak OAuth 認証）
+ */
+export type JWTPayload = {
+  sub: string; // ユーザーID
+  azp?: string; // クライアントID (authorized party)
+  scope?: string; // スコープ（スペース区切り）
+  organization_id?: string; // 組織ID（カスタムクレーム）
+  email?: string; // メールアドレス
+  name?: string; // ユーザー名
+  preferred_username?: string; // ユーザー名
+  realm_access?: {
+    roles: string[];
+  };
+  resource_access?: Record<string, { roles: string[] }>;
+  iat?: number; // 発行時刻
+  exp?: number; // 有効期限
+  iss?: string; // Issuer
+  aud?: string | string[]; // Audience
+};
+
+/**
  * 名前空間付きツール
  */
 export type NamespacedTool = {
@@ -37,5 +58,6 @@ export type ToolCallResult = {
 export type HonoEnv = {
   Variables: {
     authInfo: AuthInfo;
+    jwtPayload?: JWTPayload;
   };
 };
