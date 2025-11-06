@@ -57,7 +57,11 @@ describe("devKeycloakAuth", () => {
         sub: "dev-user-id",
         azp: "dev-client-id",
         scope: "mcp:access:*",
-        organization_id: "dev-org-id",
+        tumiki: {
+          org_id: "dev-org-id",
+          is_org_admin: true,
+          user_db_id: "dev-user-db-id",
+        },
       });
     });
 
@@ -95,17 +99,23 @@ describe("devKeycloakAuth", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { jwtPayload: unknown };
 
-      // ダミーペイロードの内容を確認
+      // ダミーペイロードの内容を確認（tumiki ネスト構造）
       const jwtPayload = body.jwtPayload as {
         sub: string;
         azp: string;
         scope: string;
-        organization_id: string;
+        tumiki: {
+          org_id: string;
+          is_org_admin: boolean;
+          user_db_id: string;
+        };
       };
       expect(jwtPayload.sub).toBe("dev-user-id");
       expect(jwtPayload.azp).toBe("dev-client-id");
       expect(jwtPayload.scope).toBe("mcp:access:*");
-      expect(jwtPayload.organization_id).toBe("dev-org-id");
+      expect(jwtPayload.tumiki.org_id).toBe("dev-org-id");
+      expect(jwtPayload.tumiki.is_org_admin).toBe(true);
+      expect(jwtPayload.tumiki.user_db_id).toBe("dev-user-db-id");
     });
   });
 });
