@@ -1,111 +1,102 @@
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import {
+  InitializeRequestSchema,
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { toFetchResponse, toReqRes } from "fetch-to-node";
 import type { Context } from "hono";
-import type { HonoEnv, JsonRpcRequest } from "../../types/index.js";
-import { ToolRouter } from "../../libs/mcp/index.js";
-import { createJsonRpcError } from "../../libs/jsonrpc/index.js";
+import type { HonoEnv } from "../../types/index.js";
+import { getAllTools, callTool } from "../../libs/mcp/index.js";
 import { handleError } from "../../libs/error/handler.js";
-import { initializeHandler } from "./initializeHandler.js";
-import { toolsListHandler } from "./toolsListHandler.js";
-import { toolsCallHandler } from "./toolsCallHandler.js";
 
-const toolRouter = new ToolRouter();
+/**
+ * MCPサーバーインスタンスを作成
+ * Low-Level Server APIを使用して、JSON-RPC 2.0プロトコルを自動処理
+ */
+const createMcpServer = (instanceId: string) => {
+  const server = new Server(
+    {
+      name: "Tumiki MCP Proxy",
+      version: "0.1.0",
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+    },
+  );
+
+  // Initialize handler - SDKが自動的にプロトコルハンドシェイク処理
+  server.setRequestHandler(InitializeRequestSchema, async () => {
+    return {
+      protocolVersion: "2024-11-05",
+      capabilities: { tools: {} },
+      serverInfo: {
+        name: "Tumiki MCP Proxy",
+        version: "0.1.0",
+      },
+    };
+  });
+
+  // Tools list handler - SDKが自動的にバリデーションとJSON-RPC形式化
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const tools = await getAllTools(instanceId);
+
+    return {
+      tools: tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      })),
+    };
+  });
+
+  // Tools call handler - SDKが自動的にバリデーションとJSON-RPC形式化
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+
+    const result = await callTool(instanceId, name, args ?? {});
+
+    return { content: result.content };
+  });
+
+  return server;
+};
 
 /**
  * MCPメインハンドラー
- * JSON-RPCリクエストを受け取り、適切なハンドラーにルーティングします
+ * Low-Level Server APIを使用してJSON-RPC 2.0リクエストを自動処理
  */
 export const mcpHandler = async (c: Context<HonoEnv>) => {
   const authInfo = c.get("authInfo");
   const userMcpServerInstanceId = c.req.param("userMcpServerInstanceId");
 
   try {
-    const request: JsonRpcRequest = await c.req.json();
+    // MCPサーバーインスタンスを作成
+    const server = createMcpServer(userMcpServerInstanceId);
 
-    // リクエスト検証
-    if (!request.jsonrpc || request.jsonrpc !== "2.0") {
-      return c.json(
-        createJsonRpcError(
-          request.id,
-          -32600,
-          "Invalid Request: jsonrpc must be 2.0",
-        ),
-      );
-    }
+    // HTTPトランスポートを作成（ステートレスモード）
+    // Cloud Run向けにセッション管理を無効化
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // ステートレスモード
+    });
 
-    if (!request.method) {
-      return c.json(
-        createJsonRpcError(
-          request.id,
-          -32600,
-          "Invalid Request: method is required",
-        ),
-      );
-    }
+    // サーバーとトランスポートを接続
+    await server.connect(transport);
 
-    // メソッドハンドラーマッピング
-    const handlers: Record<
-      string,
-      (
-        request: JsonRpcRequest,
-        toolRouter: ToolRouter,
-        instanceId: string,
-      ) => Promise<Record<string, unknown>>
-    > = {
-      initialize: async (req) =>
-        initializeHandler(req) as Record<string, unknown>,
-      "tools/list": async (req, router, instanceId) =>
-        (await toolsListHandler(req, router, instanceId)) as Record<
-          string,
-          unknown
-        >,
-      "tools/call": async (req, router, instanceId) =>
-        (await toolsCallHandler(req, router, instanceId)) as Record<
-          string,
-          unknown
-        >,
-    };
+    // HonoのFetch APIリクエスト/レスポンスをNode.js形式に変換
+    const { req, res } = toReqRes(c.req.raw);
 
-    const handler = handlers[request.method];
+    // HTTPリクエストを処理
+    // SDKがJSON-RPC 2.0プロトコル（検証、ルーティング、エラー処理）を自動処理
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const body = await c.req.json();
+    await transport.handleRequest(req, res, body);
 
-    if (!handler) {
-      return c.json(
-        createJsonRpcError(
-          request.id,
-          -32601,
-          `Method not found: ${request.method}`,
-        ),
-      );
-    }
-
-    // ハンドラー実行
-    try {
-      const result = await handler(
-        request,
-        toolRouter,
-        userMcpServerInstanceId,
-      );
-      return c.json(result);
-    } catch (error) {
-      return handleError(c, error as Error, {
-        requestId: request.id,
-        errorCode: -32603,
-        errorMessage:
-          request.method === "tools/list"
-            ? "Failed to list tools"
-            : request.method === "tools/call"
-              ? "Tool execution failed"
-              : "Internal error",
-        authInfo,
-        instanceId: userMcpServerInstanceId,
-        logMessage: `Failed to handle method: ${request.method}`,
-        additionalMetadata:
-          request.method === "tools/call"
-            ? {
-                toolName: (request.params as { name?: string } | undefined)
-                  ?.name,
-              }
-            : undefined,
-      });
-    }
+    // Node.jsレスポンスをFetch APIレスポンスに変換して返却
+    return toFetchResponse(res);
   } catch (error) {
     return handleError(c, error as Error, {
       requestId: null,
@@ -113,7 +104,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
       errorMessage: "Internal error",
       authInfo,
       instanceId: userMcpServerInstanceId,
-      logMessage: "Failed to handle request",
+      logMessage: "Failed to handle MCP request",
     });
   }
 };
