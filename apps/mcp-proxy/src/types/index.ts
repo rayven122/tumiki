@@ -9,13 +9,22 @@ export type AuthInfo = {
 };
 
 /**
+ * Tumiki カスタムJWTクレーム
+ */
+export type TumikiJWTClaims = {
+  org_id: string; // 組織ID（Organization.id）
+  is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
+  user_db_id: string; // ユーザーDB主キー（User.id）
+};
+
+/**
  * JWT ペイロード（Keycloak OAuth 認証）
  */
 export type JWTPayload = {
-  sub: string; // ユーザーID
+  sub: string; // ユーザーID（Keycloak Subject）
+  tumiki: TumikiJWTClaims; // Tumikiカスタムクレーム
   azp?: string; // クライアントID (authorized party)
   scope?: string; // スコープ（スペース区切り）
-  organization_id?: string; // 組織ID（カスタムクレーム）
   email?: string; // メールアドレス
   name?: string; // ユーザー名
   preferred_username?: string; // ユーザー名

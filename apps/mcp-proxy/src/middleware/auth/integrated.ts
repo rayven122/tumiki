@@ -53,7 +53,7 @@ export const integratedAuthMiddleware = async (
       // AuthInfo を JWT ペイロードから構築
       // TODO: ユーザーの userMcpServerInstance を取得して設定
       const authInfo: AuthInfo = {
-        organizationId: jwtPayload.organization_id ?? "default-org",
+        organizationId: jwtPayload.tumiki.org_id,
         mcpServerInstanceId: "jwt-instance", // TODO: 実際のインスタンスID取得
         apiKeyId: "jwt-api-key",
         apiKey: "jwt-token",
