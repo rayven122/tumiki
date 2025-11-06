@@ -1,28 +1,13 @@
 #!/usr/bin/env node
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { integratedAuthMiddleware } from "./middleware/auth.js";
-import { ToolRouter } from "./libs/mcp/index.js";
 import { logInfo, logError } from "./libs/logger/index.js";
 import { closeRedisClient } from "./libs/cache/redis.js";
-import { handleError } from "./libs/error/handler.js";
 import { db } from "@tumiki/db/server";
-import {
-  createJsonRpcError,
-  createJsonRpcSuccess,
-} from "./libs/jsonrpc/index.js";
 import type { HonoEnv } from "./types/index.js";
 import { DEFAULT_PORT } from "./constants/server.js";
-
-// JSON-RPCリクエストの型定義
-type JsonRpcRequest = {
-  jsonrpc: string;
-  id?: string | number | null;
-  method: string;
-  params?: unknown;
-};
-
-const toolRouter = new ToolRouter();
+import { healthRoute } from "./routes/health.js";
+import { mcpRoute } from "./routes/mcp.js";
 
 // Hono アプリケーションの作成
 const app = new Hono<HonoEnv>();
@@ -30,162 +15,9 @@ const app = new Hono<HonoEnv>();
 // CORS設定
 app.use("/*", cors());
 
-// ヘルスチェック（基本）
-app.get("/health", (c) => {
-  logInfo("Health check accessed", {
-    userAgent: c.req.header("User-Agent"),
-    ip: c.req.header("X-Forwarded-For"),
-  });
-
-  return c.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// MCP エンドポイント（新しいRESTful形式）
-// 統合認証ミドルウェアを使用（API Key または JWT）
-app.post(
-  "/mcp/:userMcpServerInstanceId",
-  integratedAuthMiddleware,
-  async (c) => {
-    const authInfo = c.get("authInfo");
-    const userMcpServerInstanceId = c.req.param("userMcpServerInstanceId");
-
-    try {
-      const request: JsonRpcRequest = await c.req.json();
-
-      // リクエスト検証
-      if (!request.jsonrpc || request.jsonrpc !== "2.0") {
-        return c.json(
-          createJsonRpcError(
-            request.id,
-            -32600,
-            "Invalid Request: jsonrpc must be 2.0",
-          ),
-        );
-      }
-
-      if (!request.method) {
-        return c.json(
-          createJsonRpcError(
-            request.id,
-            -32600,
-            "Invalid Request: method is required",
-          ),
-        );
-      }
-
-      // tools/list, tools/call, initialize の実装
-      switch (request.method) {
-        case "initialize": {
-          // MCP protocol initialization handshake
-          return c.json(
-            createJsonRpcSuccess(request.id, {
-              protocolVersion: "2024-11-05",
-              capabilities: {
-                tools: {},
-              },
-              serverInfo: {
-                name: "Tumiki MCP Proxy",
-                version: "0.1.0",
-              },
-            }),
-          );
-        }
-
-        case "tools/list": {
-          try {
-            const tools = await toolRouter.getAllTools(userMcpServerInstanceId);
-
-            return c.json(
-              createJsonRpcSuccess(request.id, {
-                tools: tools.map((tool) => ({
-                  name: tool.name,
-                  description: tool.description,
-                  inputSchema: tool.inputSchema,
-                })),
-              }),
-            );
-          } catch (error) {
-            return handleError(c, error as Error, {
-              requestId: request.id,
-              errorCode: -32603,
-              errorMessage: "Failed to list tools",
-              authInfo,
-              instanceId: userMcpServerInstanceId,
-              logMessage: "Failed to list tools",
-            });
-          }
-        }
-
-        case "tools/call": {
-          const params = request.params as
-            | {
-                name: string;
-                arguments: Record<string, unknown>;
-              }
-            | undefined;
-
-          if (!params?.name) {
-            return c.json(
-              createJsonRpcError(
-                request.id,
-                -32602,
-                "Invalid params: name is required",
-              ),
-            );
-          }
-
-          try {
-            const result = await toolRouter.callTool(
-              userMcpServerInstanceId,
-              params.name,
-              params.arguments ?? {},
-            );
-
-            return c.json(
-              createJsonRpcSuccess(request.id, {
-                content: result.content,
-              }),
-            );
-          } catch (error) {
-            return handleError(c, error as Error, {
-              requestId: request.id,
-              errorCode: -32603,
-              errorMessage: "Tool execution failed",
-              authInfo,
-              instanceId: userMcpServerInstanceId,
-              logMessage: "Failed to call tool",
-              additionalMetadata: {
-                toolName: params.name,
-              },
-            });
-          }
-        }
-
-        default: {
-          return c.json(
-            createJsonRpcError(
-              request.id,
-              -32601,
-              `Method not found: ${request.method}`,
-            ),
-          );
-        }
-      }
-    } catch (error) {
-      return handleError(c, error as Error, {
-        requestId: null,
-        errorCode: -32603,
-        errorMessage: "Internal error",
-        authInfo,
-        instanceId: userMcpServerInstanceId,
-        logMessage: "Failed to handle request",
-      });
-    }
-  },
-);
+// ルートをマウント
+app.route("/", healthRoute);
+app.route("/", mcpRoute);
 
 // サーバー起動
 const port = Number(process.env.PORT) || DEFAULT_PORT;
