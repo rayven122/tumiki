@@ -7,12 +7,16 @@ import type { HonoEnv } from "../../types/index.js";
 // モックの設定
 vi.mock("../keycloakAuth.js", () => ({
   devKeycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
-    // モック JWT ペイロード
+    // モック JWT ペイロード（tumiki ネスト構造）
     c.set("jwtPayload", {
       sub: "test-user-id",
       azp: "test-client-id",
       scope: "mcp:access:*",
-      organization_id: "test-org-id",
+      tumiki: {
+        org_id: "test-org-id",
+        is_org_admin: true,
+        user_db_id: "test-user-db-id",
+      },
     });
     // next() は integratedAuthMiddleware が呼び出す
   }),

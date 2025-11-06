@@ -32,12 +32,16 @@ export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
   ) {
     logInfo("Dev mode: Bypassing JWT authentication");
 
-    // ダミーの JWT ペイロード
+    // ダミーの JWT ペイロード（tumiki ネスト構造）
     c.set("jwtPayload", {
       sub: "dev-user-id",
       azp: "dev-client-id",
       scope: "mcp:access:*",
-      organization_id: "dev-org-id",
+      tumiki: {
+        org_id: "dev-org-id",
+        is_org_admin: true,
+        user_db_id: "dev-user-db-id",
+      },
     });
 
     await next();
