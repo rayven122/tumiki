@@ -14,7 +14,8 @@ export type AuthInfo = {
 export type TumikiJWTClaims = {
   org_id: string; // 組織ID（Organization.id）
   is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
-  user_db_id: string; // ユーザーDB主キー（User.id）
+  tumiki_user_id: string; // TumikiユーザーID（User.id）
+  mcp_instance_id: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）
 };
 
 /**

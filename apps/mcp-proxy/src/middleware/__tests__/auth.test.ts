@@ -15,7 +15,8 @@ vi.mock("../keycloakAuth.js", () => ({
       tumiki: {
         org_id: "test-org-id",
         is_org_admin: true,
-        user_db_id: "test-user-db-id",
+        tumiki_user_id: "test-user-db-id",
+        mcp_instance_id: "test-mcp-instance-id",
       },
     });
     // next() は integratedAuthMiddleware が呼び出す
@@ -60,7 +61,7 @@ describe("integratedAuthMiddleware", () => {
       const body = (await res.json()) as { authInfo: unknown };
       expect(body.authInfo).toStrictEqual({
         organizationId: "test-org-id",
-        mcpServerInstanceId: "jwt-instance",
+        mcpServerInstanceId: "test-mcp-instance-id",
         apiKeyId: "jwt-api-key",
         apiKey: "jwt-token",
       });
@@ -233,7 +234,7 @@ describe("integratedAuthMiddleware", () => {
         authInfo: { mcpServerInstanceId: string };
       };
       // JWT 認証の結果を確認
-      expect(body.authInfo.mcpServerInstanceId).toBe("jwt-instance");
+      expect(body.authInfo.mcpServerInstanceId).toBe("test-mcp-instance-id");
     });
 
     test("Bearer tumiki_ で始まる場合はAPIキー認証を使用", async () => {

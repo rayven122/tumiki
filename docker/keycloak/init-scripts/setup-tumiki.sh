@@ -95,21 +95,37 @@ $KCADM create client-scopes/$CLIENT_SCOPE_ID/protocol-mappers/models \
 
 echo "✅ Mapper 'is_org_admin' configured"
 
-# Protocol Mapper 3: user_db_id
-echo "Creating mapper: user_db_id"
+# Protocol Mapper 3: tumiki_user_id
+echo "Creating mapper: tumiki_user_id"
 $KCADM create client-scopes/$CLIENT_SCOPE_ID/protocol-mappers/models \
   -r $REALM \
-  -s name=user_db_id \
+  -s name=tumiki_user_id \
   -s protocol=openid-connect \
   -s protocolMapper=oidc-usermodel-attribute-mapper \
-  -s 'config."user.attribute"=tumiki_user_db_id' \
-  -s 'config."claim.name"=tumiki.user_db_id' \
+  -s 'config."user.attribute"=tumiki_tumiki_user_id' \
+  -s 'config."claim.name"=tumiki.tumiki_user_id' \
   -s 'config."jsonType.label"=String' \
   -s 'config."id.token.claim"=true' \
   -s 'config."access.token.claim"=true' \
-  -s 'config."userinfo.token.claim"=true' 2>/dev/null || echo "  ℹ️  Mapper 'user_db_id' may already exist"
+  -s 'config."userinfo.token.claim"=true' 2>/dev/null || echo "  ℹ️  Mapper 'tumiki_user_id' may already exist"
 
-echo "✅ Mapper 'user_db_id' configured"
+echo "✅ Mapper 'tumiki_user_id' configured"
+
+# Protocol Mapper 4: mcp_instance_id
+echo "Creating mapper: mcp_instance_id"
+$KCADM create client-scopes/$CLIENT_SCOPE_ID/protocol-mappers/models \
+  -r $REALM \
+  -s name=mcp_instance_id \
+  -s protocol=openid-connect \
+  -s protocolMapper=oidc-usermodel-attribute-mapper \
+  -s 'config."user.attribute"=tumiki_mcp_instance_id' \
+  -s 'config."claim.name"=tumiki.mcp_instance_id' \
+  -s 'config."jsonType.label"=String' \
+  -s 'config."id.token.claim"=true' \
+  -s 'config."access.token.claim"=true' \
+  -s 'config."userinfo.token.claim"=true' 2>/dev/null || echo "  ℹ️  Mapper 'mcp_instance_id' may already exist"
+
+echo "✅ Mapper 'mcp_instance_id' configured"
 
 # Clientを取得（jq不要版）
 echo "Getting client ID for: $CLIENT_NAME"
@@ -146,6 +162,7 @@ echo "1. Verify JWT claims by logging in and inspecting the access token"
 echo "2. Ensure user attributes are set:"
 echo "   - tumiki_org_id"
 echo "   - tumiki_is_org_admin"
-echo "   - tumiki_user_db_id"
+echo "   - tumiki_tumiki_user_id"
+echo "   - tumiki_mcp_instance_id"
 echo "3. Test JWT decoding: echo \$TOKEN | cut -d. -f2 | base64 -d | jq ."
 echo ""
