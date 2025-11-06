@@ -1,11 +1,11 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { integratedAuthMiddleware } from "../auth.js";
+import { integratedAuthMiddleware } from "../auth/integrated.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定
-vi.mock("../keycloakAuth.js", () => ({
+vi.mock("../auth/jwt.js", () => ({
   devKeycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
     // モック JWT ペイロード
     c.set("jwtPayload", {
@@ -64,10 +64,14 @@ describe("integratedAuthMiddleware", () => {
 
     test("JWTペイロードがない場合は401エラー", async () => {
       // devKeycloakAuth がペイロードを設定しない場合をモック
-      const { devKeycloakAuth } = await import("../keycloakAuth.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(async () => {
-        // jwtPayload を設定しない
-      });
+      const { devKeycloakAuth } = await import("../auth/jwt.js");
+      vi.mocked(devKeycloakAuth).mockImplementationOnce(
+        async (c: Context<HonoEnv>) => {
+          // jwtPayload を設定しない
+          // next()を呼ばないことで、ペイロードなしをシミュレート
+          c.set("jwtPayload", undefined);
+        },
+      );
 
       const res = await app.request("/test", {
         headers: {
@@ -88,7 +92,7 @@ describe("integratedAuthMiddleware", () => {
     });
 
     test("JWT認証が例外を投げた場合は401エラー", async () => {
-      const { devKeycloakAuth } = await import("../keycloakAuth.js");
+      const { devKeycloakAuth } = await import("../auth/jwt.js");
       vi.mocked(devKeycloakAuth).mockImplementationOnce(async () => {
         throw new Error("JWT verification failed");
       });

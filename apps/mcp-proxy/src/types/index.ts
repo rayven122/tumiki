@@ -30,6 +30,16 @@ export type JWTPayload = {
 };
 
 /**
+ * JSON-RPCリクエスト
+ */
+export type JsonRpcRequest = {
+  jsonrpc: string;
+  id?: string | number | null;
+  method: string;
+  params?: unknown;
+};
+
+/**
  * 名前空間付きツール
  */
 export type NamespacedTool = {
@@ -48,6 +58,20 @@ export type ToolCallResult = {
     type: string;
     text: string;
   }>;
+};
+
+/**
+ * Remote MCP サーバー設定型
+ */
+export type RemoteMcpServerConfig = {
+  enabled: boolean;
+  name: string;
+  url: string;
+  transportType?: "sse" | "http" | "stdio"; // SSE（デフォルト）、HTTP、Stdio
+  authType: "none" | "bearer" | "api_key";
+  authToken?: string;
+  headers?: Record<string, string>;
+  envVars?: Record<string, string>;
 };
 
 /**

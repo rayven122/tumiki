@@ -11,7 +11,7 @@ import {
   ListToolsResultSchema,
   CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { getEnabledServersForInstance } from "../../server/config.js";
+import { getEnabledServersForInstance } from "../../services/config/configService.js";
 import type { NamespacedTool, ToolCallResult } from "../../types/index.js";
 import { logInfo, logError } from "../logger/index.js";
 import { withMcpClient } from "./wrapper.js";
