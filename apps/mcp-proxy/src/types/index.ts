@@ -30,16 +30,6 @@ export type JWTPayload = {
 };
 
 /**
- * JSON-RPCリクエスト
- */
-export type JsonRpcRequest = {
-  jsonrpc: string;
-  id?: string | number | null;
-  method: string;
-  params?: unknown;
-};
-
-/**
  * 名前空間付きツール
  */
 export type NamespacedTool = {
