@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { devKeycloakAuth } from "../keycloakAuth.js";
+import { devKeycloakAuth } from "../auth/jwt.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定

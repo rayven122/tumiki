@@ -21,6 +21,7 @@
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
+    "fetch-to-node": "^2.1.0",
     "hono": "^4.7.4",
     "redis": "^5.0.1"
   },

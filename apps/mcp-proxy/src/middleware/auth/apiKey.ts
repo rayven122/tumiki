@@ -1,8 +1,7 @@
 import type { Context, Next } from "hono";
 import { db } from "@tumiki/db/server";
-import type { AuthInfo, HonoEnv } from "../types/index.js";
-import { logError, logInfo } from "../libs/logger/index.js";
-import { devKeycloakAuth } from "./keycloakAuth.js";
+import type { AuthInfo, HonoEnv } from "../../types/index.js";
+import { logError } from "../../libs/logger/index.js";
 
 /**
  * APIキーを抽出
@@ -76,7 +75,7 @@ const validateApiKey = async (
  * - DEV_MODE=true の場合、認証をバイパス
  * - ダミーの認証情報を設定
  */
-export const authMiddleware = async (
+export const apiKeyAuthMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
@@ -137,102 +136,4 @@ export const authMiddleware = async (
   c.set("authInfo", authInfo);
 
   await next();
-};
-
-/**
- * 統合認証ミドルウェア
- *
- * Authorization ヘッダーの形式を判定して、適切な認証方法を選択:
- * - `Bearer eyJ...` → JWT 認証（Keycloak）
- * - `Bearer tumiki_...` → API Key 認証
- * - `X-API-Key` ヘッダー → API Key 認証
- * - なし → 401 エラー
- */
-export const integratedAuthMiddleware = async (
-  c: Context<HonoEnv>,
-  next: Next,
-): Promise<Response | void> => {
-  const authorization = c.req.header("Authorization");
-  const xApiKey = c.req.header("X-API-Key");
-
-  // JWT 認証の判定（Bearer eyJ で始まる場合）
-  if (authorization?.startsWith("Bearer eyJ")) {
-    logInfo("Using JWT authentication");
-
-    try {
-      // JWT 認証を実行（devKeycloakAuth は DEV_MODE 対応）
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      const result = await devKeycloakAuth(c, next);
-
-      // devKeycloakAuth が Response を返した場合（認証失敗）
-      if (result) {
-        return result;
-      }
-
-      // JWT ペイロードから認証情報を構築
-      const jwtPayload = c.get("jwtPayload");
-
-      if (!jwtPayload) {
-        return c.json(
-          {
-            jsonrpc: "2.0",
-            id: null,
-            error: {
-              code: -32600,
-              message: "Invalid JWT token",
-            },
-          },
-          401,
-        );
-      }
-
-      // AuthInfo を JWT ペイロードから構築
-      // TODO: ユーザーの userMcpServerInstance を取得して設定（DEV-913で実装）
-      const authInfo: AuthInfo = {
-        organizationId: jwtPayload.tumiki.org_id,
-        mcpServerInstanceId: "jwt-instance", // TODO: 実際のインスタンスID取得
-        apiKeyId: "jwt-api-key",
-        apiKey: "jwt-token",
-      };
-
-      c.set("authInfo", authInfo);
-      await next();
-      return;
-    } catch (error) {
-      logError("JWT authentication failed", error as Error);
-      return c.json(
-        {
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32600,
-            message: "Invalid or expired JWT token",
-          },
-        },
-        401,
-      );
-    }
-  }
-
-  // API Key 認証（Bearer tumiki_ または X-API-Key ヘッダー）
-  if (authorization?.startsWith("Bearer tumiki_") || xApiKey) {
-    logInfo("Using API Key authentication");
-    return authMiddleware(c, next);
-  }
-
-  // 認証情報なし
-  return c.json(
-    {
-      jsonrpc: "2.0",
-      id: null,
-      error: {
-        code: -32600,
-        message: "Authentication required",
-        data: {
-          hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
-        },
-      },
-    },
-    401,
-  );
 };

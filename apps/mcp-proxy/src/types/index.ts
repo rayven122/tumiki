@@ -60,6 +60,20 @@ export type ToolCallResult = {
 };
 
 /**
+ * Remote MCP サーバー設定型
+ */
+export type RemoteMcpServerConfig = {
+  enabled: boolean;
+  name: string;
+  url: string;
+  transportType?: "sse" | "http" | "stdio"; // SSE（デフォルト）、HTTP、Stdio
+  authType: "none" | "bearer" | "api_key";
+  authToken?: string;
+  headers?: Record<string, string>;
+  envVars?: Record<string, string>;
+};
+
+/**
  * Hono 環境型定義
  *
  * コンテキストの型安全性を提供

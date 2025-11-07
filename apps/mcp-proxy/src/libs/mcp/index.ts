@@ -3,5 +3,10 @@
  */
 
 export { createMcpClient } from "./client.js";
-export { ToolRouter } from "./router.js";
+export {
+  getAllTools,
+  getToolsByNamespace,
+  callTool,
+  parseToolName,
+} from "./router.js";
 export { withMcpClient } from "./wrapper.js";
