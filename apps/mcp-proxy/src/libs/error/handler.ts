@@ -1,6 +1,5 @@
 import type { Context } from "hono";
 import { logError, sanitizeIdForLog } from "../logger/index.js";
-import { createJsonRpcError } from "../jsonrpc/index.js";
 import type { AuthInfo, HonoEnv } from "../../types/index.js";
 
 type ErrorHandlerOptions = {
@@ -39,9 +38,16 @@ export const handleError = (
     ...additionalMetadata,
   });
 
-  return c.json(
-    createJsonRpcError(requestId, errorCode, errorMessage, {
-      message: error.message,
-    }),
-  );
+  // JSON-RPC 2.0形式のエラーレスポンスを返す
+  return c.json({
+    jsonrpc: "2.0",
+    id: requestId ?? null,
+    error: {
+      code: errorCode,
+      message: errorMessage,
+      data: {
+        message: error.message,
+      },
+    },
+  });
 };
