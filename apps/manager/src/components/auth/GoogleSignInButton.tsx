@@ -10,7 +10,7 @@ type GoogleSignInButtonProps = {
 };
 
 export const GoogleSignInButton = ({
-  callbackUrl = "/dashboard",
+  callbackUrl = "/mcp/servers",
   label = "Googleでログイン",
 }: GoogleSignInButtonProps) => {
   const handleSignIn = async () => {
