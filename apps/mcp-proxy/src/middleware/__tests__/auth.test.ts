@@ -15,7 +15,8 @@ vi.mock("../auth/jwt.js", () => ({
       tumiki: {
         org_id: "test-org-id",
         is_org_admin: true,
-        user_db_id: "test-user-db-id",
+        tumiki_user_id: "test-user-db-id",
+        mcp_instance_id: "test-mcp-instance-id",
       },
     });
     // next() は integratedAuthMiddleware が呼び出す
@@ -24,8 +25,15 @@ vi.mock("../auth/jwt.js", () => ({
 
 vi.mock("@tumiki/db/server", () => ({
   db: {
+    organization: {
+      findUnique: vi.fn(),
+    },
     mcpApiKey: {
       findUnique: vi.fn(),
+    },
+    userMcpServerInstance: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -42,14 +50,35 @@ describe("integratedAuthMiddleware", () => {
     app = new Hono<HonoEnv>();
     app.use("*", integratedAuthMiddleware);
     app.get("/test", (c) => {
-      const authInfo = c.get("authInfo");
-      return c.json({ authInfo });
+      const jwtPayload = c.get("jwtPayload");
+      const apiKeyAuthInfo = c.get("apiKeyAuthInfo");
+      return c.json({ jwtPayload, apiKeyAuthInfo });
     });
     vi.clearAllMocks();
   });
 
   describe("JWT認証", () => {
     test("有効なJWTトークンで認証成功", async () => {
+      // instanceResolver で使用される DB モックを設定
+      const { db } = await import("@tumiki/db/server");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValueOnce({
+        id: "test-mcp-instance-id",
+        name: "Test Instance",
+        description: null,
+        iconPath: null,
+        serverStatus: "RUNNING",
+        serverType: "OFFICIAL",
+        toolGroupId: "toolgroup-1",
+        authType: "OAUTH",
+        organizationId: "test-org-id",
+        displayOrder: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
       const res = await app.request("/test", {
         headers: {
           Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
@@ -57,13 +86,12 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { authInfo: unknown };
-      expect(body.authInfo).toStrictEqual({
-        organizationId: "test-org-id",
-        mcpServerInstanceId: "jwt-instance",
-        apiKeyId: "jwt-api-key",
-        apiKey: "jwt-token",
-      });
+      const body = (await res.json()) as {
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: unknown;
+      };
+      expect(body.jwtPayload).toBeDefined();
+      expect(body.apiKeyAuthInfo).toBeUndefined();
     });
 
     test("JWTペイロードがない場合は401エラー", async () => {
@@ -118,6 +146,42 @@ describe("integratedAuthMiddleware", () => {
         },
       });
     });
+
+    test("mcp_instance_idがないJWTの場合は401エラー", async () => {
+      // mcp_instance_id なしのJWTをモック
+      const { devKeycloakAuth } = await import("../auth/jwt.js");
+      vi.mocked(devKeycloakAuth).mockImplementationOnce(async (c) => {
+        c.set("jwtPayload", {
+          sub: "test-user-id",
+          azp: "test-client-id",
+          scope: "mcp:access:*",
+          tumiki: {
+            org_id: "test-org-id",
+            is_org_admin: true,
+            tumiki_user_id: "test-user-db-id",
+            // mcp_instance_id なし
+          },
+        });
+      });
+
+      const res = await app.request("/test", {
+        headers: {
+          Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
+        },
+      });
+
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32600,
+          message:
+            "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+        },
+      });
+    });
   });
 
   describe("APIキー認証", () => {
@@ -151,9 +215,12 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { organizationId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { organizationId: string };
       };
-      expect(body.authInfo.organizationId).toBe("org-id");
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.organizationId).toBe("org-id");
+      expect(body.jwtPayload).toBeUndefined();
     });
 
     test("X-API-Key ヘッダーで認証を試行", async () => {
@@ -186,9 +253,12 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { organizationId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { organizationId: string };
       };
-      expect(body.authInfo.organizationId).toBe("org-id-2");
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.organizationId).toBe("org-id-2");
+      expect(body.jwtPayload).toBeUndefined();
     });
   });
 
@@ -226,6 +296,26 @@ describe("integratedAuthMiddleware", () => {
 
   describe("認証方式の判定", () => {
     test("Bearer eyJ で始まる場合はJWT認証を使用", async () => {
+      // instanceResolver で使用される DB モックを設定
+      const { db } = await import("@tumiki/db/server");
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValueOnce({
+        id: "test-mcp-instance-id",
+        name: "Test Instance",
+        description: null,
+        iconPath: null,
+        serverStatus: "RUNNING",
+        serverType: "OFFICIAL",
+        toolGroupId: "toolgroup-1",
+        authType: "OAUTH",
+        organizationId: "test-org-id",
+        displayOrder: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
       const res = await app.request("/test", {
         headers: {
           Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
@@ -234,10 +324,12 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { mcpServerInstanceId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: unknown;
       };
       // JWT 認証の結果を確認
-      expect(body.authInfo.mcpServerInstanceId).toBe("jwt-instance");
+      expect(body.jwtPayload).toBeDefined();
+      expect(body.apiKeyAuthInfo).toBeUndefined();
     });
 
     test("Bearer tumiki_ で始まる場合はAPIキー認証を使用", async () => {
@@ -270,10 +362,13 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { mcpServerInstanceId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { mcpServerInstanceId: string };
       };
       // API Key 認証の結果を確認
-      expect(body.authInfo.mcpServerInstanceId).toBe("api-instance-id");
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.mcpServerInstanceId).toBe("api-instance-id");
+      expect(body.jwtPayload).toBeUndefined();
     });
   });
 });

@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import type { AuthInfo, HonoEnv } from "../../types/index.js";
+import type { HonoEnv } from "../../types/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { apiKeyAuthMiddleware } from "./apiKey.js";
 import { devKeycloakAuth } from "./jwt.js";
@@ -33,7 +33,7 @@ export const integratedAuthMiddleware = async (
         return result;
       }
 
-      // JWT ペイロードから認証情報を構築
+      // JWT ペイロードが設定されていることを確認
       const jwtPayload = c.get("jwtPayload");
 
       if (!jwtPayload) {
@@ -50,17 +50,23 @@ export const integratedAuthMiddleware = async (
         );
       }
 
-      // AuthInfo を JWT ペイロードから構築
-      // TODO: ユーザーの userMcpServerInstance を取得して設定
-      const authInfo: AuthInfo = {
-        organizationId: jwtPayload.tumiki.org_id,
-        mcpServerInstanceId: "jwt-instance", // TODO: 実際のインスタンスID取得
-        apiKeyId: "jwt-api-key",
-        apiKey: "jwt-token",
-      };
+      // mcp_instance_id が必須（MCP サーバーアクセスには必要）
+      if (!jwtPayload.tumiki?.mcp_instance_id) {
+        return c.json(
+          {
+            jsonrpc: "2.0",
+            id: null,
+            error: {
+              code: -32600,
+              message:
+                "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+            },
+          },
+          401,
+        );
+      }
 
-      c.set("authInfo", authInfo);
-      // AuthInfo 設定後に next() を呼ぶ
+      // JWT認証では jwtPayload のみを使用（authInfo は不要）
       await next();
       return;
     } catch (error) {
