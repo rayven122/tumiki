@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { devKeycloakAuth } from "../keycloakAuth.js";
+import { devKeycloakAuth } from "../auth/jwt.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定
@@ -60,7 +60,8 @@ describe("devKeycloakAuth", () => {
         tumiki: {
           org_id: "dev-org-id",
           is_org_admin: true,
-          user_db_id: "dev-user-db-id",
+          tumiki_user_id: "dev-user-db-id",
+          mcp_instance_id: "dev-mcp-instance-id",
         },
       });
     });
@@ -107,7 +108,8 @@ describe("devKeycloakAuth", () => {
         tumiki: {
           org_id: string;
           is_org_admin: boolean;
-          user_db_id: string;
+          tumiki_user_id: string;
+          mcp_instance_id: string;
         };
       };
       expect(jwtPayload.sub).toBe("dev-user-id");
@@ -115,7 +117,8 @@ describe("devKeycloakAuth", () => {
       expect(jwtPayload.scope).toBe("mcp:access:*");
       expect(jwtPayload.tumiki.org_id).toBe("dev-org-id");
       expect(jwtPayload.tumiki.is_org_admin).toBe(true);
-      expect(jwtPayload.tumiki.user_db_id).toBe("dev-user-db-id");
+      expect(jwtPayload.tumiki.tumiki_user_id).toBe("dev-user-db-id");
+      expect(jwtPayload.tumiki.mcp_instance_id).toBe("dev-mcp-instance-id");
     });
   });
 });

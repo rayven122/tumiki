@@ -1,11 +1,12 @@
 /**
- * 認証情報（APIキー認証）
+ * API Key認証情報
+ *
+ * API Key認証時にコンテキストに設定される情報。
+ * JWT認証時は使用されず、jwtPayloadから直接情報を取得する。
  */
-export type AuthInfo = {
+export type ApiKeyAuthInfo = {
   organizationId: string;
   mcpServerInstanceId: string;
-  apiKeyId: string;
-  apiKey: string;
 };
 
 /**
@@ -14,7 +15,8 @@ export type AuthInfo = {
 export type TumikiJWTClaims = {
   org_id: string; // 組織ID（Organization.id）
   is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
-  user_db_id: string; // ユーザーDB主キー（User.id）
+  tumiki_user_id: string; // TumikiユーザーID（User.id）
+  mcp_instance_id?: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）- MCP接続時は必須、管理画面では不要
 };
 
 /**
@@ -60,13 +62,30 @@ export type ToolCallResult = {
 };
 
 /**
+ * Remote MCP サーバー設定型
+ */
+export type RemoteMcpServerConfig = {
+  enabled: boolean;
+  name: string;
+  url: string;
+  transportType?: "sse" | "http" | "stdio"; // SSE（デフォルト）、HTTP、Stdio
+  authType: "none" | "bearer" | "api_key";
+  authToken?: string;
+  headers?: Record<string, string>;
+  envVars?: Record<string, string>;
+};
+
+/**
  * Hono 環境型定義
  *
  * コンテキストの型安全性を提供
+ *
+ * - JWT認証時: jwtPayload のみ設定
+ * - API Key認証時: apiKeyAuthInfo のみ設定
  */
 export type HonoEnv = {
   Variables: {
-    authInfo: AuthInfo;
-    jwtPayload?: JWTPayload;
+    apiKeyAuthInfo?: ApiKeyAuthInfo; // API Key認証時のみ
+    jwtPayload?: JWTPayload; // JWT認証時のみ
   };
 };

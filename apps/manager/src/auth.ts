@@ -86,6 +86,69 @@ export const {
   },
   callbacks: {
     /**
+     * サインインコールバック
+     * ユーザーログイン時にKeycloak属性を同期
+     */
+    async signIn({ user, account }): Promise<boolean> {
+      if (account?.provider === "keycloak" && account.providerAccountId) {
+        try {
+          // DBからユーザー情報取得
+          const dbUser = await db.user.findUnique({
+            where: { id: user.id },
+            include: {
+              members: {
+                where: {
+                  organization: { isPersonal: true },
+                },
+                include: {
+                  organization: true,
+                },
+              },
+            },
+          });
+
+          if (!dbUser) {
+            console.error("[Auth] User not found in database:", user.id);
+            return true; // ログインは許可するが属性更新はスキップ
+          }
+
+          const personalOrgMember = dbUser.members[0];
+          if (!personalOrgMember?.organization) {
+            console.warn("[Auth] No personal organization found:", user.id);
+            return true;
+          }
+
+          // Keycloak属性を更新
+          const { updateKeycloakUserAttributes } = await import(
+            "~/lib/keycloak-admin"
+          );
+
+          const result = await updateKeycloakUserAttributes(
+            account.providerAccountId,
+            {
+              tumiki_org_id: personalOrgMember.organization.id,
+              tumiki_is_org_admin: personalOrgMember.isAdmin ? "true" : "false",
+              tumiki_tumiki_user_id: user.id,
+              // mcp_instance_id はオプショナル（管理画面JWTには不要）
+            },
+          );
+
+          if (!result.success) {
+            console.error(
+              "[Auth] Failed to update Keycloak attributes:",
+              result.error,
+            );
+          }
+        } catch (error) {
+          console.error("[Auth] Error in signIn callback:", error);
+          // エラーが発生してもログインは許可
+        }
+      }
+
+      return true;
+    },
+
+    /**
      * セッションコールバック
      * クライアントに返すセッション情報を構築
      */

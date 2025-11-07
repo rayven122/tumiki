@@ -151,3 +151,61 @@ export const createKeycloakUser = async (
     };
   }
 };
+
+/**
+ * Keycloakユーザー属性更新レスポンス型
+ */
+type UpdateUserAttributesResponse = {
+  success: boolean;
+  error?: string;
+};
+
+/**
+ * Keycloakユーザー属性を更新
+ * JWTカスタムクレーム用の属性を設定
+ */
+export const updateKeycloakUserAttributes = async (
+  keycloakUserId: string,
+  attributes: {
+    tumiki_org_id?: string;
+    tumiki_is_org_admin?: string; // "true" or "false" (文字列)
+    tumiki_tumiki_user_id?: string;
+    tumiki_mcp_instance_id?: string;
+  },
+): Promise<UpdateUserAttributesResponse> => {
+  try {
+    const token = await getAdminToken();
+    const keycloakBaseUrl =
+      process.env.KEYCLOAK_ISSUER?.replace(/\/realms\/.*$/, "") ??
+      "http://localhost:8443";
+
+    const response = await fetch(
+      `${keycloakBaseUrl}/admin/realms/tumiki/users/${keycloakUserId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          attributes,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Failed to update user attributes: ${response.status} ${errorText}`,
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
