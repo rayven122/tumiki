@@ -1,6 +1,6 @@
 import { jwk } from "hono/jwk";
 import type { MiddlewareHandler } from "hono";
-import { logInfo } from "../libs/logger/index.js";
+import { logInfo } from "../../libs/logger/index.js";
 
 /**
  * Keycloak JWT 認証ミドルウェア

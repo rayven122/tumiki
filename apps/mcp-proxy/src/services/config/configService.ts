@@ -1,56 +1,9 @@
 import { db } from "@tumiki/db/server";
-import type { TransportType, AuthType } from "@tumiki/db";
-import { logError } from "../libs/logger/index.js";
-import { getCachedConfig } from "../libs/cache/configCache.js";
-import { injectAuthHeaders } from "../middleware/oauth-header-injector.js";
-
-/**
- * Remote MCP サーバー設定型
- */
-export type RemoteMcpServerConfig = {
-  enabled: boolean;
-  name: string;
-  url: string;
-  transportType?: "sse" | "http" | "stdio"; // SSE（デフォルト）、HTTP、Stdio
-  authType: "none" | "bearer" | "api_key";
-  authToken?: string;
-  headers?: Record<string, string>;
-  envVars?: Record<string, string>;
-};
-
-/**
- * TransportTypeをクライアント用トランスポートタイプに変換
- */
-const mapTransportType = (
-  dbTransportType: TransportType,
-): "sse" | "http" | "stdio" => {
-  switch (dbTransportType) {
-    case "SSE":
-      return "sse";
-    case "STREAMABLE_HTTPS":
-      return "http";
-    case "STDIO":
-      return "stdio";
-    default:
-      throw new Error(`Unknown transport type: ${String(dbTransportType)}`);
-  }
-};
-
-/**
- * AuthTypeをクライアント用認証タイプに変換
- */
-const mapAuthType = (dbAuthType: AuthType): "none" | "bearer" | "api_key" => {
-  switch (dbAuthType) {
-    case "NONE":
-      return "none";
-    case "API_KEY":
-      return "api_key";
-    case "OAUTH":
-      return "bearer";
-    default:
-      throw new Error(`Unknown auth type: ${String(dbAuthType)}`);
-  }
-};
+import { logError } from "../../libs/logger/index.js";
+import { getCachedConfig } from "../../libs/cache/configCache.js";
+import { injectAuthHeaders } from "../../middleware/oauth-header-injector.js";
+import { mapTransportType, mapAuthType } from "./transformer.js";
+import type { RemoteMcpServerConfig } from "../../types/index.js";
 
 /**
  * UserMcpServerInstanceに対応するRemote MCPサーバー設定をDBから取得（内部関数）
@@ -64,7 +17,7 @@ const mapAuthType = (dbAuthType: AuthType): "none" | "bearer" | "api_key" => {
  * - データサイズ: 大幅削減（重複なし）
  * - コードの簡素化: 重複排除ロジック（configMap）削除
  */
-const _getEnabledServersForInstanceFromDB = async (
+const getEnabledServersForInstanceFromDB = async (
   userMcpServerInstanceId: string,
 ): Promise<
   Array<{
@@ -219,6 +172,6 @@ export const getEnabledServersForInstance = async (
 
   // キャッシュ経由でDB取得
   return await getCachedConfig(userMcpServerInstanceId, () =>
-    _getEnabledServersForInstanceFromDB(userMcpServerInstanceId),
+    getEnabledServersForInstanceFromDB(userMcpServerInstanceId),
   );
 };

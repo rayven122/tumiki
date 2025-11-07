@@ -1,11 +1,11 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { integratedAuthMiddleware } from "../auth.js";
+import { integratedAuthMiddleware } from "../auth/integrated.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定
-vi.mock("../keycloakAuth.js", () => ({
+vi.mock("../auth/jwt.js", () => ({
   devKeycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
     // モック JWT ペイロード（tumiki ネスト構造）
     c.set("jwtPayload", {
@@ -50,8 +50,9 @@ describe("integratedAuthMiddleware", () => {
     app = new Hono<HonoEnv>();
     app.use("*", integratedAuthMiddleware);
     app.get("/test", (c) => {
-      const authInfo = c.get("authInfo");
-      return c.json({ authInfo });
+      const jwtPayload = c.get("jwtPayload");
+      const apiKeyAuthInfo = c.get("apiKeyAuthInfo");
+      return c.json({ jwtPayload, apiKeyAuthInfo });
     });
     vi.clearAllMocks();
   });
@@ -85,21 +86,24 @@ describe("integratedAuthMiddleware", () => {
       });
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as { authInfo: unknown };
-      expect(body.authInfo).toStrictEqual({
-        organizationId: "test-org-id",
-        mcpServerInstanceId: "test-mcp-instance-id",
-        apiKeyId: "jwt-test-mcp-instance-id",
-        apiKey: "test-user-id",
-      });
+      const body = (await res.json()) as {
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: unknown;
+      };
+      expect(body.jwtPayload).toBeDefined();
+      expect(body.apiKeyAuthInfo).toBeUndefined();
     });
 
     test("JWTペイロードがない場合は401エラー", async () => {
       // devKeycloakAuth がペイロードを設定しない場合をモック
-      const { devKeycloakAuth } = await import("../keycloakAuth.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(async () => {
-        // jwtPayload を設定しない
-      });
+      const { devKeycloakAuth } = await import("../auth/jwt.js");
+      vi.mocked(devKeycloakAuth).mockImplementationOnce(
+        async (c: Context<HonoEnv>) => {
+          // jwtPayload を設定しない
+          // next()を呼ばないことで、ペイロードなしをシミュレート
+          c.set("jwtPayload", undefined);
+        },
+      );
 
       const res = await app.request("/test", {
         headers: {
@@ -120,7 +124,7 @@ describe("integratedAuthMiddleware", () => {
     });
 
     test("JWT認証が例外を投げた場合は401エラー", async () => {
-      const { devKeycloakAuth } = await import("../keycloakAuth.js");
+      const { devKeycloakAuth } = await import("../auth/jwt.js");
       vi.mocked(devKeycloakAuth).mockImplementationOnce(async () => {
         throw new Error("JWT verification failed");
       });
@@ -145,7 +149,7 @@ describe("integratedAuthMiddleware", () => {
 
     test("mcp_instance_idがないJWTの場合は401エラー", async () => {
       // mcp_instance_id なしのJWTをモック
-      const { devKeycloakAuth } = await import("../keycloakAuth.js");
+      const { devKeycloakAuth } = await import("../auth/jwt.js");
       vi.mocked(devKeycloakAuth).mockImplementationOnce(async (c) => {
         c.set("jwtPayload", {
           sub: "test-user-id",
@@ -211,9 +215,12 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { organizationId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { organizationId: string };
       };
-      expect(body.authInfo.organizationId).toBe("org-id");
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.organizationId).toBe("org-id");
+      expect(body.jwtPayload).toBeUndefined();
     });
 
     test("X-API-Key ヘッダーで認証を試行", async () => {
@@ -246,9 +253,12 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { organizationId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { organizationId: string };
       };
-      expect(body.authInfo.organizationId).toBe("org-id-2");
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.organizationId).toBe("org-id-2");
+      expect(body.jwtPayload).toBeUndefined();
     });
   });
 
@@ -314,10 +324,12 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { mcpServerInstanceId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: unknown;
       };
       // JWT 認証の結果を確認
-      expect(body.authInfo.mcpServerInstanceId).toBe("test-mcp-instance-id");
+      expect(body.jwtPayload).toBeDefined();
+      expect(body.apiKeyAuthInfo).toBeUndefined();
     });
 
     test("Bearer tumiki_ で始まる場合はAPIキー認証を使用", async () => {
@@ -350,10 +362,13 @@ describe("integratedAuthMiddleware", () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        authInfo: { mcpServerInstanceId: string };
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { mcpServerInstanceId: string };
       };
       // API Key 認証の結果を確認
-      expect(body.authInfo.mcpServerInstanceId).toBe("api-instance-id");
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.mcpServerInstanceId).toBe("api-instance-id");
+      expect(body.jwtPayload).toBeUndefined();
     });
   });
 });
