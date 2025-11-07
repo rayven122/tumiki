@@ -15,6 +15,12 @@ export default {
       clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
       clientSecret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
+      authorization: {
+        params: {
+          // Keycloakのログイン画面をスキップして直接Googleにリダイレクト
+          kc_idp_hint: "google",
+        },
+      },
     }),
   ],
   callbacks: {
