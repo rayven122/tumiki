@@ -2,7 +2,7 @@
   "realm": "tumiki",
   "displayName": "Tumiki Platform",
   "enabled": true,
-  "sslRequired": "external",
+  "sslRequired": "none",
   "registrationAllowed": true,
   "registrationEmailAsUsername": true,
   "resetPasswordAllowed": true,
