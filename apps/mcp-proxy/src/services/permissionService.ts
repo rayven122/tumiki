@@ -80,9 +80,10 @@ export const checkPermission = async (
  * KEYS操作ではなくSCAN操作を使用します。
  *
  * @param pattern - マッチパターン (例: "permission:*:org-id:*")
+ * @param maxKeys - 最大取得キー数（デフォルト: 1000）
  * @returns マッチしたキーの配列
  */
-const scanKeys = async (pattern: string): Promise<string[]> => {
+const scanKeys = async (pattern: string, maxKeys = 1000): Promise<string[]> => {
   const redis = await getRedisClient();
   if (!redis) {
     return [];
@@ -90,6 +91,8 @@ const scanKeys = async (pattern: string): Promise<string[]> => {
 
   const keys: string[] = [];
   let cursor = "0";
+  let iterations = 0;
+  const maxIterations = Math.ceil(maxKeys / 100);
 
   do {
     const result = await redis.scan(cursor, {
@@ -98,6 +101,12 @@ const scanKeys = async (pattern: string): Promise<string[]> => {
     });
     cursor = result.cursor.toString();
     keys.push(...result.keys);
+    iterations++;
+
+    // 無限ループ防止とメモリ制限
+    if (iterations >= maxIterations || keys.length >= maxKeys) {
+      break;
+    }
   } while (cursor !== "0");
 
   return keys;
