@@ -29,6 +29,9 @@ export const {
   signOut,
 } = NextAuth({
   ...authConfig,
+  pages: {
+    signIn: "/signin",
+  },
   adapter: {
     ...PrismaAdapter(db),
     createUser: async (user) => {

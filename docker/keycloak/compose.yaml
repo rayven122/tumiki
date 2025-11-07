@@ -9,12 +9,17 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak123
-    command: start-dev --import-realm
+    command:
+      - start-dev
+      - --import-realm
+      - --http-enabled=true
+      - --hostname-strict=false
     ports:
       - "8443:8080"
     volumes:
       - ./tumiki-realm.json:/opt/keycloak/data/import/tumiki-realm.json:ro
       - ./init-scripts:/opt/keycloak/init-scripts:ro
+      - ./setup-keycloak.sh:/opt/keycloak/setup-keycloak.sh:ro
     depends_on:
       keycloak-db:
         condition: service_healthy
