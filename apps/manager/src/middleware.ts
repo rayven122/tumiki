@@ -124,7 +124,8 @@ export async function middleware(request: NextRequest) {
     "/pricing",
     "/legal",
     "/error",
-    "/register",
+    "/signin",
+    "/signup",
   ];
   const isPublicPath = publicPaths.some((path) => {
     if (path === "/legal") {
