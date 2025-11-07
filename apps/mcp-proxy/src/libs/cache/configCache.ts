@@ -1,4 +1,4 @@
-import type { RemoteMcpServerConfig } from "../../server/config.js";
+import type { RemoteMcpServerConfig } from "../../types/index.js";
 import { decrypt, encrypt } from "../crypto/index.js";
 import { getRedisClient } from "./redis.js";
 import { logError, logInfo, sanitizeIdForLog } from "../logger/index.js";

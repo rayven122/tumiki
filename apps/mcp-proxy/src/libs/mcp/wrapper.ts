@@ -6,7 +6,7 @@
 
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { createMcpClient } from "./client.js";
-import type { RemoteMcpServerConfig } from "../../server/config.js";
+import type { RemoteMcpServerConfig } from "../../types/index.js";
 import { DEFAULT_MCP_TIMEOUT } from "../../constants/server.js";
 
 /**
