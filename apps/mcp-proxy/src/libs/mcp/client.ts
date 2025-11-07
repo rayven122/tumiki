@@ -12,11 +12,12 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { RemoteMcpServerConfig } from "../../types/index.js";
 import { logInfo, logError } from "../logger/index.js";
+import { TIMEOUT_CONFIG } from "../../constants/config.js";
 
 /**
  * 接続タイムアウト（ミリ秒）
  */
-const CONNECTION_TIMEOUT_MS = 10000;
+const CONNECTION_TIMEOUT_MS = TIMEOUT_CONFIG.MCP_CONNECTION_MS;
 
 /**
  * タイムアウト付きで接続を試行

@@ -73,9 +73,6 @@ export const checkPermission = async (
   return hasPermission;
 };
 
-/**
- * DBから権限をチェック（実際のロジック）
- */
 const checkPermissionFromDB = async (
   userId: string,
   orgId: string,
@@ -83,25 +80,13 @@ const checkPermissionFromDB = async (
   action: PermissionAction,
   resourceId?: string,
 ): Promise<boolean> => {
-  // 1. メンバーシップと基本情報を取得
   const member = await db.organizationMember.findUnique({
     where: {
-      organizationId_userId: {
-        userId,
-        organizationId: orgId,
-      },
+      organizationId_userId: { userId, organizationId: orgId },
     },
     include: {
-      roles: {
-        include: {
-          permissions: true,
-        },
-      },
-      groups: {
-        include: {
-          resourceAcls: true,
-        },
-      },
+      roles: { include: { permissions: true } },
+      groups: { include: { resourceAcls: true } },
       resourceAcls: true,
     },
   });
@@ -111,24 +96,30 @@ const checkPermissionFromDB = async (
     return false;
   }
 
-  // 2. 組織管理者チェック → すべての権限
   if (member.isAdmin) {
     logDebug("User is org admin, granting permission", { userId, orgId });
     return true;
   }
 
-  // 3. 特定リソースのアクセス制御チェック（拒否が優先）
   if (resourceId) {
-    // メンバー個人への拒否
-    const memberDeny = member.resourceAcls.find(
-      (rac) =>
-        rac.resourceType === resourceType &&
-        rac.resourceId === resourceId &&
-        rac.deniedActions.includes(action),
-    );
-
-    if (memberDeny) {
-      logDebug("Permission denied by member-level access control", {
+    // リソースレベル拒否チェック（メンバー + グループ）
+    if (
+      member.resourceAcls.some(
+        (rac) =>
+          rac.resourceType === resourceType &&
+          rac.resourceId === resourceId &&
+          rac.deniedActions.includes(action),
+      ) ||
+      member.groups.some((g) =>
+        g.resourceAcls.some(
+          (rac) =>
+            rac.resourceType === resourceType &&
+            rac.resourceId === resourceId &&
+            rac.deniedActions.includes(action),
+        ),
+      )
+    ) {
+      logDebug("Permission denied by resource access control", {
         userId,
         resourceType,
         resourceId,
@@ -137,37 +128,24 @@ const checkPermissionFromDB = async (
       return false;
     }
 
-    // グループレベルの拒否
-    for (const group of member.groups) {
-      const groupDeny = group.resourceAcls.find(
+    // リソースレベル許可チェック（メンバー + グループ）
+    if (
+      member.resourceAcls.some(
         (rac) =>
           rac.resourceType === resourceType &&
           rac.resourceId === resourceId &&
-          rac.deniedActions.includes(action),
-      );
-
-      if (groupDeny) {
-        logDebug("Permission denied by group-level access control", {
-          userId,
-          groupId: group.id,
-          resourceType,
-          resourceId,
-          action,
-        });
-        return false;
-      }
-    }
-
-    // メンバー個人への許可
-    const memberAllow = member.resourceAcls.find(
-      (rac) =>
-        rac.resourceType === resourceType &&
-        rac.resourceId === resourceId &&
-        rac.allowedActions.includes(action),
-    );
-
-    if (memberAllow) {
-      logDebug("Permission granted by member-level access control", {
+          rac.allowedActions.includes(action),
+      ) ||
+      member.groups.some((g) =>
+        g.resourceAcls.some(
+          (rac) =>
+            rac.resourceType === resourceType &&
+            rac.resourceId === resourceId &&
+            rac.allowedActions.includes(action),
+        ),
+      )
+    ) {
+      logDebug("Permission granted by resource access control", {
         userId,
         resourceType,
         resourceId,
@@ -175,63 +153,26 @@ const checkPermissionFromDB = async (
       });
       return true;
     }
-
-    // グループレベルの許可
-    for (const group of member.groups) {
-      const groupAllow = group.resourceAcls.find(
-        (rac) =>
-          rac.resourceType === resourceType &&
-          rac.resourceId === resourceId &&
-          rac.allowedActions.includes(action),
-      );
-
-      if (groupAllow) {
-        logDebug("Permission granted by group-level access control", {
-          userId,
-          groupId: group.id,
-          resourceType,
-          resourceId,
-          action,
-        });
-        return true;
-      }
-    }
   }
 
-  // 4. ロールレベルの権限チェック
-  for (const role of member.roles) {
-    const rolePermission = role.permissions.find(
-      (perm) => perm.resourceType === resourceType && perm.action === action,
-    );
-
-    if (rolePermission) {
-      logDebug("Permission granted by role", {
-        userId,
-        roleId: role.id,
-        roleName: role.name,
-        resourceType,
-        action,
-      });
-      return true;
-    }
-
-    // MANAGE権限は全アクションを含む
-    const managePermission = role.permissions.find(
-      (perm) => perm.resourceType === resourceType && perm.action === "MANAGE",
-    );
-
-    if (managePermission) {
-      logDebug("Permission granted by MANAGE role", {
-        userId,
-        roleId: role.id,
-        resourceType,
-        action,
-      });
-      return true;
-    }
+  // ロールレベル権限チェック（直接 or MANAGE）
+  if (
+    member.roles.some((role) =>
+      role.permissions.some(
+        (perm) =>
+          perm.resourceType === resourceType &&
+          (perm.action === action || perm.action === "MANAGE"),
+      ),
+    )
+  ) {
+    logDebug("Permission granted by role", {
+      userId,
+      resourceType,
+      action,
+    });
+    return true;
   }
 
-  // 5. デフォルト: 拒否
   logDebug("Permission denied (no matching rule)", {
     userId,
     orgId,
