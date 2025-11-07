@@ -4,8 +4,7 @@
  * 統合認証ミドルウェアのテスト
  */
 
-import { describe, test, expect, vi } from "vitest";
-import { integratedAuthMiddleware } from "./index.js";
+import { describe, test, expect } from "vitest";
 
 describe("integratedAuthMiddleware", () => {
   describe("認証方式の判定", () => {
