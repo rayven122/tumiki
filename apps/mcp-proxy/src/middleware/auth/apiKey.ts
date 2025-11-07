@@ -84,6 +84,7 @@ export const apiKeyAuthMiddleware = async (
     process.env.DEV_MODE === "true"
   ) {
     // ダミーの認証情報を設定
+    c.set("authMethod", "apikey");
     c.set("apiKeyAuthInfo", {
       organizationId: "dev-org-id",
       mcpServerInstanceId: "dev-instance-id",
@@ -129,6 +130,7 @@ export const apiKeyAuthMiddleware = async (
   }
 
   // 認証情報をコンテキストに設定
+  c.set("authMethod", "apikey");
   c.set("apiKeyAuthInfo", apiKeyAuthInfo);
 
   await next();

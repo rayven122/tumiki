@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { integratedAuthMiddleware } from "../auth/integrated.js";
+import { integratedAuthMiddleware } from "../auth/index.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定

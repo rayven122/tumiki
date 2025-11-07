@@ -1,6 +1,6 @@
 import { jwk } from "hono/jwk";
 import type { MiddlewareHandler } from "hono";
-import { logInfo } from "../../libs/logger/index.js";
+import { logInfo, logWarn } from "../../libs/logger/index.js";
 
 /**
  * Keycloak JWT 認証ミドルウェア
@@ -21,16 +21,45 @@ export const keycloakAuth: MiddlewareHandler = jwk({
 });
 
 /**
+ * 開発環境バイパスの判定（セキュリティ強化版）
+ *
+ * 3つの条件すべてが真の場合のみバイパス:
+ * 1. NODE_ENV === "development"
+ * 2. ホスト名がローカルホスト系
+ * 3. DEV_MODE === "true"
+ */
+const shouldBypassAuth = (c: Parameters<MiddlewareHandler>[0]): boolean => {
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  // ホスト名チェック
+  const url = new URL(c.req.url);
+  const isLocalhost = ["localhost", "127.0.0.1", "local.tumiki.cloud"].includes(
+    url.hostname,
+  );
+
+  // 明示的な開発モードフラグ
+  const isDevModeExplicit = process.env.DEV_MODE === "true";
+
+  // 3つの条件すべてが真の場合のみバイパス
+  return isDevelopment && isLocalhost && isDevModeExplicit;
+};
+
+/**
  * 開発環境用: JWT 認証バイパスミドルウェア
  *
- * DEV_MODE=true の場合、JWT 認証をスキップしてダミーペイロードを設定
+ * セキュリティ強化版:
+ * - NODE_ENVチェック
+ * - ホスト名検証（localhost, 127.0.0.1, local.tumiki.cloud のみ）
+ * - DEV_MODE 環境変数の明示的チェック
  */
 export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.DEV_MODE === "true"
-  ) {
-    logInfo("Dev mode: Bypassing JWT authentication");
+  if (shouldBypassAuth(c)) {
+    const url = new URL(c.req.url);
+    logWarn("🔓 Development mode: JWT authentication bypassed", {
+      hostname: url.hostname,
+      devMode: process.env.DEV_MODE,
+      nodeEnv: process.env.NODE_ENV,
+    });
 
     // ダミーの JWT ペイロード（tumiki ネスト構造）
     c.set("jwtPayload", {
@@ -49,6 +78,7 @@ export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
     return;
   }
 
-  // 本番環境では keycloakAuth を使用
+  // 本番環境または条件を満たさない場合は keycloakAuth を使用
+  logInfo("Using production JWT authentication");
   return keycloakAuth(c, next);
 };
