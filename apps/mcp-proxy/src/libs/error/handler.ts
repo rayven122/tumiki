@@ -1,12 +1,12 @@
 import type { Context } from "hono";
 import { logError, sanitizeIdForLog } from "../logger/index.js";
-import type { AuthInfo, HonoEnv } from "../../types/index.js";
+import type { HonoEnv } from "../../types/index.js";
 
 type ErrorHandlerOptions = {
   requestId: string | number | null | undefined;
   errorCode: number;
   errorMessage: string;
-  authInfo: AuthInfo;
+  organizationId: string;
   instanceId: string;
   logMessage: string;
   additionalMetadata?: Record<string, unknown>;
@@ -25,7 +25,7 @@ export const handleError = (
     requestId,
     errorCode,
     errorMessage,
-    authInfo,
+    organizationId,
     instanceId,
     logMessage,
     additionalMetadata,
@@ -33,7 +33,7 @@ export const handleError = (
 
   // エラーログでは機密情報をハッシュ化
   logError(logMessage, error, {
-    organizationId: sanitizeIdForLog(authInfo.organizationId),
+    organizationId: sanitizeIdForLog(organizationId),
     instanceId: sanitizeIdForLog(instanceId),
     ...additionalMetadata,
   });

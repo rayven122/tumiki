@@ -70,8 +70,13 @@ const createMcpServer = (instanceId: string) => {
  * Low-Level Server APIを使用してJSON-RPC 2.0リクエストを自動処理
  */
 export const mcpHandler = async (c: Context<HonoEnv>) => {
-  const authInfo = c.get("authInfo");
   const userMcpServerInstanceId = c.req.param("userMcpServerInstanceId");
+
+  // 認証情報から organizationId を取得
+  const jwtPayload = c.get("jwtPayload");
+  const apiKeyAuthInfo = c.get("apiKeyAuthInfo");
+  const organizationId =
+    jwtPayload?.tumiki.org_id ?? apiKeyAuthInfo?.organizationId ?? "";
 
   try {
     // MCPサーバーインスタンスを作成
@@ -102,7 +107,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
       requestId: null,
       errorCode: -32603,
       errorMessage: "Internal error",
-      authInfo,
+      organizationId,
       instanceId: userMcpServerInstanceId,
       logMessage: "Failed to handle MCP request",
     });

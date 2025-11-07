@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
 import { db } from "@tumiki/db/server";
-import type { AuthInfo, HonoEnv } from "../../types/index.js";
+import type { ApiKeyAuthInfo, HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
 
 /**
@@ -30,7 +30,7 @@ const extractApiKey = (c: Context): string | undefined => {
  */
 const validateApiKey = async (
   apiKey: string,
-): Promise<AuthInfo | undefined> => {
+): Promise<ApiKeyAuthInfo | undefined> => {
   try {
     // 1つのクエリで mcpApiKey と userMcpServerInstance を取得（最適化）
     const mcpApiKey = await db.mcpApiKey.findUnique({
@@ -54,8 +54,6 @@ const validateApiKey = async (
     return {
       organizationId: instance.organizationId,
       mcpServerInstanceId: mcpApiKey.userMcpServerInstanceId,
-      apiKeyId: mcpApiKey.id,
-      apiKey: mcpApiKey.apiKey,
     };
   } catch (error: unknown) {
     logError("Failed to validate API key", error as Error);
@@ -86,11 +84,9 @@ export const apiKeyAuthMiddleware = async (
     process.env.DEV_MODE === "true"
   ) {
     // ダミーの認証情報を設定
-    c.set("authInfo", {
+    c.set("apiKeyAuthInfo", {
       organizationId: "dev-org-id",
       mcpServerInstanceId: "dev-instance-id",
-      apiKeyId: "dev-api-key-id",
-      apiKey: "dev-api-key",
     });
     await next();
     return;
@@ -116,9 +112,9 @@ export const apiKeyAuthMiddleware = async (
   }
 
   // データベース検証
-  const authInfo = await validateApiKey(apiKey);
+  const apiKeyAuthInfo = await validateApiKey(apiKey);
 
-  if (!authInfo) {
+  if (!apiKeyAuthInfo) {
     return c.json(
       {
         jsonrpc: "2.0",
@@ -133,7 +129,7 @@ export const apiKeyAuthMiddleware = async (
   }
 
   // 認証情報をコンテキストに設定
-  c.set("authInfo", authInfo);
+  c.set("apiKeyAuthInfo", apiKeyAuthInfo);
 
   await next();
 };
