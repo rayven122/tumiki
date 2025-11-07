@@ -15,7 +15,7 @@ export type TumikiJWTClaims = {
   org_id: string; // 組織ID（Organization.id）
   is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
   tumiki_user_id: string; // TumikiユーザーID（User.id）
-  mcp_instance_id: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）
+  mcp_instance_id?: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）- MCP接続時は必須、管理画面では不要
 };
 
 /**
