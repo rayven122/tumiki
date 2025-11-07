@@ -89,8 +89,8 @@ describe("integratedAuthMiddleware", () => {
       expect(body.authInfo).toStrictEqual({
         organizationId: "test-org-id",
         mcpServerInstanceId: "test-mcp-instance-id",
-        apiKeyId: "jwt-api-key",
-        apiKey: "jwt-token",
+        apiKeyId: "jwt-test-mcp-instance-id",
+        apiKey: "test-user-id",
       });
     });
 

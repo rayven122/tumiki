@@ -215,8 +215,8 @@ export const integratedAuthMiddleware = async (
       const authInfo: AuthInfo = {
         organizationId: jwtPayload.tumiki.org_id,
         mcpServerInstanceId: instance.id,
-        apiKeyId: "jwt-api-key",
-        apiKey: "jwt-token",
+        apiKeyId: `jwt-${instance.id}`,
+        apiKey: jwtPayload.sub,
       };
 
       c.set("authInfo", authInfo);
