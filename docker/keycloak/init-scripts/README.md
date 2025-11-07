@@ -51,3 +51,12 @@ docker exec -i tumiki-keycloak bash -c "source /opt/keycloak/.env && /opt/keyclo
 - `family_name` → `lastName`
 - `email_verified` → `emailVerified`
 - `picture` → `picture`
+
+### カスタムブローカーログインフロー
+
+Google IdP経由での初回ログイン時に、Keycloakの「Update Account Information」画面をスキップするため、カスタムの`tumiki-broker-login`フローを作成します：
+
+- デフォルトの「first broker login」フローをコピー
+- 「Review Profile」ステップを無効化（DISABLED）
+- Review Profile の設定で `update.profile.on.first.login` を `off` に設定
+- ユーザーは直接Tumikiアプリケーションの`/onboarding`画面に遷移
