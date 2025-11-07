@@ -1,4 +1,12 @@
 /**
+ * 認証方式
+ *
+ * - jwt: JWT Bearer Token認証（Keycloak）
+ * - apikey: API Key認証（X-API-Key または Bearer tumiki_...）
+ */
+export type AuthMethod = "jwt" | "apikey";
+
+/**
  * API Key認証情報
  *
  * API Key認証時にコンテキストに設定される情報。
@@ -80,12 +88,73 @@ export type RemoteMcpServerConfig = {
  *
  * コンテキストの型安全性を提供
  *
- * - JWT認証時: jwtPayload のみ設定
- * - API Key認証時: apiKeyAuthInfo のみ設定
+ * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
+ * - API Key認証時: apiKeyAuthInfo のみ設定、authMethod = "apikey"
  */
 export type HonoEnv = {
   Variables: {
+    authMethod?: AuthMethod; // 使用された認証方式
     apiKeyAuthInfo?: ApiKeyAuthInfo; // API Key認証時のみ
     jwtPayload?: JWTPayload; // JWT認証時のみ
   };
+};
+
+/**
+ * 型ガード: JWT認証済みかチェック
+ *
+ * @param payload - チェック対象のペイロード
+ * @returns JWTPayloadとして有効な場合true
+ */
+export const isJWTPayload = (payload: unknown): payload is JWTPayload => {
+  if (typeof payload !== "object" || payload === null) {
+    return false;
+  }
+
+  const p = payload as Record<string, unknown>;
+
+  return (
+    typeof p.sub === "string" &&
+    typeof p.tumiki === "object" &&
+    p.tumiki !== null &&
+    typeof (p.tumiki as Record<string, unknown>).org_id === "string" &&
+    typeof (p.tumiki as Record<string, unknown>).tumiki_user_id === "string" &&
+    typeof (p.tumiki as Record<string, unknown>).is_org_admin === "boolean"
+  );
+};
+
+/**
+ * 型ガード: API Key認証情報が有効かチェック
+ *
+ * @param info - チェック対象の認証情報
+ * @returns ApiKeyAuthInfoとして有効な場合true
+ */
+export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
+  if (typeof info !== "object" || info === null) {
+    return false;
+  }
+
+  const i = info as Record<string, unknown>;
+
+  return (
+    typeof i.organizationId === "string" &&
+    typeof i.mcpServerInstanceId === "string"
+  );
+};
+
+/**
+ * 型ガード: MCP接続に必要なJWTペイロードかチェック
+ *
+ * MCP接続には mcp_instance_id が必須
+ *
+ * @param payload - チェック対象のペイロード
+ * @returns MCP接続可能な場合true
+ */
+export const isValidMcpJWTPayload = (
+  payload: unknown,
+): payload is JWTPayload => {
+  if (!isJWTPayload(payload)) {
+    return false;
+  }
+
+  return typeof payload.tumiki.mcp_instance_id === "string";
 };

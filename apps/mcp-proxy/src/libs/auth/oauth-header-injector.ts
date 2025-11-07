@@ -10,7 +10,7 @@ import {
   ReAuthRequiredError,
 } from "@tumiki/oauth-token-manager";
 import type { McpServer, UserMcpServerConfig } from "@tumiki/db/prisma";
-import { logInfo, logError } from "../libs/logger/index.js";
+import { logInfo, logError } from "../logger/index.js";
 
 /**
  * 認証ヘッダーを注入
