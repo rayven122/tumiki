@@ -5,8 +5,12 @@ import type { JWTPayload } from "../types/index.js";
 // モックの設定
 vi.mock("@tumiki/db/server", () => ({
   db: {
+    organization: {
+      findUnique: vi.fn(),
+    },
     userMcpServerInstance: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -28,7 +32,7 @@ describe("resolveUserMcpServerInstance", () => {
   const createMockJWTPayload = (
     orgId = "org_test123",
     userId = "user_test456",
-    instanceId = "instance_1",
+    instanceId?: string,
   ): JWTPayload => ({
     sub: "keycloak_user_id",
     tumiki: {
@@ -67,7 +71,11 @@ describe("resolveUserMcpServerInstance", () => {
         mockInstance,
       );
 
-      const jwtPayload = createMockJWTPayload();
+      const jwtPayload = createMockJWTPayload(
+        "org_test123",
+        "user_test456",
+        "instance_1",
+      );
       const result = await resolveUserMcpServerInstance(jwtPayload);
 
       expect(result).toStrictEqual(mockInstance);
@@ -77,11 +85,26 @@ describe("resolveUserMcpServerInstance", () => {
     });
   });
 
-  describe("異常系: インスタンス不存在", () => {
+  describe("異常系: mcp_instance_id なし", () => {
+    test("mcp_instance_idがない場合、エラーをスローする", async () => {
+      // mcp_instance_idなしのJWT
+      const jwtPayload = createMockJWTPayload("org_test123", "user_test456");
+
+      await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
+        "mcp_instance_id is required for MCP server access",
+      );
+    });
+  });
+
+  describe("異常系: インスタンス不存在 (mcp_instance_id あり)", () => {
     test("インスタンスが見つからない場合、エラーをスローする", async () => {
       vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValue(null);
 
-      const jwtPayload = createMockJWTPayload();
+      const jwtPayload = createMockJWTPayload(
+        "org_test123",
+        "user_test456",
+        "instance_1",
+      );
 
       await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
         "MCP server instance not found",
@@ -89,7 +112,7 @@ describe("resolveUserMcpServerInstance", () => {
     });
   });
 
-  describe("異常系: インスタンス削除済み", () => {
+  describe("異常系: インスタンス削除済み (mcp_instance_id あり)", () => {
     test("インスタンスが削除されている場合、エラーをスローする", async () => {
       const deletedDate = new Date();
       const mockInstance = createMockInstance(
@@ -102,7 +125,11 @@ describe("resolveUserMcpServerInstance", () => {
         mockInstance,
       );
 
-      const jwtPayload = createMockJWTPayload();
+      const jwtPayload = createMockJWTPayload(
+        "org_test123",
+        "user_test456",
+        "instance_1",
+      );
 
       await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
         "MCP server instance is deleted",
@@ -110,7 +137,7 @@ describe("resolveUserMcpServerInstance", () => {
     });
   });
 
-  describe("異常系: 組織ID不一致", () => {
+  describe("異常系: 組織ID不一致 (mcp_instance_id あり)", () => {
     test("インスタンスの組織IDがJWTの組織IDと一致しない場合、エラーをスローする", async () => {
       // インスタンスは別の組織に属している
       const mockInstance = createMockInstance("instance_1", "org_different");
@@ -119,11 +146,16 @@ describe("resolveUserMcpServerInstance", () => {
         mockInstance,
       );
 
-      const jwtPayload = createMockJWTPayload("org_test123"); // 異なる組織ID
+      const jwtPayload = createMockJWTPayload(
+        "org_test123",
+        "user_test456",
+        "instance_1",
+      );
 
       await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
         "Organization ID mismatch",
       );
     });
   });
+
 });

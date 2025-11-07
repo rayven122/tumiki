@@ -186,10 +186,35 @@ export const integratedAuthMiddleware = async (
         );
       }
 
-      // AuthInfo を JWT ペイロードから構築
+      // mcp_instance_id が必須（MCP 接続時に必要）
+      if (!jwtPayload.tumiki.mcp_instance_id) {
+        logError(
+          "mcp_instance_id is required for MCP server access",
+          new Error("mcp_instance_id is required"),
+        );
+        return c.json(
+          {
+            jsonrpc: "2.0",
+            id: null,
+            error: {
+              code: -32600,
+              message:
+                "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+            },
+          },
+          401,
+        );
+      }
+
+      // instanceResolver で整合性検証を実行
+      const { resolveUserMcpServerInstance } = await import(
+        "../services/instanceResolver.js"
+      );
+      const instance = await resolveUserMcpServerInstance(jwtPayload);
+
       const authInfo: AuthInfo = {
         organizationId: jwtPayload.tumiki.org_id,
-        mcpServerInstanceId: jwtPayload.tumiki.mcp_instance_id,
+        mcpServerInstanceId: instance.id,
         apiKeyId: "jwt-api-key",
         apiKey: "jwt-token",
       };
