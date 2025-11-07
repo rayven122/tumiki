@@ -23,13 +23,23 @@ export const keycloakAuth: MiddlewareHandler = jwk({
 /**
  * 開発環境バイパスの判定（セキュリティ強化版）
  *
- * 3つの条件すべてが真の場合のみバイパス:
+ * 本番環境では絶対にバイパスしない。
+ * 開発環境でのみ、以下の条件がすべて真の場合にバイパス:
  * 1. NODE_ENV === "development"
  * 2. ホスト名がローカルホスト系
  * 3. DEV_MODE === "true"
+ * 4. FORCE_AUTH !== "true" (強制認証フラグがない)
  */
 const shouldBypassAuth = (c: Parameters<MiddlewareHandler>[0]): boolean => {
-  const isDevelopment = process.env.NODE_ENV === "development";
+  // 本番環境では絶対にバイパスしない
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  // 強制認証フラグが設定されている場合はバイパスしない
+  if (process.env.FORCE_AUTH === "true") {
+    return false;
+  }
 
   // ホスト名チェック
   const url = new URL(c.req.url);
@@ -40,8 +50,10 @@ const shouldBypassAuth = (c: Parameters<MiddlewareHandler>[0]): boolean => {
   // 明示的な開発モードフラグ
   const isDevModeExplicit = process.env.DEV_MODE === "true";
 
-  // 3つの条件すべてが真の場合のみバイパス
-  return isDevelopment && isLocalhost && isDevModeExplicit;
+  // すべての条件が真の場合のみバイパス
+  return (
+    process.env.NODE_ENV === "development" && isLocalhost && isDevModeExplicit
+  );
 };
 
 /**
