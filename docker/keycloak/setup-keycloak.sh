@@ -38,7 +38,8 @@ $KCADM config credentials \
 echo "Tumiki カスタムクレーム設定中..."
 
 # Client Scopeが存在するかチェック
-CLIENT_SCOPE_ID=$($KCADM get client-scopes -r "$REALM" --config /tmp/kcadm.config 2>/dev/null | grep -o '"id":"[^"]*"' | grep -A1 '"name":"tumiki-claims"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4 | head -1 || echo "")
+CLIENT_SCOPE_JSON=$($KCADM get client-scopes -r "$REALM" --config /tmp/kcadm.config 2>/dev/null || echo "{}")
+CLIENT_SCOPE_ID=$(echo "$CLIENT_SCOPE_JSON" | grep -B2 '"name" : "tumiki-claims"' | grep '"id"' | head -1 | sed 's/.*"id" : "\([^"]*\)".*/\1/')
 
 if [ -z "$CLIENT_SCOPE_ID" ]; then
   CLIENT_SCOPE_ID=$($KCADM create client-scopes -r "$REALM" --config /tmp/kcadm.config \
@@ -47,8 +48,16 @@ if [ -z "$CLIENT_SCOPE_ID" ]; then
     -s protocol=openid-connect \
     -s 'attributes."include.in.token.scope"=true' \
     -s 'attributes."display.on.consent.screen"=false' \
-    -i)
+    -i 2>/dev/null || echo "")
 fi
+
+if [ -z "$CLIENT_SCOPE_ID" ]; then
+  echo "エラー: Client Scopeの作成に失敗しました"
+  # 既存のClient Scope IDを再取得
+  CLIENT_SCOPE_ID=$(echo "$CLIENT_SCOPE_JSON" | grep -B2 '"name" : "tumiki-claims"' | grep '"id"' | head -1 | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+fi
+
+echo "Client Scope ID: $CLIENT_SCOPE_ID"
 
 # マッパー作成関数
 create_mapper() {
@@ -83,12 +92,53 @@ if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
 
   IDP_ALIAS="google"
 
+  # カスタムFirst Broker Login Flowを作成（Review Profileをスキップ）
+  CUSTOM_FLOW_ALIAS="tumiki-broker-login"
+
+  if ! $KCADM get authentication/flows -r "$REALM" --config /tmp/kcadm.config 2>/dev/null | grep -q "\"alias\" : \"$CUSTOM_FLOW_ALIAS\""; then
+    echo "カスタムブローカーログインフロー作成中..."
+
+    # デフォルトの first broker login フローをコピー
+    $KCADM create authentication/flows/"first%20broker%20login"/copy -r "$REALM" --config /tmp/kcadm.config \
+      -s newName="$CUSTOM_FLOW_ALIAS" 2>/dev/null || true
+
+    # Review Profile ステップを無効化
+    # フローの実行ステップを取得
+    sleep 1  # フローが作成されるまで少し待つ
+    EXECUTIONS=$($KCADM get authentication/flows/"$CUSTOM_FLOW_ALIAS"/executions -r "$REALM" --config /tmp/kcadm.config 2>/dev/null)
+
+    # Review Profile の実行IDを取得して無効化
+    REVIEW_PROFILE_ID=$(echo "$EXECUTIONS" | grep -B5 "\"displayName\" : \"Review Profile\"" | grep '"id"' | head -1 | cut -d'"' -f4)
+
+    if [ -n "$REVIEW_PROFILE_ID" ]; then
+      # executionのrequirementを更新（フロー実行エンドポイント経由）
+      $KCADM update authentication/flows/"$CUSTOM_FLOW_ALIAS"/executions -r "$REALM" --config /tmp/kcadm.config \
+        --body "{\"id\":\"$REVIEW_PROFILE_ID\",\"requirement\":\"DISABLED\"}" 2>/dev/null || true
+      echo "Review Profileステップを無効化しました"
+
+      # Review Profile の設定を取得して update.profile.on.first.login を off に設定
+      CONFIG_ID=$(echo "$EXECUTIONS" | grep -A10 "\"displayName\" : \"Review Profile\"" | grep "authenticationConfig" | cut -d'"' -f4)
+      if [ -n "$CONFIG_ID" ]; then
+        cat > /tmp/review-config.json <<EOF
+{
+  "config": {
+    "update.profile.on.first.login": "off"
+  }
+}
+EOF
+        $KCADM update authentication/config/"$CONFIG_ID" -r "$REALM" --config /tmp/kcadm.config -f /tmp/review-config.json 2>/dev/null || true
+        echo "Review Profile設定を off に更新しました"
+      fi
+    fi
+  fi
+
   # IdP作成/更新
   if $KCADM get identity-provider/instances/"$IDP_ALIAS" -r "$REALM" --config /tmp/kcadm.config &>/dev/null; then
     $KCADM update identity-provider/instances/"$IDP_ALIAS" -r "$REALM" --config /tmp/kcadm.config \
       -s enabled=true \
       -s trustEmail=true \
       -s storeToken=false \
+      -s firstBrokerLoginFlowAlias="$CUSTOM_FLOW_ALIAS" \
       -s config.clientId="$GOOGLE_CLIENT_ID" \
       -s config.clientSecret="$GOOGLE_CLIENT_SECRET" \
       -s config.defaultScope="openid profile email" \
@@ -100,7 +150,7 @@ if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
       -s enabled=true \
       -s trustEmail=true \
       -s storeToken=false \
-      -s firstBrokerLoginFlowAlias="first broker login" \
+      -s firstBrokerLoginFlowAlias="$CUSTOM_FLOW_ALIAS" \
       -s config.clientId="$GOOGLE_CLIENT_ID" \
       -s config.clientSecret="$GOOGLE_CLIENT_SECRET" \
       -s config.defaultScope="openid profile email" \
