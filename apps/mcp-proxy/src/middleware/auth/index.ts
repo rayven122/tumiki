@@ -2,6 +2,10 @@ import type { Context, Next } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import { logError, logInfo, logDebug } from "../../libs/logger/index.js";
 import { AUTH_CONFIG } from "../../constants/config.js";
+import {
+  createUnauthorizedError,
+  createPermissionDeniedError,
+} from "../../libs/error/index.js";
 import { apiKeyAuthMiddleware } from "./apiKey.js";
 import { devKeycloakAuth } from "./jwt.js";
 import { checkPermission } from "../../services/permissionService.js";
@@ -51,31 +55,15 @@ const authenticateWithJWT = async (
     const jwtPayload = c.get("jwtPayload");
 
     if (!jwtPayload) {
-      return c.json(
-        {
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32600,
-            message: "Invalid JWT token",
-          },
-        },
-        401,
-      );
+      return c.json(createUnauthorizedError("Invalid JWT token"), 401);
     }
 
     // mcp_instance_id が必須（MCP サーバーアクセスには必要）
     if (!jwtPayload.tumiki?.mcp_instance_id) {
       return c.json(
-        {
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32600,
-            message:
-              "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
-          },
-        },
+        createUnauthorizedError(
+          "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+        ),
         401,
       );
     }
@@ -97,14 +85,9 @@ const authenticateWithJWT = async (
       });
 
       return c.json(
-        {
-          jsonrpc: "2.0",
-          id: null,
-          error: {
-            code: -32003,
-            message: "Permission denied: READ access to MCP_SERVER_INSTANCE",
-          },
-        },
+        createPermissionDeniedError(
+          "Permission denied: READ access to MCP_SERVER_INSTANCE",
+        ),
         403,
       );
     }
@@ -122,17 +105,7 @@ const authenticateWithJWT = async (
     return undefined; // 成功
   } catch (error) {
     logError("JWT authentication failed", error as Error);
-    return c.json(
-      {
-        jsonrpc: "2.0",
-        id: null,
-        error: {
-          code: -32600,
-          message: "Invalid or expired JWT token",
-        },
-      },
-      401,
-    );
+    return c.json(createUnauthorizedError("Invalid or expired JWT token"), 401);
   }
 };
 
@@ -154,17 +127,9 @@ export const integratedAuthMiddleware = async (
   if (!authType) {
     // 認証情報なし
     return c.json(
-      {
-        jsonrpc: "2.0",
-        id: null,
-        error: {
-          code: -32600,
-          message: "Authentication required",
-          data: {
-            hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
-          },
-        },
-      },
+      createUnauthorizedError("Authentication required", {
+        hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
+      }),
       401,
     );
   }

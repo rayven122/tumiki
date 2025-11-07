@@ -73,6 +73,36 @@ export const checkPermission = async (
   return hasPermission;
 };
 
+/**
+ * Redis SCAN操作でキーを取得（KEYS操作の代替）
+ *
+ * 本番環境でのRedisブロッキングを回避するため、
+ * KEYS操作ではなくSCAN操作を使用します。
+ *
+ * @param pattern - マッチパターン (例: "permission:*:org-id:*")
+ * @returns マッチしたキーの配列
+ */
+const scanKeys = async (pattern: string): Promise<string[]> => {
+  const redis = await getRedisClient();
+  if (!redis) {
+    return [];
+  }
+
+  const keys: string[] = [];
+  let cursor = "0";
+
+  do {
+    const result = await redis.scan(cursor, {
+      MATCH: pattern,
+      COUNT: 100,
+    });
+    cursor = result.cursor.toString();
+    keys.push(...result.keys);
+  } while (cursor !== "0");
+
+  return keys;
+};
+
 const checkPermissionFromDB = async (
   userId: string,
   orgId: string,
@@ -201,7 +231,8 @@ export const invalidatePermissionCache = async (
       return;
     }
 
-    const keys = await redis.keys(pattern);
+    // SCAN操作を使用（本番環境でのブロッキング回避）
+    const keys = await scanKeys(pattern);
 
     if (keys.length > 0) {
       await redis.del(keys);
@@ -236,7 +267,8 @@ export const invalidateOrganizationCache = async (
       return;
     }
 
-    const keys = await redis.keys(pattern);
+    // SCAN操作を使用（本番環境でのブロッキング回避）
+    const keys = await scanKeys(pattern);
 
     if (keys.length > 0) {
       await redis.del(keys);
