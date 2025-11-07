@@ -8,7 +8,7 @@ export default function SignInPage() {
       title="おかえりなさい"
       description="アカウントにログインしてください"
     >
-      <GoogleSignInButton callbackUrl="/dashboard" label="Googleでログイン" />
+      <GoogleSignInButton callbackUrl="/mcp/servers" label="Googleでログイン" />
 
       <div className="text-muted-foreground text-center text-sm">
         <span>アカウントをお持ちでない方は </span>
