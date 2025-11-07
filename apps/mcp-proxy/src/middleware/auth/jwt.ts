@@ -1,6 +1,6 @@
 import { jwk } from "hono/jwk";
 import type { MiddlewareHandler } from "hono";
-import { logInfo } from "../libs/logger/index.js";
+import { logInfo } from "../../libs/logger/index.js";
 
 /**
  * Keycloak JWT 認証ミドルウェア
@@ -40,7 +40,8 @@ export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
       tumiki: {
         org_id: "dev-org-id",
         is_org_admin: true,
-        user_db_id: "dev-user-db-id",
+        tumiki_user_id: "dev-user-db-id",
+        mcp_instance_id: "dev-mcp-instance-id",
       },
     });
 
