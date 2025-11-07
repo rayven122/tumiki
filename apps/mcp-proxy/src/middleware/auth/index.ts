@@ -1,6 +1,7 @@
 import type { Context, Next } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import { logError, logInfo, logDebug } from "../../libs/logger/index.js";
+import { AUTH_CONFIG } from "../../constants/config.js";
 import { apiKeyAuthMiddleware } from "./apiKey.js";
 import { devKeycloakAuth } from "./jwt.js";
 import { checkPermission } from "../../services/permissionService.js";
@@ -11,14 +12,17 @@ import { checkPermission } from "../../services/permissionService.js";
  * @returns "jwt" | "apikey" | null
  */
 const detectAuthType = (c: Context<HonoEnv>): "jwt" | "apikey" | null => {
-  const authorization = c.req.header("Authorization");
-  const xApiKey = c.req.header("X-API-Key");
+  const authorization = c.req.header(AUTH_CONFIG.HEADERS.AUTHORIZATION);
+  const xApiKey = c.req.header(AUTH_CONFIG.HEADERS.API_KEY);
 
-  if (authorization?.startsWith("Bearer eyJ")) {
+  if (authorization?.startsWith(AUTH_CONFIG.PATTERNS.JWT_PREFIX)) {
     return "jwt"; // JWT形式（base64エンコードされたJSON）
   }
 
-  if (authorization?.startsWith("Bearer tumiki_") || xApiKey) {
+  if (
+    authorization?.startsWith(AUTH_CONFIG.PATTERNS.API_KEY_PREFIX) ||
+    xApiKey
+  ) {
     return "apikey"; // Tumiki APIキー
   }
 

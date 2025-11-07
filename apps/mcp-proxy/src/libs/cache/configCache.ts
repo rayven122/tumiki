@@ -2,6 +2,7 @@ import type { RemoteMcpServerConfig } from "../../types/index.js";
 import { decrypt, encrypt } from "../crypto/index.js";
 import { getRedisClient } from "./redis.js";
 import { logError, logInfo, sanitizeIdForLog } from "../logger/index.js";
+import { CACHE_CONFIG } from "../../constants/config.js";
 
 /**
  * キャッシュされた設定データの型
@@ -23,14 +24,14 @@ const getCacheTtl = (): number => {
       return parsed;
     }
   }
-  return 300; // デフォルト5分
+  return CACHE_CONFIG.DEFAULT_TTL_SECONDS;
 };
 
 /**
  * キャッシュキーの生成
  */
 const getCacheKey = (userMcpServerInstanceId: string): string => {
-  return `mcp:config:${userMcpServerInstanceId}`;
+  return `${CACHE_CONFIG.KEY_PREFIX.MCP_CONFIG}${userMcpServerInstanceId}`;
 };
 
 /**

@@ -41,12 +41,18 @@ vi.mock("@tumiki/db/server", () => ({
 vi.mock("../../libs/logger/index.js", () => ({
   logInfo: vi.fn(),
   logError: vi.fn(),
+  logDebug: vi.fn(),
+  logWarn: vi.fn(),
+}));
+
+vi.mock("../../services/permissionService.js", () => ({
+  checkPermission: vi.fn(),
 }));
 
 describe("integratedAuthMiddleware", () => {
   let app: Hono<HonoEnv>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     app = new Hono<HonoEnv>();
     app.use("*", integratedAuthMiddleware);
     app.get("/test", (c) => {
@@ -55,6 +61,12 @@ describe("integratedAuthMiddleware", () => {
       return c.json({ jwtPayload, apiKeyAuthInfo });
     });
     vi.clearAllMocks();
+
+    // checkPermission のモックをリセット
+    const { checkPermission } = await import(
+      "../../services/permissionService.js"
+    );
+    vi.mocked(checkPermission).mockResolvedValue(true);
   });
 
   describe("JWT認証", () => {

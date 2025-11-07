@@ -7,6 +7,8 @@ import type { HonoEnv } from "../../types/index.js";
 vi.mock("../../libs/logger/index.js", () => ({
   logInfo: vi.fn(),
   logError: vi.fn(),
+  logDebug: vi.fn(),
+  logWarn: vi.fn(),
 }));
 
 describe("devKeycloakAuth", () => {
