@@ -69,25 +69,33 @@ const authenticateWithJWT = async (
     }
 
     // 権限チェック: MCP_SERVER_INSTANCEへのREADアクセス
-    const hasPermission = await checkPermission(
-      jwtPayload.tumiki.tumiki_user_id,
-      jwtPayload.tumiki.org_id,
-      "MCP_SERVER_INSTANCE",
-      "READ",
-      jwtPayload.tumiki.mcp_instance_id,
-    );
+    try {
+      const hasPermission = await checkPermission(
+        jwtPayload.tumiki.tumiki_user_id,
+        jwtPayload.tumiki.org_id,
+        "MCP_SERVER_INSTANCE",
+        "READ",
+        jwtPayload.tumiki.mcp_instance_id,
+      );
 
-    if (!hasPermission) {
-      logDebug("JWT authentication: Permission denied", {
-        userId: jwtPayload.tumiki.tumiki_user_id,
-        orgId: jwtPayload.tumiki.org_id,
-        instanceId: jwtPayload.tumiki.mcp_instance_id,
-      });
+      if (!hasPermission) {
+        logDebug("JWT authentication: Permission denied", {
+          userId: jwtPayload.tumiki.tumiki_user_id,
+          orgId: jwtPayload.tumiki.org_id,
+          instanceId: jwtPayload.tumiki.mcp_instance_id,
+        });
 
+        return c.json(
+          createPermissionDeniedError(
+            "Permission denied: READ access to MCP_SERVER_INSTANCE",
+          ),
+          403,
+        );
+      }
+    } catch (error) {
+      logError("Permission check failed, denying access", error as Error);
       return c.json(
-        createPermissionDeniedError(
-          "Permission denied: READ access to MCP_SERVER_INSTANCE",
-        ),
+        createPermissionDeniedError("Permission check failed"),
         403,
       );
     }
