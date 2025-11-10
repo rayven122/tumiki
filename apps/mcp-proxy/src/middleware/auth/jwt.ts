@@ -23,16 +23,20 @@ export const keycloakAuth: MiddlewareHandler = jwk({
 /**
  * 開発環境バイパスの判定（セキュリティ強化版）
  *
- * 本番環境では絶対にバイパスしない。
+ * 本番・ステージング環境では絶対にバイパスしない。
  * 開発環境でのみ、以下の条件がすべて真の場合にバイパス:
  * 1. NODE_ENV === "development"
- * 2. ホスト名がローカルホスト系
- * 3. DEV_MODE === "true"
- * 4. FORCE_AUTH !== "true" (強制認証フラグがない)
+ * 2. ホスト名が厳密なローカルホスト（127.0.0.1, localhost のみ）
+ * 3. ENABLE_AUTH_BYPASS === "true" (明示的なバイパス許可)
+ * 4. DEV_MODE === "true"
+ * 5. FORCE_AUTH !== "true" (強制認証フラグがない)
  */
 const shouldBypassAuth = (c: Parameters<MiddlewareHandler>[0]): boolean => {
-  // 本番環境では絶対にバイパスしない
-  if (process.env.NODE_ENV === "production") {
+  // 本番・ステージング環境では絶対にバイパスしない
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.NODE_ENV === "staging"
+  ) {
     return false;
   }
 
@@ -41,27 +45,29 @@ const shouldBypassAuth = (c: Parameters<MiddlewareHandler>[0]): boolean => {
     return false;
   }
 
-  // ホスト名チェック
+  // より厳密なホスト名チェック（127.0.0.1とlocalhostのみ許可）
   const url = new URL(c.req.url);
-  const isLocalhost = ["localhost", "127.0.0.1", "local.tumiki.cloud"].includes(
-    url.hostname,
-  );
+  const isStrictLocalhost = ["127.0.0.1", "localhost"].includes(url.hostname);
+
+  // 開発専用環境変数の追加チェック
+  const isDevelopmentBypass =
+    process.env.ENABLE_AUTH_BYPASS === "true" &&
+    process.env.NODE_ENV === "development";
 
   // 明示的な開発モードフラグ
   const isDevModeExplicit = process.env.DEV_MODE === "true";
 
   // すべての条件が真の場合のみバイパス
-  return (
-    process.env.NODE_ENV === "development" && isLocalhost && isDevModeExplicit
-  );
+  return isStrictLocalhost && isDevelopmentBypass && isDevModeExplicit;
 };
 
 /**
  * 開発環境用: JWT 認証バイパスミドルウェア
  *
  * セキュリティ強化版:
- * - NODE_ENVチェック
- * - ホスト名検証（localhost, 127.0.0.1, local.tumiki.cloud のみ）
+ * - NODE_ENVチェック（production/stagingでは無効）
+ * - ホスト名検証（localhost, 127.0.0.1 のみ）
+ * - ENABLE_AUTH_BYPASS 環境変数の明示的チェック
  * - DEV_MODE 環境変数の明示的チェック
  */
 export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
@@ -71,6 +77,7 @@ export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
       hostname: url.hostname,
       devMode: process.env.DEV_MODE,
       nodeEnv: process.env.NODE_ENV,
+      authBypass: process.env.ENABLE_AUTH_BYPASS,
     });
 
     // ダミーの JWT ペイロード（tumiki ネスト構造）

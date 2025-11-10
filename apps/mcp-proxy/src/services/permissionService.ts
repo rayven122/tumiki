@@ -124,9 +124,52 @@ const checkPermissionFromDB = async (
       organizationId_userId: { userId, organizationId: orgId },
     },
     include: {
-      roles: { include: { permissions: true } },
-      groups: { include: { resourceAcls: true } },
-      resourceAcls: true,
+      roles: {
+        include: {
+          permissions: {
+            where: {
+              resourceType: resourceType,
+              action: { in: [action, "MANAGE"] },
+            },
+          },
+        },
+      },
+      groups: {
+        include: {
+          resourceAcls: resourceId
+            ? {
+                where: {
+                  resourceType: resourceType,
+                  resourceId: resourceId,
+                  OR: [
+                    { allowedActions: { has: action } },
+                    { deniedActions: { has: action } },
+                  ],
+                },
+              }
+            : {
+                where: {
+                  resourceType: resourceType,
+                },
+              },
+        },
+      },
+      resourceAcls: resourceId
+        ? {
+            where: {
+              resourceType: resourceType,
+              resourceId: resourceId,
+              OR: [
+                { allowedActions: { has: action } },
+                { deniedActions: { has: action } },
+              ],
+            },
+          }
+        : {
+            where: {
+              resourceType: resourceType,
+            },
+          },
     },
   });
 
