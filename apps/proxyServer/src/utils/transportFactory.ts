@@ -20,8 +20,17 @@ const buildTransportHeaders = async (
 
   // Cloud Run IAM認証が必要な場合、認証ヘッダーを作成
   if (config.requireCloudRunAuth) {
-    const authHeaders = await createCloudRunHeaders();
-    Object.assign(customHeaders, authHeaders);
+    try {
+      const authHeaders = await createCloudRunHeaders(config.url);
+      Object.assign(customHeaders, authHeaders);
+    } catch (error) {
+      // ローカル環境などでADCが設定されていない場合は警告を出すが、
+      // カスタムヘッダー（APIキーなど）での接続を試みる
+      console.warn(
+        "Cloud Run IAM authentication failed, continuing with custom headers only:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 
   // 環境変数からHTTPヘッダーを設定（APIキーなど）

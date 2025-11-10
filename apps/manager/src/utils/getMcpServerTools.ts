@@ -114,10 +114,23 @@ export const getMcpServerToolsHTTP = async (
   });
 
   try {
-    // StreamableHTTPClientTransportを使用
+    // カスタムfetch関数を作成（ヘッダーを注入）
+    const customFetch: typeof fetch = async (input, init) => {
+      const mergedHeaders = {
+        ...headers,
+        ...(init?.headers as Record<string, string>),
+      };
+
+      return fetch(input, {
+        ...init,
+        headers: mergedHeaders,
+      });
+    };
+
+    // StreamableHTTPClientTransportを使用（カスタムfetchでヘッダーを注入）
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
-      { requestInit: { headers } },
+      { fetch: customFetch },
     );
 
     // 10秒のタイムアウトを設定

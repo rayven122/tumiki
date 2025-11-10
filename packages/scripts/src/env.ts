@@ -153,13 +153,24 @@ export const validateEnv = (): Env => {
 
 /**
  * 環境変数が設定されているMCPサーバーのみを返す
+ *
+ * 注意: テンプレートサーバー（isPublic: true）は環境変数なしでも常に有効
+ * ユーザーはUIから後で環境変数を設定するため
+ *
  * @param env 検証済みの環境変数
  * @returns 有効なMCPサーバーの配列
  */
 export const getValidMcpServers = (env: Env) => {
   return MCP_SERVERS.filter((server) => {
-    // envVarsが定義されていないサーバーは常に有効
-    if (!("envVars" in server)) {
+    // テンプレートサーバー（isPublic: true）は常に有効
+    // ユーザーがUIから環境変数を設定するため
+    if ("isPublic" in server && server.isPublic) {
+      return true;
+    }
+
+    // envVarsが定義されていない、または空配列のサーバーは常に有効
+    // （authType: "NONE" のサーバーなど）
+    if (!("envVars" in server) || server.envVars.length === 0) {
       return true;
     }
 

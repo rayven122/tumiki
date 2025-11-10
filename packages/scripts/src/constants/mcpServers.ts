@@ -3,275 +3,24 @@ import type { Prisma } from "@prisma/client";
 
 /**
  * db に登録する MCP サーバー一覧
+ *
+ * リモートMCPサーバー専用 (STREAMABLE_HTTPS / SSE トランスポート)
+ * STDIO タイプは廃止されました
  */
 export const MCP_SERVERS = [
-  {
-    name: "Notion MCP",
-    description:
-      "Notionワークスペースと連携し、ページの作成・編集・検索を可能にします",
-    tags: ["ドキュメント", "プロジェクト管理"],
-    iconPath: "/logos/notion.svg",
-    command: "node",
-    args: ["node_modules/@suekou/mcp-notion-server/build/index.js"],
-    envVars: ["NOTION_API_TOKEN"],
-    isPublic: true,
-  },
-  {
-    name: "GitHub MCP",
-    description:
-      "GitHubリポジトリの操作、Issue管理、Pull Request作成をサポートします",
-    tags: ["開発", "バージョン管理"],
-    iconPath: "/logos/github.svg",
-    command: "node",
-    args: ["node_modules/@modelcontextprotocol/server-github/dist/index.js"],
-    envVars: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
-    isPublic: true,
-  },
+  // ========================================
+  // Public Remote MCP Servers (認証なし)
+  // ========================================
   {
     name: "Context7",
-    description: "コンテキスト管理とドキュメント生成を支援するMCPサーバー",
-    tags: ["開発", "ドキュメント"],
+    description:
+      "ライブラリドキュメント検索サービス - 最新のドキュメントをリアルタイムで取得",
+    tags: ["ドキュメント", "検索", "ツール"],
     iconPath: "/logos/context7.svg",
-    command: "node",
-    args: ["node_modules/@upstash/context7-mcp/dist/index.js"],
-    isPublic: true,
-  },
-  {
-    name: "Playwright MCP",
-    description: "ブラウザ自動化とE2Eテストの実行をサポートします",
-    tags: ["テスト", "ブラウザ自動化"],
-    iconPath: "/logos/playwright.svg",
-    command: "node",
-    args: ["node_modules/@playwright/mcp/cli.js"],
-    isPublic: true,
-  },
-  // {
-  //   // ローカルでないと意味ない
-  //   name: "Task Master AI",
-  //   iconPath: "/logos/task-master.svg",
-  //   command: "node",
-  //   args: ["node_modules/task-master-ai/mcp-server/server.js"],
-  //   envVars: [
-  //     "ANTHROPIC_API_KEY",
-  //     "PERPLEXITY_API_KEY",
-  //     "OPENAI_API_KEY",
-  //     "GOOGLE_API_KEY",
-  //     "MISTRAL_API_KEY",
-  //     "OPENROUTER_API_KEY",
-  //     "XAI_API_KEY",
-  //     "AZURE_OPENAI_API_KEY",
-  //     "OLLAMA_API_KEY",
-  //   ],
-  //   isPublic: false,
-  // },
-  {
-    name: "Figma",
-    description: "Figmaデザインファイルの読み取りと操作を可能にします",
-    tags: ["デザイン", "UI/UX"],
-    iconPath: "/logos/figma.svg",
-    command: "node",
-    args: ["node_modules/figma-developer-mcp/dist/index.js", "--stdio"],
-    envVars: ["FIGMA_API_KEY", "FIGMA_OAUTH_TOKEN"],
-    isPublic: true,
-  },
-  // {
-  //   name: "Puppeteer MCP",
-  //   iconPath: "/logos/puppeteer.png",
-  //   command: "node",
-  //   args: [
-  //     "node_modules/puppeteer-mcp-server/dist/index.js",
-  //     "--headless=true",
-  //     "--no-sandbox",
-  //     "--disable-setuid-sandbox",
-  //     "--disable-dev-shm-usage",
-  //     "--disable-gpu",
-  //   ],
-  //   envVars: [],
-  //   isPublic: true,
-  // },
-  {
-    name: "Gemini Google Search",
-    iconPath: "/logos/gemini-search.png",
-    description: "Google Geminiモデルを使用した高度な検索機能を提供します",
-    tags: ["検索", "AI", "情報取得"],
-    command: "node",
-    args: ["node_modules/mcp-gemini-google-search/dist/index.js"],
-    envVars: ["GEMINI_API_KEY", "GEMINI_MODEL"],
-    isPublic: true,
-  },
-  {
-    name: "Slack MCP",
-    description:
-      "Slackワークスペースでのメッセージ送信とチャンネル管理を提供します",
-    tags: ["コミュニケーション", "通知"],
-    iconPath: "/logos/slack.svg",
-    command: "node",
-    args: ["node_modules/slack-mcp-server/bin/index.js"],
-    envVars: ["SLACK_MCP_XOXP_TOKEN"],
-    isPublic: true,
-  },
-  {
-    name: "Discord MCP",
-    description:
-      "Discordサーバーでのメッセージ送信とボット操作をサポートします",
-    tags: ["コミュニケーション", "チーム"],
-    iconPath: "/logos/discord.svg",
-    command: "node",
-    args: ["node_modules/discord-mcp-server/build/index.js"],
-    envVars: ["DISCORD_TOKEN"],
-    isPublic: true,
-  },
-  {
-    name: "LINE Bot MCP",
-    description: "LINE Messaging APIを使用したメッセージの送受信を可能にします",
-    tags: ["コミュニケーション", "通知"],
-    iconPath: "/logos/line.svg",
-    command: "node",
-    args: ["node_modules/@line/line-bot-mcp-server/dist/index.js"],
-    envVars: ["CHANNEL_ACCESS_TOKEN", "DESTINATION_USER_ID"],
-    isPublic: true,
-  },
-  {
-    name: "DeepL MCP",
-    description: "DeepL APIを使用した高品質な翻訳機能を提供します",
-    tags: ["翻訳", "ツール"],
-    iconPath: "/logos/deepl.svg",
-    command: "node",
-    args: ["node_modules/deepl-mcp-server/src/index.mjs"],
-    envVars: ["DEEPL_API_KEY"],
-    isPublic: true,
-  },
-  {
-    name: "YouTube MCP",
-    description:
-      "YouTube Data API v3を使用して動画情報、チャンネル、プレイリスト管理をサポート",
-    tags: ["動画", "メディア", "API"],
-    iconPath: "/logos/youtube.svg",
-    command: "node",
-    args: ["node_modules/@tumiki/youtube-mcp/dist/index.js"],
-    envVars: ["YOUTUBE_API_KEY"],
-    isPublic: true,
-  },
-  {
-    name: "microCMS MCP",
-    description: "microCMSのコンテンツ管理とAPI操作をサポートします",
-    tags: ["CMS", "コンテンツ管理"],
-    iconPath: "/logos/microcms.svg",
-    command: "node",
-    args: ["node_modules/microcms-mcp-server/dist/index.js"],
-    envVars: ["MICROCMS_SERVICE_ID", "MICROCMS_API_KEY"],
-    isPublic: true,
-  },
-  {
-    name: "Google Search Console",
-    description:
-      "Google Search Consoleのサイトパフォーマンスと検索分析データにアクセスします",
-    tags: ["SEO", "分析"],
-    iconPath: "/logos/google-search-console.svg",
-    command: "node",
-    args: ["node_modules/mcp-server-gsc/dist/index.js"],
-    envVars: ["GOOGLE_APPLICATION_CREDENTIALS"],
-    isPublic: true,
-  },
-  {
-    name: "Microsoft Clarity",
-    description:
-      "Microsoft Clarityの分析データとヒートマップへのアクセスを提供します",
-    tags: ["分析", "ツール"],
-    iconPath: "/logos/microsoft-clarity.png",
-    command: "node",
-    args: ["node_modules/@microsoft/clarity-mcp-server/dist/cli.js"],
-    envVars: ["CLARITY_API_TOKEN"],
-    isPublic: true,
-  },
-  {
-    name: "Google Maps Platform",
-    description:
-      "Google Maps Platformの最新ドキュメントとコードサンプルを提供し、地図アプリケーション開発を支援します",
-    tags: ["地図", "API", "開発"],
-    iconPath: "/logos/google-maps.webp",
-    command: "node",
-    args: ["node_modules/@googlemaps/code-assist-mcp/dist/index.js"],
-    isPublic: true,
-  },
-  {
-    name: "Google Analytics",
-    description:
-      "Google Analytics APIと連携し、アカウント情報の取得、レポートの実行、カスタムディメンションとメトリクスの管理を提供します",
-    tags: ["分析", "マーケティング", "データ"],
-    iconPath: "/logos/google-analytics.svg",
-    command: "uvx",
-    args: ["analytics-mcp"],
-    envVars: ["GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_PROJECT_ID"],
-    isPublic: true,
-  },
-  {
-    name: "n8n MCP",
-    description:
-      "n8nワークフローノードのドキュメント、構成検証、タスクテンプレートへのアクセスを提供し、525以上のノードでの自動化を支援します",
-    tags: ["自動化", "ワークフロー", "統合"],
-    // ブランドガイドラインに違反する可能性があるため、iconPathは削除 https://n8n.io/brandguidelines/
-    // iconPath: "/logos/n8n.png",
-    command: "node",
-    args: ["node_modules/n8n-mcp/dist/mcp/index.js"],
-    envVars: [
-      "MCP_MODE",
-      "LOG_LEVEL",
-      "DISABLE_CONSOLE_OUTPUT",
-      "N8N_API_URL",
-      "N8N_API_KEY",
-    ],
-    isPublic: true,
-  },
-  {
-    name: "Sequential Thinking",
-    description:
-      "複雑な問題を段階的に分解し、動的で反復的な思考プロセスを通じて解決策を導き出すMCPサーバー",
-    tags: ["AI", "問題解決", "思考支援"],
-    iconPath: "/logos/sequential-thinking.svg",
-    command: "node",
-    args: [
-      "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js",
-    ],
-    envVars: ["DISABLE_THOUGHT_LOGGING"],
-    isPublic: true,
-  },
-  {
-    name: "Stripe MCP",
-    description:
-      "Stripe APIと連携し、支払い処理、顧客管理、請求書作成、サブスクリプション管理などの決済関連機能を提供します",
-    tags: ["決済", "API", "eコマース"],
-    iconPath: "/logos/stripe.svg",
-    command: "node",
-    args: ["node_modules/@stripe/mcp/dist/index.js", "--tools=all"],
-    envVars: ["STRIPE_SECRET_KEY"],
-    isPublic: true,
-  },
-  {
-    name: "Brave Search",
-    description:
-      "Brave Search APIを統合し、Web検索、ローカルビジネス検索、画像検索、動画検索、ニュース検索、AIによる要約生成など包括的な検索機能を提供します",
-    tags: ["検索", "Web", "AI"],
-    iconPath: "/logos/brave-search.png",
-    command: "node",
-    args: [
-      "node_modules/@brave/brave-search-mcp-server/dist/index.js",
-      "--transport",
-      "stdio",
-    ],
-    envVars: ["BRAVE_API_KEY"],
-    transportType: "STDIO" as const,
-    isPublic: true,
-  },
-  {
-    name: "Kubernetes MCP",
-    description:
-      "Kubernetesクラスターに接続してkubectlやHelmによるクラスター管理をサポートし、非破壊モードでの安全な操作も可能です",
-    tags: ["DevOps", "コンテナ", "インフラ"],
-    iconPath: "/logos/kubernetes.svg",
-    command: "node",
-    args: ["node_modules/mcp-server-kubernetes/dist/index.js"],
-    envVars: ["ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS"],
+    url: "https://mcp.context7.com/mcp",
+    transportType: "STREAMABLE_HTTPS" as const,
+    envVars: [],
+    authType: "NONE" as const,
     isPublic: true,
   },
   // ========================================
@@ -281,7 +30,7 @@ export const MCP_SERVERS = [
   // URL は実際のデプロイ先に置き換える必要があります
   // 設定方法は docs/cloudrun-mcp-integration.md を参照
   {
-    name: "DeepL MCP (Cloud Run)",
+    name: "DeepL MCP",
     description: "Cloud Run にデプロイされた DeepL 翻訳サービス",
     tags: ["翻訳", "ツール", "リモート"],
     iconPath: "/logos/deepl.svg",
@@ -294,7 +43,7 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   {
-    name: "Figma (Cloud Run)",
+    name: "Figma MCP",
     description: "Cloud Run にデプロイされた Figma デザイン連携",
     tags: ["デザイン", "UI/UX", "リモート"],
     iconPath: "/logos/figma.svg",

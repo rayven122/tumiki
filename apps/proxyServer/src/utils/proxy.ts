@@ -418,12 +418,35 @@ const getServerConfigsByInstanceId = async (
       }
     }
 
-    const transportConfig: TransportConfig = {
-      type: "stdio",
-      command: serverConfig.mcpServer.command || "",
-      args: serverConfig.mcpServer.args ?? [],
-      env: envObj,
-    } satisfies TransportConfigStdio;
+    // トランスポートタイプに応じた設定を作成
+    let transportConfig: TransportConfig;
+
+    if (serverConfig.mcpServer.transportType === "SSE") {
+      // SSEトランスポート
+      transportConfig = {
+        type: "sse",
+        url: serverConfig.mcpServer.url || "",
+        env: envObj,
+      };
+    } else if (serverConfig.mcpServer.transportType === "STREAMABLE_HTTPS") {
+      // Streamable HTTPSトランスポート
+      const requireCloudRunAuth =
+        serverConfig.mcpServer.authType === "CLOUD_RUN_IAM";
+      transportConfig = {
+        type: "streamable_https",
+        url: serverConfig.mcpServer.url || "",
+        env: envObj,
+        requireCloudRunAuth,
+      };
+    } else {
+      // STDIOトランスポート（廃止予定だが既存データとの互換性のため残す）
+      transportConfig = {
+        type: "stdio",
+        command: serverConfig.mcpServer.command || "",
+        args: serverConfig.mcpServer.args ?? [],
+        env: envObj,
+      } satisfies TransportConfigStdio;
+    }
 
     const config: ServerConfig = {
       name: serverConfig.name,

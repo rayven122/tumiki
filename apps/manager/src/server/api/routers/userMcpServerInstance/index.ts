@@ -81,6 +81,7 @@ export const AddOfficialServerOutput = z.object({
   id: z.string(),
   userMcpServerConfigId: z.string(),
   toolGroupId: z.string(),
+  skipValidation: z.boolean().optional(),
 });
 
 export const DeleteServerInstanceInput = z.object({
