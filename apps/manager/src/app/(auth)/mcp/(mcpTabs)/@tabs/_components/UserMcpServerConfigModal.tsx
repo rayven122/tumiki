@@ -69,6 +69,14 @@ export const UserMcpServerConfigModal = ({
   const { mutate: addOfficialServer, isPending } =
     api.userMcpServerInstance.addOfficialServer.useMutation({
       onSuccess: async (data) => {
+        // 認証が不要なサーバー（authType: NONE、envVars: []）の場合は検証をスキップ
+        if (data.skipValidation) {
+          toast.success(`${mcpServer.name}が正常に追加されました。`);
+          await utils.userMcpServerInstance.invalidate();
+          onOpenChange(false);
+          return;
+        }
+
         if (!isGitHubMcp || authMethod !== "oauth") {
           // APIキーの場合のみ検証を実行
           setIsValidating(true);
@@ -312,9 +320,11 @@ export const UserMcpServerConfigModal = ({
             <div>
               <h2 className="font-medium">{mcpServer.name}</h2>
               <Badge variant="outline" className="mt-1 text-xs">
-                {mcpServer.envVars.length > 1
-                  ? `${mcpServer.envVars.length}つのAPIトークンが必要`
-                  : "APIトークンが必要"}
+                {mcpServer.envVars.length === 0
+                  ? "設定不要"
+                  : mcpServer.envVars.length > 1
+                    ? `${mcpServer.envVars.length}つのAPIトークンが必要`
+                    : "APIトークンが必要"}
               </Badge>
             </div>
           </div>
@@ -338,90 +348,99 @@ export const UserMcpServerConfigModal = ({
             </p>
           </div>
 
-          {/* OAuth対応MCPの場合はタブで認証方法を選択 */}
-          {isOAuthSupported ? (
-            <Tabs
-              value={authMethod}
-              onValueChange={(v) => setAuthMethod(v as "apikey" | "oauth")}
-              className="space-y-4"
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="oauth">OAuth認証</TabsTrigger>
-                <TabsTrigger value="apikey">APIキー</TabsTrigger>
-              </TabsList>
+          {/* 環境変数が必要な場合のみ入力フィールドを表示 */}
+          {mcpServer.envVars.length > 0 && (
+            <>
+              {/* OAuth対応MCPの場合はタブで認証方法を選択 */}
+              {isOAuthSupported ? (
+                <Tabs
+                  value={authMethod}
+                  onValueChange={(v) => setAuthMethod(v as "apikey" | "oauth")}
+                  className="space-y-4"
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="oauth">OAuth認証</TabsTrigger>
+                    <TabsTrigger value="apikey">APIキー</TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="apikey" className="space-y-4">
-                {/* 既存のAPIキー入力フィールド */}
-                {mcpServer.envVars.map((envVar, index) => (
-                  <div key={envVar} className="space-y-2">
-                    <Label htmlFor={`token-${envVar}`} className="text-sm">
-                      {envVar}
-                    </Label>
-                    <Input
-                      id={`token-${envVar}`}
-                      type="password"
-                      placeholder={`${envVar}を入力してください`}
-                      value={envVars[envVar]}
-                      onChange={(e) =>
-                        handleTokenChange(envVar, e.target.value)
-                      }
-                      className="text-sm"
-                      disabled={isProcessing}
-                    />
-                    {index === mcpServer.envVars.length - 1 && (
-                      <p className="text-muted-foreground text-xs">
-                        トークンは暗号化されて安全に保存されます
+                  <TabsContent value="apikey" className="space-y-4">
+                    {/* 既存のAPIキー入力フィールド */}
+                    {mcpServer.envVars.map((envVar, index) => (
+                      <div key={envVar} className="space-y-2">
+                        <Label htmlFor={`token-${envVar}`} className="text-sm">
+                          {envVar}
+                        </Label>
+                        <Input
+                          id={`token-${envVar}`}
+                          type="password"
+                          placeholder={`${envVar}を入力してください`}
+                          value={envVars[envVar]}
+                          onChange={(e) =>
+                            handleTokenChange(envVar, e.target.value)
+                          }
+                          className="text-sm"
+                          disabled={isProcessing}
+                        />
+                        {index === mcpServer.envVars.length - 1 && (
+                          <p className="text-muted-foreground text-xs">
+                            トークンは暗号化されて安全に保存されます
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </TabsContent>
+
+                  <TabsContent value="oauth" className="space-y-4">
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        OAuth認証を使用すると、
+                        {isGitHubMcp ? "GitHub" : "Figma"}
+                        アカウントでログインして自動的に必要な権限がすべて付与されます。
+                        トークンの有効期限が切れた場合は自動的に更新されます。
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="rounded-lg border bg-gray-50 p-4">
+                      <h4 className="mb-2 font-medium">自動適用される権限</h4>
+                      <p className="text-muted-foreground mb-3 text-sm">
+                        OAuth認証では、必要な権限がAuth0側で管理されます。
+                        接続ボタンをクリックすると、
+                        {isGitHubMcp ? "GitHub" : "Figma"}
+                        の認証画面に移動します。
                       </p>
-                    )}
-                  </div>
-                ))}
-              </TabsContent>
-
-              <TabsContent value="oauth" className="space-y-4">
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    OAuth認証を使用すると、{isGitHubMcp ? "GitHub" : "Figma"}
-                    アカウントでログインして自動的に必要な権限がすべて付与されます。
-                    トークンの有効期限が切れた場合は自動的に更新されます。
-                  </AlertDescription>
-                </Alert>
-
-                <div className="rounded-lg border bg-gray-50 p-4">
-                  <h4 className="mb-2 font-medium">自動適用される権限</h4>
-                  <p className="text-muted-foreground mb-3 text-sm">
-                    OAuth認証では、必要な権限がAuth0側で管理されます。
-                    接続ボタンをクリックすると、
-                    {isGitHubMcp ? "GitHub" : "Figma"}の認証画面に移動します。
-                  </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                /* 既存のAPIキー入力フィールド（OAuth非対応のMCP） */
+                <div className="space-y-4">
+                  {mcpServer.envVars.map((envVar, index) => (
+                    <div key={envVar} className="space-y-2">
+                      <Label htmlFor={`token-${envVar}`} className="text-sm">
+                        {envVar}
+                      </Label>
+                      <Input
+                        id={`token-${envVar}`}
+                        type="password"
+                        placeholder={`${envVar}を入力してください`}
+                        value={envVars[envVar]}
+                        onChange={(e) =>
+                          handleTokenChange(envVar, e.target.value)
+                        }
+                        className="text-sm"
+                        disabled={isProcessing}
+                      />
+                      {index === mcpServer.envVars.length - 1 && (
+                        <p className="text-muted-foreground text-xs">
+                          トークンは暗号化されて安全に保存されます
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            /* 既存のAPIキー入力フィールド（OAuth非対応のMCP） */
-            <div className="space-y-4">
-              {mcpServer.envVars.map((envVar, index) => (
-                <div key={envVar} className="space-y-2">
-                  <Label htmlFor={`token-${envVar}`} className="text-sm">
-                    {envVar}
-                  </Label>
-                  <Input
-                    id={`token-${envVar}`}
-                    type="password"
-                    placeholder={`${envVar}を入力してください`}
-                    value={envVars[envVar]}
-                    onChange={(e) => handleTokenChange(envVar, e.target.value)}
-                    className="text-sm"
-                    disabled={isProcessing}
-                  />
-                  {index === mcpServer.envVars.length - 1 && (
-                    <p className="text-muted-foreground text-xs">
-                      トークンは暗号化されて安全に保存されます
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
 
           <Separator className="my-4" />

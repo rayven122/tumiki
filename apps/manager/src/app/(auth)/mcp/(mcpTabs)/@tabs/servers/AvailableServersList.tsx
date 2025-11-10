@@ -10,7 +10,7 @@ import { ServerCard } from "../_components/ServerCard";
 import { ServerCardSkeleton } from "../_components/ServerCard/ServerCardSkeleton";
 import { AddRemoteServerCard } from "./add/AddRemoteServerCard";
 import { useState } from "react";
-import { CreateMcpServerDialog } from "./add/CreateMcpServerDialog";
+import { CustomMcpServerModal } from "./add/CustomMcpServerModal";
 import { toast } from "@/utils/client/toast";
 
 const AsyncAvailableServersList = () => {
@@ -34,7 +34,7 @@ const AsyncAvailableServersList = () => {
         ))}
       </div>
 
-      <CreateMcpServerDialog
+      <CustomMcpServerModal
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
       />
