@@ -6,7 +6,6 @@
  */
 
 import { GoogleAuth } from "google-auth-library";
-import { recordError } from "../libs/metrics.js";
 
 // Google Cloud 認証クライアント（シングルトン）
 let authClient: GoogleAuth | undefined;
@@ -15,20 +14,10 @@ let authClient: GoogleAuth | undefined;
  * Google Auth クライアントを取得（遅延初期化）
  */
 const getAuthClient = (): GoogleAuth => {
-  if (!authClient) {
-    authClient = new GoogleAuth({
-      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    });
-  }
+  authClient ??= new GoogleAuth({
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+  });
   return authClient;
-};
-
-/**
- * テスト用：認証クライアントをリセット
- * @internal
- */
-export const resetAuthClient = (): void => {
-  authClient = undefined;
 };
 
 /**
@@ -56,7 +45,6 @@ export const getCloudRunIdToken = async (
 
     return idToken;
   } catch (error) {
-    recordError("cloud_run_auth_failed");
     console.error("Cloud Run IAM authentication failed:", error);
     throw new Error(
       `Cloud Run authentication error: ${error instanceof Error ? error.message : "Unknown error"}`,

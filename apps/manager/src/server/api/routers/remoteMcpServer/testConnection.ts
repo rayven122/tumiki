@@ -20,8 +20,20 @@ export const testConnection = async ({ ctx, input }: TestConnectionProps) => {
   // UserMcpServerConfigを取得
   const userMcpConfig = await db.userMcpServerConfig.findUnique({
     where: { id: input.userMcpConfigId },
-    include: {
-      mcpServer: true,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      envVars: true, // 明示的に含める（デフォルトでomitされているため）
+      organizationId: true,
+      mcpServer: {
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          authType: true,
+        },
+      },
     },
   });
 

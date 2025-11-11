@@ -4,7 +4,7 @@
 
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import {
-  getCloudRunAccessToken,
+  getCloudRunIdToken,
   createCloudRunHeaders,
   resetAuthClient,
 } from "../cloudRunAuth.js";
@@ -16,64 +16,70 @@ vi.mock("google-auth-library", () => ({
 }));
 
 describe("cloudRunAuth", () => {
+  const testTargetUrl = "https://test-service.run.app";
+
   beforeEach(() => {
     vi.resetAllMocks();
     resetAuthClient(); // シングルトンをリセット
   });
 
-  describe("getCloudRunAccessToken", () => {
-    test("正常にアクセストークンを取得できる", async () => {
-      const mockAccessToken = "test-access-token-12345";
-      const mockGetAccessToken = vi
-        .fn()
-        .mockResolvedValue({ token: mockAccessToken });
-      const mockGetClient = vi.fn().mockResolvedValue({
-        getAccessToken: mockGetAccessToken,
+  describe("getCloudRunIdToken", () => {
+    test("正常にIDトークンを取得できる", async () => {
+      const mockIdToken = "test-id-token-12345";
+      const mockFetchIdToken = vi.fn().mockResolvedValue(mockIdToken);
+      const mockGetIdTokenClient = vi.fn().mockResolvedValue({
+        idTokenProvider: {
+          fetchIdToken: mockFetchIdToken,
+        },
       });
 
       // GoogleAuthのモック実装
       (GoogleAuth as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         () => ({
-          getClient: mockGetClient,
+          getIdTokenClient: mockGetIdTokenClient,
         }),
       );
 
-      const token = await getCloudRunAccessToken();
+      const token = await getCloudRunIdToken(testTargetUrl);
 
-      expect(token).toBe(mockAccessToken);
+      expect(token).toBe(mockIdToken);
       expect(GoogleAuth).toHaveBeenCalledWith({
         scopes: ["https://www.googleapis.com/auth/cloud-platform"],
       });
+      expect(mockGetIdTokenClient).toHaveBeenCalledWith(testTargetUrl);
+      expect(mockFetchIdToken).toHaveBeenCalledWith(testTargetUrl);
     });
 
-    test("トークンがnullの場合、エラーをスローする", async () => {
-      const mockGetAccessToken = vi.fn().mockResolvedValue({ token: null });
-      const mockGetClient = vi.fn().mockResolvedValue({
-        getAccessToken: mockGetAccessToken,
+    test("IDトークンがnullの場合、エラーをスローする", async () => {
+      const mockFetchIdToken = vi.fn().mockResolvedValue(null);
+      const mockGetIdTokenClient = vi.fn().mockResolvedValue({
+        idTokenProvider: {
+          fetchIdToken: mockFetchIdToken,
+        },
       });
 
       (GoogleAuth as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         () => ({
-          getClient: mockGetClient,
+          getIdTokenClient: mockGetIdTokenClient,
         }),
       );
 
-      await expect(getCloudRunAccessToken()).rejects.toThrow(
-        "Cloud Run authentication error: Failed to obtain access token",
+      await expect(getCloudRunIdToken(testTargetUrl)).rejects.toThrow(
+        "Cloud Run authentication error: Failed to obtain ID token: token is empty",
       );
     });
 
     test("認証エラーが発生した場合、エラーをスローする", async () => {
       const mockError = new Error("Authentication failed");
-      const mockGetClient = vi.fn().mockRejectedValue(mockError);
+      const mockGetIdTokenClient = vi.fn().mockRejectedValue(mockError);
 
       (GoogleAuth as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         () => ({
-          getClient: mockGetClient,
+          getIdTokenClient: mockGetIdTokenClient,
         }),
       );
 
-      await expect(getCloudRunAccessToken()).rejects.toThrow(
+      await expect(getCloudRunIdToken(testTargetUrl)).rejects.toThrow(
         "Cloud Run authentication error: Authentication failed",
       );
     });
@@ -81,39 +87,39 @@ describe("cloudRunAuth", () => {
 
   describe("createCloudRunHeaders", () => {
     test("認証ヘッダーを正しく作成する", async () => {
-      const mockAccessToken = "test-access-token-12345";
-      const mockGetAccessToken = vi
-        .fn()
-        .mockResolvedValue({ token: mockAccessToken });
-      const mockGetClient = vi.fn().mockResolvedValue({
-        getAccessToken: mockGetAccessToken,
+      const mockIdToken = "test-id-token-12345";
+      const mockFetchIdToken = vi.fn().mockResolvedValue(mockIdToken);
+      const mockGetIdTokenClient = vi.fn().mockResolvedValue({
+        idTokenProvider: {
+          fetchIdToken: mockFetchIdToken,
+        },
       });
 
       (GoogleAuth as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         () => ({
-          getClient: mockGetClient,
+          getIdTokenClient: mockGetIdTokenClient,
         }),
       );
 
-      const headers = await createCloudRunHeaders();
+      const headers = await createCloudRunHeaders(testTargetUrl);
 
       expect(headers).toStrictEqual({
-        Authorization: `Bearer ${mockAccessToken}`,
+        Authorization: `Bearer ${mockIdToken}`,
       });
     });
 
     test("追加のヘッダーを含む認証ヘッダーを作成する", async () => {
-      const mockAccessToken = "test-access-token-12345";
-      const mockGetAccessToken = vi
-        .fn()
-        .mockResolvedValue({ token: mockAccessToken });
-      const mockGetClient = vi.fn().mockResolvedValue({
-        getAccessToken: mockGetAccessToken,
+      const mockIdToken = "test-id-token-12345";
+      const mockFetchIdToken = vi.fn().mockResolvedValue(mockIdToken);
+      const mockGetIdTokenClient = vi.fn().mockResolvedValue({
+        idTokenProvider: {
+          fetchIdToken: mockFetchIdToken,
+        },
       });
 
       (GoogleAuth as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         () => ({
-          getClient: mockGetClient,
+          getIdTokenClient: mockGetIdTokenClient,
         }),
       );
 
@@ -122,10 +128,13 @@ describe("cloudRunAuth", () => {
         "Content-Type": "application/json",
       };
 
-      const headers = await createCloudRunHeaders(additionalHeaders);
+      const headers = await createCloudRunHeaders(
+        testTargetUrl,
+        additionalHeaders,
+      );
 
       expect(headers).toStrictEqual({
-        Authorization: `Bearer ${mockAccessToken}`,
+        Authorization: `Bearer ${mockIdToken}`,
         "X-API-Key": "test-api-key",
         "Content-Type": "application/json",
       });
