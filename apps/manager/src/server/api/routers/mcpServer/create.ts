@@ -4,7 +4,11 @@ import { ServerType, ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import { generateApiKey } from "@/utils/server";
 import type { CreateMcpServerInput } from ".";
-import { getMcpServerToolsSSE } from "@/utils/getMcpServerTools";
+import {
+  getMcpServerToolsSSE,
+  getMcpServerToolsHTTP,
+} from "@/utils/getMcpServerTools";
+import { createCloudRunHeaders } from "@/utils/cloudRunAuth";
 
 type CreateMcpServerInputProps = {
   ctx: ProtectedContext;
@@ -20,11 +24,44 @@ export const createMcpServer = async ({
 
   const currentOrganizationId = ctx.currentOrganizationId;
 
-  // バリデーション
-  if (input.transportType === "SSE" && !input.url) {
+  // バリデーション: リモートMCPサーバーのみをサポート（STDIOは廃止）
+  if (input.transportType === "STDIO") {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "SSEタイプの場合、URLは必須です",
+      message:
+        "STDIOタイプのMCPサーバーはサポートされていません。STREAMABLE_HTTPSまたはSSEを使用してください。",
+    });
+  }
+
+  // バリデーション: リモートサーバーの場合、URLは必須
+  if (
+    (input.transportType === "SSE" ||
+      input.transportType === "STREAMABLE_HTTPS") &&
+    !input.url
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "リモートMCPサーバーの場合、URLは必須です",
+    });
+  }
+
+  // バリデーション: サポートされている認証タイプのチェック
+  if (
+    input.authType !== "API_KEY" &&
+    input.authType !== "NONE" &&
+    input.authType !== "CLOUD_RUN_IAM"
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `認証タイプ ${input.authType} は現在サポートされていません。API_KEY、NONE、またはCLOUD_RUN_IAMを使用してください。`,
+    });
+  }
+
+  // バリデーション: API_KEY認証の場合、envVarsは必須
+  if (input.authType === "API_KEY" && Object.keys(input.envVars).length === 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "API_KEY認証を使用する場合、環境変数（APIキー）の指定が必須です",
     });
   }
 
@@ -59,17 +96,54 @@ export const createMcpServer = async ({
     organizationId = inputOrganizationId;
   }
 
-  const tools = await getMcpServerToolsSSE(
-    {
-      name: input.name,
-      url: input.url ?? null,
-    },
-    input.envVars,
-  );
-  if (tools.length === 0) {
+  // カスタムサーバー検証: Transport TypeとAuth Typeに基づいてツールリストを取得
+  let tools;
+  try {
+    // ヘッダーを準備（Cloud Run IAM認証またはAPIキー）
+    let headers = input.envVars;
+    if (input.authType === "CLOUD_RUN_IAM") {
+      // Cloud Run IAM認証の場合、Authorizationヘッダーを追加
+      headers = await createCloudRunHeaders(input.url ?? "", input.envVars);
+    }
+
+    // Transport Typeに応じて適切な関数を呼び出し
+    if (input.transportType === "STREAMABLE_HTTPS") {
+      tools = await getMcpServerToolsHTTP(
+        {
+          name: input.name,
+          url: input.url ?? null,
+        },
+        headers,
+      );
+    } else if (input.transportType === "SSE") {
+      tools = await getMcpServerToolsSSE(
+        {
+          name: input.name,
+          url: input.url ?? null,
+        },
+        headers,
+      );
+    } else {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `サポートされていないTransportType: ${String(input.transportType)}`,
+      });
+    }
+
+    if (!tools || tools.length === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "指定されたMCPサーバーのツールが取得できませんでした",
+      });
+    }
+  } catch (error) {
+    // より詳細なエラーメッセージを提供
+    if (error instanceof TRPCError) {
+      throw error;
+    }
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "指定されたMCPサーバーのツールが取得できませんでした",
+      message: `MCPサーバーへの接続に失敗しました: ${error instanceof Error ? error.message : "Unknown error"}`,
     });
   }
 
@@ -88,6 +162,7 @@ export const createMcpServer = async ({
         args: input.args,
         url: input.url,
         envVars: Object.keys(input.envVars),
+        authType: input.authType,
         serverType: ServerType.OFFICIAL,
         createdBy: userId,
         visibility: input.visibility,

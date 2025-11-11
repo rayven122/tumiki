@@ -153,18 +153,43 @@ export const validateEnv = (): Env => {
 
 /**
  * 環境変数が設定されているMCPサーバーのみを返す
+ *
+ * 注意: テンプレートサーバー（isPublic: true）は環境変数なしでも常に有効
+ * ユーザーはUIから後で環境変数を設定するため
+ *
  * @param env 検証済みの環境変数
  * @returns 有効なMCPサーバーの配列
  */
 export const getValidMcpServers = (env: Env) => {
-  return MCP_SERVERS.filter((server) => {
+  return MCP_SERVERS.filter((server: unknown) => {
+    // サーバーの型を安全にチェック
+    if (typeof server !== "object" || server === null) {
+      return false;
+    }
+
+    const s = server as Record<string, unknown>;
+
+    // テンプレートサーバー（isPublic: true）は常に有効
+    // ユーザーがUIから環境変数を設定するため
+    if ("isPublic" in s) {
+      return true;
+    }
+
     // envVarsが定義されていないサーバーは常に有効
-    if (!("envVars" in server)) {
+    if (!("envVars" in s)) {
+      return true;
+    }
+
+    // envVarsを安全に取得
+    const envVars = s.envVars;
+
+    // envVarsが配列でない、または空配列のサーバーは常に有効（authType: "NONE" のサーバーなど）
+    if (!Array.isArray(envVars) || envVars.length === 0) {
       return true;
     }
 
     // 少なくとも1つの環境変数が設定されているかチェック
-    return server.envVars.some((envVar: string) => {
+    return envVars.some((envVar: string) => {
       const value = env[envVar as keyof Env];
       return value && value !== "";
     });

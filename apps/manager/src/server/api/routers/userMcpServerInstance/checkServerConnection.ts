@@ -5,7 +5,7 @@ import { ServerStatus } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import { getMcpServerToolsHTTP } from "@/utils/getMcpServerTools";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { makeHttpProxyServerUrl } from "@/utils/url";
+import { createCloudRunHeaders } from "@/utils/cloudRunAuth";
 
 type CheckServerConnectionParams = {
   ctx: ProtectedContext;
@@ -29,8 +29,32 @@ export const checkServerConnection = async ({
         organizationId,
       },
       include: {
-        apiKeys: {
-          take: 1,
+        toolGroup: {
+          include: {
+            toolGroupTools: {
+              include: {
+                userMcpServerConfig: {
+                  // envVarsフィールドはデフォルトでomitされているため、明示的にselectで取得
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    envVars: true, // 明示的に含める
+                    mcpServerId: true,
+                    mcpServer: {
+                      select: {
+                        id: true,
+                        name: true,
+                        url: true,
+                        authType: true,
+                      },
+                    },
+                  },
+                },
+              },
+              take: 1, // 最初の設定のみ取得
+            },
+          },
         },
       },
     });
@@ -42,31 +66,70 @@ export const checkServerConnection = async ({
       });
     }
 
-    // APIキーが存在しない場合はエラー
-    if (!serverInstance.apiKeys || serverInstance.apiKeys.length === 0) {
+    // ToolGroupとUserMcpServerConfigが存在することを確認
+    const toolGroupTool = serverInstance.toolGroup?.toolGroupTools[0];
+    if (!toolGroupTool?.userMcpServerConfig) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "認証情報が見つかりません",
+        message: "サーバー設定が見つかりません",
       });
     }
 
-    const apiKey = serverInstance.apiKeys[0]!.apiKey;
+    const userMcpServerConfig = toolGroupTool.userMcpServerConfig;
+    const mcpServer = userMcpServerConfig.mcpServer;
+
+    if (!mcpServer) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "MCPサーバー情報が見つかりません",
+      });
+    }
 
     let success = false;
     let tools: Tool[] = [];
     let errorMessage: string | undefined;
 
     try {
-      // getMcpServerToolsHTTPを直接使用してツール一覧を取得
+      // ヘッダーを構築
+      const headers: Record<string, string> = {};
+
+      // Cloud Run IAM認証が必要な場合
+      if (mcpServer.authType === "CLOUD_RUN_IAM") {
+        try {
+          const cloudRunHeaders = await createCloudRunHeaders(
+            mcpServer.url ?? "",
+          );
+          Object.assign(headers, cloudRunHeaders);
+        } catch (error) {
+          // ローカル環境などでADCが設定されていない場合は警告を出すが、
+          // カスタムヘッダー（APIキーなど）での接続を試みる
+          console.warn(
+            "Cloud Run IAM authentication failed, continuing with custom headers only:",
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+
+      // envVarsからカスタムヘッダーを追加
+      if (userMcpServerConfig.envVars) {
+        try {
+          const envVars = JSON.parse(userMcpServerConfig.envVars) as Record<
+            string,
+            string
+          >;
+          Object.assign(headers, envVars);
+        } catch (error) {
+          console.error("Failed to parse envVars:", error);
+        }
+      }
+
+      // 直接MCPサーバーのURLに接続してツール一覧を取得
       tools = await getMcpServerToolsHTTP(
         {
-          name: "validation",
-          url: makeHttpProxyServerUrl(serverInstanceId),
+          name: mcpServer.name,
+          url: mcpServer.url ?? "",
         },
-        {
-          "x-validation-mode": "true",
-          "x-api-key": apiKey,
-        },
+        headers,
       );
 
       // ツールが0個の場合もエラーとして扱う
@@ -76,8 +139,9 @@ export const checkServerConnection = async ({
       } else {
         success = true;
       }
-    } catch {
+    } catch (error) {
       // 本番環境では詳細なエラーメッセージを避ける
+      console.error("Server connection check failed:", error);
       errorMessage = "サーバーの接続確認に失敗しました";
       success = false;
     }

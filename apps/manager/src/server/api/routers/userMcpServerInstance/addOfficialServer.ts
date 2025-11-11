@@ -24,6 +24,13 @@ export const addOfficialServer = async ({
     throw new Error("MCPサーバーが見つかりません");
   }
 
+  // STDIOタイプのMCPサーバーは廃止済みのため拒否
+  if (mcpServer.transportType === "STDIO") {
+    throw new Error(
+      "STDIOタイプのMCPサーバーはサポートされていません。リモートMCPサーバーを使用してください。",
+    );
+  }
+
   const envVars = Object.keys(input.envVars);
   const isEnvVarsMatch = envVars.every((envVar) =>
     mcpServer.envVars.includes(envVar),
@@ -97,9 +104,14 @@ export const addOfficialServer = async ({
     };
   });
 
+  // authType: NONEかつenvVars: []の場合は接続検証をスキップ
+  const skipValidation =
+    mcpServer.authType === "NONE" && mcpServer.envVars.length === 0;
+
   return {
     id: data.instance.id,
     userMcpServerConfigId: data.configId,
     toolGroupId: data.toolGroupId,
+    skipValidation,
   };
 };

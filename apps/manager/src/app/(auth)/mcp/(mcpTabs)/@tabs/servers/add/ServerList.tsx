@@ -9,7 +9,7 @@ import { X, Search } from "lucide-react";
 import { ServerCardSkeleton } from "../../_components/ServerCard/ServerCardSkeleton";
 import { ServerCard } from "../../_components/ServerCard";
 import { AddRemoteServerCard } from "./AddRemoteServerCard";
-import { CreateMcpServerDialog } from "./CreateMcpServerDialog";
+import { CustomMcpServerModal } from "./CustomMcpServerModal";
 import { api } from "@/trpc/react";
 
 const AsyncServerList = ({
@@ -25,6 +25,11 @@ const AsyncServerList = ({
 
   // フィルタリング
   const filteredServers = mcpServers.filter((server) => {
+    // STDIO サーバーを除外（リモートMCPサーバーのみ表示）
+    if (server.transportType === "STDIO") {
+      return false;
+    }
+
     // 検索クエリでのフィルタリング
     const matchesSearch = server.name
       .toLowerCase()
@@ -152,7 +157,7 @@ export function ServerList() {
           selectedTags={selectedTags}
         />
       </Suspense>
-      <CreateMcpServerDialog
+      <CustomMcpServerModal
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
       />
