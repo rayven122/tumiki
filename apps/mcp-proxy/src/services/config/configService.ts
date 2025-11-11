@@ -1,7 +1,7 @@
 import { db } from "@tumiki/db/server";
 import { logError } from "../../libs/logger/index.js";
 import { getCachedConfig } from "../../libs/cache/configCache.js";
-import { injectAuthHeaders } from "../../middleware/oauth-header-injector.js";
+import { injectAuthHeaders } from "../../libs/auth/oauth-header-injector.js";
 import { mapTransportType, mapAuthType } from "./transformer.js";
 import type { RemoteMcpServerConfig } from "../../types/index.js";
 

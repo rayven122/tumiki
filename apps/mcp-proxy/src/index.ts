@@ -6,6 +6,7 @@ import { closeRedisClient } from "./libs/cache/redis.js";
 import { db } from "@tumiki/db/server";
 import type { HonoEnv } from "./types/index.js";
 import { DEFAULT_PORT } from "./constants/server.js";
+import { TIMEOUT_CONFIG } from "./constants/config.js";
 import { healthRoute } from "./routes/health.js";
 import { mcpRoute } from "./routes/mcp.js";
 
@@ -42,7 +43,7 @@ if (process.env.NODE_ENV !== "test") {
 const gracefulShutdown = async (): Promise<void> => {
   logInfo("Starting graceful shutdown");
 
-  const shutdownTimeout = 9000; // 9秒（Cloud Runの10秒猶予内）
+  const shutdownTimeout = TIMEOUT_CONFIG.GRACEFUL_SHUTDOWN_MS; // Cloud Runの猶予期間内
 
   const shutdownPromise = (async () => {
     try {
