@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { integratedAuthMiddleware } from "../auth/integrated.js";
+import { integratedAuthMiddleware } from "../auth/index.js";
 import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定
@@ -41,12 +41,18 @@ vi.mock("@tumiki/db/server", () => ({
 vi.mock("../../libs/logger/index.js", () => ({
   logInfo: vi.fn(),
   logError: vi.fn(),
+  logDebug: vi.fn(),
+  logWarn: vi.fn(),
+}));
+
+vi.mock("../../services/permissionService.js", () => ({
+  checkPermission: vi.fn(),
 }));
 
 describe("integratedAuthMiddleware", () => {
   let app: Hono<HonoEnv>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     app = new Hono<HonoEnv>();
     app.use("*", integratedAuthMiddleware);
     app.get("/test", (c) => {
@@ -55,6 +61,12 @@ describe("integratedAuthMiddleware", () => {
       return c.json({ jwtPayload, apiKeyAuthInfo });
     });
     vi.clearAllMocks();
+
+    // checkPermission のモックをリセット
+    const { checkPermission } = await import(
+      "../../services/permissionService.js"
+    );
+    vi.mocked(checkPermission).mockResolvedValue(true);
   });
 
   describe("JWT認証", () => {
@@ -117,7 +129,7 @@ describe("integratedAuthMiddleware", () => {
         jsonrpc: "2.0",
         id: null,
         error: {
-          code: -32600,
+          code: -32001,
           message: "Invalid JWT token",
         },
       });
@@ -141,7 +153,7 @@ describe("integratedAuthMiddleware", () => {
         jsonrpc: "2.0",
         id: null,
         error: {
-          code: -32600,
+          code: -32001,
           message: "Invalid or expired JWT token",
         },
       });
@@ -176,9 +188,34 @@ describe("integratedAuthMiddleware", () => {
         jsonrpc: "2.0",
         id: null,
         error: {
-          code: -32600,
+          code: -32001,
           message:
             "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+        },
+      });
+    });
+
+    test("権限チェックが失敗した場合は403エラー", async () => {
+      // checkPermission が false を返すようにモック
+      const { checkPermission } = await import(
+        "../../services/permissionService.js"
+      );
+      vi.mocked(checkPermission).mockResolvedValueOnce(false);
+
+      const res = await app.request("/test", {
+        headers: {
+          Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
+        },
+      });
+
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32003,
+          message: "Permission denied: READ access to MCP_SERVER_INSTANCE",
         },
       });
     });
@@ -272,7 +309,7 @@ describe("integratedAuthMiddleware", () => {
         jsonrpc: "2.0",
         id: null,
         error: {
-          code: -32600,
+          code: -32001,
           message: "Authentication required",
           data: {
             hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
