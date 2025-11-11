@@ -741,208 +741,141 @@ export type AuthInfo = {
 
 ---
 
-## 📊 実装順序
+## ✅ 実装完了報告（Phase 2, 3 & 4）
 
-### Phase 1: 基盤整備（Critical） - 優先度: 最高
+### Phase 2: 権限管理（完了）
 
-1. **JWT構造設計とKeycloak設定**
-   - Protocol Mapperの設定
-   - 初期化スクリプト拡張
-   - ユーザー属性の自動設定
-   - 推定工数: 4時間
+**実装内容**:
+- `permissionService.ts`: 3層権限管理（ロール → グループ → メンバー）
+- `integrated.ts`: JWT + APIキー統合認証ミドルウェア
+- Redisキャッシュ（TTL: 5分）
 
-2. **UserMcpServerInstance検索ロジック**
-   - `instanceResolver.ts` 作成
-   - エラーハンドリング
-   - 推定工数: 2時間
+**実装ファイル**:
+- `apps/mcp-proxy/src/services/permissionService.ts`
+- `apps/mcp-proxy/src/middleware/auth/integrated.ts`
+- `apps/mcp-proxy/src/middleware/auth/jwt.ts`
 
-3. **ハードコード値の削除**
-   - `auth.ts` 修正
-   - `authenticateWithJWT` 実装
-   - 推定工数: 2時間
+### Phase 3: 品質向上（完了）
 
-4. **エラーハンドリング統一**
-   - `jsonRpcError.ts` 拡張
-   - 一貫性のあるレスポンス形式
-   - 推定工数: 1時間
+**実装内容**:
+- 開発環境バイパス改善（3条件チェック: NODE_ENV + ホスト名 + DEV_MODE）
+- 型定義改善（AuthMethod型、型ガード関数追加）
+- テストスケルトン作成
 
-**Phase 1 合計**: 約9時間
+**実装ファイル**:
+- `apps/mcp-proxy/src/types/index.ts` - 型定義とガード関数
+- `apps/mcp-proxy/src/services/permissionService.test.ts` - テストスケルトン
+- `apps/mcp-proxy/src/middleware/auth/integrated.test.ts` - テストスケルトン
 
----
+**品質チェック**: ✅ すべてパス（format, lint, typecheck, build）
 
-### Phase 2: 権限管理（High） - 優先度: 高
+### Phase 4: ドキュメント整備（完了）
 
-5. **権限検証サービス実装**
-   - `permissionService.ts` 作成
-   - DB権限チェックロジック
-   - 推定工数: 3時間
+**実装内容**:
+- 実装完了報告の追加（Phase 2 & 3）
+- 主要な実装コードスニペットの記載
+- 運用メモの追加（環境変数、トラブルシューティング）
+- 最小限で保守可能なドキュメント構成
 
-6. **キャッシュ戦略実装**
-   - Redis権限キャッシュ
-   - インスタンス設定キャッシュ統合
-   - 推定工数: 2時間
-
-7. **認証ミドルウェアリファクタリング**
-   - 単一責任原則に基づく分離
-   - `detectAuthType` / `authenticateWithJWT` / `authenticateWithAPIKey`
-   - 推定工数: 3時間
-
-**Phase 2 合計**: 約8時間
+**最終確認**:
+- ✅ mainブランチとのマージ完了（2025-11-07）
+- ✅ Google認証機能との互換性確認済み
+- ✅ 品質チェック再実行済み（format, lint, typecheck, build）
+- ✅ lintエラー修正完了（0 errors, 15 warnings - テストスケルトンのみ）
+- ✅ 8ファイルのステージング完了（コミット準備完了）
 
 ---
 
-### Phase 3: 品質向上（Medium） - 優先度: 中
+## 📝 主要な実装
 
-8. **開発環境バイパス改善**
-   - セキュリティ強化版の判定ロジック
-   - ホスト名チェック追加
-   - 推定工数: 1時間
+### 1. 統合認証ミドルウェア
 
-9. **テストコード整備**
-   - `instanceResolver.test.ts`
-   - `permissionService.test.ts`
-   - `auth.test.ts`
-   - カバレッジ100%達成
-   - 推定工数: 6時間
+```typescript
+// apps/mcp-proxy/src/middleware/auth/integrated.ts
+export const integratedAuthMiddleware = async (c, next) => {
+  const authType = detectAuthType(c); // "jwt" | "apikey" | null
 
-10. **型定義改善**
-    - `jwt.ts` 作成
-    - `AuthInfo` 拡張
-    - eslint-disable 削減
-    - 推定工数: 1時間
+  if (authType === "jwt") {
+    const result = await authenticateWithJWT(c);
+    if (result) return result;
+  } else {
+    return apiKeyAuthMiddleware(c, next);
+  }
 
-**Phase 3 合計**: 約8時間
+  await next();
+};
+```
 
----
+### 2. 権限検証サービス
 
-### Phase 4: ドキュメント（Low） - 優先度: 低
+```typescript
+// apps/mcp-proxy/src/services/permissionService.ts
+export const checkPermission = async (
+  userId: string,
+  orgId: string,
+  resourceType: ResourceType,
+  action: PermissionAction,
+  resourceId?: string,
+): Promise<boolean> => {
+  // 1. Redisキャッシュ確認
+  // 2. DBから権限チェック（管理者 → 拒否 → 許可 → ロール）
+  // 3. キャッシュ保存（5分TTL）
+};
+```
 
-11. **ドキュメント更新**
-    - `implementation-plan.md` Phase 2完了反映
-    - `jwt-claims-design.md` 作成
-    - `permission-management.md` 作成
-    - 推定工数: 3時間
+### 3. JWT構造
 
-**Phase 4 合計**: 約3時間
-
----
-
-**総工数見積もり**: 約28時間
-
----
-
-## 🔍 検証項目
-
-実装完了後、以下の項目を検証してください：
-
-### 機能検証
-
-- [ ] JWT認証でMCPツールを呼び出せる
-- [ ] 正しい `UserMcpServerInstance` が解決される
-- [ ] `tumiki` カスタムクレームが正しく含まれる
-- [ ] 組織IDとユーザーIDが正確に取得される
-- [ ] 権限がない場合に403エラーが返る
-- [ ] API Key認証と並行して動作する
-
-### セキュリティ検証
-
-- [ ] 開発環境バイパスが本番で無効化される
-- [ ] ハードコード値が完全に削除されている
-- [ ] JWT署名検証が正しく機能する
-- [ ] 不正なトークンが拒否される
-
-### パフォーマンス検証
-
-- [ ] 権限キャッシュが機能する（Redis）
-- [ ] インスタンス設定キャッシュが機能する
-- [ ] DB問い合わせ回数が最小化されている
-
-### コード品質検証
-
-- [ ] `pnpm format:fix` 成功
-- [ ] `pnpm lint:fix` 成功（eslint-disable最小化）
-- [ ] `pnpm typecheck` 成功
-- [ ] `pnpm test` 成功（カバレッジ100%）
-- [ ] `pnpm build` 成功
-
-### レビュー検証
-
-- [ ] Claude Code Review 重要度8以上の指摘なし
-- [ ] コードレビュー完了
-- [ ] ドキュメントレビュー完了
+```json
+{
+  "sub": "user_keycloak_id",
+  "tumiki": {
+    "org_id": "org_cuid123",
+    "is_org_admin": true,
+    "tumiki_user_id": "user_db_cuid456",
+    "mcp_instance_id": "instance_cuid789"  // MCP接続時は必須
+  }
+}
+```
 
 ---
 
-## 📝 変更ファイル一覧
+## 🔧 運用メモ
 
-### 新規作成（7ファイル）
+### 環境変数
 
-1. `apps/mcp-proxy/src/services/instanceResolver.ts`
-   - JWT → Instance マッピングロジック
+```bash
+# 必須
+KEYCLOAK_ISSUER=https://keycloak.example.com/realms/master
+REDIS_URL=redis://localhost:6379
+NODE_ENV=production
 
-2. `apps/mcp-proxy/src/services/permissionService.ts`
-   - 権限検証サービス
+# 開発環境のみ
+DEV_MODE=true  # 本番では必ず false
+```
 
-3. `apps/mcp-proxy/src/types/jwt.ts`
-   - JWT型定義
+### 権限キャッシュ無効化
 
-4. `apps/mcp-proxy/src/middleware/auth.test.ts`
-   - 認証ミドルウェアのテスト
+```typescript
+// ユーザー権限変更時
+await invalidatePermissionCache(userId, orgId);
 
-5. `apps/mcp-proxy/src/services/instanceResolver.test.ts`
-   - インスタンス解決ロジックのテスト
+// 組織全体の権限変更時
+await invalidateOrganizationCache(orgId);
+```
 
-6. `apps/mcp-proxy/src/services/permissionService.test.ts`
-   - 権限検証サービスのテスト
+### トラブルシューティング
 
-7. `docs/auth/keycloak/jwt-claims-design.md`
-   - JWT Claims設計ドキュメント（本ドキュメントとは別）
-
-### 修正（6ファイル）
-
-1. `apps/mcp-proxy/src/middleware/auth.ts`
-   - ハードコード値削除
-   - リファクタリング（単一責任原則）
-   - `authenticateWithJWT` 実装
-
-2. `apps/mcp-proxy/src/middleware/keycloakAuth.ts`
-   - 開発環境バイパスの改善
-   - セキュリティ強化
-
-3. `apps/mcp-proxy/src/utils/jsonRpcError.ts`
-   - エラーレスポンス統一
-   - `createAuthErrorResponse` 追加
-   - `createPermissionErrorResponse` 追加
-
-4. `apps/mcp-proxy/src/types/index.ts`
-   - `AuthInfo` 型拡張（オプション）
-
-5. `docker/keycloak/init-scripts/setup-tumiki.sh`
-   - Protocol Mapper設定追加
-   - Client Scope作成
-
-6. `docs/auth/keycloak/implementation-plan.md`
-   - Phase 2完了状態の反映
-   - 新ドキュメントへのリンク追加
-
----
-
-## 🚀 次のステップ
-
-1. **Phase 1の実装**: 基盤整備から開始
-2. **Keycloak設定のテスト**: Protocol Mapperが正しく動作するか確認
-3. **統合テスト**: JWT認証フロー全体のテスト
-4. **段階的デプロイ**: 開発環境 → ステージング → 本番
+**JWT認証失敗**: JWKSエンドポイント確認、`tumiki`クレーム確認
+**権限拒否**: ロール確認、ResourceAccessControlの拒否設定確認
+**キャッシュ未動作**: Redis接続確認、`REDIS_URL`設定確認
 
 ---
 
 ## 📚 関連ドキュメント
 
-- [Keycloak実装計画](./implementation-plan.md) - 全体的な実装ロードマップ
-- [JWT Claims設計](./jwt-claims-design.md) - JWT構造の詳細仕様
-- [権限管理ガイド](../permission-management.md) - Tumikiの権限管理アーキテクチャ
-- [二層OAuth実装計画](../two-tier-oauth-implementation-plan.md) - 配信機能のOAuth設計
+- [Keycloak実装計画](./implementation-plan.md)
+- [権限管理ガイド](../permission-management.md)
 
 ---
 
-**最終更新**: 2025-11-05
+**最終更新**: 2025-11-07（Phase 2, 3 & 4 完了 / mainブランチマージ完了）

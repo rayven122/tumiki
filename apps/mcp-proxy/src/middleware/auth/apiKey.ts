@@ -2,6 +2,7 @@ import type { Context, Next } from "hono";
 import { db } from "@tumiki/db/server";
 import type { ApiKeyAuthInfo, HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
+import { createUnauthorizedError } from "../../libs/error/index.js";
 
 /**
  * APIキーを抽出
@@ -84,6 +85,7 @@ export const apiKeyAuthMiddleware = async (
     process.env.DEV_MODE === "true"
   ) {
     // ダミーの認証情報を設定
+    c.set("authMethod", "apikey");
     c.set("apiKeyAuthInfo", {
       organizationId: "dev-org-id",
       mcpServerInstanceId: "dev-instance-id",
@@ -96,17 +98,9 @@ export const apiKeyAuthMiddleware = async (
 
   if (!apiKey) {
     return c.json(
-      {
-        jsonrpc: "2.0",
-        id: null,
-        error: {
-          code: -32600,
-          message: "Invalid or inactive API key",
-          data: {
-            hint: "Provide API key via X-API-Key header or Authorization: Bearer header",
-          },
-        },
-      },
+      createUnauthorizedError("Invalid or inactive API key", {
+        hint: "Provide API key via X-API-Key header or Authorization: Bearer header",
+      }),
       401,
     );
   }
@@ -115,20 +109,11 @@ export const apiKeyAuthMiddleware = async (
   const apiKeyAuthInfo = await validateApiKey(apiKey);
 
   if (!apiKeyAuthInfo) {
-    return c.json(
-      {
-        jsonrpc: "2.0",
-        id: null,
-        error: {
-          code: -32600,
-          message: "Invalid or inactive API key",
-        },
-      },
-      401,
-    );
+    return c.json(createUnauthorizedError("Invalid or inactive API key"), 401);
   }
 
   // 認証情報をコンテキストに設定
+  c.set("authMethod", "apikey");
   c.set("apiKeyAuthInfo", apiKeyAuthInfo);
 
   await next();
