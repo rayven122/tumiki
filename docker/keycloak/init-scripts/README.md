@@ -37,8 +37,6 @@ GOOGLE_CLIENT_SECRET=your-secret
 pnpm keycloak:up
 ```
 
-**注意**: 以前のバージョンでは手動実行が必要でしたが、現在は `entrypoint.sh` により自動実行されるため、手動実行は不要です。
-
 ## 設定内容
 
 ### Tumiki カスタムクレーム
