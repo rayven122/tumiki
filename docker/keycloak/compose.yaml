@@ -25,15 +25,6 @@ services:
       - ./init-scripts:/opt/keycloak/init-scripts:ro
       - ./setup-keycloak.sh:/opt/keycloak/setup-keycloak.sh:ro
       - ./entrypoint.sh:/opt/keycloak/entrypoint.sh:ro
-    healthcheck:
-      test: |
-        exec 3<>/dev/tcp/localhost/9000 &&
-        printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
-        grep -q 'HTTP/1.1 200' <&3
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 60s
     depends_on:
       keycloak-db:
         condition: service_healthy
