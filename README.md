@@ -205,6 +205,45 @@ docker compose -f ./docker/compose.dev.yaml up -d
 docker compose -f ./docker/compose.prod.yaml up -d
 ```
 
+#### Keycloak（OAuth認証基盤）
+
+Keycloakを使用したOAuth認証の開発環境をセットアップ：
+
+```bash
+# Keycloak環境を起動
+pnpm keycloak:up
+
+# Keycloakを停止（データ保持）
+pnpm keycloak:stop
+
+# Keycloakを停止（コンテナ削除）
+pnpm keycloak:down
+
+# データを削除して再起動
+pnpm keycloak:down:volumes && pnpm keycloak:up
+```
+
+**アクセス情報**:
+- 管理コンソール: http://localhost:8443/admin/
+- ユーザー名: `admin` / パスワード: `admin123`
+- 詳細は [docker/keycloak/README.md](./docker/keycloak/README.md) を参照
+
+**環境変数設定**（`.env`）:
+```bash
+# Keycloak基本設定
+KEYCLOAK_ISSUER=http://localhost:8443/realms/tumiki
+KEYCLOAK_CLIENT_ID=tumiki-manager
+KEYCLOAK_CLIENT_SECRET=tumiki-manager-secret-change-in-production
+KEYCLOAK_ADMIN_USERNAME=admin
+KEYCLOAK_ADMIN_PASSWORD=admin123
+
+# Google OAuth連携（オプション）
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+**注意**: Google OAuth連携を使用する場合のみ、`GOOGLE_CLIENT_ID`と`GOOGLE_CLIENT_SECRET`を設定してください。設定するとGoogle IdP経由でのログインが自動的に有効化されます。
+
 ### ProxyServer管理
 
 ```bash

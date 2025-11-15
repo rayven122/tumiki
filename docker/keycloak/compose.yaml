@@ -2,24 +2,29 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: tumiki-keycloak
+    env_file:
+      - ../../.env
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak123
-    command:
-      - start-dev
-      - --import-realm
-      - --http-enabled=true
-      - --hostname-strict=false
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_URL: http://localhost:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tumiki}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tumiki-manager}
+    entrypoint: ["/opt/keycloak/entrypoint.sh"]
     ports:
       - "8443:8080"
     volumes:
       - ./tumiki-realm.json:/opt/keycloak/data/import/tumiki-realm.json:ro
       - ./init-scripts:/opt/keycloak/init-scripts:ro
       - ./setup-keycloak.sh:/opt/keycloak/setup-keycloak.sh:ro
+      - ./entrypoint.sh:/opt/keycloak/entrypoint.sh:ro
     depends_on:
       keycloak-db:
         condition: service_healthy
