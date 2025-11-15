@@ -25,14 +25,30 @@ KCADM="/opt/keycloak/bin/kcadm.sh"
 
 echo "Keycloak セットアップ開始"
 
-# 認証
+# 認証（リトライ機能付き）
 echo "認証中..."
-$KCADM config credentials \
-  --server "$KEYCLOAK_URL" \
-  --realm master \
-  --user "$KEYCLOAK_ADMIN_USERNAME" \
-  --password "$KEYCLOAK_ADMIN_PASSWORD" \
-  --config /tmp/kcadm.config
+RETRY_COUNT=5
+RETRY_DELAY=10
+
+for i in $(seq 1 $RETRY_COUNT); do
+  if $KCADM config credentials \
+    --server "$KEYCLOAK_URL" \
+    --realm master \
+    --user "$KEYCLOAK_ADMIN_USERNAME" \
+    --password "$KEYCLOAK_ADMIN_PASSWORD" \
+    --config /tmp/kcadm.config 2>/tmp/kcadm_error.log; then
+    echo "認証成功"
+    break
+  else
+    if [ $i -eq $RETRY_COUNT ]; then
+      echo "エラー: 認証に失敗しました（試行回数: $RETRY_COUNT）"
+      cat /tmp/kcadm_error.log
+      exit 1
+    fi
+    echo "認証失敗。${RETRY_DELAY}秒後に再試行します...（試行 $i/$RETRY_COUNT）"
+    sleep $RETRY_DELAY
+  fi
+done
 
 # Tumiki カスタムクレーム設定
 echo "Tumiki カスタムクレーム設定中..."

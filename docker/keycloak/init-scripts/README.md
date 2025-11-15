@@ -30,10 +30,11 @@ GOOGLE_CLIENT_SECRET=your-secret
 
 ### 2. セットアップ実行
 
+セットアップスクリプトは Keycloak 起動時に自動実行されます：
+
 ```bash
-cd /Users/hisuzuya/Documents/app/rayven/tumiki/docker/keycloak
-docker compose up -d
-docker exec -i tumiki-keycloak bash -c "source /opt/keycloak/.env && /opt/keycloak/setup-keycloak.sh"
+# プロジェクトルートから実行
+pnpm keycloak:up
 ```
 
 ## 設定内容
