@@ -199,12 +199,9 @@ EOF
   create_idp_mapper "google-picture" "oidc-user-attribute-idp-mapper" "picture" "picture"
 fi
 
-# SSL要件を無効化（開発環境用）
-echo "SSL要件を無効化中..."
-$KCADM update realms/"$REALM" -r "$REALM" --config /tmp/kcadm.config \
-  -s sslRequired=NONE 2>/dev/null || true
-
-# masterレルムも無効化
+# masterレルムのSSL要件を無効化（開発環境用）
+# 注: tumikiレルムはtumiki-realm.jsonで既にsslRequired=noneが設定済み
+echo "masterレルムのSSL要件を無効化中..."
 $KCADM update realms/master -r master --config /tmp/kcadm.config \
   -s sslRequired=NONE 2>/dev/null || true
 
