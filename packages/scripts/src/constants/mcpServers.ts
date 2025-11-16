@@ -32,7 +32,7 @@ export const MCP_SERVERS = [
   {
     name: "DeepL MCP",
     description: "Cloud Run にデプロイされた DeepL 翻訳サービス",
-    tags: ["翻訳", "ツール", "リモート"],
+    tags: ["翻訳", "ツール"],
     iconPath: "/logos/deepl.svg",
     url: "https://deepl-mcp-67726874216.asia-northeast1.run.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
@@ -45,7 +45,7 @@ export const MCP_SERVERS = [
   {
     name: "Figma MCP",
     description: "Cloud Run にデプロイされた Figma デザイン連携",
-    tags: ["デザイン", "UI/UX", "リモート"],
+    tags: ["デザイン", "UI/UX"],
     iconPath: "/logos/figma.svg",
     url: "https://figma-mcp-67726874216.asia-northeast1.run.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
