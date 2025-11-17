@@ -63,7 +63,7 @@ export const GetUserOrganizationsOutput = z.array(
 
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
-  getUserOrganizations: protectedProcedure
+  getUserOrganizations: authenticatedProcedure
     .output(GetUserOrganizationsOutput)
     .query(getUserOrganizations),
 

@@ -1,22 +1,24 @@
 /**
- * Auth0認証関連のユーティリティ関数
+ * NextAuth.js認証関連のユーティリティ関数
  */
+
+import { signOut } from "next-auth/react";
 
 /**
  * ログアウト処理を実行
- * Auth0のログアウトエンドポイントにリダイレクト
+ * NextAuth.jsのサインアウトを使用
  */
-export const logout = (): void => {
-  window.location.href = "/auth/logout";
+export const logout = async (): Promise<void> => {
+  await signOut({ callbackUrl: "/" });
 };
 
 /**
  * ログイン処理を実行
- * Auth0のログインエンドポイントにリダイレクト
+ * サインインページにリダイレクト
  */
 export const login = (returnTo?: string): void => {
   const loginUrl = returnTo
-    ? `/auth/login?returnTo=${encodeURIComponent(returnTo)}`
-    : "/auth/login";
+    ? `/signin?callbackUrl=${encodeURIComponent(returnTo)}`
+    : "/signin";
   window.location.href = loginUrl;
 };
