@@ -49,13 +49,12 @@ pnpm db:studio    # Prisma Studio起動
 # MCP Inspector（接続テスト）
 pnpm inspector
 
-# PM2プロセス管理（apps/proxyServerディレクトリで実行）
-cd apps/proxyServer
-pnpm pm2:start    # PM2でサーバー起動
-pnpm pm2:logs     # ログ確認
-pnpm pm2:status   # ステータス確認
-pnpm pm2:restart  # 再起動
-pnpm pm2:stop     # 停止
+# MCP Proxy管理（apps/mcp-proxyディレクトリで実行）
+cd apps/mcp-proxy
+pnpm dev          # 開発サーバー起動
+pnpm build        # ビルド
+pnpm start        # 本番サーバー起動
+pnpm test         # テスト実行
 ```
 
 ## デプロイメント
@@ -65,7 +64,7 @@ pnpm run deploy
 
 # 個別デプロイ
 pnpm run deploy:vercel  # Manager App（Vercel）
-pnpm run deploy:gce     # ProxyServer（GCE）
+cd apps/mcp-proxy && pnpm deploy  # MCP Proxy（Cloud Run）
 
 # ドライラン
 pnpm run deploy:dry-run
