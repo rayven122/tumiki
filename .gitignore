@@ -51,7 +51,6 @@ yarn-error.log*
 **/dist
 
 apps/manager/mcp
-apps/proxyServer/mcp
 
 .turbo
 

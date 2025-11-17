@@ -12,7 +12,7 @@ tumiki/
 │   │   │   ├── components/  # UIコンポーネント
 │   │   │   └── schema/      # 型定義（branded types）
 │   │   └── public/
-│   └── proxyServer/          # Express MCPプロキシサーバー
+│   └── mcp-proxy/            # Hono MCPプロキシサーバー (Cloud Run対応)
 │       ├── src/
 │       │   └── index.ts     # メインエントリーポイント
 │
@@ -77,11 +77,11 @@ tumiki/
 - Auth0認証統合
 - 多言語対応（英語/日本語）
 
-### apps/proxyServer
-- 複数のMCPサーバーを統合するプロキシ
-- SSE（Server-Sent Events）対応
-- PM2によるプロセス管理
-- GCEへのデプロイ対応
+### apps/mcp-proxy
+- 複数のリモートMCPサーバーを統合するプロキシ
+- HTTP/JSON-RPC 2.0対応
+- ステートレス設計（Cloud Run最適化）
+- 軽量フレームワークHonoを使用
 
 ### packages/db
 - Prisma ORMによるデータベース管理

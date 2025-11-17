@@ -35,7 +35,7 @@ pnpm docker:stop
 tumiki/
 ├── apps/
 │   ├── manager/          # Next.js 15 + React 19 Webアプリケーション
-│   └── proxyServer/      # MCPサーバープロキシ（Express）
+│   └── mcp-proxy/        # MCPサーバープロキシ（Hono + Cloud Run）
 ├── packages/             # 共有パッケージ
 │   ├── db/              # Prisma データベースパッケージ
 │   ├── auth/            # Auth0 認証パッケージ
@@ -250,13 +250,11 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 # MCP Inspector（接続テスト）
 pnpm inspector
 
-# PM2プロセス管理（ProxyServerディレクトリで実行）
-cd apps/proxyServer
-pnpm pm2:start    # PM2でサーバー起動
-pnpm pm2:logs     # PM2ログ確認
-pnpm pm2:status   # PM2ステータス確認
-pnpm pm2:restart  # PM2再起動
-pnpm pm2:stop     # PM2停止
+# MCP Proxy開発サーバー起動
+cd apps/mcp-proxy
+pnpm dev          # 開発サーバー起動
+pnpm build        # ビルド
+pnpm start        # 本番サーバー起動
 ```
 
 ### テスト・その他
@@ -420,13 +418,14 @@ gcloud auth login
 
 ProxyServer を既存の GCE VM にデプロイして PM2 で管理する詳細な手順は、専用のドキュメントを参照してください。
 
-📖 **[ProxyServer デプロイメントガイド](./docs/proxy-server-deployment.md)**
+📖 **[MCP Proxy デプロイメントガイド](./docs/architecture/mcp-proxy-design.md)**
 
 #### クイックスタート
 
 ```bash
-# GCEデプロイ実行
-pnpm deploy:gce
+# Cloud Runデプロイ実行
+cd apps/mcp-proxy
+pnpm deploy
 
 # 本番環境へデプロイ
 pnpm deploy:production

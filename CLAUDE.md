@@ -138,10 +138,9 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
   - `userMcpServerConfig.ts` - ユーザー固有のMCPサーバー設定
   - `userMcpServerInstance.ts` - 実行中のMCPサーバーインスタンス管理
   - `post.ts` - 汎用投稿機能
-- **MCP プロキシサーバー**: `apps/proxyServer/src/index.ts`
-  - `/mcp` - HTTP/Streamable transport エンドポイント
-  - `/sse` - SSE transport エンドポイント（後方互換性）
-  - `/messages` - SSE メッセージ送信
+- **MCP プロキシサーバー**: `apps/mcp-proxy/src/index.ts`
+  - `/mcp` - HTTP/JSON-RPC 2.0 エンドポイント
+  - Cloud Run対応のステートレス設計
 - **型安全性**: 自動 API 生成によるフルスタック型安全性、@tumiki/db から型 import
 
 ### 認証アーキテクチャ
