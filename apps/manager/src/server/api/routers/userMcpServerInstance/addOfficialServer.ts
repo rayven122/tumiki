@@ -1,9 +1,8 @@
 import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 
-import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import type { AddOfficialServerInput } from ".";
-import { generateApiKey } from "@/utils/server";
+import { createUserServerComponents } from "../_shared/createUserServerComponents";
 
 type AddOfficialServerInput = {
   ctx: ProtectedContext;
@@ -41,67 +40,18 @@ export const addOfficialServer = async ({
 
   const organizationId = ctx.currentOrganizationId;
 
+  // 共通関数を使用してユーザー固有のコンポーネントを作成
   const data = await ctx.db.$transaction(async (tx) => {
-    const serverConfig = await tx.userMcpServerConfig.create({
-      data: {
-        organizationId,
-        name: input.name,
-        description: "",
-        mcpServerId: input.mcpServerId,
-        envVars: JSON.stringify(input.envVars),
-      },
+    return await createUserServerComponents({
+      tx,
+      mcpServer,
+      envVars: input.envVars,
+      instanceName: input.name,
+      instanceDescription: input.description ?? "",
+      organizationId,
+      userId: ctx.session.user.id,
+      isPending: input.isPending,
     });
-
-    const toolGroupTools = mcpServer.tools.map((tool) => ({
-      toolId: tool.id,
-      userMcpServerConfigId: serverConfig.id,
-    }));
-
-    const toolGroup = await tx.userToolGroup.create({
-      data: {
-        organizationId,
-        name: input.name,
-        description: "",
-        toolGroupTools: {
-          createMany: {
-            data: toolGroupTools,
-          },
-        },
-      },
-    });
-
-    // OAuth認証待ちの場合はAPIキーを生成しない
-    const fullKey = input.isPending ? undefined : generateApiKey();
-
-    const data = await tx.userMcpServerInstance.create({
-      data: {
-        organizationId,
-        name: input.name,
-        description: input.description ?? "",
-        // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
-        serverStatus: input.isPending
-          ? ServerStatus.PENDING
-          : ServerStatus.RUNNING,
-        serverType: ServerType.OFFICIAL,
-        toolGroupId: toolGroup.id,
-        apiKeys:
-          input.isPending || !fullKey
-            ? undefined
-            : {
-                create: {
-                  name: `${input.name} API Key`,
-                  apiKey: fullKey,
-                  userId: ctx.session.user.id,
-                },
-              },
-      },
-    });
-
-    return {
-      instance: data,
-      configId: serverConfig.id,
-      toolGroupId: toolGroup.id,
-    };
   });
 
   // authType: NONEかつenvVars: []の場合は接続検証をスキップ
@@ -110,8 +60,8 @@ export const addOfficialServer = async ({
 
   return {
     id: data.instance.id,
-    userMcpServerConfigId: data.configId,
-    toolGroupId: data.toolGroupId,
+    userMcpServerConfigId: data.serverConfig.id,
+    toolGroupId: data.toolGroup.id,
     skipValidation,
   };
 };
