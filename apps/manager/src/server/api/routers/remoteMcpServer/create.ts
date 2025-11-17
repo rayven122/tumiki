@@ -8,6 +8,8 @@ import { TRPCError } from "@trpc/server";
 import { type CreateRemoteMcpServerInput } from ".";
 import { performDCR, DCRError } from "@/lib/oauth/dcr";
 import { getOAuthRedirectUri } from "@/lib/oauth/utils";
+import { getMcpServerToolsHTTP } from "@/utils/getMcpServerTools";
+import { createUserServerComponents } from "../_shared/createUserServerComponents";
 
 type CreateRemoteMcpServerProps = {
   ctx: ProtectedContext;
@@ -68,24 +70,80 @@ export const createRemoteMcpServer = async ({
     organizationId = inputOrganizationId;
   }
 
+  // OAuth認証が必要な場合、ツール取得をスキップ（認証後に取得）
+  const skipToolFetch = input.authType === "OAUTH";
+  let tools: Array<{
+    name: string;
+    description?: string;
+    inputSchema: unknown;
+  }> = [];
+
+  // OAuth以外の認証の場合、事前にツールを取得
+  if (!skipToolFetch) {
+    try {
+      // 環境変数をヘッダーとして準備
+      const headers = input.credentials?.envVars ?? {};
+
+      // STREAMABLE_HTTPSの場合はHTTPで接続
+      tools = await getMcpServerToolsHTTP(
+        {
+          name: input.name,
+          url: input.customUrl,
+        },
+        headers,
+      );
+
+      if (!tools || tools.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "指定されたMCPサーバーのツールが取得できませんでした",
+        });
+      }
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `MCPサーバーへの接続に失敗しました: ${error instanceof Error ? error.message : "Unknown error"}`,
+      });
+    }
+  }
+
   // MCPサーバーを作成（トランザクション）
   const result = await db.$transaction(async (tx) => {
     // MCPサーバーを作成
     const mcpServer = await tx.mcpServer.create({
+      include: {
+        tools: true,
+      },
       data: {
         name: input.name,
         description: input.description,
         transportType: "STREAMABLE_HTTPS", // リモートサーバーはHTTPS
         url: input.customUrl,
-        envVars: [], // 環境変数はUserMcpServerConfigで管理
+        envVars: input.credentials?.envVars
+          ? Object.keys(input.credentials.envVars)
+          : [],
         authType: input.authType,
         oauthProvider: input.oauthProvider,
         oauthScopes: input.scopes ?? [],
-        serverType: "CUSTOM", // ユーザーが追加したリモートサーバー
+        serverType: "OFFICIAL", // リモートMCPもOFFICIAL扱い
         createdBy: userId,
         visibility: input.visibility,
         organizationId,
         isPublic: input.visibility === "PUBLIC",
+        tools: skipToolFetch
+          ? undefined
+          : {
+              createMany: {
+                data: tools.map((tool) => ({
+                  name: tool.name,
+                  description: tool.description ?? "",
+                  inputSchema: tool.inputSchema as object,
+                })),
+              },
+            },
       },
     });
 
@@ -145,31 +203,56 @@ export const createRemoteMcpServer = async ({
       }
     }
 
-    // UserMcpServerConfigを作成
-    let envVarsJson = "{}";
-    if (input.authType === "API_KEY" && input.credentials) {
-      envVarsJson = JSON.stringify(input.credentials.envVars ?? {});
-    }
-
-    const userMcpConfig = await tx.userMcpServerConfig.create({
-      data: {
-        name: mcpServer.name,
-        description: input.description ?? "",
-        mcpServerId: mcpServer.id,
-        envVars: envVarsJson,
+    // OAuth認証待ちの場合は、インスタンスをPENDINGステータスで作成
+    // OAuth以外の場合は、通常通りRUNNINGステータスで作成
+    let userComponents;
+    if (!skipToolFetch && mcpServer.tools.length > 0) {
+      // ツールが取得できている場合のみ、インスタンスを作成
+      const envVars = input.credentials?.envVars ?? {};
+      userComponents = await createUserServerComponents({
+        tx,
+        mcpServer,
+        envVars,
+        instanceName: input.name,
+        instanceDescription: input.description ?? "",
         organizationId: currentOrganizationId,
-      },
-    });
+        userId,
+        isPending: false,
+      });
+    } else {
+      // OAuth認証待ちの場合、UserMcpServerConfigのみ作成
+      const envVarsJson =
+        input.authType === "API_KEY" && input.credentials
+          ? JSON.stringify(input.credentials.envVars ?? {})
+          : "{}";
+
+      const userMcpConfig = await tx.userMcpServerConfig.create({
+        data: {
+          name: mcpServer.name,
+          description: input.description ?? "",
+          mcpServerId: mcpServer.id,
+          envVars: envVarsJson,
+          organizationId: currentOrganizationId,
+        },
+      });
+
+      userComponents = {
+        serverConfig: userMcpConfig,
+        toolGroup: null,
+        instance: null,
+      };
+    }
 
     return {
       mcpServer,
-      userMcpConfig,
+      userComponents,
     };
   });
 
   return {
     mcpServer: result.mcpServer,
-    userMcpConfigId: result.userMcpConfig.id,
+    userMcpConfigId: result.userComponents.serverConfig.id,
+    instanceId: result.userComponents.instance?.id,
     // OAuth認証が必要な場合はフロントエンドでinitiateOAuthを呼び出す
     requiresOAuth: input.authType === "OAUTH",
   };
