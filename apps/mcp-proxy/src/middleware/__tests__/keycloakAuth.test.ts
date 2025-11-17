@@ -15,6 +15,7 @@ describe("devKeycloakAuth", () => {
   let app: Hono<HonoEnv>;
   let originalNodeEnv: string | undefined;
   let originalDevMode: string | undefined;
+  let originalAuthBypass: string | undefined;
 
   beforeEach(() => {
     app = new Hono<HonoEnv>();
@@ -27,6 +28,7 @@ describe("devKeycloakAuth", () => {
     // 環境変数を保存
     originalNodeEnv = process.env.NODE_ENV;
     originalDevMode = process.env.DEV_MODE;
+    originalAuthBypass = process.env.ENABLE_AUTH_BYPASS;
 
     vi.clearAllMocks();
   });
@@ -44,12 +46,19 @@ describe("devKeycloakAuth", () => {
     } else {
       delete process.env.DEV_MODE;
     }
+
+    if (originalAuthBypass !== undefined) {
+      process.env.ENABLE_AUTH_BYPASS = originalAuthBypass;
+    } else {
+      delete process.env.ENABLE_AUTH_BYPASS;
+    }
   });
 
   describe("開発モード", () => {
     test("DEV_MODE=true かつ NODE_ENV=development の場合、JWT認証をバイパス", async () => {
       process.env.NODE_ENV = "development";
       process.env.DEV_MODE = "true";
+      process.env.ENABLE_AUTH_BYPASS = "true";
 
       const res = await app.request("/test");
 
@@ -96,6 +105,7 @@ describe("devKeycloakAuth", () => {
     test("開発モードではダミーのJWTペイロードを設定", async () => {
       process.env.NODE_ENV = "development";
       process.env.DEV_MODE = "true";
+      process.env.ENABLE_AUTH_BYPASS = "true";
 
       const res = await app.request("/test");
 
