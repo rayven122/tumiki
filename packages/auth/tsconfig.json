@@ -1,8 +1,0 @@
-{
-  "extends": "@tumiki/tsconfig/react-library.json",
-  "compilerOptions": {
-    "rootDir": "src"
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js"],
-  "exclude": ["node_modules", "dist", "vitest.config.ts"]
-}
