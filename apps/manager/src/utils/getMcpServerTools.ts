@@ -114,23 +114,19 @@ export const getMcpServerToolsHTTP = async (
   });
 
   try {
-    // カスタムfetch関数を作成（ヘッダーを注入）
-    const customFetch: typeof fetch = async (input, init) => {
-      const mergedHeaders = {
-        ...headers,
-        ...(init?.headers as Record<string, string>),
-      };
-
-      return fetch(input, {
-        ...init,
-        headers: mergedHeaders,
-      });
-    };
-
-    // StreamableHTTPClientTransportを使用（カスタムfetchでヘッダーを注入）
+    // StreamableHTTPClientTransportを使用（requestInitでヘッダーを設定）
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
-      { fetch: customFetch },
+      {
+        requestInit: {
+          headers: {
+            ...headers,
+            // Context7サーバーが要求するヘッダーを明示的に設定
+            Accept: "application/json, text/event-stream",
+            "Content-Type": "application/json",
+          },
+        },
+      },
     );
 
     // 10秒のタイムアウトを設定
