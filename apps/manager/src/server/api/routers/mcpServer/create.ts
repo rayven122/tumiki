@@ -1,14 +1,14 @@
 import { type z } from "zod";
 import { type ProtectedContext } from "@/server/api/trpc";
-import { ServerType, ServerStatus } from "@tumiki/db/prisma";
+import { ServerType } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import { generateApiKey } from "@/utils/server";
 import type { CreateMcpServerInput } from ".";
 import {
   getMcpServerToolsSSE,
   getMcpServerToolsHTTP,
 } from "@/utils/getMcpServerTools";
 import { createCloudRunHeaders } from "@/utils/cloudRunAuth";
+import { createUserServerComponents } from "../_shared/createUserServerComponents";
 
 type CreateMcpServerInputProps = {
   ctx: ProtectedContext;
@@ -180,63 +180,24 @@ export const createMcpServer = async ({
       },
     });
 
-    // ユーザーのMCPサーバー設定を作成
-    const serverConfig = await tx.userMcpServerConfig.create({
-      data: {
-        name: mcpServer.name,
-        description: "",
-        mcpServerId: mcpServer.id,
-        envVars: JSON.stringify(input.envVars),
+    // 共通関数を使用してユーザー固有のコンポーネントを作成
+    const { serverConfig, toolGroup, instance } =
+      await createUserServerComponents({
+        tx,
+        mcpServer,
+        envVars: input.envVars,
+        instanceName: mcpServer.name,
+        instanceDescription: "",
         organizationId: currentOrganizationId,
-      },
-    });
-
-    const toolGroupTools = mcpServer.tools.map((tool) => ({
-      toolId: tool.id,
-      userMcpServerConfigId: serverConfig.id,
-    }));
-
-    // ツールグループを作成
-    const toolGroup = await tx.userToolGroup.create({
-      data: {
-        name: mcpServer.name,
-        description: "",
-        organizationId: currentOrganizationId,
-        toolGroupTools: {
-          createMany: {
-            data: toolGroupTools,
-          },
-        },
-      },
-    });
-
-    // APIキーを生成
-    const fullKey = generateApiKey();
-
-    // MCPサーバーインスタンスを作成
-    const serverInstance = await tx.userMcpServerInstance.create({
-      data: {
-        name: mcpServer.name,
-        description: "",
-        serverStatus: ServerStatus.RUNNING,
-        serverType: ServerType.OFFICIAL,
-        toolGroupId: toolGroup.id,
-        organizationId: currentOrganizationId,
-        apiKeys: {
-          create: {
-            name: `${mcpServer.name} API Key`,
-            apiKey: fullKey,
-            userId,
-          },
-        },
-      },
-    });
+        userId,
+        isPending: false,
+      });
 
     return {
       mcpServer,
       serverConfig,
       toolGroup,
-      serverInstance,
+      serverInstance: instance,
     };
   });
 
