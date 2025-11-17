@@ -83,8 +83,8 @@ pnpm db:deploy   # 最新のマイグレーションを反映してデータベ�
 pnpm dev
 
 # または個別起動
-cd apps/manager && pnpm dev     # Manager（ポート3000）
-cd apps/proxyServer && pnpm dev # ProxyServer（ポート8080）
+cd apps/manager && pnpm dev   # Manager（ポート3000）
+cd apps/mcp-proxy && pnpm dev # MCP Proxy（ポート8080）
 ```
 
 ## アクセス確認
@@ -92,7 +92,7 @@ cd apps/proxyServer && pnpm dev # ProxyServer（ポート8080）
 セットアップが完了したら、以下のURLでアプリケーションにアクセスできます：
 
 - **Manager（Webアプリケーション）**: <http://localhost:3000>
-- **ProxyServer（MCPプロキシ）**: <http://localhost:8080>
+- **MCP Proxy（MCPプロキシ）**: <http://localhost:8080>
 
 ## トラブルシューティング
 

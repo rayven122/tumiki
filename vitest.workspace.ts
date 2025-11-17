@@ -3,7 +3,7 @@ import { defineWorkspace } from "vitest/config";
 export default defineWorkspace([
   // Apps
   "apps/manager/vitest.config.ts",
-  "apps/proxyServer/vitest.config.ts",
+  "apps/mcp-proxy/vitest.config.ts",
 
   // Packages
   "packages/auth/vitest.config.ts",
