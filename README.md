@@ -199,7 +199,7 @@ pnpm db:generate
 
 ```bash
 # 開発環境（自己署名SSL）
-docker compose -f ./docker/compose.dev.yaml up -d
+docker compose -f ./docker/compose.yaml up -d
 
 # 本番環境（Let's Encrypt SSL）
 docker compose -f ./docker/compose.prod.yaml up -d
@@ -335,7 +335,7 @@ pnpm stripe:listen
 ### 開発環境（ローカルSSL）
 
 ```bash
-docker compose -f ./docker/compose.dev.yaml up -d
+docker compose -f ./docker/compose.yaml up -d
 ```
 
 - **ドメイン**: <https://local-server.tumiki.cloud>
@@ -356,7 +356,7 @@ docker compose -f ./docker/compose.prod.yaml up -d
 
 ```bash
 # 開発環境の停止
-docker compose -f ./docker/compose.dev.yaml down
+docker compose -f ./docker/compose.yaml stop
 
 # 本番環境の停止
 docker compose -f ./docker/compose.prod.yaml down

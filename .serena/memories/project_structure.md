@@ -42,7 +42,7 @@ tumiki/
 │   └── vitest/              # Vitestテスト設定
 │
 ├── docker/                   # Docker設定
-│   ├── compose.dev.yaml     # 開発環境（自己署名SSL）
+│   ├── compose.yaml         # 開発環境
 │   └── compose.prod.yaml    # 本番環境（Let's Encrypt）
 │
 ├── scripts/                  # プロジェクトレベルスクリプト

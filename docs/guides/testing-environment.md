@@ -23,7 +23,7 @@ Tumikiプロジェクトでは、以下の2種類のテストを実行します�
 
 ```bash
 # テスト用PostgreSQLコンテナを起動
-docker compose -f ./docker/compose.dev.yaml up -d db-test
+docker compose -f ./docker/compose.yaml up -d db-test
 ```
 
 このコマンドにより、以下の設定でPostgreSQLコンテナが起動します：
@@ -115,8 +115,8 @@ docker ps -a
 docker logs db-test
 
 # コンテナの強制再作成
-docker compose -f ./docker/compose.dev.yaml down
-docker compose -f ./docker/compose.dev.yaml up -d db-test
+docker compose -f ./docker/compose.yaml stop
+docker compose -f ./docker/compose.yaml up -d db-test
 ```
 
 ### マイグレーションエラーが発生する場合
