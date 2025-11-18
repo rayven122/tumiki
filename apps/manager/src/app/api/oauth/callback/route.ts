@@ -16,6 +16,9 @@ import {
   type OAuthEndpoints,
 } from "@/lib/oauth/simple-oauth";
 import type { OAuthSession, McpServer, OAuthClient } from "@tumiki/db";
+import { getMcpServerToolsHTTP } from "@/utils/getMcpServerTools";
+import { ServerStatus, ServerType } from "@tumiki/db/prisma";
+import { generateApiKey } from "@/utils/server";
 
 /**
  * コールバックパラメータを検証
@@ -324,6 +327,92 @@ export const GET = async (request: NextRequest) => {
       tokenData,
       oauthSession,
     );
+
+    // OAuth認証完了後、MCPサーバーからツールを取得してインスタンスを作成
+    try {
+      // Authorizationヘッダーを準備
+      const headers = {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      };
+
+      // MCPサーバーからツールを取得
+      const tools = await getMcpServerToolsHTTP(
+        {
+          name: mcpServer.name,
+          url: mcpServer.url!,
+        },
+        headers,
+      );
+
+      if (tools && tools.length > 0) {
+        // トランザクション内でツール、ツールグループ、インスタンスを作成
+        await db.$transaction(async (tx) => {
+          // 既存のツールを削除（再取得のため）
+          await tx.tool.deleteMany({
+            where: { mcpServerId: mcpServer.id },
+          });
+
+          // ツールを作成
+          const createdTools = await Promise.all(
+            tools.map((tool) =>
+              tx.tool.create({
+                data: {
+                  mcpServerId: mcpServer.id,
+                  name: tool.name,
+                  description: tool.description ?? "",
+                  inputSchema: tool.inputSchema as object,
+                },
+              }),
+            ),
+          );
+
+          // ツールグループとの関連データを準備
+          const toolGroupTools = createdTools.map((tool) => ({
+            toolId: tool.id,
+            userMcpServerConfigId: userMcpConfig.id,
+          }));
+
+          // UserToolGroupを作成
+          const toolGroup = await tx.userToolGroup.create({
+            data: {
+              organizationId: userMcpConfig.organizationId,
+              name: mcpServer.name,
+              description: "",
+              toolGroupTools: {
+                createMany: {
+                  data: toolGroupTools,
+                },
+              },
+            },
+          });
+
+          // APIキーを生成
+          const fullKey = generateApiKey();
+
+          // UserMcpServerInstanceを作成
+          await tx.userMcpServerInstance.create({
+            data: {
+              organizationId: userMcpConfig.organizationId,
+              name: mcpServer.name,
+              description: `OAuth connected ${mcpServer.name}`,
+              serverStatus: ServerStatus.RUNNING,
+              serverType: ServerType.OFFICIAL,
+              toolGroupId: toolGroup.id,
+              apiKeys: {
+                create: {
+                  name: `${mcpServer.name} API Key`,
+                  apiKey: fullKey,
+                  userId,
+                },
+              },
+            },
+          });
+        });
+      }
+    } catch (toolError) {
+      console.error("[Tool Fetch Error]", toolError);
+      // ツール取得エラーは警告として扱い、認証自体は成功とする
+    }
 
     // OAuthSessionを完了状態に更新
     await db.oAuthSession.update({

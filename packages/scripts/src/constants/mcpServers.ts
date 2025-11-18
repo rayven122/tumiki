@@ -24,6 +24,22 @@ export const MCP_SERVERS = [
     isPublic: true,
   },
   // ========================================
+  // OAuth Remote MCP Servers (DCR対応)
+  // ========================================
+  {
+    name: "Linear MCP",
+    description:
+      "Linear プロジェクト管理サービス - イシュー、プロジェクト、チーム情報へのアクセス",
+    tags: ["プロジェクト管理", "イシュー管理", "ツール"],
+    iconPath: "/logos/linear.svg",
+    url: "https://mcp.linear.app/mcp",
+    transportType: "STREAMABLE_HTTPS" as const,
+    envVars: [],
+    authType: "OAUTH" as const,
+    oauthProvider: "linear",
+    isPublic: true,
+  },
+  // ========================================
   // Cloud Run Remote MCP Servers
   // ========================================
   // Cloud Run にデプロイされた MCP サーバー
