@@ -1,0 +1,144 @@
+import { Hono } from "hono";
+import type { HonoEnv } from "../types/index.js";
+
+export const wellKnownRoute = new Hono<HonoEnv>();
+
+/**
+ * RFC 8414 - OAuth 2.0 Authorization Server Metadata (Instance-specific)
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8414
+ * @see https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization
+ *
+ * Keycloak OAuth 2.1 Authorization Server Metadataへのリダイレクト
+ *
+ * このエンドポイントは、AI クライアントが MCP Proxy の OAuth 設定を
+ * 自動検出できるようにするためのものです。
+ *
+ * Keycloakが認証・認可を担当するため、Keycloak の OpenID Connect
+ * 設定エンドポイントにリダイレクトします。
+ *
+ * Keycloak の OpenID Connect Discovery エンドポイント:
+ * {KEYCLOAK_ISSUER}/.well-known/openid-configuration
+ *
+ * 注意事項：
+ * - Keycloakでは Client Credentials Grant をサポート
+ * - カスタムクレーム (tumiki.org_id, tumiki.mcp_instance_id) の設定が必要
+ * - Instance ID ごとに異なる認可サーバー設定を返す予定（現在は TODO）
+ */
+wellKnownRoute.get("/oauth-authorization-server/mcp/:devInstanceId", (c) => {
+  const devMode = process.env.DEV_MODE === "true";
+
+  // DEV_MODE 以外は未実装
+  if (!devMode) {
+    // TODO: Implement instance-specific authorization server discovery
+    // - Fetch instance-specific Keycloak realm or authorization server URL from database
+    // - Support multiple authorization servers per instance
+    // - Handle instance-not-found scenarios
+    return c.json(
+      {
+        error: "not_implemented",
+        error_description:
+          "Instance-specific OAuth authorization server metadata is not yet implemented",
+      },
+      501,
+    );
+  }
+
+  // DEV_MODE: 現在の実装を維持
+  const keycloakIssuer = process.env.KEYCLOAK_ISSUER;
+
+  if (!keycloakIssuer) {
+    return c.json(
+      {
+        error: "server_misconfiguration",
+        error_description:
+          "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
+      },
+      500,
+    );
+  }
+
+  // TODO: Redirect to instance-specific authorization server configuration
+  // For now, redirect to the shared Keycloak instance
+  const keycloakDiscoveryUrl = `${keycloakIssuer}/.well-known/openid-configuration`;
+  return c.redirect(keycloakDiscoveryUrl, 302);
+});
+
+/**
+ * RFC 9728 - OAuth 2.0 Protected Resource Metadata (Instance-specific)
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc9728
+ * @see https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization
+ *
+ * MCP仕様準拠: 保護されたリソース（MCP Proxy）のメタデータを提供
+ *
+ * このエンドポイントは、MCP クライアントが認証に必要な情報を
+ * 自動検出できるようにするためのものです。
+ *
+ * 重要:
+ * - 認証は不要（公開メタデータ）
+ * - RFC 9728 に準拠したリソースメタデータを返す
+ * - MCP 2025-DRAFT-v2 仕様で必須実装
+ * - Instance ID ごとに異なるメタデータを返す予定（現在は TODO）
+ */
+wellKnownRoute.get("/oauth-protected-resource/mcp/:devInstanceId", (c) => {
+  const devMode = process.env.DEV_MODE === "true";
+
+  // DEV_MODE 以外は未実装
+  if (!devMode) {
+    // TODO: Implement instance-specific protected resource metadata
+    // - Fetch instance-specific metadata from database
+    // - Different scopes per instance
+    // - Different authorization servers per instance
+    // - Instance-specific resource documentation
+    // - Handle instance-not-found scenarios
+    return c.json(
+      {
+        error: "not_implemented",
+        error_description:
+          "Instance-specific OAuth protected resource metadata is not yet implemented",
+      },
+      501,
+    );
+  }
+
+  // DEV_MODE: instance ID を resource に含める
+  const keycloakIssuer = process.env.KEYCLOAK_ISSUER;
+  const mcpResourceUrl =
+    process.env.MCP_RESOURCE_URL ?? "http://localhost:8080/mcp";
+
+  if (!keycloakIssuer) {
+    return c.json(
+      {
+        error: "server_misconfiguration",
+        error_description:
+          "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
+      },
+      500,
+    );
+  }
+
+  // DEV_MODE では dev-instance-id 固定
+  const instanceId = "dev-instance-id";
+  const resourceWithInstanceId = `${mcpResourceUrl}/${instanceId}`;
+
+  // RFC 9728 準拠のリソースメタデータを返す
+  return c.json({
+    // RFC 9728 必須フィールド
+    resource: resourceWithInstanceId,
+    authorization_servers: [keycloakIssuer],
+
+    // RFC 9728 推奨フィールド
+    scopes_supported: ["mcp:access"],
+    bearer_methods_supported: ["header"],
+    resource_documentation: "https://docs.tumiki.cloud/mcp",
+    resource_signing_alg_values_supported: ["RS256"],
+
+    // TODO: Implement instance-specific metadata
+    // - Different scopes per instance (e.g., ["mcp:read", "mcp:write", "mcp:admin"])
+    // - Different authorization servers per instance
+    // - Instance-specific resource documentation URLs
+    // - Custom bearer methods per instance
+    // - Additional metadata fields as needed
+  });
+});

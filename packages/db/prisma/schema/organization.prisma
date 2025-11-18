@@ -43,6 +43,8 @@ model Organization {
   mcpServers         McpServer[]
   /// 組織のリクエストログ
   requestLogs        McpServerRequestLog[]
+  /// 組織のTumiki OAuth クライアント（MCP Proxy 認証用）
+  tumikiOAuthClients TumikiOAuthClient[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
