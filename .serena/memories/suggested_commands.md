@@ -105,13 +105,13 @@ git     # バージョン管理
 ## Docker操作
 ```bash
 # 開発環境（自己署名SSL）
-docker compose -f ./docker/compose.dev.yaml up -d
+docker compose -f ./docker/compose.yaml up -d
 
 # 本番環境（Let's Encrypt SSL）
 docker compose -f ./docker/compose.prod.yaml up -d
 
 # 停止
-docker compose -f ./docker/compose.dev.yaml down
+docker compose -f ./docker/compose.yaml stop
 docker compose -f ./docker/compose.prod.yaml down
 ```
 

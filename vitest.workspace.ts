@@ -8,7 +8,7 @@ export default defineWorkspace([
   // Packages
   // TODO: packages/dbのテストにはPostgreSQL(db-test)コンテナが必要なため除外
   // CI環境でサービスコンテナを追加する場合は.github/workflows/ci.ymlにservices設定が必要
-  // ローカル開発時: docker compose -f ./docker/compose.dev.yaml up -d db-test
+  // ローカル開発時: docker compose -f ./docker/compose.yaml up -d db-test
   // "packages/db/vitest.config.ts",
   "packages/mailer/vitest.config.ts",
   "packages/scripts/vitest.config.ts",

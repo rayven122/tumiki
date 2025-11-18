@@ -49,7 +49,7 @@ DockerのPostgreSQLコンテナを起動した後、以下のDATABASE_URLを使�
 
 ```bash
 # Docker PostgreSQLコンテナ起動
-docker compose -f ./docker/compose.dev.yaml up -d
+docker compose -f ./docker/compose.yaml up -d
 
 # .envファイルにDocker PostgreSQL URLを設定
 DATABASE_URL="postgresql://postgres:password@localhost:5432/tumiki"
@@ -100,13 +100,13 @@ cd apps/mcp-proxy && pnpm dev # MCP Proxy（ポート8080）
 
 ```bash
 # コンテナの状態確認
-docker compose -f ./docker/compose.dev.yaml ps
+docker compose -f ./docker/compose.yaml ps
 
 # ログ確認
-docker compose -f ./docker/compose.dev.yaml logs
+docker compose -f ./docker/compose.yaml logs
 
 # コンテナの再起動
-docker compose -f ./docker/compose.dev.yaml restart
+docker compose -f ./docker/compose.yaml restart
 ```
 
 ### データベース関連の問題
