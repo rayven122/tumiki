@@ -3,6 +3,17 @@ name: Cleanup PR Environment
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'クリーンアップ対象のPR番号'
+        required: true
+        type: number
+      dry_run:
+        description: 'ドライラン（削除を実行せず確認のみ）'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   cleanup:
@@ -13,7 +24,7 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+          credentials_json: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -21,14 +32,19 @@ jobs:
       - name: Delete Cloud Run service
         shell: bash
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || github.event.pull_request.number }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
         run: |
           SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
           REGION="asia-northeast1"
 
           echo "🧹 PR #$PR_NUMBER のCloud Runサービスをクリーンアップ中"
           echo "サービス: $SERVICE_NAME"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🔍 ドライランモード: 削除は実行されません"
+          fi
 
           # Check if service exists
           if gcloud run services describe "$SERVICE_NAME" \
@@ -37,14 +53,18 @@ jobs:
 
             echo "🗑️  Cloud Runサービスを削除中..."
 
-            if gcloud run services delete "$SERVICE_NAME" \
-                --region="$REGION" \
-                --project="$GCP_PROJECT_ID" \
-                --quiet; then
-              echo "✅ Cloud Runサービスの削除が完了しました"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "✅ [ドライラン] Cloud Runサービス '$SERVICE_NAME' が削除されます（実際には削除されません）"
             else
-              echo "❌ Cloud Runサービスの削除に失敗しました"
-              exit 1
+              if gcloud run services delete "$SERVICE_NAME" \
+                  --region="$REGION" \
+                  --project="$GCP_PROJECT_ID" \
+                  --quiet; then
+                echo "✅ Cloud Runサービスの削除が完了しました"
+              else
+                echo "❌ Cloud Runサービスの削除に失敗しました"
+                exit 1
+              fi
             fi
           else
             echo "ℹ️  Cloud Runサービスが見つかりません（デプロイされていない可能性があります）"
@@ -54,14 +74,20 @@ jobs:
       - name: Cleanup summary
         shell: bash
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event_name == 'workflow_dispatch' && 'N/A (手動実行)' || github.event.pull_request.merged }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
         run: |
           echo "========================================="
-          echo "🧹 PR環境のクリーンアップが完了しました"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🔍 PR環境のクリーンアップ検証が完了しました（ドライラン）"
+          else
+            echo "🧹 PR環境のクリーンアップが完了しました"
+          fi
           echo "========================================="
           echo "PR: #$PR_NUMBER"
           echo "マージ済み: $PR_MERGED"
           echo "サービス: tumiki-mcp-proxy-pr-$PR_NUMBER"
+          echo "モード: $([ "$DRY_RUN" = "true" ] && echo "ドライラン（削除なし）" || echo "本番実行")"
           echo "ステータス: クリーンアップ完了"
           echo "========================================="
