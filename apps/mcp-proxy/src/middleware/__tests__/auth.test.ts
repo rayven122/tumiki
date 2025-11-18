@@ -312,7 +312,7 @@ describe("integratedAuthMiddleware", () => {
           code: -32001,
           message: "Authentication required",
           data: {
-            hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
+            hint: "Provide JWT token (Bearer eyJ...), or API key (Bearer tumiki_... or X-API-Key header)",
           },
         },
       });

@@ -11,8 +11,8 @@ model McpApiKey {
   name                    String
   /// 暗号化されたAPIキー（client_id として使用）
   apiKey                  String                @unique /// @encrypted
-  /// client_secret の bcrypt ハッシュ（OAuth 2.0 client_credentials フロー用）
-  apiKeyHash              String?               @unique
+  /// APIキーの検索用ハッシュ（SHA-256、prisma-field-encryptionにより自動生成）
+  apiKeyHash              String?               @unique /// @encryption:hash(apiKey)
   /// APIキーが有効かどうか
   isActive                Boolean               @default(true)
   /// 最後に使用された日時

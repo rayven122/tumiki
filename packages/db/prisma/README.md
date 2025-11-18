@@ -5,6 +5,7 @@
 - [Auth](#auth)
 - [McpServer](#mcpserver)
 - [OAuth](#oauth)
+- [TumikiOAuth](#tumikioauth)
 - [Organization](#organization)
 - [UserMcpServer](#usermcpserver)
 - [Chat](#chat)
@@ -36,7 +37,7 @@ APIキー管理テーブル
   - `id`: 
   - `name`: APIキー名（ユーザーが設定）
   - `apiKey`: 暗号化されたAPIキー（client_id として使用）
-  - `apiKeyHash`: client_secret の bcrypt ハッシュ（OAuth 2.0 client_credentials フロー用）
+  - `apiKeyHash`: APIキーの検索用ハッシュ（SHA-256、prisma-field-encryptionにより自動生成）
   - `isActive`: APIキーが有効かどうか
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
@@ -583,6 +584,40 @@ OAuth認証セッション（一時的な認証フロー管理）
   - `errorCode`: エラー情報
   - `errorDescription`: 
   - `expiresAt`: タイムスタンプ
+  - `createdAt`: 
+  - `updatedAt`: 
+
+
+## TumikiOAuth
+```mermaid
+erDiagram
+"TumikiOAuthClient" {
+  String id PK
+  String keycloakClientId UK
+  String organizationId FK
+  String instanceId FK,UK
+  String name
+  String description "nullable"
+  String scopes
+  Boolean isActive
+  DateTime createdAt
+  DateTime updatedAt
+}
+```
+
+### `TumikiOAuthClient`
+Tumiki OAuth Client - AI クライアントが MCP Proxy に接続するための認証情報
+Keycloak Client との対応付けを管理
+
+**Properties**
+  - `id`: 
+  - `keycloakClientId`: 
+  - `organizationId`: 
+  - `instanceId`: 
+  - `name`: 
+  - `description`: 
+  - `scopes`: 
+  - `isActive`: 
   - `createdAt`: 
   - `updatedAt`: 
 

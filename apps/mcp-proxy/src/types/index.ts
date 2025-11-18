@@ -1,10 +1,11 @@
 /**
  * 認証方式
  *
- * - jwt: JWT Bearer Token認証（Keycloak）
+ * - jwt: JWT Bearer Token認証（Keycloak - 通常のユーザー認証）
  * - apikey: API Key認証（X-API-Key または Bearer tumiki_...）
+ * - oauth: OAuth 2.1 Bearer Token認証（Keycloak - Client Credentials Grant）
  */
-export type AuthMethod = "jwt" | "apikey";
+export type AuthMethod = "jwt" | "apikey" | "oauth";
 
 /**
  * API Key認証情報
@@ -15,6 +16,19 @@ export type AuthMethod = "jwt" | "apikey";
 export type ApiKeyAuthInfo = {
   organizationId: string;
   mcpServerInstanceId: string;
+};
+
+/**
+ * OAuth認証情報
+ *
+ * OAuth 2.1認証時にコンテキストに設定される情報。
+ * Keycloak OAuth JWTから取得した認証情報。
+ */
+export type OAuthAuthInfo = {
+  clientId: string;
+  organizationId: string;
+  instanceId: string;
+  scope?: string;
 };
 
 /**
@@ -90,12 +104,14 @@ export type RemoteMcpServerConfig = {
  *
  * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
  * - API Key認証時: apiKeyAuthInfo のみ設定、authMethod = "apikey"
+ * - OAuth認証時: oauthAuthInfo のみ設定、authMethod = "oauth"
  */
 export type HonoEnv = {
   Variables: {
     authMethod?: AuthMethod; // 使用された認証方式
     apiKeyAuthInfo?: ApiKeyAuthInfo; // API Key認証時のみ
     jwtPayload?: JWTPayload; // JWT認証時のみ
+    oauthAuthInfo?: OAuthAuthInfo; // OAuth認証時のみ
   };
 };
 
@@ -157,4 +173,41 @@ export const isValidMcpJWTPayload = (
   }
 
   return typeof payload.tumiki.mcp_instance_id === "string";
+};
+
+/**
+ * OAuth 2.1 トークンリクエスト (application/x-www-form-urlencoded)
+ */
+export type OAuthTokenRequest = {
+  grant_type: "client_credentials" | "refresh_token";
+  client_id: string;
+  client_secret: string;
+  scope?: string;
+  refresh_token?: string; // grant_type=refresh_token の場合に必要
+};
+
+/**
+ * OAuth 2.1 トークンレスポンス
+ */
+export type OAuthTokenResponse = {
+  access_token: string;
+  token_type: "Bearer";
+  expires_in: number; // 秒単位
+  refresh_token?: string;
+  scope?: string;
+};
+
+/**
+ * OAuth 2.1 エラーレスポンス (RFC 6749 Section 5.2)
+ */
+export type OAuthErrorResponse = {
+  error:
+    | "invalid_request"
+    | "invalid_client"
+    | "invalid_grant"
+    | "unauthorized_client"
+    | "unsupported_grant_type"
+    | "invalid_scope";
+  error_description?: string;
+  error_uri?: string;
 };

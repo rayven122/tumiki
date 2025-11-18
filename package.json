@@ -39,7 +39,9 @@
     "deploy:production": "bash scripts/deploy.sh --stage production --target all",
     "deploy:dry-run": "bash scripts/deploy.sh --dry-run",
     "verify:stripe": "tsx scripts/verify-stripe-env.ts",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
+    "inspector": "mcp-inspector",
+    "inspector:mcp-proxy": "mcp-inspector --transport http http://localhost:8080/mcp"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.8.0",
