@@ -154,39 +154,69 @@ export const createRemoteMcpServer = async ({
         // 注: 環境変数が未設定の場合はデフォルト値を使用
         const redirectUri = getOAuthRedirectUri();
 
-        // DCRを実行
-        const dcrResult = await performDCR(
-          input.customUrl,
-          input.name,
-          [redirectUri],
-          input.scopes?.join(" "),
-        );
+        // 手動でclient credentialsが入力されている場合
+        const hasManualCredentials =
+          input.credentials?.clientId && input.credentials?.clientSecret;
 
-        // OAuthClientレコードを作成
-        await tx.oAuthClient.create({
-          data: {
-            mcpServerId: mcpServer.id,
-            clientId: dcrResult.registration.client_id,
-            clientSecret: dcrResult.registration.client_secret ?? null,
-            authorizationServerUrl: dcrResult.metadata.issuer,
-            authorizationEndpoint: dcrResult.metadata.authorization_endpoint,
-            tokenEndpoint: dcrResult.metadata.token_endpoint,
-            registrationEndpoint:
-              dcrResult.metadata.registration_endpoint ?? null,
-            registrationAccessToken:
-              dcrResult.registration.registration_access_token ?? null,
-            scopes:
-              dcrResult.registration.scope?.split(" ") ?? input.scopes ?? [],
-            grantTypes: dcrResult.registration.grant_types ?? [
-              "authorization_code",
-            ],
-            responseTypes: dcrResult.registration.response_types ?? ["code"],
-            tokenEndpointAuthMethod:
-              dcrResult.registration.token_endpoint_auth_method ??
-              "client_secret_post",
-            redirectUris: dcrResult.registration.redirect_uris ?? [redirectUri],
-          },
-        });
+        if (hasManualCredentials) {
+          // 手動入力の場合: メタデータのみ取得してOAuthClientを作成
+          const { discoverOAuthMetadata } = await import("@/lib/oauth/dcr");
+          const metadata = await discoverOAuthMetadata(input.customUrl);
+
+          await tx.oAuthClient.create({
+            data: {
+              mcpServerId: mcpServer.id,
+              clientId: input.credentials!.clientId!,
+              clientSecret: input.credentials!.clientSecret!,
+              authorizationServerUrl: metadata.issuer,
+              authorizationEndpoint: metadata.authorization_endpoint,
+              tokenEndpoint: metadata.token_endpoint,
+              registrationEndpoint: metadata.registration_endpoint ?? null,
+              registrationAccessToken: null,
+              scopes: input.scopes ?? [],
+              grantTypes: ["authorization_code"],
+              responseTypes: ["code"],
+              tokenEndpointAuthMethod: "client_secret_post",
+              redirectUris: [redirectUri],
+            },
+          });
+        } else {
+          // 自動取得の場合: DCRを実行
+          const dcrResult = await performDCR(
+            input.customUrl,
+            input.name,
+            [redirectUri],
+            input.scopes?.join(" "),
+          );
+
+          // OAuthClientレコードを作成
+          await tx.oAuthClient.create({
+            data: {
+              mcpServerId: mcpServer.id,
+              clientId: dcrResult.registration.client_id,
+              clientSecret: dcrResult.registration.client_secret ?? null,
+              authorizationServerUrl: dcrResult.metadata.issuer,
+              authorizationEndpoint: dcrResult.metadata.authorization_endpoint,
+              tokenEndpoint: dcrResult.metadata.token_endpoint,
+              registrationEndpoint:
+                dcrResult.metadata.registration_endpoint ?? null,
+              registrationAccessToken:
+                dcrResult.registration.registration_access_token ?? null,
+              scopes:
+                dcrResult.registration.scope?.split(" ") ?? input.scopes ?? [],
+              grantTypes: dcrResult.registration.grant_types ?? [
+                "authorization_code",
+              ],
+              responseTypes: dcrResult.registration.response_types ?? ["code"],
+              tokenEndpointAuthMethod:
+                dcrResult.registration.token_endpoint_auth_method ??
+                "client_secret_post",
+              redirectUris: dcrResult.registration.redirect_uris ?? [
+                redirectUri,
+              ],
+            },
+          });
+        }
       } catch (error) {
         if (error instanceof DCRError) {
           throw new TRPCError({
