@@ -2,27 +2,6 @@
 
 TumikiプラットフォームのOAuth認証基盤（ローカル開発用）
 
-## pnpmコマンドでの起動
-
-プロジェクトルートから以下のコマンドで起動できます：
-
-```bash
-# プロジェクトルートで実行
-pnpm keycloak:up              # 起動
-pnpm keycloak:stop            # 停止（データ保持）
-pnpm keycloak:down            # 停止（コンテナ削除）
-pnpm keycloak:down:volumes    # データ削除して停止
-```
-
-### 利用可能なコマンド一覧
-
-| コマンド | 説明 |
-|---------|------|
-| `pnpm keycloak:up` | Keycloak環境を起動（DB含む） |
-| `pnpm keycloak:stop` | Keycloakを停止（データ保持、再起動が速い） |
-| `pnpm keycloak:down` | Keycloakを停止（コンテナ削除） |
-| `pnpm keycloak:down:volumes` | Keycloakを停止してデータも削除 |
-
 以下が自動セットアップされます：
 - Tumiki Realmの作成
 - Manager App用OIDCクライアントの作成
@@ -45,29 +24,9 @@ pnpm keycloak:down:volumes    # データ削除して停止
 - Email: `admin@tumiki.local`
 - パスワード: `admin123`
 
-## 主な操作
-
-### プロジェクトルートから実行
-
-```bash
-# 停止（データ保持）
-pnpm keycloak:stop
-
-# 停止（コンテナ削除）
-pnpm keycloak:down
-
-# データ削除して再起動
-pnpm keycloak:down:volumes && pnpm keycloak:up
-```
-
 ## カスタマイズ
 
-`tumiki-realm.json` を編集してコンテナを再作成：
-
-```bash
-# プロジェクトルートから実行
-pnpm keycloak:down:volumes && pnpm keycloak:up
-```
+`tumiki-realm.json` を編集してコンテナを再作成してください。
 
 ## Manager App環境変数
 
