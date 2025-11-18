@@ -31,123 +31,38 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
 
-  // サンプル認証タイプの判定（後でDBから取得予定）
-  const getAuthType = (serverName: string) => {
-    const authTypes: Record<
-      string,
-      { type: string; color: string; bgColor: string }
-    > = {
-      // OAuth認証が必要
-      GitHub: {
-        type: "OAuth",
-        color: "text-green-800",
-        bgColor: "bg-green-100",
-      },
-      Slack: {
-        type: "OAuth",
-        color: "text-green-800",
-        bgColor: "bg-green-100",
-      },
-      Discord: {
-        type: "OAuth",
-        color: "text-green-800",
-        bgColor: "bg-green-100",
-      },
-      "Google Drive": {
-        type: "OAuth",
-        color: "text-green-800",
-        bgColor: "bg-green-100",
-      },
-      Figma: {
-        type: "OAuth",
-        color: "text-green-800",
-        bgColor: "bg-green-100",
-      },
-
-      // API Key入力が必要
-      Notion: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-      Jira: { type: "API Key", color: "text-blue-800", bgColor: "bg-blue-100" },
-      AWS: { type: "API Key", color: "text-blue-800", bgColor: "bg-blue-100" },
-      PostgreSQL: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-      YouTube: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-      DeepL: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-      microCMS: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-      LINE: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-      Stripe: {
-        type: "API Key",
-        color: "text-blue-800",
-        bgColor: "bg-blue-100",
-      },
-
-      // すぐに追加可能
-      Docker: {
-        type: "設定不要",
-        color: "text-purple-800",
-        bgColor: "bg-purple-100",
-      },
-      System: {
-        type: "設定不要",
-        color: "text-purple-800",
-        bgColor: "bg-purple-100",
-      },
-      Context7: {
-        type: "設定不要",
-        color: "text-purple-800",
-        bgColor: "bg-purple-100",
-      },
-      Playwright: {
-        type: "設定不要",
-        color: "text-purple-800",
-        bgColor: "bg-purple-100",
-      },
-      "Google Maps": {
-        type: "設定不要",
-        color: "text-purple-800",
-        bgColor: "bg-purple-100",
-      },
-    };
-
-    const matchedKey = Object.keys(authTypes).find((key) =>
-      serverName.toLowerCase().includes(key.toLowerCase()),
-    );
-    return matchedKey
-      ? authTypes[matchedKey]
-      : {
+  // DBから取得した認証タイプを使用
+  const getAuthTypeDisplay = (authType: string | null) => {
+    switch (authType) {
+      case "OAUTH":
+        return {
+          type: "OAuth",
+          color: "text-green-800",
+          bgColor: "bg-green-100",
+        };
+      case "API_KEY":
+        return {
+          type: "API Key",
+          color: "text-blue-800",
+          bgColor: "bg-blue-100",
+        };
+      case "CLOUD_RUN_IAM":
+        return {
+          type: "Cloud Run IAM",
+          color: "text-orange-800",
+          bgColor: "bg-orange-100",
+        };
+      case "NONE":
+      default:
+        return {
           type: "設定不要",
           color: "text-purple-800",
           bgColor: "bg-purple-100",
         };
+    }
   };
 
-  const authInfo = getAuthType(mcpServer.name) ?? {
-    type: "設定",
-    color: "text-gray-800",
-    bgColor: "bg-gray-100",
-  };
+  const authInfo = getAuthTypeDisplay(mcpServer.authType);
 
   // DBから説明とタグを取得
   const description = mcpServer.description ?? "";
@@ -177,18 +92,11 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
           </div>
         ) : (
           <div className="mr-2 rounded-md p-2">
-            <FaviconImage
-              url={mcpServer.url}
-              alt={mcpServer.name}
-              size={32}
-              fallback={
-                <div className="rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
-                  <div className="flex h-8 w-8 items-center justify-center">
-                    <Server className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              }
-            />
+            <div className="rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
+              <div className="flex h-8 w-8 items-center justify-center">
+                <Server className="h-4 w-4 text-white" />
+              </div>
+            </div>
           </div>
         )}
         <div className="flex-1">

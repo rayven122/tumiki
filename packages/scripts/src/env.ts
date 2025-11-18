@@ -69,7 +69,12 @@ export const validateEnv = (): Env => {
     const serversWithMissingEnvVars: string[] = [];
 
     for (const server of MCP_SERVERS) {
-      if ("envVars" in server && server.envVars.length > 0) {
+      if (
+        "envVars" in server &&
+        server.envVars &&
+        Array.isArray(server.envVars) &&
+        server.envVars.length > 0
+      ) {
         const hasAtLeastOneEnvVar = server.envVars.some((envVar: string) => {
           const value = env[envVar as keyof Env];
           // 環境変数はoptionalなので、値が存在し空でないことを確認
@@ -128,7 +133,12 @@ export const validateEnv = (): Env => {
       console.error("");
 
       for (const server of MCP_SERVERS) {
-        if ("envVars" in server && server.envVars.length > 0) {
+        if (
+          "envVars" in server &&
+          server.envVars &&
+          Array.isArray(server.envVars) &&
+          server.envVars.length > 0
+        ) {
           console.error(`  ${server.name}:`);
           server.envVars.forEach((envVar: string) => {
             console.error(`    - ${envVar}`);
