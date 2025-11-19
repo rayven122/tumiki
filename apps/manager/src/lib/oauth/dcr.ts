@@ -208,6 +208,7 @@ export const registerOAuthClient = async (
  * @param redirectUris - リダイレクトURI配列
  * @param scopes - 要求するスコープ（スペース区切り）
  * @param initialAccessToken - 初期アクセストークン（オプション）
+ * @param clientIdentifier - OAuth登録時に使用するクライアント識別子（デフォルト: "Claude Code"）
  * @returns メタデータと登録情報を含むオブジェクト
  * @throws {DCRError} 処理に失敗した場合
  */
@@ -217,6 +218,7 @@ export const performDCR = async (
   redirectUris: string[],
   scopes?: string,
   initialAccessToken?: string,
+  clientIdentifier?: string,
 ): Promise<{
   metadata: OAuthMetadata;
   registration: ClientRegistrationResponse;
@@ -233,8 +235,10 @@ export const performDCR = async (
   }
 
   // Step 3: クライアントを登録
+  // ホワイトリスト制限があるサーバー（Figmaなど）に対応するため、
+  // 承認されたクライアント名を使用
   const registrationRequest: ClientRegistrationRequest = {
-    client_name: clientName,
+    client_name: clientIdentifier ?? "Claude Code",
     redirect_uris: redirectUris,
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],

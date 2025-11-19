@@ -9,12 +9,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { db } from "@tumiki/db/server";
 import { auth } from "@/auth";
-import {
-  createOAuthClient,
-  type PKCETokenParams,
-  type OAuthTokenData,
-  type OAuthEndpoints,
-} from "@/lib/oauth/simple-oauth";
+import type { OAuthTokenData } from "@/lib/oauth/simple-oauth";
 import type { OAuthSession, McpServer, OAuthClient } from "@tumiki/db";
 import { getMcpServerToolsHTTP } from "@/utils/getMcpServerTools";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
@@ -109,40 +104,47 @@ const getMcpServerInfo = async (
 };
 
 /**
- * 認可コードをアクセストークンに交換
+ * 認可コードをアクセストークンに交換（fetchを使用した直接実装）
  */
 const exchangeCodeForToken = async (
   code: string,
   oauthSession: OAuthSession,
   oauthClient: OAuthClient,
 ): Promise<{ tokenData: OAuthTokenData } | { error: string }> => {
-  const endpoints: OAuthEndpoints = {
-    authorizationEndpoint: oauthClient.authorizationEndpoint,
-    tokenEndpoint: oauthClient.tokenEndpoint,
-  };
-
-  const oauth2Client = createOAuthClient(
-    oauthClient.clientId,
-    oauthClient.clientSecret ?? "",
-    endpoints,
-  );
-
   try {
-    const tokenParams: PKCETokenParams = {
+    // トークンリクエストボディを作成
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
       code,
       redirect_uri: oauthSession.redirectUri,
+      client_id: oauthClient.clientId,
+      client_secret: oauthClient.clientSecret ?? "",
       code_verifier: oauthSession.codeVerifier,
-    };
-    const result = await oauth2Client.getToken(
-      tokenParams as Parameters<typeof oauth2Client.getToken>[0],
-    );
-
-    return { tokenData: result.token as OAuthTokenData };
-  } catch (error) {
-    console.error("[Token Request Error]", {
-      message: error instanceof Error ? error.message : "Unknown error",
-      // トークンやセンシティブな情報は除外
     });
+
+    // fetchでトークンエンドポイントにリクエスト
+    const response = await fetch(oauthClient.tokenEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Token request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    // レスポンスのテキストを取得してJSONとしてパース
+    const responseText = await response.text();
+    const tokenData = JSON.parse(responseText) as OAuthTokenData;
+
+    return { tokenData };
+  } catch (error) {
+    console.error("[OAuth Token Exchange Error]", error);
 
     await db.oAuthSession.update({
       where: { id: oauthSession.id },
@@ -167,6 +169,7 @@ const getOrCreateUserMcpConfig = async (
   userId: string,
   mcpServerId: string,
   mcpServerName: string,
+  mcpServerDescription: string,
 ) => {
   const userOrg = await db.organizationMember.findFirst({
     where: { userId },
@@ -188,7 +191,7 @@ const getOrCreateUserMcpConfig = async (
   userMcpConfig ??= await db.userMcpServerConfig.create({
     data: {
       name: mcpServerName,
-      description: `OAuth connected ${mcpServerName}`,
+      description: mcpServerDescription,
       mcpServerId,
       organizationId: userOrg.organizationId,
       envVars: JSON.stringify({}),
@@ -312,6 +315,7 @@ export const GET = async (request: NextRequest) => {
       userId,
       mcpServer.id,
       mcpServer.name,
+      mcpServer.description ?? "",
     );
     if ("error" in configResult) {
       return NextResponse.redirect(
@@ -394,7 +398,7 @@ export const GET = async (request: NextRequest) => {
             data: {
               organizationId: userMcpConfig.organizationId,
               name: mcpServer.name,
-              description: `OAuth connected ${mcpServer.name}`,
+              description: mcpServer.description ?? "",
               serverStatus: ServerStatus.RUNNING,
               serverType: ServerType.OFFICIAL,
               toolGroupId: toolGroup.id,
