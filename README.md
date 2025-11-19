@@ -11,7 +11,7 @@
 開発に必要なDockerコンテナを管理：
 
 ```bash
-# 開発コンテナを起動（DB、Redis、HTTPSポータル）
+# 開発コンテナを起動（PostgreSQL、Redis、Keycloak）
 pnpm docker:up
 
 # コンテナを停止
@@ -198,30 +198,16 @@ pnpm db:generate
 ### Docker操作
 
 ```bash
-# 開発環境（自己署名SSL）
-docker compose -f ./docker/compose.yaml up -d
+# すべてのコンテナを起動（PostgreSQL、Redis、Keycloak）
+pnpm docker:up
 
-# 本番環境（Let's Encrypt SSL）
-docker compose -f ./docker/compose.prod.yaml up -d
+# コンテナを停止
+pnpm docker:stop
 ```
 
 #### Keycloak（OAuth認証基盤）
 
-Keycloakを使用したOAuth認証の開発環境をセットアップ：
-
-```bash
-# Keycloak環境を起動
-pnpm keycloak:up
-
-# Keycloakを停止（データ保持）
-pnpm keycloak:stop
-
-# Keycloakを停止（コンテナ削除）
-pnpm keycloak:down
-
-# データを削除して再起動
-pnpm keycloak:down:volumes && pnpm keycloak:up
-```
+Keycloakを使用したOAuth認証の開発環境をセットアップします。
 
 **アクセス情報**:
 - 管理コンソール: http://localhost:8443/admin/
@@ -332,35 +318,24 @@ pnpm stripe:listen
 
 ## Docker環境詳細
 
-### 開発環境（ローカルSSL）
+### 統合されたDocker Compose構成
+
+すべてのサービス（PostgreSQL、Redis、Keycloak）は単一の `docker/compose.yaml` ファイルで管理されています。
 
 ```bash
-docker compose -f ./docker/compose.yaml up -d
+# 全サービスを起動
+pnpm docker:up
+
+# 全サービスを停止
+pnpm docker:stop
 ```
 
-- **ドメイン**: <https://local-server.tumiki.cloud>
-- **証明書**: 自己署名証明書
-- **アクセス**: ProxyServer（ポート8080）にHTTPS接続
+### サービス構成
 
-### 本番環境（Let's Encrypt SSL）
-
-```bash
-docker compose -f ./docker/compose.prod.yaml up -d
-```
-
-- **ドメイン**: <https://server.tumiki.cloud>
-- **証明書**: Let's Encrypt自動取得
-- **アクセス**: ProxyServer（ポート8080）にHTTPS接続
-
-### 停止とクリーンアップ
-
-```bash
-# 開発環境の停止
-docker compose -f ./docker/compose.yaml stop
-
-# 本番環境の停止
-docker compose -f ./docker/compose.prod.yaml down
-```
+- **PostgreSQL (本番用)**: ポート 5432（Tumikiメインデータベース + Keycloak専用データベース）
+- **PostgreSQL (テスト用)**: ポート 5433
+- **Redis**: ポート 6379
+- **Keycloak**: ポート 8443（メインPostgreSQL内の別データベースを使用）
 
 ## プロダクション デプロイメント
 
