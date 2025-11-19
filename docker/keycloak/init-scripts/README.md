@@ -30,12 +30,7 @@ GOOGLE_CLIENT_SECRET=your-secret
 
 ### 2. セットアップ実行
 
-セットアップスクリプトは Keycloak 起動時に自動実行されます：
-
-```bash
-# プロジェクトルートから実行
-pnpm keycloak:up
-```
+セットアップスクリプトは Keycloak 起動時に自動実行されます。
 
 ## 設定内容
 
