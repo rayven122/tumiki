@@ -17,7 +17,6 @@ import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
 import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 
 type McpServerWithTools = Prisma.McpServerGetPayload<{
   include: { tools: true };
@@ -32,7 +31,8 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
 
   // DBから取得した認証タイプを使用
-  const getAuthTypeDisplay = (authType: string | null) => {
+  // authType + envVars の組み合わせで判定
+  const getAuthTypeDisplay = (authType: string | null, envVars: string[]) => {
     switch (authType) {
       case "OAUTH":
         return {
@@ -47,10 +47,19 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
           bgColor: "bg-blue-100",
         };
       case "CLOUD_RUN_IAM":
+        // Cloud Run IAM + カスタムヘッダーがある場合は API Key として扱う
+        if (envVars.length > 0) {
+          return {
+            type: "API Key",
+            color: "text-blue-800",
+            bgColor: "bg-blue-100",
+          };
+        }
+        // Cloud Run IAM単体の場合は設定不要
         return {
-          type: "Cloud Run IAM",
-          color: "text-orange-800",
-          bgColor: "bg-orange-100",
+          type: "設定不要",
+          color: "text-purple-800",
+          bgColor: "bg-purple-100",
         };
       case "NONE":
       default:
@@ -62,7 +71,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
     }
   };
 
-  const authInfo = getAuthTypeDisplay(mcpServer.authType);
+  const authInfo = getAuthTypeDisplay(mcpServer.authType, mcpServer.envVars);
 
   // DBから説明とタグを取得
   const description = mcpServer.description ?? "";

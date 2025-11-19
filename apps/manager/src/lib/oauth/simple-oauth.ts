@@ -76,5 +76,13 @@ export const createOAuthClient = (
       authorizePath: authUrl.pathname + authUrl.search,
       tokenPath: tokenUrl.pathname + tokenUrl.search,
     },
+    options: {
+      authorizationMethod: "body",
+    },
+    http: {
+      headers: {
+        Accept: "application/json",
+      },
+    },
   });
 };
