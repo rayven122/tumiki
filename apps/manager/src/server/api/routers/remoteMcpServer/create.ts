@@ -24,15 +24,67 @@ export const createRemoteMcpServer = async ({
   const userId = session.user.id;
   const currentOrganizationId = ctx.currentOrganizationId;
 
-  // バリデーション
-  if (!input.customUrl) {
+  // テンプレートIDまたはカスタムURLのいずれかが必要
+  if (!input.templateId && !input.customUrl) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "URL is required",
+      message: "Either templateId or customUrl is required",
     });
   }
 
-  if (input.authType === "OAUTH" && !input.oauthProvider) {
+  // テンプレートIDが指定されている場合、テンプレートから情報を取得
+  let serverUrl: string;
+  let serverName: string;
+  let serverAuthType: "OAUTH" | "API_KEY" | "NONE" | "CLOUD_RUN_IAM";
+  let serverOauthProvider: string | null;
+  let serverOauthScopes: string[];
+
+  if (input.templateId) {
+    const template = await db.mcpServer.findUnique({
+      where: { id: input.templateId },
+    });
+
+    if (!template) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Template MCP server not found",
+      });
+    }
+
+    if (!template.url) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Template MCP server does not have a URL",
+      });
+    }
+
+    serverUrl = template.url;
+    serverName = input.name || template.name;
+    serverAuthType = (template.authType ?? input.authType) as
+      | "OAUTH"
+      | "API_KEY"
+      | "NONE"
+      | "CLOUD_RUN_IAM";
+    serverOauthProvider = template.oauthProvider;
+    // テンプレートからOAuthスコープを取得（優先順位: input.scopes > template.oauthScopes）
+    serverOauthScopes = input.scopes ?? template.oauthScopes ?? [];
+  } else {
+    // カスタムURLの場合
+    if (!input.customUrl) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "URL is required for custom MCP server",
+      });
+    }
+
+    serverUrl = input.customUrl;
+    serverName = input.name;
+    serverAuthType = input.authType;
+    serverOauthProvider = input.oauthProvider ?? null;
+    serverOauthScopes = input.scopes ?? [];
+  }
+
+  if (serverAuthType === "OAUTH" && !serverOauthProvider) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "OAuth provider is required for OAuth authentication",
@@ -71,7 +123,7 @@ export const createRemoteMcpServer = async ({
   }
 
   // OAuth認証が必要な場合、ツール取得をスキップ（認証後に取得）
-  const skipToolFetch = input.authType === "OAUTH";
+  const skipToolFetch = serverAuthType === "OAUTH";
   let tools: Array<{
     name: string;
     description?: string;
@@ -87,8 +139,8 @@ export const createRemoteMcpServer = async ({
       // STREAMABLE_HTTPSの場合はHTTPで接続
       tools = await getMcpServerToolsHTTP(
         {
-          name: input.name,
-          url: input.customUrl,
+          name: serverName,
+          url: serverUrl,
         },
         headers,
       );
@@ -116,18 +168,19 @@ export const createRemoteMcpServer = async ({
     const mcpServer = await tx.mcpServer.create({
       include: {
         tools: true,
+        oauthClient: true,
       },
       data: {
-        name: input.name,
+        name: serverName,
         description: input.description,
         transportType: "STREAMABLE_HTTPS", // リモートサーバーはHTTPS
-        url: input.customUrl,
+        url: serverUrl,
         envVars: input.credentials?.envVars
           ? Object.keys(input.credentials.envVars)
           : [],
-        authType: input.authType,
-        oauthProvider: input.oauthProvider,
-        oauthScopes: input.scopes ?? [],
+        authType: serverAuthType,
+        oauthProvider: serverOauthProvider,
+        oauthScopes: serverOauthScopes,
         serverType: "OFFICIAL", // リモートMCPもOFFICIAL扱い
         createdBy: userId,
         visibility: input.visibility,
@@ -148,46 +201,92 @@ export const createRemoteMcpServer = async ({
     });
 
     // DCR（Dynamic Client Registration）実行
-    if (input.authType === "OAUTH" && input.customUrl) {
+    if (serverAuthType === "OAUTH" && serverUrl) {
       try {
         // リダイレクトURIを構築
         // 注: 環境変数が未設定の場合はデフォルト値を使用
         const redirectUri = getOAuthRedirectUri();
 
-        // DCRを実行
-        const dcrResult = await performDCR(
-          input.customUrl,
-          input.name,
-          [redirectUri],
-          input.scopes?.join(" "),
-        );
+        // 手動でclient credentialsが入力されている場合
+        const hasManualCredentials =
+          input.credentials?.clientId && input.credentials?.clientSecret;
 
-        // OAuthClientレコードを作成
-        await tx.oAuthClient.create({
-          data: {
-            mcpServerId: mcpServer.id,
-            clientId: dcrResult.registration.client_id,
-            clientSecret: dcrResult.registration.client_secret ?? null,
-            authorizationServerUrl: dcrResult.metadata.issuer,
-            authorizationEndpoint: dcrResult.metadata.authorization_endpoint,
-            tokenEndpoint: dcrResult.metadata.token_endpoint,
-            registrationEndpoint:
-              dcrResult.metadata.registration_endpoint ?? null,
-            registrationAccessToken:
-              dcrResult.registration.registration_access_token ?? null,
-            scopes:
-              dcrResult.registration.scope?.split(" ") ?? input.scopes ?? [],
-            grantTypes: dcrResult.registration.grant_types ?? [
-              "authorization_code",
-            ],
-            responseTypes: dcrResult.registration.response_types ?? ["code"],
-            tokenEndpointAuthMethod:
-              dcrResult.registration.token_endpoint_auth_method ??
-              "client_secret_post",
-            redirectUris: dcrResult.registration.redirect_uris ?? [redirectUri],
-          },
-        });
+        if (hasManualCredentials) {
+          // 手動入力の場合: メタデータのみ取得してOAuthClientを作成
+          const { discoverOAuthMetadata } = await import("@/lib/oauth/dcr");
+          const metadata = await discoverOAuthMetadata(serverUrl);
+
+          await tx.oAuthClient.create({
+            data: {
+              mcpServerId: mcpServer.id,
+              clientId: input.credentials!.clientId!,
+              clientSecret: input.credentials!.clientSecret!,
+              authorizationServerUrl: metadata.issuer,
+              authorizationEndpoint: metadata.authorization_endpoint,
+              tokenEndpoint: metadata.token_endpoint,
+              registrationEndpoint: metadata.registration_endpoint ?? null,
+              registrationAccessToken: null,
+              scopes: serverOauthScopes,
+              grantTypes: ["authorization_code"],
+              responseTypes: ["code"],
+              tokenEndpointAuthMethod: "client_secret_post",
+              redirectUris: [redirectUri],
+            },
+          });
+        } else {
+          // 自動取得の場合: DCRを実行
+          // Figmaなどホワイトリスト制限があるサーバーの場合、
+          // 承認されたクライアント識別子("Claude Code")を使用
+          const url = new URL(serverUrl);
+          const isFigma = url.hostname.includes("figma.com");
+          const clientIdentifier = isFigma ? "Claude Code" : undefined;
+
+          const dcrResult = await performDCR(
+            serverUrl,
+            serverName,
+            [redirectUri],
+            serverOauthScopes.join(" "),
+            undefined,
+            clientIdentifier,
+          );
+
+          // OAuthClientレコードを作成
+          await tx.oAuthClient.create({
+            data: {
+              mcpServerId: mcpServer.id,
+              clientId: dcrResult.registration.client_id,
+              clientSecret: dcrResult.registration.client_secret ?? null,
+              authorizationServerUrl: dcrResult.metadata.issuer,
+              authorizationEndpoint: dcrResult.metadata.authorization_endpoint,
+              tokenEndpoint: dcrResult.metadata.token_endpoint,
+              registrationEndpoint:
+                dcrResult.metadata.registration_endpoint ?? null,
+              registrationAccessToken:
+                dcrResult.registration.registration_access_token ?? null,
+              scopes:
+                dcrResult.registration.scope?.split(" ") ?? serverOauthScopes,
+              grantTypes: dcrResult.registration.grant_types ?? [
+                "authorization_code",
+              ],
+              responseTypes: dcrResult.registration.response_types ?? ["code"],
+              tokenEndpointAuthMethod:
+                dcrResult.registration.token_endpoint_auth_method ??
+                "client_secret_post",
+              redirectUris: dcrResult.registration.redirect_uris ?? [
+                redirectUri,
+              ],
+            },
+          });
+        }
       } catch (error) {
+        console.error("[create] DCR execution failed:", {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          serverUrl,
+          serverName,
+          scopes: serverOauthScopes,
+        });
+
         if (error instanceof DCRError) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -206,14 +305,14 @@ export const createRemoteMcpServer = async ({
     // OAuth認証待ちの場合は、インスタンスをPENDINGステータスで作成
     // OAuth以外の場合は、通常通りRUNNINGステータスで作成
     let userComponents;
-    if (!skipToolFetch && mcpServer.tools.length > 0) {
+    if (!skipToolFetch && mcpServer.tools && mcpServer.tools.length > 0) {
       // ツールが取得できている場合のみ、インスタンスを作成
       const envVars = input.credentials?.envVars ?? {};
       userComponents = await createUserServerComponents({
         tx,
         mcpServer,
         envVars,
-        instanceName: input.name,
+        instanceName: serverName,
         instanceDescription: input.description ?? "",
         organizationId: currentOrganizationId,
         userId,
@@ -222,13 +321,20 @@ export const createRemoteMcpServer = async ({
     } else {
       // OAuth認証待ちの場合、UserMcpServerConfigのみ作成
       const envVarsJson =
-        input.authType === "API_KEY" && input.credentials
+        serverAuthType === "API_KEY" && input.credentials
           ? JSON.stringify(input.credentials.envVars ?? {})
           : "{}";
 
+      console.log("[create] Creating UserMcpServerConfig (OAuth path)", {
+        serverName,
+        mcpServerId: mcpServer.id,
+        currentOrganizationId,
+        hasCurrentOrganizationId: !!currentOrganizationId,
+      });
+
       const userMcpConfig = await tx.userMcpServerConfig.create({
         data: {
-          name: mcpServer.name,
+          name: serverName,
           description: input.description ?? "",
           mcpServerId: mcpServer.id,
           envVars: envVarsJson,
@@ -247,6 +353,14 @@ export const createRemoteMcpServer = async ({
       mcpServer,
       userComponents,
     };
+  });
+
+  console.log("[create] createRemoteMcpServer completed successfully", {
+    mcpServerId: result.mcpServer.id,
+    userMcpConfigId: result.userComponents.serverConfig.id,
+    instanceId: result.userComponents.instance?.id,
+    requiresOAuth: input.authType === "OAUTH",
+    hasOAuthClient: !!result.mcpServer.oauthClient,
   });
 
   return {
