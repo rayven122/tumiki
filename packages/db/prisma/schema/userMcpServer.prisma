@@ -1,110 +1,36 @@
 /**
- * @namespace McpServer
  * @namespace UserMcpServer
  * ユーザごとに作成するため、他のユーザには表示されない
  */
 
-/// ユーザーが利用できるMCPサーバーの設定
-/// @namespace McpServer
+/// APIキー等の認証情報（組織レベル/ユーザーレベル）
+/// userId = null で組織共通設定、userId 設定済みでユーザー個別設定
 /// @namespace UserMcpServer
-model UserMcpServerConfig {
-  id                 String              @id @default(cuid())
-  /// 設定名（例：「開発用」「本番用」「テスト用」）
-  name               String
-  /// 設定の説明
-  description        String
+model McpConfig {
+  id      String @id @default(cuid())
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  envVars            String /// @encrypted
-  /// OAuth接続のAuth0 connection名（user-specific）
-  oauthConnection    String?
-  /// UserMcpServerConfig と ToolGroup の関連を管理する中間テーブル
-  userToolGroupTools UserToolGroupTool[]
-  /// MCPサーバーID
-  mcpServerId        String
-  mcpServer          McpServer           @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-  /// 組織
-  organizationId     String
-  organization       Organization        @relation(fields: [organizationId], references: [id])
-  
-  /// OAuth Tokens リレーション
-  oauthTokens        OAuthToken[]
+  envVars String /// @encrypted
+
+  /// 関連するMCPサーバーテンプレート
+  mcpServerTemplateId String
+  mcpServerTemplate   McpServerTemplate @relation(fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+
+  /// 組織（必須）
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  /// ユーザー（nullの場合は組織共通設定、設定済みでユーザー個別設定）
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([organizationId])
-}
-
-/// ToolGroup, Toolの関連を表す中間テーブル
-/// @namespace McpServer
-/// @namespace UserMcpServer
-model UserToolGroupTool {
-  /// UserMcpServerConfig への参照
-  userMcpServerConfigId String
-  userMcpServerConfig   UserMcpServerConfig @relation(fields: [userMcpServerConfigId], references: [id], onDelete: Cascade)
-  /// ToolGroupへの参照
-  toolGroupId           String
-  toolGroup             UserToolGroup       @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
-  /// Toolへの参照
-  toolId                String
-  tool                  Tool                @relation(fields: [toolId], references: [id], onDelete: Cascade)
-
-  /// ソート順序
-  sortOrder Int @default(0)
-
-  createdAt DateTime @default(now())
-
-  @@id([toolGroupId, userMcpServerConfigId, toolId])
-}
-
-/// どのツール群を利用するかを設定する
-/// tool group 内に、同一の mcpServer の設定入れられない🤔
-/// @namespace McpServer
-/// @namespace UserMcpServer
-model UserToolGroup {
-  id                          String                           @id @default(cuid())
-  /// ツールグループ名
-  /// @zod.string.min(1)
-  name                        String
-  /// ツールグループの説明
-  description                 String
-  /// ツールグループが有効かどうか
-  isEnabled                   Boolean                          @default(true)
-  /// UserMcpServerInstance ごとに1つの ToolGroup が存在する
-  mcpServerInstance           UserMcpServerInstance?
-  /// ToolGroupに含まれるTool（中間テーブル経由）
-  toolGroupTools              UserToolGroupTool[]
-  /// 組織
-  organizationId              String
-  organization                Organization                     @relation(fields: [organizationId], references: [id])
-  /// MCPサーバーとツールグループの関連を管理する中間テーブル
-  mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([organizationId])
-}
-
-/// MCPサーバーインスタンスとツールグループの関連を管理する中間テーブル
-/// @namespace UserMcpServer
-/// @namespace McpServer
-model UserMcpServerInstanceToolGroup {
-  mcpServerInstanceId String
-  mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id], onDelete: Cascade)
-  toolGroupId         String
-  toolGroup           UserToolGroup         @relation(fields: [toolGroupId], references: [id], onDelete: Cascade)
-  /// このMcpServerInstance内でのToolGroupの表示順序
-  sortOrder           Int                   @default(0)
-
-  createdAt DateTime @default(now())
-
-  @@id([mcpServerInstanceId, toolGroupId])
+  @@unique([mcpServerTemplateId, organizationId, userId])
 }
 
 /// サーバーの状態
 /// @namespace UserMcpServer
-/// @namespace McpServer
 enum ServerStatus {
   /// サーバーが起動している
   RUNNING
@@ -118,7 +44,6 @@ enum ServerStatus {
 
 /// サーバーの種類
 /// @namespace UserMcpServer
-/// @namespace McpServer
 enum ServerType {
   /// カスタムMCPサーバー
   CUSTOM
@@ -126,39 +51,41 @@ enum ServerType {
   OFFICIAL
 }
 
-/// MCPサーバーとして利用するインスタンス
-/// @namespace McpServer
+/// 実際に稼働するMCPサーバー
+/// 1つまたは複数のMcpServerTemplateから作成
+/// allowedTools[] で許可ツールを管理（Prisma暗黙的多対多）
 /// @namespace UserMcpServer
-model UserMcpServerInstance {
-  id                          String                           @id @default(cuid())
+model McpServer {
+  id           String       @id @default(cuid())
   /// 稼働中のMCPサーバー名
   /// @zod.string.min(1)
-  name                        String
+  name         String
   /// サーバーの説明
-  description                 String
+  description  String
   /// アイコンパス
-  iconPath                    String?
+  iconPath     String?
   /// サーバーの状態
-  serverStatus                ServerStatus
+  serverStatus ServerStatus
   /// サーバーの種類
-  serverType                  ServerType
-  /// MCPサーバーとツールグループの関連を管理する中間テーブル
-  mcpServerInstanceToolGroups UserMcpServerInstanceToolGroup[]
-  /// ツールグループ
-  /// UserMcpServerInstance ごとに1つの ToolGroup が存在する 1:1 関係
-  toolGroupId                 String                           @unique
-  toolGroup                   UserToolGroup                    @relation(fields: [toolGroupId], references: [id])
+  serverType   ServerType
+
+  /// 使用するMCPサーバーテンプレート（複数可）
+  mcpServers McpServerTemplate[]
+
+  /// 許可されたツール一覧
+  allowedTools McpTool[]
+
   /// APIキー一覧
-  apiKeys                     McpApiKey[]
+  apiKeys        McpApiKey[]
   /// リクエストログ
-  requestLogs                 McpServerRequestLog[]
-  /// 使用する認証タイプ（API_KEY, OAUTH, BOTH）
-  authType                    AuthType                         @default(API_KEY)
+  requestLogs    McpServerRequestLog[]
+  /// 使用する認証タイプ（API_KEY, OAUTH, NONE）
+  authType       AuthType              @default(API_KEY)
   /// 組織
-  organizationId              String
-  organization                Organization                     @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization          @relation(fields: [organizationId], references: [id])
   /// 表示順序（ユーザーごと）
-  displayOrder                Int                              @default(0)
+  displayOrder   Int                   @default(0)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -166,51 +93,46 @@ model UserMcpServerInstance {
   deletedAt DateTime?
 
   @@index([deletedAt])
-  @@index([organizationId])
 }
 
 /// MCPサーバーインスタンスへのリクエストログ
-/// @namespace McpServer
 /// @namespace UserMcpServer
 model McpServerRequestLog {
-  id                  String                @id @default(cuid())
+  id             String                @id @default(cuid())
   /// MCPサーバーインスタンスID
-  mcpServerInstanceId String
-  mcpServerInstance   UserMcpServerInstance @relation(fields: [mcpServerInstanceId], references: [id])
+  mcpServerId    String
+  mcpServer      McpServer             @relation(fields: [mcpServerId], references: [id])
   /// 実行されたツール名
-  toolName            String
+  toolName       String
   /// リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
-  transportType       TransportType
+  transportType  TransportType
   /// MCPメソッド（tools/list, tools/call）
-  method              String
+  method         String
   /// HTTPステータスコード
-  responseStatus      String
+  responseStatus String
   /// 実行時間（ミリ秒）
-  durationMs          Int
+  durationMs     Int
   /// エラーメッセージ（エラー種別のみ）
-  errorMessage        String?
+  errorMessage   String?
   /// エラーコード
-  errorCode           String?
+  errorCode      String?
   /// 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-  inputBytes          Int?
+  inputBytes     Int?
   /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
-  outputBytes         Int?
+  outputBytes    Int?
   /// 組織ID
-  organizationId      String
-  organization        Organization          @relation(fields: [organizationId], references: [id])
+  organizationId String
+  organization   Organization          @relation(fields: [organizationId], references: [id])
   /// ユーザーエージェント
-  userAgent           String?
+  userAgent      String?
   /// 詳細データ（1:1関係）
-  requestData         McpServerRequestData?
+  requestData    McpServerRequestData?
 
   createdAt DateTime @default(now())
-
-  @@index([organizationId])
 }
 
 /// MCPサーバーリクエストの詳細データ（分析用）
 /// ユーザーには表示されない内部データ
-/// @namespace McpServer
 /// @namespace UserMcpServer
 model McpServerRequestData {
   id           String              @id @default(cuid())
@@ -233,4 +155,111 @@ model McpServerRequestData {
   compressionRatio     Float
 
   createdAt DateTime @default(now())
+}
+
+/// APIキー管理テーブル
+/// @namespace UserMcpServer
+model McpApiKey {
+  id          String    @id @default(cuid())
+  /// APIキー名（ユーザーが設定）
+  name        String
+  /// 暗号化されたAPIキー（client_id として使用）
+  apiKey      String    @unique /// @encrypted
+  /// APIキーをハッシュ化したもの
+  apiKeyHash  String?   @unique
+  /// APIキーが有効かどうか
+  isActive    Boolean   @default(true)
+  /// 最後に使用された日時
+  lastUsedAt  DateTime?
+  /// APIキーの有効期限
+  expiresAt   DateTime?
+  /// スコープ情報（例: ["mcp:access:notion", "mcp:access:figma"]）
+  scopes      String[]  @default([])
+  /// 関連するユーザー
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 関連するMcpServerのID
+  mcpServerId String
+  mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([apiKeyHash])
+}
+
+/// トークンの用途
+/// @namespace UserMcpServer
+enum TokenPurpose {
+  /// AIクライアントが使用するTumikiトークン
+  TUMIKI_CLIENT
+  /// Backend MCPサーバーへのアクセストークン
+  BACKEND_MCP
+}
+
+/// OAuth クライアント情報（Dynamic Client Registration で取得）
+/// mcpServerId = null の場合はTumiki自体のOAuth（第1層）
+/// mcpServerId 設定済みの場合は外部MCPサーバー用OAuth（第2層）
+/// @namespace UserMcpServer
+model McpOAuthClient {
+  id String @id @default(cuid())
+
+  /// 関連するMCPサーバー（null=Tumiki OAuth、設定済み=外部MCPサーバー用）
+  mcpServerTemplateId String?
+  mcpServerTemplate   McpServerTemplate? @relation(fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+
+  /// 組織ID (null=Global)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  /// DCRで取得したクライアント情報
+  clientId                String /// @encrypted
+  clientSecret            String? /// @encrypted
+  registrationAccessToken String? /// @encrypted
+  registrationClientUri   String?
+
+  /// Authorization ServerのベースURL（Discoveryエンドポイント導出用）
+  authorizationServerUrl String
+
+  /// リダイレクトURI（DCR登録時に使用）
+  redirectUris String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// トークンのリレーション
+  oauthTokens McpOAuthToken[]
+}
+
+/// OAuth トークン情報（ユーザー×組織ごと）
+/// 整合性保証: organizationIdは、参照するMcpOAuthClientのorganizationIdと一致する必要がある（アプリケーションレベルで検証）
+/// @namespace UserMcpServer
+model McpOAuthToken {
+  id String @id @default(cuid())
+
+  /// 関連するOAuthクライアント
+  oauthClientId String
+  oauthClient   McpOAuthClient @relation(fields: [oauthClientId], references: [id], onDelete: Cascade)
+
+  /// ユーザー
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 組織（トークンは組織ごとに発行、組織横断で使い回さない）
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  /// トークン情報
+  accessToken  String /// @encrypted
+  refreshToken String? /// @encrypted
+  expiresAt    DateTime?
+
+  /// トークンの用途を明確化
+  tokenPurpose TokenPurpose @default(BACKEND_MCP)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// 一意性制約: ユーザー×組織×クライアント×用途
+  @@unique([userId, organizationId, oauthClientId, tokenPurpose])
 }
