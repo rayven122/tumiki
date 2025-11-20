@@ -107,52 +107,26 @@ model McpServerRequestLog {
   /// リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
   transportType  TransportType
   /// MCPメソッド（tools/list, tools/call）
-  method         String
+  method     String
   /// HTTPステータスコード
-  responseStatus String
+  httpStatus String
   /// 実行時間（ミリ秒）
-  durationMs     Int
-  /// エラーメッセージ（エラー種別のみ）
-  errorMessage   String?
-  /// エラーコード
-  errorCode      String?
+  durationMs Int
   /// 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-  inputBytes     Int?
+  inputBytes     Int
   /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
-  outputBytes    Int?
+  outputBytes    Int
   /// 組織ID
   organizationId String
-  organization   Organization          @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
   /// ユーザーエージェント
   userAgent      String?
-  /// 詳細データ（1:1関係）
-  requestData    McpServerRequestData?
 
-  createdAt DateTime @default(now())
-}
-
-/// MCPサーバーリクエストの詳細データ（分析用）
-/// ユーザーには表示されない内部データ
-/// @namespace UserMcpServer
-model McpServerRequestData {
-  id           String              @id @default(cuid())
-  /// 関連するリクエストログID（1:1関係）
-  requestLogId String              @unique
-  requestLog   McpServerRequestLog @relation(fields: [requestLogId], references: [id], onDelete: Cascade)
-
-  /// リクエストの生データ（JSON文字列、gzip圧縮済み）
-  inputDataCompressed  Bytes
-  /// レスポンスの生データ（JSON文字列、gzip圧縮済み）
-  outputDataCompressed Bytes
-
-  /// 圧縮前の元データサイズ
-  originalInputSize    Int
-  originalOutputSize   Int
-  /// 圧縮後のデータサイズ
-  compressedInputSize  Int
-  compressedOutputSize Int
-  /// 圧縮率（0.0-1.0、小さいほど高圧縮）
-  compressionRatio     Float
+  /// GCS統合用フィールド（将来の実装に備えて追加）
+  /// GCSオブジェクトキー（パス）（例: logs/2025/01/17/{orgId}/{serverId}/{requestLogId}.json.gz）
+  gcsObjectKey  String?
+  /// GCSアップロード完了日時
+  gcsUploadedAt DateTime?
 
   createdAt DateTime @default(now())
 }
