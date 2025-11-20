@@ -1,6 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck
-// TODO: Rewrite OAuth functionality for Auth.js + Keycloak
 "use client";
 
 import { useState, useCallback } from "react";
