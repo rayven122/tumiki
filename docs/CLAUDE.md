@@ -1,72 +1,38 @@
 # Tumiki ドキュメント構成
 
-Tumiki プロジェクトの技術ドキュメントとガイドラインの集約。
+Tumiki プロジェクトの技術ドキュメント。直近1ヶ月以内に更新された必要最小限のドキュメントのみを保持。
 
 ## 📁 ディレクトリ構成
 
 ### 🏗️ architecture/
-システム設計・アーキテクチャ関連のドキュメント
-- データベース設計
-- MCP Proxy 設計・検証
-- デスクトップアプリ設計
-- リクエストログシステム設計
+- [MCP Proxy マルチトランスポート検証](./architecture/mcp-proxy-multi-transport-verification.md) (2025-11-18)
 
 ### 🔐 auth/
-認証・認可関連のドキュメント
-- Keycloak 実装計画
-- JWT 認証設計
-- MCP準拠認証設計
-- APIキー認証
-- 権限管理
+- [Keycloak実装計画](./auth/keycloak/implementation-plan.md) (2025-11-05)
+- [JWT認証改善計画](./auth/keycloak/jwt-authentication-improvement-plan.md) (2025-11-07)
+- [JWTクレーム設計](./auth/keycloak/jwt-claims-design.md) (2025-11-05)
+- [権限管理](./auth/permission-management.md) (2025-11-05)
 
 ### 📚 guides/
-セットアップ・開発ガイド
-- MCPサーバー追加方法
-- Python MCP セットアップ
-- テスト環境構築
-- Stripe 統合
-- GitHub Actions CI/CD
-- コンテナ利用ガイド
-- Vercel環境変数管理
+- [MCPサーバー追加方法](./guides/mcp-server-setup.md) (2025-10-31)
+- [テスト環境構築](./guides/testing-environment.md) (2025-11-18)
 
 ### 🔌 integrations/
-外部サービス連携のドキュメント
-- Cloud Run MCP 連携
-
-### 📝 migration/
-マイグレーション関連のドキュメント
-- Prismaマイグレーション管理
-
-### ⚙️ operations/
-運用・保守関連のドキュメント
-- メンテナンスモード
-- メール送信機能
-
-### 🛡️ security/
-セキュリティ関連のドキュメント
-- MCP セキュリティガイド
-- ロール管理
+- [Cloud Run MCP連携ガイド](./integrations/cloudrun/integration-guide.md) (2025-10-31)
+- [Cloud Run MCP検証ガイド](./integrations/cloudrun/verification-guide.md) (2025-10-31)
 
 ## 🔍 クイックアクセス
 
-### 🚀 セットアップ・導入
-- [MCPサーバー追加方法](./guides/mcp-server-setup.md)
-- [Python MCP セットアップ](./guides/python-mcp-setup.md)
-- [テスト環境構築](./guides/testing-environment.md)
-- [コンテナ利用ガイド](./guides/container-use-guide.md)
+### 認証・セキュリティ
+現在のプロジェクトはNextAuth.js + Keycloakで認証を実装しています。
 
-### 🔐 認証・セキュリティ
-- [Keycloak実装計画](./auth/keycloak/implementation-plan.md)
-- [JWT認証改善計画](./auth/keycloak/jwt-authentication-improvement-plan.md)
-- [MCP準拠認証設計](./auth/mcp-compliant-auth-design.md)
-- [MCPセキュリティガイド](./security/MCP_SECURITY_GUIDE.md)
-- [APIキー認証](./auth/apikey-auth.md)
+- Keycloak実装の詳細は [auth/keycloak/](./auth/keycloak/) を参照
+- 権限管理の設計は [auth/permission-management.md](./auth/permission-management.md) を参照
 
-### 🏗️ アーキテクチャ
-- [データベース設計](./architecture/DB設計.md)
-- [MCP Proxy設計](./architecture/mcp-proxy-design.md)
-- [デスクトップアプリ設計](./architecture/tumiki-desktop-app-design.md)
+### MCP連携
+- MCPサーバーの追加方法: [guides/mcp-server-setup.md](./guides/mcp-server-setup.md)
+- Cloud Runへのデプロイ: [integrations/cloudrun/](./integrations/cloudrun/)
+- マルチトランスポート対応: [architecture/mcp-proxy-multi-transport-verification.md](./architecture/mcp-proxy-multi-transport-verification.md)
 
-### 🔌 統合・連携
-- [Cloud Run MCP連携](./integrations/cloudrun/integration-guide.md)
-- [Stripe統合](./guides/stripe-setup.md)
+### 開発環境
+- テスト環境のセットアップ: [guides/testing-environment.md](./guides/testing-environment.md)
