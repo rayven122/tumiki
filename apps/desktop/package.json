@@ -17,7 +17,6 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@tumiki/auth": "workspace:*",
     "@tumiki/db": "workspace:*",
     "clsx": "^2.1.1",
     "electron-store": "^10.0.0",

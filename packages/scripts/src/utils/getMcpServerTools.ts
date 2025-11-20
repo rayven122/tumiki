@@ -83,13 +83,21 @@ export const getMcpServerTools = async (
         headers[key] = value;
       }
 
+      // Acceptヘッダーを追加
+      headers.Accept = "application/json, text/event-stream";
+
       transport = new StreamableHTTPClientTransport(new URL(server.url ?? ""), {
         requestInit: { headers },
       });
     } else {
       // SSE transport for backward compatibility
       transport = new SSEClientTransport(new URL(server.url ?? ""), {
-        requestInit: { headers: envVars },
+        requestInit: {
+          headers: {
+            ...envVars,
+            Accept: "application/json, text/event-stream",
+          },
+        },
       });
     }
 
@@ -142,7 +150,12 @@ export const getMcpServerToolsSSE = async (
   try {
     // SSETransportのみを使用
     const transport = new SSEClientTransport(new URL(server.url ?? ""), {
-      requestInit: { headers: envVars },
+      requestInit: {
+        headers: {
+          ...envVars,
+          Accept: "application/json, text/event-stream",
+        },
+      },
     });
 
     // 10秒のタイムアウトを設定
@@ -188,7 +201,14 @@ export const getMcpServerToolsHTTP = async (
     // StreamableHTTPClientTransportを使用
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
-      { requestInit: { headers } },
+      {
+        requestInit: {
+          headers: {
+            ...headers,
+            Accept: "application/json, text/event-stream",
+          },
+        },
+      },
     );
 
     // 10秒のタイムアウトを設定
