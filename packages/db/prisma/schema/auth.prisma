@@ -11,7 +11,6 @@ enum Role {
 }
 
 /// @namespace Auth
-/// @namespace UserMcpServer
 /// @namespace Chat
 model User {
   /// Auth0のユーザーID (sub) - 主キーとして使用
@@ -37,15 +36,15 @@ model User {
   Chat                  Chat[]
   Document              Document[]
   Suggestion            Suggestion[]
-  /// OAuth Sessions リレーション
-  oauthSessions         OAuthSession[]
 
-  /// API Keys リレーション
-  apiKeys McpApiKey[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  mcpServers McpServer[]
+  /// MCP関連
+  mcpServerTemplates McpServerTemplate[]
+  mcpConfigs         McpConfig[]
+  mcpApiKeys         McpApiKey[]
+  mcpOAuthTokens     McpOAuthToken[]
 
   /// Auth.js adapter
   accounts Account[]
@@ -74,7 +73,6 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@index([userId])
 }
 
 /// @namespace Auth
@@ -88,8 +86,6 @@ model Session {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([userId])
 }
 
 /// @namespace Auth
