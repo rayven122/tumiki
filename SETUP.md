@@ -1,20 +1,20 @@
 # Tumiki 環境構築セットアップガイド
 
-このドキュメントは、Tumikiプロジェクトを初回セットアップするための詳細な手順を説明します。
+このドキュメントは、Tumikiプロジェクトを初回セットアップするための手順を説明します。
 
 ## 前提条件
 
 - Node.js >=22.14.0
 - pnpm >=10.11.0
 - Git
-- Docker (推奨)
+- Docker & Docker Compose（必須）
 
 ## セットアップ手順
 
 ### 1. リポジトリのクローン
 
 ```bash
-git clone https://github.com/rayven122/mcp-server-manager tumiki
+git clone https://github.com/rayven122/tumiki tumiki
 cd tumiki
 ```
 
@@ -26,112 +26,118 @@ pnpm install
 
 ### 3. 環境変数の設定
 
-#### Vercel CLIを使用した環境変数の取得
-
-開発環境の環境変数をVercelプロジェクトから取得：
+`.env.example`をコピーして`.env`ファイルを作成：
 
 ```bash
-# Vercel CLIのインストール（未インストールの場合）
-npm i -g vercel
-
-# Vercelプロジェクトにログイン
-vercel login
-
-# 開発環境の環境変数を.envにpull
-vercel env pull .env
+cp .env.example .env
 ```
 
-#### DATABASE_URLの設定
-
-**Dockerを使用する場合（推奨）：**
-
-DockerのPostgreSQLコンテナを起動した後、以下のDATABASE_URLを使用：
+`.env`ファイルを編集して以下の必須環境変数を設定：
 
 ```bash
-# Docker PostgreSQLコンテナ起動
-docker compose -f ./docker/compose.yaml up -d
-
-# .envファイルにDocker PostgreSQL URLを設定
+# Database Configuration
 DATABASE_URL="postgresql://postgres:password@localhost:5432/tumiki"
+DIRECT_URL="postgresql://postgres:password@localhost:5432/tumiki"
+
+# Redis Configuration
+REDIS_URL="redis://localhost:6379"
+UPSTASH_REDIS_REST_URL="http://localhost:8079"
+UPSTASH_REDIS_REST_TOKEN="local_dev_token_12345"
+
+# NextAuth.js + Keycloak Configuration
+AUTH_SECRET="generate-with-openssl-rand-base64-32"  # openssl rand -base64 32 で生成
+AUTH_URL="https://local.tumiki.cloud:3000"
+KEYCLOAK_ID="tumiki-manager"
+KEYCLOAK_SECRET="tumiki-manager-secret-change-in-production"
+KEYCLOAK_ISSUER="http://localhost:8443/realms/tumiki"
+
+# Keycloak Admin API認証情報
+KEYCLOAK_ADMIN_USERNAME="admin"
+KEYCLOAK_ADMIN_PASSWORD="admin123"
+
+# Next.js Configuration
+NEXT_PUBLIC_APP_URL="https://local.tumiki.cloud:3000"
+NEXT_PUBLIC_MCP_PROXY_URL="http://localhost:8080"
+
+# Encryption Keys（開発環境用デフォルト値）
+CACHE_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+REDIS_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+PRISMA_FIELD_ENCRYPTION_KEY=""
 ```
 
-**Neon DBを使用する場合：**
-
-Neon DBのダッシュボードから接続URLを取得し、DATABASE_URLに設定：
-
-- **Neon プロジェクト**: <https://console.neon.tech/app/projects/blue-hat-21566859/branches>
+**重要：本番環境では必ず適切なキーを生成してください**
 
 ```bash
-# NeonDBの接続URL例
-DATABASE_URL="postgresql://username:password@ep-xxx-pooler.region.aws.neon.tech/database?sslmode=require"
+# AUTH_SECRETの生成
+openssl rand -base64 32
+
+# 暗号化キーの生成
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 4. データベースのセットアップ
+### 4. Dockerコンテナの起動
+
+```bash
+# PostgreSQL と Redis コンテナを起動
+pnpm docker:up
+
+# Keycloak コンテナを起動（初回は2-3分かかります）
+pnpm keycloak:up
+```
+
+起動完了を確認：
+
+```bash
+# コンテナの状態確認
+docker compose -f docker/compose.yaml ps
+docker compose -f docker/keycloak/compose.yaml ps
+```
+
+### 5. データベースのセットアップ
 
 ```bash
 # packages/db ディレクトリに移動
 cd packages/db
-pnpm db:deploy   # 最新のマイグレーションを反映してデータベースを初期化
+
+# データベースマイグレーションを実行
+pnpm db:deploy
+
+# プロジェクトルートに戻る
+cd ../..
 ```
 
-**注意：** `pnpm db:deploy`コマンドは最新のマイグレーションをデータベースに反映します。環境変数の設定とDockerコンテナの起動を先に完了させてから実行してください。
-
-### 5. 開発サーバーの起動
+### 6. 開発サーバーの起動
 
 ```bash
-# すべてのアプリケーション
+# すべてのアプリケーションを起動
 pnpm dev
+```
 
-# または個別起動
-cd apps/manager && pnpm dev   # Manager（ポート3000）
-cd apps/mcp-proxy && pnpm dev # MCP Proxy（ポート8080）
+または個別に起動：
+
+```bash
+# Manager（Webアプリケーション）
+cd apps/manager && pnpm dev
+
+# MCP Proxy
+cd apps/mcp-proxy && pnpm dev
 ```
 
 ## アクセス確認
 
 セットアップが完了したら、以下のURLでアプリケーションにアクセスできます：
 
-- **Manager（Webアプリケーション）**: <http://localhost:3000>
-- **MCP Proxy（MCPプロキシ）**: <http://localhost:8080>
-
-## トラブルシューティング
-
-### Docker関連の問題
-
-```bash
-# コンテナの状態確認
-docker compose -f ./docker/compose.yaml ps
-
-# ログ確認
-docker compose -f ./docker/compose.yaml logs
-
-# コンテナの再起動
-docker compose -f ./docker/compose.yaml restart
-```
-
-### データベース関連の問題
-
-```bash
-# packages/dbディレクトリで実行
-cd packages/db
-
-# マイグレーションの状態確認
-pnpm db:status
-
-# Prisma Studio でデータベース確認
-pnpm db:studio
-```
-
-### 依存関係の問題
-
-```bash
-# node_modulesのクリーンアップ
-pnpm clean
-
-# 依存関係の再インストール
-pnpm install
-```
+- **Manager（Webアプリケーション）**: https://local.tumiki.cloud:3000
+- **MCP Proxy**: http://localhost:8080
+- **Keycloak管理コンソール**: http://localhost:8443
+  - ユーザー名: admin
+  - パスワード: admin123
 
 ## 次のステップ
 
-セットアップが完了したら、[README.md](./README.md) を参照して開発コマンドやプロジェクト構造について理解を深めてください。
+セットアップが完了したら、以下のドキュメントを参照してください：
+
+- [README.md](./README.md) - プロジェクト概要と開発コマンド
+- [docs/guides/testing-environment.md](./docs/guides/testing-environment.md) - テスト環境の構築
+- [docs/guides/mcp-server-setup.md](./docs/guides/mcp-server-setup.md) - MCPサーバーの追加方法
+- [docs/auth/keycloak/](./docs/auth/keycloak/) - Keycloak認証の詳細
