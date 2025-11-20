@@ -19,6 +19,11 @@ export default {
         params: {
           // Keycloakのログイン画面をスキップして直接Googleにリダイレクト
           kc_idp_hint: "google",
+          // Googleのアカウント選択画面を常に表示
+          // prompt: アカウント選択を強制
+          // max_age: 認証の有効期限を0にして常に再認証を要求
+          prompt: "select_account",
+          max_age: "0",
         },
       },
     }),
