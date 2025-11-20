@@ -29,6 +29,8 @@ export const CreateRemoteMcpServerInput = z.object({
       apiKey: z.string().optional(),
       bearerToken: z.string().optional(),
       envVars: z.record(z.string()).optional(), // 汎用的な環境変数
+      clientId: z.string().optional(), // OAuth用: 事前取得したclient ID
+      clientSecret: z.string().optional(), // OAuth用: 事前取得したclient secret
     })
     .optional(),
 

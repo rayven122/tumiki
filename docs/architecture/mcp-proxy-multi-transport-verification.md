@@ -480,7 +480,7 @@ everything: {
 }
 
 # 2. データベースのセットアップ
-docker compose -f ./docker/compose.dev.yaml up -d db-test
+docker compose -f ./docker/compose.yaml up -d db-test
 cd packages/db && pnpm db:push:test
 
 # 3. テスト用APIキーの作成

@@ -111,7 +111,7 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 データベースを使用するテストの実行には、専用のテスト環境が必要：
 
 - **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5433）を使用
-- **DB起動**: `docker compose -f ./docker/compose.dev.yaml up -d db-test`
+- **DB起動**: `docker compose -f ./docker/compose.yaml up -d db-test`
 - **スキーマ適用**: `cd packages/db && pnpm db:push:test` でテスト用DBにスキーマを適用
 - **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5433/tumiki_test`）
 - **テスト環境**: vitest-environment-vprisma でトランザクション分離された独立テスト実行

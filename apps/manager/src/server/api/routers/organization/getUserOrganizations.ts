@@ -1,9 +1,9 @@
-import { type ProtectedContext } from "@/server/api/trpc";
+import { type AuthenticatedContext } from "@/server/api/trpc";
 import { type z } from "zod";
 import type { GetUserOrganizationsInput } from ".";
 
 type GetUserOrganizationsProps = {
-  ctx: ProtectedContext;
+  ctx: AuthenticatedContext;
   input?: z.infer<typeof GetUserOrganizationsInput>;
 };
 

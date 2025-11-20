@@ -1,9 +1,8 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import Image from "next/image";
 import type { User } from "next-auth";
-import { useSession } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 
 import {
@@ -18,14 +17,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/chat/sidebar";
-import { useRouter } from "next/navigation";
 import { toast } from "./toast";
 import { LoaderIcon } from "./icons";
 import { guestRegex } from "@/lib/constants";
-import { logout, login } from "@/lib/auth";
 
 export function SidebarUserNav({ user }: { user: User }) {
-  const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, theme } = useTheme();
 
@@ -97,9 +93,9 @@ export function SidebarUserNav({ user }: { user: User }) {
                   }
 
                   if (isGuest) {
-                    login();
+                    signIn("keycloak", { callbackUrl: "/" });
                   } else {
-                    logout();
+                    signOut({ callbackUrl: "/" });
                   }
                 }}
               >

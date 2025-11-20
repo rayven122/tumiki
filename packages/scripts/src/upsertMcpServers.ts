@@ -39,14 +39,17 @@ export const upsertMcpServers = async (validServerNames?: string[]) => {
       (server) => server.name === serverData.name,
     );
 
+    // tools プロパティを除外してDBに保存
+    const { tools: _, ...serverDataForDb } = serverData;
+
     return db.mcpServer.upsert({
       where: { id: existingServer ? existingServer.id : "" },
       update: {
-        ...serverData,
+        ...serverDataForDb,
         visibility: "PUBLIC",
       },
       create: {
-        ...serverData,
+        ...serverDataForDb,
         visibility: "PUBLIC",
       },
     });

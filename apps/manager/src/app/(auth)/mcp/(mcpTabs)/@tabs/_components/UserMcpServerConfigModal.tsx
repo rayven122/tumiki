@@ -1,6 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck
-// TODO: Rewrite OAuth functionality for Auth.js + Keycloak
 "use client";
 
 import { useState, useCallback } from "react";
@@ -77,7 +74,7 @@ export const UserMcpServerConfigModal = ({
           return;
         }
 
-        if (!isGitHubMcp || authMethod !== "oauth") {
+        if (!isOAuthSupported || authMethod !== "oauth") {
           // APIキーの場合のみ検証を実行
           setIsValidating(true);
           toast.info("接続を検証しています...");
@@ -99,14 +96,6 @@ export const UserMcpServerConfigModal = ({
       },
     });
 
-  // OAuth認証専用のミューテーション（onSuccessコールバックなし）
-  const { mutateAsync: addOfficialServerForOAuth } =
-    api.userMcpServerInstance.addOfficialServer.useMutation({
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    });
-
   const { mutate: updateServerConfig, isPending: isUpdating } =
     api.userMcpServerConfig.update.useMutation({
       onSuccess: () => {
@@ -118,17 +107,8 @@ export const UserMcpServerConfigModal = ({
       },
     });
 
-  // OAuth認証フロー開始
-  const { mutate: startOAuthConnection } =
-    api.oauth.startOAuthConnection.useMutation({
-      onSuccess: (data) => {
-        // OAuth認証画面へリダイレクト
-        window.location.href = data.loginUrl;
-      },
-      onError: (error) => {
-        toast.error(`OAuth認証の開始に失敗しました: ${error.message}`);
-      },
-    });
+  // リモートMCPサーバー作成のミューテーション（DCR対応OAuth）
+  const createRemoteMcpMutation = api.remoteMcpServer.create.useMutation();
 
   // 各環境変数に対応するトークンを保持するステート
   const [envVars, setTokens] = useState<Record<string, string>>(() => {
@@ -170,8 +150,7 @@ export const UserMcpServerConfigModal = ({
   const handleSave = () => {
     if (isOAuthSupported && authMethod === "oauth") {
       // OAuthの場合は認証フローを開始のみ
-      const provider = isGitHubMcp ? "github" : "figma";
-      void handleOAuthConnect(provider, []);
+      void handleOAuthConnect();
     } else {
       // APIキーの場合は既存の処理
       addOfficialServer({
@@ -190,8 +169,7 @@ export const UserMcpServerConfigModal = ({
 
     if (isOAuthSupported && authMethod === "oauth") {
       // OAuth認証の場合は認証フローを開始
-      const provider = isGitHubMcp ? "github" : "figma";
-      void handleOAuthConnect(provider, []);
+      void handleOAuthConnect();
     } else {
       // APIキーの場合は既存の処理
       updateServerConfig({
@@ -201,65 +179,80 @@ export const UserMcpServerConfigModal = ({
     }
   };
 
+  // OAuth対応MCPかどうかをDBのauthTypeで判定
+  const isOAuthSupported = mcpServer.authType === "OAUTH";
+
   // OAuth認証を開始
-  const handleOAuthConnect = useCallback(
-    async (provider: "github" | "figma", scopes?: string[]) => {
-      // 既に処理中の場合は何もしない
-      if (isOAuthConnecting) {
-        console.log("OAuth認証処理中のため、重複実行をスキップ");
-        return;
-      }
+  const handleOAuthConnect = useCallback(async () => {
+    // 既に処理中の場合は何もしない
+    if (isOAuthConnecting) {
+      console.log("OAuth認証処理中のため、重複実行をスキップ");
+      return;
+    }
 
-      setIsOAuthConnecting(true);
-      const scopesToUse = scopes ?? [];
+    setIsOAuthConnecting(true);
 
-      try {
-        let configId: string;
+    try {
+      // DCR登録とOAuth認証フローを実行
+      const response = await createRemoteMcpMutation.mutateAsync({
+        templateId: mcpServer.id,
+        name: serverName || mcpServer.name,
+        authType: "OAUTH",
+        oauthProvider: mcpServer.oauthProvider ?? undefined,
+        visibility: "PRIVATE",
+        scopes: mcpServer.oauthScopes ?? undefined,
+      });
 
-        if (mode === "create") {
-          // OAuth認証の場合、PENDINGステータスで作成
-          const result = await addOfficialServerForOAuth({
-            mcpServerId: mcpServer.id,
-            envVars: {},
-            isPending: true, // PENDINGフラグを追加
-            name: serverName,
-          });
+      toast.success("DCR登録に成功しました！OAuth認証を開始します...");
 
-          configId = result.userMcpServerConfigId;
-        } else {
-          // 編集モードのOAuth認証は未実装
-          throw new Error("編集モードのOAuth認証は現在サポートされていません");
+      // OAuth認証フローを自動的に開始
+      if (response.requiresOAuth) {
+        const authorizeResponse = await fetch("/api/oauth/authorize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mcpServerId: response.mcpServer.id,
+            userMcpConfigId: response.userMcpConfigId,
+          }),
+        });
+
+        if (!authorizeResponse.ok) {
+          const errorData = (await authorizeResponse.json()) as {
+            error?: string;
+          };
+          throw new Error(errorData.error ?? "OAuth認証の開始に失敗しました");
         }
 
-        // OAuth認証を開始
-        const scopesParam = scopesToUse.join(",");
-        const returnUrl = `/mcp/servers?oauth_callback=${provider}&configId=${configId}&scopes=${scopesParam}`;
+        const authorizeData = (await authorizeResponse.json()) as {
+          authorizationUrl: string;
+        };
 
-        startOAuthConnection({
-          provider,
-          scopes: scopesToUse,
-          returnTo: returnUrl,
-        });
-      } catch (error) {
-        console.error("OAuth認証の開始に失敗:", error);
-        toast.error("設定の作成に失敗しました");
-        setIsOAuthConnecting(false); // エラー時にフラグをリセット
+        // Authorization URLにリダイレクト
+        window.location.href = authorizeData.authorizationUrl;
+      } else {
+        // OAuth認証が不要な場合は完了
+        await utils.userMcpServerInstance.invalidate();
+        onOpenChange(false);
+        setIsOAuthConnecting(false);
       }
-    },
-    [
-      isOAuthConnecting,
-      mode,
-      mcpServer.id,
-      addOfficialServerForOAuth,
-      startOAuthConnection,
-      onOpenChange,
-    ],
-  );
-
-  // OAuth対応MCPかどうかをチェック
-  const isGitHubMcp = mcpServer.name === "GitHub MCP";
-  const isFigmaMcp = mcpServer.name === "Figma";
-  const isOAuthSupported = isGitHubMcp || isFigmaMcp;
+    } catch (error) {
+      console.error("OAuth認証の開始に失敗:", error);
+      toast.error(
+        error instanceof Error ? error.message : "設定の作成に失敗しました",
+      );
+      setIsOAuthConnecting(false); // エラー時にフラグをリセット
+    }
+  }, [
+    isOAuthConnecting,
+    mcpServer.id,
+    mcpServer.name,
+    mcpServer.oauthProvider,
+    mcpServer.oauthScopes,
+    serverName,
+    createRemoteMcpMutation,
+    utils,
+    onOpenChange,
+  ]);
 
   const isProcessing =
     isPending || isUpdating || isValidating || isOAuthConnecting;
@@ -395,7 +388,7 @@ export const UserMcpServerConfigModal = ({
                       <Info className="h-4 w-4" />
                       <AlertDescription>
                         OAuth認証を使用すると、
-                        {isGitHubMcp ? "GitHub" : "Figma"}
+                        {mcpServer.name}
                         アカウントでログインして自動的に必要な権限がすべて付与されます。
                         トークンの有効期限が切れた場合は自動的に更新されます。
                       </AlertDescription>
@@ -404,9 +397,9 @@ export const UserMcpServerConfigModal = ({
                     <div className="rounded-lg border bg-gray-50 p-4">
                       <h4 className="mb-2 font-medium">自動適用される権限</h4>
                       <p className="text-muted-foreground mb-3 text-sm">
-                        OAuth認証では、必要な権限がAuth0側で管理されます。
+                        OAuth認証では、必要な権限が自動的に管理されます。
                         接続ボタンをクリックすると、
-                        {isGitHubMcp ? "GitHub" : "Figma"}
+                        {mcpServer.name}
                         の認証画面に移動します。
                       </p>
                     </div>
