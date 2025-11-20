@@ -477,26 +477,14 @@ erDiagram
   String toolName
   TransportType transportType
   String method
-  String responseStatus
+  String httpStatus
   Int durationMs
-  String errorMessage "nullable"
-  String errorCode "nullable"
-  Int inputBytes "nullable"
-  Int outputBytes "nullable"
+  Int inputBytes
+  Int outputBytes
   String organizationId FK
   String userAgent "nullable"
-  DateTime createdAt
-}
-"McpServerRequestData" {
-  String id PK
-  String requestLogId FK,UK
-  Bytes inputDataCompressed
-  Bytes outputDataCompressed
-  Int originalInputSize
-  Int originalOutputSize
-  Int compressedInputSize
-  Int compressedOutputSize
-  Float compressionRatio
+  String gcsObjectKey "nullable"
+  DateTime gcsUploadedAt "nullable"
   DateTime createdAt
 }
 "McpApiKey" {
@@ -569,7 +557,6 @@ erDiagram
 }
 "McpConfig" }o--|| "McpServerTemplate" : mcpServerTemplate
 "McpServerRequestLog" }o--|| "McpServer" : mcpServer
-"McpServerRequestData" |o--|| "McpServerRequestLog" : requestLog
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
@@ -619,30 +606,16 @@ MCPサーバーインスタンスへのリクエストログ
   - `toolName`: 実行されたツール名
   - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
   - `method`: MCPメソッド（tools/list, tools/call）
-  - `responseStatus`: HTTPステータスコード
+  - `httpStatus`: HTTPステータスコード
   - `durationMs`: 実行時間（ミリ秒）
-  - `errorMessage`: エラーメッセージ（エラー種別のみ）
-  - `errorCode`: エラーコード
   - `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
   - `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
   - `organizationId`: 組織ID
   - `userAgent`: ユーザーエージェント
-  - `createdAt`: 
-
-### `McpServerRequestData`
-MCPサーバーリクエストの詳細データ（分析用）
-ユーザーには表示されない内部データ
-
-**Properties**
-  - `id`: 
-  - `requestLogId`: 関連するリクエストログID（1:1関係）
-  - `inputDataCompressed`: リクエストの生データ（JSON文字列、gzip圧縮済み）
-  - `outputDataCompressed`: レスポンスの生データ（JSON文字列、gzip圧縮済み）
-  - `originalInputSize`: 圧縮前の元データサイズ
-  - `originalOutputSize`: 
-  - `compressedInputSize`: 圧縮後のデータサイズ
-  - `compressedOutputSize`: 
-  - `compressionRatio`: 圧縮率（0.0-1.0、小さいほど高圧縮）
+  - `gcsObjectKey`
+    > GCS統合用フィールド（将来の実装に備えて追加）
+    > GCSオブジェクトキー（パス）（例: logs/2025/01/17/{orgId}/{serverId}/{requestLogId}.json.gz）
+  - `gcsUploadedAt`: GCSアップロード完了日時
   - `createdAt`: 
 
 ### `McpApiKey`
