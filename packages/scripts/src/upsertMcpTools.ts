@@ -26,24 +26,46 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
   const processedServers: string[] = [];
 
   for (const mcpServer of filteredMcpServers) {
-    // 環境変数を取得
-    const envVars = mcpServer.envVars.reduce<Record<string, string>>(
-      (acc, envVar) => {
-        acc[envVar] = process.env[envVar] ?? "";
-        return acc;
-      },
-      {},
-    );
-    try {
-      // ツール一覧を取得
-      const tools: Tool[] = await getMcpServerTools(mcpServer, envVars);
+    // MCPサーバー定義を取得
+    const serverDef = MCP_SERVERS.find((s) => s.name === mcpServer.name);
 
-      if (tools.length === 0) {
-        console.log(`⚠️  ${mcpServer.name}: ツールが見つかりませんでした`);
+    let tools: Tool[];
+
+    // ツールリストが定義されている場合はそれを使用
+    if (serverDef?.tools) {
+      tools = serverDef.tools;
+      console.log(`📋 ${mcpServer.name}: ツールリストを使用`);
+    } else {
+      // 動的にツールを取得
+      // 環境変数を取得
+      const envVars = mcpServer.envVars.reduce<Record<string, string>>(
+        (acc, envVar) => {
+          acc[envVar] = process.env[envVar] ?? "";
+          return acc;
+        },
+        {},
+      );
+
+      try {
+        // ツール一覧を取得
+        tools = await getMcpServerTools(mcpServer, envVars);
+      } catch (error) {
+        console.error(
+          `❌ ${mcpServer.name}: ツール取得エラー`,
+          error instanceof Error ? error.message : error,
+        );
         skippedServers.push(mcpServer.name);
         continue;
       }
+    }
 
+    if (tools.length === 0) {
+      console.log(`⚠️  ${mcpServer.name}: ツールが見つかりませんでした`);
+      skippedServers.push(mcpServer.name);
+      continue;
+    }
+
+    try {
       const upsertPromises = tools.map((tool: Tool) => {
         return db.tool.upsert({
           where: {
@@ -74,7 +96,7 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
       processedServers.push(mcpServer.name);
     } catch (error) {
       console.error(
-        `❌ ${mcpServer.name}: ツール取得エラー`,
+        `❌ ${mcpServer.name}: ツール登録エラー`,
         error instanceof Error ? error.message : error,
       );
       skippedServers.push(mcpServer.name);

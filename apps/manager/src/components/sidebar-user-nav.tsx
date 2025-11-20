@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import Image from "next/image";
 import type { User } from "next-auth";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
@@ -18,13 +17,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/chat/sidebar";
-import { useRouter } from "next/navigation";
 import { toast } from "./toast";
 import { LoaderIcon } from "./icons";
 import { guestRegex } from "@/lib/constants";
 
 export function SidebarUserNav({ user }: { user: User }) {
-  const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, theme } = useTheme();
 
