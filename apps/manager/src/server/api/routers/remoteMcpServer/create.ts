@@ -241,15 +241,6 @@ export const createRemoteMcpServer = async ({
           const isFigma = url.hostname.includes("figma.com");
           const clientIdentifier = isFigma ? "Claude Code" : undefined;
 
-          console.log("[create] DCR parameters:", {
-            serverUrl,
-            serverName,
-            serverOauthScopes,
-            scopesString: serverOauthScopes.join(" "),
-            isFigma,
-            clientIdentifier,
-          });
-
           const dcrResult = await performDCR(
             serverUrl,
             serverName,
