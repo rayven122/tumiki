@@ -33,11 +33,11 @@ const validateApiKey = async (
   apiKey: string,
 ): Promise<ApiKeyAuthInfo | undefined> => {
   try {
-    // 1つのクエリで mcpApiKey と userMcpServerInstance を取得（最適化）
+    // 1つのクエリで mcpApiKey と mcpServer を取得（最適化）
     const mcpApiKey = await db.mcpApiKey.findUnique({
       where: { apiKey },
       include: {
-        userMcpServerInstance: {
+        mcpServer: {
           select: {
             organizationId: true,
           },
@@ -45,16 +45,16 @@ const validateApiKey = async (
       },
     });
 
-    if (!mcpApiKey?.isActive || !mcpApiKey.userMcpServerInstance) {
+    if (!mcpApiKey?.isActive || !mcpApiKey.mcpServer) {
       return undefined;
     }
 
-    // includeで取得したインスタンス情報
-    const instance = mcpApiKey.userMcpServerInstance;
+    // includeで取得したサーバー情報
+    const server = mcpApiKey.mcpServer;
 
     return {
-      organizationId: instance.organizationId,
-      mcpServerInstanceId: mcpApiKey.userMcpServerInstanceId,
+      organizationId: server.organizationId,
+      mcpServerInstanceId: mcpApiKey.mcpServerId,
     };
   } catch (error: unknown) {
     logError("Failed to validate API key", error as Error);
