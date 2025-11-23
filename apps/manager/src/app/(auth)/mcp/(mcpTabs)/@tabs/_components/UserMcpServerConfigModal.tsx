@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-toastify";
-import type { McpServer } from "@tumiki/db/prisma";
+import type { McpServerTemplate } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { useRouter } from "next/navigation";
@@ -27,7 +27,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ApiTokenModalProps = {
   onOpenChange: (open: boolean) => void;
-  mcpServer: McpServer;
+  mcpServer: McpServerTemplate;
   userMcpServerId?: string;
   initialEnvVars?: Record<string, string>;
   mode?: "create" | "edit";
@@ -113,7 +113,7 @@ export const UserMcpServerConfigModal = ({
   // 各環境変数に対応するトークンを保持するステート
   const [envVars, setTokens] = useState<Record<string, string>>(() => {
     // 初期値として既存のトークンがある場合はそれを使用し、ない場合は空文字列を設定
-    return mcpServer.envVars.reduce((acc, envVar) => {
+    return mcpServer.envVarKeys.reduce((acc, envVar) => {
       return { ...acc, [envVar]: initialEnvVars?.[envVar] ?? "" };
     }, {});
   });
@@ -142,7 +142,7 @@ export const UserMcpServerConfigModal = ({
     // サーバー名が入力されているかチェック
     if (!serverName.trim()) return false;
     // mcpServerに環境変数がない場合はサーバー名のみで有効
-    if (mcpServer.envVars.length === 0) return true;
+    if (mcpServer.envVarKeys.length === 0) return true;
     return Object.values(envVars).some((token) => token.trim() !== "");
   };
 
@@ -154,7 +154,7 @@ export const UserMcpServerConfigModal = ({
     } else {
       // APIキーの場合は既存の処理
       addOfficialServer({
-        mcpServerId: mcpServer.id,
+        mcpServerTemplateId: mcpServer.id,
         envVars,
         name: serverName,
       });
@@ -313,10 +313,10 @@ export const UserMcpServerConfigModal = ({
             <div>
               <h2 className="font-medium">{mcpServer.name}</h2>
               <Badge variant="outline" className="mt-1 text-xs">
-                {mcpServer.envVars.length === 0
+                {mcpServer.envVarKeys.length === 0
                   ? "設定不要"
-                  : mcpServer.envVars.length > 1
-                    ? `${mcpServer.envVars.length}つのAPIトークンが必要`
+                  : mcpServer.envVarKeys.length > 1
+                    ? `${mcpServer.envVarKeys.length}つのAPIトークンが必要`
                     : "APIトークンが必要"}
               </Badge>
             </div>
@@ -342,7 +342,7 @@ export const UserMcpServerConfigModal = ({
           </div>
 
           {/* 環境変数が必要な場合のみ入力フィールドを表示 */}
-          {mcpServer.envVars.length > 0 && (
+          {mcpServer.envVarKeys.length > 0 && (
             <>
               {/* OAuth対応MCPの場合はタブで認証方法を選択 */}
               {isOAuthSupported ? (
@@ -358,7 +358,7 @@ export const UserMcpServerConfigModal = ({
 
                   <TabsContent value="apikey" className="space-y-4">
                     {/* 既存のAPIキー入力フィールド */}
-                    {mcpServer.envVars.map((envVar, index) => (
+                    {mcpServer.envVarKeys.map((envVar, index) => (
                       <div key={envVar} className="space-y-2">
                         <Label htmlFor={`token-${envVar}`} className="text-sm">
                           {envVar}
@@ -374,7 +374,7 @@ export const UserMcpServerConfigModal = ({
                           className="text-sm"
                           disabled={isProcessing}
                         />
-                        {index === mcpServer.envVars.length - 1 && (
+                        {index === mcpServer.envVarKeys.length - 1 && (
                           <p className="text-muted-foreground text-xs">
                             トークンは暗号化されて安全に保存されます
                           </p>
@@ -408,7 +408,7 @@ export const UserMcpServerConfigModal = ({
               ) : (
                 /* 既存のAPIキー入力フィールド（OAuth非対応のMCP） */
                 <div className="space-y-4">
-                  {mcpServer.envVars.map((envVar, index) => (
+                  {mcpServer.envVarKeys.map((envVar, index) => (
                     <div key={envVar} className="space-y-2">
                       <Label htmlFor={`token-${envVar}`} className="text-sm">
                         {envVar}
@@ -424,7 +424,7 @@ export const UserMcpServerConfigModal = ({
                         className="text-sm"
                         disabled={isProcessing}
                       />
-                      {index === mcpServer.envVars.length - 1 && (
+                      {index === mcpServer.envVarKeys.length - 1 && (
                         <p className="text-muted-foreground text-xs">
                           トークンは暗号化されて安全に保存されます
                         </p>

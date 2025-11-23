@@ -21,7 +21,7 @@ const AsyncServerList = ({
   searchQuery: string;
   selectedTags: string[];
 }) => {
-  const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
+  const [mcpServers] = api.mcpServerTemplate.findAll.useSuspenseQuery();
 
   // フィルタリング
   const filteredServers = mcpServers.filter((server) => {
@@ -70,7 +70,7 @@ export function ServerList() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // MCPサーバーから利用可能なタグを動的に取得
-  const { data: mcpServers } = api.mcpServer.findAll.useQuery();
+  const { data: mcpServers } = api.mcpServerTemplate.findAll.useQuery();
 
   // 全サーバーからユニークなタグを抽出
   const availableTags = useMemo(() => {

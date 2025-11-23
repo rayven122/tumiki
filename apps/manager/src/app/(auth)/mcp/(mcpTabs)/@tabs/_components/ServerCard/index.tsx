@@ -18,12 +18,12 @@ import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "../ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 
-type McpServerWithTools = Prisma.McpServerGetPayload<{
-  include: { tools: true };
+type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
+  include: { mcpTools: true };
 }>;
 
 type ServerCardProps = {
-  mcpServer: McpServerWithTools;
+  mcpServer: McpServerTemplateWithTools;
 };
 
 export function ServerCard({ mcpServer }: ServerCardProps) {
@@ -71,7 +71,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
     }
   };
 
-  const authInfo = getAuthTypeDisplay(mcpServer.authType, mcpServer.envVars);
+  const authInfo = getAuthTypeDisplay(mcpServer.authType, mcpServer.envVarKeys);
 
   // DBから説明とタグを取得
   const description = mcpServer.description ?? "";
@@ -115,7 +115,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
               variant="outline"
               className="border-blue-200 bg-blue-50 text-blue-700"
             >
-              ツール: {mcpServer.tools.length}
+              ツール: {mcpServer.mcpTools.length}
             </Badge>
           </div>
         </div>
@@ -133,7 +133,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
             利用可能なツール
           </span>
           <Badge variant="secondary" className="ml-2">
-            {mcpServer.tools.length}
+            {mcpServer.mcpTools.length}
           </Badge>
         </Button>
 
@@ -180,7 +180,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         open={toolsModalOpen}
         onOpenChange={setToolsModalOpen}
         serverName={mcpServer.name}
-        tools={mcpServer.tools}
+        tools={mcpServer.mcpTools}
       />
     </Card>
   );
