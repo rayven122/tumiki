@@ -2,21 +2,28 @@ import type { z } from "zod";
 import type { FindAllWithToolsInput } from ".";
 import type { ProtectedContext } from "../../trpc";
 
-type FindAllWithToolsInput = {
+type FindAllWithToolsInputProps = {
   ctx: ProtectedContext;
   input: z.infer<typeof FindAllWithToolsInput>;
 };
 
+/**
+ * 新スキーマ：MCP設定とツール一覧取得
+ * - userMcpServerConfig → mcpConfig
+ * - mcpServer(旧テンプレート) → mcpServerTemplate
+ * - tools → mcpTools
+ * - userToolGroupTools削除
+ */
 export const findServersWithTools = async ({
   ctx,
   input,
-}: FindAllWithToolsInput) => {
-  const mcpServers = await ctx.db.userMcpServerConfig.findMany({
+}: FindAllWithToolsInputProps) => {
+  const mcpConfigs = await ctx.db.mcpConfig.findMany({
     where: {
       organizationId: ctx.currentOrganizationId,
-      ...(input.userMcpServerConfigIds && {
+      ...(input.mcpConfigIds && {
         id: {
-          in: input.userMcpServerConfigIds,
+          in: input.mcpConfigIds,
         },
       }),
     },
@@ -25,22 +32,17 @@ export const findServersWithTools = async ({
       createdAt: "asc",
     },
     include: {
-      mcpServer: {
+      mcpServerTemplate: {
         include: {
-          tools: true,
-        },
-      },
-      userToolGroupTools: {
-        include: {
-          tool: true,
+          mcpTools: true,
         },
       },
     },
   });
 
-  // toolsプロパティを追加して返す
-  return mcpServers.map((server) => ({
-    ...server,
-    tools: server.userToolGroupTools.map((utt) => utt.tool),
+  // mcpToolsプロパティを追加して返す
+  return mcpConfigs.map((config) => ({
+    ...config,
+    mcpTools: config.mcpServerTemplate?.mcpTools ?? [],
   }));
 };

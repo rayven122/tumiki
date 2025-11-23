@@ -3,39 +3,48 @@ import { z } from "zod";
 
 import { updateServerConfig } from "./updateServerConfig";
 import {
-  McpServerSchema,
-  ToolSchema,
-  UserMcpServerConfigSchema,
+  McpServerTemplateSchema,
+  McpToolSchema,
+  McpConfigSchema,
 } from "@tumiki/db/zod";
 import {
+  McpServerTemplateIdSchema,
+  McpToolIdSchema,
+  McpConfigIdSchema,
   McpServerIdSchema,
-  ToolIdSchema,
-  UserMcpServerConfigIdSchema,
-  UserMcpServerInstanceIdSchema,
 } from "@/schema/ids";
 import { findServersWithTools } from "./findServersWithTools";
 
+/**
+ * 新スキーマ：mcpConfigRouter（旧userMcpServerConfigRouter）
+ * - UserMcpServerConfigIdSchema → McpConfigIdSchema
+ * - UserMcpServerInstanceIdSchema → McpServerIdSchema
+ * - Tool → McpTool
+ */
 export const UpdateServerConfigInput = z.object({
-  id: UserMcpServerInstanceIdSchema,
+  id: McpServerIdSchema, // サーバーインスタンスID
   envVars: z.record(z.string(), z.string()),
 });
 
 export const FindAllWithToolsInput = z.object({
-  userMcpServerConfigIds: z.array(UserMcpServerConfigIdSchema).optional(),
+  mcpConfigIds: z.array(McpConfigIdSchema).optional(),
 });
 
 export const FindAllWithToolsOutput = z.array(
-  UserMcpServerConfigSchema.omit({
+  McpConfigSchema.omit({
     envVars: true,
   }).merge(
     z.object({
-      id: UserMcpServerConfigIdSchema,
-      tools: z.array(ToolSchema.merge(z.object({ id: ToolIdSchema }))),
-      mcpServer: McpServerSchema.merge(z.object({ id: McpServerIdSchema })),
+      id: McpConfigIdSchema,
+      mcpTools: z.array(McpToolSchema.merge(z.object({ id: McpToolIdSchema }))),
+      mcpServerTemplate: McpServerTemplateSchema.merge(
+        z.object({ id: McpServerTemplateIdSchema }),
+      ),
     }),
   ),
 );
 
+// 後方互換性のため旧名称も保持
 export const userMcpServerConfigRouter = createTRPCRouter({
   update: protectedProcedure
     .input(UpdateServerConfigInput)
@@ -45,3 +54,6 @@ export const userMcpServerConfigRouter = createTRPCRouter({
     .output(FindAllWithToolsOutput)
     .query(findServersWithTools),
 });
+
+// 新名称でもエクスポート
+export const mcpConfigRouter = userMcpServerConfigRouter;

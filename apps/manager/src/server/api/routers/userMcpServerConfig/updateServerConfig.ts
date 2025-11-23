@@ -2,67 +2,62 @@ import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { UpdateServerConfigInput } from ".";
 
-type UpdateServerConfigInput = {
+type UpdateServerConfigInputProps = {
   ctx: ProtectedContext;
   input: z.infer<typeof UpdateServerConfigInput>;
 };
 
+/**
+ * 新スキーマ：サーバー設定更新（環境変数）
+ * - userMcpServerConfig → mcpConfig
+ * - input.idはMcpServerIdに変更（インスタンスID）
+ * - mcpServer(旧テンプレート) → mcpServerTemplate
+ */
 export const updateServerConfig = async ({
   ctx,
   input,
-}: UpdateServerConfigInput) => {
+}: UpdateServerConfigInputProps) => {
   const currentOrganizationId = ctx.currentOrganizationId;
 
-  const userMcpServer = await ctx.db.userMcpServerConfig.findUnique({
+  // サーバーインスタンスから設定を取得
+  const serverInstance = await ctx.db.mcpServer.findUnique({
     where: { id: input.id },
     include: {
-      mcpServer: true,
+      mcpConfig: {
+        include: {
+          mcpServerTemplate: true,
+        },
+      },
     },
   });
-  if (!userMcpServer) {
-    throw new Error("組織のMCPサーバーが見つかりません");
+
+  if (!serverInstance?.mcpConfig) {
+    throw new Error("組織のMCPサーバー設定が見つかりません");
   }
 
   // 更新する組織と、MCPサーバーの組織が一致するかチェック
-  if (userMcpServer.organizationId !== currentOrganizationId) {
+  if (serverInstance.organizationId !== currentOrganizationId) {
     throw new Error("組織のMCPサーバーが見つかりません");
   }
 
-  // let toolsConnect: Prisma.ToolWhereUniqueInput[] = [];
+  const mcpConfig = serverInstance.mcpConfig;
+
+  // 環境変数のバリデーション
   if (input.envVars) {
     const envVars = Object.keys(input.envVars);
     const isEnvVarsMatch = envVars.every((envVar) =>
-      userMcpServer.mcpServer.envVars.includes(envVar),
+      mcpConfig.mcpServerTemplate?.envVars.includes(envVar),
     );
     if (!isEnvVarsMatch) {
       throw new Error("MCPサーバーの環境変数が一致しません");
     }
-    // TODO: ncc による　readfile が解決されるまでコメントアウト
-    // const tools = await getMcpServerTools(
-    //   userMcpServer.mcpServer,
-    //   input.envVars,
-    // );
-    // if (tools.length === 0) {
-    //   throw new Error("正しい環境変数が設定されていません");
-    // }
-
-    // toolsConnect = userMcpServer.mcpServer.tools.map((tool) => ({
-    //   mcpServerId_name: {
-    //     mcpServerId: userMcpServer.mcpServer.id,
-    //     name: tool.name,
-    //   },
-    // }));
   }
 
-  return await ctx.db.userMcpServerConfig.update({
-    where: { id: input.id },
+  // McpConfigを更新
+  return await ctx.db.mcpConfig.update({
+    where: { id: mcpConfig.id },
     data: {
       envVars: JSON.stringify(input.envVars),
-      // ...(toolsConnect.length > 0 && {
-      //   tools: {
-      //     connect: toolsConnect,
-      //   },
-      // }),
     },
   });
 };
