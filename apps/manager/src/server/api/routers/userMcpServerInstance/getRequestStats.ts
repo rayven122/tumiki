@@ -3,6 +3,10 @@ import { db } from "@tumiki/db/tcp";
 import { type GetRequestStatsInput } from "./index";
 import type { z } from "zod";
 
+/**
+ * 新スキーマ：リクエスト統計取得
+ * - userMcpServerInstance → mcpServer
+ */
 export const getRequestStats = async ({
   input,
   ctx,
@@ -11,7 +15,7 @@ export const getRequestStats = async ({
   ctx: ProtectedContext;
 }) => {
   // 組織がそのインスタンスにアクセス権を持っているかチェック
-  const instance = await db.userMcpServerInstance.findFirst({
+  const instance = await db.mcpServer.findFirst({
     where: {
       id: input.instanceId,
       organizationId: ctx.currentOrganizationId,
@@ -45,7 +49,7 @@ export const getRequestStats = async ({
     // 総ログ数とその他の統計
     db.mcpServerRequestLog.aggregate({
       where: {
-        mcpServerInstanceId: input.instanceId,
+        mcpServerId: input.instanceId,
         createdAt: {
           gte: startDate,
         },
@@ -64,7 +68,7 @@ export const getRequestStats = async ({
     // 今日のリクエスト数
     db.mcpServerRequestLog.count({
       where: {
-        mcpServerInstanceId: input.instanceId,
+        mcpServerId: input.instanceId,
         createdAt: {
           gte: todayStart,
         },
@@ -73,11 +77,11 @@ export const getRequestStats = async ({
     // エラーログ
     db.mcpServerRequestLog.findMany({
       where: {
-        mcpServerInstanceId: input.instanceId,
+        mcpServerId: input.instanceId,
         createdAt: {
           gte: startDate,
         },
-        responseStatus: {
+        httpStatus: {
           not: "200",
         },
       },
@@ -91,11 +95,11 @@ export const getRequestStats = async ({
   const totalRequests = totalLogs._count.id;
   const totalErrors = await db.mcpServerRequestLog.count({
     where: {
-      mcpServerInstanceId: input.instanceId,
+      mcpServerId: input.instanceId,
       createdAt: {
         gte: startDate,
       },
-      responseStatus: {
+      httpStatus: {
         not: "200",
       },
     },

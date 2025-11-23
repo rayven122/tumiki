@@ -3,6 +3,10 @@ import { db } from "@tumiki/db/tcp";
 import { RequestLogOutput, type FindRequestLogsInput } from "./index";
 import { z } from "zod";
 
+/**
+ * 新スキーマ：リクエストログ取得
+ * - userMcpServerInstance → mcpServer
+ */
 export const findRequestLogs = async ({
   input,
   ctx,
@@ -11,7 +15,7 @@ export const findRequestLogs = async ({
   ctx: ProtectedContext;
 }) => {
   // 組織がそのインスタンスにアクセス権を持っているかチェック
-  const instance = await db.userMcpServerInstance.findFirst({
+  const instance = await db.mcpServer.findFirst({
     where: {
       id: input.instanceId,
       organizationId: ctx.currentOrganizationId,
@@ -25,7 +29,7 @@ export const findRequestLogs = async ({
 
   const logs = await db.mcpServerRequestLog.findMany({
     where: {
-      mcpServerInstanceId: input.instanceId,
+      mcpServerId: input.instanceId,
     },
     orderBy: {
       createdAt: "desc",

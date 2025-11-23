@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "../../trpc";
-import { UserMcpServerInstanceIdSchema } from "@/schema/ids";
+import { McpServerIdSchema } from "@/schema/ids";
 
 const updateDisplayOrderSchema = z.object({
   updates: z.array(
     z.object({
-      id: UserMcpServerInstanceIdSchema,
+      id: McpServerIdSchema,
       displayOrder: z.number().int().min(0),
     }),
   ),
@@ -17,6 +17,11 @@ type UpdateDisplayOrderInput = {
   ctx: ProtectedContext;
 };
 
+/**
+ * 新スキーマ：表示順序更新
+ * - UserMcpServerInstanceIdSchema → McpServerIdSchema
+ * - userMcpServerInstance → mcpServer
+ */
 export const updateDisplayOrder = async ({
   input,
   ctx,
@@ -27,7 +32,7 @@ export const updateDisplayOrder = async ({
 
   // すべての更新対象が現在の組織のサーバーか確認
   const serverIds = updates.map((update) => update.id);
-  const servers = await ctx.db.userMcpServerInstance.findMany({
+  const servers = await ctx.db.mcpServer.findMany({
     where: {
       id: { in: serverIds },
       organizationId,
@@ -46,7 +51,7 @@ export const updateDisplayOrder = async ({
   // 各サーバーの表示順序を更新
   await ctx.db.$transaction(
     updates.map((update) =>
-      ctx.db.userMcpServerInstance.update({
+      ctx.db.mcpServer.update({
         where: {
           id: update.id,
           organizationId: organizationId,

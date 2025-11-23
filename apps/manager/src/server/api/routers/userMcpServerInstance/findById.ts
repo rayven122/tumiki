@@ -2,7 +2,12 @@ import { type ProtectedContext } from "@/server/api/trpc";
 import { db } from "@tumiki/db/tcp";
 import { ServerType } from "@tumiki/db/prisma";
 
-// TODO: ロジックの再確認をする
+/**
+ * 新スキーマ：ID指定でサーバーインスタンスを取得
+ * - toolGroup削除、allowedToolsの多対多リレーション使用
+ * - userMcpServerConfig → mcpConfig
+ * - mcpServer(旧テンプレート) → mcpServerTemplate
+ */
 export const findById = async ({
   input,
   ctx,
@@ -10,27 +15,20 @@ export const findById = async ({
   input: { id: string };
   ctx: ProtectedContext;
 }) => {
-  const instance = await db.userMcpServerInstance.findUnique({
+  const instance = await db.mcpServer.findUnique({
     where: {
       id: input.id,
       organizationId: ctx.currentOrganizationId,
       deletedAt: null,
     },
     include: {
-      toolGroup: {
+      allowedTools: true, // 有効化されているツール
+      mcpConfig: {
         include: {
-          toolGroupTools: {
-            include: {
-              tool: true,
-              userMcpServerConfig: {
-                include: {
-                  mcpServer: true,
-                },
-              },
-            },
-          },
+          mcpServerTemplate: true,
         },
       },
+      mcpServerTemplates: true, // 関連するテンプレート（通常は1つ）
       apiKeys: true,
       organization: true,
     },
@@ -44,104 +42,84 @@ export const findById = async ({
     throw new Error("サーバーインスタンスが見つかりません");
   }
 
-  // Get MCP server URL and iconPath from the first tool group tool's config
+  // Get MCP server URL and iconPath from the template
   let mcpServerUrl: string | null = null;
   let mcpServerIconPath: string | null = null;
-  let userMcpServerConfigIds: string[] = [];
+  const mcpServerTemplate =
+    instance.mcpConfig?.mcpServerTemplate ?? instance.mcpServerTemplates[0];
 
-  if (instance.toolGroup?.toolGroupTools?.length > 0) {
-    const firstToolGroupTool = instance.toolGroup.toolGroupTools[0];
-    const mcpServer = firstToolGroupTool?.userMcpServerConfig?.mcpServer;
-    mcpServerUrl = mcpServer?.url ?? null;
-    mcpServerIconPath = mcpServer?.iconPath ?? null;
-
-    // 関連するuserMcpServerConfigIdを収集
-    userMcpServerConfigIds = [
-      ...new Set(
-        instance.toolGroup.toolGroupTools.map((tt) => tt.userMcpServerConfigId),
-      ),
-    ];
+  if (mcpServerTemplate) {
+    mcpServerUrl = mcpServerTemplate.url ?? null;
+    mcpServerIconPath = mcpServerTemplate.iconPath ?? null;
   }
 
-  // 公式サーバーの場合、関連する全てのツールを取得
+  // 公式サーバーまたはカスタムサーバーの場合、関連する全てのツールを取得
   let availableTools: Array<{
     id: string;
     name: string;
     description: string | null;
     inputSchema: unknown;
     isEnabled: boolean;
-    userMcpServerConfigId: string;
-    mcpServer: {
+    mcpConfigId: string | null;
+    mcpServerTemplate: {
       id: string;
       name: string;
       iconPath: string | null;
-    };
+    } | null;
   }> = [];
-  if (
-    instance.serverType === ServerType.OFFICIAL &&
-    userMcpServerConfigIds.length > 0
-  ) {
-    const userMcpServerConfigs = await db.userMcpServerConfig.findMany({
-      where: {
-        id: { in: userMcpServerConfigIds },
-        organizationId: ctx.currentOrganizationId,
-      },
-      include: {
-        mcpServer: {
-          include: {
-            tools: true,
-          },
-        },
-      },
-    });
 
-    // 全ての利用可能なツールを取得
-    availableTools = userMcpServerConfigs.flatMap((config) =>
-      config.mcpServer.tools.map((tool) => ({
-        ...tool,
-        userMcpServerConfigId: config.id,
-        isEnabled:
-          instance.toolGroup?.toolGroupTools?.some(
-            (tt) =>
-              tt.toolId === tool.id && tt.userMcpServerConfigId === config.id,
-          ) ?? false,
-        mcpServer: {
-          id: config.mcpServer.id,
-          name: config.mcpServer.name,
-          iconPath: config.mcpServer.iconPath,
+  if (instance.serverType === ServerType.OFFICIAL && instance.mcpConfig) {
+    // 公式サーバー：McpConfigに紐づくテンプレートのツールを取得
+    const mcpConfig = instance.mcpConfig;
+    if (mcpConfig.mcpServerTemplate) {
+      const template = await db.mcpServerTemplate.findUnique({
+        where: { id: mcpConfig.mcpServerTemplateId },
+        include: {
+          mcpTools: true,
         },
-      })),
-    );
+      });
+
+      if (template) {
+        availableTools = template.mcpTools.map((tool) => ({
+          ...tool,
+          mcpConfigId: mcpConfig.id,
+          isEnabled: instance.allowedTools.some((t) => t.id === tool.id),
+          mcpServerTemplate: {
+            id: template.id,
+            name: template.name,
+            iconPath: template.iconPath,
+          },
+        }));
+      }
+    }
   } else if (instance.serverType === ServerType.CUSTOM) {
-    // カスタムサーバーの場合、全ての組織のMCPサーバー設定からツールを取得
-    const allUserMcpServerConfigs = await db.userMcpServerConfig.findMany({
+    // カスタムサーバー：組織内の全McpConfigに紐づくツールを取得
+    const allMcpConfigs = await db.mcpConfig.findMany({
       where: {
         organizationId: ctx.currentOrganizationId,
       },
       include: {
-        mcpServer: {
+        mcpServerTemplate: {
           include: {
-            tools: true,
+            mcpTools: true,
           },
         },
       },
     });
 
-    availableTools = allUserMcpServerConfigs.flatMap((config) =>
-      config.mcpServer.tools.map((tool) => ({
-        ...tool,
-        userMcpServerConfigId: config.id,
-        isEnabled:
-          instance.toolGroup?.toolGroupTools?.some(
-            (tt) =>
-              tt.toolId === tool.id && tt.userMcpServerConfigId === config.id,
-          ) ?? false,
-        mcpServer: {
-          id: config.mcpServer.id,
-          name: config.mcpServer.name,
-          iconPath: config.mcpServer.iconPath,
-        },
-      })),
+    availableTools = allMcpConfigs.flatMap((config) =>
+      config.mcpServerTemplate
+        ? config.mcpServerTemplate.mcpTools.map((tool) => ({
+            ...tool,
+            mcpConfigId: config.id,
+            isEnabled: instance.allowedTools.some((t) => t.id === tool.id),
+            mcpServerTemplate: {
+              id: config.mcpServerTemplate.id,
+              name: config.mcpServerTemplate.name,
+              iconPath: config.mcpServerTemplate.iconPath,
+            },
+          }))
+        : [],
     );
   }
 
@@ -156,7 +134,8 @@ export const findById = async ({
     mcpServerUrl,
     createdAt: instance.createdAt,
     updatedAt: instance.updatedAt,
-    toolGroup: instance.toolGroup,
+    allowedTools: instance.allowedTools, // 有効化されているツール
+    mcpConfig: instance.mcpConfig, // サーバー設定
     apiKeys: instance.apiKeys,
     organization: instance.organization,
     availableTools, // 利用可能な全ツール（有効/無効状態付き）

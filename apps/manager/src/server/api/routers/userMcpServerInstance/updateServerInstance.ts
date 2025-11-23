@@ -3,77 +3,86 @@ import type { ProtectedContext } from "../../trpc";
 import type { UpdateServerInstanceInput } from ".";
 import { ServerType } from "@tumiki/db/prisma";
 
-type UpdateServerInstanceInput = {
+type UpdateServerInstanceInputProps = {
   ctx: ProtectedContext;
   input: z.infer<typeof UpdateServerInstanceInput>;
 };
 
+/**
+ * 新スキーマ：サーバーインスタンス更新
+ * - toolGroup削除、allowedToolsの多対多リレーション使用
+ * - serverToolIdsMap → allowedToolIds
+ * - userMcpServerConfig → mcpConfig
+ */
 export const updateServerInstance = async ({
   ctx,
   input,
-}: UpdateServerInstanceInput) => {
-  const { serverToolIdsMap } = input;
+}: UpdateServerInstanceInputProps) => {
+  const { id, name, description, allowedToolIds } = input;
 
   const organizationId = ctx.currentOrganizationId;
 
-  const toolGroupTools = Object.entries(serverToolIdsMap).flatMap(
-    ([userMcpServerConfigId, toolIds]) =>
-      (toolIds ?? []).map((toolId) => ({
-        toolId,
-        userMcpServerConfigId,
-      })),
-  );
-
   const serverInstance = await ctx.db.$transaction(async (tx) => {
-    const toolGroup = await tx.userToolGroup.update({
+    // 既存のサーバーインスタンスを取得
+    const existingServer = await tx.mcpServer.findUnique({
       where: {
-        id: input.toolGroupId,
+        id,
         organizationId,
       },
-      data: {
-        name: input.name,
-        description: input.description,
-        toolGroupTools: {
-          // 既存のtoolGroupToolsを削除
-          deleteMany: {},
-          // 新しいtoolGroupToolsを作成
-          createMany: {
-            data: toolGroupTools,
-          },
+      select: {
+        serverType: true,
+        mcpConfigId: true,
+        allowedTools: {
+          select: { id: true },
         },
-        mcpServerInstance: {
-          update: {
-            name: input.name,
-            description: input.description,
-          },
-        },
-      },
-      include: {
-        toolGroupTools: true,
-        mcpServerInstance: true,
       },
     });
 
-    const userMcpServerConfigId =
-      toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
+    if (!existingServer) {
+      throw new Error("サーバーインスタンスが見つかりません");
+    }
 
-    // 公式サーバーの場合は、userMcpServerConfig の name も更新する
+    // allowedToolsを更新（既存を削除して新しいものを接続）
+    const currentToolIds = existingServer.allowedTools.map((t) => t.id);
+    const toolsToDisconnect = currentToolIds.filter(
+      (id) => !allowedToolIds.includes(id),
+    );
+    const toolsToConnect = allowedToolIds.filter(
+      (id) => !currentToolIds.includes(id),
+    );
+
+    const updatedServer = await tx.mcpServer.update({
+      where: {
+        id,
+        organizationId,
+      },
+      data: {
+        name,
+        description,
+        allowedTools: {
+          disconnect: toolsToDisconnect.map((id) => ({ id })),
+          connect: toolsToConnect.map((id) => ({ id })),
+        },
+      },
+    });
+
+    // 公式サーバーの場合は、mcpConfig の name も更新する
     if (
-      toolGroup.mcpServerInstance?.serverType === ServerType.OFFICIAL &&
-      userMcpServerConfigId
+      existingServer.serverType === ServerType.OFFICIAL &&
+      existingServer.mcpConfigId
     ) {
-      await tx.userMcpServerConfig.update({
+      await tx.mcpConfig.update({
         where: {
-          id: userMcpServerConfigId,
+          id: existingServer.mcpConfigId,
           organizationId,
         },
         data: {
-          name: input.name,
+          name,
         },
       });
     }
 
-    return toolGroup.mcpServerInstance;
+    return updatedServer;
   });
 
   return serverInstance;

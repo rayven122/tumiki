@@ -12,6 +12,12 @@ type CheckServerConnectionParams = {
   input: z.infer<typeof CheckServerConnectionInput>;
 };
 
+/**
+ * 新スキーマ：サーバー接続確認
+ * - toolGroup → mcpConfig（シンプル化）
+ * - userMcpServerConfig → mcpConfig
+ * - mcpServer（旧テンプレート） → mcpServerTemplate
+ */
 export const checkServerConnection = async ({
   ctx,
   input,
@@ -23,36 +29,27 @@ export const checkServerConnection = async ({
   // トランザクションで処理を実行
   return await ctx.db.$transaction(async (tx) => {
     // サーバーインスタンスが存在し、組織が所有していることを確認
-    const serverInstance = await tx.userMcpServerInstance.findUnique({
+    const serverInstance = await tx.mcpServer.findUnique({
       where: {
         id: serverInstanceId,
         organizationId,
       },
       include: {
-        toolGroup: {
-          include: {
-            toolGroupTools: {
-              include: {
-                userMcpServerConfig: {
-                  // envVarsフィールドはデフォルトでomitされているため、明示的にselectで取得
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    envVars: true, // 明示的に含める
-                    mcpServerId: true,
-                    mcpServer: {
-                      select: {
-                        id: true,
-                        name: true,
-                        url: true,
-                        authType: true,
-                      },
-                    },
-                  },
-                },
+        mcpConfig: {
+          // envVarsフィールドはデフォルトでomitされているため、明示的にselectで取得
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            envVars: true, // 明示的に含める
+            mcpServerTemplateId: true,
+            mcpServerTemplate: {
+              select: {
+                id: true,
+                name: true,
+                url: true,
+                authType: true,
               },
-              take: 1, // 最初の設定のみ取得
             },
           },
         },
@@ -66,22 +63,20 @@ export const checkServerConnection = async ({
       });
     }
 
-    // ToolGroupとUserMcpServerConfigが存在することを確認
-    const toolGroupTool = serverInstance.toolGroup?.toolGroupTools[0];
-    if (!toolGroupTool?.userMcpServerConfig) {
+    // McpConfigが存在することを確認
+    const mcpConfig = serverInstance.mcpConfig;
+    if (!mcpConfig) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "サーバー設定が見つかりません",
       });
     }
 
-    const userMcpServerConfig = toolGroupTool.userMcpServerConfig;
-    const mcpServer = userMcpServerConfig.mcpServer;
-
-    if (!mcpServer) {
+    const mcpServerTemplate = mcpConfig.mcpServerTemplate;
+    if (!mcpServerTemplate) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "MCPサーバー情報が見つかりません",
+        message: "MCPサーバーテンプレート情報が見つかりません",
       });
     }
 
@@ -94,10 +89,10 @@ export const checkServerConnection = async ({
       const headers: Record<string, string> = {};
 
       // Cloud Run IAM認証が必要な場合
-      if (mcpServer.authType === "CLOUD_RUN_IAM") {
+      if (mcpServerTemplate.authType === "CLOUD_RUN_IAM") {
         try {
           const cloudRunHeaders = await createCloudRunHeaders(
-            mcpServer.url ?? "",
+            mcpServerTemplate.url ?? "",
           );
           Object.assign(headers, cloudRunHeaders);
         } catch (error) {
@@ -111,9 +106,9 @@ export const checkServerConnection = async ({
       }
 
       // envVarsからカスタムヘッダーを追加
-      if (userMcpServerConfig.envVars) {
+      if (mcpConfig.envVars) {
         try {
-          const envVars = JSON.parse(userMcpServerConfig.envVars) as Record<
+          const envVars = JSON.parse(mcpConfig.envVars) as Record<
             string,
             string
           >;
@@ -126,8 +121,8 @@ export const checkServerConnection = async ({
       // 直接MCPサーバーのURLに接続してツール一覧を取得
       tools = await getMcpServerToolsHTTP(
         {
-          name: mcpServer.name,
-          url: mcpServer.url ?? "",
+          name: mcpServerTemplate.name,
+          url: mcpServerTemplate.url ?? "",
         },
         headers,
       );
@@ -149,7 +144,7 @@ export const checkServerConnection = async ({
     // 検証結果に基づいてステータスを更新（updateStatus=trueの場合のみ）
     if (updateStatus) {
       const newStatus = success ? ServerStatus.RUNNING : ServerStatus.ERROR;
-      await tx.userMcpServerInstance.update({
+      await tx.mcpServer.update({
         where: { id: serverInstanceId },
         data: {
           serverStatus: newStatus,

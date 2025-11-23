@@ -6,6 +6,11 @@ type UpdateServerStatusInput = {
   ctx: ProtectedContext;
   input: z.infer<typeof UpdateServerStatusInput>;
 };
+
+/**
+ * 新スキーマ：サーバーステータス更新
+ * - userMcpServerInstance → mcpServer
+ */
 export const updateServerStatus = async ({
   ctx,
   input,
@@ -13,7 +18,7 @@ export const updateServerStatus = async ({
   const organizationId = ctx.currentOrganizationId;
 
   // サーバーインスタンスのステータスを更新
-  return await ctx.db.userMcpServerInstance.update({
+  return await ctx.db.mcpServer.update({
     where: {
       id: input.id,
       organizationId,

@@ -9,48 +9,48 @@ type AddCustomServerParams = {
   input: z.infer<typeof AddCustomServerInput>;
 };
 
+/**
+ * 新スキーマ：カスタムサーバー追加
+ * - UserToolGroup削除
+ * - McpServerとMcpToolの多対多リレーション使用
+ * - mcpConfigIdとallowedToolIdsを受け取る
+ */
 export const addCustomServer = async ({
   ctx,
   input,
 }: AddCustomServerParams) => {
-  const { serverToolIdsMap } = input;
-
-  const toolGroupTools = Object.entries(serverToolIdsMap).flatMap(
-    ([userMcpServerConfigId, toolIds]) =>
-      (toolIds ?? []).map((toolId) => ({
-        toolId,
-        userMcpServerConfigId,
-      })),
-  );
+  const { mcpConfigId, allowedToolIds } = input;
 
   const organizationId = ctx.currentOrganizationId;
 
   const serverInstance = await ctx.db.$transaction(async (tx) => {
-    const toolGroup = await tx.userToolGroup.create({
-      data: {
+    // McpConfigの存在確認
+    const mcpConfig = await tx.mcpConfig.findUnique({
+      where: {
+        id: mcpConfigId,
         organizationId,
-        name: input.name,
-        description: input.description,
-        toolGroupTools: {
-          createMany: {
-            data: toolGroupTools,
-          },
-        },
       },
     });
 
-    // TODO: UIが無い間は、MCPサーバーの追加時に、APIキーを生成させる
-    // api key を作成
+    if (!mcpConfig) {
+      throw new Error("MCPサーバー設定が見つかりません");
+    }
+
+    // APIキーを生成
     const fullKey = generateApiKey();
 
-    const data = await tx.userMcpServerInstance.create({
+    // McpServerを作成（allowedToolsとの多対多リレーション）
+    const data = await tx.mcpServer.create({
       data: {
         organizationId,
         name: input.name,
         description: input.description,
         serverStatus: ServerStatus.PENDING,
         serverType: ServerType.CUSTOM,
-        toolGroupId: toolGroup.id,
+        mcpConfigId,
+        allowedTools: {
+          connect: allowedToolIds.map((id) => ({ id })),
+        },
         apiKeys: {
           create: {
             name: `${input.name} API Key`,
@@ -58,7 +58,6 @@ export const addCustomServer = async ({
             userId: ctx.session.user.id,
           },
         },
-        // TODO: mcpServerInstanceToolGroups を追加する
       },
     });
 

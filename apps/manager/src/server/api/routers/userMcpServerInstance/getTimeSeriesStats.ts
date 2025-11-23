@@ -3,6 +3,10 @@ import { db } from "@tumiki/db/tcp";
 import { TimeSeriesStatsOutput, type GetTimeSeriesStatsInput } from "./index";
 import type { z } from "zod";
 
+/**
+ * 新スキーマ：時系列統計取得
+ * - userMcpServerInstance → mcpServer
+ */
 export const getTimeSeriesStats = async ({
   input,
   ctx,
@@ -11,7 +15,7 @@ export const getTimeSeriesStats = async ({
   ctx: ProtectedContext;
 }) => {
   // 組織がそのインスタンスにアクセス権を持っているかチェック
-  const instance = await db.userMcpServerInstance.findFirst({
+  const instance = await db.mcpServer.findFirst({
     where: {
       id: input.instanceId,
       organizationId: ctx.currentOrganizationId,
@@ -56,13 +60,13 @@ export const getTimeSeriesStats = async ({
       avg_duration: number | null;
     }>
   >`
-    SELECT 
+    SELECT
       TO_CHAR(DATE_TRUNC('hour', "createdAt"), ${timeFormat}) as time_bucket,
       COUNT(*) as request_count,
-      COUNT(CASE WHEN "responseStatus" != '200' THEN 1 END) as error_count,
+      COUNT(CASE WHEN "httpStatus" != '200' THEN 1 END) as error_count,
       AVG("durationMs") as avg_duration
     FROM "McpServerRequestLog"
-    WHERE "mcpServerInstanceId" = ${input.instanceId}
+    WHERE "mcpServerId" = ${input.instanceId}
       AND "createdAt" >= ${startDate}
     GROUP BY time_bucket
     ORDER BY time_bucket

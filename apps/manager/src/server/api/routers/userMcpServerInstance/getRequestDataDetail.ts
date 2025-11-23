@@ -29,6 +29,10 @@ export const GetRequestDataDetailOutput = z.object({
   }),
 });
 
+/**
+ * 新スキーマ：リクエスト詳細データ取得
+ * - mcpServerInstance → mcpServer（プロパティ名）
+ */
 export const getRequestDataDetail = async ({
   input,
   ctx,
@@ -43,7 +47,7 @@ export const getRequestDataDetail = async ({
       organizationId: ctx.currentOrganizationId,
     },
     include: {
-      mcpServerInstance: {
+      mcpServer: {
         select: {
           id: true,
           organizationId: true,
@@ -61,9 +65,7 @@ export const getRequestDataDetail = async ({
   }
 
   // 組織のアクセス権限チェック
-  if (
-    requestLog.mcpServerInstance.organizationId !== ctx.currentOrganizationId
-  ) {
+  if (requestLog.mcpServer.organizationId !== ctx.currentOrganizationId) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "アクセス権限がありません",

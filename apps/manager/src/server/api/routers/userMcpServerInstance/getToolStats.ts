@@ -3,6 +3,10 @@ import { db } from "@tumiki/db/tcp";
 import { ToolStatsOutput, type GetToolStatsInput } from "./index";
 import type { z } from "zod";
 
+/**
+ * 新スキーマ：ツール別統計取得
+ * - userMcpServerInstance → mcpServer
+ */
 export const getToolStats = async ({
   input,
   ctx,
@@ -11,7 +15,7 @@ export const getToolStats = async ({
   ctx: ProtectedContext;
 }) => {
   // 組織がそのインスタンスにアクセス権を持っているかチェック
-  const instance = await db.userMcpServerInstance.findFirst({
+  const instance = await db.mcpServer.findFirst({
     where: {
       id: input.instanceId,
       organizationId: ctx.currentOrganizationId,
@@ -45,13 +49,13 @@ export const getToolStats = async ({
       errorCount: bigint;
     }>
   >`
-    SELECT 
+    SELECT
       "toolName",
       COUNT(*) as count,
       AVG("durationMs") as "avgDuration",
-      COUNT(CASE WHEN "responseStatus" != '200' THEN 1 END) as "errorCount"
+      COUNT(CASE WHEN "httpStatus" != '200' THEN 1 END) as "errorCount"
     FROM "McpServerRequestLog"
-    WHERE "mcpServerInstanceId" = ${input.instanceId}
+    WHERE "mcpServerId" = ${input.instanceId}
       AND "createdAt" >= ${startDate}
     GROUP BY "toolName"
     ORDER BY count DESC
