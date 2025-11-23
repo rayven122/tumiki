@@ -33,11 +33,11 @@ const validateApiKey = async (
   apiKey: string,
 ): Promise<ApiKeyAuthInfo | undefined> => {
   try {
-    // 1つのクエリで mcpApiKey と userMcpServerInstance を取得（最適化）
+    // 1つのクエリで mcpApiKey と mcpServer を取得（最適化）
     const mcpApiKey = await db.mcpApiKey.findUnique({
       where: { apiKey },
       include: {
-        userMcpServerInstance: {
+        mcpServer: {
           select: {
             organizationId: true,
           },
@@ -45,16 +45,16 @@ const validateApiKey = async (
       },
     });
 
-    if (!mcpApiKey?.isActive || !mcpApiKey.userMcpServerInstance) {
+    if (!mcpApiKey?.isActive || !mcpApiKey.mcpServer) {
       return undefined;
     }
 
-    // includeで取得したインスタンス情報
-    const instance = mcpApiKey.userMcpServerInstance;
+    // includeで取得したサーバー情報
+    const server = mcpApiKey.mcpServer;
 
     return {
-      organizationId: instance.organizationId,
-      mcpServerInstanceId: mcpApiKey.userMcpServerInstanceId,
+      organizationId: server.organizationId,
+      mcpServerInstanceId: mcpApiKey.mcpServerId,
     };
   } catch (error: unknown) {
     logError("Failed to validate API key", error as Error);
@@ -69,31 +69,11 @@ const validateApiKey = async (
  * - インメモリキャッシュなし（各インスタンスで異なるため）
  * - 毎回DBチェック
  * - 必要に応じてPhase 2でRedis/Memcachedキャッシュを追加
- *
- * 開発環境モード:
- * - DEV_MODE=true の場合、認証をバイパス
- * - ダミーの認証情報を設定
  */
 export const apiKeyAuthMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
-  // 開発環境モード: 認証バイパス
-  // development環境のみで有効（staging/test環境では無効）
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.DEV_MODE === "true"
-  ) {
-    // ダミーの認証情報を設定
-    c.set("authMethod", "apikey");
-    c.set("apiKeyAuthInfo", {
-      organizationId: "dev-org-id",
-      mcpServerInstanceId: "dev-instance-id",
-    });
-    await next();
-    return;
-  }
-
   const apiKey = extractApiKey(c);
 
   if (!apiKey) {

@@ -134,7 +134,7 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
 
 ### MCP HTTP Transport
 
-- `POST /mcp/:userMcpServerInstanceId` - MCPプロトコルハンドラー（JSON-RPC over HTTP、認証必須）
+- `POST /mcp/:mcpServerId` - MCPプロトコルハンドラー（JSON-RPC over HTTP、認証必須）
   - `initialize` - MCPプロトコル初期化ハンドシェイク
   - `tools/list` - 利用可能なツールのリスト取得
   - `tools/call` - ツールの実行
