@@ -63,7 +63,7 @@ export const UserMcpServerCard = ({
   const [imageEditModalOpen, setImageEditModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
 
-  const { tools } = serverInstance;
+  const { allowedTools } = serverInstance;
 
   const apiKey = serverInstance.apiKeys[0]?.apiKey ?? "";
 
@@ -134,12 +134,15 @@ export const UserMcpServerCard = ({
     });
   };
 
+  // MCPサーバーテンプレートを取得（通常は1つ）
+  const mcpServerTemplate = serverInstance.mcpServerTemplates[0];
+
   // MCPサーバーのURLを取得（ファビコン表示用）
-  const mcpServerUrl = serverInstance.mcpServer?.url;
+  const mcpServerUrl = mcpServerTemplate?.url;
 
   // MCPサーバーからdescriptionとtagsを取得、空の場合はモックデータを使用
-  const mcpDescription = serverInstance.mcpServer?.description;
-  const mcpTags = serverInstance.mcpServer?.tags;
+  const mcpDescription = mcpServerTemplate?.description;
+  const mcpTags = mcpServerTemplate?.tags;
 
   const hasMcpDescription = mcpDescription && mcpDescription.trim() !== "";
   const hasMcpTags = mcpTags && mcpTags.length > 0;
@@ -191,11 +194,11 @@ export const UserMcpServerCard = ({
         )}
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
           <div className="group relative mr-2 rounded-md p-2">
-            {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
+            {serverInstance.iconPath || mcpServerTemplate?.iconPath ? (
               <Image
                 src={
                   serverInstance.iconPath ??
-                  serverInstance.mcpServer?.iconPath ??
+                  mcpServerTemplate?.iconPath ??
                   "/placeholder.svg"
                 }
                 alt={serverInstance.name}
@@ -385,7 +388,7 @@ export const UserMcpServerCard = ({
               <div className="flex items-center space-x-1 text-sm text-gray-600">
                 <Wrench className="h-4 w-4" />
                 ツール
-                <span>{tools.length}個</span>
+                <span>{allowedTools.length}個</span>
               </div>
               <div onClick={(e) => e.stopPropagation()}>
                 <Switch
