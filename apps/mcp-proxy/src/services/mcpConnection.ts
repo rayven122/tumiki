@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 import { injectAuthHeaders } from "../libs/auth/oauth-header-injector.js";
 import { logError, logInfo } from "../libs/logger/index.js";
@@ -45,28 +45,25 @@ export const connectToMcpServer = async (
       }
 
       case "STDIO": {
-        const command = mcpServerTemplate.command;
-        const args = mcpServerTemplate.args;
-
-        if (!command) {
-          throw new Error(
-            `STDIO transport requires command for template ${name}`,
-          );
-        }
-
-        transport = new StdioClientTransport({
-          command,
-          args,
-          env: mcpConfig ? JSON.parse(mcpConfig.envVars) : undefined,
-        });
-        break;
+        throw new Error(
+          `STDIO transport is not supported for template ${name}. Please use SSE or STREAMABLE_HTTPS instead.`,
+        );
       }
 
       case "STREAMABLE_HTTPS": {
-        // STREAMABLE_HTTPSトランスポートは現在未実装
-        throw new Error(
-          `STREAMABLE_HTTPS transport is not yet supported for template ${name}`,
-        );
+        const url = mcpServerTemplate.url;
+        if (!url) {
+          throw new Error(
+            `STREAMABLE_HTTPS transport requires URL for template ${name}`,
+          );
+        }
+
+        transport = new StreamableHTTPClientTransport(new URL(url), {
+          requestInit: {
+            headers,
+          },
+        });
+        break;
       }
 
       default: {
