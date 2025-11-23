@@ -73,10 +73,7 @@ export const executeTool = async (
       where: {
         mcpServerTemplateId: tool.mcpServerTemplate.id,
         organizationId,
-        OR: [
-          ...(userId ? [{ userId }] : []),
-          { userId: null },
-        ],
+        OR: [...(userId ? [{ userId }] : []), { userId: null }],
       },
       orderBy: {
         userId: "desc", // userIdがnullでないレコードを優先
