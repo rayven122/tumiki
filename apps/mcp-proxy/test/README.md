@@ -1,5 +1,10 @@
 # MCP Proxy 検証ガイド
 
+## 目的
+
+このスクリプトは、mcp-proxyのMCP (Model Context Protocol) 実装を検証するためのものです。
+API Key認証、ツールリスト取得、ツール実行などのMCPプロトコルの動作を確認できます。
+
 ## セットアップ
 
 ```bash
