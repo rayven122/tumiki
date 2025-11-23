@@ -96,9 +96,15 @@ const sendRequest = async (
 /**
  * テスト結果を表示
  */
-const printResult = (testName: string, success: boolean, message?: string) => {
+const printResult = (
+  testName: string,
+  success: boolean,
+  message?: string,
+  responseTime?: number,
+) => {
   const icon = success ? "✅" : "❌";
-  console.log(`${icon} ${testName}`);
+  const timeInfo = responseTime ? ` (${responseTime}ms)` : "";
+  console.log(`${icon} ${testName}${timeInfo}`);
   if (message) {
     console.log(`   ${message}`);
   }
@@ -122,6 +128,7 @@ const main = async () => {
   totalTests++;
 
   try {
+    const startTime = Date.now();
     const response = await sendRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -138,15 +145,17 @@ const main = async () => {
         },
       },
     });
+    const responseTime = Date.now() - startTime;
 
     if (response.result) {
       passedTests++;
-      printResult("API Key認証（X-API-Key）", true, "認証成功");
+      printResult("API Key認証（X-API-Key）", true, "認証成功", responseTime);
     } else {
       printResult(
         "API Key認証（X-API-Key）",
         false,
         `エラー: ${response.error?.message}`,
+        responseTime,
       );
     }
   } catch (error) {
@@ -165,6 +174,7 @@ const main = async () => {
   totalTests++;
 
   try {
+    const startTime = Date.now();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -183,6 +193,7 @@ const main = async () => {
     });
 
     const result = (await response.json()) as JsonRpcResponse;
+    const responseTime = Date.now() - startTime;
 
     if (result.error && result.error.code === -32001) {
       passedTests++;
@@ -190,12 +201,14 @@ const main = async () => {
         "無効なAPIキーの拒否",
         true,
         "期待通りエラーが返却されました",
+        responseTime,
       );
     } else {
       printResult(
         "無効なAPIキーの拒否",
         false,
         "無効なAPIキーが受け入れられてしまいました",
+        responseTime,
       );
     }
   } catch (error) {
@@ -214,12 +227,14 @@ const main = async () => {
   totalTests++;
 
   try {
+    const startTime = Date.now();
     const response = await sendRequest({
       jsonrpc: "2.0",
       id: 3,
       method: "tools/list",
       params: {},
     });
+    const responseTime = Date.now() - startTime;
 
     if (
       response.result &&
@@ -234,15 +249,22 @@ const main = async () => {
           "ツールリストの取得",
           true,
           `${tools.length}個のツールを取得: ${tools.map((t) => t.name).join(", ")}`,
+          responseTime,
         );
       } else {
-        printResult("ツールリストの取得", false, "ツールが0個でした");
+        printResult(
+          "ツールリストの取得",
+          false,
+          "ツールが0個でした",
+          responseTime,
+        );
       }
     } else {
       printResult(
         "ツールリストの取得",
         false,
         `エラー: ${response.error?.message}`,
+        responseTime,
       );
     }
   } catch (error) {
@@ -261,6 +283,7 @@ const main = async () => {
   totalTests++;
 
   try {
+    const startTime = Date.now();
     const response = await sendRequest({
       jsonrpc: "2.0",
       id: 4,
@@ -272,6 +295,7 @@ const main = async () => {
         },
       },
     });
+    const responseTime = Date.now() - startTime;
 
     if (response.result) {
       passedTests++;
@@ -279,9 +303,15 @@ const main = async () => {
         "ツールの実行",
         true,
         "Context7__resolve-library-idの実行に成功",
+        responseTime,
       );
     } else {
-      printResult("ツールの実行", false, `エラー: ${response.error?.message}`);
+      printResult(
+        "ツールの実行",
+        false,
+        `エラー: ${response.error?.message}`,
+        responseTime,
+      );
     }
   } catch (error) {
     printResult(
