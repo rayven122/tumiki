@@ -71,55 +71,77 @@ export const FindServersOutput = z.array(
   ),
 );
 
+/**
+ * 新スキーマ：カスタムサーバー追加入力
+ * - serverToolIdsMap削除（ツールグループ廃止）
+ * - mcpConfigId + allowedToolIds に変更
+ */
 export const AddCustomServerInput = z.object({
   name: nameValidationSchema,
   description: z.string().default(""),
-  serverToolIdsMap: z.record(
-    UserMcpServerConfigIdSchema,
-    z.array(ToolIdSchema),
-  ),
+  mcpConfigId: McpConfigIdSchema,
+  allowedToolIds: z.array(McpToolIdSchema),
 });
 
+/**
+ * 新スキーマ：公式サーバー追加入力
+ * - mcpServerId → mcpServerTemplateId
+ */
 export const AddOfficialServerInput = z.object({
-  mcpServerId: z.string(),
+  mcpServerTemplateId: z.string(),
   envVars: z.record(z.string(), z.string()),
   isPending: z.boolean().optional(), // OAuth認証用フラグを追加
   name: nameValidationSchema, // サーバー名を必須に変更
   description: z.string().optional(),
 });
 
+/**
+ * 新スキーマ：公式サーバー追加出力
+ * - toolGroupId削除
+ */
 export const AddOfficialServerOutput = z.object({
   id: z.string(),
-  userMcpServerConfigId: z.string(),
-  toolGroupId: z.string(),
+  mcpConfigId: z.string(),
   skipValidation: z.boolean().optional(),
 });
 
+/**
+ * 新スキーマ：サーバーインスタンス削除入力
+ * - UserMcpServerInstanceIdSchema → McpServerIdSchema
+ */
 export const DeleteServerInstanceInput = z.object({
-  id: UserMcpServerInstanceIdSchema,
+  id: McpServerIdSchema,
 });
 
+/**
+ * 新スキーマ：サーバーインスタンス更新入力
+ * - toolGroupId削除
+ * - serverToolIdsMap → allowedToolIds
+ */
 export const UpdateServerInstanceInput = z.object({
-  toolGroupId: UserToolGroupIdSchema,
+  id: McpServerIdSchema,
   name: z.string(),
   description: z.string().default(""),
-  serverToolIdsMap: z.record(
-    UserMcpServerConfigIdSchema,
-    z.array(ToolIdSchema),
-  ),
+  allowedToolIds: z.array(McpToolIdSchema),
 });
 
+/**
+ * 新スキーマ：サーバーインスタンス名更新入力
+ */
 export const UpdateServerInstanceNameInput = z.object({
-  id: UserMcpServerInstanceIdSchema,
+  id: McpServerIdSchema,
   name: nameValidationSchema,
   description: z.string().optional(),
 });
 
-export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
+/**
+ * 新スキーマ：サーバーステータス更新入力
+ */
+export const UpdateServerStatusInput = McpServerSchema.pick({
   serverStatus: true,
 }).merge(
   z.object({
-    id: UserMcpServerInstanceIdSchema,
+    id: McpServerIdSchema,
   }),
 );
 
@@ -182,18 +204,31 @@ export const TimeSeriesStatsOutput = z.array(
   }),
 );
 
+/**
+ * 新スキーマ：ツールトグル入力
+ * - instanceId: McpServerIdSchema
+ * - toolId: McpToolIdSchema
+ * - userMcpServerConfigId削除（ツールグループ廃止）
+ */
 export const ToggleToolInput = z.object({
-  instanceId: UserMcpServerInstanceIdSchema,
-  toolId: ToolIdSchema,
-  userMcpServerConfigId: UserMcpServerConfigIdSchema,
+  instanceId: McpServerIdSchema,
+  toolId: McpToolIdSchema,
   enabled: z.boolean(),
 });
 
+/**
+ * 新スキーマ：サーバー接続チェック入力
+ */
 export const CheckServerConnectionInput = z.object({
-  serverInstanceId: UserMcpServerInstanceIdSchema,
+  serverInstanceId: McpServerIdSchema,
   updateStatus: z.boolean().optional().default(false),
 });
 
+/**
+ * 新スキーマ：mcpServerRouter（旧userMcpServerInstanceRouter）
+ * - テーブル: UserMcpServerInstance → McpServer
+ * - ツールグループ削除、多対多リレーションに変更
+ */
 export const userMcpServerInstanceRouter = createTRPCRouter({
   findCustomServers: protectedProcedure
     .output(FindServersOutput)
@@ -205,7 +240,7 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .input(AddCustomServerInput)
     .output(
       z.object({
-        id: UserMcpServerInstanceIdSchema,
+        id: McpServerIdSchema,
       }),
     )
     .mutation(addCustomServer),

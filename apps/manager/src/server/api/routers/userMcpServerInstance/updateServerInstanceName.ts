@@ -3,19 +3,25 @@ import type { ProtectedContext } from "../../trpc";
 import type { UpdateServerInstanceNameInput } from ".";
 import { ServerType } from "@tumiki/db/prisma";
 
-type UpdateServerInstanceNameInput = {
+type UpdateServerInstanceNameInputProps = {
   ctx: ProtectedContext;
   input: z.infer<typeof UpdateServerInstanceNameInput>;
 };
 
+/**
+ * 新スキーマ：サーバーインスタンス名更新
+ * - UserMcpServerInstance → McpServer
+ * - UserToolGroup削除
+ * - UserMcpServerConfig → McpConfig
+ */
 export const updateServerInstanceName = async ({
   ctx,
   input,
-}: UpdateServerInstanceNameInput) => {
+}: UpdateServerInstanceNameInputProps) => {
   const organizationId = ctx.currentOrganizationId;
 
   const serverInstance = await ctx.db.$transaction(async (tx) => {
-    const serverInstance = await tx.userMcpServerInstance.update({
+    const serverInstance = await tx.mcpServer.update({
       where: {
         id: input.id,
         organizationId,
@@ -23,34 +29,20 @@ export const updateServerInstanceName = async ({
       data: {
         name: input.name,
         description: input.description,
-        toolGroup: {
-          update: {
-            name: input.name,
-          },
-        },
       },
       include: {
-        toolGroup: {
-          include: {
-            toolGroupTools: {
-              take: 1,
-            },
-          },
-        },
+        mcpConfig: true,
       },
     });
 
-    const userMcpServerConfigId =
-      serverInstance.toolGroup.toolGroupTools[0]?.userMcpServerConfigId;
-
-    // 公式サーバーの場合は、userMcpServerConfig の name も更新する
+    // 公式サーバーの場合は、mcpConfig の name も更新する
     if (
       serverInstance.serverType === ServerType.OFFICIAL &&
-      userMcpServerConfigId
+      serverInstance.mcpConfigId
     ) {
-      await tx.userMcpServerConfig.update({
+      await tx.mcpConfig.update({
         where: {
-          id: userMcpServerConfigId,
+          id: serverInstance.mcpConfigId,
           organizationId,
         },
         data: {

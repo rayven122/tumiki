@@ -5,10 +5,16 @@ type FindOfficialServersInput = {
   ctx: ProtectedContext;
 };
 
+/**
+ * 新スキーマ：公式サーバー一覧取得
+ * - テーブル: UserMcpServerInstance → McpServer
+ * - ツールグループ削除、allowedTools（多対多）に変更
+ * - mcpServer（1対1） → mcpServerTemplates（多対多）
+ */
 export const findOfficialServers = async ({
   ctx,
 }: FindOfficialServersInput) => {
-  const officialServers = await ctx.db.userMcpServerInstance.findMany({
+  const officialServers = await ctx.db.mcpServer.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
       organizationId: ctx.currentOrganizationId,
@@ -19,48 +25,25 @@ export const findOfficialServers = async ({
     },
     include: {
       apiKeys: true,
-      toolGroup: {
-        include: {
-          _count: {
-            select: {
-              toolGroupTools: true,
-            },
-          },
-          toolGroupTools: {
-            take: 1, // 1つだけ取得してmcpServerConfigIdを特定
-            include: {
-              userMcpServerConfig: {
-                include: {
-                  mcpServer: {
-                    select: {
-                      id: true,
-                      name: true,
-                      description: true,
-                      tags: true,
-                      iconPath: true,
-                      url: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
+      allowedTools: true,
+      mcpServerTemplates: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          tags: true,
+          iconPath: true,
+          url: true,
         },
       },
     },
   });
 
   const officialServerList = officialServers.map((server) => {
-    const toolCount = server.toolGroup?._count?.toolGroupTools ?? 0;
-    const mcpServer =
-      server.toolGroup?.toolGroupTools?.[0]?.userMcpServerConfig?.mcpServer;
-
     return {
       ...server,
-      tools: Array(toolCount).fill({}), // ツール数分の空オブジェクトを作成
-      toolGroups: [],
-      userMcpServers: [],
-      mcpServer: mcpServer ?? null, // mcpServerデータを追加
+      allowedTools: server.allowedTools.map(() => ({})), // ツール数分の空オブジェクト
+      mcpServerTemplates: server.mcpServerTemplates,
     };
   });
 

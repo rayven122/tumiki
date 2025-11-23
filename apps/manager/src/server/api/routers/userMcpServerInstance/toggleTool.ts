@@ -2,51 +2,47 @@ import type { z } from "zod";
 import type { ProtectedContext } from "../../trpc";
 import type { ToggleToolInput } from ".";
 
-type ToggleToolInput = {
+type ToggleToolInputProps = {
   ctx: ProtectedContext;
   input: z.infer<typeof ToggleToolInput>;
 };
 
-export const toggleTool = async ({ ctx, input }: ToggleToolInput) => {
-  const { instanceId, toolId, userMcpServerConfigId, enabled } = input;
+/**
+ * 新スキーマ：ツールのトグル（有効化/無効化）
+ * - UserToolGroupTool削除
+ * - McpServerとMcpToolの暗黙的多対多リレーションを使用
+ * - connect/disconnect操作で管理
+ */
+export const toggleTool = async ({ ctx, input }: ToggleToolInputProps) => {
+  const { instanceId, toolId, enabled } = input;
 
   // インスタンスの所有権確認
-  const instance = await ctx.db.userMcpServerInstance.findUnique({
+  const instance = await ctx.db.mcpServer.findUnique({
     where: {
       id: instanceId,
       organizationId: ctx.currentOrganizationId,
       deletedAt: null,
     },
-    include: {
-      toolGroup: true,
-    },
   });
 
-  if (!instance || !instance.toolGroup) {
+  if (!instance) {
     throw new Error("サーバーインスタンスが見つかりません");
   }
 
-  // トランザクション内で更新
-  await ctx.db.$transaction(async (tx) => {
-    if (enabled) {
-      // ツールを有効化
-      await tx.userToolGroupTool.create({
-        data: {
-          toolGroupId: instance.toolGroup.id,
-          toolId,
-          userMcpServerConfigId,
-        },
-      });
-    } else {
-      // ツールを無効化
-      await tx.userToolGroupTool.deleteMany({
-        where: {
-          toolGroupId: instance.toolGroup.id,
-          toolId,
-          userMcpServerConfigId,
-        },
-      });
-    }
+  // Prismaの暗黙的多対多リレーション操作
+  await ctx.db.mcpServer.update({
+    where: {
+      id: instanceId,
+    },
+    data: {
+      allowedTools: enabled
+        ? {
+            connect: { id: toolId },
+          }
+        : {
+            disconnect: { id: toolId },
+          },
+    },
   });
 
   return { success: true };
