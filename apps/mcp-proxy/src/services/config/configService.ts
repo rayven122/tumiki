@@ -48,10 +48,7 @@ const getEnabledServersForInstanceFromDB = async (
           where: {
             mcpServerTemplateId: mcpServerTemplate.id,
             organizationId,
-            OR: [
-              ...(userId ? [{ userId }] : []),
-              { userId: null },
-            ],
+            OR: [...(userId ? [{ userId }] : []), { userId: null }],
           },
           orderBy: {
             userId: "desc", // userIdがnullでないレコードを優先

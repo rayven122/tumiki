@@ -61,10 +61,8 @@ describe("resolveMcpServer", () => {
     test("JWTから指定されたインスタンスが正しく解決される", async () => {
       const mockInstance = createMockInstance();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-        mockInstance as any,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(mockInstance as any);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",
@@ -116,10 +114,8 @@ describe("resolveMcpServer", () => {
         deletedDate,
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-        mockInstance as any,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(mockInstance as any);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",
@@ -138,10 +134,8 @@ describe("resolveMcpServer", () => {
       // インスタンスは別の組織に属している
       const mockInstance = createMockInstance("instance_1", "org_different");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-        mockInstance as any,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(mockInstance as any);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",

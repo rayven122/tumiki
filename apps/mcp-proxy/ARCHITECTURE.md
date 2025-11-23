@@ -295,12 +295,12 @@ Cache Lookup → Hit: 復号化 → 返却 / Miss: DB取得 → 暗号化 → Re
 
 **ファイル**: `apps/mcp-proxy/src/libs/cache/configCache.ts`
 
-| 項目         | 値                                     |
-| ------------ | -------------------------------------- |
-| **ストア**   | Upstash Redis (サーバーレス最適化)     |
-| **TTL**      | 300秒 (5分、`CACHE_TTL`で変更可能)     |
-| **暗号化**   | AES-256-GCM                            |
-| **キー形式** | `mcp:config:{mcpServerId}` |
+| 項目         | 値                                 |
+| ------------ | ---------------------------------- |
+| **ストア**   | Upstash Redis (サーバーレス最適化) |
+| **TTL**      | 300秒 (5分、`CACHE_TTL`で変更可能) |
+| **暗号化**   | AES-256-GCM                        |
+| **キー形式** | `mcp:config:{mcpServerId}`         |
 
 **暗号化の理由**:
 

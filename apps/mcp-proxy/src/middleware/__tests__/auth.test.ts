@@ -31,7 +31,7 @@ vi.mock("@tumiki/db/server", () => ({
     mcpApiKey: {
       findUnique: vi.fn(),
     },
-    userMcpServerInstance: {
+    mcpServer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
@@ -229,7 +229,7 @@ describe("integratedAuthMiddleware", () => {
         isActive: true,
         lastUsedAt: null,
         expiresAt: null,
-        userMcpServerInstance: {
+        mcpServer: {
           organizationId: "org-id",
         },
         createdAt: new Date(),
@@ -267,7 +267,7 @@ describe("integratedAuthMiddleware", () => {
         isActive: true,
         lastUsedAt: null,
         expiresAt: null,
-        userMcpServerInstance: {
+        mcpServer: {
           organizationId: "org-id-2",
         },
         createdAt: new Date(),
@@ -370,7 +370,7 @@ describe("integratedAuthMiddleware", () => {
         isActive: true,
         lastUsedAt: null,
         expiresAt: null,
-        userMcpServerInstance: {
+        mcpServer: {
           organizationId: "api-org-id",
         },
         createdAt: new Date(),
