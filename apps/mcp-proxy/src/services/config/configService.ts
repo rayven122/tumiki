@@ -53,6 +53,15 @@ const getEnabledServersForInstanceFromDB = async (
           orderBy: {
             userId: "desc", // userIdがnullでないレコードを優先
           },
+          select: {
+            id: true,
+            envVars: true,
+            mcpServerTemplateId: true,
+            organizationId: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         });
 
         // envVarsを復号化

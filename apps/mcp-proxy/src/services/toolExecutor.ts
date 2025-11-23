@@ -78,6 +78,15 @@ export const executeTool = async (
       orderBy: {
         userId: "desc", // userIdがnullでないレコードを優先
       },
+      select: {
+        id: true,
+        envVars: true,
+        mcpServerTemplateId: true,
+        organizationId: true,
+        userId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     // 4. MCP サーバーに接続

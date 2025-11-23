@@ -625,7 +625,7 @@ APIキー管理テーブル
   - `id`: 
   - `name`: APIキー名（ユーザーが設定）
   - `apiKey`: 暗号化されたAPIキー（client_id として使用）
-  - `apiKeyHash`: APIキーをハッシュ化したもの
+  - `apiKeyHash`: APIキーをハッシュ化したもの（SHA-256、自動生成）
   - `isActive`: APIキーが有効かどうか
   - `lastUsedAt`: 最後に使用された日時
   - `expiresAt`: APIキーの有効期限
