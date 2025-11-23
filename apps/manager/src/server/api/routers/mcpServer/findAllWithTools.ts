@@ -2,15 +2,20 @@ import "server-only";
 
 import { db } from "@tumiki/db/server";
 
+/**
+ * McpServerTemplateを全件取得（ツール情報を含む）
+ * 旧: McpServerテーブルから取得
+ * 新: McpServerTemplateテーブルから取得
+ */
 export const findAllWithTools = async () => {
-  const mcpServers = await db.mcpServer.findMany({
+  const mcpServerTemplates = await db.mcpServerTemplate.findMany({
     where: {
       isPublic: true,
       visibility: "PUBLIC",
     },
     include: {
-      tools: true,
+      mcpTools: true,
     },
   });
-  return mcpServers;
+  return mcpServerTemplates;
 };

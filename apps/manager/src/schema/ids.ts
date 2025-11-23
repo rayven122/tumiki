@@ -11,18 +11,46 @@ export const VerificationTokenIdSchema = z
   .brand<"VerificationTokenId">();
 
 /**
- * McpServer関連のID型
+ * McpServer関連のID型（新スキーマ）
  */
+export const McpServerTemplateIdSchema = z
+  .string()
+  .brand<"McpServerTemplateId">();
 export const McpServerIdSchema = z.string().brand<"McpServerId">();
+export const McpConfigIdSchema = z.string().brand<"McpConfigId">();
+export const McpToolIdSchema = z.string().brand<"McpToolId">();
+export const McpOAuthClientIdSchema = z.string().brand<"McpOAuthClientId">();
+export const McpOAuthTokenIdSchema = z.string().brand<"McpOAuthTokenId">();
+
+/**
+ * @deprecated 旧スキーマ互換性のため残存。新規実装では使用しない。
+ * McpServerTemplateIdSchema を使用してください。
+ */
+export const OldMcpServerIdSchema = z.string().brand<"OldMcpServerId">();
+
+/**
+ * @deprecated 旧スキーマ互換性のため残存。新規実装では使用しない。
+ * McpToolIdSchema を使用してください。
+ */
 export const ToolIdSchema = z.string().brand<"ToolId">();
 
 /**
- * UserMcpServer関連のID型
+ * @deprecated 旧スキーマ互換性のため残存。新規実装では使用しない。
+ * McpConfigIdSchema を使用してください。
  */
 export const UserMcpServerConfigIdSchema = z
   .string()
   .brand<"UserMcpServerConfigId">();
+
+/**
+ * @deprecated 旧スキーマで削除されたため使用不可。
+ */
 export const UserToolGroupIdSchema = z.string().brand<"UserToolGroupId">();
+
+/**
+ * @deprecated 旧スキーマ互換性のため残存。新規実装では使用しない。
+ * McpServerIdSchema を使用してください。
+ */
 export const UserMcpServerInstanceIdSchema = z
   .string()
   .brand<"UserMcpServerInstanceId">();
@@ -33,11 +61,24 @@ export type SessionId = z.infer<typeof SessionIdSchema>;
 export type UserId = z.infer<typeof UserIdSchema>;
 export type VerificationTokenId = z.infer<typeof VerificationTokenIdSchema>;
 
+// 新スキーマID型
+export type McpServerTemplateId = z.infer<typeof McpServerTemplateIdSchema>;
 export type McpServerId = z.infer<typeof McpServerIdSchema>;
-export type ToolId = z.infer<typeof ToolIdSchema>;
+export type McpConfigId = z.infer<typeof McpConfigIdSchema>;
+export type McpToolId = z.infer<typeof McpToolIdSchema>;
+export type McpOAuthClientId = z.infer<typeof McpOAuthClientIdSchema>;
+export type McpOAuthTokenId = z.infer<typeof McpOAuthTokenIdSchema>;
 
+// 旧スキーマID型（互換性のため残存）
+/** @deprecated 新規実装では McpServerTemplateId を使用 */
+export type OldMcpServerId = z.infer<typeof OldMcpServerIdSchema>;
+/** @deprecated 新規実装では McpToolId を使用 */
+export type ToolId = z.infer<typeof ToolIdSchema>;
+/** @deprecated 新規実装では McpConfigId を使用 */
 export type UserMcpServerConfigId = z.infer<typeof UserMcpServerConfigIdSchema>;
+/** @deprecated ツールグループ機能は削除されました */
 export type UserToolGroupId = z.infer<typeof UserToolGroupIdSchema>;
+/** @deprecated 新規実装では McpServerId を使用 */
 export type UserMcpServerInstanceId = z.infer<
   typeof UserMcpServerInstanceIdSchema
 >;

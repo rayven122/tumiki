@@ -2,6 +2,10 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { addCustomServer } from "./addCustomServer";
 import {
+  McpServerIdSchema,
+  McpToolIdSchema,
+  McpConfigIdSchema,
+  // 旧スキーマ互換性のため残存
   UserMcpServerInstanceIdSchema,
   UserToolGroupIdSchema,
   ToolIdSchema,
@@ -12,7 +16,9 @@ import { findCustomServers } from "./findCustomServers";
 
 import {
   McpApiKeySchema,
+  McpServerTemplateSchema,
   McpServerSchema,
+  // 旧スキーマ互換性
   UserMcpServerInstanceSchema,
 } from "@tumiki/db/zod";
 
@@ -40,22 +46,27 @@ import {
   updateDisplayOrderSchema,
 } from "./updateDisplayOrder";
 
+/**
+ * 新スキーマ：McpServer（旧UserMcpServerInstance）の出力型
+ * - toolGroups削除、allowedToolsに変更
+ * - mcpServer → mcpServerTemplates（多対多）
+ */
 export const FindServersOutput = z.array(
-  UserMcpServerInstanceSchema.merge(
+  McpServerSchema.merge(
     z.object({
-      id: UserMcpServerInstanceIdSchema,
+      id: McpServerIdSchema,
       apiKeys: McpApiKeySchema.array(),
-      tools: z.array(z.object({})), // ツール数のみ必要なので空オブジェクトの配列
-      toolGroups: z.array(z.never()).optional(), // 使用しないので削除
-      userMcpServers: z.array(z.never()).optional(), // 使用しないので削除
-      mcpServer: McpServerSchema.pick({
-        id: true,
-        name: true,
-        description: true,
-        tags: true,
-        iconPath: true,
-        url: true,
-      }).nullable(), // mcpServerデータを追加
+      allowedTools: z.array(z.object({})), // ツール数のみ必要なので空オブジェクトの配列
+      mcpServerTemplates: z.array(
+        McpServerTemplateSchema.pick({
+          id: true,
+          name: true,
+          description: true,
+          tags: true,
+          iconPath: true,
+          url: true,
+        }),
+      ), // 多対多リレーション
     }),
   ),
 );

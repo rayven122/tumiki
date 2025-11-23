@@ -1,6 +1,6 @@
 import { postRouter } from "@/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
-import { mcpServerRouter } from "./routers/mcpServer";
+import { mcpServerTemplateRouter } from "./routers/mcpServer";
 import { userMcpServerConfigRouter } from "./routers/userMcpServerConfig";
 import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
 import { userRouter } from "./routers/user";
@@ -19,7 +19,10 @@ import { remoteMcpServerRouter } from "./routers/remoteMcpServer";
  */
 export const appRouter = createTRPCRouter({
   post: postRouter,
-  mcpServer: mcpServerRouter,
+  // 新スキーマ：McpServerTemplateRouter（旧mcpServerRouter）
+  mcpServerTemplate: mcpServerTemplateRouter,
+  // 旧スキーマとの互換性のため残存（フロントエンド移行後に削除）
+  mcpServer: mcpServerTemplateRouter,
   user: userRouter,
   userMcpServerConfig: userMcpServerConfigRouter,
   userMcpServerInstance: userMcpServerInstanceRouter,

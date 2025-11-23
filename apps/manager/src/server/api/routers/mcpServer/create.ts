@@ -2,23 +2,27 @@ import { type z } from "zod";
 import { type ProtectedContext } from "@/server/api/trpc";
 import { ServerType } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
-import type { CreateMcpServerInput } from ".";
+import type { CreateMcpServerTemplateInput } from ".";
 import {
   getMcpServerToolsSSE,
   getMcpServerToolsHTTP,
 } from "@/utils/getMcpServerTools";
 import { createCloudRunHeaders } from "@/utils/cloudRunAuth";
-import { createUserServerComponents } from "../_shared/createUserServerComponents";
 
-type CreateMcpServerInputProps = {
+type CreateMcpServerTemplateInputProps = {
   ctx: ProtectedContext;
-  input: z.infer<typeof CreateMcpServerInput>;
+  input: z.infer<typeof CreateMcpServerTemplateInput>;
 };
 
-export const createMcpServer = async ({
+/**
+ * McpServerTemplateを作成
+ * 旧: McpServerを作成して、createUserServerComponentsで関連レコードを作成
+ * 新: McpServerTemplateを作成（ユーザー固有のMcpServerは別途作成）
+ */
+export const createMcpServerTemplate = async ({
   ctx,
   input,
-}: CreateMcpServerInputProps) => {
+}: CreateMcpServerTemplateInputProps) => {
   const { db, session } = ctx;
   const userId = session.user.id;
 
@@ -147,59 +151,36 @@ export const createMcpServer = async ({
     });
   }
 
-  // トランザクションでMCPサーバーとインスタンスを作成
-  const result = await db.$transaction(async (tx) => {
-    // MCPサーバーを作成
-    const mcpServer = await tx.mcpServer.create({
-      include: {
-        tools: true,
-      },
-      data: {
-        name: input.name,
-        iconPath: input.iconPath,
-        transportType: input.transportType,
-        command: input.command,
-        args: input.args,
-        url: input.url,
-        envVars: Object.keys(input.envVars),
-        authType: input.authType,
-        serverType: ServerType.OFFICIAL,
-        createdBy: userId,
-        visibility: input.visibility,
-        organizationId,
-        isPublic: true,
-        tools: {
-          createMany: {
-            data: tools.map((tool) => ({
-              name: tool.name,
-              description: tool.description ?? "",
-              inputSchema: tool.inputSchema as object,
-            })),
-          },
+  // McpServerTemplateを作成（トランザクション不要、単一レコード作成）
+  const mcpServerTemplate = await db.mcpServerTemplate.create({
+    include: {
+      mcpTools: true,
+    },
+    data: {
+      name: input.name,
+      iconPath: input.iconPath,
+      transportType: input.transportType,
+      command: input.command,
+      args: input.args,
+      url: input.url,
+      envVars: Object.keys(input.envVars),
+      authType: input.authType,
+      serverType: ServerType.OFFICIAL,
+      createdBy: userId,
+      visibility: input.visibility,
+      organizationId,
+      isPublic: true,
+      mcpTools: {
+        createMany: {
+          data: tools.map((tool) => ({
+            name: tool.name,
+            description: tool.description ?? "",
+            inputSchema: tool.inputSchema as object,
+          })),
         },
       },
-    });
-
-    // 共通関数を使用してユーザー固有のコンポーネントを作成
-    const { serverConfig, toolGroup, instance } =
-      await createUserServerComponents({
-        tx,
-        mcpServer,
-        envVars: input.envVars,
-        instanceName: mcpServer.name,
-        instanceDescription: "",
-        organizationId: currentOrganizationId,
-        userId,
-        isPending: false,
-      });
-
-    return {
-      mcpServer,
-      serverConfig,
-      toolGroup,
-      serverInstance: instance,
-    };
+    },
   });
 
-  return result.mcpServer;
+  return mcpServerTemplate;
 };

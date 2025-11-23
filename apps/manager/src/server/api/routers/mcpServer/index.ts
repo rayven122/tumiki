@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { findAllWithTools } from "./findAllWithTools";
-import { createMcpServer } from "./create";
+import { createMcpServerTemplate } from "./create";
 import z from "zod";
 import {
   McpServerVisibility,
@@ -9,7 +9,7 @@ import {
 } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 
-export const CreateMcpServerInput = z.object({
+export const CreateMcpServerTemplateInput = z.object({
   name: nameValidationSchema,
   iconPath: z.string().optional(),
   transportType: z.nativeEnum(TransportType),
@@ -22,9 +22,14 @@ export const CreateMcpServerInput = z.object({
   organizationId: z.string().optional(),
 });
 
-export const mcpServerRouter = createTRPCRouter({
+/**
+ * McpServerTemplateRouter
+ * 旧: mcpServerRouter（McpServerテーブル）
+ * 新: mcpServerTemplateRouter（McpServerTemplateテーブル）
+ */
+export const mcpServerTemplateRouter = createTRPCRouter({
   findAll: protectedProcedure.query(findAllWithTools),
   create: protectedProcedure
-    .input(CreateMcpServerInput)
-    .mutation(createMcpServer),
+    .input(CreateMcpServerTemplateInput)
+    .mutation(createMcpServerTemplate),
 });
