@@ -39,7 +39,7 @@
   },
   "scripts": {
     "dev": "tsc",
-    "build": "pnpm db:generate && tsc --project tsconfig.build.json",
+    "build": "pnpm db:generate && tsc --project tsconfig.build.json && npx tsc src/server.ts src/tcpClient.ts src/wsClient.ts src/createBaseClient.ts src/client.ts src/prisma.ts src/index.ts src/context.ts --outDir dist/src --declaration --declarationMap --module NodeNext --moduleResolution NodeNext --target ES2022 --lib ES2022 --esModuleInterop --skipLibCheck",
     "clean": "git clean -xdf .cache .turbo node_modules dist build",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",

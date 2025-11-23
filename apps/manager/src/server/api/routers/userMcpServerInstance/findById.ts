@@ -48,7 +48,8 @@ export const findById = async ({
   }
 
   // mcpConfigを取得（mcpServerTemplate経由）
-  let mcpConfig: { id: string; mcpServerTemplate: { id: string } } | null = null;
+  let mcpConfig: { id: string; mcpServerTemplate: { id: string } } | null =
+    null;
   if (mcpServerTemplate && instance.serverType === ServerType.OFFICIAL) {
     const config = await db.mcpConfig.findFirst({
       where: {
