@@ -139,8 +139,8 @@ model McpApiKey {
   name        String
   /// 暗号化されたAPIキー（client_id として使用）
   apiKey      String    @unique /// @encrypted
-  /// APIキーをハッシュ化したもの
-  apiKeyHash  String?   @unique
+  /// APIキーをハッシュ化したもの（SHA-256、自動生成）
+  apiKeyHash  String?   @unique /// @encryption:hash(apiKey)
   /// APIキーが有効かどうか
   isActive    Boolean   @default(true)
   /// 最後に使用された日時
