@@ -31,7 +31,7 @@ vi.mock("@tumiki/db/server", () => ({
     mcpApiKey: {
       findUnique: vi.fn(),
     },
-    userMcpServerInstance: {
+    mcpServer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
@@ -74,17 +74,11 @@ describe("integratedAuthMiddleware", () => {
       // instanceResolver で使用される DB モックを設定
       const { db } = await import("@tumiki/db/server");
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValueOnce({
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValueOnce({
         id: "test-mcp-instance-id",
         name: "Test Instance",
         description: null,
-        iconPath: null,
-        serverStatus: "RUNNING",
-        serverType: "OFFICIAL",
-        toolGroupId: "toolgroup-1",
-        authType: "OAUTH",
         organizationId: "test-org-id",
-        displayOrder: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -230,12 +224,12 @@ describe("integratedAuthMiddleware", () => {
         name: "test-key",
         apiKey: "tumiki_test_key",
         apiKeyHash: null,
-        userMcpServerInstanceId: "instance-id",
+        mcpServerId: "instance-id",
         userId: "user-id",
         isActive: true,
         lastUsedAt: null,
         expiresAt: null,
-        userMcpServerInstance: {
+        mcpServer: {
           organizationId: "org-id",
         },
         createdAt: new Date(),
@@ -268,12 +262,12 @@ describe("integratedAuthMiddleware", () => {
         name: "test-key",
         apiKey: "test-api-key",
         apiKeyHash: null,
-        userMcpServerInstanceId: "instance-id",
+        mcpServerId: "instance-id",
         userId: "user-id",
         isActive: true,
         lastUsedAt: null,
         expiresAt: null,
-        userMcpServerInstance: {
+        mcpServer: {
           organizationId: "org-id-2",
         },
         createdAt: new Date(),
@@ -336,17 +330,11 @@ describe("integratedAuthMiddleware", () => {
       // instanceResolver で使用される DB モックを設定
       const { db } = await import("@tumiki/db/server");
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValueOnce({
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValueOnce({
         id: "test-mcp-instance-id",
         name: "Test Instance",
         description: null,
-        iconPath: null,
-        serverStatus: "RUNNING",
-        serverType: "OFFICIAL",
-        toolGroupId: "toolgroup-1",
-        authType: "OAUTH",
         organizationId: "test-org-id",
-        displayOrder: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -377,12 +365,12 @@ describe("integratedAuthMiddleware", () => {
         name: "test-key",
         apiKey: "tumiki_test",
         apiKeyHash: null,
-        userMcpServerInstanceId: "api-instance-id",
+        mcpServerId: "api-instance-id",
         userId: "user-id",
         isActive: true,
         lastUsedAt: null,
         expiresAt: null,
-        userMcpServerInstance: {
+        mcpServer: {
           organizationId: "api-org-id",
         },
         createdAt: new Date(),

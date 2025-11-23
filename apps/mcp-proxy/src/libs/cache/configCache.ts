@@ -30,18 +30,18 @@ const getCacheTtl = (): number => {
 /**
  * キャッシュキーの生成
  */
-const getCacheKey = (userMcpServerInstanceId: string): string => {
-  return `${CACHE_CONFIG.KEY_PREFIX.MCP_CONFIG}${userMcpServerInstanceId}`;
+const getCacheKey = (mcpServerId: string): string => {
+  return `${CACHE_CONFIG.KEY_PREFIX.MCP_CONFIG}${mcpServerId}`;
 };
 
 /**
  * キャッシュから設定を取得、キャッシュミス時はDBから取得してキャッシュに保存
  */
 export const getCachedConfig = async (
-  userMcpServerInstanceId: string,
+  mcpServerId: string,
   fetchFromDb: () => Promise<CachedConfigData>,
 ): Promise<CachedConfigData> => {
-  const cacheKey = getCacheKey(userMcpServerInstanceId);
+  const cacheKey = getCacheKey(mcpServerId);
   const ttl = getCacheTtl();
 
   try {
@@ -50,7 +50,7 @@ export const getCachedConfig = async (
     // Redisが利用できない場合はDBから直接取得
     if (!redis) {
       logInfo("Redis not available, fetching from DB", {
-        userMcpServerInstanceId,
+        mcpServerId,
       });
       return await fetchFromDb();
     }
@@ -65,7 +65,7 @@ export const getCachedConfig = async (
         const decrypted = decrypt(cached);
         const data = JSON.parse(decrypted) as CachedConfigData;
         logInfo("Config cache hit", {
-          userMcpServerInstanceId,
+          mcpServerId,
           serverCount: data.length,
         });
         return data;
@@ -75,7 +75,7 @@ export const getCachedConfig = async (
           "Failed to decrypt cached config",
           new Error("Decryption failed"),
           {
-            userMcpServerInstanceId: sanitizeIdForLog(userMcpServerInstanceId),
+            mcpServerId: sanitizeIdForLog(mcpServerId),
           },
         );
         // 復号化エラーの場合はキャッシュを削除してDBから取得
@@ -86,7 +86,7 @@ export const getCachedConfig = async (
     }
 
     // キャッシュミス: DBから取得
-    logInfo("Config cache miss", { userMcpServerInstanceId });
+    logInfo("Config cache miss", { mcpServerId });
     const data = await fetchFromDb();
 
     // キャッシュに保存（非同期、エラーは無視）
@@ -97,19 +97,19 @@ export const getCachedConfig = async (
         .setEx(cacheKey, ttl, encrypted)
         .then(() => {
           logInfo("Config cached (encrypted)", {
-            userMcpServerInstanceId,
+            mcpServerId,
             serverCount: data.length,
             ttl,
           });
         })
         .catch((cacheError: Error) => {
           logError("Failed to cache config", cacheError, {
-            userMcpServerInstanceId,
+            mcpServerId,
           });
         });
     } catch (encryptError) {
       logError("Failed to encrypt config for caching", encryptError as Error, {
-        userMcpServerInstanceId,
+        mcpServerId,
       });
     }
 
@@ -117,7 +117,7 @@ export const getCachedConfig = async (
   } catch (error) {
     // Redis接続エラー等の場合はDBから直接取得
     logError("Cache operation failed, falling back to DB", error as Error, {
-      userMcpServerInstanceId,
+      mcpServerId,
     });
     return await fetchFromDb();
   }
@@ -127,9 +127,9 @@ export const getCachedConfig = async (
  * キャッシュを無効化（設定変更時などに使用）
  */
 export const invalidateConfigCache = async (
-  userMcpServerInstanceId: string,
+  mcpServerId: string,
 ): Promise<void> => {
-  const cacheKey = getCacheKey(userMcpServerInstanceId);
+  const cacheKey = getCacheKey(mcpServerId);
 
   try {
     const redis = await getRedisClient();
@@ -138,10 +138,10 @@ export const invalidateConfigCache = async (
     }
 
     await redis.del(cacheKey);
-    logInfo("Config cache invalidated", { userMcpServerInstanceId });
+    logInfo("Config cache invalidated", { mcpServerId });
   } catch (error) {
     logError("Failed to invalidate config cache", error as Error, {
-      userMcpServerInstanceId,
+      mcpServerId,
     });
   }
 };

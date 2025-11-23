@@ -10,11 +10,14 @@
     "start": "pnpm with-env node dist/index.js",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
+    "with-env-test": "dotenv -e ../../.env.test --",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:seed": "pnpm with-env-test tsx test/seed.ts",
+    "test:verify": "pnpm with-env-test tsx test/verify.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
