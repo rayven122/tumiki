@@ -34,7 +34,9 @@ export const deleteServerInstance = async ({
         deletedAt: true,
         name: true,
         serverType: true,
-        mcpConfigId: true,
+        mcpServers: {
+          select: { id: true },
+        },
       },
     });
 
@@ -63,22 +65,32 @@ export const deleteServerInstance = async ({
       },
       select: {
         serverType: true,
-        mcpConfigId: true,
+        mcpServers: {
+          select: { id: true },
+        },
       },
     });
 
     // 公式サーバーの場合は、公式サーバーの設定を削除
-    if (
-      serverInstance.serverType === ServerType.OFFICIAL &&
-      serverInstance.mcpConfigId
-    ) {
-      // 公式サーバーの設定は物理削除のまま（機密情報を含むため）
-      await tx.mcpConfig.delete({
-        where: {
-          id: serverInstance.mcpConfigId,
-          organizationId,
-        },
-      });
+    if (serverInstance.serverType === ServerType.OFFICIAL) {
+      // mcpServerTemplate経由でMcpConfigを取得して削除
+      const mcpServerTemplateId = serverInstance.mcpServers[0]?.id;
+      if (mcpServerTemplateId) {
+        const mcpConfig = await tx.mcpConfig.findFirst({
+          where: {
+            mcpServerTemplateId,
+            organizationId,
+          },
+        });
+        if (mcpConfig) {
+          // 公式サーバーの設定は物理削除のまま（機密情報を含むため）
+          await tx.mcpConfig.delete({
+            where: {
+              id: mcpConfig.id,
+            },
+          });
+        }
+      }
     }
 
     return serverInstance;

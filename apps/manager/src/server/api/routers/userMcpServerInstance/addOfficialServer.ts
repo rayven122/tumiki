@@ -38,7 +38,7 @@ export const addOfficialServer = async ({
 
   const envVars = Object.keys(input.envVars);
   const isEnvVarsMatch = envVars.every((envVar) =>
-    mcpServerTemplate.envVars.includes(envVar),
+    mcpServerTemplate.envVarKeys.includes(envVar),
   );
   if (!isEnvVarsMatch && !input.isPending) {
     throw new Error("MCPサーバーの環境変数が一致しません");
@@ -61,10 +61,10 @@ export const addOfficialServer = async ({
     });
   });
 
-  // authType: NONEかつenvVars: []の場合は接続検証をスキップ
+  // authType: NONEかつenvVarKeys: []の場合は接続検証をスキップ
   const skipValidation =
     mcpServerTemplate.authType === "NONE" &&
-    mcpServerTemplate.envVars.length === 0;
+    mcpServerTemplate.envVarKeys.length === 0;
 
   return {
     id: data.server.id,

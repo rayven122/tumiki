@@ -107,9 +107,8 @@ export const createUserServerComponents = async (
       // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
       serverStatus: isPending ? ServerStatus.PENDING : ServerStatus.RUNNING,
       serverType: ServerType.OFFICIAL,
-      mcpConfigId: config.id,
-      // 多対多リレーション: mcpServerTemplatesとallowedToolsを接続
-      mcpServerTemplates: {
+      // 多対多リレーション: mcpServersとallowedToolsを接続
+      mcpServers: {
         connect: { id: mcpServerTemplateId },
       },
       allowedTools: {

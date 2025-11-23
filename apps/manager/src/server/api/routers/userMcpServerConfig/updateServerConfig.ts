@@ -46,7 +46,7 @@ export const updateServerConfig = async ({
   if (input.envVars) {
     const envVars = Object.keys(input.envVars);
     const isEnvVarsMatch = envVars.every((envVar) =>
-      mcpConfig.mcpServerTemplate?.envVars.includes(envVar),
+      mcpConfig.mcpServerTemplate?.envVarKeys.includes(envVar),
     );
     if (!isEnvVarsMatch) {
       throw new Error("MCPサーバーの環境変数が一致しません");

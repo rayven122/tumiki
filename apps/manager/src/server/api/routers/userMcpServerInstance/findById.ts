@@ -23,12 +23,7 @@ export const findById = async ({
     },
     include: {
       allowedTools: true, // 有効化されているツール
-      mcpConfig: {
-        include: {
-          mcpServerTemplate: true,
-        },
-      },
-      mcpServerTemplates: true, // 関連するテンプレート（通常は1つ）
+      mcpServers: true, // 関連するテンプレート（通常は1つ）
       apiKeys: true,
       organization: true,
     },
@@ -45,12 +40,26 @@ export const findById = async ({
   // Get MCP server URL and iconPath from the template
   let mcpServerUrl: string | null = null;
   let mcpServerIconPath: string | null = null;
-  const mcpServerTemplate =
-    instance.mcpConfig?.mcpServerTemplate ?? instance.mcpServerTemplates[0];
+  const mcpServerTemplate = instance.mcpServers[0];
 
   if (mcpServerTemplate) {
     mcpServerUrl = mcpServerTemplate.url ?? null;
     mcpServerIconPath = mcpServerTemplate.iconPath ?? null;
+  }
+
+  // mcpConfigを取得（mcpServerTemplate経由）
+  let mcpConfig: { id: string; mcpServerTemplate: { id: string } } | null = null;
+  if (mcpServerTemplate && instance.serverType === ServerType.OFFICIAL) {
+    const config = await db.mcpConfig.findFirst({
+      where: {
+        mcpServerTemplateId: mcpServerTemplate.id,
+        organizationId: ctx.currentOrganizationId,
+      },
+      include: {
+        mcpServerTemplate: true,
+      },
+    });
+    mcpConfig = config;
   }
 
   // 公式サーバーまたはカスタムサーバーの場合、関連する全てのツールを取得
@@ -68,9 +77,8 @@ export const findById = async ({
     } | null;
   }> = [];
 
-  if (instance.serverType === ServerType.OFFICIAL && instance.mcpConfig) {
+  if (instance.serverType === ServerType.OFFICIAL && mcpConfig) {
     // 公式サーバー：McpConfigに紐づくテンプレートのツールを取得
-    const mcpConfig = instance.mcpConfig;
     if (mcpConfig.mcpServerTemplate) {
       const template = await db.mcpServerTemplate.findUnique({
         where: { id: mcpConfig.mcpServerTemplateId },

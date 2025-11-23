@@ -47,7 +47,6 @@ export const addCustomServer = async ({
         description: input.description,
         serverStatus: ServerStatus.PENDING,
         serverType: ServerType.CUSTOM,
-        mcpConfigId,
         allowedTools: {
           connect: allowedToolIds.map((id) => ({ id })),
         },

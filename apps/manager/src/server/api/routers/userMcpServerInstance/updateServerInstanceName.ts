@@ -31,24 +31,34 @@ export const updateServerInstanceName = async ({
         description: input.description,
       },
       include: {
-        mcpConfig: true,
+        mcpServers: {
+          select: { id: true },
+        },
       },
     });
 
     // 公式サーバーの場合は、mcpConfig の name も更新する
-    if (
-      serverInstance.serverType === ServerType.OFFICIAL &&
-      serverInstance.mcpConfigId
-    ) {
-      await tx.mcpConfig.update({
-        where: {
-          id: serverInstance.mcpConfigId,
-          organizationId,
-        },
-        data: {
-          name: input.name,
-        },
-      });
+    if (serverInstance.serverType === ServerType.OFFICIAL) {
+      // mcpServerTemplate経由でMcpConfigを取得
+      const mcpServerTemplateId = serverInstance.mcpServers[0]?.id;
+      if (mcpServerTemplateId) {
+        const mcpConfig = await tx.mcpConfig.findFirst({
+          where: {
+            mcpServerTemplateId,
+            organizationId,
+          },
+        });
+        if (mcpConfig) {
+          await tx.mcpConfig.update({
+            where: {
+              id: mcpConfig.id,
+            },
+            data: {
+              name: input.name,
+            },
+          });
+        }
+      }
     }
     return serverInstance;
   });

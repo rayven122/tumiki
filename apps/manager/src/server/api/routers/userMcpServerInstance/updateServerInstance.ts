@@ -31,7 +31,9 @@ export const updateServerInstance = async ({
       },
       select: {
         serverType: true,
-        mcpConfigId: true,
+        mcpServers: {
+          select: { id: true },
+        },
         allowedTools: {
           select: { id: true },
         },
@@ -67,19 +69,23 @@ export const updateServerInstance = async ({
     });
 
     // 公式サーバーの場合は、mcpConfig の name も更新する
-    if (
-      existingServer.serverType === ServerType.OFFICIAL &&
-      existingServer.mcpConfigId
-    ) {
-      await tx.mcpConfig.update({
-        where: {
-          id: existingServer.mcpConfigId,
-          organizationId,
-        },
-        data: {
-          name,
-        },
-      });
+    if (existingServer.serverType === ServerType.OFFICIAL) {
+      // mcpServerTemplate経由でMcpConfigを取得
+      const mcpServerTemplateId = existingServer.mcpServers[0]?.id;
+      if (mcpServerTemplateId) {
+        const mcpConfig = await tx.mcpConfig.findFirst({
+          where: {
+            mcpServerTemplateId,
+            organizationId,
+          },
+        });
+        if (mcpConfig) {
+          await tx.mcpConfig.update({
+            where: { id: mcpConfig.id },
+            data: { name },
+          });
+        }
+      }
     }
 
     return updatedServer;
