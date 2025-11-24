@@ -23,7 +23,7 @@ export const findById = async ({
     },
     include: {
       allowedTools: true, // 有効化されているツール
-      mcpServers: true, // 関連するテンプレート（通常は1つ）
+      mcpServerTemplates: true, // 関連するテンプレート（通常は1つ）
       apiKeys: true,
       organization: true,
     },
@@ -40,7 +40,7 @@ export const findById = async ({
   // Get MCP server URL and iconPath from the template
   let mcpServerUrl: string | null = null;
   let mcpServerIconPath: string | null = null;
-  const mcpServerTemplate = instance.mcpServers[0];
+  const mcpServerTemplate = instance.mcpServerTemplates[0];
 
   if (mcpServerTemplate) {
     mcpServerUrl = mcpServerTemplate.url ?? null;
@@ -144,7 +144,7 @@ export const findById = async ({
     createdAt: instance.createdAt,
     updatedAt: instance.updatedAt,
     allowedTools: instance.allowedTools, // 有効化されているツール
-    mcpConfig: instance.mcpConfig, // サーバー設定
+    mcpConfig, // サーバー設定
     apiKeys: instance.apiKeys,
     organization: instance.organization,
     availableTools, // 利用可能な全ツール（有効/無効状態付き）

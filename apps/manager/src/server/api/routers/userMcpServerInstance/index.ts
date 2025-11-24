@@ -5,11 +5,6 @@ import {
   McpServerIdSchema,
   McpToolIdSchema,
   McpConfigIdSchema,
-  // 旧スキーマ互換性のため残存
-  UserMcpServerInstanceIdSchema,
-  UserToolGroupIdSchema,
-  ToolIdSchema,
-  UserMcpServerConfigIdSchema,
 } from "@/schema/ids";
 import { nameValidationSchema } from "@/schema/validation";
 import { findCustomServers } from "./findCustomServers";
@@ -18,8 +13,6 @@ import {
   McpApiKeySchema,
   McpServerTemplateSchema,
   McpServerSchema,
-  // 旧スキーマ互換性
-  UserMcpServerInstanceSchema,
 } from "@tumiki/db/zod";
 
 import { findOfficialServers } from "./findOfficialServers";
@@ -170,17 +163,15 @@ export const GetTimeSeriesStatsInput = z.object({
 // Output schemas for request logs
 export const RequestLogOutput = z.object({
   id: z.string(),
-  mcpServerInstanceId: z.string(),
+  mcpServerId: z.string(),
   toolName: z.string(),
   transportType: z.enum(["STDIO", "SSE", "STREAMABLE_HTTPS"]),
   method: z.string(),
-  responseStatus: z.string(),
+  httpStatus: z.string(),
   durationMs: z.number(),
-  errorMessage: z.string().nullable(),
-  errorCode: z.string().nullable(),
-  inputBytes: z.number().nullable(),
-  outputBytes: z.number().nullable(),
-  organizationId: z.string().nullable(),
+  inputBytes: z.number(),
+  outputBytes: z.number(),
+  organizationId: z.string(),
   userAgent: z.string().nullable(),
   createdAt: z.date(),
 });

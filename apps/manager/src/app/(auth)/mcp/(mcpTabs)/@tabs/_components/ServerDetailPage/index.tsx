@@ -360,7 +360,7 @@ export const ServerDetailPage = ({ instanceId }: ServerDetailPageProps) => {
                       <Wrench className="h-3 w-3" />
                       <span>ツール</span>
                       <span className="font-medium">
-                        {instance.toolGroup?.toolGroupTools?.length ?? 0}個
+                        {instance.allowedTools?.length ?? 0}個
                       </span>
                     </div>
                     <span className="flex items-center">

@@ -12,13 +12,14 @@ type ListApiKeysProps = {
 
 export const listApiKeys = async ({ ctx, input }: ListApiKeysProps) => {
   const where: Prisma.McpApiKeyWhereInput = {
-    userMcpServerInstance: {
+    mcpServer: {
       organizationId: ctx.currentOrganizationId,
+      deletedAt: null,
     },
   };
 
-  if (input.userMcpServerInstanceId) {
-    where.userMcpServerInstanceId = input.userMcpServerInstanceId;
+  if (input.mcpServerId) {
+    where.mcpServerId = input.mcpServerId;
   }
 
   return await db.mcpApiKey.findMany({
@@ -29,7 +30,7 @@ export const listApiKeys = async ({ ctx, input }: ListApiKeysProps) => {
       isActive: true,
       lastUsedAt: true,
       expiresAt: true,
-      userMcpServerInstance: {
+      mcpServer: {
         select: {
           id: true,
           name: true,

@@ -1,16 +1,17 @@
 import { z } from "zod";
 import { nameValidationSchema } from "@/schema/validation";
+import { McpServerIdSchema } from "@/schema/ids";
 
 // APIキー生成用のスキーマ
 export const CreateApiKeyInput = z.object({
   name: nameValidationSchema,
-  userMcpServerInstanceId: z.string(),
+  mcpServerId: McpServerIdSchema,
   expiresInDays: z.number().optional(),
 });
 
 // APIキー一覧取得用のスキーマ
 export const ListApiKeysInput = z.object({
-  userMcpServerInstanceId: z.string().optional(),
+  mcpServerId: McpServerIdSchema.optional(),
 });
 
 // APIキー更新用のスキーマ

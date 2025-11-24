@@ -13,13 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ServerToolSelector } from "../../custom-servers/_components/dialogs/ServerToolSelector";
 import { api } from "@/trpc/react";
-import type { ToolId, UserMcpServerConfigId } from "@/schema/ids";
+import type { McpToolId } from "@/schema/ids";
 import { toast } from "@/utils/client/toast";
 import { Loader2 } from "lucide-react";
 import { ServerType } from "@tumiki/db/prisma";
 import type { RouterOutputs } from "@/trpc/react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type ServerInstance = RouterOutputs["userMcpServerInstance"]["findById"];
 
@@ -29,29 +29,16 @@ type EditServerDialogProps = {
   onSuccess: () => Promise<void> | void;
 };
 
+/**
+ * 新スキーマ：EditServerDialog
+ * - toolGroup削除
+ * - allowedToolsとavailableToolsを使用
+ */
 export const EditServerDialog = ({
   instance,
   onClose,
   onSuccess,
 }: EditServerDialogProps) => {
-  const { data: userMcpServers, isLoading } =
-    api.userMcpServerConfig.findServersWithTools.useQuery({});
-
-  // サーバータイプに応じてフィルタリング
-  const filteredServers =
-    userMcpServers?.filter((server) => {
-      if (instance.serverType === ServerType.OFFICIAL) {
-        // 公式サーバーの場合は、現在のインスタンスの元となったMCPサーバーのみ表示
-        return instance.toolGroup?.toolGroupTools?.some((toolGroupTool) =>
-          server.tools.some(
-            (serverTool) => serverTool.id === toolGroupTool.tool.id,
-          ),
-        );
-      }
-      // カスタムサーバーの場合は全て表示
-      return true;
-    }) ?? [];
-
   const { mutate: updateServerInstance, isPending } =
     api.userMcpServerInstance.update.useMutation({
       onSuccess: async () => {
@@ -68,97 +55,41 @@ export const EditServerDialog = ({
   const [serverDescription, setServerDescription] = useState(
     instance.description ?? "",
   );
-  const [selectedServerIds, setSelectedServerIds] = useState<
-    Set<UserMcpServerConfigId>
-  >(new Set());
-  const [selectedToolIds, setSelectedToolIds] = useState<
-    Map<UserMcpServerConfigId, Set<ToolId>>
-  >(new Map());
+  const [selectedToolIds, setSelectedToolIds] = useState<Set<McpToolId>>(
+    new Set(),
+  );
 
-  // 初期値を設定
+  // 初期値を設定：現在有効なツール
   useEffect(() => {
-    if (!instance.toolGroup?.toolGroupTools || !userMcpServers || isLoading)
-      return;
+    if (!instance.allowedTools) return;
 
-    // 現在有効なツールを集計
-    const toolMap = new Map<UserMcpServerConfigId, Set<ToolId>>();
-    const serverIdSet = new Set<UserMcpServerConfigId>();
+    const toolIds = new Set<McpToolId>(
+      instance.allowedTools.map((t) => t.id as McpToolId),
+    );
+    setSelectedToolIds(toolIds);
+  }, [instance.id, instance.allowedTools]);
 
-    instance.toolGroup.toolGroupTools.forEach((toolGroupTool) => {
-      const serverId =
-        toolGroupTool.userMcpServerConfigId as UserMcpServerConfigId;
-      const toolId = toolGroupTool.tool.id as ToolId;
-
-      if (!toolMap.has(serverId)) {
-        toolMap.set(serverId, new Set());
-      }
-      toolMap.get(serverId)?.add(toolId);
-    });
-
-    // 全てのツールが選択されているサーバーをselectedServerIdsに追加
-    toolMap.forEach((toolIds, serverId) => {
-      const server = userMcpServers.find((s) => {
-        if (instance.serverType === ServerType.OFFICIAL) {
-          // 公式サーバーの場合は、現在のインスタンスの元となったMCPサーバーのみ対象
-          return (
-            s.id === serverId &&
-            instance.toolGroup?.toolGroupTools?.some((toolGroupTool) =>
-              s.tools.some(
-                (serverTool) => serverTool.id === toolGroupTool.tool.id,
-              ),
-            )
-          );
-        }
-        // カスタムサーバーの場合は全て対象
-        return s.id === serverId;
-      });
-
-      if (server && toolIds.size === server.tools.length) {
-        serverIdSet.add(serverId);
-        toolMap.delete(serverId); // 全選択の場合はtoolMapから削除
-      }
-    });
-
-    setSelectedServerIds(serverIdSet);
-    setSelectedToolIds(toolMap);
-  }, [
-    instance.id,
-    instance.serverType,
-    instance.toolGroup,
-    userMcpServers,
-    isLoading,
-  ]);
-
-  const isDisabled =
-    !serverName.trim() ||
-    (selectedServerIds.size === 0 && selectedToolIds.size === 0) ||
-    isLoading;
+  const isDisabled = !serverName.trim() || selectedToolIds.size === 0;
 
   const handleUpdateServer = () => {
     if (isDisabled) return;
 
-    const serverToolIdsMap: Record<UserMcpServerConfigId, ToolId[]> = {};
-
-    selectedToolIds.forEach((toolIds, serverId) => {
-      serverToolIdsMap[serverId] = Array.from(toolIds);
-    });
-
-    selectedServerIds.forEach((serverId) => {
-      const tools = filteredServers.find(
-        (server) => server.id === serverId,
-      )?.tools;
-      if (tools) {
-        const toolIds = tools.map((tool) => tool.id);
-        serverToolIdsMap[serverId] = toolIds;
-      }
-    });
-
     updateServerInstance({
-      toolGroupId: instance.toolGroup.id,
+      id: instance.id,
       name: serverName,
       description: serverDescription,
-      serverToolIdsMap: serverToolIdsMap,
+      allowedToolIds: Array.from(selectedToolIds),
     });
+  };
+
+  const handleToolToggle = (toolId: McpToolId, checked: boolean) => {
+    const newSet = new Set(selectedToolIds);
+    if (checked) {
+      newSet.add(toolId);
+    } else {
+      newSet.delete(toolId);
+    }
+    setSelectedToolIds(newSet);
   };
 
   return (
@@ -193,14 +124,36 @@ export const EditServerDialog = ({
               />
             </div>
           )}
-          <ServerToolSelector
-            isLoading={isLoading}
-            servers={filteredServers}
-            selectedServerIds={selectedServerIds}
-            selectedToolIds={selectedToolIds}
-            onServersChange={setSelectedServerIds}
-            onToolsChange={setSelectedToolIds}
-          />
+          <div className="grid gap-2">
+            <Label>ツール選択</Label>
+            <div className="max-h-[300px] overflow-y-auto space-y-2 rounded-md border p-4">
+              {instance.availableTools?.map((tool) => (
+                <div key={tool.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`tool-${tool.id}`}
+                    checked={selectedToolIds.has(tool.id as McpToolId)}
+                    onCheckedChange={(checked) =>
+                      handleToolToggle(
+                        tool.id as McpToolId,
+                        checked as boolean,
+                      )
+                    }
+                  />
+                  <label
+                    htmlFor={`tool-${tool.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {tool.name}
+                    {tool.description && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        - {tool.description}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

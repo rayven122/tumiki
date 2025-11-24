@@ -39,42 +39,35 @@ export const OverviewTab = ({
       },
     });
 
-  // availableToolsが存在する場合はそれを使用、ない場合は従来のtoolGroupTools
+  // 新スキーマ：availableToolsを使用
   type Tool = {
     id: string;
     name: string;
     description: string | null;
     inputSchema: unknown;
     isEnabled: boolean;
-    userMcpServerConfigId: string;
-    mcpServer?: {
+    mcpConfigId: string | null;
+    mcpServerTemplate: {
       id: string;
       name: string;
       iconPath: string | null;
-    };
+    } | null;
   };
 
-  const allTools: Tool[] =
-    instance.availableTools ||
-    instance.toolGroup?.toolGroupTools?.map((tgt) => ({
-      ...tgt.tool,
-      userMcpServerConfigId: tgt.userMcpServerConfigId,
-      isEnabled: true,
-    })) ||
-    [];
+  const allTools: Tool[] = instance.availableTools || [];
 
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
 
-  // MCPサーバーの一覧を取得
+  // MCPサーバーテンプレートの一覧を取得
   const uniqueServers = useMemo(() => {
     const serverMap = new Map<
       string,
       { id: string; name: string; iconPath: string | null }
     >();
     allTools.forEach((tool) => {
-      if (tool.mcpServer && !serverMap.has(tool.mcpServer.id)) {
-        serverMap.set(tool.mcpServer.id, tool.mcpServer);
+      if (tool.mcpServerTemplate && !serverMap.has(tool.mcpServerTemplate.id)) {
+        serverMap.set(tool.mcpServerTemplate.id, tool.mcpServerTemplate);
       }
     });
     return Array.from(serverMap.values());
@@ -83,7 +76,9 @@ export const OverviewTab = ({
   // フィルタリングされたツール
   const filteredTools = useMemo(() => {
     if (!selectedServerId) return allTools;
-    return allTools.filter((tool) => tool.mcpServer?.id === selectedServerId);
+    return allTools.filter(
+      (tool) => tool.mcpServerTemplate?.id === selectedServerId,
+    );
   }, [allTools, selectedServerId]);
 
   // 有効化されているツールの数を計算
@@ -92,15 +87,10 @@ export const OverviewTab = ({
   ).length;
   const totalToolCount = filteredTools.length;
 
-  const handleToolToggle = (
-    toolId: string,
-    userMcpServerConfigId: string,
-    enabled: boolean,
-  ) => {
+  const handleToolToggle = (toolId: string, enabled: boolean) => {
     toggleTool({
       instanceId: instance.id,
       toolId,
-      userMcpServerConfigId,
       enabled,
     });
   };

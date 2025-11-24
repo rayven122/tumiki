@@ -165,11 +165,9 @@ export const createMcpServerTemplate = async ({
       url: input.url,
       envVars: Object.keys(input.envVars),
       authType: input.authType,
-      serverType: ServerType.OFFICIAL,
       createdBy: userId,
       visibility: input.visibility,
       organizationId,
-      isPublic: true,
       mcpTools: {
         createMany: {
           data: tools.map((tool) => ({

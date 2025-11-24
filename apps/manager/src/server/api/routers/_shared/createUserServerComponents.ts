@@ -88,8 +88,6 @@ export const createUserServerComponents = async (
   const config = await tx.mcpConfig.create({
     data: {
       organizationId,
-      name: instanceName,
-      description: "",
       mcpServerTemplateId,
       envVars: JSON.stringify(envVars),
     },
@@ -107,8 +105,8 @@ export const createUserServerComponents = async (
       // OAuth認証待ちの場合はPENDING、それ以外はRUNNING
       serverStatus: isPending ? ServerStatus.PENDING : ServerStatus.RUNNING,
       serverType: ServerType.OFFICIAL,
-      // 多対多リレーション: mcpServersとallowedToolsを接続
-      mcpServers: {
+      // 多対多リレーション: mcpServerTemplatesとallowedToolsを接続
+      mcpServerTemplates: {
         connect: { id: mcpServerTemplateId },
       },
       allowedTools: {

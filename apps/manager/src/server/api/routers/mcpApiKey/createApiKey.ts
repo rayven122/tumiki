@@ -13,13 +13,14 @@ type CreateApiKeyProps = {
 };
 
 export const createApiKey = async ({ ctx, input }: CreateApiKeyProps) => {
-  const { name, userMcpServerInstanceId, expiresInDays } = input;
+  const { name, mcpServerId, expiresInDays } = input;
 
   // 組織がこのMCPサーバーインスタンスの所有者かチェック
-  const instance = await db.userMcpServerInstance.findFirst({
+  const instance = await db.mcpServer.findFirst({
     where: {
-      id: userMcpServerInstanceId,
+      id: mcpServerId,
       organizationId: ctx.currentOrganizationId,
+      deletedAt: null,
     },
   });
 
@@ -42,7 +43,7 @@ export const createApiKey = async ({ ctx, input }: CreateApiKeyProps) => {
       apiKey: fullKey,
       expiresAt,
       userId: ctx.session.user.id,
-      userMcpServerInstanceId,
+      mcpServerId,
     },
   });
 

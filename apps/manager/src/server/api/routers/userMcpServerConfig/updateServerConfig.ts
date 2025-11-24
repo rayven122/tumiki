@@ -19,20 +19,16 @@ export const updateServerConfig = async ({
 }: UpdateServerConfigInputProps) => {
   const currentOrganizationId = ctx.currentOrganizationId;
 
-  // サーバーインスタンスから設定を取得
+  // サーバーインスタンスを取得
   const serverInstance = await ctx.db.mcpServer.findUnique({
     where: { id: input.id },
     include: {
-      mcpConfig: {
-        include: {
-          mcpServerTemplate: true,
-        },
-      },
+      mcpServerTemplates: true,
     },
   });
 
-  if (!serverInstance?.mcpConfig) {
-    throw new Error("組織のMCPサーバー設定が見つかりません");
+  if (!serverInstance) {
+    throw new Error("サーバーインスタンスが見つかりません");
   }
 
   // 更新する組織と、MCPサーバーの組織が一致するかチェック
@@ -40,7 +36,25 @@ export const updateServerConfig = async ({
     throw new Error("組織のMCPサーバーが見つかりません");
   }
 
-  const mcpConfig = serverInstance.mcpConfig;
+  // 関連するMcpConfigを取得
+  const mcpServerTemplate = serverInstance.mcpServerTemplates[0];
+  if (!mcpServerTemplate) {
+    throw new Error("MCPサーバーテンプレートが見つかりません");
+  }
+
+  const mcpConfig = await ctx.db.mcpConfig.findFirst({
+    where: {
+      mcpServerTemplateId: mcpServerTemplate.id,
+      organizationId: currentOrganizationId,
+    },
+    include: {
+      mcpServerTemplate: true,
+    },
+  });
+
+  if (!mcpConfig) {
+    throw new Error("組織のMCPサーバー設定が見つかりません");
+  }
 
   // 環境変数のバリデーション
   if (input.envVars) {

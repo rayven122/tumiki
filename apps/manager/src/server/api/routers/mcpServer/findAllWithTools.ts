@@ -10,8 +10,8 @@ import { db } from "@tumiki/db/server";
 export const findAllWithTools = async () => {
   const mcpServerTemplates = await db.mcpServerTemplate.findMany({
     where: {
-      isPublic: true,
       visibility: "PUBLIC",
+      organizationId: null, // グローバル共通テンプレートのみ
     },
     include: {
       mcpTools: true,

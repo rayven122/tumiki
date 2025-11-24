@@ -113,12 +113,12 @@ export const LogsAnalyticsTab = ({
                       <TableCell>
                         <Badge
                           variant={
-                            log.responseStatus?.toString().startsWith("2")
+                            log.httpStatus?.toString().startsWith("2")
                               ? "default"
                               : "destructive"
                           }
                         >
-                          {log.responseStatus || "-"}
+                          {log.httpStatus || "-"}
                         </Badge>
                       </TableCell>
                       <TableCell>{log.durationMs ?? 0}ms</TableCell>
@@ -127,9 +127,9 @@ export const LogsAnalyticsTab = ({
                         <div>↓ {formatDataSize(log.outputBytes ?? 0)}</div>
                       </TableCell>
                       <TableCell>
-                        {log.errorMessage ? (
+                        {log.httpStatus && !log.httpStatus.toString().startsWith("2") ? (
                           <Badge variant="destructive" className="text-xs">
-                            {log.errorMessage}
+                            Error
                           </Badge>
                         ) : (
                           <span className="text-gray-400">-</span>

@@ -1,22 +1,14 @@
 import type { RouterOutputs } from "@/trpc/react";
 
+/**
+ * 新スキーマ：UserMcpServerInstance → McpServer
+ * - toolGroup削除
+ * - availableToolsのmcpServer → mcpServerTemplate
+ * - userMcpServerConfigId → mcpConfigId
+ */
 export type UserMcpServerInstance = NonNullable<
   RouterOutputs["userMcpServerInstance"]["findById"]
-> & {
-  availableTools?: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    inputSchema: unknown;
-    isEnabled: boolean;
-    userMcpServerConfigId: string;
-    mcpServer: {
-      id: string;
-      name: string;
-      iconPath: string | null;
-    };
-  }>;
-};
+>;
 
 export type RequestStats =
   | RouterOutputs["userMcpServerInstance"]["getRequestStats"]

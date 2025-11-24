@@ -4,7 +4,7 @@
  * OAuth 2.0トークンリフレッシュ処理（純粋関数）
  */
 
-import type { OAuthToken } from "@tumiki/db";
+import type { McpOAuthToken } from "@tumiki/db";
 import { db } from "@tumiki/db/server";
 
 import type { DecryptedToken, TokenRefreshResponse } from "./types.js";
@@ -151,13 +151,13 @@ const requestTokenRefresh = async (
 };
 
 /**
- * OAuthTokenをDecryptedTokenに変換
+ * McpOAuthTokenをDecryptedTokenに変換
  *
- * @param token OAuthToken
+ * @param token McpOAuthToken
  * @returns DecryptedToken
  */
 const toDecryptedToken = (
-  token: OAuthToken & {
+  token: McpOAuthToken & {
     oauthClient: {
       id: string;
     };
