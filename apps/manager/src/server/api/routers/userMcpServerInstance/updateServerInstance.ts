@@ -31,7 +31,7 @@ export const updateServerInstance = async ({
       },
       select: {
         serverType: true,
-        mcpServers: {
+        mcpServerTemplates: {
           select: { id: true },
         },
         allowedTools: {
@@ -47,10 +47,10 @@ export const updateServerInstance = async ({
     // allowedToolsを更新（既存を削除して新しいものを接続）
     const currentToolIds = existingServer.allowedTools.map((t) => t.id);
     const toolsToDisconnect = currentToolIds.filter(
-      (id) => !allowedToolIds.includes(id),
+      (id) => !allowedToolIds.includes(id as string),
     );
     const toolsToConnect = allowedToolIds.filter(
-      (id) => !currentToolIds.includes(id),
+      (id) => !currentToolIds.includes(id as string),
     );
 
     const updatedServer = await tx.mcpServer.update({
@@ -63,15 +63,15 @@ export const updateServerInstance = async ({
         description,
         allowedTools: {
           disconnect: toolsToDisconnect.map((id) => ({ id })),
-          connect: toolsToConnect.map((id) => ({ id })),
+          connect: toolsToConnect.map((id) => ({ id: id as string })),
         },
       },
     });
 
-    // 公式サーバーの場合は、mcpConfig の name も更新する
+    // 公式サーバーの場合は、mcpConfig も更新する
     if (existingServer.serverType === ServerType.OFFICIAL) {
       // mcpServerTemplate経由でMcpConfigを取得
-      const mcpServerTemplateId = existingServer.mcpServers[0]?.id;
+      const mcpServerTemplateId = existingServer.mcpServerTemplates[0]?.id;
       if (mcpServerTemplateId) {
         const mcpConfig = await tx.mcpConfig.findFirst({
           where: {
@@ -82,7 +82,7 @@ export const updateServerInstance = async ({
         if (mcpConfig) {
           await tx.mcpConfig.update({
             where: { id: mcpConfig.id },
-            data: { name },
+            data: { envVars: mcpConfig.envVars }, // envVarsをそのまま保持
           });
         }
       }

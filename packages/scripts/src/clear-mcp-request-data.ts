@@ -35,11 +35,9 @@ const askConfirmation = async (question: string): Promise<boolean> => {
  * データ削除前の件数確認
  */
 const getRecordCounts = async () => {
-  const requestDataCount = await prisma.mcpServerRequestData.count();
   const requestLogCount = await prisma.mcpServerRequestLog.count();
 
   return {
-    requestDataCount,
     requestLogCount,
   };
 };
@@ -60,23 +58,16 @@ const main = async () => {
 
     console.log(`\n現在のデータ件数:`);
     console.log(
-      `  - McpServerRequestData: ${beforeCounts.requestDataCount.toLocaleString()} 件`,
-    );
-    console.log(
       `  - McpServerRequestLog: ${beforeCounts.requestLogCount.toLocaleString()} 件`,
     );
 
-    if (
-      beforeCounts.requestDataCount === 0 &&
-      beforeCounts.requestLogCount === 0
-    ) {
+    if (beforeCounts.requestLogCount === 0) {
       console.log("\n✅ 削除対象のデータが存在しません。");
       return;
     }
 
     // 削除確認
     console.log("\n⚠️  警告: 以下のテーブルの全データが削除されます:");
-    console.log("  - McpServerRequestData (MCPリクエストの詳細データ)");
     console.log("  - McpServerRequestLog (MCPリクエストログ)");
     console.log("\n🚨 この操作は元に戻すことができません。");
 
@@ -91,12 +82,6 @@ const main = async () => {
 
     // トランザクションでの削除処理
     const result = await prisma.$transaction(async (tx) => {
-      // McpServerRequestData を先に削除（外部キー制約対応）
-      const deletedRequestData = await tx.mcpServerRequestData.deleteMany({});
-      console.log(
-        `  ✅ McpServerRequestData: ${deletedRequestData.count.toLocaleString()} 件削除`,
-      );
-
       // McpServerRequestLog を削除
       const deletedRequestLog = await tx.mcpServerRequestLog.deleteMany({});
       console.log(
@@ -104,7 +89,6 @@ const main = async () => {
       );
 
       return {
-        deletedRequestData: deletedRequestData.count,
         deletedRequestLog: deletedRequestLog.count,
       };
     });
@@ -115,16 +99,10 @@ const main = async () => {
     console.log("\n🎉 削除処理が正常に完了しました！");
     console.log("\n📈 削除結果:");
     console.log(
-      `  - McpServerRequestData: ${result.deletedRequestData.toLocaleString()} 件削除`,
-    );
-    console.log(
       `  - McpServerRequestLog: ${result.deletedRequestLog.toLocaleString()} 件削除`,
     );
 
     console.log("\n📊 削除後のデータ件数:");
-    console.log(
-      `  - McpServerRequestData: ${afterCounts.requestDataCount.toLocaleString()} 件`,
-    );
     console.log(
       `  - McpServerRequestLog: ${afterCounts.requestLogCount.toLocaleString()} 件`,
     );

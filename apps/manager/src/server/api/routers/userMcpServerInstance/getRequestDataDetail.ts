@@ -10,21 +10,16 @@ export const GetRequestDataDetailInput = z.object({
 export const GetRequestDataDetailOutput = z.object({
   id: z.string(),
   requestLogId: z.string(),
-  inputDataCompressed: z.string(), // Base64エンコードされた圧縮データ
-  outputDataCompressed: z.string(), // Base64エンコードされた圧縮データ
-  originalInputSize: z.number(),
-  originalOutputSize: z.number(),
-  compressedInputSize: z.number(),
-  compressedOutputSize: z.number(),
-  compressionRatio: z.number(),
-  createdAt: z.date(),
-  // リクエストログの基本情報も含める
+  // リクエストログの基本情報
   requestLog: z.object({
     id: z.string(),
     toolName: z.string(),
     method: z.string(),
-    responseStatus: z.string(),
+    httpStatus: z.string(),
     durationMs: z.number(),
+    inputBytes: z.number(),
+    outputBytes: z.number(),
+    gcsObjectKey: z.string().nullable(),
     createdAt: z.date(),
   }),
 });
@@ -32,6 +27,7 @@ export const GetRequestDataDetailOutput = z.object({
 /**
  * 新スキーマ：リクエスト詳細データ取得
  * - mcpServerInstance → mcpServer（プロパティ名）
+ * - requestData リレーションは削除され、GCSに保存される想定
  */
 export const getRequestDataDetail = async ({
   input,
@@ -53,7 +49,6 @@ export const getRequestDataDetail = async ({
           organizationId: true,
         },
       },
-      requestData: true,
     },
   });
 
@@ -72,40 +67,29 @@ export const getRequestDataDetail = async ({
     });
   }
 
-  // 詳細データが存在しない場合
-  if (!requestLog.requestData) {
+  // GCSオブジェクトキーが存在しない場合
+  if (!requestLog.gcsObjectKey) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message:
-        "詳細データが見つかりません。データが保存されていない可能性があります。",
+        "詳細データが見つかりません。データがGCSに保存されていない可能性があります。",
     });
   }
 
-  // Bufferデータを Base64 エンコードして返却
-  const inputDataBase64 = Buffer.from(
-    requestLog.requestData.inputDataCompressed,
-  ).toString("base64");
-  const outputDataBase64 = Buffer.from(
-    requestLog.requestData.outputDataCompressed,
-  ).toString("base64");
-
+  // TODO: GCSからデータを取得する実装
+  // 現時点ではリクエストログの基本情報のみを返す
   return {
-    id: requestLog.requestData.id,
-    requestLogId: requestLog.requestData.requestLogId,
-    inputDataCompressed: inputDataBase64,
-    outputDataCompressed: outputDataBase64,
-    originalInputSize: requestLog.requestData.originalInputSize,
-    originalOutputSize: requestLog.requestData.originalOutputSize,
-    compressedInputSize: requestLog.requestData.compressedInputSize,
-    compressedOutputSize: requestLog.requestData.compressedOutputSize,
-    compressionRatio: requestLog.requestData.compressionRatio,
-    createdAt: requestLog.requestData.createdAt,
+    id: requestLog.id,
+    requestLogId: requestLog.id,
     requestLog: {
       id: requestLog.id,
       toolName: requestLog.toolName,
       method: requestLog.method,
-      responseStatus: requestLog.responseStatus,
+      httpStatus: requestLog.httpStatus,
       durationMs: requestLog.durationMs,
+      inputBytes: requestLog.inputBytes,
+      outputBytes: requestLog.outputBytes,
+      gcsObjectKey: requestLog.gcsObjectKey,
       createdAt: requestLog.createdAt,
     },
   };

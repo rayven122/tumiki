@@ -126,26 +126,23 @@ export const EditServerDialog = ({
           )}
           <div className="grid gap-2">
             <Label>ツール選択</Label>
-            <div className="max-h-[300px] overflow-y-auto space-y-2 rounded-md border p-4">
+            <div className="max-h-[300px] space-y-2 overflow-y-auto rounded-md border p-4">
               {instance.availableTools?.map((tool) => (
                 <div key={tool.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={`tool-${tool.id}`}
                     checked={selectedToolIds.has(tool.id as McpToolId)}
                     onCheckedChange={(checked) =>
-                      handleToolToggle(
-                        tool.id as McpToolId,
-                        checked as boolean,
-                      )
+                      handleToolToggle(tool.id as McpToolId, checked as boolean)
                     }
                   />
                   <label
                     htmlFor={`tool-${tool.id}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     {tool.name}
                     {tool.description && (
-                      <span className="ml-2 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground ml-2 text-xs">
                         - {tool.description}
                       </span>
                     )}

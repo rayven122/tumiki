@@ -22,7 +22,7 @@ const upsertAll = async () => {
   console.log("");
 
   try {
-    // MCPサーバーを登録（有効なサーバーのみ）
+    // MCPサーバーテンプレートを登録（有効なサーバーのみ）
     await upsertMcpServers(validServerNames);
     console.log("");
 

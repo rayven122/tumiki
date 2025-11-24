@@ -57,7 +57,8 @@ export const refreshBackendToken = async (
   };
 
   const tokenEndpointAuthMethod =
-    discovery.token_endpoint_auth_methods_supported?.[0] || "client_secret_basic";
+    discovery.token_endpoint_auth_methods_supported?.[0] ||
+    "client_secret_basic";
 
   // 3. トークンエンドポイントにリフレッシュリクエスト
   try {

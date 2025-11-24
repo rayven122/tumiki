@@ -3,16 +3,11 @@ import { db } from "@tumiki/db/server";
 import { MCP_SERVERS } from "./constants/mcpServers";
 
 /**
- * MCP サーバーを登録する
+ * MCP サーバーテンプレートを登録する
  * @param validServerNames 有効なサーバー名のリスト（環境変数が設定されているサーバー）
  */
 export const upsertMcpServers = async (validServerNames?: string[]) => {
-  const mcpServers = await db.mcpServer.findMany({
-    // 作成者が設定されていないMCPサーバーを取得
-    where: {
-      createdBy: null,
-    },
-  });
+  const mcpServerTemplates = await db.mcpServerTemplate.findMany();
 
   // 有効なサーバーのみをフィルタリング
   const serversToUpsert = validServerNames
@@ -35,28 +30,23 @@ export const upsertMcpServers = async (validServerNames?: string[]) => {
   }
 
   const upsertPromises = serversToUpsert.map((serverData) => {
-    const existingServer = mcpServers.find(
+    const existingServer = mcpServerTemplates.find(
       (server) => server.name === serverData.name,
     );
 
-    // tools プロパティを除外してDBに保存
-    const { tools: _, ...serverDataForDb } = serverData;
-
-    return db.mcpServer.upsert({
+    return db.mcpServerTemplate.upsert({
       where: { id: existingServer ? existingServer.id : "" },
       update: {
-        ...serverDataForDb,
-        visibility: "PUBLIC",
+        ...serverData,
       },
       create: {
-        ...serverDataForDb,
-        visibility: "PUBLIC",
+        ...serverData,
       },
     });
   });
   const upsertedMcpServers = await db.$transaction(upsertPromises);
 
-  console.log("✅ MCPサーバーが正常に登録されました:");
+  console.log("✅ MCPサーバーテンプレートが正常に登録されました:");
   console.log(`  登録されたMCPサーバー数: ${upsertedMcpServers.length}`);
   console.log(
     "  登録されたMCPサーバー:",

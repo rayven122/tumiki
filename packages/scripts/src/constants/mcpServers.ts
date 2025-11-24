@@ -3,19 +3,20 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { Prisma } from "@prisma/client";
 
 /**
- * MCP サーバー定義の型 (ツールリスト付き)
+ * MCP サーバーテンプレート定義の型 (ツールリスト付き)
  */
-type McpServerWithTools = Prisma.McpServerCreateWithoutToolsInput & {
-  tools?: Tool[];
-};
+type McpServerTemplateWithTools =
+  Prisma.McpServerTemplateCreateWithoutMcpToolsInput & {
+    tools?: Tool[];
+  };
 
 /**
- * db に登録する MCP サーバー一覧
+ * db に登録する MCP サーバーテンプレート一覧
  *
  * リモートMCPサーバー専用 (STREAMABLE_HTTPS / SSE トランスポート)
  * STDIO タイプは廃止されました
  */
-export const MCP_SERVERS: McpServerWithTools[] = [
+export const MCP_SERVERS: McpServerTemplateWithTools[] = [
   // ========================================
   // Public Remote MCP Servers (認証なし)
   // ========================================
@@ -27,9 +28,8 @@ export const MCP_SERVERS: McpServerWithTools[] = [
     iconPath: "/logos/context7.svg",
     url: "https://mcp.context7.com/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
-    envVars: [],
+    envVarKeys: [],
     authType: "NONE" as const,
-    isPublic: true,
   },
   // ========================================
   // OAuth Remote MCP Servers (DCR対応)
@@ -42,11 +42,10 @@ export const MCP_SERVERS: McpServerWithTools[] = [
     iconPath: "/logos/figma.svg",
     url: "https://mcp.figma.com/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
-    envVars: [],
+    envVarKeys: [],
     authType: "OAUTH" as const,
     oauthProvider: "figma",
     oauthScopes: ["mcp:connect"],
-    isPublic: true,
     // OAuth認証が必要なためツールリストを定義
     // 最終更新: 2025-01-18 (Figma MCP Server)
     tools: [
@@ -128,10 +127,9 @@ export const MCP_SERVERS: McpServerWithTools[] = [
     iconPath: "/logos/linear.svg",
     url: "https://mcp.linear.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
-    envVars: [],
+    envVarKeys: [],
     authType: "OAUTH" as const,
     oauthProvider: "linear",
-    isPublic: true,
     // OAuth認証が必要なためツールリストを定義
     // 最終更新: 2025-01-18 (Linear MCP v1.0)
     tools: [
@@ -582,10 +580,12 @@ export const MCP_SERVERS: McpServerWithTools[] = [
     iconPath: "/logos/deepl.svg",
     url: "https://deepl-mcp-67726874216.asia-northeast1.run.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
-    // Cloud Run認証はgoogle-auth-libraryで自動取得（authType: CLOUD_RUN_IAM）
-    // envVarsはMCPサーバー用のカスタムヘッダーのみ
-    envVars: ["X-DeepL-API-Key"],
-    authType: "CLOUD_RUN_IAM" as const,
-    isPublic: true,
+    // Cloud Run認証はgoogle-auth-libraryで自動取得
+    // envVarKeysはMCPサーバー用のカスタムヘッダーのみ
+    envVarKeys: ["X-DeepL-API-Key"],
+    authType: "NONE" as const,
+    useCloudRunIam: true,
+    args: [],
+    oauthScopes: [],
   },
 ];

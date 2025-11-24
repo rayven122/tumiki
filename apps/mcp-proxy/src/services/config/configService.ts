@@ -32,16 +32,19 @@ const getEnabledServersForInstanceFromDB = async (
     const mcpServer = await db.mcpServer.findUnique({
       where: { id: mcpServerId },
       include: {
-        mcpServers: true, // McpServerTemplate[]
+        mcpServerTemplates: true, // McpServerTemplate[]
       },
     });
 
-    if (!mcpServer?.mcpServers || mcpServer.mcpServers.length === 0) {
+    if (
+      !mcpServer?.mcpServerTemplates ||
+      mcpServer.mcpServerTemplates.length === 0
+    ) {
       return [];
     }
 
     // 各Templateに対してConfigを取得し、設定を構築
-    const configPromises = mcpServer.mcpServers.map(
+    const configPromises = mcpServer.mcpServerTemplates.map(
       async (mcpServerTemplate) => {
         // McpConfigを取得（userId優先、なければorganizationId）
         const mcpConfig = await db.mcpConfig.findFirst({

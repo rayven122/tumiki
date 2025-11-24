@@ -31,16 +31,16 @@ export const updateServerInstanceName = async ({
         description: input.description,
       },
       include: {
-        mcpServers: {
+        mcpServerTemplates: {
           select: { id: true },
         },
       },
     });
 
-    // 公式サーバーの場合は、mcpConfig の name も更新する
+    // 公式サーバーの場合は、mcpConfig の envVars を保持
     if (serverInstance.serverType === ServerType.OFFICIAL) {
       // mcpServerTemplate経由でMcpConfigを取得
-      const mcpServerTemplateId = serverInstance.mcpServers[0]?.id;
+      const mcpServerTemplateId = serverInstance.mcpServerTemplates[0]?.id;
       if (mcpServerTemplateId) {
         const mcpConfig = await tx.mcpConfig.findFirst({
           where: {
@@ -49,12 +49,13 @@ export const updateServerInstanceName = async ({
           },
         });
         if (mcpConfig) {
+          // McpConfigにはnameフィールドが存在しないため、envVarsをそのまま保持
           await tx.mcpConfig.update({
             where: {
               id: mcpConfig.id,
             },
             data: {
-              name: input.name,
+              envVars: mcpConfig.envVars,
             },
           });
         }

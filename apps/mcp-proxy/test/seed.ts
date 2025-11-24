@@ -160,7 +160,7 @@ const main = async () => {
       serverType: ServerType.CUSTOM,
       authType: AuthType.API_KEY,
       organizationId: organization.id,
-      mcpServers: {
+      mcpServerTemplates: {
         connect: [{ id: mcpServerTemplate.id }],
       },
       allowedTools: {

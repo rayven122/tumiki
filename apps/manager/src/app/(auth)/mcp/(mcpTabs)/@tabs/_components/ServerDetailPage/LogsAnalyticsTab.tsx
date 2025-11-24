@@ -127,7 +127,8 @@ export const LogsAnalyticsTab = ({
                         <div>↓ {formatDataSize(log.outputBytes ?? 0)}</div>
                       </TableCell>
                       <TableCell>
-                        {log.httpStatus && !log.httpStatus.toString().startsWith("2") ? (
+                        {log.httpStatus &&
+                        !log.httpStatus.toString().startsWith("2") ? (
                           <Badge variant="destructive" className="text-xs">
                             Error
                           </Badge>

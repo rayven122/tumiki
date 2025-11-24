@@ -4,15 +4,15 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-import type { McpServer } from "@tumiki/db/server";
+import type { McpServerTemplate } from "@tumiki/db/server";
 
 /**
  * MCPサーバーからツール一覧を取得する
- * @param server MCPサーバー
+ * @param server MCPサーバーテンプレート
  * @returns ツール一覧
  */
 export const getMcpServerTools = async (
-  server: McpServer,
+  server: McpServerTemplate,
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化
@@ -54,12 +54,12 @@ export const getMcpServerTools = async (
 
 /**
  * MCPサーバーからツール一覧を取得する（SSE版）
- * @param server MCPサーバー
+ * @param server MCPサーバーテンプレート
  * @param envVars 環境変数（ヘッダーとして使用）
  * @returns ツール一覧
  */
 export const getMcpServerToolsSSE = async (
-  server: Pick<McpServer, "name" | "url">,
+  server: Pick<McpServerTemplate, "name" | "url">,
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化
@@ -99,12 +99,12 @@ export const getMcpServerToolsSSE = async (
 
 /**
  * MCPサーバーからツール一覧を取得する（HTTP版）
- * @param server MCPサーバー
+ * @param server MCPサーバーテンプレート
  * @param headers HTTPヘッダー
  * @returns ツール一覧
  */
 export const getMcpServerToolsHTTP = async (
-  server: Pick<McpServer, "name" | "url">,
+  server: Pick<McpServerTemplate, "name" | "url">,
   headers: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化

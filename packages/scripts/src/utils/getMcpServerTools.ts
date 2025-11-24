@@ -5,7 +5,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { GoogleAuth } from "google-auth-library";
 
-import type { McpServer } from "@tumiki/db/server";
+import type { McpServerTemplate } from "@tumiki/db/server";
 
 /**
  * Cloud Run認証用のIDトークンを取得する
@@ -32,11 +32,11 @@ const getCloudRunIdToken = async (targetAudience: string): Promise<string> => {
 
 /**
  * MCPサーバーからツール一覧を取得する
- * @param server MCPサーバー
+ * @param server MCPサーバーテンプレート
  * @returns ツール一覧
  */
 export const getMcpServerTools = async (
-  server: McpServer,
+  server: McpServerTemplate,
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化
@@ -58,8 +58,8 @@ export const getMcpServerTools = async (
       // Streamable HTTPS サーバーの場合
       const headers: Record<string, string> = {};
 
-      // Cloud Run（authType === "CLOUD_RUN_IAM"）の場合のみ、IAM認証トークンを取得
-      if (server.authType === "CLOUD_RUN_IAM") {
+      // Cloud Run（useCloudRunIam === true）の場合のみ、IAM認証トークンを取得
+      if (server.useCloudRunIam) {
         try {
           // Cloud RunサービスのベースURLをオーディエンスとして使用
           const serviceUrl = new URL(server.url ?? "");
@@ -133,12 +133,12 @@ export const getMcpServerTools = async (
 
 /**
  * MCPサーバーからツール一覧を取得する（SSE版）
- * @param server MCPサーバー
+ * @param server MCPサーバーテンプレート
  * @param envVars 環境変数（ヘッダーとして使用）
  * @returns ツール一覧
  */
 export const getMcpServerToolsSSE = async (
-  server: Pick<McpServer, "name" | "url">,
+  server: Pick<McpServerTemplate, "name" | "url">,
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化
@@ -183,12 +183,12 @@ export const getMcpServerToolsSSE = async (
 
 /**
  * MCPサーバーからツール一覧を取得する（HTTP版）
- * @param server MCPサーバー
+ * @param server MCPサーバーテンプレート
  * @param headers HTTPヘッダー
  * @returns ツール一覧
  */
 export const getMcpServerToolsHTTP = async (
-  server: Pick<McpServer, "name" | "url">,
+  server: Pick<McpServerTemplate, "name" | "url">,
   headers: Record<string, string>,
 ): Promise<Tool[]> => {
   // MCPクライアントの初期化

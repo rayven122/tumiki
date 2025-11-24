@@ -1,14 +1,15 @@
 import { db } from "@tumiki/db/server";
 
 /**
- * MCPサーバーとツールを一括で登録する
+ * MCPサーバーとツールを一括で削除する
  */
 const cleanUserMcp = async () => {
   try {
-    // MCPサーバーを登録
-    await db.userMcpServerInstance.deleteMany({});
-    await db.userMcpServerConfig.deleteMany({});
-    await db.userToolGroup.deleteMany({});
+    // MCPサーバーの関連データを削除
+    await db.mcpApiKey.deleteMany({});
+    await db.mcpServerRequestLog.deleteMany({});
+    await db.mcpServer.deleteMany({});
+    await db.mcpConfig.deleteMany({});
   } catch (error) {
     if (error instanceof Error) {
       console.error("エラーが発生しました:", error.message);
