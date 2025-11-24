@@ -155,3 +155,7 @@ dist/
 .local/uv/
 
 reports/
+# Desktop app database
+*.db
+*.db-journal
+apps/desktop/data/

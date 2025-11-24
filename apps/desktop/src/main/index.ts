@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import { createMainWindow } from "./window";
+import { initializeDb, closeDb } from "./db";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -12,7 +13,10 @@ const createWindow = (): void => {
 };
 
 // アプリケーション準備完了時
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // データベース初期化
+  await initializeDb();
+
   createWindow();
 
   app.on("activate", () => {
@@ -29,4 +33,9 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+// アプリケーション終了前にデータベース接続をクリーンアップ
+app.on("before-quit", async () => {
+  await closeDb();
 });

@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma/generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DESKTOP_DATABASE_URL")
+}
+
+// 認証トークン（暗号化保存）
+model AuthToken {
+  id           String   @id @default(uuid())
+  accessToken  String   // 暗号化されたアクセストークン
+  refreshToken String   // 暗号化されたリフレッシュトークン
+  expiresAt    DateTime // トークンの有効期限
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("auth_tokens")
+}
+
+// ログ同期キュー
+model LogSyncQueue {
+  id         Int      @id @default(autoincrement())
+  serverId   String   // MCPサーバーID
+  logEntry   String   // ログエントリ（JSON形式）
+  syncStatus String   @default("pending") // pending | syncing | synced | failed
+  retryCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  syncedAt   DateTime?
+
+  @@index([syncStatus])
+  @@index([serverId])
+  @@map("log_sync_queue")
+}
