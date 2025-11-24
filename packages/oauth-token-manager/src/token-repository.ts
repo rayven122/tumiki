@@ -4,7 +4,7 @@
  * データベースからのトークン取得・更新処理（純粋関数）
  */
 
-import type { OAuthToken } from "@tumiki/db";
+import type { McpOAuthToken } from "@tumiki/db";
 import { db } from "@tumiki/db/server";
 
 /**
@@ -18,15 +18,13 @@ export const getTokenFromDB = async (
   mcpServerId: string,
   userId: string,
 ): Promise<
-  | (OAuthToken & {
+  | (McpOAuthToken & {
       oauthClient: {
         id: string;
-        mcpServerId: string;
+        mcpServerTemplateId: string | null;
         clientId: string;
         clientSecret: string | null;
-        tokenEndpoint: string;
-        authorizationEndpoint: string;
-        tokenEndpointAuthMethod: string;
+        authorizationServerUrl: string;
       };
     })
   | null
@@ -51,26 +49,23 @@ export const getTokenFromDB = async (
   // 最初の組織IDを使用（複数組織対応は将来の拡張）
   const organizationId = user.members[0]!.organizationId;
 
-  const token = await db.oAuthToken.findFirst({
+  const token = await db.mcpOAuthToken.findFirst({
     where: {
       tokenPurpose: "BACKEND_MCP",
-      userMcpConfig: {
-        organizationId,
-        mcpServer: {
-          id: mcpServerId,
-        },
+      userId,
+      organizationId,
+      oauthClient: {
+        mcpServerTemplateId: mcpServerId,
       },
     },
     include: {
       oauthClient: {
         select: {
           id: true,
-          mcpServerId: true,
+          mcpServerTemplateId: true,
           clientId: true,
           clientSecret: true,
-          tokenEndpoint: true,
-          authorizationEndpoint: true,
-          tokenEndpointAuthMethod: true,
+          authorizationServerUrl: true,
         },
       },
     },
@@ -80,15 +75,10 @@ export const getTokenFromDB = async (
 };
 
 /**
- * lastUsedAtを更新
+ * lastUsedAtを更新（新スキーマでは不要になったためno-op）
  *
  * @param tokenId トークンID
  */
 export const updateLastUsedAt = async (tokenId: string): Promise<void> => {
-  await db.oAuthToken.update({
-    where: { id: tokenId },
-    data: {
-      lastUsedAt: new Date(),
-    },
-  });
+  // 新スキーマではlastUsedAtフィールドが削除されたためno-op
 };

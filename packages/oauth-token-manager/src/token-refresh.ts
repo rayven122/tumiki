@@ -22,7 +22,7 @@ export const refreshBackendToken = async (
   tokenId: string,
 ): Promise<DecryptedToken> => {
   // 1. DBからトークンとOAuthクライアント情報を取得
-  const token = await db.oAuthToken.findUnique({
+  const token = await db.mcpOAuthToken.findUnique({
     where: { id: tokenId },
     include: {
       oauthClient: true,
@@ -39,29 +39,43 @@ export const refreshBackendToken = async (
 
   const { oauthClient } = token;
 
-  // 2. トークンエンドポイントにリフレッシュリクエスト
+  // 2. Authorization Serverからエンドポイント情報を取得
+  const discoveryResponse = await fetch(
+    `${oauthClient.authorizationServerUrl}/.well-known/oauth-authorization-server`,
+  );
+
+  if (!discoveryResponse.ok) {
+    throw new TokenRefreshError(
+      `Failed to fetch discovery endpoint: ${discoveryResponse.status}`,
+      tokenId,
+    );
+  }
+
+  const discovery = (await discoveryResponse.json()) as {
+    token_endpoint: string;
+    token_endpoint_auth_methods_supported?: string[];
+  };
+
+  const tokenEndpointAuthMethod =
+    discovery.token_endpoint_auth_methods_supported?.[0] || "client_secret_basic";
+
+  // 3. トークンエンドポイントにリフレッシュリクエスト
   try {
-    const response = await requestTokenRefresh(oauthClient.tokenEndpoint, {
+    const response = await requestTokenRefresh(discovery.token_endpoint, {
       clientId: oauthClient.clientId,
       clientSecret: oauthClient.clientSecret,
       refreshToken: token.refreshToken,
-      tokenEndpointAuthMethod: oauthClient.tokenEndpointAuthMethod,
+      tokenEndpointAuthMethod,
     });
 
-    // 3. DBを新トークンで更新
+    // 4. DBを新トークンで更新
     const expiresAt = new Date(Date.now() + response.expires_in * 1000);
-    const updatedToken = await db.oAuthToken.update({
+    const updatedToken = await db.mcpOAuthToken.update({
       where: { id: tokenId },
       data: {
         accessToken: response.access_token,
         refreshToken: response.refresh_token || token.refreshToken,
-        tokenType: response.token_type,
-        scope: response.scope || token.scope,
         expiresAt,
-        refreshCount: { increment: 1 },
-        isValid: true,
-        lastError: null,
-        lastErrorAt: null,
       },
       include: {
         oauthClient: true,
@@ -70,21 +84,11 @@ export const refreshBackendToken = async (
 
     logger.info("Token refreshed successfully", {
       tokenId,
-      refreshCount: updatedToken.refreshCount,
     });
 
     return toDecryptedToken(updatedToken);
   } catch (error) {
-    // エラー情報を記録してトークンを無効化
-    await db.oAuthToken.update({
-      where: { id: tokenId },
-      data: {
-        isValid: false,
-        lastError: error instanceof Error ? error.message : "Unknown error",
-        lastErrorAt: new Date(),
-      },
-    });
-
+    // エラー情報を記録
     logger.error("Token refresh failed", { tokenId, error });
 
     throw new TokenRefreshError(
@@ -167,13 +171,7 @@ const toDecryptedToken = (
     id: token.id,
     accessToken: token.accessToken,
     refreshToken: token.refreshToken,
-    tokenType: token.tokenType,
-    scope: token.scope,
     expiresAt: token.expiresAt,
-    refreshExpiresAt: token.refreshExpiresAt,
-    isValid: token.isValid,
-    lastUsedAt: token.lastUsedAt,
-    refreshCount: token.refreshCount,
     oauthClientId: token.oauthClient.id,
   };
 };

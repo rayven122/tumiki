@@ -5,19 +5,13 @@
 import { z } from "zod";
 
 /**
- * トークン情報のZodスキーマ
+ * トークン情報のZodスキーマ（新スキーマ対応）
  */
 export const decryptedTokenSchema = z.object({
   id: z.string(),
   accessToken: z.string(),
   refreshToken: z.string().nullable(),
-  tokenType: z.string(),
-  scope: z.string().nullable(),
   expiresAt: z.coerce.date().nullable(),
-  refreshExpiresAt: z.coerce.date().nullable(),
-  isValid: z.boolean(),
-  lastUsedAt: z.coerce.date().nullable(),
-  refreshCount: z.number(),
   oauthClientId: z.string(),
 });
 

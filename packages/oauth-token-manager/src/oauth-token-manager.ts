@@ -63,14 +63,8 @@ export const getValidToken = async (
     );
   }
 
-  if (!token.isValid) {
-    throw new ReAuthRequiredError(
-      "OAuth token is invalid. User needs to re-authenticate.",
-      token.id,
-      userId,
-      mcpServerId,
-    );
-  }
+  // 新スキーマではisValidフィールドが削除されたため、
+  // トークンの有効性は expiresAt のみでチェックする
 
   // 3. 有効期限チェック
   if (isTokenExpired(token)) {

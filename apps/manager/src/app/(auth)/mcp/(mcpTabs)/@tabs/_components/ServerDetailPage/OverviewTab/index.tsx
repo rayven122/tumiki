@@ -173,17 +173,13 @@ export const OverviewTab = ({
                 );
                 return (
                   <ToolCard
-                    key={`${tool.id}-${tool.userMcpServerConfigId}`}
+                    key={`${tool.id}-${tool.mcpConfigId}`}
                     tool={tool}
                     isExpanded={expandedTools.has(tool.id)}
                     onToggleExpansion={toggleToolExpansion}
                     isEnabled={tool.isEnabled}
                     onToggleEnabled={(enabled) =>
-                      handleToolToggle(
-                        tool.id,
-                        tool.userMcpServerConfigId,
-                        enabled,
-                      )
+                      handleToolToggle(tool.id, enabled)
                     }
                     callCount={toolStat?.count}
                   />
