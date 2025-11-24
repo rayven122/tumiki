@@ -70,7 +70,7 @@ model McpServer {
   serverType   ServerType
 
   /// 使用するMCPサーバーテンプレート（複数可）
-  mcpServers McpServerTemplate[]
+  mcpServerTemplates McpServerTemplate[]
 
   /// 許可されたツール一覧
   allowedTools McpTool[]
