@@ -4,7 +4,7 @@
  * トークンの有効性チェック（純粋関数）
  */
 
-import type { OAuthToken } from "@tumiki/db";
+import type { McpOAuthToken } from "@tumiki/db";
 
 import type { DecryptedToken } from "./types.js";
 
@@ -19,7 +19,7 @@ const DEFAULT_EXPIRY_BUFFER_SECONDS = 300; // 5分
  * @param token トークン
  * @returns 期限切れの場合true
  */
-export const isTokenExpired = (token: OAuthToken): boolean => {
+export const isTokenExpired = (token: McpOAuthToken): boolean => {
   if (!token.expiresAt) {
     return false; // 有効期限が設定されていない場合は期限切れとみなさない
   }
@@ -34,7 +34,7 @@ export const isTokenExpired = (token: OAuthToken): boolean => {
  * @returns 期限切れ間近の場合true
  */
 export const isExpiringSoon = (
-  token: OAuthToken,
+  token: McpOAuthToken,
   bufferSeconds: number = DEFAULT_EXPIRY_BUFFER_SECONDS,
 ): boolean => {
   if (!token.expiresAt) {
@@ -45,13 +45,13 @@ export const isExpiringSoon = (
 };
 
 /**
- * OAuthTokenをDecryptedTokenに変換
+ * McpOAuthTokenをDecryptedTokenに変換
  *
- * @param token OAuthToken
+ * @param token McpOAuthToken
  * @returns DecryptedToken
  */
 export const toDecryptedToken = (
-  token: OAuthToken & {
+  token: McpOAuthToken & {
     oauthClient: {
       id: string;
     };
@@ -61,13 +61,7 @@ export const toDecryptedToken = (
     id: token.id,
     accessToken: token.accessToken,
     refreshToken: token.refreshToken,
-    tokenType: token.tokenType,
-    scope: token.scope,
     expiresAt: token.expiresAt,
-    refreshExpiresAt: token.refreshExpiresAt,
-    isValid: token.isValid,
-    lastUsedAt: token.lastUsedAt,
-    refreshCount: token.refreshCount,
     oauthClientId: token.oauthClient.id,
   };
 };

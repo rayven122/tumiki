@@ -60,9 +60,19 @@ const injectOAuthHeaders = async (
   headers: Record<string, string>,
 ): Promise<void> => {
   try {
+    // userIdの検証
+    if (!mcpConfig.userId) {
+      throw new Error(
+        `userId is required for OAuth authentication. MCP Config ID: ${mcpConfig.id}`,
+      );
+    }
+
     // @tumiki/oauth-token-manager でトークンを取得
     // 自動的にキャッシュから取得、期限切れ間近ならリフレッシュ
-    const token = await getValidToken(mcpConfig.id, mcpConfig.organizationId);
+    const token = await getValidToken(
+      mcpConfig.mcpServerTemplateId,
+      mcpConfig.userId,
+    );
 
     // Authorization: Bearer ヘッダーを追加
     headers.Authorization = `Bearer ${token.accessToken}`;
