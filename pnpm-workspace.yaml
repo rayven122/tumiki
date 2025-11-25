@@ -1,6 +1,5 @@
 packages:
   - apps/*
-  - '!apps/desktop'
   - packages/*
   - tooling/*
 catalog:
@@ -26,3 +25,14 @@ catalogs:
     '@types/react-dom': ^19.0.4
 ignoredBuiltDependencies:
   - '@parcel/watcher'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - better-sqlite3
+  - bufferutil
+  - esbuild
+  - prisma
+  - protobufjs
+  - puppeteer
+  - sharp
+  - unrs-resolver
+  - electron-winstaller

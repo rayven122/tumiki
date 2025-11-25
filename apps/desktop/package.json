@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "dist-electron/main/index.js",
+  "main": "dist-electron/main/index.cjs",
   "scripts": {
     "dev": "pnpm with-env electron-vite dev",
     "build": "electron-vite build",
@@ -43,7 +43,7 @@
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.0.1",
     "dotenv-cli": "^8.0.0",
-    "electron": "^34.0.0",
+    "electron": "^34.5.8",
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.1",
     "eslint": "catalog:",
