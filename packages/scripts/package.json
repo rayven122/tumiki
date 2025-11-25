@@ -4,18 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./cleanUserMcp": {
-      "types": "./dist/cleanUserMcp.d.ts",
-      "default": "./dist/cleanUserMcp.js"
-    },
-    "./createUserMcpServer": {
-      "types": "./dist/createUserMcpServer.d.ts",
-      "default": "./dist/createUserMcpServer.js"
-    },
-    "./migrateWaitingList": {
-      "types": "./dist/migrateWaitingList.d.ts",
-      "default": "./dist/migrateWaitingList.js"
-    },
     "./upsertAll": {
       "types": "./dist/upsertAll.d.ts",
       "default": "./dist/upsertAll.js"
@@ -27,22 +15,14 @@
     "./upsertMcpTools": {
       "types": "./dist/upsertMcpTools.d.ts",
       "default": "./dist/upsertMcpTools.js"
-    },
-    "./test-auth0-api": {
-      "types": "./dist/test-auth0-api.d.ts",
-      "default": "./dist/test-auth0-api.js"
     }
   },
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc",
-    "upsertAll": "pnpm with-env-all tsx src/upsertAll.ts",
-    "migrateWaitingList": "pnpm with-env tsx src/migrateWaitingList.ts",
-    "test-auth0-api": "pnpm with-env tsx src/test-auth0-api.ts",
+    "upsertAll": "pnpm with-env tsx src/upsertAll.ts",
     "security:scan:mcp": "pnpm with-env tsx src/security-scan-mcp.ts",
     "with-env": "dotenv -e ../../.env --",
-    "with-env-upsert": "dotenv -e ../../.env.upsert --",
-    "with-env-all": "dotenv -e ../../.env -- dotenv -e ../../.env.upsert --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
