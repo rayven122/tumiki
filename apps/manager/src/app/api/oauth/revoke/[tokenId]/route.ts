@@ -33,23 +33,19 @@ export const DELETE = async (
     }
 
     // トークンを取得して権限チェック
-    const oauthToken = await db.oAuthToken.findUnique({
+    const oauthToken = await db.mcpOAuthToken.findUnique({
       where: { id: tokenId },
       include: {
-        userMcpConfig: {
-          include: {
-            organization: {
-              include: {
-                members: {
-                  where: { userId },
-                },
-              },
-            },
-          },
-        },
         oauthClient: {
           include: {
-            mcpServer: true,
+            mcpServerTemplate: true,
+          },
+        },
+        organization: {
+          include: {
+            members: {
+              where: { userId },
+            },
           },
         },
       },
@@ -60,7 +56,7 @@ export const DELETE = async (
     }
 
     // 組織メンバーシップチェック
-    if (oauthToken.userMcpConfig.organization.members.length === 0) {
+    if (oauthToken.organization.members.length === 0) {
       return NextResponse.json(
         { error: "Unauthorized to delete this token" },
         { status: 403 },
@@ -68,15 +64,15 @@ export const DELETE = async (
     }
 
     // TODO: プロバイダーの revocation endpoint がある場合はトークンを取り消す
-    // simple-oauth2 では revocation endpoint の直接サポートがないため、
-    // 必要に応じて fetch で直接呼び出すか、プロバイダー固有の実装を追加する
     // 現在はDBからの削除とキャッシュ無効化のみ実施
 
     // キャッシュを無効化
-    await invalidateCache(userId, oauthToken.userMcpConfig.mcpServerId);
+    if (oauthToken.oauthClient.mcpServerTemplateId) {
+      await invalidateCache(userId, oauthToken.oauthClient.mcpServerTemplateId);
+    }
 
     // トークンを削除
-    await db.oAuthToken.delete({
+    await db.mcpOAuthToken.delete({
       where: { id: tokenId },
     });
 
