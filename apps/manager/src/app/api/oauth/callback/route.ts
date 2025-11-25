@@ -10,7 +10,12 @@ import type { NextRequest } from "next/server";
 import { db } from "@tumiki/db/server";
 import { auth } from "@/auth";
 import type { OAuthTokenData } from "@/lib/oauth/simple-oauth";
-import type { OAuthSession, McpServer, OAuthClient } from "@tumiki/db";
+import type {
+  OAuthSession,
+  McpServer,
+  McpOAuthClient,
+  McpOAuthToken,
+} from "@tumiki/db";
 import { getMcpServerToolsHTTP } from "@/utils/getMcpServerTools";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { generateApiKey } from "@/utils/server";
@@ -81,7 +86,7 @@ const getMcpServerInfo = async (
   mcpServerId: string,
   oauthSessionId: string,
 ): Promise<
-  { mcpServer: McpServer & { oauthClient: OAuthClient } } | { error: string }
+  { mcpServer: McpServer & { oauthClient: McpOAuthClient } } | { error: string }
 > => {
   const mcpServer = await db.mcpServer.findUnique({
     where: { id: mcpServerId },
@@ -100,7 +105,9 @@ const getMcpServerInfo = async (
     return { error: "Server+not+found" };
   }
 
-  return { mcpServer: mcpServer as McpServer & { oauthClient: OAuthClient } };
+  return {
+    mcpServer: mcpServer as McpServer & { oauthClient: McpOAuthClient },
+  };
 };
 
 /**
@@ -109,7 +116,7 @@ const getMcpServerInfo = async (
 const exchangeCodeForToken = async (
   code: string,
   oauthSession: OAuthSession,
-  oauthClient: OAuthClient,
+  oauthClient: McpOAuthClient,
 ): Promise<{ tokenData: OAuthTokenData } | { error: string }> => {
   try {
     // トークンリクエストボディを作成
@@ -202,10 +209,12 @@ const getOrCreateUserMcpConfig = async (
 };
 
 /**
- * OAuthTokenを保存
+ * McpOAuthTokenを保存
  */
 const saveOAuthToken = async (
   userMcpConfigId: string,
+  userId: string,
+  organizationId: string,
   oauthClientId: string,
   tokenData: OAuthTokenData,
   oauthSession: OAuthSession,
@@ -214,21 +223,22 @@ const saveOAuthToken = async (
     ? new Date(Date.now() + tokenData.expires_in * 1000)
     : null;
 
-  await db.oAuthToken.upsert({
+  await db.mcpOAuthToken.upsert({
     where: {
-      userMcpConfigId_tokenPurpose: {
-        userMcpConfigId,
+      userId_organizationId_oauthClientId_tokenPurpose: {
+        userId,
+        organizationId,
+        oauthClientId,
         tokenPurpose: "BACKEND_MCP",
       },
     },
     create: {
-      userMcpConfigId,
+      userId,
+      organizationId,
       oauthClientId,
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token ?? null,
       idToken: tokenData.id_token ?? null,
-      tokenType: tokenData.token_type ?? "Bearer",
-      scope: tokenData.scope ?? null,
       expiresAt,
       state: oauthSession.state,
       nonce: oauthSession.nonce,
@@ -241,14 +251,7 @@ const saveOAuthToken = async (
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token ?? null,
       idToken: tokenData.id_token ?? null,
-      tokenType: tokenData.token_type ?? "Bearer",
-      scope: tokenData.scope ?? null,
       expiresAt,
-      isValid: true,
-      lastUsedAt: new Date(),
-      refreshCount: 0,
-      lastError: null,
-      lastErrorAt: null,
     },
   });
 };
@@ -324,9 +327,11 @@ export const GET = async (request: NextRequest) => {
     }
     const { userMcpConfig } = configResult;
 
-    // OAuthTokenを保存
+    // McpOAuthTokenを保存
     await saveOAuthToken(
       userMcpConfig.id,
+      userId,
+      userMcpConfig.organizationId,
       oauthClient.id,
       tokenData,
       oauthSession,

@@ -36,7 +36,6 @@ export const POST = async (
     return NextResponse.json({
       success: true,
       expiresAt: refreshedToken.expiresAt,
-      refreshCount: refreshedToken.refreshCount,
     });
   } catch (error) {
     console.error("[OAuth Refresh Error]", error);
