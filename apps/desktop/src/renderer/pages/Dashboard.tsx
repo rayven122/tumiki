@@ -1,10 +1,17 @@
 import React from "react";
 import { useAtomValue } from "jotai";
 import { mcpServersAtom } from "../store/atoms";
-import { Activity, Server, AlertCircle } from "lucide-react";
+import { Activity, Server, AlertCircle, Wifi } from "lucide-react";
+import { trpc } from "../utils/trpc";
 
 export const Dashboard = (): React.ReactElement => {
   const servers = useAtomValue(mcpServersAtom);
+
+  // Manager 接続テスト
+  // @ts-expect-error - tRPC型定義の一時的な回避
+  const healthQuery = trpc.health.ping.useQuery(undefined, {
+    refetchInterval: 10000, // 10秒ごとに再取得
+  });
 
   const stats = {
     total: servers.length,
@@ -78,6 +85,56 @@ export const Dashboard = (): React.ReactElement => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Manager 接続状態 */}
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Manager 接続状態
+          </h3>
+          <div
+            className={`flex items-center space-x-2 rounded-full px-3 py-1 text-sm font-medium ${
+              healthQuery.isLoading
+                ? "bg-yellow-100 text-yellow-800"
+                : healthQuery.isError
+                  ? "bg-red-100 text-red-800"
+                  : "bg-green-100 text-green-800"
+            }`}
+          >
+            <Wifi size={16} />
+            <span>
+              {healthQuery.isLoading
+                ? "接続確認中..."
+                : healthQuery.isError
+                  ? "接続失敗"
+                  : "接続中"}
+            </span>
+          </div>
+        </div>
+        {healthQuery.isError && (
+          <div className="mt-4 rounded-md bg-red-50 p-4">
+            <p className="text-sm text-red-800">
+              エラー: {healthQuery.error.message}
+            </p>
+            <p className="mt-1 text-xs text-red-600">
+              Manager が起動しているか確認してください。
+            </p>
+          </div>
+        )}
+        {healthQuery.isSuccess && (
+          <div className="mt-4 rounded-md bg-green-50 p-4">
+            <p className="text-sm text-green-800">
+              ステータス: {healthQuery.data.status}
+            </p>
+            <p className="text-sm text-green-800">
+              メッセージ: {healthQuery.data.message}
+            </p>
+            <p className="text-xs text-green-600">
+              最終確認: {new Date(healthQuery.data.timestamp).toLocaleString()}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">

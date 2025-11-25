@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from "electron";
 import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
+import { setupAuthIpc } from "./ipc/auth";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -16,6 +17,9 @@ const createWindow = (): void => {
 app.whenReady().then(async () => {
   // データベース初期化
   await initializeDb();
+
+  // IPC ハンドラー登録
+  setupAuthIpc();
 
   createWindow();
 

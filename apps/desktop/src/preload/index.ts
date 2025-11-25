@@ -1,12 +1,29 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
+
+export type AuthTokenData = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+};
 
 // Electron APIを安全に公開
 const api = {
-  // 将来的にMCP関連APIなどを追加
+  // バージョン情報
   versions: {
     node: () => process.versions.node,
     chrome: () => process.versions.chrome,
     electron: () => process.versions.electron,
+  },
+
+  // 認証関連 API
+  auth: {
+    getToken: (): Promise<string | null> => ipcRenderer.invoke("auth:getToken"),
+    saveToken: (tokenData: AuthTokenData): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke("auth:saveToken", tokenData),
+    clearToken: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke("auth:clearToken"),
+    isAuthenticated: (): Promise<boolean> =>
+      ipcRenderer.invoke("auth:isAuthenticated"),
   },
 };
 

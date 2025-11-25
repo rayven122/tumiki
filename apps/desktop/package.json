@@ -14,9 +14,16 @@
     "with-env": "dotenv -e ../../.env --",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
-    "test": "vitest"
+    "test": "vitest",
+    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:push": "prisma db push --schema=./prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=./prisma/schema.prisma"
   },
   "dependencies": {
+    "@tanstack/react-query": "catalog:",
+    "@trpc/client": "catalog:",
+    "@trpc/react-query": "catalog:",
     "@tumiki/db": "workspace:*",
     "clsx": "^2.1.1",
     "electron-store": "^10.0.0",
@@ -26,6 +33,7 @@
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
     "react-router-dom": "^7.5.0",
+    "superjson": "^2.2.1",
     "tailwind-merge": "^3.1.0",
     "zod": "catalog:"
   },

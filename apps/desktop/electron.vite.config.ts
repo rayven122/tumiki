@@ -15,6 +15,7 @@ export default defineConfig({
           format: "cjs",
         },
         external: [
+          "electron",
           /^\.prisma\/desktop-client/,
           /prisma\/generated\/client/,
         ],

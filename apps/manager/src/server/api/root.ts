@@ -1,5 +1,6 @@
 import { postRouter } from "@/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import { healthRouter } from "./routers/health";
 import { mcpServerRouter } from "./routers/mcpServer";
 import { userMcpServerConfigRouter } from "./routers/userMcpServerConfig";
 import { userMcpServerInstanceRouter } from "./routers/userMcpServerInstance";
@@ -18,6 +19,7 @@ import { remoteMcpServerRouter } from "./routers/remoteMcpServer";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  health: healthRouter,
   post: postRouter,
   mcpServer: mcpServerRouter,
   user: userRouter,
