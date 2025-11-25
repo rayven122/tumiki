@@ -36,11 +36,7 @@ export {
 } from "./token-validator.js";
 
 // 型定義
-export type {
-  DecryptedToken,
-  OAuthClientInfo,
-  TokenRefreshResponse,
-} from "./types.js";
+export type { DecryptedToken, TokenRefreshResponse } from "./types.js";
 
 // エラークラス
 export { ReAuthRequiredError, TokenRefreshError } from "./types.js";
