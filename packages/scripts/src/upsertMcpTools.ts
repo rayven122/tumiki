@@ -6,71 +6,65 @@ import { MCP_SERVERS } from "./constants/mcpServers";
 import { getMcpServerTools } from "./utils/getMcpServerTools";
 
 /**
- * MCP サーバーからツールを取得してデータベースに書き込む
+ * MCP サーバーテンプレートからツールを取得してデータベースに書き込む
  * @param validServerNames 有効なサーバー名のリスト（環境変数が設定されているサーバー）
  */
 export const upsertMcpTools = async (validServerNames?: string[]) => {
-  const mcpServers = await db.mcpServer.findMany();
-  let filteredMcpServers = mcpServers.filter((mcpServer) =>
-    MCP_SERVERS.some((server) => server.name === mcpServer.name),
+  const mcpServerTemplates = await db.mcpServerTemplate.findMany();
+  let filteredMcpServerTemplates = mcpServerTemplates.filter(
+    (mcpServerTemplate) =>
+      MCP_SERVERS.some((server) => server.name === mcpServerTemplate.name),
   );
 
   // 有効なサーバー名が指定されている場合、さらにフィルタリング
   if (validServerNames) {
-    filteredMcpServers = filteredMcpServers.filter((mcpServer) =>
-      validServerNames.includes(mcpServer.name),
+    filteredMcpServerTemplates = filteredMcpServerTemplates.filter(
+      (mcpServerTemplate) => validServerNames.includes(mcpServerTemplate.name),
     );
   }
 
   const skippedServers: string[] = [];
   const processedServers: string[] = [];
 
-  for (const mcpServer of filteredMcpServers) {
-    // MCPサーバー定義を取得
-    const serverDef = MCP_SERVERS.find((s) => s.name === mcpServer.name);
-
+  for (const mcpServerTemplate of filteredMcpServerTemplates) {
     let tools: Tool[];
 
-    // ツールリストが定義されている場合はそれを使用
-    if (serverDef?.tools) {
-      tools = serverDef.tools;
-      console.log(`📋 ${mcpServer.name}: ツールリストを使用`);
-    } else {
-      // 動的にツールを取得
-      // 環境変数を取得
-      const envVars = mcpServer.envVars.reduce<Record<string, string>>(
-        (acc, envVar) => {
-          acc[envVar] = process.env[envVar] ?? "";
-          return acc;
-        },
-        {},
-      );
+    // 動的にツールを取得
+    // 環境変数を取得
+    const envVars = mcpServerTemplate.envVarKeys.reduce<Record<string, string>>(
+      (acc, envVarKey) => {
+        acc[envVarKey] = process.env[envVarKey] ?? "";
+        return acc;
+      },
+      {},
+    );
 
-      try {
-        // ツール一覧を取得
-        tools = await getMcpServerTools(mcpServer, envVars);
-      } catch (error) {
-        console.error(
-          `❌ ${mcpServer.name}: ツール取得エラー`,
-          error instanceof Error ? error.message : error,
-        );
-        skippedServers.push(mcpServer.name);
-        continue;
-      }
+    try {
+      // ツール一覧を取得
+      tools = await getMcpServerTools(mcpServerTemplate, envVars);
+    } catch (error) {
+      console.error(
+        `❌ ${mcpServerTemplate.name}: ツール取得エラー`,
+        error instanceof Error ? error.message : error,
+      );
+      skippedServers.push(mcpServerTemplate.name);
+      continue;
     }
 
     if (tools.length === 0) {
-      console.log(`⚠️  ${mcpServer.name}: ツールが見つかりませんでした`);
-      skippedServers.push(mcpServer.name);
+      console.log(
+        `⚠️  ${mcpServerTemplate.name}: ツールが見つかりませんでした`,
+      );
+      skippedServers.push(mcpServerTemplate.name);
       continue;
     }
 
     try {
       const upsertPromises = tools.map((tool: Tool) => {
-        return db.tool.upsert({
+        return db.mcpTool.upsert({
           where: {
-            mcpServerId_name: {
-              mcpServerId: mcpServer.id,
+            mcpServerTemplateId_name: {
+              mcpServerTemplateId: mcpServerTemplate.id,
               name: tool.name,
             },
           },
@@ -79,7 +73,7 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
             inputSchema: tool.inputSchema as object,
           },
           create: {
-            mcpServerId: mcpServer.id,
+            mcpServerTemplateId: mcpServerTemplate.id,
             name: tool.name,
             description: tool.description ?? "",
             inputSchema: tool.inputSchema as object,
@@ -91,15 +85,15 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
       const upsertedTools = await db.$transaction(upsertPromises);
 
       console.log(
-        `✅ ${mcpServer.name}: ${upsertedTools.length}個のツールを登録`,
+        `✅ ${mcpServerTemplate.name}: ${upsertedTools.length}個のツールを登録`,
       );
-      processedServers.push(mcpServer.name);
+      processedServers.push(mcpServerTemplate.name);
     } catch (error) {
       console.error(
-        `❌ ${mcpServer.name}: ツール登録エラー`,
+        `❌ ${mcpServerTemplate.name}: ツール登録エラー`,
         error instanceof Error ? error.message : error,
       );
-      skippedServers.push(mcpServer.name);
+      skippedServers.push(mcpServerTemplate.name);
     }
   }
 
