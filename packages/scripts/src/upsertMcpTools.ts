@@ -2,6 +2,7 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 import { db } from "@tumiki/db/server";
 
+import { MCP_ENV_MOCK_KEYS } from "./constants/mcpEnvMockKeys";
 import { MCP_SERVERS } from "./constants/mcpServers";
 import { getMcpServerTools } from "./utils/getMcpServerTools";
 
@@ -30,10 +31,10 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
     let tools: Tool[];
 
     // 動的にツールを取得
-    // 環境変数を取得
+    // mcpEnvMockKeys.ts からモック環境変数を取得
     const envVars = mcpServerTemplate.envVarKeys.reduce<Record<string, string>>(
       (acc, envVarKey) => {
-        acc[envVarKey] = process.env[envVarKey] ?? "";
+        acc[envVarKey] = MCP_ENV_MOCK_KEYS[envVarKey] ?? "";
         return acc;
       },
       {},
