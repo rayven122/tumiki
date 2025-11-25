@@ -11,13 +11,7 @@ export const decryptedTokenSchema = z.object({
   id: z.string(),
   accessToken: z.string(),
   refreshToken: z.string().nullable(),
-  tokenType: z.string(),
-  scope: z.string().nullable(),
   expiresAt: z.coerce.date().nullable(),
-  refreshExpiresAt: z.coerce.date().nullable(),
-  isValid: z.boolean(),
-  lastUsedAt: z.coerce.date().nullable(),
-  refreshCount: z.number(),
   oauthClientId: z.string(),
 });
 
@@ -25,18 +19,6 @@ export const decryptedTokenSchema = z.object({
  * トークン情報（復号化済み）
  */
 export type DecryptedToken = z.infer<typeof decryptedTokenSchema>;
-
-/**
- * OAuthクライアント情報
- */
-export type OAuthClientInfo = {
-  id: string;
-  clientId: string;
-  clientSecret: string | null;
-  tokenEndpoint: string;
-  authorizationEndpoint: string;
-  tokenEndpointAuthMethod: string;
-};
 
 /**
  * トークンリフレッシュレスポンス
