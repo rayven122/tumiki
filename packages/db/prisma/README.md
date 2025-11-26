@@ -20,7 +20,7 @@ erDiagram
   DateTime emailVerified "nullable"
   String image "nullable"
   Role role
-  String defaultOrganizationId FK "nullable"
+  String defaultOrganizationSlug FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -66,13 +66,13 @@ erDiagram
 
 **Properties**
 
-- `id`: Auth0のユーザーID (sub) - 主キーとして使用
+- `id`: ユーザーID - 主キーとして使用
 - `name`: ユーザー名
 - `email`: メールアドレス
 - `emailVerified`: メールアドレス検証日時 (Auth.js required)
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `defaultOrganizationId`: デフォルトの組織ID
+- `defaultOrganizationSlug`: デフォルト組織のスラッグ
 - `createdAt`:
 - `updatedAt`:
 
@@ -248,6 +248,7 @@ erDiagram
 "Organization" {
   String id PK
   String name
+  String slug UK
   String description "nullable"
   String logoUrl "nullable"
   Boolean isDeleted
@@ -354,6 +355,7 @@ erDiagram
 
 - `id`:
 - `name`: 組織名
+- `slug`: 組織のURL識別子（不変、ユニーク）
 - `description`: 組織の説明
 - `logoUrl`: 組織のロゴURL
 - `isDeleted`: 論理削除フラグ
@@ -780,7 +782,7 @@ erDiagram
   DateTime emailVerified "nullable"
   String image "nullable"
   Role role
-  String defaultOrganizationId FK "nullable"
+  String defaultOrganizationSlug FK "nullable"
   DateTime createdAt
   DateTime updatedAt
 }
@@ -795,13 +797,13 @@ erDiagram
 
 **Properties**
 
-- `id`: Auth0のユーザーID (sub) - 主キーとして使用
+- `id`: ユーザーID - 主キーとして使用
 - `name`: ユーザー名
 - `email`: メールアドレス
 - `emailVerified`: メールアドレス検証日時 (Auth.js required)
 - `image`: プロフィール画像のURL
 - `role`: ユーザーの権限
-- `defaultOrganizationId`: デフォルトの組織ID
+- `defaultOrganizationSlug`: デフォルト組織のスラッグ
 - `createdAt`:
 - `updatedAt`:
 

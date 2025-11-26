@@ -7,6 +7,8 @@ model Organization {
   id           String                   @id @default(cuid())
   /// 組織名
   name         String
+  /// 組織のURL識別子（不変、ユニーク）
+  slug         String                   @unique
   /// 組織の説明
   description  String?
   /// 組織のロゴURL
