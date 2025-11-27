@@ -9,9 +9,14 @@ const OrganizationDashboardPage = async () => {
   // デフォルト組織を探す
   const defaultOrg = organizations.find((org) => org.isDefault);
 
-  // 個人組織またはデフォルト組織がない場合はMCPサーバーページへリダイレクト
-  if (!defaultOrg || defaultOrg.isPersonal) {
+  // デフォルト組織がない場合はMCPサーバーページへリダイレクト
+  if (!defaultOrg) {
     redirect("/mcp/servers");
+  }
+
+  // 個人組織の場合は組織専用のMCPページへリダイレクト
+  if (defaultOrg.isPersonal) {
+    redirect(`/${defaultOrg.slug}/mcps`);
   }
 
   return <OrganizationDashboard organizationId={defaultOrg.id} />;

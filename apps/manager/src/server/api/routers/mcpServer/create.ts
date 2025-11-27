@@ -167,7 +167,6 @@ export const createMcpServer = async ({
         createdBy: userId,
         visibility: input.visibility,
         organizationId,
-        isPublic: true,
         tools: {
           createMany: {
             data: tools.map((tool) => ({

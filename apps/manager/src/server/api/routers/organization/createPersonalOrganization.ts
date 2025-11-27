@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { AuthenticatedContext } from "../../trpc";
+import { generateUniqueSlug } from "@tumiki/db/utils/slug";
 
 type CreatePersonalOrganizationInput = {
   ctx: AuthenticatedContext;
@@ -25,16 +26,16 @@ export const createPersonalOrganization = async ({
   });
 
   if (existingMembership) {
-    // 既に個人組織が存在する場合、defaultOrganizationIdが設定されているか確認
+    // 既に個人組織が存在する場合、defaultOrganizationSlugが設定されているか確認
     const user = await ctx.db.user.findUnique({
       where: { id: userId },
     });
 
-    if (user && !user.defaultOrganizationId) {
+    if (user && !user.defaultOrganizationSlug) {
       await ctx.db.user.update({
         where: { id: userId },
         data: {
-          defaultOrganizationId: existingMembership.organization.id,
+          defaultOrganizationSlug: existingMembership.organization.slug,
         },
       });
     }
@@ -54,10 +55,15 @@ export const createPersonalOrganization = async ({
     });
   }
 
+  // ユーザー名ベースの個人組織slugを生成
+  const baseName = user.name ?? user.email ?? "User";
+  const slug = await generateUniqueSlug(ctx.db, baseName, true);
+
   // トランザクションで個人組織の作成を実行
   const personalOrg = await ctx.db.organization.create({
     data: {
       name: `${user.name ?? user.email ?? "User"}'s Workspace`,
+      slug,
       description: "Personal workspace",
       isPersonal: true,
       maxMembers: 1,
@@ -71,11 +77,11 @@ export const createPersonalOrganization = async ({
     },
   });
 
-  // ユーザーのdefaultOrganizationIdを設定
+  // ユーザーのdefaultOrganizationSlugを設定
   await ctx.db.user.update({
     where: { id: userId },
     data: {
-      defaultOrganizationId: personalOrg.id,
+      defaultOrganizationSlug: personalOrg.slug,
     },
   });
 

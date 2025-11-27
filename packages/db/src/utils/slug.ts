@@ -26,7 +26,10 @@ export const generateBaseSlug = (name: string, isPersonal = false): string => {
     .replace(/-+/g, "-") // 連続ハイフンを1つに
     .replace(/^-+|-+$/g, ""); // 先頭・末尾のハイフンを削除
 
-  return isPersonal ? `@${normalized}` : normalized;
+  // 空文字列になった場合（日本語名など）、ランダム文字列を使用
+  const baseSlug = normalized || `user-${nanoid()}`;
+
+  return isPersonal ? `@${baseSlug}` : baseSlug;
 };
 
 /**

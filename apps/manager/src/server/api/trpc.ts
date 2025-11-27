@@ -85,64 +85,110 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let isCurrentOrganizationAdmin = false;
 
   if (session?.user?.sub) {
-    // ユーザーのdefaultOrganizationIdをチェック（優先度1）
-    const user = await db.user.findUnique({
-      where: { id: session.user.sub },
-      select: { defaultOrganizationId: true },
-    });
+    // Cookieから組織IDを取得（優先度1：[orgSlug]ルート用）
+    const cookies = opts.headers.get("cookie");
+    let orgIdFromCookie: string | null = null;
 
-    if (user?.defaultOrganizationId) {
-      // defaultOrganizationIdが設定されている場合は使用
-      currentOrganizationId = user.defaultOrganizationId;
+    if (cookies) {
+      const cookieValue = cookies
+        .split(";")
+        .find((c) => c.trim().startsWith("current-org-id="))
+        ?.split("=")[1];
 
-      // 管理者権限を確認
-      const membership = await db.organizationMember.findFirst({
-        where: {
-          userId: session.user.sub,
-          organizationId: user.defaultOrganizationId,
-        },
-        select: {
-          isAdmin: true,
-        },
-      });
-      isCurrentOrganizationAdmin = membership?.isAdmin ?? false;
-    } else {
-      // フォールバック：個人組織を検索（優先度2）
-      const firstMembership = await db.organizationMember.findFirst({
-        where: {
-          userId: session.user.sub,
-          organization: {
-            isDeleted: false,
+      if (cookieValue) {
+        orgIdFromCookie = decodeURIComponent(cookieValue);
+
+        // Cookieの組織IDが正当かを検証
+        const membership = await db.organizationMember.findFirst({
+          where: {
+            userId: session.user.sub,
+            organizationId: orgIdFromCookie,
           },
-        },
-        orderBy: {
-          organization: {
-            isPersonal: "desc", // 個人組織を優先
+          select: {
+            isAdmin: true,
           },
-        },
-        select: {
-          organizationId: true,
-          isAdmin: true,
-        },
-      });
+        });
 
-      if (firstMembership?.organizationId) {
-        currentOrganizationId = firstMembership.organizationId;
-        isCurrentOrganizationAdmin = firstMembership.isAdmin;
-
-        // 見つかった個人組織をdefaultOrganizationIdに設定
-        try {
-          await db.user.update({
-            where: { id: session.user.sub },
-            data: { defaultOrganizationId: firstMembership.organizationId },
-          });
-        } catch (error) {
-          // 更新に失敗してもログイン処理は継続
-          console.warn("Failed to update defaultOrganizationId:", error);
+        if (membership) {
+          currentOrganizationId = orgIdFromCookie;
+          isCurrentOrganizationAdmin = membership.isAdmin;
         }
+      }
+    }
+
+    // Cookieに組織IDがない場合、ユーザーのdefaultOrganizationをチェック（優先度2）
+    if (!currentOrganizationId) {
+      const user = await db.user.findUnique({
+        where: { id: session.user.sub },
+        select: {
+          defaultOrganization: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (user?.defaultOrganization?.id) {
+        // defaultOrganizationが設定されている場合は使用
+        currentOrganizationId = user.defaultOrganization.id;
+
+        // 管理者権限を確認
+        const membership = await db.organizationMember.findFirst({
+          where: {
+            userId: session.user.sub,
+            organizationId: user.defaultOrganization.id,
+          },
+          select: {
+            isAdmin: true,
+          },
+        });
+        isCurrentOrganizationAdmin = membership?.isAdmin ?? false;
       } else {
-        currentOrganizationId = null;
-        isCurrentOrganizationAdmin = false;
+        // フォールバック：個人組織を検索（優先度3）
+        const firstMembership = await db.organizationMember.findFirst({
+          where: {
+            userId: session.user.sub,
+            organization: {
+              isDeleted: false,
+            },
+          },
+          orderBy: {
+            organization: {
+              isPersonal: "desc", // 個人組織を優先
+            },
+          },
+          select: {
+            organizationId: true,
+            isAdmin: true,
+            organization: {
+              select: {
+                slug: true,
+              },
+            },
+          },
+        });
+
+        if (firstMembership?.organizationId) {
+          currentOrganizationId = firstMembership.organizationId;
+          isCurrentOrganizationAdmin = firstMembership.isAdmin;
+
+          // 見つかった個人組織をdefaultOrganizationSlugに設定
+          try {
+            await db.user.update({
+              where: { id: session.user.sub },
+              data: {
+                defaultOrganizationSlug: firstMembership.organization.slug,
+              },
+            });
+          } catch (error) {
+            // 更新に失敗してもログイン処理は継続
+            console.warn("Failed to update defaultOrganizationSlug:", error);
+          }
+        } else {
+          currentOrganizationId = null;
+          isCurrentOrganizationAdmin = false;
+        }
       }
     }
   }

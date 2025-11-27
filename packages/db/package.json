@@ -35,6 +35,10 @@
     "./testing": {
       "types": "./dist/src/testing/index.d.ts",
       "default": "./dist/src/testing/index.js"
+    },
+    "./utils/slug": {
+      "types": "./dist/src/utils/slug.d.ts",
+      "default": "./dist/src/utils/slug.js"
     }
   },
   "scripts": {

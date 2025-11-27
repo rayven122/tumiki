@@ -51,6 +51,7 @@ export default {
         "/legal",
         "/error",
         "/register",
+        "/auth/callback",
       ];
 
       // 公開パスはログイン不要
