@@ -10,13 +10,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useState } from "react";
-import type { Tool } from "@tumiki/db/prisma";
+import type { Prisma } from "@tumiki/db/prisma";
+
+type McpTool = Prisma.McpToolGetPayload<object>;
 
 type ToolsModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverName: string;
-  tools: Tool[];
+  tools: McpTool[];
 };
 
 export function ToolsModal({

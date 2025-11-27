@@ -11,7 +11,7 @@ export const getUserOrganizations = async ({
   ctx,
 }: GetUserOrganizationsProps) => {
   const { db, session } = ctx;
-  const userId = session.user.id;
+  const userId = session.user.sub;
 
   // ユーザーが所属する組織の一覧を取得（詳細情報含む）
   const memberships = await db.organizationMember.findMany({
@@ -47,7 +47,17 @@ export const getUserOrganizations = async ({
   });
 
   return memberships.map((membership) => ({
-    ...membership.organization,
+    id: membership.organization.id,
+    name: membership.organization.name,
+    slug: membership.organization.slug,
+    description: membership.organization.description,
+    logoUrl: membership.organization.logoUrl,
+    isDeleted: membership.organization.isDeleted,
+    isPersonal: membership.organization.isPersonal,
+    maxMembers: membership.organization.maxMembers,
+    createdBy: membership.organization.createdBy,
+    createdAt: membership.organization.createdAt,
+    updatedAt: membership.organization.updatedAt,
     isAdmin: membership.isAdmin,
     memberCount: membership.organization._count.members,
     isDefault: membership.organization.id === ctx.currentOrganizationId,

@@ -41,9 +41,13 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
   // 個人組織作成ミューテーション（オンボーディング完了）
   const createPersonalOrganization =
     api.organization.createPersonalOrganization.useMutation({
-      onSuccess: async () => {
+      onSuccess: async (data) => {
         await utils.organization.getUserOrganizations.invalidate();
         toast.success("アカウント設定が完了しました！");
+        // 作成された組織のslugを保存
+        if (data?.slug) {
+          sessionStorage.setItem("onboarding_org_slug", data.slug);
+        }
       },
       onError: (error) => {
         toast.error(error.message);
@@ -56,17 +60,34 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
     // 初回ログイン時は個人組織を作成
     if (isFirstLogin) {
       setShowWelcomeOverlay(true);
-      await createPersonalOrganization.mutateAsync();
+      const result = await createPersonalOrganization.mutateAsync();
+      if (result?.slug) {
+        sessionStorage.setItem("onboarding_org_slug", result.slug);
+      }
     } else {
-      // 初回ログインでない場合は直接遷移
-      router.push("/mcp");
+      // 初回ログインでない場合は、デフォルト組織を取得してリダイレクト
+      const defaultOrg =
+        await utils.organization.getDefaultOrganization.fetch();
+      if (defaultOrg?.slug) {
+        router.push(`/${defaultOrg.slug}/mcps`);
+      } else {
+        router.push("/mcp");
+      }
     }
   };
 
   // アニメーション完了後の遷移処理
   const handleAnimationComplete = () => {
     setShowWelcomeOverlay(false);
-    router.push("/mcp");
+    // sessionStorageから組織slugを取得
+    const orgSlug = sessionStorage.getItem("onboarding_org_slug");
+    sessionStorage.removeItem("onboarding_org_slug");
+
+    if (orgSlug) {
+      router.push(`/${orgSlug}/mcps`);
+    } else {
+      router.push("/mcp");
+    }
   };
 
   const handleTeamUse = () => {

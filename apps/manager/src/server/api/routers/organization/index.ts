@@ -45,6 +45,12 @@ import {
   setDefaultOrganizationInputSchema,
   setDefaultOrganizationOutputSchema,
 } from "./setDefaultOrganization";
+import {
+  getOrganizationBySlug,
+  getOrganizationBySlugInputSchema,
+  getOrganizationBySlugOutputSchema,
+} from "./getBySlug";
+import { getDefaultOrganization } from "./getDefaultOrganization";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
@@ -138,4 +144,13 @@ export const organizationRouter = createTRPCRouter({
     .input(setDefaultOrganizationInputSchema)
     .output(setDefaultOrganizationOutputSchema)
     .mutation(setDefaultOrganization),
+
+  // スラッグから組織取得
+  getBySlug: authenticatedProcedure
+    .input(getOrganizationBySlugInputSchema)
+    .output(getOrganizationBySlugOutputSchema)
+    .query(getOrganizationBySlug),
+
+  // デフォルト組織取得
+  getDefaultOrganization: authenticatedProcedure.query(getDefaultOrganization),
 });
