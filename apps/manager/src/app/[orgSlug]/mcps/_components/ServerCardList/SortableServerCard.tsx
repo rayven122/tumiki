@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { UserMcpServerCard } from "./UserMcpServerCard";
+import { UserMcpServerCard } from "../UserMcpServerCard";
 import type { RouterOutputs } from "@/trpc/react";
 
 type ServerInstance =
