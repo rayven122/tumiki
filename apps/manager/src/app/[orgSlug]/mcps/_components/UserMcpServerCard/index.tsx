@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Edit2,
 } from "lucide-react";
-import { ToolsModal } from "../ToolsModal";
+import { ToolsModal } from "../modals/ToolsModal";
 import {
   DropdownMenu,
   DropdownMenuContent,

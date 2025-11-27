@@ -13,9 +13,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { UserMcpServerConfigModal } from "../UserMcpServerConfigModal";
+import { UserMcpServerConfigModal } from "../modals/UserMcpServerConfigModal";
 import { Server, Wrench } from "lucide-react";
-import { ToolsModal } from "../ToolsModal";
+import { ToolsModal } from "../modals/ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
