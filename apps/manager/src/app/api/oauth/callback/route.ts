@@ -93,7 +93,7 @@ const getMcpServerInfo = async (
     include: { oauthClient: true },
   });
 
-  if (!mcpServer?.oauthClient || !mcpServer.oauthProvider) {
+  if (!mcpServer?.oauthClient) {
     await db.oAuthSession.update({
       where: { id: oauthSessionId },
       data: {

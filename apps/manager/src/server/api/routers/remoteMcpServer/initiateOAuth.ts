@@ -53,7 +53,6 @@ export const initiateOAuth = async ({ ctx, input }: InitiateOAuthProps) => {
     mcpServerId: input.mcpServerId,
     userMcpConfigId: input.userMcpConfigId,
     scopes: input.scopes ?? mcpServer.oauthScopes,
-    oauthProvider: mcpServer.oauthProvider,
     // フロントエンドで /api/oauth/authorize にPOSTする
     authorizeEndpoint: "/api/oauth/authorize",
   };
