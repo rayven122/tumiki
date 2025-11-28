@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Edit2,
 } from "lucide-react";
-import { ToolsModal } from "../modals/ToolsModal";
+import { ToolsModal } from "../ServerCard/ToolsModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -378,9 +378,7 @@ export const UserMcpServerCard = ({
               <span className="text-sm">
                 {isScanning
                   ? "接続テスト中"
-                  : SERVER_STATUS_LABELS[
-                      serverInstance.serverStatus as keyof typeof SERVER_STATUS_LABELS
-                    ]}
+                  : SERVER_STATUS_LABELS[serverInstance.serverStatus]}
               </span>
             </div>
             <div className="flex items-center space-x-3">

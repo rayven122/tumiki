@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { UserMcpServerConfigModal } from "../modals/UserMcpServerConfigModal";
+import { CreateServerModal } from "./CreateServerModal";
 import { Server, Wrench } from "lucide-react";
-import { ToolsModal } from "../modals/ToolsModal";
+import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
+import { AuthTypeBadge } from "./components/AuthTypeBadge";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };
@@ -32,66 +33,11 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
 
-  // DBから取得した認証タイプを使用
-  // authType + envVars の組み合わせで判定
-  const getAuthTypeDisplay = (
-    authType: string | null,
-    envVars: string[] | null,
-  ) => {
-    switch (authType) {
-      case "OAUTH":
-        return {
-          type: "OAuth",
-          color: "text-green-800",
-          bgColor: "bg-green-100",
-        };
-      case "API_KEY":
-        return {
-          type: "API Key",
-          color: "text-blue-800",
-          bgColor: "bg-blue-100",
-        };
-      case "CLOUD_RUN_IAM":
-        // Cloud Run IAM + カスタムヘッダーがある場合は API Key として扱う
-        if (envVars && envVars.length > 0) {
-          return {
-            type: "API Key",
-            color: "text-blue-800",
-            bgColor: "bg-blue-100",
-          };
-        }
-        // Cloud Run IAM単体の場合は設定不要
-        return {
-          type: "設定不要",
-          color: "text-purple-800",
-          bgColor: "bg-purple-100",
-        };
-      case "NONE":
-      default:
-        return {
-          type: "設定不要",
-          color: "text-purple-800",
-          bgColor: "bg-purple-100",
-        };
-    }
-  };
-
-  const authInfo = getAuthTypeDisplay(mcpServer.authType, mcpServer.envVarKeys);
-
-  // DBから説明とタグを取得
-  const description = mcpServer.description ?? "";
-  const tags = mcpServer.tags ?? [];
-
   return (
     <Card className="relative flex h-full flex-col">
       {/* 認証タイプタグ（右上） */}
       <div className="absolute top-2 right-2 z-10">
-        <Badge
-          variant="secondary"
-          className={`px-2 py-1 text-xs ${authInfo.color} ${authInfo.bgColor} border-0`}
-        >
-          {authInfo.type}
-        </Badge>
+        <AuthTypeBadge authType={mcpServer.authType} />
       </div>
 
       <CardHeader className="flex flex-row items-center space-y-0 pr-16 pb-2">
@@ -144,12 +90,14 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
 
         {/* MCPサーバーの概要 */}
         <div>
-          <p className="text-sm leading-relaxed text-gray-600">{description}</p>
+          <p className="text-sm leading-relaxed text-gray-600">
+            {mcpServer.description}
+          </p>
         </div>
 
         {/* カテゴリータグ（カード下部） */}
         <div className="flex flex-wrap gap-1 pt-2">
-          {tags.map((tag: string, index: number) => (
+          {mcpServer.tags.map((tag: string, index: number) => (
             <span
               key={index}
               className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium text-white"
@@ -174,7 +122,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
 
       {/* MCPサーバー追加モーダル */}
       {tokenModalOpen && (
-        <UserMcpServerConfigModal
+        <CreateServerModal
           onOpenChange={setTokenModalOpen}
           mcpServer={mcpServer}
         />

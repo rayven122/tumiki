@@ -1,58 +1,13 @@
 /**
  * OAuth 2.0 Dynamic Client Registration (DCR)
  * RFC 7591準拠のクライアント登録実装
+ * oauth4webapiを使用したモダンな実装
  *
  * @see https://datatracker.ietf.org/doc/html/rfc7591
+ * @see https://datatracker.ietf.org/doc/html/rfc8414
  */
 
-/**
- * OAuth Authorization Server Metadata
- * RFC 8414準拠のメタデータ形式
- */
-export type OAuthMetadata = {
-  issuer: string;
-  authorization_endpoint: string;
-  token_endpoint: string;
-  registration_endpoint?: string;
-  scopes_supported?: string[];
-  response_types_supported?: string[];
-  grant_types_supported?: string[];
-  token_endpoint_auth_methods_supported?: string[];
-};
-
-/**
- * DCR登録リクエスト
- */
-export type ClientRegistrationRequest = {
-  client_name: string;
-  redirect_uris: string[];
-  grant_types?: string[];
-  response_types?: string[];
-  scope?: string;
-  token_endpoint_auth_method?: string;
-  contacts?: string[];
-  logo_uri?: string;
-  client_uri?: string;
-  policy_uri?: string;
-  tos_uri?: string;
-};
-
-/**
- * DCR登録レスポンス
- */
-export type ClientRegistrationResponse = {
-  client_id: string;
-  client_secret?: string;
-  client_id_issued_at?: number;
-  client_secret_expires_at?: number;
-  registration_access_token?: string;
-  registration_client_uri?: string;
-  grant_types?: string[];
-  response_types?: string[];
-  redirect_uris?: string[];
-  token_endpoint_auth_method?: string;
-  scope?: string;
-};
+import * as oauth from "oauth4webapi";
 
 /**
  * DCRエラー
@@ -72,54 +27,27 @@ export class DCRError extends Error {
  * OAuth Authorization Server Metadataを取得
  *
  * @param serverUrl - MCPサーバーのベースURL
- * @returns OAuth メタデータ
+ * @returns OAuth Authorization Server
  * @throws {DCRError} メタデータ取得に失敗した場合
  */
 export const discoverOAuthMetadata = async (
   serverUrl: string,
-): Promise<OAuthMetadata> => {
+): Promise<oauth.AuthorizationServer> => {
   try {
     // URLを正規化（パス名を除いてオリジンのみを使用）
     // 例: https://mcp.linear.app/sse → https://mcp.linear.app
     const url = new URL(serverUrl);
-    const baseUrl = url.origin;
+    const issuer = new URL(url.origin);
 
-    // RFC 8414準拠の.well-knownエンドポイントを試行
-    const wellKnownUrl = `${baseUrl}/.well-known/oauth-authorization-server`;
-
-    const response = await fetch(wellKnownUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new DCRError(
-        `Failed to fetch OAuth metadata: ${response.statusText}`,
-        "METADATA_FETCH_FAILED",
-        response.status,
-      );
-    }
-
-    const metadata = (await response.json()) as OAuthMetadata;
-
-    // 必須フィールドの検証
-    if (
-      !metadata.issuer ||
-      !metadata.authorization_endpoint ||
-      !metadata.token_endpoint
-    ) {
-      throw new DCRError(
-        "Invalid OAuth metadata: missing required fields",
-        "INVALID_METADATA",
-      );
-    }
-
-    return metadata;
+    const response = await oauth.discoveryRequest(issuer);
+    return await oauth.processDiscoveryResponse(issuer, response);
   } catch (error) {
-    if (error instanceof DCRError) {
-      throw error;
+    if (error instanceof oauth.WWWAuthenticateChallengeError) {
+      throw new DCRError(
+        `OAuth discovery failed: ${error.message}`,
+        "DISCOVERY_ERROR",
+        error.status,
+      );
     }
 
     throw new DCRError(
@@ -134,61 +62,44 @@ export const discoverOAuthMetadata = async (
 /**
  * OAuthクライアントを登録
  *
- * @param registrationEndpoint - 登録エンドポイントURL
- * @param request - 登録リクエスト
+ * @param authServer - OAuth Authorization Server
+ * @param clientMetadata - クライアントメタデータ
  * @param initialAccessToken - 初期アクセストークン（オプション）
- * @returns 登録レスポンス
+ * @returns 登録されたクライアント情報
  * @throws {DCRError} 登録に失敗した場合
  */
 export const registerOAuthClient = async (
-  registrationEndpoint: string,
-  request: ClientRegistrationRequest,
+  authServer: oauth.AuthorizationServer,
+  clientMetadata: Partial<oauth.Client>,
   initialAccessToken?: string,
-): Promise<ClientRegistrationResponse> => {
+): Promise<oauth.Client> => {
+  if (!authServer.registration_endpoint) {
+    throw new DCRError(
+      "Server does not support Dynamic Client Registration",
+      "DCR_NOT_SUPPORTED",
+    );
+  }
+
   try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
-
-    // 初期アクセストークンがある場合は追加
+    const headers = new Headers();
     if (initialAccessToken) {
-      headers.Authorization = `Bearer ${initialAccessToken}`;
+      headers.set("Authorization", `Bearer ${initialAccessToken}`);
     }
 
-    const response = await fetch(registrationEndpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(request),
-    });
+    const response = await oauth.dynamicClientRegistrationRequest(
+      authServer,
+      clientMetadata,
+      { headers },
+    );
 
-    if (!response.ok) {
-      const errorData = (await response.json().catch(() => ({}))) as {
-        error_description?: string;
-      };
-      const errorMessage = errorData.error_description ?? response.statusText;
-
-      throw new DCRError(
-        `Client registration failed: ${errorMessage}`,
-        "REGISTRATION_FAILED",
-        response.status,
-      );
-    }
-
-    const registration = (await response.json()) as ClientRegistrationResponse;
-
-    // 必須フィールドの検証
-    if (!registration.client_id) {
-      throw new DCRError(
-        "Invalid registration response: missing client_id",
-        "INVALID_REGISTRATION_RESPONSE",
-      );
-    }
-
-    return registration;
+    return await oauth.processDynamicClientRegistrationResponse(response);
   } catch (error) {
-    if (error instanceof DCRError) {
-      throw error;
+    if (error instanceof oauth.WWWAuthenticateChallengeError) {
+      throw new DCRError(
+        `Client registration failed: ${error.message}`,
+        "REGISTRATION_FAILED",
+        error.status,
+      );
     }
 
     throw new DCRError(
@@ -206,7 +117,7 @@ export const registerOAuthClient = async (
  * @param serverUrl - MCPサーバーのベースURL
  * @param clientName - クライアント名
  * @param redirectUris - リダイレクトURI配列
- * @param scopes - 要求するスコープ（スペース区切り）
+ * @param scopes - 要求するスコープ（スペース区切り、オプション）
  * @param initialAccessToken - 初期アクセストークン（オプション）
  * @param clientIdentifier - OAuth登録時に使用するクライアント識別子（デフォルト: "Claude Code"）
  * @returns メタデータと登録情報を含むオブジェクト
@@ -220,35 +131,27 @@ export const performDCR = async (
   initialAccessToken?: string,
   clientIdentifier?: string,
 ): Promise<{
-  metadata: OAuthMetadata;
-  registration: ClientRegistrationResponse;
+  metadata: oauth.AuthorizationServer;
+  registration: oauth.Client;
 }> => {
   // Step 1: OAuth メタデータを取得
   const metadata = await discoverOAuthMetadata(serverUrl);
 
-  // Step 2: 登録エンドポイントの確認
-  if (!metadata.registration_endpoint) {
-    throw new DCRError(
-      "Server does not support Dynamic Client Registration",
-      "DCR_NOT_SUPPORTED",
-    );
-  }
-
-  // Step 3: クライアントを登録
+  // Step 2: クライアントを登録
   // ホワイトリスト制限があるサーバー（Figmaなど）に対応するため、
   // 承認されたクライアント名を使用
-  const registrationRequest: ClientRegistrationRequest = {
+  const clientMetadata: Partial<oauth.Client> = {
     client_name: clientIdentifier ?? "Claude Code",
     redirect_uris: redirectUris,
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
     token_endpoint_auth_method: "client_secret_post",
-    scope: scopes,
+    ...(scopes && { scope: scopes }),
   };
 
   const registration = await registerOAuthClient(
-    metadata.registration_endpoint,
-    registrationRequest,
+    metadata,
+    clientMetadata,
     initialAccessToken,
   );
 

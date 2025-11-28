@@ -36,7 +36,6 @@ export const createRemoteMcpServer = async ({
   let serverUrl: string;
   let serverName: string;
   let serverAuthType: "OAUTH" | "API_KEY" | "NONE" | "CLOUD_RUN_IAM";
-  let serverOauthProvider: string | null;
   let serverOauthScopes: string[];
 
   if (input.templateId) {
@@ -65,7 +64,6 @@ export const createRemoteMcpServer = async ({
       | "API_KEY"
       | "NONE"
       | "CLOUD_RUN_IAM";
-    serverOauthProvider = template.oauthProvider;
     // テンプレートからOAuthスコープを取得（優先順位: input.scopes > template.oauthScopes）
     serverOauthScopes = input.scopes ?? template.oauthScopes ?? [];
   } else {
@@ -80,15 +78,7 @@ export const createRemoteMcpServer = async ({
     serverUrl = input.customUrl;
     serverName = input.name;
     serverAuthType = input.authType;
-    serverOauthProvider = input.oauthProvider ?? null;
     serverOauthScopes = input.scopes ?? [];
-  }
-
-  if (serverAuthType === "OAUTH" && !serverOauthProvider) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "OAuth provider is required for OAuth authentication",
-    });
   }
 
   // 組織の検証
@@ -179,7 +169,6 @@ export const createRemoteMcpServer = async ({
           ? Object.keys(input.credentials.envVars)
           : [],
         authType: serverAuthType,
-        oauthProvider: serverOauthProvider,
         oauthScopes: serverOauthScopes,
         serverType: "OFFICIAL", // リモートMCPもOFFICIAL扱い
         createdBy: userId,
