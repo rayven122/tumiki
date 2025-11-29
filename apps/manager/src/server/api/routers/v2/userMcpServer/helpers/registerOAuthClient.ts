@@ -10,7 +10,7 @@ import { getOAuthRedirectUri } from "@/lib/oauth/utils";
 export type RegisterOAuthClientParams = {
   tx: PrismaTransactionClient;
   serverUrl: string;
-  templateId: string | undefined;
+  templateId: string;
   organizationId: string;
 };
 
@@ -28,7 +28,7 @@ export type RegisterOAuthClientResult = {
  * @param params パラメータオブジェクト
  * @param params.tx トランザクションクライアント
  * @param params.serverUrl OAuth Authorization ServerのURL
- * @param params.templateId テンプレートID（オプション）
+ * @param params.templateId テンプレートID（必須）
  * @param params.organizationId 組織ID
  * @returns OAuth Client情報
  */
@@ -95,7 +95,7 @@ export const registerOAuthClient = async ({
   // OAuthClientレコードを作成
   await tx.mcpOAuthClient.create({
     data: {
-      mcpServerTemplateId: templateId ?? undefined,
+      mcpServerTemplateId: templateId,
       organizationId,
       clientId,
       clientSecret,

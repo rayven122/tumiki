@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Users, ArrowRight, CheckCircle, Loader2 } from "lucide-react";
+import { User, Users, ArrowRight, CheckCircle } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +20,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
-import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { WelcomeLoadingOverlay } from "./WelcomeLoadingOverlay";
+import { useSession } from "next-auth/react";
 
 type OnboardingClientProps = {
   isFirstLogin: boolean;
@@ -30,59 +30,41 @@ type OnboardingClientProps = {
 
 export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
   const router = useRouter();
+  const { data: session } = useSession();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
 
-  const utils = api.useUtils();
-
-  // 個人組織作成ミューテーション（オンボーディング完了）
-  const createPersonalOrganization =
-    api.organization.createPersonalOrganization.useMutation({
-      onSuccess: async (data) => {
-        await utils.organization.getUserOrganizations.invalidate();
-        toast.success("アカウント設定が完了しました！");
-        // 作成された組織のslugを保存
-        if (data?.slug) {
-          sessionStorage.setItem("onboarding_org_slug", data.slug);
-        }
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    });
-
-  const handlePersonalUse = async () => {
+  const handlePersonalUse = () => {
     setSelectedOption("personal");
 
-    // 初回ログイン時は個人組織を作成
-    if (isFirstLogin) {
-      setShowWelcomeOverlay(true);
-      const result = await createPersonalOrganization.mutateAsync();
-      if (result?.slug) {
-        sessionStorage.setItem("onboarding_org_slug", result.slug);
+    // セッションから組織情報を取得（個人組織は会員登録時に自動作成済み）
+    const orgSlug = session?.user?.organizationSlug;
+    if (orgSlug) {
+      if (isFirstLogin) {
+        setShowWelcomeOverlay(true);
+      } else {
+        router.push(`/${orgSlug}/mcps`);
       }
     } else {
-      // 初回ログインでない場合は、デフォルト組織を取得してリダイレクト
-      const defaultOrg =
-        await utils.organization.getDefaultOrganization.fetch();
-      if (defaultOrg?.slug) {
-        router.push(`/${defaultOrg.slug}/mcps`);
-      } else {
-        router.push("/mcp");
-      }
+      // エラーケース: セッションに組織情報が存在しない
+      console.error(
+        "No organization found in session. This should not happen.",
+      );
+      toast.error(
+        "組織情報の取得に失敗しました。サポートにお問い合わせください。",
+      );
     }
   };
 
   // アニメーション完了後の遷移処理
   const handleAnimationComplete = () => {
     setShowWelcomeOverlay(false);
-    // sessionStorageから組織slugを取得
-    const orgSlug = sessionStorage.getItem("onboarding_org_slug");
-    sessionStorage.removeItem("onboarding_org_slug");
 
+    // セッションから組織slugを取得してリダイレクト
+    const orgSlug = session?.user?.organizationSlug;
     if (orgSlug) {
       router.push(`/${orgSlug}/mcps`);
     } else {
@@ -95,16 +77,10 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
     setIsOrgDialogOpen(true);
   };
 
-  const handleOrganizationCreated = async () => {
+  const handleOrganizationCreated = () => {
     setIsOrgDialogOpen(false);
 
-    // 初回ログイン時は個人組織を作成
-    if (isFirstLogin) {
-      await createPersonalOrganization.mutateAsync();
-    }
-
-    // 組織作成後はウェルカムオーバーレイを表示
-    // その後、MCPダッシュボードに遷移
+    // チーム組織作成後はウェルカムオーバーレイを表示
     setShowWelcomeOverlay(true);
   };
 
@@ -130,15 +106,9 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
             className={clsx(
               "transition-all hover:shadow-lg",
               selectedOption === "personal" && "ring-primary ring-2",
-              createPersonalOrganization.isPending
-                ? "cursor-not-allowed opacity-70"
-                : "cursor-pointer",
+              "cursor-pointer",
             )}
-            onClick={
-              createPersonalOrganization.isPending
-                ? undefined
-                : handlePersonalUse
-            }
+            onClick={handlePersonalUse}
           >
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
@@ -170,24 +140,13 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
               </ul>
               <Button
                 className="mt-6 w-full"
-                disabled={createPersonalOrganization.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   void handlePersonalUse();
                 }}
               >
-                {createPersonalOrganization.isPending &&
-                selectedOption === "personal" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    設定中...
-                  </>
-                ) : (
-                  <>
-                    {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+                {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
@@ -197,13 +156,9 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
             className={clsx(
               "transition-all hover:shadow-lg",
               selectedOption === "team" && "ring-primary ring-2",
-              createPersonalOrganization.isPending
-                ? "cursor-not-allowed opacity-70"
-                : "cursor-pointer",
+              "cursor-pointer",
             )}
-            onClick={
-              createPersonalOrganization.isPending ? undefined : handleTeamUse
-            }
+            onClick={handleTeamUse}
           >
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
@@ -236,24 +191,13 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
               <Button
                 className="mt-6 w-full"
                 variant="outline"
-                disabled={createPersonalOrganization.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleTeamUse();
                 }}
               >
-                {createPersonalOrganization.isPending &&
-                selectedOption === "team" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    設定中...
-                  </>
-                ) : (
-                  <>
-                    組織を作成
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+                組織を作成
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>

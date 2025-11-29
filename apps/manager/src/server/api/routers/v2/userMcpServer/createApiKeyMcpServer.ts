@@ -1,6 +1,12 @@
 import type { z } from "zod";
 import type { CreateApiKeyMcpServerInputV2 } from ".";
-import { AuthType, ServerStatus, ServerType } from "@tumiki/db/server";
+import {
+  AuthType,
+  ServerStatus,
+  ServerType,
+  TransportType,
+  McpServerVisibility,
+} from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 
@@ -112,7 +118,38 @@ export const createApiKeyMcpServer = async (
 
   // カスタムURLベースのサーバー作成
   if (input.customUrl) {
-    // McpServerの作成（カスタムURLの場合はMcpConfigなし）
+    // ユーザー専用のカスタムテンプレートを作成
+    const customTemplate = await prisma.mcpServerTemplate.create({
+      data: {
+        name: input.name,
+        description: input.description ?? "",
+        tags: [],
+        iconPath: null,
+        transportType: input.transportType ?? TransportType.SSE,
+        args: [],
+        url: input.customUrl,
+        envVarKeys: input.envVars ? Object.keys(input.envVars) : [],
+        authType: AuthType.API_KEY,
+        oauthScopes: [],
+        createdBy: userId,
+        visibility: McpServerVisibility.PRIVATE,
+        organizationId,
+      },
+    });
+
+    // McpConfigを作成（環境変数を保存）
+    const mcpConfig = input.envVars
+      ? await prisma.mcpConfig.create({
+          data: {
+            mcpServerTemplateId: customTemplate.id,
+            organizationId,
+            userId,
+            envVars: JSON.stringify(input.envVars),
+          },
+        })
+      : null;
+
+    // McpServerを作成してテンプレートと紐付け
     const mcpServer = await prisma.mcpServer.create({
       data: {
         name: input.name,
@@ -122,12 +159,15 @@ export const createApiKeyMcpServer = async (
         serverType: ServerType.OFFICIAL,
         authType: AuthType.API_KEY,
         organizationId,
+        mcpServers: {
+          connect: { id: customTemplate.id },
+        },
       },
     });
 
     return {
       id: mcpServer.id,
-      mcpConfigId: "", // カスタムURLの場合はMcpConfigがないため空文字
+      mcpConfigId: mcpConfig?.id ?? "",
     };
   }
 

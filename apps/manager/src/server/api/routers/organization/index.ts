@@ -1,11 +1,6 @@
-import {
-  authenticatedProcedure,
-  createTRPCRouter,
-  protectedProcedure,
-} from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { getUserOrganizations } from "./getUserOrganizations";
 import { createOrganization, createOrganizationInputSchema } from "./create";
-import { createPersonalOrganization } from "./createPersonalOrganization";
 import { updateOrganization, updateOrganizationInputSchema } from "./update";
 import { deleteOrganization, deleteOrganizationInputSchema } from "./delete";
 import { restoreOrganization, restoreOrganizationInputSchema } from "./restore";
@@ -69,19 +64,14 @@ export const GetUserOrganizationsOutput = z.array(
 
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
-  getUserOrganizations: authenticatedProcedure
+  getUserOrganizations: protectedProcedure
     .output(GetUserOrganizationsOutput)
     .query(getUserOrganizations),
 
   // 組織作成
-  create: authenticatedProcedure
+  create: protectedProcedure
     .input(createOrganizationInputSchema)
     .mutation(createOrganization),
-
-  // 個人組織作成（オンボーディング用）
-  createPersonalOrganization: authenticatedProcedure.mutation(
-    createPersonalOrganization,
-  ),
 
   // 組織更新
   update: protectedProcedure
@@ -146,11 +136,11 @@ export const organizationRouter = createTRPCRouter({
     .mutation(setDefaultOrganization),
 
   // スラッグから組織取得
-  getBySlug: authenticatedProcedure
+  getBySlug: protectedProcedure
     .input(getOrganizationBySlugInputSchema)
     .output(getOrganizationBySlugOutputSchema)
     .query(getOrganizationBySlug),
 
   // デフォルト組織取得
-  getDefaultOrganization: authenticatedProcedure.query(getDefaultOrganization),
+  getDefaultOrganization: protectedProcedure.query(getDefaultOrganization),
 });

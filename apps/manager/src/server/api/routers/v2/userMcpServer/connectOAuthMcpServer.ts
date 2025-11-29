@@ -2,7 +2,13 @@
  * OAuth認証付きMCPサーバー接続 procedure
  * MCPサーバーを作成し、DCRを実行してOAuth認証フローを開始する
  */
-import { ServerStatus, ServerType } from "@tumiki/db/server";
+import {
+  ServerStatus,
+  ServerType,
+  AuthType,
+  TransportType,
+  McpServerVisibility,
+} from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { type ConnectOAuthMcpServerInputV2 } from "./index";
@@ -40,9 +46,10 @@ export const connectOAuthMcpServer = async (
     });
   }
 
-  // テンプレートから情報を取得
+  // テンプレートから情報を取得、またはカスタムテンプレートを作成
   let serverUrl: string;
   let serverName: string;
+  let templateId: string;
 
   if (input.templateId) {
     const template = await tx.mcpServerTemplate.findUnique({
@@ -56,7 +63,7 @@ export const connectOAuthMcpServer = async (
       });
     }
 
-    if (!template.url || template.authType !== "OAUTH") {
+    if (!template.url || template.authType !== AuthType.OAUTH) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "テンプレートの認証方法がOAuthではありません",
@@ -65,8 +72,9 @@ export const connectOAuthMcpServer = async (
 
     serverUrl = template.url;
     serverName = input.name ?? template.name;
+    templateId = input.templateId;
   } else {
-    // カスタムURL
+    // カスタムURL: ユーザー専用のMcpServerTemplateを作成
     if (!input.customUrl || !input.name) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -76,6 +84,27 @@ export const connectOAuthMcpServer = async (
 
     serverUrl = input.customUrl;
     serverName = input.name;
+
+    // ユーザー専用のカスタムテンプレートを作成
+    const customTemplate = await tx.mcpServerTemplate.create({
+      data: {
+        name: serverName,
+        description: input.description ?? "",
+        tags: [],
+        iconPath: null,
+        transportType: input.transportType ?? TransportType.SSE,
+        args: [],
+        url: serverUrl,
+        envVarKeys: [],
+        authType: AuthType.OAUTH,
+        oauthScopes: [],
+        createdBy: userId,
+        visibility: McpServerVisibility.PRIVATE,
+        organizationId,
+      },
+    });
+
+    templateId = customTemplate.id;
   }
 
   const mcpServer = await tx.mcpServer.create({
@@ -87,11 +116,9 @@ export const connectOAuthMcpServer = async (
       serverType: ServerType.OFFICIAL,
       authType: "API_KEY",
       organizationId,
-      ...(input.templateId && {
-        mcpServers: {
-          connect: { id: input.templateId },
-        },
-      }),
+      mcpServers: {
+        connect: { id: templateId },
+      },
     },
   });
 
@@ -99,7 +126,7 @@ export const connectOAuthMcpServer = async (
   const oauthClient = await registerOAuthClient({
     tx,
     serverUrl,
-    templateId: input.templateId,
+    templateId,
     organizationId,
   });
 

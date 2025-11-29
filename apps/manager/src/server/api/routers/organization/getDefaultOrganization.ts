@@ -1,36 +1,36 @@
 import { TRPCError } from "@trpc/server";
-import type { AuthenticatedContext } from "../../trpc";
+import type { ProtectedContext } from "../../trpc";
 
 export const getDefaultOrganization = async ({
   ctx,
 }: {
-  ctx: AuthenticatedContext;
+  ctx: ProtectedContext;
 }) => {
-  const userId = ctx.session.user.id;
+  // セッションから組織slugを取得（protectedProcedureで保証されている）
+  const organizationSlug = ctx.session.user.organizationSlug;
 
-  // ユーザーのdefaultOrganizationSlugを取得
-  const user = await ctx.db.user.findUnique({
-    where: { id: userId },
+  // slugから組織を取得（メンバーシップも検証）
+  const organization = await ctx.db.organization.findUnique({
+    where: {
+      slug: organizationSlug,
+      members: { some: { userId: ctx.session.user.id } },
+    },
     select: {
-      defaultOrganization: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          description: true,
-          logoUrl: true,
-          isPersonal: true,
-        },
-      },
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      logoUrl: true,
+      isPersonal: true,
     },
   });
 
-  if (!user?.defaultOrganization) {
+  if (!organization) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "デフォルト組織が見つかりません",
     });
   }
 
-  return user.defaultOrganization;
+  return organization;
 };
