@@ -74,7 +74,7 @@ export const userMcpServerRouter = createTRPCRouter({
         return await createApiKeyMcpServer(
           tx,
           input,
-          ctx.currentOrganizationId,
+          ctx.session.user.organizationId,
           ctx.session.user.id,
         );
       });
@@ -89,7 +89,7 @@ export const userMcpServerRouter = createTRPCRouter({
         return await connectOAuthMcpServer(
           tx,
           input,
-          ctx.currentOrganizationId,
+          ctx.session.user.organizationId,
           ctx.session.user.id,
         );
       });
@@ -103,7 +103,7 @@ export const userMcpServerRouter = createTRPCRouter({
         return await updateOfficialServer(
           tx,
           input,
-          ctx.currentOrganizationId,
+          ctx.session.user.organizationId,
           ctx.session.user.id,
         );
       });

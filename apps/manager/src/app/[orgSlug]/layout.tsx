@@ -3,6 +3,7 @@ import { api } from "@/trpc/server";
 import type { ReactNode } from "react";
 import { SimpleHeader } from "./_components/SimpleHeader";
 import { OrgSidebar } from "./_components/OrgSidebar";
+import { auth } from "~/auth";
 
 type OrgSlugLayoutProps = {
   children: ReactNode;
@@ -16,6 +17,14 @@ export default async function OrgSlugLayout({
   const { orgSlug } = await params;
   // URLデコードを明示的に行う（@などの特殊文字対応）
   const decodedSlug = decodeURIComponent(orgSlug);
+
+  // auth.jsのセッションを取得
+  const session = await auth();
+
+  // ログインしていない場合はサインインページにリダイレクト
+  if (!session?.user) {
+    redirect("/signin");
+  }
 
   try {
     // スラッグから組織情報を取得（アクセス権限も検証される）
@@ -47,6 +56,9 @@ export default async function OrgSlugLayout({
       `[OrgSlugLayout] Error fetching organization ${decodedSlug}:`,
       error,
     );
-    redirect("/organizations/dashboard");
+    if (session.user.organizationSlug) {
+      redirect(`${session.user.organizationSlug}/mcps`);
+    }
+    redirect("/");
   }
 }
