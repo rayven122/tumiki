@@ -16,7 +16,7 @@ import {
   invalidateCache as invalidateCacheInternal,
 } from "./token-cache.js";
 import { refreshBackendToken as refreshToken } from "./token-refresh.js";
-import { getTokenFromDB, updateLastUsedAt } from "./token-repository.js";
+import { getTokenFromDB } from "./token-repository.js";
 import {
   isExpiringSoon,
   isTokenExpired,

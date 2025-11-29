@@ -51,6 +51,7 @@ const main = async () => {
     create: {
       id: TEST_ORG_ID,
       name: "MCP Proxy Test Organization",
+      slug: "mcp-proxy-test-org",
       description: "mcp-proxy検証用のテスト組織",
       isPersonal: true,
       maxMembers: 1,
