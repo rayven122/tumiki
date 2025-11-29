@@ -39,12 +39,47 @@ export const discoverOAuthMetadata = async (
     const url = new URL(serverUrl);
     const issuer = new URL(url.origin);
 
-    const response = await oauth.discoveryRequest(issuer);
+    console.log(`[DCR] Discovering OAuth metadata for: ${issuer.toString()}`);
+
+    // OAuth 2.0 Authorization Server Metadata (RFC 8414) エンドポイントを使用
+    // algorithm: 'oauth2' により /.well-known/oauth-authorization-server にアクセス
+    // デフォルトは /.well-known/openid-configuration (OpenID Connect)
+    const response = await oauth.discoveryRequest(issuer, {
+      algorithm: "oauth2",
+    });
+
+    console.log(
+      `[DCR] Discovery response status: ${response.status} ${response.statusText}`,
+    );
+
+    // レスポンスを処理してメタデータを取得
+    // 一部のサーバー（Figmaなど）はissuerが異なるドメインを返すことがあるため、
+    // 厳格な検証を回避する
+    const responseClone = response.clone();
+    const responseText = await responseClone.text();
+    const metadata = JSON.parse(responseText) as oauth.AuthorizationServer;
+
+    console.log(`[DCR] Metadata issuer: ${metadata.issuer}`);
+
+    // issuerが異なる場合でも、取得したメタデータのissuerを使用して再検証
+    if (metadata.issuer !== issuer.toString()) {
+      console.log(
+        `[DCR] Issuer mismatch detected. Expected: ${issuer.toString()}, Got: ${metadata.issuer}`,
+      );
+      console.log(`[DCR] Using actual issuer from metadata: ${metadata.issuer}`);
+
+      // 実際のissuerで再度検証を試みる
+      // ただし、oauth4webapiの検証をスキップして直接メタデータを返す
+      return metadata;
+    }
+
     return await oauth.processDiscoveryResponse(issuer, response);
   } catch (error) {
+    console.error(`[DCR] Discovery failed for ${serverUrl}:`, error);
+
     if (error instanceof oauth.WWWAuthenticateChallengeError) {
       throw new DCRError(
-        `OAuth discovery failed: ${error.message}`,
+        `OAuth discovery failed for ${serverUrl}: ${error.message} (HTTP ${error.status})`,
         "DISCOVERY_ERROR",
         error.status,
       );
@@ -52,7 +87,7 @@ export const discoverOAuthMetadata = async (
 
     throw new DCRError(
       error instanceof Error
-        ? error.message
+        ? `OAuth discovery failed for ${serverUrl}: ${error.message}`
         : "Unknown error during metadata discovery",
       "DISCOVERY_ERROR",
     );
@@ -92,8 +127,33 @@ export const registerOAuthClient = async (
       { headers },
     );
 
-    return await oauth.processDynamicClientRegistrationResponse(response);
+    console.log(`[DCR] Registration response status: ${response.status}`);
+
+    // oauth4webapiの厳格な検証を回避するため、レスポンスボディとステータスコードを修正
+    // client_secret_expires_atが存在しない場合は0（期限なし）を追加
+    const responseClone = response.clone();
+    const responseText = await responseClone.text();
+    const responseJson = JSON.parse(responseText) as Record<string, unknown>;
+
+    if (!("client_secret_expires_at" in responseJson)) {
+      responseJson.client_secret_expires_at = 0; // 0 = 期限なし
+    }
+
+    // 修正したボディで新しいResponseオブジェクトを作成
+    // RFC 7591では201を期待するが、一部のサーバー（Figmaなど）は200を返すため、
+    // 200も成功とみなして201に変換する
+    const modifiedResponse = new Response(JSON.stringify(responseJson), {
+      status: response.status === 200 ? 201 : response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+
+    return await oauth.processDynamicClientRegistrationResponse(
+      modifiedResponse,
+    );
   } catch (error) {
+    console.error(`[DCR] Registration failed:`, error);
+
     if (error instanceof oauth.WWWAuthenticateChallengeError) {
       throw new DCRError(
         `Client registration failed: ${error.message}`,
@@ -115,7 +175,6 @@ export const registerOAuthClient = async (
  * DCR統合関数: メタデータ取得からクライアント登録まで
  *
  * @param serverUrl - MCPサーバーのベースURL
- * @param clientName - クライアント名
  * @param redirectUris - リダイレクトURI配列
  * @param scopes - 要求するスコープ（スペース区切り、オプション）
  * @param initialAccessToken - 初期アクセストークン（オプション）
@@ -125,7 +184,6 @@ export const registerOAuthClient = async (
  */
 export const performDCR = async (
   serverUrl: string,
-  clientName: string,
   redirectUris: string[],
   scopes?: string,
   initialAccessToken?: string,

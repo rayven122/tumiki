@@ -45,8 +45,8 @@ export const useEditServerForm = ({
 }: UseEditServerFormParams) => {
   const utils = api.useUtils();
 
-  // サーバー設定更新（v2 APIを使用）
-  const { mutate: updateServerConfig, isPending: isUpdating } =
+  // APIキー認証MCPサーバー更新（v2 APIを使用）
+  const { mutate: updateApiKeyMcpServer, isPending: isUpdating } =
     api.v2.userMcpServer.update.useMutation({
       onSuccess: async () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に更新されました。`);
@@ -58,20 +58,16 @@ export const useEditServerForm = ({
       },
     });
 
-  // OAuth認証MCPサーバー作成（v2 APIを使用）
-  const createOAuthMcpServerMutation =
+  // OAuth認証MCPサーバー更新（v2 APIを使用、実質は再認証のため新規作成）
+  const { mutate: updateOAuthMcpServer, isPending: isOAuthConnecting } =
     api.v2.userMcpServer.createOAuthMcpServer.useMutation({
       onSuccess: async (response) => {
-        toast.success("MCPサーバーの作成に成功しました");
         // OAuth認証画面にリダイレクト
         toast.info("OAuth認証画面に移動します...");
         window.location.href = response.authorizationUrl;
       },
       onError: (error) => {
-        console.error("OAuth認証の開始に失敗:", error);
-        toast.error(
-          error instanceof Error ? error.message : "設定の作成に失敗しました",
-        );
+        toast.error(error.message);
       },
     });
 
@@ -84,18 +80,13 @@ export const useEditServerForm = ({
    * @param serverName - サーバー名
    */
   const handleOAuthConnect = useCallback(
-    async (serverName: string) => {
-      if (createOAuthMcpServerMutation.isPending) {
-        console.log("OAuth認証処理中のため、重複実行をスキップ");
-        return;
-      }
-
-      await createOAuthMcpServerMutation.mutateAsync({
+    (serverName: string) => {
+      updateOAuthMcpServer({
         templateId: mcpServer.id,
         name: serverName || mcpServer.name,
       });
     },
-    [mcpServer.id, mcpServer.name, createOAuthMcpServerMutation],
+    [mcpServer.id, mcpServer.name, updateOAuthMcpServer],
   );
 
   /**
@@ -105,17 +96,17 @@ export const useEditServerForm = ({
    */
   const handleUpdateWithApiKey = useCallback(
     (envVars: Record<string, string>) => {
-      updateServerConfig({
+      updateApiKeyMcpServer({
         id: userMcpServerId,
         envVars,
       });
     },
-    [userMcpServerId, updateServerConfig],
+    [userMcpServerId, updateApiKeyMcpServer],
   );
 
   return {
     /** OAuth認証処理中かどうか */
-    isOAuthConnecting: createOAuthMcpServerMutation.isPending,
+    isOAuthConnecting,
     /** サーバー更新処理中かどうか */
     isUpdating,
     /** OAuth認証を開始する関数（再認証用） */

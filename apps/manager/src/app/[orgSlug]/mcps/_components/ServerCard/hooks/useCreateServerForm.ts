@@ -28,21 +28,6 @@ type UseCreateServerFormParams = {
  * @param params.customUrl - カスタムサーバーのURL（オプション）
  * @param params.onSuccess - サーバー作成成功時のコールバック
  * @returns サーバー作成に必要な状態とハンドラー関数
- *
- * @example
- * ```tsx
- * // テンプレートベースの場合
- * const { handleOAuthConnect, handleAddWithApiKey, isAdding } = useCreateServerForm({
- *   mcpServer: template,
- *   onSuccess: () => console.log('Success!'),
- * });
- *
- * // カスタムサーバーの場合
- * const { handleAddWithApiKey } = useCreateServerForm({
- *   customUrl: 'https://example.com/mcp',
- *   onSuccess: () => console.log('Success!'),
- * });
- * ```
  */
 export const useCreateServerForm = ({
   mcpServer,
@@ -67,7 +52,7 @@ export const useCreateServerForm = ({
     });
 
   // OAuth認証MCPサーバー作成（v2 APIを使用）
-  const createOAuthMcpServerMutation =
+  const { mutate: createOAuthMcpServer, isPending: isOAuthConnecting } =
     api.v2.userMcpServer.createOAuthMcpServer.useMutation({
       onSuccess: async (response) => {
         // OAuth認証画面にリダイレクト
@@ -75,9 +60,7 @@ export const useCreateServerForm = ({
         window.location.href = response.authorizationUrl;
       },
       onError: (error) => {
-        toast.error(
-          error instanceof Error ? error.message : "設定の作成に失敗しました",
-        );
+        toast.error(error.message);
       },
     });
 
@@ -90,14 +73,14 @@ export const useCreateServerForm = ({
    * @param serverName - サーバー名
    */
   const handleOAuthConnect = useCallback(
-    async (serverName: string) => {
-      await createOAuthMcpServerMutation.mutateAsync({
+    (serverName: string) => {
+      createOAuthMcpServer({
         templateId: mcpServer?.id,
         customUrl: customUrl,
         name: serverName || mcpServer?.name,
       });
     },
-    [mcpServer, customUrl, createOAuthMcpServerMutation],
+    [mcpServer, customUrl, createOAuthMcpServer],
   );
 
   /**
@@ -123,7 +106,7 @@ export const useCreateServerForm = ({
 
   return {
     /** OAuth認証処理中かどうか */
-    isOAuthConnecting: createOAuthMcpServerMutation.isPending,
+    isOAuthConnecting,
     /** サーバー追加処理中かどうか */
     isAdding,
     /** OAuth認証を開始する関数 */

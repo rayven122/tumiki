@@ -71,9 +71,10 @@ export const exchangeCodeForToken = async (
   codeVerifier: string,
 ): Promise<OAuthTokenData> => {
   // client_secret_postメソッドを使用
-  const clientAuth = client.client_secret
-    ? oauth.ClientSecretPost(client.client_secret)
-    : oauth.None();
+  const clientAuth =
+    typeof client.client_secret === "string"
+      ? oauth.ClientSecretPost(client.client_secret)
+      : oauth.None();
 
   const response = await oauth.authorizationCodeGrantRequest(
     authServer,
@@ -114,9 +115,10 @@ export const refreshAccessToken = async (
   refreshToken: string,
 ): Promise<OAuthTokenData> => {
   // client_secret_postメソッドを使用
-  const clientAuth = client.client_secret
-    ? oauth.ClientSecretPost(client.client_secret)
-    : oauth.None();
+  const clientAuth =
+    typeof client.client_secret === "string"
+      ? oauth.ClientSecretPost(client.client_secret)
+      : oauth.None();
 
   const response = await oauth.refreshTokenGrantRequest(
     authServer,
