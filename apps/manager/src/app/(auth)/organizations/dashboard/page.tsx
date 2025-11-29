@@ -1,25 +1,39 @@
 import { api } from "@/trpc/server";
-import { OrganizationDashboard } from "./_components/OrganizationDashboard";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { db } from "@tumiki/db/server";
 
 const OrganizationDashboardPage = async () => {
+  // 現在のセッションを取得
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/signin");
+  }
+
   // サーバー側で現在の組織を取得
   const organizations = await api.organization.getUserOrganizations();
 
-  // デフォルト組織を探す
-  const defaultOrg = organizations.find((org) => org.isDefault);
+  // ユーザー情報を取得してデフォルト組織を確認
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { defaultOrganizationSlug: true },
+  });
 
-  // デフォルト組織がない場合はMCPサーバーページへリダイレクト
-  if (!defaultOrg) {
+  const defaultOrg = organizations.find(
+    (org) => org.slug === user?.defaultOrganizationSlug,
+  );
+
+  // デフォルト組織がない場合は最初の組織を使用
+  const targetOrg = defaultOrg ?? organizations[0];
+
+  // 組織がない場合はMCPサーバーページへリダイレクト
+  if (!targetOrg) {
     redirect("/mcp/servers");
   }
 
-  // 個人組織の場合は組織専用のMCPページへリダイレクト
-  if (defaultOrg.isPersonal) {
-    redirect(`/${defaultOrg.slug}/mcps`);
-  }
-
-  return <OrganizationDashboard organizationId={defaultOrg.id} />;
+  // 組織のダッシュボードへリダイレクト
+  redirect(`/${targetOrg.slug}/dashboard`);
 };
 
 export default OrganizationDashboardPage;
