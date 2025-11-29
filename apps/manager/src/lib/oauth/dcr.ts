@@ -66,7 +66,9 @@ export const discoverOAuthMetadata = async (
       console.log(
         `[DCR] Issuer mismatch detected. Expected: ${issuer.toString()}, Got: ${metadata.issuer}`,
       );
-      console.log(`[DCR] Using actual issuer from metadata: ${metadata.issuer}`);
+      console.log(
+        `[DCR] Using actual issuer from metadata: ${metadata.issuer}`,
+      );
 
       // 実際のissuerで再度検証を試みる
       // ただし、oauth4webapiの検証をスキップして直接メタデータを返す
