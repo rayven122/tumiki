@@ -34,7 +34,7 @@ type CustomMcpServerModalProps = {
 export const CustomMcpServerModal = ({
   open,
   onOpenChange,
-  orgSlug,
+  orgSlug: _orgSlug,
 }: CustomMcpServerModalProps) => {
   const router = useRouter();
   const utils = api.useUtils();
@@ -138,7 +138,8 @@ export const CustomMcpServerModal = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mcpServerId: response.mcpServer.id,
-            userMcpConfigId: response.userMcpConfigId,
+            userMcpConfigId: (response as { userMcpConfigId?: string })
+              .userMcpConfigId,
           }),
         });
 

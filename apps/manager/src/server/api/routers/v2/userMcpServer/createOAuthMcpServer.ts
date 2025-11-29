@@ -5,12 +5,12 @@
 import { ServerStatus, ServerType } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
-import { type CreateRemoteMcpServerInputV2 } from "../remoteMcpServer";
+import { type CreateOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
 import { registerOAuthClient } from "./helpers/registerOAuthClient";
 import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
 
-type CreateOAuthMcpServerInput = z.infer<typeof CreateRemoteMcpServerInputV2>;
+type CreateOAuthMcpServerInput = z.infer<typeof CreateOAuthMcpServerInputV2>;
 
 type CreateOAuthMcpServerOutput = {
   id: string;
