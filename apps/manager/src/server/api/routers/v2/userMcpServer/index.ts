@@ -1,15 +1,18 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
+import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
 import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { updateOfficialServer } from "./update";
+import { handleOAuthCallback } from "./handleOAuthCallback";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
 export const CreateApiKeyMcpServerInputV2 = z
   .object({
     mcpServerTemplateId: z.string().optional(),
     customUrl: z.string().url().optional(),
+    transportType: z.nativeEnum(TransportType).optional(),
     envVars: z.record(z.string(), z.string()).optional(),
     name: nameValidationSchema,
     description: z.string().optional(),
@@ -28,6 +31,7 @@ export const ConnectOAuthMcpServerInputV2 = z.object({
   // テンプレートIDまたはカスタムURL（いずれか必須）
   templateId: z.string().optional(),
   customUrl: z.string().url().optional(),
+  transportType: z.nativeEnum(TransportType).optional(),
 
   // サーバー情報
   name: nameValidationSchema.optional(),
@@ -46,6 +50,18 @@ export const UpdateOfficialServerInputV2 = z.object({
 
 export const UpdateOfficialServerOutputV2 = z.object({
   id: z.string(),
+});
+
+// OAuth Callback処理の入力スキーマ
+export const HandleOAuthCallbackInputV2 = z.object({
+  state: z.string(),
+  currentUrl: z.string().url(),
+});
+
+export const HandleOAuthCallbackOutputV2 = z.object({
+  organizationSlug: z.string(),
+  success: z.boolean(),
+  error: z.string().optional(),
 });
 
 export const userMcpServerRouter = createTRPCRouter({
@@ -90,6 +106,20 @@ export const userMcpServerRouter = createTRPCRouter({
           ctx.currentOrganizationId,
           ctx.session.user.id,
         );
+      });
+    }),
+
+  // OAuth Callback処理
+  handleOAuthCallback: protectedProcedure
+    .input(HandleOAuthCallbackInputV2)
+    .output(HandleOAuthCallbackOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await handleOAuthCallback(tx, {
+          state: input.state,
+          userId: ctx.session.user.id,
+          currentUrl: new URL(input.currentUrl),
+        });
       });
     }),
 });

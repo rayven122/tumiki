@@ -3,33 +3,26 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { api } from "@/trpc/server";
 
 export default async function SignInPage() {
   const session = await auth();
+  // セッションから直接組織slugを取得
+  const orgSlug = session?.user.organizationSlug;
+
+  // 組織情報がない場合はオンボーディングへ
+  const redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding";
 
   // 既にログイン済みの場合は、デフォルト組織のMCPページにリダイレクト
   if (session?.user) {
-    try {
-      const defaultOrg = await api.organization.getDefaultOrganization.query();
-      if (defaultOrg?.slug) {
-        redirect(`/${defaultOrg.slug}/mcps`);
-      }
-    } catch (error) {
-      // エラーの場合はオンボーディングへ
-      redirect("/onboarding");
-    }
+    redirect(redirectUrl);
   }
-
-  // ログイン後は専用のコールバックページへリダイレクト
-  const callbackUrl = "/auth/callback";
 
   return (
     <AuthCard
       title="おかえりなさい"
       description="アカウントにログインしてください"
     >
-      <GoogleSignInButton callbackUrl={callbackUrl} label="Googleでログイン" />
+      <GoogleSignInButton callbackUrl={redirectUrl} label="Googleでログイン" />
 
       <div className="text-muted-foreground text-center text-sm">
         <span>アカウントをお持ちでない方は </span>
