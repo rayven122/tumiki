@@ -12,11 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
-import { useCreateServerForm } from "./hooks/useCreateServerForm";
-import { ServerInfoSection } from "./components/ServerInfoSection";
-import { AuthMethodTabs } from "./components/AuthMethodTabs";
-import { FormActions } from "./components/FormActions";
-import { LoadingOverlay } from "./components/LoadingOverlay";
+import { useCreateServerForm } from "./_hooks/useCreateServerForm";
+import { ServerInfoSection } from "./_components/ServerInfoSection";
+import { AuthMethodTabs } from "./_components/AuthMethodTabs";
+import { FormActions } from "./_components/FormActions";
+import { LoadingOverlay } from "./_components/LoadingOverlay";
 import { normalizeServerName } from "@/utils/url";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
@@ -43,15 +43,11 @@ export const CreateServerModal = ({
   const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
 
   // API呼び出し用のフック
-  const {
-    isOAuthConnecting,
-    isAdding,
-    handleOAuthConnect,
-    handleAddWithApiKey,
-  } = useCreateServerForm({
-    mcpServer,
-    onSuccess: () => onOpenChange(false),
-  });
+  const { isPending, handleOAuthConnect, handleAddWithApiKey } =
+    useCreateServerForm({
+      mcpServer,
+      onSuccess: () => onOpenChange(false),
+    });
 
   // フォームハンドラー
   const handleEnvVarChange = (envVar: string, value: string) => {
@@ -61,7 +57,7 @@ export const CreateServerModal = ({
   const handleSubmit = () => {
     const isOAuthSupported = mcpServer.authType === "OAUTH";
     if (isOAuthSupported && authMethod === "oauth") {
-      void handleOAuthConnect(serverName);
+      handleOAuthConnect(serverName);
     } else {
       handleAddWithApiKey(serverName, envVars);
     }
@@ -74,17 +70,15 @@ export const CreateServerModal = ({
     return Object.values(envVars).some((token) => token.trim() !== "");
   };
 
-  const isProcessing = isAdding || isOAuthConnecting;
-
   return (
-    <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
+    <Dialog open onOpenChange={(open) => !isPending && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <div className="relative max-h-[90vh] overflow-y-auto">
           <LoadingOverlay
-            isProcessing={isProcessing}
-            isAdding={isAdding}
+            isProcessing={isPending}
+            isAdding={false}
             isValidating={false}
-            isOAuthConnecting={isOAuthConnecting}
+            isOAuthConnecting={false}
           />
 
           <DialogHeader>
@@ -111,7 +105,7 @@ export const CreateServerModal = ({
               value={serverName}
               onChange={(e) => setServerName(e.target.value)}
               className="text-sm"
-              disabled={isProcessing}
+              disabled={isPending}
             />
             <p className="text-muted-foreground text-xs">
               表示されるサーバー名を設定できます
@@ -123,7 +117,7 @@ export const CreateServerModal = ({
             mcpServer={mcpServer}
             authMethod={authMethod}
             envVars={envVars}
-            isProcessing={isProcessing}
+            isProcessing={isPending}
             onAuthMethodChange={setAuthMethod}
             onEnvVarChange={handleEnvVarChange}
           />
@@ -135,10 +129,10 @@ export const CreateServerModal = ({
             mcpServer={mcpServer}
             authMethod={authMethod}
             isFormValid={isFormValid()}
-            isProcessing={isProcessing}
-            isAdding={isAdding}
+            isProcessing={isPending}
+            isAdding={false}
             isValidating={false}
-            isOAuthConnecting={isOAuthConnecting}
+            isOAuthConnecting={false}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

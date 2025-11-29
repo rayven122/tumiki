@@ -51,9 +51,9 @@ export const useCreateServerForm = ({
       },
     });
 
-  // OAuth認証MCPサーバー作成（v2 APIを使用）
-  const { mutate: createOAuthMcpServer, isPending: isOAuthConnecting } =
-    api.v2.userMcpServer.createOAuthMcpServer.useMutation({
+  // OAuth認証MCPサーバー接続（v2 APIを使用）
+  const { mutate: connectOAuthMcpServer, isPending: isOAuthConnecting } =
+    api.v2.userMcpServer.connectOAuthMcpServer.useMutation({
       onSuccess: async (response) => {
         // OAuth認証画面にリダイレクト
         toast.info("OAuth認証画面に移動します...");
@@ -74,13 +74,13 @@ export const useCreateServerForm = ({
    */
   const handleOAuthConnect = useCallback(
     (serverName: string) => {
-      createOAuthMcpServer({
+      connectOAuthMcpServer({
         templateId: mcpServer?.id,
         customUrl: customUrl,
         name: serverName || mcpServer?.name,
       });
     },
-    [mcpServer, customUrl, createOAuthMcpServer],
+    [mcpServer, customUrl, connectOAuthMcpServer],
   );
 
   /**
@@ -105,10 +105,8 @@ export const useCreateServerForm = ({
   );
 
   return {
-    /** OAuth認証処理中かどうか */
-    isOAuthConnecting,
-    /** サーバー追加処理中かどうか */
-    isAdding,
+    /** 処理中かどうか（OAuth認証またはサーバー追加） */
+    isPending: isOAuthConnecting || isAdding,
     /** OAuth認証を開始する関数 */
     handleOAuthConnect,
     /** APIキーを使用してサーバーを追加する関数 */
