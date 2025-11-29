@@ -10,7 +10,6 @@ import { getOAuthRedirectUri } from "@/lib/oauth/utils";
 export type RegisterOAuthClientParams = {
   tx: PrismaTransactionClient;
   serverUrl: string;
-  serverName: string;
   templateId: string | undefined;
   organizationId: string;
 };
@@ -29,7 +28,6 @@ export type RegisterOAuthClientResult = {
  * @param params パラメータオブジェクト
  * @param params.tx トランザクションクライアント
  * @param params.serverUrl OAuth Authorization ServerのURL
- * @param params.serverName サーバー名（DCR登録時のクライアント名）
  * @param params.templateId テンプレートID（オプション）
  * @param params.organizationId 組織ID
  * @returns OAuth Client情報
@@ -37,7 +35,6 @@ export type RegisterOAuthClientResult = {
 export const registerOAuthClient = async ({
   tx,
   serverUrl,
-  serverName,
   templateId,
   organizationId,
 }: RegisterOAuthClientParams): Promise<RegisterOAuthClientResult> => {
@@ -48,7 +45,6 @@ export const registerOAuthClient = async ({
   try {
     dcrResult = await performDCR(
       serverUrl,
-      serverName,
       [redirectUri],
       "", // DCRにすべてのscopesを検出させる
       undefined,

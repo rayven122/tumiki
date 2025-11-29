@@ -31,7 +31,7 @@ type UseEditServerFormParams = {
  *
  * @example
  * ```tsx
- * const { handleOAuthConnect, handleUpdateWithApiKey, isUpdating } = useEditServerForm({
+ * const { handleOAuthConnect, handleUpdateWithApiKey, isPending } = useEditServerForm({
  *   mcpServer: template,
  *   userMcpServerId: 'server-id',
  *   onSuccess: () => console.log('Updated!'),
@@ -58,9 +58,9 @@ export const useEditServerForm = ({
       },
     });
 
-  // OAuth認証MCPサーバー更新（v2 APIを使用、実質は再認証のため新規作成）
+  // OAuth認証MCPサーバー更新（v2 APIを使用、実質は再認証のため新規接続）
   const { mutate: updateOAuthMcpServer, isPending: isOAuthConnecting } =
-    api.v2.userMcpServer.createOAuthMcpServer.useMutation({
+    api.v2.userMcpServer.connectOAuthMcpServer.useMutation({
       onSuccess: async (response) => {
         // OAuth認証画面にリダイレクト
         toast.info("OAuth認証画面に移動します...");
@@ -105,10 +105,8 @@ export const useEditServerForm = ({
   );
 
   return {
-    /** OAuth認証処理中かどうか */
-    isOAuthConnecting,
-    /** サーバー更新処理中かどうか */
-    isUpdating,
+    /** 処理中かどうか（OAuth認証またはサーバー更新） */
+    isPending: isOAuthConnecting || isUpdating,
     /** OAuth認証を開始する関数（再認証用） */
     handleOAuthConnect,
     /** APIキーを使用してサーバー設定を更新する関数 */

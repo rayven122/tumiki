@@ -12,11 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
-import { useEditServerForm } from "./hooks/useEditServerForm";
-import { ServerInfoSection } from "./components/ServerInfoSection";
-import { AuthMethodTabs } from "./components/AuthMethodTabs";
-import { FormActions } from "./components/FormActions";
-import { LoadingOverlay } from "./components/LoadingOverlay";
+import { useEditServerForm } from "./_hooks/useEditServerForm";
+import { ServerInfoSection } from "./_components/ServerInfoSection";
+import { AuthMethodTabs } from "./_components/AuthMethodTabs";
+import { FormActions } from "./_components/FormActions";
+import { LoadingOverlay } from "./_components/LoadingOverlay";
 import { normalizeServerName } from "@/utils/url";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;

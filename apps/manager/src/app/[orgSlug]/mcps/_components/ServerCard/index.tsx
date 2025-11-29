@@ -17,7 +17,7 @@ import { CreateServerModal } from "./CreateServerModal";
 import { Server, Wrench } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
-import { AuthTypeBadge } from "./components/AuthTypeBadge";
+import { AuthTypeBadge } from "./_components/AuthTypeBadge";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };

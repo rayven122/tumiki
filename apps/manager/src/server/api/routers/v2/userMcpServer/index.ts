@@ -2,7 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
-import { createOAuthMcpServer } from "./createOAuthMcpServer";
+import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { updateOfficialServer } from "./update";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
@@ -23,8 +23,8 @@ export const CreateApiKeyMcpServerOutputV2 = z.object({
   mcpConfigId: z.string(),
 });
 
-// OAuth認証MCPサーバー作成用の入力スキーマ
-export const CreateOAuthMcpServerInputV2 = z.object({
+// OAuth認証MCPサーバー接続用の入力スキーマ
+export const ConnectOAuthMcpServerInputV2 = z.object({
   // テンプレートIDまたはカスタムURL（いずれか必須）
   templateId: z.string().optional(),
   customUrl: z.string().url().optional(),
@@ -34,7 +34,7 @@ export const CreateOAuthMcpServerInputV2 = z.object({
   description: z.string().optional(),
 });
 
-export const CreateOAuthMcpServerOutputV2 = z.object({
+export const ConnectOAuthMcpServerOutputV2 = z.object({
   id: z.string(),
   authorizationUrl: z.string(),
 });
@@ -64,13 +64,13 @@ export const userMcpServerRouter = createTRPCRouter({
       });
     }),
 
-  // OAuth認証MCPサーバー作成
-  createOAuthMcpServer: protectedProcedure
-    .input(CreateOAuthMcpServerInputV2)
-    .output(CreateOAuthMcpServerOutputV2)
+  // OAuth認証MCPサーバー接続
+  connectOAuthMcpServer: protectedProcedure
+    .input(ConnectOAuthMcpServerInputV2)
+    .output(ConnectOAuthMcpServerOutputV2)
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
-        return await createOAuthMcpServer(
+        return await connectOAuthMcpServer(
           tx,
           input,
           ctx.currentOrganizationId,

@@ -1,37 +1,37 @@
 /**
- * OAuth認証付きMCPサーバー作成 procedure
+ * OAuth認証付きMCPサーバー接続 procedure
  * MCPサーバーを作成し、DCRを実行してOAuth認証フローを開始する
  */
 import { ServerStatus, ServerType } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
-import { type CreateOAuthMcpServerInputV2 } from "./index";
+import { ConnectOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
 import { registerOAuthClient } from "./helpers/registerOAuthClient";
 import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
 
-type CreateOAuthMcpServerInput = z.infer<typeof CreateOAuthMcpServerInputV2>;
+type ConnectOAuthMcpServerInput = z.infer<typeof ConnectOAuthMcpServerInputV2>;
 
-type CreateOAuthMcpServerOutput = {
+type ConnectOAuthMcpServerOutput = {
   id: string;
   authorizationUrl: string;
 };
 
 /**
- * OAuth認証付きMCPサーバーを作成
+ * OAuth認証付きMCPサーバーに接続
  *
  * @param tx トランザクションクライアント
- * @param input 作成データ
+ * @param input 接続データ
  * @param organizationId 組織ID
  * @param userId ユーザーID
- * @returns 作成されたサーバー情報とOAuth認証要否
+ * @returns サーバー情報とOAuth認証URL
  */
-export const createOAuthMcpServer = async (
+export const connectOAuthMcpServer = async (
   tx: PrismaTransactionClient,
-  input: CreateOAuthMcpServerInput,
+  input: ConnectOAuthMcpServerInput,
   organizationId: string,
   userId: string,
-): Promise<CreateOAuthMcpServerOutput> => {
+): Promise<ConnectOAuthMcpServerOutput> => {
   // テンプレートIDまたはカスタムURLのいずれかが必要
   if (!input.templateId && !input.customUrl) {
     throw new TRPCError({
@@ -99,7 +99,6 @@ export const createOAuthMcpServer = async (
   const oauthClient = await registerOAuthClient({
     tx,
     serverUrl,
-    serverName,
     templateId: input.templateId,
     organizationId,
   });
