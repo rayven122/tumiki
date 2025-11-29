@@ -96,7 +96,7 @@ export const exchangeCodeForToken = async (
     token_type: result.token_type,
     expires_in: result.expires_in,
     refresh_token: result.refresh_token,
-    id_token: result.id_token as string | undefined,
+    id_token: result.id_token,
     scope: result.scope,
   };
 };
@@ -138,7 +138,7 @@ export const refreshAccessToken = async (
     token_type: result.token_type,
     expires_in: result.expires_in,
     refresh_token: result.refresh_token,
-    id_token: result.id_token as string | undefined,
+    id_token: result.id_token,
     scope: result.scope,
   };
 };

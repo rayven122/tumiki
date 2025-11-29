@@ -5,7 +5,7 @@
 import { ServerStatus, ServerType } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
-import { ConnectOAuthMcpServerInputV2 } from "./index";
+import { type ConnectOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
 import { registerOAuthClient } from "./helpers/registerOAuthClient";
 import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
