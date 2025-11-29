@@ -22,7 +22,8 @@ export const wellKnownRoute = new Hono<HonoEnv>();
  *
  * 注意事項：
  * - Keycloakでは Client Credentials Grant をサポート
- * - カスタムクレーム (tumiki.org_id, tumiki.mcp_instance_id) の設定が必要
+ * - カスタムクレーム (tumiki.org_id) の設定が必要
+ * - mcp_instance_id は URL パスから取得
  * - Instance ID ごとに異なる認可サーバー設定を返す予定（現在は TODO）
  */
 wellKnownRoute.get("/oauth-authorization-server/mcp/:devInstanceId", (c) => {
@@ -118,8 +119,8 @@ wellKnownRoute.get("/oauth-protected-resource/mcp/:devInstanceId", (c) => {
     );
   }
 
-  // DEV_MODE では dev-instance-id 固定
-  const instanceId = "dev-instance-id";
+  // URL パスパラメータから instance ID を取得
+  const instanceId = c.req.param("devInstanceId");
   const resourceWithInstanceId = `${mcpResourceUrl}/${instanceId}`;
 
   // RFC 9728 準拠のリソースメタデータを返す

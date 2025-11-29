@@ -25,6 +25,8 @@ export type KeycloakOAuthAuthInfo = {
  * Keycloak JWT ペイロード型定義
  *
  * Keycloakの標準クレーム + Tumikiカスタムクレーム
+ *
+ * 注意: mcp_instance_id はJWTに含めず、URLパスから取得する
  */
 type KeycloakJWTPayload = {
   sub: string; // Subject (ユーザーID or クライアントID)
@@ -35,8 +37,7 @@ type KeycloakJWTPayload = {
   iat: number; // 発行時刻
   scope?: string; // スコープ
   tumiki?: {
-    org_id?: string; // 組織ID
-    mcp_instance_id?: string; // MCPサーバーインスタンスID
+    org_id?: string; // 組織ID（必須）
   };
 };
 
@@ -100,8 +101,11 @@ const getJWKS = async () => {
  * Keycloak発行のOAuth JWTを検証:
  * 1. Authorizationヘッダーから Bearer トークンを抽出
  * 2. JWTの署名検証（Keycloak JWKS使用、openid-client + jose）
- * 3. カスタムクレーム（tumiki.org_id, tumiki.mcp_instance_id）の取得
- * 4. 権限チェック（MCPサーバーインスタンスへのアクセス権）
+ * 3. カスタムクレーム（tumiki.org_id）の取得
+ * 4. URLパスから mcp_instance_id を取得
+ * 5. 権限チェック（MCPサーバーインスタンスへのアクセス権）
+ *
+ * 注意: mcp_instance_id はJWTに含めず、URLパスから取得する
  *
  * 改善点:
  * - openid-client による自動 Issuer Discovery
@@ -143,7 +147,7 @@ export const keycloakOAuthMiddleware = async (
     try {
       const jwks = await getJWKS();
       const { payload: verifiedPayload } = await jwtVerify(accessToken, jwks, {
-        issuer: issuer.issuer,
+        issuer: issuer.issuer as string,
         clockTolerance: 60, // 60秒のクロックスキュー許容
       });
 
@@ -170,24 +174,33 @@ export const keycloakOAuthMiddleware = async (
     }
 
     // Step 4: カスタムクレームの検証
-    // Keycloak OAuth では tumiki カスタムクレームが必須
-    if (!payload.tumiki?.org_id || !payload.tumiki?.mcp_instance_id) {
-      logDebug("Keycloak OAuth authentication: Missing custom claims", {
+    // Keycloak OAuth では tumiki.org_id が必須
+    if (!payload.tumiki?.org_id) {
+      logDebug("Keycloak OAuth authentication: Missing org_id claim", {
         clientId: payload.azp,
         hasOrgId: !!payload.tumiki?.org_id,
-        hasInstanceId: !!payload.tumiki?.mcp_instance_id,
       });
 
       return c.json(
         createUnauthorizedError(
-          "Invalid OAuth token: Missing required custom claims (tumiki.org_id, tumiki.mcp_instance_id)",
+          "Invalid OAuth token: Missing required custom claim (tumiki.org_id)",
         ),
         401,
       );
     }
 
     const organizationId = payload.tumiki.org_id;
-    const instanceId = payload.tumiki.mcp_instance_id;
+
+    // mcp_instance_id は URL パスから取得
+    const instanceId = c.req.param("userMcpServerInstanceId");
+    if (!instanceId) {
+      return c.json(
+        createUnauthorizedError(
+          "Instance ID is required in URL path for OAuth authentication",
+        ),
+        401,
+      );
+    }
 
     // Step 5: スコープチェック
     // MCP Proxyへのアクセスには "mcp:access" スコープが必須

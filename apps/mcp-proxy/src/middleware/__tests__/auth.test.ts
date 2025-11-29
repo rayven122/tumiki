@@ -8,6 +8,7 @@ import type { HonoEnv } from "../../types/index.js";
 vi.mock("../auth/jwt.js", () => ({
   devKeycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
     // モック JWT ペイロード（tumiki ネスト構造）
+    // mcp_instance_id は URL パスから取得するため含めない
     c.set("jwtPayload", {
       sub: "test-user-id",
       azp: "test-client-id",
@@ -16,7 +17,6 @@ vi.mock("../auth/jwt.js", () => ({
         org_id: "test-org-id",
         is_org_admin: true,
         tumiki_user_id: "test-user-db-id",
-        mcp_instance_id: "test-mcp-instance-id",
       },
     });
     // next() は integratedAuthMiddleware が呼び出す
@@ -71,26 +71,8 @@ describe("integratedAuthMiddleware", () => {
 
   describe("JWT認証", () => {
     test("有効なJWTトークンで認証成功", async () => {
-      // instanceResolver で使用される DB モックを設定
-      const { db } = await import("@tumiki/db/server");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValueOnce({
-        id: "test-mcp-instance-id",
-        name: "Test Instance",
-        description: null,
-        iconPath: null,
-        serverStatus: "RUNNING",
-        serverType: "OFFICIAL",
-        toolGroupId: "toolgroup-1",
-        authType: "OAUTH",
-        organizationId: "test-org-id",
-        displayOrder: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-
+      // 注意: mcp_instance_id のチェックと権限チェックは MCP ハンドラーで行うため、
+      // ミドルウェアでは JWT の検証のみを行う
       const res = await app.request("/test", {
         headers: {
           Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
@@ -159,66 +141,8 @@ describe("integratedAuthMiddleware", () => {
       });
     });
 
-    test("mcp_instance_idがないJWTの場合は401エラー", async () => {
-      // mcp_instance_id なしのJWTをモック
-      const { devKeycloakAuth } = await import("../auth/jwt.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(async (c) => {
-        c.set("jwtPayload", {
-          sub: "test-user-id",
-          azp: "test-client-id",
-          scope: "mcp:access:*",
-          tumiki: {
-            org_id: "test-org-id",
-            is_org_admin: true,
-            tumiki_user_id: "test-user-db-id",
-            // mcp_instance_id なし
-          },
-        });
-      });
-
-      const res = await app.request("/test", {
-        headers: {
-          Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
-        },
-      });
-
-      expect(res.status).toBe(401);
-      const body = await res.json();
-      expect(body).toStrictEqual({
-        jsonrpc: "2.0",
-        id: null,
-        error: {
-          code: -32001,
-          message:
-            "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
-        },
-      });
-    });
-
-    test("権限チェックが失敗した場合は403エラー", async () => {
-      // checkPermission が false を返すようにモック
-      const { checkPermission } = await import(
-        "../../services/permissionService.js"
-      );
-      vi.mocked(checkPermission).mockResolvedValueOnce(false);
-
-      const res = await app.request("/test", {
-        headers: {
-          Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
-        },
-      });
-
-      expect(res.status).toBe(403);
-      const body = await res.json();
-      expect(body).toStrictEqual({
-        jsonrpc: "2.0",
-        id: null,
-        error: {
-          code: -32003,
-          message: "Permission denied: READ access to MCP_SERVER_INSTANCE",
-        },
-      });
-    });
+    // 注意: mcp_instance_id チェックと権限チェックは MCP ハンドラー側に移動したため、
+    // ミドルウェアのテストからは削除
   });
 
   describe("APIキー認証", () => {
@@ -333,26 +257,8 @@ describe("integratedAuthMiddleware", () => {
 
   describe("認証方式の判定", () => {
     test("Bearer eyJ で始まる場合はJWT認証を使用", async () => {
-      // instanceResolver で使用される DB モックを設定
-      const { db } = await import("@tumiki/db/server");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValueOnce({
-        id: "test-mcp-instance-id",
-        name: "Test Instance",
-        description: null,
-        iconPath: null,
-        serverStatus: "RUNNING",
-        serverType: "OFFICIAL",
-        toolGroupId: "toolgroup-1",
-        authType: "OAUTH",
-        organizationId: "test-org-id",
-        displayOrder: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-
+      // 注意: mcp_instance_id のチェックと権限チェックは MCP ハンドラーで行うため、
+      // ミドルウェアでは JWT の検証のみを行う
       const res = await app.request("/test", {
         headers: {
           Authorization: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",

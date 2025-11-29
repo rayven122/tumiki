@@ -33,12 +33,13 @@ export type OAuthAuthInfo = {
 
 /**
  * Tumiki カスタムJWTクレーム
+ *
+ * mcp_instance_id はJWTに含めず、URLパスから取得・検証する
  */
 export type TumikiJWTClaims = {
   org_id: string; // 組織ID（Organization.id）
   is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
   tumiki_user_id: string; // TumikiユーザーID（User.id）
-  mcp_instance_id?: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）- MCP接続時は必須、管理画面では不要
 };
 
 /**
@@ -160,7 +161,7 @@ export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
 /**
  * 型ガード: MCP接続に必要なJWTペイロードかチェック
  *
- * MCP接続には mcp_instance_id が必須
+ * mcp_instance_id はJWTに含めず、URLパスから取得・検証する
  *
  * @param payload - チェック対象のペイロード
  * @returns MCP接続可能な場合true
@@ -168,11 +169,7 @@ export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
 export const isValidMcpJWTPayload = (
   payload: unknown,
 ): payload is JWTPayload => {
-  if (!isJWTPayload(payload)) {
-    return false;
-  }
-
-  return typeof payload.tumiki.mcp_instance_id === "string";
+  return isJWTPayload(payload);
 };
 
 /**

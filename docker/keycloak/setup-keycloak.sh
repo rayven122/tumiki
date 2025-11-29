@@ -96,6 +96,9 @@ create_mapper "$CLIENT_SCOPE_ID" "org_id" "tumiki_org_id" "tumiki.org_id" "Strin
 create_mapper "$CLIENT_SCOPE_ID" "is_org_admin" "tumiki_is_org_admin" "tumiki.is_org_admin" "boolean"
 create_mapper "$CLIENT_SCOPE_ID" "user_db_id" "tumiki_user_db_id" "tumiki.user_db_id" "String"
 
+# 注意: mcp_instance_id は JWT に含めず、URL パスから取得する設計に変更
+# そのため、Keycloak での mcp_instance_id マッパーは不要
+
 # Clientに割り当て
 CLIENT_ID=$($KCADM get clients -r "$REALM" --config /tmp/kcadm.config 2>/dev/null | grep -B2 "\"clientId\" *: *\"$CLIENT_NAME\"" | grep '"id"' | cut -d'"' -f4 | head -1)
 if [ -n "$CLIENT_ID" ]; then

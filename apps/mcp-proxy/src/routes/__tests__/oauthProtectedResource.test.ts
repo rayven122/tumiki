@@ -52,7 +52,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("認証なしで302リダイレクトを返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
           redirect: "manual", // リダイレクトを手動処理
@@ -64,7 +64,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("Keycloak の OpenID Configuration にリダイレクトする", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
           redirect: "manual",
@@ -92,7 +92,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("Authorization ヘッダーなしでアクセスできる（認証不要）", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
           redirect: "manual",
@@ -104,7 +104,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("Authorization ヘッダーがあっても無視される", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
           headers: {
@@ -126,7 +126,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("501 Not Implemented を返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -149,7 +149,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("501 Not Implemented を返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -168,7 +168,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
       delete process.env.KEYCLOAK_ISSUER;
 
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -236,7 +236,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
     describe("RFC 9728 準拠のメタデータ", () => {
       test("認証なしで200とメタデータを返す", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -250,7 +250,9 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
         expect(body).toHaveProperty("authorization_servers");
 
         // 値の検証（instance ID を含む）
-        expect(body.resource).toBe("http://localhost:8080/mcp/dev-instance-id");
+        expect(body.resource).toBe(
+          "http://localhost:8080/mcp/dev-mcp-instance-id",
+        );
         expect(body.authorization_servers).toStrictEqual([
           "https://keycloak.example.com/realms/tumiki",
         ]);
@@ -258,7 +260,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("推奨フィールドを含む完全なメタデータを返す", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -286,7 +288,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("Authorization ヘッダーなしでアクセスできる（認証不要）", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
             // Authorization ヘッダーなし
@@ -300,7 +302,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("Authorization ヘッダーがあっても無視される", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
             headers: {
@@ -315,7 +317,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
         expect(body).toHaveProperty("authorization_servers");
       });
 
-      test("パスパラメータに関わらず dev-instance-id を使用", async () => {
+      test("パスパラメータの値を resource に反映する", async () => {
         const res = await app.request(
           "/.well-known/oauth-protected-resource/mcp/some-other-instance",
           {
@@ -326,15 +328,17 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
         expect(res.status).toBe(200);
         const body = (await res.json()) as Record<string, unknown>;
 
-        // DEV_MODE では常に dev-instance-id を使用
-        expect(body.resource).toBe("http://localhost:8080/mcp/dev-instance-id");
+        // パスパラメータの値が resource に反映される
+        expect(body.resource).toBe(
+          "http://localhost:8080/mcp/some-other-instance",
+        );
       });
     });
 
     describe("メタデータの構造検証", () => {
       test("authorization_servers は配列である", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -349,7 +353,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("scopes_supported は配列である", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -362,7 +366,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("bearer_methods_supported は配列である", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -375,7 +379,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("resource_signing_alg_values_supported は配列である", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -392,7 +396,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
     describe("MCP 2025-DRAFT-v2 準拠", () => {
       test("MCP仕様で必須の authorization_servers フィールドを含む", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -408,7 +412,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
       test("Keycloak Issuer URL が authorization_servers に含まれる", async () => {
         const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
           {
             method: "GET",
           },
@@ -429,7 +433,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
     test("501 Not Implemented を返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+        "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -452,7 +456,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
 
     test("501 Not Implemented を返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+        "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -471,7 +475,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
       delete process.env.KEYCLOAK_ISSUER;
 
       const res = await app.request(
-        "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+        "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -490,7 +494,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
       delete process.env.MCP_RESOURCE_URL;
 
       const res = await app.request(
-        "/.well-known/oauth-protected-resource/mcp/dev-instance-id",
+        "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
         {
           method: "GET",
         },
@@ -500,7 +504,9 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
       const body = (await res.json()) as Record<string, unknown>;
 
       // デフォルト値が使用されることを確認（+ instance ID）
-      expect(body.resource).toBe("http://localhost:8080/mcp/dev-instance-id");
+      expect(body.resource).toBe(
+        "http://localhost:8080/mcp/dev-mcp-instance-id",
+      );
       expect(body).toHaveProperty("authorization_servers");
     });
   });

@@ -88,7 +88,7 @@ const baseKeycloakAuth: MiddlewareHandler = async (c, next) => {
     // Step 3: JWKS を使用して JWT を検証
     const jwks = await getJWKS();
     const { payload } = await jwtVerify(token, jwks, {
-      issuer: issuer.issuer,
+      issuer: issuer.issuer as string,
       clockTolerance: 60, // 60秒のクロックスキュー許容
     });
 
@@ -209,6 +209,7 @@ export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
     });
 
     // ダミーの JWT ペイロード（tumiki ネスト構造）
+    // mcp_instance_id は URL パスから取得するため含めない
     c.set("jwtPayload", {
       sub: "dev-user-id",
       azp: "dev-client-id",
@@ -217,7 +218,6 @@ export const devKeycloakAuth: MiddlewareHandler = async (c, next) => {
         org_id: "dev-org-id",
         is_org_admin: true,
         tumiki_user_id: "dev-user-db-id",
-        mcp_instance_id: "dev-mcp-instance-id",
       },
     });
 
