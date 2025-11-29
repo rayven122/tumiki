@@ -11,7 +11,6 @@ import {
 import { Settings, User, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { signOut } from "next-auth/react";
 import { useMemo } from "react";
 import { guestRegex } from "@/lib/constants";
 
@@ -96,14 +95,10 @@ export const HeaderClient = ({ user }: HeaderClientProps) => {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex w-full items-center"
-            >
+          <DropdownMenuItem asChild>
+            <Link href="/api/auth/logout" className="flex items-center">
               ログアウト
-            </button>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

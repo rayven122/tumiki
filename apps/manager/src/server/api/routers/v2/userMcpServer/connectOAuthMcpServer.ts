@@ -114,7 +114,7 @@ export const connectOAuthMcpServer = async (
       iconPath: null,
       serverStatus: ServerStatus.PENDING,
       serverType: ServerType.OFFICIAL,
-      authType: "API_KEY",
+      authType: AuthType.OAUTH,
       organizationId,
       mcpServers: {
         connect: { id: templateId },
