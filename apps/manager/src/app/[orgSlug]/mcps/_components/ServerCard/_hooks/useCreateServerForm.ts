@@ -65,6 +65,7 @@ export const useCreateServerForm = ({
       serverName: string;
       mcpServerTemplateId?: string;
       customUrl?: string;
+      transportType?: "SSE" | "STREAMABLE_HTTPS" | "STDIO";
       clientId?: string;
       clientSecret?: string;
     }) => {
@@ -72,6 +73,7 @@ export const useCreateServerForm = ({
         templateId: params.mcpServerTemplateId,
         customUrl: params.customUrl,
         name: params.serverName,
+        transportType: params.transportType,
         clientId: params.clientId,
         clientSecret: params.clientSecret,
       });

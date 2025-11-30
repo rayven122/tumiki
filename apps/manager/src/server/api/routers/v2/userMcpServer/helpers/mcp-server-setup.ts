@@ -35,6 +35,14 @@ export const setupMcpServerTools = async (
     Authorization: `Bearer ${accessToken}`,
   };
 
+  console.log("[setupMcpServerTools] ツール取得開始:", {
+    mcpServerId,
+    mcpServerName,
+    mcpServerTemplateUrl,
+    transportType,
+    hasAccessToken: !!accessToken,
+  });
+
   // MCPサーバーからツールを取得（トランスポートタイプに応じて関数を使い分け）
   const tools =
     transportType === TransportType.SSE
@@ -53,10 +61,14 @@ export const setupMcpServerTools = async (
           headers,
         );
 
+  console.log(
+    `[setupMcpServerTools] ツール取得結果: ${tools?.length ?? 0}個`,
+  );
+
   if (!tools || tools.length === 0) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "MCPサーバーからツールを取得できませんでした",
+      message: `MCPサーバーからツールを取得できませんでした。サーバー: ${mcpServerName} (${mcpServerTemplateUrl})、トランスポート: ${transportType}。詳細はサーバーログを確認してください。`,
     });
   }
 
