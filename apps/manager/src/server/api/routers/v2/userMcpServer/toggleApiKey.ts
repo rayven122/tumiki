@@ -29,6 +29,7 @@ export const toggleApiKey = async (
     where: {
       id: apiKeyId,
       userId,
+      deletedAt: null, // 削除されていないもののみ
     },
   });
 
