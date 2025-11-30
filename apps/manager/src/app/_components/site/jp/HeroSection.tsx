@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 
 interface HeroSectionProps {
-  setShowModal: (show: boolean) => void;
   isVisible: boolean;
 }
 
@@ -48,7 +47,7 @@ const AnimatedRole = () => {
   );
 };
 
-export const HeroSection = ({ setShowModal, isVisible }: HeroSectionProps) => {
+export const HeroSection = ({ isVisible }: HeroSectionProps) => {
   return (
     <section
       id="hero"
@@ -273,12 +272,12 @@ export const HeroSection = ({ setShowModal, isVisible }: HeroSectionProps) => {
             animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            <button
-              onClick={() => setShowModal(true)}
+            <Link
+              href="/signup"
               className="border-3 border-black bg-black px-6 py-3 text-sm font-bold text-white shadow-[4px_4px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#6366f1] sm:px-10 sm:py-4 sm:text-lg"
             >
-              AIチーム環境を構築する
-            </button>
+              今すぐ無料登録
+            </Link>
             <Link
               href="#solution"
               className="flex items-center gap-2 border-b-2 border-transparent text-sm font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black sm:text-base"
