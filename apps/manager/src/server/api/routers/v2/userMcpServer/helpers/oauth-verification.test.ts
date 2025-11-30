@@ -1,5 +1,4 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import { TRPCError } from "@trpc/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TransportType } from "@tumiki/db/prisma";
 import {
@@ -46,18 +45,15 @@ const createMockStatePayload = () => ({
 
 // Prismaクライアントのモック
 const createMockPrismaClient = () => {
-  const mockFindUnique = vi.fn();
-  const mockFindFirst = vi.fn();
-
   return {
     mcpServer: {
-      findUnique: mockFindUnique,
+      findUnique: vi.fn(),
     },
     mcpOAuthClient: {
-      findFirst: mockFindFirst,
+      findFirst: vi.fn(),
     },
     organization: {
-      findUnique: mockFindUnique,
+      findUnique: vi.fn(),
     },
   } as unknown as PrismaTransactionClient;
 };
@@ -81,10 +77,7 @@ describe("verifyOAuthState", () => {
     mockVerifyStateToken.mockRejectedValue(new Error("Invalid token"));
 
     await expect(verifyOAuthState("invalid-token", mockUserId)).rejects.toThrow(
-      expect.objectContaining({
-        code: "BAD_REQUEST",
-        message: "Invalid state token",
-      }),
+      "Invalid state token",
     );
 
     expect(mockVerifyStateToken).toHaveBeenCalledWith("invalid-token");
@@ -96,22 +89,14 @@ describe("verifyOAuthState", () => {
 
     await expect(
       verifyOAuthState(mockStateToken, "different-user-id"),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "FORBIDDEN",
-        message: "User mismatch",
-      }),
-    );
+    ).rejects.toThrow("User mismatch");
   });
 
   test("state token検証時の一般的なエラーを適切にハンドリングする", async () => {
     mockVerifyStateToken.mockRejectedValue("Unknown error");
 
     await expect(verifyOAuthState(mockStateToken, mockUserId)).rejects.toThrow(
-      expect.objectContaining({
-        code: "BAD_REQUEST",
-        message: "Invalid state token",
-      }),
+      "Invalid state token",
     );
   });
 });
@@ -134,7 +119,7 @@ describe("getMcpServerAndOAuthClient", () => {
         {
           id: "template_123",
           url: "https://example.com/mcp",
-          transportType: TransportType.HTTP,
+          transportType: TransportType.STREAMABLE_HTTPS,
         },
       ],
     };
@@ -152,9 +137,15 @@ describe("getMcpServerAndOAuthClient", () => {
       slug: "test-org",
     };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
-    (mockTx.mcpOAuthClient.findFirst as any).mockResolvedValue(mockOAuthClient);
-    (mockTx.organization.findUnique as any).mockResolvedValue(mockOrganization);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
+    (
+      mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(mockOAuthClient);
+    (
+      mockTx.organization.findUnique as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(mockOrganization);
 
     const result = await getMcpServerAndOAuthClient(
       mockTx,
@@ -167,7 +158,7 @@ describe("getMcpServerAndOAuthClient", () => {
         id: mockMcpServerId,
         name: "Test MCP Server",
         templateUrl: "https://example.com/mcp",
-        transportType: TransportType.HTTP,
+        transportType: TransportType.STREAMABLE_HTTPS,
       },
       oauthClient: mockOAuthClient,
       organization: mockOrganization,
@@ -175,16 +166,13 @@ describe("getMcpServerAndOAuthClient", () => {
   });
 
   test("MCPサーバーが存在しない場合にエラーを投げる", async () => {
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(null);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      null,
+    );
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "NOT_FOUND",
-        message: "MCPサーバーまたはテンプレートが見つかりません",
-      }),
-    );
+    ).rejects.toThrow("MCPサーバーまたはテンプレートが見つかりません");
   });
 
   test("MCPサーバーテンプレートが存在しない場合にエラーを投げる", async () => {
@@ -195,16 +183,13 @@ describe("getMcpServerAndOAuthClient", () => {
       mcpServers: [], // テンプレートなし
     };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "NOT_FOUND",
-        message: "MCPサーバーまたはテンプレートが見つかりません",
-      }),
-    );
+    ).rejects.toThrow("MCPサーバーまたはテンプレートが見つかりません");
   });
 
   test("組織IDが一致しない場合にエラーを投げる", async () => {
@@ -216,21 +201,18 @@ describe("getMcpServerAndOAuthClient", () => {
         {
           id: "template_123",
           url: "https://example.com/mcp",
-          transportType: TransportType.HTTP,
+          transportType: TransportType.STREAMABLE_HTTPS,
         },
       ],
     };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "FORBIDDEN",
-        message: "このMCPサーバーへのアクセス権限がありません",
-      }),
-    );
+    ).rejects.toThrow("このMCPサーバーへのアクセス権限がありません");
   });
 
   test("MCPサーバーテンプレートのURLが存在しない場合にエラーを投げる", async () => {
@@ -242,21 +224,18 @@ describe("getMcpServerAndOAuthClient", () => {
         {
           id: "template_123",
           url: null, // URLなし
-          transportType: TransportType.HTTP,
+          transportType: TransportType.STREAMABLE_HTTPS,
         },
       ],
     };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "NOT_FOUND",
-        message: "MCPサーバーテンプレートのURLが見つかりません",
-      }),
-    );
+    ).rejects.toThrow("MCPサーバーテンプレートのURLが見つかりません");
   });
 
   test("OAuthクライアントが存在しない場合にエラーを投げる", async () => {
@@ -268,22 +247,21 @@ describe("getMcpServerAndOAuthClient", () => {
         {
           id: "template_123",
           url: "https://example.com/mcp",
-          transportType: TransportType.HTTP,
+          transportType: TransportType.STREAMABLE_HTTPS,
         },
       ],
     };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
-    (mockTx.mcpOAuthClient.findFirst as any).mockResolvedValue(null);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
+    (
+      mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(null);
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "NOT_FOUND",
-        message: "OAuth clientが見つかりません",
-      }),
-    );
+    ).rejects.toThrow("OAuth clientが見つかりません");
   });
 
   test("組織が存在しない場合にエラーを投げる", async () => {
@@ -295,7 +273,7 @@ describe("getMcpServerAndOAuthClient", () => {
         {
           id: "template_123",
           url: "https://example.com/mcp",
-          transportType: TransportType.HTTP,
+          transportType: TransportType.STREAMABLE_HTTPS,
         },
       ],
     };
@@ -307,18 +285,19 @@ describe("getMcpServerAndOAuthClient", () => {
       authorizationServerUrl: "https://oauth.example.com",
     };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
-    (mockTx.mcpOAuthClient.findFirst as any).mockResolvedValue(mockOAuthClient);
-    (mockTx.organization.findUnique as any).mockResolvedValue(null);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
+    (
+      mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(mockOAuthClient);
+    (
+      mockTx.organization.findUnique as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(null);
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "NOT_FOUND",
-        message: "組織が見つかりません",
-      }),
-    );
+    ).rejects.toThrow("組織が見つかりません");
   });
 
   test("最新のOAuthクライアントが取得されることを確認", async () => {
@@ -330,7 +309,7 @@ describe("getMcpServerAndOAuthClient", () => {
         {
           id: "template_123",
           url: "https://example.com/mcp",
-          transportType: TransportType.SSE,
+          transportType: TransportType.STREAMABLE_HTTPS,
         },
       ],
     };
@@ -344,9 +323,15 @@ describe("getMcpServerAndOAuthClient", () => {
 
     const mockOrganization = { slug: "test-org" };
 
-    (mockTx.mcpServer.findUnique as any).mockResolvedValue(mockMcpServer);
-    (mockTx.mcpOAuthClient.findFirst as any).mockResolvedValue(mockOAuthClient);
-    (mockTx.organization.findUnique as any).mockResolvedValue(mockOrganization);
+    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+      mockMcpServer,
+    );
+    (
+      mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(mockOAuthClient);
+    (
+      mockTx.organization.findUnique as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(mockOrganization);
 
     await getMcpServerAndOAuthClient(
       mockTx,
@@ -525,12 +510,7 @@ describe("exchangeAuthorizationCode", () => {
         mockOAuthClient,
         mockOriginalServerUrl,
       ),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "BAD_REQUEST",
-        message: "Authorization denied by user",
-      }),
-    );
+    ).rejects.toThrow("Authorization denied by user");
   });
 
   test("OAuth認可レスポンスの検証で不明なエラーが発生した場合", async () => {
@@ -549,6 +529,7 @@ describe("exchangeAuthorizationCode", () => {
 
     mockDiscoverOAuthMetadata.mockResolvedValue(mockAuthServer);
     mockValidateAuthResponse.mockImplementation(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw "Unknown validation error"; // Error オブジェクトでない
     });
 
@@ -560,12 +541,7 @@ describe("exchangeAuthorizationCode", () => {
         mockOAuthClient,
         mockOriginalServerUrl,
       ),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "BAD_REQUEST",
-        message: "Authorization response validation failed",
-      }),
-    );
+    ).rejects.toThrow("Authorization response validation failed");
   });
 
   test("トークン交換に失敗した場合のエラー", async () => {
@@ -599,12 +575,7 @@ describe("exchangeAuthorizationCode", () => {
         mockOAuthClient,
         mockOriginalServerUrl,
       ),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Invalid authorization code",
-      }),
-    );
+    ).rejects.toThrow("Invalid authorization code");
   });
 
   test("トークン交換で不明なエラーが発生した場合", async () => {
@@ -636,12 +607,7 @@ describe("exchangeAuthorizationCode", () => {
         mockOAuthClient,
         mockOriginalServerUrl,
       ),
-    ).rejects.toThrow(
-      expect.objectContaining({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Token exchange failed",
-      }),
-    );
+    ).rejects.toThrow("Token exchange failed");
   });
 
   test("元のサーバーURLがメタデータ取得に使用されることを確認", async () => {

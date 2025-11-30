@@ -1,12 +1,4 @@
-import {
-  describe,
-  test,
-  expect,
-  beforeEach,
-  beforeAll,
-  afterAll,
-  vi,
-} from "vitest";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import {
   createStateToken,
   verifyStateToken,
@@ -126,7 +118,7 @@ describe("createStateToken", () => {
     const invalidPayload = {
       state: "test",
       // 必須フィールドが不足
-    } as any; // OAuthStatePayloadではなく、意図的に不正なオブジェクト
+    } as unknown as OAuthStatePayload;
 
     await expect(createStateToken(invalidPayload)).rejects.toThrow(
       "Invalid state token payload",
