@@ -1,7 +1,6 @@
 import { Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Prisma } from "@tumiki/db/prisma";
 
@@ -9,26 +8,27 @@ type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 
 type AuthMethodTabsProps = {
   mcpServer: McpServerTemplate;
-  authMethod: "oauth" | "apikey";
   envVars: Record<string, string>;
   isProcessing: boolean;
-  onAuthMethodChange: (method: "oauth" | "apikey") => void;
   onEnvVarChange: (envVar: string, value: string) => void;
 };
 
 export const AuthMethodTabs = ({
   mcpServer,
-  authMethod,
   envVars,
   isProcessing,
-  onAuthMethodChange,
   onEnvVarChange,
 }: AuthMethodTabsProps) => {
+  // authTypeが"NONE"の場合はnullを返す
+  if (mcpServer.authType === "NONE") {
+    return null;
+  }
+
   if (mcpServer.envVarKeys.length === 0) {
     return null;
   }
 
-  if (mcpServer.authType !== "OAUTH") {
+  if (mcpServer.authType === "API_KEY") {
     return (
       <ApiKeyInputs
         mcpServer={mcpServer}
@@ -39,46 +39,27 @@ export const AuthMethodTabs = ({
     );
   }
 
+  // OAuth認証の場合
   return (
-    <Tabs
-      value={authMethod}
-      onValueChange={(v) => onAuthMethodChange(v as "oauth" | "apikey")}
-      className="space-y-4"
-    >
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="oauth">OAuth認証</TabsTrigger>
-        <TabsTrigger value="apikey">APIキー</TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          OAuth認証を使用すると、{mcpServer.name}
+          アカウントでログインして自動的に必要な権限がすべて付与されます。
+          トークンの有効期限が切れた場合は自動的に更新されます。
+        </AlertDescription>
+      </Alert>
 
-      <TabsContent value="apikey" className="space-y-4">
-        <ApiKeyInputs
-          mcpServer={mcpServer}
-          envVars={envVars}
-          isProcessing={isProcessing}
-          onEnvVarChange={onEnvVarChange}
-        />
-      </TabsContent>
-
-      <TabsContent value="oauth" className="space-y-4">
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            OAuth認証を使用すると、{mcpServer.name}
-            アカウントでログインして自動的に必要な権限がすべて付与されます。
-            トークンの有効期限が切れた場合は自動的に更新されます。
-          </AlertDescription>
-        </Alert>
-
-        <div className="rounded-lg border bg-gray-50 p-4">
-          <h4 className="mb-2 font-medium">自動適用される権限</h4>
-          <p className="text-muted-foreground mb-3 text-sm">
-            OAuth認証では、必要な権限が自動的に管理されます。
-            接続ボタンをクリックすると、{mcpServer.name}
-            の認証画面に移動します。
-          </p>
-        </div>
-      </TabsContent>
-    </Tabs>
+      <div className="rounded-lg border bg-gray-50 p-4">
+        <h4 className="mb-2 font-medium">自動適用される権限</h4>
+        <p className="text-muted-foreground mb-3 text-sm">
+          OAuth認証では、必要な権限が自動的に管理されます。
+          接続ボタンをクリックすると、{mcpServer.name}
+          の認証画面に移動します。
+        </p>
+      </div>
+    </div>
   );
 };
 

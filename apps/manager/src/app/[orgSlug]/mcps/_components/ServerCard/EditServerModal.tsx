@@ -40,7 +40,6 @@ export const EditServerModal = ({
   const [serverName, setServerName] = useState(
     normalizeServerName(mcpServer.name),
   );
-  const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("apikey");
 
   // API呼び出し用のフック
   const { isPending, handleOAuthConnect, handleUpdateWithApiKey } =
@@ -56,8 +55,7 @@ export const EditServerModal = ({
   };
 
   const handleSubmit = () => {
-    const isOAuthSupported = mcpServer.authType === "OAUTH";
-    if (isOAuthSupported && authMethod === "oauth") {
+    if (mcpServer.authType === "OAUTH") {
       void handleOAuthConnect(serverName);
     } else {
       handleUpdateWithApiKey(envVars);
@@ -75,12 +73,7 @@ export const EditServerModal = ({
     <Dialog open onOpenChange={(open) => !isPending && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <div className="relative max-h-[90vh] overflow-y-auto">
-          <LoadingOverlay
-            isProcessing={isPending}
-            isAdding={false}
-            isValidating={false}
-            isOAuthConnecting={false}
-          />
+          <LoadingOverlay isProcessing={isPending} />
 
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
@@ -116,10 +109,8 @@ export const EditServerModal = ({
           {/* 認証方法選択・環境変数入力 */}
           <AuthMethodTabs
             mcpServer={mcpServer}
-            authMethod={authMethod}
             envVars={envVars}
             isProcessing={isPending}
-            onAuthMethodChange={setAuthMethod}
             onEnvVarChange={handleEnvVarChange}
           />
 
@@ -128,12 +119,8 @@ export const EditServerModal = ({
           <FormActions
             mode="edit"
             mcpServer={mcpServer}
-            authMethod={authMethod}
             isFormValid={isFormValid()}
             isProcessing={isPending}
-            isAdding={false}
-            isValidating={false}
-            isOAuthConnecting={false}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

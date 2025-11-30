@@ -513,6 +513,7 @@ erDiagram
 "McpServerRequestLog" {
   String id PK
   String mcpServerId FK
+  String mcpApiKeyId FK "nullable"
   String toolName
   TransportType transportType
   String method
@@ -539,6 +540,7 @@ erDiagram
   String mcpServerId FK
   DateTime createdAt
   DateTime updatedAt
+  DateTime deletedAt "nullable"
 }
 "McpOAuthClient" {
   String id PK
@@ -596,6 +598,7 @@ erDiagram
 }
 "McpConfig" }o--|| "McpServerTemplate" : mcpServerTemplate
 "McpServerRequestLog" }o--|| "McpServer" : mcpServer
+"McpServerRequestLog" }o--o| "McpApiKey" : mcpApiKey
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
@@ -648,6 +651,7 @@ MCPサーバーインスタンスへのリクエストログ
 
 - `id`:
 - `mcpServerId`: MCPサーバーインスタンスID
+- `mcpApiKeyId`: 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
 - `toolName`: 実行されたツール名
 - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
 - `method`: MCPメソッド（tools/list, tools/call）
@@ -681,6 +685,7 @@ APIキー管理テーブル
 - `mcpServerId`: 関連するMcpServerのID
 - `createdAt`:
 - `updatedAt`:
+- `deletedAt`: 論理削除用のタイムスタンプ
 
 ### `McpOAuthClient`
 
