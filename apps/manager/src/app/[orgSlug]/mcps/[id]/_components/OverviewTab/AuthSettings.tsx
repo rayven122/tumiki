@@ -49,6 +49,10 @@ export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
       },
     });
 
+  const handleGenerateApiKey = (expiresAt: Date | undefined) => {
+    generateApiKey({ serverId, expiresAt });
+  };
+
   // APIキー一覧取得
   const { data: apiKeys, isLoading: isLoadingApiKeys } =
     api.v2.mcpServerAuth.listApiKeys.useQuery(
@@ -142,7 +146,7 @@ export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
               apiKeys={apiKeys}
               isLoading={isLoadingApiKeys}
               isGenerating={isGeneratingApiKey}
-              onGenerateApiKey={() => generateApiKey({ serverId })}
+              onGenerateApiKey={handleGenerateApiKey}
               onToggleApiKey={toggleApiKey}
               onDeleteApiKey={deleteApiKey}
             />

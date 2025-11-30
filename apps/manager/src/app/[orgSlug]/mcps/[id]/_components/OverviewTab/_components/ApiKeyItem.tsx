@@ -14,6 +14,7 @@ type ApiKeyItemProps = {
     isActive: boolean;
     createdAt: Date;
     lastUsedAt: Date | null;
+    expiresAt: Date | null;
   };
   isVisible: boolean;
   onToggleVisibility: () => void;
@@ -30,11 +31,16 @@ export const ApiKeyItem = ({
   onToggleActive,
   onDelete,
 }: ApiKeyItemProps) => {
+  // 有効期限のチェック
+  const isExpired = apiKey.expiresAt
+    ? new Date(apiKey.expiresAt) < new Date()
+    : false;
+
   return (
     <Card
       className={cn(
         "transition-colors",
-        !apiKey.isActive && "bg-gray-50 opacity-60",
+        (!apiKey.isActive || isExpired) && "bg-gray-50 opacity-60",
       )}
     >
       <CardContent className="p-4">
@@ -46,10 +52,16 @@ export const ApiKeyItem = ({
                 {apiKey.name}
               </span>
               <Badge
-                variant={apiKey.isActive ? "default" : "secondary"}
+                variant={
+                  isExpired
+                    ? "destructive"
+                    : apiKey.isActive
+                      ? "default"
+                      : "secondary"
+                }
                 className="text-xs"
               >
-                {apiKey.isActive ? "有効" : "無効"}
+                {isExpired ? "期限切れ" : apiKey.isActive ? "有効" : "無効"}
               </Badge>
             </div>
 
@@ -80,7 +92,7 @@ export const ApiKeyItem = ({
               </Button>
             </div>
 
-            <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
               <span>
                 作成日: {new Date(apiKey.createdAt).toLocaleDateString("ja-JP")}
               </span>
@@ -88,6 +100,12 @@ export const ApiKeyItem = ({
                 <span>
                   最終使用:{" "}
                   {new Date(apiKey.lastUsedAt).toLocaleDateString("ja-JP")}
+                </span>
+              )}
+              {apiKey.expiresAt && (
+                <span className={cn(isExpired && "font-medium text-red-600")}>
+                  有効期限:{" "}
+                  {new Date(apiKey.expiresAt).toLocaleDateString("ja-JP")}
                 </span>
               )}
             </div>

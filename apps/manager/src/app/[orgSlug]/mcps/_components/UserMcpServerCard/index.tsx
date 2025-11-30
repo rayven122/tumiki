@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { type RouterOutputs } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ServerStatusBadge } from "../ServerStatusBadge";
+import { OAuthTokenStatusBadge } from "./OAuthTokenStatusBadge";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -164,6 +165,9 @@ export const UserMcpServerCard = ({
             <CardTitle>{userMcpServer.name}</CardTitle>
             <div className="mt-1 flex items-center gap-2">
               <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
+              <OAuthTokenStatusBadge
+                oauthTokenStatus={userMcpServer.oauthTokenStatus}
+              />
             </div>
           </div>
         </CardHeader>

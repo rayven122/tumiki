@@ -38,19 +38,13 @@ import { ConnectionTab } from "./ConnectionTab";
 import { EditServerDialog } from "./EditServerDialog";
 import { DeleteServerDialog } from "./DeleteServerDialog";
 import { BarChart3, Activity, Cable, Workflow } from "lucide-react";
+import { OAuthTokenStatusBadge } from "../../_components/UserMcpServerCard/OAuthTokenStatusBadge";
 
 // サーバータイプのラベル
 const SERVER_TYPE_LABELS = {
   [ServerType.OFFICIAL]: "公式",
   [ServerType.CUSTOM]: "カスタム",
 } as const;
-
-// トランスポートタイプのラベル（mcpServerから取得）
-const getTransportTypeLabel = (url: string | null | undefined): string => {
-  if (!url) return "STDIO";
-  if (url.includes("sse")) return "SSE";
-  return "HTTPS";
-};
 
 type ServerDetailPageClientProps = {
   orgSlug: string;
@@ -94,6 +88,17 @@ export const ServerDetailPageClient = ({
     { userMcpServerId: serverId as McpServerId },
     { enabled: !!serverId },
   );
+
+  // OAuth トークン状態を取得（OAuth認証の場合のみ）
+  const { data: oauthTokenStatus } =
+    api.v2.userMcpServer.getOAuthTokenStatus.useQuery(
+      { mcpServerTemplateId: server?.mcpServerTemplateId ?? "" },
+      {
+        enabled:
+          !!server?.mcpServerTemplateId &&
+          server?.mcpServer?.authType === "OAUTH",
+      },
+    );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
@@ -300,15 +305,6 @@ export const ServerDetailPageClient = ({
                         </Badge>
                       </div>
 
-                      {/* トランスポート */}
-                      <div className="flex items-center gap-1.5">
-                        <Cable className="h-3 w-3" />
-                        <span>接続:</span>
-                        <Badge variant="outline" className="h-4 px-1.5 text-xs">
-                          {getTransportTypeLabel(server.mcpServer?.url)}
-                        </Badge>
-                      </div>
-
                       {/* 認証 */}
                       {selectedAuthType !== null && (
                         <>
@@ -330,6 +326,13 @@ export const ServerDetailPageClient = ({
                               </span>
                             </div>
                           )}
+                          {/* OAuth トークン状態バッジ */}
+                          {selectedAuthType === AuthType.OAUTH &&
+                            oauthTokenStatus && (
+                              <OAuthTokenStatusBadge
+                                oauthTokenStatus={oauthTokenStatus}
+                              />
+                            )}
                         </>
                       )}
                     </div>
