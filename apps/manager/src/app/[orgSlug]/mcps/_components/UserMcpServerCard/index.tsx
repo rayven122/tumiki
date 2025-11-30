@@ -29,9 +29,8 @@ import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
 import { cn } from "@/lib/utils";
 
 import { type RouterOutputs } from "@/trpc/react";
-import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
-import { ServerStatus } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
+import { ServerStatusBadge } from "../ServerStatusBadge";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -164,23 +163,7 @@ export const UserMcpServerCard = ({
           <div className="flex-1">
             <CardTitle>{userMcpServer.name}</CardTitle>
             <div className="mt-1 flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    userMcpServer.serverStatus === ServerStatus.RUNNING
-                      ? "bg-green-500"
-                      : userMcpServer.serverStatus === ServerStatus.STOPPED
-                        ? "bg-gray-500"
-                        : userMcpServer.serverStatus === ServerStatus.PENDING
-                          ? "bg-yellow-500"
-                          : "bg-red-500",
-                  )}
-                />
-                <span className="text-xs text-gray-600">
-                  {SERVER_STATUS_LABELS[userMcpServer.serverStatus]}
-                </span>
-              </div>
+              <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
             </div>
           </div>
         </CardHeader>

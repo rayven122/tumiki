@@ -87,7 +87,7 @@ export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
   };
 
   return (
-    <Card className="lg:col-span-2">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Shield className="h-5 w-5" />
@@ -103,16 +103,6 @@ export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
         />
 
         {/* 認証タイプ別の設定UI */}
-        {selectedAuthType === AuthType.NONE && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>注意</AlertTitle>
-            <AlertDescription>
-              認証なしは動作検証用です。本番環境では使用しないでください。
-            </AlertDescription>
-          </Alert>
-        )}
-
         {selectedAuthType === AuthType.API_KEY && (
           <ApiKeyList
             apiKeys={apiKeys}
