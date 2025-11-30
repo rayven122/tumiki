@@ -6,7 +6,7 @@
  */
 
 import type { NextRequest } from "next/server";
-import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { api } from "@/trpc/server";
 
@@ -37,15 +37,20 @@ export const GET = async (request: NextRequest) => {
   // 認証チェック
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/auth/signin?error=Unauthorized");
+    return NextResponse.redirect(
+      new URL("/auth/signin?error=Unauthorized", request.url),
+    );
   }
+
   try {
     const searchParams = request.nextUrl.searchParams;
 
     // パラメータ検証
     const paramsResult = validateCallbackParams(searchParams);
     if ("error" in paramsResult) {
-      redirect(`/?error=${paramsResult.error}`);
+      return NextResponse.redirect(
+        new URL(`/?error=${paramsResult.error}`, request.url),
+      );
     }
     const { state } = paramsResult;
 
@@ -57,24 +62,41 @@ export const GET = async (request: NextRequest) => {
 
     // 結果に応じてリダイレクト
     if (result.success) {
-      redirect(
-        `/${result.organizationSlug}/mcps?success=OAuth+authentication+completed`,
+      return NextResponse.redirect(
+        new URL(
+          `/${result.organizationSlug}/mcps?success=OAuth+authentication+completed`,
+          request.url,
+        ),
       );
     } else {
-      redirect(
-        `/${result.organizationSlug}/mcps?error=${encodeURIComponent(
-          result.error ?? "Unknown error",
-        )}`,
+      return NextResponse.redirect(
+        new URL(
+          `/${result.organizationSlug}/mcps?error=${encodeURIComponent(
+            result.error ?? "Unknown error",
+          )}`,
+          request.url,
+        ),
       );
     }
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
     const organizationSlug = session.user.organizationSlug;
+
+    // organizationSlugがnullの場合はホームにリダイレクト
+    if (!organizationSlug) {
+      return NextResponse.redirect(
+        new URL("/?error=Missing+organization", request.url),
+      );
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
-    redirect(
-      `/${organizationSlug}/mcps?error=${encodeURIComponent(errorMessage)}`,
+    return NextResponse.redirect(
+      new URL(
+        `/${organizationSlug}/mcps?error=${encodeURIComponent(errorMessage)}`,
+        request.url,
+      ),
     );
   }
 };

@@ -79,12 +79,7 @@ export const setupMcpServerTools = async (
 
   const mcpServerTemplateId = mcpServer.mcpServers[0]!.id;
 
-  // 既存のツールを削除（再取得のため）
-  await tx.mcpTool.deleteMany({
-    where: { mcpServerTemplateId },
-  });
-
-  // ツールをupsertで作成・更新
+  // ツールをupsertで作成・更新（既存のツールは更新、新規ツールは作成）
   const createdTools = await Promise.all(
     tools.map((tool) =>
       tx.mcpTool.upsert({
