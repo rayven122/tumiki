@@ -59,6 +59,9 @@ export const connectOAuthMcpServer = async (
     templateId,
     serverUrl,
     organizationId,
+    // クライアント情報を渡す
+    clientId: input.clientId,
+    clientSecret: input.clientSecret,
   });
 
   // 4. Authorization URLを生成

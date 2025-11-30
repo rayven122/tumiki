@@ -16,7 +16,6 @@ export type CreateApiKeyMcpServerInput = z.infer<
 
 export type CreateApiKeyMcpServerOutput = {
   id: string;
-  mcpConfigId: string;
 };
 
 /**
@@ -79,17 +78,17 @@ export const createApiKeyMcpServer = async (
           message: "MCPサーバーの環境変数が一致しません",
         });
       }
-    }
 
-    // McpConfigの作成
-    const mcpConfig = await prisma.mcpConfig.create({
-      data: {
-        mcpServerTemplateId: mcpServerTemplate.id,
-        organizationId,
-        userId,
-        envVars: JSON.stringify(input.envVars ?? {}),
-      },
-    });
+      // McpConfigの作成（環境変数がある場合のみ）
+      await prisma.mcpConfig.create({
+        data: {
+          mcpServerTemplateId: mcpServerTemplate.id,
+          organizationId,
+          userId,
+          envVars: JSON.stringify(input.envVars),
+        },
+      });
+    }
 
     // McpServerの作成
     const mcpServer = await prisma.mcpServer.create({
@@ -112,7 +111,6 @@ export const createApiKeyMcpServer = async (
 
     return {
       id: mcpServer.id,
-      mcpConfigId: mcpConfig.id,
     };
   }
 
@@ -129,7 +127,7 @@ export const createApiKeyMcpServer = async (
         args: [],
         url: input.customUrl,
         envVarKeys: input.envVars ? Object.keys(input.envVars) : [],
-        authType: AuthType.API_KEY,
+        authType: input.envVars ? AuthType.API_KEY : AuthType.NONE,
         oauthScopes: [],
         createdBy: userId,
         visibility: McpServerVisibility.PRIVATE,
@@ -137,17 +135,25 @@ export const createApiKeyMcpServer = async (
       },
     });
 
-    // McpConfigを作成（環境変数を保存）
-    const mcpConfig = input.envVars
-      ? await prisma.mcpConfig.create({
-          data: {
-            mcpServerTemplateId: customTemplate.id,
-            organizationId,
-            userId,
-            envVars: JSON.stringify(input.envVars),
-          },
-        })
-      : null;
+    if (input.envVars) {
+      await prisma.mcpConfig.create({
+        data: {
+          mcpServerTemplateId: customTemplate.id,
+          organizationId,
+          userId,
+          envVars: JSON.stringify(input.envVars),
+        },
+      });
+      // McpConfigを作成
+      await prisma.mcpConfig.create({
+        data: {
+          mcpServerTemplateId: customTemplate.id,
+          organizationId,
+          userId,
+          envVars: JSON.stringify(input.envVars),
+        },
+      });
+    }
 
     // McpServerを作成してテンプレートと紐付け
     const mcpServer = await prisma.mcpServer.create({
@@ -167,7 +173,6 @@ export const createApiKeyMcpServer = async (
 
     return {
       id: mcpServer.id,
-      mcpConfigId: mcpConfig?.id ?? "",
     };
   }
 
