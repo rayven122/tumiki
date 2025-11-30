@@ -110,6 +110,37 @@ const AsyncServerCardList = forwardRef<
   }
 
   // 通常モード（フィルタリング適用）
+
+  // サーバーが1つも接続されていない場合
+  if (servers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12">
+        <div className="mb-4 text-6xl">📦</div>
+        <h3 className="mb-2 text-lg font-semibold text-gray-900">
+          接続済みMCPサーバーがありません
+        </h3>
+        <p className="mb-4 text-center text-sm text-gray-600">
+          下の「MCPサーバーを追加」セクションからサーバーを接続してください
+        </p>
+      </div>
+    );
+  }
+
+  // フィルタリング結果が0件の場合
+  if (filteredServers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12">
+        <div className="mb-4 text-6xl">🔍</div>
+        <h3 className="mb-2 text-lg font-semibold text-gray-900">
+          該当するMCPサーバーが見つかりません
+        </h3>
+        <p className="mb-4 text-center text-sm text-gray-600">
+          検索条件やカテゴリーを変更してみてください
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {filteredServers.map((server) => (

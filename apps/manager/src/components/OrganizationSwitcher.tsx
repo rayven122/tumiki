@@ -50,7 +50,7 @@ export const OrganizationSwitcher = () => {
       onValueChange={handleValueChange}
       disabled={isSwitching}
     >
-      <SelectTrigger className="w-[250px] border-gray-200 bg-white shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
+      <SelectTrigger className="w-[200px] border-gray-200 bg-white shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
         <SelectValue>
           <div className="flex items-center space-x-2">
             {isSwitching ? (

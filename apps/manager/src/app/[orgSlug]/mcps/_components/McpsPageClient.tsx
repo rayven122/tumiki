@@ -20,6 +20,7 @@ import { useState, useMemo } from "react";
 import { api } from "@/trpc/react";
 
 import { ServerCardList } from "./ServerCardList";
+import { ServerList } from "../add/_components/ServerList";
 
 type McpsPageClientProps = {
   orgSlug: string;
@@ -38,18 +39,15 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // MCPサーバーから利用可能なタグを動的に取得
-  const { data: userOfficialServers } =
-    api.v2.userMcpServer.findOfficialServers.useQuery();
+  // MCPサーバーテンプレート一覧から利用可能なタグを動的に取得
+  const { data: mcpServerTemplates } = api.mcpServer.findAll.useQuery();
 
-  // 全サーバーからユニークなタグを抽出
+  // 全MCPサーバーテンプレートからユニークなタグを抽出
   const availableTags = useMemo(() => {
-    if (!userOfficialServers) return [];
-    const allTags = userOfficialServers.flatMap(
-      (server) => server.mcpServer?.tags ?? [],
-    );
+    if (!mcpServerTemplates) return [];
+    const allTags = mcpServerTemplates.flatMap((server) => server.tags);
     return Array.from(new Set(allTags)).sort();
-  }, [userOfficialServers]);
+  }, [mcpServerTemplates]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -73,7 +71,6 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
             variant={isSortMode ? "destructive" : "outline"}
             size="sm"
             onClick={handleSortModeToggle}
-            className="mr-2"
           >
             {isSortMode ? (
               <>
@@ -174,6 +171,26 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
           selectedTags={selectedTags}
         />
       </div>
+
+      {/* カスタムMCPサーバーを追加セクション */}
+      {!isSortMode && (
+        <div className="mt-12">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">MCPサーバーを追加</h2>
+            <p className="mt-2 text-gray-600">
+              MCPサーバーを接続して、さらに多くの機能を利用できます
+            </p>
+          </div>
+          <ServerList
+            orgSlug={orgSlug}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            selectedTags={selectedTags}
+            onSelectedTagsChange={setSelectedTags}
+            showFilteringUI={false}
+          />
+        </div>
+      )}
 
       {/* 並び替え確認ダイアログ */}
       <AlertDialog open={showConfirmDialog}>
