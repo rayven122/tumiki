@@ -34,9 +34,10 @@ import type { McpServerId } from "@/schema/ids";
 import { CustomTabs } from "./CustomTabs";
 import { OverviewTab } from "./OverviewTab";
 import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
+import { AuthTab } from "./AuthTab";
 import { EditServerDialog } from "./EditServerDialog";
 import { DeleteServerDialog } from "./DeleteServerDialog";
-import { BarChart3, Activity } from "lucide-react";
+import { BarChart3, Activity, KeyRound } from "lucide-react";
 
 type ServerDetailPageClientProps = {
   orgSlug: string;
@@ -358,6 +359,11 @@ export const ServerDetailPageClient = ({
               icon: <BarChart3 className="h-4 w-4" />,
             },
             {
+              id: "auth",
+              label: "認証設定",
+              icon: <KeyRound className="h-4 w-4" />,
+            },
+            {
               id: "logs",
               label: "ログ・分析",
               icon: <Activity className="h-4 w-4" />,
@@ -374,6 +380,11 @@ export const ServerDetailPageClient = ({
                   toolStats={toolStats}
                   serverId={serverId as McpServerId}
                 />
+              );
+            }
+            if (activeTab === "auth") {
+              return (
+                <AuthTab server={server} serverId={serverId as McpServerId} />
               );
             }
             if (activeTab === "logs") {
