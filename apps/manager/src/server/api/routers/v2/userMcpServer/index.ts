@@ -20,6 +20,7 @@ import {
   updateDisplayOrderInputSchema,
   updateDisplayOrderOutputSchema,
 } from "./updateDisplayOrder";
+import { updateName } from "./updateName";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
 export const CreateApiKeyMcpServerInputV2 = z
@@ -66,6 +67,16 @@ export const UpdateOfficialServerOutputV2 = z.object({
   id: z.string(),
 });
 
+export const UpdateNameInputV2 = z.object({
+  id: z.string(),
+  name: nameValidationSchema,
+  description: z.string().optional(),
+});
+
+export const UpdateNameOutputV2 = z.object({
+  id: z.string(),
+});
+
 // OAuth Callback処理の入力スキーマ
 export const HandleOAuthCallbackInputV2 = z.object({
   state: z.string(),
@@ -109,20 +120,6 @@ export const userMcpServerRouter = createTRPCRouter({
       });
     }),
 
-  update: protectedProcedure
-    .input(UpdateOfficialServerInputV2)
-    .output(UpdateOfficialServerOutputV2)
-    .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        return await updateOfficialServer(
-          tx,
-          input,
-          ctx.session.user.organizationId,
-          ctx.session.user.id,
-        );
-      });
-    }),
-
   // OAuth Callback処理
   handleOAuthCallback: protectedProcedure
     .input(HandleOAuthCallbackInputV2)
@@ -134,6 +131,20 @@ export const userMcpServerRouter = createTRPCRouter({
           userId: ctx.session.user.id,
           currentUrl: new URL(input.currentUrl),
         });
+      });
+    }),
+
+  update: protectedProcedure
+    .input(UpdateOfficialServerInputV2)
+    .output(UpdateOfficialServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateOfficialServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
       });
     }),
 
@@ -168,6 +179,16 @@ export const userMcpServerRouter = createTRPCRouter({
           input,
           ctx.session.user.organizationId,
         );
+      });
+    }),
+
+  // 名前と説明の更新
+  updateName: protectedProcedure
+    .input(UpdateNameInputV2)
+    .output(UpdateNameOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateName(tx, input, ctx.session.user.organizationId);
       });
     }),
 });
