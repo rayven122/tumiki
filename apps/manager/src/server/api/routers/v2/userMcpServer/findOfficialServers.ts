@@ -23,7 +23,7 @@ export const findOfficialServersOutputSchema = z.array(
         id: z.string(),
         name: z.string(),
         description: z.string(),
-        inputSchema: z.any(),
+        inputSchema: z.unknown(),
       }),
     ),
     mcpServer: z
