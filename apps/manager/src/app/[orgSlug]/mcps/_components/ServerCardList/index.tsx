@@ -20,6 +20,8 @@ import { useSortableServers } from "@/hooks/useSortableServers";
 
 type AsyncServerCardListProps = {
   isSortMode: boolean;
+  searchQuery: string;
+  selectedTags: string[];
 };
 
 const AsyncServerCardList = forwardRef<
@@ -29,7 +31,10 @@ const AsyncServerCardList = forwardRef<
     hasChanges: () => boolean;
   },
   AsyncServerCardListProps
->(function AsyncServerCardListComponent({ isSortMode }, ref) {
+>(function AsyncServerCardListComponent(
+  { isSortMode, searchQuery, selectedTags },
+  ref,
+) {
   const [userOfficialServers] =
     api.v2.userMcpServer.findOfficialServers.useSuspenseQuery();
   const utils = api.useUtils();
@@ -48,6 +53,21 @@ const AsyncServerCardList = forwardRef<
     invalidateQuery: () =>
       utils.v2.userMcpServer.findOfficialServers.invalidate(),
     isSortMode,
+  });
+
+  // フィルタリング
+  const filteredServers = servers.filter((server) => {
+    // 検索クエリでのフィルタリング
+    const matchesSearch = server.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+
+    // タグでのフィルタリング
+    const matchesTags =
+      selectedTags.length === 0 ||
+      selectedTags.some((tag) => server.mcpServer?.tags.includes(tag) ?? false);
+
+    return matchesSearch && matchesTags;
   });
 
   const sensors = useSensors(
@@ -89,10 +109,10 @@ const AsyncServerCardList = forwardRef<
     );
   }
 
-  // 通常モード
+  // 通常モード（フィルタリング適用）
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {servers.map((server) => (
+      {filteredServers.map((server) => (
         <SortableServerCard
           key={server.id}
           userMcpServer={server}
@@ -118,6 +138,8 @@ function ServerCardListSkeleton() {
 
 type ServerCardListProps = {
   isSortMode: boolean;
+  searchQuery: string;
+  selectedTags: string[];
 };
 
 export const ServerCardList = forwardRef<
@@ -127,10 +149,15 @@ export const ServerCardList = forwardRef<
     hasChanges: () => boolean;
   },
   ServerCardListProps
->(({ isSortMode }, ref) => {
+>(({ isSortMode, searchQuery, selectedTags }, ref) => {
   return (
     <Suspense fallback={<ServerCardListSkeleton />}>
-      <AsyncServerCardList isSortMode={isSortMode} ref={ref} />
+      <AsyncServerCardList
+        isSortMode={isSortMode}
+        searchQuery={searchQuery}
+        selectedTags={selectedTags}
+        ref={ref}
+      />
     </Suspense>
   );
 });
