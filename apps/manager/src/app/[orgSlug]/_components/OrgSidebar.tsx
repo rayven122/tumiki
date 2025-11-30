@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
+import { useEffect, useState } from "react";
 
 type OrgSidebarProps = {
   orgSlug: string;
@@ -22,6 +23,26 @@ type OrgSidebarProps = {
 export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // モバイル判定とリサイズイベントリスナーの管理
+  useEffect(() => {
+    // 初期状態の設定
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // 初回実行
+    checkMobile();
+
+    // リサイズイベントリスナーを登録
+    window.addEventListener("resize", checkMobile);
+
+    // クリーンアップ関数でリスナーを削除
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
 
   const navigation = [
     {
@@ -110,7 +131,7 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
                   title={!isOpen ? item.name : undefined}
                   onClick={() => {
                     // モバイルではリンククリック時にサイドバーを閉じる
-                    if (window.innerWidth < 768) {
+                    if (isMobile) {
                       setIsOpen(false);
                     }
                   }}

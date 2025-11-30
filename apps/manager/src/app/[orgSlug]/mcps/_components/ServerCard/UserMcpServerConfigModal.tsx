@@ -38,9 +38,6 @@ export const UserMcpServerConfigModal = ({
     envVars,
     serverName,
     isProcessing,
-    isValidating,
-    isOAuthConnecting,
-    isAdding,
     handleEnvVarChange,
     setServerName,
     handleSubmit,
@@ -57,12 +54,7 @@ export const UserMcpServerConfigModal = ({
     <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <div className="relative max-h-[90vh] overflow-y-auto">
-          <LoadingOverlay
-            isProcessing={isProcessing}
-            isAdding={isAdding}
-            isValidating={isValidating}
-            isOAuthConnecting={isOAuthConnecting}
-          />
+          <LoadingOverlay isProcessing={isProcessing} />
 
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
@@ -111,9 +103,6 @@ export const UserMcpServerConfigModal = ({
             mcpServer={mcpServer}
             isFormValid={isFormValid()}
             isProcessing={isProcessing}
-            isAdding={isAdding}
-            isValidating={isValidating}
-            isOAuthConnecting={isOAuthConnecting}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />
