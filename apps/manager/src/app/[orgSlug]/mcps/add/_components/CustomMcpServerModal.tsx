@@ -134,6 +134,7 @@ export const CustomMcpServerModal = ({
         serverName: name.trim(),
         authType: "API_KEY",
         customUrl: url.trim(),
+        transportType,
         envVars,
       });
     } else {
@@ -142,6 +143,7 @@ export const CustomMcpServerModal = ({
         serverName: name.trim(),
         authType: "NONE",
         customUrl: url.trim(),
+        transportType,
       });
     }
   };

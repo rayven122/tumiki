@@ -154,43 +154,42 @@ const createCustomUrlMcpServer = async (
   }
 
   // カスタムURLからツールを取得
-  let serverStatus: ServerStatus = ServerStatus.STOPPED;
-  let createdToolIds: string[] = [];
+  const tools =
+    input.transportType === TransportType.STREAMABLE_HTTPS
+      ? await getMcpServerToolsHTTP(
+          { name: input.name, url: input.customUrl },
+          input.envVars ?? {},
+        )
+      : await getMcpServerToolsSSE(
+          { name: input.name, url: input.customUrl },
+          input.envVars ?? {},
+        );
 
-  try {
-    const tools =
-      input.transportType === TransportType.STREAMABLE_HTTPS
-        ? await getMcpServerToolsHTTP(
-            { name: input.name, url: input.customUrl },
-            input.envVars ?? {},
-          )
-        : await getMcpServerToolsSSE(
-            { name: input.name, url: input.customUrl },
-            input.envVars ?? {},
-          );
-
-    if (tools.length > 0) {
-      // 取得したツールをデータベースに保存し、IDを取得
-      const createdTools = await Promise.all(
-        tools.map((tool) =>
-          prisma.mcpTool.create({
-            data: {
-              name: tool.name,
-              description: tool.description ?? "",
-              inputSchema: tool.inputSchema as object,
-              mcpServerTemplateId: customTemplate.id,
-            },
-          }),
-        ),
-      );
-      createdToolIds = createdTools.map((tool) => tool.id);
-      // ツール取得に成功した場合はRUNNINGステータスに設定
-      serverStatus = ServerStatus.RUNNING;
-    }
-  } catch (error) {
-    // ツール取得に失敗した場合でもサーバーは作成するが、STOPPEDのまま
-    console.error("Failed to fetch tools from custom URL:", error);
+  // ツールが取得できない場合はエラーをスロー
+  if (tools.length === 0) {
+    // テンプレートを削除してロールバック
+    await prisma.mcpServerTemplate.delete({
+      where: { id: customTemplate.id },
+    });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `MCPサーバー「${input.name}」（${input.customUrl}）からツールを取得できませんでした。サーバーのURLと通信方式が正しいか確認してください。`,
+    });
   }
+
+  // 取得したツールをデータベースに保存
+  const createdTools = await Promise.all(
+    tools.map((tool) =>
+      prisma.mcpTool.create({
+        data: {
+          name: tool.name,
+          description: tool.description ?? "",
+          inputSchema: tool.inputSchema as object,
+          mcpServerTemplateId: customTemplate.id,
+        },
+      }),
+    ),
+  );
 
   // McpServerを作成してテンプレートとツールを紐付け
   const mcpServer = await prisma.mcpServer.create({
@@ -198,7 +197,7 @@ const createCustomUrlMcpServer = async (
       name: input.name,
       description: input.description ?? "",
       iconPath: null,
-      serverStatus,
+      serverStatus: ServerStatus.RUNNING, // ツール取得に成功したのでRUNNING
       serverType: ServerType.OFFICIAL,
       authType: input.authType,
       organizationId,
@@ -206,7 +205,7 @@ const createCustomUrlMcpServer = async (
         connect: { id: customTemplate.id },
       },
       allowedTools: {
-        connect: createdToolIds.map((id) => ({ id })),
+        connect: createdTools.map((tool) => ({ id: tool.id })),
       },
     },
   });

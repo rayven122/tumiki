@@ -20,12 +20,6 @@ export const getMcpServerToolsSSE = async (
   });
 
   try {
-    console.log("[getMcpServerToolsSSE] 接続開始:", {
-      serverName: server.name,
-      serverUrl: server.url,
-      hasAuthHeader: !!envVars.Authorization,
-    });
-
     // SSETransportのみを使用
     const transport = new SSEClientTransport(new URL(server.url ?? ""), {
       requestInit: { headers: envVars },
@@ -40,13 +34,9 @@ export const getMcpServerToolsSSE = async (
 
     // サーバーに接続（タイムアウト付き）
     await Promise.race([client.connect(transport), timeoutPromise]);
-    console.log("[getMcpServerToolsSSE] 接続成功");
 
     // ツール一覧を取得
     const listTools = await client.listTools();
-    console.log(
-      `[getMcpServerToolsSSE] ツール取得成功: ${listTools.tools.length}個`,
-    );
 
     // サーバーの接続を閉じる
     await client.close();
@@ -87,13 +77,6 @@ export const getMcpServerToolsHTTP = async (
       "Content-Type": "application/json",
     };
 
-    console.log("[getMcpServerToolsHTTP] 接続開始:", {
-      serverName: server.name,
-      serverUrl: server.url,
-      headers: finalHeaders,
-      hasAuthHeader: !!headers.Authorization,
-    });
-
     // StreamableHTTPClientTransportを使用（requestInitでヘッダーを設定）
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
@@ -111,22 +94,14 @@ export const getMcpServerToolsHTTP = async (
       }, 10000);
     });
 
-    console.log("[getMcpServerToolsHTTP] 接続試行中...");
     // サーバーに接続（タイムアウト付き）
     await Promise.race([client.connect(transport), timeoutPromise]);
-    console.log("[getMcpServerToolsHTTP] 接続成功");
 
-    console.log("[getMcpServerToolsHTTP] ツールリスト取得試行中...");
     // ツール一覧を取得
     const listTools = await client.listTools();
-    console.log(
-      `[getMcpServerToolsHTTP] ツール取得成功: ${listTools.tools.length}個`,
-      listTools.tools.map((t) => t.name),
-    );
 
     // サーバーの接続を閉じる
     await client.close();
-    console.log("[getMcpServerToolsHTTP] 接続をクローズしました");
 
     return listTools.tools;
   } catch (error) {

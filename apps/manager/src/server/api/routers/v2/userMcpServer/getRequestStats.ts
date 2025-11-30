@@ -61,10 +61,7 @@ export const getRequestStats = async (
     log.httpStatus.startsWith("2"),
   ).length;
   const errorRequests = totalRequests - successRequests;
-  const totalInputBytes = allLogs.reduce(
-    (sum, log) => sum + log.inputBytes,
-    0,
-  );
+  const totalInputBytes = allLogs.reduce((sum, log) => sum + log.inputBytes, 0);
   const totalOutputBytes = allLogs.reduce(
     (sum, log) => sum + log.outputBytes,
     0,
@@ -83,7 +80,9 @@ export const getRequestStats = async (
 
   // 7日以内のリクエスト数
   const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const last7dRequests = allLogs.filter((log) => log.createdAt >= last7d).length;
+  const last7dRequests = allLogs.filter(
+    (log) => log.createdAt >= last7d,
+  ).length;
 
   return {
     totalRequests,
