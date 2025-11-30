@@ -2,7 +2,7 @@
 
 import { ChevronUp } from "lucide-react";
 import type { User } from "next-auth";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useTheme } from "next-themes";
 
 import {
@@ -95,7 +95,8 @@ export function SidebarUserNav({ user }: { user: User }) {
                   if (isGuest) {
                     signIn("keycloak", { callbackUrl: "/" });
                   } else {
-                    signOut({ callbackUrl: "/" });
+                    // Keycloakセッションも削除するため、カスタムログアウトエンドポイントを使用
+                    window.location.href = "/api/auth/logout";
                   }
                 }}
               >

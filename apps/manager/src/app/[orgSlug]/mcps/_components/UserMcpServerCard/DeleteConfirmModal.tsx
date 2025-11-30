@@ -10,13 +10,13 @@ import {
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
-import type { UserMcpServerInstanceId } from "@/schema/ids";
+import type { McpServerId } from "@/schema/ids";
 
 type DeleteConfirmModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverName: string;
-  serverInstanceId: UserMcpServerInstanceId;
+  serverInstanceId: McpServerId;
   onSuccess?: () => Promise<void> | void;
   isLoading?: boolean;
 };
@@ -30,7 +30,7 @@ export const DeleteConfirmModal = ({
   isLoading: customIsLoading,
 }: DeleteConfirmModalProps) => {
   const { mutate: deleteServerInstance, isPending } =
-    api.userMcpServerInstance.delete.useMutation({
+    api.v2.userMcpServer.delete.useMutation({
       onSuccess: async () => {
         toast.success(`${serverName}のMCPサーバーを削除しました。`);
         await onSuccess?.();

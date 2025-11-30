@@ -14,10 +14,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { type UserMcpServerInstanceId } from "@/schema/ids";
+import { type McpServerId } from "@/schema/ids";
 
 type NameEditModalProps = {
-  serverInstanceId: UserMcpServerInstanceId;
+  serverInstanceId: McpServerId;
   initialName: string;
   initialDescription?: string;
   onSuccess?: () => Promise<void> | void;
