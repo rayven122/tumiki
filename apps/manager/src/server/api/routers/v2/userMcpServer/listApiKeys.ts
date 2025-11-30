@@ -53,6 +53,16 @@ export const listApiKeys = async (
       userId,
       deletedAt: null, // 削除されていないもののみ
     },
+    select: {
+      id: true,
+      name: true,
+      apiKey: true,
+      isActive: true,
+      lastUsedAt: true,
+      expiresAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
     orderBy: {
       createdAt: "desc",
     },

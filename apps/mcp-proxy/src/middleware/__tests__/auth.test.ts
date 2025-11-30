@@ -291,6 +291,90 @@ describe("integratedAuthMiddleware", () => {
       expect(body.apiKeyAuthInfo?.organizationId).toBe("org-id-2");
       expect(body.jwtPayload).toBeUndefined();
     });
+
+    test("期限切れのAPIキーで認証失敗", async () => {
+      const { db } = await import("@tumiki/db/server");
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 1); // 昨日
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
+        id: "api-key-id",
+        name: "expired-key",
+        apiKey: "expired-api-key",
+        apiKeyHash: null,
+        mcpServerId: "instance-id",
+        userId: "user-id",
+        isActive: true,
+        lastUsedAt: null,
+        expiresAt: pastDate, // 期限切れ
+        mcpServer: {
+          organizationId: "org-id",
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        scopes: [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+      const res = await app.request("/test", {
+        headers: {
+          "X-API-Key": "expired-api-key",
+        },
+      });
+
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: {
+          code: -32001,
+          message: "Invalid or inactive API key",
+        },
+      });
+    });
+
+    test("未来の有効期限を持つAPIキーで認証成功", async () => {
+      const { db } = await import("@tumiki/db/server");
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 30); // 30日後
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
+        id: "api-key-id",
+        name: "valid-key",
+        apiKey: "valid-api-key",
+        apiKeyHash: null,
+        mcpServerId: "instance-id",
+        userId: "user-id",
+        isActive: true,
+        lastUsedAt: null,
+        expiresAt: futureDate, // 未来の有効期限
+        mcpServer: {
+          organizationId: "org-id-3",
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        scopes: [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+      const res = await app.request("/test", {
+        headers: {
+          "X-API-Key": "valid-api-key",
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        jwtPayload?: unknown;
+        apiKeyAuthInfo?: { organizationId: string };
+      };
+      expect(body.apiKeyAuthInfo).toBeDefined();
+      expect(body.apiKeyAuthInfo?.organizationId).toBe("org-id-3");
+      expect(body.jwtPayload).toBeUndefined();
+    });
   });
 
   describe("認証情報なし", () => {
