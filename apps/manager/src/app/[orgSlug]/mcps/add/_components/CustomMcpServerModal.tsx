@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
-import type { AuthType, TransportType } from "@tumiki/db/prisma";
+import type { TransportType } from "@tumiki/db/prisma";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { toast } from "react-toastify";
-import { api } from "@/trpc/react";
-import { useRouter } from "next/navigation";
+import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/_hooks/useCreateServerForm";
 
 type CustomMcpServerModalProps = {
   open: boolean;
@@ -36,50 +41,39 @@ export const CustomMcpServerModal = ({
   onOpenChange,
   orgSlug: _orgSlug,
 }: CustomMcpServerModalProps) => {
-  const router = useRouter();
-  const utils = api.useUtils();
-
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [transportType, setTransportType] =
     useState<TransportType>("STREAMABLE_HTTPS");
-  const [authType, setAuthType] = useState<AuthType>("API_KEY");
+  const [authMethod, setAuthMethod] = useState<"oauth" | "apikey" | "none">(
+    "oauth",
+  );
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
   const [envVars, setEnvVars] = useState<Record<string, string>>({});
   const [newEnvKey, setNewEnvKey] = useState("");
   const [newEnvValue, setNewEnvValue] = useState("");
-  const [oauthClientId, setOauthClientId] = useState("");
-  const [oauthClientSecret, setOauthClientSecret] = useState("");
-  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-  const { mutate: createServer, isPending: isCreatePending } =
-    api.mcpServer.create.useMutation({
-      onSuccess: async () => {
-        toast.success("カスタムMCPサーバーが正常に作成されました");
-        await utils.mcpServer.invalidate();
-        await utils.userMcpServerInstance.invalidate();
+  // v2 APIを使用したサーバー作成フック
+  const { isPending, handleOAuthConnect, handleAddWithApiKey } =
+    useCreateServerForm({
+      customUrl: url.trim() || undefined,
+      onSuccess: () => {
         onOpenChange(false);
-        router.refresh();
-
-        // Reset form
         resetForm();
       },
-      onError: (error) => {
-        toast.error(error.message);
-      },
     });
-
-  const createRemoteMcpMutation = api.remoteMcpServer.create.useMutation();
 
   const resetForm = () => {
     setName("");
     setUrl("");
     setTransportType("STREAMABLE_HTTPS");
-    setAuthType("API_KEY");
+    setAuthMethod("oauth");
+    setClientId("");
+    setClientSecret("");
     setEnvVars({});
     setNewEnvKey("");
     setNewEnvValue("");
-    setOauthClientId("");
-    setOauthClientSecret("");
   };
 
   const handleAddEnvVar = () => {
@@ -101,117 +95,53 @@ export const CustomMcpServerModal = ({
     });
   };
 
-  const handleOAuthSubmit = async () => {
-    if (!name.trim()) {
-      toast.error("サーバー名を入力してください");
-      return;
-    }
-    if (!url.trim()) {
-      toast.error("URLを入力してください");
-      return;
-    }
-
-    setIsOAuthLoading(true);
-
-    try {
-      const response = await createRemoteMcpMutation.mutateAsync({
-        customUrl: url.trim(),
-        name: name.trim(),
-        authType: "OAUTH",
-        oauthProvider: "custom",
-        visibility: "PRIVATE",
-        credentials:
-          oauthClientId.trim() && oauthClientSecret.trim()
-            ? {
-                clientId: oauthClientId.trim(),
-                clientSecret: oauthClientSecret.trim(),
-              }
-            : undefined,
-      });
-
-      toast.success("DCR登録に成功しました！OAuth認証を開始します...");
-
-      // OAuth認証フローを自動的に開始
-      if (response.requiresOAuth) {
-        const authorizeResponse = await fetch("/api/oauth/authorize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mcpServerId: response.mcpServer.id,
-            userMcpConfigId: (response as { userMcpConfigId?: string })
-              .userMcpConfigId,
-          }),
-        });
-
-        if (!authorizeResponse.ok) {
-          const errorData = (await authorizeResponse.json()) as {
-            error?: string;
-          };
-          throw new Error(errorData.error ?? "OAuth認証の開始に失敗しました");
-        }
-
-        const authorizeData = (await authorizeResponse.json()) as {
-          authorizationUrl: string;
-        };
-
-        // Authorization URLにリダイレクト
-        window.location.href = authorizeData.authorizationUrl;
-      } else {
-        // OAuth認証が不要な場合は完了
-        await utils.mcpServer.invalidate();
-        await utils.userMcpServerInstance.invalidate();
-        onOpenChange(false);
-        router.refresh();
-        resetForm();
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "エラーが発生しました",
-      );
-      setIsOAuthLoading(false);
-    }
-  };
-
-  const handleApiKeySubmit = () => {
-    if (!name.trim()) {
-      toast.error("サーバー名を入力してください");
-      return;
-    }
-    if (!url.trim()) {
-      toast.error("URLを入力してください");
-      return;
-    }
-    if (authType === "API_KEY" && Object.keys(envVars).length === 0) {
-      toast.error("API_KEY認証を使用する場合、環境変数を追加してください");
-      return;
-    }
-
-    createServer({
-      name: name.trim(),
-      url: url.trim(),
-      transportType,
-      authType,
-      envVars,
-      visibility: "PRIVATE",
-    });
-  };
-
   const handleSubmit = () => {
-    if (authType === "OAUTH") {
-      void handleOAuthSubmit();
+    if (!name.trim()) {
+      toast.error("サーバー名を入力してください");
+      return;
+    }
+    if (!url.trim()) {
+      toast.error("URLを入力してください");
+      return;
+    }
+
+    if (authMethod === "oauth") {
+      // Client IDとClient Secretの整合性チェック
+      if (
+        (clientId.trim() && !clientSecret.trim()) ||
+        (!clientId.trim() && clientSecret.trim())
+      ) {
+        toast.error(
+          "Client IDとClient Secretは両方入力するか、両方空にしてください",
+        );
+        return;
+      }
+
+      // OAuth認証フロー
+      handleOAuthConnect(
+        name.trim(),
+        clientId.trim() || undefined,
+        clientSecret.trim() || undefined,
+      );
+    } else if (authMethod === "apikey") {
+      // APIキー認証フロー
+      if (Object.keys(envVars).length === 0) {
+        toast.error("API_KEY認証を使用する場合、環境変数を追加してください");
+        return;
+      }
+      handleAddWithApiKey(name.trim(), envVars);
     } else {
-      handleApiKeySubmit();
+      // NONE認証フロー（環境変数なしでAPIキーmutationを使用）
+      handleAddWithApiKey(name.trim());
     }
   };
 
   const isFormValid = () => {
     if (!name.trim() || !url.trim()) return false;
-    if (authType === "API_KEY" && Object.keys(envVars).length === 0)
+    if (authMethod === "apikey" && Object.keys(envVars).length === 0)
       return false;
     return true;
   };
-
-  const isPending = isCreatePending || isOAuthLoading;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !isPending && onOpenChange(o)}>
@@ -222,7 +152,7 @@ export const CustomMcpServerModal = ({
               <div className="flex flex-col items-center space-y-2">
                 <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
                 <span className="text-sm font-medium text-gray-700">
-                  {authType === "OAUTH"
+                  {authMethod === "oauth"
                     ? "OAuth認証を開始中..."
                     : "サーバーを作成中..."}
                 </span>
@@ -287,74 +217,84 @@ export const CustomMcpServerModal = ({
               </Select>
             </div>
 
-            {/* Auth Type */}
+            {/* Auth Method */}
             <div className="space-y-2">
-              <Label htmlFor="auth-type">認証タイプ *</Label>
+              <Label htmlFor="auth-method">認証タイプ *</Label>
               <Select
-                value={authType}
-                onValueChange={(value) => setAuthType(value as AuthType)}
+                value={authMethod}
+                onValueChange={(value) =>
+                  setAuthMethod(value as "oauth" | "apikey" | "none")
+                }
                 disabled={isPending}
               >
-                <SelectTrigger id="auth-type">
+                <SelectTrigger id="auth-method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="OAUTH">OAUTH</SelectItem>
-                  <SelectItem value="API_KEY">API_KEY</SelectItem>
-                  <SelectItem value="NONE">NONE</SelectItem>
+                  <SelectItem value="oauth">OAUTH</SelectItem>
+                  <SelectItem value="apikey">API_KEY</SelectItem>
+                  <SelectItem value="none">NONE</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
-                {authType === "OAUTH" &&
-                  "Dynamic Client Registration (DCR) を使用してOAuth認証を設定します"}
-                {authType === "API_KEY" && "APIキーをヘッダーとして送信します"}
-                {authType === "NONE" && "認証なしで接続します"}
+                {authMethod === "oauth" && "OAuth認証を設定します"}
+                {authMethod === "apikey" && "APIキーをヘッダーとして送信します"}
+                {authMethod === "none" && "認証なしで接続します"}
               </p>
             </div>
 
-            {/* OAuth Client Credentials (OAUTHの場合のみ、オプショナル) */}
-            {authType === "OAUTH" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="oauth-client-id">
-                    Client ID（オプション）
-                  </Label>
-                  <Input
-                    id="oauth-client-id"
-                    type="text"
-                    placeholder="事前に取得したClient IDを入力（省略時はDCRで自動取得）"
-                    value={oauthClientId}
-                    onChange={(e) => setOauthClientId(e.target.value)}
-                    disabled={isPending}
-                  />
-                  <p className="text-xs text-gray-500">
-                    事前にClient IDを取得済みの場合のみ入力してください
-                  </p>
-                </div>
+            {/* OAuth詳細設定アコーディオン（OAuth認証の場合のみ） */}
+            {authMethod === "oauth" && (
+              <Accordion type="single" collapsible className="-mt-2 w-full">
+                <AccordionItem value="oauth-credentials">
+                  <AccordionTrigger className="text-sm">
+                    詳細設定
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3">
+                      <p className="text-xs text-gray-500">
+                        既にOAuthクライアント情報を取得済みの場合、こちらに入力してください。
+                        入力がない場合は自動的にDynamic Client Registration
+                        (DCR)を実行します。
+                      </p>
 
-                <div className="space-y-2">
-                  <Label htmlFor="oauth-client-secret">
-                    Client Secret（オプション）
-                  </Label>
-                  <Input
-                    id="oauth-client-secret"
-                    type="password"
-                    placeholder="事前に取得したClient Secretを入力（省略時はDCRで自動取得）"
-                    value={oauthClientSecret}
-                    onChange={(e) => setOauthClientSecret(e.target.value)}
-                    disabled={isPending}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Client IDと一緒に取得したClient Secretを入力してください
-                  </p>
-                </div>
-              </>
+                      {/* Client ID */}
+                      <div className="space-y-2">
+                        <Label htmlFor="client-id">Client ID</Label>
+                        <Input
+                          id="client-id"
+                          placeholder="例: abc123xyz..."
+                          value={clientId}
+                          onChange={(e) => setClientId(e.target.value)}
+                          disabled={isPending}
+                        />
+                      </div>
+
+                      {/* Client Secret */}
+                      <div className="space-y-2">
+                        <Label htmlFor="client-secret">Client Secret</Label>
+                        <Input
+                          id="client-secret"
+                          type="password"
+                          placeholder="例: secret123..."
+                          value={clientSecret}
+                          onChange={(e) => setClientSecret(e.target.value)}
+                          disabled={isPending}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Client Secretは安全に暗号化されて保存されます
+                        </p>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
 
-            {/* Environment Variables */}
-            {authType !== "NONE" && authType !== "OAUTH" && (
+            {/* Environment Variables (APIキーの場合のみ) */}
+            {authMethod === "apikey" && (
               <div className="space-y-3">
-                <Label>環境変数 {authType === "API_KEY" && "*"}</Label>
+                <Label>環境変数 *</Label>
 
                 {/* Add new env var */}
                 <div className="flex gap-2">
@@ -412,12 +352,11 @@ export const CustomMcpServerModal = ({
                   </div>
                 )}
 
-                {authType === "API_KEY" &&
-                  Object.keys(envVars).length === 0 && (
-                    <p className="text-sm text-yellow-600">
-                      API_KEY認証には最低1つの環境変数が必要です
-                    </p>
-                  )}
+                {Object.keys(envVars).length === 0 && (
+                  <p className="text-sm text-yellow-600">
+                    API_KEY認証には最低1つの環境変数が必要です
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -437,7 +376,7 @@ export const CustomMcpServerModal = ({
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {authType === "OAUTH" ? "OAuth認証開始中..." : "作成中..."}
+                  {authMethod === "oauth" ? "OAuth認証開始中..." : "作成中..."}
                 </>
               ) : (
                 "作成"

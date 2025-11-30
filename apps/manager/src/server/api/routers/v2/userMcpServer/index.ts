@@ -38,7 +38,6 @@ export const CreateApiKeyMcpServerInputV2 = z
 
 export const CreateApiKeyMcpServerOutputV2 = z.object({
   id: z.string(),
-  mcpConfigId: z.string(),
 });
 
 // OAuth認証MCPサーバー接続用の入力スキーマ
@@ -51,6 +50,10 @@ export const ConnectOAuthMcpServerInputV2 = z.object({
   // サーバー情報
   name: nameValidationSchema.optional(),
   description: z.string().optional(),
+
+  // OAuthクライアント情報（オプション）
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
 });
 
 export const ConnectOAuthMcpServerOutputV2 = z.object({

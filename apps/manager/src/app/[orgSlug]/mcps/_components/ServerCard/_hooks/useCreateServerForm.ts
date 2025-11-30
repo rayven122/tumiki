@@ -71,13 +71,17 @@ export const useCreateServerForm = ({
    * OAuthプロバイダーとスコープはDCRから取得されます。
    *
    * @param serverName - サーバー名
+   * @param clientId - Client ID（オプション）
+   * @param clientSecret - Client Secret（オプション）
    */
   const handleOAuthConnect = useCallback(
-    (serverName: string) => {
+    (serverName: string, clientId?: string, clientSecret?: string) => {
       connectOAuthMcpServer({
         templateId: mcpServer?.id,
         customUrl: customUrl,
         name: serverName || mcpServer?.name,
+        clientId: clientId,
+        clientSecret: clientSecret,
       });
     },
     [mcpServer, customUrl, connectOAuthMcpServer],
@@ -90,10 +94,10 @@ export const useCreateServerForm = ({
    * カスタムサーバーとして追加します。
    *
    * @param serverName - サーバー名
-   * @param envVars - 環境変数（APIキーなど）
+   * @param envVars - 環境変数（APIキーなど）省略時は空のオブジェクトが使用されます
    */
   const handleAddWithApiKey = useCallback(
-    (serverName: string, envVars: Record<string, string>) => {
+    (serverName: string, envVars?: Record<string, string>) => {
       createApiKeyMcpServer({
         mcpServerTemplateId: mcpServer?.id,
         customUrl: customUrl,
