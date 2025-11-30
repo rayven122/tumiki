@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +26,6 @@ const createOrganizationSchema = z.object({
     .min(1, "組織名は必須です")
     .max(100, "組織名は100文字以内で入力してください"),
   description: z.string().optional(),
-  logoUrl: z
-    .string()
-    .url("有効なURLを入力してください")
-    .optional()
-    .or(z.literal("")),
-  isPersonal: z.boolean().default(false),
 });
 
 type CreateOrganizationFormData = z.infer<typeof createOrganizationSchema>;
@@ -42,9 +37,16 @@ type OrganizationCreateFormProps = {
 export const OrganizationCreateForm = ({
   onSuccess,
 }: OrganizationCreateFormProps) => {
-  const createMutation = api.organization.create.useMutation({
+  const utils = api.useUtils();
+  const { update: updateSession } = useSession();
+
+  const createMutation = api.v2.organization.create.useMutation({
     onSuccess: async (data) => {
       toast.success(`組織「${data.name}」が正常に作成されました。`);
+      // すべてのtRPCクエリをinvalidate
+      await utils.invalidate();
+      // Auth.jsセッションを更新
+      await updateSession();
       // フォームをリセット
       form.reset();
       onSuccess?.();
@@ -54,22 +56,16 @@ export const OrganizationCreateForm = ({
     },
   });
 
-  const form = useForm({
+  const form = useForm<CreateOrganizationFormData>({
     resolver: zodResolver(createOrganizationSchema),
     defaultValues: {
       name: "",
       description: "",
-      logoUrl: "",
-      isPersonal: false,
     },
   });
 
   const onSubmit = async (data: CreateOrganizationFormData) => {
-    const formData = {
-      name: data.name,
-      description: data.description ?? undefined,
-    };
-    await createMutation.mutateAsync(formData);
+    await createMutation.mutateAsync(data);
   };
 
   return (
@@ -108,28 +104,6 @@ export const OrganizationCreateForm = ({
               </FormControl>
               <FormDescription>
                 組織の目的や概要を説明してください
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="logoUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>ロゴURL（任意）</FormLabel>
-              <FormControl>
-                <Input
-                  type="url"
-                  placeholder="https://example.com/logo.png"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormDescription>
-                組織のロゴ画像のURLを入力してください
               </FormDescription>
               <FormMessage />
             </FormItem>

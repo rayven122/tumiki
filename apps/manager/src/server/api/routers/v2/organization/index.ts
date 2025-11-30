@@ -5,6 +5,11 @@ import {
   setDefaultOrganizationInputSchema,
   setDefaultOrganizationOutputSchema,
 } from "./setDefaultOrganization";
+import {
+  createOrganization,
+  createOrganizationInputSchema,
+  createOrganizationOutputSchema,
+} from "./createOrganization";
 import { z } from "zod";
 import { OrganizationIdSchema } from "@/schema/ids";
 
@@ -34,6 +39,7 @@ export const getUserOrganizationsOutputSchema = z.array(
  * 組織管理に関する API
  * - getUserOrganizations: ユーザーが所属する組織一覧を取得
  * - setDefaultOrganization: デフォルト組織を設定
+ * - create: 新しい組織を作成
  */
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
@@ -53,6 +59,20 @@ export const organizationRouter = createTRPCRouter({
       return await setDefaultOrganization(ctx.db, {
         userId: ctx.session.user.id,
         organizationId: input.organizationId,
+      });
+    }),
+
+  // 組織作成
+  create: protectedProcedure
+    .input(createOrganizationInputSchema)
+    .output(createOrganizationOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await createOrganization(tx, {
+          userId: ctx.session.user.id,
+          name: input.name,
+          description: input.description,
+        });
       });
     }),
 });
