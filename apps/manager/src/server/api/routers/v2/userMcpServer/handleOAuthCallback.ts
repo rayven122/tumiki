@@ -10,7 +10,6 @@ import {
   getMcpServerAndOAuthClient,
   exchangeAuthorizationCode,
 } from "./helpers/oauth-verification";
-import { saveOAuthToken } from "./helpers/oauth-token";
 import { setupMcpServerTools } from "./helpers/mcp-server-setup";
 
 export type HandleOAuthCallbackInput = {
@@ -57,13 +56,22 @@ export const handleOAuthCallback = async (
     );
 
     // 4. OAuth Tokenを保存
-    await saveOAuthToken(tx, {
-      userId,
-      organizationId: statePayload.organizationId,
-      oauthClientId: oauthClient.id,
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token ?? null,
-      expiresIn: tokenData.expires_in ?? null,
+    // 注意: 同じOAuthクライアントでも、ユーザーは複数の異なるアカウントを
+    // 接続したい場合があるため、常に新しいトークンを作成する
+    const expiresAt = tokenData.expires_in
+      ? new Date(Date.now() + tokenData.expires_in * 1000)
+      : null;
+
+    await tx.mcpOAuthToken.create({
+      data: {
+        userId,
+        organizationId: statePayload.organizationId,
+        oauthClientId: oauthClient.id,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token ?? null,
+        expiresAt,
+        tokenPurpose: "BACKEND_MCP",
+      },
     });
 
     // 5. MCPサーバーからツールを取得してセットアップ
