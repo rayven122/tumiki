@@ -120,6 +120,7 @@ export const CustomMcpServerModal = ({
       handleOAuthConnect({
         serverName: name.trim(),
         customUrl: url.trim(),
+        transportType,
         clientId: clientId.trim() || undefined,
         clientSecret: clientSecret.trim() || undefined,
       });
