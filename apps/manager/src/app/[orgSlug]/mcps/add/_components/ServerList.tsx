@@ -71,15 +71,42 @@ const AsyncServerList = ({
 
 type ServerListProps = {
   orgSlug: string;
+  // Controlled props（オプショナル）
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
+  selectedTags?: string[];
+  onSelectedTagsChange?: (tags: string[]) => void;
+  // UI制御
+  showFilteringUI?: boolean;
 };
 
-export const ServerList = ({ orgSlug }: ServerListProps) => {
+export const ServerList = ({
+  orgSlug,
+  searchQuery: externalSearchQuery,
+  onSearchQueryChange,
+  selectedTags: externalSelectedTags,
+  onSelectedTagsChange,
+  showFilteringUI = true,
+}: ServerListProps) => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // 内部状態（uncontrolled時のみ使用）
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const [internalSelectedTags, setInternalSelectedTags] = useState<string[]>([]);
 
   // MCPサーバーから利用可能なタグを動的に取得
   const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
+
+  // Controlled判定
+  const isControlled =
+    externalSearchQuery !== undefined &&
+    onSearchQueryChange !== undefined &&
+    externalSelectedTags !== undefined &&
+    onSelectedTagsChange !== undefined;
+
+  // 実際に使用する値
+  const searchQuery = isControlled ? externalSearchQuery : internalSearchQuery;
+  const selectedTags = isControlled ? externalSelectedTags : internalSelectedTags;
 
   // 全サーバーからユニークなタグを抽出
   const availableTags = useMemo(() => {
@@ -88,31 +115,49 @@ export const ServerList = ({ orgSlug }: ServerListProps) => {
     return Array.from(new Set(allTags)).sort();
   }, [mcpServers]);
 
+  const handleSearchQueryChange = (query: string) => {
+    if (isControlled && onSearchQueryChange) {
+      onSearchQueryChange(query);
+    } else {
+      setInternalSearchQuery(query);
+    }
+  };
+
+  const handleSelectedTagsChange = (tags: string[]) => {
+    if (isControlled && onSelectedTagsChange) {
+      onSelectedTagsChange(tags);
+    } else {
+      setInternalSelectedTags(tags);
+    }
+  };
+
   const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
+    const newTags = selectedTags.includes(tag)
+      ? selectedTags.filter((t) => t !== tag)
+      : [...selectedTags, tag];
+    handleSelectedTagsChange(newTags);
   };
 
   const clearAllFilters = () => {
-    setSearchQuery("");
-    setSelectedTags([]);
+    handleSearchQueryChange("");
+    handleSelectedTagsChange([]);
   };
 
   return (
     <>
-      {/* フィルタリングUI */}
-      <div className="mb-6 space-y-4">
-        {/* 検索バー */}
-        <div className="relative">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="MCPサーバーを検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      {/* フィルタリングUIは showFilteringUI が true の場合のみ表示 */}
+      {showFilteringUI && (
+        <div className="mb-6 space-y-4">
+          {/* 検索バー */}
+          <div className="relative">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="MCPサーバーを検索..."
+              value={searchQuery}
+              onChange={(e) => handleSearchQueryChange(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
         {/* タグフィルター */}
         <div>
@@ -148,16 +193,17 @@ export const ServerList = ({ orgSlug }: ServerListProps) => {
           </div>
         </div>
 
-        {/* 選択されたフィルター表示 */}
-        {(searchQuery || selectedTags.length > 0) && (
-          <div className="text-sm text-gray-600">
-            {searchQuery && <span>検索: "{searchQuery}" </span>}
-            {selectedTags.length > 0 && (
-              <span>カテゴリー: {selectedTags.join(", ")}</span>
-            )}
-          </div>
-        )}
-      </div>
+          {/* 選択されたフィルター表示 */}
+          {(searchQuery || selectedTags.length > 0) && (
+            <div className="text-sm text-gray-600">
+              {searchQuery && <span>検索: "{searchQuery}" </span>}
+              {selectedTags.length > 0 && (
+                <span>カテゴリー: {selectedTags.join(", ")}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <AsyncServerList
         onCreateServerClick={() => setCreateDialogOpen(true)}
