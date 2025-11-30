@@ -46,25 +46,21 @@ const getSecretKey = (): Uint8Array => {
 export const createStateToken = async (
   payload: OAuthStatePayload,
 ): Promise<string> => {
-  try {
-    const secret = getSecretKey();
+  const secret = getSecretKey();
 
-    // Zodスキーマによる型安全な検証（JWTクレームは除外）
-    const validated = OAuthStatePayloadSchema.omit({
-      iat: true,
-      exp: true,
-    }).parse(payload);
+  // Zodスキーマによる型安全な検証（JWTクレームは除外）
+  const validated = OAuthStatePayloadSchema.omit({
+    iat: true,
+    exp: true,
+  }).parse(payload);
 
-    const token = await new SignJWT({ ...validated })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime(Math.floor(validated.expiresAt / 1000)) // JWTはUnix timestamp（秒）
-      .sign(secret);
+  const token = await new SignJWT({ ...validated })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(validated.expiresAt / 1000)) // JWTはUnix timestamp（秒）
+    .sign(secret);
 
-    return token;
-  } catch {
-    throw new Error("Invalid state token payload");
-  }
+  return token;
 };
 
 /**
@@ -73,13 +69,9 @@ export const createStateToken = async (
 export const verifyStateToken = async (
   token: string,
 ): Promise<OAuthStatePayload> => {
-  try {
-    const secret = getSecretKey();
-    const { payload } = await jwtVerify(token, secret);
+  const secret = getSecretKey();
+  const { payload } = await jwtVerify(token, secret);
 
-    // Zodスキーマによる型安全な検証
-    return OAuthStatePayloadSchema.parse(payload);
-  } catch {
-    throw new Error("Invalid state token payload structure");
-  }
+  // Zodスキーマによる型安全な検証
+  return OAuthStatePayloadSchema.parse(payload);
 };
