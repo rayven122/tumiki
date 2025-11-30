@@ -9,12 +9,11 @@ import {
   ArrowLeft,
   Settings,
   Server,
-  AlertCircle,
-  CheckCircle,
   XCircle,
   Trash2,
   MoreVertical,
   Wrench,
+  Shield,
 } from "lucide-react";
 import Image from "next/image";
 import { FaviconImage } from "@/components/ui/FaviconImage";
@@ -29,15 +28,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/trpc/react";
-import { ServerStatus } from "@tumiki/db/prisma";
+import { ServerStatus, AuthType, ServerType } from "@tumiki/db/prisma";
 import type { McpServerId } from "@/schema/ids";
+import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
 import { CustomTabs } from "./CustomTabs";
 import { OverviewTab } from "./OverviewTab";
 import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
-import { AuthTab } from "./AuthTab";
+import { ConnectionTab } from "./ConnectionTab";
 import { EditServerDialog } from "./EditServerDialog";
 import { DeleteServerDialog } from "./DeleteServerDialog";
-import { BarChart3, Activity, KeyRound } from "lucide-react";
+import { BarChart3, Activity, Cable, Workflow } from "lucide-react";
+
+// サーバータイプのラベル
+const SERVER_TYPE_LABELS = {
+  [ServerType.OFFICIAL]: "公式",
+  [ServerType.CUSTOM]: "カスタム",
+} as const;
+
+// トランスポートタイプのラベル（mcpServerから取得）
+const getTransportTypeLabel = (url: string | null | undefined): string => {
+  if (!url) return "STDIO";
+  if (url.includes("sse")) return "SSE";
+  return "HTTPS";
+};
 
 type ServerDetailPageClientProps = {
   orgSlug: string;
@@ -51,6 +64,9 @@ export const ServerDetailPageClient = ({
   const router = useRouter();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(
+    null,
+  );
 
   const {
     data: server,
@@ -82,13 +98,21 @@ export const ServerDetailPageClient = ({
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
       onSuccess: async () => {
-        toast.success("サーバーステータスを更新しました");
+        toast.success("MCPサーバーのステータスを更新しました");
         await refetch();
       },
       onError: (error) => {
         toast.error(`エラーが発生しました: ${error.message}`);
       },
     });
+
+  // APIキー一覧取得（表示用）
+  const { data: apiKeys } = api.v2.mcpServerAuth.listApiKeys.useQuery(
+    { serverId: serverId as McpServerId },
+    {
+      enabled: !!server && server.authType === AuthType.API_KEY,
+    },
+  );
 
   const handleStatusToggle = (checked: boolean) => {
     if (!server) return;
@@ -97,6 +121,14 @@ export const ServerDetailPageClient = ({
       isEnabled: checked,
     });
   };
+
+  // サーバー情報が取得できたら認証タイプを初期化
+  if (server && selectedAuthType === null) {
+    setSelectedAuthType(server.authType);
+  }
+
+  // 有効なAPIキーの数を計算
+  const activeApiKeysCount = apiKeys?.filter((key) => key.isActive).length ?? 0;
 
   if (isLoading) {
     return (
@@ -174,44 +206,6 @@ export const ServerDetailPageClient = ({
     );
   }
 
-  const getStatusIcon = (status: ServerStatus) => {
-    switch (status) {
-      case ServerStatus.RUNNING:
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case ServerStatus.STOPPED:
-        return <XCircle className="h-4 w-4 text-gray-500" />;
-      case ServerStatus.ERROR:
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case ServerStatus.PENDING:
-        return <AlertCircle className="h-4 w-4 text-blue-500" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getStatusBadge = (status: ServerStatus) => {
-    const variants = {
-      [ServerStatus.RUNNING]: "default",
-      [ServerStatus.STOPPED]: "secondary",
-      [ServerStatus.ERROR]: "destructive",
-      [ServerStatus.PENDING]: "secondary",
-    } as const;
-
-    const labels = {
-      [ServerStatus.RUNNING]: "実行中",
-      [ServerStatus.STOPPED]: "停止中",
-      [ServerStatus.ERROR]: "エラー",
-      [ServerStatus.PENDING]: "検証中",
-    };
-
-    return (
-      <Badge variant={variants[status] ?? "secondary"}>
-        {getStatusIcon(status)}
-        <span className="ml-1">{labels[status] ?? status}</span>
-      </Badge>
-    );
-  };
-
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6">
       <div className="space-y-6">
@@ -232,118 +226,165 @@ export const ServerDetailPageClient = ({
         {/* Server Info Header */}
         <Card className="overflow-hidden">
           <CardContent className="p-6">
-            <div className="flex flex-col space-y-4 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
-                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border bg-gray-50">
-                  {server.iconPath ? (
-                    <Image
-                      src={server.iconPath}
-                      alt={server.name}
-                      width={48}
-                      height={48}
-                      className="rounded-lg"
-                    />
-                  ) : server.mcpServer?.iconPath ? (
-                    <Image
-                      src={server.mcpServer.iconPath}
-                      alt={server.name}
-                      width={48}
-                      height={48}
-                      className="rounded-lg"
-                    />
-                  ) : (
-                    <FaviconImage
-                      url={server.mcpServer?.url ?? null}
-                      alt={server.name}
-                      size={48}
-                      fallback={
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100">
-                          <Server className="h-8 w-8 text-blue-600" />
-                        </div>
-                      }
-                    />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {getStatusBadge(server.serverStatus)}
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium">
-                          {server.serverStatus === ServerStatus.RUNNING
-                            ? "実行中"
-                            : "停止中"}
-                        </span>
-                        <Switch
-                          checked={server.serverStatus === ServerStatus.RUNNING}
-                          onCheckedChange={handleStatusToggle}
-                          disabled={isStatusUpdating}
-                          className={cn(
-                            "data-[state=checked]:bg-green-500",
-                            "data-[state=unchecked]:bg-gray-300",
-                            "dark:data-[state=unchecked]:bg-gray-600",
-                          )}
-                          aria-label={
-                            server.serverStatus === ServerStatus.RUNNING
-                              ? "サーバーを停止する"
-                              : "サーバーを開始する"
-                          }
-                        />
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            aria-label="その他のオプション"
-                          >
-                            <MoreVertical
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => setShowEditDialog(true)}
-                          >
-                            <Settings className="mr-2 h-4 w-4" />
-                            設定を編集
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => setShowDeleteDialog(true)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            削除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+            <div className="space-y-4">
+              {/* メイン情報エリア */}
+              <div className="flex items-start justify-between gap-4">
+                {/* 左側: アイコン + 情報 */}
+                <div className="flex min-w-0 flex-1 items-start gap-4">
+                  {/* アイコン */}
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border bg-gray-50">
+                    {server.iconPath ? (
+                      <Image
+                        src={server.iconPath}
+                        alt={server.name}
+                        width={48}
+                        height={48}
+                        className="rounded-lg"
+                      />
+                    ) : server.mcpServer?.iconPath ? (
+                      <Image
+                        src={server.mcpServer.iconPath}
+                        alt={server.name}
+                        width={48}
+                        height={48}
+                        className="rounded-lg"
+                      />
+                    ) : (
+                      <FaviconImage
+                        url={server.mcpServer?.url ?? null}
+                        alt={server.name}
+                        size={48}
+                        fallback={
+                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100">
+                            <Server className="h-8 w-8 text-blue-600" />
+                          </div>
+                        }
+                      />
+                    )}
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed break-words whitespace-pre-line text-gray-600">
-                    {server.description}
-                  </p>
-                  <div className="mt-3 flex flex-col space-y-1 text-xs text-gray-500 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-6">
-                    <div className="flex items-center space-x-1">
-                      <Wrench className="h-3 w-3" />
-                      <span>ツール</span>
-                      <span className="font-medium">
-                        {server.tools.length}個
+
+                  {/* サーバー情報 */}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {/* 説明 */}
+                    <p className="text-sm leading-relaxed break-words whitespace-pre-line text-gray-600">
+                      {server.description}
+                    </p>
+
+                    {/* メタ情報（1行目） */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Wrench className="h-3 w-3" />
+                        <span>ツール</span>
+                        <span className="font-medium">
+                          {server.tools.length}個
+                        </span>
+                      </div>
+                      <span>
+                        作成日:{" "}
+                        {new Date(server.createdAt).toLocaleDateString("ja-JP")}
+                      </span>
+                      <span>
+                        最終更新:{" "}
+                        {new Date(server.updatedAt).toLocaleDateString("ja-JP")}
                       </span>
                     </div>
-                    <span className="flex items-center">
-                      作成日:{" "}
-                      {new Date(server.createdAt).toLocaleDateString("ja-JP")}
-                    </span>
-                    <span className="flex items-center">
-                      最終更新:{" "}
-                      {new Date(server.updatedAt).toLocaleDateString("ja-JP")}
-                    </span>
+
+                    {/* サーバー情報（2行目） */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                      {/* サーバータイプ */}
+                      <div className="flex items-center gap-1.5">
+                        <Workflow className="h-3 w-3" />
+                        <span>タイプ:</span>
+                        <Badge variant="outline" className="h-4 px-1.5 text-xs">
+                          {SERVER_TYPE_LABELS[server.serverType]}
+                        </Badge>
+                      </div>
+
+                      {/* トランスポート */}
+                      <div className="flex items-center gap-1.5">
+                        <Cable className="h-3 w-3" />
+                        <span>接続:</span>
+                        <Badge variant="outline" className="h-4 px-1.5 text-xs">
+                          {getTransportTypeLabel(server.mcpServer?.url)}
+                        </Badge>
+                      </div>
+
+                      {/* 認証 */}
+                      {selectedAuthType !== null && (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <Shield className="h-3 w-3" />
+                            <span>認証:</span>
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1.5 text-xs"
+                            >
+                              {AUTH_TYPE_LABELS[selectedAuthType]}
+                            </Badge>
+                          </div>
+                          {selectedAuthType === AuthType.API_KEY && (
+                            <div className="flex items-center gap-1">
+                              <span>有効なキー:</span>
+                              <span className="font-medium">
+                                {activeApiKeysCount}個
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                {/* 右側: スイッチ + メニュー */}
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      {server.serverStatus === ServerStatus.RUNNING
+                        ? "接続可能"
+                        : "接続不可"}
+                    </span>
+                    <Switch
+                      checked={server.serverStatus === ServerStatus.RUNNING}
+                      onCheckedChange={handleStatusToggle}
+                      disabled={isStatusUpdating}
+                      className={cn(
+                        "data-[state=checked]:bg-green-500",
+                        "data-[state=unchecked]:bg-gray-300",
+                        "dark:data-[state=unchecked]:bg-gray-600",
+                      )}
+                      aria-label={
+                        server.serverStatus === ServerStatus.RUNNING
+                          ? "接続を無効にする"
+                          : "接続を有効にする"
+                      }
+                    />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="その他のオプション"
+                      >
+                        <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        設定を編集
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        削除
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>
@@ -359,9 +400,9 @@ export const ServerDetailPageClient = ({
               icon: <BarChart3 className="h-4 w-4" />,
             },
             {
-              id: "auth",
-              label: "認証設定",
-              icon: <KeyRound className="h-4 w-4" />,
+              id: "connection",
+              label: "接続設定",
+              icon: <Cable className="h-4 w-4" />,
             },
             {
               id: "logs",
@@ -378,13 +419,17 @@ export const ServerDetailPageClient = ({
                   server={server}
                   requestStats={requestStats}
                   toolStats={toolStats}
+                  requestLogs={requestLogs}
                   serverId={serverId as McpServerId}
                 />
               );
             }
-            if (activeTab === "auth") {
+            if (activeTab === "connection") {
               return (
-                <AuthTab server={server} serverId={serverId as McpServerId} />
+                <ConnectionTab
+                  server={server}
+                  serverId={serverId as McpServerId}
+                />
               );
             }
             if (activeTab === "logs") {
