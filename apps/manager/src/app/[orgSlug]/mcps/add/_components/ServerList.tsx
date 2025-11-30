@@ -92,7 +92,9 @@ export const ServerList = ({
 
   // 内部状態（uncontrolled時のみ使用）
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
-  const [internalSelectedTags, setInternalSelectedTags] = useState<string[]>([]);
+  const [internalSelectedTags, setInternalSelectedTags] = useState<string[]>(
+    [],
+  );
 
   // MCPサーバーから利用可能なタグを動的に取得
   const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
@@ -106,7 +108,9 @@ export const ServerList = ({
 
   // 実際に使用する値
   const searchQuery = isControlled ? externalSearchQuery : internalSearchQuery;
-  const selectedTags = isControlled ? externalSelectedTags : internalSelectedTags;
+  const selectedTags = isControlled
+    ? externalSelectedTags
+    : internalSelectedTags;
 
   // 全サーバーからユニークなタグを抽出
   const availableTags = useMemo(() => {
@@ -159,39 +163,39 @@ export const ServerList = ({
             />
           </div>
 
-        {/* タグフィルター */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">
-              カテゴリーで絞り込み
-            </h3>
-            {(searchQuery || selectedTags.length > 0) && (
-              <button
-                onClick={clearAllFilters}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                フィルターをクリア
-              </button>
-            )}
+          {/* タグフィルター */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-700">
+                カテゴリーで絞り込み
+              </h3>
+              {(searchQuery || selectedTags.length > 0) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  フィルターをクリア
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={selectedTags.includes(tag) ? "default" : "outline"}
+                  className={`cursor-pointer transition-colors ${
+                    selectedTags.includes(tag)
+                      ? "bg-purple-600 text-white hover:bg-purple-700"
+                      : "hover:border-purple-300 hover:bg-purple-50"
+                  }`}
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag}
+                  {selectedTags.includes(tag) && <X className="ml-1 h-3 w-3" />}
+                </Badge>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {availableTags.map((tag) => (
-              <Badge
-                key={tag}
-                variant={selectedTags.includes(tag) ? "default" : "outline"}
-                className={`cursor-pointer transition-colors ${
-                  selectedTags.includes(tag)
-                    ? "bg-purple-600 text-white hover:bg-purple-700"
-                    : "hover:border-purple-300 hover:bg-purple-50"
-                }`}
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-                {selectedTags.includes(tag) && <X className="ml-1 h-3 w-3" />}
-              </Badge>
-            ))}
-          </div>
-        </div>
 
           {/* 選択されたフィルター表示 */}
           {(searchQuery || selectedTags.length > 0) && (

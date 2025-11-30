@@ -1,11 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { HeaderClient } from "@/app/_components/HeaderClient";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
-import { auth } from "~/auth";
+import { Menu } from "lucide-react";
+import { useSetAtom } from "jotai";
+import { sidebarOpenAtom } from "@/store/sidebar";
+import { useSession } from "next-auth/react";
 
-export const SimpleHeader = async () => {
-  const session = await auth();
+export const SimpleHeader = () => {
+  const { data: session } = useSession();
+  const setIsOpen = useSetAtom(sidebarOpenAtom);
 
   const user = session?.user
     ? {
@@ -18,8 +24,17 @@ export const SimpleHeader = async () => {
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="flex h-14 w-full items-center justify-between px-4">
-        {/* 左側: ロゴと組織スイッチャー */}
+        {/* 左側: モバイルメニューボタン、ロゴと組織スイッチャー */}
         <div className="flex items-center gap-4">
+          {/* モバイル用サイドバー開閉ボタン */}
+          <button
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="hover:bg-accent rounded-lg p-2 transition-colors md:hidden"
+            aria-label="メニューを開く"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
           <Link href="/" className="flex items-center space-x-2">
             <Image
               src="/favicon/logo.svg"

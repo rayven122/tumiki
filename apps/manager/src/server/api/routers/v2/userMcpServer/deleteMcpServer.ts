@@ -25,15 +25,14 @@ export const deleteMcpServer = async (
 ): Promise<DeleteMcpServerOutput> => {
   const { id, organizationId } = input;
 
-  // 既存のMCPサーバーを取得して状態確認
+  // 既存のMCPサーバーを取得して存在確認
   const existingServer = await tx.mcpServer.findUnique({
     where: {
       id,
       organizationId,
     },
     select: {
-      deletedAt: true,
-      name: true,
+      id: true,
     },
   });
 
@@ -44,21 +43,11 @@ export const deleteMcpServer = async (
     });
   }
 
-  if (existingServer.deletedAt) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `MCPサーバー「${existingServer.name}」は既に削除されています`,
-    });
-  }
-
-  // 論理削除を実行
-  await tx.mcpServer.update({
+  // 物理削除を実行
+  await tx.mcpServer.delete({
     where: {
       id,
       organizationId,
-    },
-    data: {
-      deletedAt: new Date(),
     },
   });
 

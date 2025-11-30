@@ -37,8 +37,8 @@ export type CreateUserWithOrganizationOutput = z.infer<
  * ユーザーと個人組織を同時に作成
  *
  * トランザクション内で以下を実行：
- * 1. ユーザー作成
- * 2. 個人組織作成
+ * 1. 個人組織作成（外部キー制約のため先に作成）
+ * 2. ユーザー作成
  * 3. OrganizationMember レコード作成
  */
 export const createUserWithOrganization = async (
@@ -49,7 +49,19 @@ export const createUserWithOrganization = async (
   const baseName = input.name ?? input.email ?? "User";
   const slug = await generateUniqueSlug(tx, baseName, true);
 
-  // 1. ユーザー作成
+  // 1. 個人組織作成（外部キー制約のため、ユーザーより先に作成）
+  await tx.organization.create({
+    data: {
+      name: `${input.name ?? input.email ?? "User"}'s Workspace`,
+      slug,
+      description: "Personal workspace",
+      isPersonal: true,
+      maxMembers: 1,
+      createdBy: input.id,
+    },
+  });
+
+  // 2. ユーザー作成（組織が既に存在するため、外部キー制約を満たせる）
   const createdUser = await tx.user.create({
     data: {
       id: input.id,
@@ -61,21 +73,12 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 2. 個人組織作成
-  await tx.organization.create({
+  // 3. OrganizationMember レコード作成
+  await tx.organizationMember.create({
     data: {
-      name: `${input.name ?? input.email ?? "User"}'s Workspace`,
-      slug,
-      description: "Personal workspace",
-      isPersonal: true,
-      maxMembers: 1,
-      createdBy: input.id,
-      members: {
-        create: {
-          userId: input.id,
-          isAdmin: true,
-        },
-      },
+      userId: input.id,
+      organizationId: slug,
+      isAdmin: true,
     },
   });
 

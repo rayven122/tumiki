@@ -56,7 +56,7 @@ export const setupMcpServerTools = async (
   if (!tools || tools.length === 0) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "MCPサーバーからツールを取得できませんでした",
+      message: `MCPサーバーからツールを取得できませんでした。サーバー: ${mcpServerName} (${mcpServerTemplateUrl})、トランスポート: ${transportType}。詳細はサーバーログを確認してください。`,
     });
   }
 

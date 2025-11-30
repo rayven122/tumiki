@@ -3,6 +3,7 @@ import { api } from "@/trpc/server";
 import type { ReactNode } from "react";
 import { SimpleHeader } from "./_components/SimpleHeader";
 import { OrgSidebar } from "./_components/OrgSidebar";
+import { MainContent } from "./_components/MainContent";
 import { auth } from "~/auth";
 
 type OrgSlugLayoutProps = {
@@ -37,17 +38,14 @@ export default async function OrgSlugLayout({
         {/* ヘッダー */}
         <SimpleHeader />
 
-        {/* メインコンテンツエリア */}
-        <div className="flex flex-1">
-          {/* サイドバー */}
-          <OrgSidebar
-            orgSlug={decodedSlug}
-            isPersonal={organization.isPersonal}
-          />
+        {/* サイドバー */}
+        <OrgSidebar
+          orgSlug={decodedSlug}
+          isPersonal={organization.isPersonal}
+        />
 
-          {/* ページコンテンツ */}
-          <main className="flex-1 overflow-auto">{children}</main>
-        </div>
+        {/* ページコンテンツ */}
+        <MainContent>{children}</MainContent>
       </div>
     );
   } catch (error) {

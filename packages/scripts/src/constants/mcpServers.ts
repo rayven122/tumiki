@@ -53,6 +53,45 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
       oauthProvider: "linear",
       visibility: "PUBLIC" as const,
     },
+    {
+      name: "Notion MCP",
+      description:
+        "Notion ワークスペース統合 - ページ、データベース、コメントへのライブアクセス",
+      tags: ["ドキュメント", "ナレッジベース", "ツール"],
+      iconPath: "/logos/notion.svg",
+      url: "https://mcp.notion.com/mcp",
+      transportType: "STREAMABLE_HTTPS" as const,
+      envVarKeys: [],
+      authType: "OAUTH" as const,
+      oauthProvider: "notion",
+      visibility: "PUBLIC" as const,
+    },
+    {
+      name: "GitHub MCP",
+      description:
+        "GitHub 公式MCPサーバー - リポジトリ、イシュー、PR、ワークフローの管理",
+      tags: ["開発", "バージョン管理", "CI/CD", "ツール"],
+      iconPath: "/logos/github.svg",
+      url: "https://api.githubcopilot.com/mcp/",
+      transportType: "STREAMABLE_HTTPS" as const,
+      envVarKeys: [],
+      authType: "OAUTH" as const,
+      oauthProvider: "github",
+      visibility: "PUBLIC" as const,
+    },
+    {
+      name: "Atlassian MCP",
+      description:
+        "Atlassian 公式MCPサーバー - Jira、Confluenceとの統合アクセス",
+      tags: ["プロジェクト管理", "ドキュメント", "コラボレーション", "ツール"],
+      iconPath: "/logos/atlassian.svg",
+      url: "https://mcp.atlassian.com/v1/sse",
+      transportType: "SSE" as const,
+      envVarKeys: [],
+      authType: "OAUTH" as const,
+      oauthProvider: "atlassian",
+      visibility: "PUBLIC" as const,
+    },
     // ========================================
     // Cloud Run Remote MCP Servers
     // ========================================

@@ -43,7 +43,12 @@ export const getMcpServerToolsSSE = async (
 
     return listTools.tools;
   } catch (error) {
-    console.error(error);
+    console.error("[getMcpServerToolsSSE] エラー発生:", {
+      serverName: server.name,
+      serverUrl: server.url,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return [];
   }
 };
@@ -65,17 +70,19 @@ export const getMcpServerToolsHTTP = async (
   });
 
   try {
+    const finalHeaders = {
+      ...headers,
+      // Context7サーバーが要求するヘッダーを明示的に設定
+      Accept: "application/json, text/event-stream",
+      "Content-Type": "application/json",
+    };
+
     // StreamableHTTPClientTransportを使用（requestInitでヘッダーを設定）
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
       {
         requestInit: {
-          headers: {
-            ...headers,
-            // Context7サーバーが要求するヘッダーを明示的に設定
-            Accept: "application/json, text/event-stream",
-            "Content-Type": "application/json",
-          },
+          headers: finalHeaders,
         },
       },
     );
@@ -98,7 +105,12 @@ export const getMcpServerToolsHTTP = async (
 
     return listTools.tools;
   } catch (error) {
-    console.error(error);
+    console.error("[getMcpServerToolsHTTP] エラー発生:", {
+      serverName: server.name,
+      serverUrl: server.url,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return [];
   }
 };

@@ -51,12 +51,8 @@ export const useServerConfigForm = ({
     normalizeServerName(mcpServer.name),
   );
 
-  // 認証方法の選択状態
-  const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
-
   // 作成モード用のフック
   const createForm = useCreateServerForm({
-    mcpServer,
     onSuccess,
   });
 
@@ -92,24 +88,40 @@ export const useServerConfigForm = ({
 
   // フォーム送信処理
   const handleSubmit = useCallback(() => {
-    if (isOAuthSupported && authMethod === "oauth") {
+    if (isOAuthSupported && mcpServer.authType === "OAUTH") {
       // OAuth認証の場合
-      activeForm.handleOAuthConnect(serverName);
+      if (mode === "create") {
+        createForm.handleOAuthConnect({
+          serverName,
+          mcpServerTemplateId: mcpServer.id,
+        });
+      } else {
+        editForm.handleOAuthConnect(serverName);
+      }
     } else {
       // APIキー認証の場合
       if (mode === "create") {
-        createForm.handleAddWithApiKey(serverName, envVars);
+        // envVarsの有無でauthTypeを判定
+        const authType = Object.values(envVars).some((v) => v.trim() !== "")
+          ? "API_KEY"
+          : "NONE";
+        createForm.handleAddWithApiKey({
+          serverName,
+          authType,
+          mcpServerTemplateId: mcpServer.id,
+          envVars,
+        });
       } else {
         editForm.handleUpdateWithApiKey(envVars);
       }
     }
   }, [
     isOAuthSupported,
-    authMethod,
+    mcpServer.authType,
     serverName,
     envVars,
     mode,
-    activeForm,
+    mcpServer.id,
     createForm,
     editForm,
   ]);
@@ -119,8 +131,6 @@ export const useServerConfigForm = ({
     envVars,
     /** サーバー名 */
     serverName,
-    /** 認証方法 */
-    authMethod,
     /** 処理中かどうか */
     isProcessing: activeForm.isPending,
     /** 検証中かどうか（作成モードのみ） */
@@ -133,8 +143,6 @@ export const useServerConfigForm = ({
     handleEnvVarChange,
     /** サーバー名を設定する関数 */
     setServerName,
-    /** 認証方法を設定する関数 */
-    setAuthMethod,
     /** フォームを送信する関数 */
     handleSubmit,
     /** フォームが有効かどうかを判定する関数 */

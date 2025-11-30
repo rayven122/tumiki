@@ -121,7 +121,7 @@ export const UserMcpServerCard = ({
   };
 
   const copyHttpUrl = async () => {
-    const url = `${getProxyServerUrl()}/mcp?api-key=${apiKey}`;
+    const url = `${getProxyServerUrl()}/mcp/${serverInstance.id}`;
     await copyToClipboard(url);
     toast.success("HTTP接続URLをコピーしました");
   };
