@@ -21,20 +21,13 @@ export default function HomePage() {
 
   useEffect(() => {
     // セッションが存在し、デフォルト組織がある場合はリダイレクト
-    if (status === "authenticated" && session?.user?.defaultOrganization?.slug) {
+    if (
+      status === "authenticated" &&
+      session?.user?.defaultOrganization?.slug
+    ) {
       router.push(`/${session.user.defaultOrganization.slug}/mcps`);
     }
   }, [status, session, router]);
-
-  // セッションチェック中は何も表示しない
-  if (status === "loading") {
-    return null;
-  }
-
-  // 認証済みユーザーはリダイレクトされるので、未認証ユーザーのみ表示
-  if (status === "authenticated") {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-white">
