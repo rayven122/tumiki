@@ -65,6 +65,54 @@ export const generateAuthorizationUrl = (
 };
 
 /**
+ * クライアント認証方式を決定
+ * client.token_endpoint_auth_method に基づいて適切な認証方式を選択
+ *
+ * @param client - OAuth Client
+ * @returns ClientAuth
+ */
+const getClientAuth = (client: oauth.Client): ReturnType<typeof oauth.None> => {
+  // token_endpoint_auth_methodが明示的に指定されている場合
+  if (client.token_endpoint_auth_method) {
+    switch (client.token_endpoint_auth_method) {
+      case "none":
+        return oauth.None();
+      case "client_secret_basic":
+        if (!client.client_secret || typeof client.client_secret !== "string") {
+          throw new Error(
+            "client_secret is required for client_secret_basic authentication",
+          );
+        }
+        return oauth.ClientSecretBasic(client.client_secret);
+      case "client_secret_post":
+        if (!client.client_secret || typeof client.client_secret !== "string") {
+          throw new Error(
+            "client_secret is required for client_secret_post authentication",
+          );
+        }
+        return oauth.ClientSecretPost(client.client_secret);
+      default: {
+        // 未対応の認証方式の場合はエラー
+        const method =
+          typeof client.token_endpoint_auth_method === "string"
+            ? client.token_endpoint_auth_method
+            : JSON.stringify(client.token_endpoint_auth_method);
+        throw new Error(`Unsupported token_endpoint_auth_method: ${method}`);
+      }
+    }
+  }
+
+  // token_endpoint_auth_methodが未指定の場合
+  // client_secretの有無で判断
+  if (client.client_secret && typeof client.client_secret === "string") {
+    return oauth.ClientSecretPost(client.client_secret);
+  }
+
+  // client_secretがない場合はnone
+  return oauth.None();
+};
+
+/**
  * トークンを取得（Authorization Code Grant）
  *
  * @param authServer - OAuth Authorization Server
@@ -81,12 +129,7 @@ export const exchangeCodeForToken = async (
   redirectUri: string,
   codeVerifier: string,
 ): Promise<OAuthTokenData> => {
-  // client_secret_postメソッドを使用
-  if (!client.client_secret || typeof client.client_secret !== "string") {
-    throw new Error("client_secret is required for token exchange");
-  }
-
-  const clientAuth = oauth.ClientSecretPost(client.client_secret);
+  const clientAuth = getClientAuth(client);
 
   const response = await oauth.authorizationCodeGrantRequest(
     authServer,
@@ -153,9 +196,8 @@ export const refreshAccessToken = async (
   client: oauth.Client,
   refreshToken: string,
 ): Promise<OAuthTokenData> => {
-  // PKCEを使用する場合はclient_secretを送信しない（Figma等のプロバイダー要件）
-  // PKCE使用時はtoken_endpoint_auth_method="none"が推奨される
-  const clientAuth = oauth.None();
+  // トークン取得と同じ認証方式を使用
+  const clientAuth = getClientAuth(client);
 
   const response = await oauth.refreshTokenGrantRequest(
     authServer,
