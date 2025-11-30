@@ -31,10 +31,10 @@ const AsyncServerCardList = forwardRef<
   AsyncServerCardListProps
 >(function AsyncServerCardListComponent({ isSortMode }, ref) {
   const [userOfficialServers] =
-    api.userMcpServerInstance.findOfficialServers.useSuspenseQuery();
+    api.v2.userMcpServer.findOfficialServers.useSuspenseQuery();
   const utils = api.useUtils();
   const updateDisplayOrderMutation =
-    api.userMcpServerInstance.updateDisplayOrder.useMutation();
+    api.v2.userMcpServer.updateDisplayOrder.useMutation();
 
   const {
     servers,
@@ -46,7 +46,7 @@ const AsyncServerCardList = forwardRef<
     originalServers: userOfficialServers,
     updateMutation: updateDisplayOrderMutation,
     invalidateQuery: () =>
-      utils.userMcpServerInstance.findOfficialServers.invalidate(),
+      utils.v2.userMcpServer.findOfficialServers.invalidate(),
     isSortMode,
   });
 
@@ -79,7 +79,7 @@ const AsyncServerCardList = forwardRef<
                 serverInstance={server}
                 isSortMode={isSortMode}
                 revalidate={async () =>
-                  await utils.userMcpServerInstance.findOfficialServers.invalidate()
+                  await utils.v2.userMcpServer.findOfficialServers.invalidate()
                 }
               />
             ))}
@@ -98,7 +98,7 @@ const AsyncServerCardList = forwardRef<
           serverInstance={server}
           isSortMode={isSortMode}
           revalidate={async () =>
-            await utils.userMcpServerInstance.findOfficialServers.invalidate()
+            await utils.v2.userMcpServer.findOfficialServers.invalidate()
           }
         />
       ))}

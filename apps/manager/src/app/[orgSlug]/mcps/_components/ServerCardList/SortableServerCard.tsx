@@ -6,7 +6,7 @@ import { UserMcpServerCard } from "../UserMcpServerCard";
 import type { RouterOutputs } from "@/trpc/react";
 
 type ServerInstance =
-  RouterOutputs["userMcpServerInstance"]["findOfficialServers"][number];
+  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
 
 type SortableServerCardProps = {
   serverInstance: ServerInstance;
