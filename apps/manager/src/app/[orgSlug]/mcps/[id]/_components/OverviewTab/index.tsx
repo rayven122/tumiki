@@ -5,6 +5,7 @@ import { toast } from "@/utils/client/toast";
 import { api } from "@/trpc/react";
 import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
+import { DataUsageStatsCard } from "./DataUsageStatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
 import type {
@@ -69,8 +70,11 @@ export const OverviewTab = ({
 
   return (
     <div className="space-y-6">
-      {/* リクエスト統計カード */}
-      <RequestStatsCard requestStats={requestStats} />
+      {/* 統計カード（横並び） */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <RequestStatsCard requestStats={requestStats} />
+        <DataUsageStatsCard requestStats={requestStats} />
+      </div>
 
       {/* 最近のリクエストログ */}
       {recentLogs.length > 0 && (

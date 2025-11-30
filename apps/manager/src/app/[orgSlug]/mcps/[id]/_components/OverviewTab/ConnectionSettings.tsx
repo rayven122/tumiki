@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
   Copy,
@@ -12,12 +11,21 @@ import {
   ChevronRight,
   FileText,
   Info,
+  Share2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { toast } from "@/utils/client/toast";
-import { getProxyServerUrl, normalizeServerName } from "@/utils/url";
+import {
+  getProxyServerUrl,
+  normalizeServerName,
+  makeHttpProxyServerUrl,
+} from "@/utils/url";
+import { api } from "@/trpc/react";
 import Image from "next/image";
 import type { UserMcpServerDetail } from "../types";
+import type { McpServerId } from "@/schema/ids";
 
 const ALL_CLIENTS = [
   { id: "claude-desktop", name: "Claude Desktop" },
@@ -36,75 +44,55 @@ const ALL_CLIENTS = [
 
 type ConnectionSettingsProps = {
   server: UserMcpServerDetail;
+  serverId: McpServerId;
 };
 
-export const ConnectionSettings = ({ server }: ConnectionSettingsProps) => {
+export const ConnectionSettings = ({
+  server,
+  serverId,
+}: ConnectionSettingsProps) => {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
 
-  // v2 APIではapiKeysがない場合があるため、デフォルト値を設定
-  const apiKey = "YOUR_API_KEY";
+  // APIキー一覧取得
+  const { data: apiKeys } = api.v2.mcpServerAuth.listApiKeys.useQuery({
+    serverId,
+  });
 
-  const getConfigText = (clientId: string, connectionType: "http" | "sse") => {
+  const apiKey = apiKeys?.[0]?.apiKey ?? "YOUR_API_KEY";
+
+  const getConfigText = (clientId: string) => {
     const serverUrl = getProxyServerUrl();
     const serverName = normalizeServerName(server.name);
 
     // Claude Code - ネイティブサポート
     if (clientId === "claude-code") {
-      if (connectionType === "http") {
-        return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.id} --header "x-api-key: ${apiKey}"`;
-      } else {
-        return `claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${server.id} --header "x-api-key: ${apiKey}"`;
-      }
+      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.id} --header "x-api-key: ${apiKey}"`;
     }
 
     // Claude Desktop - コネクト機能用のシンプルなURL
     if (clientId === "claude-desktop") {
-      const endpoint = connectionType === "http" ? "mcp" : "sse";
-      return `${serverUrl}/${endpoint}/${server.id}`;
+      return `${serverUrl}/mcp/${server.id}`;
     }
 
     // Cursor
     if (clientId === "cursor") {
-      if (connectionType === "http") {
-        return JSON.stringify(
-          {
-            mcpServers: {
-              [serverName]: {
-                url: `${serverUrl}/mcp/${server.id}`,
-                transport: "http",
-                headers: {
-                  "x-api-key": apiKey,
-                },
+      return JSON.stringify(
+        {
+          mcpServers: {
+            [serverName]: {
+              url: `${serverUrl}/mcp/${server.id}`,
+              transport: "http",
+              headers: {
+                "x-api-key": apiKey,
               },
             },
           },
-          null,
-          2,
-        );
-      } else {
-        // SSE via mcp-remote
-        return JSON.stringify(
-          {
-            mcpServers: {
-              [serverName]: {
-                command: "npx",
-                args: [
-                  "-y",
-                  "mcp-remote@latest",
-                  `${serverUrl}/sse/${server.id}`,
-                  "--header",
-                  `x-api-key: ${apiKey}`,
-                  "--strategy",
-                  "sse-only",
-                ],
-              },
-            },
-          },
-          null,
-          2,
-        );
-      }
+        },
+        null,
+        2,
+      );
     }
 
     // VS Code
@@ -113,11 +101,8 @@ export const ConnectionSettings = ({ server }: ConnectionSettingsProps) => {
         {
           mcpServers: {
             [serverName]: {
-              url:
-                connectionType === "http"
-                  ? `${serverUrl}/mcp/${server.id}`
-                  : `${serverUrl}/sse/${server.id}`,
-              transport: connectionType,
+              url: `${serverUrl}/mcp/${server.id}`,
+              transport: "http",
               headers: {
                 "x-api-key": apiKey,
               },
@@ -131,45 +116,27 @@ export const ConnectionSettings = ({ server }: ConnectionSettingsProps) => {
 
     // Windsurf
     if (clientId === "windsurf") {
-      if (connectionType === "http") {
-        // HTTP via mcp-remote
-        return JSON.stringify(
-          {
-            mcpServers: {
-              [serverName]: {
-                command: "npx",
-                args: [
-                  "-y",
-                  "mcp-remote@latest",
-                  `${serverUrl}/mcp/${server.id}`,
-                  "--header",
-                  `x-api-key: ${apiKey}`,
-                  "--strategy",
-                  "http-only",
-                ],
-              },
+      // HTTP via mcp-remote
+      return JSON.stringify(
+        {
+          mcpServers: {
+            [serverName]: {
+              command: "npx",
+              args: [
+                "-y",
+                "mcp-remote@latest",
+                `${serverUrl}/mcp/${server.id}`,
+                "--header",
+                `x-api-key: ${apiKey}`,
+                "--strategy",
+                "http-only",
+              ],
             },
           },
-          null,
-          2,
-        );
-      } else {
-        // SSE native support
-        return JSON.stringify(
-          {
-            mcpServers: {
-              [serverName]: {
-                serverUrl: `${serverUrl}/sse/${server.id}`,
-                headers: {
-                  "x-api-key": apiKey,
-                },
-              },
-            },
-          },
-          null,
-          2,
-        );
-      }
+        },
+        null,
+        2,
+      );
     }
 
     // Cline
@@ -178,11 +145,8 @@ export const ConnectionSettings = ({ server }: ConnectionSettingsProps) => {
         {
           mcpServers: {
             [serverName]: {
-              url:
-                connectionType === "http"
-                  ? `${serverUrl}/mcp/${server.id}`
-                  : `${serverUrl}/sse/${server.id}`,
-              transport: connectionType,
+              url: `${serverUrl}/mcp/${server.id}`,
+              transport: "http",
               headers: {
                 "x-api-key": apiKey,
               },
@@ -197,8 +161,7 @@ export const ConnectionSettings = ({ server }: ConnectionSettingsProps) => {
     }
 
     // その他のクライアント用
-    if (connectionType === "http") {
-      return `# HTTP接続設定
+    return `# HTTP接続設定
 URL: ${serverUrl}/mcp/${server.id}
 Method: POST
 Headers:
@@ -222,38 +185,6 @@ Headers:
     }
   }
 }`;
-    } else {
-      return `# SSE接続設定
-URL: ${serverUrl}/sse/${server.id}
-Method: GET (SSE接続)
-Headers:
-  x-api-key: ${apiKey}
-
-# メッセージ送信エンドポイント
-URL: ${serverUrl}/messages/${server.id}
-Method: POST
-Headers:
-  Content-Type: application/json
-  x-api-key: ${apiKey}
-
-# mcp-remote経由での接続（stdioクライアント用）
-{
-  "mcpServers": {
-    "${serverName}": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote@latest",
-        "${serverUrl}/sse/${server.id}",
-        "--header",
-        "x-api-key: ${apiKey}",
-        "--strategy",
-        "sse-only"
-      ]
-    }
-  }
-}`;
-    }
   };
 
   const getConfigFilePath = (clientId: string) => {
@@ -275,23 +206,22 @@ Headers:
     }
   };
 
-  const handleCopyConfig = async (connectionType: "http" | "sse") => {
+  const handleCopyConfig = async () => {
     if (!selectedClient) return;
 
-    const textToCopy = getConfigText(selectedClient, connectionType);
+    const textToCopy = getConfigText(selectedClient);
     await copyToClipboard(textToCopy);
     toast.success(
       selectedClient === "claude-code"
-        ? `${connectionType.toUpperCase()}接続コマンドをコピーしました`
+        ? "接続コマンドをコピーしました"
         : selectedClient === "claude-desktop"
-          ? `${connectionType.toUpperCase()}接続URLをコピーしました`
-          : `${connectionType.toUpperCase()}接続設定をコピーしました`,
+          ? "接続URLをコピーしました"
+          : "接続設定をコピーしました",
     );
   };
 
   return (
     <div id="connection-settings" className="space-y-4">
-      <h3 className="text-lg font-semibold">接続設定</h3>
       {/* クライアント接続 カード */}
       <Card>
         {selectedClient ? (
@@ -348,138 +278,114 @@ Headers:
                 </div>
               </div>
 
-              {/* HTTP/SSE接続タブ */}
-              <Tabs defaultValue="http" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="http">HTTP接続</TabsTrigger>
-                  <TabsTrigger value="sse">SSE接続</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="http" className="space-y-3">
-                  <div className="rounded-lg border bg-gray-50 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <pre className="m-0 overflow-x-auto bg-transparent p-0 text-sm">
-                          <code className="whitespace-pre">
-                            {getConfigText(selectedClient, "http")}
-                          </code>
-                        </pre>
-                      </div>
+              {/* HTTP接続設定 */}
+              <div className="space-y-3">
+                <div className="rounded-lg border bg-gray-50 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <pre className="m-0 overflow-x-auto bg-transparent p-0 text-sm">
+                        <code className="whitespace-pre">
+                          {showApiKey
+                            ? getConfigText(selectedClient)
+                            : getConfigText(selectedClient).replace(
+                                new RegExp(apiKey, "g"),
+                                "•".repeat(20) + "...",
+                              )}
+                        </code>
+                      </pre>
+                    </div>
+                    <div className="flex flex-shrink-0 gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="flex-shrink-0"
-                        onClick={() => handleCopyConfig("http")}
+                        onClick={() => setShowApiKey(!showApiKey)}
+                      >
+                        {showApiKey ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleCopyConfig}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  {selectedClient === "claude-desktop" && (
-                    <div className="flex items-start space-x-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <Info className="mt-0.5 h-4 w-4 text-blue-600" />
-                      <div className="flex-1">
-                        <p className="text-xs text-blue-800">
-                          <span className="font-medium">コネクト機能:</span>{" "}
-                          このURLをClaude
-                          Desktopのコネクト機能に貼り付けてください。
-                        </p>
-                        <p className="mt-2 text-xs text-blue-800">
-                          <span className="font-medium">認証ヘッダー:</span>{" "}
-                          X-API-Key: {apiKey}
-                        </p>
-                        <p className="mt-1 text-xs text-blue-700">
-                          または Authorization: Bearer {apiKey}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedClient === "windsurf" && (
-                    <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <Info className="mt-0.5 h-4 w-4 text-amber-600" />
-                      <div className="flex-1">
-                        <p className="text-xs text-amber-800">
-                          <span className="font-medium">mcp-remote使用:</span>{" "}
-                          このクライアントはstdio
-                          transportのみサポートするため、mcp-remoteを使用してHTTP接続を行います。
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="sse" className="space-y-3">
-                  <div className="rounded-lg border bg-gray-50 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <pre className="m-0 overflow-x-auto bg-transparent p-0 text-sm">
-                          <code className="whitespace-pre">
-                            {getConfigText(selectedClient, "sse")}
-                          </code>
-                        </pre>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="flex-shrink-0"
-                        onClick={() => handleCopyConfig("sse")}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                </div>
+                {selectedClient === "claude-desktop" && (
+                  <div className="flex items-start space-x-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <Info className="mt-0.5 h-4 w-4 text-blue-600" />
+                    <div className="flex-1">
+                      <p className="text-xs text-blue-800">
+                        <span className="font-medium">コネクト機能:</span>{" "}
+                        このURLをClaude
+                        Desktopのコネクト機能に貼り付けてください。
+                      </p>
+                      <p className="mt-2 text-xs text-blue-800">
+                        <span className="font-medium">認証ヘッダー:</span>{" "}
+                        X-API-Key:{" "}
+                        {showApiKey ? apiKey : "•".repeat(20) + "..."}
+                      </p>
+                      <p className="mt-1 text-xs text-blue-700">
+                        または Authorization: Bearer{" "}
+                        {showApiKey ? apiKey : "•".repeat(20) + "..."}
+                      </p>
                     </div>
                   </div>
-                  {selectedClient === "claude-desktop" && (
-                    <div className="flex items-start space-x-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <Info className="mt-0.5 h-4 w-4 text-blue-600" />
-                      <div className="flex-1">
-                        <p className="text-xs text-blue-800">
-                          <span className="font-medium">コネクト機能:</span>{" "}
-                          このURLをClaude
-                          Desktopのコネクト機能に貼り付けてください。
-                        </p>
-                        <p className="mt-2 text-xs text-blue-800">
-                          <span className="font-medium">認証ヘッダー:</span>{" "}
-                          X-API-Key: {apiKey}
-                        </p>
-                        <p className="mt-1 text-xs text-blue-700">
-                          または Authorization: Bearer {apiKey}
-                        </p>
-                      </div>
+                )}
+                {selectedClient === "windsurf" && (
+                  <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <Info className="mt-0.5 h-4 w-4 text-amber-600" />
+                    <div className="flex-1">
+                      <p className="text-xs text-amber-800">
+                        <span className="font-medium">mcp-remote使用:</span>{" "}
+                        このクライアントはstdio
+                        transportのみサポートするため、mcp-remoteを使用してHTTP接続を行います。
+                      </p>
                     </div>
-                  )}
-                  {selectedClient === "cursor" && (
-                    <div className="flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <Info className="mt-0.5 h-4 w-4 text-amber-600" />
-                      <div className="flex-1">
-                        <p className="text-xs text-amber-800">
-                          <span className="font-medium">mcp-remote使用:</span>{" "}
-                          このクライアントはSSE接続にmcp-remoteを使用します。
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-
-              {/* 追加情報 */}
-              {selectedClient === "claude-code" && (
-                <p className="text-xs text-gray-600">
-                  ※ Streamable HTTP transportが推奨です。SSE
-                  transportは代替オプションとしてご利用ください。
-                </p>
-              )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </>
         ) : (
           // クライアント一覧表示
           <>
             <CardHeader>
-              <CardTitle className="text-base">クライアント接続</CardTitle>
+              <CardTitle className="flex items-center space-x-2 text-base">
+                <Share2 className="h-5 w-5" />
+                <span>クライアント接続</span>
+              </CardTitle>
               <p className="mt-1 text-sm text-gray-600">
                 このMCPサーバーを接続したいAIツールを選択してください
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* 接続URL情報 */}
+              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs font-semibold whitespace-nowrap text-gray-700">
+                  接続URL
+                </p>
+                <code className="min-w-0 flex-1 overflow-x-auto text-xs text-gray-600">
+                  {makeHttpProxyServerUrl(server.id)}
+                </code>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 flex-shrink-0"
+                  onClick={async () => {
+                    await copyToClipboard(makeHttpProxyServerUrl(server.id));
+                    toast.success("接続URLをコピーしました");
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
               {/* 検索バー */}
               <div className="relative">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />

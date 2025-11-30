@@ -16,7 +16,7 @@ export const ConnectionTab = ({ server, serverId }: ConnectionTabProps) => {
       {/* 認証設定と接続設定を横並び */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <AuthSettings server={server} serverId={serverId} />
-        <ConnectionSettings server={server} />
+        <ConnectionSettings server={server} serverId={serverId} />
       </div>
     </div>
   );
