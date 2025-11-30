@@ -34,8 +34,8 @@ export const NameEditModal = ({
   const [newName, setNewName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
 
-  const { mutate: updateServerInstanceName, isPending } =
-    api.userMcpServerInstance.updateName.useMutation({
+  const { mutate: updateServerName, isPending } =
+    api.v2.userMcpServer.updateName.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("サーバー名を更新しました。");
@@ -48,7 +48,7 @@ export const NameEditModal = ({
     });
 
   const onUpdate = () => {
-    updateServerInstanceName({
+    updateServerName({
       id: serverInstanceId,
       name: newName,
       description,
