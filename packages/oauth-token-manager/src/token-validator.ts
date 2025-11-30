@@ -10,8 +10,9 @@ import type { DecryptedToken } from "./types.js";
 
 /**
  * デフォルトの有効期限バッファ（秒）
+ * トークンの有効期限がこの時間以内になったら自動リフレッシュを実行
  */
-const DEFAULT_EXPIRY_BUFFER_SECONDS = 300; // 5分
+const DEFAULT_EXPIRY_BUFFER_SECONDS = 30 * 60; // 30分
 
 /**
  * トークンが期限切れかどうかをチェック
@@ -30,7 +31,7 @@ export const isTokenExpired = (token: McpOAuthToken): boolean => {
  * トークンが期限切れ間近かどうかをチェック
  *
  * @param token トークン
- * @param bufferSeconds バッファ時間（秒）デフォルト5分
+ * @param bufferSeconds バッファ時間（秒）デフォルト30分
  * @returns 期限切れ間近の場合true
  */
 export const isExpiringSoon = (

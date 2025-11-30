@@ -17,6 +17,7 @@ export const findByIdOutputSchema = z.object({
   serverStatus: z.enum(["RUNNING", "STOPPED", "ERROR", "PENDING"]),
   serverType: z.enum(["OFFICIAL", "CUSTOM"]),
   authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
+  mcpServerTemplateId: z.string().nullable(),
   tools: z.array(
     z.object({
       id: z.string(),
@@ -93,6 +94,7 @@ export const findById = async (
     serverStatus: server.serverStatus,
     serverType: server.serverType,
     authType: server.authType,
+    mcpServerTemplateId: mcpServerTemplate?.id ?? null,
     tools: server.allowedTools.map((tool) => ({
       ...tool,
       isEnabled: true, // allowedToolsに含まれているツールは全て有効

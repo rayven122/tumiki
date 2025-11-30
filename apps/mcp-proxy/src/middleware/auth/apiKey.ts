@@ -55,6 +55,7 @@ const validateApiKey = async (
     return {
       organizationId: server.organizationId,
       mcpServerInstanceId: mcpApiKey.mcpServerId,
+      userId: mcpApiKey.userId, // API Key の作成者
     };
   } catch (error: unknown) {
     logError("Failed to validate API key", error as Error);

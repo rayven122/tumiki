@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle, Info } from "lucide-react";
 import { toast } from "@/utils/client/toast";
 import { api } from "@/trpc/react";
 import { AuthType } from "@tumiki/db/prisma";
@@ -104,14 +104,49 @@ export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
 
         {/* 認証タイプ別の設定UI */}
         {selectedAuthType === AuthType.API_KEY && (
-          <ApiKeyList
-            apiKeys={apiKeys}
-            isLoading={isLoadingApiKeys}
-            isGenerating={isGeneratingApiKey}
-            onGenerateApiKey={() => generateApiKey({ serverId })}
-            onToggleApiKey={toggleApiKey}
-            onDeleteApiKey={deleteApiKey}
-          />
+          <>
+            {/* APIキー使用方法の説明 */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+              <div className="flex items-start space-x-2">
+                <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-blue-900">
+                    APIキーの設定方法
+                  </p>
+                  <div className="space-y-1 text-xs text-blue-800">
+                    <p>
+                      発行したAPIキーは、以下のいずれかの方法でHTTPリクエストに含めて使用します：
+                    </p>
+                    <ul className="ml-4 list-disc space-y-1">
+                      <li>
+                        <span className="font-medium">X-API-Keyヘッダー:</span>{" "}
+                        <code className="rounded bg-blue-100 px-1">
+                          X-API-Key: your_api_key
+                        </code>
+                      </li>
+                      <li>
+                        <span className="font-medium">
+                          Authorizationヘッダー（ベアラートークン）:
+                        </span>{" "}
+                        <code className="rounded bg-blue-100 px-1">
+                          Authorization: Bearer your_api_key
+                        </code>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <ApiKeyList
+              apiKeys={apiKeys}
+              isLoading={isLoadingApiKeys}
+              isGenerating={isGeneratingApiKey}
+              onGenerateApiKey={() => generateApiKey({ serverId })}
+              onToggleApiKey={toggleApiKey}
+              onDeleteApiKey={deleteApiKey}
+            />
+          </>
         )}
 
         {selectedAuthType === AuthType.OAUTH && (

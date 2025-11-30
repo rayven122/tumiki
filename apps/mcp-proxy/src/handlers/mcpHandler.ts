@@ -23,7 +23,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
   const apiKeyAuthInfo = c.get("apiKeyAuthInfo");
   const organizationId =
     jwtPayload?.tumiki.org_id ?? apiKeyAuthInfo?.organizationId ?? "";
-  const userId = jwtPayload?.tumiki.tumiki_user_id;
+  const userId = jwtPayload?.tumiki.tumiki_user_id ?? apiKeyAuthInfo?.userId;
 
   try {
     // MCPサーバーインスタンスを作成
