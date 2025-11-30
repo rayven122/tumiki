@@ -34,6 +34,8 @@ import type { McpServerId } from "@/schema/ids";
 import { CustomTabs } from "./CustomTabs";
 import { OverviewTab } from "./OverviewTab";
 import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
+import { EditServerDialog } from "./EditServerDialog";
+import { DeleteServerDialog } from "./DeleteServerDialog";
 import { BarChart3, Activity } from "lucide-react";
 
 type ServerDetailPageClientProps = {
@@ -321,7 +323,7 @@ export const ServerDetailPageClient = ({
                       </DropdownMenu>
                     </div>
                   </div>
-                  <p className="mt-2 break-words whitespace-pre-line text-sm leading-relaxed text-gray-600">
+                  <p className="mt-2 text-sm leading-relaxed break-words whitespace-pre-line text-gray-600">
                     {server.description}
                   </p>
                   <div className="mt-3 flex flex-col space-y-1 text-xs text-gray-500 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-6">
@@ -350,8 +352,16 @@ export const ServerDetailPageClient = ({
         {/* Tabs */}
         <CustomTabs
           tabs={[
-            { id: "overview", label: "概要", icon: <BarChart3 className="h-4 w-4" /> },
-            { id: "logs", label: "ログ・分析", icon: <Activity className="h-4 w-4" /> },
+            {
+              id: "overview",
+              label: "概要",
+              icon: <BarChart3 className="h-4 w-4" />,
+            },
+            {
+              id: "logs",
+              label: "ログ・分析",
+              icon: <Activity className="h-4 w-4" />,
+            },
           ]}
           defaultTab="overview"
         >
@@ -373,34 +383,22 @@ export const ServerDetailPageClient = ({
           }}
         </CustomTabs>
 
-        {/* Dialogs - Placeholder */}
+        {/* Dialogs */}
         {showEditDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <Card className="w-full max-w-md">
-              <CardContent className="p-6">
-                <h2 className="mb-4 text-xl font-bold">編集ダイアログ</h2>
-                <p className="mb-4 text-sm text-gray-600">
-                  次のフェーズで実装します
-                </p>
-                <Button onClick={() => setShowEditDialog(false)}>閉じる</Button>
-              </CardContent>
-            </Card>
-          </div>
+          <EditServerDialog
+            server={server}
+            onClose={() => setShowEditDialog(false)}
+            onSuccess={async () => {
+              await refetch();
+            }}
+          />
         )}
         {showDeleteDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <Card className="w-full max-w-md">
-              <CardContent className="p-6">
-                <h2 className="mb-4 text-xl font-bold">削除ダイアログ</h2>
-                <p className="mb-4 text-sm text-gray-600">
-                  次のフェーズで実装します
-                </p>
-                <Button onClick={() => setShowDeleteDialog(false)}>
-                  閉じる
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <DeleteServerDialog
+            server={server}
+            orgSlug={orgSlug}
+            onClose={() => setShowDeleteDialog(false)}
+          />
         )}
       </div>
     </div>
