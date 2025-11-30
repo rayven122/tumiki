@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Server, Settings, Users, Shield } from "lucide-react";
+import { LayoutDashboard, Server, Settings, Users, Shield, ChevronLeft } from "lucide-react";
+import { useAtom } from "jotai";
+import { sidebarOpenAtom } from "@/store/sidebar";
 
 type OrgSidebarProps = {
   orgSlug: string;
@@ -12,6 +14,7 @@ type OrgSidebarProps = {
 
 export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
 
   const navigation = [
     {
@@ -47,31 +50,85 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
   ].filter((item) => item.show);
 
   return (
-    <aside className="bg-muted/40 hidden w-64 flex-col border-r md:flex">
-      <div className="flex-1 overflow-auto py-6">
-        <nav className="grid gap-1 px-4">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+    <>
+      {/* モバイル用オーバーレイ */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-    </aside>
+      {/* サイドバー */}
+      <aside
+        className={cn(
+          "bg-background fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-transform duration-300 md:static md:translate-x-0 md:bg-muted/40",
+          isOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full md:w-16 md:translate-x-0"
+        )}
+      >
+        {/* トグルボタン（デスクトップのみ） */}
+        <div className="hidden h-14 items-center justify-end border-b px-3 md:flex">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="hover:bg-accent rounded-lg p-2 transition-colors"
+            aria-label={isOpen ? "サイドバーを閉じる" : "サイドバーを開く"}
+          >
+            <ChevronLeft
+              className={cn(
+                "h-5 w-5 transition-transform duration-300",
+                !isOpen && "rotate-180"
+              )}
+            />
+          </button>
+        </div>
+
+        {/* モバイル用ヘッダー */}
+        <div className="flex h-14 items-center justify-between border-b px-4 md:hidden">
+          <span className="font-bold">メニュー</span>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="hover:bg-accent rounded-lg p-2 transition-colors"
+            aria-label="メニューを閉じる"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto py-6">
+          <nav className="grid gap-1 px-4">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground"
+                  )}
+                  title={!isOpen ? item.name : undefined}
+                  onClick={() => {
+                    // モバイルではリンククリック時にサイドバーを閉じる
+                    if (window.innerWidth < 768) {
+                      setIsOpen(false);
+                    }
+                  }}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className={cn("md:inline", !isOpen && "md:hidden")}>
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </aside>
+    </>
   );
 };
