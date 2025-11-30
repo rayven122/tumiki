@@ -76,7 +76,7 @@ const AsyncServerCardList = forwardRef<
             {servers.map((server) => (
               <SortableServerCard
                 key={server.id}
-                serverInstance={server}
+                userMcpServer={server}
                 isSortMode={isSortMode}
                 revalidate={async () =>
                   await utils.v2.userMcpServer.findOfficialServers.invalidate()
@@ -95,7 +95,7 @@ const AsyncServerCardList = forwardRef<
       {servers.map((server) => (
         <SortableServerCard
           key={server.id}
-          serverInstance={server}
+          userMcpServer={server}
           isSortMode={isSortMode}
           revalidate={async () =>
             await utils.v2.userMcpServer.findOfficialServers.invalidate()

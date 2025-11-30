@@ -5,17 +5,17 @@ import { CSS } from "@dnd-kit/utilities";
 import { UserMcpServerCard } from "../UserMcpServerCard";
 import type { RouterOutputs } from "@/trpc/react";
 
-type ServerInstance =
+type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
 
 type SortableServerCardProps = {
-  serverInstance: ServerInstance;
+  userMcpServer: UserMcpServer;
   revalidate?: () => Promise<void>;
   isSortMode?: boolean;
 };
 
 export const SortableServerCard = ({
-  serverInstance,
+  userMcpServer,
   revalidate,
   isSortMode = false,
 }: SortableServerCardProps) => {
@@ -27,7 +27,7 @@ export const SortableServerCard = ({
     transition,
     isDragging,
   } = useSortable({
-    id: serverInstance.id,
+    id: userMcpServer.id,
     disabled: !isSortMode, // ソートモードでない時はドラッグ無効
   });
 
@@ -44,7 +44,7 @@ export const SortableServerCard = ({
   return (
     <div ref={setNodeRef} style={style} {...dragProps}>
       <UserMcpServerCard
-        serverInstance={serverInstance}
+        userMcpServer={userMcpServer}
         revalidate={revalidate}
         isSortMode={isSortMode}
       />

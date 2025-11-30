@@ -15,6 +15,7 @@ import { type ConnectOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
 import { registerOAuthClient } from "./helpers/registerOAuthClient";
 import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
+import { discoverOAuthMetadata } from "@/lib/oauth/dcr";
 
 type ConnectOAuthMcpServerInput = z.infer<typeof ConnectOAuthMcpServerInputV2>;
 
@@ -122,21 +123,64 @@ export const connectOAuthMcpServer = async (
     },
   });
 
-  // DCRを実行してOAuthClientを作成
-  const oauthClient = await registerOAuthClient({
-    tx,
-    serverUrl,
-    templateId,
-    organizationId,
+  // 既存のOAuthClientを確認（最新のものを取得）
+  const existingOAuthClient = await tx.mcpOAuthClient.findFirst({
+    where: {
+      mcpServerTemplateId: templateId,
+      organizationId,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
+
+  let clientId: string;
+  let clientSecret: string;
+  let authorizationEndpoint: string;
+  let tokenEndpoint: string;
+  let scopes: string[];
+
+  // 既存のOAuthClientが存在する場合は再利用
+  if (existingOAuthClient) {
+    // OAuth metadataを取得してエンドポイントとスコープを取得
+    const metadata = await discoverOAuthMetadata(serverUrl);
+
+    clientId = existingOAuthClient.clientId;
+    clientSecret = existingOAuthClient.clientSecret ?? "";
+    authorizationEndpoint =
+      typeof metadata.authorization_endpoint === "string"
+        ? metadata.authorization_endpoint
+        : "";
+    tokenEndpoint =
+      typeof metadata.token_endpoint === "string"
+        ? metadata.token_endpoint
+        : "";
+    scopes = Array.isArray(metadata.scopes_supported)
+      ? metadata.scopes_supported
+      : [];
+  } else {
+    // 存在しない場合のみDCRを実行してOAuthClientを作成
+    const newOAuthClient = await registerOAuthClient({
+      tx,
+      serverUrl,
+      templateId,
+      organizationId,
+    });
+
+    clientId = newOAuthClient.clientId;
+    clientSecret = newOAuthClient.clientSecret;
+    authorizationEndpoint = newOAuthClient.authorizationEndpoint;
+    tokenEndpoint = newOAuthClient.tokenEndpoint;
+    scopes = newOAuthClient.scopes;
+  }
 
   // Authorization URLを生成
   const authorizationUrl = await generateAuthorizationUrl({
-    clientId: oauthClient.clientId,
-    clientSecret: oauthClient.clientSecret,
-    authorizationEndpoint: oauthClient.authorizationEndpoint,
-    tokenEndpoint: oauthClient.tokenEndpoint,
-    scopes: oauthClient.scopes,
+    clientId,
+    clientSecret,
+    authorizationEndpoint,
+    tokenEndpoint,
+    scopes,
     mcpServerId: mcpServer.id,
     userId,
     organizationId,

@@ -34,13 +34,12 @@ const validateCallbackParams = (
 };
 
 export const GET = async (request: NextRequest) => {
+  // 認証チェック
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/auth/signin?error=Unauthorized");
+  }
   try {
-    // 認証チェック
-    const session = await auth();
-    if (!session?.user?.id) {
-      redirect("/auth/signin?error=Unauthorized");
-    }
-
     const searchParams = request.nextUrl.searchParams;
 
     // パラメータ検証
@@ -70,10 +69,12 @@ export const GET = async (request: NextRequest) => {
     }
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
+    const organizationSlug = session.user.organizationSlug;
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
     redirect(
-      `/?error=${encodeURIComponent(
-        error instanceof Error ? error.message : "Unknown error",
-      )}`,
+      `/${organizationSlug}/mcps?error=${encodeURIComponent(errorMessage)}`,
     );
   }
 };
