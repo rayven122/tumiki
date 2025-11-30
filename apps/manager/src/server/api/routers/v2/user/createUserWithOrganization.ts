@@ -36,10 +36,10 @@ export type CreateUserWithOrganizationOutput = z.infer<
 /**
  * ユーザーと個人組織を同時に作成
  *
- * トランザクション内で以下を実行：
- * 1. 個人組織作成（外部キー制約のため先に作成）
- * 2. ユーザー作成
- * 3. OrganizationMember レコード作成
+ * トランザクション内で以下を実行（循環参照を回避するため段階的に作成）：
+ * 1. ユーザーを defaultOrganizationSlug なしで作成
+ * 2. 個人組織と OrganizationMember を同時作成
+ * 3. ユーザーの defaultOrganizationSlug を更新
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -49,7 +49,19 @@ export const createUserWithOrganization = async (
   const baseName = input.name ?? input.email ?? "User";
   const slug = await generateUniqueSlug(tx, baseName, true);
 
-  // 1. 個人組織作成（外部キー制約のため、ユーザーより先に作成）
+  // 1. ユーザーを defaultOrganizationSlug なしで作成（循環参照を回避）
+  const createdUser = await tx.user.create({
+    data: {
+      id: input.id,
+      name: input.name,
+      email: input.email,
+      emailVerified: input.emailVerified ?? null,
+      image: input.image ?? null,
+      // defaultOrganizationSlug は後で設定
+    },
+  });
+
+  // 2. 個人組織と OrganizationMember を同時作成（ユーザーが既に存在するため createdBy 制約を満たせる）
   await tx.organization.create({
     data: {
       name: `${input.name ?? input.email ?? "User"}'s Workspace`,
@@ -58,28 +70,19 @@ export const createUserWithOrganization = async (
       isPersonal: true,
       maxMembers: 1,
       createdBy: input.id,
+      members: {
+        create: {
+          userId: input.id,
+          isAdmin: true,
+        },
+      },
     },
   });
 
-  // 2. ユーザー作成（組織が既に存在するため、外部キー制約を満たせる）
-  const createdUser = await tx.user.create({
-    data: {
-      id: input.id,
-      name: input.name,
-      email: input.email,
-      emailVerified: input.emailVerified ?? null,
-      image: input.image ?? null,
-      defaultOrganizationSlug: slug,
-    },
-  });
-
-  // 3. OrganizationMember レコード作成
-  await tx.organizationMember.create({
-    data: {
-      userId: input.id,
-      organizationId: slug,
-      isAdmin: true,
-    },
+  // 3. ユーザーの defaultOrganizationSlug を更新
+  await tx.user.update({
+    where: { id: input.id },
+    data: { defaultOrganizationSlug: slug },
   });
 
   // データベースからのemailも検証（念のため）
