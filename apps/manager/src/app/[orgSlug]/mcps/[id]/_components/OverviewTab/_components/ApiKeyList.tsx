@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Plus } from "lucide-react";
 import { toast } from "@/utils/client/toast";
 import { ApiKeyItem } from "./ApiKeyItem";
+import { GenerateApiKeyDialog } from "./GenerateApiKeyDialog";
 
 type ApiKey = {
   id: string;
@@ -14,13 +15,14 @@ type ApiKey = {
   isActive: boolean;
   createdAt: Date;
   lastUsedAt: Date | null;
+  expiresAt: Date | null;
 };
 
 type ApiKeyListProps = {
   apiKeys: ApiKey[] | undefined;
   isLoading: boolean;
   isGenerating: boolean;
-  onGenerateApiKey: () => void;
+  onGenerateApiKey: (expiresAt: Date | undefined) => void;
   onToggleApiKey: (params: { apiKeyId: string; isActive: boolean }) => void;
   onDeleteApiKey: (params: { apiKeyId: string }) => void;
 };
@@ -34,18 +36,28 @@ export const ApiKeyList = ({
   onDeleteApiKey,
 }: ApiKeyListProps) => {
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleCopyApiKey = async (apiKey: string) => {
     try {
       await navigator.clipboard.writeText(apiKey);
       toast.success("APIキーをコピーしました");
-    } catch (error) {
+    } catch {
       toast.error("コピーに失敗しました");
     }
   };
 
   const toggleApiKeyVisibility = (keyId: string) => {
     setShowApiKeys((prev) => ({ ...prev, [keyId]: !prev[keyId] }));
+  };
+
+  const handleGenerateClick = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleConfirmGenerate = (expiresAt: Date | undefined) => {
+    onGenerateApiKey(expiresAt);
+    setIsDialogOpen(false);
   };
 
   return (
@@ -57,7 +69,7 @@ export const ApiKeyList = ({
             MCPサーバーへのアクセスに使用するAPIキーを管理
           </p>
         </div>
-        <Button size="sm" onClick={onGenerateApiKey} disabled={isGenerating}>
+        <Button size="sm" onClick={handleGenerateClick} disabled={isGenerating}>
           <Plus className="mr-2 h-4 w-4" />
           新規発行
         </Button>
@@ -100,6 +112,13 @@ export const ApiKeyList = ({
           </AlertDescription>
         </Alert>
       )}
+
+      <GenerateApiKeyDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onConfirm={handleConfirmGenerate}
+        isGenerating={isGenerating}
+      />
     </div>
   );
 };
