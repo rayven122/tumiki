@@ -100,6 +100,9 @@ model McpServerRequestLog {
   /// MCPサーバーインスタンスID
   mcpServerId    String
   mcpServer      McpServer             @relation(fields: [mcpServerId], references: [id])
+  /// 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
+  mcpApiKeyId    String?
+  mcpApiKey      McpApiKey?            @relation(fields: [mcpApiKeyId], references: [id])
   /// 実行されたツール名
   toolName       String
   /// リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
@@ -154,10 +157,16 @@ model McpApiKey {
   mcpServerId String
   mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// リクエストログとのリレーション
+  requestLogs McpServerRequestLog[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// 論理削除用のタイムスタンプ
+  deletedAt DateTime?
 
   @@index([apiKeyHash])
+  @@index([deletedAt])
 }
 
 /// トークンの用途
