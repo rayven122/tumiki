@@ -129,10 +129,10 @@ export const CustomMcpServerModal = ({
         toast.error("API_KEY認証を使用する場合、環境変数を追加してください");
         return;
       }
-      handleAddWithApiKey(name.trim(), envVars);
+      handleAddWithApiKey(name.trim(), "API_KEY", envVars);
     } else {
-      // NONE認証フロー（環境変数なしでAPIキーmutationを使用）
-      handleAddWithApiKey(name.trim());
+      // NONE認証フロー
+      handleAddWithApiKey(name.trim(), "NONE");
     }
   };
 
@@ -172,7 +172,11 @@ export const CustomMcpServerModal = ({
           <div className="space-y-4">
             {/* Server Name */}
             <div className="space-y-2">
-              <Label htmlFor="server-name">サーバー名 *</Label>
+              <Label htmlFor="server-name">
+                <span>
+                  サーバー名<span className="text-red-500">*</span>
+                </span>
+              </Label>
               <Input
                 id="server-name"
                 placeholder="例: My Custom MCP Server"
@@ -184,7 +188,11 @@ export const CustomMcpServerModal = ({
 
             {/* URL */}
             <div className="space-y-2">
-              <Label htmlFor="server-url">サーバーURL *</Label>
+              <Label htmlFor="server-url">
+                <span>
+                  サーバーURL<span className="text-red-500">*</span>
+                </span>
+              </Label>
               <Input
                 id="server-url"
                 type="url"
@@ -195,53 +203,66 @@ export const CustomMcpServerModal = ({
               />
             </div>
 
-            {/* Transport Type */}
-            <div className="space-y-2">
-              <Label htmlFor="transport-type">トランスポートタイプ *</Label>
-              <Select
-                value={transportType}
-                onValueChange={(value) =>
-                  setTransportType(value as TransportType)
-                }
-                disabled={isPending}
-              >
-                <SelectTrigger id="transport-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="STREAMABLE_HTTPS">
-                    STREAMABLE_HTTPS
-                  </SelectItem>
-                  <SelectItem value="SSE">SSE</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Auth Method and Transport Type (横並び) */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Auth Method (左側) */}
+              <div className="space-y-2">
+                <Label htmlFor="auth-method">
+                  <span>
+                    認証タイプ<span className="text-red-500">*</span>
+                  </span>
+                </Label>
+                <Select
+                  value={authMethod}
+                  onValueChange={(value) =>
+                    setAuthMethod(value as "oauth" | "apikey" | "none")
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="auth-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="oauth">OAuth認証</SelectItem>
+                    <SelectItem value="apikey">APIキー認証</SelectItem>
+                    <SelectItem value="none">認証なし</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Transport Type (右側) */}
+              <div className="space-y-2">
+                <Label htmlFor="transport-type">
+                  <span>
+                    通信方式<span className="text-red-500">*</span>
+                  </span>
+                </Label>
+                <Select
+                  value={transportType}
+                  onValueChange={(value) =>
+                    setTransportType(value as TransportType)
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="transport-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STREAMABLE_HTTPS">
+                      Streamable HTTP
+                    </SelectItem>
+                    <SelectItem value="SSE">SSE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Auth Method */}
-            <div className="space-y-2">
-              <Label htmlFor="auth-method">認証タイプ *</Label>
-              <Select
-                value={authMethod}
-                onValueChange={(value) =>
-                  setAuthMethod(value as "oauth" | "apikey" | "none")
-                }
-                disabled={isPending}
-              >
-                <SelectTrigger id="auth-method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="oauth">OAUTH</SelectItem>
-                  <SelectItem value="apikey">API_KEY</SelectItem>
-                  <SelectItem value="none">NONE</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                {authMethod === "oauth" && "OAuth認証を設定します"}
-                {authMethod === "apikey" && "APIキーをヘッダーとして送信します"}
-                {authMethod === "none" && "認証なしで接続します"}
-              </p>
-            </div>
+            {/* 認証タイプの説明文 */}
+            <p className="-mt-2 text-xs text-gray-500">
+              {authMethod === "oauth" && "OAuth認証を設定します"}
+              {authMethod === "apikey" && "APIキーをヘッダーとして送信します"}
+              {authMethod === "none" && "認証なしで接続します"}
+            </p>
 
             {/* OAuth詳細設定アコーディオン（OAuth認証の場合のみ） */}
             {authMethod === "oauth" && (
@@ -294,7 +315,11 @@ export const CustomMcpServerModal = ({
             {/* Environment Variables (APIキーの場合のみ) */}
             {authMethod === "apikey" && (
               <div className="space-y-3">
-                <Label>環境変数 *</Label>
+                <Label>
+                  <span>
+                    環境変数<span className="text-red-500">*</span>
+                  </span>
+                </Label>
 
                 {/* Add new env var */}
                 <div className="flex gap-2">

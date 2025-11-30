@@ -98,7 +98,7 @@ export const createApiKeyMcpServer = async (
         iconPath: mcpServerTemplate.iconPath,
         serverStatus: ServerStatus.RUNNING,
         serverType: ServerType.OFFICIAL,
-        authType: AuthType.API_KEY,
+        authType: input.authType,
         organizationId,
         mcpServers: {
           connect: { id: mcpServerTemplate.id },
@@ -127,7 +127,7 @@ export const createApiKeyMcpServer = async (
         args: [],
         url: input.customUrl,
         envVarKeys: input.envVars ? Object.keys(input.envVars) : [],
-        authType: input.envVars ? AuthType.API_KEY : AuthType.NONE,
+        authType: input.authType,
         oauthScopes: [],
         createdBy: userId,
         visibility: McpServerVisibility.PRIVATE,
@@ -136,14 +136,6 @@ export const createApiKeyMcpServer = async (
     });
 
     if (input.envVars) {
-      await prisma.mcpConfig.create({
-        data: {
-          mcpServerTemplateId: customTemplate.id,
-          organizationId,
-          userId,
-          envVars: JSON.stringify(input.envVars),
-        },
-      });
       // McpConfigを作成
       await prisma.mcpConfig.create({
         data: {
@@ -163,7 +155,7 @@ export const createApiKeyMcpServer = async (
         iconPath: null,
         serverStatus: ServerStatus.STOPPED,
         serverType: ServerType.OFFICIAL,
-        authType: AuthType.API_KEY,
+        authType: input.authType,
         organizationId,
         mcpServers: {
           connect: { id: customTemplate.id },

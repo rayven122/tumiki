@@ -59,7 +59,11 @@ export const CreateServerModal = ({
     if (isOAuthSupported && authMethod === "oauth") {
       handleOAuthConnect(serverName);
     } else {
-      handleAddWithApiKey(serverName, envVars);
+      // envVarsの有無でauthTypeを判定
+      const authType = Object.values(envVars).some((v) => v.trim() !== "")
+        ? "API_KEY"
+        : "NONE";
+      handleAddWithApiKey(serverName, authType, envVars);
     }
   };
 
