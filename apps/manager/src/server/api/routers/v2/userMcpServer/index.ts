@@ -227,6 +227,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       return await findOfficialServers(ctx.db, {
         organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
       });
     }),
 

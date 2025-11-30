@@ -33,7 +33,6 @@ const validateApiKey = async (
   apiKey: string,
 ): Promise<ApiKeyAuthInfo | undefined> => {
   try {
-    // 1つのクエリで mcpApiKey と mcpServer を取得（最適化）
     const mcpApiKey = await db.mcpApiKey.findUnique({
       where: { apiKey },
       include: {
@@ -46,6 +45,11 @@ const validateApiKey = async (
     });
 
     if (!mcpApiKey?.isActive || !mcpApiKey.mcpServer) {
+      return undefined;
+    }
+
+    // 有効期限チェック
+    if (mcpApiKey.expiresAt && mcpApiKey.expiresAt < new Date()) {
       return undefined;
     }
 

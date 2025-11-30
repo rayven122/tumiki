@@ -6,6 +6,7 @@ import { generateApiKey as generateTumikiApiKey } from "@/utils/server/apiKey";
 export const generateApiKeyInputSchema = z.object({
   serverId: McpServerIdSchema,
   name: z.string().optional(),
+  expiresAt: z.date().optional(),
 });
 
 export const generateApiKeyOutputSchema = z.object({
@@ -27,7 +28,7 @@ export const generateApiKey = async (
   db: PrismaTransactionClient,
   params: GenerateApiKeyParams,
 ): Promise<GenerateApiKeyOutput> => {
-  const { serverId, organizationId, userId, name } = params;
+  const { serverId, organizationId, userId, name, expiresAt } = params;
 
   // サーバーの存在確認と権限チェック
   const server = await db.mcpServer.findFirst({
@@ -62,6 +63,7 @@ export const generateApiKey = async (
       isActive: true,
       userId,
       mcpServerId: serverId,
+      expiresAt,
     },
   });
 
