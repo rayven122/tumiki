@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Server, Settings, Users, Shield, ChevronLeft } from "lucide-react";
+import {
+  LayoutDashboard,
+  Server,
+  Settings,
+  Users,
+  Shield,
+  ChevronLeft,
+} from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 
@@ -63,26 +70,15 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       {/* サイドバー */}
       <aside
         className={cn(
-          "bg-background fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-transform duration-300 md:static md:translate-x-0 md:bg-muted/40",
-          isOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full md:w-16 md:translate-x-0"
+          "bg-background flex flex-col border-r transition-all duration-300",
+          // モバイル: fixed配置、スライドイン/アウト、画面全体の高さ
+          "fixed inset-y-0 left-0 z-40",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          // デスクトップ: fixed配置、ヘッダーの下から画面下まで、常に表示
+          "md:bg-muted/40 md:fixed md:top-14 md:bottom-0 md:translate-x-0",
+          isOpen ? "w-64" : "w-64 md:w-16",
         )}
       >
-        {/* トグルボタン（デスクトップのみ） */}
-        <div className="hidden h-14 items-center justify-end border-b px-3 md:flex">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="hover:bg-accent rounded-lg p-2 transition-colors"
-            aria-label={isOpen ? "サイドバーを閉じる" : "サイドバーを開く"}
-          >
-            <ChevronLeft
-              className={cn(
-                "h-5 w-5 transition-transform duration-300",
-                !isOpen && "rotate-180"
-              )}
-            />
-          </button>
-        </div>
-
         {/* モバイル用ヘッダー */}
         <div className="flex h-14 items-center justify-between border-b px-4 md:hidden">
           <span className="font-bold">メニュー</span>
@@ -109,7 +105,7 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
                     "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                   title={!isOpen ? item.name : undefined}
                   onClick={() => {
@@ -129,6 +125,23 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
           </nav>
         </div>
       </aside>
+
+      {/* トグルボタン（デスクトップのみ） - 画面左下に固定配置 */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "hover:bg-accent fixed bottom-4 z-50 hidden rounded-lg p-2 transition-all duration-300 md:block",
+          isOpen ? "left-[200px]" : "left-4",
+        )}
+        aria-label={isOpen ? "サイドバーを閉じる" : "サイドバーを開く"}
+      >
+        <ChevronLeft
+          className={cn(
+            "h-5 w-5 transition-transform duration-300",
+            !isOpen && "rotate-180",
+          )}
+        />
+      </button>
     </>
   );
 };
