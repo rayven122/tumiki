@@ -29,7 +29,7 @@ export const LogsAnalyticsTab = ({ requestLogs }: LogsAnalyticsTabProps) => {
               {requestLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="rounded-lg border border-gray-200 bg-gray-50 p-4 hover:bg-gray-100 transition-colors"
+                  className="rounded-lg border border-gray-200 bg-gray-50 p-4 transition-colors hover:bg-gray-100"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">

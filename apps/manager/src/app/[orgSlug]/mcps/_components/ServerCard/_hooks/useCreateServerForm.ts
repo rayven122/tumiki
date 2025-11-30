@@ -1,9 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "react-toastify";
-import type { Prisma } from "@tumiki/db/prisma";
+import type { TransportType } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
-
-type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 
 /**
  * MCPサーバー作成フォームのパラメータ
@@ -65,7 +63,7 @@ export const useCreateServerForm = ({
       serverName: string;
       mcpServerTemplateId?: string;
       customUrl?: string;
-      transportType?: "SSE" | "STREAMABLE_HTTPS" | "STDIO";
+      transportType?: TransportType;
       clientId?: string;
       clientSecret?: string;
     }) => {
@@ -91,6 +89,7 @@ export const useCreateServerForm = ({
     (params: {
       serverName: string;
       authType: "NONE" | "API_KEY";
+      transportType?: TransportType;
       mcpServerTemplateId?: string;
       customUrl?: string;
       envVars?: Record<string, string>;
@@ -98,6 +97,7 @@ export const useCreateServerForm = ({
       createApiKeyMcpServer({
         mcpServerTemplateId: params.mcpServerTemplateId,
         customUrl: params.customUrl,
+        transportType: params.transportType,
         envVars: params.envVars,
         name: params.serverName,
         authType: params.authType,

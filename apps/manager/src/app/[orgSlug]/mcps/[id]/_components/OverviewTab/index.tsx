@@ -6,11 +6,7 @@ import { api } from "@/trpc/react";
 import { StatsCards } from "./StatsCards";
 import { ToolCard } from "./ToolCard";
 import { ConnectionSettings } from "./ConnectionSettings";
-import type {
-  UserMcpServerDetail,
-  RequestStats,
-  ToolStats,
-} from "../types";
+import type { UserMcpServerDetail, RequestStats, ToolStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
 
 type OverviewTabProps = {

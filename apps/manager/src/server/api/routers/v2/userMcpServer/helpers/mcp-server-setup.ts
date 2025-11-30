@@ -35,14 +35,6 @@ export const setupMcpServerTools = async (
     Authorization: `Bearer ${accessToken}`,
   };
 
-  console.log("[setupMcpServerTools] ツール取得開始:", {
-    mcpServerId,
-    mcpServerName,
-    mcpServerTemplateUrl,
-    transportType,
-    hasAccessToken: !!accessToken,
-  });
-
   // MCPサーバーからツールを取得（トランスポートタイプに応じて関数を使い分け）
   const tools =
     transportType === TransportType.SSE
@@ -60,10 +52,6 @@ export const setupMcpServerTools = async (
           },
           headers,
         );
-
-  console.log(
-    `[setupMcpServerTools] ツール取得結果: ${tools?.length ?? 0}個`,
-  );
 
   if (!tools || tools.length === 0) {
     throw new TRPCError({

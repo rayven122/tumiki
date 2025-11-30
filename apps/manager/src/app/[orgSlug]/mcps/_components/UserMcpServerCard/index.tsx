@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 import { type RouterOutputs } from "@/trpc/react";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
-import { ServerStatus, ServerType } from "@tumiki/db/prisma";
+import { ServerStatus } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 
 type UserMcpServer =
@@ -48,6 +48,7 @@ export const UserMcpServerCard = ({
   isSortMode = false,
 }: UserMcpServerCardProps) => {
   const params = useParams<{ orgSlug: string }>();
+  const router = useRouter();
   const orgSlug = params.orgSlug;
 
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
@@ -69,7 +70,7 @@ export const UserMcpServerCard = ({
 
   const handleCardClick = () => {
     if (isSortMode) return; // ソートモード時はクリック無効
-    window.location.href = `/mcp/${userMcpServer.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${userMcpServer.id}`;
+    router.push(`/${orgSlug}/mcps/${userMcpServer.id}`);
   };
 
   return (
