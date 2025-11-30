@@ -13,18 +13,18 @@ export const addOfficialServer = async ({
   ctx,
   input,
 }: AddOfficialServerInput) => {
-  const mcpServer = await ctx.db.mcpServer.findUnique({
+  const mcpServerTemplate = await ctx.db.mcpServerTemplate.findUnique({
     where: { id: input.mcpServerId },
     include: {
-      tools: true,
+      mcpTools: true,
     },
   });
-  if (!mcpServer) {
-    throw new Error("MCPサーバーが見つかりません");
+  if (!mcpServerTemplate) {
+    throw new Error("MCPサーバーテンプレートが見つかりません");
   }
 
   // STDIOタイプのMCPサーバーは廃止済みのため拒否
-  if (mcpServer.transportType === "STDIO") {
+  if (mcpServerTemplate.transportType === "STDIO") {
     throw new Error(
       "STDIOタイプのMCPサーバーはサポートされていません。リモートMCPサーバーを使用してください。",
     );
@@ -32,7 +32,7 @@ export const addOfficialServer = async ({
 
   const envVars = Object.keys(input.envVars);
   const isEnvVarsMatch = envVars.every((envVar) =>
-    mcpServer.envVars.includes(envVar),
+    mcpServerTemplate.envVarKeys.includes(envVar),
   );
   if (!isEnvVarsMatch && !input.isPending) {
     throw new Error("MCPサーバーの環境変数が一致しません");
@@ -41,6 +41,12 @@ export const addOfficialServer = async ({
   const organizationId = ctx.currentOrganizationId;
 
   // 共通関数を使用してユーザー固有のコンポーネントを作成
+  // mcpTools を tools にマッピング
+  const mcpServer = {
+    id: mcpServerTemplate.id,
+    tools: mcpServerTemplate.mcpTools,
+  };
+
   const data = await ctx.db.$transaction(async (tx) => {
     return await createUserServerComponents({
       tx,
@@ -54,9 +60,10 @@ export const addOfficialServer = async ({
     });
   });
 
-  // authType: NONEかつenvVars: []の場合は接続検証をスキップ
+  // authType: NONEかつenvVarKeys: []の場合は接続検証をスキップ
   const skipValidation =
-    mcpServer.authType === "NONE" && mcpServer.envVars.length === 0;
+    mcpServerTemplate.authType === "NONE" &&
+    mcpServerTemplate.envVarKeys.length === 0;
 
   return {
     id: data.instance.id,

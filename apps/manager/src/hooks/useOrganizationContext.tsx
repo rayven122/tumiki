@@ -2,11 +2,18 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
+import { type getUserOrganizationsOutputSchema } from "@/server/api/routers/v2/organization";
+import { type z } from "zod";
+
+// tRPCのZod型定義から型を生成
+type Organization = z.infer<typeof getUserOrganizationsOutputSchema>[number];
 
 type OrganizationContextType = {
+  organizations: Organization[] | undefined;
   currentOrganization: {
     id: OrganizationId;
     name: string;
@@ -30,26 +37,49 @@ type OrganizationProviderProps = {
 export const OrganizationProvider = ({
   children,
 }: OrganizationProviderProps) => {
+  const { data: session, status, update } = useSession();
+  const router = useRouter();
   const utils = api.useUtils();
-  const { data: session, status } = useSession();
 
   // 認証済みユーザーのみ組織リストを取得
   const { data: organizations, isLoading } =
-    api.organization.getUserOrganizations.useQuery(undefined, {
+    api.v2.organization.getUserOrganizations.useQuery(undefined, {
       enabled: status === "authenticated" && !!session?.user,
     });
 
-  // 現在の組織はorganizationsから取得
-  const currentOrganization =
-    organizations?.find((org) => org.isDefault) ?? null;
+  // 現在の組織はsessionのdefaultOrganizationから取得
+  // organizationsリストから詳細情報を補完
+  const currentOrganization = session?.user?.defaultOrganization
+    ? (() => {
+        const org = organizations?.find(
+          (o) => o.id === session.user.defaultOrganization?.id,
+        );
+        if (!org) return null;
+        return {
+          id: org.id,
+          name: org.name,
+          isPersonal: org.isPersonal,
+          isAdmin: org.isAdmin,
+          memberCount: org.memberCount,
+        };
+      })()
+    : null;
 
   // デフォルト組織を設定するmutation
   const setDefaultOrgMutation =
-    api.organization.setDefaultOrganization.useMutation({
-      onSuccess: () => {
+    api.v2.organization.setDefaultOrganization.useMutation({
+      onSuccess: async (data) => {
         toast.success("組織を切り替えました");
-        // ハードリロードでページ全体を再読み込み（キャッシュを完全にクリア）
-        window.location.reload();
+
+        // Auth.jsのセッションを強制更新
+        // DBの最新のdefaultOrganization情報を取得
+        await update();
+
+        // tRPCの全キャッシュを無効化して最新データを取得
+        await utils.invalidate();
+
+        // 新しい組織のページへ遷移
+        router.push(`/${data.organizationSlug}/mcps`);
       },
       onError: (error) => {
         toast.error(`組織の切り替えに失敗しました: ${error.message}`);
@@ -71,6 +101,7 @@ export const OrganizationProvider = ({
   return (
     <OrganizationContext.Provider
       value={{
+        organizations,
         currentOrganization,
         setCurrentOrganization,
         isLoading,

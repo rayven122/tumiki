@@ -76,13 +76,6 @@ export const POST = async (request: Request) => {
       );
     }
 
-    if (!mcpServer.oauthProvider) {
-      return NextResponse.json(
-        { error: "OAuth provider not configured" },
-        { status: 400 },
-      );
-    }
-
     // OAuthClient情報を取得（存在しない場合はエラー）
     if (!mcpServer.oauthClient) {
       return NextResponse.json(

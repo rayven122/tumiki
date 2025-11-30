@@ -1,6 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { customAlphabet } from "nanoid";
 
+import type { PrismaTransactionClient } from "../types.js";
+import type { Db } from "../wsClient.js";
+
 /**
  * URL安全なランダム文字列生成（英数字のみ、6文字）
  */
@@ -26,7 +29,10 @@ export const generateBaseSlug = (name: string, isPersonal = false): string => {
     .replace(/-+/g, "-") // 連続ハイフンを1つに
     .replace(/^-+|-+$/g, ""); // 先頭・末尾のハイフンを削除
 
-  return isPersonal ? `@${normalized}` : normalized;
+  // 空文字列になった場合（日本語名など）、ランダム文字列を使用
+  const baseSlug = normalized || `user-${nanoid()}`;
+
+  return isPersonal ? `@${baseSlug}` : baseSlug;
 };
 
 /**
@@ -39,7 +45,7 @@ export const generateBaseSlug = (name: string, isPersonal = false): string => {
  * @throws 10回の試行後もユニークなスラッグが生成できない場合
  */
 export const generateUniqueSlug = async (
-  db: PrismaClient,
+  db: PrismaTransactionClient,
   baseName: string,
   isPersonal = false,
 ): Promise<string> => {

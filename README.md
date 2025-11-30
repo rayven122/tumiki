@@ -332,8 +332,8 @@ pnpm docker:stop
 
 ### サービス構成
 
-- **PostgreSQL (本番用)**: ポート 5432（Tumikiメインデータベース + Keycloak専用データベース）
-- **PostgreSQL (テスト用)**: ポート 5433
+- **PostgreSQL (本番用)**: ポート 5434（Tumikiメインデータベース + Keycloak専用データベース）
+- **PostgreSQL (テスト用)**: ポート 5435
 - **Redis**: ポート 6379
 - **Keycloak**: ポート 8443（メインPostgreSQL内の別データベースを使用）
 

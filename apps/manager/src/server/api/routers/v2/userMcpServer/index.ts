@@ -1,0 +1,194 @@
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { z } from "zod";
+import { TransportType } from "@tumiki/db/server";
+import { nameValidationSchema } from "@/schema/validation";
+import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
+import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
+import { updateOfficialServer } from "./update";
+import { handleOAuthCallback } from "./handleOAuthCallback";
+import {
+  findOfficialServers,
+  findOfficialServersOutputSchema,
+} from "./findOfficialServers";
+import {
+  deleteMcpServer,
+  deleteMcpServerInputSchema,
+  deleteMcpServerOutputSchema,
+} from "./deleteMcpServer";
+import {
+  updateDisplayOrder,
+  updateDisplayOrderInputSchema,
+  updateDisplayOrderOutputSchema,
+} from "./updateDisplayOrder";
+import { updateName } from "./updateName";
+
+// APIキー認証MCPサーバー作成用の入力スキーマ
+export const CreateApiKeyMcpServerInputV2 = z
+  .object({
+    mcpServerTemplateId: z.string().optional(),
+    customUrl: z.string().url().optional(),
+    transportType: z.nativeEnum(TransportType).optional(),
+    envVars: z.record(z.string(), z.string()).optional(),
+    name: nameValidationSchema,
+    description: z.string().optional(),
+  })
+  .refine((data) => data.mcpServerTemplateId ?? data.customUrl, {
+    message: "mcpServerTemplateId または customUrl のいずれかが必要です",
+  });
+
+export const CreateApiKeyMcpServerOutputV2 = z.object({
+  id: z.string(),
+  mcpConfigId: z.string(),
+});
+
+// OAuth認証MCPサーバー接続用の入力スキーマ
+export const ConnectOAuthMcpServerInputV2 = z.object({
+  // テンプレートIDまたはカスタムURL（いずれか必須）
+  templateId: z.string().optional(),
+  customUrl: z.string().url().optional(),
+  transportType: z.nativeEnum(TransportType).optional(),
+
+  // サーバー情報
+  name: nameValidationSchema.optional(),
+  description: z.string().optional(),
+});
+
+export const ConnectOAuthMcpServerOutputV2 = z.object({
+  id: z.string(),
+  authorizationUrl: z.string(),
+});
+
+export const UpdateOfficialServerInputV2 = z.object({
+  id: z.string(),
+  envVars: z.record(z.string(), z.string()),
+});
+
+export const UpdateOfficialServerOutputV2 = z.object({
+  id: z.string(),
+});
+
+export const UpdateNameInputV2 = z.object({
+  id: z.string(),
+  name: nameValidationSchema,
+  description: z.string().optional(),
+});
+
+export const UpdateNameOutputV2 = z.object({
+  id: z.string(),
+});
+
+// OAuth Callback処理の入力スキーマ
+export const HandleOAuthCallbackInputV2 = z.object({
+  state: z.string(),
+  currentUrl: z.string().url(),
+});
+
+export const HandleOAuthCallbackOutputV2 = z.object({
+  organizationSlug: z.string(),
+  success: z.boolean(),
+  error: z.string().optional(),
+});
+
+export const userMcpServerRouter = createTRPCRouter({
+  // APIキー認証MCPサーバー作成
+  createApiKeyMcpServer: protectedProcedure
+    .input(CreateApiKeyMcpServerInputV2)
+    .output(CreateApiKeyMcpServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await createApiKeyMcpServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // OAuth認証MCPサーバー接続
+  connectOAuthMcpServer: protectedProcedure
+    .input(ConnectOAuthMcpServerInputV2)
+    .output(ConnectOAuthMcpServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await connectOAuthMcpServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // OAuth Callback処理
+  handleOAuthCallback: protectedProcedure
+    .input(HandleOAuthCallbackInputV2)
+    .output(HandleOAuthCallbackOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await handleOAuthCallback(tx, {
+          state: input.state,
+          userId: ctx.session.user.id,
+          currentUrl: new URL(input.currentUrl),
+        });
+      });
+    }),
+
+  update: protectedProcedure
+    .input(UpdateOfficialServerInputV2)
+    .output(UpdateOfficialServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateOfficialServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // 公式MCPサーバー一覧取得
+  findOfficialServers: protectedProcedure
+    .output(findOfficialServersOutputSchema)
+    .query(async ({ ctx }) => {
+      return await findOfficialServers(ctx.db, {
+        organizationId: ctx.session.user.organizationId,
+      });
+    }),
+
+  // MCPサーバー削除
+  delete: protectedProcedure
+    .input(deleteMcpServerInputSchema)
+    .output(deleteMcpServerOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return await deleteMcpServer(ctx.db, {
+        id: input.id,
+        organizationId: ctx.session.user.organizationId,
+      });
+    }),
+
+  // 表示順序更新
+  updateDisplayOrder: protectedProcedure
+    .input(updateDisplayOrderInputSchema)
+    .output(updateDisplayOrderOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.$transaction(async (tx) => {
+        return await updateDisplayOrder(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+        );
+      });
+    }),
+
+  // 名前と説明の更新
+  updateName: protectedProcedure
+    .input(UpdateNameInputV2)
+    .output(UpdateNameOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateName(tx, input, ctx.session.user.organizationId);
+      });
+    }),
+});

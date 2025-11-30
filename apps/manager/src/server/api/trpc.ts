@@ -1,20 +1,9 @@
 import "server-only";
 
-/**
- * このファイルを編集する必要があるのは以下の場合のみです：
- * 1. リクエストコンテキストを変更したい場合（パート1参照）
- * 2. 新しいミドルウェアやプロシージャタイプを作成したい場合（パート3参照）
- *
- * 要約：ここはtRPCサーバーの全機能が作成・接続される場所です。
- * 使用する必要がある部分は最後の方に文書化されています。
- */
-
 import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { isVerificationModeEnabled } from "~/auth";
-import type { SessionReturnType } from "~/auth";
 import { db } from "@tumiki/db/server";
 import { auth } from "~/auth";
 
@@ -31,127 +20,11 @@ import { auth } from "~/auth";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  let session = await auth();
-
-  // 検証モードチェック
-  if (isVerificationModeEnabled()) {
-    const cookies = opts.headers.get("cookie");
-    if (cookies) {
-      const cookieValue = cookies
-        .split(";")
-        .find((c) => c.trim().startsWith("__verification_session="))
-        ?.split("=")[1];
-
-      if (cookieValue) {
-        // URLデコードを適用
-        const verificationUserId = decodeURIComponent(cookieValue);
-
-        // 検証ユーザー情報のマッピング
-        const verificationUsers = {
-          "verification|admin": {
-            email: "admin@verification.local",
-            name: "Admin User (Verification)",
-          },
-          "verification|user": {
-            email: "user@verification.local",
-            name: "Regular User (Verification)",
-          },
-        } as const;
-
-        const userInfo =
-          verificationUsers[
-            verificationUserId as keyof typeof verificationUsers
-          ];
-
-        if (userInfo) {
-          // 検証モード用のモックセッションを作成
-          session = {
-            user: {
-              sub: verificationUserId,
-              email: userInfo.email,
-              name: userInfo.name,
-            },
-          } as SessionReturnType;
-          console.log(
-            `[VERIFICATION MODE] tRPC context using: ${verificationUserId}`,
-          );
-        }
-      }
-    }
-  }
-
-  // ユーザーの現在の組織と権限を取得
-  let currentOrganizationId: string | null = null;
-  let isCurrentOrganizationAdmin = false;
-
-  if (session?.user?.sub) {
-    // ユーザーのdefaultOrganizationIdをチェック（優先度1）
-    const user = await db.user.findUnique({
-      where: { id: session.user.sub },
-      select: { defaultOrganizationId: true },
-    });
-
-    if (user?.defaultOrganizationId) {
-      // defaultOrganizationIdが設定されている場合は使用
-      currentOrganizationId = user.defaultOrganizationId;
-
-      // 管理者権限を確認
-      const membership = await db.organizationMember.findFirst({
-        where: {
-          userId: session.user.sub,
-          organizationId: user.defaultOrganizationId,
-        },
-        select: {
-          isAdmin: true,
-        },
-      });
-      isCurrentOrganizationAdmin = membership?.isAdmin ?? false;
-    } else {
-      // フォールバック：個人組織を検索（優先度2）
-      const firstMembership = await db.organizationMember.findFirst({
-        where: {
-          userId: session.user.sub,
-          organization: {
-            isDeleted: false,
-          },
-        },
-        orderBy: {
-          organization: {
-            isPersonal: "desc", // 個人組織を優先
-          },
-        },
-        select: {
-          organizationId: true,
-          isAdmin: true,
-        },
-      });
-
-      if (firstMembership?.organizationId) {
-        currentOrganizationId = firstMembership.organizationId;
-        isCurrentOrganizationAdmin = firstMembership.isAdmin;
-
-        // 見つかった個人組織をdefaultOrganizationIdに設定
-        try {
-          await db.user.update({
-            where: { id: session.user.sub },
-            data: { defaultOrganizationId: firstMembership.organizationId },
-          });
-        } catch (error) {
-          // 更新に失敗してもログイン処理は継続
-          console.warn("Failed to update defaultOrganizationId:", error);
-        }
-      } else {
-        currentOrganizationId = null;
-        isCurrentOrganizationAdmin = false;
-      }
-    }
-  }
+  const session = await auth();
 
   return {
     db,
     session,
-    currentOrganizationId,
-    isCurrentOrganizationAdmin,
     ...opts,
   };
 };
@@ -231,41 +104,31 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
 /**
- * 認証済みプロシージャ（組織不要）
+ * 保護されたプロシージャ（認証必須）
  *
- * 認証は必要だが組織コンテキストが不要なプロシージャで使用します。
- * オンボーディングフローなど、まだ組織を持っていないユーザー向けの処理に便利です。
+ * ログイン済みユーザーのみアクセス可能なプロシージャです。
+ * 個人組織は会員登録時に必ず作成されるため、認証済み = 組織所属済みとなります。
+ *
+ * セッション情報には以下が含まれます：
+ * - ctx.session.user.id: ユーザーID
+ * - ctx.session.user.role: システムロール（SYSTEM_ADMIN | USER）
+ * - ctx.session.user.organizationId: 組織ID（必須）
+ * - ctx.session.user.organizationSlug: 組織slug（必須）
+ * - ctx.session.user.isOrganizationAdmin: 組織内管理者権限
+ *
+ * @see https://trpc.io/docs/procedures
  */
-export const authenticatedProcedure = t.procedure
+export const protectedProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {
     if (!ctx.session?.user?.sub) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
 
-    return next({
-      ctx: {
-        // sessionをnon-nullableとして推論
-        session: {
-          ...ctx.session,
-          user: { ...ctx.session.user, id: ctx.session.user.sub },
-        },
-        currentOrganizationId: ctx.currentOrganizationId, // nullの可能性あり
-      },
-    });
-  });
-
-/**
- * 保護されたプロシージャ（認証と組織が必須）
- *
- * ログイン済みかつ組織に所属しているユーザーのみアクセス可能にしたい場合に使用します。
- * セッションが有効であることを検証し、`ctx.session.user`と`ctx.currentOrganizationId`がnullでないことを保証します。
- *
- * @see https://trpc.io/docs/procedures
- */
-export const protectedProcedure = authenticatedProcedure.use(
-  ({ ctx, next }) => {
-    if (!ctx.currentOrganizationId) {
+    if (
+      !ctx.session.user.organizationId ||
+      !ctx.session.user.organizationSlug
+    ) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
@@ -276,30 +139,32 @@ export const protectedProcedure = authenticatedProcedure.use(
     return next({
       ctx: {
         ...ctx,
-        // 型の絞り込み: currentOrganizationIdがnon-nullであることを保証
-        currentOrganizationId: ctx.currentOrganizationId,
+        // sessionをnon-nullableとして推論し、組織情報も non-null として保証
+        session: {
+          ...ctx.session,
+          user: {
+            ...ctx.session.user,
+            id: ctx.session.user.sub,
+            organizationId: ctx.session.user.organizationId,
+            organizationSlug: ctx.session.user.organizationSlug,
+          },
+        },
       },
     });
-  },
-);
+  });
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
-export type AuthenticatedContext = {
-  session: {
-    user: {
-      id: string;
-    };
-  } & NonNullable<Context["session"]>;
-  currentOrganizationId: string | null; // 組織IDはnullの可能性がある
-} & Context;
-
-// protectedProcedureの第一引数を型抽出する
+/**
+ * protectedProcedureのコンテキスト型
+ * 認証済みで組織所属が保証されている状態
+ */
 export type ProtectedContext = {
   session: {
     user: {
       id: string;
+      organizationId: string; // 組織IDは必須
+      organizationSlug: string; // 組織slugは必須
     };
   } & NonNullable<Context["session"]>;
-  currentOrganizationId: string; // 組織IDは必須
 } & Context;

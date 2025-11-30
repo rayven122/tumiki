@@ -2,7 +2,7 @@
 
 import { ChevronUp } from "lucide-react";
 import type { User } from "next-auth";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useTheme } from "next-themes";
 
 import {
@@ -78,29 +78,29 @@ export function SidebarUserNav({ user }: { user: User }) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
-              <button
-                type="button"
-                className="w-full cursor-pointer"
-                onClick={() => {
-                  if (status === "loading") {
-                    toast({
-                      type: "error",
-                      description:
-                        "Checking authentication status, please try again!",
-                    });
-
-                    return;
-                  }
-
-                  if (isGuest) {
+              {isGuest ? (
+                <button
+                  type="button"
+                  className="w-full cursor-pointer"
+                  onClick={() => {
+                    if (status === "loading") {
+                      toast({
+                        type: "error",
+                        description:
+                          "Checking authentication status, please try again!",
+                      });
+                      return;
+                    }
                     signIn("keycloak", { callbackUrl: "/" });
-                  } else {
-                    signOut({ callbackUrl: "/" });
-                  }
-                }}
-              >
-                {isGuest ? "Login to your account" : "Sign out"}
-              </button>
+                  }}
+                >
+                  Login to your account
+                </button>
+              ) : (
+                <a href="/api/auth/logout" className="w-full cursor-pointer">
+                  Sign out
+                </a>
+              )}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

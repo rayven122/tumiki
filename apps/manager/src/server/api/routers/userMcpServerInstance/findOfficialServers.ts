@@ -5,10 +5,19 @@ type FindOfficialServersInput = {
   ctx: ProtectedContext;
 };
 
+type McpServerTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  iconPath: string | null;
+  url: string;
+};
+
 export const findOfficialServers = async ({
   ctx,
 }: FindOfficialServersInput) => {
-  const officialServers = await ctx.db.userMcpServerInstance.findMany({
+  const officialServers = await ctx.db.mcpServer.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
       organizationId: ctx.currentOrganizationId,
@@ -19,48 +28,37 @@ export const findOfficialServers = async ({
     },
     include: {
       apiKeys: true,
-      toolGroup: {
-        include: {
-          _count: {
-            select: {
-              toolGroupTools: true,
-            },
-          },
-          toolGroupTools: {
-            take: 1, // 1つだけ取得してmcpServerConfigIdを特定
-            include: {
-              userMcpServerConfig: {
-                include: {
-                  mcpServer: {
-                    select: {
-                      id: true,
-                      name: true,
-                      description: true,
-                      tags: true,
-                      iconPath: true,
-                      url: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
+      allowedTools: {
+        take: 10, // とりあえず最初の10件を取得
+      },
+      mcpServers: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          tags: true,
+          iconPath: true,
+          url: true,
         },
+        take: 1,
       },
     },
   });
 
   const officialServerList = officialServers.map((server) => {
-    const toolCount = server.toolGroup?._count?.toolGroupTools ?? 0;
-    const mcpServer =
-      server.toolGroup?.toolGroupTools?.[0]?.userMcpServerConfig?.mcpServer;
+    const toolCount = server.allowedTools?.length ?? 0;
+    const mcpServerTemplate = server.mcpServers?.[0];
 
     return {
-      ...server,
-      tools: Array(toolCount).fill({}), // ツール数分の空オブジェクトを作成
-      toolGroups: [],
-      userMcpServers: [],
-      mcpServer: mcpServer ?? null, // mcpServerデータを追加
+      id: server.id,
+      name: server.name,
+      description: server.description,
+      iconPath: server.iconPath,
+      serverStatus: server.serverStatus,
+      serverType: server.serverType,
+      tools: Array(toolCount).fill({}) as Record<string, never>[], // ツール数分の空オブジェクトを作成
+      mcpServer: (mcpServerTemplate ?? null) as McpServerTemplate | null, // mcpServerデータを追加
+      apiKeys: server.apiKeys,
     };
   });
 

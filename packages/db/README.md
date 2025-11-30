@@ -280,7 +280,7 @@ pnpm clean
 
 ```env
 # データベース接続
-DATABASE_URL="postgresql://user:password@localhost:5432/tumiki"
+DATABASE_URL="postgresql://user:password@localhost:5434/tumiki"
 
 # 暗号化キー（32バイト）
 FIELD_ENCRYPTION_KEY="your-32-byte-encryption-key"

@@ -279,7 +279,7 @@ pnpm your-script-name
 
 ```env
 # データベース接続
-DATABASE_URL=postgresql://user:password@localhost:5432/tumiki
+DATABASE_URL=postgresql://user:password@localhost:5434/tumiki
 
 # Auth0設定（test-auth0-api.tsで使用）
 AUTH0_WEBHOOK_SECRET=webhook_secret_for_post_login_action_12345
