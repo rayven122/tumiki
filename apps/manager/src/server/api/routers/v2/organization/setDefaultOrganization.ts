@@ -29,13 +29,13 @@ export type SetDefaultOrganizationOutput = z.infer<
 >;
 
 export const setDefaultOrganization = async (
-  db: PrismaTransactionClient,
+  tx: PrismaTransactionClient,
   input: SetDefaultOrganizationInput,
 ): Promise<SetDefaultOrganizationOutput> => {
   const { userId, organizationId } = input;
 
   // 指定された組織のメンバーであることを確認し、slugも取得
-  const membership = await db.organizationMember.findFirst({
+  const membership = await tx.organizationMember.findFirst({
     where: {
       userId,
       organizationId,
@@ -60,7 +60,7 @@ export const setDefaultOrganization = async (
   }
 
   // デフォルト組織をslugで更新
-  await db.user.update({
+  await tx.user.update({
     where: { id: userId },
     data: { defaultOrganizationSlug: membership.organization.slug },
   });

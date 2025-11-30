@@ -16,11 +16,13 @@ import { discoverOAuthMetadata } from "@/lib/oauth/dcr";
 
 /**
  * OAuth State tokenを検証してペイロードを取得
+ * @param state - OAuth state token
+ * @param userId - 検証するユーザーID
+ * @returns State tokenのペイロード
  */
 export const verifyOAuthState = async (
   state: string,
   userId: string,
-  tx: PrismaTransactionClient,
 ): Promise<OAuthStatePayload> => {
   // State tokenを検証
   let statePayload: OAuthStatePayload;
@@ -93,7 +95,7 @@ export const getMcpServerAndOAuthClient = async (
     });
   }
 
-  // McpOAuthClientを取得
+  // McpOAuthClientを取得（最新のものを使用）
   const oauthClient = await tx.mcpOAuthClient.findFirst({
     where: {
       mcpServerTemplateId: template.id,
@@ -104,6 +106,9 @@ export const getMcpServerAndOAuthClient = async (
       clientId: true,
       clientSecret: true,
       authorizationServerUrl: true,
+    },
+    orderBy: {
+      createdAt: "desc",
     },
   });
 
@@ -151,15 +156,17 @@ export const exchangeAuthorizationCode = async (
     clientSecret: string | null;
     authorizationServerUrl: string;
   },
+  originalServerUrl: string, // 元のMCPサーバーURL
 ): Promise<OAuthTokenData> => {
   // OAuth メタデータを取得して正しいエンドポイントを使用
-  const authServer = await discoverOAuthMetadata(
-    oauthClient.authorizationServerUrl,
-  );
+  // 元のサーバーURL（MCPサーバーテンプレートのURL）を使用
+  // これにより、issuerが異なる場合でも正しいメタデータを取得できる
+  const authServer = await discoverOAuthMetadata(originalServerUrl);
 
   // OAuth Clientオブジェクトを構築
   const client: oauth.Client = {
     client_id: oauthClient.clientId,
+    token_endpoint_auth_method: "client_secret_post",
     ...(oauthClient.clientSecret && {
       client_secret: oauthClient.clientSecret,
     }),

@@ -20,13 +20,13 @@ export const deleteMcpServerOutputSchema = z.object({
 export type DeleteMcpServerOutput = z.infer<typeof deleteMcpServerOutputSchema>;
 
 export const deleteMcpServer = async (
-  db: PrismaTransactionClient,
+  tx: PrismaTransactionClient,
   input: DeleteMcpServerInput,
 ): Promise<DeleteMcpServerOutput> => {
   const { id, organizationId } = input;
 
   // 既存のMCPサーバーを取得して状態確認
-  const existingServer = await db.mcpServer.findUnique({
+  const existingServer = await tx.mcpServer.findUnique({
     where: {
       id,
       organizationId,
@@ -52,7 +52,7 @@ export const deleteMcpServer = async (
   }
 
   // 論理削除を実行
-  await db.mcpServer.update({
+  await tx.mcpServer.update({
     where: {
       id,
       organizationId,

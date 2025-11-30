@@ -46,12 +46,12 @@ export type FindOfficialServersOutput = z.infer<
 >;
 
 export const findOfficialServers = async (
-  db: PrismaTransactionClient,
+  tx: PrismaTransactionClient,
   input: FindOfficialServersInput,
 ): Promise<FindOfficialServersOutput> => {
   const { organizationId } = input;
 
-  const officialServers = await db.mcpServer.findMany({
+  const officialServers = await tx.mcpServer.findMany({
     where: {
       serverType: ServerType.OFFICIAL,
       organizationId,
