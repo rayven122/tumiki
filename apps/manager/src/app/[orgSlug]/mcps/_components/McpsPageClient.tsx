@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUpDown, X } from "lucide-react";
+import { Plus, ArrowUpDown, X, Search } from "lucide-react";
 import { useSortModeManager } from "@/hooks/useSortModeManager";
 import {
   AlertDialog,
@@ -14,6 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
+import { api } from "@/trpc/react";
 
 import { ServerCardList } from "./ServerCardList";
 
@@ -30,6 +34,33 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
     handleConfirmChanges,
     handleCancelChanges,
   } = useSortModeManager();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // MCPサーバーから利用可能なタグを動的に取得
+  const { data: userOfficialServers } =
+    api.v2.userMcpServer.findOfficialServers.useQuery();
+
+  // 全サーバーからユニークなタグを抽出
+  const availableTags = useMemo(() => {
+    if (!userOfficialServers) return [];
+    const allTags = userOfficialServers.flatMap(
+      (server) => server.mcpServer?.tags ?? [],
+    );
+    return Array.from(new Set(allTags)).sort();
+  }, [userOfficialServers]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setSelectedTags([]);
+  };
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -65,9 +96,68 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
         </div>
       </div>
 
-      {/* 接続済みMCPサーバー一覧 */}
+      {/* フィルタリングUI */}
+      {!isSortMode && (
+        <div className="mb-6 space-y-4">
+          {/* 検索バー */}
+          <div className="relative">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="MCPサーバーを検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* タグフィルター */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-700">
+                カテゴリーで絞り込み
+              </h3>
+              {(searchQuery || selectedTags.length > 0) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  フィルターをクリア
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={selectedTags.includes(tag) ? "default" : "outline"}
+                  className={`cursor-pointer transition-colors ${
+                    selectedTags.includes(tag)
+                      ? "bg-purple-600 text-white hover:bg-purple-700"
+                      : "hover:border-purple-300 hover:bg-purple-50"
+                  }`}
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag}
+                  {selectedTags.includes(tag) && <X className="ml-1 h-3 w-3" />}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* 選択されたフィルター表示 */}
+          {(searchQuery || selectedTags.length > 0) && (
+            <div className="text-sm text-gray-600">
+              {searchQuery && <span>検索: "{searchQuery}" </span>}
+              {selectedTags.length > 0 && (
+                <span>カテゴリー: {selectedTags.join(", ")}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MCPサーバー一覧 */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold">接続済みMCPサーバー</h2>
         {/* 並び替えモード通知 */}
         {isSortMode && (
           <div className="mb-4 rounded-lg bg-blue-50 p-3">
@@ -77,7 +167,12 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
             </p>
           </div>
         )}
-        <ServerCardList isSortMode={isSortMode} ref={serverCardListRef} />
+        <ServerCardList
+          isSortMode={isSortMode}
+          ref={serverCardListRef}
+          searchQuery={searchQuery}
+          selectedTags={selectedTags}
+        />
       </div>
 
       {/* 並び替え確認ダイアログ */}

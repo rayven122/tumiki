@@ -36,11 +36,11 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   return (
     <Card className="relative flex h-full flex-col">
       {/* 認証タイプタグ（右上） */}
-      <div className="absolute top-2 right-2 z-10">
+      <div className="absolute top-3 right-3 z-10">
         <AuthTypeBadge authType={mcpServer.authType} />
       </div>
 
-      <CardHeader className="flex flex-row items-center space-y-0 pr-16 pb-2">
+      <CardHeader className="flex flex-row items-center space-y-0 pb-2">
         {mcpServer.iconPath ? (
           <div className="mr-2 rounded-md p-2">
             <Image
@@ -61,14 +61,6 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         )}
         <div className="flex-1">
           <CardTitle>{mcpServer.name}</CardTitle>
-          <div className="mt-1 flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border-blue-200 bg-blue-50 text-blue-700"
-            >
-              ツール: {mcpServer.tools.length}
-            </Badge>
-          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-3">

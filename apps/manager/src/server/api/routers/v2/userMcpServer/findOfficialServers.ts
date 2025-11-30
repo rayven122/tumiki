@@ -34,6 +34,7 @@ export const findOfficialServersOutputSchema = z.array(
         tags: z.array(z.string()),
         iconPath: z.string().nullable(),
         url: z.string().nullable(),
+        authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
       })
       .nullable(),
     apiKeys: z.array(
@@ -85,6 +86,7 @@ export const findOfficialServers = async (
           tags: true,
           iconPath: true,
           url: true,
+          authType: true,
         },
         take: 1,
       },

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
+import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { getProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
@@ -91,9 +92,14 @@ export const UserMcpServerCard = ({
         )}
         onClick={handleCardClick}
       >
-        {/* メニュー（右上） */}
+        {/* 右上のバッジとメニュー */}
         {!isSortMode && (
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+            {/* Backend認証タイプバッジ */}
+            {mcpServer?.authType && (
+              <AuthTypeBadge authType={mcpServer.authType} />
+            )}
+            {/* メニューボタン */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -147,7 +153,7 @@ export const UserMcpServerCard = ({
           </div>
         )}
 
-        <CardHeader className="flex flex-row items-center space-y-0 pt-3 pr-2 pb-2">
+        <CardHeader className="flex flex-row items-center space-y-0 pb-2">
           <div className="mr-2 rounded-md p-2">
             {userMcpServer.iconPath || mcpServer?.iconPath ? (
               <Image
@@ -224,7 +230,7 @@ export const UserMcpServerCard = ({
             </p>
           </div>
 
-          {/* カテゴリータグ（カード下部） */}
+          {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">
             {displayTags.map((tag: string, index: number) => (
               <span
@@ -236,6 +242,29 @@ export const UserMcpServerCard = ({
                 {tag}
               </span>
             ))}
+          </div>
+
+          {/* HTTP接続URL */}
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs text-gray-500">HTTP接続URL</p>
+                <p className="truncate font-mono text-xs text-gray-700">
+                  {getProxyServerUrl()}/mcp?api-key={apiKey}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copyHttpUrl();
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

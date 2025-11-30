@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
@@ -36,7 +37,9 @@ type OrganizationProviderProps = {
 export const OrganizationProvider = ({
   children,
 }: OrganizationProviderProps) => {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
+  const router = useRouter();
+  const utils = api.useUtils();
 
   // 認証済みユーザーのみ組織リストを取得
   const { data: organizations, isLoading } =
@@ -65,10 +68,18 @@ export const OrganizationProvider = ({
   // デフォルト組織を設定するmutation
   const setDefaultOrgMutation =
     api.v2.organization.setDefaultOrganization.useMutation({
-      onSuccess: () => {
+      onSuccess: async (data) => {
         toast.success("組織を切り替えました");
-        // ハードリロードでページ全体を再読み込み（キャッシュを完全にクリア）
-        window.location.reload();
+
+        // Auth.jsのセッションを強制更新
+        // DBの最新のdefaultOrganization情報を取得
+        await update();
+
+        // tRPCの全キャッシュを無効化して最新データを取得
+        await utils.invalidate();
+
+        // 新しい組織のページへ遷移
+        router.push(`/${data.organizationSlug}/mcps`);
       },
       onError: (error) => {
         toast.error(`組織の切り替えに失敗しました: ${error.message}`);
