@@ -162,10 +162,10 @@ export const CustomMcpServerModal = ({
 
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              カスタムMCPサーバーの追加
+              リモートMCPサーバーの追加
             </DialogTitle>
             <DialogDescription>
-              カスタムURLからMCPサーバーを追加します。サーバー情報を入力してください。
+              URLからMCPサーバーを追加します。サーバー情報を入力してください。
             </DialogDescription>
           </DialogHeader>
 
@@ -269,12 +269,13 @@ export const CustomMcpServerModal = ({
               <Accordion type="single" collapsible className="-mt-2 w-full">
                 <AccordionItem value="oauth-credentials">
                   <AccordionTrigger className="text-sm">
-                    詳細設定
+                    OAuthクライアント設定
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-3">
                       <p className="text-xs text-gray-500">
-                        既にOAuthクライアント情報を取得済みの場合、こちらに入力してください。
+                        手動でOAuth認証を行う場合は、クライアント情報をこちらに入力してください。
+                        <br />
                         入力がない場合は自動的にDynamic Client Registration
                         (DCR)を実行します。
                       </p>
@@ -324,10 +325,9 @@ export const CustomMcpServerModal = ({
                 {/* Add new env var */}
                 <div className="flex gap-2">
                   <Input
-                    placeholder="キー名 (例: X-API-Key)"
+                    placeholder="キー名 (例: Authorization)"
                     value={newEnvKey}
                     onChange={(e) => setNewEnvKey(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddEnvVar()}
                     disabled={isPending}
                     className="flex-1"
                   />
@@ -336,7 +336,6 @@ export const CustomMcpServerModal = ({
                     placeholder="値"
                     value={newEnvValue}
                     onChange={(e) => setNewEnvValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddEnvVar()}
                     disabled={isPending}
                     className="flex-1"
                   />
@@ -355,13 +354,13 @@ export const CustomMcpServerModal = ({
                 {/* Display existing env vars */}
                 {Object.entries(envVars).length > 0 && (
                   <div className="space-y-2">
-                    {Object.entries(envVars).map(([key, value]) => (
+                    {Object.entries(envVars).map(([key]) => (
                       <div
                         key={key}
                         className="flex items-center gap-2 rounded-lg border bg-gray-50 p-2"
                       >
                         <code className="flex-1 font-mono text-sm">
-                          {key}: {value.substring(0, 20)}...
+                          {key}: ****
                         </code>
                         <Button
                           type="button"
