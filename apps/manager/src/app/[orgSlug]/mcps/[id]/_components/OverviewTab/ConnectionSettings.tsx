@@ -15,12 +15,7 @@ import {
 } from "lucide-react";
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { toast } from "@/utils/client/toast";
-import {
-  makeHttpProxyServerUrl,
-  makeSseProxyServerUrl,
-  getProxyServerUrl,
-  normalizeServerName,
-} from "@/utils/url";
+import { getProxyServerUrl, normalizeServerName } from "@/utils/url";
 import Image from "next/image";
 import type { UserMcpServerDetail } from "../types";
 
@@ -66,7 +61,7 @@ export const ConnectionSettings = ({ server }: ConnectionSettingsProps) => {
     // Claude Desktop - コネクト機能用のシンプルなURL
     if (clientId === "claude-desktop") {
       const endpoint = connectionType === "http" ? "mcp" : "sse";
-      return `${serverUrl}/${endpoint}?api-key=${apiKey}`;
+      return `${serverUrl}/${endpoint}/${server.id}`;
     }
 
     // Cursor
@@ -295,7 +290,7 @@ Headers:
   };
 
   return (
-    <div className="space-y-4 lg:col-span-2">
+    <div id="connection-settings" className="space-y-4">
       <h3 className="text-lg font-semibold">接続設定</h3>
       {/* クライアント接続 カード */}
       <Card>
@@ -387,7 +382,14 @@ Headers:
                         <p className="text-xs text-blue-800">
                           <span className="font-medium">コネクト機能:</span>{" "}
                           このURLをClaude
-                          Desktopのコネクト機能に直接貼り付けてください。
+                          Desktopのコネクト機能に貼り付けてください。
+                        </p>
+                        <p className="mt-2 text-xs text-blue-800">
+                          <span className="font-medium">認証ヘッダー:</span>{" "}
+                          X-API-Key: {apiKey}
+                        </p>
+                        <p className="mt-1 text-xs text-blue-700">
+                          または Authorization: Bearer {apiKey}
                         </p>
                       </div>
                     </div>
@@ -433,7 +435,14 @@ Headers:
                         <p className="text-xs text-blue-800">
                           <span className="font-medium">コネクト機能:</span>{" "}
                           このURLをClaude
-                          Desktopのコネクト機能に直接貼り付けてください。
+                          Desktopのコネクト機能に貼り付けてください。
+                        </p>
+                        <p className="mt-2 text-xs text-blue-800">
+                          <span className="font-medium">認証ヘッダー:</span>{" "}
+                          X-API-Key: {apiKey}
+                        </p>
+                        <p className="mt-1 text-xs text-blue-700">
+                          または Authorization: Bearer {apiKey}
                         </p>
                       </div>
                     </div>
@@ -532,106 +541,6 @@ Headers:
             </CardContent>
           </>
         )}
-      </Card>
-      {/* 接続URL カード */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">接続エンドポイント</CardTitle>
-          <p className="mt-1 text-sm text-gray-600">
-            ProxyServer経由でMCPサーバーに接続するためのエンドポイントとAPI認証情報です
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="rounded-lg border bg-gray-50 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="mb-1 text-xs font-semibold text-gray-700">
-                  Streamable HTTP Transport (推奨)
-                </p>
-                <div className="overflow-x-auto">
-                  <code className="text-sm whitespace-nowrap">
-                    {makeHttpProxyServerUrl(server.id)}
-                  </code>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  メソッド: POST | ヘッダー: x-api-key: {apiKey}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  JSON-RPC 2.0形式でリクエストを送信
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="flex-shrink-0"
-                onClick={async () => {
-                  const configText = `# Streamable HTTP Transport (推奨)
-URL: ${makeHttpProxyServerUrl(server.id)}
-Method: POST
-Headers:
-  Content-Type: application/json
-  x-api-key: ${apiKey}
-
-# JSON-RPC 2.0 リクエスト例
-{
-  "jsonrpc": "2.0",
-  "method": "tools/list",
-  "id": 1
-}`;
-                  await copyToClipboard(configText);
-                  toast.success("Streamable HTTP設定をコピーしました");
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-gray-50 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="mb-1 text-xs font-semibold text-gray-700">
-                  SSE Transport (リアルタイム通信)
-                </p>
-                <div className="overflow-x-auto">
-                  <code className="text-sm whitespace-nowrap">
-                    {makeSseProxyServerUrl(server.id)}
-                  </code>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  メソッド: GET (SSE接続) | ヘッダー: x-api-key: {apiKey}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  メッセージ送信: POST {getProxyServerUrl()}/messages/
-                  {server.id}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="flex-shrink-0"
-                onClick={async () => {
-                  const configText = `# SSE Transport (リアルタイム通信)
-SSE接続URL: ${makeSseProxyServerUrl(server.id)}
-Method: GET
-Headers:
-  x-api-key: ${apiKey}
-
-# メッセージ送信
-URL: ${getProxyServerUrl()}/messages/${server.id}
-Method: POST
-Headers:
-  Content-Type: application/json
-  x-api-key: ${apiKey}`;
-                  await copyToClipboard(configText);
-                  toast.success("SSE設定をコピーしました");
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
       </Card>
     </div>
   );
