@@ -26,7 +26,7 @@ export {
 export { refreshBackendToken as refreshTokenById } from "./token-refresh.js";
 
 // リポジトリ関数
-export { getTokenFromDB, updateLastUsedAt } from "./token-repository.js";
+export { getTokenFromDB } from "./token-repository.js";
 
 // バリデーション関数
 export {
