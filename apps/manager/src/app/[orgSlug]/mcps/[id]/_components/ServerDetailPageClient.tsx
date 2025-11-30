@@ -31,6 +31,10 @@ import {
 import { api } from "@/trpc/react";
 import { ServerStatus } from "@tumiki/db/prisma";
 import type { McpServerId } from "@/schema/ids";
+import { CustomTabs } from "./CustomTabs";
+import { OverviewTab } from "./OverviewTab";
+import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
+import { BarChart3, Activity } from "lucide-react";
 
 type ServerDetailPageClientProps = {
   orgSlug: string;
@@ -343,17 +347,31 @@ export const ServerDetailPageClient = ({
           </CardContent>
         </Card>
 
-        {/* Placeholder for Tabs */}
-        <div className="mt-8 text-center text-gray-500">
-          <p>タブコンポーネントは次のフェーズで実装します</p>
-          <div className="mt-4 text-sm">
-            <p>Server ID: {serverId}</p>
-            <p>Tools: {server.tools.length}</p>
-            <p>Request Stats: {requestStats ? "Loaded" : "Loading..."}</p>
-            <p>Request Logs: {requestLogs ? requestLogs.length : "Loading..."}</p>
-            <p>Tool Stats: {toolStats ? toolStats.length : "Loading..."}</p>
-          </div>
-        </div>
+        {/* Tabs */}
+        <CustomTabs
+          tabs={[
+            { id: "overview", label: "概要", icon: <BarChart3 className="h-4 w-4" /> },
+            { id: "logs", label: "ログ・分析", icon: <Activity className="h-4 w-4" /> },
+          ]}
+          defaultTab="overview"
+        >
+          {(activeTab) => {
+            if (activeTab === "overview") {
+              return (
+                <OverviewTab
+                  server={server}
+                  requestStats={requestStats}
+                  toolStats={toolStats}
+                  serverId={serverId as McpServerId}
+                />
+              );
+            }
+            if (activeTab === "logs") {
+              return <LogsAnalyticsTab requestLogs={requestLogs} />;
+            }
+            return null;
+          }}
+        </CustomTabs>
 
         {/* Dialogs - Placeholder */}
         {showEditDialog && (
