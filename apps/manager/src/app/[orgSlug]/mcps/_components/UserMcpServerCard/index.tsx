@@ -30,22 +30,22 @@ import { getProxyServerUrl } from "@/utils/url";
 import { toast } from "@/utils/client/toast";
 import { cn } from "@/lib/utils";
 
-import { type RouterOutputs, api } from "@/trpc/react";
+import { type RouterOutputs } from "@/trpc/react";
 import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 
-type ServerInstance =
+type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
 
 type UserMcpServerCardProps = {
-  serverInstance: ServerInstance;
+  userMcpServer: UserMcpServer;
   revalidate?: () => Promise<void>;
   isSortMode?: boolean;
 };
 
 export const UserMcpServerCard = ({
-  serverInstance,
+  userMcpServer,
   revalidate,
   isSortMode = false,
 }: UserMcpServerCardProps) => {
@@ -53,20 +53,9 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
 
-  const { tools } = serverInstance;
+  const { tools, mcpServer } = userMcpServer;
 
-  const apiKey = serverInstance.apiKeys[0]?.apiKey ?? "";
-
-  const { mutate: updateStatus, isPending: isStatusUpdating } =
-    api.userMcpServerInstance.updateServerStatus.useMutation({
-      onSuccess: async () => {
-        toast.success("サーバーステータスを更新しました");
-        await revalidate?.();
-      },
-      onError: (error) => {
-        toast.error(`エラーが発生しました: ${error.message}`);
-      },
-    });
+  const apiKey = userMcpServer.apiKeys[0]?.apiKey ?? "";
 
   const copyHttpUrl = async () => {
     const url = `${getProxyServerUrl()}/mcp?api-key=${apiKey}`;
@@ -75,17 +64,17 @@ export const UserMcpServerCard = ({
   };
 
   // MCPサーバーのURLを取得（ファビコン表示用）
-  const mcpServerUrl = serverInstance.mcpServer?.url;
+  const mcpServerUrl = mcpServer?.url;
 
-  // 説明の優先順位: 1. インスタンスの説明 2. MCPサーバーの説明
+  // 説明の優先順位: 1. ユーザーMCPサーバーの説明 2. MCPサーバーテンプレートの説明
   const displayDescription =
-    serverInstance.description ?? serverInstance.mcpServer?.description ?? "";
+    userMcpServer.description ?? mcpServer?.description ?? "";
 
-  const displayTags = serverInstance.mcpServer?.tags ?? [];
+  const displayTags = mcpServer?.tags ?? [];
 
   const handleCardClick = () => {
     if (isSortMode) return; // ソートモード時はクリック無効
-    window.location.href = `/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`;
+    window.location.href = `/mcp/${userMcpServer.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${userMcpServer.id}`;
   };
 
   return (
@@ -118,7 +107,7 @@ export const UserMcpServerCard = ({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                   <Link
-                    href={`/mcp/${serverInstance.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${serverInstance.id}`}
+                    href={`/mcp/${userMcpServer.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${userMcpServer.id}`}
                   >
                     <ExternalLink className="mr-2 h-4 w-4" />
                     詳細を見る
@@ -145,31 +134,6 @@ export const UserMcpServerCard = ({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    void updateStatus({
-                      id: serverInstance.id,
-                      serverStatus:
-                        serverInstance.serverStatus === ServerStatus.RUNNING
-                          ? ServerStatus.STOPPED
-                          : ServerStatus.RUNNING,
-                    });
-                  }}
-                  disabled={isStatusUpdating}
-                >
-                  {serverInstance.serverStatus === ServerStatus.RUNNING ? (
-                    <>
-                      <span className="mr-2 h-4 w-4">⏸</span>
-                      停止
-                    </>
-                  ) : (
-                    <>
-                      <span className="mr-2 h-4 w-4">▶</span>
-                      起動
-                    </>
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
                     setDeleteModalOpen(true);
                   }}
                 >
@@ -183,21 +147,21 @@ export const UserMcpServerCard = ({
 
         <CardHeader className="flex flex-row items-center space-y-0 pt-3 pr-2 pb-2">
           <div className="mr-2 rounded-md p-2">
-            {serverInstance.iconPath || serverInstance.mcpServer?.iconPath ? (
+            {userMcpServer.iconPath || mcpServer?.iconPath ? (
               <Image
                 src={
-                  serverInstance.iconPath ??
-                  serverInstance.mcpServer?.iconPath ??
+                  userMcpServer.iconPath ??
+                  mcpServer?.iconPath ??
                   "/placeholder.svg"
                 }
-                alt={serverInstance.name}
+                alt={userMcpServer.name}
                 width={32}
                 height={32}
               />
             ) : (
               <FaviconImage
                 url={mcpServerUrl}
-                alt={serverInstance.name}
+                alt={userMcpServer.name}
                 size={32}
                 fallback={
                   <div className="flex size-8 items-center justify-center rounded-md bg-gray-200">
@@ -208,23 +172,23 @@ export const UserMcpServerCard = ({
             )}
           </div>
           <div className="flex-1">
-            <CardTitle>{serverInstance.name}</CardTitle>
+            <CardTitle>{userMcpServer.name}</CardTitle>
             <div className="mt-1 flex items-center gap-2">
               <div className="flex items-center gap-1.5">
                 <div
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    serverInstance.serverStatus === ServerStatus.RUNNING
+                    userMcpServer.serverStatus === ServerStatus.RUNNING
                       ? "bg-green-500"
-                      : serverInstance.serverStatus === ServerStatus.STOPPED
+                      : userMcpServer.serverStatus === ServerStatus.STOPPED
                         ? "bg-gray-500"
-                        : serverInstance.serverStatus === ServerStatus.PENDING
+                        : userMcpServer.serverStatus === ServerStatus.PENDING
                           ? "bg-yellow-500"
                           : "bg-red-500",
                   )}
                 />
                 <span className="text-xs text-gray-600">
-                  {SERVER_STATUS_LABELS[serverInstance.serverStatus]}
+                  {SERVER_STATUS_LABELS[userMcpServer.serverStatus]}
                 </span>
               </div>
             </div>
@@ -278,16 +242,16 @@ export const UserMcpServerCard = ({
       <ToolsModal
         open={toolsModalOpen}
         onOpenChange={setToolsModalOpen}
-        serverName={serverInstance.name}
-        tools={[]} // 簡素化されたデータ構造では詳細なツール情報は利用できない
+        serverName={userMcpServer.name}
+        tools={tools}
       />
 
       {/* 削除確認モーダル */}
       {deleteModalOpen && (
         <DeleteConfirmModal
           open={deleteModalOpen}
-          serverInstanceId={serverInstance.id}
-          serverName={serverInstance.name}
+          serverInstanceId={userMcpServer.id}
+          serverName={userMcpServer.name}
           onOpenChange={setDeleteModalOpen}
           onSuccess={async () => {
             await revalidate?.();
@@ -299,9 +263,9 @@ export const UserMcpServerCard = ({
       {/* 名前編集モーダル */}
       {nameEditModalOpen && (
         <NameEditModal
-          serverInstanceId={serverInstance.id}
-          initialName={serverInstance.name}
-          initialDescription={serverInstance.description}
+          serverInstanceId={userMcpServer.id}
+          initialName={userMcpServer.name}
+          initialDescription={userMcpServer.description}
           onSuccess={async () => {
             await revalidate?.();
             setNameEditModalOpen(false);

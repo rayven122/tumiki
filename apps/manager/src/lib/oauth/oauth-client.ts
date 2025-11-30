@@ -5,6 +5,17 @@
  */
 
 import * as oauth from "oauth4webapi";
+import { z } from "zod";
+
+/**
+ * Figma形式のエラーレスポンススキーマ
+ * {"error":true,"message":"xxx","i18n":"yyy"}
+ */
+const FigmaErrorResponseSchema = z.object({
+  error: z.literal(true),
+  message: z.string(),
+  i18n: z.string().optional(),
+});
 
 /**
  * OAuth トークンレスポンス
@@ -71,10 +82,11 @@ export const exchangeCodeForToken = async (
   codeVerifier: string,
 ): Promise<OAuthTokenData> => {
   // client_secret_postメソッドを使用
-  const clientAuth =
-    typeof client.client_secret === "string"
-      ? oauth.ClientSecretPost(client.client_secret)
-      : oauth.None();
+  if (!client.client_secret || typeof client.client_secret !== "string") {
+    throw new Error("client_secret is required for token exchange");
+  }
+
+  const clientAuth = oauth.ClientSecretPost(client.client_secret);
 
   const response = await oauth.authorizationCodeGrantRequest(
     authServer,
@@ -85,10 +97,37 @@ export const exchangeCodeForToken = async (
     codeVerifier,
   );
 
+  // Figmaの非標準エラーレスポンスを処理
+  let processedResponse = response;
+  if (!response.ok) {
+    try {
+      const errorBody: unknown = await response.clone().json();
+      const parseResult = FigmaErrorResponseSchema.safeParse(errorBody);
+
+      // Figma形式のエラーを検出
+      if (parseResult.success) {
+        // RFC 6749準拠の形式に変換
+        const standardError = {
+          error: parseResult.data.message,
+          error_description: parseResult.data.i18n ?? parseResult.data.message,
+        };
+
+        // 新しいResponseオブジェクトを作成
+        processedResponse = new Response(JSON.stringify(standardError), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
+    } catch {
+      // JSONパースエラーの場合は何もしない
+    }
+  }
+
   const result = await oauth.processAuthorizationCodeResponse(
     authServer,
     client,
-    response,
+    processedResponse,
   );
 
   return {
@@ -114,11 +153,9 @@ export const refreshAccessToken = async (
   client: oauth.Client,
   refreshToken: string,
 ): Promise<OAuthTokenData> => {
-  // client_secret_postメソッドを使用
-  const clientAuth =
-    typeof client.client_secret === "string"
-      ? oauth.ClientSecretPost(client.client_secret)
-      : oauth.None();
+  // PKCEを使用する場合はclient_secretを送信しない（Figma等のプロバイダー要件）
+  // PKCE使用時はtoken_endpoint_auth_method="none"が推奨される
+  const clientAuth = oauth.None();
 
   const response = await oauth.refreshTokenGrantRequest(
     authServer,

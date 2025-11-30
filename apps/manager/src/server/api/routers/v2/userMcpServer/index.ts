@@ -6,6 +6,20 @@ import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
 import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { updateOfficialServer } from "./update";
 import { handleOAuthCallback } from "./handleOAuthCallback";
+import {
+  findOfficialServers,
+  findOfficialServersOutputSchema,
+} from "./findOfficialServers";
+import {
+  deleteMcpServer,
+  deleteMcpServerInputSchema,
+  deleteMcpServerOutputSchema,
+} from "./deleteMcpServer";
+import {
+  updateDisplayOrder,
+  updateDisplayOrderInputSchema,
+  updateDisplayOrderOutputSchema,
+} from "./updateDisplayOrder";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
 export const CreateApiKeyMcpServerInputV2 = z
@@ -120,6 +134,40 @@ export const userMcpServerRouter = createTRPCRouter({
           userId: ctx.session.user.id,
           currentUrl: new URL(input.currentUrl),
         });
+      });
+    }),
+
+  // 公式MCPサーバー一覧取得
+  findOfficialServers: protectedProcedure
+    .output(findOfficialServersOutputSchema)
+    .query(async ({ ctx }) => {
+      return await findOfficialServers(ctx.db, {
+        organizationId: ctx.session.user.organizationId,
+      });
+    }),
+
+  // MCPサーバー削除
+  delete: protectedProcedure
+    .input(deleteMcpServerInputSchema)
+    .output(deleteMcpServerOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return await deleteMcpServer(ctx.db, {
+        id: input.id,
+        organizationId: ctx.session.user.organizationId,
+      });
+    }),
+
+  // 表示順序更新
+  updateDisplayOrder: protectedProcedure
+    .input(updateDisplayOrderInputSchema)
+    .output(updateDisplayOrderOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.$transaction(async (tx) => {
+        return await updateDisplayOrder(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+        );
       });
     }),
 });

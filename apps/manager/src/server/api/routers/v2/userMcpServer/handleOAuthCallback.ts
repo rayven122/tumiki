@@ -36,7 +36,7 @@ export const handleOAuthCallback = async (
 
   try {
     // 1. State tokenを検証
-    const statePayload = await verifyOAuthState(state, userId, tx);
+    const statePayload = await verifyOAuthState(state, userId);
 
     // 2. MCPサーバーとOAuthクライアント情報を取得
     const { mcpServer, oauthClient, organization } =

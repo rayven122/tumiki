@@ -18,7 +18,14 @@ export const findOfficialServersOutputSchema = z.array(
     iconPath: z.string().nullable(),
     serverStatus: z.enum(["RUNNING", "STOPPED", "ERROR", "PENDING"]),
     serverType: z.enum(["OFFICIAL", "CUSTOM"]),
-    tools: z.array(z.object({})),
+    tools: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string(),
+        inputSchema: z.any(),
+      }),
+    ),
     mcpServer: z
       .object({
         id: z.string(),
@@ -63,7 +70,12 @@ export const findOfficialServers = async (
     include: {
       apiKeys: true,
       allowedTools: {
-        take: 10, // とりあえず最初の10件を取得
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          inputSchema: true,
+        },
       },
       mcpServers: {
         select: {
@@ -80,7 +92,6 @@ export const findOfficialServers = async (
   });
 
   return officialServers.map((server) => {
-    const toolCount = server.allowedTools?.length ?? 0;
     const mcpServerTemplate = server.mcpServers?.[0];
 
     return {
@@ -90,7 +101,7 @@ export const findOfficialServers = async (
       iconPath: server.iconPath,
       serverStatus: server.serverStatus,
       serverType: server.serverType,
-      tools: Array(toolCount).fill({}) as Record<string, never>[],
+      tools: server.allowedTools,
       mcpServer: mcpServerTemplate ?? null,
       apiKeys: server.apiKeys,
     };
