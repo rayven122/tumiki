@@ -40,12 +40,10 @@ export const CreateServerModal = ({
   const [serverName, setServerName] = useState(
     normalizeServerName(mcpServer.name),
   );
-  const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("oauth");
 
   // API呼び出し用のフック
   const { isPending, handleOAuthConnect, handleAddWithApiKey } =
     useCreateServerForm({
-      mcpServer,
       onSuccess: () => onOpenChange(false),
     });
 
@@ -55,15 +53,18 @@ export const CreateServerModal = ({
   };
 
   const handleSubmit = () => {
-    const isOAuthSupported = mcpServer.authType === "OAUTH";
-    if (isOAuthSupported && authMethod === "oauth") {
-      handleOAuthConnect(serverName);
+    if (mcpServer.authType === "OAUTH") {
+      handleOAuthConnect({
+        serverName,
+        mcpServerTemplateId: mcpServer.id,
+      });
     } else {
-      // envVarsの有無でauthTypeを判定
-      const authType = Object.values(envVars).some((v) => v.trim() !== "")
-        ? "API_KEY"
-        : "NONE";
-      handleAddWithApiKey(serverName, authType, envVars);
+      handleAddWithApiKey({
+        serverName,
+        authType: mcpServer.authType,
+        mcpServerTemplateId: mcpServer.id,
+        envVars,
+      });
     }
   };
 
@@ -78,12 +79,7 @@ export const CreateServerModal = ({
     <Dialog open onOpenChange={(open) => !isPending && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <div className="relative max-h-[90vh] overflow-y-auto">
-          <LoadingOverlay
-            isProcessing={isPending}
-            isAdding={false}
-            isValidating={false}
-            isOAuthConnecting={false}
-          />
+          <LoadingOverlay isProcessing={isPending} />
 
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
@@ -119,10 +115,8 @@ export const CreateServerModal = ({
           {/* 認証方法選択・環境変数入力 */}
           <AuthMethodTabs
             mcpServer={mcpServer}
-            authMethod={authMethod}
             envVars={envVars}
             isProcessing={isPending}
-            onAuthMethodChange={setAuthMethod}
             onEnvVarChange={handleEnvVarChange}
           />
 
@@ -131,12 +125,8 @@ export const CreateServerModal = ({
           <FormActions
             mode="create"
             mcpServer={mcpServer}
-            authMethod={authMethod}
             isFormValid={isFormValid()}
             isProcessing={isPending}
-            isAdding={false}
-            isValidating={false}
-            isOAuthConnecting={false}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

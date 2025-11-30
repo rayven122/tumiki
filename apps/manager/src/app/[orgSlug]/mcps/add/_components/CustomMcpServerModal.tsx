@@ -57,7 +57,6 @@ export const CustomMcpServerModal = ({
   // v2 APIを使用したサーバー作成フック
   const { isPending, handleOAuthConnect, handleAddWithApiKey } =
     useCreateServerForm({
-      customUrl: url.trim() || undefined,
       onSuccess: () => {
         onOpenChange(false);
         resetForm();
@@ -118,21 +117,31 @@ export const CustomMcpServerModal = ({
       }
 
       // OAuth認証フロー
-      handleOAuthConnect(
-        name.trim(),
-        clientId.trim() || undefined,
-        clientSecret.trim() || undefined,
-      );
+      handleOAuthConnect({
+        serverName: name.trim(),
+        customUrl: url.trim(),
+        clientId: clientId.trim() || undefined,
+        clientSecret: clientSecret.trim() || undefined,
+      });
     } else if (authMethod === "apikey") {
       // APIキー認証フロー
       if (Object.keys(envVars).length === 0) {
         toast.error("API_KEY認証を使用する場合、環境変数を追加してください");
         return;
       }
-      handleAddWithApiKey(name.trim(), "API_KEY", envVars);
+      handleAddWithApiKey({
+        serverName: name.trim(),
+        authType: "API_KEY",
+        customUrl: url.trim(),
+        envVars,
+      });
     } else {
       // NONE認証フロー
-      handleAddWithApiKey(name.trim(), "NONE");
+      handleAddWithApiKey({
+        serverName: name.trim(),
+        authType: "NONE",
+        customUrl: url.trim(),
+      });
     }
   };
 

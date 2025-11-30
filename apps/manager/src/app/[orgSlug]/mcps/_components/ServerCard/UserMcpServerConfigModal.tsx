@@ -37,14 +37,12 @@ export const UserMcpServerConfigModal = ({
   const {
     envVars,
     serverName,
-    authMethod,
     isProcessing,
     isValidating,
     isOAuthConnecting,
     isAdding,
     handleEnvVarChange,
     setServerName,
-    setAuthMethod,
     handleSubmit,
     isFormValid,
   } = useServerConfigForm({
@@ -101,10 +99,8 @@ export const UserMcpServerConfigModal = ({
           {/* 認証方法選択・環境変数入力 */}
           <AuthMethodTabs
             mcpServer={mcpServer}
-            authMethod={authMethod}
             envVars={envVars}
             isProcessing={isProcessing}
-            onAuthMethodChange={setAuthMethod}
             onEnvVarChange={handleEnvVarChange}
           />
 
@@ -113,7 +109,6 @@ export const UserMcpServerConfigModal = ({
           <FormActions
             mode={mode}
             mcpServer={mcpServer}
-            authMethod={authMethod}
             isFormValid={isFormValid()}
             isProcessing={isProcessing}
             isAdding={isAdding}

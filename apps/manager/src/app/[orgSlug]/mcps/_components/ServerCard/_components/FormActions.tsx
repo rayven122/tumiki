@@ -7,12 +7,8 @@ type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 type FormActionsProps = {
   mode: "create" | "edit";
   mcpServer: McpServerTemplate;
-  authMethod: "oauth" | "apikey";
   isFormValid: boolean;
   isProcessing: boolean;
-  isAdding: boolean;
-  isValidating: boolean;
-  isOAuthConnecting: boolean;
   onCancel: () => void;
   onSubmit: () => void;
 };
@@ -20,28 +16,21 @@ type FormActionsProps = {
 export const FormActions = ({
   mode,
   mcpServer,
-  authMethod,
   isFormValid,
   isProcessing,
-  isAdding,
-  isValidating,
-  isOAuthConnecting,
   onCancel,
   onSubmit,
 }: FormActionsProps) => {
-  const isOAuthSupported = mcpServer.authType === "OAUTH";
-  const isOAuthMode = isOAuthSupported && authMethod === "oauth";
+  const isOAuthMode = mcpServer.authType === "OAUTH";
 
   const getButtonText = () => {
     if (isProcessing) {
-      if (isAdding) return "追加中...";
-      if (isValidating) return "検証中...";
-      if (isOAuthConnecting) return "OAuth接続中...";
-      return "更新中...";
+      if (isOAuthMode) return "OAuth接続中...";
+      return mode === "create" ? "追加中..." : "更新中...";
     }
 
     if (isOAuthMode) return "認証";
-    return mode === "create" ? "保存" : "更新";
+    return mode === "create" ? "追加" : "更新";
   };
 
   const isSubmitDisabled = isOAuthMode

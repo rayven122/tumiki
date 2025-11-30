@@ -9,10 +9,6 @@ type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
  * MCPサーバー作成フォームのパラメータ
  */
 type UseCreateServerFormParams = {
-  /** MCPサーバーテンプレート（テンプレートベースの場合は必須、カスタムサーバーの場合は不要） */
-  mcpServer?: McpServerTemplate;
-  /** カスタムサーバーのURL（カスタムサーバー作成時に使用） */
-  customUrl?: string;
   /** サーバー作成成功時のコールバック関数 */
   onSuccess: () => void;
 };
@@ -24,14 +20,10 @@ type UseCreateServerFormParams = {
  * OAuth認証とAPIキー認証の2つの認証方式をサポートします。
  *
  * @param params - フックのパラメータ
- * @param params.mcpServer - MCPサーバーテンプレート（オプション）
- * @param params.customUrl - カスタムサーバーのURL（オプション）
  * @param params.onSuccess - サーバー作成成功時のコールバック
  * @returns サーバー作成に必要な状態とハンドラー関数
  */
 export const useCreateServerForm = ({
-  mcpServer,
-  customUrl,
   onSuccess,
 }: UseCreateServerFormParams) => {
   const utils = api.useUtils();
@@ -39,10 +31,8 @@ export const useCreateServerForm = ({
   // APIキー認証MCPサーバー作成（v2 APIを使用、テンプレートベースとカスタムURLの両方に対応）
   const { mutate: createApiKeyMcpServer, isPending: isAdding } =
     api.v2.userMcpServer.createApiKeyMcpServer.useMutation({
-      onSuccess: async () => {
-        toast.success(
-          `${mcpServer?.name ?? customUrl ?? "サーバー"}が正常に追加されました。`,
-        );
+      onSuccess: async (_, variables) => {
+        toast.success(`${variables.name}が正常に追加されました。`);
         await utils.v2.userMcpServer.findOfficialServers.invalidate();
         onSuccess();
       },
@@ -69,22 +59,24 @@ export const useCreateServerForm = ({
    *
    * MCPサーバーを作成し、OAuth認証が必要な場合は認証URLにリダイレクトします。
    * OAuthプロバイダーとスコープはDCRから取得されます。
-   *
-   * @param serverName - サーバー名
-   * @param clientId - Client ID（オプション）
-   * @param clientSecret - Client Secret（オプション）
    */
   const handleOAuthConnect = useCallback(
-    (serverName: string, clientId?: string, clientSecret?: string) => {
+    (params: {
+      serverName: string;
+      mcpServerTemplateId?: string;
+      customUrl?: string;
+      clientId?: string;
+      clientSecret?: string;
+    }) => {
       connectOAuthMcpServer({
-        templateId: mcpServer?.id,
-        customUrl: customUrl,
-        name: serverName || mcpServer?.name,
-        clientId: clientId,
-        clientSecret: clientSecret,
+        templateId: params.mcpServerTemplateId,
+        customUrl: params.customUrl,
+        name: params.serverName,
+        clientId: params.clientId,
+        clientSecret: params.clientSecret,
       });
     },
-    [mcpServer, customUrl, connectOAuthMcpServer],
+    [connectOAuthMcpServer],
   );
 
   /**
@@ -92,26 +84,24 @@ export const useCreateServerForm = ({
    *
    * テンプレートが存在する場合は公式サーバーとして、カスタムURLが指定されている場合は
    * カスタムサーバーとして追加します。
-   *
-   * @param serverName - サーバー名
-   * @param authType - 認証タイプ（"NONE" または "API_KEY"）必須
-   * @param envVars - 環境変数（APIキーなど）オプショナル
    */
   const handleAddWithApiKey = useCallback(
-    (
-      serverName: string,
-      authType: "NONE" | "API_KEY",
-      envVars?: Record<string, string>,
-    ) => {
+    (params: {
+      serverName: string;
+      authType: "NONE" | "API_KEY";
+      mcpServerTemplateId?: string;
+      customUrl?: string;
+      envVars?: Record<string, string>;
+    }) => {
       createApiKeyMcpServer({
-        mcpServerTemplateId: mcpServer?.id,
-        customUrl: customUrl,
-        envVars,
-        name: serverName,
-        authType,
+        mcpServerTemplateId: params.mcpServerTemplateId,
+        customUrl: params.customUrl,
+        envVars: params.envVars,
+        name: params.serverName,
+        authType: params.authType,
       });
     },
-    [mcpServer?.id, customUrl, createApiKeyMcpServer],
+    [createApiKeyMcpServer],
   );
 
   return {
