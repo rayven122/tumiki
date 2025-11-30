@@ -57,7 +57,7 @@ export default async function OrgSlugLayout({
       error,
     );
     if (session.user.organizationSlug) {
-      redirect(`${session.user.organizationSlug}/mcps`);
+      redirect(`/${session.user.organizationSlug}/mcps`);
     }
     redirect("/");
   }

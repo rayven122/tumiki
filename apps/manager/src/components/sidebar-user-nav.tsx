@@ -78,30 +78,29 @@ export function SidebarUserNav({ user }: { user: User }) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
-              <button
-                type="button"
-                className="w-full cursor-pointer"
-                onClick={() => {
-                  if (status === "loading") {
-                    toast({
-                      type: "error",
-                      description:
-                        "Checking authentication status, please try again!",
-                    });
-
-                    return;
-                  }
-
-                  if (isGuest) {
+              {isGuest ? (
+                <button
+                  type="button"
+                  className="w-full cursor-pointer"
+                  onClick={() => {
+                    if (status === "loading") {
+                      toast({
+                        type: "error",
+                        description:
+                          "Checking authentication status, please try again!",
+                      });
+                      return;
+                    }
                     signIn("keycloak", { callbackUrl: "/" });
-                  } else {
-                    // Keycloakセッションも削除するため、カスタムログアウトエンドポイントを使用
-                    window.location.href = "/api/auth/logout";
-                  }
-                }}
-              >
-                {isGuest ? "Login to your account" : "Sign out"}
-              </button>
+                  }}
+                >
+                  Login to your account
+                </button>
+              ) : (
+                <a href="/api/auth/logout" className="w-full cursor-pointer">
+                  Sign out
+                </a>
+              )}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -66,9 +66,11 @@ export const UserMcpServerCard = ({
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
 
-  // 説明の優先順位: 1. ユーザーMCPサーバーの説明 2. MCPサーバーテンプレートの説明
+  // 説明の優先順位: 1. ユーザーMCPサーバーの説明（空でない場合） 2. MCPサーバーテンプレートの説明
   const displayDescription =
-    userMcpServer.description ?? mcpServer?.description ?? "";
+    userMcpServer.description && userMcpServer.description.trim() !== ""
+      ? userMcpServer.description
+      : (mcpServer?.description ?? "");
 
   const displayTags = mcpServer?.tags ?? [];
 
