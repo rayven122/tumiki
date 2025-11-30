@@ -198,9 +198,7 @@ export const UserMcpServerConfigModal = ({
         templateId: mcpServer.id,
         name: serverName || mcpServer.name,
         authType: "OAUTH",
-        oauthProvider: mcpServer.oauthProvider ?? undefined,
         visibility: "PRIVATE",
-        scopes: mcpServer.oauthScopes ?? undefined,
       });
 
       toast.success("DCR登録に成功しました！OAuth認証を開始します...");
@@ -246,8 +244,6 @@ export const UserMcpServerConfigModal = ({
     isOAuthConnecting,
     mcpServer.id,
     mcpServer.name,
-    mcpServer.oauthProvider,
-    mcpServer.oauthScopes,
     serverName,
     createRemoteMcpMutation,
     utils,

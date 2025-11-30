@@ -30,7 +30,7 @@ export function ToolsModal({
   // ツールの検索とフィルタリング
   const filteredTools = tools.filter(
     (tool) =>
-      tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ??
+      tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tool.description.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 

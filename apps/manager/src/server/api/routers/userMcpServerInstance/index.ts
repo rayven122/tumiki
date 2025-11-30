@@ -10,11 +10,7 @@ import {
 import { nameValidationSchema } from "@/schema/validation";
 import { findCustomServers } from "./findCustomServers";
 
-import {
-  McpApiKeySchema,
-  McpServerSchema,
-  UserMcpServerInstanceSchema,
-} from "@tumiki/db/zod";
+import { McpApiKeySchema, McpServerSchema } from "@tumiki/db/zod";
 
 import { findOfficialServers } from "./findOfficialServers";
 import { deleteServerInstance } from "./deleteServerInstance";
@@ -41,23 +37,45 @@ import {
 } from "./updateDisplayOrder";
 
 export const FindServersOutput = z.array(
-  UserMcpServerInstanceSchema.merge(
-    z.object({
-      id: UserMcpServerInstanceIdSchema,
-      apiKeys: McpApiKeySchema.array(),
-      tools: z.array(z.object({})), // ツール数のみ必要なので空オブジェクトの配列
-      toolGroups: z.array(z.never()).optional(), // 使用しないので削除
-      userMcpServers: z.array(z.never()).optional(), // 使用しないので削除
-      mcpServer: McpServerSchema.pick({
-        id: true,
-        name: true,
-        description: true,
-        tags: true,
-        iconPath: true,
-        url: true,
-      }).nullable(), // mcpServerデータを追加
-    }),
-  ),
+  z.object({
+    id: UserMcpServerInstanceIdSchema,
+    apiKeys: McpApiKeySchema.array(),
+    tools: z.array(z.object({})), // ツール数のみ必要なので空オブジェクトの配列
+    toolGroups: z.array(z.never()).optional(), // 使用しないので削除
+    userMcpServers: z.array(z.never()).optional(), // 使用しないので削除
+    mcpServer: McpServerSchema.pick({
+      id: true,
+      name: true,
+      description: true,
+      tags: true,
+      iconPath: true,
+      url: true,
+    }).nullable(), // mcpServerデータを追加
+  }),
+);
+
+// 公式サーバーテンプレート用の出力スキーマ
+export const FindOfficialServersOutput = z.array(
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    iconPath: z.string().nullable(),
+    serverStatus: z.enum(["RUNNING", "STOPPED", "ERROR", "PENDING"]),
+    serverType: z.enum(["OFFICIAL", "CUSTOM"]),
+    tools: z.array(z.object({})),
+    mcpServer: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string(),
+        tags: z.array(z.string()),
+        iconPath: z.string().nullable(),
+        url: z.string(),
+      })
+      .nullable(),
+    apiKeys: McpApiKeySchema.array(),
+  }),
 );
 
 export const AddCustomServerInput = z.object({
@@ -104,13 +122,10 @@ export const UpdateServerInstanceNameInput = z.object({
   description: z.string().optional(),
 });
 
-export const UpdateServerStatusInput = UserMcpServerInstanceSchema.pick({
-  serverStatus: true,
-}).merge(
-  z.object({
-    id: UserMcpServerInstanceIdSchema,
-  }),
-);
+export const UpdateServerStatusInput = z.object({
+  id: UserMcpServerInstanceIdSchema,
+  serverStatus: z.string(),
+});
 
 // リクエストログ関連のInput schemas
 export const FindRequestLogsInput = z.object({
@@ -188,7 +203,7 @@ export const userMcpServerInstanceRouter = createTRPCRouter({
     .output(FindServersOutput)
     .query(findCustomServers),
   findOfficialServers: protectedProcedure
-    .output(FindServersOutput)
+    .output(FindOfficialServersOutput)
     .query(findOfficialServers),
   addCustomServer: protectedProcedure
     .input(AddCustomServerInput)

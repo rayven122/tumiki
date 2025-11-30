@@ -2,11 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 
 import { updateServerConfig } from "./updateServerConfig";
-import {
-  McpServerSchema,
-  ToolSchema,
-  UserMcpServerConfigSchema,
-} from "@tumiki/db/zod";
+import { McpServerSchema, McpToolSchema } from "@tumiki/db/zod";
 import {
   McpServerIdSchema,
   ToolIdSchema,
@@ -25,15 +21,11 @@ export const FindAllWithToolsInput = z.object({
 });
 
 export const FindAllWithToolsOutput = z.array(
-  UserMcpServerConfigSchema.omit({
-    envVars: true,
-  }).merge(
-    z.object({
-      id: UserMcpServerConfigIdSchema,
-      tools: z.array(ToolSchema.merge(z.object({ id: ToolIdSchema }))),
-      mcpServer: McpServerSchema.merge(z.object({ id: McpServerIdSchema })),
-    }),
-  ),
+  z.object({
+    id: UserMcpServerConfigIdSchema,
+    tools: z.array(McpToolSchema.merge(z.object({ id: ToolIdSchema }))),
+    mcpServer: McpServerSchema.merge(z.object({ id: McpServerIdSchema })),
+  }),
 );
 
 export const userMcpServerConfigRouter = createTRPCRouter({
