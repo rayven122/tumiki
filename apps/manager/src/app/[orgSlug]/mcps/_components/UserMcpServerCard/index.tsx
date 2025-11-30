@@ -11,7 +11,6 @@ import {
   Trash2Icon,
   ImageIcon,
   MoreHorizontal,
-  Copy,
   ExternalLink,
   Wrench,
   Edit2,
@@ -26,9 +25,6 @@ import {
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
 import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
-import { copyToClipboard } from "@/utils/client/copyToClipboard";
-import { getProxyServerUrl } from "@/utils/url";
-import { toast } from "@/utils/client/toast";
 import { cn } from "@/lib/utils";
 
 import { type RouterOutputs } from "@/trpc/react";
@@ -55,14 +51,6 @@ export const UserMcpServerCard = ({
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
 
   const { tools, mcpServer } = userMcpServer;
-
-  const apiKey = userMcpServer.apiKeys[0]?.apiKey ?? "";
-
-  const copyHttpUrl = async () => {
-    const url = `${getProxyServerUrl()}/mcp?api-key=${apiKey}`;
-    await copyToClipboard(url);
-    toast.success("HTTP接続URLをコピーしました");
-  };
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
@@ -129,15 +117,6 @@ export const UserMcpServerCard = ({
                 >
                   <Edit2 className="mr-2 h-4 w-4" />
                   名前を編集
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyHttpUrl();
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  接続URLをコピー
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -242,29 +221,6 @@ export const UserMcpServerCard = ({
                 {tag}
               </span>
             ))}
-          </div>
-
-          {/* HTTP接続URL */}
-          <div className="rounded-md border border-gray-200 bg-gray-50 p-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex-1 overflow-hidden">
-                <p className="text-xs text-gray-500">HTTP接続URL</p>
-                <p className="truncate font-mono text-xs text-gray-700">
-                  {getProxyServerUrl()}/mcp?api-key={apiKey}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyHttpUrl();
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
