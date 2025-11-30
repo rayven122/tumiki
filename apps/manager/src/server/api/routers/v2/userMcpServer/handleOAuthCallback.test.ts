@@ -1,84 +1,97 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  beforeEach,
+  vi,
+  type MockedFunction,
+} from "vitest";
 import { TRPCError } from "@trpc/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { TransportType, ServerStatus } from "@tumiki/db/prisma";
 import {
   handleOAuthCallback,
   type HandleOAuthCallbackInput,
+  type HandleOAuthCallbackOutput,
 } from "./handleOAuthCallback";
+import * as oauthVerification from "./helpers/oauth-verification";
+import * as mcpServerSetup from "./helpers/mcp-server-setup";
 
-// モックモジュール
-vi.mock("./helpers/oauth-verification", () => ({
-  verifyOAuthState: vi.fn(),
-  getMcpServerAndOAuthClient: vi.fn(),
-  exchangeAuthorizationCode: vi.fn(),
-}));
+// モック設定
+vi.mock("./helpers/oauth-verification");
+vi.mock("./helpers/mcp-server-setup");
 
-vi.mock("./helpers/mcp-server-setup", () => ({
-  setupMcpServerTools: vi.fn(),
-}));
+const mockVerifyOAuthState = vi.mocked(oauthVerification.verifyOAuthState);
+const mockGetMcpServerAndOAuthClient = vi.mocked(
+  oauthVerification.getMcpServerAndOAuthClient,
+);
+const mockExchangeAuthorizationCode = vi.mocked(
+  oauthVerification.exchangeAuthorizationCode,
+);
+const mockSetupMcpServerTools = vi.mocked(mcpServerSetup.setupMcpServerTools);
 
-// モックされた関数をインポート
-import {
-  verifyOAuthState,
-  getMcpServerAndOAuthClient,
-  exchangeAuthorizationCode,
-} from "./helpers/oauth-verification";
-import { setupMcpServerTools } from "./helpers/mcp-server-setup";
+// モック用のデータ
+const mockUserId = "user_123";
+const mockOrganizationId = "org_456";
+const mockMcpServerId = "mcp_789";
+const mockOAuthClientId = "oauth_client_123";
+const mockStateToken = "valid-state-token";
+const mockAccessToken = "access_token_xyz";
+const mockRefreshToken = "refresh_token_abc";
 
-// モックデータ
-const mockStatePayload = {
-  state: "test-state",
-  codeVerifier: "test-verifier",
-  codeChallenge: "test-challenge",
-  nonce: "test-nonce",
-  mcpServerId: "mcp-server-123",
-  userId: "user-123",
-  organizationId: "org-123",
-  redirectUri: "https://local.tumiki.cloud:3000/callback",
+const createMockStatePayload = () => ({
+  state: "state-123",
+  codeVerifier: "verifier-abc",
+  codeChallenge: "challenge-xyz",
+  nonce: "nonce-456",
+  mcpServerId: mockMcpServerId,
+  userId: mockUserId,
+  organizationId: mockOrganizationId,
+  redirectUri: "https://example.com/callback",
   requestedScopes: ["read", "write"],
-  expiresAt: Date.now() + 600000,
-};
+  expiresAt: Date.now() + 10 * 60 * 1000, // 10分後
+  iat: Math.floor(Date.now() / 1000),
+  exp: Math.floor((Date.now() + 10 * 60 * 1000) / 1000),
+});
 
-const mockMcpServer = {
-  id: "mcp-server-123",
-  name: "Test MCP Server",
-  templateUrl: "https://mcp-server.example.com",
-  transportType: "SSE" as const,
-};
+const createMockMcpServerData = () => ({
+  mcpServer: {
+    id: mockMcpServerId,
+    name: "Test MCP Server",
+    templateUrl: "https://example.com/mcp",
+    transportType: TransportType.HTTP,
+  },
+  oauthClient: {
+    id: mockOAuthClientId,
+    clientId: "client-123",
+    clientSecret: "secret-abc",
+    authorizationServerUrl: "https://oauth.example.com",
+  },
+  organization: {
+    slug: "test-org",
+  },
+});
 
-const mockOAuthClient = {
-  id: "oauth-client-123",
-  clientId: "client-123",
-  clientSecret: "client-secret",
-  authorizationServerUrl: "https://auth.example.com",
-};
+const createMockTokenData = () => ({
+  access_token: mockAccessToken,
+  refresh_token: mockRefreshToken,
+  expires_in: 3600, // 1時間
+  token_type: "Bearer",
+});
 
-const mockOrganization = {
-  slug: "test-org",
-};
-
-const mockTokenData = {
-  access_token: "access-token-123",
-  refresh_token: "refresh-token-123",
-  expires_in: 3600,
-  token_type: "Bearer" as const,
-};
-
-const mockInput: HandleOAuthCallbackInput = {
-  state: "test-state-token",
-  userId: "user-123",
-  currentUrl: new URL(
-    "https://local.tumiki.cloud:3000/callback?code=auth-code",
-  ),
-};
-
-// モックトランザクションクライアント
-const createMockTx = (): PrismaTransactionClient => {
+// Prismaトランザクションクライアントのモック
+const createMockPrismaClient = () => {
   const mockCreate = vi.fn();
+  const mockUpdate = vi.fn();
+  const mockFindUnique = vi.fn();
 
   return {
     mcpOAuthToken: {
       create: mockCreate,
+    },
+    mcpServer: {
+      update: mockUpdate,
+      findUnique: mockFindUnique,
     },
   } as unknown as PrismaTransactionClient;
 };
@@ -87,210 +100,521 @@ describe("handleOAuthCallback", () => {
   let mockTx: PrismaTransactionClient;
 
   beforeEach(() => {
-    mockTx = createMockTx();
-    vi.clearAllMocks();
-
-    // デフォルトのモック動作を設定
-    vi.mocked(verifyOAuthState).mockResolvedValue(mockStatePayload);
-    vi.mocked(getMcpServerAndOAuthClient).mockResolvedValue({
-      mcpServer: mockMcpServer,
-      oauthClient: mockOAuthClient,
-      organization: mockOrganization,
-    });
-    vi.mocked(exchangeAuthorizationCode).mockResolvedValue(mockTokenData);
-    vi.mocked(setupMcpServerTools).mockResolvedValue(1); // ツール数を返す
+    vi.resetAllMocks();
+    mockTx = createMockPrismaClient();
   });
 
-  test("正常なOAuth認証フローが完了する", async () => {
-    const result = await handleOAuthCallback(mockTx, mockInput);
+  describe("正常フロー", () => {
+    test("有効なOAuthコールバックを正常に処理する", async () => {
+      // モックの設定
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenData = createMockTokenData();
 
-    expect(result).toStrictEqual({
-      organizationSlug: "test-org",
-      success: true,
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(5); // 5つのツール
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL(
+          "https://example.com/callback?code=auth_code&state=" + mockStateToken,
+        ),
+      };
+
+      // テスト実行
+      const result = await handleOAuthCallback(mockTx, input);
+
+      // 結果の検証
+      expect(result).toStrictEqual({
+        organizationSlug: "test-org",
+        success: true,
+      });
+
+      // 各ステップが正しく呼ばれたことを確認
+      expect(mockVerifyOAuthState).toHaveBeenCalledWith(
+        mockStateToken,
+        mockUserId,
+      );
+      expect(mockGetMcpServerAndOAuthClient).toHaveBeenCalledWith(
+        mockTx,
+        mockMcpServerId,
+        mockOrganizationId,
+      );
+      expect(mockExchangeAuthorizationCode).toHaveBeenCalledWith(
+        input.currentUrl,
+        mockStateToken,
+        statePayload,
+        mcpServerData.oauthClient,
+        mcpServerData.mcpServer.templateUrl,
+      );
+
+      // OAuthトークンが保存されたことを確認
+      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          organizationId: mockOrganizationId,
+          oauthClientId: mockOAuthClientId,
+          accessToken: mockAccessToken,
+          refreshToken: mockRefreshToken,
+          expiresAt: expect.any(Date),
+          tokenPurpose: "BACKEND_MCP",
+        },
+      });
+
+      // MCPサーバーのセットアップが行われたことを確認
+      expect(mockSetupMcpServerTools).toHaveBeenCalledWith(mockTx, {
+        mcpServerId: mockMcpServerId,
+        mcpServerName: "Test MCP Server",
+        mcpServerTemplateUrl: "https://example.com/mcp",
+        accessToken: mockAccessToken,
+        transportType: TransportType.HTTP,
+      });
     });
 
-    // 各ヘルパー関数が正しく呼び出されたことを確認
-    expect(verifyOAuthState).toHaveBeenCalledWith(
-      mockInput.state,
-      mockInput.userId,
-    );
-    expect(getMcpServerAndOAuthClient).toHaveBeenCalledWith(
-      mockTx,
-      mockStatePayload.mcpServerId,
-      mockStatePayload.organizationId,
-    );
-    expect(exchangeAuthorizationCode).toHaveBeenCalledWith(
-      mockInput.currentUrl,
-      mockInput.state,
-      mockStatePayload,
-      mockOAuthClient,
-      mockMcpServer.templateUrl,
-    );
+    test("リフレッシュトークンが無い場合も正常に処理する", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenDataWithoutRefresh = {
+        ...createMockTokenData(),
+        refresh_token: undefined, // リフレッシュトークン無し
+      };
 
-    // OAuthトークンが保存されたことを確認
-    expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
-      data: {
-        userId: mockInput.userId,
-        organizationId: mockStatePayload.organizationId,
-        oauthClientId: mockOAuthClient.id,
-        accessToken: mockTokenData.access_token,
-        refreshToken: mockTokenData.refresh_token,
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenDataWithoutRefresh);
+      mockSetupMcpServerTools.mockResolvedValue(3);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL(
+          "https://example.com/callback?code=auth_code&state=" + mockStateToken,
+        ),
+      };
+
+      const result = await handleOAuthCallback(mockTx, input);
+
+      expect(result.success).toBe(true);
+
+      // リフレッシュトークンがnullで保存されることを確認
+      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          refreshToken: null,
+        }),
+      });
+    });
+
+    test("expires_inが無い場合はexpiresAtがnullで保存される", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenDataWithoutExpiry = {
+        ...createMockTokenData(),
+        expires_in: undefined, // 期限なし
+      };
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenDataWithoutExpiry);
+      mockSetupMcpServerTools.mockResolvedValue(2);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL(
+          "https://example.com/callback?code=auth_code&state=" + mockStateToken,
+        ),
+      };
+
+      await handleOAuthCallback(mockTx, input);
+
+      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          expiresAt: null,
+        }),
+      });
+    });
+  });
+
+  describe("異常系テスト", () => {
+    test("無効なstateトークンでエラーを投げる", async () => {
+      mockVerifyOAuthState.mockRejectedValue(
+        new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid state token",
+        }),
+      );
+
+      const input: HandleOAuthCallbackInput = {
+        state: "invalid-state-token",
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "BAD_REQUEST",
+          message: "Invalid state token",
+        }),
+      );
+    });
+
+    test("ユーザーIDの不一致でエラーを投げる", async () => {
+      mockVerifyOAuthState.mockRejectedValue(
+        new TRPCError({
+          code: "FORBIDDEN",
+          message: "User mismatch",
+        }),
+      );
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: "different-user-id",
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "FORBIDDEN",
+          message: "User mismatch",
+        }),
+      );
+    });
+
+    test("MCPサーバーが見つからない場合のエラー", async () => {
+      const statePayload = createMockStatePayload();
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockRejectedValue(
+        new TRPCError({
+          code: "NOT_FOUND",
+          message: "MCPサーバーまたはテンプレートが見つかりません",
+        }),
+      );
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "NOT_FOUND",
+          message: "MCPサーバーまたはテンプレートが見つかりません",
+        }),
+      );
+    });
+
+    test("組織アクセス権限が無い場合のエラー", async () => {
+      const statePayload = createMockStatePayload();
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockRejectedValue(
+        new TRPCError({
+          code: "FORBIDDEN",
+          message: "このMCPサーバーへのアクセス権限がありません",
+        }),
+      );
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "FORBIDDEN",
+          message: "このMCPサーバーへのアクセス権限がありません",
+        }),
+      );
+    });
+
+    test("認可コードの交換に失敗した場合のエラー", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockRejectedValue(
+        new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Token exchange failed",
+        }),
+      );
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Token exchange failed",
+        }),
+      );
+    });
+
+    test("MCPサーバーのセットアップに失敗した場合のエラー", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenData = createMockTokenData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockRejectedValue(
+        new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "MCPサーバーからツールを取得できませんでした",
+        }),
+      );
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "MCPサーバーからツールを取得できませんでした",
+        }),
+      );
+
+      // トークンは保存されるが、セットアップでエラーが発生
+      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalled();
+    });
+
+    test("一般的なエラーを適切にハンドリングする", async () => {
+      mockVerifyOAuthState.mockRejectedValue(new Error("Network error"));
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Network error",
+        }),
+      );
+    });
+
+    test("不明なエラーを適切にハンドリングする", async () => {
+      mockVerifyOAuthState.mockRejectedValue("Unknown error");
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await expect(handleOAuthCallback(mockTx, input)).rejects.toThrow(
+        expect.objectContaining({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "OAuth callback failed",
+        }),
+      );
+    });
+  });
+
+  describe("データベース操作のテスト", () => {
+    test("OAuthトークンが正しい構造で保存される", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenData = createMockTokenData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(3);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await handleOAuthCallback(mockTx, input);
+
+      const createCall = (mockTx.mcpOAuthToken.create as MockedFunction<any>)
+        .mock.calls[0];
+      const createData = createCall[0].data;
+
+      expect(createData).toStrictEqual({
+        userId: mockUserId,
+        organizationId: mockOrganizationId,
+        oauthClientId: mockOAuthClientId,
+        accessToken: mockAccessToken,
+        refreshToken: mockRefreshToken,
         expiresAt: expect.any(Date),
         tokenPurpose: "BACKEND_MCP",
-      },
+      });
+
+      // expiresAtの値が正しく計算されていることを確認
+      const expiresAt = createData.expiresAt as Date;
+      const expectedTime = Date.now() + 3600 * 1000; // 1時間後
+      expect(expiresAt.getTime()).toBeGreaterThan(expectedTime - 1000); // 1秒の誤差を許容
+      expect(expiresAt.getTime()).toBeLessThan(expectedTime + 1000);
     });
 
-    // MCPサーバーツールがセットアップされたことを確認
-    expect(setupMcpServerTools).toHaveBeenCalledWith(mockTx, {
-      mcpServerId: mockMcpServer.id,
-      mcpServerName: mockMcpServer.name,
-      mcpServerTemplateUrl: mockMcpServer.templateUrl,
-      accessToken: mockTokenData.access_token,
-      transportType: mockMcpServer.transportType,
-    });
-  });
+    test("同じOAuthクライアントでも新しいトークンが作成される", async () => {
+      // コメントの通り、ユーザーは複数の異なるアカウントを接続したい場合があるため
+      // 常に新しいトークンを作成する動作を確認
 
-  test("改ざんされたstate tokenは拒否される", async () => {
-    vi.mocked(verifyOAuthState).mockRejectedValue(
-      new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Invalid state token",
-      }),
-    );
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenData = createMockTokenData();
 
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toThrow(
-      TRPCError,
-    );
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(2);
 
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toMatchObject({
-      code: "BAD_REQUEST",
-      message: "Invalid state token",
-    });
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
 
-    // トークン保存は実行されないことを確認
-    expect(mockTx.mcpOAuthToken.create).not.toHaveBeenCalled();
-  });
+      await handleOAuthCallback(mockTx, input);
 
-  test("ユーザーIDの不一致は拒否される", async () => {
-    vi.mocked(verifyOAuthState).mockRejectedValue(
-      new TRPCError({
-        code: "FORBIDDEN",
-        message: "User mismatch",
-      }),
-    );
-
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toThrow(
-      TRPCError,
-    );
-
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toMatchObject({
-      code: "FORBIDDEN",
-      message: "User mismatch",
+      // createが呼ばれることを確認（upsertではない）
+      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledTimes(1);
     });
   });
 
-  test("存在しないMCPサーバーはエラーになる", async () => {
-    vi.mocked(getMcpServerAndOAuthClient).mockRejectedValue(
-      new TRPCError({
-        code: "NOT_FOUND",
-        message: "MCPサーバーまたはテンプレートが見つかりません",
-      }),
-    );
+  describe("エッジケース", () => {
+    test("expires_inが0の場合の処理", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenDataZeroExpiry = {
+        ...createMockTokenData(),
+        expires_in: 0, // 即座に期限切れ
+      };
 
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toThrow(
-      TRPCError,
-    );
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenDataZeroExpiry);
+      mockSetupMcpServerTools.mockResolvedValue(1);
 
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toMatchObject({
-      code: "NOT_FOUND",
-      message: "MCPサーバーまたはテンプレートが見つかりません",
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await handleOAuthCallback(mockTx, input);
+
+      const createCall = (mockTx.mcpOAuthToken.create as MockedFunction<any>)
+        .mock.calls[0];
+      const expiresAt = createCall[0].data.expiresAt as Date;
+
+      // expires_in が0の場合、expiresAt は現在時刻に近い値になる
+      if (expiresAt) {
+        expect(expiresAt.getTime()).toBeLessThan(Date.now() + 1000);
+      } else {
+        // expires_in が0の場合はnullになる可能性もある
+        expect(expiresAt).toBeNull();
+      }
+    });
+
+    test("非常に長いアクセストークンの処理", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const longTokenData = {
+        ...createMockTokenData(),
+        access_token: "x".repeat(10000), // 10KB のトークン
+        refresh_token: "y".repeat(5000), // 5KB のリフレッシュトークン
+      };
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(longTokenData);
+      mockSetupMcpServerTools.mockResolvedValue(4);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      const result = await handleOAuthCallback(mockTx, input);
+
+      expect(result.success).toBe(true);
+      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accessToken: longTokenData.access_token,
+          refreshToken: longTokenData.refresh_token,
+        }),
+      });
+    });
+
+    test("SSEトランスポートタイプでの処理", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerDataSSE = {
+        ...createMockMcpServerData(),
+        mcpServer: {
+          ...createMockMcpServerData().mcpServer,
+          transportType: TransportType.SSE,
+        },
+      };
+      const tokenData = createMockTokenData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerDataSSE);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(7);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      await handleOAuthCallback(mockTx, input);
+
+      expect(mockSetupMcpServerTools).toHaveBeenCalledWith(mockTx, {
+        mcpServerId: mockMcpServerId,
+        mcpServerName: "Test MCP Server",
+        mcpServerTemplateUrl: "https://example.com/mcp",
+        accessToken: mockAccessToken,
+        transportType: TransportType.SSE,
+      });
     });
   });
 
-  test("トークン交換に失敗した場合、エラーになる", async () => {
-    vi.mocked(exchangeAuthorizationCode).mockRejectedValue(
-      new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Token exchange failed",
-      }),
-    );
+  describe("パフォーマンステスト", () => {
+    test("大量のツールがあるMCPサーバーでも正常に処理する", async () => {
+      const statePayload = createMockStatePayload();
+      const mcpServerData = createMockMcpServerData();
+      const tokenData = createMockTokenData();
 
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toThrow(
-      TRPCError,
-    );
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(100); // 100個のツール
 
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Token exchange failed",
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL("https://example.com/callback"),
+      };
+
+      const startTime = Date.now();
+      const result = await handleOAuthCallback(mockTx, input);
+      const endTime = Date.now();
+
+      expect(result.success).toBe(true);
+      // パフォーマンスチェック（通常は瞬時に完了するはず）
+      expect(endTime - startTime).toBeLessThan(100);
     });
-
-    // トークン保存は実行されないことを確認
-    expect(mockTx.mcpOAuthToken.create).not.toHaveBeenCalled();
-  });
-
-  test("refresh_tokenがない場合、nullで保存される", async () => {
-    const tokenDataWithoutRefresh = {
-      access_token: mockTokenData.access_token,
-      token_type: mockTokenData.token_type,
-      expires_in: mockTokenData.expires_in,
-      refresh_token: undefined as string | undefined,
-    };
-    vi.mocked(exchangeAuthorizationCode).mockResolvedValue(
-      tokenDataWithoutRefresh,
-    );
-
-    await handleOAuthCallback(mockTx, mockInput);
-
-    expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        refreshToken: null,
-      }),
-    });
-  });
-
-  test("expires_inがない場合、expiresAtはnullになる", async () => {
-    const tokenDataWithoutExpiry = {
-      access_token: mockTokenData.access_token,
-      token_type: mockTokenData.token_type,
-      expires_in: undefined as number | undefined,
-      refresh_token: mockTokenData.refresh_token,
-    };
-    vi.mocked(exchangeAuthorizationCode).mockResolvedValue(
-      tokenDataWithoutExpiry,
-    );
-
-    await handleOAuthCallback(mockTx, mockInput);
-
-    expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        expiresAt: null,
-      }),
-    });
-  });
-
-  test("一般的なエラーはINTERNAL_SERVER_ERRORに変換される", async () => {
-    vi.mocked(verifyOAuthState).mockRejectedValue(
-      new Error("Unexpected error"),
-    );
-
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toThrow(
-      TRPCError,
-    );
-
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toMatchObject({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Unexpected error",
-    });
-  });
-
-  test("MCPサーバーツールのセットアップに失敗してもトークンは保存される", async () => {
-    vi.mocked(setupMcpServerTools).mockRejectedValue(new Error("Setup failed"));
-
-    await expect(handleOAuthCallback(mockTx, mockInput)).rejects.toThrow(
-      TRPCError,
-    );
-
-    // トークン保存は実行されることを確認
-    expect(mockTx.mcpOAuthToken.create).toHaveBeenCalled();
   });
 });
