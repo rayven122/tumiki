@@ -5,13 +5,13 @@ type GetUserOrganizationsInput = {
 };
 
 export const getUserOrganizations = async (
-  db: PrismaTransactionClient,
+  tx: PrismaTransactionClient,
   input: GetUserOrganizationsInput,
 ) => {
   const { userId } = input;
 
   // ユーザーが所属する組織の一覧を取得（詳細情報含む）
-  const memberships = await db.organizationMember.findMany({
+  const memberships = await tx.organizationMember.findMany({
     where: {
       userId,
       organization: {
@@ -44,7 +44,7 @@ export const getUserOrganizations = async (
   });
 
   // ユーザーのデフォルト組織を取得
-  const user = await db.user.findUnique({
+  const user = await tx.user.findUnique({
     where: { id: userId },
     select: { defaultOrganization: { select: { id: true } } },
   });

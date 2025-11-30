@@ -43,16 +43,12 @@ export const EditServerModal = ({
   const [authMethod, setAuthMethod] = useState<"oauth" | "apikey">("apikey");
 
   // API呼び出し用のフック
-  const {
-    isOAuthConnecting,
-    isUpdating,
-    handleOAuthConnect,
-    handleUpdateWithApiKey,
-  } = useEditServerForm({
-    mcpServer,
-    userMcpServerId,
-    onSuccess: () => onOpenChange(false),
-  });
+  const { isPending, handleOAuthConnect, handleUpdateWithApiKey } =
+    useEditServerForm({
+      mcpServer,
+      userMcpServerId,
+      onSuccess: () => onOpenChange(false),
+    });
 
   // フォームハンドラー
   const handleEnvVarChange = (envVar: string, value: string) => {
@@ -75,17 +71,15 @@ export const EditServerModal = ({
     return Object.values(envVars).some((token) => token.trim() !== "");
   };
 
-  const isProcessing = isUpdating || isOAuthConnecting;
-
   return (
-    <Dialog open onOpenChange={(open) => !isProcessing && onOpenChange(open)}>
+    <Dialog open onOpenChange={(open) => !isPending && onOpenChange(open)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <div className="relative max-h-[90vh] overflow-y-auto">
           <LoadingOverlay
-            isProcessing={isProcessing}
+            isProcessing={isPending}
             isAdding={false}
             isValidating={false}
-            isOAuthConnecting={isOAuthConnecting}
+            isOAuthConnecting={false}
           />
 
           <DialogHeader>
@@ -112,7 +106,7 @@ export const EditServerModal = ({
               value={serverName}
               onChange={(e) => setServerName(e.target.value)}
               className="text-sm"
-              disabled={isProcessing}
+              disabled={isPending}
             />
             <p className="text-muted-foreground text-xs">
               表示されるサーバー名を設定できます
@@ -124,7 +118,7 @@ export const EditServerModal = ({
             mcpServer={mcpServer}
             authMethod={authMethod}
             envVars={envVars}
-            isProcessing={isProcessing}
+            isProcessing={isPending}
             onAuthMethodChange={setAuthMethod}
             onEnvVarChange={handleEnvVarChange}
           />
@@ -136,10 +130,10 @@ export const EditServerModal = ({
             mcpServer={mcpServer}
             authMethod={authMethod}
             isFormValid={isFormValid()}
-            isProcessing={isProcessing}
+            isProcessing={isPending}
             isAdding={false}
             isValidating={false}
-            isOAuthConnecting={isOAuthConnecting}
+            isOAuthConnecting={false}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

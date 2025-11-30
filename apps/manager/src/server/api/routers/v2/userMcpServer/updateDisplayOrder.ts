@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { UserMcpServerInstanceIdSchema } from "@/schema/ids";
-import type { ProtectedContext } from "@/server/api/trpc";
+import type { PrismaTransactionClient } from "@tumiki/db";
 
 export const updateDisplayOrderInputSchema = z.object({
   updates: z.array(
@@ -19,7 +19,7 @@ export const updateDisplayOrderOutputSchema = z.object({
 type UpdateDisplayOrderInput = z.infer<typeof updateDisplayOrderInputSchema>;
 
 export const updateDisplayOrder = async (
-  db: ProtectedContext["db"],
+  tx: PrismaTransactionClient,
   input: UpdateDisplayOrderInput,
   organizationId: string,
 ) => {
@@ -27,7 +27,7 @@ export const updateDisplayOrder = async (
 
   // すべての更新対象が現在の組織のサーバーか確認
   const serverIds = updates.map((update) => update.id);
-  const servers = await db.mcpServer.findMany({
+  const servers = await tx.mcpServer.findMany({
     where: {
       id: { in: serverIds },
       organizationId,
@@ -44,9 +44,9 @@ export const updateDisplayOrder = async (
   }
 
   // 各サーバーの表示順序を更新
-  await db.$transaction(
+  await Promise.all(
     updates.map((update) =>
-      db.mcpServer.update({
+      tx.mcpServer.update({
         where: {
           id: update.id,
           organizationId: organizationId,

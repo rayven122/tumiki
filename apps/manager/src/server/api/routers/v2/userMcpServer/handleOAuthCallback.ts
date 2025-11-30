@@ -47,11 +47,13 @@ export const handleOAuthCallback = async (
       );
 
     // 3. 認可コードをアクセストークンに交換
+    // 元のサーバーURL（MCPサーバーテンプレートのURL）を使用してメタデータを取得
     const tokenData = await exchangeAuthorizationCode(
       currentUrl,
       state,
       statePayload,
       oauthClient,
+      mcpServer.templateUrl, // 元のサーバーURLを渡す
     );
 
     // 4. OAuth Tokenを保存

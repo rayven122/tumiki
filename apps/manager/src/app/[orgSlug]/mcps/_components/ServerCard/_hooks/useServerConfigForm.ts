@@ -122,15 +122,13 @@ export const useServerConfigForm = ({
     /** 認証方法 */
     authMethod,
     /** 処理中かどうか */
-    isProcessing:
-      activeForm.isOAuthConnecting ||
-      (mode === "create" ? createForm.isAdding : editForm.isUpdating),
+    isProcessing: activeForm.isPending,
     /** 検証中かどうか（作成モードのみ） */
     isValidating: false, // 現在は使用されていないが互換性のために残す
     /** OAuth接続中かどうか */
-    isOAuthConnecting: activeForm.isOAuthConnecting,
+    isOAuthConnecting: false,
     /** 追加中かどうか（作成モードのみ） */
-    isAdding: mode === "create" ? createForm.isAdding : false,
+    isAdding: false,
     /** 環境変数の値を変更する関数 */
     handleEnvVarChange,
     /** サーバー名を設定する関数 */
