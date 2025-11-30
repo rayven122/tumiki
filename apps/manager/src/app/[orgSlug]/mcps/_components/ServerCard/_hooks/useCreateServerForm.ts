@@ -43,7 +43,7 @@ export const useCreateServerForm = ({
         toast.success(
           `${mcpServer?.name ?? customUrl ?? "サーバー"}が正常に追加されました。`,
         );
-        await utils.userMcpServerInstance.invalidate();
+        await utils.v2.userMcpServer.findOfficialServers.invalidate();
         onSuccess();
       },
       onError: (error) => {
@@ -94,15 +94,21 @@ export const useCreateServerForm = ({
    * カスタムサーバーとして追加します。
    *
    * @param serverName - サーバー名
-   * @param envVars - 環境変数（APIキーなど）省略時は空のオブジェクトが使用されます
+   * @param authType - 認証タイプ（"NONE" または "API_KEY"）必須
+   * @param envVars - 環境変数（APIキーなど）オプショナル
    */
   const handleAddWithApiKey = useCallback(
-    (serverName: string, envVars?: Record<string, string>) => {
+    (
+      serverName: string,
+      authType: "NONE" | "API_KEY",
+      envVars?: Record<string, string>,
+    ) => {
       createApiKeyMcpServer({
         mcpServerTemplateId: mcpServer?.id,
         customUrl: customUrl,
         envVars,
         name: serverName,
+        authType,
       });
     },
     [mcpServer?.id, customUrl, createApiKeyMcpServer],

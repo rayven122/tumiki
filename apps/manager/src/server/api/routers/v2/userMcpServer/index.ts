@@ -31,6 +31,7 @@ export const CreateApiKeyMcpServerInputV2 = z
     envVars: z.record(z.string(), z.string()).optional(),
     name: nameValidationSchema,
     description: z.string().optional(),
+    authType: z.enum(["NONE", "API_KEY"]),
   })
   .refine((data) => data.mcpServerTemplateId ?? data.customUrl, {
     message: "mcpServerTemplateId または customUrl のいずれかが必要です",

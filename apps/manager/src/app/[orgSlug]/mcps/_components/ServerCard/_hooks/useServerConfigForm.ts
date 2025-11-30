@@ -98,7 +98,11 @@ export const useServerConfigForm = ({
     } else {
       // APIキー認証の場合
       if (mode === "create") {
-        createForm.handleAddWithApiKey(serverName, envVars);
+        // envVarsの有無でauthTypeを判定
+        const authType = Object.values(envVars).some((v) => v.trim() !== "")
+          ? "API_KEY"
+          : "NONE";
+        createForm.handleAddWithApiKey(serverName, authType, envVars);
       } else {
         editForm.handleUpdateWithApiKey(envVars);
       }
