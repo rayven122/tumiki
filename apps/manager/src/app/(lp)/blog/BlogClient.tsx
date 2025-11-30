@@ -5,10 +5,8 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import type { BlogPost } from "@/types/blog";
 import { ArrowRight } from "lucide-react";
-import { useState } from "react";
 import { CommunitySection } from "@/app/_components/site/jp/CommunitySection";
 import { Header } from "@/app/_components/site/jp/Header";
-import { WaitingListModal } from "@/app/_components/site/jp/WaitingListModal";
 import { FooterSection } from "@/app/_components/site/jp/FooterSection";
 
 interface BlogClientProps {
@@ -16,11 +14,9 @@ interface BlogClientProps {
 }
 
 export const BlogClient = ({ posts }: BlogClientProps) => {
-  const [showModal, setShowModal] = useState(false);
-
   return (
     <div className="min-h-screen bg-white">
-      <Header setShowModal={setShowModal} />
+      <Header />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b-2 border-black bg-gradient-to-br from-white via-gray-50 to-white pt-32">
@@ -151,22 +147,17 @@ export const BlogClient = ({ posts }: BlogClientProps) => {
           <p className="mb-8 text-lg text-gray-600">
             Tumikiの最新アップデートやAI技術のトレンドを定期的にお届けします
           </p>
-          <button
-            onClick={() => setShowModal(true)}
+          <Link
+            href="/signup"
             className="inline-flex items-center border-2 border-black bg-black px-8 py-4 font-bold text-white shadow-[4px_4px_0_#6366f1] transition-all hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#6366f1]"
           >
             Tumikiを試してみる
             <ArrowRight className="ml-2 h-5 w-5" />
-          </button>
+          </Link>
         </div>
       </section>
 
       <FooterSection />
-
-      <WaitingListModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-      />
     </div>
   );
 };
