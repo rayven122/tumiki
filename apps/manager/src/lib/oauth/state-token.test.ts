@@ -1,175 +1,336 @@
-// @vitest-environment node
-
-import { describe, test, expect, beforeAll, afterAll, vi } from "vitest";
+import {
+  describe,
+  test,
+  expect,
+  beforeEach,
+  beforeAll,
+  afterAll,
+  vi,
+} from "vitest";
 import {
   createStateToken,
   verifyStateToken,
   type OAuthStatePayload,
+  OAuthStatePayloadSchema,
 } from "./state-token";
 
-// テスト全体で使用する環境変数を設定
-beforeAll(() => {
-  vi.stubEnv("OAUTH_STATE_SECRET", "test-secret-key-min-32-chars-long-12345");
+// 環境変数をモック
+const mockSecret = "test-secret-key-for-jwt-signing-must-be-secure-enough";
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  // テスト用の環境変数を設定
+  process.env.OAUTH_STATE_SECRET = mockSecret;
 });
 
-afterAll(() => {
-  vi.unstubAllEnvs();
+// テスト用のベースペイロード（JWTクレームを除外した形式）
+const createMockPayload = (): OAuthStatePayload => ({
+  state: "test-state-123",
+  codeVerifier: "test-code-verifier-abc",
+  codeChallenge: "test-code-challenge-xyz",
+  nonce: "test-nonce-456",
+  mcpServerId: "mcp-server-789",
+  userId: "user-123",
+  organizationId: "org-456",
+  redirectUri: "https://example.com/callback",
+  requestedScopes: ["read", "write"],
+  expiresAt: Date.now() + 10 * 60 * 1000, // 10分後
+});
+
+describe("OAuthStatePayloadSchema", () => {
+  test("有効なペイロードを正しく検証する", () => {
+    const payload = createMockPayload();
+    const result = OAuthStatePayloadSchema.parse(payload);
+    expect(result).toStrictEqual(payload);
+  });
+
+  test("JWTクレーム（iat, exp）を含むペイロードを正しく検証する", () => {
+    const payload = {
+      ...createMockPayload(),
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor((Date.now() + 10 * 60 * 1000) / 1000),
+    };
+    const result = OAuthStatePayloadSchema.parse(payload);
+    expect(result).toStrictEqual(payload);
+  });
+
+  test("必須フィールドが不足している場合はエラーを投げる", () => {
+    const invalidPayload = {
+      state: "test-state",
+      // その他の必須フィールドが不足
+    };
+    expect(() => OAuthStatePayloadSchema.parse(invalidPayload)).toThrow();
+  });
+
+  test("フィールドの型が間違っている場合はエラーを投げる", () => {
+    const invalidPayload = {
+      ...createMockPayload(),
+      expiresAt: "invalid-number", // 数値でない
+    };
+    expect(() => OAuthStatePayloadSchema.parse(invalidPayload)).toThrow();
+  });
 });
 
 describe("createStateToken", () => {
-  // iat と exp は JWT クレームとして自動追加されるため、初期ペイロードには含めない
-  const mockPayload: Omit<OAuthStatePayload, "iat" | "exp"> = {
-    state: "test-state",
-    codeVerifier: "test-verifier",
-    codeChallenge: "test-challenge",
-    nonce: "test-nonce",
-    mcpServerId: "mcp-server-123",
-    userId: "user-123",
-    organizationId: "org-123",
-    redirectUri: "https://example.com/callback",
-    requestedScopes: ["read", "write"],
-    expiresAt: Date.now() + 600000, // 10分後
-  };
+  test("有効なペイロードから正常にJWTトークンを生成する", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
 
-  test("正常なペイロードでトークンを生成できる", async () => {
-    const token = await createStateToken(mockPayload);
-
-    expect(token).toBeTruthy();
+    // JWTトークンの形式（3つの部分をドットで区切った文字列）であることを確認
     expect(typeof token).toBe("string");
-    expect(token.split(".")).toHaveLength(3); // JWT形式（header.payload.signature）
+    expect(token.split(".")).toHaveLength(3);
   });
 
-  test("環境変数が設定されていない場合、エラーが投げられる", async () => {
-    vi.unstubAllEnvs();
+  test("生成されたトークンが復号化可能であることを確認する", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
+    const verified = await verifyStateToken(token);
 
-    await expect(createStateToken(mockPayload)).rejects.toThrow(
+    // JWTクレーム（iat, exp）が追加されることを考慮して、元のペイロードが含まれていることを確認
+    expect(verified.state).toBe(payload.state);
+    expect(verified.codeVerifier).toBe(payload.codeVerifier);
+    expect(verified.userId).toBe(payload.userId);
+    expect(verified.organizationId).toBe(payload.organizationId);
+  });
+
+  test("環境変数が設定されていない場合はエラーを投げる", async () => {
+    // 一時的に環境変数をクリア
+    delete process.env.OAUTH_STATE_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    const payload = createMockPayload();
+    await expect(createStateToken(payload)).rejects.toThrow(
       "OAUTH_STATE_SECRET or NEXTAUTH_SECRET environment variable is required",
     );
 
-    // テスト後に環境変数を復元
-    vi.stubEnv("OAUTH_STATE_SECRET", "test-secret-key-min-32-chars-long-12345");
+    // 元に戻す
+    process.env.OAUTH_STATE_SECRET = mockSecret;
   });
 
   test("NEXTAUTH_SECRETがフォールバックとして使用される", async () => {
-    vi.unstubAllEnvs();
-    vi.stubEnv("NEXTAUTH_SECRET", "nextauth-secret-key-min-32-chars-long-123");
+    // OAUTH_STATE_SECRETをクリアしてNEXTAUTH_SECRETを設定
+    delete process.env.OAUTH_STATE_SECRET;
+    process.env.NEXTAUTH_SECRET = mockSecret;
 
-    const token = await createStateToken(mockPayload);
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
 
-    expect(token).toBeTruthy();
     expect(typeof token).toBe("string");
+    expect(token.split(".")).toHaveLength(3);
 
-    // テスト後に環境変数を復元
-    vi.unstubAllEnvs();
-    vi.stubEnv("OAUTH_STATE_SECRET", "test-secret-key-min-32-chars-long-12345");
+    // 元に戻す
+    process.env.OAUTH_STATE_SECRET = mockSecret;
   });
 
-  test("不正なペイロード（必須フィールド欠如）でエラーが投げられる", async () => {
+  test("無効なペイロードでエラーを投げる", async () => {
     const invalidPayload = {
-      state: "test-state",
-      // codeVerifierが欠如
-      codeChallenge: "test-challenge",
-      nonce: "test-nonce",
-    } as unknown as Omit<OAuthStatePayload, "iat" | "exp">;
+      state: "test",
+      // 必須フィールドが不足
+    } as any; // OAuthStatePayloadではなく、意図的に不正なオブジェクト
 
-    await expect(createStateToken(invalidPayload)).rejects.toThrow();
+    await expect(createStateToken(invalidPayload)).rejects.toThrow(
+      "Invalid state token payload",
+    );
   });
 });
 
 describe("verifyStateToken", () => {
-  // iat と exp は JWT クレームとして自動追加されるため、初期ペイロードには含めない
-  const mockPayload: Omit<OAuthStatePayload, "iat" | "exp"> = {
-    state: "test-state",
-    codeVerifier: "test-verifier",
-    codeChallenge: "test-challenge",
-    nonce: "test-nonce",
-    mcpServerId: "mcp-server-123",
-    userId: "user-123",
-    organizationId: "org-123",
-    redirectUri: "https://example.com/callback",
-    requestedScopes: ["read", "write"],
-    expiresAt: Date.now() + 600000,
-  };
-
-  test("正常なトークンを検証・復号化できる", async () => {
-    const token = await createStateToken(mockPayload);
+  test("有効なトークンを正常に検証・復号化する", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
     const verified = await verifyStateToken(token);
 
-    expect(verified.state).toBe(mockPayload.state);
-    expect(verified.codeVerifier).toBe(mockPayload.codeVerifier);
-    expect(verified.codeChallenge).toBe(mockPayload.codeChallenge);
-    expect(verified.nonce).toBe(mockPayload.nonce);
-    expect(verified.mcpServerId).toBe(mockPayload.mcpServerId);
-    expect(verified.userId).toBe(mockPayload.userId);
-    expect(verified.organizationId).toBe(mockPayload.organizationId);
-    expect(verified.redirectUri).toBe(mockPayload.redirectUri);
-    expect(verified.requestedScopes).toStrictEqual(mockPayload.requestedScopes);
-  });
-
-  test("改ざんされたトークンは検証に失敗する", async () => {
-    const token = await createStateToken(mockPayload);
-    const tamperedToken = token.slice(0, -10) + "tampered123";
-
-    await expect(verifyStateToken(tamperedToken)).rejects.toThrow();
-  });
-
-  test("異なるシークレットキーで署名されたトークンは検証に失敗する", async () => {
-    const token = await createStateToken(mockPayload);
-
-    // シークレットキーを一時的に変更
-    vi.unstubAllEnvs();
-    vi.stubEnv("OAUTH_STATE_SECRET", "different-secret-key-min-32-chars-456");
-
-    await expect(verifyStateToken(token)).rejects.toThrow();
-
-    // テスト後に環境変数を復元
-    vi.unstubAllEnvs();
-    vi.stubEnv("OAUTH_STATE_SECRET", "test-secret-key-min-32-chars-long-12345");
-  });
-
-  test("期限切れトークンは検証に失敗する", async () => {
-    const expiredPayload: Omit<OAuthStatePayload, "iat" | "exp"> = {
-      ...mockPayload,
-      expiresAt: Date.now() - 1000, // 1秒前（過去）
-    };
-
-    const token = await createStateToken(expiredPayload);
-
-    // JWTの検証は即座に失敗するため、少し待つ必要はない
-    await expect(verifyStateToken(token)).rejects.toThrow();
-  });
-
-  test("不正な形式のトークンは検証に失敗する", async () => {
-    const invalidToken = "not.a.valid.jwt.token";
-
-    await expect(verifyStateToken(invalidToken)).rejects.toThrow();
-  });
-
-  test("空文字列のトークンは検証に失敗する", async () => {
-    await expect(verifyStateToken("")).rejects.toThrow();
-  });
-
-  test("JWTクレーム（iat, exp）が含まれていても検証できる", async () => {
-    const token = await createStateToken(mockPayload);
-    const verified = await verifyStateToken(token);
+    // 元のペイロードの内容が保持されていることを確認
+    expect(verified.state).toBe(payload.state);
+    expect(verified.codeVerifier).toBe(payload.codeVerifier);
+    expect(verified.codeChallenge).toBe(payload.codeChallenge);
+    expect(verified.nonce).toBe(payload.nonce);
+    expect(verified.mcpServerId).toBe(payload.mcpServerId);
+    expect(verified.userId).toBe(payload.userId);
+    expect(verified.organizationId).toBe(payload.organizationId);
+    expect(verified.redirectUri).toBe(payload.redirectUri);
+    expect(verified.requestedScopes).toStrictEqual(payload.requestedScopes);
 
     // JWTクレームが追加されていることを確認
     expect(verified.iat).toBeDefined();
     expect(verified.exp).toBeDefined();
-    expect(typeof verified.iat).toBe("number");
-    expect(typeof verified.exp).toBe("number");
   });
 
-  test("環境変数が設定されていない場合、エラーが投げられる", async () => {
-    const token = await createStateToken(mockPayload);
+  test("改ざんされたトークンを検出してエラーを投げる", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
 
-    vi.unstubAllEnvs();
+    // トークンを改ざん
+    const tamperedToken = token + "tampered";
+
+    await expect(verifyStateToken(tamperedToken)).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+  });
+
+  test("署名部分が改ざんされたトークンを検出する", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
+    const tokenParts = token.split(".");
+
+    // 署名部分を改ざん
+    const tamperedSignature = tokenParts[2]!.slice(0, -1) + "X";
+    const tamperedToken = `${tokenParts[0]}.${tokenParts[1]}.${tamperedSignature}`;
+
+    await expect(verifyStateToken(tamperedToken)).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+  });
+
+  test("ペイロード部分が改ざんされたトークンを検出する", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
+    const tokenParts = token.split(".");
+
+    // Base64でエンコードされた悪意のあるペイロード
+    const maliciousPayload = Buffer.from(
+      JSON.stringify({
+        userId: "hacker-user-id",
+        organizationId: "hacker-org-id",
+      }),
+    ).toString("base64url");
+
+    const tamperedToken = `${tokenParts[0]}.${maliciousPayload}.${tokenParts[2]}`;
+
+    await expect(verifyStateToken(tamperedToken)).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+  });
+
+  test("期限切れトークンを検出してエラーを投げる", async () => {
+    // 過去の期限で新しいトークンを作成
+    const expiredPayload = {
+      ...createMockPayload(),
+      expiresAt: Date.now() - 1000, // 1秒前に期限切れ
+    };
+
+    const token = await createStateToken(expiredPayload);
+
+    // JWTライブラリは期限切れトークンを自動的に拒否する
+    await expect(verifyStateToken(token)).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+  });
+
+  test("不正な形式のトークンでエラーを投げる", async () => {
+    const invalidToken = "not.a.valid.jwt.token";
+
+    await expect(verifyStateToken(invalidToken)).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+  });
+
+  test("空のトークンでエラーを投げる", async () => {
+    await expect(verifyStateToken("")).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+  });
+
+  test("異なるシークレットキーで署名されたトークンを拒否する", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
+
+    // 異なるシークレットキーを設定
+    process.env.OAUTH_STATE_SECRET = "different-secret-key";
+
+    await expect(verifyStateToken(token)).rejects.toThrow(
+      "Invalid state token payload structure",
+    );
+
+    // 元に戻す
+    process.env.OAUTH_STATE_SECRET = mockSecret;
+  });
+
+  test("環境変数が設定されていない場合はエラーを投げる", async () => {
+    const payload = createMockPayload();
+    const token = await createStateToken(payload);
+
+    // 一時的に環境変数をクリア
+    delete process.env.OAUTH_STATE_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
 
     await expect(verifyStateToken(token)).rejects.toThrow(
       "OAUTH_STATE_SECRET or NEXTAUTH_SECRET environment variable is required",
     );
 
-    // テスト後に環境変数を復元
-    vi.stubEnv("OAUTH_STATE_SECRET", "test-secret-key-min-32-chars-long-12345");
+    // 元に戻す
+    process.env.OAUTH_STATE_SECRET = mockSecret;
+  });
+
+  test("古いトークンフォーマットを適切に処理する", async () => {
+    // JWTクレーム以外のフィールドが追加されたペイロードでも正常に動作することを確認
+    const payloadWithExtra = {
+      ...createMockPayload(),
+      customField: "custom-value", // カスタムフィールド
+    };
+
+    // Zodスキーマによりカスタムフィールドは除外されるが、エラーにはならない
+    const token = await createStateToken(payloadWithExtra);
+    const verified = await verifyStateToken(token);
+
+    expect(verified.state).toBe(payloadWithExtra.state);
+    // カスタムフィールドは含まれない
+    expect("customField" in verified).toBe(false);
+  });
+});
+
+describe("セキュリティテスト", () => {
+  test("異なるペイロードから同じトークンが生成されないことを確認", async () => {
+    const payload1 = createMockPayload();
+    const payload2 = {
+      ...payload1,
+      userId: "different-user-id",
+    };
+
+    const token1 = await createStateToken(payload1);
+    const token2 = await createStateToken(payload2);
+
+    expect(token1).not.toBe(token2);
+  });
+
+  test("時間による署名の一意性を確認", async () => {
+    const payload = createMockPayload();
+
+    const token1 = await createStateToken(payload);
+    // 少し時間を置く
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const token2 = await createStateToken(payload);
+
+    // 同じペイロードでも時間が異なるため、異なるトークンが生成される
+    expect(token1).not.toBe(token2);
+  });
+
+  test("大量のデータでのパフォーマンステスト", async () => {
+    const payload = {
+      ...createMockPayload(),
+      requestedScopes: Array.from({ length: 100 }, (_, i) => `scope-${i}`),
+      redirectUri: "https://example.com/callback".repeat(10),
+    };
+
+    const startTime = Date.now();
+    const token = await createStateToken(payload);
+    const verified = await verifyStateToken(token);
+    const endTime = Date.now();
+
+    // パフォーマンスチェック（100ms以内で完了することを期待）
+    expect(endTime - startTime).toBeLessThan(100);
+    expect(verified.requestedScopes).toHaveLength(100);
+  });
+
+  test("極端に長い期限での動作確認", async () => {
+    const payload = {
+      ...createMockPayload(),
+      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1年後
+    };
+
+    const token = await createStateToken(payload);
+    const verified = await verifyStateToken(token);
+
+    expect(verified.expiresAt).toBe(payload.expiresAt);
   });
 });
