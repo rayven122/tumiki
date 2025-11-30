@@ -73,14 +73,3 @@ export const getTokenFromDB = async (
 
   return token;
 };
-
-/**
- * lastUsedAtを更新
- *
- * 新スキーマではlastUsedAtフィールドが削除されたためno-op
- *
- * @param tokenId トークンID
- */
-export const updateLastUsedAt = async (tokenId: string): Promise<void> => {
-  // 新スキーマではlastUsedAtフィールドが削除されたためno-op
-};
