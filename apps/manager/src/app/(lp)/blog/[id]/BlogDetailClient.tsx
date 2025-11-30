@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import DOMPurify from "dompurify";
 import type { BlogPost } from "@/types/blog";
 import { FooterSection } from "@/app/_components/site/jp/FooterSection";
-import { WaitingListModal } from "@/app/_components/site/jp/WaitingListModal";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -16,8 +15,6 @@ interface BlogDetailClientProps {
 }
 
 export default function BlogDetailClient({ post }: BlogDetailClientProps) {
-  const [showModal, setShowModal] = useState(false);
-
   const sanitizedContent = useMemo(() => {
     if (typeof window !== "undefined") {
       return DOMPurify.sanitize(post.content);
@@ -27,7 +24,7 @@ export default function BlogDetailClient({ post }: BlogDetailClientProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header setShowModal={setShowModal} />
+      <Header />
       <article className="relative mx-auto max-w-4xl px-5 py-16 pt-32 md:py-24 md:pt-32">
         {/* Back to Blog Link */}
         <motion.div
@@ -116,20 +113,16 @@ export default function BlogDetailClient({ post }: BlogDetailClientProps) {
           <p className="mb-6 text-gray-600">
             MCPを活用して、あなたのチームに最適なAIアシスタントを構築できます
           </p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="border-2 border-black bg-black px-8 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
+          <Link
+            href="/signup"
+            className="inline-block border-2 border-black bg-black px-8 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
           >
-            早期アクセスに登録
-          </button>
+            無料登録
+          </Link>
         </motion.div>
       </article>
 
       <FooterSection />
-      <WaitingListModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-      />
     </div>
   );
 }
