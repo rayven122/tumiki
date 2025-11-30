@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
@@ -46,6 +47,9 @@ export const UserMcpServerCard = ({
   revalidate,
   isSortMode = false,
 }: UserMcpServerCardProps) => {
+  const params = useParams<{ orgSlug: string }>();
+  const orgSlug = params.orgSlug;
+
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
@@ -102,9 +106,7 @@ export const UserMcpServerCard = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link
-                    href={`/mcp/${userMcpServer.serverType === ServerType.OFFICIAL ? "servers" : "custom-servers"}/${userMcpServer.id}`}
-                  >
+                  <Link href={`/${orgSlug}/mcps/${userMcpServer.id}`}>
                     <ExternalLink className="mr-2 h-4 w-4" />
                     詳細を見る
                   </Link>
