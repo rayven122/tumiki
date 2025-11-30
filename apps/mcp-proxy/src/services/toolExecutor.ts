@@ -68,26 +68,86 @@ export const executeTool = async (
       );
     }
 
-    // 3. McpConfigを取得（userId優先、なければorganizationId）
-    const mcpConfig = await db.mcpConfig.findFirst({
-      where: {
+    // 3. 認証タイプに応じて設定を取得
+    let mcpConfig: {
+      id: string;
+      envVars: string;
+      mcpServerTemplateId: string;
+      organizationId: string;
+      userId: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    } | null = null;
+
+    // OAuth の場合は McpConfig は不要（直接 OAuthToken から取得）
+    if (tool.mcpServerTemplate.authType === "API_KEY") {
+      mcpConfig = await db.mcpConfig.findFirst({
+        where: {
+          mcpServerTemplateId: tool.mcpServerTemplate.id,
+          organizationId,
+          OR: [...(userId ? [{ userId }] : []), { userId: null }],
+        },
+        orderBy: {
+          userId: "desc", // userIdがnullでないレコードを優先
+        },
+        select: {
+          id: true,
+          envVars: true,
+          mcpServerTemplateId: true,
+          organizationId: true,
+          userId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!mcpConfig) {
+        throw new Error(
+          `API Key configuration not found for template ${templateName}`,
+        );
+      }
+    } else if (tool.mcpServerTemplate.authType === "OAUTH") {
+      // OAuth の場合は userId が必要
+      if (!userId) {
+        throw new Error(
+          `User ID is required for OAuth authentication. Template: ${templateName}`,
+        );
+      }
+
+      // OAuthToken の存在確認
+      const oauthToken = await db.mcpOAuthToken.findFirst({
+        where: {
+          userId,
+          oauthClient: {
+            mcpServerTemplateId: tool.mcpServerTemplate.id,
+          },
+        },
+      });
+
+      if (!oauthToken) {
+        throw new Error(
+          `OAuth token not found for user ${userId} and template ${templateName}. Please authenticate first.`,
+        );
+      }
+
+      logInfo("OAuth token found", {
+        tokenId: oauthToken.id,
+        userId,
+        templateName,
+      });
+
+      // OAuth の場合は mcpConfig を null のまま（oauth-header-injector で userId から直接取得）
+      // ダミーの mcpConfig を作成して userId を渡す
+      mcpConfig = {
+        id: `oauth-${oauthToken.id}`,
+        envVars: "{}",
         mcpServerTemplateId: tool.mcpServerTemplate.id,
         organizationId,
-        OR: [...(userId ? [{ userId }] : []), { userId: null }],
-      },
-      orderBy: {
-        userId: "desc", // userIdがnullでないレコードを優先
-      },
-      select: {
-        id: true,
-        envVars: true,
-        mcpServerTemplateId: true,
-        organizationId: true,
-        userId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
 
     // 4. MCP サーバーに接続
     const client = await connectToMcpServer(tool.mcpServerTemplate, mcpConfig);
@@ -119,6 +179,25 @@ export const executeTool = async (
       mcpServerId,
       fullToolName,
     });
+
+    // ツール実行失敗時は、エラー内容に関係なく McpServer の serverStatus を ERROR に更新
+    try {
+      await db.mcpServer.update({
+        where: { id: mcpServerId },
+        data: { serverStatus: "ERROR" },
+      });
+      logInfo(
+        "Updated McpServer status to ERROR due to tool execution failure",
+        {
+          mcpServerId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      );
+    } catch (updateError) {
+      logError("Failed to update McpServer status", updateError as Error, {
+        mcpServerId,
+      });
+    }
 
     throw new Error(
       `Failed to execute tool ${fullToolName}: ${error instanceof Error ? error.message : "Unknown error"}`,

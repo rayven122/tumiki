@@ -80,6 +80,7 @@ const injectOAuthHeaders = async (
     logInfo("OAuth token injected successfully", {
       mcpConfigId: mcpConfig.id,
       expiresAt: token.expiresAt,
+      tokenPreview: token.accessToken.substring(0, 20),
     });
   } catch (error) {
     if (error instanceof ReAuthRequiredError) {
