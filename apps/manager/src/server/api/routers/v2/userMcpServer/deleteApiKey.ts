@@ -24,16 +24,21 @@ export const deleteApiKey = async (
 
   // APIキーの存在確認と権限チェック
   const apiKey = await db.mcpApiKey.findUnique({
-    where: { id: apiKeyId, userId },
+    where: {
+      id: apiKeyId,
+      userId,
+      deletedAt: null, // 削除されていないもののみ
+    },
   });
 
   if (!apiKey) {
     throw new Error("APIキーが見つかりません");
   }
 
-  // APIキーを削除
-  await db.mcpApiKey.delete({
-    where: { id: apiKeyId, userId },
+  // APIキーを論理削除
+  await db.mcpApiKey.update({
+    where: { id: apiKeyId },
+    data: { deletedAt: new Date() },
   });
 
   return {

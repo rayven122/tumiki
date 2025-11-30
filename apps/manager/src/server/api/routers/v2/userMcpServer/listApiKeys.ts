@@ -46,11 +46,12 @@ export const listApiKeys = async (
     throw new Error("サーバーが見つかりません");
   }
 
-  // ユーザーのAPIキー一覧を取得
+  // ユーザーのAPIキー一覧を取得（削除済みを除外）
   const apiKeys = await db.mcpApiKey.findMany({
     where: {
       mcpServerId: serverId,
       userId,
+      deletedAt: null, // 削除されていないもののみ
     },
     orderBy: {
       createdAt: "desc",
