@@ -87,7 +87,7 @@ export const ConnectionSettings = ({
 
     // Claude Code - ネイティブサポート
     if (clientId === "claude-code") {
-      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.id} --header "x-api-key: ${apiKey}"`;
+      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.id} --header "tumiki-api-key: ${apiKey}"`;
     }
 
     // Claude Desktop - コネクト機能用のシンプルなURL
@@ -104,7 +104,7 @@ export const ConnectionSettings = ({
               url: `${serverUrl}/mcp/${server.id}`,
               transport: "http",
               headers: {
-                "x-api-key": apiKey,
+                "tumiki-api-key": apiKey,
               },
             },
           },
@@ -123,7 +123,7 @@ export const ConnectionSettings = ({
               url: `${serverUrl}/mcp/${server.id}`,
               transport: "http",
               headers: {
-                "x-api-key": apiKey,
+                "tumiki-api-key": apiKey,
               },
             },
           },
@@ -146,7 +146,7 @@ export const ConnectionSettings = ({
                 "mcp-remote@latest",
                 `${serverUrl}/mcp/${server.id}`,
                 "--header",
-                `x-api-key: ${apiKey}`,
+                `tumiki-api-key: ${apiKey}`,
                 "--strategy",
                 "http-only",
               ],
@@ -167,7 +167,7 @@ export const ConnectionSettings = ({
               url: `${serverUrl}/mcp/${server.id}`,
               transport: "http",
               headers: {
-                "x-api-key": apiKey,
+                "tumiki-api-key": apiKey,
               },
               alwaysAllow: [],
               disabled: false,
@@ -185,7 +185,7 @@ URL: ${serverUrl}/mcp/${server.id}
 Method: POST
 Headers:
   Content-Type: application/json
-  x-api-key: ${apiKey}
+  tumiki-api-key: ${apiKey}
 
 # mcp-remote経由での接続（stdioクライアント用）
 {
@@ -197,7 +197,7 @@ Headers:
         "mcp-remote@latest",
         "${serverUrl}/mcp/${server.id}",
         "--header",
-        "x-api-key: ${apiKey}",
+        "tumiki-api-key: ${apiKey}",
         "--strategy",
         "http-only"
       ]
@@ -346,7 +346,7 @@ Headers:
                       </p>
                       <p className="mt-2 text-xs text-blue-800">
                         <span className="font-medium">認証ヘッダー:</span>{" "}
-                        X-API-Key:{" "}
+                        Tumiki-API-Key:{" "}
                         {showApiKey ? apiKey : "•".repeat(20) + "..."}
                       </p>
                       <p className="mt-1 text-xs text-blue-700">

@@ -254,7 +254,7 @@ describe("integratedAuthMiddleware", () => {
       expect(body.jwtPayload).toBeUndefined();
     });
 
-    test("X-API-Key ヘッダーで認証を試行", async () => {
+    test("Tumiki-API-Key ヘッダーで認証を試行", async () => {
       const { db } = await import("@tumiki/db/server");
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       vi.mocked(db.mcpApiKey.findUnique).mockResolvedValueOnce({
@@ -278,7 +278,7 @@ describe("integratedAuthMiddleware", () => {
 
       const res = await app.request("/test", {
         headers: {
-          "X-API-Key": "test-api-key",
+          "Tumiki-API-Key": "test-api-key",
         },
       });
 
@@ -390,7 +390,7 @@ describe("integratedAuthMiddleware", () => {
           code: -32001,
           message: "Authentication required",
           data: {
-            hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
+            hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or Tumiki-API-Key header)",
           },
         },
       });

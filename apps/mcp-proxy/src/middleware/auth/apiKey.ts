@@ -84,7 +84,7 @@ export const apiKeyAuthMiddleware = async (
   if (!apiKey) {
     return c.json(
       createUnauthorizedError("Invalid or inactive API key", {
-        hint: "Provide API key via X-API-Key header or Authorization: Bearer header",
+        hint: "Provide API key via Tumiki-API-Key header or Authorization: Bearer header",
       }),
       401,
     );

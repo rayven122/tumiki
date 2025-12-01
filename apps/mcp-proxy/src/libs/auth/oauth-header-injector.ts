@@ -144,7 +144,7 @@ const injectApiKeyHeaders = (
       }
     } else {
       // デフォルトヘッダー名を使用
-      const defaultHeaderName = "X-API-Key";
+      const defaultHeaderName = "Tumiki-API-Key";
       const apiKey = envVars[defaultHeaderName] || envVars.API_KEY;
 
       if (apiKey) {
