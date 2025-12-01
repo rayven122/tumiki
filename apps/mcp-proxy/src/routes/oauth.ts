@@ -1,39 +1,8 @@
 import type { Context } from "hono";
 import type { OAuthErrorResponse, OAuthTokenResponse } from "../types/index.js";
-import { logError, logDebug } from "../libs/logger/index.js";
-import { Issuer, type Client, errors } from "openid-client";
-
-/**
- * Keycloak Issuer のキャッシュ
- *
- * パフォーマンス最適化のため、Issuer discovery の結果をキャッシュ
- */
-let keycloakIssuerCache: Issuer | null = null;
-
-/**
- * Keycloak Issuer を取得（キャッシュ付き）
- *
- * openid-client の Issuer.discover() を使用して
- * Keycloak の OAuth/OIDC メタデータを自動取得
- */
-const getKeycloakIssuer = async (): Promise<Issuer> => {
-  if (!keycloakIssuerCache) {
-    const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
-    if (!keycloakIssuerUrl) {
-      throw new Error("KEYCLOAK_ISSUER environment variable is not set");
-    }
-
-    // Issuer Discovery（自動メタデータ取得）
-    keycloakIssuerCache = await Issuer.discover(keycloakIssuerUrl);
-
-    logDebug("Keycloak Issuer discovered for OAuth token endpoint", {
-      issuer: keycloakIssuerCache.issuer,
-      tokenEndpoint: keycloakIssuerCache.metadata.token_endpoint,
-    });
-  }
-
-  return keycloakIssuerCache;
-};
+import { logError } from "../libs/logger/index.js";
+import { type Client, errors } from "openid-client";
+import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
 
 /**
  * Keycloak Client を作成
