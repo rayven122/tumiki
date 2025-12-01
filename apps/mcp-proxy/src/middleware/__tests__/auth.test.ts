@@ -319,7 +319,7 @@ describe("integratedAuthMiddleware", () => {
 
       const res = await app.request("/test", {
         headers: {
-          "X-API-Key": "expired-api-key",
+          "Tumiki-API-Key": "expired-api-key",
         },
       });
 
@@ -362,7 +362,7 @@ describe("integratedAuthMiddleware", () => {
 
       const res = await app.request("/test", {
         headers: {
-          "X-API-Key": "valid-api-key",
+          "Tumiki-API-Key": "valid-api-key",
         },
       });
 

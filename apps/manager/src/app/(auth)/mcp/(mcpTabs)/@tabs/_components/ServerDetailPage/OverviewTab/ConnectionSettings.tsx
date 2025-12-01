@@ -59,9 +59,9 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
     // Claude Code - ネイティブサポート
     if (clientId === "claude-code") {
       if (connectionType === "http") {
-        return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${instance.id} --header "x-api-key: ${apiKey}"`;
+        return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${instance.id} --header "tumiki-api-key: ${apiKey}"`;
       } else {
-        return `claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${instance.id} --header "x-api-key: ${apiKey}"`;
+        return `claude mcp add --transport sse ${serverName} ${serverUrl}/sse/${instance.id} --header "tumiki-api-key: ${apiKey}"`;
       }
     }
 
@@ -81,7 +81,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                 url: `${serverUrl}/mcp/${instance.id}`,
                 transport: "http",
                 headers: {
-                  "x-api-key": apiKey,
+                  "tumiki-api-key": apiKey,
                 },
               },
             },
@@ -101,7 +101,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                   "mcp-remote@latest",
                   `${serverUrl}/sse/${instance.id}`,
                   "--header",
-                  `x-api-key: ${apiKey}`,
+                  `tumiki-api-key: ${apiKey}`,
                   "--strategy",
                   "sse-only",
                 ],
@@ -126,7 +126,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                   : `${serverUrl}/sse/${instance.id}`,
               transport: connectionType,
               headers: {
-                "x-api-key": apiKey,
+                "tumiki-api-key": apiKey,
               },
             },
           },
@@ -150,7 +150,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                   "mcp-remote@latest",
                   `${serverUrl}/mcp/${instance.id}`,
                   "--header",
-                  `x-api-key: ${apiKey}`,
+                  `tumiki-api-key: ${apiKey}`,
                   "--strategy",
                   "http-only",
                 ],
@@ -168,7 +168,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
               [serverName]: {
                 serverUrl: `${serverUrl}/sse/${instance.id}`,
                 headers: {
-                  "x-api-key": apiKey,
+                  "tumiki-api-key": apiKey,
                 },
               },
             },
@@ -191,7 +191,7 @@ export const ConnectionSettings = ({ instance }: ConnectionSettingsProps) => {
                   : `${serverUrl}/sse/${instance.id}`,
               transport: connectionType,
               headers: {
-                "x-api-key": apiKey,
+                "tumiki-api-key": apiKey,
               },
               alwaysAllow: [],
               disabled: false,
@@ -210,7 +210,7 @@ URL: ${serverUrl}/mcp/${instance.id}
 Method: POST
 Headers:
   Content-Type: application/json
-  x-api-key: ${apiKey}
+  tumiki-api-key: ${apiKey}
 
 # mcp-remote経由での接続（stdioクライアント用）
 {
@@ -222,7 +222,7 @@ Headers:
         "mcp-remote@latest",
         "${serverUrl}/mcp/${instance.id}",
         "--header",
-        "x-api-key: ${apiKey}",
+        "tumiki-api-key: ${apiKey}",
         "--strategy",
         "http-only"
       ]
@@ -234,14 +234,14 @@ Headers:
 URL: ${serverUrl}/sse/${instance.id}
 Method: GET (SSE接続)
 Headers:
-  x-api-key: ${apiKey}
+  tumiki-api-key: ${apiKey}
 
 # メッセージ送信エンドポイント
 URL: ${serverUrl}/messages/${instance.id}
 Method: POST
 Headers:
   Content-Type: application/json
-  x-api-key: ${apiKey}
+  tumiki-api-key: ${apiKey}
 
 # mcp-remote経由での接続（stdioクライアント用）
 {
@@ -253,7 +253,7 @@ Headers:
         "mcp-remote@latest",
         "${serverUrl}/sse/${instance.id}",
         "--header",
-        "x-api-key: ${apiKey}",
+        "tumiki-api-key: ${apiKey}",
         "--strategy",
         "sse-only"
       ]
@@ -556,7 +556,7 @@ Headers:
                   </code>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  メソッド: POST | ヘッダー: x-api-key: {apiKey}
+                  メソッド: POST | ヘッダー: tumiki-api-key: {apiKey}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
                   JSON-RPC 2.0形式でリクエストを送信
@@ -572,7 +572,7 @@ URL: ${makeHttpProxyServerUrl(instance.id)}
 Method: POST
 Headers:
   Content-Type: application/json
-  x-api-key: ${apiKey}
+  tumiki-api-key: ${apiKey}
 
 # JSON-RPC 2.0 リクエスト例
 {
@@ -601,7 +601,7 @@ Headers:
                   </code>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  メソッド: GET (SSE接続) | ヘッダー: x-api-key: {apiKey}
+                  メソッド: GET (SSE接続) | ヘッダー: tumiki-api-key: {apiKey}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
                   メッセージ送信: POST {getProxyServerUrl()}/messages/
@@ -617,14 +617,14 @@ Headers:
 SSE接続URL: ${makeSseProxyServerUrl(instance.id)}
 Method: GET
 Headers:
-  x-api-key: ${apiKey}
+  tumiki-api-key: ${apiKey}
 
 # メッセージ送信
 URL: ${getProxyServerUrl()}/messages/${instance.id}
 Method: POST
 Headers:
   Content-Type: application/json
-  x-api-key: ${apiKey}`;
+  tumiki-api-key: ${apiKey}`;
                   await copyToClipboard(configText);
                   toast.success("SSE設定をコピーしました");
                 }}
