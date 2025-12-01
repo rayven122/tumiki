@@ -1,18 +1,56 @@
 import type { Context } from "hono";
 import type { OAuthErrorResponse, OAuthTokenResponse } from "../types/index.js";
+import { logError, logDebug } from "../libs/logger/index.js";
+import { Issuer, type Client, errors } from "openid-client";
 
 /**
- * Keycloak OAuth 2.1 トークンエンドポイントURL
+ * Keycloak Issuer のキャッシュ
  *
- * 環境変数 KEYCLOAK_ISSUER から構築
- * 例: https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token
+ * パフォーマンス最適化のため、Issuer discovery の結果をキャッシュ
  */
-const getKeycloakTokenEndpoint = (): string => {
-  const issuer = process.env.KEYCLOAK_ISSUER;
-  if (!issuer) {
-    throw new Error("KEYCLOAK_ISSUER environment variable is not set");
+let keycloakIssuerCache: Issuer | null = null;
+
+/**
+ * Keycloak Issuer を取得（キャッシュ付き）
+ *
+ * openid-client の Issuer.discover() を使用して
+ * Keycloak の OAuth/OIDC メタデータを自動取得
+ */
+const getKeycloakIssuer = async (): Promise<Issuer> => {
+  if (!keycloakIssuerCache) {
+    const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
+    if (!keycloakIssuerUrl) {
+      throw new Error("KEYCLOAK_ISSUER environment variable is not set");
+    }
+
+    // Issuer Discovery（自動メタデータ取得）
+    keycloakIssuerCache = await Issuer.discover(keycloakIssuerUrl);
+
+    logDebug("Keycloak Issuer discovered for OAuth token endpoint", {
+      issuer: keycloakIssuerCache.issuer,
+      tokenEndpoint: keycloakIssuerCache.metadata.token_endpoint,
+    });
   }
-  return `${issuer}/protocol/openid-connect/token`;
+
+  return keycloakIssuerCache;
+};
+
+/**
+ * Keycloak Client を作成
+ *
+ * @param clientId - クライアントID
+ * @param clientSecret - クライアントシークレット
+ * @returns openid-client の Client インスタンス
+ */
+const createKeycloakClient = async (
+  clientId: string,
+  clientSecret: string,
+): Promise<Client> => {
+  const issuer = await getKeycloakIssuer();
+  return new issuer.Client({
+    client_id: clientId,
+    client_secret: clientSecret,
+  });
 };
 
 /**
@@ -129,44 +167,98 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
       return c.json(validation.error, 400);
     }
 
-    // Keycloak Token Endpoint へのプロキシリクエスト
-    const keycloakTokenEndpoint = getKeycloakTokenEndpoint();
+    // openid-client を使用してトークンを取得
+    const req = body as Record<string, string>;
+    const client = await createKeycloakClient(req.client_id, req.client_secret);
 
-    // application/x-www-form-urlencoded 形式でリクエストボディを構築
-    const formData = new URLSearchParams();
-    for (const [key, value] of Object.entries(body)) {
-      if (typeof value === "string") {
-        formData.append(key, value);
-      }
+    // Grant Type に応じた処理
+    if (req.grant_type === "client_credentials") {
+      const tokenSet = await client.grant({
+        grant_type: "client_credentials",
+        scope: req.scope,
+      });
+
+      const tokenResponse: OAuthTokenResponse = {
+        access_token: tokenSet.access_token ?? "",
+        token_type: "Bearer",
+        expires_in: tokenSet.expires_in ?? 0,
+        refresh_token: tokenSet.refresh_token,
+        scope: tokenSet.scope,
+      };
+
+      return c.json(tokenResponse, 200);
     }
 
-    const response = await fetch(keycloakTokenEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData.toString(),
-    });
+    if (req.grant_type === "refresh_token") {
+      const tokenSet = await client.refresh(req.refresh_token);
 
-    // Keycloak からのレスポンスを取得
-    const responseBody = await response.json();
+      const tokenResponse: OAuthTokenResponse = {
+        access_token: tokenSet.access_token ?? "",
+        token_type: "Bearer",
+        expires_in: tokenSet.expires_in ?? 0,
+        refresh_token: tokenSet.refresh_token,
+        scope: tokenSet.scope,
+      };
 
-    // エラーレスポンスの場合
-    if (!response.ok) {
-      // Keycloak のエラーをそのまま返す
-      return c.json(
-        responseBody as OAuthErrorResponse,
-        response.status as 400 | 401 | 403 | 500,
-      );
+      return c.json(tokenResponse, 200);
     }
 
-    // 成功レスポンス
-    return c.json(responseBody as OAuthTokenResponse, 200);
-  } catch (error) {
-    console.error("OAuth token endpoint error:", error);
-
+    // ここに到達することはないはず（validateTokenRequestでチェック済み）
     const errorResponse: OAuthErrorResponse = {
-      error: "invalid_request",
+      error: "unsupported_grant_type",
+      error_description: "Unsupported grant type",
+    };
+    return c.json(errorResponse, 400);
+  } catch (error) {
+    logError("OAuth token endpoint error", error as Error);
+
+    // openid-client の OPError をハンドリング
+    if (error instanceof errors.OPError) {
+      // OPErrorのエラーコードをOAuthErrorResponseの型にマッピング
+      const knownErrors = [
+        "invalid_request",
+        "invalid_client",
+        "invalid_grant",
+        "unauthorized_client",
+        "unsupported_grant_type",
+        "invalid_scope",
+        "server_error",
+      ] as const;
+
+      const errorCode = knownErrors.includes(
+        error.error as (typeof knownErrors)[number],
+      )
+        ? (error.error as OAuthErrorResponse["error"])
+        : "server_error";
+
+      const errorResponse: OAuthErrorResponse = {
+        error: errorCode,
+        error_description: error.error_description ?? error.message,
+      };
+
+      // HTTPステータスコードの決定
+      const statusCode =
+        errorCode === "invalid_client" ||
+        errorCode === "invalid_grant" ||
+        errorCode === "unauthorized_client"
+          ? 401
+          : 400;
+
+      return c.json(errorResponse, statusCode);
+    }
+
+    // RPError（Relying Party側のエラー）をハンドリング
+    if (error instanceof errors.RPError) {
+      const errorResponse: OAuthErrorResponse = {
+        error: "server_error",
+        error_description: error.message,
+      };
+      return c.json(errorResponse, 500);
+    }
+
+    // その他のエラー
+    const errorResponse: OAuthErrorResponse = {
+      error: "server_error",
       error_description:
         error instanceof Error ? error.message : "Internal server error",
     };

@@ -196,6 +196,8 @@ export type OAuthTokenResponse = {
 
 /**
  * OAuth 2.1 エラーレスポンス (RFC 6749 Section 5.2)
+ *
+ * 標準エラーコード + サーバーエラー用の拡張
  */
 export type OAuthErrorResponse = {
   error:
@@ -204,7 +206,8 @@ export type OAuthErrorResponse = {
     | "invalid_grant"
     | "unauthorized_client"
     | "unsupported_grant_type"
-    | "invalid_scope";
+    | "invalid_scope"
+    | "server_error"; // サーバー内部エラー用
   error_description?: string;
   error_uri?: string;
 };
