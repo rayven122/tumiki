@@ -38,9 +38,21 @@ export const verifyOAuthState = async (
 
   // ユーザーID確認
   if (statePayload.userId !== userId) {
+    // セキュリティログとして記録
+    console.warn(
+      `[OAuth Security] User ID mismatch detected. Expected: ${userId}, Got: ${statePayload.userId}`,
+    );
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "User mismatch",
+      message: "Authentication failed", // 詳細を隠す
+    });
+  }
+
+  // 有効期限チェック
+  if (Date.now() > statePayload.expiresAt) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Authentication session expired",
     });
   }
 
