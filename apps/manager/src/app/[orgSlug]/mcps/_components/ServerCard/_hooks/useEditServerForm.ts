@@ -50,7 +50,7 @@ export const useEditServerForm = ({
     api.v2.userMcpServer.update.useMutation({
       onSuccess: async () => {
         toast.success(`${mcpServer.name}のAPIトークンが正常に更新されました。`);
-        await utils.userMcpServerInstance.invalidate();
+        await utils.v2.userMcpServer.invalidate();
         onSuccess();
       },
       onError: (error) => {

@@ -37,6 +37,7 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
+import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
 export const CreateApiKeyMcpServerInputV2 = z
@@ -143,6 +144,15 @@ export const ToggleToolInputV2 = z.object({
   isEnabled: z.boolean(),
 });
 
+// OAuth 再認証の入力スキーマ
+export const ReauthenticateOAuthMcpServerInputV2 = z.object({
+  mcpServerId: McpServerIdSchema,
+});
+
+export const ReauthenticateOAuthMcpServerOutputV2 = z.object({
+  authorizationUrl: z.string(),
+});
+
 export const userMcpServerRouter = createTRPCRouter({
   // APIキー認証MCPサーバー作成
   createApiKeyMcpServer: protectedProcedure
@@ -218,6 +228,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       return await findOfficialServers(ctx.db, {
         organizationId: ctx.session.user.organizationId,
+        userId: ctx.session.user.id,
       });
     }),
 
@@ -327,6 +338,21 @@ export const userMcpServerRouter = createTRPCRouter({
           isEnabled: input.isEnabled,
           organizationId: ctx.session.user.organizationId,
         });
+      });
+    }),
+
+  // OAuth 再認証
+  reauthenticateOAuthMcpServer: protectedProcedure
+    .input(ReauthenticateOAuthMcpServerInputV2)
+    .output(ReauthenticateOAuthMcpServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await reauthenticateOAuthMcpServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
       });
     }),
 });

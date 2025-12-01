@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,12 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  RefreshCw,
   Activity,
   Clock,
   CheckCircle,
   AlertCircle,
-  Eye,
 } from "lucide-react";
 import type { RequestLog, RequestStats } from "../types";
 import { formatDataSize } from "@/utils/formatters";
@@ -39,6 +35,14 @@ export const LogsAnalyticsTab = ({
   requestLogs,
   requestStats,
 }: LogsAnalyticsTabProps) => {
+  // 成功率を計算
+  const successRate =
+    requestStats && requestStats.totalRequests > 0
+      ? Math.round(
+          (requestStats.successRequests / requestStats.totalRequests) * 100,
+        )
+      : 0;
+
   return (
     <div className="space-y-6">
       {/* 分析セクション */}
@@ -82,9 +86,7 @@ export const LogsAnalyticsTab = ({
               <CheckCircle className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {requestStats?.successRate ?? 0}%
-              </div>
+              <div className="text-2xl font-bold">{successRate}%</div>
               <p className="text-muted-foreground text-xs">
                 正常完了したリクエスト
               </p>
@@ -113,10 +115,9 @@ export const LogsAnalyticsTab = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {requestStats?.totalRequests === 0 ||
-                requestStats?.successRate === 100
+                {requestStats?.totalRequests === 0 || successRate === 100
                   ? "-"
-                  : `${100 - (requestStats?.successRate ?? 100)}%`}
+                  : `${100 - successRate}%`}
               </div>
               <p className="text-muted-foreground text-xs">
                 失敗したリクエスト

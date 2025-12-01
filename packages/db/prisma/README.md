@@ -136,6 +136,7 @@ erDiagram
 "McpServerTemplate" {
   String id PK
   String name
+  String normalizedName
   String description "nullable"
   String tags
   String iconPath "nullable"
@@ -179,13 +180,14 @@ erDiagram
 ### `McpServerTemplate`
 
 MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
-organizationId = null の場合はアプリ提供のグローバル共通テンプレート
+organizationId = null の場合はアプ��提供のグローバル共通テンプレート
 organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
 
 **Properties**
 
 - `id`:
 - `name`: MCP サーバー名
+- `normalizedName`: 正規化されたサーバー名（小文字、空白をハイフンに変換）
 - `description`: MCPサーバーの説明
 - `tags`: タグ（カテゴリー分類用）
 - `iconPath`: アイコンパス
@@ -578,6 +580,7 @@ erDiagram
 "McpServerTemplate" {
   String id PK
   String name
+  String normalizedName
   String description "nullable"
   String tags
   String iconPath "nullable"
@@ -746,13 +749,14 @@ Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
 ### `McpServerTemplate`
 
 MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
-organizationId = null の場合はアプリ提供のグローバル共通テンプレート
+organizationId = null の場合はアプ��提供のグローバル共通テンプレート
 organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
 
 **Properties**
 
 - `id`:
 - `name`: MCP サーバー名
+- `normalizedName`: 正規化されたサーバー名（小文字、空白をハイフンに変換）
 - `description`: MCPサーバーの説明
 - `tags`: タグ（カテゴリー分類用）
 - `iconPath`: アイコンパス

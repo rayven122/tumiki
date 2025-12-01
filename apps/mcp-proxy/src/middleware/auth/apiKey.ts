@@ -3,19 +3,20 @@ import { db } from "@tumiki/db/server";
 import type { ApiKeyAuthInfo, HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
 import { createUnauthorizedError } from "../../libs/error/index.js";
+import { AUTH_CONFIG } from "../../constants/config.js";
 
 /**
  * APIキーを抽出
  */
 const extractApiKey = (c: Context): string | undefined => {
-  // X-API-Key ヘッダー
-  const xApiKey = c.req.header("X-API-Key");
-  if (xApiKey) {
-    return xApiKey;
+  // Tumiki-API-Key ヘッダー
+  const tumikiApiKey = c.req.header(AUTH_CONFIG.HEADERS.API_KEY);
+  if (tumikiApiKey) {
+    return tumikiApiKey;
   }
 
   // Authorization: Bearer ヘッダー
-  const authorization = c.req.header("Authorization");
+  const authorization = c.req.header(AUTH_CONFIG.HEADERS.AUTHORIZATION);
   if (authorization?.startsWith("Bearer ")) {
     return authorization.slice(7);
   }
@@ -33,7 +34,6 @@ const validateApiKey = async (
   apiKey: string,
 ): Promise<ApiKeyAuthInfo | undefined> => {
   try {
-    // 1つのクエリで mcpApiKey と mcpServer を取得（最適化）
     const mcpApiKey = await db.mcpApiKey.findUnique({
       where: { apiKey },
       include: {
@@ -49,12 +49,18 @@ const validateApiKey = async (
       return undefined;
     }
 
+    // 有効期限チェック
+    if (mcpApiKey.expiresAt && mcpApiKey.expiresAt < new Date()) {
+      return undefined;
+    }
+
     // includeで取得したサーバー情報
     const server = mcpApiKey.mcpServer;
 
     return {
       organizationId: server.organizationId,
       mcpServerInstanceId: mcpApiKey.mcpServerId,
+      userId: mcpApiKey.userId, // API Key の作成者
     };
   } catch (error: unknown) {
     logError("Failed to validate API key", error as Error);
@@ -79,7 +85,7 @@ export const apiKeyAuthMiddleware = async (
   if (!apiKey) {
     return c.json(
       createUnauthorizedError("Invalid or inactive API key", {
-        hint: "Provide API key via X-API-Key header or Authorization: Bearer header",
+        hint: "Provide API key via Tumiki-API-Key header or Authorization: Bearer header",
       }),
       401,
     );

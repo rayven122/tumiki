@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Wrench,
   Edit2,
+  RefreshCw,
 } from "lucide-react";
 import { ToolsModal } from "../ServerCard/ToolsModal";
 import {
@@ -29,9 +30,11 @@ import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
 import { cn } from "@/lib/utils";
 
 import { type RouterOutputs } from "@/trpc/react";
-import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
-import { ServerStatus } from "@tumiki/db/prisma";
 import { FaviconImage } from "@/components/ui/FaviconImage";
+import { ServerStatusBadge } from "../ServerStatusBadge";
+import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
+import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
+import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -57,14 +60,17 @@ export const UserMcpServerCard = ({
 
   const { tools, mcpServer } = userMcpServer;
 
+  // OAuth再認証フック
+  const { handleReauthenticate, isPending: isReauthenticating } =
+    useReauthenticateOAuth({
+      mcpServerId: userMcpServer.id,
+    });
+
+  // OAuth認証タイプの場合は常に再認証ボタンを表示
+  const isOAuthServer = mcpServer?.authType === "OAUTH";
+
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
-
-  // 説明の優先順位: 1. ユーザーMCPサーバーの説明（空でない場合） 2. MCPサーバーテンプレートの説明
-  const displayDescription =
-    userMcpServer.description && userMcpServer.description.trim() !== ""
-      ? userMcpServer.description
-      : (mcpServer?.description ?? "");
 
   const displayTags = mcpServer?.tags ?? [];
 
@@ -72,6 +78,28 @@ export const UserMcpServerCard = ({
     if (isSortMode) return; // ソートモード時はクリック無効
     router.push(`/${orgSlug}/mcps/${userMcpServer.id}`);
   };
+
+  // 最も有効期限が短いAPIキーを取得（バックエンドで既に有効なキーのみ取得済み）
+  const getShortestExpiringApiKey = () => {
+    const apiKeysWithExpiration = userMcpServer.apiKeys.filter(
+      (key) => key.expiresAt,
+    );
+
+    if (apiKeysWithExpiration.length === 0) return null;
+
+    return apiKeysWithExpiration.reduce((shortest, current) => {
+      if (!shortest.expiresAt) return current;
+      if (!current.expiresAt) return shortest;
+      return current.expiresAt < shortest.expiresAt ? current : shortest;
+    });
+  };
+
+  const shortestApiKey = getShortestExpiringApiKey();
+
+  // APIキーの有効期限状態を計算
+  const apiKeyStatus = shortestApiKey
+    ? calculateExpirationStatus(shortestApiKey.expiresAt)
+    : null;
 
   return (
     <>
@@ -112,6 +140,19 @@ export const UserMcpServerCard = ({
                     詳細を見る
                   </Link>
                 </DropdownMenuItem>
+                {/* OAuthサーバーの場合は常に再認証オプションを表示 */}
+                {isOAuthServer && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReauthenticate();
+                    }}
+                    disabled={isReauthenticating}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    再認証
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -161,26 +202,10 @@ export const UserMcpServerCard = ({
               />
             )}
           </div>
-          <div className="flex-1">
-            <CardTitle>{userMcpServer.name}</CardTitle>
+          <div className="min-w-0 flex-1 pr-24">
+            <CardTitle className="truncate">{userMcpServer.name}</CardTitle>
             <div className="mt-1 flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    userMcpServer.serverStatus === ServerStatus.RUNNING
-                      ? "bg-green-500"
-                      : userMcpServer.serverStatus === ServerStatus.STOPPED
-                        ? "bg-gray-500"
-                        : userMcpServer.serverStatus === ServerStatus.PENDING
-                          ? "bg-yellow-500"
-                          : "bg-red-500",
-                  )}
-                />
-                <span className="text-xs text-gray-600">
-                  {SERVER_STATUS_LABELS[userMcpServer.serverStatus]}
-                </span>
-              </div>
+              <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
             </div>
           </div>
         </CardHeader>
@@ -205,12 +230,8 @@ export const UserMcpServerCard = ({
             </Badge>
           </Button>
 
-          {/* MCPサーバーの概要 */}
-          <div>
-            <p className="text-sm leading-relaxed text-gray-600">
-              {displayDescription}
-            </p>
-          </div>
+          {/* 有効期限表示 */}
+          <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">

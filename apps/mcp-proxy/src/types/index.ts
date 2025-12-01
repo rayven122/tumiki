@@ -2,7 +2,7 @@
  * 認証方式
  *
  * - jwt: JWT Bearer Token認証（Keycloak）
- * - apikey: API Key認証（X-API-Key または Bearer tumiki_...）
+ * - apikey: API Key認証（Tumiki-API-Key または Bearer tumiki_...）
  */
 export type AuthMethod = "jwt" | "apikey";
 
@@ -15,6 +15,7 @@ export type AuthMethod = "jwt" | "apikey";
 export type ApiKeyAuthInfo = {
   organizationId: string;
   mcpServerInstanceId: string;
+  userId: string; // API Key の作成者
 };
 
 /**
@@ -137,7 +138,8 @@ export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
 
   return (
     typeof i.organizationId === "string" &&
-    typeof i.mcpServerInstanceId === "string"
+    typeof i.mcpServerInstanceId === "string" &&
+    typeof i.userId === "string"
   );
 };
 

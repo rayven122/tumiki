@@ -1,4 +1,4 @@
-import { db } from "@tumiki/db/server";
+import { db, OFFICIAL_ORGANIZATION_ID } from "@tumiki/db/server";
 import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 
@@ -51,46 +51,149 @@ export const executeTool = async (
     // 1. ツール名をパース
     const { templateName, toolName } = parseToolName(fullToolName);
 
-    // 2. McpServerTemplate と McpTool を検索
-    const tool = await db.mcpTool.findFirst({
-      where: {
-        name: toolName,
-        mcpServerTemplate: { name: templateName },
-      },
-      include: {
-        mcpServerTemplate: true,
-      },
+    // 2. McpServerから組織情報を取得
+    const mcpServer = await db.mcpServer.findUnique({
+      where: { id: mcpServerId },
+      select: { organizationId: true },
     });
 
-    if (!tool || !tool.mcpServerTemplate) {
-      throw new Error(
-        `Tool not found: ${templateName}__${toolName}. Please verify the tool name.`,
-      );
+    if (!mcpServer) {
+      throw new Error(`McpServer not found: ${mcpServerId}`);
     }
 
-    // 3. McpConfigを取得（userId優先、なければorganizationId）
-    const mcpConfig = await db.mcpConfig.findFirst({
-      where: {
-        mcpServerTemplateId: tool.mcpServerTemplate.id,
-        organizationId,
-        OR: [...(userId ? [{ userId }] : []), { userId: null }],
-      },
-      orderBy: {
-        userId: "desc", // userIdがnullでないレコードを優先
-      },
-      select: {
-        id: true,
-        envVars: true,
-        mcpServerTemplateId: true,
-        organizationId: true,
-        userId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    // 3. 組織カスタムと公式を並列検索（Promise.all）
+    const [customTemplate, officialTemplate] = await Promise.all([
+      db.mcpServerTemplate.findUnique({
+        where: {
+          normalizedName_organizationId: {
+            normalizedName: templateName,
+            organizationId: mcpServer.organizationId,
+          },
+        },
+        include: { mcpTools: true },
+      }),
+      db.mcpServerTemplate.findUnique({
+        where: {
+          normalizedName_organizationId: {
+            normalizedName: templateName,
+            organizationId: OFFICIAL_ORGANIZATION_ID,
+          },
+        },
+        include: { mcpTools: true },
+      }),
+    ]);
 
-    // 4. MCP サーバーに接続
-    const client = await connectToMcpServer(tool.mcpServerTemplate, mcpConfig);
+    // 4. 組織カスタムを優先
+    const template = customTemplate ?? officialTemplate;
+    if (!template) {
+      throw new Error(`Template not found: ${templateName}`);
+    }
+
+    const tool = template.mcpTools.find(
+      (t: { name: string }) => t.name === toolName,
+    );
+    if (!tool) {
+      throw new Error(`Tool not found: ${templateName}__${toolName}`);
+    }
+
+    // mcpServerTemplateをtoolに設定（既存ロジックとの互換性）
+    const toolWithTemplate = { ...tool, mcpServerTemplate: template };
+
+    // 5. 認証タイプに応じて設定を取得
+    let mcpConfig: {
+      id: string;
+      envVars: string;
+      mcpServerTemplateId: string;
+      organizationId: string;
+      userId: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    } | null = null;
+
+    // OAuth の場合は McpConfig は不要（直接 OAuthToken から取得）
+    if (toolWithTemplate.mcpServerTemplate.authType === "API_KEY") {
+      mcpConfig = await db.mcpConfig.findFirst({
+        where: {
+          mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
+          organizationId,
+          OR: [...(userId ? [{ userId }] : []), { userId: null }],
+        },
+        orderBy: {
+          userId: "desc", // userIdがnullでないレコードを優先
+        },
+        select: {
+          id: true,
+          envVars: true,
+          mcpServerTemplateId: true,
+          organizationId: true,
+          userId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!mcpConfig) {
+        throw new Error(
+          `API Key configuration not found for template ${templateName}`,
+        );
+      }
+    } else if (toolWithTemplate.mcpServerTemplate.authType === "OAUTH") {
+      // OAuth の場合は userId が必要
+      if (!userId) {
+        throw new Error(
+          `User ID is required for OAuth authentication. Template: ${templateName}`,
+        );
+      }
+
+      // OAuthToken の存在確認
+      const oauthToken = await db.mcpOAuthToken.findFirst({
+        where: {
+          userId,
+          oauthClient: {
+            mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
+          },
+        },
+      });
+
+      if (!oauthToken) {
+        throw new Error(
+          `OAuth token not found for user ${userId} and template ${templateName}. Please authenticate first.`,
+        );
+      }
+
+      // トークンの有効期限チェック
+      const now = new Date();
+      if (oauthToken.expiresAt && oauthToken.expiresAt < now) {
+        throw new Error(
+          `OAuth token expired for user ${userId} and template ${templateName}. Please re-authenticate.`,
+        );
+      }
+
+      logInfo("OAuth token found and valid", {
+        tokenId: oauthToken.id,
+        userId,
+        templateName,
+        expiresAt: oauthToken.expiresAt,
+      });
+
+      // OAuth の場合は mcpConfig を null のまま（oauth-header-injector で userId から直接取得）
+      // ダミーの mcpConfig を作成して userId を渡す
+      mcpConfig = {
+        id: `oauth-${oauthToken.id}`,
+        envVars: "{}",
+        mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
+        organizationId,
+        userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    // 6. MCP サーバーに接続
+    const client = await connectToMcpServer(
+      toolWithTemplate.mcpServerTemplate,
+      mcpConfig,
+    );
 
     try {
       // 5. ツールを実行（元のツール名で実行）
@@ -163,8 +266,9 @@ export const getAllowedTools = async (
     }
 
     // "{template名}__{ツール名}" 形式でツールリストを返す
+    // normalizedNameフィールドを直接使用（DBで正規化済み）
     const tools = mcpServer.allowedTools.map((tool) => ({
-      name: `${tool.mcpServerTemplate.name}__${tool.name}`,
+      name: `${tool.mcpServerTemplate.normalizedName}__${tool.name}`,
       description: tool.description,
       inputSchema: tool.inputSchema as Record<string, unknown>,
     }));

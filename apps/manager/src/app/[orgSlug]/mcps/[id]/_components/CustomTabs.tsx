@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Tab = {
@@ -16,7 +17,28 @@ type CustomTabsProps = {
 };
 
 export const CustomTabs = ({ tabs, defaultTab, children }: CustomTabsProps) => {
-  const [activeTab, setActiveTab] = useState(defaultTab ?? tabs[0]?.id ?? "");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabFromQuery = searchParams.get("tab");
+
+  const [activeTab, setActiveTab] = useState(
+    tabFromQuery ?? defaultTab ?? tabs[0]?.id ?? "",
+  );
+
+  // クエリパラメータの変更を監視
+  useEffect(() => {
+    if (tabFromQuery && tabFromQuery !== activeTab) {
+      setActiveTab(tabFromQuery);
+    }
+  }, [tabFromQuery]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    // URLにクエリパラメータを追加
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", tabId);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="w-full">
@@ -26,7 +48,7 @@ export const CustomTabs = ({ tabs, defaultTab, children }: CustomTabsProps) => {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={cn(
                 "ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center rounded-sm px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
                 activeTab === tab.id

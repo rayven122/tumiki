@@ -60,7 +60,7 @@ export const AUTH_CONFIG = {
    */
   HEADERS: {
     AUTHORIZATION: "Authorization",
-    API_KEY: "X-API-Key",
+    API_KEY: "Tumiki-API-Key",
   },
 } as const;
 
