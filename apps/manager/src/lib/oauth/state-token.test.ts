@@ -153,8 +153,13 @@ describe("verifyStateToken", () => {
     const token = await createStateToken(payload);
     const tokenParts = token.split(".");
 
-    // 署名部分を改ざん
-    const tamperedSignature = tokenParts[2]!.slice(0, -1) + "X";
+    // 署名部分を改ざん（Base64Urlデコードして1バイト変更してから再エンコード）
+    const signatureBuf = Buffer.from(tokenParts[2]!, "base64url");
+    const tamperedBuf = Buffer.alloc(signatureBuf.length);
+    signatureBuf.copy(tamperedBuf);
+    // 最初のバイトを反転
+    tamperedBuf[0] = (tamperedBuf[0]! + 1) % 256;
+    const tamperedSignature = tamperedBuf.toString("base64url");
     const tamperedToken = `${tokenParts[0]}.${tokenParts[1]}.${tamperedSignature}`;
 
     // joseライブラリは署名検証失敗時に"signature verification failed"エラーを投げる
