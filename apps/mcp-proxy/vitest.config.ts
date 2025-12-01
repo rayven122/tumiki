@@ -8,6 +8,7 @@ export default defineProject({
     name: "mcp-proxy",
     globals: true,
     environment: "node",
+    setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
     alias: {

@@ -21,3 +21,10 @@ vi.mock("prisma-field-encryption", () => ({
 
 // server-onlyモジュールのモック（テスト環境でClient Componentをテストできるようにする）
 vi.mock("server-only", () => ({}));
+
+// テスト実行前に必要な環境変数を設定
+vi.stubEnv("NEXTAUTH_SECRET", "test-secret-key-for-nextauth-testing-only");
+vi.stubEnv(
+  "REDIS_ENCRYPTION_KEY",
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+);
