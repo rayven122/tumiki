@@ -219,7 +219,7 @@ slack.send_message
 
 ```bash
 curl -X POST http://localhost:8080/mcp/your-instance-id \
-  -H "X-API-Key: your-api-key" \
+  -H "Tumiki-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -259,7 +259,7 @@ curl -X POST http://localhost:8080/mcp/your-instance-id \
 
 ```bash
 curl -X POST http://localhost:8080/mcp/your-instance-id \
-  -H "X-API-Key: your-api-key" \
+  -H "Tumiki-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -295,7 +295,7 @@ curl -X POST http://localhost:8080/mcp/your-instance-id \
 
 ```bash
 curl -X POST http://localhost:8080/mcp/your-instance-id \
-  -H "X-API-Key: your-api-key" \
+  -H "Tumiki-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -317,8 +317,8 @@ curl -X POST http://localhost:8080/mcp/your-instance-id \
 APIキー認証を使用：
 
 ```http
-# X-API-Key ヘッダー
-X-API-Key: tumiki_live_abc123...
+# Tumiki-API-Key ヘッダー
+Tumiki-API-Key: tumiki_live_abc123...
 
 # または Authorization: Bearer
 Authorization: Bearer tumiki_live_abc123...

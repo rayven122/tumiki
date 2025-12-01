@@ -123,7 +123,7 @@ const authenticateWithJWT = async (
  * Authorization ヘッダーの形式を判定して、適切な認証方法を選択:
  * - `Bearer eyJ...` → JWT 認証（Keycloak）
  * - `Bearer tumiki_...` → API Key 認証
- * - `X-API-Key` ヘッダー → API Key 認証
+ * - `Tumiki-API-Key` ヘッダー → API Key 認証
  * - なし → 401 エラー
  */
 export const integratedAuthMiddleware = async (
