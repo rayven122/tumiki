@@ -161,7 +161,7 @@ export const ApiKeyList = ({
               apiKey={key}
               isVisible={showApiKeys[key.id] ?? false}
               onToggleVisibility={() => toggleApiKeyVisibility(key.id)}
-              onCopy={() => handleCopyApiKey(key.apiKey ?? "")}
+              onCopy={() => key.apiKey && handleCopyApiKey(key.apiKey)}
               onDeactivate={() => handleDeactivateClick(key.id, key.name)}
               onDelete={() => handleDeleteClick(key.id, key.name, key.isActive)}
             />
