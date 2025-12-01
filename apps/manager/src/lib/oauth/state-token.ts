@@ -35,7 +35,9 @@ const getSecretKey = (): Uint8Array => {
   if (!secret) {
     throw new Error("NEXTAUTH_SECRET environment variable is required");
   }
-  return new TextEncoder().encode(secret);
+  // Buffer.from() を使用して Uint8Array を作成
+  // これにより、Vitest環境でも正しいグローバル Uint8Array インスタンスが生成される
+  return new Uint8Array(Buffer.from(secret, "utf-8"));
 };
 
 /**

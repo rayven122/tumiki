@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, test, expect, beforeEach, vi, type Mock } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import * as React from "react";
@@ -147,7 +150,6 @@ describe("useOrganizationContext", () => {
       id: "org_1",
       name: "Organization 1",
       isPersonal: false,
-      isDefault: true,
       isAdmin: false,
       memberCount: 5,
     });
@@ -352,6 +354,19 @@ describe("useOrganizationContext", () => {
     mockUseMutation.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
+    });
+
+    // セッションのdefaultOrganizationをnullに設定
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          id: "user_1",
+          email: "test@example.com",
+          defaultOrganization: null,
+        },
+      },
+      status: "authenticated",
+      update: mockUpdate,
     });
 
     const wrapper = ({ children }: { children: ReactNode }) => (
