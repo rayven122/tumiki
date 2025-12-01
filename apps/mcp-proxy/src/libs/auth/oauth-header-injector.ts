@@ -128,7 +128,7 @@ const injectApiKeyHeaders = (
     }
 
     // MCPサーバーテンプレートで定義されたenvVarKeysのキー名を使用
-    // 例: ["X-API-Key"] → headers["X-API-Key"] = envVars["X-API-Key"]
+    // 例: ["Tumiki-API-Key"] → headers["Tumiki-API-Key"] = envVars["Tumiki-API-Key"]
     if (mcpServerTemplate.envVarKeys.length > 0) {
       const headerName = mcpServerTemplate.envVarKeys[0]; // 最初のenvVarをヘッダー名として使用
 

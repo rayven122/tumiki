@@ -222,25 +222,6 @@ export const executeTool = async (
       fullToolName,
     });
 
-    // ツール実行失敗時は、エラー内容に関係なく McpServer の serverStatus を ERROR に更新
-    try {
-      await db.mcpServer.update({
-        where: { id: mcpServerId },
-        data: { serverStatus: "ERROR" },
-      });
-      logInfo(
-        "Updated McpServer status to ERROR due to tool execution failure",
-        {
-          mcpServerId,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-      );
-    } catch (updateError) {
-      logError("Failed to update McpServer status", updateError as Error, {
-        mcpServerId,
-      });
-    }
-
     throw new Error(
       `Failed to execute tool ${fullToolName}: ${error instanceof Error ? error.message : "Unknown error"}`,
     );

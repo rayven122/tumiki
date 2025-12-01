@@ -123,9 +123,11 @@ export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
                     </p>
                     <ul className="ml-4 list-disc space-y-1">
                       <li>
-                        <span className="font-medium">X-API-Keyヘッダー:</span>{" "}
+                        <span className="font-medium">
+                          Tumiki-API-Keyヘッダー:
+                        </span>{" "}
                         <code className="rounded bg-blue-100 px-1">
-                          X-API-Key: your_api_key
+                          Tumiki-API-Key: your_api_key
                         </code>
                       </li>
                       <li>
