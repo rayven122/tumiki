@@ -40,7 +40,7 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // MCPサーバーテンプレート一覧から利用可能なタグを動的に取得
-  const { data: mcpServerTemplates } = api.mcpServer.findAll.useQuery();
+  const { data: mcpServerTemplates } = api.v2.mcpServer.findAll.useQuery();
 
   // 全MCPサーバーテンプレートからユニークなタグを抽出
   const availableTags = useMemo(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
 import type {
-  ServerInstance,
+  UserMcpServer,
   SortableServerHookReturn,
   SortableServerHookParams,
 } from "@/types/sort";
@@ -13,9 +13,9 @@ export const useSortableServers = ({
   invalidateQuery,
   isSortMode,
 }: SortableServerHookParams): SortableServerHookReturn => {
-  const [servers, setServers] = useState<ServerInstance[]>(originalServers);
+  const [servers, setServers] = useState<UserMcpServer[]>(originalServers);
   const [originalServerOrder, setOriginalServerOrder] =
-    useState<ServerInstance[]>(originalServers);
+    useState<UserMcpServer[]>(originalServers);
 
   // 元のサーバーデータが更新されたら反映（ソートモード中でない場合のみ）
   useEffect(() => {

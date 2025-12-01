@@ -7,6 +7,7 @@ import {
   TransportType,
   McpServerVisibility,
 } from "@tumiki/db/server";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 import { TRPCError } from "@trpc/server";
 
 type TemplateInfo = {
@@ -91,6 +92,7 @@ export const getOrCreateTemplateInfo = async (
   const customTemplate = await tx.mcpServerTemplate.create({
     data: {
       name,
+      normalizedName: normalizeServerName(name),
       description: description ?? "",
       tags: [],
       iconPath: null,

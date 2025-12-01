@@ -30,7 +30,7 @@ pnpm test:verify
 
 ### 検証内容
 
-1. ✅ API Key認証（X-API-Keyヘッダー）
+1. ✅ API Key認証（Tumiki-API-Keyヘッダー）
 2. ✅ 無効なAPIキーの拒否
 3. ✅ ツールリストの取得
 4. ✅ ツールの実行（resolve-library-id）
@@ -45,7 +45,7 @@ export PROXY_URL="http://localhost:8080"
 
 # ツールリスト取得
 curl -X POST "${PROXY_URL}/mcp/${MCP_SERVER_ID}" \
-  -H "X-API-Key: ${API_KEY}" \
+  -H "Tumiki-API-Key: ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -56,7 +56,7 @@ curl -X POST "${PROXY_URL}/mcp/${MCP_SERVER_ID}" \
 
 # ツール実行
 curl -X POST "${PROXY_URL}/mcp/${MCP_SERVER_ID}" \
-  -H "X-API-Key: ${API_KEY}" \
+  -H "Tumiki-API-Key: ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",

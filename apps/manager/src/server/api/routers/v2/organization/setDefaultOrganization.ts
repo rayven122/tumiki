@@ -9,10 +9,10 @@ export const setDefaultOrganizationInputSchema = z.object({
 });
 
 // 内部で使用する完全なInput型（userIdを含む）
-const setDefaultOrganizationInternalInputSchema = z.object({
-  userId: z.string(),
-  organizationId: OrganizationIdSchema,
-});
+type SetDefaultOrganizationInternalInput = {
+  userId: string;
+  organizationId: z.infer<typeof OrganizationIdSchema>;
+};
 
 export const setDefaultOrganizationOutputSchema = z.object({
   success: z.boolean(),
@@ -20,9 +20,8 @@ export const setDefaultOrganizationOutputSchema = z.object({
   organizationSlug: z.string(),
 });
 
-export type SetDefaultOrganizationInput = z.infer<
-  typeof setDefaultOrganizationInternalInputSchema
->;
+export type SetDefaultOrganizationInput =
+  SetDefaultOrganizationInternalInput;
 
 export type SetDefaultOrganizationOutput = z.infer<
   typeof setDefaultOrganizationOutputSchema

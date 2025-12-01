@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { normalizeServerName } from "@/utils/url";
 import type { Prisma } from "@tumiki/db/prisma";
 import { useCreateServerForm } from "./useCreateServerForm";
 import { useEditServerForm } from "./useEditServerForm";
@@ -47,9 +46,7 @@ export const useServerConfigForm = ({
   });
 
   // サーバー名の状態管理
-  const [serverName, setServerName] = useState(
-    normalizeServerName(mcpServer.name),
-  );
+  const [serverName, setServerName] = useState(mcpServer.name);
 
   // 作成モード用のフック
   const createForm = useCreateServerForm({

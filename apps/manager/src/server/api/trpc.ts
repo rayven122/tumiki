@@ -120,7 +120,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  */
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
-  .use(({ ctx, next }) => {
+  .use(async ({ ctx, next }) => {
     if (!ctx.session?.user?.sub) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
@@ -136,6 +136,14 @@ export const protectedProcedure = t.procedure
       });
     }
 
+    // 組織内での管理者権限を確認
+    const organizationMember = await ctx.db.organizationMember.findFirst({
+      where: {
+        userId: ctx.session.user.sub,
+        organizationId: ctx.session.user.organizationId,
+      },
+    });
+
     return next({
       ctx: {
         ...ctx,
@@ -149,11 +157,20 @@ export const protectedProcedure = t.procedure
             organizationSlug: ctx.session.user.organizationSlug,
           },
         },
+        currentOrganizationId: ctx.session.user.organizationId,
+        isCurrentOrganizationAdmin: organizationMember?.isAdmin ?? false,
       },
     });
   });
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
+
+/**
+ * 認証済みユーザーのコンテキスト型（組織所属前でも使用可能）
+ */
+export type AuthenticatedContext = {
+  session: NonNullable<Context["session"]>;
+} & Context;
 
 /**
  * protectedProcedureのコンテキスト型
@@ -167,4 +184,6 @@ export type ProtectedContext = {
       organizationSlug: string; // 組織slugは必須
     };
   } & NonNullable<Context["session"]>;
+  currentOrganizationId: string; // 現在の組織ID（session.user.organizationIdのエイリアス）
+  isCurrentOrganizationAdmin: boolean; // 現在の組織での管理者権限
 } & Context;

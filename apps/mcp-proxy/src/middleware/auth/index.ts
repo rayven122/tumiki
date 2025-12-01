@@ -123,7 +123,7 @@ const authenticateWithJWT = async (
  * Authorization ヘッダーの形式を判定して、適切な認証方法を選択:
  * - `Bearer eyJ...` → JWT 認証（Keycloak）
  * - `Bearer tumiki_...` → API Key 認証
- * - `X-API-Key` ヘッダー → API Key 認証
+ * - `Tumiki-API-Key` ヘッダー → API Key 認証
  * - なし → 401 エラー
  */
 export const integratedAuthMiddleware = async (
@@ -136,7 +136,7 @@ export const integratedAuthMiddleware = async (
     // 認証情報なし
     return c.json(
       createUnauthorizedError("Authentication required", {
-        hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
+        hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or Tumiki-API-Key header)",
       }),
       401,
     );
