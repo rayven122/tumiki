@@ -51,24 +51,55 @@ export const executeTool = async (
     // 1. ツール名をパース
     const { templateName, toolName } = parseToolName(fullToolName);
 
-    // 2. McpServerTemplate と McpTool を検索
-    const tool = await db.mcpTool.findFirst({
-      where: {
-        name: toolName,
-        mcpServerTemplate: { name: templateName },
-      },
-      include: {
-        mcpServerTemplate: true,
-      },
+    // 2. McpServerから組織情報を取得
+    const mcpServer = await db.mcpServer.findUnique({
+      where: { id: mcpServerId },
+      select: { organizationId: true },
     });
 
-    if (!tool || !tool.mcpServerTemplate) {
-      throw new Error(
-        `Tool not found: ${templateName}__${toolName}. Please verify the tool name.`,
-      );
+    if (!mcpServer) {
+      throw new Error(`McpServer not found: ${mcpServerId}`);
     }
 
-    // 3. 認証タイプに応じて設定を取得
+    // 3. 組織カスタムと公式を並列検索（Promise.all）
+    const [customTemplate, officialTemplate] = await Promise.all([
+      db.mcpServerTemplate.findUnique({
+        where: {
+          normalizedName_organizationId: {
+            normalizedName: templateName,
+            organizationId: mcpServer.organizationId,
+          },
+        },
+        include: { mcpTools: true },
+      }),
+      db.mcpServerTemplate.findUnique({
+        where: {
+          normalizedName_organizationId: {
+            normalizedName: templateName,
+            organizationId: null as unknown as string, // 型アサーション（Prismaの型定義の制約）
+          },
+        },
+        include: { mcpTools: true },
+      }),
+    ]);
+
+    // 4. 組織カスタムを優先
+    const template = customTemplate || officialTemplate;
+    if (!template) {
+      throw new Error(`Template not found: ${templateName}`);
+    }
+
+    const tool = template.mcpTools.find(
+      (t: { name: string }) => t.name === toolName,
+    );
+    if (!tool) {
+      throw new Error(`Tool not found: ${templateName}__${toolName}`);
+    }
+
+    // mcpServerTemplateをtoolに設定（既存ロジックとの互換性）
+    const toolWithTemplate = { ...tool, mcpServerTemplate: template };
+
+    // 5. 認証タイプに応じて設定を取得
     let mcpConfig: {
       id: string;
       envVars: string;
@@ -80,10 +111,10 @@ export const executeTool = async (
     } | null = null;
 
     // OAuth の場合は McpConfig は不要（直接 OAuthToken から取得）
-    if (tool.mcpServerTemplate.authType === "API_KEY") {
+    if (toolWithTemplate.mcpServerTemplate.authType === "API_KEY") {
       mcpConfig = await db.mcpConfig.findFirst({
         where: {
-          mcpServerTemplateId: tool.mcpServerTemplate.id,
+          mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
           organizationId,
           OR: [...(userId ? [{ userId }] : []), { userId: null }],
         },
@@ -106,7 +137,7 @@ export const executeTool = async (
           `API Key configuration not found for template ${templateName}`,
         );
       }
-    } else if (tool.mcpServerTemplate.authType === "OAUTH") {
+    } else if (toolWithTemplate.mcpServerTemplate.authType === "OAUTH") {
       // OAuth の場合は userId が必要
       if (!userId) {
         throw new Error(
@@ -119,7 +150,7 @@ export const executeTool = async (
         where: {
           userId,
           oauthClient: {
-            mcpServerTemplateId: tool.mcpServerTemplate.id,
+            mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
           },
         },
       });
@@ -141,7 +172,7 @@ export const executeTool = async (
       mcpConfig = {
         id: `oauth-${oauthToken.id}`,
         envVars: "{}",
-        mcpServerTemplateId: tool.mcpServerTemplate.id,
+        mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
         organizationId,
         userId,
         createdAt: new Date(),
@@ -149,8 +180,11 @@ export const executeTool = async (
       };
     }
 
-    // 4. MCP サーバーに接続
-    const client = await connectToMcpServer(tool.mcpServerTemplate, mcpConfig);
+    // 6. MCP サーバーに接続
+    const client = await connectToMcpServer(
+      toolWithTemplate.mcpServerTemplate,
+      mcpConfig,
+    );
 
     try {
       // 5. ツールを実行（元のツール名で実行）
@@ -242,8 +276,9 @@ export const getAllowedTools = async (
     }
 
     // "{template名}__{ツール名}" 形式でツールリストを返す
+    // normalizedNameフィールドを直接使用（DBで正規化済み）
     const tools = mcpServer.allowedTools.map((tool) => ({
-      name: `${tool.mcpServerTemplate.name}__${tool.name}`,
+      name: `${tool.mcpServerTemplate.normalizedName}__${tool.name}`,
       description: tool.description,
       inputSchema: tool.inputSchema as Record<string, unknown>,
     }));

@@ -136,6 +136,7 @@ erDiagram
 "McpServerTemplate" {
   String id PK
   String name
+  String normalizedName
   String description "nullable"
   String tags
   String iconPath "nullable"
@@ -186,6 +187,7 @@ organizationId 設定済みの場合はユーザー作成の組織専用テン�
 
 - `id`:
 - `name`: MCP サーバー名
+- `normalizedName`: 正規化されたサーバー名（小文字、空白をハイフンに変換）
 - `description`: MCPサーバーの説明
 - `tags`: タグ（カテゴリー分類用）
 - `iconPath`: アイコンパス
@@ -578,6 +580,7 @@ erDiagram
 "McpServerTemplate" {
   String id PK
   String name
+  String normalizedName
   String description "nullable"
   String tags
   String iconPath "nullable"
@@ -753,6 +756,7 @@ organizationId 設定済みの場合はユーザー作成の組織専用テン�
 
 - `id`:
 - `name`: MCP サーバー名
+- `normalizedName`: 正規化されたサーバー名（小文字、空白をハイフンに変換）
 - `description`: MCPサーバーの説明
 - `tags`: タグ（カテゴリー分類用）
 - `iconPath`: アイコンパス

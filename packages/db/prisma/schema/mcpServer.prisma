@@ -46,6 +46,9 @@ model McpServerTemplate {
   /// MCP サーバー名
   /// @zod.string.min(1)
   name           String
+  /// 正規化されたサーバー名（小文字、空白をハイフンに変換）
+  /// @zod.string.min(1)
+  normalizedName String
   /// MCPサーバーの説明
   description    String?
   /// タグ（カテゴリー分類用）
@@ -92,6 +95,9 @@ model McpServerTemplate {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// 組織内で正規化名は一意（グローバルテンプレートはorganizationId=nullで一意）
+  @@unique([normalizedName, organizationId])
 }
 
 /// 各MCPサーバーが提供するツール一覧

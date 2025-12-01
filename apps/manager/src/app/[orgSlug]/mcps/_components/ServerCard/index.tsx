@@ -108,7 +108,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
           }}
           className="w-full"
         >
-          接続
+          追加
         </Button>
       </CardFooter>
 
