@@ -1,12 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 
-interface CTASectionProps {
-  setShowModal: (show: boolean) => void;
-}
-
-export function CTASection({ setShowModal }: CTASectionProps) {
+export function CTASection() {
   return (
     <section className="border-t-3 border-black bg-gradient-to-br from-indigo-50 to-purple-50 py-24">
       <div className="mx-auto max-w-6xl px-5">
@@ -50,12 +47,12 @@ export function CTASection({ setShowModal }: CTASectionProps) {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="mb-12"
           >
-            <button
-              onClick={() => setShowModal(true)}
-              className="mb-6 border-3 border-black bg-black px-12 py-5 text-xl font-bold text-white shadow-[6px_6px_0_#6366f1] transition-all duration-300 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_#6366f1]"
+            <Link
+              href="/signup"
+              className="mb-6 inline-block border-3 border-black bg-black px-12 py-5 text-xl font-bold text-white shadow-[6px_6px_0_#6366f1] transition-all duration-300 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_#6366f1]"
             >
               無料でAIチーム環境を構築する
-            </button>
+            </Link>
 
             {/* Sub CTAs */}
             {/* <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">

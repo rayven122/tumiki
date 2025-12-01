@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { fieldEncryptionMiddleware } from "prisma-field-encryption";
 
 import { runWithoutRLS } from "./context/tenantContext.js";
-import { multiTenancyExtension } from "./extensions/multiTenancy.js";
+import { multiTenancyExtension } from "./extensions/multiTenancy/index.js";
 
 type ClientOptions = {
   adapter?: PrismaNeon;
@@ -23,7 +23,7 @@ export const createBaseClient = (options?: ClientOptions) => {
         ? (["query", "error", "warn"] as Prisma.LogLevel[])
         : (["error"] as Prisma.LogLevel[]),
     omit: {
-      userMcpServerConfig: {
+      mcpConfig: {
         envVars: true,
       },
     },
