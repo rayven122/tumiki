@@ -1,6 +1,3 @@
--- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "public";
-
 -- CreateEnum
 CREATE TYPE "public"."Role" AS ENUM ('SYSTEM_ADMIN', 'USER');
 
@@ -31,34 +28,61 @@ CREATE TYPE "public"."ServerStatus" AS ENUM ('RUNNING', 'STOPPED', 'ERROR', 'PEN
 -- CreateEnum
 CREATE TYPE "public"."ServerType" AS ENUM ('CUSTOM', 'OFFICIAL');
 
--- CreateTable
-CREATE TABLE "public"."McpApiKey" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "apiKey" TEXT NOT NULL,
-    "apiKeyHash" TEXT,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "lastUsedAt" TIMESTAMP(3),
-    "expiresAt" TIMESTAMP(3),
-    "userMcpServerInstanceId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "McpApiKey_pkey" PRIMARY KEY ("id")
-);
+-- CreateEnum
+CREATE TYPE "public"."TokenPurpose" AS ENUM ('TUMIKI_CLIENT', 'BACKEND_MCP');
 
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" TEXT NOT NULL,
     "name" TEXT,
     "email" TEXT,
+    "emailVerified" TIMESTAMP(3),
     "image" TEXT,
     "role" "public"."Role" NOT NULL DEFAULT 'USER',
-    "defaultOrganizationId" TEXT,
+    "defaultOrganizationSlug" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."Account" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerAccountId" TEXT NOT NULL,
+    "refresh_token" TEXT,
+    "access_token" TEXT,
+    "expires_at" INTEGER,
+    "token_type" TEXT,
+    "scope" TEXT,
+    "id_token" TEXT,
+    "session_state" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."Session" (
+    "id" TEXT NOT NULL,
+    "sessionToken" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."VerificationToken" (
+    "identifier" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expires" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -130,47 +154,49 @@ CREATE TABLE "public"."Stream" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."McpServer" (
+CREATE TABLE "public"."McpServerTemplate" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "normalizedName" TEXT NOT NULL,
+    "description" TEXT,
+    "tags" TEXT[],
     "iconPath" TEXT,
     "transportType" "public"."TransportType" NOT NULL DEFAULT 'STDIO',
     "command" TEXT,
     "args" TEXT[],
     "url" TEXT,
-    "envVars" TEXT[],
+    "envVarKeys" TEXT[],
     "authType" "public"."AuthType" NOT NULL DEFAULT 'NONE',
     "oauthProvider" VARCHAR(50),
     "oauthScopes" TEXT[],
-    "serverType" "public"."ServerType" NOT NULL DEFAULT 'OFFICIAL',
+    "useCloudRunIam" BOOLEAN NOT NULL DEFAULT false,
     "createdBy" TEXT,
     "visibility" "public"."McpServerVisibility" NOT NULL DEFAULT 'PRIVATE',
     "organizationId" TEXT,
-    "isPublic" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "McpServer_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "McpServerTemplate_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "public"."Tool" (
+CREATE TABLE "public"."McpTool" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "inputSchema" JSONB NOT NULL,
-    "isEnabled" BOOLEAN NOT NULL DEFAULT true,
-    "mcpServerId" TEXT NOT NULL,
+    "mcpServerTemplateId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Tool_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "McpTool_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."Organization" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
     "description" TEXT,
     "logoUrl" TEXT,
     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
@@ -266,63 +292,26 @@ CREATE TABLE "public"."ResourceAccessControl" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."UserMcpServerConfig" (
+CREATE TABLE "public"."McpConfig" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
     "envVars" TEXT NOT NULL,
-    "oauthConnection" TEXT,
-    "mcpServerId" TEXT NOT NULL,
+    "mcpServerTemplateId" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
+    "userId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "UserMcpServerConfig_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "McpConfig_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "public"."UserToolGroupTool" (
-    "userMcpServerConfigId" TEXT NOT NULL,
-    "toolGroupId" TEXT NOT NULL,
-    "toolId" TEXT NOT NULL,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "UserToolGroupTool_pkey" PRIMARY KEY ("toolGroupId","userMcpServerConfigId","toolId")
-);
-
--- CreateTable
-CREATE TABLE "public"."UserToolGroup" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "isEnabled" BOOLEAN NOT NULL DEFAULT true,
-    "organizationId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "UserToolGroup_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "public"."UserMcpServerInstanceToolGroup" (
-    "mcpServerInstanceId" TEXT NOT NULL,
-    "toolGroupId" TEXT NOT NULL,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "UserMcpServerInstanceToolGroup_pkey" PRIMARY KEY ("mcpServerInstanceId","toolGroupId")
-);
-
--- CreateTable
-CREATE TABLE "public"."UserMcpServerInstance" (
+CREATE TABLE "public"."McpServer" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "iconPath" TEXT,
     "serverStatus" "public"."ServerStatus" NOT NULL,
     "serverType" "public"."ServerType" NOT NULL,
-    "toolGroupId" TEXT NOT NULL,
     "authType" "public"."AuthType" NOT NULL DEFAULT 'API_KEY',
     "organizationId" TEXT NOT NULL,
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
@@ -330,43 +319,80 @@ CREATE TABLE "public"."UserMcpServerInstance" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
 
-    CONSTRAINT "UserMcpServerInstance_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "McpServer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "public"."McpServerRequestLog" (
     "id" TEXT NOT NULL,
-    "mcpServerInstanceId" TEXT NOT NULL,
+    "mcpServerId" TEXT NOT NULL,
+    "mcpApiKeyId" TEXT,
     "toolName" TEXT NOT NULL,
     "transportType" "public"."TransportType" NOT NULL,
     "method" TEXT NOT NULL,
-    "responseStatus" TEXT NOT NULL,
+    "httpStatus" TEXT NOT NULL,
     "durationMs" INTEGER NOT NULL,
-    "errorMessage" TEXT,
-    "errorCode" TEXT,
-    "inputBytes" INTEGER,
-    "outputBytes" INTEGER,
+    "inputBytes" INTEGER NOT NULL,
+    "outputBytes" INTEGER NOT NULL,
     "organizationId" TEXT NOT NULL,
     "userAgent" TEXT,
+    "gcsObjectKey" TEXT,
+    "gcsUploadedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "McpServerRequestLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "public"."McpServerRequestData" (
+CREATE TABLE "public"."McpApiKey" (
     "id" TEXT NOT NULL,
-    "requestLogId" TEXT NOT NULL,
-    "inputDataCompressed" BYTEA NOT NULL,
-    "outputDataCompressed" BYTEA NOT NULL,
-    "originalInputSize" INTEGER NOT NULL,
-    "originalOutputSize" INTEGER NOT NULL,
-    "compressedInputSize" INTEGER NOT NULL,
-    "compressedOutputSize" INTEGER NOT NULL,
-    "compressionRatio" DOUBLE PRECISION NOT NULL,
+    "name" TEXT NOT NULL,
+    "apiKey" TEXT NOT NULL,
+    "apiKeyHash" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "lastUsedAt" TIMESTAMP(3),
+    "expiresAt" TIMESTAMP(3),
+    "scopes" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "userId" TEXT NOT NULL,
+    "mcpServerId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
 
-    CONSTRAINT "McpServerRequestData_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "McpApiKey_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."McpOAuthClient" (
+    "id" TEXT NOT NULL,
+    "mcpServerTemplateId" TEXT,
+    "organizationId" TEXT,
+    "clientId" TEXT NOT NULL,
+    "clientSecret" TEXT,
+    "registrationAccessToken" TEXT,
+    "registrationClientUri" TEXT,
+    "authorizationServerUrl" TEXT NOT NULL,
+    "redirectUris" TEXT[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "McpOAuthClient_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."McpOAuthToken" (
+    "id" TEXT NOT NULL,
+    "oauthClientId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "accessToken" TEXT NOT NULL,
+    "refreshToken" TEXT,
+    "expiresAt" TIMESTAMP(3),
+    "tokenPurpose" "public"."TokenPurpose" NOT NULL DEFAULT 'BACKEND_MCP',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "McpOAuthToken_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -405,20 +431,42 @@ CREATE TABLE "public"."_OrganizationGroupToOrganizationRole" (
     CONSTRAINT "_OrganizationGroupToOrganizationRole_AB_pkey" PRIMARY KEY ("A","B")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "McpApiKey_apiKey_key" ON "public"."McpApiKey"("apiKey");
+-- CreateTable
+CREATE TABLE "public"."_McpServerToMcpServerTemplate" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL,
 
--- CreateIndex
-CREATE UNIQUE INDEX "McpApiKey_apiKeyHash_key" ON "public"."McpApiKey"("apiKeyHash");
+    CONSTRAINT "_McpServerToMcpServerTemplate_AB_pkey" PRIMARY KEY ("A","B")
+);
 
--- CreateIndex
-CREATE INDEX "McpApiKey_userMcpServerInstanceId_idx" ON "public"."McpApiKey"("userMcpServerInstanceId");
+-- CreateTable
+CREATE TABLE "public"."_McpServerToMcpTool" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL,
+
+    CONSTRAINT "_McpServerToMcpTool_AB_pkey" PRIMARY KEY ("A","B")
+);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Tool_mcpServerId_name_key" ON "public"."Tool"("mcpServerId", "name");
+CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "public"."Account"("provider", "providerAccountId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Session_sessionToken_key" ON "public"."Session"("sessionToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "public"."VerificationToken"("identifier", "token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "McpServerTemplate_normalizedName_organizationId_key" ON "public"."McpServerTemplate"("normalizedName", "organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "McpTool_mcpServerTemplateId_name_key" ON "public"."McpTool"("mcpServerTemplateId", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Organization_slug_key" ON "public"."Organization"("slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OrganizationMember_organizationId_userId_key" ON "public"."OrganizationMember"("organizationId", "userId");
@@ -431,9 +479,6 @@ CREATE INDEX "OrganizationInvitation_token_idx" ON "public"."OrganizationInvitat
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OrganizationInvitation_organizationId_email_key" ON "public"."OrganizationInvitation"("organizationId", "email");
-
--- CreateIndex
-CREATE INDEX "OrganizationGroup_organizationId_idx" ON "public"."OrganizationGroup"("organizationId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OrganizationGroup_organizationId_name_key" ON "public"."OrganizationGroup"("organizationId", "name");
@@ -451,13 +496,19 @@ CREATE INDEX "ResourceAccessControl_organizationId_resourceType_resourceI_idx" O
 CREATE UNIQUE INDEX "ResourceAccessControl_organizationId_resourceType_resourceI_key" ON "public"."ResourceAccessControl"("organizationId", "resourceType", "resourceId", "memberId", "groupId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UserMcpServerInstance_toolGroupId_key" ON "public"."UserMcpServerInstance"("toolGroupId");
+CREATE INDEX "McpServer_deletedAt_idx" ON "public"."McpServer"("deletedAt");
 
 -- CreateIndex
-CREATE INDEX "UserMcpServerInstance_deletedAt_idx" ON "public"."UserMcpServerInstance"("deletedAt");
+CREATE UNIQUE INDEX "McpApiKey_apiKey_key" ON "public"."McpApiKey"("apiKey");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "McpServerRequestData_requestLogId_key" ON "public"."McpServerRequestData"("requestLogId");
+CREATE UNIQUE INDEX "McpApiKey_apiKeyHash_key" ON "public"."McpApiKey"("apiKeyHash");
+
+-- CreateIndex
+CREATE INDEX "McpApiKey_apiKeyHash_idx" ON "public"."McpApiKey"("apiKeyHash");
+
+-- CreateIndex
+CREATE INDEX "McpApiKey_deletedAt_idx" ON "public"."McpApiKey"("deletedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "waiting_list_email_key" ON "public"."waiting_list"("email");
@@ -471,11 +522,20 @@ CREATE INDEX "_OrganizationGroupToOrganizationMember_B_index" ON "public"."_Orga
 -- CreateIndex
 CREATE INDEX "_OrganizationGroupToOrganizationRole_B_index" ON "public"."_OrganizationGroupToOrganizationRole"("B");
 
--- AddForeignKey
-ALTER TABLE "public"."McpApiKey" ADD CONSTRAINT "McpApiKey_userMcpServerInstanceId_fkey" FOREIGN KEY ("userMcpServerInstanceId") REFERENCES "public"."UserMcpServerInstance"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- CreateIndex
+CREATE INDEX "_McpServerToMcpServerTemplate_B_index" ON "public"."_McpServerToMcpServerTemplate"("B");
+
+-- CreateIndex
+CREATE INDEX "_McpServerToMcpTool_B_index" ON "public"."_McpServerToMcpTool"("B");
 
 -- AddForeignKey
-ALTER TABLE "public"."User" ADD CONSTRAINT "User_defaultOrganizationId_fkey" FOREIGN KEY ("defaultOrganizationId") REFERENCES "public"."Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."User" ADD CONSTRAINT "User_defaultOrganizationSlug_fkey" FOREIGN KEY ("defaultOrganizationSlug") REFERENCES "public"."Organization"("slug") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Chat" ADD CONSTRAINT "Chat_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -502,13 +562,13 @@ ALTER TABLE "public"."Suggestion" ADD CONSTRAINT "Suggestion_documentId_document
 ALTER TABLE "public"."Stream" ADD CONSTRAINT "Stream_chatId_fkey" FOREIGN KEY ("chatId") REFERENCES "public"."Chat"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."McpServer" ADD CONSTRAINT "McpServer_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."McpServerTemplate" ADD CONSTRAINT "McpServerTemplate_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."McpServer" ADD CONSTRAINT "McpServer_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."McpServerTemplate" ADD CONSTRAINT "McpServerTemplate_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Tool" ADD CONSTRAINT "Tool_mcpServerId_fkey" FOREIGN KEY ("mcpServerId") REFERENCES "public"."McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."McpTool" ADD CONSTRAINT "McpTool_mcpServerTemplateId_fkey" FOREIGN KEY ("mcpServerTemplateId") REFERENCES "public"."McpServerTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Organization" ADD CONSTRAINT "Organization_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -544,43 +604,46 @@ ALTER TABLE "public"."ResourceAccessControl" ADD CONSTRAINT "ResourceAccessContr
 ALTER TABLE "public"."ResourceAccessControl" ADD CONSTRAINT "ResourceAccessControl_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "public"."OrganizationGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserMcpServerConfig" ADD CONSTRAINT "UserMcpServerConfig_mcpServerId_fkey" FOREIGN KEY ("mcpServerId") REFERENCES "public"."McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."McpConfig" ADD CONSTRAINT "McpConfig_mcpServerTemplateId_fkey" FOREIGN KEY ("mcpServerTemplateId") REFERENCES "public"."McpServerTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserMcpServerConfig" ADD CONSTRAINT "UserMcpServerConfig_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."McpConfig" ADD CONSTRAINT "McpConfig_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserToolGroupTool" ADD CONSTRAINT "UserToolGroupTool_userMcpServerConfigId_fkey" FOREIGN KEY ("userMcpServerConfigId") REFERENCES "public"."UserMcpServerConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."McpConfig" ADD CONSTRAINT "McpConfig_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserToolGroupTool" ADD CONSTRAINT "UserToolGroupTool_toolGroupId_fkey" FOREIGN KEY ("toolGroupId") REFERENCES "public"."UserToolGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."McpServer" ADD CONSTRAINT "McpServer_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserToolGroupTool" ADD CONSTRAINT "UserToolGroupTool_toolId_fkey" FOREIGN KEY ("toolId") REFERENCES "public"."Tool"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."McpServerRequestLog" ADD CONSTRAINT "McpServerRequestLog_mcpServerId_fkey" FOREIGN KEY ("mcpServerId") REFERENCES "public"."McpServer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UserToolGroup" ADD CONSTRAINT "UserToolGroup_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."UserMcpServerInstanceToolGroup" ADD CONSTRAINT "UserMcpServerInstanceToolGroup_mcpServerInstanceId_fkey" FOREIGN KEY ("mcpServerInstanceId") REFERENCES "public"."UserMcpServerInstance"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."UserMcpServerInstanceToolGroup" ADD CONSTRAINT "UserMcpServerInstanceToolGroup_toolGroupId_fkey" FOREIGN KEY ("toolGroupId") REFERENCES "public"."UserToolGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."UserMcpServerInstance" ADD CONSTRAINT "UserMcpServerInstance_toolGroupId_fkey" FOREIGN KEY ("toolGroupId") REFERENCES "public"."UserToolGroup"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."UserMcpServerInstance" ADD CONSTRAINT "UserMcpServerInstance_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "public"."McpServerRequestLog" ADD CONSTRAINT "McpServerRequestLog_mcpServerInstanceId_fkey" FOREIGN KEY ("mcpServerInstanceId") REFERENCES "public"."UserMcpServerInstance"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."McpServerRequestLog" ADD CONSTRAINT "McpServerRequestLog_mcpApiKeyId_fkey" FOREIGN KEY ("mcpApiKeyId") REFERENCES "public"."McpApiKey"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."McpServerRequestLog" ADD CONSTRAINT "McpServerRequestLog_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."McpServerRequestData" ADD CONSTRAINT "McpServerRequestData_requestLogId_fkey" FOREIGN KEY ("requestLogId") REFERENCES "public"."McpServerRequestLog"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."McpApiKey" ADD CONSTRAINT "McpApiKey_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpApiKey" ADD CONSTRAINT "McpApiKey_mcpServerId_fkey" FOREIGN KEY ("mcpServerId") REFERENCES "public"."McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpOAuthClient" ADD CONSTRAINT "McpOAuthClient_mcpServerTemplateId_fkey" FOREIGN KEY ("mcpServerTemplateId") REFERENCES "public"."McpServerTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpOAuthClient" ADD CONSTRAINT "McpOAuthClient_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpOAuthToken" ADD CONSTRAINT "McpOAuthToken_oauthClientId_fkey" FOREIGN KEY ("oauthClientId") REFERENCES "public"."McpOAuthClient"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpOAuthToken" ADD CONSTRAINT "McpOAuthToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpOAuthToken" ADD CONSTRAINT "McpOAuthToken_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."_OrganizationMemberToOrganizationRole" ADD CONSTRAINT "_OrganizationMemberToOrganizationRole_A_fkey" FOREIGN KEY ("A") REFERENCES "public"."OrganizationMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -599,3 +662,15 @@ ALTER TABLE "public"."_OrganizationGroupToOrganizationRole" ADD CONSTRAINT "_Org
 
 -- AddForeignKey
 ALTER TABLE "public"."_OrganizationGroupToOrganizationRole" ADD CONSTRAINT "_OrganizationGroupToOrganizationRole_B_fkey" FOREIGN KEY ("B") REFERENCES "public"."OrganizationRole"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."_McpServerToMcpServerTemplate" ADD CONSTRAINT "_McpServerToMcpServerTemplate_A_fkey" FOREIGN KEY ("A") REFERENCES "public"."McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."_McpServerToMcpServerTemplate" ADD CONSTRAINT "_McpServerToMcpServerTemplate_B_fkey" FOREIGN KEY ("B") REFERENCES "public"."McpServerTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."_McpServerToMcpTool" ADD CONSTRAINT "_McpServerToMcpTool_A_fkey" FOREIGN KEY ("A") REFERENCES "public"."McpServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."_McpServerToMcpTool" ADD CONSTRAINT "_McpServerToMcpTool_B_fkey" FOREIGN KEY ("B") REFERENCES "public"."McpTool"("id") ON DELETE CASCADE ON UPDATE CASCADE;

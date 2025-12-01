@@ -180,7 +180,7 @@ erDiagram
 ### `McpServerTemplate`
 
 MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
-organizationId = null の場合はアプ��提供のグローバル共通テンプレート
+organizationId = null の��合はアプリ提供のグローバル共通テンプレート
 organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
 
 **Properties**
@@ -749,7 +749,7 @@ Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
 ### `McpServerTemplate`
 
 MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
-organizationId = null の場合はアプ��提供のグローバル共通テンプレート
+organizationId = null の��合はアプリ提供のグローバル共通テンプレート
 organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
 
 **Properties**
