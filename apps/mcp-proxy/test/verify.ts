@@ -64,7 +64,7 @@ const sendRequest = async (
   };
 
   if (useApiKey) {
-    headers["X-API-Key"] = TEST_API_KEY;
+    headers["Tumiki-API-Key"] = TEST_API_KEY;
   }
 
   const response = await fetch(`${PROXY_URL}/mcp/${TEST_MCP_SERVER_ID}`, {
@@ -121,9 +121,9 @@ const main = async () => {
   let totalTests = 0;
   let passedTests = 0;
 
-  // テスト1: API Key認証（X-API-Keyヘッダー）
+  // テスト1: API Key認証（Tumiki-API-Keyヘッダー）
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("テスト1: API Key認証（X-API-Keyヘッダー）");
+  console.log("テスト1: API Key認証（Tumiki-API-Keyヘッダー）");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   totalTests++;
 
@@ -149,10 +149,15 @@ const main = async () => {
 
     if (response.result) {
       passedTests++;
-      printResult("API Key認証（X-API-Key）", true, "認証成功", responseTime);
+      printResult(
+        "API Key認証（Tumiki-API-Key）",
+        true,
+        "認証成功",
+        responseTime,
+      );
     } else {
       printResult(
-        "API Key認証（X-API-Key）",
+        "API Key認証（Tumiki-API-Key）",
         false,
         `エラー: ${response.error?.message}`,
         responseTime,
@@ -160,7 +165,7 @@ const main = async () => {
     }
   } catch (error) {
     printResult(
-      "API Key認証（X-API-Key）",
+      "API Key認証（Tumiki-API-Key）",
       false,
       `例外: ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -178,7 +183,7 @@ const main = async () => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "X-API-Key": "invalid-api-key-12345",
+      "Tumiki-API-Key": "invalid-api-key-12345",
     };
 
     const response = await fetch(`${PROXY_URL}/mcp/${TEST_MCP_SERVER_ID}`, {

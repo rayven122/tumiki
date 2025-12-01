@@ -136,7 +136,7 @@ export const integratedAuthMiddleware = async (
     // 認証情報なし
     return c.json(
       createUnauthorizedError("Authentication required", {
-        hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or X-API-Key header)",
+        hint: "Provide JWT token (Bearer eyJ...) or API key (Bearer tumiki_... or Tumiki-API-Key header)",
       }),
       401,
     );

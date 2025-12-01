@@ -24,9 +24,9 @@ describe("integratedAuthMiddleware", () => {
       expect(true).toStrictEqual(true);
     });
 
-    test("APIキー認証を正しく検出する（X-API-Key）", async () => {
+    test("APIキー認証を正しく検出する（Tumiki-API-Key）", async () => {
       // TODO: モックコンテキスト作成とテスト
-      // - X-API-Key ヘッダーを設定
+      // - Tumiki-API-Key ヘッダーを設定
       // - integratedAuthMiddleware() を呼び出し
       // - APIキー認証が使用されることを確認
       expect(true).toStrictEqual(true);

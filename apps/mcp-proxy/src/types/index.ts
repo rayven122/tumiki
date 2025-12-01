@@ -2,7 +2,7 @@
  * 認証方式
  *
  * - jwt: JWT Bearer Token認証（Keycloak）
- * - apikey: API Key認証（X-API-Key または Bearer tumiki_...）
+ * - apikey: API Key認証（Tumiki-API-Key または Bearer tumiki_...）
  */
 export type AuthMethod = "jwt" | "apikey";
 
