@@ -2,6 +2,23 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import { oauthTokenHandler } from "../oauth.js";
+import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
+
+// vi.hoisted でモック関数を定義（ホイスティング問題を回避）
+const { mockDiscover, mockGrant, mockRefresh, MockClient } = vi.hoisted(() => {
+  const grant = vi.fn();
+  const refresh = vi.fn();
+  const Client = vi.fn().mockImplementation(() => ({
+    grant,
+    refresh,
+  }));
+  return {
+    mockDiscover: vi.fn(),
+    mockGrant: grant,
+    mockRefresh: refresh,
+    MockClient: Client,
+  };
+});
 
 // モックの設定
 vi.mock("../../libs/logger/index.js", () => ({
@@ -11,9 +28,39 @@ vi.mock("../../libs/logger/index.js", () => ({
   logWarn: vi.fn(),
 }));
 
-// グローバル fetch のモック
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// openid-client のモック（Issuer と Client）
+vi.mock("openid-client", () => {
+  return {
+    Issuer: {
+      discover: mockDiscover,
+    },
+    errors: {
+      OPError: class OPError extends Error {
+        error: string;
+        error_description?: string;
+        constructor(options: { error: string; error_description?: string }) {
+          super(options.error_description ?? options.error);
+          this.error = options.error;
+          this.error_description = options.error_description;
+        }
+      },
+      RPError: class RPError extends Error {},
+    },
+  };
+});
+
+// デフォルトの Issuer モック値を作成するヘルパー
+const createMockIssuer = () => ({
+  issuer: "https://keycloak.example.com/realms/tumiki",
+  metadata: {
+    issuer: "https://keycloak.example.com/realms/tumiki",
+    token_endpoint:
+      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
+    jwks_uri:
+      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+  },
+  Client: MockClient,
+});
 
 describe("oauthTokenHandler", () => {
   let app: Hono<HonoEnv>;
@@ -29,7 +76,19 @@ describe("oauthTokenHandler", () => {
     // テスト用の環境変数を設定
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/tumiki";
 
+    // キャッシュをクリア
+    clearKeycloakCache();
+
     vi.clearAllMocks();
+
+    // MockClient の実装を再設定
+    MockClient.mockImplementation(() => ({
+      grant: mockGrant,
+      refresh: mockRefresh,
+    }));
+
+    // デフォルトの Issuer モックを設定
+    mockDiscover.mockResolvedValue(createMockIssuer());
   });
 
   afterEach(() => {
@@ -39,6 +98,9 @@ describe("oauthTokenHandler", () => {
     } else {
       delete process.env.KEYCLOAK_ISSUER;
     }
+
+    // キャッシュをクリア
+    clearKeycloakCache();
   });
 
   describe("バリデーション", () => {
@@ -154,20 +216,16 @@ describe("oauthTokenHandler", () => {
 
   describe("Client Credentials Grant", () => {
     test("正常なリクエストでトークンを取得できる", async () => {
-      // Keycloak からのモックレスポンス
-      const mockTokenResponse = {
+      // openid-client TokenSet のモック
+      const mockTokenSet = {
         access_token: "eyJhbGc...",
-        token_type: "Bearer" as const,
+        token_type: "Bearer",
         expires_in: 300,
         refresh_token: "eyJhbGc...",
         scope: "mcp:access",
       };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockTokenResponse,
-      });
+      mockGrant.mockResolvedValueOnce(mockTokenSet);
 
       const formData = new URLSearchParams();
       formData.append("grant_type", "client_credentials");
@@ -185,32 +243,30 @@ describe("oauthTokenHandler", () => {
 
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body).toStrictEqual(mockTokenResponse);
+      expect(body).toStrictEqual({
+        access_token: "eyJhbGc...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "eyJhbGc...",
+        scope: "mcp:access",
+      });
 
-      // Keycloak へのリクエストが正しく行われたか確認
-      expect(mockFetch).toHaveBeenCalledWith(
-        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
-        expect.objectContaining({
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }),
-      );
+      // grant メソッドが正しく呼ばれたか確認
+      expect(mockGrant).toHaveBeenCalledWith({
+        grant_type: "client_credentials",
+        scope: "mcp:access",
+      });
     });
 
     test("Keycloakがエラーを返した場合、エラーレスポンスを返す", async () => {
-      // Keycloak からのモックエラーレスポンス
-      const mockErrorResponse = {
-        error: "invalid_client",
-        error_description: "Invalid client credentials",
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => mockErrorResponse,
-      });
+      // openid-client OPError をスロー
+      const { errors } = await import("openid-client");
+      mockGrant.mockRejectedValueOnce(
+        new errors.OPError({
+          error: "invalid_client",
+          error_description: "Invalid client credentials",
+        }),
+      );
 
       const formData = new URLSearchParams();
       formData.append("grant_type", "client_credentials");
@@ -227,26 +283,25 @@ describe("oauthTokenHandler", () => {
 
       expect(res.status).toBe(401);
       const body = await res.json();
-      expect(body).toStrictEqual(mockErrorResponse);
+      expect(body).toStrictEqual({
+        error: "invalid_client",
+        error_description: "Invalid client credentials",
+      });
     });
   });
 
   describe("Refresh Token Grant", () => {
     test("正常なrefresh_tokenでトークンを更新できる", async () => {
-      // Keycloak からのモックレスポンス
-      const mockTokenResponse = {
+      // openid-client TokenSet のモック
+      const mockTokenSet = {
         access_token: "new_eyJhbGc...",
-        token_type: "Bearer" as const,
+        token_type: "Bearer",
         expires_in: 300,
         refresh_token: "new_refresh_token",
         scope: "mcp:access",
       };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockTokenResponse,
-      });
+      mockRefresh.mockResolvedValueOnce(mockTokenSet);
 
       const formData = new URLSearchParams();
       formData.append("grant_type", "refresh_token");
@@ -264,21 +319,27 @@ describe("oauthTokenHandler", () => {
 
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body).toStrictEqual(mockTokenResponse);
+      expect(body).toStrictEqual({
+        access_token: "new_eyJhbGc...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "new_refresh_token",
+        scope: "mcp:access",
+      });
+
+      // refresh メソッドが正しく呼ばれたか確認
+      expect(mockRefresh).toHaveBeenCalledWith("old_refresh_token");
     });
 
     test("無効なrefresh_tokenの場合、エラーレスポンスを返す", async () => {
-      // Keycloak からのモックエラーレスポンス
-      const mockErrorResponse = {
-        error: "invalid_grant",
-        error_description: "Invalid refresh token",
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => mockErrorResponse,
-      });
+      // openid-client OPError をスロー
+      const { errors } = await import("openid-client");
+      mockRefresh.mockRejectedValueOnce(
+        new errors.OPError({
+          error: "invalid_grant",
+          error_description: "Invalid refresh token",
+        }),
+      );
 
       const formData = new URLSearchParams();
       formData.append("grant_type", "refresh_token");
@@ -294,15 +355,23 @@ describe("oauthTokenHandler", () => {
         body: formData.toString(),
       });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
       const body = await res.json();
-      expect(body).toStrictEqual(mockErrorResponse);
+      expect(body).toStrictEqual({
+        error: "invalid_grant",
+        error_description: "Invalid refresh token",
+      });
     });
   });
 
   describe("エラーハンドリング", () => {
     test("KEYCLOAK_ISSUER環境変数が設定されていない場合、500エラーを返す", async () => {
       delete process.env.KEYCLOAK_ISSUER;
+
+      // Issuer.discover がエラーをスローするようにモック
+      mockDiscover.mockRejectedValueOnce(
+        new Error("KEYCLOAK_ISSUER environment variable is not set"),
+      );
 
       const formData = new URLSearchParams();
       formData.append("grant_type", "client_credentials");
@@ -320,12 +389,13 @@ describe("oauthTokenHandler", () => {
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body).toMatchObject({
-        error: "invalid_request",
+        error: "server_error",
       });
     });
 
     test("ネットワークエラーが発生した場合、500エラーを返す", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      // Issuer.discover がネットワークエラーをスローするようにモック
+      mockDiscover.mockRejectedValueOnce(new Error("Network error"));
 
       const formData = new URLSearchParams();
       formData.append("grant_type", "client_credentials");
@@ -343,7 +413,7 @@ describe("oauthTokenHandler", () => {
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body).toStrictEqual({
-        error: "invalid_request",
+        error: "server_error",
         error_description: "Network error",
       });
     });

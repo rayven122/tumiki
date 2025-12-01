@@ -1,60 +1,7 @@
 import type { MiddlewareHandler } from "hono";
-import { Issuer } from "openid-client";
-import { jwtVerify, createRemoteJWKSet } from "jose";
+import { jwtVerify } from "jose";
 import { logInfo, logWarn, logError } from "../../libs/logger/index.js";
-
-/**
- * Keycloak Issuer のキャッシュ
- *
- * パフォーマンス最適化のため、Issuer discovery の結果をキャッシュ
- */
-let keycloakIssuerCache: Issuer | null = null;
-
-/**
- * Keycloak Issuer を取得（キャッシュ付き）
- *
- * openid-client の Issuer.discover() を使用して
- * Keycloak の OAuth/OIDC メタデータを自動取得
- */
-const getKeycloakIssuer = async (): Promise<Issuer> => {
-  if (!keycloakIssuerCache) {
-    const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
-    if (!keycloakIssuerUrl) {
-      throw new Error("KEYCLOAK_ISSUER environment variable is not set");
-    }
-
-    // Issuer Discovery（自動メタデータ取得）
-    keycloakIssuerCache = await Issuer.discover(keycloakIssuerUrl);
-
-    logInfo("Keycloak Issuer discovered", {
-      issuer: keycloakIssuerCache.issuer,
-      jwksUri: keycloakIssuerCache.metadata.jwks_uri,
-    });
-  }
-
-  return keycloakIssuerCache;
-};
-
-/**
- * JWKS をメモ化して取得
- *
- * パフォーマンス最適化のため、RemoteJWKSet をキャッシュ
- */
-let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-const getJWKS = async () => {
-  if (!jwksCache) {
-    const issuer = await getKeycloakIssuer();
-
-    if (!issuer.metadata.jwks_uri) {
-      throw new Error("JWKS URI not found in Keycloak metadata");
-    }
-
-    jwksCache = createRemoteJWKSet(new URL(issuer.metadata.jwks_uri));
-  }
-
-  return jwksCache;
-};
+import { getKeycloakIssuer, getJWKS } from "../../libs/auth/keycloak.js";
 
 /**
  * Keycloak JWT 認証ミドルウェア
