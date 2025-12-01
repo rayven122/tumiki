@@ -69,6 +69,7 @@ const main = async () => {
     create: {
       id: TEST_MCP_SERVER_TEMPLATE_ID,
       name: "Context7",
+      normalizedName: "context7",
       description: "Context7 MCP Server - Library documentation provider",
       tags: ["documentation", "library", "context7"],
       iconPath: "https://context7.com/icon.png",
