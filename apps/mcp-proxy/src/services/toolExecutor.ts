@@ -162,7 +162,8 @@ export const executeTool = async (
       }
 
       // トークンの有効期限チェック
-      if (oauthToken.expiresAt && oauthToken.expiresAt < new Date()) {
+      const now = new Date();
+      if (oauthToken.expiresAt && oauthToken.expiresAt < now) {
         throw new Error(
           `OAuth token expired for user ${userId} and template ${templateName}. Please re-authenticate.`,
         );

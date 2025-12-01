@@ -118,7 +118,9 @@ export const OAuthTokenStatusCard = ({
               </p>
               <p className="text-xs text-gray-600">
                 有効期限:{" "}
-                {new Date(tokenStatus.expiresAt!).toLocaleString("ja-JP")}
+                {tokenStatus.expiresAt
+                  ? new Date(tokenStatus.expiresAt).toLocaleString("ja-JP")
+                  : "有効期限不明"}
               </p>
               <Button onClick={onReauth} size="sm" variant="outline">
                 今すぐ再認証する
@@ -151,7 +153,9 @@ export const OAuthTokenStatusCard = ({
             </p>
             <p className="mt-1 text-xs text-green-600">
               有効期限:{" "}
-              {new Date(tokenStatus.expiresAt!).toLocaleString("ja-JP")}
+              {tokenStatus.expiresAt
+                ? new Date(tokenStatus.expiresAt).toLocaleString("ja-JP")
+                : "有効期限不明"}
             </p>
           </div>
         </div>
