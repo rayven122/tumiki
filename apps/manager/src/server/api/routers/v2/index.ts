@@ -3,10 +3,12 @@ import { userRouter } from "./user";
 import { userMcpServerRouter } from "./userMcpServer";
 import { organizationRouter } from "./organization";
 import { mcpServerAuthRouter } from "./mcpServerAuth";
+import { mcpServerRouter } from "./mcpServer";
 
 export const v2Router = createTRPCRouter({
   user: userRouter,
   userMcpServer: userMcpServerRouter,
   organization: organizationRouter,
   mcpServerAuth: mcpServerAuthRouter,
+  mcpServer: mcpServerRouter,
 });
