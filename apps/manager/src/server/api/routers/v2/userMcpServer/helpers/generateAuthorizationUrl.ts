@@ -43,6 +43,7 @@ export const generateAuthorizationUrl = async ({
   userId,
   organizationId,
 }: GenerateAuthorizationUrlParams): Promise<string> => {
+  // Vercel環境では自動的にVERCEL_URLを使用してリダイレクトURIを構築
   const redirectUri = getOAuthRedirectUri();
 
   // PKCEパラメータを生成

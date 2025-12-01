@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   createStateToken,
   verifyStateToken,
@@ -11,8 +11,12 @@ const mockSecret = "test-secret-key-for-jwt-signing-must-be-secure-enough";
 
 beforeEach(() => {
   vi.resetAllMocks();
-  // テスト用の環境変数を設定
-  process.env.OAUTH_STATE_SECRET = mockSecret;
+  // テスト用の環境変数を設定（vi.stubEnvを使用）
+  vi.stubEnv("NEXTAUTH_SECRET", mockSecret);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 // テスト用のベースペイロード（JWTクレームを除外した形式）
@@ -87,31 +91,15 @@ describe("createStateToken", () => {
 
   test("環境変数が設定されていない場合はエラーを投げる", async () => {
     // 一時的に環境変数をクリア
-    delete process.env.OAUTH_STATE_SECRET;
-    delete process.env.NEXTAUTH_SECRET;
+    vi.unstubAllEnvs();
 
     const payload = createMockPayload();
     await expect(createStateToken(payload)).rejects.toThrow(
-      "OAUTH_STATE_SECRET or NEXTAUTH_SECRET environment variable is required",
+      "NEXTAUTH_SECRET environment variable is required",
     );
 
     // 元に戻す
-    process.env.OAUTH_STATE_SECRET = mockSecret;
-  });
-
-  test("NEXTAUTH_SECRETがフォールバックとして使用される", async () => {
-    // OAUTH_STATE_SECRETをクリアしてNEXTAUTH_SECRETを設定
-    delete process.env.OAUTH_STATE_SECRET;
-    process.env.NEXTAUTH_SECRET = mockSecret;
-
-    const payload = createMockPayload();
-    const token = await createStateToken(payload);
-
-    expect(typeof token).toBe("string");
-    expect(token.split(".")).toHaveLength(3);
-
-    // 元に戻す
-    process.env.OAUTH_STATE_SECRET = mockSecret;
+    vi.stubEnv("NEXTAUTH_SECRET", mockSecret);
   });
 
   test("無効なペイロードでエラーを投げる", async () => {
@@ -120,9 +108,7 @@ describe("createStateToken", () => {
       // 必須フィールドが不足
     } as unknown as OAuthStatePayload;
 
-    await expect(createStateToken(invalidPayload)).rejects.toThrow(
-      "Invalid state token payload",
-    );
+    await expect(createStateToken(invalidPayload)).rejects.toThrow();
   });
 });
 

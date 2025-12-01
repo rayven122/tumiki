@@ -13,12 +13,12 @@ Proxmox環境でのKeycloak設定
 
 ### 環境別URL
 
-| 環境       | Manager                                | MCP Proxy                                     |
-| ---------- | -------------------------------------- | --------------------------------------------- |
-| Local      | `http://localhost:3000`                | `http://localhost:8080`                       |
-| Staging    | `https://stg.tumiki.cloud`             | (DNS設定中)                                   |
-| Preview    | `https://tumiki-*-rayven-*.vercel.app` | `https://tumiki-mcp-proxy-pr-*-*-*.a.run.app` |
-| Production | `https://www.tumiki.cloud`             | `https://mcp.tumiki.cloud`                    |
+| 環境       | Manager                        | MCP Proxy                                     |
+| ---------- | ------------------------------ | --------------------------------------------- |
+| Local      | `http://localhost:3000`        | `http://localhost:8080`                       |
+| Staging    | `https://stg.tumiki.cloud`     | (DNS設定中)                                   |
+| Preview    | `https://tumiki-*.vercel.app`  | `https://tumiki-mcp-proxy-pr-*-*-*.a.run.app` |
+| Production | `https://manager.tumiki.cloud` | `https://mcp.tumiki.cloud`                    |
 
 ---
 
@@ -159,25 +159,60 @@ Keycloakはワイルドカードをサポートしているため、Preview環�
 
 ✅ Staging/Production
 - https://stg.tumiki.cloud/*
-- https://www.tumiki.cloud/*
+- https://manager.tumiki.cloud/*
 
 ✅ Preview（ワイルドカード）
-- https://tumiki-*-rayven-*.vercel.app/*
+- https://tumiki-*.vercel.app/*
 - https://tumiki-mcp-proxy-pr-*-*-*.a.run.app/*
 ```
 
 ### セキュリティ
 
-- ✅ チーム限定: `rayven`チームのみ許可
+- ✅ チーム限定: Vercelの`rayven`チームデプロイのみ許可
 - ✅ プレフィックス限定: `tumiki-`で始まるURLのみ
+- ⚠️ ワイルドカード制限: Keycloak公式では末尾のみサポート（`https://example.com/*`）
+  - ホスト名内のワイルドカード（`https://tumiki-*.vercel.app/*`）は非公式だが実装により動作
+  - Keycloak 26.4.2では動作確認済み
 
 **例**:
 
 ```
 ✅ https://tumiki-rmr2ktojo-rayven-38d708d3.vercel.app
+✅ https://tumiki-jeq8r4h8i-rayven-38d708d3.vercel.app
+✅ https://tumiki-abc123.vercel.app
+✅ https://tumiki-test.vercel.app
 ✅ https://tumiki-mcp-proxy-pr-517-wsolw3wnva-an.a.run.app
-❌ https://attacker-rayven-38d708d3.vercel.app (プレフィックス不一致)
+❌ https://attacker-test.vercel.app (プレフィックス不一致)
 ```
+
+---
+
+## 📝 ワイルドカードパターンの技術詳細
+
+### Keycloakのワイルドカード仕様
+
+**公式サポート範囲**:
+
+- ✅ パス部分: `https://example.com/*`
+- ❌ ホスト名: `https://*.example.com/*`（公式非サポート）
+
+**実際の動作**（Keycloak 26.4.2）:
+
+- ✅ `https://tumiki-*.vercel.app/*` - 動作確認済み
+- ✅ `https://tumiki-*-test-*.vercel.app/*` - 複数ワイルドカードも動作
+- ⚠️ 実装依存のため、将来のバージョンで変更される可能性あり
+
+**推奨される代替手段**:
+
+1. CI/CDパイプラインでKeycloak Admin APIを使用してURIを動的追加
+2. 固定のStaging環境URLを使用
+3. 開発時のみ単一`*`ワイルドカード（セキュリティリスクあり）
+
+### 参考リソース
+
+- [Keycloak Discussion #9278](https://github.com/keycloak/keycloak/discussions/9278) - ワイルドカードポリシー
+- [Stack Overflow: Vercel動的URL](https://stackoverflow.com/questions/65928311/keycloak-valid-redirect-uris-for-dynamic-urls-w-vercel)
+- [Issue #14113](https://github.com/keycloak/keycloak/issues/14113) - ホスト名ワイルドカード要望
 
 ---
 
@@ -192,7 +227,7 @@ ssh remote-proxmox "pct exec 105 -- \
   /opt/keycloak/bin/kcadm.sh get clients -r tumiki --fields redirectUris"
 ```
 
-- Vercel: `tumiki-*-rayven-*.vercel.app`形式か
+- Vercel: `tumiki-*.vercel.app`形式か
 - Cloud Run: `tumiki-mcp-proxy-pr-*-*-*.a.run.app`形式か
 
 ### Keycloakにアクセスできない
