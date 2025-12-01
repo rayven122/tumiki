@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { ProtectedContext } from "@/server/api/trpc";
-import { db } from "@tumiki/db/server";
 
 /**
  * 公開MCPサーバーテンプレート一覧を取得
