@@ -38,7 +38,6 @@ import { ConnectionTab } from "./ConnectionTab";
 import { EditServerDialog } from "./EditServerDialog";
 import { DeleteServerDialog } from "./DeleteServerDialog";
 import { BarChart3, Activity, Cable, Workflow } from "lucide-react";
-import { OAuthTokenStatusBadge } from "../../_components/UserMcpServerCard/OAuthTokenStatusBadge";
 
 // サーバータイプのラベル
 const SERVER_TYPE_LABELS = {
@@ -88,17 +87,6 @@ export const ServerDetailPageClient = ({
     { userMcpServerId: serverId as McpServerId },
     { enabled: !!serverId },
   );
-
-  // OAuth トークン状態を取得（OAuth認証の場合のみ）
-  const { data: oauthTokenStatus } =
-    api.v2.userMcpServer.getOAuthTokenStatus.useQuery(
-      { mcpServerTemplateId: server?.mcpServerTemplateId ?? "" },
-      {
-        enabled:
-          !!server?.mcpServerTemplateId &&
-          server?.mcpServer?.authType === "OAUTH",
-      },
-    );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
@@ -326,13 +314,6 @@ export const ServerDetailPageClient = ({
                               </span>
                             </div>
                           )}
-                          {/* OAuth トークン状態バッジ */}
-                          {selectedAuthType === AuthType.OAUTH &&
-                            oauthTokenStatus && (
-                              <OAuthTokenStatusBadge
-                                oauthTokenStatus={oauthTokenStatus}
-                              />
-                            )}
                         </>
                       )}
                     </div>

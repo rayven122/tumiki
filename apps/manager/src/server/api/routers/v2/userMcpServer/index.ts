@@ -37,10 +37,6 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
-import {
-  getOAuthTokenStatus,
-  getOAuthTokenStatusOutputSchema,
-} from "./getOAuthTokenStatus";
 import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
@@ -146,11 +142,6 @@ export const ToggleToolInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
   toolId: ToolIdSchema,
   isEnabled: z.boolean(),
-});
-
-// OAuth トークン状態取得の入力スキーマ
-export const GetOAuthTokenStatusInputV2 = z.object({
-  mcpServerTemplateId: z.string(),
 });
 
 // OAuth 再認証の入力スキーマ
@@ -347,17 +338,6 @@ export const userMcpServerRouter = createTRPCRouter({
           isEnabled: input.isEnabled,
           organizationId: ctx.session.user.organizationId,
         });
-      });
-    }),
-
-  // OAuth トークン状態取得
-  getOAuthTokenStatus: protectedProcedure
-    .input(GetOAuthTokenStatusInputV2)
-    .output(getOAuthTokenStatusOutputSchema)
-    .query(async ({ ctx, input }) => {
-      return await getOAuthTokenStatus(ctx.db, {
-        mcpServerTemplateId: input.mcpServerTemplateId,
-        userId: ctx.session.user.id,
       });
     }),
 
