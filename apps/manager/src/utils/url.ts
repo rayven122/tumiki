@@ -11,13 +11,6 @@ export const getProxyServerUrl = () => {
   return MCP_PROXY_SERVER_URL;
 };
 
-/**
- * サーバー名を正規化（小文字化、空白をハイフンに変換）
- */
-export const normalizeServerName = (name: string): string => {
-  return name.toLowerCase().replace(/\s+/g, "-");
-};
-
 export const makeSseProxyServerUrl = (userMcpServerInstanceId: string) => {
   return `${MCP_PROXY_SERVER_URL}/sse/${userMcpServerInstanceId}`;
 };

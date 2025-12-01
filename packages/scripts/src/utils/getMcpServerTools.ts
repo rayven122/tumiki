@@ -1,11 +1,15 @@
+// TODO: このファイルの機能を @tumiki/mcp-utils パッケージとして分離する
+// - getMcpServerTools, getMcpServerToolsSSE, getMcpServerToolsHTTP を移動
+// - Cloud Run IAM 認証機能を含める
+// - apps/manager や他のパッケージから共通で利用できるようにする
+
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { GoogleAuth } from "google-auth-library";
 
-import type { McpServer } from "@tumiki/db/server";
+import type { McpServerTemplate } from "@tumiki/db/server";
 
 /**
  * Cloud Run認証用のIDトークンを取得する
@@ -31,124 +35,21 @@ const getCloudRunIdToken = async (targetAudience: string): Promise<string> => {
 };
 
 /**
- * MCPサーバーからツール一覧を取得する
- * @param server MCPサーバー
- * @returns ツール一覧
- */
-export const getMcpServerTools = async (
-  server: McpServer,
-  envVars: Record<string, string>,
-): Promise<Tool[]> => {
-  // MCPクライアントの初期化
-  const client = new Client({
-    name: server.name,
-    version: "1.0.0",
-  });
-
-  try {
-    let transport;
-    if (server.transportType === "STDIO") {
-      transport = new StdioClientTransport({
-        command:
-          server.command === "node" ? process.execPath : (server.command ?? ""),
-        args: server.args,
-        env: envVars,
-      });
-    } else if (server.transportType === "STREAMABLE_HTTPS") {
-      // Streamable HTTPS サーバーの場合
-      const headers: Record<string, string> = {};
-
-      // Cloud Run（authType === "CLOUD_RUN_IAM"）の場合のみ、IAM認証トークンを取得
-      if (server.authType === "CLOUD_RUN_IAM") {
-        try {
-          // Cloud RunサービスのベースURLをオーディエンスとして使用
-          const serviceUrl = new URL(server.url ?? "");
-          const targetAudience = `${serviceUrl.protocol}//${serviceUrl.host}`;
-
-          const idToken = await getCloudRunIdToken(targetAudience);
-          headers.Authorization = `Bearer ${idToken}`;
-        } catch (error) {
-          console.warn(
-            `Warning: Failed to get Cloud Run ID token for ${server.name}:`,
-            error instanceof Error ? error.message : error,
-          );
-          console.warn(
-            "Continuing without Cloud Run authentication. Ensure gcloud auth application-default login is configured.",
-          );
-        }
-      }
-
-      // envVarsを全てカスタムヘッダーとして追加
-      for (const [key, value] of Object.entries(envVars)) {
-        headers[key] = value;
-      }
-
-      // Acceptヘッダーを追加
-      headers.Accept = "application/json, text/event-stream";
-
-      transport = new StreamableHTTPClientTransport(new URL(server.url ?? ""), {
-        requestInit: { headers },
-      });
-    } else {
-      // SSE transport for backward compatibility
-      transport = new SSEClientTransport(new URL(server.url ?? ""), {
-        requestInit: {
-          headers: {
-            ...envVars,
-            Accept: "application/json, text/event-stream",
-          },
-        },
-      });
-    }
-
-    // 10秒のタイムアウトを設定（リモートサーバーの場合）
-    if (server.transportType !== "STDIO") {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(
-            new Error("MCPサーバーへの接続がタイムアウトしました（10秒）"),
-          );
-        }, 10000);
-      });
-
-      // サーバーに接続（タイムアウト付き）
-      await Promise.race([client.connect(transport), timeoutPromise]);
-    } else {
-      // サーバーに接続
-      await client.connect(transport);
-    }
-
-    // ツール一覧を取得
-    const listTools = await client.listTools();
-
-    // サーバーの接続を閉じる
-    await client.close();
-
-    return listTools.tools;
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-};
-
-/**
- * MCPサーバーからツール一覧を取得する（SSE版）
- * @param server MCPサーバー
+ * SSE トランスポートでツール一覧を取得する（内部関数）
+ * @param server MCPサーバーテンプレート
  * @param envVars 環境変数（ヘッダーとして使用）
  * @returns ツール一覧
  */
-export const getMcpServerToolsSSE = async (
-  server: Pick<McpServer, "name" | "url">,
+const getToolsWithSSE = async (
+  server: Pick<McpServerTemplate, "name" | "url">,
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
-  // MCPクライアントの初期化
   const client = new Client({
     name: server.name,
     version: "1.0.0",
   });
 
   try {
-    // SSETransportのみを使用
     const transport = new SSEClientTransport(new URL(server.url ?? ""), {
       requestInit: {
         headers: {
@@ -182,32 +83,57 @@ export const getMcpServerToolsSSE = async (
 };
 
 /**
- * MCPサーバーからツール一覧を取得する（HTTP版）
- * @param server MCPサーバー
- * @param headers HTTPヘッダー
+ * Streamable HTTPS トランスポートでツール一覧を取得する（内部関数）
+ * @param server MCPサーバーテンプレート
+ * @param envVars 環境変数
+ * @param useCloudRunIam Cloud Run IAM認証を使用するか
  * @returns ツール一覧
  */
-export const getMcpServerToolsHTTP = async (
-  server: Pick<McpServer, "name" | "url">,
-  headers: Record<string, string>,
+const getToolsWithStreamableHTTPS = async (
+  server: Pick<McpServerTemplate, "name" | "url">,
+  envVars: Record<string, string>,
+  useCloudRunIam: boolean,
 ): Promise<Tool[]> => {
-  // MCPクライアントの初期化
   const client = new Client({
     name: server.name,
     version: "1.0.0",
   });
 
   try {
-    // StreamableHTTPClientTransportを使用
+    const headers: Record<string, string> = {};
+
+    // Cloud Run（useCloudRunIam === true）の場合のみ、IAM認証トークンを取得
+    if (useCloudRunIam) {
+      try {
+        // Cloud RunサービスのベースURLをオーディエンスとして使用
+        const serviceUrl = new URL(server.url ?? "");
+        const targetAudience = `${serviceUrl.protocol}//${serviceUrl.host}`;
+
+        const idToken = await getCloudRunIdToken(targetAudience);
+        headers.Authorization = `Bearer ${idToken}`;
+      } catch (error) {
+        console.warn(
+          `Warning: Failed to get Cloud Run ID token for ${server.name}:`,
+          error instanceof Error ? error.message : error,
+        );
+        console.warn(
+          "Continuing without Cloud Run authentication. Ensure gcloud auth application-default login is configured.",
+        );
+      }
+    }
+
+    // envVarsを全てカスタムヘッダーとして追加
+    for (const [key, value] of Object.entries(envVars)) {
+      headers[key] = value;
+    }
+
+    // Acceptヘッダーを追加
+    headers.Accept = "application/json, text/event-stream";
+
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
       {
-        requestInit: {
-          headers: {
-            ...headers,
-            Accept: "application/json, text/event-stream",
-          },
-        },
+        requestInit: { headers },
       },
     );
 
@@ -231,5 +157,32 @@ export const getMcpServerToolsHTTP = async (
   } catch (error) {
     console.error(error);
     return [];
+  }
+};
+
+/**
+ * MCPサーバーテンプレートからツール一覧を取得する
+ * @param server MCPサーバーテンプレート
+ * @param envVars 環境変数
+ * @returns ツール一覧
+ */
+export const getMcpServerTools = async (
+  server: McpServerTemplate,
+  envVars: Record<string, string>,
+): Promise<Tool[]> => {
+  switch (server.transportType) {
+    case "SSE":
+      return getToolsWithSSE(server, envVars);
+    case "STREAMABLE_HTTPS":
+      return getToolsWithStreamableHTTPS(
+        server,
+        envVars,
+        server.useCloudRunIam,
+      );
+    default:
+      console.error(
+        `Unsupported transport type: ${server.transportType as string}`,
+      );
+      return [];
   }
 };

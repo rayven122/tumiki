@@ -5,8 +5,8 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/src/client.d.ts",
-      "default": "./dist/src/client.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./client": {
       "types": "./dist/src/client.d.ts",
@@ -35,6 +35,10 @@
     "./testing": {
       "types": "./dist/src/testing/index.d.ts",
       "default": "./dist/src/testing/index.js"
+    },
+    "./utils/slug": {
+      "types": "./dist/src/utils/slug.d.ts",
+      "default": "./dist/src/utils/slug.js"
     }
   },
   "scripts": {
@@ -49,6 +53,7 @@
     "db:generate": "pnpm with-env prisma generate",
     "db:migrate": "pnpm with-env prisma migrate dev",
     "db:deploy": "pnpm with-env prisma migrate deploy",
+    "db:reset": "pnpm with-env prisma migrate reset",
     "db:push:test": "pnpm with-env-test prisma db push",
     "db:studio": "pnpm with-env prisma studio",
     "postinstall": "pnpm db:generate",

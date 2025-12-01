@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
-import { resolveUserMcpServerInstance } from "./instanceResolver.js";
+import { resolveMcpServer } from "./instanceResolver.js";
 import type { JWTPayload } from "../types/index.js";
 
 // モックの設定
@@ -8,7 +8,7 @@ vi.mock("@tumiki/db/server", () => ({
     organization: {
       findUnique: vi.fn(),
     },
-    userMcpServerInstance: {
+    mcpServer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
@@ -24,7 +24,7 @@ vi.mock("../libs/logger/index.js", () => ({
 // モックされたdb
 const { db } = await import("@tumiki/db/server");
 
-describe("resolveUserMcpServerInstance", () => {
+describe("resolveMcpServer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -51,13 +51,7 @@ describe("resolveUserMcpServerInstance", () => {
     id,
     name: "Test OAuth Instance",
     description: "Test instance",
-    iconPath: null,
-    serverStatus: "RUNNING" as const,
-    serverType: "OFFICIAL" as const,
-    toolGroupId: "toolgroup_1",
-    authType: "OAUTH" as const,
     organizationId: orgId,
-    displayOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt,
@@ -67,19 +61,18 @@ describe("resolveUserMcpServerInstance", () => {
     test("JWTから指定されたインスタンスが正しく解決される", async () => {
       const mockInstance = createMockInstance();
 
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValue(
-        mockInstance,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(mockInstance as any);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",
         "user_test456",
         "instance_1",
       );
-      const result = await resolveUserMcpServerInstance(jwtPayload);
+      const result = await resolveMcpServer(jwtPayload);
 
       expect(result).toStrictEqual(mockInstance);
-      expect(db.userMcpServerInstance.findUnique).toHaveBeenCalledWith({
+      expect(db.mcpServer.findUnique).toHaveBeenCalledWith({
         where: { id: "instance_1" },
       });
     });
@@ -90,7 +83,7 @@ describe("resolveUserMcpServerInstance", () => {
       // mcp_instance_idなしのJWT
       const jwtPayload = createMockJWTPayload("org_test123", "user_test456");
 
-      await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
+      await expect(resolveMcpServer(jwtPayload)).rejects.toThrow(
         "mcp_instance_id is required for MCP server access",
       );
     });
@@ -98,7 +91,7 @@ describe("resolveUserMcpServerInstance", () => {
 
   describe("異常系: インスタンス不存在 (mcp_instance_id あり)", () => {
     test("インスタンスが見つからない場合、エラーをスローする", async () => {
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValue(null);
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(null);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",
@@ -106,8 +99,8 @@ describe("resolveUserMcpServerInstance", () => {
         "instance_1",
       );
 
-      await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
-        "MCP server instance not found",
+      await expect(resolveMcpServer(jwtPayload)).rejects.toThrow(
+        "MCP server not found",
       );
     });
   });
@@ -121,9 +114,8 @@ describe("resolveUserMcpServerInstance", () => {
         deletedDate,
       );
 
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValue(
-        mockInstance,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(mockInstance as any);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",
@@ -131,8 +123,8 @@ describe("resolveUserMcpServerInstance", () => {
         "instance_1",
       );
 
-      await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
-        "MCP server instance is deleted",
+      await expect(resolveMcpServer(jwtPayload)).rejects.toThrow(
+        "MCP server is deleted",
       );
     });
   });
@@ -142,9 +134,8 @@ describe("resolveUserMcpServerInstance", () => {
       // インスタンスは別の組織に属している
       const mockInstance = createMockInstance("instance_1", "org_different");
 
-      vi.mocked(db.userMcpServerInstance.findUnique).mockResolvedValue(
-        mockInstance,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(mockInstance as any);
 
       const jwtPayload = createMockJWTPayload(
         "org_test123",
@@ -152,7 +143,7 @@ describe("resolveUserMcpServerInstance", () => {
         "instance_1",
       );
 
-      await expect(resolveUserMcpServerInstance(jwtPayload)).rejects.toThrow(
+      await expect(resolveMcpServer(jwtPayload)).rejects.toThrow(
         "Organization ID mismatch",
       );
     });

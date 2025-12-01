@@ -36,8 +36,8 @@ cp .env.example .env
 
 ```bash
 # Database Configuration
-DATABASE_URL="postgresql://postgres:password@localhost:5432/tumiki"
-DIRECT_URL="postgresql://postgres:password@localhost:5432/tumiki"
+DATABASE_URL="postgresql://postgres:password@localhost:5434/tumiki"
+DIRECT_URL="postgresql://postgres:password@localhost:5434/tumiki"
 
 # Redis Configuration
 REDIS_URL="redis://localhost:6379"
@@ -60,7 +60,6 @@ NEXT_PUBLIC_APP_URL="https://local.tumiki.cloud:3000"
 NEXT_PUBLIC_MCP_PROXY_URL="http://localhost:8080"
 
 # Encryption Keys（開発環境用デフォルト値）
-CACHE_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 REDIS_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 PRISMA_FIELD_ENCRYPTION_KEY=""
 ```

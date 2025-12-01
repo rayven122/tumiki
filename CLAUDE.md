@@ -55,10 +55,6 @@ Serenaのシンボリックツールへのアクセスが提供されていま�
 
 プロジェクトの詳細については [README.md](./README.md) を参照してください。
 
-## 開発コマンド
-
-開発に必要なコマンドについては [README.md](./README.md) の「開発コマンド」セクションを参照してください。
-
 ### 型チェックコマンド
 
 - **型チェック**: `pnpm typecheck` - TypeScript型チェック（tsc使用）
@@ -83,11 +79,44 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 
 ## 開発ガイドライン
 
+### TypeScript コーディング規約
+
+- **`any`型は絶対に使用禁止** - 常に適切な型、`unknown`、またはジェネリック型パラメータを使用すること
+- **コード内のコメントは日本語で記述** - コードの可読性と保守性向上のため
+- TypeScript strict mode 使用（tsconfig.json で既に有効化済み）
+- 可能な限り型推論を優先するが、関数の引数と戻り値は明示的に型付けする
+- 型が本当に不明な場合は`any`ではなく`unknown`を使用する
+
+例:
+
+```typescript
+// ❌ 悪い例 - anyは使用禁止
+function process(data: any): any {
+  return data;
+}
+
+// ✅ 良い例 - 適切な型を使用
+function process<T>(data: T): T {
+  return data;
+}
+
+// ✅ 良い例 - 本当に不明な型にはunknownを使用
+function process(data: unknown): string {
+  if (typeof data === "string") {
+    return data;
+  }
+  return String(data);
+}
+```
+
 ### フロントエンド コーディング規約
 
 - **コンポーネント**: 関数コンポーネント + アロー関数、必須の Props 型定義。呼び出す側と同一階層の `_components/` ディレクトリに配置する。共通で利用するコンポーネントは、呼び出し側の一つ上の `_components/` ディレクトリに配置する。
 - **関数定義**: 全ての関数はアロー関数で記述する（`const fn = () => {}` 形式）
-- **スタイリング**: Tailwind CSS 使用、カスタムスタイルは `styles/globals.css`。className で条件分岐を含む場合は `clsx` を使用する
+- **スタイリング**: **すべてのスタイリングにTailwind CSSクラスを使用すること必須** - インラインスタイルや別途のCSSファイルは使用しない
+- **モバイルファースト設計**: スマートフォン向けのビューポートサイズ専用に設計（一般的な最大幅: 428px）
+- **タッチ操作最適化**: 適切なタップターゲットサイズを使用（最小44x44px）
+- **Tailwind CSS v4**: `@tailwindcss/postcss`プラグインを使用、設定は`globals.css`内の`@theme`ディレクティブで行う
 - **データフェッチング**: tRPC 使用（`trpc.useQuery()`, `trpc.useMutation()`）
 - **状態管理**: ローカルは `useState`、グローバルは Jotai
 - **型定義**: 共有型は `@tumiki/db` から import
@@ -99,12 +128,75 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 
 ### テストコーディング規約
 
-- **フレームワーク**: Vitest 使用
-- **テスト記法**: `test` 使用（`it` ではない）、日本語でテスト名を記載
+- **フレームワーク**: Vitest v4 (jsdom環境) 使用
+- **テスト記法**: **`test` 使用必須（`it` ではない）**、**テスト名は日本語で記載必須**
 - **構造**: 関数ごとに `describe` ブロックを記載、古典派単体テスト
 - **アサーション**: `toStrictEqual` 使用（`toEqual` ではない）
-- **実行**: `pnpm test`（`vitest run`）、`pnpm test:watch`（`vitest`）でウォッチモード
+- **実行**: `pnpm test`（`vitest run`）でテスト実行、`pnpm test:watch`（`vitest`）でウォッチモード
 - **カバレッジ**: `pnpm test:coverage` でカバレッジ測定、実装ロジックのカバレッジ100%を目標
+- **Reactテスト**: コンポーネントテスト用の@testing-library/react使用
+- **E2Eテスト**: エンドツーエンドテスト用のPlaywright使用
+
+#### テスト命名規則
+
+```typescript
+// ❌ 悪い例 - it()や英語は使用しない
+it("should return user data", () => {});
+
+// ✅ 良い例 - 日本語でtest()を使用
+test("ユーザーデータを返す", () => {});
+
+// ✅ 良い例 - グループ化にdescribe()を使用(日本語または英語可)
+describe("ユーザールーター", () => {
+  test("存在するユーザーのデータを返す", () => {});
+  test("存在しないユーザーの場合はエラーを返す", () => {});
+});
+```
+
+#### テストのベストプラクティス
+
+##### 環境変数のモック
+
+- **環境変数のモックには`vi.stubEnv()`を使用すること必須** - `process.env.VARIABLE = 'value'`は使用しない
+- クリーンアップで元の値を復元するために`vi.unstubAllEnvs()`を使用
+
+例:
+
+```typescript
+beforeAll(() => {
+  vi.stubEnv("NODE_ENV", "test");
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
+```
+
+##### タイマーのモック
+
+- タイマーのモックには`vi.useFakeTimers({ shouldAdvanceTime: false })`を使用
+- クリーンアップで実際のタイマーを復元するために`vi.useRealTimers()`を使用
+- タイマーを進めるには`vi.advanceTimersByTime(ms)`を使用
+
+例:
+
+```typescript
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: false });
+});
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
+```
+
+##### テストファイルの構成
+
+- ユニットテスト: `src/**/__tests__/*.test.ts(x)`
+- E2Eテスト: `tests/e2e/*.test.ts`
+- テストセットアップ: `tests/setup.ts`
+- E2Eテストファイルをユニットテストディレクトリと混在させない
 
 #### データベーステスト環境
 
@@ -115,6 +207,18 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 - **スキーマ適用**: `cd packages/db && pnpm db:push:test` でテスト用DBにスキーマを適用
 - **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5433/tumiki_test`）
 - **テスト環境**: vitest-environment-vprisma でトランザクション分離された独立テスト実行
+
+#### 品質チェック
+
+コミットまたはPR作成前に、すべての品質チェックが通過することを確認：
+
+```bash
+pnpm typecheck    # TypeScript型チェック(必須)
+pnpm test         # カバレッジ付きユニットテスト(必須)
+pnpm build        # 本番ビルド(必須)
+```
+
+**重要**: コードをコミットする前に、3つのチェックすべてが通過する必要があります。続行する前にエラーや警告を修正してください。
 
 ## 重要なアーキテクチャパターン
 
@@ -172,22 +276,6 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **@tumiki/ パッケージのimportエラー**: `@tumiki/` で始まるパッケージのimportに失敗する場合は、該当パッケージのビルドが必要。
   例: `@tumiki/db` のimportエラーが発生した場合 → `cd packages/db && pnpm build` を実行
 
-### CI/CD
-
-- **GitHub Actions**: `.github/workflows/ci.yml`
-- **品質チェック**: `pnpm check` で lint + format + typecheck
-
-### 重要な実装パターン
-
-- **フィールド暗号化**: 機密データ（APIキー等）はPrismaの暗号化機能で保護
-- **SSE通信**: リアルタイムMCP通信にServer-Sent Eventsを使用
-- **セッション管理**: MCPサーバーとの永続的な接続をセッションで管理
-- **エラーハンドリング**: tRPCによる型安全なエラー処理とユーザー向けメッセージ
-- **データ圧縮**: MCPリクエストデータの圧縮によるパフォーマンス最適化
-- **リクエストログ**: ProxyServerでのMCPリクエスト監視・分析
-- **PM2管理**: 本番環境でのプロセス管理と自動復旧
-- **メトリクス収集**: リアルタイムパフォーマンス監視
-
 ## 実装後の必須アクション
 
 **重要**: 実装が完了したら、必ず以下のコマンドを実行してください：
@@ -199,64 +287,6 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 5. `pnpm test` - テスト実行
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
-
-## CI/CD - Claude Code Review
-
-### 自動コードレビュー機能
-
-プルリクエストに対してClaude Code Reviewが自動実行されます：
-
-#### レビュー内容
-
-**2段階レビュープロセス**:
-
-1. **第1段階 - 詳細分析**:
-   - コード品質とベストプラクティス
-   - 設計原則（SOLID、DRY、KISS、YAGNI）の遵守
-   - 潜在的なバグとエラーハンドリング
-   - パフォーマンスとスケーラビリティ
-   - セキュリティリスク評価
-   - テストカバレッジ
-
-2. **第2段階 - 優先順位付け**:
-   - 重要度スコア（1-10）での評価
-   - 具体的な改善コード例の提示
-   - 実装すべきアクションの明確化
-
-### 🔧 自動修正機能
-
-Claude Code Reviewの指摘を自動修正する機能：
-
-#### 使用方法
-
-PRに `auto-fix` ラベルを追加すると、Claude Code Review完了後に自動修正が開始されます。
-
-#### 動作フロー
-
-1. **ラベル追加**: PRに `auto-fix` ラベルを追加
-2. **Claude Code Review実行**: 自動レビューが実行される
-3. **Auto-Fix開始**: レビュー完了後、同じワークフロー内で自動修正が起動
-4. **段階的修正**: 最も重要度が高い問題から1件ずつ修正
-5. **自動コミット**: GitHub Actionsボットが修正をコミット
-6. **再レビュー**: コミット後、Claude Code Reviewが自動再実行
-7. **ループ**: 最大5回まで修正→再レビューのループを継続
-
-#### 特徴
-
-- **段階的アプローチ**: 1回のループで1つの問題のみ修正（PRの差分を最小化）
-- **優先順位付き**: 重要度の高い問題から順に修正
-- **透明性**: 各修正が個別のコミットとして記録
-- **自動停止**: 重要な問題がなくなるか、5回のループ後に自動停止
-
-#### 設定
-
-- **トリガー**: `auto-fix` ラベルの追加
-- **重要度閾値**: 7以上の問題を自動修正
-- **最大ループ回数**: 5回
-- **待機時間**: 各修正後60秒待機（CI完了待ち）
-- **必要な環境変数**:
-  - `ANTHROPIC_API_KEY`: Claude API用
-  - `GITHUB_TOKEN`: GitHub操作用（自動設定）
 
 #### コミット形式
 
