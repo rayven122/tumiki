@@ -46,7 +46,7 @@ export const getUserOrganizations = async ({
     ],
   });
 
-  return memberships.map((membership) => ({
+  return memberships.map((membership: { isAdmin: boolean; organization: { id: string; name: string; slug: string; description: string | null; logoUrl: string | null; isDeleted: boolean; isPersonal: boolean; maxMembers: number; createdBy: string; createdAt: Date; updatedAt: Date; _count: { members: number } } }) => ({
     id: membership.organization.id,
     name: membership.organization.name,
     slug: membership.organization.slug,
@@ -60,6 +60,6 @@ export const getUserOrganizations = async ({
     updatedAt: membership.organization.updatedAt,
     isAdmin: membership.isAdmin,
     memberCount: membership.organization._count.members,
-    isDefault: membership.organization.id === ctx.currentOrganizationId,
+    isDefault: membership.organization.id === ctx.session.user.organizationId,
   }));
 };
