@@ -46,20 +46,38 @@ export const getUserOrganizations = async ({
     ],
   });
 
-  return memberships.map((membership: { isAdmin: boolean; organization: { id: string; name: string; slug: string; description: string | null; logoUrl: string | null; isDeleted: boolean; isPersonal: boolean; maxMembers: number; createdBy: string; createdAt: Date; updatedAt: Date; _count: { members: number } } }) => ({
-    id: membership.organization.id,
-    name: membership.organization.name,
-    slug: membership.organization.slug,
-    description: membership.organization.description,
-    logoUrl: membership.organization.logoUrl,
-    isDeleted: membership.organization.isDeleted,
-    isPersonal: membership.organization.isPersonal,
-    maxMembers: membership.organization.maxMembers,
-    createdBy: membership.organization.createdBy,
-    createdAt: membership.organization.createdAt,
-    updatedAt: membership.organization.updatedAt,
-    isAdmin: membership.isAdmin,
-    memberCount: membership.organization._count.members,
-    isDefault: membership.organization.id === ctx.session.user.organizationId,
-  }));
+  return memberships.map(
+    (membership: {
+      isAdmin: boolean;
+      organization: {
+        id: string;
+        name: string;
+        slug: string;
+        description: string | null;
+        logoUrl: string | null;
+        isDeleted: boolean;
+        isPersonal: boolean;
+        maxMembers: number;
+        createdBy: string;
+        createdAt: Date;
+        updatedAt: Date;
+        _count: { members: number };
+      };
+    }) => ({
+      id: membership.organization.id,
+      name: membership.organization.name,
+      slug: membership.organization.slug,
+      description: membership.organization.description,
+      logoUrl: membership.organization.logoUrl,
+      isDeleted: membership.organization.isDeleted,
+      isPersonal: membership.organization.isPersonal,
+      maxMembers: membership.organization.maxMembers,
+      createdBy: membership.organization.createdBy,
+      createdAt: membership.organization.createdAt,
+      updatedAt: membership.organization.updatedAt,
+      isAdmin: membership.isAdmin,
+      memberCount: membership.organization._count.members,
+      isDefault: membership.organization.id === ctx.session.user.organizationId,
+    }),
+  );
 };
