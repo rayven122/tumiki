@@ -43,18 +43,3 @@ ON CONFLICT ("id") DO NOTHING;
 UPDATE "User"
 SET "defaultOrganizationSlug" = 'tumiki-official'
 WHERE "id" = '00000000-0000-0000-0000-000000000001';
-
--- 1. 既存の公式テンプレート（organizationId = null）を特別なIDに更新
-UPDATE "McpServerTemplate"
-SET
-  "organizationId" = '00000000-0000-0000-0000-000000000000',
-  "createdBy" = '00000000-0000-0000-0000-000000000001'
-WHERE "organizationId" IS NULL;
-
--- 2. 関連するMcpOAuthClientも更新
-UPDATE "McpOAuthClient"
-SET "organizationId" = '00000000-0000-0000-0000-000000000000'
-WHERE "organizationId" IS NULL
-  AND "mcpServerTemplateId" IN (
-    SELECT "id" FROM "McpServerTemplate" WHERE "organizationId" = '00000000-0000-0000-0000-000000000000'
-  );
