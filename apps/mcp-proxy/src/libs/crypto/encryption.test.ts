@@ -6,14 +6,14 @@ let originalKey: string | undefined;
 
 // テスト用の暗号化キーを環境変数に設定
 beforeAll(() => {
-  originalKey = process.env.CACHE_ENCRYPTION_KEY;
-  process.env.CACHE_ENCRYPTION_KEY = generateEncryptionKey();
+  originalKey = process.env.REDIS_ENCRYPTION_KEY;
+  process.env.REDIS_ENCRYPTION_KEY = generateEncryptionKey();
 });
 
 // テスト後に環境変数を元に戻す
 afterEach(() => {
   if (originalKey !== undefined) {
-    process.env.CACHE_ENCRYPTION_KEY = originalKey;
+    process.env.REDIS_ENCRYPTION_KEY = originalKey;
   }
 });
 
@@ -199,41 +199,41 @@ describe("encrypt and decrypt integration", () => {
 
 describe("getEncryptionKey error handling", () => {
   test("環境変数が未設定の場合にエラーをスローする", () => {
-    const originalKey = process.env.CACHE_ENCRYPTION_KEY;
-    delete process.env.CACHE_ENCRYPTION_KEY;
+    const originalKey = process.env.REDIS_ENCRYPTION_KEY;
+    delete process.env.REDIS_ENCRYPTION_KEY;
 
     expect(() => encrypt("test")).toThrow(
-      "CACHE_ENCRYPTION_KEY environment variable is not set",
+      "REDIS_ENCRYPTION_KEY environment variable is not set",
     );
 
     // 復元
-    process.env.CACHE_ENCRYPTION_KEY = originalKey;
+    process.env.REDIS_ENCRYPTION_KEY = originalKey;
   });
 
   test("環境変数のキーが32バイトでない場合にエラーをスローする", () => {
-    const originalKey = process.env.CACHE_ENCRYPTION_KEY;
+    const originalKey = process.env.REDIS_ENCRYPTION_KEY;
     // 16バイト（32文字）のキーを設定
-    process.env.CACHE_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
+    process.env.REDIS_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
 
     expect(() => encrypt("test")).toThrow(
-      "CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
+      "REDIS_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
     );
 
     // 復元
-    process.env.CACHE_ENCRYPTION_KEY = originalKey;
+    process.env.REDIS_ENCRYPTION_KEY = originalKey;
   });
 
   test("環境変数のキーが不正な16進数の場合にエラーをスローする", () => {
-    const originalKey = process.env.CACHE_ENCRYPTION_KEY;
+    const originalKey = process.env.REDIS_ENCRYPTION_KEY;
     // 64文字だが16進数でない
-    process.env.CACHE_ENCRYPTION_KEY =
+    process.env.REDIS_ENCRYPTION_KEY =
       "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
 
     expect(() => encrypt("test")).toThrow(
-      "CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
+      "REDIS_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
     );
 
     // 復元
-    process.env.CACHE_ENCRYPTION_KEY = originalKey;
+    process.env.REDIS_ENCRYPTION_KEY = originalKey;
   });
 });

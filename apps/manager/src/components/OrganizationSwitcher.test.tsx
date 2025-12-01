@@ -154,6 +154,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: [],
       currentOrganization: null,
       setCurrentOrganization: mockSetCurrentOrganization,
       isLoading: false,
@@ -170,6 +171,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: null,
       setCurrentOrganization: mockSetCurrentOrganization,
       isLoading: true,
@@ -186,6 +188,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -211,6 +214,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_personal",
         name: "Personal Workspace",
@@ -236,6 +240,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -267,6 +272,7 @@ describe("OrganizationSwitcher", () => {
     mockSetCurrentOrganization.mockClear();
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -299,6 +305,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -333,6 +340,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -361,6 +369,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -390,6 +399,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: organizationsWithoutPersonal,
       currentOrganization: {
         id: "org_team1",
         name: "Team Alpha",
@@ -415,6 +425,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: undefined,
       currentOrganization: null,
       setCurrentOrganization: mockSetCurrentOrganization,
       isLoading: false,
@@ -431,6 +442,7 @@ describe("OrganizationSwitcher", () => {
     });
 
     mockUseOrganizationContext.mockReturnValue({
+      organizations: mockOrganizations,
       currentOrganization: null,
       setCurrentOrganization: mockSetCurrentOrganization,
       isLoading: false,

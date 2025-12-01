@@ -22,7 +22,7 @@ type MockInvitationWithUser = OrganizationInvitation & {
 
 type MockDb = {
   organizationMember: {
-    findFirst: MockedFunction<() => Promise<unknown>>;
+    findUnique: MockedFunction<() => Promise<unknown>>;
   };
   organizationInvitation: {
     findMany: MockedFunction<() => Promise<MockInvitationWithUser[]>>;
@@ -39,7 +39,7 @@ describe("getInvitations", () => {
   beforeEach(() => {
     mockDb = {
       organizationMember: {
-        findFirst: vi.fn(),
+        findUnique: vi.fn(),
       },
       organizationInvitation: {
         findMany: vi.fn(),
