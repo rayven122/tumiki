@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 
 /**
  * OAuth トークン状態のスキーマ
@@ -35,30 +36,20 @@ export const calculateOAuthTokenStatus = (
     };
   }
 
-  // expiresAt が null の場合は期限切れ
-  if (!expiresAt) {
-    return {
-      hasToken: true,
-      isExpired: true,
-      isExpiringSoon: false,
-      expiresAt: null,
-      daysRemaining: null,
-    };
-  }
+  // 共通ヘルパーを使用して有効期限を計算
+  const status = calculateExpirationStatus(expiresAt, now);
 
-  // 有効期限を計算
-  const isExpired = expiresAt < now;
-  const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const isExpiringSoon = !isExpired && expiresAt < oneDayFromNow;
-  const daysRemaining = !isExpired
-    ? Math.floor((expiresAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
-    : null;
+  // 1日以内に期限が切れる場合は「期限間近」
+  const isExpiringSoon =
+    !status.isExpired &&
+    status.daysRemaining !== null &&
+    status.daysRemaining === 0;
 
   return {
     hasToken: true,
-    isExpired,
+    isExpired: status.isExpired,
     isExpiringSoon,
-    expiresAt,
-    daysRemaining,
+    expiresAt: expiresAt ?? null,
+    daysRemaining: status.daysRemaining,
   };
 };

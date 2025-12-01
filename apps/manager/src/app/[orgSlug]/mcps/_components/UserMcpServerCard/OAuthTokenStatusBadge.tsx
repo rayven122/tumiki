@@ -35,34 +35,17 @@ export const OAuthTokenStatusBadge = ({
 
   // トークンの期限が迫っている場合（1日以内）
   if (oauthTokenStatus.isExpiringSoon) {
-    const displayText =
-      oauthTokenStatus.daysRemaining === 0
-        ? "期限間近（1日未満）"
-        : `残り${oauthTokenStatus.daysRemaining}日`;
-
     return (
       <Badge
         variant="outline"
         className="flex items-center gap-1 border-amber-500 bg-amber-50 text-xs font-medium text-amber-700"
       >
         <AlertTriangle className="h-3 w-3" />
-        {displayText}
+        期限間近
       </Badge>
     );
   }
 
-  // 正常（期限まで余裕がある場合）
-  if (oauthTokenStatus.daysRemaining !== null) {
-    return (
-      <Badge
-        variant="outline"
-        className="flex items-center gap-1 border-green-500 bg-green-50 text-xs font-medium text-green-700"
-      >
-        <Clock className="h-3 w-3" />
-        残り{oauthTokenStatus.daysRemaining}日
-      </Badge>
-    );
-  }
-
+  // 正常（期限まで余裕がある場合）は何も表示しない
   return null;
 };

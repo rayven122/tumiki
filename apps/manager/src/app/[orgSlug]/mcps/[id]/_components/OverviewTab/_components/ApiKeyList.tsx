@@ -7,6 +7,8 @@ import { AlertCircle, Plus } from "lucide-react";
 import { toast } from "@/utils/client/toast";
 import { ApiKeyItem } from "./ApiKeyItem";
 import { GenerateApiKeyDialog } from "./GenerateApiKeyDialog";
+import { DeactivateApiKeyDialog } from "./DeactivateApiKeyDialog";
+import { DeleteApiKeyDialog } from "./DeleteApiKeyDialog";
 
 type ApiKey = {
   id: string;
@@ -37,6 +39,26 @@ export const ApiKeyList = ({
 }: ApiKeyListProps) => {
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deactivateDialogState, setDeactivateDialogState] = useState<{
+    open: boolean;
+    apiKeyId: string | null;
+    apiKeyName: string;
+  }>({
+    open: false,
+    apiKeyId: null,
+    apiKeyName: "",
+  });
+  const [deleteDialogState, setDeleteDialogState] = useState<{
+    open: boolean;
+    apiKeyId: string | null;
+    apiKeyName: string;
+    isActive: boolean;
+  }>({
+    open: false,
+    apiKeyId: null,
+    apiKeyName: "",
+    isActive: false,
+  });
 
   const handleCopyApiKey = async (apiKey: string) => {
     try {
@@ -60,13 +82,60 @@ export const ApiKeyList = ({
     setIsDialogOpen(false);
   };
 
+  const handleDeactivateClick = (apiKeyId: string, apiKeyName: string) => {
+    setDeactivateDialogState({
+      open: true,
+      apiKeyId,
+      apiKeyName,
+    });
+  };
+
+  const handleConfirmDeactivate = () => {
+    if (deactivateDialogState.apiKeyId) {
+      onToggleApiKey({
+        apiKeyId: deactivateDialogState.apiKeyId,
+        isActive: false,
+      });
+      setDeactivateDialogState({
+        open: false,
+        apiKeyId: null,
+        apiKeyName: "",
+      });
+    }
+  };
+
+  const handleDeleteClick = (
+    apiKeyId: string,
+    apiKeyName: string,
+    isActive: boolean,
+  ) => {
+    setDeleteDialogState({
+      open: true,
+      apiKeyId,
+      apiKeyName,
+      isActive,
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteDialogState.apiKeyId) {
+      onDeleteApiKey({ apiKeyId: deleteDialogState.apiKeyId });
+      setDeleteDialogState({
+        open: false,
+        apiKeyId: null,
+        apiKeyName: "",
+        isActive: false,
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-sm font-medium">APIキー一覧</h4>
           <p className="mt-1 text-xs text-gray-500">
-            MCPサーバーへのアクセスに使用するAPIキーを管理
+            APIキーの有効期限と残り日数を確認できます
           </p>
         </div>
         <Button size="sm" onClick={handleGenerateClick} disabled={isGenerating}>
@@ -93,13 +162,8 @@ export const ApiKeyList = ({
               isVisible={showApiKeys[key.id] ?? false}
               onToggleVisibility={() => toggleApiKeyVisibility(key.id)}
               onCopy={() => handleCopyApiKey(key.apiKey ?? "")}
-              onToggleActive={() =>
-                onToggleApiKey({
-                  apiKeyId: key.id,
-                  isActive: !key.isActive,
-                })
-              }
-              onDelete={() => onDeleteApiKey({ apiKeyId: key.id })}
+              onDeactivate={() => handleDeactivateClick(key.id, key.name)}
+              onDelete={() => handleDeleteClick(key.id, key.name, key.isActive)}
             />
           ))}
         </div>
@@ -118,6 +182,27 @@ export const ApiKeyList = ({
         onOpenChange={setIsDialogOpen}
         onConfirm={handleConfirmGenerate}
         isGenerating={isGenerating}
+      />
+
+      <DeactivateApiKeyDialog
+        open={deactivateDialogState.open}
+        onOpenChange={(open) =>
+          setDeactivateDialogState((prev) => ({ ...prev, open }))
+        }
+        onConfirm={handleConfirmDeactivate}
+        apiKeyName={deactivateDialogState.apiKeyName}
+        isDeactivating={false}
+      />
+
+      <DeleteApiKeyDialog
+        open={deleteDialogState.open}
+        onOpenChange={(open) =>
+          setDeleteDialogState((prev) => ({ ...prev, open }))
+        }
+        onConfirm={handleConfirmDelete}
+        apiKeyName={deleteDialogState.apiKeyName}
+        isActive={deleteDialogState.isActive}
+        isDeleting={false}
       />
     </div>
   );

@@ -120,7 +120,12 @@ export const findOfficialServers = async (
       displayOrder: "asc",
     },
     include: {
-      apiKeys: true,
+      apiKeys: {
+        where: {
+          isActive: true,
+          deletedAt: null,
+        },
+      },
       allowedTools: {
         select: {
           id: true,
