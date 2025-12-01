@@ -31,13 +31,8 @@ import { cn } from "@/lib/utils";
 import { type RouterOutputs } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ServerStatusBadge } from "../ServerStatusBadge";
-import { Clock } from "lucide-react";
-import {
-  calculateExpirationStatus,
-  getOAuthExpirationBadgeClass,
-  getApiKeyExpirationBadgeClass,
-  getExpirationText,
-} from "@/utils/shared/expirationHelpers";
+import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
+import { ExpirationDisplay } from "./_components/ExpirationDisplay";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -65,12 +60,6 @@ export const UserMcpServerCard = ({
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
-
-  // 説明の優先順位: 1. ユーザーMCPサーバーの説明（空でない場合） 2. MCPサーバーテンプレートの説明
-  const displayDescription =
-    userMcpServer.description && userMcpServer.description.trim() !== ""
-      ? userMcpServer.description
-      : (mcpServer?.description ?? "");
 
   const displayTags = mcpServer?.tags ?? [];
 
@@ -217,63 +206,11 @@ export const UserMcpServerCard = ({
             </Badge>
           </Button>
 
-          {/* MCPサーバーの概要 */}
-          <div>
-            <p className="text-sm leading-relaxed text-gray-600">
-              {displayDescription}
-            </p>
-          </div>
-
           {/* 有効期限表示 */}
-          {(userMcpServer.oauthTokenStatus?.hasToken ?? shortestApiKey) && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {/* OAuth トークンの有効期限 */}
-              {userMcpServer.oauthTokenStatus?.hasToken && (
-                <div
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
-                    getOAuthExpirationBadgeClass(
-                      userMcpServer.oauthTokenStatus.isExpired,
-                      userMcpServer.oauthTokenStatus.daysRemaining,
-                    ),
-                  )}
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                  <span className="font-semibold">OAuth</span>
-                  <span className="opacity-75">·</span>
-                  <span>
-                    {getExpirationText(
-                      userMcpServer.oauthTokenStatus.isExpired,
-                      userMcpServer.oauthTokenStatus.daysRemaining,
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {/* API キーの有効期限 */}
-              {shortestApiKey && apiKeyStatus && (
-                <div
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
-                    getApiKeyExpirationBadgeClass(
-                      apiKeyStatus.isExpired,
-                      apiKeyStatus.daysRemaining,
-                    ),
-                  )}
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                  <span className="font-semibold">API Key</span>
-                  <span className="opacity-75">·</span>
-                  <span>
-                    {getExpirationText(
-                      apiKeyStatus.isExpired,
-                      apiKeyStatus.daysRemaining,
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+          <ExpirationDisplay
+            oauthTokenStatus={userMcpServer.oauthTokenStatus}
+            apiKeyStatus={apiKeyStatus}
+          />
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">
