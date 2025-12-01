@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Wrench,
   Edit2,
+  RefreshCw,
 } from "lucide-react";
 import { ToolsModal } from "../ServerCard/ToolsModal";
 import {
@@ -33,6 +34,7 @@ import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ExpirationDisplay } from "./_components/ExpirationDisplay";
+import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -57,6 +59,19 @@ export const UserMcpServerCard = ({
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
 
   const { tools, mcpServer } = userMcpServer;
+
+  // OAuth再認証フック
+  const { handleReauthenticate, isPending: isReauthenticating } =
+    useReauthenticateOAuth({
+      mcpServerId: userMcpServer.id,
+    });
+
+  // OAuth期限切れ検出
+  const needsReauth =
+    mcpServer?.authType === "OAUTH" &&
+    userMcpServer.oauthTokenStatus &&
+    (!userMcpServer.oauthTokenStatus.hasToken ||
+      userMcpServer.oauthTokenStatus.isExpired);
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
@@ -129,6 +144,19 @@ export const UserMcpServerCard = ({
                     詳細を見る
                   </Link>
                 </DropdownMenuItem>
+                {/* OAuth期限切れ時のみ表示 */}
+                {needsReauth && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReauthenticate();
+                    }}
+                    disabled={isReauthenticating}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    再認証
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
