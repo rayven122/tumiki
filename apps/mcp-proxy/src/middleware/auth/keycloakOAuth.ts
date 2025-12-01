@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import type { HonoEnv } from "../../types/index.js";
+import type { HonoEnv, OAuthAuthInfo } from "../../types/index.js";
 import { Issuer } from "openid-client";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import { logError, logDebug } from "../../libs/logger/index.js";
@@ -8,18 +8,6 @@ import {
   createPermissionDeniedError,
 } from "../../libs/error/index.js";
 import { checkPermission } from "../../services/permissionService.js";
-
-/**
- * Keycloak OAuth JWT認証情報
- *
- * Keycloakで発行されたOAuth JWTから取得した認証情報
- */
-export type KeycloakOAuthAuthInfo = {
-  clientId: string; // OAuth client_id (azp クレーム)
-  organizationId: string; // 組織ID
-  instanceId: string; // MCPサーバーインスタンスID
-  scope?: string; // スコープ
-};
 
 /**
  * Keycloak JWT ペイロード型定義
@@ -257,7 +245,7 @@ export const keycloakOAuthMiddleware = async (
     }
 
     // Step 7: 認証情報をコンテキストに設定
-    const oauthAuthInfo: KeycloakOAuthAuthInfo = {
+    const oauthAuthInfo: OAuthAuthInfo = {
       clientId: payload.azp,
       organizationId,
       instanceId,
