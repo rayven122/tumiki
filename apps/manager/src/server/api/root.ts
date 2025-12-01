@@ -1,5 +1,4 @@
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
-import { mcpServerRouter } from "./routers/mcpServer";
 import { waitingListRouter } from "./routers/waitingList";
 import { organizationRouter } from "./routers/organization/index";
 import { organizationRoleRouter } from "./routers/organizationRole";
@@ -13,7 +12,6 @@ import { v2Router } from "./routers/v2";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  mcpServer: mcpServerRouter,
   waitingList: waitingListRouter,
   organization: organizationRouter,
   organizationRole: organizationRoleRouter,
