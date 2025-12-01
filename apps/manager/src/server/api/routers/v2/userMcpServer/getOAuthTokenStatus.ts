@@ -38,12 +38,14 @@ export const getOAuthTokenStatus = async (
     },
     select: {
       expiresAt: true,
+      refreshTokenExpiresAt: true,
     },
   });
 
-  // トークンの expiresAt を取得（存在しない場合は undefined）
-  const expiresAt = token?.expiresAt ?? undefined;
+  // トークンの有効期限を取得（存在しない場合は undefined）
+  const refreshTokenExpiresAt = token?.refreshTokenExpiresAt ?? undefined;
+  const accessTokenExpiresAt = token?.expiresAt ?? undefined;
 
-  // 共通関数を使用してステータスを計算
-  return calculateOAuthTokenStatus(expiresAt);
+  // 共通関数を使用してステータスを計算（Refresh Token優先）
+  return calculateOAuthTokenStatus(refreshTokenExpiresAt, accessTokenExpiresAt);
 };

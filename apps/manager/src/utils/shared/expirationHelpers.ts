@@ -132,7 +132,7 @@ export const getApiKeyExpirationBadgeClass = (
 };
 
 /**
- * 有効期限の表示テキストを返す
+ * 有効期限の表示テキストを返す（日数のみ）
  *
  * @param isExpired - 期限切れかどうか
  * @param daysRemaining - 残り日数
@@ -151,4 +151,49 @@ export const getExpirationText = (
   }
 
   return "期限なし";
+};
+
+/**
+ * 有効期限の詳細な表示テキストを返す（短縮形: d/h/m）
+ *
+ * @param expiresAt - 有効期限
+ * @param now - 現在時刻（デフォルト: new Date()）
+ * @returns 詳細な表示テキスト（短縮形）
+ */
+export const getDetailedExpirationText = (
+  expiresAt: Date | null,
+  now: Date = new Date(),
+): string => {
+  if (!expiresAt) {
+    return "期限なし";
+  }
+
+  const isExpired = expiresAt < now;
+  if (isExpired) {
+    return "期限切れ";
+  }
+
+  const diff = expiresAt.getTime() - now.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  // 1日以上の場合
+  if (days > 0) {
+    if (hours > 0) {
+      return `残り${days}d ${hours}h`;
+    }
+    return `残り${days}d`;
+  }
+
+  // 1日未満の場合
+  if (hours > 0) {
+    if (minutes > 0) {
+      return `残り${hours}h ${minutes}m`;
+    }
+    return `残り${hours}h`;
+  }
+
+  // 1時間未満の場合
+  return `残り${minutes}m`;
 };

@@ -206,8 +206,8 @@ export const UserMcpServerCard = ({
               />
             )}
           </div>
-          <div className="flex-1">
-            <CardTitle>{userMcpServer.name}</CardTitle>
+          <div className="flex-1 min-w-0 pr-24">
+            <CardTitle className="truncate">{userMcpServer.name}</CardTitle>
             <div className="mt-1 flex items-center gap-2">
               <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
             </div>
