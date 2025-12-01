@@ -16,15 +16,21 @@ export type OAuthTokenStatus = z.infer<typeof oauthTokenStatusSchema>;
 
 /**
  * OAuth トークンの有効期限を計算してステータスを返す
+ * Refresh Tokenの有効期限を優先的に使用し、存在しない場合はAccess Tokenの有効期限を使用
  *
- * @param expiresAt - トークンの有効期限（undefined=トークンなし、null=期限切れ、Date=有効期限）
+ * @param refreshTokenExpiresAt - Refresh Tokenの有効期限（undefined=トークンなし、null=期限切れ、Date=有効期限）
+ * @param accessTokenExpiresAt - Access Tokenの有効期限（undefined=トークンなし、null=期限切れ、Date=有効期限）
  * @param now - 現在時刻（デフォルト: new Date()）
  * @returns OAuth トークンの状態
  */
 export const calculateOAuthTokenStatus = (
-  expiresAt: Date | null | undefined,
+  refreshTokenExpiresAt: Date | null | undefined,
+  accessTokenExpiresAt: Date | null | undefined,
   now: Date = new Date(),
 ): OAuthTokenStatus => {
+  // Refresh Tokenの有効期限を優先、なければAccess Tokenの有効期限を使用
+  const expiresAt = refreshTokenExpiresAt ?? accessTokenExpiresAt;
+
   // トークンが存在しない
   if (expiresAt === undefined) {
     return {

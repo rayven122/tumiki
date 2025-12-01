@@ -1,11 +1,15 @@
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getExpirationText } from "@/utils/shared/expirationHelpers";
+import {
+  getExpirationText,
+  getDetailedExpirationText,
+} from "@/utils/shared/expirationHelpers";
 
 type OAuthTokenStatus = {
   hasToken: boolean;
   isExpired: boolean;
   daysRemaining: number | null;
+  expiresAt: Date | null;
 };
 
 type ApiKeyStatus = {
@@ -45,10 +49,7 @@ export const ExpirationDisplay = ({
                 : "text-gray-700",
             )}
           >
-            {getExpirationText(
-              oauthTokenStatus.isExpired,
-              oauthTokenStatus.daysRemaining,
-            )}
+            {getDetailedExpirationText(oauthTokenStatus.expiresAt)}
           </span>
         </div>
       )}

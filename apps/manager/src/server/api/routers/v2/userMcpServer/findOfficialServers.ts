@@ -73,7 +73,12 @@ const fetchOAuthTokensMap = async (
   tx: PrismaTransactionClient,
   userId: string,
   mcpServerTemplateIds: string[],
-): Promise<Map<string, Date | null>> => {
+): Promise<
+  Map<
+    string,
+    { refreshTokenExpiresAt: Date | null; accessTokenExpiresAt: Date | null }
+  >
+> => {
   const oauthTokens = await tx.mcpOAuthToken.findMany({
     where: {
       userId,
@@ -85,6 +90,7 @@ const fetchOAuthTokensMap = async (
     },
     select: {
       expiresAt: true,
+      refreshTokenExpiresAt: true,
       oauthClient: {
         select: {
           mcpServerTemplateId: true,
@@ -94,10 +100,16 @@ const fetchOAuthTokensMap = async (
   });
 
   // mcpServerTemplateId ごとにトークン情報をマップ化
-  const tokenMap = new Map<string, Date | null>();
+  const tokenMap = new Map<
+    string,
+    { refreshTokenExpiresAt: Date | null; accessTokenExpiresAt: Date | null }
+  >();
   for (const token of oauthTokens) {
     if (token.oauthClient.mcpServerTemplateId) {
-      tokenMap.set(token.oauthClient.mcpServerTemplateId, token.expiresAt);
+      tokenMap.set(token.oauthClient.mcpServerTemplateId, {
+        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
+        accessTokenExpiresAt: token.expiresAt,
+      });
     }
   }
 
@@ -162,8 +174,14 @@ export const findOfficialServers = async (
     // OAuth トークン状態を計算
     let oauthTokenStatus = null;
     if (mcpServerTemplate?.authType === "OAUTH") {
-      const expiresAt = tokenMap.get(mcpServerTemplate.id) ?? undefined;
-      oauthTokenStatus = calculateOAuthTokenStatus(expiresAt);
+      const tokenInfo = tokenMap.get(mcpServerTemplate.id);
+      const refreshTokenExpiresAt =
+        tokenInfo?.refreshTokenExpiresAt ?? undefined;
+      const accessTokenExpiresAt = tokenInfo?.accessTokenExpiresAt ?? undefined;
+      oauthTokenStatus = calculateOAuthTokenStatus(
+        refreshTokenExpiresAt,
+        accessTokenExpiresAt,
+      );
     }
 
     return {
