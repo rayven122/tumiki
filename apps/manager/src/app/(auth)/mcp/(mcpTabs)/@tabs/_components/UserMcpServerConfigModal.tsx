@@ -21,7 +21,7 @@ import type { McpServer } from "@tumiki/db/prisma";
 import { api } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { useRouter } from "next/navigation";
-import { normalizeServerName } from "@/utils/url";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 

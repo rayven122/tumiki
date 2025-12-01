@@ -1,5 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
+import { normalizeServerName } from "../utils/normalizeServerName.js";
+
 /**
  * db に登録する MCP サーバーテンプレート一覧
  *
@@ -13,6 +15,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     // ========================================
     {
       name: "Context7",
+      normalizedName: normalizeServerName("Context7"),
       description:
         "ライブラリドキュメント検索サービス - 最新のドキュメントをリアルタイムで取得",
       tags: ["ドキュメント", "検索", "ツール"],
@@ -28,6 +31,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     // ========================================
     {
       name: "Figma MCP",
+      normalizedName: normalizeServerName("Figma MCP"),
       description:
         "Figma 公式MCPサーバー - デザインファイルの読み取りとコード生成",
       tags: ["デザイン", "UI/UX", "ツール"],
@@ -42,6 +46,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     },
     {
       name: "Linear MCP",
+      normalizedName: normalizeServerName("Linear MCP"),
       description:
         "Linear プロジェクト管理サービス - イシュー、プロジェクト、チーム情報へのアクセス",
       tags: ["プロジェクト管理", "イシュー管理", "ツール"],
@@ -55,6 +60,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     },
     {
       name: "Notion MCP",
+      normalizedName: normalizeServerName("Notion MCP"),
       description:
         "Notion ワークスペース統合 - ページ、データベース、コメントへのライブアクセス",
       tags: ["ドキュメント", "ナレッジベース", "ツール"],
@@ -68,6 +74,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     },
     {
       name: "GitHub MCP",
+      normalizedName: normalizeServerName("GitHub MCP"),
       description:
         "GitHub 公式MCPサーバー - リポジトリ、イシュー、PR、ワークフローの管理",
       tags: ["開発", "バージョン管理", "CI/CD", "ツール"],
@@ -81,6 +88,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     },
     {
       name: "Atlassian MCP",
+      normalizedName: normalizeServerName("Atlassian MCP"),
       description:
         "Atlassian 公式MCPサーバー - Jira、Confluenceとの統合アクセス",
       tags: ["プロジェクト管理", "ドキュメント", "コラボレーション", "ツール"],
@@ -99,6 +107,7 @@ export const MCP_SERVERS: Prisma.McpServerTemplateCreateWithoutMcpToolsInput[] =
     // URL は実際のデプロイ先に置き換える必要があります
     {
       name: "DeepL MCP",
+      normalizedName: normalizeServerName("DeepL MCP"),
       description: "DeepL 翻訳サービス",
       tags: ["翻訳", "ツール"],
       iconPath: "/logos/deepl.svg",

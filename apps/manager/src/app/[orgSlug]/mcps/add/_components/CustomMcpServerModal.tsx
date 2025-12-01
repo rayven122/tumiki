@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/accordion";
 import { toast } from "react-toastify";
 import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/_hooks/useCreateServerForm";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 
 type CustomMcpServerModalProps = {
   open: boolean;
@@ -183,7 +184,7 @@ export const CustomMcpServerModal = ({
 
           <div className="space-y-4">
             {/* Server Name */}
-            <div className="space-y-2">
+            <div className="mt-2 space-y-2">
               <Label htmlFor="server-name">
                 <span>
                   サーバー名<span className="text-red-500">*</span>
@@ -196,6 +197,16 @@ export const CustomMcpServerModal = ({
                 onChange={(e) => setName(e.target.value)}
                 disabled={isPending}
               />
+              <p className="text-muted-foreground text-xs">
+                表示されるサーバー名を設定できます（空白や大文字を含むことができます）
+              </p>
+
+              <div className="bg-muted rounded-md px-3 py-2">
+                <p className="text-muted-foreground text-xs font-medium">
+                  正規化名（内部識別子）
+                </p>
+                <p className="font-mono text-sm">{normalizeServerName(name)}</p>
+              </div>
             </div>
 
             {/* URL */}
@@ -270,7 +281,7 @@ export const CustomMcpServerModal = ({
             </div>
 
             {/* 認証タイプの説明文 */}
-            <p className="-mt-2 text-xs text-gray-500">
+            <p className="-mt-2 mb-4 text-xs text-gray-500">
               {authMethod === "oauth" && "OAuth認証を設定します"}
               {authMethod === "apikey" && "APIキーをヘッダーとして送信します"}
               {authMethod === "none" && "認証なしで接続します"}
