@@ -17,12 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Activity,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { Activity, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import type { RequestLog, RequestStats } from "../types";
 import { formatDataSize } from "@/utils/formatters";
 

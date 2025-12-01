@@ -20,8 +20,7 @@ export const setDefaultOrganizationOutputSchema = z.object({
   organizationSlug: z.string(),
 });
 
-export type SetDefaultOrganizationInput =
-  SetDefaultOrganizationInternalInput;
+export type SetDefaultOrganizationInput = SetDefaultOrganizationInternalInput;
 
 export type SetDefaultOrganizationOutput = z.infer<
   typeof setDefaultOrganizationOutputSchema
