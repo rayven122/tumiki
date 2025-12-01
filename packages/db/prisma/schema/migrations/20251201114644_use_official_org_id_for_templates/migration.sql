@@ -1,6 +1,23 @@
 -- 公式テンプレート用の特別なorganizationIDを使用
 -- nullの代わりに固定IDを使うことで、findUniqueで高速検索が可能になる
 
+-- 0. 特別な組織レコードを作成（存在しない場合のみ）
+INSERT INTO "Organization" (
+  "id",
+  "name",
+  "slug",
+  "createdAt",
+  "updatedAt"
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  'Official Templates',
+  'official-templates',
+  NOW(),
+  NOW()
+)
+ON CONFLICT ("id") DO NOTHING;
+
 -- 1. 既存の公式テンプレート（organizationId = null）を特別なIDに更新
 UPDATE "McpServerTemplate"
 SET "organizationId" = '00000000-0000-0000-0000-000000000000'

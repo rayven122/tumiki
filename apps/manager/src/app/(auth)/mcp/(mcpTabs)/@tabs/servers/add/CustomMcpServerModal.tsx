@@ -356,7 +356,7 @@ export const CustomMcpServerModal = ({
                 {/* Add new env var */}
                 <div className="flex gap-2">
                   <Input
-                    placeholder="キー名 (例: X-API-Key)"
+                    placeholder="キー名 (例: Tumiki-API-Key)"
                     value={newEnvKey}
                     onChange={(e) => setNewEnvKey(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddEnvVar()}

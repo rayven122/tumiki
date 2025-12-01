@@ -3,19 +3,20 @@ import { db } from "@tumiki/db/server";
 import type { ApiKeyAuthInfo, HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
 import { createUnauthorizedError } from "../../libs/error/index.js";
+import { AUTH_CONFIG } from "../../constants/config.js";
 
 /**
  * APIキーを抽出
  */
 const extractApiKey = (c: Context): string | undefined => {
-  // X-API-Key ヘッダー
-  const xApiKey = c.req.header("X-API-Key");
-  if (xApiKey) {
-    return xApiKey;
+  // Tumiki-API-Key ヘッダー
+  const tumikiApiKey = c.req.header(AUTH_CONFIG.HEADERS.API_KEY);
+  if (tumikiApiKey) {
+    return tumikiApiKey;
   }
 
   // Authorization: Bearer ヘッダー
-  const authorization = c.req.header("Authorization");
+  const authorization = c.req.header(AUTH_CONFIG.HEADERS.AUTHORIZATION);
   if (authorization?.startsWith("Bearer ")) {
     return authorization.slice(7);
   }
