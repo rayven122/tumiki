@@ -1,39 +1,39 @@
-import { createTRPCRouter, protectedProcedure } from "../../trpc";
+import { createTRPCRouter, protectedProcedure } from "../../../trpc";
 
 // 認証タイプ更新
 import {
   updateAuthType,
   updateAuthTypeInputSchema,
   updateAuthTypeOutputSchema,
-} from "./userMcpServer/updateAuthType";
+} from "./updateAuthType";
 
 // APIキー生成
 import {
   generateApiKey,
   generateApiKeyInputSchema,
   generateApiKeyOutputSchema,
-} from "./userMcpServer/generateApiKey";
+} from "./generateApiKey";
 
 // APIキー一覧取得
 import {
   listApiKeys,
   listApiKeysInputSchema,
   listApiKeysOutputSchema,
-} from "./userMcpServer/listApiKeys";
+} from "./listApiKeys";
 
 // APIキー削除
 import {
   deleteApiKey,
   deleteApiKeyInputSchema,
   deleteApiKeyOutputSchema,
-} from "./userMcpServer/deleteApiKey";
+} from "./deleteApiKey";
 
 // APIキー有効/無効化
 import {
   toggleApiKey,
   toggleApiKeyInputSchema,
   toggleApiKeyOutputSchema,
-} from "./userMcpServer/toggleApiKey";
+} from "./toggleApiKey";
 
 /**
  * MCPサーバー認証管理ルーター
