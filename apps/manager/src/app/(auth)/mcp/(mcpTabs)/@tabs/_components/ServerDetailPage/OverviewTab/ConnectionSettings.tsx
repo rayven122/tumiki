@@ -19,8 +19,8 @@ import {
   makeHttpProxyServerUrl,
   makeSseProxyServerUrl,
   getProxyServerUrl,
-  normalizeServerName,
 } from "@/utils/url";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 import Image from "next/image";
 import type { UserMcpServerInstance } from "../types";
 

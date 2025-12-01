@@ -7,6 +7,7 @@ import {
   McpServerVisibility,
 } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 import { TRPCError } from "@trpc/server";
 import {
   getMcpServerToolsSSE,
@@ -126,6 +127,7 @@ const createCustomUrlMcpServer = async (
   const customTemplate = await prisma.mcpServerTemplate.create({
     data: {
       name: input.name,
+      normalizedName: normalizeServerName(input.name),
       description: input.description ?? "",
       tags: [],
       iconPath: null,
