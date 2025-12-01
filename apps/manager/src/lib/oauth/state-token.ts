@@ -31,11 +31,9 @@ export type OAuthStatePayload = z.infer<typeof OAuthStatePayloadSchema>;
  * JWTシークレットキーを取得
  */
 const getSecretKey = (): Uint8Array => {
-  const secret = process.env.OAUTH_STATE_SECRET ?? process.env.NEXTAUTH_SECRET;
+  const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    throw new Error(
-      "OAUTH_STATE_SECRET or NEXTAUTH_SECRET environment variable is required",
-    );
+    throw new Error("NEXTAUTH_SECRET environment variable is required");
   }
   return new TextEncoder().encode(secret);
 };
