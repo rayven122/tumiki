@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, Clock } from "lucide-react";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type OAuthTokenStatus = {
