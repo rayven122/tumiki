@@ -339,7 +339,7 @@ await invalidateConfigCache(mcpServerId);
 
 - `DATABASE_URL` - PostgreSQL接続文字列
 - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redisキャッシュ
-- `CACHE_ENCRYPTION_KEY` - AES-256-GCM暗号化キー
+- `REDIS_ENCRYPTION_KEY` - AES-256-GCM暗号化キー
 
 ---
 

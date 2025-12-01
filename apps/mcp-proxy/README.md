@@ -170,7 +170,7 @@ UPSTASH_REDIS_REST_URL=https://...
 UPSTASH_REDIS_REST_TOKEN=...
 
 # キャッシュ暗号化
-CACHE_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
+REDIS_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
 
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
