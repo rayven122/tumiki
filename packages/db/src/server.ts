@@ -10,3 +10,4 @@ export const { db } = await (isLocalDatabase
 
 export type { Db } from "./wsClient.js";
 export * from "@prisma/client";
+export * from "./constants.js";

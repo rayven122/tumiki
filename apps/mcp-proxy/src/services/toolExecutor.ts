@@ -1,4 +1,4 @@
-import { db } from "@tumiki/db/server";
+import { db, OFFICIAL_ORGANIZATION_ID } from "@tumiki/db/server";
 import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 
@@ -76,7 +76,7 @@ export const executeTool = async (
         where: {
           normalizedName_organizationId: {
             normalizedName: templateName,
-            organizationId: null as unknown as string, // 型アサーション（Prismaの型定義の制約）
+            organizationId: OFFICIAL_ORGANIZATION_ID,
           },
         },
         include: { mcpTools: true },
@@ -84,7 +84,7 @@ export const executeTool = async (
     ]);
 
     // 4. 組織カスタムを優先
-    const template = customTemplate || officialTemplate;
+    const template = customTemplate ?? officialTemplate;
     if (!template) {
       throw new Error(`Template not found: ${templateName}`);
     }
@@ -161,10 +161,18 @@ export const executeTool = async (
         );
       }
 
-      logInfo("OAuth token found", {
+      // トークンの有効期限チェック
+      if (oauthToken.expiresAt && oauthToken.expiresAt < new Date()) {
+        throw new Error(
+          `OAuth token expired for user ${userId} and template ${templateName}. Please re-authenticate.`,
+        );
+      }
+
+      logInfo("OAuth token found and valid", {
         tokenId: oauthToken.id,
         userId,
         templateName,
+        expiresAt: oauthToken.expiresAt,
       });
 
       // OAuth の場合は mcpConfig を null のまま（oauth-header-injector で userId から直接取得）

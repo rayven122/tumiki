@@ -200,10 +200,9 @@ export const CustomMcpServerModal = ({
               <p className="text-muted-foreground text-xs">
                 表示されるサーバー名を設定できます（空白や大文字を含むことができます）
               </p>
-
               <div className="bg-muted rounded-md px-3 py-2">
                 <p className="text-muted-foreground text-xs font-medium">
-                  正規化名（内部識別子）
+                  MCPサーバー識別子
                 </p>
                 <p className="font-mono text-sm">{normalizeServerName(name)}</p>
               </div>

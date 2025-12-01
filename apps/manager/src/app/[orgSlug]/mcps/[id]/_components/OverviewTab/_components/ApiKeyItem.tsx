@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Key, Copy, Eye, EyeOff, Trash2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 
 type ApiKeyItemProps = {
   apiKey: {
@@ -30,22 +31,10 @@ export const ApiKeyItem = ({
   onDeactivate,
   onDelete,
 }: ApiKeyItemProps) => {
-  // 有効期限のチェック
-  const isExpired = apiKey.expiresAt
-    ? new Date(apiKey.expiresAt) < new Date()
-    : false;
-
-  // 残り日数の計算
-  const getRemainingDays = () => {
-    if (!apiKey.expiresAt) return null;
-    const now = new Date();
-    const expiresAt = new Date(apiKey.expiresAt);
-    const diffTime = expiresAt.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  const remainingDays = getRemainingDays();
+  // 有効期限ステータスを計算（共通ヘルパーを使用）
+  const expirationStatus = calculateExpirationStatus(apiKey.expiresAt);
+  const isExpired = expirationStatus.isExpired;
+  const remainingDays = expirationStatus.daysRemaining;
 
   return (
     <div className="border-b py-4 transition-colors hover:bg-gray-50">
