@@ -179,8 +179,8 @@ erDiagram
 
 ### `McpServerTemplate`
 
-MCP サーバーテンプレート���接続情報や認証方式の「設計図」）
-organizationId = null の場合はアプリ提供のグローバル共通テンプレート
+MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
+organizationId = null の場合はアプ��提供のグローバル共通テンプレート
 organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
 
 **Properties**
@@ -565,7 +565,6 @@ erDiagram
   String accessToken
   String refreshToken "nullable"
   DateTime expiresAt "nullable"
-  DateTime refreshTokenExpiresAt "nullable"
   TokenPurpose tokenPurpose
   DateTime createdAt
   DateTime updatedAt
@@ -725,7 +724,6 @@ OAuth トークン情報（ユーザー×組織ごと）
 - `accessToken`: トークン情報
 - `refreshToken`:
 - `expiresAt`:
-- `refreshTokenExpiresAt`:
 - `tokenPurpose`: トークンの用途を明確化
 - `createdAt`:
 - `updatedAt`:
@@ -750,8 +748,8 @@ Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
 
 ### `McpServerTemplate`
 
-MCP サーバーテンプレート���接続情報や認証方式の「設計図」）
-organizationId = null の場合はアプリ提供のグローバル共通テンプレート
+MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
+organizationId = null の場合はアプ��提供のグローバル共通テンプレート
 organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
 
 **Properties**

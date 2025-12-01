@@ -1,10 +1,6 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { ServerType } from "@tumiki/db/prisma";
 import { z } from "zod";
-import {
-  oauthTokenStatusSchema,
-  calculateOAuthTokenStatus,
-} from "./helpers/oauthTokenHelpers";
 
 type FindOfficialServersInput = {
   organizationId: string;
@@ -13,6 +9,15 @@ type FindOfficialServersInput = {
 
 // McpServerのIDスキーマ（McpServerテーブルのid）
 const McpServerIdSchema = z.string().brand<"McpServerId">();
+
+// OAuth トークン状態のスキーマ
+const oauthTokenStatusSchema = z.object({
+  hasToken: z.boolean(),
+  isExpired: z.boolean(),
+  isExpiringSoon: z.boolean(),
+  expiresAt: z.date().nullable(),
+  daysRemaining: z.number().nullable(),
+});
 
 // 公式サーバー一覧のレスポンススキーマ
 export const findOfficialServersOutputSchema = z.array(
@@ -73,12 +78,7 @@ const fetchOAuthTokensMap = async (
   tx: PrismaTransactionClient,
   userId: string,
   mcpServerTemplateIds: string[],
-): Promise<
-  Map<
-    string,
-    { refreshTokenExpiresAt: Date | null; accessTokenExpiresAt: Date | null }
-  >
-> => {
+): Promise<Map<string, { accessTokenExpiresAt: Date | null }>> => {
   const oauthTokens = await tx.mcpOAuthToken.findMany({
     where: {
       userId,
@@ -90,7 +90,6 @@ const fetchOAuthTokensMap = async (
     },
     select: {
       expiresAt: true,
-      refreshTokenExpiresAt: true,
       oauthClient: {
         select: {
           mcpServerTemplateId: true,
@@ -100,14 +99,10 @@ const fetchOAuthTokensMap = async (
   });
 
   // mcpServerTemplateId ごとにトークン情報をマップ化
-  const tokenMap = new Map<
-    string,
-    { refreshTokenExpiresAt: Date | null; accessTokenExpiresAt: Date | null }
-  >();
+  const tokenMap = new Map<string, { accessTokenExpiresAt: Date | null }>();
   for (const token of oauthTokens) {
     if (token.oauthClient.mcpServerTemplateId) {
       tokenMap.set(token.oauthClient.mcpServerTemplateId, {
-        refreshTokenExpiresAt: token.refreshTokenExpiresAt,
         accessTokenExpiresAt: token.expiresAt,
       });
     }
@@ -175,13 +170,15 @@ export const findOfficialServers = async (
     let oauthTokenStatus = null;
     if (mcpServerTemplate?.authType === "OAUTH") {
       const tokenInfo = tokenMap.get(mcpServerTemplate.id);
-      const refreshTokenExpiresAt =
-        tokenInfo?.refreshTokenExpiresAt ?? undefined;
-      const accessTokenExpiresAt = tokenInfo?.accessTokenExpiresAt ?? undefined;
-      oauthTokenStatus = calculateOAuthTokenStatus(
-        refreshTokenExpiresAt,
-        accessTokenExpiresAt,
-      );
+      // トークンの有無のみを返す
+      // リフレッシュトークンの有効期限は不明なため、期限関連の情報は全て null
+      oauthTokenStatus = {
+        hasToken: !!tokenInfo,
+        isExpired: false,
+        isExpiringSoon: false,
+        expiresAt: null,
+        daysRemaining: null,
+      };
     }
 
     return {

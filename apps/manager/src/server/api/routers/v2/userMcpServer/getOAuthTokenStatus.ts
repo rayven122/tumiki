@@ -1,9 +1,5 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import {
-  oauthTokenStatusSchema,
-  calculateOAuthTokenStatus,
-  type OAuthTokenStatus,
-} from "./helpers/oauthTokenHelpers";
+import { z } from "zod";
 
 type GetOAuthTokenStatusInput = {
   mcpServerTemplateId: string;
@@ -11,12 +7,21 @@ type GetOAuthTokenStatusInput = {
 };
 
 // OAuth トークン状態のレスポンススキーマ
-export const getOAuthTokenStatusOutputSchema = oauthTokenStatusSchema;
+export const getOAuthTokenStatusOutputSchema = z.object({
+  hasToken: z.boolean(),
+  isExpired: z.boolean(),
+  isExpiringSoon: z.boolean(),
+  expiresAt: z.date().nullable(),
+  daysRemaining: z.number().nullable(),
+});
 
-export type GetOAuthTokenStatusOutput = OAuthTokenStatus;
+export type GetOAuthTokenStatusOutput = z.infer<
+  typeof getOAuthTokenStatusOutputSchema
+>;
 
 /**
  * OAuth トークンの状態を取得
+ * リフレッシュトークンの有効期限がない場合は、トークンの有無のみを返す
  *
  * @param tx - Prisma トランザクションクライアント
  * @param input - 入力パラメータ
@@ -36,16 +41,15 @@ export const getOAuthTokenStatus = async (
         mcpServerTemplateId,
       },
     },
-    select: {
-      expiresAt: true,
-      refreshTokenExpiresAt: true,
-    },
   });
 
-  // トークンの有効期限を取得（存在しない場合は undefined）
-  const refreshTokenExpiresAt = token?.refreshTokenExpiresAt ?? undefined;
-  const accessTokenExpiresAt = token?.expiresAt ?? undefined;
-
-  // 共通関数を使用してステータスを計算（Refresh Token優先）
-  return calculateOAuthTokenStatus(refreshTokenExpiresAt, accessTokenExpiresAt);
+  // トークンの有無のみを返す
+  // リフレッシュトークンの有効期限は不明なため、期限関連の情報は全て null
+  return {
+    hasToken: !!token,
+    isExpired: false,
+    isExpiringSoon: false,
+    expiresAt: null,
+    daysRemaining: null,
+  };
 };
