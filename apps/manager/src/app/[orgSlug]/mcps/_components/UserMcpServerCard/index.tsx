@@ -33,7 +33,7 @@ import { type RouterOutputs } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
-import { ExpirationDisplay } from "./_components/ExpirationDisplay";
+import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 
 type UserMcpServer =
@@ -66,12 +66,8 @@ export const UserMcpServerCard = ({
       mcpServerId: userMcpServer.id,
     });
 
-  // OAuth期限切れ検出
-  const needsReauth =
-    mcpServer?.authType === "OAUTH" &&
-    userMcpServer.oauthTokenStatus &&
-    (!userMcpServer.oauthTokenStatus.hasToken ||
-      userMcpServer.oauthTokenStatus.isExpired);
+  // OAuth認証タイプの場合は常に再認証ボタンを表示
+  const isOAuthServer = mcpServer?.authType === "OAUTH";
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
@@ -144,8 +140,8 @@ export const UserMcpServerCard = ({
                     詳細を見る
                   </Link>
                 </DropdownMenuItem>
-                {/* OAuth期限切れ時のみ表示 */}
-                {needsReauth && (
+                {/* OAuthサーバーの場合は常に再認証オプションを表示 */}
+                {isOAuthServer && (
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
@@ -235,10 +231,7 @@ export const UserMcpServerCard = ({
           </Button>
 
           {/* 有効期限表示 */}
-          <ExpirationDisplay
-            oauthTokenStatus={userMcpServer.oauthTokenStatus}
-            apiKeyStatus={apiKeyStatus}
-          />
+          <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">

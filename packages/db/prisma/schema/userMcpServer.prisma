@@ -231,10 +231,9 @@ model McpOAuthToken {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   /// トークン情報
-  accessToken          String /// @encrypted
-  refreshToken         String? /// @encrypted
-  expiresAt            DateTime? // Access Tokenの有効期限
-  refreshTokenExpiresAt DateTime? // Refresh Tokenの有効期限
+  accessToken  String    /// @encrypted
+  refreshToken String?   /// @encrypted
+  expiresAt    DateTime? // Access Tokenの有効期限
 
   /// トークンの用途を明確化
   tokenPurpose TokenPurpose @default(BACKEND_MCP)
