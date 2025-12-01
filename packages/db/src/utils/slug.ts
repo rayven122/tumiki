@@ -2,7 +2,6 @@ import type { PrismaClient } from "@prisma/client";
 import { customAlphabet } from "nanoid";
 
 import type { PrismaTransactionClient } from "../types.js";
-import type { Db } from "../wsClient.js";
 
 /**
  * URL安全なランダム文字列生成（英数字のみ、6文字）

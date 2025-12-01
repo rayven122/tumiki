@@ -3,6 +3,29 @@ import { TRPCError } from "@trpc/server";
 import { reauthenticateOAuthMcpServer } from "../reauthenticateOAuthMcpServer";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import type { McpServerId } from "@/schema/ids";
+import type { McpServer, McpServerTemplate } from "@tumiki/db/server";
+import { ServerStatus } from "@tumiki/db/prisma";
+
+// テスト用のモック型定義
+type MockMcpServerTemplate = Pick<McpServerTemplate, "id" | "url" | "authType">;
+
+type MockMcpServer = Pick<
+  McpServer,
+  | "id"
+  | "name"
+  | "description"
+  | "iconPath"
+  | "serverStatus"
+  | "serverType"
+  | "authType"
+  | "createdAt"
+  | "updatedAt"
+  | "deletedAt"
+  | "organizationId"
+  | "displayOrder"
+> & {
+  mcpServers: MockMcpServerTemplate[];
+};
 
 // generateAuthorizationUrlヘルパーをモック
 vi.mock("../helpers/generateAuthorizationUrl", () => ({
@@ -41,12 +64,12 @@ describe("reauthenticateOAuthMcpServer", () => {
 
   test("既存のMCPサーバーに対してAuthorization URLを生成する", async () => {
     // モックデータのセットアップ
-    const mockMcpServer = {
+    const mockMcpServer: MockMcpServer = {
       id: testMcpServerId,
       name: "Test MCP Server",
       description: "Test Description",
       iconPath: null,
-      serverStatus: "ACTIVE" as const,
+      serverStatus: ServerStatus.RUNNING,
       serverType: "OFFICIAL" as const,
       authType: "OAUTH" as const,
       createdAt: new Date(),
@@ -61,8 +84,7 @@ describe("reauthenticateOAuthMcpServer", () => {
           authType: "OAUTH" as const,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    };
 
     const mockOAuthClient = {
       id: "oauth-client-123",
@@ -87,8 +109,7 @@ describe("reauthenticateOAuthMcpServer", () => {
     // 実行
     const result = await reauthenticateOAuthMcpServer(
       mockTx,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { mcpServerId: testMcpServerId as any },
+      { mcpServerId: testMcpServerId },
       testOrganizationId,
       testUserId,
     );
@@ -129,8 +150,7 @@ describe("reauthenticateOAuthMcpServer", () => {
     await expect(
       reauthenticateOAuthMcpServer(
         mockTx,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { mcpServerId: "non-existent-id" as any },
+        { mcpServerId: "non-existent-id" as McpServerId },
         testOrganizationId,
         testUserId,
       ),
@@ -143,12 +163,12 @@ describe("reauthenticateOAuthMcpServer", () => {
   });
 
   test("組織IDが一致しない場合はNOT_FOUNDエラーを投げる", async () => {
-    const mockMcpServer = {
+    const mockMcpServer: MockMcpServer = {
       id: testMcpServerId,
       name: "Test Server",
       description: "",
       iconPath: null,
-      serverStatus: "ACTIVE" as const,
+      serverStatus: ServerStatus.RUNNING,
       serverType: "OFFICIAL" as const,
       authType: "OAUTH" as const,
       createdAt: new Date(),
@@ -157,16 +177,14 @@ describe("reauthenticateOAuthMcpServer", () => {
       organizationId: "different-org-id",
       displayOrder: 0,
       mcpServers: [],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    };
 
     vi.mocked(mockTx.mcpServer.findUnique).mockResolvedValue(mockMcpServer);
 
     await expect(
       reauthenticateOAuthMcpServer(
         mockTx,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { mcpServerId: testMcpServerId as any },
+        { mcpServerId: testMcpServerId },
         testOrganizationId,
         testUserId,
       ),
@@ -179,12 +197,12 @@ describe("reauthenticateOAuthMcpServer", () => {
   });
 
   test("OAuth認証に対応していないサーバーの場合はBAD_REQUESTエラーを投げる", async () => {
-    const mockMcpServer = {
+    const mockMcpServer: MockMcpServer = {
       id: testMcpServerId,
       name: "Test Server",
       description: "",
       iconPath: null,
-      serverStatus: "ACTIVE" as const,
+      serverStatus: ServerStatus.RUNNING,
       serverType: "OFFICIAL" as const,
       authType: "API_KEY" as const,
       createdAt: new Date(),
@@ -199,16 +217,14 @@ describe("reauthenticateOAuthMcpServer", () => {
           authType: "API_KEY" as const, // OAuth以外
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    };
 
     vi.mocked(mockTx.mcpServer.findUnique).mockResolvedValue(mockMcpServer);
 
     await expect(
       reauthenticateOAuthMcpServer(
         mockTx,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { mcpServerId: testMcpServerId as any },
+        { mcpServerId: testMcpServerId },
         testOrganizationId,
         testUserId,
       ),
@@ -221,12 +237,12 @@ describe("reauthenticateOAuthMcpServer", () => {
   });
 
   test("テンプレートURLが存在しない場合はNOT_FOUNDエラーを投げる", async () => {
-    const mockMcpServer = {
+    const mockMcpServer: MockMcpServer = {
       id: testMcpServerId,
       name: "Test Server",
       description: "",
       iconPath: null,
-      serverStatus: "ACTIVE" as const,
+      serverStatus: ServerStatus.RUNNING,
       serverType: "OFFICIAL" as const,
       authType: "OAUTH" as const,
       createdAt: new Date(),
@@ -241,16 +257,14 @@ describe("reauthenticateOAuthMcpServer", () => {
           authType: "OAUTH" as const,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    };
 
     vi.mocked(mockTx.mcpServer.findUnique).mockResolvedValue(mockMcpServer);
 
     await expect(
       reauthenticateOAuthMcpServer(
         mockTx,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { mcpServerId: testMcpServerId as any },
+        { mcpServerId: testMcpServerId },
         testOrganizationId,
         testUserId,
       ),
@@ -263,12 +277,12 @@ describe("reauthenticateOAuthMcpServer", () => {
   });
 
   test("OAuthクライアント情報が存在しない場合はNOT_FOUNDエラーを投げる", async () => {
-    const mockMcpServer = {
+    const mockMcpServer: MockMcpServer = {
       id: testMcpServerId,
       name: "Test Server",
       description: "",
       iconPath: null,
-      serverStatus: "ACTIVE" as const,
+      serverStatus: ServerStatus.RUNNING,
       serverType: "OFFICIAL" as const,
       authType: "OAUTH" as const,
       createdAt: new Date(),
@@ -283,8 +297,7 @@ describe("reauthenticateOAuthMcpServer", () => {
           authType: "OAUTH" as const,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    };
 
     vi.mocked(mockTx.mcpServer.findUnique).mockResolvedValue(mockMcpServer);
     vi.mocked(mockTx.mcpOAuthClient.findFirst).mockResolvedValue(null);
@@ -292,8 +305,7 @@ describe("reauthenticateOAuthMcpServer", () => {
     await expect(
       reauthenticateOAuthMcpServer(
         mockTx,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { mcpServerId: testMcpServerId as any },
+        { mcpServerId: testMcpServerId },
         testOrganizationId,
         testUserId,
       ),

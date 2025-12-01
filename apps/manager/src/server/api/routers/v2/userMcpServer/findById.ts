@@ -1,5 +1,4 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { ServerType } from "@tumiki/db/prisma";
 import { z } from "zod";
 import type { McpServerId } from "@/schema/ids";
 

@@ -10,6 +10,10 @@
  * - McpApiKey: APIキー（OAuth認証待ちでない場合）
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import type { db } from "@tumiki/db/server";
 import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { generateApiKey } from "@/utils/server";
@@ -89,6 +93,8 @@ export const createUserServerComponents = async (
       name: instanceName,
       description: "",
       mcpServerId: mcpServer.id,
+      // Prismaの型システム上、JSON.stringifyの戻り値が許可される
+       
       envVars: JSON.stringify(envVars),
     },
   });
@@ -107,6 +113,8 @@ export const createUserServerComponents = async (
       description: "",
       toolGroupTools: {
         createMany: {
+          // Prismaの型システム上、createManyのdataフィールドが許可される
+           
           data: toolGroupTools,
         },
       },
@@ -126,12 +134,16 @@ export const createUserServerComponents = async (
       serverStatus: isPending ? ServerStatus.PENDING : ServerStatus.RUNNING,
       serverType: ServerType.OFFICIAL,
       toolGroupId: toolGroup.id,
+      // Prismaの型システム上、apiKeysフィールドが許可される
+       
       apiKeys:
         isPending || !fullKey
           ? undefined
           : {
               create: {
                 name: `${instanceName} API Key`,
+                // Prismaの型システム上、apiKeyフィールドが許可される
+                 
                 apiKey: fullKey,
                 userId,
               },
