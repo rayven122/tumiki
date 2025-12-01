@@ -89,7 +89,7 @@ describe("verifyOAuthState", () => {
 
     await expect(
       verifyOAuthState(mockStateToken, "different-user-id"),
-    ).rejects.toThrow("User mismatch");
+    ).rejects.toThrow("Authentication failed");
   });
 
   test("state token検証時の一般的なエラーを適切にハンドリングする", async () => {
