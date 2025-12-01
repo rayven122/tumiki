@@ -31,7 +31,13 @@ import { cn } from "@/lib/utils";
 import { type RouterOutputs } from "@/trpc/react";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ServerStatusBadge } from "../ServerStatusBadge";
-import { OAuthTokenStatusBadge } from "./OAuthTokenStatusBadge";
+import { Clock } from "lucide-react";
+import {
+  calculateExpirationStatus,
+  getOAuthExpirationBadgeClass,
+  getApiKeyExpirationBadgeClass,
+  getExpirationText,
+} from "@/utils/shared/expirationHelpers";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -72,6 +78,28 @@ export const UserMcpServerCard = ({
     if (isSortMode) return; // ソートモード時はクリック無効
     router.push(`/${orgSlug}/mcps/${userMcpServer.id}`);
   };
+
+  // 最も有効期限が短いAPIキーを取得（バックエンドで既に有効なキーのみ取得済み）
+  const getShortestExpiringApiKey = () => {
+    const apiKeysWithExpiration = userMcpServer.apiKeys.filter(
+      (key) => key.expiresAt,
+    );
+
+    if (apiKeysWithExpiration.length === 0) return null;
+
+    return apiKeysWithExpiration.reduce((shortest, current) => {
+      if (!shortest.expiresAt) return current;
+      if (!current.expiresAt) return shortest;
+      return current.expiresAt < shortest.expiresAt ? current : shortest;
+    });
+  };
+
+  const shortestApiKey = getShortestExpiringApiKey();
+
+  // APIキーの有効期限状態を計算
+  const apiKeyStatus = shortestApiKey
+    ? calculateExpirationStatus(shortestApiKey.expiresAt)
+    : null;
 
   return (
     <>
@@ -165,9 +193,6 @@ export const UserMcpServerCard = ({
             <CardTitle>{userMcpServer.name}</CardTitle>
             <div className="mt-1 flex items-center gap-2">
               <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
-              <OAuthTokenStatusBadge
-                oauthTokenStatus={userMcpServer.oauthTokenStatus}
-              />
             </div>
           </div>
         </CardHeader>
@@ -198,6 +223,57 @@ export const UserMcpServerCard = ({
               {displayDescription}
             </p>
           </div>
+
+          {/* 有効期限表示 */}
+          {(userMcpServer.oauthTokenStatus?.hasToken ?? shortestApiKey) && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {/* OAuth トークンの有効期限 */}
+              {userMcpServer.oauthTokenStatus?.hasToken && (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
+                    getOAuthExpirationBadgeClass(
+                      userMcpServer.oauthTokenStatus.isExpired,
+                      userMcpServer.oauthTokenStatus.daysRemaining,
+                    ),
+                  )}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="font-semibold">OAuth</span>
+                  <span className="opacity-75">·</span>
+                  <span>
+                    {getExpirationText(
+                      userMcpServer.oauthTokenStatus.isExpired,
+                      userMcpServer.oauthTokenStatus.daysRemaining,
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* API キーの有効期限 */}
+              {shortestApiKey && apiKeyStatus && (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
+                    getApiKeyExpirationBadgeClass(
+                      apiKeyStatus.isExpired,
+                      apiKeyStatus.daysRemaining,
+                    ),
+                  )}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="font-semibold">API Key</span>
+                  <span className="opacity-75">·</span>
+                  <span>
+                    {getExpirationText(
+                      apiKeyStatus.isExpired,
+                      apiKeyStatus.daysRemaining,
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">

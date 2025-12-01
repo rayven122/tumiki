@@ -60,7 +60,29 @@ export const ConnectionSettings = ({
     serverId,
   });
 
-  const apiKey = apiKeys?.[0]?.apiKey ?? "YOUR_API_KEY";
+  // 有効なAPIキーを選択（無効化されておらず、有効期限内の最新のもの）
+  const apiKey = (() => {
+    if (!apiKeys || apiKeys.length === 0) return "YOUR_API_KEY";
+
+    const now = new Date();
+    const validApiKeys = apiKeys.filter((key) => {
+      // 無効化されていないこと
+      if (!key.isActive) return false;
+
+      // 有効期限内であること（expiresAtがnullの場合は無期限なのでOK）
+      if (key.expiresAt && new Date(key.expiresAt) < now) return false;
+
+      return true;
+    });
+
+    // 有効なAPIキーがない場合は "YOUR_API_KEY" を返す
+    if (validApiKeys.length === 0) {
+      return "YOUR_API_KEY";
+    }
+
+    // 最新のものを返す
+    return validApiKeys[0]?.apiKey ?? "YOUR_API_KEY";
+  })();
 
   const getConfigText = (clientId: string) => {
     const serverUrl = getProxyServerUrl();
