@@ -22,8 +22,8 @@ export const ServerInfoSection = ({ mcpServer }: ServerInfoSectionProps) => {
   };
 
   return (
-    <div className="mb-4 flex items-center">
-      <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md border p-2">
+    <div className="flex items-center">
+      <div className="mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border p-2">
         {mcpServer.iconPath ? (
           <Image
             src={mcpServer.iconPath}
@@ -42,7 +42,7 @@ export const ServerInfoSection = ({ mcpServer }: ServerInfoSectionProps) => {
           />
         )}
       </div>
-      <div>
+      <div className="min-w-0">
         <h2 className="font-medium">{mcpServer.name}</h2>
         <Badge variant="outline" className="mt-1 text-xs">
           {getEnvVarBadgeText()}
