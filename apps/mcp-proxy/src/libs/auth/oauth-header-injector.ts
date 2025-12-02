@@ -10,6 +10,7 @@ import {
   ReAuthRequiredError,
 } from "@tumiki/oauth-token-manager";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
+import { getCloudRunIdToken } from "./cloudRunAuth.js";
 import { logInfo, logError } from "../logger/index.js";
 
 /**
@@ -33,7 +34,7 @@ export const injectAuthHeaders = async (
     }
 
     case "API_KEY": {
-      injectApiKeyHeaders(mcpServerTemplate, mcpConfig, headers);
+      await injectApiKeyHeaders(mcpServerTemplate, mcpConfig, headers);
       break;
     }
 
@@ -104,12 +105,22 @@ const injectOAuthHeaders = async (
 /**
  * APIキーをヘッダーに注入
  */
-const injectApiKeyHeaders = (
+const injectApiKeyHeaders = async (
   mcpServerTemplate: McpServerTemplate,
   mcpConfig: McpConfig,
   headers: Record<string, string>,
-): void => {
+): Promise<void> => {
   try {
+    // Cloud Run IAM認証が必要な場合、Authorizationヘッダーを追加
+    if (mcpServerTemplate.useCloudRunIam && mcpServerTemplate.url) {
+      const idToken = await getCloudRunIdToken(mcpServerTemplate.url);
+      headers.Authorization = `Bearer ${idToken}`;
+
+      logInfo("Cloud Run IAM authorization header added", {
+        mcpServerTemplateId: mcpServerTemplate.id,
+        mcpServerTemplateName: mcpServerTemplate.name,
+      });
+    }
     // envVarsをパース
     let envVars: Record<string, string>;
     try {

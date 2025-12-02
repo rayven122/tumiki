@@ -15,6 +15,15 @@ inputs:
   gcp_project_id:
     description: 'GCP project ID'
     required: true
+  vercel_token:
+    description: 'Vercel API token for pulling environment variables'
+    required: true
+  vercel_org_id:
+    description: 'Vercel organization ID'
+    required: true
+  vercel_project_id:
+    description: 'Vercel project ID'
+    required: true
   region:
     description: 'Cloud Run region'
     default: 'asia-northeast1'
@@ -97,20 +106,21 @@ runs:
         ENVIRONMENT: ${{ inputs.environment }}
         PR_NUMBER: ${{ inputs.pr_number }}
         GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+        VERCEL_TOKEN: ${{ inputs.vercel_token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel_org_id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel_project_id }}
         REGION: ${{ inputs.region }}
         MIN_INSTANCES: ${{ inputs.min_instances }}
         MAX_INSTANCES: ${{ inputs.max_instances }}
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
 
-        # Determine service name and secret environment based on environment
+        # Determine service name based on environment
         if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
           SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
-          SECRET_ENV="staging"  # Preview環境ではstagingのシークレットを使用
-          echo "🔵 PR #$PR_NUMBER のPreviewデプロイ（stagingのシークレットを使用）"
+          echo "🔵 PR #$PR_NUMBER のPreviewデプロイ（previewの環境変数を使用）"
         else
           SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
-          SECRET_ENV="$ENVIRONMENT"
         fi
 
         echo "🚀 Cloud Runにデプロイ中..."
@@ -128,6 +138,47 @@ runs:
           echo "VPC: $ENVIRONMENT 環境ではVPCコネクターを使用しません"
         fi
 
+        echo "Vercel から環境変数を取得します（環境: ${ENVIRONMENT}）"
+
+        # Vercel 公式推奨: 環境変数として VERCEL_ORG_ID と VERCEL_PROJECT_ID を設定
+        # vercel pull でプロジェクト設定を取得後、env pull で環境変数を取得
+        # セキュリティのため、vercelコマンドの出力は非表示にする
+        vercel pull --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" > /dev/null 2>&1
+        vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" > /dev/null 2>&1
+
+        if [ ! -f .env.cloud-run.local ]; then
+          echo "❌ Vercel から環境変数の取得に失敗しました"
+          exit 1
+        fi
+
+        echo "✅ Vercel から環境変数を取得しました"
+
+        # .env ファイルを Cloud Run の env-vars-file 形式（YAML）に変換
+        # Cloud Run は値に特殊文字（=など）が含まれる場合、YAML形式を要求する
+        # コメント行と空行を除外し、YAML形式に変換
+        if [ -f .env.cloud-run.local ]; then
+          {
+            # コメント行と空行を除外してYAML形式に変換
+            grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' | while IFS= read -r line; do
+              # KEY="VALUE" の形式から KEY と VALUE を抽出
+              key="${line%%=*}"
+              value="${line#*=}"
+              # 値の前後のダブルクォートを削除
+              value="${value#\"}"
+              value="${value%\"}"
+              # YAML形式で出力（値は常にダブルクォートで囲む）
+              echo "${key}: \"${value}\""
+            done
+          } > .env.cloudrun
+
+          # 環境変数の数を確認（セキュリティのため内容は表示しない）
+          ENV_COUNT=$(wc -l < .env.cloudrun)
+          echo "📋 環境変数を ${ENV_COUNT} 個変換しました"
+        else
+          echo "❌ .env.cloud-run.local ファイルが見つかりません"
+          exit 1
+        fi
+
         # Deploy to Cloud Run
         gcloud run deploy "$SERVICE_NAME" \
           --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
@@ -141,11 +192,13 @@ runs:
           --concurrency=80 \
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
-          --set-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
-          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,PRISMA_FIELD_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
+          --env-vars-file=.env.cloudrun \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --no-cpu-throttling \
           $VPC_ARGS
+
+        # セキュリティのため .env ファイルを削除
+        rm -f .env.cloud-run.local .env.cloudrun
 
         # Get service URL
         CLOUDRUN_URL=$(gcloud run services describe "$SERVICE_NAME" \
