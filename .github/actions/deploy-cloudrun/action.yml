@@ -151,11 +151,23 @@ runs:
         echo "📋 取得した環境変数ファイル(.env.cloud-run.local)の内容:"
         cat .env.cloud-run.local || echo "ファイルが存在しません"
 
-        # .env ファイルを Cloud Run の env-vars-file 形式に変換
-        # Cloud Run は KEY=VALUE 形式のみを受け付けるため、コメント行と空行を除外
-        # また、値を囲むダブルクォートを削除（Vercelが自動的に追加するため）
+        # .env ファイルを Cloud Run の env-vars-file 形式（YAML）に変換
+        # Cloud Run は値に特殊文字（=など）が含まれる場合、YAML形式を要求する
+        # コメント行と空行を除外し、YAML形式に変換
         if [ -f .env.cloud-run.local ]; then
-          grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' | sed 's/=\"/=/; s/\"$//' > .env.cloudrun
+          {
+            # コメント行と空行を除外してYAML形式に変換
+            grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' | while IFS= read -r line; do
+              # KEY="VALUE" の形式から KEY と VALUE を抽出
+              key="${line%%=*}"
+              value="${line#*=}"
+              # 値の前後のダブルクォートを削除
+              value="${value#\"}"
+              value="${value%\"}"
+              # YAML形式で出力（値は常にダブルクォートで囲む）
+              echo "${key}: \"${value}\""
+            done
+          } > .env.cloudrun
           echo "📋 変換後のファイル(.env.cloudrun)の内容:"
           cat .env.cloudrun
         else
