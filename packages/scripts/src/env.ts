@@ -1,5 +1,5 @@
-import { MCP_ENV_MOCK_KEYS } from "./constants/mcpEnvMockKeys";
 import type { McpServer } from "./constants/mcpServers";
+import { MCP_ENV_MOCK_KEYS } from "./constants/mcpEnvMockKeys";
 import { MCP_SERVERS } from "./constants/mcpServers";
 
 /**
