@@ -5,12 +5,19 @@ import ws from "ws";
 import { createBaseClient } from "./createBaseClient.js";
 
 const createPrismaClient = () => {
-  // websocket を使った接続を使う
-  neonConfig.webSocketConstructor = ws;
   const connectionString = `${process.env.DATABASE_URL}`;
-  const adapter = new PrismaNeon({ connectionString });
 
-  return createBaseClient({ adapter, connectionString });
+  // Neon Databaseの場合のみWebSocketアダプターを使用
+  // ローカルPostgreSQLの場合は標準のPrismaClientを使用
+  if (connectionString.includes("neon.tech")) {
+    // websocket を使った接続を使う
+    neonConfig.webSocketConstructor = ws;
+    const adapter = new PrismaNeon({ connectionString });
+    return createBaseClient({ adapter, connectionString });
+  }
+
+  // ローカルPostgreSQLの場合は標準のPrismaClient
+  return createBaseClient();
 };
 
 const globalForPrisma = globalThis as unknown as {
