@@ -172,7 +172,7 @@ CREATE TABLE "public"."McpServerTemplate" (
     "useCloudRunIam" BOOLEAN NOT NULL DEFAULT false,
     "createdBy" TEXT,
     "visibility" "public"."McpServerVisibility" NOT NULL DEFAULT 'PRIVATE',
-    "organizationId" TEXT,
+    "organizationId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -366,7 +366,7 @@ CREATE TABLE "public"."McpApiKey" (
 CREATE TABLE "public"."McpOAuthClient" (
     "id" TEXT NOT NULL,
     "mcpServerTemplateId" TEXT,
-    "organizationId" TEXT,
+    "organizationId" TEXT NOT NULL,
     "clientId" TEXT NOT NULL,
     "clientSecret" TEXT,
     "registrationAccessToken" TEXT,
@@ -565,7 +565,7 @@ ALTER TABLE "public"."Stream" ADD CONSTRAINT "Stream_chatId_fkey" FOREIGN KEY ("
 ALTER TABLE "public"."McpServerTemplate" ADD CONSTRAINT "McpServerTemplate_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."McpServerTemplate" ADD CONSTRAINT "McpServerTemplate_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."McpServerTemplate" ADD CONSTRAINT "McpServerTemplate_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."McpTool" ADD CONSTRAINT "McpTool_mcpServerTemplateId_fkey" FOREIGN KEY ("mcpServerTemplateId") REFERENCES "public"."McpServerTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -634,7 +634,7 @@ ALTER TABLE "public"."McpApiKey" ADD CONSTRAINT "McpApiKey_mcpServerId_fkey" FOR
 ALTER TABLE "public"."McpOAuthClient" ADD CONSTRAINT "McpOAuthClient_mcpServerTemplateId_fkey" FOREIGN KEY ("mcpServerTemplateId") REFERENCES "public"."McpServerTemplate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."McpOAuthClient" ADD CONSTRAINT "McpOAuthClient_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."McpOAuthClient" ADD CONSTRAINT "McpOAuthClient_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."McpOAuthToken" ADD CONSTRAINT "McpOAuthToken_oauthClientId_fkey" FOREIGN KEY ("oauthClientId") REFERENCES "public"."McpOAuthClient"("id") ON DELETE CASCADE ON UPDATE CASCADE;

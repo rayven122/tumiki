@@ -20,7 +20,7 @@ import {
 import { db } from "@tumiki/db/server";
 
 const TEST_API_KEY = "test-api-key-12345-verification";
-const TEST_USER_ID = "auth0|mcp-proxy-test-user";
+const TEST_USER_ID = "mcp-proxy-test-user";
 const TEST_ORG_ID = "org_mcp_proxy_test";
 const TEST_MCP_SERVER_ID = "mcp_server_verification";
 const TEST_MCP_SERVER_TEMPLATE_ID = "mcp_template_context7";
@@ -82,6 +82,9 @@ const main = async () => {
       oauthProvider: null,
       oauthScopes: [],
       useCloudRunIam: false,
+      organization: {
+        connect: { id: organization.id },
+      },
     },
   });
   console.log(`   ✓ テンプレートID: ${mcpServerTemplate.id}`);

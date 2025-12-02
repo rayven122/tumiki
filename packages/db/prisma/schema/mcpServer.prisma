@@ -37,8 +37,8 @@ enum McpServerVisibility {
 }
 
 /// MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
-/// organizationId = null の場合はアプリ提供のグローバル共通テンプレート
-/// organizationId 設定済みの場合はユーザー作成の組織専用テンプレート
+/// organizationId = OFFICIAL_ORGANIZATION_ID の場合はアプリ提供の公式テンプレート
+/// organizationId が他の値の場合はユーザー作成の組織専用テンプレート
 /// @namespace McpServer
 /// @namespace UserMcpServer
 model McpServerTemplate {
@@ -81,9 +81,9 @@ model McpServerTemplate {
   creator        User?               @relation(fields: [createdBy], references: [id])
   /// ユーザーカスタムサーバーの可視性
   visibility     McpServerVisibility @default(PRIVATE)
-  /// 組織限定公開時の所属組織ID
-  organizationId String?
-  organization   Organization?       @relation(fields: [organizationId], references: [id])
+  /// 組織ID（公式テンプレートはOFFICIAL_ORGANIZATION_ID、組織専用テンプレートは組織ID）
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id])
 
   mcpTools   McpTool[]   @relation("mcpTools")
   mcpServers McpServer[]
@@ -96,7 +96,7 @@ model McpServerTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// 組織内で正規化名は一意（グローバルテンプレートはorganizationId=nullで一意）
+  /// 組織内で正規化名は一意
   @@unique([normalizedName, organizationId])
 }
 

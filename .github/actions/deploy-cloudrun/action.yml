@@ -140,14 +140,16 @@ runs:
 
         echo "Vercel から環境変数を取得します（環境: ${ENVIRONMENT}）"
 
-        # Vercel 公式推奨: 環境変数として VERCEL_ORG_ID と VERCEL_PROJECT_ID を設定
-        # vercel pull でプロジェクト設定を取得後、env pull で環境変数を取得
-        # セキュリティのため、vercelコマンドの出力は非表示にする
-        vercel pull --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" > /dev/null 2>&1
-        vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" > /dev/null 2>&1
+        # vercel env pull: 環境変数をローカルファイルにエクスポート
+        # 注: vercel pull は vercel build/dev を使う場合のみ必要。env pull は独立して動作する
+        if ! vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" 2>/dev/null; then
+          echo "❌ Vercel env pull コマンドが失敗しました。詳細を表示します:"
+          vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}"
+          exit 1
+        fi
 
         if [ ! -f .env.cloud-run.local ]; then
-          echo "❌ Vercel から環境変数の取得に失敗しました"
+          echo "❌ Vercel から環境変数の取得に失敗しました（ファイルが作成されませんでした）"
           exit 1
         fi
 

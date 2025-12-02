@@ -189,9 +189,9 @@ model McpOAuthClient {
   mcpServerTemplateId String?
   mcpServerTemplate   McpServerTemplate? @relation(fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
 
-  /// 組織ID (null=Global)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  /// 組織ID
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   /// DCRで取得したクライアント情報
   clientId                String /// @encrypted
