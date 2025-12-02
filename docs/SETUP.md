@@ -51,6 +51,11 @@ KEYCLOAK_ISSUER="http://localhost:8443/realms/tumiki"
 KEYCLOAK_ADMIN_USERNAME="admin"
 KEYCLOAK_ADMIN_PASSWORD="admin123"
 
+# Google OAuth設定（Keycloak起動時に必要）
+# Google Client情報は以下のURLを参照: https://rayven122.getoutline.com/doc/tumiki-KPIZN5UAXL
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
 # Auth.js設定
 NEXTAUTH_SECRET="生成したキー"  # openssl rand -base64 32
 NEXTAUTH_URL="https://local.tumiki.cloud:3000"
@@ -59,7 +64,7 @@ NEXTAUTH_URL="https://local.tumiki.cloud:3000"
 NEXT_PUBLIC_MCP_PROXY_URL="http://localhost:8080"
 
 # Prismaフィールド暗号化設定
-PRISMA_FIELD_ENCRYPTION_KEY="生成したキー"  # bunx @47ng/cloak generate
+PRISMA_FIELD_ENCRYPTION_KEY="生成したキー"  # pnpm dlx @47ng/cloak generate
 PRISMA_FIELD_ENCRYPTION_HASH_SALT="生成したキー"  # openssl rand -base64 32
 ```
 
@@ -100,7 +105,7 @@ openssl rand -base64 32
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # PRISMA_FIELD_ENCRYPTION_KEYの生成
-bunx @47ng/cloak generate
+pnpm dlx @47ng/cloak generate
 
 # PRISMA_FIELD_ENCRYPTION_HASH_SALTの生成
 openssl rand -base64 32
@@ -109,11 +114,8 @@ openssl rand -base64 32
 ### 4. Dockerコンテナの起動
 
 ```bash
-# PostgreSQL と Redis コンテナを起動
+# PostgreSQL、Redis、Keycloak コンテナを起動（初回は2-3分かかります）
 pnpm docker:up
-
-# Keycloak コンテナを起動（初回は2-3分かかります）
-pnpm keycloak:up
 ```
 
 起動完了を確認：
@@ -121,7 +123,6 @@ pnpm keycloak:up
 ```bash
 # コンテナの状態確認
 docker compose -f docker/compose.yaml ps
-docker compose -f docker/keycloak/compose.yaml ps
 ```
 
 ### 5. データベースのセットアップ
@@ -137,7 +138,25 @@ pnpm db:deploy
 cd ../..
 ```
 
-### 6. 開発サーバーの起動
+### 6. MCPサーバーテンプレートとツールの初期データ投入
+
+```bash
+# packages/script ディレクトリに移動
+cd packages/script
+
+# MCPサーバーテンプレートとツールの初期データを投入
+pnpm upsertAll
+
+# プロジェクトルートに戻る
+cd ../..
+```
+
+このコマンドにより、以下のデータがデータベースに登録されます：
+
+- MCPサーバーテンプレート（各MCPサーバーの定義）
+- MCPツール（各サーバーが提供するツールの情報）
+
+### 7. 開発サーバーの起動
 
 ```bash
 # すべてのアプリケーションを起動
