@@ -168,7 +168,10 @@ describe("handleTranscriptTool", () => {
 
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
-      const text = result.value.content[0]?.text;
+      const firstContent = result.value.content[0];
+      expect(firstContent?.type).toBe("text");
+      if (firstContent?.type !== "text") return;
+      const text = firstContent.text;
       expect(typeof text).toBe("string");
       if (typeof text !== "string") return;
       const responseData = JSON.parse(text) as {
@@ -206,7 +209,10 @@ describe("handleTranscriptTool", () => {
 
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
-      const text = result.value.content[0]?.text;
+      const secondContent = result.value.content[0];
+      expect(secondContent?.type).toBe("text");
+      if (secondContent?.type !== "text") return;
+      const text = secondContent.text;
       expect(typeof text).toBe("string");
       if (typeof text !== "string") return;
       const responseData = JSON.parse(text) as {
@@ -244,7 +250,10 @@ describe("handleTranscriptTool", () => {
 
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
-      const text = result.value.content[0]?.text;
+      const thirdContent = result.value.content[0];
+      expect(thirdContent?.type).toBe("text");
+      if (thirdContent?.type !== "text") return;
+      const text = thirdContent.text;
       expect(typeof text).toBe("string");
       if (typeof text !== "string") return;
       const responseData = JSON.parse(text) as {
