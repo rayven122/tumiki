@@ -49,7 +49,6 @@ export default async function OrgSlugLayout({
       </div>
     );
   } catch (error) {
-    // 組織が存在しない、またはアクセス権限がない場合はダッシュボードにリダイレクト
     console.error(
       `[OrgSlugLayout] Error fetching organization ${decodedSlug}:`,
       error,

@@ -18,7 +18,7 @@
 - tRPC（型安全API）
 - Tailwind CSS（スタイリング）
 - Radix UI（UIコンポーネント）
-- Auth0（認証・認可）
+- Keycloak（認証・認可）
 - Jotai（グローバル状態管理）
 - Vercel AI SDK
 

@@ -28,7 +28,7 @@ tumiki/
 │   │           ├── chat.prisma
 │   │           ├── apiKey.prisma
 │   │           └── waitingList.prisma
-│   ├── auth/                # Auth0認証パッケージ
+│   ├── auth/                # Keycloak認証パッケージ
 │   ├── utils/               # 共通ユーティリティ関数
 │   ├── mailer/              # メール送信機能
 │   └── scripts/             # データベーススクリプト
@@ -74,7 +74,7 @@ tumiki/
 - Next.js 15 + React 19のWebアプリケーション
 - MCPサーバーの管理UI
 - tRPCによるバックエンドAPI
-- Auth0認証統合
+- Keycloak認証統合
 - 多言語対応（英語/日本語）
 
 ### apps/mcp-proxy
@@ -90,7 +90,7 @@ tumiki/
 - 型定義の自動生成
 
 ### packages/auth
-- Auth0統合認証
+- Keycloak統合認証
 - JWT管理
 - セッション管理
 - ロールベースアクセス制御
