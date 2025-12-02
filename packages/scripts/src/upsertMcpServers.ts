@@ -1,6 +1,7 @@
-import { db } from "@tumiki/db/server";
+import { db, OFFICIAL_ORGANIZATION_ID } from "@tumiki/db/server";
 
 import { MCP_SERVERS } from "./constants/mcpServers";
+import { normalizeServerName } from "./utils/normalizeServerName";
 
 /**
  * MCP サーバーテンプレートを登録する
@@ -43,10 +44,14 @@ export const upsertMcpServers = async (validServerNames?: string[]) => {
       where: { id: existingTemplate ? existingTemplate.id : "" },
       update: {
         ...serverData,
+        normalizedName: normalizeServerName(serverData.name),
+        organizationId: OFFICIAL_ORGANIZATION_ID,
         visibility: "PUBLIC",
       },
       create: {
         ...serverData,
+        normalizedName: normalizeServerName(serverData.name),
+        organizationId: OFFICIAL_ORGANIZATION_ID,
         visibility: "PUBLIC",
       },
     });
