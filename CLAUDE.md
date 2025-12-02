@@ -1,63 +1,61 @@
 # CLAUDE.md
 
-Claude Code がこのリポジトリで作業する際のガイダンスファイルです。
-
-## Serenaシンボリックツールの使用方法
-
-Serenaのシンボリックツールへのアクセスが提供されています。以下の指示に従って使用してください。
-
-あなたは特定のコードベースに特化したプロフェッショナルなコーディングエージェントです。セマンティックなコーディングツールにアクセスでき、これらのツールに大きく依存して作業を行います。また、コードベースに関する一般的な情報を含むメモリファイルのコレクションも利用できます。リソース効率的で賢明な方法で動作し、手元のタスクに必要のないコンテンツの読み込みや生成を避けることを常に心がけてください。
-
-### 重要な原則
-
-**ファイル全体を不必要に読み込まないでください！**
-
-ユーザーの質問やタスクに答えるためにコードを読む際は、必要なコードのみを読むように心がけてください。一部のタスクではコードベースの大部分のアーキテクチャを理解する必要がありますが、その他の場合は、シンボルの小さなセットや単一のファイルを読むだけで十分な場合があります。
-
-一般的に、絶対に必要でない限りファイル全体を読み込むことは避け、代わりに段階的な情報取得に依存してください。ただし、すでにファイルを読み込んでいる場合は、（`find_referencing_symbols`ツールを除いて）シンボリックツールでさらに分析することは意味がありません。すでに情報を持っているからです。
-
-**オーバービューツールやシンボリックツールを使用して、必要なコードのみを最初に読むことを検討してください！**
-
-**ファイル全体を読んだ後に同じコンテンツをシンボリックツールで読み続けることは避けてください！**
-
-**シンボリックツールの目的は、同じコンテンツを複数回読むことではなく、読むコードを減らすことです！**
-
-### 効率的なコード読み取り方法
-
-シンボルの概要とそれらの関係を取得するためのシンボリックツールを使用し、質問に答えるかタスクを完了するために必要なシンボルの本体のみを読むことで、賢いコード読み取りを実現できます。
-
-- 必要に応じて`list_dir`、`find_file`、`search_for_pattern`などの標準ツールを使用できます
-- ツールで許可されている場合は、`relative_path`パラメータを渡して検索を特定のファイルまたはディレクトリに制限してください
-- 一部のツールでは、`relative_path`はファイルパスのみであるため、ツールの説明を適切に読んでください
-
-シンボルの名前や場所が不確実な場合（シンボル名の部分文字列マッチングでは不十分な程度）、`search_for_pattern`ツールを使用できます。これにより、コードベース内のパターンの高速で柔軟な検索が可能になります。この方法で最初にシンボルやファイルの候補を見つけ、その後シンボリックツールに進むことができます。
-
-### シンボルの識別と操作
-
-シンボルは`name_path`と`relative_path`によって識別されます。`name_path`がシンボルにどのようにマッチするかの詳細については、`find_symbol`ツールの説明を参照してください。
-
-- ファイル内のトップレベルシンボルを見つけるには`get_symbols_overview`ツールを使用
-- シンボルの名前パスを既に知っている場合は`find_symbol`を使用
-- タスクを解決しながらできるだけ少ないコードを読むよう心がけ、編集したいシンボルを見つけた後に本体を読むようにしてください
-
-### 編集アプローチ
-
-コード編集には2つの主要なアプローチがあります：
-
-1. **シンボルベースの編集**: シンボル全体（メソッド、クラス、関数など）を調整する場合に適しています
-2. **正規表現ベースの編集**: シンボル内の数行のコードを調整する場合やシンボル全体より小さなチャンクを扱う場合に使用
-
-### メモリファイルの活用
-
-一般的にメモリにアクセスでき、質問に答えるまたはタスクを完了するのに役立つ場合に読むことが有用です。メモリ名と説明を読むことで、現在のタスクに関連するメモリを推測できます。
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## プロジェクト概要
 
 プロジェクトの詳細については [README.md](./README.md) を参照してください。
 
-### 型チェックコマンド
+### 主要な開発コマンド
 
-- **型チェック**: `pnpm typecheck` - TypeScript型チェック（tsc使用）
+```bash
+# 基本操作
+pnpm install           # 依存関係インストール（Python MCP自動インストール含む）
+pnpm dev               # 開発サーバー起動（全アプリ）
+pnpm build             # ビルド（全パッケージ）
+pnpm start             # 本番サーバー起動
+
+# コード品質チェック
+pnpm check             # 全品質チェック（lint + format + typecheck）
+pnpm lint:fix          # Lint自動修正
+pnpm format:fix        # フォーマット自動修正
+pnpm typecheck         # TypeScript型チェック（tsc使用）
+pnpm test              # テスト実行
+pnpm test:watch        # テストウォッチモード
+pnpm test:coverage     # カバレッジ付きテスト
+pnpm test:ui           # Vitest UI
+
+# Docker操作
+pnpm docker:up         # コンテナ起動（PostgreSQL, Redis）
+pnpm docker:stop       # コンテナ停止
+pnpm docker:down       # コンテナ削除
+pnpm docker:ps         # コンテナ状態確認
+pnpm docker:logs       # コンテナログ表示
+
+# データベース操作（packages/db内で実行）
+cd packages/db
+pnpm db:generate       # Prismaクライアント生成
+pnpm db:migrate        # マイグレーション実行
+pnpm db:push           # スキーマプッシュ（開発環境）
+pnpm db:push:test      # スキーマプッシュ（テスト環境）
+pnpm db:studio         # Prisma Studio起動
+
+# デプロイ（本番環境のみ使用）
+pnpm deploy            # デプロイ（対話式）
+pnpm deploy:vercel     # Vercelのみデプロイ
+pnpm deploy:gce        # Cloud Runのみデプロイ
+pnpm deploy:all        # 全環境デプロイ
+pnpm deploy:production # 本番環境デプロイ
+pnpm deploy:dry-run    # デプロイ確認（実行なし）
+
+# Stripe（本番環境のみ）
+pnpm verify:stripe     # Stripe環境変数検証
+pnpm stripe:listen     # Stripeウェブフックリスナー
+
+# モノレポ操作
+pnpm --filter @tumiki/db <command>     # 特定パッケージでコマンド実行
+turbo run build --filter=manager       # 特定アプリのみビルド
+```
 
 ## Python MCP サーバーのサポート
 
@@ -202,10 +200,10 @@ afterEach(() => {
 
 データベースを使用するテストの実行には、専用のテスト環境が必要：
 
-- **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5433）を使用
+- **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5435）を使用
 - **DB起動**: `docker compose -f ./docker/compose.yaml up -d db-test`
 - **スキーマ適用**: `cd packages/db && pnpm db:push:test` でテスト用DBにスキーマを適用
-- **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5433/tumiki_test`）
+- **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5435/tumiki_test`）
 - **テスト環境**: vitest-environment-vprisma でトランザクション分離された独立テスト実行
 
 #### 品質チェック
@@ -227,7 +225,6 @@ pnpm build        # 本番ビルド(必須)
 Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schema/`）：
 
 - `base.prisma` - コア設定とジェネレーター
-- `auth.prisma` - Auth0認証テーブル
 - `mcpServer.prisma` - MCP サーバー定義とツール
 - `userMcpServer.prisma` - ユーザー固有のサーバー設定
 - `organization.prisma` - マルチテナント組織サポート
@@ -249,32 +246,34 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 ### 認証アーキテクチャ
 
-- **プロバイダー**: Auth0 統合認証
+- **プロバイダー**: Keycloak統合認証（`@tumiki/auth`パッケージ）
 - **設定**: `packages/auth/src/config.ts`
-- **セッション**: JWT ベース、Auth0セッション管理
-- **ウェブフック**: Post-Login Action による動的ユーザー管理
+- **セッション**: JWT ベース、Keycloakセッション管理
+- **OAuth管理**: `@tumiki/oauth-token-manager`でトークン自動更新
 
 ### セキュリティ機能
 
 - 機密データ（API キー、トークン）のフィールドレベル暗号化
-- Auth0 統合認証・認可
+- Keycloak統合認証・認可
 - ロールベースアクセス制御
 - JWT セッション管理
-- ウェブフックシークレット検証
 
 ### 開発時の重要事項
 
 - **Node.js**: >=22.14.0 必須
-- **パッケージマネージャー**: pnpm@10.11.0 以上
+- **パッケージマネージャー**: pnpm@10.11.0（`packageManager`フィールドで固定）
 - **型チェック**: 全パッケージで TypeScript strict モード
 - **コミット前**: 必ず `pnpm check` 実行（CI環境変数エラーは開発時は無視可能）
 - **型インポート**: Prisma 型は `@tumiki/db` から import（`@prisma/client` ではない）
 - **ページ構造**: 英語版 `/` と日本語版 `/jp` の2つのランディングページが存在
 - **環境変数**: プロジェクト直下の `.env` ファイルに定義。環境変数を読み込んで実行する必要があるものは、
   `dotenv` パッケージを使用して読み込む。ただし、npm scripts 実行時は自動的に読み込まれるため、手動での読み込みは不要。
-- **ローカル開発URL**: `https://local.tumiki.cloud:3000` でアクセス。
+- **ローカル開発URL**: `https://local.tumiki.cloud:3000` でアクセス
 - **@tumiki/ パッケージのimportエラー**: `@tumiki/` で始まるパッケージのimportに失敗する場合は、該当パッケージのビルドが必要。
   例: `@tumiki/db` のimportエラーが発生した場合 → `cd packages/db && pnpm build` を実行
+- **Turboキャッシュ**: `.cache/` ディレクトリにビルドキャッシュが保存される（ESLint、Prettier、TypeScript）
+- **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）が`docker/compose.yaml`で管理
+- **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
 ## 実装後の必須アクション
 
@@ -288,21 +287,9 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 
-#### コミット形式
-
-修正は以下の形式でコミットされます：
-
-```text
-fix: [重要度8] セキュリティ問題を修正
-```
-
-修正完了後、PRコメントに詳細な結果サマリーが投稿されます。
-
 ## 完了条件
 
 - `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
 - Vitest を使って実装ロジックのカバレッジを100%にすること
 - 関連ドキュメントの更新完了させること
-- PM2での本番環境デプロイが正常に動作すること
 - MCPサーバーの統合テストが成功すること
-- Claude Code Reviewによる自動レビューで重要度8以上の指摘が解決されていること
