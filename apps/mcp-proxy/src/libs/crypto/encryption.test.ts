@@ -3,7 +3,7 @@ import { decrypt, encrypt, generateEncryptionKey } from "./encryption.js";
 
 // テスト用の暗号化キーを環境変数に設定
 beforeEach(() => {
-  vi.stubEnv("CACHE_ENCRYPTION_KEY", generateEncryptionKey());
+  vi.stubEnv("REDIS_ENCRYPTION_KEY", generateEncryptionKey());
 });
 
 // テスト後に環境変数をクリーンアップ
@@ -196,28 +196,28 @@ describe("getEncryptionKey error handling", () => {
     vi.unstubAllEnvs();
 
     expect(() => encrypt("test")).toThrow(
-      "CACHE_ENCRYPTION_KEY environment variable is not set",
+      "REDIS_ENCRYPTION_KEY environment variable is not set",
     );
   });
 
   test("環境変数のキーが32バイトでない場合にエラーをスローする", () => {
     // 16バイト（32文字）のキーを設定
-    vi.stubEnv("CACHE_ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef");
+    vi.stubEnv("REDIS_ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef");
 
     expect(() => encrypt("test")).toThrow(
-      "CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
+      "REDIS_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
     );
   });
 
   test("環境変数のキーが不正な16進数の場合にエラーをスローする", () => {
     // 64文字だが16進数でない
     vi.stubEnv(
-      "CACHE_ENCRYPTION_KEY",
+      "REDIS_ENCRYPTION_KEY",
       "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
     );
 
     expect(() => encrypt("test")).toThrow(
-      "CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
+      "REDIS_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
     );
   });
 });

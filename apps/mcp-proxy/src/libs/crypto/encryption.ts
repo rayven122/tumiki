@@ -21,16 +21,16 @@ const AUTH_TAG_LENGTH = 16;
  * @throws 環境変数が未設定または不正な場合
  */
 const getEncryptionKey = (): Buffer => {
-  const key = process.env.CACHE_ENCRYPTION_KEY;
+  const key = process.env.REDIS_ENCRYPTION_KEY;
 
   if (!key) {
-    throw new Error("CACHE_ENCRYPTION_KEY environment variable is not set");
+    throw new Error("REDIS_ENCRYPTION_KEY environment variable is not set");
   }
 
   // 入力検証: 64文字の16進数文字列かチェック
   if (!/^[0-9a-fA-F]{64}$/.test(key)) {
     throw new Error(
-      "CACHE_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
+      "REDIS_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
     );
   }
 
@@ -39,7 +39,7 @@ const getEncryptionKey = (): Buffer => {
 
   // セキュリティチェック: キーが全て0ではないことを確認
   if (keyBuffer.every((byte) => byte === 0)) {
-    throw new Error("CACHE_ENCRYPTION_KEY cannot be all zeros");
+    throw new Error("REDIS_ENCRYPTION_KEY cannot be all zeros");
   }
 
   return keyBuffer;
