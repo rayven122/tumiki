@@ -22,15 +22,18 @@ import {
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
 import { toast } from "@/utils/client/toast";
 import { WelcomeLoadingOverlay } from "./WelcomeLoadingOverlay";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
 
 type OnboardingClientProps = {
+  session: Session | null;
   isFirstLogin: boolean;
 };
 
-export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
+export const OnboardingClient = ({
+  session,
+  isFirstLogin,
+}: OnboardingClientProps) => {
   const router = useRouter();
-  const { data: session } = useSession();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
   >(null);
@@ -40,21 +43,22 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
   const handlePersonalUse = () => {
     setSelectedOption("personal");
 
-    // セッションから組織情報を取得（個人組織は会員登録時に自動作成済み）
+    // セッションからチーム情報を取得（個人チームは会員登録時に自動作成済み）
     const orgSlug = session?.user?.organizationSlug;
     if (orgSlug) {
+      // 初回ログイン時はウェルカムオーバーレイを表示
       if (isFirstLogin) {
         setShowWelcomeOverlay(true);
       } else {
         router.push(`/${orgSlug}/mcps`);
       }
     } else {
-      // エラーケース: セッションに組織情報が存在しない
+      // エラーケース: セッションにチーム情報が存在しない
       console.error(
         "No organization found in session. This should not happen.",
       );
       toast.error(
-        "組織情報の取得に失敗しました。サポートにお問い合わせください。",
+        "チーム情報の取得に失敗しました。サポートにお問い合わせください。",
       );
     }
   };
@@ -63,12 +67,10 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
   const handleAnimationComplete = () => {
     setShowWelcomeOverlay(false);
 
-    // セッションから組織slugを取得してリダイレクト
+    // セッションからチームslugを取得してリダイレクト
     const orgSlug = session?.user?.organizationSlug;
     if (orgSlug) {
       router.push(`/${orgSlug}/mcps`);
-    } else {
-      router.push("/mcp");
     }
   };
 
@@ -80,7 +82,7 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
   const handleOrganizationCreated = () => {
     setIsOrgDialogOpen(false);
 
-    // チーム組織作成後はウェルカムオーバーレイを表示
+    // チーム作成後はウェルカムオーバーレイを表示
     setShowWelcomeOverlay(true);
   };
 
@@ -90,12 +92,12 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
         {/* ヘッダー */}
         <div className="mb-12 text-center">
           <h1 className="mb-4 text-4xl font-bold">
-            {isFirstLogin ? "Tumikiへようこそ！" : "新しい組織を作成"}
+            {isFirstLogin ? "Tumikiへようこそ！" : "新しいチームを作成"}
           </h1>
           <p className="text-muted-foreground text-xl">
             {isFirstLogin
               ? "MCPサーバー管理を始めるために、利用形態を選択してください"
-              : "チーム利用のための新しい組織を作成します。利用形態を選択してください"}
+              : "チーム利用のための新しいチームを作成します。利用形態を選択してください"}
           </p>
         </div>
 
@@ -173,7 +175,7 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
               <ul className="space-y-3 text-sm">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  組織名とロゴを設定
+                  チーム名とロゴを設定
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -196,7 +198,7 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
                   handleTeamUse();
                 }}
               >
-                組織を作成
+                チームを作成
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
@@ -210,13 +212,13 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
         onAnimationComplete={handleAnimationComplete}
       />
 
-      {/* 組織作成ダイアログ */}
+      {/* チーム作成ダイアログ */}
       <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>新しい組織を作成</DialogTitle>
+            <DialogTitle>新しいチームを作成</DialogTitle>
             <DialogDescription>
-              チーム用の組織を作成します。組織名、説明、ロゴを設定してください。
+              チーム用のチームを作成します。チーム名、説明、ロゴを設定してください。
             </DialogDescription>
           </DialogHeader>
           <OrganizationCreateForm onSuccess={handleOrganizationCreated} />

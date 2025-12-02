@@ -9,8 +9,8 @@ export default async function SignInPage() {
   // セッションから直接組織slugを取得
   const orgSlug = session?.user.organizationSlug;
 
-  // 組織情報がない場合はオンボーディングへ
-  const redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding";
+  // 組織情報がない場合はオンボーディングへ（初回ログインフラグ付き）
+  const redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding?first=true";
 
   // 既にログイン済みの場合は、デフォルト組織のMCPページにリダイレクト
   if (session?.user) {
