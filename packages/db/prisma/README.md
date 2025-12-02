@@ -179,7 +179,7 @@ erDiagram
 
 ### `McpServerTemplate`
 
-MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
+MCP サーバーテンプレート（接続情報や認証方式の「���計図」）
 organizationId = OFFICIAL_ORGANIZATION_ID の場合はアプリ提供の公式テンプレート
 organizationId が他の値の場合はユーザー作成の組織専用テンプレート
 
@@ -748,7 +748,7 @@ Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
 
 ### `McpServerTemplate`
 
-MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
+MCP サーバーテンプレート（接続情報や認証方式の「���計図」）
 organizationId = OFFICIAL_ORGANIZATION_ID の場合はアプリ提供の公式テンプレート
 organizationId が他の値の場合はユーザー作成の組織専用テンプレート
 

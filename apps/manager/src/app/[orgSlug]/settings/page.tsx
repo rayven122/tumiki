@@ -62,9 +62,6 @@ const SettingsPage = () => {
                   disabled
                   className="bg-muted"
                 />
-                <p className="text-muted-foreground text-xs">
-                  メールアドレスはAuth0で管理されています
-                </p>
               </div>
 
               <div className="space-y-2">
