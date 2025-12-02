@@ -4,6 +4,13 @@ import { getCachedConfig } from "../../libs/cache/configCache.js";
 import { injectAuthHeaders } from "../../libs/auth/oauth-header-injector.js";
 import { mapTransportType, mapAuthType } from "./transformer.js";
 import type { RemoteMcpServerConfig } from "../../types/index.js";
+import { z } from "zod";
+
+/**
+ * envVars の型安全なパーススキーマ
+ * Record<string, string> の形式を強制
+ */
+const envVarsSchema = z.record(z.string(), z.string());
 
 /**
  * McpServerに対応するRemote MCPサーバー設定をDBから取得（内部関数）
@@ -64,24 +71,14 @@ const getEnabledServersForInstanceFromDB = async (
           },
         });
 
-        // envVarsを復号化
+        // envVarsを復号化（Zodで型安全にバリデーション）
         let envVars: Record<string, string> = {};
         try {
           if (mcpConfig?.envVars) {
             // envVarsは暗号化されたJSON文字列
             // 復号化はPrismaのミドルウェアで自動的に行われる
             const parsed: unknown = JSON.parse(mcpConfig.envVars);
-
-            // 型チェック: オブジェクトであり、配列でないことを確認
-            if (
-              typeof parsed === "object" &&
-              parsed !== null &&
-              !Array.isArray(parsed)
-            ) {
-              envVars = parsed as Record<string, string>;
-            } else {
-              throw new Error("envVars must be an object");
-            }
+            envVars = envVarsSchema.parse(parsed);
           }
         } catch (error) {
           // エラーログでは設定IDの一部のみを出力（セキュリティ考慮）

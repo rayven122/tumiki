@@ -12,6 +12,13 @@ import {
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 import { getCloudRunIdToken } from "./cloudRunAuth.js";
 import { logInfo, logError } from "../logger/index.js";
+import { z } from "zod";
+
+/**
+ * envVars の型安全なパーススキーマ
+ * Record<string, string> の形式を強制
+ */
+const envVarsSchema = z.record(z.string(), z.string());
 
 /**
  * 認証ヘッダーを注入
@@ -121,18 +128,11 @@ const injectApiKeyHeaders = async (
         mcpServerTemplateName: mcpServerTemplate.name,
       });
     }
-    // envVarsをパース
+    // envVarsをパース（Zodで型安全にバリデーション）
     let envVars: Record<string, string>;
     try {
       const parsed: unknown = JSON.parse(mcpConfig.envVars);
-      if (
-        typeof parsed !== "object" ||
-        parsed === null ||
-        Array.isArray(parsed)
-      ) {
-        throw new Error("Invalid envVars format");
-      }
-      envVars = parsed as Record<string, string>;
+      envVars = envVarsSchema.parse(parsed);
     } catch (parseError) {
       logError("Failed to parse envVars", parseError as Error);
       throw new Error("Invalid environment variables configuration");
