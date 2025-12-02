@@ -1,8 +1,9 @@
 import reactPlugin from "eslint-plugin-react";
-import * as reactHooks from "eslint-plugin-react-hooks";
+import reactHooks from "eslint-plugin-react-hooks";
 
 /** @type {Awaited<import('typescript-eslint').Config>} */
 export default [
+  // @ts-expect-error - eslint-plugin-react-hooks の型定義が更新されていないが、実行時には存在する
   reactHooks.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
