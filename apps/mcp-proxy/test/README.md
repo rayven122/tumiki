@@ -74,7 +74,7 @@ curl -X POST "${PROXY_URL}/mcp/${MCP_SERVER_ID}" \
 ## テストデータ
 
 ```
-User:         auth0|mcp-proxy-test-user
+User:         mcp-proxy-test-user
 Organization: org_mcp_proxy_test
 API Key:      test-api-key-12345-verification
 Server ID:    mcp_server_verification
