@@ -147,9 +147,21 @@ runs:
 
         echo "✅ Vercel から環境変数を取得しました"
 
+        # デバッグ: 取得した環境変数ファイルの内容を確認
+        echo "📋 取得した環境変数ファイル(.env.cloud-run.local)の内容:"
+        cat .env.cloud-run.local || echo "ファイルが存在しません"
+
         # .env ファイルを Cloud Run の env-vars-file 形式に変換
         # Cloud Run は KEY=VALUE 形式のみを受け付けるため、コメント行と空行を除外
-        grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' > .env.cloudrun
+        # また、引用符で囲まれた値も適切に処理
+        if [ -f .env.cloud-run.local ]; then
+          grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' > .env.cloudrun
+          echo "📋 変換後のファイル(.env.cloudrun)の内容:"
+          cat .env.cloudrun
+        else
+          echo "❌ .env.cloud-run.local ファイルが見つかりません"
+          exit 1
+        fi
 
         # Deploy to Cloud Run
         gcloud run deploy "$SERVICE_NAME" \
