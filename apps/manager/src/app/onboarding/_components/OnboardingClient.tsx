@@ -251,7 +251,7 @@ export const OnboardingClient = ({
           <DialogHeader>
             <DialogTitle>新しいチームを作成</DialogTitle>
             <DialogDescription>
-              チーム用のチームを作成します。チーム名、説明、ロゴを設定してください。
+              新しいチームを作成します。チーム名、説明、ロゴを設定してください。
             </DialogDescription>
           </DialogHeader>
           <OrganizationCreateForm onSuccess={handleOrganizationCreated} />
