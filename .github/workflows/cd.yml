@@ -143,8 +143,6 @@ jobs:
           gcp_credentials: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           region: asia-northeast1
           min_instances: '0'
           max_instances: '3'
