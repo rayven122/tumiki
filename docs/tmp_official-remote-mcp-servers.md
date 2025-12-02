@@ -313,7 +313,6 @@ Astrix Securityの調査（2025年）によると：
 
 ### 仕様更新
 
-- [MCP仕様更新 (2025年6月)](https://auth0.com/blog/mcp-specs-update-all-about-auth/)
 - [OAuth in MCP解説 by Aaron Parecki](https://aaronparecki.com/2025/04/03/15/oauth-for-model-context-protocol)
 - [Client Registration and Enterprise Management (2025年11月)](https://aaronparecki.com/2025/11/25/1/mcp-authorization-spec-update)
 

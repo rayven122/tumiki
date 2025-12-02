@@ -13,7 +13,7 @@ export { isVerificationModeEnabled } from "~/lib/verification";
 export type SessionReturnType = Session | null;
 
 /**
- * SessionData型 - Auth0互換の型エイリアス
+ * SessionData型 - Keycloak互換の型エイリアス
  * @deprecated Session型を直接使用してください
  */
 export type SessionData = Session;
@@ -168,7 +168,7 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-      sub: string; // Auth0互換
+      sub: string; // Keycloak互換
       email: string | null;
       name: string | null;
       image: string | null;

@@ -10,10 +10,17 @@ import {
   Users,
   Shield,
   ChevronLeft,
+  Activity,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 import { useEffect, useState } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type OrgSidebarProps = {
   orgSlug: string;
@@ -50,30 +57,47 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       href: `/${orgSlug}/dashboard`,
       icon: LayoutDashboard,
       show: !isPersonal, // 個人組織では非表示
+      disabled: true,
+      comingSoon: true,
     },
     {
       name: "MCPサーバー",
       href: `/${orgSlug}/mcps`,
       icon: Server,
       show: true, // 全組織で表示
+      disabled: false,
+    },
+    {
+      name: "アクティビティ",
+      href: `/${orgSlug}/activity`,
+      icon: Activity,
+      show: true, // 全組織で表示
+      disabled: true,
+      comingSoon: true,
     },
     {
       name: "メンバー管理",
       href: `/${orgSlug}/members`,
       icon: Users,
       show: !isPersonal, // 個人組織では非表示
+      disabled: true,
+      comingSoon: true,
     },
     {
       name: "ロール・権限",
       href: `/${orgSlug}/roles`,
       icon: Shield,
       show: !isPersonal, // 個人組織では非表示
+      disabled: true,
+      comingSoon: true,
     },
     {
-      name: "組織設定",
+      name: "設定",
       href: `/${orgSlug}/settings`,
       icon: Settings,
       show: !isPersonal, // 個人組織では非表示
+      disabled: true,
+      comingSoon: true,
     },
   ].filter((item) => item.show);
 
@@ -113,37 +137,79 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
         </div>
 
         <div className="flex-1 overflow-auto py-6">
-          <nav className="grid gap-1 px-4">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+          <TooltipProvider delayDuration={300}>
+            <nav className="grid gap-1 px-4">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                const isDisabled = item.disabled;
+                const tooltipText = item.comingSoon ? "近日公開" : item.name;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground",
-                  )}
-                  title={!isOpen ? item.name : undefined}
-                  onClick={() => {
-                    // モバイルではリンククリック時にサイドバーを閉じる
-                    if (isMobile) {
-                      setIsOpen(false);
-                    }
-                  }}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className={cn("md:inline", !isOpen && "md:hidden")}>
-                    {item.name}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
+                const linkContent = (
+                  <>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className={cn("md:inline", !isOpen && "md:hidden")}>
+                      {item.name}
+                    </span>
+                  </>
+                );
+
+                if (isDisabled) {
+                  return (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "text-muted-foreground/40 flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+                          )}
+                        >
+                          {linkContent}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{tooltipText}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+
+                const linkElement = (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground",
+                    )}
+                    onClick={() => {
+                      // モバイルではリンククリック時にサイドバーを閉じる
+                      if (isMobile) {
+                        setIsOpen(false);
+                      }
+                    }}
+                  >
+                    {linkContent}
+                  </Link>
+                );
+
+                // サイドバーが閉じている時はツールチップを表示
+                if (!isOpen) {
+                  return (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{tooltipText}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+
+                return linkElement;
+              })}
+            </nav>
+          </TooltipProvider>
         </div>
       </aside>
 

@@ -1,4 +1,4 @@
-import { Header } from "@/app/_components/Header";
+import { AuthHeader } from "@/app/_components/AuthHeader";
 import { redirect } from "next/navigation";
 import { auth } from "~/auth";
 
@@ -16,7 +16,7 @@ export default async function OnboardingLayout({
 
   return (
     <>
-      <Header />
+      <AuthHeader />
       {children}
     </>
   );

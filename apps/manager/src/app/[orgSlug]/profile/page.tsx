@@ -119,12 +119,6 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="flex items-center space-x-3 text-sm">
-                  <Mail className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground">認証方法:</span>
-                  <span>Auth0</span>
-                </div>
-
-                <div className="flex items-center space-x-3 text-sm">
                   <Shield className="text-muted-foreground h-4 w-4" />
                   <span className="text-muted-foreground">アカウント種別:</span>
                   <span>{isGuest ? "ゲスト" : "標準"}</span>
@@ -170,9 +164,6 @@ const ProfilePage = () => {
                     disabled
                     className="bg-muted"
                   />
-                  <p className="text-muted-foreground text-xs">
-                    メールアドレスはAuth0で管理されています
-                  </p>
                 </div>
 
                 <Separator />
@@ -266,7 +257,6 @@ const ProfilePage = () => {
                 </h4>
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   プロフィール機能は現在開発中です。編集機能やプライバシー設定は今後のアップデートで利用可能になります。
-                  現在はAuth0で管理されている基本情報のみ表示されています。
                 </p>
               </div>
             </div>
