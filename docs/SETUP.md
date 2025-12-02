@@ -32,46 +32,78 @@ pnpm install
 cp .env.example .env
 ```
 
-`.env`ファイルを編集して以下の必須環境変数を設定：
+`.env`ファイルを編集して以下の必須環境変数を設定します。詳細は [環境変数リファレンス](./docs/environment-variables.md) を参照してください。
+
+#### 🔴 必須環境変数
 
 ```bash
-# Database Configuration
-DATABASE_URL="postgresql://postgres:password@localhost:5434/tumiki"
-DIRECT_URL="postgresql://postgres:password@localhost:5434/tumiki"
+# データベース設定
+DATABASE_URL="postgresql://root:password@localhost:5434/tumiki"
 
-# Redis Configuration
+# Redis設定
 REDIS_URL="redis://localhost:6379"
-UPSTASH_REDIS_REST_URL="http://localhost:8079"
-UPSTASH_REDIS_REST_TOKEN="local_dev_token_12345"
+REDIS_ENCRYPTION_KEY="生成したキー"  # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# NextAuth.js + Keycloak Configuration
-AUTH_SECRET="generate-with-openssl-rand-base64-32"  # openssl rand -base64 32 で生成
-AUTH_URL="https://local.tumiki.cloud:3000"
-KEYCLOAK_ID="tumiki-manager"
-KEYCLOAK_SECRET="tumiki-manager-secret-change-in-production"
+# Keycloak認証設定
+KEYCLOAK_CLIENT_ID="tumiki-manager"
+KEYCLOAK_CLIENT_SECRET="tumiki-manager-secret-change-in-production"
 KEYCLOAK_ISSUER="http://localhost:8443/realms/tumiki"
-
-# Keycloak Admin API認証情報
 KEYCLOAK_ADMIN_USERNAME="admin"
 KEYCLOAK_ADMIN_PASSWORD="admin123"
 
-# Next.js Configuration
-NEXT_PUBLIC_APP_URL="https://local.tumiki.cloud:3000"
+# Auth.js設定
+NEXTAUTH_SECRET="生成したキー"  # openssl rand -base64 32
+NEXTAUTH_URL="https://local.tumiki.cloud:3000"
+
+# MCP Proxy設定
 NEXT_PUBLIC_MCP_PROXY_URL="http://localhost:8080"
 
-# Encryption Keys（開発環境用デフォルト値）
-REDIS_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-PRISMA_FIELD_ENCRYPTION_KEY=""
+# Prismaフィールド暗号化設定
+PRISMA_FIELD_ENCRYPTION_KEY="生成したキー"  # bunx @47ng/cloak generate
+PRISMA_FIELD_ENCRYPTION_HASH_SALT="生成したキー"  # openssl rand -base64 32
+```
+
+#### 🟢 任意環境変数（機能を有効化する場合に必要）
+
+```bash
+# キャッシュ設定
+CACHE_TTL="300"  # キャッシュの有効期限（秒）
+
+# メール送信設定（SMTP）
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+FROM_EMAIL="info@tumiki.cloud"
+
+# MicroCMS設定
+MICROCMS_TUMIKI_BLOG_API_KEY="your-api-key"
+MICROCMS_TUMIKI_BLOG_SERVICE_DOMAIN="tumiki"
+
+# メンテナンスモード設定
+MAINTENANCE_MODE="false"
+MAINTENANCE_ALLOWED_IPS="192.168.1.1,10.0.0.1"
+NEXT_PUBLIC_MAINTENANCE_END_TIME="2025-01-11T03:00:00Z"
+
+# 開発・デバッグ設定
+LOG_LEVEL="info"  # debug, info, warn, error
+DEBUG_MULTITENANCY="false"
 ```
 
 **重要：本番環境では必ず適切なキーを生成してください**
 
 ```bash
-# AUTH_SECRETの生成
+# NEXTAUTH_SECRETの生成
 openssl rand -base64 32
 
-# 暗号化キーの生成
+# REDIS_ENCRYPTION_KEYの生成
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# PRISMA_FIELD_ENCRYPTION_KEYの生成
+bunx @47ng/cloak generate
+
+# PRISMA_FIELD_ENCRYPTION_HASH_SALTの生成
+openssl rand -base64 32
 ```
 
 ### 4. Dockerコンテナの起動
