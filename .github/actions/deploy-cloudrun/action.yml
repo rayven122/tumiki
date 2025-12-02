@@ -142,14 +142,16 @@ runs:
 
         # Vercel 公式推奨: 環境変数として VERCEL_ORG_ID と VERCEL_PROJECT_ID を設定
         # vercel pull でプロジェクト設定を取得後、env pull で環境変数を取得
-        vercel pull --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}"
-        vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}"
+        # セキュリティのため、vercelコマンドの出力は非表示にする
+        vercel pull --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" > /dev/null 2>&1
+        vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" > /dev/null 2>&1
+
+        if [ ! -f .env.cloud-run.local ]; then
+          echo "❌ Vercel から環境変数の取得に失敗しました"
+          exit 1
+        fi
 
         echo "✅ Vercel から環境変数を取得しました"
-
-        # デバッグ: 取得した環境変数ファイルの内容を確認
-        echo "📋 取得した環境変数ファイル(.env.cloud-run.local)の内容:"
-        cat .env.cloud-run.local || echo "ファイルが存在しません"
 
         # .env ファイルを Cloud Run の env-vars-file 形式（YAML）に変換
         # Cloud Run は値に特殊文字（=など）が含まれる場合、YAML形式を要求する
@@ -168,8 +170,10 @@ runs:
               echo "${key}: \"${value}\""
             done
           } > .env.cloudrun
-          echo "📋 変換後のファイル(.env.cloudrun)の内容:"
-          cat .env.cloudrun
+
+          # 環境変数の数を確認（セキュリティのため内容は表示しない）
+          ENV_COUNT=$(wc -l < .env.cloudrun)
+          echo "📋 環境変数を ${ENV_COUNT} 個変換しました"
         else
           echo "❌ .env.cloud-run.local ファイルが見つかりません"
           exit 1
@@ -188,7 +192,6 @@ runs:
           --concurrency=80 \
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
-          --update-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
           --env-vars-file=.env.cloudrun \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --no-cpu-throttling \
