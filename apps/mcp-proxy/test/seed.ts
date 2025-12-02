@@ -82,6 +82,9 @@ const main = async () => {
       oauthProvider: null,
       oauthScopes: [],
       useCloudRunIam: false,
+      organization: {
+        connect: { id: organization.id },
+      },
     },
   });
   console.log(`   ✓ テンプレートID: ${mcpServerTemplate.id}`);
