@@ -148,13 +148,28 @@ runs:
           $VPC_ARGS
 
         # Get service URL
-        SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
+        CLOUDRUN_URL=$(gcloud run services describe "$SERVICE_NAME" \
           --region="$REGION" \
           --project="$GCP_PROJECT_ID" \
           --format='value(status.url)')
 
-        echo "✅ デプロイが完了しました"
-        echo "サービスURL: $SERVICE_URL"
+        # Set URL based on environment
+        if [ "$ENVIRONMENT" = "production" ]; then
+          SERVICE_URL="https://mcp.tumiki.cloud"
+          echo "✅ デプロイが完了しました"
+          echo "🌐 本番URL: $SERVICE_URL"
+          echo "📦 Cloud Run URL: $CLOUDRUN_URL"
+        elif [ "$ENVIRONMENT" = "staging" ]; then
+          SERVICE_URL="https://stg-mcp.tumiki.cloud"
+          echo "✅ デプロイが完了しました"
+          echo "🌐 ステージングURL: $SERVICE_URL"
+          echo "📦 Cloud Run URL: $CLOUDRUN_URL"
+        else
+          # Preview環境ではCloud Run URLをそのまま使用
+          SERVICE_URL="$CLOUDRUN_URL"
+          echo "✅ デプロイが完了しました"
+          echo "サービスURL: $SERVICE_URL"
+        fi
 
         # Output for GitHub Actions
         echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
