@@ -13,7 +13,7 @@ describe("UserFactory", () => {
     test("デフォルト値でユーザーを作成できる", async () => {
       const user = await UserFactory.create();
 
-      expect(user.id).toMatch(/^auth0\|test-user-/);
+      expect(user.id).toMatch(/^test-user-/);
       expect(user.email).toMatch(/^test-user-.*@example\.com$/);
       expect(user.name).toMatch(/^Test User/);
       expect(user.image).toBeNull();
@@ -47,7 +47,7 @@ describe("UserFactory", () => {
     test("管理者権限のユーザーを作成できる", async () => {
       const admin = await AdminUserFactory.create();
 
-      expect(admin.id).toMatch(/^auth0\|admin-user-/);
+      expect(admin.id).toMatch(/^admin-user-/);
       expect(admin.email).toMatch(/^admin-user-.*@example\.com$/);
       expect(admin.name).toMatch(/^Admin User/);
       expect(admin.role).toStrictEqual(Role.SYSTEM_ADMIN);
@@ -58,7 +58,7 @@ describe("UserFactory", () => {
     test("オンボーディング完了済みユーザーを作成できる", async () => {
       const user = await OnboardedUserFactory.create();
 
-      expect(user.id).toMatch(/^auth0\|onboarded-user-/);
+      expect(user.id).toMatch(/^onboarded-user-/);
       expect(user.email).toMatch(/^onboarded-user-.*@example\.com$/);
       expect(user.name).toMatch(/^Onboarded User/);
       expect(user.image).toStrictEqual("https://example.com/avatar.jpg");
