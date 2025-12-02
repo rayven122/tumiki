@@ -128,6 +128,27 @@ runs:
           echo "VPC: $ENVIRONMENT 環境ではVPCコネクターを使用しません"
         fi
 
+        # シークレット名を構築（環境変数展開を明示的に）
+        DB_SECRET_NAME="tumiki-database-url-${SECRET_ENV}"
+        ENCRYPTION_KEY_SECRET_NAME="tumiki-cache-encryption-key-${SECRET_ENV}"
+        KEYCLOAK_ISSUER_SECRET_NAME="tumiki-keycloak-issuer-${SECRET_ENV}"
+
+        echo "使用するシークレット:"
+        echo "  - DATABASE_URL: ${DB_SECRET_NAME}:latest"
+        echo "  - REDIS_URL: tumiki-redis-url:latest"
+        echo "  - PRISMA_FIELD_ENCRYPTION_KEY: ${ENCRYPTION_KEY_SECRET_NAME}:latest"
+        echo "  - KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER_SECRET_NAME}:latest"
+
+        # シークレット設定を配列で構築（可読性向上）
+        SECRETS=(
+          "DATABASE_URL=${DB_SECRET_NAME}:latest"
+          "REDIS_URL=tumiki-redis-url:latest"
+          "PRISMA_FIELD_ENCRYPTION_KEY=${ENCRYPTION_KEY_SECRET_NAME}:latest"
+          "KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER_SECRET_NAME}:latest"
+        )
+        # カンマ区切りの文字列に変換
+        SECRETS_CONFIG=$(IFS=,; echo "${SECRETS[*]}")
+
         # Deploy to Cloud Run
         gcloud run deploy "$SERVICE_NAME" \
           --image=asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/tumiki-mcp/mcp-proxy:$ENVIRONMENT-$SHORT_SHA \
@@ -142,7 +163,7 @@ runs:
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
           --set-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
-          --set-secrets=DATABASE_URL=tumiki-database-url-$SECRET_ENV:latest,UPSTASH_REDIS_REST_URL=tumiki-redis-url:latest,UPSTASH_REDIS_REST_TOKEN=tumiki-redis-token:latest,PRISMA_FIELD_ENCRYPTION_KEY=tumiki-cache-encryption-key-$SECRET_ENV:latest \
+          --set-secrets="$SECRETS_CONFIG" \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --no-cpu-throttling \
           $VPC_ARGS
