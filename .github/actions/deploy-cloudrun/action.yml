@@ -18,12 +18,6 @@ inputs:
   vercel_token:
     description: 'Vercel API token for pulling environment variables'
     required: true
-  vercel_project_id:
-    description: 'Vercel project ID'
-    required: true
-  vercel_org_id:
-    description: 'Vercel organization/team ID'
-    required: true
   region:
     description: 'Cloud Run region'
     default: 'asia-northeast1'
@@ -107,8 +101,6 @@ runs:
         PR_NUMBER: ${{ inputs.pr_number }}
         GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
         VERCEL_TOKEN: ${{ inputs.vercel_token }}
-        VERCEL_PROJECT_ID: ${{ inputs.vercel_project_id }}
-        VERCEL_ORG_ID: ${{ inputs.vercel_org_id }}
         REGION: ${{ inputs.region }}
         MIN_INSTANCES: ${{ inputs.min_instances }}
         MAX_INSTANCES: ${{ inputs.max_instances }}
@@ -140,18 +132,9 @@ runs:
 
         echo "Vercel から環境変数を取得します（環境: ${ENVIRONMENT}）"
 
-        # Vercel プロジェクトリンクを作成
-        mkdir -p .vercel
-        cat > .vercel/project.json <<EOF
-{
-  "projectId": "${VERCEL_PROJECT_ID}",
-  "orgId": "${VERCEL_ORG_ID}"
-}
-EOF
-
         # Vercel CLI を使用して環境変数を pull
-        # .env.cloud-run.local ファイルに保存される
-        npx vercel env pull .env.cloud-run.local \
+        # リポジトリ内の .vercel/project.json が自動的に使用される
+        vercel env pull .env.cloud-run.local \
           --environment="${ENVIRONMENT}" \
           --token="${VERCEL_TOKEN}" \
           --yes
