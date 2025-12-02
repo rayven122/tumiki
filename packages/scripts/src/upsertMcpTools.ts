@@ -28,6 +28,15 @@ export const upsertMcpTools = async (validServerNames?: string[]) => {
   const processedServers: string[] = [];
 
   for (const mcpServerTemplate of filteredMcpServerTemplates) {
+    // OAuth認証のサーバーはツール登録をスキップ
+    if (mcpServerTemplate.authType === "OAUTH") {
+      console.log(
+        `⚠️  ${mcpServerTemplate.name}: OAuth認証のため、ツール登録をスキップします`,
+      );
+      skippedServers.push(mcpServerTemplate.name);
+      continue;
+    }
+
     let tools: Tool[];
 
     // 動的にツールを取得
