@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { User, Users, ArrowRight, CheckCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { User, Users, ArrowRight, CheckCircle, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,11 +34,16 @@ export const OnboardingClient = ({
   isFirstLogin,
 }: OnboardingClientProps) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
+
+  // クエリパラメータからアンロックキーを取得
+  const unlockKey = searchParams.get("unlock");
+  const isTeamUnlocked = unlockKey === "early-access";
 
   const handlePersonalUse = () => {
     setSelectedOption("personal");
@@ -75,6 +80,14 @@ export const OnboardingClient = ({
   };
 
   const handleTeamUse = () => {
+    // ロックされている場合はトーストを表示して処理を中断
+    if (!isTeamUnlocked) {
+      toast.info(
+        "チーム利用は現在ウェイティングリスト登録者限定の特典です。アーリーアクセスをお待ちください！",
+      );
+      return;
+    }
+
     setSelectedOption("team");
     setIsOrgDialogOpen(true);
   };
@@ -156,12 +169,31 @@ export const OnboardingClient = ({
           {/* チーム利用オプション */}
           <Card
             className={clsx(
-              "transition-all hover:shadow-lg",
+              "relative transition-all",
               selectedOption === "team" && "ring-primary ring-2",
-              "cursor-pointer",
+              isTeamUnlocked
+                ? "cursor-pointer hover:shadow-lg"
+                : "cursor-not-allowed",
             )}
             onClick={handleTeamUse}
           >
+            {/* ロックオーバーレイ */}
+            {!isTeamUnlocked && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/50">
+                <div className="flex flex-col items-center gap-3 rounded-lg bg-white px-6 py-4 shadow-2xl">
+                  <Lock className="h-12 w-12 text-gray-400" strokeWidth={2} />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-700">
+                      ウェイティングリスト登録者限定
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      アーリーアクセスをお待ちください
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
                 <Users className="h-8 w-8 text-purple-600" />
@@ -197,6 +229,7 @@ export const OnboardingClient = ({
                   e.stopPropagation();
                   handleTeamUse();
                 }}
+                disabled={!isTeamUnlocked}
               >
                 チームを作成
                 <ArrowRight className="ml-2 h-4 w-4" />
