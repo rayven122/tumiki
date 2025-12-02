@@ -15,6 +15,9 @@ inputs:
   gcp_project_id:
     description: 'GCP project ID'
     required: true
+  vercel_token:
+    description: 'Vercel API token for pulling environment variables'
+    required: true
   region:
     description: 'Cloud Run region'
     default: 'asia-northeast1'
@@ -97,20 +100,19 @@ runs:
         ENVIRONMENT: ${{ inputs.environment }}
         PR_NUMBER: ${{ inputs.pr_number }}
         GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+        VERCEL_TOKEN: ${{ inputs.vercel_token }}
         REGION: ${{ inputs.region }}
         MIN_INSTANCES: ${{ inputs.min_instances }}
         MAX_INSTANCES: ${{ inputs.max_instances }}
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
 
-        # Determine service name and secret environment based on environment
+        # Determine service name based on environment
         if [ "$ENVIRONMENT" = "preview" ] && [ -n "$PR_NUMBER" ]; then
           SERVICE_NAME="tumiki-mcp-proxy-pr-$PR_NUMBER"
-          SECRET_ENV="staging"  # Preview環境ではstagingのシークレットを使用
-          echo "🔵 PR #$PR_NUMBER のPreviewデプロイ（stagingのシークレットを使用）"
+          echo "🔵 PR #$PR_NUMBER のPreviewデプロイ（previewの環境変数を使用）"
         else
           SERVICE_NAME="tumiki-mcp-proxy-$ENVIRONMENT"
-          SECRET_ENV="$ENVIRONMENT"
         fi
 
         echo "🚀 Cloud Runにデプロイ中..."
@@ -128,26 +130,20 @@ runs:
           echo "VPC: $ENVIRONMENT 環境ではVPCコネクターを使用しません"
         fi
 
-        # シークレット名を構築（環境変数展開を明示的に）
-        DB_SECRET_NAME="tumiki-database-url-${SECRET_ENV}"
-        ENCRYPTION_KEY_SECRET_NAME="tumiki-cache-encryption-key-${SECRET_ENV}"
-        KEYCLOAK_ISSUER_SECRET_NAME="tumiki-keycloak-issuer-${SECRET_ENV}"
+        echo "Vercel から環境変数を取得します（環境: ${ENVIRONMENT}）"
 
-        echo "使用するシークレット:"
-        echo "  - DATABASE_URL: ${DB_SECRET_NAME}:latest"
-        echo "  - REDIS_URL: tumiki-redis-url:latest"
-        echo "  - PRISMA_FIELD_ENCRYPTION_KEY: ${ENCRYPTION_KEY_SECRET_NAME}:latest"
-        echo "  - KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER_SECRET_NAME}:latest"
+        # Vercel CLI を使用して環境変数を pull
+        # .env.cloud-run.local ファイルに保存される
+        npx vercel env pull .env.cloud-run.local \
+          --environment="${ENVIRONMENT}" \
+          --token="${VERCEL_TOKEN}" \
+          --yes
 
-        # シークレット設定を配列で構築（可読性向上）
-        SECRETS=(
-          "DATABASE_URL=${DB_SECRET_NAME}:latest"
-          "REDIS_URL=tumiki-redis-url:latest"
-          "PRISMA_FIELD_ENCRYPTION_KEY=${ENCRYPTION_KEY_SECRET_NAME}:latest"
-          "KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER_SECRET_NAME}:latest"
-        )
-        # カンマ区切りの文字列に変換
-        SECRETS_CONFIG=$(IFS=,; echo "${SECRETS[*]}")
+        echo "✅ Vercel から環境変数を取得しました"
+
+        # .env ファイルを Cloud Run の env-vars-file 形式に変換
+        # Cloud Run は KEY=VALUE 形式のみを受け付けるため、コメント行と空行を除外
+        grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' > .env.cloudrun
 
         # Deploy to Cloud Run
         gcloud run deploy "$SERVICE_NAME" \
@@ -162,11 +158,14 @@ runs:
           --concurrency=80 \
           --min-instances="$MIN_INSTANCES" \
           --max-instances="$MAX_INSTANCES" \
-          --set-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
-          --set-secrets="$SECRETS_CONFIG" \
+          --update-env-vars=NODE_ENV=production,LOG_LEVEL=info,LOG_DESTINATION=stdout \
+          --env-vars-file=.env.cloudrun \
           --service-account=tumiki-mcp-proxy@$GCP_PROJECT_ID.iam.gserviceaccount.com \
           --no-cpu-throttling \
           $VPC_ARGS
+
+        # セキュリティのため .env ファイルを削除
+        rm -f .env.cloud-run.local .env.cloudrun
 
         # Get service URL
         CLOUDRUN_URL=$(gcloud run services describe "$SERVICE_NAME" \
