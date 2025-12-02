@@ -25,6 +25,7 @@
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
     "fetch-to-node": "^2.1.0",
+    "google-auth-library": "^10.4.2",
     "hono": "^4.7.4",
     "redis": "^5.0.1"
   },
