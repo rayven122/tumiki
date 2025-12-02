@@ -22,35 +22,6 @@ export type SessionData = Session;
  * Auth.js メイン設定
  * Prisma Adapterを使用したデータベースセッション管理
  */
-/**
- * アダプターメソッドをラップしてログ出力を追加
- */
-const wrapAdapter = (adapter: ReturnType<typeof PrismaAdapter>) => {
-  const wrapped: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(adapter)) {
-    if (typeof value === "function") {
-      wrapped[key] = async (...args: unknown[]): Promise<unknown> => {
-        console.log(`[Adapter] ${key} called with:`, args);
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-          const result = await value(...args);
-          console.log(`[Adapter] ${key} success:`, result);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return result;
-        } catch (error) {
-          console.error(`[Adapter] ${key} failed:`, error);
-          throw error;
-        }
-      };
-    } else {
-      wrapped[key] = value;
-    }
-  }
-
-  return wrapped;
-};
-
 export const {
   handlers: { GET, POST },
   auth,
@@ -62,87 +33,48 @@ export const {
     signIn: "/signin",
   },
   adapter: {
-    ...wrapAdapter(PrismaAdapter(db)),
+    ...PrismaAdapter(db),
     createUser: async (user) => {
-      console.log("[Adapter] createUser called with:", {
-        id: user.id,
+      // KeycloakのsubをユーザーIDとして使用
+      const userId = user.id || crypto.randomUUID();
+
+      // emailの検証（必須フィールド）
+      if (!user.email) {
+        throw new Error(
+          "Email is required for user creation. Keycloak must be configured to provide email.",
+        );
+      }
+
+      // ユーザーと個人組織を作成
+      const { createUserWithOrganization } = await import(
+        "~/server/api/routers/v2/user/createUserWithOrganization"
+      );
+      const createdUser = await createUserWithOrganization(db, {
+        id: userId,
+        name: user.name ?? null,
         email: user.email,
-        name: user.name,
+        emailVerified: user.emailVerified ?? null,
+        image: user.image ?? null,
       });
 
-      try {
-        // KeycloakのsubをユーザーIDとして使用
-        const userId = user.id || crypto.randomUUID();
-
-        // emailの検証（必須フィールド）
-        if (!user.email) {
-          throw new Error(
-            "Email is required for user creation. Keycloak must be configured to provide email.",
-          );
-        }
-
-        // ユーザーと個人組織を作成
-        const { createUserWithOrganization } = await import(
-          "~/server/api/routers/v2/user/createUserWithOrganization"
-        );
-        const createdUser = await createUserWithOrganization(db, {
-          id: userId,
-          name: user.name ?? null,
-          email: user.email,
-          emailVerified: user.emailVerified ?? null,
-          image: user.image ?? null,
-        });
-
-        // AdapterUser型に変換
-        // createUserは作成直後なので、roleとdefaultOrganizationはまだ設定されていない
-        const result = {
-          id: createdUser.id,
-          email: createdUser.email,
-          emailVerified: createdUser.emailVerified,
-          name: createdUser.name,
-          image: createdUser.image,
-          role: createdUser.role,
-          defaultOrganization: null,
-        };
-
-        console.log("[Adapter] createUser success:", {
-          id: result.id,
-          email: result.email,
-        });
-        return result;
-      } catch (error) {
-        console.error("[Adapter] createUser failed:", error);
-        throw error;
-      }
+      // AdapterUser型に変換
+      // createUserは作成直後なので、roleとdefaultOrganizationはまだ設定されていない
+      return {
+        id: createdUser.id,
+        email: createdUser.email,
+        emailVerified: createdUser.emailVerified,
+        name: createdUser.name,
+        image: createdUser.image,
+        role: createdUser.role,
+        defaultOrganization: null,
+      };
     },
     // セッション取得時に組織情報も一緒に取得してパフォーマンス最適化
     getSessionAndUser: async (sessionToken) => {
-      console.log("[Adapter] getSessionAndUser called with token:", {
-        tokenLength: sessionToken.length,
-        tokenPrefix: sessionToken.substring(0, 10),
-      });
-
-      try {
-        const { getSessionAndUser } = await import(
-          "~/server/api/routers/v2/user/getSessionAndUser"
-        );
-        const result = await getSessionAndUser(db, { sessionToken });
-
-        if (result) {
-          console.log("[Adapter] getSessionAndUser success:", {
-            userId: result.user.id,
-            userEmail: result.user.email,
-            hasDefaultOrg: !!result.user.defaultOrganization,
-          });
-        } else {
-          console.log("[Adapter] getSessionAndUser returned null");
-        }
-
-        return result;
-      } catch (error) {
-        console.error("[Adapter] getSessionAndUser failed:", error);
-        throw error;
-      }
+      const { getSessionAndUser } = await import(
+        "~/server/api/routers/v2/user/getSessionAndUser"
+      );
+      return await getSessionAndUser(db, { sessionToken });
     },
   },
   session: {
