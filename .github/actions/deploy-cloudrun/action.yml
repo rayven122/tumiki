@@ -153,9 +153,9 @@ runs:
 
         # .env ファイルを Cloud Run の env-vars-file 形式に変換
         # Cloud Run は KEY=VALUE 形式のみを受け付けるため、コメント行と空行を除外
-        # また、引用符で囲まれた値も適切に処理
+        # また、値を囲むダブルクォートを削除（Vercelが自動的に追加するため）
         if [ -f .env.cloud-run.local ]; then
-          grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' > .env.cloudrun
+          grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' | sed 's/=\"/=/; s/\"$//' > .env.cloudrun
           echo "📋 変換後のファイル(.env.cloudrun)の内容:"
           cat .env.cloudrun
         else
