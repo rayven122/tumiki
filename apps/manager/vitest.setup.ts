@@ -9,10 +9,8 @@ import {
 
 // TextEncoder/TextDecoderをグローバルに設定（joseライブラリが必要とするため）
 // ※必ずimport直後に設定すること
-// @ts-expect-error - Node.jsのTextEncoderとDOM APIのTextEncoderの型互換性の問題を回避
-globalThis.TextEncoder = NodeTextEncoder;
-// @ts-expect-error - Node.jsのTextDecoderとDOM APIのTextDecoderの型互換性の問題を回避
-globalThis.TextDecoder = NodeTextDecoder;
+globalThis.TextEncoder = NodeTextEncoder as typeof globalThis.TextEncoder;
+globalThis.TextDecoder = NodeTextDecoder as typeof globalThis.TextDecoder;
 
 expect.extend(matchers);
 
