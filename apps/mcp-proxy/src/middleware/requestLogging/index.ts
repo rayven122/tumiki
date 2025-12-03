@@ -110,12 +110,6 @@ export const mcpRequestLoggingMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<void> => {
-  // リクエストボディを読み取る
-  const bodyText = await c.req.text();
-
-  // リクエストボディをキャッシュする
-  c.req.bodyCache.text = bodyText;
-
   // 初期ログコンテキストを設定
   const initialContext = {
     // リクエスト開始時刻を記録
