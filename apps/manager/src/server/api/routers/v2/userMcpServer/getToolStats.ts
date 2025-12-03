@@ -74,7 +74,7 @@ export const getToolStats = async (
     stats.requestCount += 1;
     stats.totalDurationMs += log.durationMs;
 
-    if (log.httpStatus.startsWith("2")) {
+    if (log.httpStatus >= 200 && log.httpStatus < 300) {
       stats.successCount += 1;
     } else {
       stats.errorCount += 1;

@@ -18,12 +18,13 @@ import { handleError } from "../libs/error/handler.js";
 export const mcpHandler = async (c: Context<HonoEnv>) => {
   const mcpServerId = c.req.param("mcpServerId");
 
-  // 認証情報から organizationId と userId を取得
-  const jwtPayload = c.get("jwtPayload");
-  const apiKeyAuthInfo = c.get("apiKeyAuthInfo");
-  const organizationId =
-    jwtPayload?.tumiki.org_id ?? apiKeyAuthInfo?.organizationId ?? "";
-  const userId = jwtPayload?.tumiki.tumiki_user_id ?? apiKeyAuthInfo?.userId;
+  // 認証コンテキストから情報を取得
+  const authContext = c.get("authContext");
+  if (!authContext) {
+    throw new Error("Authentication context not found");
+  }
+
+  const { organizationId, userId } = authContext;
 
   try {
     // MCPサーバーインスタンスを作成
@@ -67,7 +68,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
 const createMcpServer = (
   mcpServerId: string,
   organizationId: string,
-  userId?: string,
+  userId: string,
 ) => {
   const server = new Server(
     {

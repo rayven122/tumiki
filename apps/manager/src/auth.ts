@@ -35,9 +35,6 @@ export const {
   adapter: {
     ...PrismaAdapter(db),
     createUser: async (user) => {
-      // KeycloakのsubをユーザーIDとして使用
-      const userId = user.id || crypto.randomUUID();
-
       // emailの検証（必須フィールド）
       if (!user.email) {
         throw new Error(
@@ -50,7 +47,8 @@ export const {
         "~/server/api/routers/v2/user/createUserWithOrganization"
       );
       const createdUser = await createUserWithOrganization(db, {
-        id: userId,
+        // KeycloakのsubをユーザーIDとして使用
+        id: user.id,
         name: user.name ?? null,
         email: user.email,
         emailVerified: user.emailVerified ?? null,

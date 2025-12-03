@@ -57,8 +57,8 @@ export const getRequestStats = async (
 
   // 統計計算
   const totalRequests = allLogs.length;
-  const successRequests = allLogs.filter((log) =>
-    log.httpStatus.startsWith("2"),
+  const successRequests = allLogs.filter(
+    (log) => log.httpStatus >= 200 && log.httpStatus < 300,
   ).length;
   const errorRequests = totalRequests - successRequests;
   const totalInputBytes = allLogs.reduce((sum, log) => sum + log.inputBytes, 0);

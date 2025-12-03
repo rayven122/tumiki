@@ -32,7 +32,7 @@ const parseToolName = (
  * @param organizationId - 組織ID
  * @param fullToolName - "{template名}__{ツール名}" 形式のツール名
  * @param args - ツールの引数
- * @param userId - ユーザーID（オプション）
+ * @param userId - ユーザーID
  * @returns ツール実行結果
  */
 export const executeTool = async (
@@ -40,7 +40,7 @@ export const executeTool = async (
   organizationId: string,
   fullToolName: string,
   args: Record<string, unknown>,
-  userId?: string,
+  userId: string,
 ): Promise<unknown> => {
   logInfo("Executing tool", {
     mcpServerId,
@@ -116,10 +116,10 @@ export const executeTool = async (
         where: {
           mcpServerTemplateId: toolWithTemplate.mcpServerTemplate.id,
           organizationId,
-          OR: [...(userId ? [{ userId }] : []), { userId: null }],
+          OR: [{ userId }, { userId: null }],
         },
         orderBy: {
-          userId: "desc", // userIdがnullでないレコードを優先
+          userId: { sort: "asc", nulls: "last" }, // nullを優先（組織共通設定より個人設定を優先）
         },
         select: {
           id: true,
