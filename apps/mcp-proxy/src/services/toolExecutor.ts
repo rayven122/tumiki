@@ -1,6 +1,8 @@
 import { db, OFFICIAL_ORGANIZATION_ID } from "@tumiki/db/server";
 import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
+import { updateRequestLoggingContext } from "../middleware/requestLogging/context.js";
+import { extractMcpErrorInfo, getErrorCodeName } from "../libs/error/index.js";
 
 /**
  * ツール名をパースして、Template名とツール名を抽出
@@ -88,6 +90,13 @@ export const executeTool = async (
     if (!template) {
       throw new Error(`Template not found: ${templateName}`);
     }
+
+    // transportType を logging context に追加
+    updateRequestLoggingContext({
+      method: "tools/call",
+      transportType: template.transportType,
+      toolName: fullToolName,
+    });
 
     const tool = template.mcpTools.find(
       (t: { name: string }) => t.name === toolName,
@@ -218,13 +227,26 @@ export const executeTool = async (
       await client.close();
     }
   } catch (error) {
+    // MCPエラー情報を抽出
+    const errorInfo = extractMcpErrorInfo(error);
+
     logError("Failed to execute tool", error as Error, {
       mcpServerId,
       fullToolName,
+      errorCode: errorInfo.errorCode,
+      errorCodeName: getErrorCodeName(errorInfo.errorCode),
+      httpStatus: errorInfo.httpStatus,
+    });
+
+    // ログコンテキストにエラー情報を記録
+    updateRequestLoggingContext({
+      httpStatus: errorInfo.httpStatus,
+      errorCode: errorInfo.errorCode,
+      errorSummary: errorInfo.errorMessage,
     });
 
     throw new Error(
-      `Failed to execute tool ${fullToolName}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      `Failed to execute tool ${fullToolName}: ${errorInfo.errorMessage}`,
     );
   }
 };
