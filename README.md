@@ -46,8 +46,7 @@ tumiki/
 │   ├── mailer/          # メール送信機能
 │   ├── oauth-token-manager/ # OAuth トークン管理
 │   ├── scripts/         # データベーススクリプト
-│   ├── utils/           # 共通ユーティリティ
-│   └── youtube-mcp/     # YouTube MCP サーバー
+│   └── utils/           # 共通ユーティリティ
 ├── tooling/              # 開発ツール設定
 │   ├── eslint/          # ESLint設定
 │   ├── prettier/        # Prettier設定
