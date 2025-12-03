@@ -46,13 +46,11 @@ tumiki/
 │   ├── mailer/          # メール送信機能
 │   ├── oauth-token-manager/ # OAuth トークン管理
 │   ├── scripts/         # データベーススクリプト
-│   ├── utils/           # 共通ユーティリティ
-│   └── youtube-mcp/     # YouTube MCP サーバー
+│   └── utils/           # 共通ユーティリティ
 ├── tooling/              # 開発ツール設定
 │   ├── eslint/          # ESLint設定
 │   ├── prettier/        # Prettier設定
 │   ├── tailwind/        # Tailwind CSS設定
-│   ├── tsup-config/     # tsup設定
 │   ├── typescript/      # TypeScript設定
 │   └── vitest/          # Vitest設定
 └── docker/              # Docker Compose設定
