@@ -1,4 +1,5 @@
 import type { Context, Next } from "hono";
+import { AuthType } from "@tumiki/db";
 import type { HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
 import {
@@ -100,7 +101,7 @@ export const oauthMiddleware = async (
   }
 
   // 認証成功: コンテキストに認証方式を設定
-  c.set("authMethod", "jwt");
+  c.set("authMethod", AuthType.OAUTH);
 
   await next();
 };

@@ -1,10 +1,6 @@
-/**
- * 認証方式
- *
- * - jwt: JWT Bearer Token認証（Keycloak）
- * - apikey: API Key認証（Tumiki-API-Key または Bearer tumiki_...）
- */
-export type AuthMethod = "jwt" | "apikey";
+import type { AuthType } from "@tumiki/db";
+
+export type { AuthType };
 
 /**
  * API Key認証情報
@@ -95,7 +91,7 @@ export type RemoteMcpServerConfig = {
  */
 export type HonoEnv = {
   Variables: {
-    authMethod?: AuthMethod; // 使用された認証方式
+    authMethod?: AuthType; // 使用された認証方式
     apiKeyAuthInfo?: ApiKeyAuthInfo; // API Key認証時のみ
     jwtPayload?: JWTPayload; // JWT認証時のみ
   };
