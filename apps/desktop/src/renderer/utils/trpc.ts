@@ -1,18 +1,13 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
-
-// TODO: Manager パッケージから AppRouter 型を正しく import する
-// 現在は型エラー回避のため unknown を使用
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AppRouter = any;
+import type { AppRouter } from "@/server/api/root";
 
 // tRPC React Query フックを作成
 export const trpc = createTRPCReact<AppRouter>();
 
 // tRPC クライアント作成関数
 export const createTRPCClient = () => {
-  // @ts-expect-error - tRPC型定義の一時的な回避
   return trpc.createClient({
     links: [
       httpBatchLink({
@@ -35,6 +30,40 @@ export const createTRPCClient = () => {
 
         // SuperJSON を使用したデータシリアライゼーション
         transformer: superjson,
+
+        // フェッチオプション
+        fetch: async (url, options) => {
+          try {
+            // タイムアウト設定（30秒）
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+            const response = await fetch(url, {
+              ...(options as RequestInit),
+              signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+
+            // エラーレスポンスの詳細ログ
+            if (!response.ok) {
+              console.error("tRPC request failed:", {
+                status: response.status,
+                statusText: response.statusText,
+                url,
+              });
+            }
+
+            return response;
+          } catch (error) {
+            // ネットワークエラーの詳細ログ
+            console.error("tRPC network error:", {
+              error,
+              url,
+            });
+            throw error;
+          }
+        },
       }),
     ],
   });

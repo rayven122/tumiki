@@ -99,6 +99,9 @@ importers:
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@tumiki/manager':
+        specifier: workspace:*
+        version: link:../manager
       clsx:
         specifier: ^2.1.1
         version: 2.1.1

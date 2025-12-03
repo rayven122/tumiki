@@ -8,7 +8,6 @@ export const Dashboard = (): React.ReactElement => {
   const servers = useAtomValue(mcpServersAtom);
 
   // Manager 接続テスト
-  // @ts-expect-error - tRPC型定義の一時的な回避
   const healthQuery = trpc.health.ping.useQuery(undefined, {
     refetchInterval: 10000, // 10秒ごとに再取得
   });

@@ -16,9 +16,16 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/renderer/*"]
+      "@/*": ["../manager/src/*"],
+      "~/*": ["../manager/src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist-electron", "out"]
+  "include": ["src/**/*", "../manager/src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist-electron",
+    "out",
+    "../manager/src/**/*.test.ts",
+    "../manager/src/**/*.spec.ts"
+  ]
 }
