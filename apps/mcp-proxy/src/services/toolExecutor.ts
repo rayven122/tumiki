@@ -119,7 +119,7 @@ export const executeTool = async (
           OR: [{ userId }, { userId: null }],
         },
         orderBy: {
-          userId: "desc", // userIdがnullでないレコードを優先
+          userId: { sort: "asc", nulls: "last" }, // nullを優先（組織共通設定より個人設定を優先）
         },
         select: {
           id: true,
