@@ -96,30 +96,33 @@ model McpServer {
 /// MCPサーバーインスタンスへのリクエストログ
 /// @namespace UserMcpServer
 model McpServerRequestLog {
-  id             String                @id @default(cuid())
+  id             String        @id @default(cuid())
   /// MCPサーバーインスタンスID
   mcpServerId    String
-  mcpServer      McpServer             @relation(fields: [mcpServerId], references: [id])
+  mcpServer      McpServer     @relation(fields: [mcpServerId], references: [id])
   /// 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
   mcpApiKeyId    String?
-  mcpApiKey      McpApiKey?            @relation(fields: [mcpApiKeyId], references: [id])
+  mcpApiKey      McpApiKey?    @relation(fields: [mcpApiKeyId], references: [id])
+  /// リクエストを実行したユーザーID
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
   /// 実行されたツール名
   toolName       String
   /// リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
   transportType  TransportType
   /// MCPメソッド（tools/list, tools/call）
-  method     String
+  method         String
   /// HTTPステータスコード
-  httpStatus String
+  httpStatus     String
   /// 実行時間（ミリ秒）
-  durationMs Int
+  durationMs     Int
   /// 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
   inputBytes     Int
   /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
   outputBytes    Int
   /// 組織ID
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
   /// ユーザーエージェント
   userAgent      String?
 
@@ -231,8 +234,8 @@ model McpOAuthToken {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   /// トークン情報
-  accessToken  String    /// @encrypted
-  refreshToken String?   /// @encrypted
+  accessToken  String /// @encrypted
+  refreshToken String? /// @encrypted
   expiresAt    DateTime? // Access Tokenの有効期限
 
   /// トークンの用途を明確化

@@ -179,7 +179,7 @@ erDiagram
 
 ### `McpServerTemplate`
 
-MCP サーバーテンプレート（接続情報や認証方式の「���計図」）
+MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
 organizationId = OFFICIAL_ORGANIZATION_ID の場合はアプリ提供の公式テンプレート
 organizationId が他の値の場合はユーザー作成の組織専用テンプレート
 
@@ -516,6 +516,7 @@ erDiagram
   String id PK
   String mcpServerId FK
   String mcpApiKeyId FK "nullable"
+  String userId FK "nullable"
   String toolName
   TransportType transportType
   String method
@@ -655,6 +656,7 @@ MCPサーバーインスタンスへのリクエストログ
 - `id`:
 - `mcpServerId`: MCPサーバーインスタンスID
 - `mcpApiKeyId`: 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
+- `userId`: リクエストを実行したユーザーID
 - `toolName`: 実行されたツール名
 - `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
 - `method`: MCPメソッド（tools/list, tools/call）
@@ -748,7 +750,7 @@ Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
 
 ### `McpServerTemplate`
 
-MCP サーバーテンプレート（接続情報や認証方式の「���計図」）
+MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
 organizationId = OFFICIAL_ORGANIZATION_ID の場合はアプリ提供の公式テンプレート
 organizationId が他の値の場合はユーザー作成の組織専用テンプレート
 
