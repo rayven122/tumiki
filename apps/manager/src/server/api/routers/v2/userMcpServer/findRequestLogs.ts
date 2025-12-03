@@ -15,7 +15,7 @@ export const findRequestLogsOutputSchema = z.array(
     toolName: z.string(),
     transportType: z.enum(["SSE", "STREAMABLE_HTTPS"]),
     method: z.string(),
-    httpStatus: z.string(),
+    httpStatus: z.number(),
     durationMs: z.number(),
     inputBytes: z.number(),
     outputBytes: z.number(),
