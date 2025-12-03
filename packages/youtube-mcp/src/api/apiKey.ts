@@ -3,7 +3,7 @@ import { err, ok } from "neverthrow";
 import { z } from "zod";
 
 const YoutubeApiKeySchema = z
-  .string({ required_error: "API key is required" })
+  .string({ message: "API key is required" })
   .trim()
   .min(1, "API key is required");
 
