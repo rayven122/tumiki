@@ -17,9 +17,9 @@ type AuthSettingsProps = {
   serverId: McpServerId;
 };
 
-export const AuthSettings = ({ server, serverId }: AuthSettingsProps) => {
+export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType>(
-    server.authType,
+    AuthType.API_KEY,
   );
 
   const utils = api.useUtils();

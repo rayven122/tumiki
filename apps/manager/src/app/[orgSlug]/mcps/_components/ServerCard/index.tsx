@@ -34,7 +34,7 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
 
   return (
-    <Card className="relative flex h-full flex-col">
+    <Card className="relative flex h-full w-full flex-col">
       {/* 認証タイプタグ（右上） */}
       <div className="absolute top-3 right-3 z-10">
         <AuthTypeBadge authType={mcpServer.authType} />

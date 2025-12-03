@@ -50,20 +50,24 @@ const AsyncServerList = ({
   });
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      <Card
-        className="flex cursor-pointer items-center justify-center border-2 border-dashed border-gray-300 transition-colors hover:border-purple-400 hover:bg-purple-50"
-        onClick={onCreateServerClick}
-      >
-        <CardContent className="flex flex-col items-center justify-center p-6">
-          <Plus className="mb-2 h-12 w-12 text-gray-400" />
-          <p className="text-center text-sm font-medium text-gray-600">
-            カスタムMCPサーバーを追加
-          </p>
-        </CardContent>
-      </Card>
+    <div className="flex flex-wrap gap-6">
+      <div className="flex w-full sm:w-[300px]">
+        <Card
+          className="flex h-full cursor-pointer items-center justify-center border-2 border-dashed border-gray-300 transition-colors hover:border-purple-400 hover:bg-purple-50"
+          onClick={onCreateServerClick}
+        >
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <Plus className="mb-2 h-12 w-12 text-gray-400" />
+            <p className="text-center text-sm font-medium text-gray-600">
+              カスタムMCPサーバーを追加
+            </p>
+          </CardContent>
+        </Card>
+      </div>
       {filteredServers.map((mcpServer) => (
-        <ServerCard key={mcpServer.id} mcpServer={mcpServer} />
+        <div key={mcpServer.id} className="flex w-full sm:w-[300px]">
+          <ServerCard mcpServer={mcpServer} />
+        </div>
       ))}
     </div>
   );
