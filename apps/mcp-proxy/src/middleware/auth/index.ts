@@ -7,7 +7,7 @@ import {
   createPermissionDeniedError,
 } from "../../libs/error/index.js";
 import { apiKeyAuthMiddleware } from "./apiKey.js";
-import { devKeycloakAuth } from "./jwt.js";
+import { keycloakAuth } from "./jwt.js";
 import { checkPermission } from "../../services/permissionService.js";
 
 /**
@@ -44,9 +44,9 @@ const authenticateWithJWT = async (
 ): Promise<Response | void> => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const result = await devKeycloakAuth(c, () => Promise.resolve());
+    const result = await keycloakAuth(c, () => Promise.resolve());
 
-    // devKeycloakAuth が Response を返した場合（認証失敗）
+    // keycloakAuth が Response を返した場合（認証失敗）
     if (result) {
       return result;
     }
@@ -58,11 +58,11 @@ const authenticateWithJWT = async (
       return c.json(createUnauthorizedError("Invalid JWT token"), 401);
     }
 
-    // mcp_instance_id が必須（MCP サーバーアクセスには必要）
-    if (!jwtPayload.tumiki?.mcp_instance_id) {
+    // mcp_server_id が必須（MCP サーバーアクセスには必要）
+    if (!jwtPayload.tumiki?.mcp_server_id) {
       return c.json(
         createUnauthorizedError(
-          "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+          "mcp_server_id is required for MCP server access. This JWT is not valid for MCP operations.",
         ),
         401,
       );
@@ -75,14 +75,14 @@ const authenticateWithJWT = async (
         jwtPayload.tumiki.org_id,
         "MCP_SERVER_INSTANCE",
         "READ",
-        jwtPayload.tumiki.mcp_instance_id,
+        jwtPayload.tumiki.mcp_server_id,
       );
 
       if (!hasPermission) {
         logDebug("JWT authentication: Permission denied", {
           userId: jwtPayload.tumiki.tumiki_user_id,
           orgId: jwtPayload.tumiki.org_id,
-          instanceId: jwtPayload.tumiki.mcp_instance_id,
+          instanceId: jwtPayload.tumiki.mcp_server_id,
         });
 
         return c.json(
@@ -103,7 +103,7 @@ const authenticateWithJWT = async (
     logDebug("JWT authentication successful", {
       userId: jwtPayload.tumiki.tumiki_user_id,
       orgId: jwtPayload.tumiki.org_id,
-      instanceId: jwtPayload.tumiki.mcp_instance_id,
+      instanceId: jwtPayload.tumiki.mcp_server_id,
     });
 
     // 認証方式を記録
