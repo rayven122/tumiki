@@ -43,18 +43,6 @@ export const oauthMiddleware = async (
     return c.json(createUnauthorizedError("Invalid JWT token"), 401);
   }
 
-  const authMcpServerId = jwtPayload.tumiki?.mcp_server_id;
-
-  // mcp_server_idが存在しない場合は401を返す
-  if (!authMcpServerId) {
-    return c.json(
-      createUnauthorizedError(
-        "mcp_server_id is required for MCP server access. This JWT is not valid for MCP operations.",
-      ),
-      401,
-    );
-  }
-
   const pathMcpServerId = c.req.param("mcpServerId");
 
   // mcpServerIdが存在しない場合は403を返す
@@ -65,25 +53,15 @@ export const oauthMiddleware = async (
     );
   }
 
-  // JWT内のmcp_server_idとリクエストパスのmcpServerIdが一致しない場合は403を返す
-  if (authMcpServerId !== pathMcpServerId) {
-    return c.json(
-      createPermissionDeniedError(
-        "MCP Server ID mismatch: You are not authorized to access this MCP server",
-      ),
-      403,
-    );
-  }
-
   // MCP_SERVER_INSTANCEへのREAD権限をチェック
   let hasPermission: boolean;
   try {
     hasPermission = await checkPermission(
-      jwtPayload.tumiki.tumiki_user_id,
-      jwtPayload.tumiki.org_id,
+      jwtPayload.sub,
+      jwtPayload.org_id,
       "MCP_SERVER_INSTANCE",
       "READ",
-      jwtPayload.tumiki.mcp_server_id,
+      pathMcpServerId,
     );
   } catch (error) {
     logError("Permission check failed, denying access", error as Error);
@@ -106,9 +84,8 @@ export const oauthMiddleware = async (
   // 統一認証コンテキストを設定
   c.set("authContext", {
     authMethod: AuthType.OAUTH,
-    organizationId: jwtPayload.tumiki.org_id,
-    userId: jwtPayload.tumiki.tumiki_user_id,
-    mcpServerId: jwtPayload.tumiki.mcp_server_id!,
+    organizationId: jwtPayload.org_id,
+    userId: jwtPayload.sub,
   });
 
   await next();
