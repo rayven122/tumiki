@@ -86,6 +86,7 @@ export const oauthMiddleware = async (
     authMethod: AuthType.OAUTH,
     organizationId: jwtPayload.org_id,
     userId: jwtPayload.sub,
+    mcpServerId: pathMcpServerId,
   });
 
   await next();

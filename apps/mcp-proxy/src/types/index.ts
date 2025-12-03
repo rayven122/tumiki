@@ -13,6 +13,7 @@ export type AuthContext = {
   authMethod: AuthType;
   organizationId: string;
   userId: string;
+  mcpServerId: string;
   mcpApiKeyId?: string; // API Key認証時のみ
 };
 
