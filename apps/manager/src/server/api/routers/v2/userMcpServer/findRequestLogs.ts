@@ -28,11 +28,23 @@ export type FindRequestLogsOutput = z.infer<typeof findRequestLogsOutputSchema>;
 
 /**
  * TransportTypeが SSE または STREAMABLE_HTTPS かどうかを判定する型ガード
+ * 戻り値の型はFindRequestLogsOutputの要素型と一致させる
  */
-const isValidTransportType = <T extends { transportType: string }>(
-  log: T,
-): log is T & { transportType: "SSE" | "STREAMABLE_HTTPS" } => {
-  return log.transportType === "SSE" || log.transportType === "STREAMABLE_HTTPS";
+const isValidTransportType = (log: {
+  id: string;
+  toolName: string;
+  transportType: string;
+  method: string;
+  httpStatus: number;
+  durationMs: number;
+  inputBytes: number;
+  outputBytes: number;
+  userAgent: string | null;
+  createdAt: Date;
+}): log is FindRequestLogsOutput[number] => {
+  return (
+    log.transportType === "SSE" || log.transportType === "STREAMABLE_HTTPS"
+  );
 };
 
 export const findRequestLogs = async (
