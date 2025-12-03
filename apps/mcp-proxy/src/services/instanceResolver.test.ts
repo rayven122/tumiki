@@ -37,7 +37,6 @@ describe("resolveMcpServer", () => {
     sub: "keycloak_user_id",
     tumiki: {
       org_id: orgId,
-      is_org_admin: false,
       tumiki_user_id: userId,
       mcp_server_id: instanceId,
     },

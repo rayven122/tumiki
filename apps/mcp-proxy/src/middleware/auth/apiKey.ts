@@ -96,7 +96,6 @@ export const apiKeyAuthMiddleware = async (
     authMethod: AuthType.API_KEY,
     organizationId: mcpApiKey.mcpServer.organizationId,
     userId: mcpApiKey.userId,
-    mcpServerId: mcpApiKey.mcpServer.id,
     mcpApiKeyId: mcpApiKey.id,
   });
 

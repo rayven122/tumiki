@@ -13,18 +13,7 @@ export type AuthContext = {
   authMethod: AuthType;
   organizationId: string;
   userId: string;
-  mcpServerId: string;
   mcpApiKeyId?: string; // API Key認証時のみ
-};
-
-/**
- * Tumiki カスタムJWTクレーム
- */
-export type TumikiJWTClaims = {
-  org_id: string; // 組織ID（Organization.id）
-  mcp_server_id?: string; // MCPサーバーID（McpServer.id）- MCP接続時は必須、管理画面では不要
-  is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
-  tumiki_user_id: string; // TumikiユーザーID（User.id）
 };
 
 /**
@@ -32,7 +21,7 @@ export type TumikiJWTClaims = {
  */
 export type JWTPayload = {
   sub: string; // ユーザーID（Keycloak Subject）
-  tumiki: TumikiJWTClaims; // Tumikiカスタムクレーム
+  org_id: string; // 組織ID（Organization.id）
   azp?: string; // クライアントID (authorized party)
   scope?: string; // スコープ（スペース区切り）
   email?: string; // メールアドレス
@@ -46,27 +35,6 @@ export type JWTPayload = {
   exp?: number; // 有効期限
   iss?: string; // Issuer
   aud?: string | string[]; // Audience
-};
-
-/**
- * 名前空間付きツール
- */
-export type NamespacedTool = {
-  name: string; // "github.create_issue"
-  namespace: string; // "github"
-  originalName: string; // "create_issue"
-  description: string;
-  inputSchema: unknown;
-};
-
-/**
- * ツール実行結果
- */
-export type ToolCallResult = {
-  content: Array<{
-    type: string;
-    text: string;
-  }>;
 };
 
 /**
@@ -97,45 +65,4 @@ export type HonoEnv = {
     jwtPayload?: JWTPayload; // JWT認証時のみ
     authContext?: AuthContext; // 統一認証コンテキスト
   };
-};
-
-/**
- * 型ガード: JWT認証済みかチェック
- *
- * @param payload - チェック対象のペイロード
- * @returns JWTPayloadとして有効な場合true
- */
-export const isJWTPayload = (payload: unknown): payload is JWTPayload => {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const p = payload as Record<string, unknown>;
-
-  return (
-    typeof p.sub === "string" &&
-    typeof p.tumiki === "object" &&
-    p.tumiki !== null &&
-    typeof (p.tumiki as Record<string, unknown>).org_id === "string" &&
-    typeof (p.tumiki as Record<string, unknown>).tumiki_user_id === "string" &&
-    typeof (p.tumiki as Record<string, unknown>).is_org_admin === "boolean"
-  );
-};
-
-/**
- * 型ガード: MCP接続に必要なJWTペイロードかチェック
- *
- * MCP接続には mcp_server_id が必須
- *
- * @param payload - チェック対象のペイロード
- * @returns MCP接続可能な場合true
- */
-export const isValidMcpJWTPayload = (
-  payload: unknown,
-): payload is JWTPayload => {
-  if (!isJWTPayload(payload)) {
-    return false;
-  }
-
-  return typeof payload.tumiki.mcp_server_id === "string";
 };
