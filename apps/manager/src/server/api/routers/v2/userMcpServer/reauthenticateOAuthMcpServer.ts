@@ -56,7 +56,7 @@ export const reauthenticateOAuthMcpServer = async (
   }
 
   const template = mcpServer.mcpServers[0];
-  if (!template || template.authType !== "OAUTH") {
+  if (!template?.authType || template.authType !== "OAUTH") {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "このサーバーはOAuth認証に対応していません",

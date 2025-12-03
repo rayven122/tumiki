@@ -3,7 +3,7 @@ import { err, ok } from "neverthrow";
 import { z } from "zod";
 
 const YoutubeApiKeySchema = z
-  .string({ required_error: "API key is required" })
+  .string({ message: "API key is required" })
   .trim()
   .min(1, "API key is required");
 
@@ -29,7 +29,7 @@ export const getApiKeyFromEnv = (
   const result = YoutubeApiKeySchema.safeParse(env.YOUTUBE_API_KEY);
 
   if (!result.success) {
-    return err(new Error(result.error.errors[0]?.message ?? "Invalid API key"));
+    return err(new Error(result.error.issues[0]?.message ?? "Invalid API key"));
   }
 
   // Cast to branded type after validation

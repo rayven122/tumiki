@@ -18,6 +18,7 @@ generator zod {
   useMultipleFiles                 = false // スキーマを複数ファイルに分割
   createOptionalDefaultValuesTypes = false // デフォルト値を持つフィールドをオプショナルに
   addInputTypeValidation           = false // 入力型の検証を追加
+  useDefaultValidators             = false // Zod 3.25+ 互換性のためデフォルトバリデータを無効化
 }
 
 generator markdown {
