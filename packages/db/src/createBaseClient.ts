@@ -57,7 +57,7 @@ export const createBaseClient = (options?: ClientOptions) => {
             fieldEncryptionExtension(),
           );
           // 拡張されたクライアントを安全に渡すため、型アサーションを使用
-          return runWithoutRLS(async () => fn(cleanClient as never));
+          return runWithoutRLS(async () => fn(cleanClient));
         },
       },
       query: {
