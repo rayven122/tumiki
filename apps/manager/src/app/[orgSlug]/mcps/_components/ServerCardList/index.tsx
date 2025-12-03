@@ -92,16 +92,17 @@ const AsyncServerCardList = forwardRef<
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={servers} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="flex flex-wrap gap-6">
             {servers.map((server) => (
-              <SortableServerCard
-                key={server.id}
-                userMcpServer={server}
-                isSortMode={isSortMode}
-                revalidate={async () =>
-                  await utils.v2.userMcpServer.findOfficialServers.invalidate()
-                }
-              />
+              <div key={server.id} className="flex w-full sm:w-[300px]">
+                <SortableServerCard
+                  userMcpServer={server}
+                  isSortMode={isSortMode}
+                  revalidate={async () =>
+                    await utils.v2.userMcpServer.findOfficialServers.invalidate()
+                  }
+                />
+              </div>
             ))}
           </div>
         </SortableContext>
@@ -142,16 +143,17 @@ const AsyncServerCardList = forwardRef<
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="flex flex-wrap gap-6">
       {filteredServers.map((server) => (
-        <SortableServerCard
-          key={server.id}
-          userMcpServer={server}
-          isSortMode={isSortMode}
-          revalidate={async () =>
-            await utils.v2.userMcpServer.findOfficialServers.invalidate()
-          }
-        />
+        <div key={server.id} className="flex w-full sm:w-[300px]">
+          <SortableServerCard
+            userMcpServer={server}
+            isSortMode={isSortMode}
+            revalidate={async () =>
+              await utils.v2.userMcpServer.findOfficialServers.invalidate()
+            }
+          />
+        </div>
       ))}
     </div>
   );
@@ -159,9 +161,9 @@ const AsyncServerCardList = forwardRef<
 
 function ServerCardListSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="flex flex-wrap gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="h-64 animate-pulse rounded-lg bg-gray-200" />
+        <div key={i} className="h-64 w-full animate-pulse rounded-lg bg-gray-200 sm:w-[300px]" />
       ))}
     </div>
   );

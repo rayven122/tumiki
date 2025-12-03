@@ -42,7 +42,7 @@ export const SortableServerCard = ({
   const dragProps = isSortMode ? { ...attributes, ...listeners } : {};
 
   return (
-    <div ref={setNodeRef} style={style} {...dragProps}>
+    <div ref={setNodeRef} style={style} {...dragProps} className="w-full">
       <UserMcpServerCard
         userMcpServer={userMcpServer}
         revalidate={revalidate}
