@@ -33,6 +33,8 @@ const errorCodeToHttpStatus = (code: ErrorCode): number => {
       return 503;
     case ErrorCode.InternalError:
       return 500;
+    default:
+      return 500;
   }
 };
 
