@@ -90,10 +90,13 @@ export const apiKeyAuthMiddleware = async (
 
   // 認証成功: コンテキストに認証情報を設定
   c.set("authMethod", AuthType.API_KEY);
-  c.set("apiKeyAuthInfo", {
+
+  // 統一認証コンテキストを設定
+  c.set("authContext", {
+    authMethod: AuthType.API_KEY,
     organizationId: mcpApiKey.mcpServer.organizationId,
-    mcpServerId: mcpApiKey.mcpServer.id,
     userId: mcpApiKey.userId,
+    mcpServerId: mcpApiKey.mcpServer.id,
     mcpApiKeyId: mcpApiKey.id,
   });
 
