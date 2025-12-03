@@ -6,7 +6,7 @@ import type { HonoEnv } from "../../types/index.js";
 
 // モックの設定
 vi.mock("../auth/jwt.js", () => ({
-  devKeycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
+  keycloakAuth: vi.fn(async (c: Context<HonoEnv>) => {
     // モック JWT ペイロード（tumiki ネスト構造）
     c.set("jwtPayload", {
       sub: "test-user-id",
@@ -16,7 +16,7 @@ vi.mock("../auth/jwt.js", () => ({
         org_id: "test-org-id",
         is_org_admin: true,
         tumiki_user_id: "test-user-db-id",
-        mcp_instance_id: "test-mcp-instance-id",
+        mcp_server_id: "test-mcp-instance-id",
       },
     });
     // next() は integratedAuthMiddleware が呼び出す
@@ -101,9 +101,9 @@ describe("integratedAuthMiddleware", () => {
     });
 
     test("JWTペイロードがない場合は401エラー", async () => {
-      // devKeycloakAuth がペイロードを設定しない場合をモック
-      const { devKeycloakAuth } = await import("../auth/jwt.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(
+      // keycloakAuth がペイロードを設定しない場合をモック
+      const { keycloakAuth } = await import("../auth/jwt.js");
+      vi.mocked(keycloakAuth).mockImplementationOnce(
         async (c: Context<HonoEnv>) => {
           // jwtPayload を設定しない
           // next()を呼ばないことで、ペイロードなしをシミュレート
@@ -130,8 +130,8 @@ describe("integratedAuthMiddleware", () => {
     });
 
     test("JWT認証が例外を投げた場合は401エラー", async () => {
-      const { devKeycloakAuth } = await import("../auth/jwt.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(async () => {
+      const { keycloakAuth } = await import("../auth/jwt.js");
+      vi.mocked(keycloakAuth).mockImplementationOnce(async () => {
         throw new Error("JWT verification failed");
       });
 
@@ -153,10 +153,10 @@ describe("integratedAuthMiddleware", () => {
       });
     });
 
-    test("mcp_instance_idがないJWTの場合は401エラー", async () => {
-      // mcp_instance_id なしのJWTをモック
-      const { devKeycloakAuth } = await import("../auth/jwt.js");
-      vi.mocked(devKeycloakAuth).mockImplementationOnce(async (c) => {
+    test("mcp_server_idがないJWTの場合は401エラー", async () => {
+      // mcp_server_id なしのJWTをモック
+      const { keycloakAuth } = await import("../auth/jwt.js");
+      vi.mocked(keycloakAuth).mockImplementationOnce(async (c) => {
         c.set("jwtPayload", {
           sub: "test-user-id",
           azp: "test-client-id",
@@ -165,7 +165,7 @@ describe("integratedAuthMiddleware", () => {
             org_id: "test-org-id",
             is_org_admin: true,
             tumiki_user_id: "test-user-db-id",
-            // mcp_instance_id なし
+            // mcp_server_id なし
           },
         });
       });
@@ -184,7 +184,7 @@ describe("integratedAuthMiddleware", () => {
         error: {
           code: -32001,
           message:
-            "mcp_instance_id is required for MCP server access. This JWT is not valid for MCP operations.",
+            "mcp_server_id is required for MCP server access. This JWT is not valid for MCP operations.",
         },
       });
     });
@@ -230,6 +230,7 @@ describe("integratedAuthMiddleware", () => {
         lastUsedAt: null,
         expiresAt: null,
         mcpServer: {
+          id: "instance-id",
           organizationId: "org-id",
         },
         createdAt: new Date(),
@@ -268,6 +269,7 @@ describe("integratedAuthMiddleware", () => {
         lastUsedAt: null,
         expiresAt: null,
         mcpServer: {
+          id: "instance-id",
           organizationId: "org-id-2",
         },
         createdAt: new Date(),
@@ -309,6 +311,7 @@ describe("integratedAuthMiddleware", () => {
         lastUsedAt: null,
         expiresAt: pastDate, // 期限切れ
         mcpServer: {
+          id: "instance-id",
           organizationId: "org-id",
         },
         createdAt: new Date(),
@@ -352,6 +355,7 @@ describe("integratedAuthMiddleware", () => {
         lastUsedAt: null,
         expiresAt: futureDate, // 未来の有効期限
         mcpServer: {
+          id: "instance-id",
           organizationId: "org-id-3",
         },
         createdAt: new Date(),
@@ -455,6 +459,7 @@ describe("integratedAuthMiddleware", () => {
         lastUsedAt: null,
         expiresAt: null,
         mcpServer: {
+          id: "api-instance-id",
           organizationId: "api-org-id",
         },
         createdAt: new Date(),
@@ -472,11 +477,11 @@ describe("integratedAuthMiddleware", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
         jwtPayload?: unknown;
-        apiKeyAuthInfo?: { mcpServerInstanceId: string };
+        apiKeyAuthInfo?: { mcpServerId: string };
       };
       // API Key 認証の結果を確認
       expect(body.apiKeyAuthInfo).toBeDefined();
-      expect(body.apiKeyAuthInfo?.mcpServerInstanceId).toBe("api-instance-id");
+      expect(body.apiKeyAuthInfo?.mcpServerId).toBe("api-instance-id");
       expect(body.jwtPayload).toBeUndefined();
     });
   });

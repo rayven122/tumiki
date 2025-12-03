@@ -14,8 +14,9 @@ export type AuthMethod = "jwt" | "apikey";
  */
 export type ApiKeyAuthInfo = {
   organizationId: string;
-  mcpServerInstanceId: string;
+  mcpServerId: string;
   userId: string; // API Key の作成者
+  mcpApiKeyId: string; // MCP API Key ID
 };
 
 /**
@@ -23,9 +24,9 @@ export type ApiKeyAuthInfo = {
  */
 export type TumikiJWTClaims = {
   org_id: string; // 組織ID（Organization.id）
+  mcp_server_id?: string; // MCPサーバーID（McpServer.id）- MCP接続時は必須、管理画面では不要
   is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
   tumiki_user_id: string; // TumikiユーザーID（User.id）
-  mcp_instance_id?: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）- MCP接続時は必須、管理画面では不要
 };
 
 /**
@@ -138,7 +139,7 @@ export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
 
   return (
     typeof i.organizationId === "string" &&
-    typeof i.mcpServerInstanceId === "string" &&
+    typeof i.mcpServerId === "string" &&
     typeof i.userId === "string"
   );
 };
@@ -146,7 +147,7 @@ export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
 /**
  * 型ガード: MCP接続に必要なJWTペイロードかチェック
  *
- * MCP接続には mcp_instance_id が必須
+ * MCP接続には mcp_server_id が必須
  *
  * @param payload - チェック対象のペイロード
  * @returns MCP接続可能な場合true
@@ -158,5 +159,5 @@ export const isValidMcpJWTPayload = (
     return false;
   }
 
-  return typeof payload.tumiki.mcp_instance_id === "string";
+  return typeof payload.tumiki.mcp_server_id === "string";
 };

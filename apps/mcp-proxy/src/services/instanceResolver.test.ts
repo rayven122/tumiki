@@ -39,7 +39,7 @@ describe("resolveMcpServer", () => {
       org_id: orgId,
       is_org_admin: false,
       tumiki_user_id: userId,
-      mcp_instance_id: instanceId,
+      mcp_server_id: instanceId,
     },
   });
 
@@ -78,18 +78,18 @@ describe("resolveMcpServer", () => {
     });
   });
 
-  describe("異常系: mcp_instance_id なし", () => {
-    test("mcp_instance_idがない場合、エラーをスローする", async () => {
-      // mcp_instance_idなしのJWT
+  describe("異常系: mcp_server_id なし", () => {
+    test("mcp_server_idがない場合、エラーをスローする", async () => {
+      // mcp_server_idなしのJWT
       const jwtPayload = createMockJWTPayload("org_test123", "user_test456");
 
       await expect(resolveMcpServer(jwtPayload)).rejects.toThrow(
-        "mcp_instance_id is required for MCP server access",
+        "mcp_server_id is required for MCP server access",
       );
     });
   });
 
-  describe("異常系: インスタンス不存在 (mcp_instance_id あり)", () => {
+  describe("異常系: インスタンス不存在 (mcp_server_id あり)", () => {
     test("インスタンスが見つからない場合、エラーをスローする", async () => {
       vi.mocked(db.mcpServer.findUnique).mockResolvedValue(null);
 
@@ -105,7 +105,7 @@ describe("resolveMcpServer", () => {
     });
   });
 
-  describe("異常系: インスタンス削除済み (mcp_instance_id あり)", () => {
+  describe("異常系: インスタンス削除済み (mcp_server_id あり)", () => {
     test("インスタンスが削除されている場合、エラーをスローする", async () => {
       const deletedDate = new Date();
       const mockInstance = createMockInstance(
@@ -129,7 +129,7 @@ describe("resolveMcpServer", () => {
     });
   });
 
-  describe("異常系: 組織ID不一致 (mcp_instance_id あり)", () => {
+  describe("異常系: 組織ID不一致 (mcp_server_id あり)", () => {
     test("インスタンスの組織IDがJWTの組織IDと一致しない場合、エラーをスローする", async () => {
       // インスタンスは別の組織に属している
       const mockInstance = createMockInstance("instance_1", "org_different");
