@@ -49,21 +49,36 @@ export const requestSuggestions = ({
       });
 
       for await (const element of elementStream) {
-        const suggestion = {
-          originalText: element.originalSentence,
-          suggestedText: element.suggestedSentence,
-          description: element.description,
-          id: generateCUID(),
-          documentId: documentId,
-          isResolved: false,
-        };
+        // Type guard for element with expected properties
+        if (
+          element &&
+          typeof element === "object" &&
+          "originalSentence" in element &&
+          "suggestedSentence" in element &&
+          "description" in element
+        ) {
+          const typedElement = element as {
+            originalSentence: string;
+            suggestedSentence: string;
+            description: string;
+          };
 
-        dataStream.writeData({
-          type: "suggestion",
-          content: suggestion,
-        });
+          const suggestion = {
+            originalText: typedElement.originalSentence,
+            suggestedText: typedElement.suggestedSentence,
+            description: typedElement.description,
+            id: generateCUID(),
+            documentId: documentId,
+            isResolved: false,
+          };
 
-        suggestions.push(suggestion);
+          dataStream.writeData({
+            type: "suggestion",
+            content: suggestion,
+          });
+
+          suggestions.push(suggestion);
+        }
       }
 
       if (session.user?.id) {

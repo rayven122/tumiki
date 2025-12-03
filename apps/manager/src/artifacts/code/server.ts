@@ -23,15 +23,19 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
 
       if (type === "object") {
         const { object } = delta;
-        const { code } = object;
 
-        if (code) {
-          dataStream.writeData({
-            type: "code-delta",
-            content: code ?? "",
-          });
+        // Type guard for object with code property
+        if (object && typeof object === "object" && "code" in object) {
+          const { code } = object as { code: string };
 
-          draftContent = code;
+          if (code) {
+            dataStream.writeData({
+              type: "code-delta",
+              content: code ?? "",
+            });
+
+            draftContent = code;
+          }
         }
       }
     }
@@ -55,15 +59,19 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
 
       if (type === "object") {
         const { object } = delta;
-        const { code } = object;
 
-        if (code) {
-          dataStream.writeData({
-            type: "code-delta",
-            content: code ?? "",
-          });
+        // Type guard for object with code property
+        if (object && typeof object === "object" && "code" in object) {
+          const { code } = object as { code: string };
 
-          draftContent = code;
+          if (code) {
+            dataStream.writeData({
+              type: "code-delta",
+              content: code ?? "",
+            });
+
+            draftContent = code;
+          }
         }
       }
     }

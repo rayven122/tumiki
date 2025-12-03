@@ -4,6 +4,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      "next-env.d.ts", // Next.js auto-generated file
       "prisma/**",
       "src/app/(chat)/**", // For ai-chatbot
       "src/artifacts/**", // For ai-chatbot
