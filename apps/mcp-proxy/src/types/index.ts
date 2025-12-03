@@ -3,16 +3,18 @@ import type { AuthType } from "@tumiki/db";
 export type { AuthType };
 
 /**
- * API Key認証情報
+ * 統一認証コンテキスト
  *
- * API Key認証時にコンテキストに設定される情報。
- * JWT認証時は使用されず、jwtPayloadから直接情報を取得する。
+ * 認証ミドルウェア通過後に必ず設定される共通の認証情報。
+ * JWT認証とAPI Key認証の両方をサポートし、利用側は認証方式を
+ * 意識せずに必要な情報を取得できる。
  */
-export type ApiKeyAuthInfo = {
+export type AuthContext = {
+  authMethod: AuthType;
   organizationId: string;
+  userId: string;
   mcpServerId: string;
-  userId: string; // API Key の作成者
-  mcpApiKeyId: string; // MCP API Key ID
+  mcpApiKeyId?: string; // API Key認証時のみ
 };
 
 /**
@@ -87,13 +89,13 @@ export type RemoteMcpServerConfig = {
  * コンテキストの型安全性を提供
  *
  * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
- * - API Key認証時: apiKeyAuthInfo のみ設定、authMethod = "apikey"
+ * - API Key認証時: authContext のみ設定、authMethod = "apikey"
  */
 export type HonoEnv = {
   Variables: {
     authMethod?: AuthType; // 使用された認証方式
-    apiKeyAuthInfo?: ApiKeyAuthInfo; // API Key認証時のみ
     jwtPayload?: JWTPayload; // JWT認証時のみ
+    authContext?: AuthContext; // 統一認証コンテキスト
   };
 };
 
@@ -117,26 +119,6 @@ export const isJWTPayload = (payload: unknown): payload is JWTPayload => {
     typeof (p.tumiki as Record<string, unknown>).org_id === "string" &&
     typeof (p.tumiki as Record<string, unknown>).tumiki_user_id === "string" &&
     typeof (p.tumiki as Record<string, unknown>).is_org_admin === "boolean"
-  );
-};
-
-/**
- * 型ガード: API Key認証情報が有効かチェック
- *
- * @param info - チェック対象の認証情報
- * @returns ApiKeyAuthInfoとして有効な場合true
- */
-export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
-  if (typeof info !== "object" || info === null) {
-    return false;
-  }
-
-  const i = info as Record<string, unknown>;
-
-  return (
-    typeof i.organizationId === "string" &&
-    typeof i.mcpServerId === "string" &&
-    typeof i.userId === "string"
   );
 };
 

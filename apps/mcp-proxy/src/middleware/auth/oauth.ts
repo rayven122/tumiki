@@ -103,5 +103,13 @@ export const oauthMiddleware = async (
   // 認証成功: コンテキストに認証方式を設定
   c.set("authMethod", AuthType.OAUTH);
 
+  // 統一認証コンテキストを設定
+  c.set("authContext", {
+    authMethod: AuthType.OAUTH,
+    organizationId: jwtPayload.tumiki.org_id,
+    userId: jwtPayload.tumiki.tumiki_user_id,
+    mcpServerId: jwtPayload.tumiki.mcp_server_id!,
+  });
+
   await next();
 };
