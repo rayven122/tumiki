@@ -5,6 +5,7 @@
 - [Auth](#auth)
 - [McpServer](#mcpserver)
 - [Organization](#organization)
+- [RequestLog](#requestlog)
 - [UserMcpServer](#usermcpserver)
 - [Chat](#chat)
 - [default](#default)
@@ -485,6 +486,56 @@ Pair relationship table between [OrganizationGroup](#OrganizationGroup) and [Org
 - `A`:
 - `B`:
 
+## RequestLog
+
+```mermaid
+erDiagram
+"McpServerRequestLog" {
+  String id PK
+  String mcpServerId
+  String organizationId
+  String userId
+  String mcpApiKeyId "nullable"
+  String(255) toolName
+  TransportType transportType
+  String(64) method
+  Int httpStatus
+  Int durationMs
+  Int inputBytes
+  Int outputBytes
+  Int errorCode "nullable"
+  String(500) errorSummary "nullable"
+  String(512) userAgent "nullable"
+  DateTime createdAt
+}
+```
+
+### `McpServerRequestLog`
+
+MCPサーバーインスタンスへのリクエストログ
+リレーションを排除し、IDのみ保持することでサイズを削減
+
+**Properties**
+
+- `id`: レコードID（cuid: 25文字）
+- `mcpServerId`: MCPサーバーインスタンスID
+- `organizationId`: 組織ID
+- `userId`: リクエストを実行したユーザーID
+- `mcpApiKeyId`: 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
+- `toolName`: 実行されたツール名（最大255文字に制限）
+- `transportType`: リクエスト時のトランスポートタイプ
+- `method`: MCPメソッド（例: "tools/call", "resources/read"）
+- `httpStatus`: HTTPステータスコード（Int型で保存、例: 200, 404, 500）
+- `durationMs`: 実行時間（ミリ秒）
+- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+- `errorCode`
+  > エラー情報（エラー発生時のみ）
+  > MCPエラーコード（例: -32600, -32601, -32603）
+- `errorSummary`: エラーメッセージ要約（最大500文字、詳細はBigQuery）
+- `userAgent`: ユーザーエージェント（最大512文字に制限）
+- `createdAt`:
+
 ## UserMcpServer
 
 ```mermaid
@@ -511,24 +562,6 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
-}
-"McpServerRequestLog" {
-  String id PK
-  String mcpServerId FK
-  String mcpApiKeyId FK "nullable"
-  String userId FK "nullable"
-  String toolName
-  TransportType transportType
-  String method
-  String httpStatus
-  Int durationMs
-  Int inputBytes
-  Int outputBytes
-  String organizationId FK
-  String userAgent "nullable"
-  String gcsObjectKey "nullable"
-  DateTime gcsUploadedAt "nullable"
-  DateTime createdAt
 }
 "McpApiKey" {
   String id PK
@@ -601,8 +634,6 @@ erDiagram
   DateTime updatedAt
 }
 "McpConfig" }o--|| "McpServerTemplate" : mcpServerTemplate
-"McpServerRequestLog" }o--|| "McpServer" : mcpServer
-"McpServerRequestLog" }o--o| "McpApiKey" : mcpApiKey
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
@@ -646,31 +677,6 @@ allowedTools[] で許可ツールを管理（Prisma暗黙的多対多）
 - `createdAt`:
 - `updatedAt`:
 - `deletedAt`: 論理削除用のタイムスタンプ
-
-### `McpServerRequestLog`
-
-MCPサーバーインスタンスへのリクエストログ
-
-**Properties**
-
-- `id`:
-- `mcpServerId`: MCPサーバーインスタンスID
-- `mcpApiKeyId`: 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
-- `userId`: リクエストを実行したユーザーID
-- `toolName`: 実行されたツール名
-- `transportType`: リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
-- `method`: MCPメソッド（tools/list, tools/call）
-- `httpStatus`: HTTPステータスコード
-- `durationMs`: 実行時間（ミリ秒）
-- `inputBytes`: 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-- `outputBytes`: 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
-- `organizationId`: 組織ID
-- `userAgent`: ユーザーエージェント
-- `gcsObjectKey`
-  > GCS統合用フィールド（将来の実装に備えて追加）
-  > GCSオブジェクトキー（パス）（例: logs/2025/01/17/{orgId}/{serverId}/{requestLogId}.json.gz）
-- `gcsUploadedAt`: GCSアップロード完了日時
-- `createdAt`:
 
 ### `McpApiKey`
 
