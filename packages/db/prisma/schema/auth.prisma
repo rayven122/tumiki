@@ -45,7 +45,6 @@ model User {
   mcpConfigs         McpConfig[]
   mcpApiKeys         McpApiKey[]
   mcpOAuthTokens     McpOAuthToken[]
-  requestLogs        McpServerRequestLog[]
 
   /// Auth.js adapter
   accounts Account[]

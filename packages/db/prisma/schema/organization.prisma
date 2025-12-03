@@ -41,8 +41,6 @@ model Organization {
   mcpServers         McpServer[]
   /// 組織限定公開のMCPサーバーテンプレート
   mcpServerTemplates McpServerTemplate[]
-  /// 組織のリクエストログ
-  requestLogs        McpServerRequestLog[]
 
   /// OAuth関連
   mcpOAuthClients McpOAuthClient[]
