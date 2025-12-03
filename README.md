@@ -51,7 +51,6 @@ tumiki/
 │   ├── eslint/          # ESLint設定
 │   ├── prettier/        # Prettier設定
 │   ├── tailwind/        # Tailwind CSS設定
-│   ├── tsup-config/     # tsup設定
 │   ├── typescript/      # TypeScript設定
 │   └── vitest/          # Vitest設定
 └── docker/              # Docker Compose設定
