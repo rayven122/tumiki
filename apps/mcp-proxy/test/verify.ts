@@ -200,7 +200,7 @@ const main = async () => {
     const result = (await response.json()) as JsonRpcResponse;
     const responseTime = Date.now() - startTime;
 
-    if (result.error && result.error.code === -32001) {
+    if (result.error?.code === -32001) {
       passedTests++;
       printResult(
         "無効なAPIキーの拒否",

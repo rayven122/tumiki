@@ -15,7 +15,6 @@ import {
   MapPin,
   Link2,
   Info,
-  Mail,
   Shield,
   Construction,
 } from "lucide-react";
