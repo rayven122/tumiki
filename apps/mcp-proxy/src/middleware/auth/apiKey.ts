@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { db } from "@tumiki/db/server";
+import { db, AuthType } from "@tumiki/db/server";
 import type { HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
 import {
@@ -89,7 +89,7 @@ export const apiKeyAuthMiddleware = async (
   }
 
   // 認証成功: コンテキストに認証情報を設定
-  c.set("authMethod", "apikey");
+  c.set("authMethod", AuthType.API_KEY);
   c.set("apiKeyAuthInfo", {
     organizationId: mcpApiKey.mcpServer.organizationId,
     mcpServerId: mcpApiKey.mcpServer.id,
