@@ -110,33 +110,24 @@ export const mcpRequestLoggingMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<void> => {
-  // 1. リクエストボディを読み取る
+  // リクエストボディを読み取る
   const bodyText = await c.req.text();
 
   // リクエストボディをキャッシュする
   c.req.bodyCache.text = bodyText;
 
   // 初期ログコンテキストを設定
-  const initialContext: McpRequestLoggingContext = {
+  const initialContext = {
     // リクエスト開始時刻を記録
     requestStartTime: Date.now(),
     // inputBytesはrecordRequestLogAsyncで計算
     inputBytes: 0,
-  };
+  } satisfies McpRequestLoggingContext;
 
   await runWithRequestLoggingContext(initialContext, async () => {
     try {
       // 次のミドルウェア/ハンドラーを実行（authMiddlewareで認証コンテキストが設定される）
       await next();
-    } catch (error) {
-      // エラー時もタイミング情報を記録
-      // updateRequestLoggingContext({
-      //   requestEndTime: Date.now(),
-      //   outputBytes: 0,
-      //   httpStatus: 500,
-      // });
-
-      throw error;
     } finally {
       // レスポンス完了後のログ記録を非同期で実行（リクエストをブロックしない）
       void recordRequestLogAsync(c);
