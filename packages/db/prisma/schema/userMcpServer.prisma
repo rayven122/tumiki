@@ -75,15 +75,13 @@ model McpServer {
 
   /// APIキー一覧
   apiKeys        McpApiKey[]
-  /// リクエストログ
-  requestLogs    McpServerRequestLog[]
   /// 使用する認証タイプ（API_KEY, OAUTH, NONE）
-  authType       AuthType              @default(API_KEY)
+  authType       AuthType     @default(API_KEY)
   /// 組織
   organizationId String
-  organization   Organization          @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
   /// 表示順序（ユーザーごと）
-  displayOrder   Int                   @default(0)
+  displayOrder   Int          @default(0)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -91,45 +89,6 @@ model McpServer {
   deletedAt DateTime?
 
   @@index([deletedAt])
-}
-
-/// MCPサーバーインスタンスへのリクエストログ
-/// @namespace UserMcpServer
-model McpServerRequestLog {
-  id             String                @id @default(cuid())
-  /// MCPサーバーインスタンスID
-  mcpServerId    String
-  mcpServer      McpServer             @relation(fields: [mcpServerId], references: [id])
-  /// 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
-  mcpApiKeyId    String?
-  mcpApiKey      McpApiKey?            @relation(fields: [mcpApiKeyId], references: [id])
-  /// 実行されたツール名
-  toolName       String
-  /// リクエスト時のトランスポートタイプ（SSE, STREAMABLE_HTTPS のどちらか）
-  transportType  TransportType
-  /// MCPメソッド（tools/list, tools/call）
-  method     String
-  /// HTTPステータスコード
-  httpStatus String
-  /// 実行時間（ミリ秒）
-  durationMs Int
-  /// 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
-  inputBytes     Int
-  /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
-  outputBytes    Int
-  /// 組織ID
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  /// ユーザーエージェント
-  userAgent      String?
-
-  /// GCS統合用フィールド（将来の実装に備えて追加）
-  /// GCSオブジェクトキー（パス）（例: logs/2025/01/17/{orgId}/{serverId}/{requestLogId}.json.gz）
-  gcsObjectKey  String?
-  /// GCSアップロード完了日時
-  gcsUploadedAt DateTime?
-
-  createdAt DateTime @default(now())
 }
 
 /// APIキー管理テーブル
@@ -156,9 +115,6 @@ model McpApiKey {
   /// 関連するMcpServerのID
   mcpServerId String
   mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-
-  /// リクエストログとのリレーション
-  requestLogs McpServerRequestLog[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -231,8 +187,8 @@ model McpOAuthToken {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   /// トークン情報
-  accessToken  String    /// @encrypted
-  refreshToken String?   /// @encrypted
+  accessToken  String /// @encrypted
+  refreshToken String? /// @encrypted
   expiresAt    DateTime? // Access Tokenの有効期限
 
   /// トークンの用途を明確化

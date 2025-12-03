@@ -1,106 +1,104 @@
 import type { Context, Next } from "hono";
-import { db } from "@tumiki/db/server";
-import type { ApiKeyAuthInfo, HonoEnv } from "../../types/index.js";
+import { db, AuthType } from "@tumiki/db/server";
+import type { HonoEnv } from "../../types/index.js";
 import { logError } from "../../libs/logger/index.js";
-import { createUnauthorizedError } from "../../libs/error/index.js";
+import {
+  createUnauthorizedError,
+  createPermissionDeniedError,
+} from "../../libs/error/index.js";
 import { AUTH_CONFIG } from "../../constants/config.js";
 
 /**
- * APIキーを抽出
- */
-const extractApiKey = (c: Context): string | undefined => {
-  // Tumiki-API-Key ヘッダー
-  const tumikiApiKey = c.req.header(AUTH_CONFIG.HEADERS.API_KEY);
-  if (tumikiApiKey) {
-    return tumikiApiKey;
-  }
-
-  // Authorization: Bearer ヘッダー
-  const authorization = c.req.header(AUTH_CONFIG.HEADERS.AUTHORIZATION);
-  if (authorization?.startsWith("Bearer ")) {
-    return authorization.slice(7);
-  }
-
-  return undefined;
-};
-
-/**
- * APIキーを検証（データベース）
+ * データベースからAPIキーを取得
  *
- * Cloud Runのサーバーレス環境では、毎回DBチェックを行う
- * （キャッシュは外部Redis/Memcachedで実装する場合はPhase 2）
+ * @param apiKey - 検証するAPIキー
+ * @returns APIキー情報、または取得に失敗した場合はnull
  */
-const validateApiKey = async (
-  apiKey: string,
-): Promise<ApiKeyAuthInfo | undefined> => {
+const fetchApiKeyFromDatabase = async (apiKey: string) => {
   try {
-    const mcpApiKey = await db.mcpApiKey.findUnique({
+    return await db.mcpApiKey.findUnique({
       where: { apiKey },
       include: {
         mcpServer: {
           select: {
+            id: true,
             organizationId: true,
           },
         },
       },
     });
-
-    if (!mcpApiKey?.isActive || !mcpApiKey.mcpServer) {
-      return undefined;
-    }
-
-    // 有効期限チェック
-    if (mcpApiKey.expiresAt && mcpApiKey.expiresAt < new Date()) {
-      return undefined;
-    }
-
-    // includeで取得したサーバー情報
-    const server = mcpApiKey.mcpServer;
-
-    return {
-      organizationId: server.organizationId,
-      mcpServerInstanceId: mcpApiKey.mcpServerId,
-      userId: mcpApiKey.userId, // API Key の作成者
-    };
-  } catch (error: unknown) {
-    logError("Failed to validate API key", error as Error);
-    return undefined;
+  } catch (error) {
+    logError("Failed to fetch API key from database", error as Error);
+    return null;
   }
 };
 
 /**
- * 認証ミドルウェア
- *
- * Cloud Runのステートレス環境向けに設計
- * - インメモリキャッシュなし（各インスタンスで異なるため）
- * - 毎回DBチェック
- * - 必要に応じてPhase 2でRedis/Memcachedキャッシュを追加
+ * API Key認証ミドルウェア
  */
 export const apiKeyAuthMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
-  const apiKey = extractApiKey(c);
+  const tumikiApiKey = c.req.header(AUTH_CONFIG.HEADERS.API_KEY);
+  const authorization = c.req.header(AUTH_CONFIG.HEADERS.AUTHORIZATION);
+  const bearerToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7)
+    : undefined;
+  const apiKey = tumikiApiKey ?? bearerToken;
 
+  // api keyが存在しない場合は401を返す
   if (!apiKey) {
     return c.json(
-      createUnauthorizedError("Invalid or inactive API key", {
+      createUnauthorizedError("API key is required", {
         hint: "Provide API key via Tumiki-API-Key header or Authorization: Bearer header",
       }),
       401,
     );
   }
 
-  // データベース検証
-  const apiKeyAuthInfo = await validateApiKey(apiKey);
+  // mcpServerIdが存在しない場合は403を返す
+  const pathMcpServerId = c.req.param("mcpServerId");
+  if (!pathMcpServerId) {
+    return c.json(
+      createPermissionDeniedError("mcpServerId is required in path"),
+      403,
+    );
+  }
 
-  if (!apiKeyAuthInfo) {
+  const mcpApiKey = await fetchApiKeyFromDatabase(apiKey);
+
+  // api keyが有効でない場合は401を返す
+  if (!mcpApiKey?.isActive || !mcpApiKey.mcpServer) {
     return c.json(createUnauthorizedError("Invalid or inactive API key"), 401);
   }
 
-  // 認証情報をコンテキストに設定
-  c.set("authMethod", "apikey");
-  c.set("apiKeyAuthInfo", apiKeyAuthInfo);
+  // api keyの有効期限をチェック
+  if (mcpApiKey.expiresAt && mcpApiKey.expiresAt < new Date()) {
+    return c.json(createUnauthorizedError("API key has expired"), 401);
+  }
+
+  // api keyのmcpServerIdとリクエストパスのmcpServerIdが一致しない場合は403を返す
+  if (mcpApiKey.mcpServer.id !== pathMcpServerId) {
+    return c.json(
+      createPermissionDeniedError(
+        "MCP Server ID mismatch: You are not authorized to access this MCP server",
+      ),
+      403,
+    );
+  }
+
+  // 認証成功: コンテキストに認証情報を設定
+  c.set("authMethod", AuthType.API_KEY);
+
+  // 統一認証コンテキストを設定
+  c.set("authContext", {
+    authMethod: AuthType.API_KEY,
+    organizationId: mcpApiKey.mcpServer.organizationId,
+    userId: mcpApiKey.userId,
+    mcpServerId: pathMcpServerId,
+    mcpApiKeyId: mcpApiKey.id,
+  });
 
   await next();
 };

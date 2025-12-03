@@ -195,7 +195,7 @@ export const LogsAnalyticsTab = ({
                       <TableCell>
                         <Badge
                           variant={
-                            log.httpStatus.startsWith("2")
+                            log.httpStatus >= 200 && log.httpStatus < 300
                               ? "default"
                               : "destructive"
                           }
