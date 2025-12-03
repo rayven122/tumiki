@@ -26,6 +26,15 @@ export const findRequestLogsOutputSchema = z.array(
 
 export type FindRequestLogsOutput = z.infer<typeof findRequestLogsOutputSchema>;
 
+/**
+ * TransportTypeが SSE または STREAMABLE_HTTPS かどうかを判定する型ガード
+ */
+const isValidTransportType = <T extends { transportType: string }>(
+  log: T,
+): log is T & { transportType: "SSE" | "STREAMABLE_HTTPS" } => {
+  return log.transportType === "SSE" || log.transportType === "STREAMABLE_HTTPS";
+};
+
 export const findRequestLogs = async (
   tx: PrismaTransactionClient,
   input: FindRequestLogsInput,
@@ -70,8 +79,6 @@ export const findRequestLogs = async (
   });
 
   // TransportTypeをフィルタリング（SSEとSTREAMABLE_HTTPSのみ返す）
-  return logs.filter(
-    (log) =>
-      log.transportType === "SSE" || log.transportType === "STREAMABLE_HTTPS",
-  ) as FindRequestLogsOutput;
+  // 型ガードを使用して型を絞り込む
+  return logs.filter(isValidTransportType);
 };
