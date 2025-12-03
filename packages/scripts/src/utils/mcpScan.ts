@@ -358,8 +358,7 @@ const processServers = (
       // このツールに関する問題を収集
       issues.forEach((issue) => {
         if (
-          issue.reference &&
-          issue.reference[0] === serverIndex &&
+          issue.reference?.[0] === serverIndex &&
           issue.reference[1] === toolIndex
         ) {
           const severity = getSeverityFromCode(issue.code);

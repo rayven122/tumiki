@@ -29,6 +29,10 @@
       "dependsOn": ["^build"],
       "outputs": [".cache/tsbuildinfo.json"]
     },
+    "@tumiki/mcp-proxy#typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
