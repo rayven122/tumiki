@@ -44,7 +44,7 @@
     "@upstash/context7-mcp": "^1.0.31",
     "deepl-mcp-server": "0.1.3-beta.0",
     "discord-mcp-server": "^1.0.1",
-    "figma-developer-mcp": "^0.5.2",
+    "figma-developer-mcp": "^0.6.3",
     "google-auth-library": "^10.5.0",
     "mcp-gemini-google-search": "^0.1.1",
     "mcp-server-gsc": "^0.2.0",
