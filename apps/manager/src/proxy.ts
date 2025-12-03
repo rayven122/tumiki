@@ -8,7 +8,7 @@ import {
 } from "~/lib/verification";
 import { getSessionToken } from "~/lib/session-utils";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   request.headers.set(URL_HEADER_KEY, request.url);
 
@@ -113,7 +113,7 @@ export async function middleware(request: NextRequest) {
   // セッショントークンクッキーの存在のみをチェックしています。
   //
   // 実際のセッション検証は、各保護されたルート（Server Components、API routes等）で
-  // auth() を呼び出す際に行われます。middleware はルーティング制御のみを担当します。
+  // auth() を呼び出す際に行われます。proxy はルーティング制御のみを担当します。
   const sessionToken = getSessionToken(request.cookies);
   const isLoggedIn = !!sessionToken;
 
