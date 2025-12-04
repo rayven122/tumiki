@@ -124,7 +124,7 @@ export const GetRequestStatsInputV2 = z.object({
 export const FindRequestLogsInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(100).default(50),
+  pageSize: z.number().int().min(1).max(1000).default(50),
   // 期間（日数）- 1〜30日、必須
   days: z.number().int().min(1).max(30),
 });
