@@ -6,32 +6,65 @@ import { api } from "@/trpc/react";
 import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity } from "lucide-react";
-import type { UserMcpServerDetail, RequestStats, ToolStats } from "../types";
+import type { UserMcpServerDetail, RequestStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
 
 type OverviewTabProps = {
   server: UserMcpServerDetail;
   requestStats?: RequestStats;
-  toolStats?: ToolStats[];
   serverId: McpServerId;
 };
 
 export const OverviewTab = ({
   server,
   requestStats,
-  toolStats,
   serverId,
 }: OverviewTabProps) => {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const utils = api.useUtils();
 
   const { mutate: toggleTool } = api.v2.userMcpServer.toggleTool.useMutation({
+    // 楽観的更新: サーバーレスポンスを待たずにUIを即座に更新
+    onMutate: async (variables) => {
+      // 進行中のクエリをキャンセル
+      await utils.v2.userMcpServer.findById.cancel({ id: serverId });
+
+      // 現在のデータを取得（ロールバック用）
+      const previousData = utils.v2.userMcpServer.findById.getData({
+        id: serverId,
+      });
+
+      // UIを楽観的に更新
+      if (previousData) {
+        utils.v2.userMcpServer.findById.setData({ id: serverId }, {
+          ...previousData,
+          tools: previousData.tools.map((tool) =>
+            tool.id === variables.toolId
+              ? { ...tool, isEnabled: variables.isEnabled }
+              : tool
+          ),
+        });
+      }
+
+      // ロールバック用に前のデータを返す
+      return { previousData };
+    },
     onSuccess: () => {
       toast.success("ツールの状態を更新しました");
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // エラー時は元のデータに戻す
+      if (context?.previousData) {
+        utils.v2.userMcpServer.findById.setData(
+          { id: serverId },
+          context.previousData
+        );
+      }
       toast.error(error.message);
+    },
+    // 成功/失敗に関わらず最終的にデータを再取得して整合性を保つ
+    onSettled: async () => {
+      await utils.v2.userMcpServer.findById.invalidate({ id: serverId });
     },
   });
 
@@ -55,21 +88,7 @@ export const OverviewTab = ({
     });
   };
 
-  const enabledToolCount = server.tools.filter((tool) => tool.isEnabled).length;
   const totalToolCount = server.tools.length;
-
-  // 最新のログを5件取得（過去7日間）
-  const { data: logsData } = api.v2.userMcpServer.findRequestLogs.useQuery(
-    {
-      userMcpServerId: serverId,
-      page: 1,
-      pageSize: 5,
-      days: 7,
-    },
-    { enabled: !!serverId },
-  );
-
-  const recentLogs = logsData?.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -79,75 +98,26 @@ export const OverviewTab = ({
         <DataUsageStatsCard requestStats={requestStats} />
       </div>
 
-      {/* 最近のリクエストログ */}
-      {recentLogs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="h-4 w-4" />
-              最近のリクエスト
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {recentLogs.map((log, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between border-b pb-2 last:border-b-0"
-                >
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{log.method}</span>
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                          log.httpStatus >= 200 && log.httpStatus < 300
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {log.httpStatus}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(log.createdAt).toLocaleString("ja-JP")}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-gray-500">
-                    {log.durationMs}ms
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* ツール情報 */}
       {server.tools.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">
-            利用可能なツール ({enabledToolCount}/{totalToolCount})
+            利用可能なツール ({totalToolCount})
           </h3>
 
           <div className="space-y-4">
-            {server.tools.map((tool) => {
-              const toolStat = toolStats?.find(
-                (stat) => stat.toolName === tool.name,
-              );
-              return (
-                <ToolCard
-                  key={tool.id}
-                  tool={tool}
-                  isExpanded={expandedTools.has(tool.id)}
-                  onToggleExpansion={toggleToolExpansion}
-                  isEnabled={tool.isEnabled}
-                  onToggleEnabled={(enabled) =>
-                    handleToolToggle(tool.id as ToolId, enabled)
-                  }
-                  callCount={toolStat?.requestCount}
-                />
-              );
-            })}
+            {server.tools.map((tool) => (
+              <ToolCard
+                key={tool.id}
+                tool={tool}
+                isExpanded={expandedTools.has(tool.id)}
+                onToggleExpansion={toggleToolExpansion}
+                isEnabled={tool.isEnabled}
+                onToggleEnabled={(enabled) =>
+                  handleToolToggle(tool.id as ToolId, enabled)
+                }
+              />
+            ))}
           </div>
         </div>
       )}

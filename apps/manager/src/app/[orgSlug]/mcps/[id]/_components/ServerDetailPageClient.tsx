@@ -76,11 +76,6 @@ export const ServerDetailPageClient = ({
     { enabled: !!serverId },
   );
 
-  // ツール統計を取得
-  const { data: toolStats } = api.v2.userMcpServer.getToolStats.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
@@ -396,7 +391,6 @@ export const ServerDetailPageClient = ({
                 <OverviewTab
                   server={server}
                   requestStats={requestStats}
-                  toolStats={toolStats}
                   serverId={serverId as McpServerId}
                 />
               );
