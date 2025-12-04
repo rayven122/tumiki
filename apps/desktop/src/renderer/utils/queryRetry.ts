@@ -2,7 +2,10 @@
  * React Query のリトライ戦略を定義
  */
 
-type ErrorWithStatus = Error & { status?: number };
+import {
+  shouldRetryError,
+  calculateRetryDelay as calculateDelay,
+} from "./errorHandling";
 
 /**
  * クエリのリトライ判定ロジック
@@ -14,32 +17,7 @@ export const shouldRetryQuery = (
   failureCount: number,
   error: unknown,
 ): boolean => {
-  // ネットワークエラーの場合は3回までリトライ
-  if (error instanceof Error && error.message.includes("fetch")) {
-    return failureCount < 3;
-  }
-
-  // 認証エラー（401, 403）はリトライしない
-  if (isAuthError(error)) {
-    return false;
-  }
-
-  // その他のエラーは1回のみリトライ
-  return failureCount < 1;
-};
-
-/**
- * 認証エラーかどうかを判定
- * @param error エラーオブジェクト
- * @returns 認証エラーかどうか
- */
-const isAuthError = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-
-  const errorWithStatus = error as ErrorWithStatus;
-  return errorWithStatus.status === 401 || errorWithStatus.status === 403;
+  return shouldRetryError(error, failureCount, 3);
 };
 
 /**
@@ -48,5 +26,5 @@ const isAuthError = (error: unknown): boolean => {
  * @returns 遅延時間（ミリ秒）
  */
 export const calculateRetryDelay = (attemptIndex: number): number => {
-  return Math.min(1000 * 2 ** attemptIndex, 30000);
+  return calculateDelay(attemptIndex);
 };

@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { getDbSync } from "../db";
+import { getDb } from "../db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import type { AuthTokenData } from "../../types/auth";
 
@@ -10,7 +10,7 @@ export const setupAuthIpc = (): void => {
   // 認証トークン取得
   ipcMain.handle("auth:getToken", async () => {
     try {
-      const db = getDbSync();
+      const db = await getDb();
       const token = await db.authToken.findFirst({
         orderBy: { createdAt: "desc" },
       });
@@ -21,7 +21,9 @@ export const setupAuthIpc = (): void => {
 
       // トークン期限チェック
       if (new Date() > token.expiresAt) {
-        console.log("Token expired, returning null");
+        if (process.env.NODE_ENV === "development") {
+          console.log("Token expired, returning null");
+        }
         return null;
       }
 
@@ -36,7 +38,7 @@ export const setupAuthIpc = (): void => {
   // トークン保存
   ipcMain.handle("auth:saveToken", async (_, tokenData: AuthTokenData) => {
     try {
-      const db = getDbSync();
+      const db = await getDb();
 
       // 既存のトークンを削除（最新のもののみ保持）
       await db.authToken.deleteMany({});
@@ -50,7 +52,9 @@ export const setupAuthIpc = (): void => {
         },
       });
 
-      console.log("Auth token saved successfully");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Auth token saved successfully");
+      }
       return { success: true };
     } catch (error) {
       console.error("Failed to save auth token:", error);
@@ -61,9 +65,11 @@ export const setupAuthIpc = (): void => {
   // トークン削除（ログアウト時）
   ipcMain.handle("auth:clearToken", async () => {
     try {
-      const db = getDbSync();
+      const db = await getDb();
       await db.authToken.deleteMany({});
-      console.log("Auth token cleared");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Auth token cleared");
+      }
       return { success: true };
     } catch (error) {
       console.error("Failed to clear auth token:", error);
@@ -74,7 +80,7 @@ export const setupAuthIpc = (): void => {
   // 認証状態確認
   ipcMain.handle("auth:isAuthenticated", async () => {
     try {
-      const db = getDbSync();
+      const db = await getDb();
       const token = await db.authToken.findFirst({
         orderBy: { createdAt: "desc" },
       });

@@ -29,10 +29,18 @@ let isConnecting = false;
  * 接続失敗時は自動的にリトライする
  */
 export const getDb = async (): Promise<PrismaClient> => {
-  // 既に接続中の場合は待機
+  // 既に接続中の場合は待機（最大5秒でタイムアウト）
   if (isConnecting) {
-    while (isConnecting) {
+    let attempts = 0;
+    const maxAttempts = 50; // 100ms × 50 = 5秒
+    while (isConnecting && attempts < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, 100));
+      attempts++;
+    }
+    if (attempts >= maxAttempts) {
+      throw new Error(
+        "Database connection timeout: Another connection attempt is still in progress",
+      );
     }
   }
 
@@ -74,17 +82,6 @@ export const getDb = async (): Promise<PrismaClient> => {
 };
 
 /**
- * 同期的にデータベース接続を取得（既存の互換性のため）
- * 注意: 新しいコードでは getDb() を使用してください
- */
-export const getDbSync = (): PrismaClient => {
-  if (!prisma) {
-    throw new Error("Database not initialized. Call getDb() first.");
-  }
-  return prisma;
-};
-
-/**
  * データベース初期化
  * Prisma スキーマに基づいてテーブルが自動的に作成される
  * アプリケーション起動前に `pnpm db:push` を実行する必要がある
@@ -95,7 +92,9 @@ export const initializeDb = async (): Promise<void> => {
 
     // データベース接続を確認
     await db.$queryRaw`SELECT 1`;
-    console.log("Database connection verified");
+    if (process.env.NODE_ENV === "development") {
+      console.log("Database connection verified");
+    }
   } catch (error) {
     console.error("Failed to connect to database:", error);
     throw error;

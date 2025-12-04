@@ -1,0 +1,176 @@
+/**
+ * HTTP ステータスコード付きエラー型
+ */
+export type ErrorWithStatus = {
+  message: string;
+  status?: number;
+  name: string;
+  cause?: unknown;
+};
+
+/**
+ * エラー分類
+ */
+export type ErrorCategory =
+  | "network" // ネットワークエラー
+  | "auth" // 認証エラー (401, 403)
+  | "server" // サーバーエラー (5xx)
+  | "client" // クライアントエラー (4xx)
+  | "timeout" // タイムアウトエラー
+  | "unknown"; // 不明なエラー
+
+/**
+ * エラー情報
+ */
+export type ErrorInfo = {
+  category: ErrorCategory;
+  message: string;
+  status?: number;
+  shouldRetry: boolean;
+};
+
+/**
+ * エラーをHTTPステータス付きエラーに変換
+ */
+export const toErrorWithStatus = (error: unknown): ErrorWithStatus => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    "name" in error
+  ) {
+    return {
+      message: String(error.message),
+      status: "status" in error ? Number(error.status) : undefined,
+      name: String(error.name),
+      cause: "cause" in error ? error.cause : undefined,
+    };
+  }
+
+  return {
+    message: String(error),
+    name: "Error",
+  };
+};
+
+/**
+ * エラーを分類
+ */
+export const classifyError = (error: unknown): ErrorInfo => {
+  const errorWithStatus = toErrorWithStatus(error);
+  const { message, status } = errorWithStatus;
+
+  // ネットワークエラー（fetch関連）
+  if (
+    message.includes("fetch") ||
+    message.includes("network") ||
+    message.includes("Failed to fetch")
+  ) {
+    return {
+      category: "network",
+      message: "ネットワーク接続に失敗しました",
+      shouldRetry: true,
+    };
+  }
+
+  // タイムアウトエラー
+  if (message.includes("timeout") || message.includes("aborted")) {
+    return {
+      category: "timeout",
+      message: "リクエストがタイムアウトしました",
+      shouldRetry: true,
+    };
+  }
+
+  // HTTPステータスコードによる分類
+  if (status !== undefined) {
+    // 認証エラー
+    if (status === 401 || status === 403) {
+      return {
+        category: "auth",
+        message: "認証に失敗しました",
+        status,
+        shouldRetry: false,
+      };
+    }
+
+    // サーバーエラー
+    if (status >= 500) {
+      return {
+        category: "server",
+        message: "サーバーエラーが発生しました",
+        status,
+        shouldRetry: true,
+      };
+    }
+
+    // クライアントエラー
+    if (status >= 400) {
+      return {
+        category: "client",
+        message: "リクエストが無効です",
+        status,
+        shouldRetry: false,
+      };
+    }
+  }
+
+  // 不明なエラー
+  return {
+    category: "unknown",
+    message: message || "予期しないエラーが発生しました",
+    status,
+    shouldRetry: false,
+  };
+};
+
+/**
+ * エラーのリトライ判定
+ */
+export const shouldRetryError = (
+  error: unknown,
+  failureCount: number,
+  maxRetries = 3,
+): boolean => {
+  const errorInfo = classifyError(error);
+
+  // リトライ不可なエラー
+  if (!errorInfo.shouldRetry) {
+    return false;
+  }
+
+  // リトライ回数超過
+  if (failureCount >= maxRetries) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * リトライ遅延時間を計算（指数バックオフ）
+ */
+export const calculateRetryDelay = (attemptIndex: number): number => {
+  return Math.min(1000 * 2 ** attemptIndex, 30000);
+};
+
+/**
+ * エラーをログに記録
+ */
+export const logError = (error: unknown, context?: string): ErrorWithStatus => {
+  const errorWithStatus = toErrorWithStatus(error);
+  const errorInfo = classifyError(error);
+
+  if (process.env.NODE_ENV === "development") {
+    console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
+      message: errorInfo.message,
+      status: errorInfo.status,
+      originalError: error,
+    });
+  } else {
+    // 本番環境では最小限のログのみ
+    console.error(`Error: ${errorInfo.message}`);
+  }
+
+  return errorWithStatus;
+};

@@ -2,6 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/api/root";
+import { logError, toErrorWithStatus } from "./errorHandling";
 
 // tRPC React Query フックを作成
 export const trpc = createTRPCReact<AppRouter>();
@@ -23,7 +24,7 @@ export const createTRPCClient = () => {
               authorization: token ? `Bearer ${token}` : "",
             };
           } catch (error) {
-            console.error("Failed to get auth token:", error);
+            logError(error, "Failed to get auth token");
             return {};
           }
         },
@@ -47,24 +48,19 @@ export const createTRPCClient = () => {
 
             // エラーレスポンスの処理とエラー伝播
             if (!response.ok) {
-              const error = new Error(
-                `HTTP ${response.status}: ${response.statusText}`,
-              ) as Error & { status?: number };
-              error.status = response.status;
-              console.error("tRPC request failed:", {
+              const errorWithStatus = toErrorWithStatus({
+                message: `HTTP ${response.status}: ${response.statusText}`,
                 status: response.status,
-                url,
+                name: "HTTPError",
               });
-              throw error;
+              logError(errorWithStatus, "tRPC request failed");
+              throw errorWithStatus;
             }
 
             return response;
           } catch (error) {
-            // ネットワークエラーの詳細ログ
-            console.error("tRPC network error:", {
-              error,
-              url,
-            });
+            // ネットワークエラーの統一されたログ記録
+            logError(error, "tRPC network error");
             throw error;
           }
         },
