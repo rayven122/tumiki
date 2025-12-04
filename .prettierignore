@@ -1,4 +1,4 @@
 # Prettier ignore patterns
 
-# Ignore specific README file
-packages/db/README.md
+# Ignore generated README files from db:generate
+packages/db/prisma/README.md
