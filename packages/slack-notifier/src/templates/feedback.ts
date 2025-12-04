@@ -14,45 +14,81 @@ export type FeedbackNotificationData = {
 export const createFeedbackNotification = (
   data: FeedbackNotificationData,
 ): SlackMessage => {
+  // 種別に応じた絵文字とラベル
+  const typeEmoji = data.type === "INQUIRY" ? "💬" : "💡";
   const typeLabel = data.type === "INQUIRY" ? "お問い合わせ" : "機能要望";
 
+  // 内容を適切な長さに制限（Slackの制限を考慮）
+  const maxContentLength = 1000;
+  const truncatedContent =
+    data.content.length > maxContentLength
+      ? `${data.content.slice(0, maxContentLength)}...\n_（内容が長いため省略されました）_`
+      : data.content;
+
   return {
-    text: `新しい${typeLabel}が送信されました`,
+    text: `${typeEmoji} 新しい${typeLabel}: ${data.subject}`,
     blocks: [
+      // ヘッダー: 種別を絵文字付きで表示
       {
         type: "header",
         text: {
           type: "plain_text",
-          text: typeLabel,
+          text: `${typeEmoji} ${typeLabel}`,
+          emoji: true,
         },
       },
-      {
-        type: "section",
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*フィードバックID:*\n${data.feedbackId}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*件名:*\n${data.subject}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*送信者:*\n${data.userName}\n${data.userEmail}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*組織:*\n${data.organizationName}`,
-          },
-        ],
-      },
+      // 件名を目立たせる
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*内容:*\n${data.content}`,
+          text: `*${data.subject}*`,
         },
+      },
+      // 区切り線
+      {
+        type: "divider",
+      },
+      // 内容（最も重要な情報）
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `📝 *内容*\n${truncatedContent}`,
+        },
+      },
+      // 区切り線
+      {
+        type: "divider",
+      },
+      // ユーザー情報と組織情報をコンパクトに
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `👤 *${data.userName}* (${data.userEmail})`,
+          },
+        ],
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `🏢 ${data.organizationName}`,
+          },
+        ],
+      },
+      // フィードバックIDは最後にコンパクトに
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `🔖 Feedback ID: \`${data.feedbackId}\``,
+          },
+        ],
       },
     ],
   };
