@@ -82,3 +82,9 @@ export type ResourceAccessControlId = z.infer<
   typeof ResourceAccessControlIdSchema
 >;
 export type ApiKeyId = z.infer<typeof ApiKeyIdSchema>;
+
+/**
+ * Feedback関連のID型
+ */
+export const FeedbackIdSchema = z.string().brand<"FeedbackId">();
+export type FeedbackId = z.infer<typeof FeedbackIdSchema>;

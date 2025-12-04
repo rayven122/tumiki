@@ -32,19 +32,8 @@ const createFeedbackOutputSchema = z.object({
   message: z.string(),
 });
 
-const listFeedbackOutputSchema = z.array(
-  z.object({
-    id: FeedbackIdSchema,
-    type: z.enum(["INQUIRY", "FEATURE_REQUEST"]),
-    subject: z.string(),
-    status: z.enum(["PENDING", "IN_PROGRESS", "RESOLVED", "CLOSED"]),
-    createdAt: z.date(),
-  }),
-);
-
 export type CreateFeedbackInput = z.infer<typeof createFeedbackInputSchema>;
 export type CreateFeedbackOutput = z.infer<typeof createFeedbackOutputSchema>;
-export type ListFeedbackOutput = z.infer<typeof listFeedbackOutputSchema>;
 
 const FEEDBACK_MESSAGES = {
   SUCCESS: "フィードバックを送信しました。ご連絡ありがとうございます。",
@@ -129,7 +118,7 @@ export const feedbackRouter = createTRPCRouter({
 
         // Slack通知送信（非同期、エラーは握りつぶす）
         void sendSlackNotification({
-          type: feedback.type as "INQUIRY" | "FEATURE_REQUEST",
+          type: feedback.type,
           subject: feedback.subject,
           content: feedback.content,
           userName: feedback.user.name ?? "Unknown User",
@@ -151,31 +140,5 @@ export const feedbackRouter = createTRPCRouter({
           message: FEEDBACK_MESSAGES.FAILED,
         });
       }
-    }),
-
-  /**
-   * ユーザー自身のフィードバック一覧を取得する
-   */
-  list: protectedProcedure
-    .output(listFeedbackOutputSchema)
-    .query(async ({ ctx }) => {
-      const feedbacks = await ctx.db.feedback.findMany({
-        where: {
-          userId: ctx.session.user.id,
-        },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          type: true,
-          subject: true,
-          status: true,
-          createdAt: true,
-        },
-      });
-
-      return feedbacks.map((feedback) => ({
-        ...feedback,
-        id: FeedbackIdSchema.parse(feedback.id),
-      }));
     }),
 });
