@@ -202,7 +202,8 @@ function ChartTooltipContent({
                     item.name,
                     item,
                     index,
-                    item.payload as unknown,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                    item.payload,
                   )
                 ) : (
                   <>
