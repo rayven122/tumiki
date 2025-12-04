@@ -71,9 +71,13 @@ const sendSlackNotification = async (feedbackData: {
       organizationName: feedbackData.organizationName,
     });
 
-    sendSlackMessage(webhookUrl, message).catch((error: unknown) => {
-      console.error(FEEDBACK_MESSAGES.SLACK_NOTIFICATION_FAILED, error);
-    });
+    const result = await sendSlackMessage(webhookUrl, message);
+    if (!result.success) {
+      console.error(
+        FEEDBACK_MESSAGES.SLACK_NOTIFICATION_FAILED,
+        result.error ?? "Unknown error",
+      );
+    }
   } catch (error: unknown) {
     console.error(FEEDBACK_MESSAGES.SLACK_NOTIFICATION_FAILED, error);
     // エラーを握りつぶす（ユーザーには影響させない）
