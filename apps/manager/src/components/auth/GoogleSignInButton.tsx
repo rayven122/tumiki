@@ -2,6 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 type GoogleSignInButtonProps = {
   callbackUrl?: string;
@@ -17,19 +18,20 @@ export const GoogleSignInButton = ({
   };
 
   return (
-    <button
+    <Button
       onClick={handleSignIn}
-      className="flex w-full items-center justify-center gap-3 rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:outline-none"
-      type="button"
+      variant="outline"
+      className="w-full"
+      size="lg"
     >
       <Image
         src="/logos/google.svg"
         alt="Google"
         width={20}
         height={20}
-        className="h-5 w-5"
+        className="mr-2"
       />
       {label}
-    </button>
+    </Button>
   );
 };
