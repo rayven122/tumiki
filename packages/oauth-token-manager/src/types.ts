@@ -21,6 +21,13 @@ export const decryptedTokenSchema = z.object({
 export type DecryptedToken = z.infer<typeof decryptedTokenSchema>;
 
 /**
+ * DecryptedToken型ガード
+ */
+export const isDecryptedToken = (value: unknown): value is DecryptedToken => {
+  return decryptedTokenSchema.safeParse(value).success;
+};
+
+/**
  * トークンリフレッシュレスポンス
  */
 export type TokenRefreshResponse = {

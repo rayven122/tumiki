@@ -8,6 +8,7 @@ export default tseslint.config(
       "dist/**",
       "node_modules/**",
       "mcp/**",
+      "src/generated/**",
       "tsup.config.ts",
       "vitest.config.ts",
       "prisma.config.ts",

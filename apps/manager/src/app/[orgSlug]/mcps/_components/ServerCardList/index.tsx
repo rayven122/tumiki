@@ -163,7 +163,10 @@ function ServerCardListSkeleton() {
   return (
     <div className="flex flex-wrap gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="h-64 w-full animate-pulse rounded-lg bg-gray-200 sm:w-[300px]" />
+        <div
+          key={i}
+          className="h-64 w-full animate-pulse rounded-lg bg-gray-200 sm:w-[300px]"
+        />
       ))}
     </div>
   );
