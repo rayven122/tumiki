@@ -1,11 +1,7 @@
 import { ipcMain } from "electron";
-import { getDb } from "../db";
-
-export type AuthTokenData = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: Date;
-};
+import { getDbSync } from "../db";
+import { encryptToken, decryptToken } from "../utils/encryption";
+import type { AuthTokenData } from "../../types/auth";
 
 /**
  * 認証関連の IPC ハンドラーを設定
@@ -14,7 +10,7 @@ export const setupAuthIpc = (): void => {
   // 認証トークン取得
   ipcMain.handle("auth:getToken", async () => {
     try {
-      const db = getDb();
+      const db = getDbSync();
       const token = await db.authToken.findFirst({
         orderBy: { createdAt: "desc" },
       });
@@ -29,7 +25,8 @@ export const setupAuthIpc = (): void => {
         return null;
       }
 
-      return token.accessToken;
+      // 暗号化されたトークンを復号化
+      return decryptToken(token.accessToken);
     } catch (error) {
       console.error("Failed to get auth token:", error);
       return null;
@@ -39,16 +36,16 @@ export const setupAuthIpc = (): void => {
   // トークン保存
   ipcMain.handle("auth:saveToken", async (_, tokenData: AuthTokenData) => {
     try {
-      const db = getDb();
+      const db = getDbSync();
 
       // 既存のトークンを削除（最新のもののみ保持）
       await db.authToken.deleteMany({});
 
-      // 新しいトークンを保存
+      // トークンを暗号化して保存
       await db.authToken.create({
         data: {
-          accessToken: tokenData.accessToken,
-          refreshToken: tokenData.refreshToken,
+          accessToken: encryptToken(tokenData.accessToken),
+          refreshToken: encryptToken(tokenData.refreshToken),
           expiresAt: tokenData.expiresAt,
         },
       });
@@ -64,7 +61,7 @@ export const setupAuthIpc = (): void => {
   // トークン削除（ログアウト時）
   ipcMain.handle("auth:clearToken", async () => {
     try {
-      const db = getDb();
+      const db = getDbSync();
       await db.authToken.deleteMany({});
       console.log("Auth token cleared");
       return { success: true };
@@ -77,7 +74,7 @@ export const setupAuthIpc = (): void => {
   // 認証状態確認
   ipcMain.handle("auth:isAuthenticated", async () => {
     try {
-      const db = getDb();
+      const db = getDbSync();
       const token = await db.authToken.findFirst({
         orderBy: { createdAt: "desc" },
       });

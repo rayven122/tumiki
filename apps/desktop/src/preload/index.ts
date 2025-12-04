@@ -1,10 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-
-export type AuthTokenData = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: Date;
-};
+import type { AuthTokenData } from "../types/auth";
 
 // Electron APIを安全に公開
 const api = {

@@ -21,10 +21,29 @@ const getDatabasePath = (): string => {
   return process.env.DESKTOP_DATABASE_URL || "file:./data/desktop.db";
 };
 
-let prisma: PrismaClient;
+let prisma: PrismaClient | undefined;
+let isConnecting = false;
 
-export const getDb = (): PrismaClient => {
-  if (!prisma) {
+/**
+ * データベース接続を取得
+ * 接続失敗時は自動的にリトライする
+ */
+export const getDb = async (): Promise<PrismaClient> => {
+  // 既に接続中の場合は待機
+  if (isConnecting) {
+    while (isConnecting) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  // 既存の接続がある場合はそれを返す
+  if (prisma) {
+    return prisma;
+  }
+
+  isConnecting = true;
+
+  try {
     prisma = new PrismaClient({
       datasources: {
         db: {
@@ -36,52 +55,49 @@ export const getDb = (): PrismaClient => {
           ? ["query", "error", "warn"]
           : ["error"],
     });
-  }
 
+    // 接続テスト
+    await prisma.$connect();
+    return prisma;
+  } catch (error) {
+    // 接続失敗時はクリーンアップ
+    if (prisma) {
+      await prisma.$disconnect().catch(() => {
+        // 切断エラーは無視
+      });
+      prisma = undefined;
+    }
+    throw error;
+  } finally {
+    isConnecting = false;
+  }
+};
+
+/**
+ * 同期的にデータベース接続を取得（既存の互換性のため）
+ * 注意: 新しいコードでは getDb() を使用してください
+ */
+export const getDbSync = (): PrismaClient => {
+  if (!prisma) {
+    throw new Error("Database not initialized. Call getDb() first.");
+  }
   return prisma;
 };
 
-// データベース初期化（必要なテーブルを作成）
+/**
+ * データベース初期化
+ * Prisma スキーマに基づいてテーブルが自動的に作成される
+ * アプリケーション起動前に `pnpm db:push` を実行する必要がある
+ */
 export const initializeDb = async (): Promise<void> => {
-  const db = getDb();
-
   try {
-    // Prisma migrate deploy を実行してスキーマを適用
-    // SQLiteの場合、db pushと同等の処理を行う
-    await db.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "auth_tokens" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "accessToken" TEXT NOT NULL,
-        "refreshToken" TEXT NOT NULL,
-        "expiresAt" DATETIME NOT NULL,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL
-      );
-    `);
+    const db = await getDb();
 
-    await db.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "log_sync_queue" (
-        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "serverId" TEXT NOT NULL,
-        "logEntry" TEXT NOT NULL,
-        "syncStatus" TEXT NOT NULL DEFAULT 'pending',
-        "retryCount" INTEGER NOT NULL DEFAULT 0,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "syncedAt" DATETIME
-      );
-    `);
-
-    await db.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "log_sync_queue_syncStatus_idx" ON "log_sync_queue"("syncStatus");
-    `);
-
-    await db.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "log_sync_queue_serverId_idx" ON "log_sync_queue"("serverId");
-    `);
-
-    console.log("Database initialized successfully");
+    // データベース接続を確認
+    await db.$queryRaw`SELECT 1`;
+    console.log("Database connection verified");
   } catch (error) {
-    console.error("Failed to initialize database:", error);
+    console.error("Failed to connect to database:", error);
     throw error;
   }
 };

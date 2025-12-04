@@ -4,6 +4,7 @@ import { Provider } from "jotai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { trpc, createTRPCClient } from "./utils/trpc";
+import { shouldRetryQuery, calculateRetryDelay } from "./utils/queryRetry";
 import "./styles/globals.css";
 
 const rootElement = document.getElementById("root");
@@ -18,26 +19,9 @@ const Root = () => {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // リトライ戦略
-            retry: (failureCount, error) => {
-              // ネットワークエラーの場合は3回までリトライ
-              if (error instanceof Error && error.message.includes("fetch")) {
-                return failureCount < 3;
-              }
-              // 認証エラー（401, 403）はリトライしない
-              if (
-                error &&
-                typeof error === "object" &&
-                "status" in error &&
-                (error.status === 401 || error.status === 403)
-              ) {
-                return false;
-              }
-              // その他のエラーは1回のみリトライ
-              return failureCount < 1;
-            },
-            retryDelay: (attemptIndex) =>
-              Math.min(1000 * 2 ** attemptIndex, 30000),
+            // リトライ戦略（utility関数を使用）
+            retry: shouldRetryQuery,
+            retryDelay: calculateRetryDelay,
             // ステイル時間（5分）
             staleTime: 5 * 60 * 1000,
             // キャッシュ時間（10分）

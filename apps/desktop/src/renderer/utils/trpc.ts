@@ -45,13 +45,17 @@ export const createTRPCClient = () => {
 
             clearTimeout(timeoutId);
 
-            // エラーレスポンスの詳細ログ
+            // エラーレスポンスの処理とエラー伝播
             if (!response.ok) {
+              const error = new Error(
+                `HTTP ${response.status}: ${response.statusText}`,
+              ) as Error & { status?: number };
+              error.status = response.status;
               console.error("tRPC request failed:", {
                 status: response.status,
-                statusText: response.statusText,
                 url,
               });
+              throw error;
             }
 
             return response;
