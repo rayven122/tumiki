@@ -6,11 +6,11 @@ export type UserMcpServerDetail =
 
 // リクエスト統計の型
 export type RequestStats =
-  RouterOutputs["v2"]["userMcpServer"]["getRequestStats"];
+  RouterOutputs["v2"]["userMcpServerRequestLog"]["getRequestStats"];
 
 // リクエストログの型
 export type RequestLog =
-  RouterOutputs["v2"]["userMcpServer"]["findRequestLogs"]["data"][number];
+  RouterOutputs["v2"]["userMcpServerRequestLog"]["findRequestLogs"]["data"][number];
 
 // ツール統計の型
 export type ToolStats =

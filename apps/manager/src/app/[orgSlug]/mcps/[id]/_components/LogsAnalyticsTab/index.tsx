@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -22,10 +22,11 @@ import { RequestLogsTable } from "./RequestLogsTable";
 import {
   calculateSuccessRate,
   calculateErrorPercentage,
-  getHourlyRequestData,
-  getDailyRequestData,
+  convertDailyStatsToHourlyData,
+  convertDailyStatsToChartData,
   getTimeRangeLabel,
   timeRangeToDays,
+  getDateRangeFromTimeRange,
   type TimeRange,
 } from "./utils";
 import { api } from "@/trpc/react";
@@ -41,12 +42,12 @@ export const LogsAnalyticsTab = ({
   requestStats,
 }: LogsAnalyticsTabProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(10);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
 
   // リクエストログ一覧を取得（ページネーション対応）
   const { data: logsData, isLoading } =
-    api.v2.userMcpServer.findRequestLogs.useQuery(
+    api.v2.userMcpServerRequestLog.findRequestLogs.useQuery(
       {
         userMcpServerId: serverId,
         page: currentPage,
@@ -56,16 +57,21 @@ export const LogsAnalyticsTab = ({
       { enabled: !!serverId },
     );
 
-  // グラフ用に指定期間のログを取得（最大1000件）
-  const { data: graphLogsData } = api.v2.userMcpServer.findRequestLogs.useQuery(
-    {
-      userMcpServerId: serverId,
-      page: 1,
-      pageSize: 1000,
-      days: timeRangeToDays(timeRange),
-    },
-    { enabled: !!serverId },
+  // グラフ用の日別統計データを取得
+  // useMemoでメモ化して、timeRangeが変更されない限り同じオブジェクトを返す
+  const dateRange = useMemo(
+    () => getDateRangeFromTimeRange(timeRange),
+    [timeRange],
   );
+  const { data: statsData } =
+    api.v2.userMcpServerRequestLog.getRequestLogsStats.useQuery(
+      {
+        userMcpServerId: serverId,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+      },
+      { enabled: !!serverId },
+    );
 
   const successRate = calculateSuccessRate(requestStats);
   const errorPercentage = calculateErrorPercentage(requestStats);
@@ -73,8 +79,8 @@ export const LogsAnalyticsTab = ({
   // 時間範囲に応じたグラフデータを生成
   const chartData =
     timeRange === "24h"
-      ? getHourlyRequestData(graphLogsData?.data).hourlyData
-      : getDailyRequestData(graphLogsData?.data, timeRange).dailyData;
+      ? convertDailyStatsToHourlyData(statsData).hourlyData
+      : convertDailyStatsToChartData(statsData).dailyData;
 
   const chartConfig = {
     count: {
