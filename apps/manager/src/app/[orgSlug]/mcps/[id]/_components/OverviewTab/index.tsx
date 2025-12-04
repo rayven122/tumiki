@@ -91,6 +91,8 @@ export const OverviewTab = ({
     });
   };
 
+  // 有効化されているツールの数（allowedTools）
+  const enabledToolCount = server.tools.filter((tool) => tool.isEnabled).length;
   const totalToolCount = server.tools.length;
 
   return (
@@ -105,7 +107,7 @@ export const OverviewTab = ({
       {server.tools.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">
-            利用可能なツール ({totalToolCount})
+            利用可能なツール ({enabledToolCount}/{totalToolCount})
           </h3>
 
           <div className="space-y-4">
