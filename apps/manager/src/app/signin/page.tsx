@@ -24,11 +24,11 @@ export default async function SignInPage() {
     >
       <GoogleSignInButton callbackUrl={redirectUrl} label="Googleでログイン" />
 
-      <div className="text-muted-foreground text-center text-sm">
+      <div className="text-center text-sm text-slate-600">
         <span>アカウントをお持ちでない方は </span>
         <Link
           href="/signup"
-          className="text-primary font-medium underline-offset-4 hover:underline"
+          className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
         >
           新規登録
         </Link>

@@ -5,24 +5,34 @@ import type { McpServerId } from "@/schema/ids";
 type FindRequestLogsInput = {
   userMcpServerId: McpServerId;
   organizationId: string;
-  limit?: number;
+  page: number;
+  pageSize: number;
+  days: number; // 期間（日数）- 1〜30日、必須
 };
 
 // リクエストログのレスポンススキーマ
-export const findRequestLogsOutputSchema = z.array(
-  z.object({
-    id: z.string(),
-    toolName: z.string(),
-    transportType: z.enum(["SSE", "STREAMABLE_HTTPS"]),
-    method: z.string(),
-    httpStatus: z.number(),
-    durationMs: z.number(),
-    inputBytes: z.number(),
-    outputBytes: z.number(),
-    userAgent: z.string().nullable(),
-    createdAt: z.date(),
+export const findRequestLogsOutputSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string(),
+      toolName: z.string(),
+      transportType: z.enum(["SSE", "STREAMABLE_HTTPS"]),
+      method: z.string(),
+      httpStatus: z.number(),
+      durationMs: z.number(),
+      inputBytes: z.number(),
+      outputBytes: z.number(),
+      userAgent: z.string().nullable(),
+      createdAt: z.date(),
+    }),
+  ),
+  pageInfo: z.object({
+    currentPage: z.number(),
+    pageSize: z.number(),
+    totalCount: z.number(),
+    totalPages: z.number(),
   }),
-);
+});
 
 export type FindRequestLogsOutput = z.infer<typeof findRequestLogsOutputSchema>;
 
@@ -41,7 +51,7 @@ const isValidTransportType = (log: {
   outputBytes: number;
   userAgent: string | null;
   createdAt: Date;
-}): log is FindRequestLogsOutput[number] => {
+}): log is FindRequestLogsOutput["data"][number] => {
   return (
     log.transportType === "SSE" || log.transportType === "STREAMABLE_HTTPS"
   );
@@ -51,7 +61,7 @@ export const findRequestLogs = async (
   tx: PrismaTransactionClient,
   input: FindRequestLogsInput,
 ): Promise<FindRequestLogsOutput> => {
-  const { userMcpServerId, organizationId, limit = 100 } = input;
+  const { userMcpServerId, organizationId, page, pageSize, days } = input;
 
   // サーバーの存在確認
   const server = await tx.mcpServer.findUnique({
@@ -66,16 +76,34 @@ export const findRequestLogs = async (
     throw new Error("サーバーが見つかりません");
   }
 
+  // 期間フィルタの計算（daysは必須）
+  const createdAtFilter = {
+    gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+  };
+
+  const whereClause = {
+    mcpServerId: userMcpServerId,
+    organizationId,
+    createdAt: createdAtFilter,
+  };
+
+  // 総件数を取得
+  const totalCount = await tx.mcpServerRequestLog.count({
+    where: whereClause,
+  });
+
+  // ページネーション計算
+  const skip = (page - 1) * pageSize;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
   // リクエストログを取得（最新順）
   const logs = await tx.mcpServerRequestLog.findMany({
-    where: {
-      mcpServerId: userMcpServerId,
-      organizationId,
-    },
+    where: whereClause,
     orderBy: {
       createdAt: "desc",
     },
-    take: limit,
+    skip,
+    take: pageSize,
     select: {
       id: true,
       toolName: true,
@@ -91,6 +119,15 @@ export const findRequestLogs = async (
   });
 
   // TransportTypeをフィルタリング（SSEとSTREAMABLE_HTTPSのみ返す）
-  // 型ガードを使用して型を絞り込む
-  return logs.filter(isValidTransportType);
+  const filteredLogs = logs.filter(isValidTransportType);
+
+  return {
+    data: filteredLogs,
+    pageInfo: {
+      currentPage: page,
+      pageSize,
+      totalCount,
+      totalPages,
+    },
+  };
 };

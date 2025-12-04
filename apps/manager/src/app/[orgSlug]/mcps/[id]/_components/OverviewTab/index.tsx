@@ -8,19 +8,13 @@ import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
-import type {
-  UserMcpServerDetail,
-  RequestStats,
-  ToolStats,
-  RequestLog,
-} from "../types";
+import type { UserMcpServerDetail, RequestStats, ToolStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
 
 type OverviewTabProps = {
   server: UserMcpServerDetail;
   requestStats?: RequestStats;
   toolStats?: ToolStats[];
-  requestLogs?: RequestLog[];
   serverId: McpServerId;
 };
 
@@ -28,7 +22,6 @@ export const OverviewTab = ({
   server,
   requestStats,
   toolStats,
-  requestLogs,
   serverId,
 }: OverviewTabProps) => {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -66,7 +59,16 @@ export const OverviewTab = ({
   const totalToolCount = server.tools.length;
 
   // 最新のログを5件取得
-  const recentLogs = requestLogs?.slice(0, 5) ?? [];
+  const { data: logsData } = api.v2.userMcpServer.findRequestLogs.useQuery(
+    {
+      userMcpServerId: serverId,
+      page: 1,
+      pageSize: 5,
+    },
+    { enabled: !!serverId },
+  );
+
+  const recentLogs = logsData?.data ?? [];
 
   return (
     <div className="space-y-6">

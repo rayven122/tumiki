@@ -10,7 +10,7 @@ export type RequestStats =
 
 // リクエストログの型
 export type RequestLog =
-  RouterOutputs["v2"]["userMcpServer"]["findRequestLogs"][number];
+  RouterOutputs["v2"]["userMcpServer"]["findRequestLogs"]["data"][number];
 
 // ツール統計の型
 export type ToolStats =
