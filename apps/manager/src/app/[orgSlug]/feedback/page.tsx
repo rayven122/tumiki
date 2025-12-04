@@ -1,13 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FeedbackForm } from "./_components/FeedbackForm";
 
-type FeedbackPageProps = {
-  params: Promise<{ orgSlug: string }>;
-};
-
-const FeedbackPage = async ({ params }: FeedbackPageProps) => {
-  const { orgSlug: _orgSlug } = await params;
-
+const FeedbackPage = async () => {
   return (
     <div className="container mx-auto max-w-2xl space-y-6 p-4">
       {/* ページヘッダー */}
