@@ -1,11 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
-interface FooterCTASectionProps {
-  setShowModal: (show: boolean) => void;
-}
-
-export const FooterCTASection = ({ setShowModal }: FooterCTASectionProps) => {
+export const FooterCTASection = () => {
   return (
     <section className="bg-gray-900 px-6 py-24 text-white lg:px-12">
       <div className="mx-auto max-w-4xl text-center">
@@ -34,13 +31,14 @@ export const FooterCTASection = ({ setShowModal }: FooterCTASectionProps) => {
           transition={{ duration: 0.6, delay: 0.4 }}
           viewport={{ once: true }}
         >
-          <Button
-            onClick={() => setShowModal(true)}
-            size="lg"
-            className="transform bg-white px-8 py-6 text-lg text-gray-900 shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all duration-300 hover:scale-[1.02] hover:bg-gray-100 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
-          >
-            Experience with Early Access
-          </Button>
+          <Link href="/signup">
+            <Button
+              size="lg"
+              className="transform bg-white px-8 py-6 text-lg text-gray-900 shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all duration-300 hover:scale-[1.02] hover:bg-gray-100 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
+            >
+              Sign Up Now
+            </Button>
+          </Link>
         </motion.div>
       </div>
     </section>

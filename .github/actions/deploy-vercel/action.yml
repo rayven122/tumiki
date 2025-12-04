@@ -37,6 +37,9 @@ runs:
         if [ "${{ inputs.stage }}" = "production" ]; then
           echo "📍 本番環境へデプロイ"
           OUTPUT=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
+        elif [ "${{ inputs.stage }}" = "staging" ]; then
+          echo "📍 ステージング環境へデプロイ"
+          OUTPUT=$(vercel deploy --target staging --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
         else
           echo "📍 プレビュー環境へデプロイ"
           OUTPUT=$(vercel deploy --yes --token="$VERCEL_TOKEN" 2>&1) || DEPLOY_EXIT_CODE=$?
@@ -53,14 +56,30 @@ runs:
         fi
 
         # Extract URL (try multiple patterns)
-        URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
+        VERCEL_URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.vercel\.app' | head -1)
 
-        if [ -z "$URL" ]; then
+        if [ -z "$VERCEL_URL" ]; then
           echo "❌ デプロイURLが出力から見つかりませんでした"
           echo "完全な出力:"
           echo "$OUTPUT"
           exit 1
         fi
 
-        echo "✅ デプロイ完了: $URL"
+        # Set URL based on environment
+        if [ "${{ inputs.stage }}" = "production" ]; then
+          URL="https://www.tumiki.cloud"
+          echo "✅ デプロイ完了"
+          echo "🌐 本番URL: $URL"
+          echo "📦 Vercel URL: $VERCEL_URL"
+        elif [ "${{ inputs.stage }}" = "staging" ]; then
+          URL="https://stg.tumiki.cloud"
+          echo "✅ デプロイ完了"
+          echo "🌐 ステージングURL: $URL"
+          echo "📦 Vercel URL: $VERCEL_URL"
+        else
+          # Preview環境ではVercel URLをそのまま使用
+          URL="$VERCEL_URL"
+          echo "✅ デプロイ完了: $URL"
+        fi
+
         echo "url=$URL" >> $GITHUB_OUTPUT

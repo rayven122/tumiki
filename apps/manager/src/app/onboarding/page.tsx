@@ -1,19 +1,16 @@
-import { api } from "@/trpc/server";
 import { OnboardingClient } from "./_components/OnboardingClient";
+import { auth } from "~/auth";
 
-const OnboardingPage = async () => {
-  // サーバーサイドで組織一覧を取得
-  let isFirstLogin = false;
+type OnboardingPageProps = {
+  searchParams: Promise<{ first?: string }>;
+};
 
-  try {
-    const organizations = await api.organization.getUserOrganizations();
-    isFirstLogin = organizations.length === 0;
-  } catch {
-    // エラーの場合は初回ログインとして扱う
-    isFirstLogin = true;
-  }
+const OnboardingPage = async ({ searchParams }: OnboardingPageProps) => {
+  const session = await auth();
+  const params = await searchParams;
+  const isFirstLogin = params.first === "true";
 
-  return <OnboardingClient isFirstLogin={isFirstLogin} />;
+  return <OnboardingClient session={session} isFirstLogin={isFirstLogin} />;
 };
 
 export default OnboardingPage;

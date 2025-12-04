@@ -17,9 +17,23 @@ export const alphanumericWithHyphenUnderscoreSchema = z
   );
 
 /**
+ * サーバー名で許可する文字の正規表現
+ * - 英数字（大文字・小文字）
+ * - 空白、ハイフン、アンダースコア、ドット
+ * - 日本語（ひらがな、カタカナ、漢字）は禁止
+ */
+export const SERVER_NAME_REGEX = /^[a-zA-Z0-9\s\-_.]+$/;
+
+/**
  * サーバー名やその他の名前フィールドで使用する共通バリデーション
  * 1文字以上100文字以下の制限付き
+ * 空白や大文字を含む名前を許可（日本語は禁止）
  */
-export const nameValidationSchema = alphanumericWithHyphenUnderscoreSchema
-  .min(1)
-  .max(100);
+export const nameValidationSchema = z
+  .string()
+  .min(1, "名前を入力してください")
+  .max(100, "名前は100文字以内で入力してください")
+  .regex(
+    SERVER_NAME_REGEX,
+    "名前には英数字、空白、ハイフン、アンダースコア、ドットのみ使用できます",
+  );

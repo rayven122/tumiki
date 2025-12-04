@@ -1,14 +1,6 @@
-import {
-  authenticatedProcedure,
-  createTRPCRouter,
-  protectedProcedure,
-} from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { getUserOrganizations } from "./getUserOrganizations";
-import { createOrganization, createOrganizationInputSchema } from "./create";
-import { createPersonalOrganization } from "./createPersonalOrganization";
 import { updateOrganization, updateOrganizationInputSchema } from "./update";
-import { deleteOrganization, deleteOrganizationInputSchema } from "./delete";
-import { restoreOrganization, restoreOrganizationInputSchema } from "./restore";
 import {
   getOrganizationById,
   getOrganizationByIdInputSchema,
@@ -45,6 +37,12 @@ import {
   setDefaultOrganizationInputSchema,
   setDefaultOrganizationOutputSchema,
 } from "./setDefaultOrganization";
+import {
+  getOrganizationBySlug,
+  getOrganizationBySlugInputSchema,
+  getOrganizationBySlugOutputSchema,
+} from "./getBySlug";
+import { getDefaultOrganization } from "./getDefaultOrganization";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
@@ -63,34 +61,14 @@ export const GetUserOrganizationsOutput = z.array(
 
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
-  getUserOrganizations: authenticatedProcedure
+  getUserOrganizations: protectedProcedure
     .output(GetUserOrganizationsOutput)
     .query(getUserOrganizations),
-
-  // 組織作成
-  create: authenticatedProcedure
-    .input(createOrganizationInputSchema)
-    .mutation(createOrganization),
-
-  // 個人組織作成（オンボーディング用）
-  createPersonalOrganization: authenticatedProcedure.mutation(
-    createPersonalOrganization,
-  ),
 
   // 組織更新
   update: protectedProcedure
     .input(updateOrganizationInputSchema)
     .mutation(updateOrganization),
-
-  // 組織削除（論理削除）
-  delete: protectedProcedure
-    .input(deleteOrganizationInputSchema)
-    .mutation(deleteOrganization),
-
-  // 組織復元
-  restore: protectedProcedure
-    .input(restoreOrganizationInputSchema)
-    .mutation(restoreOrganization),
 
   // 組織詳細取得
   getById: protectedProcedure
@@ -138,4 +116,13 @@ export const organizationRouter = createTRPCRouter({
     .input(setDefaultOrganizationInputSchema)
     .output(setDefaultOrganizationOutputSchema)
     .mutation(setDefaultOrganization),
+
+  // スラッグから組織取得
+  getBySlug: protectedProcedure
+    .input(getOrganizationBySlugInputSchema)
+    .output(getOrganizationBySlugOutputSchema)
+    .query(getOrganizationBySlug),
+
+  // デフォルト組織取得
+  getDefaultOrganization: protectedProcedure.query(getDefaultOrganization),
 });

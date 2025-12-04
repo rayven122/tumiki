@@ -1,30 +1,20 @@
-/**
- * 認証方式
- *
- * - jwt: JWT Bearer Token認証（Keycloak）
- * - apikey: API Key認証（X-API-Key または Bearer tumiki_...）
- */
-export type AuthMethod = "jwt" | "apikey";
+import type { AuthType } from "@tumiki/db";
+
+export type { AuthType };
 
 /**
- * API Key認証情報
+ * 統一認証コンテキスト
  *
- * API Key認証時にコンテキストに設定される情報。
- * JWT認証時は使用されず、jwtPayloadから直接情報を取得する。
+ * 認証ミドルウェア通過後に必ず設定される共通の認証情報。
+ * JWT認証とAPI Key認証の両方をサポートし、利用側は認証方式を
+ * 意識せずに必要な情報を取得できる。
  */
-export type ApiKeyAuthInfo = {
+export type AuthContext = {
+  authMethod: AuthType;
   organizationId: string;
-  mcpServerInstanceId: string;
-};
-
-/**
- * Tumiki カスタムJWTクレーム
- */
-export type TumikiJWTClaims = {
-  org_id: string; // 組織ID（Organization.id）
-  is_org_admin: boolean; // 組織管理者フラグ（OrganizationMember.isAdmin）
-  tumiki_user_id: string; // TumikiユーザーID（User.id）
-  mcp_instance_id?: string; // MCPサーバーインスタンスID（UserMcpServerInstance.id）- MCP接続時は必須、管理画面では不要
+  userId: string;
+  mcpServerId: string;
+  mcpApiKeyId?: string; // API Key認証時のみ
 };
 
 /**
@@ -32,7 +22,7 @@ export type TumikiJWTClaims = {
  */
 export type JWTPayload = {
   sub: string; // ユーザーID（Keycloak Subject）
-  tumiki: TumikiJWTClaims; // Tumikiカスタムクレーム
+  org_id: string; // 組織ID（Organization.id）
   azp?: string; // クライアントID (authorized party)
   scope?: string; // スコープ（スペース区切り）
   email?: string; // メールアドレス
@@ -46,27 +36,6 @@ export type JWTPayload = {
   exp?: number; // 有効期限
   iss?: string; // Issuer
   aud?: string | string[]; // Audience
-};
-
-/**
- * 名前空間付きツール
- */
-export type NamespacedTool = {
-  name: string; // "github.create_issue"
-  namespace: string; // "github"
-  originalName: string; // "create_issue"
-  description: string;
-  inputSchema: unknown;
-};
-
-/**
- * ツール実行結果
- */
-export type ToolCallResult = {
-  content: Array<{
-    type: string;
-    text: string;
-  }>;
 };
 
 /**
@@ -89,72 +58,12 @@ export type RemoteMcpServerConfig = {
  * コンテキストの型安全性を提供
  *
  * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
- * - API Key認証時: apiKeyAuthInfo のみ設定、authMethod = "apikey"
+ * - API Key認証時: authContext のみ設定、authMethod = "apikey"
  */
 export type HonoEnv = {
   Variables: {
-    authMethod?: AuthMethod; // 使用された認証方式
-    apiKeyAuthInfo?: ApiKeyAuthInfo; // API Key認証時のみ
+    authMethod?: AuthType; // 使用された認証方式
     jwtPayload?: JWTPayload; // JWT認証時のみ
+    authContext?: AuthContext; // 統一認証コンテキスト
   };
-};
-
-/**
- * 型ガード: JWT認証済みかチェック
- *
- * @param payload - チェック対象のペイロード
- * @returns JWTPayloadとして有効な場合true
- */
-export const isJWTPayload = (payload: unknown): payload is JWTPayload => {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const p = payload as Record<string, unknown>;
-
-  return (
-    typeof p.sub === "string" &&
-    typeof p.tumiki === "object" &&
-    p.tumiki !== null &&
-    typeof (p.tumiki as Record<string, unknown>).org_id === "string" &&
-    typeof (p.tumiki as Record<string, unknown>).tumiki_user_id === "string" &&
-    typeof (p.tumiki as Record<string, unknown>).is_org_admin === "boolean"
-  );
-};
-
-/**
- * 型ガード: API Key認証情報が有効かチェック
- *
- * @param info - チェック対象の認証情報
- * @returns ApiKeyAuthInfoとして有効な場合true
- */
-export const isApiKeyAuthInfo = (info: unknown): info is ApiKeyAuthInfo => {
-  if (typeof info !== "object" || info === null) {
-    return false;
-  }
-
-  const i = info as Record<string, unknown>;
-
-  return (
-    typeof i.organizationId === "string" &&
-    typeof i.mcpServerInstanceId === "string"
-  );
-};
-
-/**
- * 型ガード: MCP接続に必要なJWTペイロードかチェック
- *
- * MCP接続には mcp_instance_id が必須
- *
- * @param payload - チェック対象のペイロード
- * @returns MCP接続可能な場合true
- */
-export const isValidMcpJWTPayload = (
-  payload: unknown,
-): payload is JWTPayload => {
-  if (!isJWTPayload(payload)) {
-    return false;
-  }
-
-  return typeof payload.tumiki.mcp_instance_id === "string";
 };

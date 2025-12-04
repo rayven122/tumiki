@@ -2,7 +2,7 @@
  * MCP (JSON-RPC 2.0) エラー生成ユーティリティ
  */
 
-import { ERROR_CODES } from "../../constants/config.js";
+import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * JSON-RPC 2.0 エラーレスポンス型
@@ -20,7 +20,7 @@ export type McpErrorResponse = {
 /**
  * 統一されたMCPエラーレスポンスを生成
  *
- * @param code - エラーコード（ERROR_CODESを使用）
+ * @param code - エラーコード（ErrorCodeを使用）
  * @param message - エラーメッセージ
  * @param data - 追加データ（オプション）
  * @param requestId - リクエストID（オプション）
@@ -28,7 +28,7 @@ export type McpErrorResponse = {
  *
  * @example
  * ```ts
- * return c.json(createMcpError(ERROR_CODES.UNAUTHORIZED, "Invalid token"), 401);
+ * return c.json(createMcpError(ErrorCode.InternalError, "Invalid token"), 401);
  * ```
  */
 export const createMcpError = (
@@ -50,22 +50,24 @@ export const createMcpError = (
 
 /**
  * 認証エラーレスポンスを生成
+ * InvalidRequest (-32600) を使用
  */
 export const createUnauthorizedError = (
   message = "Authentication required",
   data?: unknown,
 ): McpErrorResponse => {
-  return createMcpError(ERROR_CODES.UNAUTHORIZED, message, data);
+  return createMcpError(ErrorCode.InvalidRequest, message, data);
 };
 
 /**
  * 権限拒否エラーレスポンスを生成
+ * InvalidRequest (-32600) を使用
  */
 export const createPermissionDeniedError = (
   message = "Permission denied",
   data?: unknown,
 ): McpErrorResponse => {
-  return createMcpError(ERROR_CODES.PERMISSION_DENIED, message, data);
+  return createMcpError(ErrorCode.InvalidRequest, message, data);
 };
 
 /**
@@ -75,5 +77,5 @@ export const createInvalidRequestError = (
   message = "Invalid request",
   data?: unknown,
 ): McpErrorResponse => {
-  return createMcpError(ERROR_CODES.INVALID_REQUEST, message, data);
+  return createMcpError(ErrorCode.InvalidRequest, message, data);
 };

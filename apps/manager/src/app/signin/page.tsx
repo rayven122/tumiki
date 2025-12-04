@@ -1,14 +1,28 @@
 import { AuthCard } from "@/components/auth/AuthCard";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import Link from "next/link";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  const session = await auth();
+  // セッションから直接組織slugを取得
+  const orgSlug = session?.user.organizationSlug;
+
+  // 組織情報がない場合はオンボーディングへ（初回ログインフラグ付き）
+  const redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding?first=true";
+
+  // 既にログイン済みの場合は、デフォルト組織のMCPページにリダイレクト
+  if (session?.user) {
+    redirect(redirectUrl);
+  }
+
   return (
     <AuthCard
       title="おかえりなさい"
       description="アカウントにログインしてください"
     >
-      <GoogleSignInButton callbackUrl="/mcp/servers" label="Googleでログイン" />
+      <GoogleSignInButton callbackUrl={redirectUrl} label="Googleでログイン" />
 
       <div className="text-muted-foreground text-center text-sm">
         <span>アカウントをお持ちでない方は </span>

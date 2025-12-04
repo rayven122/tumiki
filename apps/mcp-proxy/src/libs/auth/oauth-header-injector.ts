@@ -9,46 +9,46 @@ import {
   getValidToken,
   ReAuthRequiredError,
 } from "@tumiki/oauth-token-manager";
-import type { McpServer, UserMcpServerConfig } from "@tumiki/db/prisma";
+import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
+import { getCloudRunIdToken } from "./cloudRunAuth.js";
 import { logInfo, logError } from "../logger/index.js";
+import { z } from "zod";
+
+/**
+ * envVars の型安全なパーススキーマ
+ * Record<string, string> の形式を強制
+ */
+const envVarsSchema = z.record(z.string(), z.string());
 
 /**
  * 認証ヘッダーを注入
  *
- * @param mcpServer - MCPサーバー情報
- * @param userMcpConfig - ユーザーMCPサーバー設定
+ * @param mcpServerTemplate - MCPサーバーテンプレート情報
+ * @param mcpConfig - MCPサーバー設定（認証情報）
  * @param headers - リクエストヘッダー（in-place更新）
  */
 export const injectAuthHeaders = async (
-  mcpServer: McpServer,
-  userMcpConfig: UserMcpServerConfig,
+  mcpServerTemplate: McpServerTemplate,
+  mcpConfig: McpConfig,
   headers: Record<string, string>,
 ): Promise<void> => {
-  const { authType } = mcpServer;
+  const { authType } = mcpServerTemplate;
 
   switch (authType) {
     case "OAUTH": {
-      await injectOAuthHeaders(userMcpConfig, headers);
+      await injectOAuthHeaders(mcpConfig, headers);
       break;
     }
 
     case "API_KEY": {
-      injectApiKeyHeaders(mcpServer, userMcpConfig, headers);
+      await injectApiKeyHeaders(mcpServerTemplate, mcpConfig, headers);
       break;
     }
 
     case "NONE": {
       // 認証不要
       logInfo("No authentication required for MCP server", {
-        mcpServerId: mcpServer.id,
-      });
-      break;
-    }
-
-    case "CLOUD_RUN_IAM": {
-      // Cloud Run IAM認証（別途実装）
-      logInfo("Cloud Run IAM authentication not yet implemented", {
-        mcpServerId: mcpServer.id,
+        mcpServerTemplateId: mcpServerTemplate.id,
       });
       break;
     }
@@ -64,23 +64,31 @@ export const injectAuthHeaders = async (
  * OAuthトークンを取得してAuthorizationヘッダーに注入
  */
 const injectOAuthHeaders = async (
-  userMcpConfig: UserMcpServerConfig,
+  mcpConfig: McpConfig,
   headers: Record<string, string>,
 ): Promise<void> => {
   try {
+    // userIdの検証
+    if (!mcpConfig.userId) {
+      throw new Error(
+        `userId is required for OAuth authentication. MCP Config ID: ${mcpConfig.id}`,
+      );
+    }
+
     // @tumiki/oauth-token-manager でトークンを取得
     // 自動的にキャッシュから取得、期限切れ間近ならリフレッシュ
     const token = await getValidToken(
-      userMcpConfig.id,
-      userMcpConfig.organizationId,
+      mcpConfig.mcpServerTemplateId,
+      mcpConfig.userId,
     );
 
     // Authorization: Bearer ヘッダーを追加
     headers.Authorization = `Bearer ${token.accessToken}`;
 
     logInfo("OAuth token injected successfully", {
-      userMcpConfigId: userMcpConfig.id,
+      mcpConfigId: mcpConfig.id,
       expiresAt: token.expiresAt,
+      tokenPreview: token.accessToken.substring(0, 20),
     });
   } catch (error) {
     if (error instanceof ReAuthRequiredError) {
@@ -89,7 +97,7 @@ const injectOAuthHeaders = async (
 
       throw new Error(
         `OAuth token expired or invalid. Please re-authenticate in the Tumiki dashboard. ` +
-          `User MCP Config ID: ${userMcpConfig.id}`,
+          `MCP Config ID: ${mcpConfig.id}`,
       );
     }
 
@@ -104,47 +112,50 @@ const injectOAuthHeaders = async (
 /**
  * APIキーをヘッダーに注入
  */
-const injectApiKeyHeaders = (
-  mcpServer: McpServer,
-  userMcpConfig: UserMcpServerConfig,
+const injectApiKeyHeaders = async (
+  mcpServerTemplate: McpServerTemplate,
+  mcpConfig: McpConfig,
   headers: Record<string, string>,
-): void => {
+): Promise<void> => {
   try {
-    // envVarsをパース
+    // Cloud Run IAM認証が必要な場合、Authorizationヘッダーを追加
+    if (mcpServerTemplate.useCloudRunIam && mcpServerTemplate.url) {
+      const idToken = await getCloudRunIdToken(mcpServerTemplate.url);
+      headers.Authorization = `Bearer ${idToken}`;
+
+      logInfo("Cloud Run IAM authorization header added", {
+        mcpServerTemplateId: mcpServerTemplate.id,
+        mcpServerTemplateName: mcpServerTemplate.name,
+      });
+    }
+    // envVarsをパース（Zodで型安全にバリデーション）
     let envVars: Record<string, string>;
     try {
-      const parsed: unknown = JSON.parse(userMcpConfig.envVars);
-      if (
-        typeof parsed !== "object" ||
-        parsed === null ||
-        Array.isArray(parsed)
-      ) {
-        throw new Error("Invalid envVars format");
-      }
-      envVars = parsed as Record<string, string>;
+      const parsed: unknown = JSON.parse(mcpConfig.envVars);
+      envVars = envVarsSchema.parse(parsed);
     } catch (parseError) {
       logError("Failed to parse envVars", parseError as Error);
       throw new Error("Invalid environment variables configuration");
     }
 
-    // MCPサーバーで定義されたenvVarsのキー名を使用
-    // 例: ["X-API-Key"] → headers["X-API-Key"] = envVars["X-API-Key"]
-    if (mcpServer.envVars.length > 0) {
-      const headerName = mcpServer.envVars[0]; // 最初のenvVarをヘッダー名として使用
+    // MCPサーバーテンプレートで定義されたenvVarKeysのキー名を使用
+    // 例: ["Tumiki-API-Key"] → headers["Tumiki-API-Key"] = envVars["Tumiki-API-Key"]
+    if (mcpServerTemplate.envVarKeys.length > 0) {
+      const headerName = mcpServerTemplate.envVarKeys[0]; // 最初のenvVarをヘッダー名として使用
 
       if (headerName && envVars[headerName]) {
         headers[headerName] = envVars[headerName];
 
         logInfo("API key header injected successfully", {
           headerName,
-          mcpServerId: mcpServer.id,
+          mcpServerTemplateId: mcpServerTemplate.id,
         });
       } else {
         throw new Error(`API key not found for header: ${headerName}`);
       }
     } else {
       // デフォルトヘッダー名を使用
-      const defaultHeaderName = "X-API-Key";
+      const defaultHeaderName = "Tumiki-API-Key";
       const apiKey = envVars[defaultHeaderName] || envVars.API_KEY;
 
       if (apiKey) {
@@ -152,7 +163,7 @@ const injectApiKeyHeaders = (
 
         logInfo("API key header injected with default header name", {
           headerName: defaultHeaderName,
-          mcpServerId: mcpServer.id,
+          mcpServerTemplateId: mcpServerTemplate.id,
         });
       } else {
         throw new Error("API key not found in environment variables");

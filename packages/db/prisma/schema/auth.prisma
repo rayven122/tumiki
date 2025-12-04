@@ -11,10 +11,9 @@ enum Role {
 }
 
 /// @namespace Auth
-/// @namespace UserMcpServer
 /// @namespace Chat
 model User {
-  /// Auth0のユーザーID (sub) - 主キーとして使用
+  /// ユーザーID - 主キーとして使用
   id                    String                   @id
   /// ユーザー名
   name                  String?
@@ -25,27 +24,27 @@ model User {
   /// プロフィール画像のURL
   image                 String?
   /// ユーザーの権限
-  role                  Role                     @default(USER)
-  /// デフォルトの組織ID
-  defaultOrganizationId String?
+  role                    Role          @default(USER)
+  /// デフォルト組織のスラッグ
+  defaultOrganizationSlug String?
   /// デフォルト組織への参照
-  defaultOrganization   Organization?            @relation("UserDefaultOrganization", fields: [defaultOrganizationId], references: [id])
-  organizations         Organization[]
+  defaultOrganization     Organization? @relation("UserDefaultOrganization", fields: [defaultOrganizationSlug], references: [slug])
+  organizations           Organization[]
   members               OrganizationMember[]
   invitations           OrganizationInvitation[]
   /// Chat関連
   Chat                  Chat[]
   Document              Document[]
   Suggestion            Suggestion[]
-  /// OAuth Sessions リレーション
-  oauthSessions         OAuthSession[]
 
-  /// API Keys リレーション
-  apiKeys McpApiKey[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  mcpServers McpServer[]
+  /// MCP関連
+  mcpServerTemplates McpServerTemplate[]
+  mcpConfigs         McpConfig[]
+  mcpApiKeys         McpApiKey[]
+  mcpOAuthTokens     McpOAuthToken[]
 
   /// Auth.js adapter
   accounts Account[]
@@ -74,7 +73,6 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@index([userId])
 }
 
 /// @namespace Auth
@@ -88,8 +86,6 @@ model Session {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([userId])
 }
 
 /// @namespace Auth

@@ -4,7 +4,8 @@
     "noEmit": false,
     "outDir": "./dist",
     "emitDeclarationOnly": false,
-    "types": ["vitest/globals", "vitest-environment-vprisma"]
+    "lib": ["ES2022"],
+    "types": ["node", "vitest/globals", "vitest-environment-vprisma"]
   },
   "include": ["src", "prisma/generated", "src/testing/**/*"],
   "exclude": [

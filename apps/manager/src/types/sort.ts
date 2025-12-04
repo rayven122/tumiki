@@ -1,11 +1,11 @@
 import type { RouterOutputs } from "@/trpc/react";
 import type { DragEndEvent } from "@dnd-kit/core";
 
-export type ServerInstance =
-  RouterOutputs["userMcpServerInstance"]["findCustomServers"][number];
+export type UserMcpServer =
+  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
 
 export type SortableServerHookReturn = {
-  servers: ServerInstance[];
+  servers: UserMcpServer[];
   handleDragEnd: (event: DragEndEvent) => void;
   handleConfirmChanges: () => Promise<void>;
   handleCancelChanges: () => void;
@@ -13,7 +13,7 @@ export type SortableServerHookReturn = {
 };
 
 export type SortableServerHookParams = {
-  originalServers: ServerInstance[];
+  originalServers: UserMcpServer[];
   updateMutation: {
     mutateAsync: (params: {
       updates: { id: string; displayOrder: number }[];
