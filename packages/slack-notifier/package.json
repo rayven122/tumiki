@@ -1,21 +1,39 @@
 {
   "name": "@tumiki/slack-notifier",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
+    "dev": "tsc --watch",
     "build": "tsc",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.25.1"
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
     "@types/node": "^22.19.1",
-    "vitest": "^4.0.15"
-  }
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.48.1",
+    "vitest": "catalog:"
+  },
+  "prettier": "@tumiki/prettier-config"
 }

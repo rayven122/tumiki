@@ -1,16 +1,17 @@
-import { describe, test, expect } from "vitest";
-import { createFeedbackNotification } from "../templates/feedback";
+import { describe, expect, test } from "vitest";
+
 import type { FeedbackNotificationData } from "../templates/feedback";
+import { createFeedbackNotification } from "../templates/feedback";
 
 describe("createFeedbackNotification", () => {
   const baseData: FeedbackNotificationData = {
+    feedbackId: "test-feedback-id",
     type: "INQUIRY",
     subject: "Test Subject",
     content: "Test Content",
     userName: "Test User",
     userEmail: "test@example.com",
     organizationName: "Test Org",
-    feedbackUrl: "https://example.com/feedback/123",
   };
 
   test("お問い合わせ通知を正しく生成する", () => {

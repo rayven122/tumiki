@@ -1,10 +1,6 @@
 export { sendSlackMessage } from "./client.js";
 
-export type {
-  SlackMessage,
-  SlackResponse,
-  SlackBlock,
-} from "./types/index.js";
+export type { SlackMessage, SlackResponse, SlackBlock } from "./types/index.js";
 
 export {
   createFeedbackNotification,
