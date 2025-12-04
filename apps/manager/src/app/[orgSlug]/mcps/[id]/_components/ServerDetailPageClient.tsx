@@ -76,7 +76,6 @@ export const ServerDetailPageClient = ({
     { enabled: !!serverId },
   );
 
-
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
       onSuccess: async () => {

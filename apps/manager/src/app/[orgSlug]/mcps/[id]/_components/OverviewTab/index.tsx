@@ -36,14 +36,17 @@ export const OverviewTab = ({
 
       // UIを楽観的に更新
       if (previousData) {
-        utils.v2.userMcpServer.findById.setData({ id: serverId }, {
-          ...previousData,
-          tools: previousData.tools.map((tool) =>
-            tool.id === variables.toolId
-              ? { ...tool, isEnabled: variables.isEnabled }
-              : tool
-          ),
-        });
+        utils.v2.userMcpServer.findById.setData(
+          { id: serverId },
+          {
+            ...previousData,
+            tools: previousData.tools.map((tool) =>
+              tool.id === variables.toolId
+                ? { ...tool, isEnabled: variables.isEnabled }
+                : tool,
+            ),
+          },
+        );
       }
 
       // ロールバック用に前のデータを返す
@@ -57,7 +60,7 @@ export const OverviewTab = ({
       if (context?.previousData) {
         utils.v2.userMcpServer.findById.setData(
           { id: serverId },
-          context.previousData
+          context.previousData,
         );
       }
       toast.error(error.message);
