@@ -28,7 +28,7 @@ export default async function SignInPage() {
         <span>アカウントをお持ちでない方は </span>
         <Link
           href="/signup"
-          className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          className="text-primary font-medium underline-offset-4 hover:underline"
         >
           新規登録
         </Link>
