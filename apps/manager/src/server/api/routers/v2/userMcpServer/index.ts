@@ -22,14 +22,6 @@ import {
 } from "./updateDisplayOrder";
 import { updateName } from "./updateName";
 import { findById, findByIdOutputSchema } from "./findById";
-import {
-  getRequestStats,
-  getRequestStatsOutputSchema,
-} from "./getRequestStats";
-import {
-  findRequestLogs,
-  findRequestLogsOutputSchema,
-} from "./findRequestLogs";
 import { getToolStats, getToolStatsOutputSchema } from "./getToolStats";
 import {
   updateServerStatus,
@@ -113,20 +105,6 @@ export const HandleOAuthCallbackOutputV2 = z.object({
 // サーバー詳細取得の入力スキーマ
 export const FindByIdInputV2 = z.object({
   id: McpServerIdSchema,
-});
-
-// リクエスト統計取得の入力スキーマ
-export const GetRequestStatsInputV2 = z.object({
-  userMcpServerId: McpServerIdSchema,
-});
-
-// リクエストログ取得の入力スキーマ
-export const FindRequestLogsInputV2 = z.object({
-  userMcpServerId: McpServerIdSchema,
-  page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(1000).default(50),
-  // 期間（日数）- 1〜30日、必須
-  days: z.number().int().min(1).max(30),
 });
 
 // ツール統計取得の入力スキーマ
@@ -278,31 +256,6 @@ export const userMcpServerRouter = createTRPCRouter({
       return await findById(ctx.db, {
         id: input.id,
         organizationId: ctx.session.user.organizationId,
-      });
-    }),
-
-  // リクエスト統計取得
-  getRequestStats: protectedProcedure
-    .input(GetRequestStatsInputV2)
-    .output(getRequestStatsOutputSchema)
-    .query(async ({ ctx, input }) => {
-      return await getRequestStats(ctx.db, {
-        userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
-      });
-    }),
-
-  // リクエストログ取得
-  findRequestLogs: protectedProcedure
-    .input(FindRequestLogsInputV2)
-    .output(findRequestLogsOutputSchema)
-    .query(async ({ ctx, input }) => {
-      return await findRequestLogs(ctx.db, {
-        userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
-        page: input.page,
-        pageSize: input.pageSize,
-        days: input.days,
       });
     }),
 
