@@ -8,6 +8,7 @@
 import {
   getValidToken,
   ReAuthRequiredError,
+  type DecryptedToken,
 } from "@tumiki/oauth-token-manager";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 import { getCloudRunIdToken } from "./cloudRunAuth.js";
@@ -77,17 +78,21 @@ const injectOAuthHeaders = async (
 
     // @tumiki/oauth-token-manager でトークンを取得
     // 自動的にキャッシュから取得、期限切れ間近ならリフレッシュ
-    const token = await getValidToken(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const token: DecryptedToken = await getValidToken(
       mcpConfig.mcpServerTemplateId,
       mcpConfig.userId,
     );
 
     // Authorization: Bearer ヘッダーを追加
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     headers.Authorization = `Bearer ${token.accessToken}`;
 
     logInfo("OAuth token injected successfully", {
       mcpConfigId: mcpConfig.id,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expiresAt: token.expiresAt,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       tokenPreview: token.accessToken.substring(0, 20),
     });
   } catch (error) {
