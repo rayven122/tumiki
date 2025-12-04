@@ -58,12 +58,13 @@ export const OverviewTab = ({
   const enabledToolCount = server.tools.filter((tool) => tool.isEnabled).length;
   const totalToolCount = server.tools.length;
 
-  // 最新のログを5件取得
+  // 最新のログを5件取得（過去7日間）
   const { data: logsData } = api.v2.userMcpServer.findRequestLogs.useQuery(
     {
       userMcpServerId: serverId,
       page: 1,
       pageSize: 5,
+      days: 7,
     },
     { enabled: !!serverId },
   );

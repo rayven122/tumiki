@@ -51,6 +51,7 @@ export const LogsAnalyticsTab = ({
         userMcpServerId: serverId,
         page: currentPage,
         pageSize,
+        days: timeRangeToDays(timeRange),
       },
       { enabled: !!serverId },
     );
