@@ -113,8 +113,8 @@ export const getHourlyRequestData = (
     const logDate = new Date(log.createdAt);
     if (logDate >= twentyFourHoursAgo && logDate <= now) {
       const hour = logDate.getHours();
-      if (hour >= 0 && hour < 24) {
-        hourlyData[hour]!.count++;
+      if (hour >= 0 && hour < 24 && hourlyData[hour]) {
+        hourlyData[hour].count++;
       }
     }
   }
@@ -164,8 +164,8 @@ export const getDailyRequestData = (
           (24 * 60 * 60 * 1000),
       );
       const index = days - 1 - daysDiff;
-      if (index >= 0 && index < days) {
-        dailyData[index]!.count++;
+      if (index >= 0 && index < days && dailyData[index]) {
+        dailyData[index].count++;
       }
     }
   }
@@ -197,7 +197,10 @@ export const convertDailyStatsToHourlyData = (
     // 24時間の場合は、1日のトータルを現在時刻に振り分ける
     // より詳細な時間別データが必要な場合は、サーバー側で時間別集計を実装する必要がある
     const currentHour = new Date().getHours();
-    hourlyData[currentHour]!.count = today.totalCount;
+    const currentHourData = hourlyData[currentHour];
+    if (currentHourData) {
+      currentHourData.count = today.totalCount;
+    }
   }
 
   const maxCount = Math.max(...hourlyData.map((d) => d.count));

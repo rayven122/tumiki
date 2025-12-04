@@ -1,4 +1,5 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { TransportType } from "@tumiki/db";
 import { z } from "zod";
 import type { McpServerId } from "@/schema/ids";
 
@@ -36,27 +37,6 @@ export const findRequestLogsOutputSchema = z.object({
 
 export type FindRequestLogsOutput = z.infer<typeof findRequestLogsOutputSchema>;
 
-/**
- * TransportTypeが SSE または STREAMABLE_HTTPS かどうかを判定する型ガード
- * 戻り値の型はFindRequestLogsOutputの要素型と一致させる
- */
-const isValidTransportType = (log: {
-  id: string;
-  toolName: string;
-  transportType: string;
-  method: string;
-  httpStatus: number;
-  durationMs: number;
-  inputBytes: number;
-  outputBytes: number;
-  userAgent: string | null;
-  createdAt: Date;
-}): log is FindRequestLogsOutput["data"][number] => {
-  return (
-    log.transportType === "SSE" || log.transportType === "STREAMABLE_HTTPS"
-  );
-};
-
 export const findRequestLogs = async (
   tx: PrismaTransactionClient,
   input: FindRequestLogsInput,
@@ -81,13 +61,17 @@ export const findRequestLogs = async (
     gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
   };
 
+  // TransportTypeをDB層でフィルタリング（SSEとSTREAMABLE_HTTPSのみ）
   const whereClause = {
     mcpServerId: userMcpServerId,
     organizationId,
     createdAt: createdAtFilter,
+    transportType: {
+      in: [TransportType.SSE, TransportType.STREAMABLE_HTTPS],
+    },
   };
 
-  // 総件数を取得
+  // 総件数を取得（フィルタ後）
   const totalCount = await tx.mcpServerRequestLog.count({
     where: whereClause,
   });
@@ -118,11 +102,11 @@ export const findRequestLogs = async (
     },
   });
 
-  // TransportTypeをフィルタリング（SSEとSTREAMABLE_HTTPSのみ返す）
-  const filteredLogs = logs.filter(isValidTransportType);
+  // DB層でフィルタリング済みなので、型アサーションで安全に変換
+  const typedLogs = logs as FindRequestLogsOutput["data"];
 
   return {
-    data: filteredLogs,
+    data: typedLogs,
     pageInfo: {
       currentPage: page,
       pageSize,
