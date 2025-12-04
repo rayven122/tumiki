@@ -123,7 +123,10 @@ export const GetRequestStatsInputV2 = z.object({
 // リクエストログ取得の入力スキーマ
 export const FindRequestLogsInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
-  limit: z.number().optional(),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(50),
+  // 期間（日数）- 1〜30日、必須
+  days: z.number().int().min(1).max(30),
 });
 
 // ツール統計取得の入力スキーマ
@@ -297,7 +300,9 @@ export const userMcpServerRouter = createTRPCRouter({
       return await findRequestLogs(ctx.db, {
         userMcpServerId: input.userMcpServerId,
         organizationId: ctx.session.user.organizationId,
-        limit: input.limit ?? undefined,
+        page: input.page,
+        pageSize: input.pageSize,
+        days: input.days,
       });
     }),
 

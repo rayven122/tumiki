@@ -76,12 +76,6 @@ export const ServerDetailPageClient = ({
     { enabled: !!serverId },
   );
 
-  // リクエストログ一覧を取得
-  const { data: requestLogs } = api.v2.userMcpServer.findRequestLogs.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
-
   // ツール統計を取得
   const { data: toolStats } = api.v2.userMcpServer.getToolStats.useQuery(
     { userMcpServerId: serverId as McpServerId },
@@ -403,7 +397,6 @@ export const ServerDetailPageClient = ({
                   server={server}
                   requestStats={requestStats}
                   toolStats={toolStats}
-                  requestLogs={requestLogs}
                   serverId={serverId as McpServerId}
                 />
               );
@@ -417,7 +410,12 @@ export const ServerDetailPageClient = ({
               );
             }
             if (activeTab === "logs") {
-              return <LogsAnalyticsTab requestLogs={requestLogs} />;
+              return (
+                <LogsAnalyticsTab
+                  serverId={serverId as McpServerId}
+                  requestStats={requestStats}
+                />
+              );
             }
             return null;
           }}
