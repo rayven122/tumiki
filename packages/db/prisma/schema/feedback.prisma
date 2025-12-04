@@ -1,0 +1,57 @@
+/// フィードバック（お問い合わせ・機能要望）
+/// @namespace Feedback
+model Feedback {
+  id             String         @id @default(cuid())
+  /// フィードバック種類
+  type           FeedbackType
+  /// 件名
+  subject        String
+  /// 内容（長文対応）
+  content        String         @db.Text
+  /// ステータス
+  status         FeedbackStatus @default(PENDING)
+
+  /// 送信者
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 組織
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// ユーザーエージェント（ブラウザ情報）
+  userAgent      String?
+  /// 追加メタデータ（拡張用）
+  metadata       Json?
+
+  /// Slack投稿のタイムスタンプ（スレッド返信用）
+  slackMessageTs String?
+
+  /// 管理者メモ（将来的な拡張用）
+  adminNote      String?        @db.Text
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+/// フィードバック種類
+/// @namespace Feedback
+enum FeedbackType {
+  /// お問い合わせ
+  INQUIRY
+  /// 機能要望
+  FEATURE_REQUEST
+}
+
+/// フィードバックステータス
+/// @namespace Feedback
+enum FeedbackStatus {
+  /// 未対応
+  PENDING
+  /// 対応中
+  IN_PROGRESS
+  /// 解決済み
+  RESOLVED
+  /// クローズ
+  CLOSED
+}
