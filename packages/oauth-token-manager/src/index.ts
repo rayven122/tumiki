@@ -37,6 +37,7 @@ export {
 
 // 型定義
 export type { DecryptedToken, TokenRefreshResponse } from "./types.js";
+export { decryptedTokenSchema, isDecryptedToken } from "./types.js";
 
 // エラークラス
 export { ReAuthRequiredError, TokenRefreshError } from "./types.js";
