@@ -71,7 +71,7 @@ const sendSlackNotification = async (feedbackData: {
       organizationName: feedbackData.organizationName,
     });
 
-    void sendSlackMessage(webhookUrl, message).catch((error: unknown) => {
+    sendSlackMessage(webhookUrl, message).catch((error: unknown) => {
       console.error(FEEDBACK_MESSAGES.SLACK_NOTIFICATION_FAILED, error);
     });
   } catch (error: unknown) {
