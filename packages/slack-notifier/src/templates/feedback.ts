@@ -1,4 +1,5 @@
 import type { FeedbackType } from "@tumiki/db";
+
 import type { SlackMessage } from "../types/index.js";
 
 export type FeedbackNotificationData = {
