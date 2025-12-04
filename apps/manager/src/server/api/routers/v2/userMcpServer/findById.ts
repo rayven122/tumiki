@@ -59,22 +59,20 @@ export const findById = async (
       allowedTools: {
         select: {
           id: true,
-          name: true,
-          description: true,
-          inputSchema: true,
         },
       },
       mcpServers: {
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          tags: true,
-          iconPath: true,
-          url: true,
-          authType: true,
-        },
         take: 1,
+        include: {
+          mcpTools: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              inputSchema: true,
+            },
+          },
+        },
       },
     },
   });
@@ -84,6 +82,10 @@ export const findById = async (
   }
 
   const mcpServerTemplate = server.mcpServers?.[0];
+  const allowedToolIds = new Set(server.allowedTools.map((tool) => tool.id));
+
+  // MCPテンプレートの全ツールを取得し、allowedToolsに含まれているかをisEnabledで示す
+  const allTools = mcpServerTemplate?.mcpTools ?? [];
 
   return {
     id: server.id,
@@ -94,11 +96,21 @@ export const findById = async (
     serverType: server.serverType,
     authType: server.authType,
     mcpServerTemplateId: mcpServerTemplate?.id ?? null,
-    tools: server.allowedTools.map((tool) => ({
+    tools: allTools.map((tool) => ({
       ...tool,
-      isEnabled: true, // allowedToolsに含まれているツールは全て有効
+      isEnabled: allowedToolIds.has(tool.id),
     })),
-    mcpServer: mcpServerTemplate ?? null,
+    mcpServer: mcpServerTemplate
+      ? {
+          id: mcpServerTemplate.id,
+          name: mcpServerTemplate.name,
+          description: mcpServerTemplate.description,
+          tags: mcpServerTemplate.tags,
+          iconPath: mcpServerTemplate.iconPath,
+          url: mcpServerTemplate.url,
+          authType: mcpServerTemplate.authType,
+        }
+      : null,
     createdAt: server.createdAt,
     updatedAt: server.updatedAt,
   };
