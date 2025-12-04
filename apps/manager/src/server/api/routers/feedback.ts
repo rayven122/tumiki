@@ -6,7 +6,7 @@ import {
   createFeedbackNotification,
 } from "@tumiki/slack-notifier";
 import { FeedbackIdSchema } from "@/schema/ids";
-import type { Prisma } from "@tumiki/db";
+import type { FeedbackType, Prisma } from "@tumiki/db";
 
 // 入力スキーマ
 const createFeedbackInputSchema = z.object({
@@ -46,13 +46,12 @@ const FEEDBACK_MESSAGES = {
  * Slack通知を送信する（非同期、エラーは握りつぶす）
  */
 const sendSlackNotification = async (feedbackData: {
-  type: "INQUIRY" | "FEATURE_REQUEST";
+  type: FeedbackType;
   subject: string;
   content: string;
   userName: string;
   userEmail: string;
   organizationName: string;
-  organizationSlug: string;
   feedbackId: string;
 }): Promise<void> => {
   try {
@@ -62,19 +61,14 @@ const sendSlackNotification = async (feedbackData: {
       return;
     }
 
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? process.env.NEXTAUTH_URL
-        : "https://local.tumiki.cloud:3000";
-
     const message = createFeedbackNotification({
+      feedbackId: feedbackData.feedbackId,
       type: feedbackData.type,
       subject: feedbackData.subject,
       content: feedbackData.content,
       userName: feedbackData.userName,
       userEmail: feedbackData.userEmail,
       organizationName: feedbackData.organizationName,
-      feedbackUrl: `${baseUrl}/${feedbackData.organizationSlug}/feedback`,
     });
 
     void sendSlackMessage(webhookUrl, message).catch((error: unknown) => {
@@ -124,7 +118,6 @@ export const feedbackRouter = createTRPCRouter({
           userName: feedback.user.name ?? "Unknown User",
           userEmail: feedback.user.email ?? "no-email@example.com",
           organizationName: feedback.organization.name,
-          organizationSlug: feedback.organization.slug,
           feedbackId: feedback.id,
         });
 
