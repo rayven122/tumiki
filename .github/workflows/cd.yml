@@ -52,10 +52,16 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Build packages (database only)
-        shell: bash
-        run: |
-          pnpm run --filter @tumiki/db build
+        run: pnpm turbo build --filter=@tumiki/db
 
       - name: Migrate staging/production database
         id: migrate
@@ -91,8 +97,16 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Build packages
-        uses: ./.github/actions/build-packages
+        run: pnpm turbo build
 
       - name: Configure git user for deployment
         run: |
@@ -131,8 +145,16 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Build packages
-        uses: ./.github/actions/build-packages
+        run: pnpm turbo build
 
       - name: Deploy to Cloud Run
         id: deploy-cloudrun
