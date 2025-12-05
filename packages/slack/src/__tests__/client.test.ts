@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { SlackMessage } from "../types/index";
+import type { SlackMessage } from "../client";
 import { sendSlackMessage } from "../client";
 
 describe("sendSlackMessage", () => {
@@ -20,9 +20,10 @@ describe("sendSlackMessage", () => {
       status: 200,
     } as Response);
 
-    const result = await sendSlackMessage(mockWebhookUrl, mockMessage);
+    await expect(
+      sendSlackMessage(mockWebhookUrl, mockMessage),
+    ).resolves.toBeUndefined();
 
-    expect(result.success).toStrictEqual(true);
     expect(global.fetch).toHaveBeenCalledWith(
       mockWebhookUrl,
       expect.objectContaining({
@@ -35,27 +36,25 @@ describe("sendSlackMessage", () => {
     );
   });
 
-  test("API エラー時にエラーレスポンスを返す", async () => {
+  test("API エラー時に例外をスローする", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
       status: 400,
       text: async () => "Bad Request",
     } as Response);
 
-    const result = await sendSlackMessage(mockWebhookUrl, mockMessage);
-
-    expect(result.success).toStrictEqual(false);
-    expect(result.error).toBeDefined();
+    await expect(sendSlackMessage(mockWebhookUrl, mockMessage)).rejects.toThrow(
+      "Slack API error: 400 Bad Request",
+    );
   });
 
-  test("ネットワークエラー時にエラーレスポンスを返す", async () => {
+  test("ネットワークエラー時に例外をスローする", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("Network error"),
     );
 
-    const result = await sendSlackMessage(mockWebhookUrl, mockMessage);
-
-    expect(result.success).toStrictEqual(false);
-    expect(result.error).toStrictEqual("Network error");
+    await expect(sendSlackMessage(mockWebhookUrl, mockMessage)).rejects.toThrow(
+      "Network error",
+    );
   });
 });

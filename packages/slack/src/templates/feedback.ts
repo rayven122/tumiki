@@ -1,6 +1,6 @@
 import type { FeedbackType } from "@tumiki/db";
 
-import type { SlackMessage } from "../types/index.js";
+import type { SlackMessage } from "../client.js";
 
 export type FeedbackNotificationData = {
   feedbackId: string;
@@ -20,10 +20,14 @@ export const createFeedbackNotification = (
   const typeLabel = data.type === "INQUIRY" ? "お問い合わせ" : "機能要望";
 
   // 内容を適切な長さに制限（Slackの制限を考慮）
-  const maxContentLength = 1000;
+  // Slack Block Kitのtext fieldは3000文字まで
+  // プレフィックス「📝 *内容*\n」を考慮して制限を設定
+  const prefix = "📝 *内容*\n";
+  const suffix = "...\n_（内容が長いため省略されました）_";
+  const maxContentLength = 3000 - prefix.length - suffix.length;
   const truncatedContent =
     data.content.length > maxContentLength
-      ? `${data.content.slice(0, maxContentLength)}...\n_（内容が長いため省略されました）_`
+      ? `${data.content.slice(0, maxContentLength)}${suffix}`
       : data.content;
 
   return {
