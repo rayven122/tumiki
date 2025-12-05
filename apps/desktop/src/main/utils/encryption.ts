@@ -7,7 +7,11 @@ import { safeStorage } from "electron";
  */
 export const encryptToken = (plainText: string): string => {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error("暗号化が利用できません");
+    console.warn(
+      "暗号化サービスが利用できません。プレーンテキストで保存されます。",
+    );
+    // プレーンテキスト保存へのフォールバック（Base64エンコードのみ）
+    return Buffer.from(plainText, "utf8").toString("base64");
   }
 
   const encryptedBuffer = safeStorage.encryptString(plainText);
@@ -21,7 +25,11 @@ export const encryptToken = (plainText: string): string => {
  */
 export const decryptToken = (encryptedText: string): string => {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error("復号化が利用できません");
+    console.warn(
+      "暗号化サービスが利用できません。プレーンテキストとして復号化します。",
+    );
+    // プレーンテキストからの復号化（Base64デコードのみ）
+    return Buffer.from(encryptedText, "base64").toString("utf8");
   }
 
   const encryptedBuffer = Buffer.from(encryptedText, "base64");

@@ -34,17 +34,24 @@ export const createTRPCClient = () => {
 
         // フェッチオプション
         fetch: async (url, options) => {
+          // タイムアウト設定（30秒）
+          const controller = new AbortController();
+
+          // Promise.raceで確実なタイムアウト処理
+          const fetchPromise = fetch(url, {
+            ...(options as RequestInit),
+            signal: controller.signal,
+          });
+
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              controller.abort();
+              reject(new Error("Request timeout after 30 seconds"));
+            }, 30000);
+          });
+
           try {
-            // タイムアウト設定（30秒）
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-            const response = await fetch(url, {
-              ...(options as RequestInit),
-              signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
 
             // エラーレスポンスの処理とエラー伝播
             if (!response.ok) {

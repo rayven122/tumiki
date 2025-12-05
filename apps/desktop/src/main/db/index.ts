@@ -31,15 +31,14 @@ let isConnecting = false;
 export const getDb = async (): Promise<PrismaClient> => {
   // 既に接続中の場合は待機（最大5秒でタイムアウト）
   if (isConnecting) {
-    let attempts = 0;
-    const maxAttempts = 50; // 100ms × 50 = 5秒
-    while (isConnecting && attempts < maxAttempts) {
+    const startTime = Date.now();
+    const timeout = 5000; // 5秒
+    while (isConnecting && Date.now() - startTime < timeout) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      attempts++;
     }
-    if (attempts >= maxAttempts) {
+    if (isConnecting) {
       throw new Error(
-        "Database connection timeout: Another connection attempt is still in progress",
+        "Database connection timeout: 5秒以内に接続を完了できませんでした",
       );
     }
   }
@@ -50,9 +49,10 @@ export const getDb = async (): Promise<PrismaClient> => {
   }
 
   isConnecting = true;
+  let tempPrisma: PrismaClient | undefined;
 
   try {
-    prisma = new PrismaClient({
+    tempPrisma = new PrismaClient({
       datasources: {
         db: {
           url: getDatabasePath(),
@@ -65,15 +65,15 @@ export const getDb = async (): Promise<PrismaClient> => {
     });
 
     // 接続テスト
-    await prisma.$connect();
+    await tempPrisma.$connect();
+    prisma = tempPrisma;
     return prisma;
   } catch (error) {
     // 接続失敗時はクリーンアップ
-    if (prisma) {
-      await prisma.$disconnect().catch(() => {
+    if (tempPrisma) {
+      await tempPrisma.$disconnect().catch(() => {
         // 切断エラーは無視
       });
-      prisma = undefined;
     }
     throw error;
   } finally {
