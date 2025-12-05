@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAtomValue } from "jotai";
 import { mcpServersAtom } from "../store/atoms";
 import { Activity, Server, AlertCircle, Wifi } from "lucide-react";
@@ -7,10 +7,29 @@ import { trpc } from "../utils/trpc";
 export const Dashboard = (): React.ReactElement => {
   const servers = useAtomValue(mcpServersAtom);
 
+  // エラー回数を追跡して、適応的ポーリング間隔を実装
+  const [errorCount, setErrorCount] = useState(0);
+
+  // エラー回数に基づいてポーリング間隔を計算
+  const pollingInterval =
+    errorCount > 0
+      ? Math.min(10000 * Math.pow(2, errorCount - 1), 60000) // 最大60秒
+      : 10000; // 通常は10秒
+
   // Manager 接続テスト
   const healthQuery = trpc.health.ping.useQuery(undefined, {
-    refetchInterval: 10000, // 10秒ごとに再取得
+    refetchInterval: pollingInterval,
+    refetchOnWindowFocus: true,
   });
+
+  // エラー状態の変化を監視してエラーカウントを更新
+  useEffect(() => {
+    if (healthQuery.isError) {
+      setErrorCount((prev) => Math.min(prev + 1, 5));
+    } else if (healthQuery.isSuccess) {
+      setErrorCount(0);
+    }
+  }, [healthQuery.isError, healthQuery.isSuccess]);
 
   const stats = {
     total: servers.length,

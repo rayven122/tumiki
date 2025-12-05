@@ -1,11 +1,132 @@
 /**
  * 統一的なログシステム
- * 開発環境ではコンソールに出力、本番環境ではログファイルに保存（将来的な拡張）
+ * 構造化ログ、ログファイルへの保存、ローテーション機能をサポート
  */
+
+import { app } from "electron";
+import { join } from "path";
+import {
+  existsSync,
+  mkdirSync,
+  appendFileSync,
+  statSync,
+  renameSync,
+} from "fs";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
 type LogContext = Record<string, unknown>;
+
+/**
+ * 構造化ログエントリ
+ */
+type StructuredLogEntry = {
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  context?: LogContext;
+  pid: number;
+};
+
+// ログファイルの最大サイズ（10MB）
+const MAX_LOG_SIZE = 10 * 1024 * 1024;
+// 保持するログファイルの数
+const MAX_LOG_FILES = 5;
+
+/**
+ * ログディレクトリパスを取得
+ */
+const getLogDirectory = (): string => {
+  if (app && app.getPath) {
+    return app.getPath("logs");
+  }
+  // テスト環境用のフォールバック
+  return join(process.cwd(), "logs");
+};
+
+/**
+ * ログファイルパスを取得
+ */
+const getLogFilePath = (): string => {
+  const logDir = getLogDirectory();
+
+  // ログディレクトリが存在しない場合は作成
+  if (!existsSync(logDir)) {
+    mkdirSync(logDir, { recursive: true });
+  }
+
+  return join(logDir, "app.log");
+};
+
+/**
+ * ログファイルのローテーション
+ */
+const rotateLogFile = (): void => {
+  const logFilePath = getLogFilePath();
+
+  // ログファイルが存在しない場合は何もしない
+  if (!existsSync(logFilePath)) {
+    return;
+  }
+
+  // ファイルサイズをチェック
+  const stats = statSync(logFilePath);
+  if (stats.size < MAX_LOG_SIZE) {
+    return;
+  }
+
+  // 古いログファイルをローテーション
+  const logDir = getLogDirectory();
+
+  // 最も古いログファイルを削除
+  const oldestLog = join(logDir, `app.log.${MAX_LOG_FILES}`);
+  if (existsSync(oldestLog)) {
+    try {
+      require("fs").unlinkSync(oldestLog);
+    } catch {
+      // 削除に失敗しても続行
+    }
+  }
+
+  // ログファイルをシフト
+  for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
+    const oldPath = join(logDir, `app.log.${i}`);
+    const newPath = join(logDir, `app.log.${i + 1}`);
+    if (existsSync(oldPath)) {
+      try {
+        renameSync(oldPath, newPath);
+      } catch {
+        // リネームに失敗しても続行
+      }
+    }
+  }
+
+  // 現在のログファイルを .1 にリネーム
+  const rotatedPath = join(logDir, "app.log.1");
+  try {
+    renameSync(logFilePath, rotatedPath);
+  } catch {
+    // リネームに失敗しても続行
+  }
+};
+
+/**
+ * ログをファイルに書き込む
+ */
+const writeToLogFile = (entry: StructuredLogEntry): void => {
+  try {
+    // ローテーションチェック
+    rotateLogFile();
+
+    const logFilePath = getLogFilePath();
+    const logLine = JSON.stringify(entry) + "\n";
+
+    appendFileSync(logFilePath, logLine, "utf8");
+  } catch (error) {
+    // ログファイルへの書き込みに失敗してもアプリを停止しない
+    console.error("Failed to write to log file:", error);
+  }
+};
 
 /**
  * ログを出力
@@ -16,11 +137,19 @@ type LogContext = Record<string, unknown>;
 const log = (level: LogLevel, message: string, context?: LogContext): void => {
   const isDevelopment = process.env.NODE_ENV === "development";
 
-  // 開発環境ではコンソールに出力
+  // 構造化ログエントリを作成
+  const entry: StructuredLogEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    context,
+    pid: process.pid,
+  };
+
+  // 開発環境ではコンソールに人間が読みやすい形式で出力
   if (isDevelopment) {
-    const timestamp = new Date().toISOString();
     const contextStr = context ? ` ${JSON.stringify(context)}` : "";
-    const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}${contextStr}`;
+    const logMessage = `[${entry.timestamp}] [${level.toUpperCase()}] ${message}${contextStr}`;
 
     switch (level) {
       case "error":
@@ -36,10 +165,16 @@ const log = (level: LogLevel, message: string, context?: LogContext): void => {
         console.log(logMessage);
     }
   } else {
-    // 本番環境ではエラーのみコンソールに出力（将来的にはログファイルへの保存を検討）
-    if (level === "error") {
-      console.error(`[ERROR] ${message}`, context || "");
+    // 本番環境ではエラーと警告のみコンソールに出力
+    if (level === "error" || level === "warn") {
+      const logMessage = `[${level.toUpperCase()}] ${message}`;
+      console.error(logMessage, context || "");
     }
+  }
+
+  // 本番環境ではすべてのログをファイルに書き込む
+  if (!isDevelopment) {
+    writeToLogFile(entry);
   }
 };
 

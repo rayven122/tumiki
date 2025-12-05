@@ -37,11 +37,19 @@ export const createTRPCClient = () => {
           // タイムアウト設定（30秒）
           const controller = new AbortController();
 
-          // Promise.raceで確実なタイムアウト処理
-          const fetchPromise = fetch(url, {
-            ...(options as RequestInit),
+          // tRPCのfetchオプション型定義
+          type TRPCFetchOptions = RequestInit & {
+            signal?: AbortSignal;
+          };
+
+          // optionsがundefinedまたはnullの場合の処理
+          const fetchOptions: TRPCFetchOptions = {
+            ...(options as RequestInit | undefined),
             signal: controller.signal,
-          });
+          };
+
+          // Promise.raceで確実なタイムアウト処理
+          const fetchPromise = fetch(url, fetchOptions);
 
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => {

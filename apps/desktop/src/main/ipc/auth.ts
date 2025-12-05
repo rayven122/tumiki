@@ -1,8 +1,34 @@
 import { ipcMain } from "electron";
+import { z } from "zod";
 import { getDb } from "../db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import type { AuthTokenData } from "../../types/auth";
 import * as logger from "../utils/logger";
+
+/**
+ * 認証トークンデータのバリデーションスキーマ
+ */
+const authTokenSchema = z.object({
+  accessToken: z.string().min(1, "アクセストークンは空にできません"),
+  refreshToken: z.string().min(1, "リフレッシュトークンは空にできません"),
+  expiresAt: z
+    .date()
+    .refine((date) => date > new Date(), {
+      message: "有効期限は未来の日付である必要があります",
+    })
+    .or(
+      z.string().transform((str) => {
+        const date = new Date(str);
+        if (isNaN(date.getTime())) {
+          throw new Error("無効な日付形式です");
+        }
+        if (date <= new Date()) {
+          throw new Error("有効期限は未来の日付である必要があります");
+        }
+        return date;
+      }),
+    ),
+});
 
 /**
  * 認証関連の IPC ハンドラーを設定
@@ -42,14 +68,17 @@ export const setupAuthIpc = (): void => {
   // トークン保存
   ipcMain.handle("auth:saveToken", async (_, tokenData: AuthTokenData) => {
     try {
+      // 入力データのバリデーション
+      const validatedData = authTokenSchema.parse(tokenData);
+
       const db = await getDb();
 
       // 新しいトークンを暗号化して保存
       const newToken = await db.authToken.create({
         data: {
-          accessToken: encryptToken(tokenData.accessToken),
-          refreshToken: encryptToken(tokenData.refreshToken),
-          expiresAt: tokenData.expiresAt,
+          accessToken: encryptToken(validatedData.accessToken),
+          refreshToken: encryptToken(validatedData.refreshToken),
+          expiresAt: validatedData.expiresAt,
         },
       });
 
@@ -64,6 +93,15 @@ export const setupAuthIpc = (): void => {
       logger.info("Auth token saved successfully");
       return { success: true };
     } catch (error) {
+      // Zodバリデーションエラーの処理
+      if (error instanceof z.ZodError) {
+        const validationErrors = error.issues
+          .map((issue) => issue.message)
+          .join(", ");
+        logger.error("Token validation failed", { errors: validationErrors });
+        throw new Error(`トークンデータが無効です: ${validationErrors}`);
+      }
+
       logger.error(
         "Failed to save auth token",
         error instanceof Error ? error : { error },
