@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { FeedbackIdSchema } from "@/schema/ids";
 
-// 入力スキーマ
+// 入力スキーマ（APIリクエスト用）
 export const createFeedbackInputSchema = z.object({
   type: z.enum(["INQUIRY", "FEATURE_REQUEST"], {
     message: "有効なフィードバック種類を選択してください",
@@ -18,6 +18,13 @@ export const createFeedbackInputSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
+// データベース保存用の内部スキーマ（userId, organizationIdを含む）
+export const createFeedbackDataSchema = createFeedbackInputSchema.extend({
+  userId: z.string(),
+  organizationId: z.string(),
+  metadata: z.unknown().optional(),
+});
+
 // 出力スキーマ
 export const createFeedbackOutputSchema = z.object({
   id: FeedbackIdSchema,
@@ -26,4 +33,5 @@ export const createFeedbackOutputSchema = z.object({
 });
 
 export type CreateFeedbackInput = z.infer<typeof createFeedbackInputSchema>;
+export type CreateFeedbackData = z.infer<typeof createFeedbackDataSchema>;
 export type CreateFeedbackOutput = z.infer<typeof createFeedbackOutputSchema>;

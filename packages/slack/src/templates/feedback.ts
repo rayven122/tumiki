@@ -12,7 +12,7 @@ export type FeedbackNotificationData = {
   organizationName: string;
 };
 
-export const createFeedbackNotification = (
+export const makeFeedbackSlackMessage = (
   data: FeedbackNotificationData,
 ): SlackMessage => {
   // 種別に応じた絵文字とラベル

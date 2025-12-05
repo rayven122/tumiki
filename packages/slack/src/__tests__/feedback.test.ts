@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 
 import type { FeedbackNotificationData } from "../templates/feedback";
-import { createFeedbackNotification } from "../templates/feedback";
+import { makeFeedbackSlackMessage } from "../templates/feedback";
 
-describe("createFeedbackNotification", () => {
+describe("makeFeedbackSlackMessage", () => {
   const baseData: FeedbackNotificationData = {
     feedbackId: "test-feedback-id",
     type: "INQUIRY",
@@ -15,7 +15,7 @@ describe("createFeedbackNotification", () => {
   };
 
   test("お問い合わせ通知を正しく生成する", () => {
-    const notification = createFeedbackNotification(baseData);
+    const notification = makeFeedbackSlackMessage(baseData);
 
     expect(notification.text).toContain("お問い合わせ");
     expect(notification.blocks).toBeDefined();
@@ -24,7 +24,7 @@ describe("createFeedbackNotification", () => {
   });
 
   test("機能要望通知を正しく生成する", () => {
-    const notification = createFeedbackNotification({
+    const notification = makeFeedbackSlackMessage({
       ...baseData,
       type: "FEATURE_REQUEST",
     });
@@ -35,7 +35,7 @@ describe("createFeedbackNotification", () => {
 
   test("長い内容を切り詰める", () => {
     const longContent = "a".repeat(5000);
-    const notification = createFeedbackNotification({
+    const notification = makeFeedbackSlackMessage({
       ...baseData,
       content: longContent,
     });
