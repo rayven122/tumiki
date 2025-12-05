@@ -30,7 +30,7 @@ interface WaitingListResponse {
 /**
  * メールクライアントを初期化する
  */
-function initializeMailClient(): void {
+const initializeMailClient = (): void => {
   createMailClient({
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT),
@@ -41,12 +41,12 @@ function initializeMailClient(): void {
     },
     from: process.env.FROM_EMAIL ?? "",
   });
-}
+};
 
 /**
  * 重複するメールアドレスをチェックする
  */
-async function checkDuplicateEmail(email: string): Promise<void> {
+const checkDuplicateEmail = async (email: string): Promise<void> => {
   const existingEntry = await db.waitingList.findUnique({
     where: { email },
   });
@@ -57,12 +57,12 @@ async function checkDuplicateEmail(email: string): Promise<void> {
       message: WAITING_LIST_MESSAGES.DUPLICATE_EMAIL,
     });
   }
-}
+};
 
 /**
  * Waiting Listエントリを作成する
  */
-async function createWaitingListEntry(input: RegisterInput) {
+const createWaitingListEntry = async (input: RegisterInput) => {
   return db.waitingList.create({
     data: {
       email: input.email,
@@ -71,16 +71,16 @@ async function createWaitingListEntry(input: RegisterInput) {
       useCase: input.useCase,
     },
   });
-}
+};
 
 /**
  * 確認メールを送信する
  */
-async function sendConfirmationEmail(
+const sendConfirmationEmail = async (
   email: string,
   name?: string,
   language: "ja" | "en" = "ja",
-): Promise<void> {
+): Promise<void> => {
   try {
     const baseUrl =
       process.env.NODE_ENV === "production"
@@ -94,15 +94,22 @@ async function sendConfirmationEmail(
       confirmUrl,
       appName: "Tumiki",
       language,
-    }).catch(() => {
+    }).catch((error: unknown) => {
       // エラーハンドリングは既に関数内で行われている
+      console.error(
+        "待機リスト確認メール送信エラー:",
+        error instanceof Error ? error.message : String(error),
+      );
     });
   } catch (emailError: unknown) {
-    console.error(WAITING_LIST_MESSAGES.EMAIL_SEND_FAILED, emailError);
+    console.error(
+      WAITING_LIST_MESSAGES.EMAIL_SEND_FAILED,
+      emailError instanceof Error ? emailError.message : String(emailError),
+    );
     // メール送信失敗でもユーザーには登録成功を返す
     // （グレースフルデグラデーション）
   }
-}
+};
 
 /**
  * Waiting List登録のメイン処理

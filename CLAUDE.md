@@ -85,6 +85,24 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 - 可能な限り型推論を優先するが、関数の引数と戻り値は明示的に型付けする
 - 型が本当に不明な場合は`any`ではなく`unknown`を使用する
 
+#### TypeScript 設定ファイル構成
+
+各パッケージ・アプリでは、TypeScript設定を**2つのファイルに分割**すること：
+
+- **`tsconfig.json`**: 型チェック用設定（テストファイルを含む全ファイルが対象）
+- **`tsconfig.build.json`**: ビルド用設定（テストファイルを除外）
+
+package.jsonのbuildスクリプトでは`tsconfig.build.json`を明示的に指定：
+
+```json
+{
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  }
+}
+```
+
 例:
 
 ```typescript
@@ -268,7 +286,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **ページ構造**: 英語版 `/` と日本語版 `/jp` の2つのランディングページが存在
 - **環境変数**: プロジェクト直下の `.env` ファイルに定義。環境変数を読み込んで実行する必要があるものは、
   `dotenv` パッケージを使用して読み込む。ただし、npm scripts 実行時は自動的に読み込まれるため、手動での読み込みは不要。
-- **ローカル開発URL**: `https://local.tumiki.cloud:3000` でアクセス
+- **ローカル開発URL**: `http://localhost:3000` でアクセス
 - **@tumiki/ パッケージのimportエラー**: `@tumiki/` で始まるパッケージのimportに失敗する場合は、該当パッケージのビルドが必要。
   例: `@tumiki/db` のimportエラーが発生した場合 → `cd packages/db && pnpm build` を実行
 - **Turboキャッシュ**: `.cache/` ディレクトリにビルドキャッシュが保存される（ESLint、Prettier、TypeScript）

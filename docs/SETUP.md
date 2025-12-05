@@ -58,7 +58,7 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 # Auth.js設定
 NEXTAUTH_SECRET="生成したキー"  # openssl rand -base64 32
-NEXTAUTH_URL="https://local.tumiki.cloud:3000"
+NEXTAUTH_URL="http://localhost:3000"
 
 # MCP Proxy設定
 NEXT_PUBLIC_MCP_PROXY_URL="http://localhost:8080"
@@ -177,7 +177,7 @@ cd apps/mcp-proxy && pnpm dev
 
 セットアップが完了したら、以下のURLでアプリケーションにアクセスできます：
 
-- **Manager（Webアプリケーション）**: https://local.tumiki.cloud:3000
+- **Manager（Webアプリケーション）**: http://localhost:3000
 - **MCP Proxy**: http://localhost:8080
 - **Keycloak管理コンソール**: http://localhost:8443
   - ユーザー名: admin

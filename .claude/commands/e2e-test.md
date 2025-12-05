@@ -41,7 +41,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 /e2e-test mcp
 
 # 特定のURLのテスト
-/e2e-test https://local.tumiki.cloud:3000/jp
+/e2e-test http://localhost:3000/jp
 
 # デフォルト（smokeテスト）
 /e2e-test
@@ -77,7 +77,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 
 ### エンドポイント検証
 
-- Manager app: `https://local.tumiki.cloud:3000`
+- Manager app: `http://localhost:3000`
 - Proxy server: `http://localhost:8080`
   - `/mcp` - HTTP/Streamable transport
   - `/sse` - SSE transport
@@ -105,7 +105,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 テストスコープ: smoke
 
 📊 テスト環境の確認
-✅ Manager app: 起動中 (https://local.tumiki.cloud:3000)
+✅ Manager app: 起動中 (http://localhost:3000)
 ✅ Proxy server: 起動中 (http://localhost:8080)
 ✅ Playwright MCP: 利用可能
 

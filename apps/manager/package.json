@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm with-env next dev --turbopack --experimental-https --hostname local.tumiki.cloud",
+    "dev": "pnpm with-env next dev --turbopack",
     "build": "pnpm with-env next build",
     "start": "pnpm with-env next start",
     "preview": "next build && next start",
@@ -59,6 +59,7 @@
     "@trpc/tanstack-react-query": "catalog:",
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
+    "@tumiki/slack": "workspace:*",
     "@uiw/react-json-view": "2.0.0-alpha.34",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^0.24.1",
