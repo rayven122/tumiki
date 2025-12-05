@@ -20,6 +20,20 @@ export type ErrorCategory =
   | "unknown"; // 不明なエラー
 
 /**
+ * エラーメッセージ定数
+ * 将来的に国際化対応する際は、このオブジェクトを関数化するか、
+ * i18nライブラリを使用して翻訳を提供する
+ */
+const ERROR_MESSAGES: Record<ErrorCategory, string> = {
+  network: "ネットワーク接続に失敗しました",
+  timeout: "リクエストがタイムアウトしました",
+  auth: "認証に失敗しました",
+  server: "サーバーエラーが発生しました",
+  client: "リクエストが無効です",
+  unknown: "予期しないエラーが発生しました",
+};
+
+/**
  * エラー情報
  */
 export type ErrorInfo = {
@@ -68,7 +82,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
   ) {
     return {
       category: "network",
-      message: "ネットワーク接続に失敗しました",
+      message: ERROR_MESSAGES.network,
       shouldRetry: true,
     };
   }
@@ -77,7 +91,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
   if (message.includes("timeout") || message.includes("aborted")) {
     return {
       category: "timeout",
-      message: "リクエストがタイムアウトしました",
+      message: ERROR_MESSAGES.timeout,
       shouldRetry: true,
     };
   }
@@ -88,7 +102,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
     if (status === 401 || status === 403) {
       return {
         category: "auth",
-        message: "認証に失敗しました",
+        message: ERROR_MESSAGES.auth,
         status,
         shouldRetry: false,
       };
@@ -98,7 +112,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
     if (status >= 500) {
       return {
         category: "server",
-        message: "サーバーエラーが発生しました",
+        message: ERROR_MESSAGES.server,
         status,
         shouldRetry: true,
       };
@@ -108,7 +122,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
     if (status >= 400) {
       return {
         category: "client",
-        message: "リクエストが無効です",
+        message: ERROR_MESSAGES.client,
         status,
         shouldRetry: false,
       };
@@ -118,7 +132,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
   // 不明なエラー
   return {
     category: "unknown",
-    message: message || "予期しないエラーが発生しました",
+    message: message || ERROR_MESSAGES.unknown,
     status,
     shouldRetry: false,
   };

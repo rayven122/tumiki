@@ -11,6 +11,7 @@ import {
   appendFileSync,
   statSync,
   renameSync,
+  unlinkSync,
 } from "fs";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
@@ -50,9 +51,9 @@ const getLogDirectory = (): string => {
 const getLogFilePath = (): string => {
   const logDir = getLogDirectory();
 
-  // ログディレクトリが存在しない場合は作成
+  // ログディレクトリが存在しない場合は作成（所有者のみアクセス可能）
   if (!existsSync(logDir)) {
-    mkdirSync(logDir, { recursive: true });
+    mkdirSync(logDir, { recursive: true, mode: 0o700 });
   }
 
   return join(logDir, "app.log");
@@ -82,7 +83,7 @@ const rotateLogFile = (): void => {
   const oldestLog = join(logDir, `app.log.${MAX_LOG_FILES}`);
   if (existsSync(oldestLog)) {
     try {
-      require("fs").unlinkSync(oldestLog);
+      unlinkSync(oldestLog);
     } catch {
       // 削除に失敗しても続行
     }
@@ -121,7 +122,8 @@ const writeToLogFile = (entry: StructuredLogEntry): void => {
     const logFilePath = getLogFilePath();
     const logLine = JSON.stringify(entry) + "\n";
 
-    appendFileSync(logFilePath, logLine, "utf8");
+    // ログファイルに書き込み（所有者のみ読み書き可能）
+    appendFileSync(logFilePath, logLine, { encoding: "utf8", mode: 0o600 });
   } catch (error) {
     // ログファイルへの書き込みに失敗してもアプリを停止しない
     console.error("Failed to write to log file:", error);

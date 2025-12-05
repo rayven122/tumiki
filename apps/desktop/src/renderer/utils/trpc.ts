@@ -4,6 +4,10 @@ import superjson from "superjson";
 import type { AppRouter } from "@/server/api/root";
 import { logError, toErrorWithStatus } from "./errorHandling";
 
+// リクエストタイムアウト設定（ミリ秒）
+// デスクトップアプリケーションでは10秒が適切なタイムアウト時間
+const REQUEST_TIMEOUT_MS = 10000;
+
 // tRPC React Query フックを作成
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -34,7 +38,7 @@ export const createTRPCClient = () => {
 
         // フェッチオプション
         fetch: async (url, options) => {
-          // タイムアウト設定（30秒）
+          // タイムアウト設定（10秒）
           const controller = new AbortController();
 
           // tRPCのfetchオプション型定義
@@ -54,8 +58,12 @@ export const createTRPCClient = () => {
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => {
               controller.abort();
-              reject(new Error("Request timeout after 30 seconds"));
-            }, 30000);
+              reject(
+                new Error(
+                  `Request timeout after ${REQUEST_TIMEOUT_MS / 1000} seconds`,
+                ),
+              );
+            }, REQUEST_TIMEOUT_MS);
           });
 
           try {

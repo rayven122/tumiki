@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "jotai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,42 +13,48 @@ if (!rootElement) {
   throw new Error("Failed to find the root element");
 }
 
-const Root = () => {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            // リトライ戦略（utility関数を使用）
-            retry: shouldRetryQuery,
-            retryDelay: calculateRetryDelay,
-            // ステイル時間（5分）
-            staleTime: 5 * 60 * 1000,
-            // キャッシュ時間（10分）
-            gcTime: 10 * 60 * 1000,
-            // ネットワークモード: オフラインファースト設計
-            networkMode: "offlineFirst",
-            // リフェッチ設定
-            refetchOnWindowFocus: false,
-            refetchOnReconnect: true,
-            refetchOnMount: true,
-          },
-          mutations: {
-            // Mutation のリトライは無効化（副作用があるため）
-            retry: false,
-            // ネットワークモード: オフラインファースト設計
-            networkMode: "offlineFirst",
-            // グローバル Mutation エラーハンドラー
-            onError: (error) => {
-              console.error("Mutation error:", error);
-              // TODO: ユーザーへの通知（トースト等）
-            },
-          },
-        },
-      }),
-  );
-  const [trpcClient] = useState(() => createTRPCClient());
+/**
+ * QueryClientをモジュールレベルでシングルトン化
+ * コンポーネント再マウント時もクエリキャッシュを保持
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // リトライ戦略（utility関数を使用）
+      retry: shouldRetryQuery,
+      retryDelay: calculateRetryDelay,
+      // ステイル時間（5分）
+      staleTime: 5 * 60 * 1000,
+      // キャッシュ時間（10分）
+      gcTime: 10 * 60 * 1000,
+      // ネットワークモード: オフラインファースト設計
+      networkMode: "offlineFirst",
+      // リフェッチ設定
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      refetchOnMount: true,
+    },
+    mutations: {
+      // Mutation のリトライは無効化（副作用があるため）
+      retry: false,
+      // ネットワークモード: オフラインファースト設計
+      networkMode: "offlineFirst",
+      // グローバル Mutation エラーハンドラー
+      onError: (error) => {
+        console.error("Mutation error:", error);
+        // TODO: ユーザーへの通知（トースト等）
+      },
+    },
+  },
+});
 
+/**
+ * tRPCクライアントをモジュールレベルでシングルトン化
+ * コンポーネント再マウント時も接続を保持
+ */
+const trpcClient = createTRPCClient();
+
+const Root = () => {
   return (
     <React.StrictMode>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>

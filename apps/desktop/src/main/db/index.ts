@@ -72,6 +72,12 @@ let connectionPromise: Promise<PrismaClient> | null = null;
 /**
  * データベース接続を取得
  * シングルトンパターンで接続を管理し、競合状態を回避
+ *
+ * ミューテックスパターン実装:
+ * - 既存接続があれば即座に返す
+ * - 接続中の場合は同じPromiseを返して競合を回避
+ * - 新規接続時はconnectionPromiseで排他制御
+ * - finallyブロックでPromiseをクリアし、次回接続を許可
  */
 export const getDb = async (): Promise<PrismaClient> => {
   // 既存の接続がある場合はそれを返す
@@ -80,21 +86,25 @@ export const getDb = async (): Promise<PrismaClient> => {
   }
 
   // 既に接続中の場合は同じPromiseを返す（競合状態を回避）
+  // 複数の同時呼び出しが同じPromiseを待つため、重複接続が発生しない
   if (connectionPromise) {
     return await connectionPromise;
   }
 
-  // 新しい接続を作成
+  // 新しい接続を作成（排他制御されている）
   connectionPromise = createConnection()
     .then((client) => {
+      // 接続成功時にグローバル変数に保存
       prisma = client;
       return client;
     })
     .catch((error) => {
       logger.error("Failed to create database connection", error);
+      // エラー時もPromiseをクリアして、リトライを許可
       throw error;
     })
     .finally(() => {
+      // 接続処理完了後、Promiseをクリアして次回接続を許可
       connectionPromise = null;
     });
 

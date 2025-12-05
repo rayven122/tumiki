@@ -53,7 +53,15 @@ export const setupAuthIpc = (): void => {
       }
 
       // 暗号化されたトークンを復号化
-      return decryptToken(token.accessToken);
+      const decryptedToken = decryptToken(token.accessToken);
+
+      // 復号化されたトークンの有効性検証
+      if (!decryptedToken || decryptedToken.length === 0) {
+        logger.warn("Decrypted token is invalid or empty");
+        return null;
+      }
+
+      return decryptedToken;
     } catch (error) {
       logger.error(
         "Failed to get auth token",
