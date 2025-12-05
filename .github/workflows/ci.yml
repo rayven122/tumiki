@@ -15,6 +15,7 @@ jobs:
 
     env:
       NODE_OPTIONS: --max-old-space-size=4096
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v4
