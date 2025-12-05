@@ -52,8 +52,12 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
+      - name: Fetch Vercel environment variables
+        uses: ./.github/actions/fetch-vercel-env
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          environment: ${{ needs.setup.outputs.environment }}
+          output-file: .env
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
@@ -100,8 +104,12 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
+      - name: Fetch Vercel environment variables
+        uses: ./.github/actions/fetch-vercel-env
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          environment: ${{ needs.setup.outputs.environment }}
+          output-file: .env
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
@@ -130,7 +138,6 @@ jobs:
           stage: ${{ needs.setup.outputs.stage }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-
   # Cloud Runデプロイ（全環境対応）
   deploy-cloudrun:
     name: 🚀 Cloud Runデプロイ
@@ -151,8 +158,12 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: 📝 Create .env file for CI
-        run: cp .env.example .env
+      - name: Fetch Vercel environment variables
+        uses: ./.github/actions/fetch-vercel-env
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          environment: ${{ needs.setup.outputs.environment }}
+          output-file: .env.cloud-run.local
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
@@ -176,9 +187,6 @@ jobs:
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
-          region: asia-northeast1
-          min_instances: '0'
-          max_instances: '3'
 
   # PRへのデプロイURLコメント
   comment-deployment:
