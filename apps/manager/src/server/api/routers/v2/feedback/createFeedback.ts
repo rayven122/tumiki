@@ -39,8 +39,11 @@ const sendSlackNotification = async (feedbackData: {
 
     const message = makeFeedbackSlackMessage(feedbackData);
     await sendSlackMessage(webhookUrl, message);
-  } catch (error) {
-    console.error(FEEDBACK_MESSAGES.SLACK_NOTIFICATION_FAILED, error);
+  } catch (error: unknown) {
+    console.error(
+      FEEDBACK_MESSAGES.SLACK_NOTIFICATION_FAILED,
+      error instanceof Error ? error.message : String(error),
+    );
     // エラーを握りつぶす（ユーザーには影響させない）
   }
 };
