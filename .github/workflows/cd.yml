@@ -41,9 +41,6 @@ jobs:
     runs-on:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
-    env:
-      # CI専用のダミー暗号化キー（本番環境とは異なる）
-      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       migration_applied: ${{ steps.migrate.outputs.migration_applied }}
       migration_names: ${{ steps.migrate.outputs.migration_names }}
@@ -54,6 +51,9 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
@@ -92,9 +92,6 @@ jobs:
     runs-on:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
-    env:
-      # CI専用のダミー暗号化キー（本番環境とは異なる）
-      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       vercel_url: ${{ steps.deploy.outputs.url }}
     steps:
@@ -102,6 +99,9 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
@@ -143,9 +143,6 @@ jobs:
       group: self-arc
     # Preview環境ではstagingのシークレットを使用するため、environmentをstagingに設定
     environment: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
-    env:
-      # CI専用のダミー暗号化キー（本番環境とは異なる）
-      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
     steps:
@@ -153,6 +150,9 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
