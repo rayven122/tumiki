@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDataSize } from "@/utils/formatters";
 import { TRANSPORT_TYPE_LABELS } from "./constants";
+import { getPaginationPages } from "./utils";
 import type { RequestLog } from "../types";
 
 type RequestLogsTableProps = {
@@ -176,18 +177,11 @@ export const RequestLogsTable = ({
                     <span className="ml-1">前へ</span>
                   </Button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        // 最初、最後、現在のページ周辺のみ表示
-                        return (
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= currentPage - 1 && page <= currentPage + 1)
-                        );
-                      })
-                      .map((page, index, array) => {
+                    {getPaginationPages(currentPage, totalPages).map(
+                      (page, index, array) => {
                         const prevPage = array[index - 1];
-                        const showEllipsis = prevPage && page - prevPage > 1;
+                        const showEllipsis =
+                          prevPage !== undefined && page - prevPage > 1;
 
                         return (
                           <div key={page} className="flex items-center gap-1">
@@ -206,7 +200,8 @@ export const RequestLogsTable = ({
                             </Button>
                           </div>
                         );
-                      })}
+                      },
+                    )}
                   </div>
                   <Button
                     variant="outline"
