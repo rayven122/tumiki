@@ -15,14 +15,12 @@ export const createFeedbackInputSchema = z.object({
     .min(1, "内容を入力してください")
     .max(5000, "内容は5000文字以内で入力してください"),
   userAgent: z.string().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // データベース保存用の内部スキーマ（userId, organizationIdを含む）
 export const createFeedbackDataSchema = createFeedbackInputSchema.extend({
   userId: z.string(),
   organizationId: z.string(),
-  metadata: z.unknown().optional(),
 });
 
 // 出力スキーマ

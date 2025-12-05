@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { SlackMessage } from "../client";
-import { sendSlackMessage } from "../client";
+import type { SlackMessage } from "../client.js";
+import { sendSlackMessage } from "../client.js";
 
 describe("sendSlackMessage", () => {
   const mockWebhookUrl = "https://hooks.slack.com/services/TEST/WEBHOOK/URL";
