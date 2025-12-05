@@ -11,23 +11,23 @@ import * as logger from "../utils/logger";
 const authTokenSchema = z.object({
   accessToken: z.string().min(1, "アクセストークンは空にできません"),
   refreshToken: z.string().min(1, "リフレッシュトークンは空にできません"),
-  expiresAt: z
-    .date()
-    .refine((date) => date > new Date(), {
-      message: "有効期限は未来の日付である必要があります",
-    })
-    .or(
-      z.string().transform((str) => {
-        const date = new Date(str);
-        if (isNaN(date.getTime())) {
-          throw new Error("無効な日付形式です");
-        }
-        if (date <= new Date()) {
-          throw new Error("有効期限は未来の日付である必要があります");
-        }
-        return date;
+  expiresAt: z.preprocess(
+    (val) => {
+      // 文字列の場合はDateオブジェクトに変換
+      if (typeof val === "string") {
+        return new Date(val);
+      }
+      return val;
+    },
+    z
+      .date()
+      .refine((date) => !isNaN(date.getTime()), {
+        message: "無効な日付形式です",
+      })
+      .refine((date) => date > new Date(), {
+        message: "有効期限は未来の日付である必要があります",
       }),
-    ),
+  ),
 });
 
 /**

@@ -29,7 +29,7 @@ const getDatabasePath = (): string => {
 /**
  * Prismaクライアントの設定を取得
  */
-const getPrismaConfig = () => {
+const getPrismaConfig = (): ConstructorParameters<typeof PrismaClient>[0] => {
   const isDevelopment = process.env.NODE_ENV === "development";
 
   return {
@@ -38,9 +38,7 @@ const getPrismaConfig = () => {
         url: getDatabasePath(),
       },
     },
-    log: isDevelopment
-      ? (["error", "warn"] as ["error", "warn"])
-      : (["error"] as ["error"]),
+    log: isDevelopment ? ["error", "warn"] : ["error"],
   };
 };
 

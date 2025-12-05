@@ -5,6 +5,7 @@ import { setupAuthIpc } from "./ipc/auth";
 import * as logger from "./utils/logger";
 
 let mainWindow: BrowserWindow | null = null;
+let isQuitting = false;
 
 const createWindow = (): void => {
   mainWindow = createMainWindow();
@@ -48,8 +49,14 @@ app.on("window-all-closed", () => {
 
 // アプリケーション終了前にデータベース接続をクリーンアップ
 app.on("before-quit", async (event) => {
+  // 既にクリーンアップ処理中の場合は何もしない
+  if (isQuitting) {
+    return;
+  }
+
   // イベントをキャンセルして非同期処理を完了させる
   event.preventDefault();
+  isQuitting = true;
 
   try {
     await closeDb();
@@ -61,8 +68,6 @@ app.on("before-quit", async (event) => {
     );
   } finally {
     // データベースのクローズ処理が完了したら、アプリを終了
-    // before-quitを再度トリガーしないようにリスナーを削除
-    app.removeAllListeners("before-quit");
     app.quit();
   }
 });
