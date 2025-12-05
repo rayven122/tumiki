@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@slack/web-api": "^7.13.0",
+    "@tumiki/db": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -48,6 +48,7 @@
     "concurrently": "^9.2.1",
     "turbo": "^2.6.1",
     "typescript": "catalog:",
+    "vercel": "^39.2.11",
     "vitest": "catalog:"
   }
 }
