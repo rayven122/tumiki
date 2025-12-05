@@ -19,7 +19,8 @@ describe("createFeedbackNotification", () => {
 
     expect(notification.text).toContain("お問い合わせ");
     expect(notification.blocks).toBeDefined();
-    expect(notification.blocks?.length).toBeGreaterThan(0);
+    expect(Array.isArray(notification.blocks)).toBe(true);
+    expect(notification.blocks!.length).toBeGreaterThan(0);
   });
 
   test("機能要望通知を正しく生成する", () => {
@@ -33,29 +34,33 @@ describe("createFeedbackNotification", () => {
   });
 
   test("長い内容を切り詰める", () => {
-    const longContent = "a".repeat(3000);
+    const longContent = "a".repeat(5000);
     const notification = createFeedbackNotification({
       ...baseData,
       content: longContent,
     });
 
-    const contentBlock = notification.blocks?.find(
-      (block) =>
-        block.type === "section" &&
-        typeof block.text === "object" &&
-        block.text !== null &&
-        "text" in block.text,
-    );
+    // 内容ブロックを探す（2番目のsectionブロック、インデックス3）
+    const blocks = notification.blocks;
+    expect(blocks).toBeDefined();
+    expect(blocks!.length).toBeGreaterThan(3);
 
+    const contentBlock = blocks![3];
     expect(contentBlock).toBeDefined();
+    expect(contentBlock!.type).toBe("section");
+
     if (
       contentBlock &&
+      "text" in contentBlock &&
+      contentBlock.text &&
       typeof contentBlock.text === "object" &&
-      contentBlock.text !== null &&
-      "text" in contentBlock.text &&
-      typeof contentBlock.text.text === "string"
+      "text" in contentBlock.text
     ) {
-      expect(contentBlock.text.text.length).toBeLessThanOrEqual(2010); // 2000 + "..."
+      const textContent = contentBlock.text.text;
+      // Slack Block Kitの制限3000文字を超えないことを確認
+      expect(textContent.length).toBeLessThanOrEqual(3000);
+      // 切り詰めメッセージが含まれていることを確認
+      expect(textContent).toContain("（内容が長いため省略されました）");
     }
   });
 });
