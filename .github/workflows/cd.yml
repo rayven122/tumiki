@@ -42,6 +42,7 @@ jobs:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     env:
+      # CI専用のダミー暗号化キー（本番環境とは異なる）
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       migration_applied: ${{ steps.migrate.outputs.migration_applied }}
@@ -92,6 +93,7 @@ jobs:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
     env:
+      # CI専用のダミー暗号化キー（本番環境とは異なる）
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       vercel_url: ${{ steps.deploy.outputs.url }}
@@ -142,6 +144,7 @@ jobs:
     # Preview環境ではstagingのシークレットを使用するため、environmentをstagingに設定
     environment: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
     env:
+      # CI専用のダミー暗号化キー（本番環境とは異なる）
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
