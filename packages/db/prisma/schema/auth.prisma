@@ -46,6 +46,9 @@ model User {
   mcpApiKeys         McpApiKey[]
   mcpOAuthTokens     McpOAuthToken[]
 
+  /// フィードバック
+  feedbacks Feedback[]
+
   /// Auth.js adapter
   accounts Account[]
   sessions Session[]

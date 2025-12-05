@@ -59,6 +59,7 @@
     "@trpc/tanstack-react-query": "catalog:",
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
+    "@tumiki/slack": "workspace:*",
     "@uiw/react-json-view": "2.0.0-alpha.34",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^0.24.1",
