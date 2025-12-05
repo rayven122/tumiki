@@ -22,7 +22,7 @@ import { RequestLogsTable } from "./RequestLogsTable";
 import {
   calculateSuccessRate,
   calculateErrorPercentage,
-  convertDailyStatsToHourlyData,
+  mapDailyStatsToHourlyDisplay,
   convertDailyStatsToChartData,
   getTimeRangeLabel,
   timeRangeToDays,
@@ -79,7 +79,7 @@ export const LogsAnalyticsTab = ({
   // 時間範囲に応じたグラフデータを生成
   const chartData =
     timeRange === "24h"
-      ? convertDailyStatsToHourlyData(statsData).hourlyData
+      ? mapDailyStatsToHourlyDisplay(statsData).hourlyData
       : convertDailyStatsToChartData(statsData).dailyData;
 
   const chartConfig = {

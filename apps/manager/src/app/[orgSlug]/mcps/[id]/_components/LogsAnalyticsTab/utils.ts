@@ -1,4 +1,6 @@
-import type { RequestStats, RequestLog } from "../types";
+import type { RequestStats } from "../types";
+import { subDays, subHours } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 export type TimeRange = "24h" | "7d" | "30d";
 
@@ -90,95 +92,11 @@ export const calculateErrorPercentage = (
 };
 
 /**
- * 過去24時間の時間別リクエストデータを集計
+ * 日別統計データから24時間表示用のデータを生成
+ * 注意: 現在の実装では今日のトータルを現在時刻に配置するのみ
+ * より詳細な時間別データが必要な場合は、サーバー側で時間別集計を実装する必要がある
  */
-export const getHourlyRequestData = (
-  requestLogs: RequestLog[] | undefined,
-): { hourlyData: HourlyData[]; maxCount: number } => {
-  // 24時間分の配列を初期化
-  const hourlyData: HourlyData[] = Array.from({ length: 24 }, (_, i) => ({
-    hour: i,
-    count: 0,
-  }));
-
-  if (!requestLogs || requestLogs.length === 0) {
-    return { hourlyData, maxCount: 0 };
-  }
-
-  const now = new Date();
-  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-  // 過去24時間以内のログのみをカウント
-  for (const log of requestLogs) {
-    const logDate = new Date(log.createdAt);
-    if (logDate >= twentyFourHoursAgo && logDate <= now) {
-      const hour = logDate.getHours();
-      if (hour >= 0 && hour < 24 && hourlyData[hour]) {
-        hourlyData[hour].count++;
-      }
-    }
-  }
-
-  const maxCount = Math.max(...hourlyData.map((d) => d.count));
-
-  return { hourlyData, maxCount };
-};
-
-/**
- * 指定期間の日別リクエストデータを集計
- */
-export const getDailyRequestData = (
-  requestLogs: RequestLog[] | undefined,
-  range: TimeRange,
-): { dailyData: DailyData[]; maxCount: number } => {
-  const days = range === "7d" ? 7 : 30;
-
-  // 指定日数分の配列を初期化
-  const dailyData: DailyData[] = Array.from({ length: days }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (days - 1 - i));
-    return {
-      day: `${date.getMonth() + 1}/${date.getDate()}`,
-      count: 0,
-    };
-  });
-
-  if (!requestLogs || requestLogs.length === 0) {
-    return { dailyData, maxCount: 0 };
-  }
-
-  const now = new Date();
-  const rangeStart = new Date(now.getTime() - getTimeRangeMs(range));
-
-  // 指定期間内のログを日別にカウント
-  for (const log of requestLogs) {
-    const logDate = new Date(log.createdAt);
-    if (logDate >= rangeStart && logDate <= now) {
-      const daysDiff = Math.floor(
-        (now.getTime() -
-          new Date(
-            logDate.getFullYear(),
-            logDate.getMonth(),
-            logDate.getDate(),
-          ).getTime()) /
-          (24 * 60 * 60 * 1000),
-      );
-      const index = days - 1 - daysDiff;
-      if (index >= 0 && index < days && dailyData[index]) {
-        dailyData[index].count++;
-      }
-    }
-  }
-
-  const maxCount = Math.max(...dailyData.map((d) => d.count));
-
-  return { dailyData, maxCount };
-};
-
-/**
- * サーバーから取得した日別統計データを24時間の時間別データに変換
- */
-export const convertDailyStatsToHourlyData = (
+export const mapDailyStatsToHourlyDisplay = (
   dailyStats: DailyStatsData[] | undefined,
 ): { hourlyData: HourlyData[]; maxCount: number } => {
   // 24時間分の配列を初期化
@@ -194,8 +112,7 @@ export const convertDailyStatsToHourlyData = (
   // 今日のデータを取得（最後の要素）
   const today = dailyStats[dailyStats.length - 1];
   if (today) {
-    // 24時間の場合は、1日のトータルを現在時刻に振り分ける
-    // より詳細な時間別データが必要な場合は、サーバー側で時間別集計を実装する必要がある
+    // 1日のトータルを現在時刻に配置
     const currentHour = new Date().getHours();
     const currentHourData = hourlyData[currentHour];
     if (currentHourData) {
@@ -234,26 +151,18 @@ export const convertDailyStatsToChartData = (
 /**
  * Date オブジェクトを ISO 8601 形式（タイムゾーン情報付き）の文字列に変換
  * 例: "2024-12-01T00:00:00.000+09:00"
+ * date-fns-tz を使用して正確なタイムゾーン処理を実現
  */
 export const formatDateWithTimezone = (date: Date): string => {
-  const offset = -date.getTimezoneOffset();
-  const sign = offset >= 0 ? "+" : "-";
-  const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
-  const minutes = String(Math.abs(offset) % 60).padStart(2, "0");
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  const sec = String(date.getSeconds()).padStart(2, "0");
-  const ms = String(date.getMilliseconds()).padStart(3, "0");
-
-  return `${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}${sign}${hours}:${minutes}`;
+  // ブラウザのタイムゾーンを取得
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // date-fns-tz を使用してフォーマット（ISO 8601形式 + タイムゾーン）
+  return formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
 };
 
 /**
  * 時間範囲から開始日時と終了日時を計算
+ * date-fns を使用して正確な日付計算を実現
  */
 export const getDateRangeFromTimeRange = (
   range: TimeRange,
@@ -264,13 +173,13 @@ export const getDateRangeFromTimeRange = (
   let startDate: Date;
   switch (range) {
     case "24h":
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      startDate = subHours(now, 24);
       break;
     case "7d":
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate = subDays(now, 7);
       break;
     case "30d":
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      startDate = subDays(now, 30);
       break;
   }
 
@@ -278,4 +187,33 @@ export const getDateRangeFromTimeRange = (
     startDate: formatDateWithTimezone(startDate),
     endDate,
   };
+};
+
+/**
+ * ページネーション用のページ番号リストを生成
+ * 大量のページがある場合でも効率的に表示するため、
+ * 最初、最後、現在のページ周辺のみを表示
+ */
+export const getPaginationPages = (
+  currentPage: number,
+  totalPages: number,
+): number[] => {
+  // ページ数が少ない場合は全て表示
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  // 常に表示するページ番号を Set で管理（重複を防ぐ）
+  const pages = new Set<number>([1, totalPages]);
+
+  // 現在のページの前後1ページも表示
+  const rangeStart = Math.max(1, currentPage - 1);
+  const rangeEnd = Math.min(totalPages, currentPage + 1);
+
+  for (let i = rangeStart; i <= rangeEnd; i++) {
+    pages.add(i);
+  }
+
+  // Set を配列に変換してソート
+  return Array.from(pages).sort((a, b) => a - b);
 };
