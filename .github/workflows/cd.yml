@@ -41,6 +41,8 @@ jobs:
     runs-on:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
+    env:
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       migration_applied: ${{ steps.migrate.outputs.migration_applied }}
       migration_names: ${{ steps.migrate.outputs.migration_names }}
@@ -89,6 +91,8 @@ jobs:
     runs-on:
       group: self-arc
     environment: ${{ needs.setup.outputs.environment }}
+    env:
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       vercel_url: ${{ steps.deploy.outputs.url }}
     steps:
@@ -137,6 +141,8 @@ jobs:
       group: self-arc
     # Preview環境ではstagingのシークレットを使用するため、environmentをstagingに設定
     environment: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
+    env:
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
     steps:
