@@ -1,6 +1,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TransportType } from "@tumiki/db";
 import { z } from "zod";
+import { parseISO } from "date-fns";
 import type { McpServerId } from "@/schema/ids";
 
 type FindRequestLogsInput = {
@@ -8,7 +9,8 @@ type FindRequestLogsInput = {
   organizationId: string;
   page: number;
   pageSize: number;
-  days: number; // 期間（日数）- 1〜30日、必須
+  startDate: string; // ISO 8601形式（タイムゾーン情報付き）必須
+  endDate?: string; // ISO 8601形式（タイムゾーン情報付き）オプショナル
 };
 
 // リクエストログのレスポンススキーマ
@@ -41,7 +43,14 @@ export const findRequestLogs = async (
   tx: PrismaTransactionClient,
   input: FindRequestLogsInput,
 ): Promise<FindRequestLogsOutput> => {
-  const { userMcpServerId, organizationId, page, pageSize, days } = input;
+  const {
+    userMcpServerId,
+    organizationId,
+    page,
+    pageSize,
+    startDate,
+    endDate,
+  } = input;
 
   // サーバーの存在確認
   const server = await tx.mcpServer.findUnique({
@@ -56,9 +65,15 @@ export const findRequestLogs = async (
     throw new Error("サーバーが見つかりません");
   }
 
-  // 期間フィルタの計算（daysは必須）
+  // ISO文字列をDateオブジェクトに変換
+  // parseISOは文字列に含まれるタイムゾーン情報を自動的に解釈する
+  const start = parseISO(startDate);
+  const end = endDate ? parseISO(endDate) : new Date();
+
+  // 期間フィルタの計算
   const createdAtFilter = {
-    gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+    gte: start,
+    lte: end,
   };
 
   // TransportTypeをDB層でフィルタリング（SSEとSTREAMABLE_HTTPSのみ）

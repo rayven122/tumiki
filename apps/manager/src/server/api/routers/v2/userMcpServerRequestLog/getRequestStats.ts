@@ -1,5 +1,6 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { z } from "zod";
+import { subDays, subHours } from "date-fns";
 import type { McpServerId } from "@/schema/ids";
 
 type GetRequestStatsInput = {
@@ -40,58 +41,62 @@ export const getRequestStats = async (
     throw new Error("サーバーが見つかりません");
   }
 
-  // 全リクエストログを取得
-  const allLogs = await tx.mcpServerRequestLog.findMany({
+  const now = new Date();
+  const last24h = subHours(now, 24);
+  const last7d = subDays(now, 7);
+
+  // データベース側で集計（単一クエリ）
+  const stats = await tx.mcpServerRequestLog.aggregate({
     where: {
       mcpServerId: userMcpServerId,
       organizationId,
     },
-    select: {
-      httpStatus: true,
+    _count: { id: true },
+    _sum: {
       inputBytes: true,
       outputBytes: true,
       durationMs: true,
-      createdAt: true,
+    },
+    _avg: {
+      durationMs: true,
     },
   });
 
-  // 統計計算
-  const totalRequests = allLogs.length;
-  const successRequests = allLogs.filter(
-    (log) => log.httpStatus >= 200 && log.httpStatus < 300,
-  ).length;
-  const errorRequests = totalRequests - successRequests;
-  const totalInputBytes = allLogs.reduce((sum, log) => sum + log.inputBytes, 0);
-  const totalOutputBytes = allLogs.reduce(
-    (sum, log) => sum + log.outputBytes,
-    0,
-  );
-  const averageDurationMs =
-    totalRequests > 0
-      ? allLogs.reduce((sum, log) => sum + log.durationMs, 0) / totalRequests
-      : 0;
+  // 成功/エラーカウント、24時間以内、7日以内のカウントを並列実行
+  const [successCount, last24hCount, last7dCount] = await Promise.all([
+    tx.mcpServerRequestLog.count({
+      where: {
+        mcpServerId: userMcpServerId,
+        organizationId,
+        httpStatus: { gte: 200, lt: 300 },
+      },
+    }),
+    tx.mcpServerRequestLog.count({
+      where: {
+        mcpServerId: userMcpServerId,
+        organizationId,
+        createdAt: { gte: last24h },
+      },
+    }),
+    tx.mcpServerRequestLog.count({
+      where: {
+        mcpServerId: userMcpServerId,
+        organizationId,
+        createdAt: { gte: last7d },
+      },
+    }),
+  ]);
 
-  // 24時間以内のリクエスト数
-  const now = new Date();
-  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const last24hRequests = allLogs.filter(
-    (log) => log.createdAt >= last24h,
-  ).length;
-
-  // 7日以内のリクエスト数
-  const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const last7dRequests = allLogs.filter(
-    (log) => log.createdAt >= last7d,
-  ).length;
+  const totalRequests = stats._count.id;
 
   return {
     totalRequests,
-    successRequests,
-    errorRequests,
-    totalInputBytes,
-    totalOutputBytes,
-    averageDurationMs: Math.round(averageDurationMs),
-    last24hRequests,
-    last7dRequests,
+    successRequests: successCount,
+    errorRequests: totalRequests - successCount,
+    totalInputBytes: stats._sum.inputBytes ?? 0,
+    totalOutputBytes: stats._sum.outputBytes ?? 0,
+    averageDurationMs: Math.round(stats._avg.durationMs ?? 0),
+    last24hRequests: last24hCount,
+    last7dRequests: last7dCount,
   };
 };

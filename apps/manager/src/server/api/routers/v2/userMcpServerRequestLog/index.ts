@@ -24,8 +24,12 @@ export const FindRequestLogsInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(1000).default(50),
-  // 期間（日数）- 1〜30日、必須
-  days: z.number().int().min(1).max(30),
+  // 開始日時（ISO 8601形式、タイムゾーン情報付き、必須）
+  // 例: "2024-12-01T00:00:00.000+09:00"
+  startDate: z.iso.datetime({ offset: true }),
+  // 終了日時（ISO 8601形式、タイムゾーン情報付き、オプショナル）
+  // 例: "2024-12-05T23:59:59.999+09:00"
+  endDate: z.iso.datetime({ offset: true }).optional(),
 });
 
 // リクエストログ統計取得の入力スキーマ
@@ -33,10 +37,10 @@ export const GetRequestLogsStatsInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
   // 開始日時（ISO 8601形式、タイムゾーン情報付き）
   // 例: "2024-12-01T00:00:00.000+09:00"
-  startDate: z.string().datetime({ offset: true }),
+  startDate: z.iso.datetime({ offset: true }),
   // 終了日時（ISO 8601形式、タイムゾーン情報付き）
   // 例: "2024-12-05T23:59:59.999+09:00"
-  endDate: z.string().datetime({ offset: true }),
+  endDate: z.iso.datetime({ offset: true }),
 });
 
 export const userMcpServerRequestLogRouter = createTRPCRouter({
@@ -61,7 +65,8 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
         organizationId: ctx.session.user.organizationId,
         page: input.page,
         pageSize: input.pageSize,
-        days: input.days,
+        startDate: input.startDate,
+        endDate: input.endDate,
       });
     }),
 
