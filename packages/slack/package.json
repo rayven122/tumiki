@@ -10,8 +10,8 @@
     }
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
+    "dev": "tsc --watch --project tsconfig.build.json",
+    "build": "tsc --project tsconfig.build.json",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",

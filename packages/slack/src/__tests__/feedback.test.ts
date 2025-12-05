@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import type { FeedbackNotificationData } from "../templates/feedback";
-import { makeFeedbackSlackMessage } from "../templates/feedback";
+import type { FeedbackNotificationData } from "../templates/feedback.js";
+import { makeFeedbackSlackMessage } from "../templates/feedback.js";
 
 describe("makeFeedbackSlackMessage", () => {
   const baseData: FeedbackNotificationData = {
