@@ -1,5 +1,5 @@
 name: Build Packages
-description: デプロイに必要なパッケージ（vitest-config、db、auth、utils、mailer、oauth-token-manager）をビルドします
+description: デプロイに必要なパッケージ（vitest-config、db、auth、utils、mailer、slack、oauth-token-manager）をビルドします
 
 runs:
   using: composite
@@ -16,15 +16,15 @@ runs:
         echo "Building core packages..."
         pnpm run --filter @tumiki/db build
         pnpm run --filter @tumiki/auth build
-        pnpm run --filter @tumiki/utils build
         pnpm run --filter @tumiki/mailer build
+        pnpm run --filter @tumiki/slack build
         pnpm run --filter @tumiki/oauth-token-manager build
 
     - name: ✅ Verify builds
       shell: bash
       run: |
         echo "Verifying package builds..."
-        for pkg in vitest-config db auth utils mailer oauth-token-manager; do
+        for pkg in vitest-config db auth utils mailer slack oauth-token-manager; do
           if [ ! -d "packages/$pkg/dist" ] && [ ! -d "tooling/$pkg/dist" ]; then
             echo "Warning: Build output not found for @tumiki/$pkg"
           else

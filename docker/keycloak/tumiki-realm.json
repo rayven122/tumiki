@@ -21,15 +21,11 @@
       "redirectUris": [
         "http://localhost:3000/*",
         "http://localhost:3001/*",
-        "https://local.tumiki.cloud:3000/*",
-        "https://local.tumiki.cloud:3001/*",
         "https://manager.tumiki.cloud/*"
       ],
       "webOrigins": [
         "http://localhost:3000",
         "http://localhost:3001",
-        "https://local.tumiki.cloud:3000",
-        "https://local.tumiki.cloud:3001",
         "https://manager.tumiki.cloud"
       ],
       "protocol": "openid-connect",

@@ -23,7 +23,7 @@ catalogs:
       version: 11.4.3
     '@types/node':
       specifier: ^22.15.3
-      version: 22.17.0
+      version: 22.19.1
     '@vitest/coverage-v8':
       specifier: ^2.1.8
       version: 2.1.9
@@ -35,7 +35,7 @@ catalogs:
       version: 3.6.2
     tailwindcss:
       specifier: ^4.1.8
-      version: 4.1.11
+      version: 4.1.17
     typescript:
       specifier: ^5.8.3
       version: 5.9.2
@@ -216,6 +216,9 @@ importers:
       '@tumiki/oauth-token-manager':
         specifier: workspace:*
         version: link:../../packages/oauth-token-manager
+      '@tumiki/slack':
+        specifier: workspace:*
+        version: link:../../packages/slack
       '@uiw/react-json-view':
         specifier: 2.0.0-alpha.34
         version: 2.0.0-alpha.34(@babel/runtime@7.28.4)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -404,7 +407,7 @@ importers:
         version: 3.4.0
       tailwindcss-animate:
         specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@4.1.11)
+        version: 1.0.7(tailwindcss@4.1.17)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -435,7 +438,7 @@ importers:
         version: 4.1.17
       '@tailwindcss/typography':
         specifier: ^0.5.19
-        version: 0.5.19(tailwindcss@4.1.11)
+        version: 0.5.19(tailwindcss@4.1.17)
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.7(@types/react@19.1.9))(@types/react@19.1.9)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -510,7 +513,7 @@ importers:
         version: 0.6.14(@ianvs/prettier-plugin-sort-imports@4.7.0(prettier@3.6.2))(prettier@3.6.2)
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.1.11
+        version: 4.1.17
       typescript-eslint:
         specifier: ^8.48.1
         version: 8.48.1(eslint@9.32.0(jiti@2.6.1))(typescript@5.9.2)
@@ -550,10 +553,10 @@ importers:
         version: link:../../tooling/vitest
       '@types/node':
         specifier: 'catalog:'
-        version: 22.17.0
+        version: 22.19.1
       '@vitest/coverage-v8':
         specifier: 'catalog:'
-        version: 2.1.9(vitest@2.1.9(@types/node@22.17.0)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2))
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2))
       dotenv-cli:
         specifier: ^8.0.0
         version: 8.0.0
@@ -568,7 +571,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: 'catalog:'
-        version: 2.1.9(@types/node@22.17.0)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2)
+        version: 2.1.9(@types/node@22.19.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2)
 
   packages/db:
     dependencies:
@@ -932,10 +935,10 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: 'catalog:'
-        version: 4.1.11
+        version: 4.1.17
       tailwindcss-animate:
         specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@4.1.11)
+        version: 1.0.7(tailwindcss@4.1.17)
     devDependencies:
       '@tumiki/eslint-config':
         specifier: workspace:*
@@ -4236,9 +4239,6 @@ packages:
 
   '@types/node-fetch@2.6.13':
     resolution: {integrity: sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==}
-
-  '@types/node@22.17.0':
-    resolution: {integrity: sha512-bbAKTCqX5aNVryi7qXVMi+OkB3w/OyblodicMbvE38blyAz7GxXf6XYhklokijuPwwVg9sDLKRxt0ZHXQwZVfQ==}
 
   '@types/node@22.19.1':
     resolution: {integrity: sha512-LCCV0HdSZZZb34qifBsyWlUmok6W7ouER+oQIGBScS8EsZsQbrtFTUrDX4hOl+CS6p7cnNC4td+qrSVGSCTUfQ==}
@@ -8132,9 +8132,6 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders'
 
-  tailwindcss@4.1.11:
-    resolution: {integrity: sha512-2E9TBm6MDD/xKYe+dvJZAmg3yxIEDNRc0jwlNyDg/4Fil2QcSLjFKGVff0lAf1jjeaArlG/M75Ey/EYr/OJtBA==}
-
   tailwindcss@4.1.17:
     resolution: {integrity: sha512-j9Ee2YjuQqYT9bbRTfTZht9W/ytp5H+jJpZKiYdP/bpnXARAuELt9ofP0lPnmHjbga7SNQIxdTAXCmtKVYjN+Q==}
 
@@ -11997,10 +11994,10 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.1.17
 
-  '@tailwindcss/typography@0.5.19(tailwindcss@4.1.11)':
+  '@tailwindcss/typography@0.5.19(tailwindcss@4.1.17)':
     dependencies:
       postcss-selector-parser: 6.0.10
-      tailwindcss: 4.1.11
+      tailwindcss: 4.1.17
 
   '@tanstack/query-core@5.83.1': {}
 
@@ -12203,10 +12200,6 @@ snapshots:
     dependencies:
       '@types/node': 22.19.1
       form-data: 4.0.5
-
-  '@types/node@22.17.0':
-    dependencies:
-      undici-types: 6.21.0
 
   '@types/node@22.19.1':
     dependencies:
@@ -12518,24 +12511,6 @@ snapshots:
     transitivePeerDependencies:
       - utf-8-validate
 
-  '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@22.17.0)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2))':
-    dependencies:
-      '@ampproject/remapping': 2.3.0
-      '@bcoe/v8-coverage': 0.2.3
-      debug: 4.4.3
-      istanbul-lib-coverage: 3.2.2
-      istanbul-lib-report: 3.0.1
-      istanbul-lib-source-maps: 5.0.6
-      istanbul-reports: 3.2.0
-      magic-string: 0.30.21
-      magicast: 0.3.5
-      std-env: 3.10.0
-      test-exclude: 7.0.1
-      tinyrainbow: 1.2.0
-      vitest: 2.1.9(@types/node@22.17.0)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2)
-    transitivePeerDependencies:
-      - supports-color
-
   '@vitest/coverage-v8@2.1.9(vitest@2.1.9(@types/node@22.19.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2))':
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -12585,14 +12560,6 @@ snapshots:
       '@vitest/utils': 3.0.9
       chai: 5.3.3
       tinyrainbow: 2.0.0
-
-  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@22.17.0)(lightningcss@1.30.2))':
-    dependencies:
-      '@vitest/spy': 2.1.9
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 5.4.21(@types/node@22.17.0)(lightningcss@1.30.2)
 
   '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@22.19.1)(lightningcss@1.30.2))':
     dependencies:
@@ -17030,11 +16997,9 @@ snapshots:
 
   tailwind-merge@3.4.0: {}
 
-  tailwindcss-animate@1.0.7(tailwindcss@4.1.11):
+  tailwindcss-animate@1.0.7(tailwindcss@4.1.17):
     dependencies:
-      tailwindcss: 4.1.11
-
-  tailwindcss@4.1.11: {}
+      tailwindcss: 4.1.17
 
   tailwindcss@4.1.17: {}
 
@@ -17398,24 +17363,6 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  vite-node@2.1.9(@types/node@22.17.0)(lightningcss@1.30.2):
-    dependencies:
-      cac: 6.7.14
-      debug: 4.4.3
-      es-module-lexer: 1.7.0
-      pathe: 1.1.2
-      vite: 5.4.21(@types/node@22.17.0)(lightningcss@1.30.2)
-    transitivePeerDependencies:
-      - '@types/node'
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-
   vite-node@2.1.9(@types/node@22.19.1)(lightningcss@1.30.2):
     dependencies:
       cac: 6.7.14
@@ -17473,16 +17420,6 @@ snapshots:
       - tsx
       - yaml
 
-  vite@5.4.21(@types/node@22.17.0)(lightningcss@1.30.2):
-    dependencies:
-      esbuild: 0.21.5
-      postcss: 8.5.6
-      rollup: 4.53.3
-    optionalDependencies:
-      '@types/node': 22.17.0
-      fsevents: 2.3.3
-      lightningcss: 1.30.2
-
   vite@5.4.21(@types/node@22.19.1)(lightningcss@1.30.2):
     dependencies:
       esbuild: 0.21.5
@@ -17526,42 +17463,6 @@ snapshots:
       vitest: 2.1.9(@types/node@22.19.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2)
     transitivePeerDependencies:
       - jest
-
-  vitest@2.1.9(@types/node@22.17.0)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2):
-    dependencies:
-      '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.17.0)(lightningcss@1.30.2))
-      '@vitest/pretty-format': 2.1.9
-      '@vitest/runner': 2.1.9
-      '@vitest/snapshot': 2.1.9
-      '@vitest/spy': 2.1.9
-      '@vitest/utils': 2.1.9
-      chai: 5.3.3
-      debug: 4.4.3
-      expect-type: 1.2.2
-      magic-string: 0.30.21
-      pathe: 1.1.2
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 0.3.2
-      tinypool: 1.1.1
-      tinyrainbow: 1.2.0
-      vite: 5.4.21(@types/node@22.17.0)(lightningcss@1.30.2)
-      vite-node: 2.1.9(@types/node@22.17.0)(lightningcss@1.30.2)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/node': 22.17.0
-      jsdom: 26.1.0(bufferutil@4.0.9)
-    transitivePeerDependencies:
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
 
   vitest@2.1.9(@types/node@22.19.1)(jsdom@26.1.0(bufferutil@4.0.9))(lightningcss@1.30.2):
     dependencies:

@@ -39,7 +39,7 @@ describe("getOAuthRedirectUri", () => {
 
   test("デフォルト値（ローカル開発環境）", () => {
     const result = getOAuthRedirectUri();
-    expect(result).toBe("https://local.tumiki.cloud:3000/api/oauth/callback");
+    expect(result).toBe("http://localhost:3000/api/oauth/callback");
   });
 
   test("優先順位: NEXTAUTH_URL > VERCEL_URL", () => {
@@ -60,6 +60,6 @@ describe("getOAuthRedirectUri", () => {
   test("ローカル開発環境でのデフォルト動作", () => {
     // 環境変数が一切設定されていない場合
     const result = getOAuthRedirectUri();
-    expect(result).toBe("https://local.tumiki.cloud:3000/api/oauth/callback");
+    expect(result).toBe("http://localhost:3000/api/oauth/callback");
   });
 });

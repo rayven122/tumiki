@@ -122,4 +122,4 @@ import { validate, format } from '@/utils'
 ## 特記事項
 - Prisma型は`@tumiki/db`からimport（`@prisma/client`ではない）
 - `@tumiki/`パッケージのimportエラー時は該当パッケージのビルドが必要
-- ローカル開発URL: `https://local.tumiki.cloud:3000`
+- ローカル開発URL: `http://localhost:3000`
