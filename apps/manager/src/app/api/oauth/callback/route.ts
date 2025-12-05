@@ -55,7 +55,7 @@ export const GET = async (request: NextRequest) => {
     const { state } = paramsResult;
 
     // tRPC APIを呼び出してOAuthコールバックを処理
-    const result = await api.v2.userMcpServer.handleOAuthCallback({
+    const result = await api.v2.oauth.handleCallback({
       state,
       currentUrl: request.nextUrl.toString(),
     });

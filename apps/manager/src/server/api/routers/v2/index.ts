@@ -6,6 +6,7 @@ import { organizationRouter } from "./organization";
 import { mcpServerAuthRouter } from "./mcpServerAuth";
 import { mcpServerRouter } from "./mcpServer";
 import { feedbackRouter } from "./feedback";
+import { oauthRouter } from "./oauth";
 
 export const v2Router = createTRPCRouter({
   user: userRouter,
@@ -15,4 +16,5 @@ export const v2Router = createTRPCRouter({
   mcpServerAuth: mcpServerAuthRouter,
   mcpServer: mcpServerRouter,
   feedback: feedbackRouter,
+  oauth: oauthRouter,
 });
