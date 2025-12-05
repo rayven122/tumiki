@@ -106,15 +106,6 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Fetch Vercel environment variables
-        uses: ./.github/actions/fetch-vercel-env
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          environment: ${{ needs.setup.outputs.environment }}
-          output-file: .env
-
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
         with:
