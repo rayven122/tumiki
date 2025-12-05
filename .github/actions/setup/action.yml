@@ -18,3 +18,7 @@ runs:
     - name: Install packages
       shell: bash
       run: pnpm install --frozen-lockfile
+
+    - name: Install Vercel CLI
+      shell: bash
+      run: npm install -g vercel
