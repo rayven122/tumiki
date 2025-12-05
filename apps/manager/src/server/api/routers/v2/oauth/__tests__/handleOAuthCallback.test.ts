@@ -5,9 +5,9 @@ import { TransportType } from "@tumiki/db/prisma";
 import {
   handleOAuthCallback,
   type HandleOAuthCallbackInput,
-} from "./handleOAuthCallback";
-import * as oauthVerification from "./helpers/oauth-verification";
-import * as mcpServerSetup from "./helpers/mcp-server-setup";
+} from "../handleOAuthCallback";
+import * as oauthVerification from "../../userMcpServer/helpers/oauth-verification";
+import * as mcpServerSetup from "../../userMcpServer/helpers/mcp-server-setup";
 import type { OAuthStatePayload } from "@/lib/oauth/state-token";
 import type { OAuthTokenData } from "@/lib/oauth/oauth-client";
 

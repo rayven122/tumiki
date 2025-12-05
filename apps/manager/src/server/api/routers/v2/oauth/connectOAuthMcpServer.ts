@@ -5,10 +5,10 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { type ConnectOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
-import { getOrCreateTemplateInfo } from "./helpers/server-template";
-import { createMcpServer } from "./helpers/mcp-server-creator";
-import { getOrCreateOAuthClient } from "./helpers/oauth-client-manager";
-import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
+import { getOrCreateTemplateInfo } from "../userMcpServer/helpers/server-template";
+import { createMcpServer } from "../userMcpServer/helpers/mcp-server-creator";
+import { getOrCreateOAuthClient } from "../userMcpServer/helpers/oauth-client-manager";
+import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAuthorizationUrl";
 
 type ConnectOAuthMcpServerInput = z.infer<typeof ConnectOAuthMcpServerInputV2>;
 
