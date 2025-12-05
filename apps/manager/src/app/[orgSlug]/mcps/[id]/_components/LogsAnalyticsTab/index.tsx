@@ -25,7 +25,6 @@ import {
   mapDailyStatsToHourlyDisplay,
   convertDailyStatsToChartData,
   getTimeRangeLabel,
-  timeRangeToDays,
   getDateRangeFromTimeRange,
   type TimeRange,
 } from "./utils";
@@ -46,13 +45,19 @@ export const LogsAnalyticsTab = ({
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
 
   // リクエストログ一覧を取得（ページネーション対応）
+  // useMemoでメモ化して、timeRangeが変更されない限り同じオブジェクトを返す
+  const logsDateRange = useMemo(
+    () => getDateRangeFromTimeRange(timeRange),
+    [timeRange],
+  );
   const { data: logsData, isLoading } =
     api.v2.userMcpServerRequestLog.findRequestLogs.useQuery(
       {
         userMcpServerId: serverId,
         page: currentPage,
         pageSize,
-        days: timeRangeToDays(timeRange),
+        startDate: logsDateRange.startDate,
+        endDate: logsDateRange.endDate,
       },
       { enabled: !!serverId },
     );
