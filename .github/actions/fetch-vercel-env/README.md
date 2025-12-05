@@ -21,6 +21,8 @@ Vercelから環境変数を取得して `.env` ファイルに保存する再利
   uses: ./.github/actions/fetch-vercel-env
   with:
     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
     environment: production
     output-file: .env.production.local
 ```
@@ -32,6 +34,8 @@ Vercelから環境変数を取得して `.env` ファイルに保存する再利
   uses: ./.github/actions/fetch-vercel-env
   with:
     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
     environment: preview
     output-file: .env.preview
 ```
@@ -43,6 +47,8 @@ Vercelから環境変数を取得して `.env` ファイルに保存する再利
   uses: ./.github/actions/fetch-vercel-env
   with:
     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
     environment: production
     # output-fileを省略すると .env.local が使用される
 ```
@@ -52,6 +58,8 @@ Vercelから環境変数を取得して `.env` ファイルに保存する再利
 | 名前 | 必須 | デフォルト | 説明 |
 |------|------|------------|------|
 | `vercel-token` | ✅ | - | Vercel APIトークン。GitHubのSecretsに保存することを推奨 |
+| `vercel-org-id` | ✅ | - | Vercel Organization ID。GitHubのSecretsに保存することを推奨 |
+| `vercel-project-id` | ✅ | - | Vercel Project ID。GitHubのSecretsに保存することを推奨 |
 | `environment` | ✅ | - | 取得する環境名（`preview`, `production`など） |
 | `output-file` | ❌ | `.env.local` | 環境変数を保存するファイルのパス |
 
