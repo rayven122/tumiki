@@ -25,6 +25,7 @@ import {
   mapDailyStatsToHourlyDisplay,
   convertDailyStatsToChartData,
   getTimeRangeLabel,
+  getDaysAndTimezoneFromTimeRange,
   getDateRangeFromTimeRange,
   type TimeRange,
 } from "./utils";
@@ -44,36 +45,37 @@ export const LogsAnalyticsTab = ({
   const [pageSize, setPageSize] = useState(10);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
 
-  // リクエストログ一覧を取得（ページネーション対応）
   // useMemoでメモ化して、timeRangeが変更されない限り同じオブジェクトを返す
-  const logsDateRange = useMemo(
+  const daysAndTimezone = useMemo(
+    () => getDaysAndTimezoneFromTimeRange(timeRange),
+    [timeRange],
+  );
+
+  const dateRange = useMemo(
     () => getDateRangeFromTimeRange(timeRange),
     [timeRange],
   );
+
+  // リクエストログ一覧を取得（ページネーション対応）
   const { data: logsData, isLoading } =
     api.v2.userMcpServerRequestLog.findRequestLogs.useQuery(
       {
         userMcpServerId: serverId,
         page: currentPage,
         pageSize,
-        startDate: logsDateRange.startDate,
-        endDate: logsDateRange.endDate,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
       },
       { enabled: !!serverId },
     );
 
   // グラフ用の日別統計データを取得
-  // useMemoでメモ化して、timeRangeが変更されない限り同じオブジェクトを返す
-  const dateRange = useMemo(
-    () => getDateRangeFromTimeRange(timeRange),
-    [timeRange],
-  );
   const { data: statsData } =
     api.v2.userMcpServerRequestLog.getRequestLogsStats.useQuery(
       {
         userMcpServerId: serverId,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
+        days: daysAndTimezone.days,
+        timezone: daysAndTimezone.timezone,
       },
       { enabled: !!serverId },
     );

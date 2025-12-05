@@ -35,12 +35,22 @@ export const FindRequestLogsInputV2 = z.object({
 // リクエストログ統計取得の入力スキーマ
 export const GetRequestLogsStatsInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
-  // 開始日時（ISO 8601形式、タイムゾーン情報付き）
-  // 例: "2024-12-01T00:00:00.000+09:00"
-  startDate: z.iso.datetime({ offset: true }),
-  // 終了日時（ISO 8601形式、タイムゾーン情報付き）
-  // 例: "2024-12-05T23:59:59.999+09:00"
-  endDate: z.iso.datetime({ offset: true }),
+  // 過去N日間（1〜90日）
+  // 例: 7 → 過去7日間
+  days: z.number().int().min(1).max(90),
+  // タイムゾーン（IANAタイムゾーン名）
+  // 例: "Asia/Tokyo"
+  timezone: z.string().refine(
+    (tz) => {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "無効なタイムゾーンです" },
+  ),
 });
 
 export const userMcpServerRequestLogRouter = createTRPCRouter({
@@ -78,8 +88,8 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
       return await getRequestLogsStats(ctx.db, {
         userMcpServerId: input.userMcpServerId,
         organizationId: ctx.session.user.organizationId,
-        startDate: input.startDate,
-        endDate: input.endDate,
+        days: input.days,
+        timezone: input.timezone,
       });
     }),
 });

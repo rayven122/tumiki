@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
+import { sanitizeErrorMessage } from "./errorUtils";
 import type { UserMcpServerDetail, RequestStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
 
@@ -63,7 +64,12 @@ export const OverviewTab = ({
           context.previousData,
         );
       }
-      toast.error(error.message);
+      // セキュリティ上の理由でエラーメッセージをサニタイズ
+      const safeErrorMessage = sanitizeErrorMessage(
+        error,
+        "ツールの更新に失敗しました",
+      );
+      toast.error(safeErrorMessage);
     },
     // 成功/失敗に関わらず最終的にデータを再取得して整合性を保つ
     onSettled: async () => {
