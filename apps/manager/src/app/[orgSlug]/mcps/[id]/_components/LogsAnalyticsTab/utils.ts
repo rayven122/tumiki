@@ -149,20 +149,39 @@ export const convertDailyStatsToChartData = (
 };
 
 /**
+ * ブラウザのタイムゾーンを取得
+ * 例: "Asia/Tokyo"
+ */
+export const getUserTimezone = (): string => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
+/**
  * Date オブジェクトを ISO 8601 形式（タイムゾーン情報付き）の文字列に変換
  * 例: "2024-12-01T00:00:00.000+09:00"
- * date-fns-tz を使用して正確なタイムゾーン処理を実現
  */
-export const formatDateWithTimezone = (date: Date): string => {
-  // ブラウザのタイムゾーンを取得
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  // date-fns-tz を使用してフォーマット（ISO 8601形式 + タイムゾーン）
+const formatDateWithTimezone = (date: Date): string => {
+  const timezone = getUserTimezone();
   return formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
 };
 
 /**
- * 時間範囲から開始日時と終了日時を計算
- * date-fns を使用して正確な日付計算を実現
+ * 時間範囲から日数とタイムゾーンを取得
+ */
+export const getDaysAndTimezoneFromTimeRange = (
+  range: TimeRange,
+): { days: number; timezone: string } => {
+  const timezone = getUserTimezone();
+  const days = timeRangeToDays(range);
+
+  return {
+    days,
+    timezone,
+  };
+};
+
+/**
+ * 時間範囲から開始日時と終了日時を計算（findRequestLogs用）
  */
 export const getDateRangeFromTimeRange = (
   range: TimeRange,

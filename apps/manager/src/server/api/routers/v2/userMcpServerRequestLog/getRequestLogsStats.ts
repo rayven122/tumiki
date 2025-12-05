@@ -1,14 +1,28 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { z } from "zod";
-import { format, parseISO } from "date-fns";
+import { addDays, subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import type { McpServerId } from "@/schema/ids";
+
+// UTC時刻で日の開始(00:00:00.000)を返す
+const startOfDayUTC = (date: Date): Date => {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+};
+
+// UTC時刻で日の終了(23:59:59.999)を返す
+const endOfDayUTC = (date: Date): Date => {
+  const d = new Date(date);
+  d.setUTCHours(23, 59, 59, 999);
+  return d;
+};
 
 type GetRequestLogsStatsInput = {
   userMcpServerId: McpServerId;
   organizationId: string;
-  startDate: string; // ISO 8601形式（タイムゾーン情報付き）例: "2024-12-01T00:00:00.000+09:00"
-  endDate: string; // ISO 8601形式（タイムゾーン情報付き）例: "2024-12-05T23:59:59.999+09:00"
+  days: number; // 過去N日間（1〜90）
+  timezone: string; // IANAタイムゾーン名（例: "Asia/Tokyo"）
 };
 
 // 日付ごとのリクエスト統計のレスポンススキーマ
@@ -29,7 +43,7 @@ export const getRequestLogsStats = async (
   tx: PrismaTransactionClient,
   input: GetRequestLogsStatsInput,
 ): Promise<GetRequestLogsStatsOutput> => {
-  const { userMcpServerId, organizationId, startDate, endDate } = input;
+  const { userMcpServerId, organizationId, days, timezone } = input;
 
   // サーバーの存在確認
   const server = await tx.mcpServer.findUnique({
@@ -44,14 +58,11 @@ export const getRequestLogsStats = async (
     throw new Error("サーバーが見つかりません");
   }
 
-  // ISO文字列をDateオブジェクトに変換
-  // parseISOは文字列に含まれるタイムゾーン情報を自動的に解釈する
-  const start = parseISO(startDate);
-  const end = parseISO(endDate);
-
-  // クライアントのタイムゾーンを抽出（例: "+09:00" から "+09:00" を取得）
-  const timezoneMatch = /([+-]\d{2}:\d{2})$/.exec(startDate);
-  const timezoneOffset = timezoneMatch ? timezoneMatch[1] : "+00:00";
+  // 現在時刻から過去N日間の日付範囲を計算
+  // 今日を含めて過去N日間なので、今日から(N-1)日前の00:00:00 UTCが開始日
+  const now = new Date();
+  const startDate = startOfDayUTC(subDays(now, days - 1));
+  const endDate = endOfDayUTC(now);
 
   // 指定期間のリクエストログを取得
   const logs = await tx.mcpServerRequestLog.findMany({
@@ -59,8 +70,8 @@ export const getRequestLogsStats = async (
       mcpServerId: userMcpServerId,
       organizationId,
       createdAt: {
-        gte: start,
-        lte: end,
+        gte: startDate,
+        lte: endDate,
       },
     },
     select: {
@@ -78,35 +89,18 @@ export const getRequestLogsStats = async (
     { successCount: number; errorCount: number; totalCount: number }
   >();
 
-  // 期間内の全日付を初期化（クライアントのタイムゾーンで）
-  const startDateOnly = formatInTimeZone(
-    start,
-    timezoneOffset ?? "+00:00",
-    "yyyy-MM-dd",
-  );
-  const endDateOnly = formatInTimeZone(
-    end,
-    timezoneOffset ?? "+00:00",
-    "yyyy-MM-dd",
-  );
+  // 期間内の全日付を初期化
+  let currentDate = startDate;
 
-  const current = parseISO(startDateOnly);
-  const endDateObj = parseISO(endDateOnly);
-
-  while (current <= endDateObj) {
-    const dateStr = format(current, "yyyy-MM-dd");
+  for (let i = 0; i < days; i++) {
+    const dateStr = formatInTimeZone(currentDate, timezone, "yyyy-MM-dd");
     statsMap.set(dateStr, { successCount: 0, errorCount: 0, totalCount: 0 });
-    current.setDate(current.getDate() + 1);
+    currentDate = addDays(currentDate, 1);
   }
 
   // ログデータを集計（クライアントのタイムゾーンに変換して日付を判定）
   for (const log of logs) {
-    // UTC時刻をクライアントのタイムゾーンで日付に変換
-    const dateStr = formatInTimeZone(
-      log.createdAt,
-      timezoneOffset ?? "+00:00",
-      "yyyy-MM-dd",
-    );
+    const dateStr = formatInTimeZone(log.createdAt, timezone, "yyyy-MM-dd");
 
     const stats = statsMap.get(dateStr);
     if (!stats) continue;
