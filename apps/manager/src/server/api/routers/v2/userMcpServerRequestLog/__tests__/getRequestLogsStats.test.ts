@@ -6,7 +6,8 @@ import type { McpServerId } from "@/schema/ids";
 // 現在日時を2024-12-05にモック
 const mockNow = new Date("2024-12-05T12:00:00.000Z");
 
-describe("getRequestLogsStats", () => {
+// CI環境ではテスト用DBが利用できないためスキップ
+describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
   const testMcpServerId = "test-mcp-server-stats-001" as McpServerId;
   const testOrganizationId = "test-org-stats-001" as const;
   const testUserId = "test-user-stats-001" as const;
