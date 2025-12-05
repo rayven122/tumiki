@@ -1,7 +1,7 @@
 export { sendSlackMessage, type SlackMessage } from "./client.js";
 
 export {
-  createFeedbackNotification,
+  makeFeedbackSlackMessage,
   type FeedbackNotificationData,
 } from "./templates/feedback.js";
 
