@@ -14,7 +14,7 @@ color: orange
 1. **サービスエンドポイント検証**
    - README.mdとプロジェクトドキュメントからすべてのサービスエンドポイントを特定
    - tumikiアーキテクチャに基づく以下の主要エンドポイントを検証:
-     - Managerアプリ: `https://local.tumiki.cloud:3000` (メインアプリケーション)
+     - Managerアプリ: `http://localhost:3000` (メインアプリケーション)
      - Proxyサーバー: `http://localhost:8080` (MCPプロキシエンドポイント: `/mcp`, `/sse`, `/messages`)
      - tRPCルーター経由のAPIエンドポイント
    - 成功レスポンスとエラーハンドリングの両方をテスト
