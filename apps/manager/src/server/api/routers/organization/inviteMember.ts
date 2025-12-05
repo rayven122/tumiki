@@ -23,7 +23,7 @@ const INVITATION_MESSAGES = {
 /**
  * メールクライアントを初期化する
  */
-function initializeMailClient(): void {
+const initializeMailClient = (): void => {
   createMailClient({
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT),
@@ -34,30 +34,30 @@ function initializeMailClient(): void {
     },
     from: process.env.FROM_EMAIL ?? "",
   });
-}
+};
 
 /**
  * 招待URLを生成する
  */
-function generateInviteUrl(token: string): string {
+const generateInviteUrl = (token: string): string => {
   const baseUrl =
     process.env.NODE_ENV === "production"
       ? process.env.NEXTAUTH_URL
       : "http://localhost:3000";
   return `${baseUrl}/invite/${token}`;
-}
+};
 
 /**
  * 招待メールを送信する（最適化版）
  */
-async function sendInvitationEmail(
+const sendInvitationEmail = async (
   email: string,
   inviteUrl: string,
   organizationName: string,
   isAdmin = false,
   roleIds: string[] = [],
   expiresAt?: string,
-): Promise<void> {
+): Promise<void> => {
   try {
     initializeMailClient();
 
@@ -76,15 +76,22 @@ async function sendInvitationEmail(
       inviteUrl,
       appName: organizationName,
       expiresAt,
-    }).catch(() => {
+    }).catch((error: unknown) => {
       // エラーハンドリングは既に関数内で行われている
+      console.error(
+        "招待メール送信エラー:",
+        error instanceof Error ? error.message : String(error),
+      );
     });
   } catch (emailError: unknown) {
-    console.error(INVITATION_MESSAGES.EMAIL_SEND_FAILED, emailError);
+    console.error(
+      INVITATION_MESSAGES.EMAIL_SEND_FAILED,
+      emailError instanceof Error ? emailError.message : String(emailError),
+    );
     // メール送信失敗でもユーザーには招待成功を返す
     // （グレースフルデグラデーション）
   }
-}
+};
 
 export const inviteMember = async ({
   input,
