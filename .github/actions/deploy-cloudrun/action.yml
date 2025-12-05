@@ -133,23 +133,6 @@ runs:
         VPC_ARGS="--clear-vpc-connector"
         echo "VPC: 全環境でVPCコネクターを使用しません（パブリックIP接続）"
 
-        echo "Vercel から環境変数を取得します（環境: ${ENVIRONMENT}）"
-
-        # vercel env pull: 環境変数をローカルファイルにエクスポート
-        # 注: vercel pull は vercel build/dev を使う場合のみ必要。env pull は独立して動作する
-        if ! vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" 2>/dev/null; then
-          echo "❌ Vercel env pull コマンドが失敗しました。詳細を表示します:"
-          vercel env pull .env.cloud-run.local --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}"
-          exit 1
-        fi
-
-        if [ ! -f .env.cloud-run.local ]; then
-          echo "❌ Vercel から環境変数の取得に失敗しました（ファイルが作成されませんでした）"
-          exit 1
-        fi
-
-        echo "✅ Vercel から環境変数を取得しました"
-
         # .env ファイルを Cloud Run の env-vars-file 形式（YAML）に変換
         # Cloud Run は値に特殊文字（=など）が含まれる場合、YAML形式を要求する
         # コメント行と空行を除外し、YAML形式に変換
