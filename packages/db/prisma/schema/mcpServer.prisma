@@ -85,8 +85,10 @@ model McpServerTemplate {
   organizationId String
   organization   Organization        @relation(fields: [organizationId], references: [id])
 
-  mcpTools   McpTool[]   @relation("mcpTools")
-  mcpServers McpServer[]
+  mcpTools McpTool[] @relation("mcpTools")
+
+  /// テンプレートインスタンス一覧
+  templateInstances McpServerTemplateInstance[]
 
   /// OAuth Client リレーション（1:多）
   oauthClients McpOAuthClient[]
@@ -115,7 +117,8 @@ model McpTool {
   mcpServerTemplateId String
   mcpServerTemplate   McpServerTemplate @relation("mcpTools", fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
 
-  mcpServers McpServer[]
+  /// テンプレートインスタンスとの関連
+  templateInstances McpServerTemplateInstance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
