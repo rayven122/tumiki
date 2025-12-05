@@ -22,13 +22,20 @@ jobs:
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
 
-      - name: 🔧 Build tooling packages
-        run: pnpm run --filter @tumiki/vitest-config build
-        # toolingパッケージを先にビルド
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
 
-      - name: 🔧 Build dependencies
-        run: pnpm run --filter @tumiki/mailer build && pnpm run --filter @tumiki/db build && pnpm run --filter @tumiki/auth build && pnpm run --filter @tumiki/utils build && pnpm run --filter @tumiki/slack build
-        # CI環境で@tumiki/mailerと@tumiki/slackの型定義を確実に生成するため、依存パッケージのみビルド
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: 🔧 Build packages
+        run: pnpm turbo build
+        # Turboを使用して依存関係を考慮した並列ビルド
 
       - name: ✅ Run lint, format and typecheck
         run: pnpm check
