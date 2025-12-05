@@ -3,26 +3,30 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     ignores: [
-      ".next",
-      "next-env.d.ts", // Next.js auto-generated file
-      "prisma/**",
-      "src/app/(chat)/**", // For ai-chatbot
-      "src/artifacts/**", // For ai-chatbot
-      "src/components/*.tsx", // For ai-chatbot
-      "src/hooks/**", // For ai-chatbot
-      "src/lib/ai/**", // For ai-chatbot
-      "src/lib/constants.ts", // For ai-chatbot
-      "src/lib/editor/suggestions.tsx", // For ai-chatbot
+      "build/**",
+      "dist/**",
+      "node_modules/**",
       "vitest.config.ts",
+      "**/*.test.ts",
     ],
   },
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["**/*.js"],
+    extends: [...tseslint.configs.recommended],
+  },
+  {
+    files: ["**/*.ts"],
     extends: [
       ...tseslint.configs.recommended,
       ...tseslint.configs.recommendedTypeChecked,
       ...tseslint.configs.stylisticTypeChecked,
     ],
+    languageOptions: {
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/consistent-type-definitions": "off",
@@ -39,23 +43,13 @@ export default tseslint.config(
         "error",
         { checksVoidReturn: { attributes: false } },
       ],
-    },
-  },
-  {
-    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
-    rules: {
-      "@typescript-eslint/unbound-method": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
     },
   },
   {
     linterOptions: {
       reportUnusedDisableDirectives: true,
-    },
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
     },
   },
 );

@@ -47,6 +47,12 @@ export type UserMcpServerInstanceId = z.infer<
  */
 export const ApiKeyIdSchema = z.string().brand<"ApiKeyId">();
 
+/**
+ * Feedback関連のID型
+ */
+export const FeedbackIdSchema = z.string().brand<"FeedbackId">();
+export type FeedbackId = z.infer<typeof FeedbackIdSchema>;
+
 export const OrganizationIdSchema = z
   .string()
   .cuid("有効な組織IDを入力してください")
