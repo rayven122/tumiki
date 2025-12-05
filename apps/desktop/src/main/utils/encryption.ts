@@ -6,12 +6,12 @@ import { safeStorage } from "electron";
  * @returns Base64エンコードされた暗号化テキスト
  */
 export const encryptToken = (plainText: string): string => {
+  // 暗号化が利用できない場合はエラーをスロー（セキュリティリスクを回避）
   if (!safeStorage.isEncryptionAvailable()) {
-    console.warn(
-      "暗号化サービスが利用できません。プレーンテキストで保存されます。",
+    throw new Error(
+      "暗号化サービスが利用できない環境では認証トークンを保存できません。" +
+        "この環境ではElectron safeStorageが利用できません。",
     );
-    // プレーンテキスト保存へのフォールバック（Base64エンコードのみ）
-    return Buffer.from(plainText, "utf8").toString("base64");
   }
 
   const encryptedBuffer = safeStorage.encryptString(plainText);
@@ -24,12 +24,12 @@ export const encryptToken = (plainText: string): string => {
  * @returns 復号化された平文
  */
 export const decryptToken = (encryptedText: string): string => {
+  // 暗号化が利用できない場合はエラーをスロー（セキュリティリスクを回避）
   if (!safeStorage.isEncryptionAvailable()) {
-    console.warn(
-      "暗号化サービスが利用できません。プレーンテキストとして復号化します。",
+    throw new Error(
+      "暗号化サービスが利用できない環境では認証トークンを復号化できません。" +
+        "この環境ではElectron safeStorageが利用できません。",
     );
-    // プレーンテキストからの復号化（Base64デコードのみ）
-    return Buffer.from(encryptedText, "base64").toString("utf8");
   }
 
   const encryptedBuffer = Buffer.from(encryptedText, "base64");

@@ -26,8 +26,8 @@ const Root = () => {
             staleTime: 5 * 60 * 1000,
             // キャッシュ時間（10分）
             gcTime: 10 * 60 * 1000,
-            // ネットワークモード: オンライン時のみ実行
-            networkMode: "online",
+            // ネットワークモード: オフラインファースト設計
+            networkMode: "offlineFirst",
             // リフェッチ設定
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,
@@ -36,8 +36,8 @@ const Root = () => {
           mutations: {
             // Mutation のリトライは無効化（副作用があるため）
             retry: false,
-            // ネットワークモード: オンライン時のみ実行
-            networkMode: "online",
+            // ネットワークモード: オフラインファースト設計
+            networkMode: "offlineFirst",
             // グローバル Mutation エラーハンドラー
             onError: (error) => {
               console.error("Mutation error:", error);

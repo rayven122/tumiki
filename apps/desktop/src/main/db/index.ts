@@ -2,6 +2,7 @@ import { PrismaClient } from "../../../prisma/generated/client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
+import * as logger from "../utils/logger";
 
 const getDatabasePath = (): string => {
   // Electron app が実行中の場合は userData ディレクトリを使用
@@ -22,63 +23,58 @@ const getDatabasePath = (): string => {
 };
 
 let prisma: PrismaClient | undefined;
-let isConnecting = false;
+let connectionPromise: Promise<PrismaClient> | null = null;
 
 /**
  * データベース接続を取得
  * 接続失敗時は自動的にリトライする
  */
 export const getDb = async (): Promise<PrismaClient> => {
-  // 既に接続中の場合は待機（最大5秒でタイムアウト）
-  if (isConnecting) {
-    const startTime = Date.now();
-    const timeout = 5000; // 5秒
-    while (isConnecting && Date.now() - startTime < timeout) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    if (isConnecting) {
-      throw new Error(
-        "Database connection timeout: 5秒以内に接続を完了できませんでした",
-      );
-    }
-  }
-
   // 既存の接続がある場合はそれを返す
   if (prisma) {
     return prisma;
   }
 
-  isConnecting = true;
-  let tempPrisma: PrismaClient | undefined;
-
-  try {
-    tempPrisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: getDatabasePath(),
-        },
-      },
-      log:
-        process.env.NODE_ENV === "development"
-          ? ["query", "error", "warn"]
-          : ["error"],
-    });
-
-    // 接続テスト
-    await tempPrisma.$connect();
-    prisma = tempPrisma;
-    return prisma;
-  } catch (error) {
-    // 接続失敗時はクリーンアップ
-    if (tempPrisma) {
-      await tempPrisma.$disconnect().catch(() => {
-        // 切断エラーは無視
-      });
-    }
-    throw error;
-  } finally {
-    isConnecting = false;
+  // 既に接続中の場合は同じPromiseを返す（競合状態を回避）
+  if (connectionPromise) {
+    return await connectionPromise;
   }
+
+  // 新しい接続を作成
+  connectionPromise = (async () => {
+    let tempPrisma: PrismaClient | undefined;
+
+    try {
+      tempPrisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: getDatabasePath(),
+          },
+        },
+        log:
+          process.env.NODE_ENV === "development"
+            ? ["error", "warn"]
+            : ["error"],
+      });
+
+      // 接続テスト
+      await tempPrisma.$connect();
+      prisma = tempPrisma;
+      return prisma;
+    } catch (error) {
+      // 接続失敗時はクリーンアップ
+      if (tempPrisma) {
+        await tempPrisma.$disconnect().catch(() => {
+          // 切断エラーは無視
+        });
+      }
+      throw error;
+    } finally {
+      connectionPromise = null;
+    }
+  })();
+
+  return await connectionPromise;
 };
 
 /**
@@ -92,11 +88,12 @@ export const initializeDb = async (): Promise<void> => {
 
     // データベース接続を確認
     await db.$queryRaw`SELECT 1`;
-    if (process.env.NODE_ENV === "development") {
-      console.log("Database connection verified");
-    }
+    logger.info("Database connection verified");
   } catch (error) {
-    console.error("Failed to connect to database:", error);
+    logger.error(
+      "Failed to connect to database",
+      error instanceof Error ? error : { error },
+    );
     throw error;
   }
 };
