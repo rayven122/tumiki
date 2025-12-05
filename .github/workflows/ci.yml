@@ -15,14 +15,15 @@ jobs:
 
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-      # CI専用のダミー暗号化キー（本番環境とは異なる）
-      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.kG588VHXtTCncg2y9KmbXqyssLulxqUjrSn9_TXFu2U=
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v4
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
 
       - name: 💾 Cache Turbo
         uses: actions/cache@v4
