@@ -9,7 +9,7 @@
  * 優先順位:
  * 1. NEXTAUTH_URL（明示的に設定されている場合）
  * 2. VERCEL_URL（Vercel環境 - プロトコルなしのため`https://`を追加）
- * 3. デフォルト（ローカル開発環境: https://local.tumiki.cloud:3000）
+ * 3. デフォルト（ローカル開発環境: http://localhost:3000）
  *
  * Vercel環境では自動的にデプロイメントURLを使用:
  * - Preview: https://tumiki-[hash].vercel.app/api/oauth/callback
@@ -30,7 +30,7 @@ export const getOAuthRedirectUri = (): string => {
     baseUrl = `https://${process.env.VERCEL_URL}`;
   } else {
     // 3. デフォルト（ローカル開発環境）
-    baseUrl = "https://local.tumiki.cloud:3000";
+    baseUrl = "http://localhost:3000";
   }
 
   return `${baseUrl}/api/oauth/callback`;
