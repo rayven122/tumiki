@@ -27,8 +27,8 @@ jobs:
         # toolingパッケージを先にビルド
 
       - name: 🔧 Build dependencies
-        run: pnpm run --filter @tumiki/mailer build && pnpm run --filter @tumiki/db build && pnpm run --filter @tumiki/auth build && pnpm run --filter @tumiki/utils build
-        # CI環境で@tumiki/mailerの型定義を確実に生成するため、依存パッケージのみビルド
+        run: pnpm run --filter @tumiki/mailer build && pnpm run --filter @tumiki/db build && pnpm run --filter @tumiki/auth build && pnpm run --filter @tumiki/utils build && pnpm run --filter @tumiki/slack build
+        # CI環境で@tumiki/mailerと@tumiki/slackの型定義を確実に生成するため、依存パッケージのみビルド
 
       - name: ✅ Run lint, format and typecheck
         run: pnpm check
