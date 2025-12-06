@@ -6,7 +6,9 @@ import { logError, toErrorWithStatus } from "./errorHandling";
 
 // リクエストタイムアウト設定（ミリ秒）
 // デスクトップアプリケーションでは10秒が適切なタイムアウト時間
-const REQUEST_TIMEOUT_MS = 10000;
+// 環境変数で設定可能（VITE_REQUEST_TIMEOUT_MS）
+const REQUEST_TIMEOUT_MS =
+  Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS) || 10000;
 
 // tRPC React Query フックを作成
 export const trpc = createTRPCReact<AppRouter>();

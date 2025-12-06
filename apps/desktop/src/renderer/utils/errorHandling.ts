@@ -20,17 +20,21 @@ export type ErrorCategory =
   | "unknown"; // 不明なエラー
 
 /**
- * エラーメッセージ定数
- * 将来的に国際化対応する際は、このオブジェクトを関数化するか、
- * i18nライブラリを使用して翻訳を提供する
+ * エラーメッセージを取得
+ * 将来的に国際化対応する際は、i18nライブラリを使用して翻訳を提供する
+ * @param category エラーカテゴリ
+ * @returns エラーメッセージ
  */
-const ERROR_MESSAGES: Record<ErrorCategory, string> = {
-  network: "ネットワーク接続に失敗しました",
-  timeout: "リクエストがタイムアウトしました",
-  auth: "認証に失敗しました",
-  server: "サーバーエラーが発生しました",
-  client: "リクエストが無効です",
-  unknown: "予期しないエラーが発生しました",
+const getErrorMessage = (category: ErrorCategory): string => {
+  const messages: Record<ErrorCategory, string> = {
+    network: "ネットワーク接続に失敗しました",
+    timeout: "リクエストがタイムアウトしました",
+    auth: "認証に失敗しました",
+    server: "サーバーエラーが発生しました",
+    client: "リクエストが無効です",
+    unknown: "予期しないエラーが発生しました",
+  };
+  return messages[category];
 };
 
 /**
@@ -82,7 +86,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
   ) {
     return {
       category: "network",
-      message: ERROR_MESSAGES.network,
+      message: getErrorMessage("network"),
       shouldRetry: true,
     };
   }
@@ -91,7 +95,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
   if (message.includes("timeout") || message.includes("aborted")) {
     return {
       category: "timeout",
-      message: ERROR_MESSAGES.timeout,
+      message: getErrorMessage("timeout"),
       shouldRetry: true,
     };
   }
@@ -102,7 +106,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
     if (status === 401 || status === 403) {
       return {
         category: "auth",
-        message: ERROR_MESSAGES.auth,
+        message: getErrorMessage("auth"),
         status,
         shouldRetry: false,
       };
@@ -112,7 +116,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
     if (status >= 500) {
       return {
         category: "server",
-        message: ERROR_MESSAGES.server,
+        message: getErrorMessage("server"),
         status,
         shouldRetry: true,
       };
@@ -122,7 +126,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
     if (status >= 400) {
       return {
         category: "client",
-        message: ERROR_MESSAGES.client,
+        message: getErrorMessage("client"),
         status,
         shouldRetry: false,
       };
@@ -132,7 +136,7 @@ export const classifyError = (error: unknown): ErrorInfo => {
   // 不明なエラー
   return {
     category: "unknown",
-    message: message || ERROR_MESSAGES.unknown,
+    message: message || getErrorMessage("unknown"),
     status,
     shouldRetry: false,
   };

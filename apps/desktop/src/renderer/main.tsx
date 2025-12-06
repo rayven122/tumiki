@@ -14,6 +14,15 @@ if (!rootElement) {
 }
 
 /**
+ * QueryClient設定値
+ * 環境変数で設定可能（VITE_QUERY_STALE_TIME_MS, VITE_QUERY_GC_TIME_MS）
+ */
+const QUERY_STALE_TIME_MS =
+  Number(import.meta.env.VITE_QUERY_STALE_TIME_MS) || 5 * 60 * 1000; // デフォルト5分
+const QUERY_GC_TIME_MS =
+  Number(import.meta.env.VITE_QUERY_GC_TIME_MS) || 10 * 60 * 1000; // デフォルト10分
+
+/**
  * QueryClientをモジュールレベルでシングルトン化
  * コンポーネント再マウント時もクエリキャッシュを保持
  */
@@ -23,10 +32,10 @@ const queryClient = new QueryClient({
       // リトライ戦略（utility関数を使用）
       retry: shouldRetryQuery,
       retryDelay: calculateRetryDelay,
-      // ステイル時間（5分）
-      staleTime: 5 * 60 * 1000,
-      // キャッシュ時間（10分）
-      gcTime: 10 * 60 * 1000,
+      // ステイル時間（環境変数で設定可能、デフォルト5分）
+      staleTime: QUERY_STALE_TIME_MS,
+      // キャッシュ時間（環境変数で設定可能、デフォルト10分）
+      gcTime: QUERY_GC_TIME_MS,
       // ネットワークモード: オフラインファースト設計
       networkMode: "offlineFirst",
       // リフェッチ設定

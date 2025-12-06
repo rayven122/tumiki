@@ -30,7 +30,7 @@ model LogSyncQueue {
   createdAt  DateTime @default(now())
   syncedAt   DateTime?
 
-  @@index([syncStatus])
+  @@index([syncStatus, serverId])
   @@index([serverId])
   @@map("log_sync_queue")
 }

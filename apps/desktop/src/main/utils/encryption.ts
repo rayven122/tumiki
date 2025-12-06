@@ -6,7 +6,13 @@ import {
   createDecipheriv,
 } from "crypto";
 import { join } from "path";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+} from "fs";
 
 // フォールバック暗号化用の定数
 const ALGORITHM = "aes-256-gcm";
@@ -20,24 +26,36 @@ const AUTH_TAG_LENGTH = 16;
  * safeStorageが利用できない環境用のフォールバック機能
  */
 const getOrCreateEncryptionKey = (): Buffer => {
-  const keyPath = join(app.getPath("userData"), ".encryption-key");
+  const userDataPath = app.getPath("userData");
+  const keyPath = join(userDataPath, ".encryption-key");
 
   // 既存のキーファイルが存在する場合は読み込む
   if (existsSync(keyPath)) {
+    // ファイル権限の検証
+    const stats = statSync(keyPath);
+    if ((stats.mode & parseInt("077", 8)) !== 0) {
+      throw new Error("Encryption key file has unsafe permissions");
+    }
     return readFileSync(keyPath);
   }
 
   // 新しいキーを生成して保存
   const key = randomBytes(KEY_LENGTH);
-  const userDataPath = app.getPath("userData");
 
-  // userDataディレクトリが存在しない場合は作成
+  // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
   if (!existsSync(userDataPath)) {
-    mkdirSync(userDataPath, { recursive: true });
+    mkdirSync(userDataPath, { recursive: true, mode: 0o700 });
   }
 
-  // キーファイルを保存（権限を制限）
+  // キーファイルを保存（所有者のみ読み書き可能）
   writeFileSync(keyPath, key, { mode: 0o600 });
+
+  // ファイル権限の検証
+  const stats = statSync(keyPath);
+  if ((stats.mode & parseInt("077", 8)) !== 0) {
+    throw new Error("Encryption key file has unsafe permissions");
+  }
+
   return key;
 };
 

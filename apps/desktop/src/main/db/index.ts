@@ -98,7 +98,8 @@ export const getDb = async (): Promise<PrismaClient> => {
     })
     .catch((error) => {
       logger.error("Failed to create database connection", error);
-      // エラー時もPromiseをクリアして、リトライを許可
+      // エラー時も確実にprismaをクリアして、再接続を確実にする
+      prisma = undefined;
       throw error;
     })
     .finally(() => {

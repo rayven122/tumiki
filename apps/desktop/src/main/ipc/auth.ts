@@ -67,9 +67,7 @@ export const setupAuthIpc = (): void => {
         "Failed to get auth token",
         error instanceof Error ? error : { error },
       );
-      throw new Error(
-        `認証トークンの取得に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`,
-      );
+      throw new Error("認証トークンの取得に失敗しました");
     }
   });
 
@@ -114,9 +112,7 @@ export const setupAuthIpc = (): void => {
         "Failed to save auth token",
         error instanceof Error ? error : { error },
       );
-      throw new Error(
-        `認証トークンの保存に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`,
-      );
+      throw new Error("認証トークンの保存に失敗しました");
     }
   });
 
@@ -132,9 +128,7 @@ export const setupAuthIpc = (): void => {
         "Failed to clear auth token",
         error instanceof Error ? error : { error },
       );
-      throw new Error(
-        `認証トークンの削除に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`,
-      );
+      throw new Error("認証トークンの削除に失敗しました");
     }
   });
 

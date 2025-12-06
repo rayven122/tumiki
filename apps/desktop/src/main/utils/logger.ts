@@ -84,7 +84,8 @@ const rotateLogFile = (): void => {
   if (existsSync(oldestLog)) {
     try {
       unlinkSync(oldestLog);
-    } catch {
+    } catch (error) {
+      console.error(`Failed to delete oldest log file: ${oldestLog}`, error);
       // 削除に失敗しても続行
     }
   }
@@ -96,7 +97,11 @@ const rotateLogFile = (): void => {
     if (existsSync(oldPath)) {
       try {
         renameSync(oldPath, newPath);
-      } catch {
+      } catch (error) {
+        console.error(
+          `Failed to rename log file: ${oldPath} -> ${newPath}`,
+          error,
+        );
         // リネームに失敗しても続行
       }
     }
@@ -106,7 +111,8 @@ const rotateLogFile = (): void => {
   const rotatedPath = join(logDir, "app.log.1");
   try {
     renameSync(logFilePath, rotatedPath);
-  } catch {
+  } catch (error) {
+    console.error(`Failed to rotate current log file: ${logFilePath}`, error);
     // リネームに失敗しても続行
   }
 };
