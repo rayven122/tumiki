@@ -12,6 +12,8 @@ import {
   writeFileSync,
   mkdirSync,
   statSync,
+  renameSync,
+  unlinkSync,
 } from "fs";
 
 // フォールバック暗号化用の定数
@@ -29,6 +31,31 @@ type EncryptionStrategy = {
   decrypt: (encryptedText: string) => string;
   isAvailable: () => boolean;
   getPrefix: () => string;
+};
+
+/**
+ * キーファイルの整合性を検証
+ * @param key キーデータ
+ * @returns 有効なキーの場合true
+ */
+const isValidEncryptionKey = (key: Buffer): boolean => {
+  // キーの長さが正しいかチェック
+  if (key.length !== KEY_LENGTH) {
+    return false;
+  }
+
+  // 全バイトがゼロでないかチェック（初期化されていないキーを除外）
+  if (key.every((byte) => byte === 0)) {
+    return false;
+  }
+
+  // 全バイトが同じ値でないかチェック（無効なキーを除外）
+  const firstByte = key[0];
+  if (key.every((byte) => byte === firstByte)) {
+    return false;
+  }
+
+  return true;
 };
 
 /**
@@ -80,7 +107,8 @@ const validateFilePermissions = (
  */
 const getOrCreateEncryptionKey = (): Buffer => {
   const userDataPath = app.getPath("userData");
-  const keyPath = join(userDataPath, ".encryption-key");
+  // より明示的なファイル名を使用
+  const keyPath = join(userDataPath, "tumiki-encryption.key");
 
   // 既存のキーファイルが存在する場合は読み込む
   if (existsSync(keyPath)) {
@@ -89,7 +117,14 @@ const getOrCreateEncryptionKey = (): Buffer => {
       validateFilePermissions(keyPath, "600");
 
       // キーファイルを読み込み
-      return readFileSync(keyPath);
+      const key = readFileSync(keyPath);
+
+      // キーの整合性をチェック
+      if (!isValidEncryptionKey(key)) {
+        throw new Error("Encryption key file is corrupted or invalid");
+      }
+
+      return key;
     } catch (error) {
       // ENOENT エラーの場合は新規作成フローに進む
       if (
@@ -107,8 +142,13 @@ const getOrCreateEncryptionKey = (): Buffer => {
     }
   }
 
-  // 新しいキーを生成して保存
+  // 新しいキーを生成
   const key = randomBytes(KEY_LENGTH);
+
+  // キーの整合性を確認（生成されたキーが有効であることを保証）
+  if (!isValidEncryptionKey(key)) {
+    throw new Error("Failed to generate valid encryption key");
+  }
 
   // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
   if (!existsSync(userDataPath)) {
@@ -124,11 +164,33 @@ const getOrCreateEncryptionKey = (): Buffer => {
     }
   }
 
-  // キーファイルを保存（所有者のみ読み書き可能）
-  writeFileSync(keyPath, key, { mode: 0o600 });
+  // アトミックな書き込み（一時ファイル経由）
+  // これにより、書き込み中のファイル破損を防ぐ
+  const tempPath = keyPath + ".tmp";
 
-  // ファイル権限とサイズの検証
-  validateFilePermissions(keyPath, "600");
+  try {
+    // 一時ファイルに書き込み
+    writeFileSync(tempPath, key, { mode: 0o600 });
+
+    // 一時ファイルの権限とサイズを検証
+    validateFilePermissions(tempPath, "600");
+
+    // アトミックにリネーム（POSIX仕様ではrenameはアトミック操作）
+    renameSync(tempPath, keyPath);
+
+    // 最終的なファイルの権限とサイズを検証
+    validateFilePermissions(keyPath, "600");
+  } catch (error) {
+    // エラー時は一時ファイルをクリーンアップ
+    if (existsSync(tempPath)) {
+      try {
+        unlinkSync(tempPath);
+      } catch (cleanupError) {
+        console.error("Failed to cleanup temporary key file:", cleanupError);
+      }
+    }
+    throw error;
+  }
 
   return key;
 };
