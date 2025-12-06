@@ -22,6 +22,16 @@ const SALT_LENGTH = 32;
 const AUTH_TAG_LENGTH = 16;
 
 /**
+ * 暗号化戦略のインターフェース
+ */
+type EncryptionStrategy = {
+  encrypt: (plainText: string) => string;
+  decrypt: (encryptedText: string) => string;
+  isAvailable: () => boolean;
+  getPrefix: () => string;
+};
+
+/**
  * ファイル権限を検証
  * @param filePath ファイルパス
  * @param expectedPermissions 期待されるパーミッション（8進数文字列）
@@ -124,116 +134,159 @@ const getOrCreateEncryptionKey = (): Buffer => {
 };
 
 /**
- * Node.js cryptoを使用したフォールバック暗号化
+ * Electron SafeStorage暗号化戦略
+ * OS提供のキーストアを使用した安全な暗号化
  */
-const fallbackEncrypt = (plainText: string): string => {
-  // ソルトとIVを生成
-  const salt = randomBytes(SALT_LENGTH);
-  const iv = randomBytes(IV_LENGTH);
+const createSafeStorageStrategy = (): EncryptionStrategy => ({
+  isAvailable: () => safeStorage.isEncryptionAvailable(),
+  getPrefix: () => "safe",
+  encrypt: (plainText: string): string => {
+    const encryptedBuffer = safeStorage.encryptString(plainText);
+    return encryptedBuffer.toString("base64");
+  },
+  decrypt: (encryptedText: string): string => {
+    const encryptedBuffer = Buffer.from(encryptedText, "base64");
+    return safeStorage.decryptString(encryptedBuffer);
+  },
+});
 
-  // キーを取得
-  const masterKey = getOrCreateEncryptionKey();
+/**
+ * Node.js crypto フォールバック暗号化戦略
+ * safeStorageが使えない環境用の代替実装
+ */
+const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
+  isAvailable: () => true, // 常に利用可能
+  getPrefix: () => "fallback",
+  encrypt: (plainText: string): string => {
+    // ソルトとIVを生成
+    const salt = randomBytes(SALT_LENGTH);
+    const iv = randomBytes(IV_LENGTH);
 
-  // scryptで鍵を導出
-  const key = scryptSync(masterKey, salt, KEY_LENGTH);
+    // キーを取得
+    const masterKey = getOrCreateEncryptionKey();
 
-  // 暗号化
-  const cipher = createCipheriv(ALGORITHM, key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(plainText, "utf8"),
-    cipher.final(),
-  ]);
+    // scryptで鍵を導出
+    const key = scryptSync(masterKey, salt, KEY_LENGTH);
 
-  // 認証タグを取得
-  const authTag = cipher.getAuthTag();
+    // 暗号化
+    const cipher = createCipheriv(ALGORITHM, key, iv);
+    const encrypted = Buffer.concat([
+      cipher.update(plainText, "utf8"),
+      cipher.final(),
+    ]);
 
-  // salt + iv + authTag + encrypted を結合
-  const result = Buffer.concat([salt, iv, authTag, encrypted]);
-  return result.toString("base64");
+    // 認証タグを取得
+    const authTag = cipher.getAuthTag();
+
+    // salt + iv + authTag + encrypted を結合
+    const result = Buffer.concat([salt, iv, authTag, encrypted]);
+    return result.toString("base64");
+  },
+  decrypt: (encryptedText: string): string => {
+    const data = Buffer.from(encryptedText, "base64");
+
+    // salt, iv, authTag, encrypted を分離
+    const salt = data.subarray(0, SALT_LENGTH);
+    const iv = data.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+    const authTag = data.subarray(
+      SALT_LENGTH + IV_LENGTH,
+      SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH,
+    );
+    const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+
+    // キーを取得
+    const masterKey = getOrCreateEncryptionKey();
+
+    // scryptで鍵を導出
+    const key = scryptSync(masterKey, salt, KEY_LENGTH);
+
+    // 復号化
+    const decipher = createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
+
+    return decrypted.toString("utf8");
+  },
+});
+
+/**
+ * 利用可能な暗号化戦略を取得
+ * SafeStorageが利用可能ならそれを、そうでなければフォールバックを返す
+ */
+const getEncryptionStrategy = (): EncryptionStrategy => {
+  const safeStorageStrategy = createSafeStorageStrategy();
+  if (safeStorageStrategy.isAvailable()) {
+    return safeStorageStrategy;
+  }
+  return createFallbackEncryptionStrategy();
 };
 
 /**
- * Node.js cryptoを使用したフォールバック復号化
+ * プレフィックスから適切な復号化戦略を取得
  */
-const fallbackDecrypt = (encryptedText: string): string => {
-  const data = Buffer.from(encryptedText, "base64");
-
-  // salt, iv, authTag, encrypted を分離
-  const salt = data.subarray(0, SALT_LENGTH);
-  const iv = data.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-  const authTag = data.subarray(
-    SALT_LENGTH + IV_LENGTH,
-    SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH,
-  );
-  const encrypted = data.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
-
-  // キーを取得
-  const masterKey = getOrCreateEncryptionKey();
-
-  // scryptで鍵を導出
-  const key = scryptSync(masterKey, salt, KEY_LENGTH);
-
-  // 復号化
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-
-  const decrypted = Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]);
-
-  return decrypted.toString("utf8");
+const getDecryptionStrategy = (prefix: string): EncryptionStrategy => {
+  switch (prefix) {
+    case "safe":
+      return createSafeStorageStrategy();
+    case "fallback":
+      return createFallbackEncryptionStrategy();
+    default:
+      throw new Error(`Unknown encryption prefix: ${prefix}`);
+  }
 };
 
 /**
  * トークンを暗号化
- * Electron safeStorageが利用可能な場合はそれを使用し、
- * 利用できない場合はNode.js cryptoによるフォールバック暗号化を使用
+ * 利用可能な最適な暗号化戦略を使用
  * @param plainText 暗号化する平文
  * @returns Base64エンコードされた暗号化テキスト（プレフィックス付き）
  */
 export const encryptToken = (plainText: string): string => {
-  if (safeStorage.isEncryptionAvailable()) {
-    // safeStorageが利用可能な場合
-    const encryptedBuffer = safeStorage.encryptString(plainText);
-    // プレフィックスを付けて暗号化方式を識別
-    return `safe:${encryptedBuffer.toString("base64")}`;
-  } else {
-    // フォールバック暗号化を使用
-    const encrypted = fallbackEncrypt(plainText);
-    // プレフィックスを付けて暗号化方式を識別
-    return `fallback:${encrypted}`;
-  }
+  const strategy = getEncryptionStrategy();
+  const encrypted = strategy.encrypt(plainText);
+  // プレフィックスを付けて暗号化方式を識別
+  return `${strategy.getPrefix()}:${encrypted}`;
 };
 
 /**
  * トークンを復号化
- * 暗号化方式のプレフィックスに基づいて適切な復号化方法を使用
+ * 暗号化方式のプレフィックスに基づいて適切な復号化戦略を使用
  * @param encryptedText Base64エンコードされた暗号化テキスト（プレフィックス付き）
  * @returns 復号化された平文
  */
 export const decryptToken = (encryptedText: string): string => {
-  // プレフィックスをチェック
-  if (encryptedText.startsWith("safe:")) {
-    // safeStorageで暗号化されたデータ
-    const data = encryptedText.slice(5); // "safe:" を除去
-    const encryptedBuffer = Buffer.from(data, "base64");
-    return safeStorage.decryptString(encryptedBuffer);
-  } else if (encryptedText.startsWith("fallback:")) {
-    // フォールバック暗号化されたデータ
-    const data = encryptedText.slice(9); // "fallback:" を除去
-    return fallbackDecrypt(data);
-  } else {
-    // 古い形式（プレフィックスなし）のサポート
-    // safeStorageで試してみる
+  // プレフィックスを抽出
+  const separatorIndex = encryptedText.indexOf(":");
+
+  if (separatorIndex > 0) {
+    const prefix = encryptedText.substring(0, separatorIndex);
+    const data = encryptedText.substring(separatorIndex + 1);
+
     try {
-      if (safeStorage.isEncryptionAvailable()) {
-        const encryptedBuffer = Buffer.from(encryptedText, "base64");
-        return safeStorage.decryptString(encryptedBuffer);
-      }
+      const strategy = getDecryptionStrategy(prefix);
+      return strategy.decrypt(data);
+    } catch (error) {
+      console.error(`Failed to decrypt with strategy: ${prefix}`, error);
+      // フォールバック戦略で試す
+      return createFallbackEncryptionStrategy().decrypt(data);
+    }
+  }
+
+  // 古い形式（プレフィックスなし）のサポート
+  // safeStorageで試してみる
+  const safeStorageStrategy = createSafeStorageStrategy();
+  if (safeStorageStrategy.isAvailable()) {
+    try {
+      return safeStorageStrategy.decrypt(encryptedText);
     } catch {
       // safeStorageで失敗した場合はフォールバックを試す
     }
-    return fallbackDecrypt(encryptedText);
   }
+
+  // 最後の手段としてフォールバックで復号化
+  return createFallbackEncryptionStrategy().decrypt(encryptedText);
 };

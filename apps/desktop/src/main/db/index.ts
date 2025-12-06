@@ -63,58 +63,108 @@ const createConnection = async (): Promise<PrismaClient> => {
   }
 };
 
-// グローバル接続状態
-let prisma: PrismaClient | undefined;
-let connectionPromise: Promise<PrismaClient> | null = null;
+/**
+ * DB接続管理のための状態管理
+ */
+type ConnectionManager = {
+  getConnection: () => Promise<PrismaClient>;
+  closeConnection: () => Promise<void>;
+  isConnected: () => boolean;
+};
+
+/**
+ * 接続マネージャーを作成
+ * シングルトンパターンで接続を管理し、競合状態を回避
+ */
+const createConnectionManager = (): ConnectionManager => {
+  let prisma: PrismaClient | undefined;
+  let connectionPromise: Promise<PrismaClient> | null = null;
+
+  return {
+    /**
+     * データベース接続を取得
+     *
+     * ミューテックスパターン実装:
+     * - 既存接続があれば即座に返す
+     * - 接続中の場合は同じPromiseを返して競合を回避
+     * - 新規接続時はconnectionPromiseで排他制御
+     */
+    getConnection: async (): Promise<PrismaClient> => {
+      // 既存の接続がある場合はそれを返す
+      if (prisma) {
+        return prisma;
+      }
+
+      // 既に接続中の場合は同じPromiseを返す（競合状態を回避）
+      if (connectionPromise) {
+        return await connectionPromise;
+      }
+
+      // 新しい接続を作成（排他制御されている）
+      connectionPromise = (async () => {
+        // 現在のPromiseを参照保持して、競合状態を回避
+        const currentPromise = connectionPromise;
+        try {
+          const client = await createConnection();
+          // 接続成功時にクロージャ内の変数に保存
+          prisma = client;
+          return client;
+        } catch (error) {
+          logger.error(
+            "Failed to create database connection",
+            error instanceof Error ? error : { error },
+          );
+          // エラー時も確実にprismaをクリアして、再接続を確実にする
+          prisma = undefined;
+          throw error;
+        } finally {
+          // 現在のPromiseと一致する場合のみクリア（競合状態を防ぐ）
+          if (connectionPromise === currentPromise) {
+            connectionPromise = null;
+          }
+        }
+      })();
+
+      return await connectionPromise;
+    },
+
+    /**
+     * データベース接続をクリーンアップ
+     */
+    closeConnection: async (): Promise<void> => {
+      if (prisma) {
+        try {
+          await prisma.$disconnect();
+          logger.debug("Database connection closed");
+          prisma = undefined;
+        } catch (error) {
+          logger.error(
+            "Failed to close database connection",
+            error instanceof Error ? error : { error },
+          );
+          throw error;
+        }
+      }
+    },
+
+    /**
+     * 接続状態を確認
+     */
+    isConnected: (): boolean => {
+      return prisma !== undefined;
+    },
+  };
+};
+
+// グローバルな接続マネージャーのインスタンス
+const connectionManager = createConnectionManager();
 
 /**
  * データベース接続を取得
- * シングルトンパターンで接続を管理し、競合状態を回避
- *
- * ミューテックスパターン実装:
- * - 既存接続があれば即座に返す
- * - 接続中の場合は同じPromiseを返して競合を回避
- * - 新規接続時はconnectionPromiseで排他制御
- * - finallyブロックでPromiseをクリアし、次回接続を許可
+ * @deprecated 直接 connectionManager.getConnection() を使用することを推奨
  */
 export const getDb = async (): Promise<PrismaClient> => {
-  // 既存の接続がある場合はそれを返す
-  if (prisma) {
-    return prisma;
-  }
-
-  // 既に接続中の場合は同じPromiseを返す（競合状態を回避）
-  // 複数の同時呼び出しが同じPromiseを待つため、重複接続が発生しない
-  if (connectionPromise) {
-    return await connectionPromise;
-  }
-
-  // 新しい接続を作成（排他制御されている）
-  connectionPromise = (async () => {
-    // 現在のPromiseを参照保持して、競合状態を回避
-    const currentPromise = connectionPromise;
-    try {
-      const client = await createConnection();
-      // 接続成功時にグローバル変数に保存
-      prisma = client;
-      return client;
-    } catch (error) {
-      logger.error(
-        "Failed to create database connection",
-        error instanceof Error ? error : { error },
-      );
-      // エラー時も確実にprismaをクリアして、再接続を確実にする
-      prisma = undefined;
-      throw error;
-    } finally {
-      // 現在のPromiseと一致する場合のみクリア（競合状態を防ぐ）
-      if (connectionPromise === currentPromise) {
-        connectionPromise = null;
-      }
-    }
-  })();
-
-  return await connectionPromise;
+  return connectionManager.getConnection();
 };
 
 /**
@@ -123,7 +173,7 @@ export const getDb = async (): Promise<PrismaClient> => {
  */
 export const initializeDb = async (): Promise<void> => {
   try {
-    const db = await getDb();
+    const db = await connectionManager.getConnection();
 
     // データベース接続を確認（簡単なクエリを実行）
     await db.$queryRaw`SELECT 1`;
@@ -142,17 +192,5 @@ export const initializeDb = async (): Promise<void> => {
  * アプリケーション終了時に呼び出される
  */
 export const closeDb = async (): Promise<void> => {
-  if (prisma) {
-    try {
-      await prisma.$disconnect();
-      logger.debug("Database connection closed");
-      prisma = undefined;
-    } catch (error) {
-      logger.error(
-        "Failed to close database connection",
-        error instanceof Error ? error : { error },
-      );
-      throw error;
-    }
-  }
+  await connectionManager.closeConnection();
 };
