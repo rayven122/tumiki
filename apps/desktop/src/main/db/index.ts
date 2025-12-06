@@ -90,22 +90,29 @@ export const getDb = async (): Promise<PrismaClient> => {
   }
 
   // 新しい接続を作成（排他制御されている）
-  connectionPromise = createConnection()
-    .then((client) => {
+  connectionPromise = (async () => {
+    try {
+      const client = await createConnection();
       // 接続成功時にグローバル変数に保存
       prisma = client;
       return client;
-    })
-    .catch((error) => {
-      logger.error("Failed to create database connection", error);
+    } catch (error) {
+      logger.error(
+        "Failed to create database connection",
+        error instanceof Error ? error : { error },
+      );
       // エラー時も確実にprismaをクリアして、再接続を確実にする
       prisma = undefined;
-      throw error;
-    })
-    .finally(() => {
-      // 接続処理完了後、Promiseをクリアして次回接続を許可
+      // エラー時は即座にPromiseをクリアして、再接続を可能にする
       connectionPromise = null;
-    });
+      throw error;
+    } finally {
+      // 成功時のみPromiseをクリア（エラー時は既にcatchブロックでクリア済み）
+      if (connectionPromise !== null) {
+        connectionPromise = null;
+      }
+    }
+  })();
 
   return await connectionPromise;
 };

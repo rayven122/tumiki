@@ -5,10 +5,10 @@ import type { AppRouter } from "@/server/api/root";
 import { logError, toErrorWithStatus } from "./errorHandling";
 
 // リクエストタイムアウト設定（ミリ秒）
-// デスクトップアプリケーションでは10秒が適切なタイムアウト時間
+// デスクトップアプリケーションでは30秒が適切なタイムアウト時間
 // 環境変数で設定可能（VITE_REQUEST_TIMEOUT_MS）
 const REQUEST_TIMEOUT_MS =
-  Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS) || 10000;
+  Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS) || 30000;
 
 // tRPC React Query フックを作成
 export const trpc = createTRPCReact<AppRouter>();
@@ -30,8 +30,11 @@ export const createTRPCClient = () => {
               authorization: token ? `Bearer ${token}` : "",
             };
           } catch (error) {
+            // トークン取得失敗時はログを記録し、認証なしでリクエストを継続
             logError(error, "Failed to get auth token");
-            return {};
+            return {
+              authorization: "",
+            };
           }
         },
 

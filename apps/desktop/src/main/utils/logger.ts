@@ -29,10 +29,10 @@ type StructuredLogEntry = {
   pid: number;
 };
 
-// ログファイルの最大サイズ（10MB）
-const MAX_LOG_SIZE = 10 * 1024 * 1024;
-// 保持するログファイルの数
-const MAX_LOG_FILES = 5;
+// ログファイルの最大サイズ（環境変数で設定可能、デフォルト10MB）
+const MAX_LOG_SIZE = Number(process.env.MAX_LOG_SIZE_BYTES) || 10 * 1024 * 1024;
+// 保持するログファイルの数（環境変数で設定可能、デフォルト5）
+const MAX_LOG_FILES = Number(process.env.MAX_LOG_FILES) || 5;
 
 /**
  * ログディレクトリパスを取得

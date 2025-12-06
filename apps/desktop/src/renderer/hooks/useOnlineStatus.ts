@@ -10,12 +10,10 @@ export const useOnlineStatus = (): boolean => {
 
   useEffect(() => {
     const handleOnline = () => {
-      console.log("Network status: Online");
       setIsOnline(true);
     };
 
     const handleOffline = () => {
-      console.log("Network status: Offline");
       setIsOnline(false);
     };
 

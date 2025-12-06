@@ -31,10 +31,26 @@ const getOrCreateEncryptionKey = (): Buffer => {
 
   // 既存のキーファイルが存在する場合は読み込む
   if (existsSync(keyPath)) {
-    // ファイル権限の検証
-    const stats = statSync(keyPath);
-    if ((stats.mode & parseInt("077", 8)) !== 0) {
-      throw new Error("Encryption key file has unsafe permissions");
+    // ファイル権限の検証（所有者のみ読み書き可能であることを確認）
+    try {
+      const stats = statSync(keyPath);
+      const permissions = stats.mode & parseInt("777", 8);
+      if (permissions !== parseInt("600", 8)) {
+        throw new Error(
+          `Encryption key file has unsafe permissions: ${permissions.toString(8)}. Expected: 600`,
+        );
+      }
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        // ファイルが存在しない場合は新規作成フローに進む
+      } else {
+        throw error;
+      }
     }
     return readFileSync(keyPath);
   }
@@ -50,10 +66,13 @@ const getOrCreateEncryptionKey = (): Buffer => {
   // キーファイルを保存（所有者のみ読み書き可能）
   writeFileSync(keyPath, key, { mode: 0o600 });
 
-  // ファイル権限の検証
+  // ファイル権限の検証（所有者のみ読み書き可能であることを確認）
   const stats = statSync(keyPath);
-  if ((stats.mode & parseInt("077", 8)) !== 0) {
-    throw new Error("Encryption key file has unsafe permissions");
+  const permissions = stats.mode & parseInt("777", 8);
+  if (permissions !== parseInt("600", 8)) {
+    throw new Error(
+      `Encryption key file has unsafe permissions: ${permissions.toString(8)}. Expected: 600`,
+    );
   }
 
   return key;

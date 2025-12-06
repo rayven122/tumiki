@@ -24,9 +24,17 @@ const authTokenSchema = z.object({
       .refine((date) => !isNaN(date.getTime()), {
         message: "無効な日付形式です",
       })
-      .refine((date) => date > new Date(), {
-        message: "有効期限は未来の日付である必要があります",
-      }),
+      .refine(
+        (date) => {
+          // 相対時間ベースのバリデーション: 有効期限が現在時刻から最低1分以上未来である必要がある
+          const now = new Date();
+          const minValidDuration = 60 * 1000; // 1分（ミリ秒）
+          return date.getTime() - now.getTime() > minValidDuration;
+        },
+        {
+          message: "有効期限は現在時刻から最低1分以上未来である必要があります",
+        },
+      ),
   ),
 });
 
