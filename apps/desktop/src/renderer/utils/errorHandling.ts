@@ -51,17 +51,24 @@ export type ErrorInfo = {
  * エラーをHTTPステータス付きエラーに変換
  */
 export const toErrorWithStatus = (error: unknown): ErrorWithStatus => {
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    "name" in error
-  ) {
+  if (error && typeof error === "object" && error !== null) {
+    const obj = error as Record<string, unknown>;
+
+    // ステータスコードの安全な変換
+    let status: number | undefined;
+    if ("status" in obj) {
+      if (typeof obj.status === "number") {
+        status = obj.status;
+      } else if (typeof obj.status === "string" && !isNaN(Number(obj.status))) {
+        status = Number(obj.status);
+      }
+    }
+
     return {
-      message: String(error.message),
-      status: "status" in error ? Number(error.status) : undefined,
-      name: String(error.name),
-      cause: "cause" in error ? error.cause : undefined,
+      message: typeof obj.message === "string" ? obj.message : String(error),
+      status,
+      name: typeof obj.name === "string" ? obj.name : "Error",
+      cause: "cause" in obj ? obj.cause : undefined,
     };
   }
 

@@ -91,6 +91,8 @@ export const getDb = async (): Promise<PrismaClient> => {
 
   // 新しい接続を作成（排他制御されている）
   connectionPromise = (async () => {
+    // 現在のPromiseを参照保持して、競合状態を回避
+    const currentPromise = connectionPromise;
     try {
       const client = await createConnection();
       // 接続成功時にグローバル変数に保存
@@ -103,12 +105,10 @@ export const getDb = async (): Promise<PrismaClient> => {
       );
       // エラー時も確実にprismaをクリアして、再接続を確実にする
       prisma = undefined;
-      // エラー時は即座にPromiseをクリアして、再接続を可能にする
-      connectionPromise = null;
       throw error;
     } finally {
-      // 成功時のみPromiseをクリア（エラー時は既にcatchブロックでクリア済み）
-      if (connectionPromise !== null) {
+      // 現在のPromiseと一致する場合のみクリア（競合状態を防ぐ）
+      if (connectionPromise === currentPromise) {
         connectionPromise = null;
       }
     }

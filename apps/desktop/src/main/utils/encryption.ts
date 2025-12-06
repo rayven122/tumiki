@@ -22,6 +22,49 @@ const SALT_LENGTH = 32;
 const AUTH_TAG_LENGTH = 16;
 
 /**
+ * ファイル権限を検証
+ * @param filePath ファイルパス
+ * @param expectedPermissions 期待されるパーミッション（8進数文字列）
+ * @throws {Error} 権限が一致しない場合
+ */
+const validateFilePermissions = (
+  filePath: string,
+  expectedPermissions: string,
+): void => {
+  try {
+    const stats = statSync(filePath);
+    const permissions = stats.mode & parseInt("777", 8);
+    const expected = parseInt(expectedPermissions, 8);
+
+    if (permissions !== expected) {
+      throw new Error(
+        `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
+      );
+    }
+
+    // ファイルサイズの検証（キーファイルは正確にKEY_LENGTHバイトであるべき）
+    if (stats.size !== KEY_LENGTH) {
+      throw new Error(
+        `Encryption key file has invalid size: ${stats.size} bytes. Expected: ${KEY_LENGTH} bytes`,
+      );
+    }
+  } catch (error) {
+    // ENOENT エラーの場合は再スロー（ファイルが存在しない）
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      throw error;
+    }
+
+    // その他のエラー（権限エラーなど）も再スロー
+    throw error;
+  }
+};
+
+/**
  * 暗号化キーを取得または生成
  * safeStorageが利用できない環境用のフォールバック機能
  */
@@ -31,16 +74,14 @@ const getOrCreateEncryptionKey = (): Buffer => {
 
   // 既存のキーファイルが存在する場合は読み込む
   if (existsSync(keyPath)) {
-    // ファイル権限の検証（所有者のみ読み書き可能であることを確認）
     try {
-      const stats = statSync(keyPath);
-      const permissions = stats.mode & parseInt("777", 8);
-      if (permissions !== parseInt("600", 8)) {
-        throw new Error(
-          `Encryption key file has unsafe permissions: ${permissions.toString(8)}. Expected: 600`,
-        );
-      }
+      // ファイル権限とサイズの検証
+      validateFilePermissions(keyPath, "600");
+
+      // キーファイルを読み込み
+      return readFileSync(keyPath);
     } catch (error) {
+      // ENOENT エラーの場合は新規作成フローに進む
       if (
         error &&
         typeof error === "object" &&
@@ -49,10 +90,11 @@ const getOrCreateEncryptionKey = (): Buffer => {
       ) {
         // ファイルが存在しない場合は新規作成フローに進む
       } else {
+        // セキュリティエラーは致命的なのでログに記録して再スロー
+        console.error("Encryption key validation failed:", error);
         throw error;
       }
     }
-    return readFileSync(keyPath);
   }
 
   // 新しいキーを生成して保存
@@ -61,19 +103,22 @@ const getOrCreateEncryptionKey = (): Buffer => {
   // userDataディレクトリが存在しない場合は作成（所有者のみアクセス可能）
   if (!existsSync(userDataPath)) {
     mkdirSync(userDataPath, { recursive: true, mode: 0o700 });
+
+    // ディレクトリ権限の検証
+    const dirStats = statSync(userDataPath);
+    const dirPermissions = dirStats.mode & parseInt("777", 8);
+    if (dirPermissions !== parseInt("700", 8)) {
+      throw new Error(
+        `User data directory has unsafe permissions: ${dirPermissions.toString(8)}. Expected: 700`,
+      );
+    }
   }
 
   // キーファイルを保存（所有者のみ読み書き可能）
   writeFileSync(keyPath, key, { mode: 0o600 });
 
-  // ファイル権限の検証（所有者のみ読み書き可能であることを確認）
-  const stats = statSync(keyPath);
-  const permissions = stats.mode & parseInt("777", 8);
-  if (permissions !== parseInt("600", 8)) {
-    throw new Error(
-      `Encryption key file has unsafe permissions: ${permissions.toString(8)}. Expected: 600`,
-    );
-  }
+  // ファイル権限とサイズの検証
+  validateFilePermissions(keyPath, "600");
 
   return key;
 };

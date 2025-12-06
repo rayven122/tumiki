@@ -24,11 +24,18 @@ export const Dashboard = (): React.ReactElement => {
 
   // エラー状態の変化を監視してエラーカウントを更新
   useEffect(() => {
-    if (healthQuery.isError) {
+    let isMounted = true;
+
+    if (healthQuery.isError && isMounted) {
       setErrorCount((prev) => Math.min(prev + 1, 5));
-    } else if (healthQuery.isSuccess) {
+    } else if (healthQuery.isSuccess && isMounted) {
       setErrorCount(0);
     }
+
+    // クリーンアップ関数でマウント状態をクリア
+    return () => {
+      isMounted = false;
+    };
   }, [healthQuery.isError, healthQuery.isSuccess]);
 
   const stats = {

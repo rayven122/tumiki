@@ -5,14 +5,8 @@
 
 import { app } from "electron";
 import { join } from "path";
-import {
-  existsSync,
-  mkdirSync,
-  appendFileSync,
-  statSync,
-  renameSync,
-  unlinkSync,
-} from "fs";
+import { existsSync, mkdirSync, appendFileSync } from "fs";
+import { stat, rename, unlink } from "fs/promises";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
@@ -59,10 +53,18 @@ const getLogFilePath = (): string => {
   return join(logDir, "app.log");
 };
 
+// ローテーション実行中フラグ（同時実行を防ぐ）
+let isRotating = false;
+
 /**
- * ログファイルのローテーション
+ * ログファイルのローテーション（非同期版）
  */
-const rotateLogFile = (): void => {
+const rotateLogFileAsync = async (): Promise<void> => {
+  // 既にローテーション中の場合はスキップ
+  if (isRotating) {
+    return;
+  }
+
   const logFilePath = getLogFilePath();
 
   // ログファイルが存在しない場合は何もしない
@@ -70,50 +72,58 @@ const rotateLogFile = (): void => {
     return;
   }
 
-  // ファイルサイズをチェック
-  const stats = statSync(logFilePath);
-  if (stats.size < MAX_LOG_SIZE) {
-    return;
-  }
-
-  // 古いログファイルをローテーション
-  const logDir = getLogDirectory();
-
-  // 最も古いログファイルを削除
-  const oldestLog = join(logDir, `app.log.${MAX_LOG_FILES}`);
-  if (existsSync(oldestLog)) {
-    try {
-      unlinkSync(oldestLog);
-    } catch (error) {
-      console.error(`Failed to delete oldest log file: ${oldestLog}`, error);
-      // 削除に失敗しても続行
+  try {
+    // ファイルサイズをチェック
+    const stats = await stat(logFilePath);
+    if (stats.size < MAX_LOG_SIZE) {
+      return;
     }
-  }
 
-  // ログファイルをシフト
-  for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
-    const oldPath = join(logDir, `app.log.${i}`);
-    const newPath = join(logDir, `app.log.${i + 1}`);
-    if (existsSync(oldPath)) {
+    // ローテーション開始
+    isRotating = true;
+
+    // 古いログファイルをローテーション
+    const logDir = getLogDirectory();
+
+    // 最も古いログファイルを削除
+    const oldestLog = join(logDir, `app.log.${MAX_LOG_FILES}`);
+    if (existsSync(oldestLog)) {
       try {
-        renameSync(oldPath, newPath);
+        await unlink(oldestLog);
       } catch (error) {
-        console.error(
-          `Failed to rename log file: ${oldPath} -> ${newPath}`,
-          error,
-        );
-        // リネームに失敗しても続行
+        console.error(`Failed to delete oldest log file: ${oldestLog}`, error);
+        // 削除に失敗しても続行
       }
     }
-  }
 
-  // 現在のログファイルを .1 にリネーム
-  const rotatedPath = join(logDir, "app.log.1");
-  try {
-    renameSync(logFilePath, rotatedPath);
-  } catch (error) {
-    console.error(`Failed to rotate current log file: ${logFilePath}`, error);
-    // リネームに失敗しても続行
+    // ログファイルをシフト
+    for (let i = MAX_LOG_FILES - 1; i >= 1; i--) {
+      const oldPath = join(logDir, `app.log.${i}`);
+      const newPath = join(logDir, `app.log.${i + 1}`);
+      if (existsSync(oldPath)) {
+        try {
+          await rename(oldPath, newPath);
+        } catch (error) {
+          console.error(
+            `Failed to rename log file: ${oldPath} -> ${newPath}`,
+            error,
+          );
+          // リネームに失敗しても続行
+        }
+      }
+    }
+
+    // 現在のログファイルを .1 にリネーム
+    const rotatedPath = join(logDir, "app.log.1");
+    try {
+      await rename(logFilePath, rotatedPath);
+    } catch (error) {
+      console.error(`Failed to rotate current log file: ${logFilePath}`, error);
+      // リネームに失敗しても続行
+    }
+  } finally {
+    // ローテーション終了
+    isRotating = false;
   }
 };
 
@@ -122,14 +132,17 @@ const rotateLogFile = (): void => {
  */
 const writeToLogFile = (entry: StructuredLogEntry): void => {
   try {
-    // ローテーションチェック
-    rotateLogFile();
-
     const logFilePath = getLogFilePath();
     const logLine = JSON.stringify(entry) + "\n";
 
     // ログファイルに書き込み（所有者のみ読み書き可能）
     appendFileSync(logFilePath, logLine, { encoding: "utf8", mode: 0o600 });
+
+    // ローテーションチェックを非同期で実行（バックグラウンド処理）
+    // 結果を待たずに即座に返す
+    void rotateLogFileAsync().catch((error) => {
+      console.error("Failed to rotate log file:", error);
+    });
   } catch (error) {
     // ログファイルへの書き込みに失敗してもアプリを停止しない
     console.error("Failed to write to log file:", error);
