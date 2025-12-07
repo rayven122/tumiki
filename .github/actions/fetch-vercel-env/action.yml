@@ -100,5 +100,14 @@ runs:
       shell: bash
       run: |
         OUTPUT_FILE="${{ inputs.output-file }}"
-        echo "✅ キャッシュから環境変数を復元しました"
-        echo "ファイルサイズ: $(wc -c < "${OUTPUT_FILE}") bytes"
+        if [ -f "${OUTPUT_FILE}" ]; then
+          echo "✅ キャッシュから環境変数を復元しました"
+          echo "ファイルサイズ: $(wc -c < "${OUTPUT_FILE}") bytes"
+          echo "ファイルパス: $(pwd)/${OUTPUT_FILE}"
+        else
+          echo "❌ キャッシュからファイルが復元されませんでした"
+          echo "カレントディレクトリ: $(pwd)"
+          echo "ディレクトリ内容:"
+          ls -la
+          exit 1
+        fi
