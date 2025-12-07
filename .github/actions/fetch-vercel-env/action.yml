@@ -32,9 +32,12 @@ runs:
       shell: bash
       run: |
         ENVIRONMENT="${{ inputs.environment }}"
-        # 環境とワークフローランIDを組み合わせてキャッシュキーを生成
-        # 同じワークフロー実行内でのみキャッシュを共有
-        CACHE_KEY="vercel-env-${ENVIRONMENT}-${{ github.run_id }}"
+        OUTPUT_FILE="${{ inputs.output-file }}"
+        # 環境、出力ファイル、ワークフローランIDを組み合わせてキャッシュキーを生成
+        # 同じワークフロー実行内でも異なる出力ファイルには異なるキャッシュを使用
+        # ファイル名のハッシュを生成（スラッシュや特殊文字を含む可能性があるため）
+        FILE_HASH=$(echo -n "${OUTPUT_FILE}" | md5sum | cut -d' ' -f1)
+        CACHE_KEY="vercel-env-${ENVIRONMENT}-${FILE_HASH}-${{ github.run_id }}"
         echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
 
     - name: Restore cached environment variables
