@@ -92,8 +92,6 @@ model McpServerTemplate {
 
   /// OAuth Client リレーション（1:多）
   oauthClients McpOAuthClient[]
-  /// MCP Config リレーション（1:多）
-  mcpConfigs   McpConfig[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
