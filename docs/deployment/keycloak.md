@@ -90,7 +90,7 @@ KEYCLOAK_CLIENT_SECRET="<管理コンソールから取得>"
 
 # Auth.js
 AUTH_SECRET="<openssl rand -base64 32で生成>"
-AUTH_URL="https://local.tumiki.cloud:3000"
+AUTH_URL="http://localhost:3000"
 AUTH_TRUST_HOST="true"
 
 # Google Identity Provider（任意）
@@ -155,7 +155,6 @@ Keycloakはワイルドカードをサポートしているため、Preview環�
 ```
 ✅ Local
 - http://localhost:3000/*
-- https://local.tumiki.cloud:3000/*
 
 ✅ Staging/Production
 - https://stg.tumiki.cloud/*

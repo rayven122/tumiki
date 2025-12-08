@@ -11,6 +11,7 @@ import {
   Shield,
   ChevronLeft,
   Activity,
+  MessageSquare,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -74,6 +75,13 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       show: true, // 全組織で表示
       disabled: true,
       comingSoon: true,
+    },
+    {
+      name: "フィードバック",
+      href: `/${orgSlug}/feedback`,
+      icon: MessageSquare,
+      show: true, // 全ユーザーに表示
+      disabled: false,
     },
     {
       name: "メンバー管理",

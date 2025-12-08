@@ -41,7 +41,7 @@ export const useCreateServerForm = ({
 
   // OAuth認証MCPサーバー接続（v2 APIを使用）
   const { mutate: connectOAuthMcpServer, isPending: isOAuthConnecting } =
-    api.v2.userMcpServer.connectOAuthMcpServer.useMutation({
+    api.v2.oauth.connectMcpServer.useMutation({
       onSuccess: async (response) => {
         // OAuth認証画面にリダイレクト
         toast.info("OAuth認証画面に移動します...");

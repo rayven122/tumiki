@@ -9,8 +9,8 @@ import {
   verifyOAuthState,
   getMcpServerAndOAuthClient,
   exchangeAuthorizationCode,
-} from "./helpers/oauth-verification";
-import { setupMcpServerTools } from "./helpers/mcp-server-setup";
+} from "../userMcpServer/helpers/oauth-verification";
+import { setupMcpServerTools } from "../userMcpServer/helpers/mcp-server-setup";
 
 export type HandleOAuthCallbackInput = {
   state: string;
