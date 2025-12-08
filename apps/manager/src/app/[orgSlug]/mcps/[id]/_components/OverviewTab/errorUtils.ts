@@ -39,11 +39,11 @@ export const sanitizeErrorMessage = (
     return errorMessage;
   }
 
-  // 本番環境では一般的なメッセージを返す
-  if (process.env.NODE_ENV === "production") {
-    return fallbackMessage;
+  // 開発環境でも機密情報がUIに露出しないよう、ログでのみ詳細情報を記録
+  if (process.env.NODE_ENV !== "production") {
+    console.error("Detailed error:", errorMessage);
   }
 
-  // 開発環境では詳細なエラーメッセージを返す
-  return errorMessage;
+  // 本番・開発環境ともにサニタイズされたメッセージを返す
+  return fallbackMessage;
 };
