@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb } from "../db";
 import { encryptToken, decryptToken } from "../utils/encryption";
 import type { AuthTokenData } from "../../types/auth";
+import { getOAuthManager } from "../index";
 import * as logger from "../utils/logger";
 
 /**
@@ -161,6 +162,54 @@ export const setupAuthIpc = (): void => {
       );
       // 認証状態確認失敗時は安全側に倒してfalseを返す
       return false;
+    }
+  });
+
+  // OAuth認証フローを開始
+  ipcMain.handle("auth:login", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      await oauthManager.startAuthFlow();
+      logger.info("OAuth login flow started");
+      return { success: true };
+    } catch (error) {
+      logger.error(
+        "Failed to start login flow",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("ログインフローの開始に失敗しました");
+    }
+  });
+
+  // ログアウト（Keycloakとローカルの両方）
+  ipcMain.handle("auth:logout", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      await oauthManager.logout();
+      logger.info("Logout completed");
+      return { success: true };
+    } catch (error) {
+      logger.error(
+        "Failed to logout",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("ログアウトに失敗しました");
+    }
+  });
+
+  // トークンを手動でリフレッシュ
+  ipcMain.handle("auth:refreshToken", async () => {
+    try {
+      const oauthManager = getOAuthManager();
+      await oauthManager.refreshToken();
+      logger.info("Token refreshed manually");
+      return { success: true };
+    } catch (error) {
+      logger.error(
+        "Failed to refresh token",
+        error instanceof Error ? error : { error },
+      );
+      throw new Error("トークンのリフレッシュに失敗しました");
     }
   });
 };
