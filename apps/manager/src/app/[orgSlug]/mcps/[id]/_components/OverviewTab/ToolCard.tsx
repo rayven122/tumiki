@@ -15,7 +15,6 @@ type ToolCardProps = {
   onToggleExpansion: (toolId: string) => void;
   isEnabled: boolean;
   onToggleEnabled: (enabled: boolean) => void;
-  callCount?: number;
 };
 
 export const ToolCard = ({
@@ -24,7 +23,6 @@ export const ToolCard = ({
   onToggleExpansion,
   isEnabled,
   onToggleEnabled,
-  callCount,
 }: ToolCardProps) => {
   const parseSchema = () => {
     if (!tool.inputSchema) {
@@ -80,8 +78,10 @@ export const ToolCard = ({
             onClick={(e) => e.stopPropagation()}
             className="ml-2 flex flex-shrink-0 items-center space-x-2"
           >
-            <span className="text-xs text-gray-500">
-              利用回数: <span className="font-medium">{callCount ?? 0}回</span>
+            <span
+              className={`text-xs font-medium ${isEnabled ? "text-green-600" : "text-gray-400"}`}
+            >
+              {isEnabled ? "許可" : "拒否"}
             </span>
             <Switch
               checked={isEnabled}

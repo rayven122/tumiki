@@ -53,7 +53,7 @@ const AsyncServerList = ({
     <div className="flex flex-wrap gap-6">
       <div className="flex w-full sm:w-[300px]">
         <Card
-          className="flex h-full cursor-pointer items-center justify-center border-2 border-dashed border-gray-300 transition-colors hover:border-purple-400 hover:bg-purple-50"
+          className="flex h-full w-full cursor-pointer items-center justify-center border-2 border-dashed border-gray-300 transition-colors hover:border-purple-400 hover:bg-purple-50"
           onClick={onCreateServerClick}
         >
           <CardContent className="flex flex-col items-center justify-center p-6">

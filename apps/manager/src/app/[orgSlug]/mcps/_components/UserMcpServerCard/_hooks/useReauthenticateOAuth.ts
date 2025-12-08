@@ -15,7 +15,7 @@ export const useReauthenticateOAuth = ({
   mcpServerId,
 }: UseReauthenticateOAuthParams) => {
   const { mutate: reauthenticate, isPending } =
-    api.v2.userMcpServer.reauthenticateOAuthMcpServer.useMutation({
+    api.v2.oauth.reauthenticateMcpServer.useMutation({
       onSuccess: async (response) => {
         toast.info("OAuth認証画面に移動します...");
         window.location.href = response.authorizationUrl;
