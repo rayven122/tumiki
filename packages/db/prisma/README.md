@@ -532,7 +532,7 @@ erDiagram
 "McpConfig" {
   String id PK
   String envVars
-  String mcpServerTemplateId FK
+  String mcpServerTemplateInstanceId FK
   String organizationId FK
   String userId FK "nullable"
   DateTime createdAt
@@ -583,6 +583,7 @@ erDiagram
 "McpOAuthToken" {
   String id PK
   String oauthClientId FK
+  String mcpServerTemplateInstanceId FK
   String userId FK
   String organizationId FK
   String accessToken
@@ -627,10 +628,11 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"McpConfig" }o--|| "McpServerTemplate" : mcpServerTemplate
+"McpConfig" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
+"McpOAuthToken" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
 "McpServerTemplateInstance" }o--|| "McpServer" : mcpServer
 "McpServerTemplateInstance" }o--|| "McpServerTemplate" : mcpServerTemplate
 "_McpServerTemplateInstanceToMcpTool" }o--|| "McpServerTemplateInstance" : McpServerTemplateInstance
@@ -643,7 +645,7 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
 **Properties**
   - `id`: 
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
+  - `mcpServerTemplateInstanceId`: 関連するMCPサーバーテンプレートインスタンス（インスタンスごとに異なる設定）
   - `organizationId`: 組織（必須）
   - `userId`: ユーザー（nullの場合は組織共通設定、設定済みでユーザー個別設定）
   - `createdAt`: 
@@ -704,12 +706,13 @@ mcpServerId 設定済みの場合は外部MCPサーバー用OAuth（第2層）
   - `updatedAt`: 
 
 ### `McpOAuthToken`
-OAuth トークン情報（ユーザー×組織ごと）
+OAuth トークン情報（ユーザー×インスタンスごと）
 整合性保証: organizationIdは、参照するMcpOAuthClientのorganizationIdと一致する必要がある（アプリケーションレベルで検証）
 
 **Properties**
   - `id`: 
   - `oauthClientId`: 関連するOAuthクライアント
+  - `mcpServerTemplateInstanceId`: どのインスタンス用のトークンか（インスタンスごとに独立したOAuth認証）
   - `userId`: ユーザー
   - `organizationId`: 組織（トークンは組織ごとに発行、組織横断で使い回さない）
   - `accessToken`: トークン情報

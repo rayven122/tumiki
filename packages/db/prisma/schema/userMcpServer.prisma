@@ -11,9 +11,9 @@ model McpConfig {
   /// MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
   envVars String /// @encrypted
 
-  /// 関連するMCPサーバーテンプレート
-  mcpServerTemplateId String
-  mcpServerTemplate   McpServerTemplate @relation(fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+  /// 関連するMCPサーバーテンプレートインスタンス（インスタンスごとに異なる設定）
+  mcpServerTemplateInstanceId String
+  mcpServerTemplateInstance   McpServerTemplateInstance @relation(fields: [mcpServerTemplateInstanceId], references: [id], onDelete: Cascade)
 
   /// 組織（必須）
   organizationId String
@@ -25,6 +25,9 @@ model McpConfig {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// 1インスタンス×1ユーザー（または組織）=1設定
+  @@unique([mcpServerTemplateInstanceId, userId, organizationId])
 }
 
 /// サーバーの状態
@@ -164,7 +167,7 @@ model McpOAuthClient {
   oauthTokens McpOAuthToken[]
 }
 
-/// OAuth トークン情報（ユーザー×組織ごと）
+/// OAuth トークン情報（ユーザー×インスタンスごと）
 /// 整合性保証: organizationIdは、参照するMcpOAuthClientのorganizationIdと一致する必要がある（アプリケーションレベルで検証）
 /// @namespace UserMcpServer
 model McpOAuthToken {
@@ -173,6 +176,10 @@ model McpOAuthToken {
   /// 関連するOAuthクライアント
   oauthClientId String
   oauthClient   McpOAuthClient @relation(fields: [oauthClientId], references: [id], onDelete: Cascade)
+
+  /// どのインスタンス用のトークンか（インスタンスごとに独立したOAuth認証）
+  mcpServerTemplateInstanceId String
+  mcpServerTemplateInstance   McpServerTemplateInstance @relation(fields: [mcpServerTemplateInstanceId], references: [id], onDelete: Cascade)
 
   /// ユーザー
   userId String
@@ -192,6 +199,9 @@ model McpOAuthToken {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// 1ユーザー×1インスタンス=1トークン
+  @@unique([userId, mcpServerTemplateInstanceId])
 }
 
 /// MCPサーバーとテンプレートの関連（同じテンプレートを複数追加可能）
@@ -215,6 +225,10 @@ model McpServerTemplateInstance {
 
   /// 有効化されたツール一覧
   allowedTools McpTool[]
+
+  mcpConfigs McpConfig[]
+
+  oauthTokens McpOAuthToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
