@@ -50,8 +50,9 @@ export const main = async () => {
       console.log(pc.blue(`\n🔄 スキャン中: ${server.name}`));
       console.log(pc.gray(`  - ID: ${server.id}`));
 
-      // 各テンプレートに対してスキャンを実行
-      for (const template of server.mcpServers) {
+      // 各テンプレートインスタンスに対してスキャンを実行
+      for (const instance of server.templateInstances) {
+        const template = instance.mcpServerTemplate;
         console.log(pc.cyan(`  📦 Template: ${template.name}`));
         console.log(pc.gray(`    - Transport: ${template.transportType}`));
         console.log(pc.gray(`    - URL: ${maskApiKey(template.url)}`));
