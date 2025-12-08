@@ -4,7 +4,7 @@
  */
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
-import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
+import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAuthorizationUrl";
 import { discoverOAuthMetadata } from "@/lib/oauth/dcr";
 import type { z } from "zod";
 import type { ReauthenticateOAuthMcpServerInputV2 } from "./index";

@@ -95,7 +95,7 @@ tumiki/
 
 MCPサーバーの管理画面を提供するNext.js 15 + React 19アプリケーション。
 
-- **開発URL**: <https://local.tumiki.cloud:3000>
+- **開発URL**: <http://localhost:3000>
 - **機能**: MCPサーバー設定・監視、APIキー管理、ChatGPT風チャット、Keycloak認証、多言語対応
 
 ### ProxyServer（MCPプロキシ）

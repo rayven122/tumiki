@@ -71,22 +71,11 @@ export const ServerDetailPageClient = ({
   );
 
   // リクエスト統計情報を取得
-  const { data: requestStats } = api.v2.userMcpServer.getRequestStats.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
-
-  // リクエストログ一覧を取得
-  const { data: requestLogs } = api.v2.userMcpServer.findRequestLogs.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
-
-  // ツール統計を取得
-  const { data: toolStats } = api.v2.userMcpServer.getToolStats.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
+  const { data: requestStats } =
+    api.v2.userMcpServerRequestLog.getRequestStats.useQuery(
+      { userMcpServerId: serverId as McpServerId },
+      { enabled: !!serverId },
+    );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
@@ -402,8 +391,6 @@ export const ServerDetailPageClient = ({
                 <OverviewTab
                   server={server}
                   requestStats={requestStats}
-                  toolStats={toolStats}
-                  requestLogs={requestLogs}
                   serverId={serverId as McpServerId}
                 />
               );
@@ -417,7 +404,12 @@ export const ServerDetailPageClient = ({
               );
             }
             if (activeTab === "logs") {
-              return <LogsAnalyticsTab requestLogs={requestLogs} />;
+              return (
+                <LogsAnalyticsTab
+                  serverId={serverId as McpServerId}
+                  requestStats={requestStats}
+                />
+              );
             }
             return null;
           }}

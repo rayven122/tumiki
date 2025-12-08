@@ -46,7 +46,7 @@
 
 ## アプリケーション構成
 
-### Manager（https://local.tumiki.cloud:3000）
+### Manager（http://localhost:3000）
 - MCPサーバー設定・監視画面
 - APIキー管理
 - ChatGPT風チャット機能
