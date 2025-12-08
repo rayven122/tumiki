@@ -37,13 +37,17 @@ export const reauthenticateOAuthMcpServer = async (
   const mcpServer = await tx.mcpServer.findUnique({
     where: { id: input.mcpServerId },
     include: {
-      mcpServers: {
-        select: {
-          id: true,
-          url: true,
-          authType: true,
-        },
+      templateInstances: {
         take: 1,
+        include: {
+          mcpServerTemplate: {
+            select: {
+              id: true,
+              url: true,
+              authType: true,
+            },
+          },
+        },
       },
     },
   });
@@ -55,7 +59,8 @@ export const reauthenticateOAuthMcpServer = async (
     });
   }
 
-  const template = mcpServer.mcpServers[0];
+  const templateInstance = mcpServer.templateInstances[0];
+  const template = templateInstance?.mcpServerTemplate;
   if (!template?.authType || template.authType !== "OAUTH") {
     throw new TRPCError({
       code: "BAD_REQUEST",

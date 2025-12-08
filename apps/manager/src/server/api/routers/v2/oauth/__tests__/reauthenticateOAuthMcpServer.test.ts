@@ -24,7 +24,9 @@ type MockMcpServer = Pick<
   | "organizationId"
   | "displayOrder"
 > & {
-  mcpServers: MockMcpServerTemplate[];
+  templateInstances: Array<{
+    mcpServerTemplate: MockMcpServerTemplate;
+  }>;
 };
 
 // generateAuthorizationUrlヘルパーをモック
@@ -77,11 +79,13 @@ describe("reauthenticateOAuthMcpServer", () => {
       deletedAt: null,
       organizationId: testOrganizationId,
       displayOrder: 0,
-      mcpServers: [
+      templateInstances: [
         {
-          id: testTemplateId,
-          url: "https://mcp.example.com",
-          authType: "OAUTH" as const,
+          mcpServerTemplate: {
+            id: testTemplateId,
+            url: "https://mcp.example.com",
+            authType: "OAUTH" as const,
+          },
         },
       ],
     };
@@ -122,11 +126,15 @@ describe("reauthenticateOAuthMcpServer", () => {
     expect(mockTx.mcpServer.findUnique).toHaveBeenCalledWith({
       where: { id: testMcpServerId },
       include: {
-        mcpServers: {
-          select: {
-            id: true,
-            url: true,
-            authType: true,
+        templateInstances: {
+          include: {
+            mcpServerTemplate: {
+              select: {
+                id: true,
+                url: true,
+                authType: true,
+              },
+            },
           },
           take: 1,
         },
@@ -176,7 +184,7 @@ describe("reauthenticateOAuthMcpServer", () => {
       deletedAt: null,
       organizationId: "different-org-id",
       displayOrder: 0,
-      mcpServers: [],
+      templateInstances: [],
     };
 
     vi.mocked(mockTx.mcpServer.findUnique).mockResolvedValue(mockMcpServer);
@@ -210,11 +218,13 @@ describe("reauthenticateOAuthMcpServer", () => {
       deletedAt: null,
       organizationId: testOrganizationId,
       displayOrder: 0,
-      mcpServers: [
+      templateInstances: [
         {
-          id: testTemplateId,
-          url: "https://mcp.example.com",
-          authType: "API_KEY" as const, // OAuth以外
+          mcpServerTemplate: {
+            id: testTemplateId,
+            url: "https://mcp.example.com",
+            authType: "API_KEY" as const, // OAuth以外
+          },
         },
       ],
     };
@@ -250,11 +260,13 @@ describe("reauthenticateOAuthMcpServer", () => {
       deletedAt: null,
       organizationId: testOrganizationId,
       displayOrder: 0,
-      mcpServers: [
+      templateInstances: [
         {
-          id: testTemplateId,
-          url: null, // URLが存在しない
-          authType: "OAUTH" as const,
+          mcpServerTemplate: {
+            id: testTemplateId,
+            url: null, // URLが存在しない
+            authType: "OAUTH" as const,
+          },
         },
       ],
     };
@@ -290,11 +302,13 @@ describe("reauthenticateOAuthMcpServer", () => {
       deletedAt: null,
       organizationId: testOrganizationId,
       displayOrder: 0,
-      mcpServers: [
+      templateInstances: [
         {
-          id: testTemplateId,
-          url: "https://mcp.example.com",
-          authType: "OAUTH" as const,
+          mcpServerTemplate: {
+            id: testTemplateId,
+            url: "https://mcp.example.com",
+            authType: "OAUTH" as const,
+          },
         },
       ],
     };
