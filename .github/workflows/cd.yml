@@ -182,21 +182,6 @@ jobs:
       - name: Build packages
         run: pnpm turbo build
 
-      - name: Debug - List environment files
-        run: |
-          echo "📋 カレントディレクトリの .env ファイル一覧:"
-          ls -la .env* || echo "No .env files found"
-          echo ""
-          echo "📄 .env の存在確認:"
-          if [ -f .env ]; then
-            echo "✅ ファイルが存在します"
-            echo "ファイルサイズ: $(wc -c < .env) bytes"
-            echo "最初の3行（機密情報を除く）:"
-            head -n 3 .env | sed 's/=.*/=***/'
-          else
-            echo "❌ ファイルが見つかりません"
-          fi
-
       - name: Deploy to Cloud Run
         id: deploy-cloudrun
         uses: ./.github/actions/deploy-cloudrun
