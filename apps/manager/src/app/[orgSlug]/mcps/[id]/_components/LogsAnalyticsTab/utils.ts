@@ -4,11 +4,6 @@ import { formatInTimeZone } from "date-fns-tz";
 
 export type TimeRange = "24h" | "7d" | "30d";
 
-type HourlyData = {
-  hour: number;
-  count: number;
-};
-
 type DailyData = {
   day: string;
   count: number;
@@ -89,40 +84,6 @@ export const calculateErrorPercentage = (
   return Math.round(
     ((requestStats.errorRequests ?? 0) / requestStats.totalRequests) * 100,
   );
-};
-
-/**
- * 日別統計データから24時間表示用のデータを生成
- * 注意: 現在の実装では今日のトータルを現在時刻に配置するのみ
- * より詳細な時間別データが必要な場合は、サーバー側で時間別集計を実装する必要がある
- */
-export const mapDailyStatsToHourlyDisplay = (
-  dailyStats: DailyStatsData[] | undefined,
-): { hourlyData: HourlyData[]; maxCount: number } => {
-  // 24時間分の配列を初期化
-  const hourlyData: HourlyData[] = Array.from({ length: 24 }, (_, i) => ({
-    hour: i,
-    count: 0,
-  }));
-
-  if (!dailyStats || dailyStats.length === 0) {
-    return { hourlyData, maxCount: 0 };
-  }
-
-  // 今日のデータを取得（最後の要素）
-  const today = dailyStats[dailyStats.length - 1];
-  if (today) {
-    // 1日のトータルを現在時刻に配置
-    const currentHour = new Date().getHours();
-    const currentHourData = hourlyData[currentHour];
-    if (currentHourData) {
-      currentHourData.count = today.totalCount;
-    }
-  }
-
-  const maxCount = Math.max(...hourlyData.map((d) => d.count));
-
-  return { hourlyData, maxCount };
 };
 
 /**
