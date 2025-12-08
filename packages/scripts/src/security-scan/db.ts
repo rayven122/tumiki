@@ -5,7 +5,7 @@ import { db } from "@tumiki/db/server";
  * スキャン対象のMCPサーバーを取得
  * 新しいDBスキーマに対応:
  * - McpServer (実稼働サーバー)
- * - mcpServers (McpServerTemplate へのリレーション)
+ * - templateInstances (McpServerTemplateInstance へのリレーション)
  * - McpConfig (環境変数)
  */
 export const fetchScannableServers = async () => {
@@ -17,16 +17,15 @@ export const fetchScannableServers = async () => {
     },
     include: {
       organization: true,
-      mcpServers: {
-        where: {
-          transportType: {
-            in: [TransportType.SSE, TransportType.STREAMABLE_HTTPS],
-          },
-        },
+      templateInstances: {
         include: {
-          mcpConfigs: {
+          mcpServerTemplate: {
             include: {
-              organization: true,
+              mcpConfigs: {
+                include: {
+                  organization: true,
+                },
+              },
             },
           },
         },
@@ -34,7 +33,16 @@ export const fetchScannableServers = async () => {
     },
   });
 
-  return servers;
+  // SSEまたはSTREAMABLE_HTTPSのテンプレートのみをフィルタリング
+  return servers.map((server) => ({
+    ...server,
+    templateInstances: server.templateInstances.filter(
+      (instance) =>
+        instance.mcpServerTemplate.transportType === TransportType.SSE ||
+        instance.mcpServerTemplate.transportType ===
+          TransportType.STREAMABLE_HTTPS,
+    ),
+  }));
 };
 
 /**
