@@ -1,12 +1,11 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { z } from "zod";
-import type { McpServerId, ToolId } from "@/schema/ids";
+import type { ToolId } from "@/schema/ids";
 
 type ToggleToolInput = {
-  userMcpServerId: McpServerId;
+  templateInstanceId: string;
   toolId: ToolId;
   isEnabled: boolean;
-  organizationId: string;
 };
 
 // ツールトグルのレスポンススキーマ
@@ -21,22 +20,17 @@ export const toggleTool = async (
   tx: PrismaTransactionClient,
   input: ToggleToolInput,
 ): Promise<ToggleToolOutput> => {
-  const { userMcpServerId, toolId, isEnabled, organizationId } = input;
+  const { templateInstanceId, toolId, isEnabled } = input;
 
-  // サーバーの存在確認
-  const server = await tx.mcpServer.findUnique({
+  // テンプレートインスタンスの存在確認
+  const templateInstance = await tx.mcpServerTemplateInstance.findUnique({
     where: {
-      id: userMcpServerId,
-      organizationId,
-      deletedAt: null,
-    },
-    include: {
-      allowedTools: true,
+      id: templateInstanceId,
     },
   });
 
-  if (!server) {
-    throw new Error("サーバーが見つかりません");
+  if (!templateInstance) {
+    throw new Error("テンプレートインスタンスが見つかりません");
   }
 
   // ツールの存在確認
@@ -52,9 +46,9 @@ export const toggleTool = async (
 
   if (isEnabled) {
     // ツールを有効化（allowedToolsに追加）
-    await tx.mcpServer.update({
+    await tx.mcpServerTemplateInstance.update({
       where: {
-        id: userMcpServerId,
+        id: templateInstanceId,
       },
       data: {
         allowedTools: {
@@ -66,9 +60,9 @@ export const toggleTool = async (
     });
   } else {
     // ツールを無効化（allowedToolsから削除）
-    await tx.mcpServer.update({
+    await tx.mcpServerTemplateInstance.update({
       where: {
-        id: userMcpServerId,
+        id: templateInstanceId,
       },
       data: {
         allowedTools: {

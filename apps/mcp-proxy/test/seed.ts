@@ -165,11 +165,17 @@ const main = async () => {
       serverType: ServerType.CUSTOM,
       authType: AuthType.API_KEY,
       organizationId: organization.id,
-      mcpServers: {
-        connect: [{ id: mcpServerTemplate.id }],
-      },
-      allowedTools: {
-        connect: tools.map((t) => ({ id: t.id })),
+      templateInstances: {
+        create: [
+          {
+            mcpServerTemplateId: mcpServerTemplate.id,
+            isEnabled: true,
+            displayOrder: 0,
+            allowedTools: {
+              connect: tools.map((t) => ({ id: t.id })),
+            },
+          },
+        ],
       },
     },
   });

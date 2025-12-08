@@ -115,11 +115,13 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: mockOrganizationId,
-      mcpServers: [
+      templateInstances: [
         {
-          id: "template_123",
-          url: "https://example.com/mcp",
-          transportType: TransportType.STREAMABLE_HTTPS,
+          mcpServerTemplate: {
+            id: "template_123",
+            url: "https://example.com/mcp",
+            transportType: TransportType.STREAMABLE_HTTPS,
+          },
         },
       ],
     };
@@ -180,7 +182,7 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: mockOrganizationId,
-      mcpServers: [], // テンプレートなし
+      templateInstances: [], // テンプレートなし
     };
 
     (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -197,11 +199,13 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: "different-org-id", // 異なる組織ID
-      mcpServers: [
+      templateInstances: [
         {
-          id: "template_123",
-          url: "https://example.com/mcp",
-          transportType: TransportType.STREAMABLE_HTTPS,
+          mcpServerTemplate: {
+            id: "template_123",
+            url: "https://example.com/mcp",
+            transportType: TransportType.STREAMABLE_HTTPS,
+          },
         },
       ],
     };
@@ -220,11 +224,13 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: mockOrganizationId,
-      mcpServers: [
+      templateInstances: [
         {
-          id: "template_123",
-          url: null, // URLなし
-          transportType: TransportType.STREAMABLE_HTTPS,
+          mcpServerTemplate: {
+            id: "template_123",
+            url: null, // URLなし
+            transportType: TransportType.STREAMABLE_HTTPS,
+          },
         },
       ],
     };
@@ -243,11 +249,13 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: mockOrganizationId,
-      mcpServers: [
+      templateInstances: [
         {
-          id: "template_123",
-          url: "https://example.com/mcp",
-          transportType: TransportType.STREAMABLE_HTTPS,
+          mcpServerTemplate: {
+            id: "template_123",
+            url: "https://example.com/mcp",
+            transportType: TransportType.STREAMABLE_HTTPS,
+          },
         },
       ],
     };
@@ -269,11 +277,13 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: mockOrganizationId,
-      mcpServers: [
+      templateInstances: [
         {
-          id: "template_123",
-          url: "https://example.com/mcp",
-          transportType: TransportType.STREAMABLE_HTTPS,
+          mcpServerTemplate: {
+            id: "template_123",
+            url: "https://example.com/mcp",
+            transportType: TransportType.STREAMABLE_HTTPS,
+          },
         },
       ],
     };
@@ -305,11 +315,13 @@ describe("getMcpServerAndOAuthClient", () => {
       id: mockMcpServerId,
       name: "Test MCP Server",
       organizationId: mockOrganizationId,
-      mcpServers: [
+      templateInstances: [
         {
-          id: "template_123",
-          url: "https://example.com/mcp",
-          transportType: TransportType.STREAMABLE_HTTPS,
+          mcpServerTemplate: {
+            id: "template_123",
+            url: "https://example.com/mcp",
+            transportType: TransportType.STREAMABLE_HTTPS,
+          },
         },
       ],
     };
