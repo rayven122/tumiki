@@ -33,34 +33,37 @@ export const reauthenticateOAuthMcpServer = async (
   organizationId: string,
   userId: string,
 ): Promise<ReauthenticateOAuthMcpServerOutput> => {
-  // 1. MCPサーバーを取得（権限チェック含む）
-  const mcpServer = await tx.mcpServer.findUnique({
-    where: { id: input.mcpServerId },
+  // 1. MCPサーバーテンプレートインスタンスを取得（権限チェック含む）
+  const templateInstance = await tx.mcpServerTemplateInstance.findUnique({
+    where: { id: input.mcpServerTemplateInstanceId },
     include: {
-      templateInstances: {
-        take: 1,
-        include: {
-          mcpServerTemplate: {
-            select: {
-              id: true,
-              url: true,
-              authType: true,
-            },
-          },
+      mcpServer: {
+        select: {
+          id: true,
+          organizationId: true,
+        },
+      },
+      mcpServerTemplate: {
+        select: {
+          id: true,
+          url: true,
+          authType: true,
         },
       },
     },
   });
 
-  if (!mcpServer || mcpServer.organizationId !== organizationId) {
+  if (
+    !templateInstance ||
+    templateInstance.mcpServer.organizationId !== organizationId
+  ) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "MCPサーバーが見つかりません",
     });
   }
 
-  const templateInstance = mcpServer.templateInstances[0];
-  const template = templateInstance?.mcpServerTemplate;
+  const template = templateInstance.mcpServerTemplate;
   if (!template?.authType || template.authType !== "OAUTH") {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -75,18 +78,25 @@ export const reauthenticateOAuthMcpServer = async (
     });
   }
 
-  // 2. 既存のOAuthクライアント情報を取得
-  const oauthClient = await tx.mcpOAuthClient.findFirst({
+  // 2. 既存のOAuthトークン情報を取得（OAuthクライアント情報も含む）
+  const oauthToken = await tx.mcpOAuthToken.findUnique({
     where: {
-      mcpServerTemplateId: template.id,
-      organizationId,
+      userId_mcpServerTemplateInstanceId: {
+        userId,
+        mcpServerTemplateInstanceId: templateInstance.id,
+      },
     },
-    orderBy: {
-      createdAt: "desc",
+    include: {
+      oauthClient: {
+        select: {
+          clientId: true,
+          clientSecret: true,
+        },
+      },
     },
   });
 
-  if (!oauthClient) {
+  if (!oauthToken) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "OAuth設定が見つかりません。サーバーを再度追加してください。",
@@ -106,12 +116,13 @@ export const reauthenticateOAuthMcpServer = async (
 
   // 4. Authorization URLを生成
   const authorizationUrl = await generateAuthorizationUrl({
-    clientId: oauthClient.clientId,
-    clientSecret: oauthClient.clientSecret ?? "",
+    clientId: oauthToken.oauthClient.clientId,
+    clientSecret: oauthToken.oauthClient.clientSecret ?? "",
     authorizationEndpoint: metadata.authorization_endpoint,
     tokenEndpoint: metadata.token_endpoint,
     scopes: metadata.scopes_supported ?? [],
-    mcpServerId: mcpServer.id, // 既存のMCPサーバーIDを使用
+    mcpServerId: templateInstance.mcpServer.id,
+    mcpServerTemplateInstanceId: templateInstance.id,
     userId,
     organizationId,
   });
