@@ -14,10 +14,7 @@ type MockMcpServerTemplate = Pick<McpServerTemplate, "id" | "url" | "authType">;
 
 type MockMcpServer = Pick<McpServer, "id" | "organizationId">;
 
-type MockMcpServerTemplateInstance = Pick<
-  McpServerTemplateInstance,
-  "id"
-> & {
+type MockMcpServerTemplateInstance = Pick<McpServerTemplateInstance, "id"> & {
   mcpServer: MockMcpServer;
   mcpServerTemplate: MockMcpServerTemplate;
 };
@@ -42,8 +39,7 @@ describe("reauthenticateOAuthMcpServer", () => {
   let mockTx: PrismaTransactionClient;
   const testOrganizationId = "org-123";
   const testUserId = "user-123";
-  const testTemplateInstanceId =
-    "instance-123" as McpServerTemplateInstanceId;
+  const testTemplateInstanceId = "instance-123" as McpServerTemplateInstanceId;
   const testMcpServerId = "mcp-server-123";
   const testTemplateId = "template-123";
 
