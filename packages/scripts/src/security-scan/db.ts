@@ -19,13 +19,10 @@ export const fetchScannableServers = async () => {
       organization: true,
       templateInstances: {
         include: {
-          mcpServerTemplate: {
+          mcpServerTemplate: true,
+          mcpConfigs: {
             include: {
-              mcpConfigs: {
-                include: {
-                  organization: true,
-                },
-              },
+              organization: true,
             },
           },
         },
@@ -36,12 +33,13 @@ export const fetchScannableServers = async () => {
   // SSEまたはSTREAMABLE_HTTPSのテンプレートのみをフィルタリング
   return servers.map((server) => ({
     ...server,
-    templateInstances: server.templateInstances.filter(
-      (instance) =>
-        instance.mcpServerTemplate.transportType === TransportType.SSE ||
-        instance.mcpServerTemplate.transportType ===
-          TransportType.STREAMABLE_HTTPS,
-    ),
+    templateInstances: server.templateInstances.filter((instance) => {
+      const transportType = instance.mcpServerTemplate.transportType;
+      return (
+        transportType === TransportType.SSE ||
+        transportType === TransportType.STREAMABLE_HTTPS
+      );
+    }),
   }));
 };
 
