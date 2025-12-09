@@ -33,36 +33,36 @@ import { ReAuthRequiredError } from "./types.js";
  * 4. 期限切れ間近の場合、自動リフレッシュ
  * 5. トークンを返却（キャッシュに保存）
  *
- * @param mcpServerTemplateId MCPサーバーテンプレートID
+ * @param mcpServerTemplateInstanceId MCPサーバーテンプレートインスタンスID
  * @param userId ユーザーID
  * @returns 復号化されたトークン
  * @throws ReAuthRequiredError トークンが無効または存在しない場合
  */
 export const getValidToken = async (
-  mcpServerTemplateId: string,
+  mcpServerTemplateInstanceId: string,
   userId: string,
 ): Promise<DecryptedToken> => {
-  const cacheKey = getCacheKey(userId, mcpServerTemplateId);
+  const cacheKey = getCacheKey(userId, mcpServerTemplateInstanceId);
 
   // 1. Redisキャッシュから取得
   const cachedToken = await getFromCache(cacheKey);
   if (cachedToken) {
     logger.debug("Token retrieved from cache", {
-      mcpServerTemplateId,
+      mcpServerTemplateInstanceId,
       userId,
     });
     return cachedToken;
   }
 
   // 2. DBから取得
-  const token = await getTokenFromDB(mcpServerTemplateId, userId);
+  const token = await getTokenFromDB(mcpServerTemplateInstanceId, userId);
 
   if (!token) {
     throw new ReAuthRequiredError(
       "OAuth token not found. User needs to authenticate.",
       "",
       userId,
-      mcpServerTemplateId,
+      mcpServerTemplateInstanceId,
     );
   }
 
@@ -73,15 +73,12 @@ export const getValidToken = async (
       "OAuth token has expired. User needs to re-authenticate.",
       token.id,
       userId,
-      mcpServerTemplateId,
+      mcpServerTemplateInstanceId,
     );
   }
 
   // 4. 期限切れ間近の場合、自動リフレッシュ
   if (isExpiringSoon(token)) {
-    logger.info("Token is expiring soon, refreshing...", {
-      tokenId: token.id,
-    });
     try {
       const refreshedToken = await refreshToken(token.id);
       await cacheToken(cacheKey, refreshedToken);
@@ -96,7 +93,7 @@ export const getValidToken = async (
         "Failed to refresh token. User needs to re-authenticate.",
         token.id,
         userId,
-        mcpServerTemplateId,
+        mcpServerTemplateInstanceId,
       );
     }
   }
