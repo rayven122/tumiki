@@ -209,6 +209,9 @@ model McpOAuthToken {
 model McpServerTemplateInstance {
   id String @id @default(cuid())
 
+  /// インスタンスの識別用正規化名（例: "github-work", "github-personal"）
+  normalizedName String
+
   /// 関連するMCPサーバー
   mcpServerId String
   mcpServer   McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
@@ -233,5 +236,5 @@ model McpServerTemplateInstance {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([mcpServerId, mcpServerTemplateId])
+  @@unique([mcpServerId, normalizedName])
 }
