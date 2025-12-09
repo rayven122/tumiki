@@ -63,7 +63,7 @@ export const main = async () => {
         }
 
         // 各設定（組織ごと）に対してスキャンを実行
-        for (const config of template.mcpConfigs) {
+        for (const config of instance.mcpConfigs) {
           console.log(
             pc.cyan(`    📁 Organization: ${config.organization.name}`),
           );
