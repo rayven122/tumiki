@@ -24,9 +24,9 @@ describe("integratedAuthMiddleware", () => {
       expect(true).toStrictEqual(true);
     });
 
-    test("APIキー認証を正しく検出する（X-API-Key）", async () => {
+    test("APIキー認証を正しく検出する（Tumiki-API-Key）", async () => {
       // TODO: モックコンテキスト作成とテスト
-      // - X-API-Key ヘッダーを設定
+      // - Tumiki-API-Key ヘッダーを設定
       // - integratedAuthMiddleware() を呼び出し
       // - APIキー認証が使用されることを確認
       expect(true).toStrictEqual(true);
@@ -50,9 +50,9 @@ describe("integratedAuthMiddleware", () => {
       expect(true).toStrictEqual(true);
     });
 
-    test("mcp_instance_idが必須", async () => {
+    test("mcp_server_idが必須", async () => {
       // TODO: モックコンテキスト作成とテスト
-      // - mcp_instance_idのないJWTペイロードをモック
+      // - mcp_server_idのないJWTペイロードをモック
       // - integratedAuthMiddleware() を呼び出し
       // - 401エラーが返されることを確認
       expect(true).toStrictEqual(true);
@@ -71,26 +71,6 @@ describe("integratedAuthMiddleware", () => {
       // - 不正なJWTトークンを設定
       // - integratedAuthMiddleware() を呼び出し
       // - 401エラーが返されることを確認
-      expect(true).toStrictEqual(true);
-    });
-  });
-
-  describe("開発環境バイパス", () => {
-    test("開発環境ではJWT認証をバイパスする", async () => {
-      // TODO: 環境変数とモックコンテキスト設定
-      // - NODE_ENV=development
-      // - DEV_MODE=true
-      // - ホスト名=localhost
-      // - integratedAuthMiddleware() を呼び出し
-      // - ダミーペイロードが設定されることを確認
-      expect(true).toStrictEqual(true);
-    });
-
-    test("本番環境ではバイパスしない", async () => {
-      // TODO: 環境変数とモックコンテキスト設定
-      // - NODE_ENV=production
-      // - integratedAuthMiddleware() を呼び出し
-      // - 実際のJWT認証が実行されることを確認
       expect(true).toStrictEqual(true);
     });
   });

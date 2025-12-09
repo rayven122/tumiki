@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, test, expect, beforeEach, vi, type Mock } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import * as React from "react";
@@ -19,16 +22,20 @@ const mockUseUtils = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
 const mockUseSession = vi.fn();
+const mockUpdate = vi.fn();
+const mockRouterPush = vi.fn();
 
 // tRPC APIのモック
 vi.mock("@/trpc/react", () => ({
   api: {
-    organization: {
-      getUserOrganizations: {
-        useQuery: () => mockUseQuery(),
-      },
-      setDefaultOrganization: {
-        useMutation: (options: any) => mockUseMutation(options),
+    v2: {
+      organization: {
+        getUserOrganizations: {
+          useQuery: () => mockUseQuery(),
+        },
+        setDefaultOrganization: {
+          useMutation: (options: any) => mockUseMutation(options),
+        },
       },
     },
     useUtils: () => mockUseUtils(),
@@ -49,12 +56,12 @@ vi.mock("next-auth/react", () => ({
   SessionProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
-// window.location.reloadのモック
-const mockReload = vi.fn();
-Object.defineProperty(window, "location", {
-  value: { reload: mockReload },
-  writable: true,
-});
+// next/navigationのモック
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}));
 
 // テスト用の組織データ
 const mockOrganizations = [
@@ -89,11 +96,7 @@ describe("useOrganizationContext", () => {
     vi.clearAllMocks();
     // mockUseUtilsのデフォルト実装
     mockUseUtils.mockReturnValue({
-      organization: {
-        getUserOrganizations: {
-          invalidate: mockInvalidate,
-        },
-      },
+      invalidate: mockInvalidate,
     });
     // mockUseSessionのデフォルト実装
     mockUseSession.mockReturnValue({
@@ -101,9 +104,14 @@ describe("useOrganizationContext", () => {
         user: {
           id: "user_1",
           email: "test@example.com",
+          defaultOrganization: {
+            id: "org_1",
+            name: "Organization 1",
+          },
         },
       },
       status: "authenticated",
+      update: mockUpdate,
     });
   });
 
@@ -142,7 +150,6 @@ describe("useOrganizationContext", () => {
       id: "org_1",
       name: "Organization 1",
       isPersonal: false,
-      isDefault: true,
       isAdmin: false,
       memberCount: 5,
     });
@@ -172,10 +179,16 @@ describe("useOrganizationContext", () => {
     expect(result.current.isSwitching).toBe(false);
   });
 
-  test("組織切り替えが成功する", () => {
+  test("組織切り替えが成功する", async () => {
     // モック関数を明示的にクリア
     mockToastSuccess.mockClear();
-    mockReload.mockClear();
+    mockUpdate.mockClear();
+    mockInvalidate.mockClear();
+    mockRouterPush.mockClear();
+
+    // updateとinvalidateは成功を返すようにモック
+    mockUpdate.mockResolvedValue(undefined);
+    mockInvalidate.mockResolvedValue(undefined);
 
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
@@ -184,7 +197,9 @@ describe("useOrganizationContext", () => {
 
     // mutationのモックを直接設定
     const mockMutate = vi.fn();
-    let capturedOnSuccess: (() => void) | undefined;
+    let capturedOnSuccess:
+      | ((data: { organizationSlug: string }) => Promise<void>)
+      | undefined;
 
     mockUseMutation.mockImplementation((options) => {
       capturedOnSuccess = options?.onSuccess;
@@ -209,16 +224,21 @@ describe("useOrganizationContext", () => {
       organizationId: "org_2",
     });
 
-    // 成功コールバックを手動でトリガー
-    act(() => {
+    // 成功コールバックを手動でトリガー（organizationSlugを含むデータを渡す）
+    await act(async () => {
       if (capturedOnSuccess) {
-        capturedOnSuccess();
+        await capturedOnSuccess({ organizationSlug: "org-2-slug" });
       }
     });
 
     // 成功コールバックが呼ばれたことを確認
     expect(mockToastSuccess).toHaveBeenCalledWith("組織を切り替えました");
-    expect(mockReload).toHaveBeenCalled();
+    // Auth.jsのセッション更新が呼ばれたことを確認
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    // tRPCキャッシュの全無効化が呼ばれたことを確認
+    expect(mockInvalidate).toHaveBeenCalledTimes(1);
+    // router.pushで新しいorgSlugのURLへ遷移することを確認
+    expect(mockRouterPush).toHaveBeenCalledWith("/org-2-slug/mcps");
   });
 
   test("存在しない組織への切り替えがエラーになる", () => {
@@ -250,7 +270,7 @@ describe("useOrganizationContext", () => {
 
     // モック関数を明示的にクリア
     mockToastError.mockClear();
-    mockReload.mockClear();
+    mockRouterPush.mockClear();
 
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
@@ -296,7 +316,8 @@ describe("useOrganizationContext", () => {
       `組織の切り替えに失敗しました: ${errorMessage}`,
     );
 
-    expect(mockReload).not.toHaveBeenCalled();
+    // エラー時はrouter.pushが呼ばれないことを確認
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 
   test("切り替え中の状態が正しく反映される", () => {
@@ -333,6 +354,19 @@ describe("useOrganizationContext", () => {
     mockUseMutation.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
+    });
+
+    // セッションのdefaultOrganizationをnullに設定
+    mockUseSession.mockReturnValue({
+      data: {
+        user: {
+          id: "user_1",
+          email: "test@example.com",
+          defaultOrganization: null,
+        },
+      },
+      status: "authenticated",
+      update: mockUpdate,
     });
 
     const wrapper = ({ children }: { children: ReactNode }) => (

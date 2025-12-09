@@ -16,7 +16,7 @@ import {
   invalidateCache as invalidateCacheInternal,
 } from "./token-cache.js";
 import { refreshBackendToken as refreshToken } from "./token-refresh.js";
-import { getTokenFromDB, updateLastUsedAt } from "./token-repository.js";
+import { getTokenFromDB } from "./token-repository.js";
 import {
   isExpiringSoon,
   isTokenExpired,
@@ -33,42 +33,36 @@ import { ReAuthRequiredError } from "./types.js";
  * 4. 期限切れ間近の場合、自動リフレッシュ
  * 5. トークンを返却（キャッシュに保存）
  *
- * @param mcpServerId MCPサーバーID
+ * @param mcpServerTemplateId MCPサーバーテンプレートID
  * @param userId ユーザーID
  * @returns 復号化されたトークン
  * @throws ReAuthRequiredError トークンが無効または存在しない場合
  */
 export const getValidToken = async (
-  mcpServerId: string,
+  mcpServerTemplateId: string,
   userId: string,
 ): Promise<DecryptedToken> => {
-  const cacheKey = getCacheKey(userId, mcpServerId);
+  const cacheKey = getCacheKey(userId, mcpServerTemplateId);
 
   // 1. Redisキャッシュから取得
   const cachedToken = await getFromCache(cacheKey);
   if (cachedToken) {
-    logger.debug("Token retrieved from cache", { mcpServerId, userId });
+    logger.debug("Token retrieved from cache", {
+      mcpServerTemplateId,
+      userId,
+    });
     return cachedToken;
   }
 
   // 2. DBから取得
-  const token = await getTokenFromDB(mcpServerId, userId);
+  const token = await getTokenFromDB(mcpServerTemplateId, userId);
 
   if (!token) {
     throw new ReAuthRequiredError(
       "OAuth token not found. User needs to authenticate.",
       "",
       userId,
-      mcpServerId,
-    );
-  }
-
-  if (!token.isValid) {
-    throw new ReAuthRequiredError(
-      "OAuth token is invalid. User needs to re-authenticate.",
-      token.id,
-      userId,
-      mcpServerId,
+      mcpServerTemplateId,
     );
   }
 
@@ -79,7 +73,7 @@ export const getValidToken = async (
       "OAuth token has expired. User needs to re-authenticate.",
       token.id,
       userId,
-      mcpServerId,
+      mcpServerTemplateId,
     );
   }
 
@@ -102,7 +96,7 @@ export const getValidToken = async (
         "Failed to refresh token. User needs to re-authenticate.",
         token.id,
         userId,
-        mcpServerId,
+        mcpServerTemplateId,
       );
     }
   }
@@ -110,11 +104,6 @@ export const getValidToken = async (
   // 5. キャッシュに保存して返却
   const decryptedToken = toDecryptedToken(token);
   await cacheToken(cacheKey, decryptedToken);
-
-  // lastUsedAtを更新（非同期）
-  updateLastUsedAt(token.id).catch((error: unknown) => {
-    logger.error("Failed to update lastUsedAt", { tokenId: token.id, error });
-  });
 
   return decryptedToken;
 };
@@ -136,11 +125,11 @@ export const refreshBackendToken = async (
  * キャッシュを無効化
  *
  * @param userId ユーザーID
- * @param mcpServerId MCPサーバーID
+ * @param mcpServerTemplateId MCPサーバーテンプレートID
  */
 export const invalidateCache = async (
   userId: string,
-  mcpServerId: string,
+  mcpServerTemplateId: string,
 ): Promise<void> => {
-  await invalidateCacheInternal(userId, mcpServerId);
+  await invalidateCacheInternal(userId, mcpServerTemplateId);
 };

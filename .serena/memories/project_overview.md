@@ -18,7 +18,7 @@
 - tRPC（型安全API）
 - Tailwind CSS（スタイリング）
 - Radix UI（UIコンポーネント）
-- Auth0（認証・認可）
+- Keycloak（認証・認可）
 - Jotai（グローバル状態管理）
 - Vercel AI SDK
 
@@ -46,7 +46,7 @@
 
 ## アプリケーション構成
 
-### Manager（https://local.tumiki.cloud:3000）
+### Manager（http://localhost:3000）
 - MCPサーバー設定・監視画面
 - APIキー管理
 - ChatGPT風チャット機能

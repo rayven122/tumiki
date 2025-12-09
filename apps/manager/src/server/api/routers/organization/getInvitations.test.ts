@@ -23,6 +23,7 @@ type MockInvitationWithUser = OrganizationInvitation & {
 type MockDb = {
   organizationMember: {
     findFirst: MockedFunction<() => Promise<unknown>>;
+    findUnique: MockedFunction<() => Promise<unknown>>;
   };
   organizationInvitation: {
     findMany: MockedFunction<() => Promise<MockInvitationWithUser[]>>;
@@ -40,6 +41,7 @@ describe("getInvitations", () => {
     mockDb = {
       organizationMember: {
         findFirst: vi.fn(),
+        findUnique: vi.fn(),
       },
       organizationInvitation: {
         findMany: vi.fn(),
@@ -53,8 +55,11 @@ describe("getInvitations", () => {
         user: {
           id: mockUserId,
           email: "test@example.com",
+          organizationId: mockOrganizationId,
+          organizationSlug: "test-org",
         },
-      } as ProtectedContext["session"],
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      } as unknown as ProtectedContext["session"],
       currentOrganizationId: mockOrganizationId,
       isCurrentOrganizationAdmin: true,
       headers: new Headers(),
@@ -65,6 +70,11 @@ describe("getInvitations", () => {
     const now = new Date();
     const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7日後
     const pastDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000); // 1日前
+
+    // 管理者メンバーシップをモック
+    mockDb.organizationMember.findUnique.mockResolvedValue({
+      isAdmin: true,
+    });
 
     // 招待データをモック
     const mockInvitations: MockInvitationWithUser[] = [
@@ -124,6 +134,11 @@ describe("getInvitations", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
+    // 管理者でないメンバーシップをモック
+    mockDb.organizationMember.findUnique.mockResolvedValue({
+      isAdmin: false,
+    });
+
     // 管理者でないコンテキストを作成
     const nonAdminCtx = {
       ...mockCtx,
@@ -138,6 +153,11 @@ describe("getInvitations", () => {
   });
 
   test("招待がない場合は空の配列を返す", async () => {
+    // 管理者メンバーシップをモック
+    mockDb.organizationMember.findUnique.mockResolvedValue({
+      isAdmin: true,
+    });
+
     // 招待がない状態をモック
     mockDb.organizationInvitation.findMany.mockResolvedValue([]);
 

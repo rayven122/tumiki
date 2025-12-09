@@ -26,7 +26,7 @@ export {
 export { refreshBackendToken as refreshTokenById } from "./token-refresh.js";
 
 // リポジトリ関数
-export { getTokenFromDB, updateLastUsedAt } from "./token-repository.js";
+export { getTokenFromDB } from "./token-repository.js";
 
 // バリデーション関数
 export {
@@ -36,11 +36,8 @@ export {
 } from "./token-validator.js";
 
 // 型定義
-export type {
-  DecryptedToken,
-  OAuthClientInfo,
-  TokenRefreshResponse,
-} from "./types.js";
+export type { DecryptedToken, TokenRefreshResponse } from "./types.js";
+export { decryptedTokenSchema, isDecryptedToken } from "./types.js";
 
 // エラークラス
 export { ReAuthRequiredError, TokenRefreshError } from "./types.js";

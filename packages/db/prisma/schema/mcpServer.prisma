@@ -23,8 +23,6 @@ enum AuthType {
   API_KEY
   /// OAuth認証
   OAUTH
-  /// Google Cloud Run IAM認証
-  CLOUD_RUN_IAM
 }
 
 /// ユーザーカスタムサーバーの可視性
@@ -38,84 +36,90 @@ enum McpServerVisibility {
   PUBLIC
 }
 
-/// MCP サーバー (github や notion などの接続する外部 MCP サーバー)
-/// transportType に応じて接続方式を選択
+/// MCP サーバーテンプレート（接続情報や認証方式の「設計図」）
+/// organizationId = OFFICIAL_ORGANIZATION_ID の場合はアプリ提供の公式テンプレート
+/// organizationId が他の値の場合はユーザー作成の組織専用テンプレート
 /// @namespace McpServer
-model McpServer {
-  id               String                @id @default(cuid())
+/// @namespace UserMcpServer
+model McpServerTemplate {
+  id             String              @id @default(cuid())
   /// MCP サーバー名
   /// @zod.string.min(1)
-  name             String
+  name           String
+  /// 正規化されたサーバー名（小文字、空白をハイフンに変換）
+  /// @zod.string.min(1)
+  normalizedName String
   /// MCPサーバーの説明
-  description      String?
+  description    String?
   /// タグ（カテゴリー分類用）
-  tags             String[]
+  tags           String[]
   /// アイコンパス
-  iconPath         String?
+  iconPath       String?
   /// 接続タイプ（stdio, sse）
-  transportType    TransportType         @default(STDIO)
+  transportType  TransportType       @default(STDIO)
   /// STDIO用のコマンド
-  command          String?
+  command        String?
   /// STDIO用の引数
-  args             String[]
+  args           String[]
   /// SSE/Streamable HTTPS接続用のURL
-  url              String?
-  /// STDIO: 環境変数のキー配列（値はUserMcpServerConfigで管理）
-  /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はUserMcpServerConfigで管理）
+  url            String?
+  /// STDIO: 環境変数のキー配列（値はMcpConfigで管理）
+  /// SSE/Streamable HTTPS: ヘッダーのキー配列（値はMcpConfigで管理）
   /// Cloud Run: HTTPヘッダー名（X-DeepL-API-Keyなど）を直接指定し、同名の環境変数から値を取得
-  envVars          String[]
+  envVarKeys     String[]
   /// 認証タイプ
-  authType         AuthType              @default(NONE)
+  authType       AuthType            @default(NONE)
   /// OAuth プロバイダー（AuthTypeがOAUTHの場合のみ必須）
   /// google, github, slack, notion, linkedin など
-  oauthProvider    String?               @db.VarChar(50)
+  oauthProvider  String?             @db.VarChar(50)
   /// OAuth で必要なデフォルトスコープ
-  oauthScopes      String[]
-  /// サーバーの種類（公式/ユーザーカスタム）
-  serverType       ServerType            @default(OFFICIAL)
+  oauthScopes    String[]
+  /// Google Cloud Run IAM認証を使用するか
+  useCloudRunIam Boolean             @default(false)
   /// ユーザーカスタムサーバーの作成者
-  createdBy        String?
-  creator          User?                 @relation(fields: [createdBy], references: [id])
+  createdBy      String?
+  creator        User?               @relation(fields: [createdBy], references: [id])
   /// ユーザーカスタムサーバーの可視性
-  visibility       McpServerVisibility   @default(PRIVATE)
-  /// 組織限定公開時の所属組織ID
-  organizationId   String?
-  organization     Organization?         @relation(fields: [organizationId], references: [id])
-  /// サーバーが公開されているか（レガシー）
-  isPublic         Boolean               @default(false)
-  tools            Tool[]
-  mcpServerConfigs UserMcpServerConfig[]
+  visibility     McpServerVisibility @default(PRIVATE)
+  /// 組織ID（公式テンプレートはOFFICIAL_ORGANIZATION_ID、組織専用テンプレートは組織ID）
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id])
 
-  /// OAuth Client リレーション
-  oauthClient OAuthClient?
+  mcpTools   McpTool[]   @relation("mcpTools")
+  mcpServers McpServer[]
+
+  /// OAuth Client リレーション（1:多）
+  oauthClients McpOAuthClient[]
+  /// MCP Config リレーション（1:多）
+  mcpConfigs   McpConfig[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([organizationId])
+  /// 組織内で正規化名は一意
+  @@unique([normalizedName, organizationId])
 }
 
-/// MCP サーバーのツール一覧
+/// 各MCPサーバーが提供するツール一覧
 /// @namespace McpServer
-model Tool {
-  id             String              @id @default(cuid())
+model McpTool {
+  id          String @id @default(cuid())
   /// ツールの名前
   /// @zod.string.min(1)
-  name           String
+  name        String
   /// ツールの説明
-  description    String
+  description String
   /// ツールの入力スキーマ（JSON Schema形式）
-  inputSchema    Json
-  /// ツールを有効にするか
-  isEnabled      Boolean             @default(true)
-  mcpServerId    String
-  mcpServer      McpServer           @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
-  /// ToolGroup との関連を表す中間テーブル
-  toolGroupTools UserToolGroupTool[]
+  inputSchema Json
+
+  mcpServerTemplateId String
+  mcpServerTemplate   McpServerTemplate @relation("mcpTools", fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+
+  mcpServers McpServer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   /// MCP サーバー内のツールの名前は一意
-  @@unique([mcpServerId, name])
+  @@unique([mcpServerTemplateId, name])
 }

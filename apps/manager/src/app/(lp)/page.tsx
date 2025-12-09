@@ -7,10 +7,8 @@ import { AboutSection } from "../_components/site/en/AboutSection";
 import { CommunitySection } from "../_components/site/en/CommunitySection";
 import { FooterCTASection } from "../_components/site/en/FooterCTASection";
 import { FooterSection } from "../_components/site/en/FooterSection";
-import { WaitingListModal } from "../_components/site/en/WaitingListModal";
 
 export default function HomePage() {
-  const [showModal, setShowModal] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -19,18 +17,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header setShowModal={setShowModal} />
+      <Header />
       <div className="pt-20">
-        <HeroSection setShowModal={setShowModal} isVisible={isVisible} />
+        <HeroSection isVisible={isVisible} />
       </div>
       <AboutSection />
       <CommunitySection />
-      <FooterCTASection setShowModal={setShowModal} />
+      <FooterCTASection />
       <FooterSection />
-      <WaitingListModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-      />
     </div>
   );
 }

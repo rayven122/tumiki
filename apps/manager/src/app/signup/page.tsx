@@ -5,13 +5,16 @@ import Link from "next/link";
 export default function SignUpPage() {
   return (
     <AuthCard title="アカウント作成" description="Googleアカウントで新規登録">
-      <GoogleSignInButton callbackUrl="/onboarding" label="Googleで登録" />
+      <GoogleSignInButton
+        callbackUrl="/onboarding?first=true"
+        label="Googleで登録"
+      />
 
-      <div className="text-muted-foreground text-center text-sm">
+      <div className="text-center text-sm text-slate-600">
         <span>すでにアカウントをお持ちの方は </span>
         <Link
           href="/signin"
-          className="text-primary font-medium underline-offset-4 hover:underline"
+          className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
         >
           ログイン
         </Link>

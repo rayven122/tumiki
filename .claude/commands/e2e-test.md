@@ -41,7 +41,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 /e2e-test mcp
 
 # 特定のURLのテスト
-/e2e-test https://local.tumiki.cloud:3000/jp
+/e2e-test http://localhost:3000/jp
 
 # デフォルト（smokeテスト）
 /e2e-test
@@ -53,7 +53,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
   - `smoke`: 基本的な疎通確認と主要パスのテスト
   - `full`: すべての機能の包括的テスト
   - `endpoints`: エンドポイントの健全性チェックのみ
-  - `auth`: Auth0認証フローのテスト
+  - `auth`: Keycloak認証フローのテスト
   - `mcp`: MCPサーバー設定と管理機能のテスト
   - `<url>`: 特定のURLのテスト
 
@@ -77,7 +77,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 
 ### エンドポイント検証
 
-- Manager app: `https://local.tumiki.cloud:3000`
+- Manager app: `http://localhost:3000`
 - Proxy server: `http://localhost:8080`
   - `/mcp` - HTTP/Streamable transport
   - `/sse` - SSE transport
@@ -86,7 +86,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 
 ### 認証テスト
 
-- Auth0ログインフロー
+- Keycloakログインフロー
 - セッション管理
 - ロールベースアクセス制御
 - ログアウト処理
@@ -105,7 +105,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 テストスコープ: smoke
 
 📊 テスト環境の確認
-✅ Manager app: 起動中 (https://local.tumiki.cloud:3000)
+✅ Manager app: 起動中 (http://localhost:3000)
 ✅ Proxy server: 起動中 (http://localhost:8080)
 ✅ Playwright MCP: 利用可能
 
@@ -123,7 +123,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 ✅ /jp ページアクセス (180ms)
 ✅ /mcp エンドポイント (50ms)
 ✅ /sse エンドポイント (45ms)
-❌ Auth0ログイン - タイムアウト
+❌ Keycloakログイン - タイムアウト
 ✅ MCPサーバーリスト表示 (320ms)
 ...
 
@@ -140,7 +140,7 @@ description: "tumikiプロジェクトの包括的なE2Eテストを実行し、
 
 💡 推奨事項:
 
-- Auth0の設定を確認してください
+- Keycloakの設定を確認してください
 - /api/trpc/mcpServer.listのパフォーマンス改善を検討
 - テストデータのクリーンアップスクリプトを追加
 

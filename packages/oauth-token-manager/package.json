@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@tumiki/db": "workspace:*",
-    "redis": "^5.0.1",
+    "redis": "^5.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -31,12 +31,12 @@
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
     "@tumiki/vitest-config": "workspace:*",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.19.1",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.33.0",
+    "typescript-eslint": "^8.48.1",
     "vitest": "catalog:"
   },
   "prettier": "@tumiki/prettier-config"

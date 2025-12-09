@@ -118,7 +118,7 @@ graph TB
 **主要エンドポイント**:
 
 - `GET /health` - ヘルスチェック
-- `POST /mcp/:userMcpServerInstanceId` - JSON-RPC 2.0処理
+- `POST /mcp/:mcpServerId` - JSON-RPC 2.0処理
 
 **特徴**: 軽量(50KB)、高速、CORS対応
 
@@ -295,12 +295,12 @@ Cache Lookup → Hit: 復号化 → 返却 / Miss: DB取得 → 暗号化 → Re
 
 **ファイル**: `apps/mcp-proxy/src/libs/cache/configCache.ts`
 
-| 項目         | 値                                     |
-| ------------ | -------------------------------------- |
-| **ストア**   | Upstash Redis (サーバーレス最適化)     |
-| **TTL**      | 300秒 (5分、`CACHE_TTL`で変更可能)     |
-| **暗号化**   | AES-256-GCM                            |
-| **キー形式** | `mcp:config:{userMcpServerInstanceId}` |
+| 項目         | 値                                 |
+| ------------ | ---------------------------------- |
+| **ストア**   | Upstash Redis (サーバーレス最適化) |
+| **TTL**      | 300秒 (5分、`CACHE_TTL`で変更可能) |
+| **暗号化**   | AES-256-GCM                        |
+| **キー形式** | `mcp:config:{mcpServerId}`         |
 
 **暗号化の理由**:
 
@@ -312,7 +312,7 @@ Cache Lookup → Hit: 復号化 → 返却 / Miss: DB取得 → 暗号化 → Re
 
 ```typescript
 // 設定変更時に呼び出し
-await invalidateConfigCache(userMcpServerInstanceId);
+await invalidateConfigCache(mcpServerId);
 ```
 
 **トリガー**:
@@ -339,7 +339,7 @@ await invalidateConfigCache(userMcpServerInstanceId);
 
 - `DATABASE_URL` - PostgreSQL接続文字列
 - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redisキャッシュ
-- `CACHE_ENCRYPTION_KEY` - AES-256-GCM暗号化キー
+- `REDIS_ENCRYPTION_KEY` - AES-256-GCM暗号化キー
 
 ---
 

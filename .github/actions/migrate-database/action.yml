@@ -39,8 +39,11 @@ runs:
 
         # データベースマイグレーション実行と出力のキャプチャ
         echo "🔄 Executing database migrations..."
-        MIGRATION_OUTPUT=$(pnpm db:deploy 2>&1 | tee /tmp/migration_output.log)
-        MIGRATION_STATUS=$?
+        set +e  # 一時的にエラーで停止しないようにする
+        pnpm db:deploy 2>&1 | tee /tmp/migration_output.log
+        MIGRATION_STATUS=${PIPESTATUS[0]}
+        set -e  # エラーで停止する設定を戻す
+        MIGRATION_OUTPUT=$(cat /tmp/migration_output.log)
 
         # マイグレーション実行結果をチェック
         if [ $MIGRATION_STATUS -eq 0 ]; then
@@ -90,6 +93,10 @@ runs:
           echo "  - Database connection (DATABASE_URL)"
           echo "  - Migration files in prisma/migrations/"
           echo "  - Database server status"
+          echo ""
+          echo "📋 Migration output:"
+          cat /tmp/migration_output.log
+          echo ""
           echo "migration_applied=false" >> $GITHUB_OUTPUT
           echo "migration_names=" >> $GITHUB_OUTPUT
           exit 1

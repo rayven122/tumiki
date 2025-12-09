@@ -14,7 +14,7 @@ color: orange
 1. **サービスエンドポイント検証**
    - README.mdとプロジェクトドキュメントからすべてのサービスエンドポイントを特定
    - tumikiアーキテクチャに基づく以下の主要エンドポイントを検証:
-     - Managerアプリ: `https://local.tumiki.cloud:3000` (メインアプリケーション)
+     - Managerアプリ: `http://localhost:3000` (メインアプリケーション)
      - Proxyサーバー: `http://localhost:8080` (MCPプロキシエンドポイント: `/mcp`, `/sse`, `/messages`)
      - tRPCルーター経由のAPIエンドポイント
    - 成功レスポンスとエラーハンドリングの両方をテスト
@@ -22,7 +22,7 @@ color: orange
 2. **E2Eテスト実行**
    - Playwright MCPを使用してブラウザベースのテストを実行
    - 以下を含む重要なユーザーフローをテスト:
-     - 認証フロー (Auth0統合)
+     - 認証フロー (Keycloak統合)
      - MCPサーバー設定と管理
      - 組織とマルチテナント機能
      - APIキー管理

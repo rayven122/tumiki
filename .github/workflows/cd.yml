@@ -52,10 +52,25 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Fetch Vercel environment variables
+        uses: ./.github/actions/fetch-vercel-env
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          environment: ${{ needs.setup.outputs.environment }}
+          output-file: .env
+
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Build packages (database only)
-        shell: bash
-        run: |
-          pnpm run --filter @tumiki/db build
+        run: pnpm turbo build --filter=@tumiki/db
 
       - name: Migrate staging/production database
         id: migrate
@@ -91,8 +106,25 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Fetch Vercel environment variables
+        uses: ./.github/actions/fetch-vercel-env
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          environment: ${{ needs.setup.outputs.environment }}
+          output-file: .env
+
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Build packages
-        uses: ./.github/actions/build-packages
+        run: pnpm turbo build
 
       - name: Configure git user for deployment
         run: |
@@ -109,7 +141,6 @@ jobs:
         with:
           stage: ${{ needs.setup.outputs.stage }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
-
 
   # Cloud Runデプロイ（全環境対応）
   deploy-cloudrun:
@@ -131,8 +162,25 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      - name: Fetch Vercel environment variables
+        uses: ./.github/actions/fetch-vercel-env
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          environment: ${{ needs.setup.outputs.environment }}
+          output-file: .env
+
+      - name: 💾 Cache Turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
       - name: Build packages
-        uses: ./.github/actions/build-packages
+        run: pnpm turbo build
 
       - name: Deploy to Cloud Run
         id: deploy-cloudrun
@@ -142,9 +190,9 @@ jobs:
           pr_number: ${{ needs.setup.outputs.pr_number }}
           gcp_credentials: ${{ secrets.GCP_SA_KEY_PRODUCTION }}
           gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          region: asia-northeast1
-          min_instances: '0'
-          max_instances: '3'
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID }}
 
   # PRへのデプロイURLコメント
   comment-deployment:

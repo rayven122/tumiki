@@ -20,7 +20,10 @@ afterEach(() => {
 
 // 環境変数のモック
 vi.stubEnv("NODE_ENV", "test");
-vi.stubEnv("DATABASE_URL", "postgresql://test:test@localhost:5432/test");
+vi.stubEnv(
+  "DATABASE_URL",
+  "postgresql://root:password@localhost:5435/tumiki_test",
+);
 vi.stubEnv("API_KEY_PREFIX", "test_");
 vi.stubEnv("API_KEY_LENGTH", "32");
 vi.stubEnv(

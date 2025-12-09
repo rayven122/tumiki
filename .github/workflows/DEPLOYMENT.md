@@ -106,7 +106,7 @@ graph TB
 ## 📦 デプロイ処理の詳細
 
 ### Vercel
-1. パッケージビルド（db, utils, tsup-config）
+1. パッケージビルド（db, utils）
 2. `vercel deploy [--prod]` 実行
 3. デプロイURLを抽出・出力
 

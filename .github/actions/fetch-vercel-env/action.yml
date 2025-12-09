@@ -1,0 +1,109 @@
+name: Fetch Vercel Environment Variables
+description: Vercel から環境変数を取得して .env ファイルに保存する再利用可能なアクション
+
+inputs:
+  vercel-token:
+    description: Vercel API トークン
+    required: true
+  vercel-org-id:
+    description: Vercel Organization ID
+    required: true
+  vercel-project-id:
+    description: Vercel Project ID
+    required: true
+  environment:
+    description: 環境名 (preview, production)
+    required: true
+  output-file:
+    description: 出力する .env ファイルのパス
+    required: false
+    default: .env.local
+
+outputs:
+  env-file:
+    description: 作成された環境変数ファイルのパス
+    value: ${{ inputs.output-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate cache key
+      id: cache-key
+      shell: bash
+      run: |
+        ENVIRONMENT="${{ inputs.environment }}"
+        OUTPUT_FILE="${{ inputs.output-file }}"
+        # 環境、出力ファイル、ワークフローランIDを組み合わせてキャッシュキーを生成
+        # 同じワークフロー実行内でも異なる出力ファイルには異なるキャッシュを使用
+        # ファイル名のハッシュを生成（スラッシュや特殊文字を含む可能性があるため）
+        FILE_HASH=$(echo -n "${OUTPUT_FILE}" | md5sum | cut -d' ' -f1)
+        CACHE_KEY="vercel-env-${ENVIRONMENT}-${FILE_HASH}-${{ github.run_id }}"
+        echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
+
+    - name: Restore cached environment variables
+      id: cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.output-file }}
+        key: ${{ steps.cache-key.outputs.cache-key }}
+
+    - name: Vercel から環境変数を取得
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
+      run: |
+        set -eo pipefail
+
+        ENVIRONMENT="${{ inputs.environment }}"
+        OUTPUT_FILE="${{ inputs.output-file }}"
+
+        echo "📥 Vercel から環境変数を取得します（環境: ${ENVIRONMENT}）"
+        echo "出力ファイル: ${OUTPUT_FILE}"
+
+        # vercel pull でプロジェクトを紐付けてから env pull を実行
+        # VERCEL_ORG_IDとVERCEL_PROJECT_IDを環境変数として設定することでプロジェクトを特定
+        echo "🔗 Vercelプロジェクトに接続中..."
+        if ! pnpm exec vercel pull --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" 2>/dev/null; then
+          echo "❌ Vercel pull コマンドが失敗しました。詳細を表示します:"
+          pnpm exec vercel pull --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}"
+          exit 1
+        fi
+
+        echo "📋 環境変数をファイルに出力中..."
+        # vercel env pull: 環境変数をローカルファイルにエクスポート
+        if ! pnpm exec vercel env pull "${OUTPUT_FILE}" --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}" 2>/dev/null; then
+          echo "❌ Vercel env pull コマンドが失敗しました。詳細を表示します:"
+          pnpm exec vercel env pull "${OUTPUT_FILE}" --yes --environment="${ENVIRONMENT}" --token="${VERCEL_TOKEN}"
+          exit 1
+        fi
+
+        if [ ! -f "${OUTPUT_FILE}" ]; then
+          echo "❌ Vercel から環境変数の取得に失敗しました（ファイルが作成されませんでした）"
+          exit 1
+        fi
+
+        echo "✅ Vercel から環境変数を取得しました"
+        echo "ファイルサイズ: $(wc -c < "${OUTPUT_FILE}") bytes"
+
+    - name: Cache environment variables
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.output-file }}
+        key: ${{ steps.cache-key.outputs.cache-key }}
+
+    - name: Verify cached file
+      if: steps.cache-restore.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        OUTPUT_FILE="${{ inputs.output-file }}"
+        if [ -f "${OUTPUT_FILE}" ]; then
+          echo "✅ キャッシュから環境変数を復元しました"
+          echo "ファイルサイズ: $(wc -c < "${OUTPUT_FILE}") bytes"
+        else
+          echo "❌ キャッシュからファイルが復元されませんでした: ${OUTPUT_FILE}"
+          exit 1
+        fi

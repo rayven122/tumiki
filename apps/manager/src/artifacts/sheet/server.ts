@@ -23,15 +23,19 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
 
       if (type === "object") {
         const { object } = delta;
-        const { csv } = object;
 
-        if (csv) {
-          dataStream.writeData({
-            type: "sheet-delta",
-            content: csv,
-          });
+        // Type guard for object with csv property
+        if (object && typeof object === "object" && "csv" in object) {
+          const { csv } = object as { csv: string };
 
-          draftContent = csv;
+          if (csv) {
+            dataStream.writeData({
+              type: "sheet-delta",
+              content: csv,
+            });
+
+            draftContent = csv;
+          }
         }
       }
     }
@@ -60,15 +64,19 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
 
       if (type === "object") {
         const { object } = delta;
-        const { csv } = object;
 
-        if (csv) {
-          dataStream.writeData({
-            type: "sheet-delta",
-            content: csv,
-          });
+        // Type guard for object with csv property
+        if (object && typeof object === "object" && "csv" in object) {
+          const { csv } = object as { csv: string };
 
-          draftContent = csv;
+          if (csv) {
+            dataStream.writeData({
+              type: "sheet-delta",
+              content: csv,
+            });
+
+            draftContent = csv;
+          }
         }
       }
     }

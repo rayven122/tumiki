@@ -12,7 +12,6 @@ export default defineWorkspace([
   // "packages/db/vitest.config.ts",
   "packages/mailer/vitest.config.ts",
   "packages/scripts/vitest.config.ts",
-  "packages/youtube-mcp/vitest.config.ts",
 
   // Tooling
   "tooling/vitest/vitest.config.ts",
