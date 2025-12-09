@@ -28,6 +28,7 @@ const mockSetupMcpServerTools = vi.mocked(mcpServerSetup.setupMcpServerTools);
 const mockUserId = "user_123";
 const mockOrganizationId = "org_456";
 const mockMcpServerId = "mcp_789";
+const mockMcpServerTemplateInstanceId = "instance_abc";
 const mockOAuthClientId = "oauth_client_123";
 const mockStateToken = "valid-state-token";
 const mockAccessToken = "access_token_xyz";
@@ -39,6 +40,7 @@ const createMockStatePayload = (): OAuthStatePayload => ({
   codeChallenge: "challenge-xyz",
   nonce: "nonce-456",
   mcpServerId: mockMcpServerId,
+  mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,
   userId: mockUserId,
   organizationId: mockOrganizationId,
   redirectUri: "https://example.com/callback",
@@ -134,7 +136,7 @@ describe("handleOAuthCallback", () => {
       );
       expect(mockGetMcpServerAndOAuthClient).toHaveBeenCalledWith(
         mockTx,
-        mockMcpServerId,
+        mockMcpServerTemplateInstanceId,
         mockOrganizationId,
       );
       expect(mockExchangeAuthorizationCode).toHaveBeenCalledWith(

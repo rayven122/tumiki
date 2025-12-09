@@ -51,6 +51,9 @@ const createMockPrismaClient = () => {
     mcpServer: {
       findUnique: vi.fn(),
     },
+    mcpServerTemplateInstance: {
+      findUniqueOrThrow: vi.fn(),
+    },
     mcpOAuthClient: {
       findFirst: vi.fn(),
     },
@@ -112,20 +115,19 @@ describe("getMcpServerAndOAuthClient", () => {
   });
 
   test("MCPサーバーとOAuthクライアントを正常に取得する", async () => {
-    // MCPサーバーのモックデータ（正確なスキーマに合わせる）
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: mockOrganizationId,
-      templateInstances: [
-        {
-          mcpServerTemplate: {
-            id: "template_123",
-            url: "https://example.com/mcp",
-            transportType: TransportType.STREAMABLE_HTTPS,
-          },
-        },
-      ],
+    // MCPサーバーテンプレートインスタンスのモックデータ
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: mockOrganizationId,
+      },
+      mcpServerTemplate: {
+        id: "template_123",
+        url: "https://example.com/mcp",
+        transportType: TransportType.STREAMABLE_HTTPS,
+      },
     };
 
     // OAuthクライアントのモックデータ
@@ -141,9 +143,11 @@ describe("getMcpServerAndOAuthClient", () => {
       slug: "test-org",
     };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
     (
       mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
     ).mockResolvedValue(mockOAuthClient);
@@ -153,7 +157,7 @@ describe("getMcpServerAndOAuthClient", () => {
 
     const result = await getMcpServerAndOAuthClient(
       mockTx,
-      mockMcpServerId,
+      mockMcpServerTemplateInstanceId,
       mockOrganizationId,
     );
 
@@ -170,124 +174,153 @@ describe("getMcpServerAndOAuthClient", () => {
   });
 
   test("MCPサーバーが存在しない場合にエラーを投げる", async () => {
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      null,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockRejectedValue(new Error("Record not found"));
 
     await expect(
-      getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow("MCPサーバーまたはテンプレートが見つかりません");
+      getMcpServerAndOAuthClient(
+        mockTx,
+        mockMcpServerTemplateInstanceId,
+        mockOrganizationId,
+      ),
+    ).rejects.toThrow();
   });
 
   test("MCPサーバーテンプレートが存在しない場合にエラーを投げる", async () => {
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: mockOrganizationId,
-      templateInstances: [], // テンプレートなし
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: mockOrganizationId,
+      },
+      mcpServerTemplate: null, // テンプレートなし
     };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
 
     await expect(
-      getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
+      getMcpServerAndOAuthClient(
+        mockTx,
+        mockMcpServerTemplateInstanceId,
+        mockOrganizationId,
+      ),
     ).rejects.toThrow("MCPサーバーテンプレートのURLが見つかりません");
   });
 
   test("組織IDが一致しない場合にエラーを投げる", async () => {
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: "different-org-id", // 異なる組織ID
-      templateInstances: [
-        {
-          mcpServerTemplate: {
-            id: "template_123",
-            url: "https://example.com/mcp",
-            transportType: TransportType.STREAMABLE_HTTPS,
-          },
-        },
-      ],
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: "different-org-id", // 異なる組織ID
+      },
+      mcpServerTemplate: {
+        id: "template_123",
+        url: "https://example.com/mcp",
+        transportType: TransportType.STREAMABLE_HTTPS,
+      },
     };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
 
     await expect(
-      getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
+      getMcpServerAndOAuthClient(
+        mockTx,
+        mockMcpServerTemplateInstanceId,
+        mockOrganizationId,
+      ),
     ).rejects.toThrow("このMCPサーバーへのアクセス権限がありません");
   });
 
   test("MCPサーバーテンプレートのURLが存在しない場合にエラーを投げる", async () => {
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: mockOrganizationId,
-      templateInstances: [
-        {
-          mcpServerTemplate: {
-            id: "template_123",
-            url: null, // URLなし
-            transportType: TransportType.STREAMABLE_HTTPS,
-          },
-        },
-      ],
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: mockOrganizationId,
+      },
+      mcpServerTemplate: {
+        id: "template_123",
+        url: null, // URLなし
+        transportType: TransportType.STREAMABLE_HTTPS,
+      },
     };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
 
     await expect(
-      getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
+      getMcpServerAndOAuthClient(
+        mockTx,
+        mockMcpServerTemplateInstanceId,
+        mockOrganizationId,
+      ),
     ).rejects.toThrow("MCPサーバーテンプレートのURLが見つかりません");
   });
 
   test("OAuthクライアントが存在しない場合にエラーを投げる", async () => {
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: mockOrganizationId,
-      templateInstances: [
-        {
-          mcpServerTemplate: {
-            id: "template_123",
-            url: "https://example.com/mcp",
-            transportType: TransportType.STREAMABLE_HTTPS,
-          },
-        },
-      ],
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: mockOrganizationId,
+      },
+      mcpServerTemplate: {
+        id: "template_123",
+        url: "https://example.com/mcp",
+        transportType: TransportType.STREAMABLE_HTTPS,
+      },
     };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
     (
       mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
     ).mockResolvedValue(null);
 
     await expect(
-      getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
+      getMcpServerAndOAuthClient(
+        mockTx,
+        mockMcpServerTemplateInstanceId,
+        mockOrganizationId,
+      ),
     ).rejects.toThrow("OAuth clientが見つかりません");
   });
 
   test("組織が存在しない場合にエラーを投げる", async () => {
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: mockOrganizationId,
-      templateInstances: [
-        {
-          mcpServerTemplate: {
-            id: "template_123",
-            url: "https://example.com/mcp",
-            transportType: TransportType.STREAMABLE_HTTPS,
-          },
-        },
-      ],
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: mockOrganizationId,
+      },
+      mcpServerTemplate: {
+        id: "template_123",
+        url: "https://example.com/mcp",
+        transportType: TransportType.STREAMABLE_HTTPS,
+      },
     };
 
     const mockOAuthClient = {
@@ -297,9 +330,11 @@ describe("getMcpServerAndOAuthClient", () => {
       authorizationServerUrl: "https://oauth.example.com",
     };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
     (
       mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
     ).mockResolvedValue(mockOAuthClient);
@@ -308,24 +343,27 @@ describe("getMcpServerAndOAuthClient", () => {
     ).mockResolvedValue(null);
 
     await expect(
-      getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
+      getMcpServerAndOAuthClient(
+        mockTx,
+        mockMcpServerTemplateInstanceId,
+        mockOrganizationId,
+      ),
     ).rejects.toThrow("組織が見つかりません");
   });
 
   test("最新のOAuthクライアントが取得されることを確認", async () => {
-    const mockMcpServer = {
-      id: mockMcpServerId,
-      name: "Test MCP Server",
-      organizationId: mockOrganizationId,
-      templateInstances: [
-        {
-          mcpServerTemplate: {
-            id: "template_123",
-            url: "https://example.com/mcp",
-            transportType: TransportType.STREAMABLE_HTTPS,
-          },
-        },
-      ],
+    const mockTemplateInstance = {
+      id: mockMcpServerTemplateInstanceId,
+      mcpServer: {
+        id: mockMcpServerId,
+        name: "Test MCP Server",
+        organizationId: mockOrganizationId,
+      },
+      mcpServerTemplate: {
+        id: "template_123",
+        url: "https://example.com/mcp",
+        transportType: TransportType.STREAMABLE_HTTPS,
+      },
     };
 
     const mockOAuthClient = {
@@ -337,9 +375,11 @@ describe("getMcpServerAndOAuthClient", () => {
 
     const mockOrganization = { slug: "test-org" };
 
-    (mockTx.mcpServer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockMcpServer,
-    );
+    (
+      mockTx.mcpServerTemplateInstance.findUniqueOrThrow as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(mockTemplateInstance);
     (
       mockTx.mcpOAuthClient.findFirst as ReturnType<typeof vi.fn>
     ).mockResolvedValue(mockOAuthClient);
@@ -349,7 +389,7 @@ describe("getMcpServerAndOAuthClient", () => {
 
     await getMcpServerAndOAuthClient(
       mockTx,
-      mockMcpServerId,
+      mockMcpServerTemplateInstanceId,
       mockOrganizationId,
     );
 
