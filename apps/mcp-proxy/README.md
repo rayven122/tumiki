@@ -134,7 +134,7 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
 
 ### MCP HTTP Transport
 
-- `POST /mcp/:userMcpServerInstanceId` - MCPプロトコルハンドラー（JSON-RPC over HTTP、認証必須）
+- `POST /mcp/:mcpServerId` - MCPプロトコルハンドラー（JSON-RPC over HTTP、認証必須）
   - `initialize` - MCPプロトコル初期化ハンドシェイク
   - `tools/list` - 利用可能なツールのリスト取得
   - `tools/call` - ツールの実行
@@ -170,7 +170,7 @@ UPSTASH_REDIS_REST_URL=https://...
 UPSTASH_REDIS_REST_TOKEN=...
 
 # キャッシュ暗号化
-CACHE_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
+REDIS_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
 
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
@@ -219,7 +219,7 @@ slack.send_message
 
 ```bash
 curl -X POST http://localhost:8080/mcp/your-instance-id \
-  -H "X-API-Key: your-api-key" \
+  -H "Tumiki-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -259,7 +259,7 @@ curl -X POST http://localhost:8080/mcp/your-instance-id \
 
 ```bash
 curl -X POST http://localhost:8080/mcp/your-instance-id \
-  -H "X-API-Key: your-api-key" \
+  -H "Tumiki-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -295,7 +295,7 @@ curl -X POST http://localhost:8080/mcp/your-instance-id \
 
 ```bash
 curl -X POST http://localhost:8080/mcp/your-instance-id \
-  -H "X-API-Key: your-api-key" \
+  -H "Tumiki-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -317,8 +317,8 @@ curl -X POST http://localhost:8080/mcp/your-instance-id \
 APIキー認証を使用：
 
 ```http
-# X-API-Key ヘッダー
-X-API-Key: tumiki_live_abc123...
+# Tumiki-API-Key ヘッダー
+Tumiki-API-Key: tumiki_live_abc123...
 
 # または Authorization: Bearer
 Authorization: Bearer tumiki_live_abc123...

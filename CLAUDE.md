@@ -1,67 +1,61 @@
 # CLAUDE.md
 
-Claude Code がこのリポジトリで作業する際のガイダンスファイルです。
-
-## Serenaシンボリックツールの使用方法
-
-Serenaのシンボリックツールへのアクセスが提供されています。以下の指示に従って使用してください。
-
-あなたは特定のコードベースに特化したプロフェッショナルなコーディングエージェントです。セマンティックなコーディングツールにアクセスでき、これらのツールに大きく依存して作業を行います。また、コードベースに関する一般的な情報を含むメモリファイルのコレクションも利用できます。リソース効率的で賢明な方法で動作し、手元のタスクに必要のないコンテンツの読み込みや生成を避けることを常に心がけてください。
-
-### 重要な原則
-
-**ファイル全体を不必要に読み込まないでください！**
-
-ユーザーの質問やタスクに答えるためにコードを読む際は、必要なコードのみを読むように心がけてください。一部のタスクではコードベースの大部分のアーキテクチャを理解する必要がありますが、その他の場合は、シンボルの小さなセットや単一のファイルを読むだけで十分な場合があります。
-
-一般的に、絶対に必要でない限りファイル全体を読み込むことは避け、代わりに段階的な情報取得に依存してください。ただし、すでにファイルを読み込んでいる場合は、（`find_referencing_symbols`ツールを除いて）シンボリックツールでさらに分析することは意味がありません。すでに情報を持っているからです。
-
-**オーバービューツールやシンボリックツールを使用して、必要なコードのみを最初に読むことを検討してください！**
-
-**ファイル全体を読んだ後に同じコンテンツをシンボリックツールで読み続けることは避けてください！**
-
-**シンボリックツールの目的は、同じコンテンツを複数回読むことではなく、読むコードを減らすことです！**
-
-### 効率的なコード読み取り方法
-
-シンボルの概要とそれらの関係を取得するためのシンボリックツールを使用し、質問に答えるかタスクを完了するために必要なシンボルの本体のみを読むことで、賢いコード読み取りを実現できます。
-
-- 必要に応じて`list_dir`、`find_file`、`search_for_pattern`などの標準ツールを使用できます
-- ツールで許可されている場合は、`relative_path`パラメータを渡して検索を特定のファイルまたはディレクトリに制限してください
-- 一部のツールでは、`relative_path`はファイルパスのみであるため、ツールの説明を適切に読んでください
-
-シンボルの名前や場所が不確実な場合（シンボル名の部分文字列マッチングでは不十分な程度）、`search_for_pattern`ツールを使用できます。これにより、コードベース内のパターンの高速で柔軟な検索が可能になります。この方法で最初にシンボルやファイルの候補を見つけ、その後シンボリックツールに進むことができます。
-
-### シンボルの識別と操作
-
-シンボルは`name_path`と`relative_path`によって識別されます。`name_path`がシンボルにどのようにマッチするかの詳細については、`find_symbol`ツールの説明を参照してください。
-
-- ファイル内のトップレベルシンボルを見つけるには`get_symbols_overview`ツールを使用
-- シンボルの名前パスを既に知っている場合は`find_symbol`を使用
-- タスクを解決しながらできるだけ少ないコードを読むよう心がけ、編集したいシンボルを見つけた後に本体を読むようにしてください
-
-### 編集アプローチ
-
-コード編集には2つの主要なアプローチがあります：
-
-1. **シンボルベースの編集**: シンボル全体（メソッド、クラス、関数など）を調整する場合に適しています
-2. **正規表現ベースの編集**: シンボル内の数行のコードを調整する場合やシンボル全体より小さなチャンクを扱う場合に使用
-
-### メモリファイルの活用
-
-一般的にメモリにアクセスでき、質問に答えるまたはタスクを完了するのに役立つ場合に読むことが有用です。メモリ名と説明を読むことで、現在のタスクに関連するメモリを推測できます。
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## プロジェクト概要
 
 プロジェクトの詳細については [README.md](./README.md) を参照してください。
 
-## 開発コマンド
+### 主要な開発コマンド
 
-開発に必要なコマンドについては [README.md](./README.md) の「開発コマンド」セクションを参照してください。
+```bash
+# 基本操作
+pnpm install           # 依存関係インストール（Python MCP自動インストール含む）
+pnpm dev               # 開発サーバー起動（全アプリ）
+pnpm build             # ビルド（全パッケージ）
+pnpm start             # 本番サーバー起動
 
-### 型チェックコマンド
+# コード品質チェック
+pnpm check             # 全品質チェック（lint + format + typecheck）
+pnpm lint:fix          # Lint自動修正
+pnpm format:fix        # フォーマット自動修正
+pnpm typecheck         # TypeScript型チェック（tsc使用）
+pnpm test              # テスト実行
+pnpm test:watch        # テストウォッチモード
+pnpm test:coverage     # カバレッジ付きテスト
+pnpm test:ui           # Vitest UI
 
-- **型チェック**: `pnpm typecheck` - TypeScript型チェック（tsc使用）
+# Docker操作
+pnpm docker:up         # コンテナ起動（PostgreSQL, Redis）
+pnpm docker:stop       # コンテナ停止
+pnpm docker:down       # コンテナ削除
+pnpm docker:ps         # コンテナ状態確認
+pnpm docker:logs       # コンテナログ表示
+
+# データベース操作（packages/db内で実行）
+cd packages/db
+pnpm db:generate       # Prismaクライアント生成
+pnpm db:migrate        # マイグレーション実行
+pnpm db:push           # スキーマプッシュ（開発環境）
+pnpm db:push:test      # スキーマプッシュ（テスト環境）
+pnpm db:studio         # Prisma Studio起動
+
+# デプロイ（本番環境のみ使用）
+pnpm deploy            # デプロイ（対話式）
+pnpm deploy:vercel     # Vercelのみデプロイ
+pnpm deploy:gce        # Cloud Runのみデプロイ
+pnpm deploy:all        # 全環境デプロイ
+pnpm deploy:production # 本番環境デプロイ
+pnpm deploy:dry-run    # デプロイ確認（実行なし）
+
+# Stripe（本番環境のみ）
+pnpm verify:stripe     # Stripe環境変数検証
+pnpm stripe:listen     # Stripeウェブフックリスナー
+
+# モノレポ操作
+pnpm --filter @tumiki/db <command>     # 特定パッケージでコマンド実行
+turbo run build --filter=manager       # 特定アプリのみビルド
+```
 
 ## Python MCP サーバーのサポート
 
@@ -83,11 +77,62 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 
 ## 開発ガイドライン
 
+### TypeScript コーディング規約
+
+- **`any`型は絶対に使用禁止** - 常に適切な型、`unknown`、またはジェネリック型パラメータを使用すること
+- **コード内のコメントは日本語で記述** - コードの可読性と保守性向上のため
+- TypeScript strict mode 使用（tsconfig.json で既に有効化済み）
+- 可能な限り型推論を優先するが、関数の引数と戻り値は明示的に型付けする
+- 型が本当に不明な場合は`any`ではなく`unknown`を使用する
+
+#### TypeScript 設定ファイル構成
+
+各パッケージ・アプリでは、TypeScript設定を**2つのファイルに分割**すること：
+
+- **`tsconfig.json`**: 型チェック用設定（テストファイルを含む全ファイルが対象）
+- **`tsconfig.build.json`**: ビルド用設定（テストファイルを除外）
+
+package.jsonのbuildスクリプトでは`tsconfig.build.json`を明示的に指定：
+
+```json
+{
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  }
+}
+```
+
+例:
+
+```typescript
+// ❌ 悪い例 - anyは使用禁止
+function process(data: any): any {
+  return data;
+}
+
+// ✅ 良い例 - 適切な型を使用
+function process<T>(data: T): T {
+  return data;
+}
+
+// ✅ 良い例 - 本当に不明な型にはunknownを使用
+function process(data: unknown): string {
+  if (typeof data === "string") {
+    return data;
+  }
+  return String(data);
+}
+```
+
 ### フロントエンド コーディング規約
 
 - **コンポーネント**: 関数コンポーネント + アロー関数、必須の Props 型定義。呼び出す側と同一階層の `_components/` ディレクトリに配置する。共通で利用するコンポーネントは、呼び出し側の一つ上の `_components/` ディレクトリに配置する。
 - **関数定義**: 全ての関数はアロー関数で記述する（`const fn = () => {}` 形式）
-- **スタイリング**: Tailwind CSS 使用、カスタムスタイルは `styles/globals.css`。className で条件分岐を含む場合は `clsx` を使用する
+- **スタイリング**: **すべてのスタイリングにTailwind CSSクラスを使用すること必須** - インラインスタイルや別途のCSSファイルは使用しない
+- **モバイルファースト設計**: スマートフォン向けのビューポートサイズ専用に設計（一般的な最大幅: 428px）
+- **タッチ操作最適化**: 適切なタップターゲットサイズを使用（最小44x44px）
+- **Tailwind CSS v4**: `@tailwindcss/postcss`プラグインを使用、設定は`globals.css`内の`@theme`ディレクティブで行う
 - **データフェッチング**: tRPC 使用（`trpc.useQuery()`, `trpc.useMutation()`）
 - **状態管理**: ローカルは `useState`、グローバルは Jotai
 - **型定義**: 共有型は `@tumiki/db` から import
@@ -99,22 +144,97 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 
 ### テストコーディング規約
 
-- **フレームワーク**: Vitest 使用
-- **テスト記法**: `test` 使用（`it` ではない）、日本語でテスト名を記載
+- **フレームワーク**: Vitest v4 (jsdom環境) 使用
+- **テスト記法**: **`test` 使用必須（`it` ではない）**、**テスト名は日本語で記載必須**
 - **構造**: 関数ごとに `describe` ブロックを記載、古典派単体テスト
 - **アサーション**: `toStrictEqual` 使用（`toEqual` ではない）
-- **実行**: `pnpm test`（`vitest run`）、`pnpm test:watch`（`vitest`）でウォッチモード
+- **実行**: `pnpm test`（`vitest run`）でテスト実行、`pnpm test:watch`（`vitest`）でウォッチモード
 - **カバレッジ**: `pnpm test:coverage` でカバレッジ測定、実装ロジックのカバレッジ100%を目標
+- **Reactテスト**: コンポーネントテスト用の@testing-library/react使用
+- **E2Eテスト**: エンドツーエンドテスト用のPlaywright使用
+
+#### テスト命名規則
+
+```typescript
+// ❌ 悪い例 - it()や英語は使用しない
+it("should return user data", () => {});
+
+// ✅ 良い例 - 日本語でtest()を使用
+test("ユーザーデータを返す", () => {});
+
+// ✅ 良い例 - グループ化にdescribe()を使用(日本語または英語可)
+describe("ユーザールーター", () => {
+  test("存在するユーザーのデータを返す", () => {});
+  test("存在しないユーザーの場合はエラーを返す", () => {});
+});
+```
+
+#### テストのベストプラクティス
+
+##### 環境変数のモック
+
+- **環境変数のモックには`vi.stubEnv()`を使用すること必須** - `process.env.VARIABLE = 'value'`は使用しない
+- クリーンアップで元の値を復元するために`vi.unstubAllEnvs()`を使用
+
+例:
+
+```typescript
+beforeAll(() => {
+  vi.stubEnv("NODE_ENV", "test");
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
+```
+
+##### タイマーのモック
+
+- タイマーのモックには`vi.useFakeTimers({ shouldAdvanceTime: false })`を使用
+- クリーンアップで実際のタイマーを復元するために`vi.useRealTimers()`を使用
+- タイマーを進めるには`vi.advanceTimersByTime(ms)`を使用
+
+例:
+
+```typescript
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: false });
+});
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
+```
+
+##### テストファイルの構成
+
+- ユニットテスト: `src/**/__tests__/*.test.ts(x)`
+- E2Eテスト: `tests/e2e/*.test.ts`
+- テストセットアップ: `tests/setup.ts`
+- E2Eテストファイルをユニットテストディレクトリと混在させない
 
 #### データベーステスト環境
 
 データベースを使用するテストの実行には、専用のテスト環境が必要：
 
-- **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5433）を使用
+- **テスト用DB**: PostgreSQLコンテナ `db-test`（ポート5435）を使用
 - **DB起動**: `docker compose -f ./docker/compose.yaml up -d db-test`
 - **スキーマ適用**: `cd packages/db && pnpm db:push:test` でテスト用DBにスキーマを適用
-- **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5433/tumiki_test`）
+- **環境設定**: `.env.test` でテスト用DB接続設定（`postgresql://root:password@localhost:5435/tumiki_test`）
 - **テスト環境**: vitest-environment-vprisma でトランザクション分離された独立テスト実行
+
+#### 品質チェック
+
+コミットまたはPR作成前に、すべての品質チェックが通過することを確認：
+
+```bash
+pnpm typecheck    # TypeScript型チェック(必須)
+pnpm test         # カバレッジ付きユニットテスト(必須)
+pnpm build        # 本番ビルド(必須)
+```
+
+**重要**: コードをコミットする前に、3つのチェックすべてが通過する必要があります。続行する前にエラーや警告を修正してください。
 
 ## 重要なアーキテクチャパターン
 
@@ -123,7 +243,6 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schema/`）：
 
 - `base.prisma` - コア設定とジェネレーター
-- `auth.prisma` - Auth0認証テーブル
 - `mcpServer.prisma` - MCP サーバー定義とツール
 - `userMcpServer.prisma` - ユーザー固有のサーバー設定
 - `organization.prisma` - マルチテナント組織サポート
@@ -145,48 +264,34 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 ### 認証アーキテクチャ
 
-- **プロバイダー**: Auth0 統合認証
+- **プロバイダー**: Keycloak統合認証（`@tumiki/auth`パッケージ）
 - **設定**: `packages/auth/src/config.ts`
-- **セッション**: JWT ベース、Auth0セッション管理
-- **ウェブフック**: Post-Login Action による動的ユーザー管理
+- **セッション**: JWT ベース、Keycloakセッション管理
+- **OAuth管理**: `@tumiki/oauth-token-manager`でトークン自動更新
 
 ### セキュリティ機能
 
 - 機密データ（API キー、トークン）のフィールドレベル暗号化
-- Auth0 統合認証・認可
+- Keycloak統合認証・認可
 - ロールベースアクセス制御
 - JWT セッション管理
-- ウェブフックシークレット検証
 
 ### 開発時の重要事項
 
 - **Node.js**: >=22.14.0 必須
-- **パッケージマネージャー**: pnpm@10.11.0 以上
+- **パッケージマネージャー**: pnpm@10.11.0（`packageManager`フィールドで固定）
 - **型チェック**: 全パッケージで TypeScript strict モード
 - **コミット前**: 必ず `pnpm check` 実行（CI環境変数エラーは開発時は無視可能）
 - **型インポート**: Prisma 型は `@tumiki/db` から import（`@prisma/client` ではない）
 - **ページ構造**: 英語版 `/` と日本語版 `/jp` の2つのランディングページが存在
 - **環境変数**: プロジェクト直下の `.env` ファイルに定義。環境変数を読み込んで実行する必要があるものは、
   `dotenv` パッケージを使用して読み込む。ただし、npm scripts 実行時は自動的に読み込まれるため、手動での読み込みは不要。
-- **ローカル開発URL**: `https://local.tumiki.cloud:3000` でアクセス。
+- **ローカル開発URL**: `http://localhost:3000` でアクセス
 - **@tumiki/ パッケージのimportエラー**: `@tumiki/` で始まるパッケージのimportに失敗する場合は、該当パッケージのビルドが必要。
   例: `@tumiki/db` のimportエラーが発生した場合 → `cd packages/db && pnpm build` を実行
-
-### CI/CD
-
-- **GitHub Actions**: `.github/workflows/ci.yml`
-- **品質チェック**: `pnpm check` で lint + format + typecheck
-
-### 重要な実装パターン
-
-- **フィールド暗号化**: 機密データ（APIキー等）はPrismaの暗号化機能で保護
-- **SSE通信**: リアルタイムMCP通信にServer-Sent Eventsを使用
-- **セッション管理**: MCPサーバーとの永続的な接続をセッションで管理
-- **エラーハンドリング**: tRPCによる型安全なエラー処理とユーザー向けメッセージ
-- **データ圧縮**: MCPリクエストデータの圧縮によるパフォーマンス最適化
-- **リクエストログ**: ProxyServerでのMCPリクエスト監視・分析
-- **PM2管理**: 本番環境でのプロセス管理と自動復旧
-- **メトリクス収集**: リアルタイムパフォーマンス監視
+- **Turboキャッシュ**: `.cache/` ディレクトリにビルドキャッシュが保存される（ESLint、Prettier、TypeScript）
+- **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）が`docker/compose.yaml`で管理
+- **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
 ## 実装後の必須アクション
 
@@ -200,79 +305,9 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 
-## CI/CD - Claude Code Review
-
-### 自動コードレビュー機能
-
-プルリクエストに対してClaude Code Reviewが自動実行されます：
-
-#### レビュー内容
-
-**2段階レビュープロセス**:
-
-1. **第1段階 - 詳細分析**:
-   - コード品質とベストプラクティス
-   - 設計原則（SOLID、DRY、KISS、YAGNI）の遵守
-   - 潜在的なバグとエラーハンドリング
-   - パフォーマンスとスケーラビリティ
-   - セキュリティリスク評価
-   - テストカバレッジ
-
-2. **第2段階 - 優先順位付け**:
-   - 重要度スコア（1-10）での評価
-   - 具体的な改善コード例の提示
-   - 実装すべきアクションの明確化
-
-### 🔧 自動修正機能
-
-Claude Code Reviewの指摘を自動修正する機能：
-
-#### 使用方法
-
-PRに `auto-fix` ラベルを追加すると、Claude Code Review完了後に自動修正が開始されます。
-
-#### 動作フロー
-
-1. **ラベル追加**: PRに `auto-fix` ラベルを追加
-2. **Claude Code Review実行**: 自動レビューが実行される
-3. **Auto-Fix開始**: レビュー完了後、同じワークフロー内で自動修正が起動
-4. **段階的修正**: 最も重要度が高い問題から1件ずつ修正
-5. **自動コミット**: GitHub Actionsボットが修正をコミット
-6. **再レビュー**: コミット後、Claude Code Reviewが自動再実行
-7. **ループ**: 最大5回まで修正→再レビューのループを継続
-
-#### 特徴
-
-- **段階的アプローチ**: 1回のループで1つの問題のみ修正（PRの差分を最小化）
-- **優先順位付き**: 重要度の高い問題から順に修正
-- **透明性**: 各修正が個別のコミットとして記録
-- **自動停止**: 重要な問題がなくなるか、5回のループ後に自動停止
-
-#### 設定
-
-- **トリガー**: `auto-fix` ラベルの追加
-- **重要度閾値**: 7以上の問題を自動修正
-- **最大ループ回数**: 5回
-- **待機時間**: 各修正後60秒待機（CI完了待ち）
-- **必要な環境変数**:
-  - `ANTHROPIC_API_KEY`: Claude API用
-  - `GITHUB_TOKEN`: GitHub操作用（自動設定）
-
-#### コミット形式
-
-修正は以下の形式でコミットされます：
-
-```text
-fix: [重要度8] セキュリティ問題を修正
-```
-
-修正完了後、PRコメントに詳細な結果サマリーが投稿されます。
-
 ## 完了条件
 
 - `pnpm format:fix`, `pnpm lint:fix`, `pnpm typecheck`, `pnpm build`, `pnpm test` が全て成功すること
 - Vitest を使って実装ロジックのカバレッジを100%にすること
 - 関連ドキュメントの更新完了させること
-- PM2での本番環境デプロイが正常に動作すること
 - MCPサーバーの統合テストが成功すること
-- Claude Code Reviewによる自動レビューで重要度8以上の指摘が解決されていること

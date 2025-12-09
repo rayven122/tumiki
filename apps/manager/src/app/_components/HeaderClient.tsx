@@ -11,8 +11,8 @@ import {
 import { Settings, User, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { signOut } from "next-auth/react";
 import { useMemo } from "react";
+import { useParams } from "next/navigation";
 import { guestRegex } from "@/lib/constants";
 
 interface HeaderClientProps {
@@ -24,9 +24,15 @@ interface HeaderClientProps {
 }
 
 export const HeaderClient = ({ user }: HeaderClientProps) => {
+  const params = useParams();
+  const orgSlug = params.orgSlug as string | undefined;
+
   const isGuest = useMemo(() => {
     return guestRegex.test(user?.email ?? "");
   }, [user?.email]);
+
+  const profilePath = `/${orgSlug}/profile`;
+  const settingsPath = `/${orgSlug}/settings`;
 
   return (
     <div className="flex items-center space-x-3">
@@ -84,26 +90,22 @@ export const HeaderClient = ({ user }: HeaderClientProps) => {
             </>
           )}
           <DropdownMenuItem asChild>
-            <Link href="/settings" className="flex items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>設定</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/profile" className="flex items-center">
+            <Link href={profilePath} className="flex items-center">
               <User className="mr-2 h-4 w-4" />
               <span>プロフィール</span>
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={settingsPath} className="flex items-center">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>設定</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex w-full items-center"
-            >
+          <DropdownMenuItem asChild>
+            <Link href="/api/auth/logout" className="flex items-center">
               ログアウト
-            </button>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

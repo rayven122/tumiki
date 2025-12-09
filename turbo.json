@@ -7,7 +7,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**", "out/**", "dist-electron/**"]
+      "outputs": ["dist/**", "build/**", "out/**", "dist-electron/**", ".next/**"]
     },
     "dev": {
       "cache": false,
@@ -28,6 +28,10 @@
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": [".cache/tsbuildinfo.json"]
+    },
+    "@tumiki/mcp-proxy#typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "test": {
       "dependsOn": ["^build"],

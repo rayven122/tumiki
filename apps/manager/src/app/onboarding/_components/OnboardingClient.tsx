@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { User, Users, ArrowRight, CheckCircle, Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { User, Users, ArrowRight, CheckCircle, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,70 +20,82 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
-import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { WelcomeLoadingOverlay } from "./WelcomeLoadingOverlay";
+import type { Session } from "next-auth";
 
 type OnboardingClientProps = {
+  session: Session | null;
   isFirstLogin: boolean;
 };
 
-export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
+export const OnboardingClient = ({
+  session,
+  isFirstLogin,
+}: OnboardingClientProps) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedOption, setSelectedOption] = useState<
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
 
-  const utils = api.useUtils();
+  // クエリパラメータからアンロックキーを取得
+  const unlockKey = searchParams.get("unlock");
+  const isTeamUnlocked = unlockKey === "early-access";
 
-  // 個人組織作成ミューテーション（オンボーディング完了）
-  const createPersonalOrganization =
-    api.organization.createPersonalOrganization.useMutation({
-      onSuccess: async () => {
-        await utils.organization.getUserOrganizations.invalidate();
-        toast.success("アカウント設定が完了しました！");
-      },
-      onError: (error) => {
-        toast.error(error.message);
-      },
-    });
-
-  const handlePersonalUse = async () => {
+  const handlePersonalUse = () => {
     setSelectedOption("personal");
 
-    // 初回ログイン時は個人組織を作成
-    if (isFirstLogin) {
-      setShowWelcomeOverlay(true);
-      await createPersonalOrganization.mutateAsync();
+    // セッションからチーム情報を取得（個人チームは会員登録時に自動作成済み）
+    const orgSlug = session?.user?.organizationSlug;
+    if (orgSlug) {
+      // 初回ログイン時はウェルカムオーバーレイを表示
+      if (isFirstLogin) {
+        setShowWelcomeOverlay(true);
+      } else {
+        router.push(`/${orgSlug}/mcps`);
+      }
     } else {
-      // 初回ログインでない場合は直接遷移
-      router.push("/mcp");
+      // エラーケース: セッションにチーム情報が存在しない
+      console.error(
+        "No organization found in session. This should not happen.",
+      );
+      toast.error(
+        "チーム情報の取得に失敗しました。サポートにお問い合わせください。",
+      );
     }
   };
 
   // アニメーション完了後の遷移処理
   const handleAnimationComplete = () => {
     setShowWelcomeOverlay(false);
-    router.push("/mcp");
+
+    // セッションからチームslugを取得してリダイレクト
+    const orgSlug = session?.user?.organizationSlug;
+    if (orgSlug) {
+      router.push(`/${orgSlug}/mcps`);
+    }
   };
 
   const handleTeamUse = () => {
+    // ロックされている場合はトーストを表示して処理を中断
+    if (!isTeamUnlocked) {
+      toast.info(
+        "チーム利用は現在ウェイティングリスト登録者限定の特典です。アーリーアクセスをお待ちください！",
+      );
+      return;
+    }
+
     setSelectedOption("team");
     setIsOrgDialogOpen(true);
   };
 
-  const handleOrganizationCreated = async () => {
+  const handleOrganizationCreated = () => {
     setIsOrgDialogOpen(false);
 
-    // 初回ログイン時は個人組織を作成
-    if (isFirstLogin) {
-      await createPersonalOrganization.mutateAsync();
-    }
-
-    // 組織作成後はウェルカムオーバーレイを表示
-    // その後、MCPダッシュボードに遷移
+    // チーム作成後はウェルカムオーバーレイを表示
     setShowWelcomeOverlay(true);
   };
 
@@ -93,12 +105,12 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
         {/* ヘッダー */}
         <div className="mb-12 text-center">
           <h1 className="mb-4 text-4xl font-bold">
-            {isFirstLogin ? "Tumikiへようこそ！" : "新しい組織を作成"}
+            {isFirstLogin ? "Tumikiへようこそ！" : "新しいチームを作成"}
           </h1>
           <p className="text-muted-foreground text-xl">
             {isFirstLogin
               ? "MCPサーバー管理を始めるために、利用形態を選択してください"
-              : "チーム利用のための新しい組織を作成します。利用形態を選択してください"}
+              : "チーム利用のための新しいチームを作成します。利用形態を選択してください"}
           </p>
         </div>
 
@@ -109,15 +121,9 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
             className={clsx(
               "transition-all hover:shadow-lg",
               selectedOption === "personal" && "ring-primary ring-2",
-              createPersonalOrganization.isPending
-                ? "cursor-not-allowed opacity-70"
-                : "cursor-pointer",
+              "cursor-pointer",
             )}
-            onClick={
-              createPersonalOrganization.isPending
-                ? undefined
-                : handlePersonalUse
-            }
+            onClick={handlePersonalUse}
           >
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
@@ -149,24 +155,13 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
               </ul>
               <Button
                 className="mt-6 w-full"
-                disabled={createPersonalOrganization.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   void handlePersonalUse();
                 }}
               >
-                {createPersonalOrganization.isPending &&
-                selectedOption === "personal" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    設定中...
-                  </>
-                ) : (
-                  <>
-                    {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+                {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
@@ -174,16 +169,31 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
           {/* チーム利用オプション */}
           <Card
             className={clsx(
-              "transition-all hover:shadow-lg",
+              "relative transition-all",
               selectedOption === "team" && "ring-primary ring-2",
-              createPersonalOrganization.isPending
-                ? "cursor-not-allowed opacity-70"
-                : "cursor-pointer",
+              isTeamUnlocked
+                ? "cursor-pointer hover:shadow-lg"
+                : "cursor-not-allowed",
             )}
-            onClick={
-              createPersonalOrganization.isPending ? undefined : handleTeamUse
-            }
+            onClick={handleTeamUse}
           >
+            {/* ロックオーバーレイ */}
+            {!isTeamUnlocked && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/50">
+                <div className="flex flex-col items-center gap-3 rounded-lg bg-white px-6 py-4 shadow-2xl">
+                  <Lock className="h-12 w-12 text-gray-400" strokeWidth={2} />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-700">
+                      ウェイティングリスト登録者限定
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      アーリーアクセスをお待ちください
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
                 <Users className="h-8 w-8 text-purple-600" />
@@ -197,7 +207,7 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
               <ul className="space-y-3 text-sm">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  組織名とロゴを設定
+                  チーム名とロゴを設定
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -215,24 +225,14 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
               <Button
                 className="mt-6 w-full"
                 variant="outline"
-                disabled={createPersonalOrganization.isPending}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleTeamUse();
                 }}
+                disabled={!isTeamUnlocked}
               >
-                {createPersonalOrganization.isPending &&
-                selectedOption === "team" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    設定中...
-                  </>
-                ) : (
-                  <>
-                    組織を作成
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+                チームを作成
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
@@ -245,13 +245,13 @@ export const OnboardingClient = ({ isFirstLogin }: OnboardingClientProps) => {
         onAnimationComplete={handleAnimationComplete}
       />
 
-      {/* 組織作成ダイアログ */}
+      {/* チーム作成ダイアログ */}
       <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>新しい組織を作成</DialogTitle>
+            <DialogTitle>新しいチームを作成</DialogTitle>
             <DialogDescription>
-              チーム用の組織を作成します。組織名、説明、ロゴを設定してください。
+              新しいチームを作成します。チーム名、説明、ロゴを設定してください。
             </DialogDescription>
           </DialogHeader>
           <OrganizationCreateForm onSuccess={handleOrganizationCreated} />

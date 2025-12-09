@@ -37,7 +37,7 @@ oauthTokenManager.setRedisClient(redisClient);
 // トークンを取得
 try {
   const token = await oauthTokenManager.getValidToken(
-    "mcp-server-id",
+    "mcp-server-template-id",
     "user-id",
   );
   console.log("Access Token:", token.accessToken);
@@ -71,18 +71,30 @@ try {
 ### キャッシュの無効化
 
 ```typescript
-await oauthTokenManager.invalidateCache("user-id", "mcp-server-id");
+await oauthTokenManager.invalidateCache("user-id", "mcp-server-template-id");
 ```
 
 ## アーキテクチャ
 
-### クラス構成
+### モジュール構成
 
-- **OAuthTokenManager**: メインオーケストレーター（シングルトン）
-- **TokenCacheManager**: Redisキャッシュ管理
-- **TokenRefreshManager**: OAuth 2.0トークンリフレッシュ
-- **TokenRepository**: Prismaを使用したDB操作
-- **TokenValidator**: トークン有効性チェック
+- **oauth-token-manager**: メインオーケストレーター
+- **token-cache**: Redisキャッシュ管理
+- **token-refresh**: OAuth 2.0トークンリフレッシュ（OAuth 2.0 Discovery対応）
+- **token-repository**: Prismaを使用したDB操作
+- **token-validator**: トークン有効性チェック
+
+### OAuth 2.0 Discovery
+
+トークンエンドポイントはDBに保存せず、`authorizationServerUrl`から動的に取得します：
+
+```
+authorizationServerUrl + /.well-known/oauth-authorization-server
+→ token_endpoint を取得
+→ トークンリフレッシュリクエストを送信
+```
+
+これにより、Authorization Serverの設定変更に自動的に対応できます。
 
 ### トークン取得フロー
 
@@ -113,12 +125,15 @@ await oauthTokenManager.invalidateCache("user-id", "mcp-server-id");
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 
 try {
-  const token = await oauthTokenManager.getValidToken(mcpServerId, userId);
+  const token = await oauthTokenManager.getValidToken(
+    mcpServerTemplateId,
+    userId,
+  );
 } catch (error) {
   if (error instanceof ReAuthRequiredError) {
     console.log("Token ID:", error.tokenId);
     console.log("User ID:", error.userId);
-    console.log("MCP Server ID:", error.mcpServerId);
+    console.log("MCP Server Template ID:", error.mcpServerId);
     // ユーザーをOAuthフローにリダイレクト
   }
 }

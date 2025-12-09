@@ -12,6 +12,7 @@
     "node_modules",
     "dist",
     "prisma/generated/fabbrica",
+    "src/generated",
     "prisma.config.ts",
     "vitest.config.ts"
   ]

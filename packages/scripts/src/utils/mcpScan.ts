@@ -30,8 +30,8 @@ const McpToolSchema = z.object({
   name: z.string(),
   title: z.string().nullish(),
   description: z.string().nullish(),
-  inputSchema: z.record(z.unknown()).nullish(),
-  outputSchema: z.record(z.unknown()).nullish(),
+  inputSchema: z.record(z.string(), z.unknown()).nullish(),
+  outputSchema: z.record(z.string(), z.unknown()).nullish(),
   annotations: ToolAnnotationsSchema.nullish(),
   meta: z.unknown().nullish(),
 });
@@ -40,7 +40,7 @@ const McpToolSchema = z.object({
  * MCPサーバーのシグネチャ
  */
 const McpServerSignatureSchema = z.object({
-  metadata: z.record(z.unknown()).nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
   prompts: z.array(z.unknown()).default([]),
   resources: z.array(z.unknown()).default([]),
   resource_templates: z.array(z.unknown()).default([]),
@@ -55,7 +55,7 @@ const McpServerConfigSchema = z
     command: z.string().optional(),
     args: z.array(z.string()).default([]),
     type: z.string().optional(),
-    env: z.record(z.string()).nullish().default({}),
+    env: z.record(z.string(), z.string()).nullish().default({}),
   })
   .nullish();
 
@@ -358,8 +358,7 @@ const processServers = (
       // このツールに関する問題を収集
       issues.forEach((issue) => {
         if (
-          issue.reference &&
-          issue.reference[0] === serverIndex &&
+          issue.reference?.[0] === serverIndex &&
           issue.reference[1] === toolIndex
         ) {
           const severity = getSeverityFromCode(issue.code);
@@ -625,7 +624,9 @@ const executeMcpScan = async (
   const scanOutput: unknown = JSON.parse(stdout);
 
   // Zodスキーマで安全に検証と変換
-  const parseResult = z.record(RawMcpScanOutputSchema).safeParse(scanOutput);
+  const parseResult = z
+    .record(z.string(), RawMcpScanOutputSchema)
+    .safeParse(scanOutput);
 
   if (!parseResult.success) {
     console.error("Schema validation failed:", parseResult.error);

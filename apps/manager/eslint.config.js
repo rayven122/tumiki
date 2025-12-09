@@ -4,6 +4,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      "next-env.d.ts", // Next.js auto-generated file
       "prisma/**",
       "src/app/(chat)/**", // For ai-chatbot
       "src/artifacts/**", // For ai-chatbot
@@ -41,12 +42,19 @@ export default tseslint.config(
     },
   },
   {
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    rules: {
+      "@typescript-eslint/unbound-method": "off",
+    },
+  },
+  {
     linterOptions: {
       reportUnusedDisableDirectives: true,
     },
     languageOptions: {
       parserOptions: {
         projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
   },

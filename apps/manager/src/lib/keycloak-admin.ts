@@ -4,12 +4,20 @@
  */
 
 /**
+ * Keycloak Base URL を取得
+ */
+const getKeycloakBaseUrl = (): string => {
+  return (
+    process.env.KEYCLOAK_ISSUER?.replace(/\/realms\/.*$/, "") ??
+    "http://localhost:8443"
+  );
+};
+
+/**
  * Keycloak Admin トークン取得
  */
 const getAdminToken = async (): Promise<string> => {
-  const keycloakBaseUrl =
-    process.env.KEYCLOAK_ISSUER?.replace(/\/realms\/.*$/, "") ??
-    "http://localhost:8443";
+  const keycloakBaseUrl = getKeycloakBaseUrl();
 
   const adminUsername = process.env.KEYCLOAK_ADMIN_USERNAME;
   const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD;
@@ -66,9 +74,7 @@ export const createKeycloakUser = async (
 ): Promise<CreateKeycloakUserResponse> => {
   try {
     const token = await getAdminToken();
-    const keycloakBaseUrl =
-      process.env.KEYCLOAK_ISSUER?.replace(/\/realms\/.*$/, "") ??
-      "http://localhost:8443";
+    const keycloakBaseUrl = getKeycloakBaseUrl();
 
     // 1. ユーザー作成
     const createUserResponse = await fetch(
@@ -175,9 +181,7 @@ export const updateKeycloakUserAttributes = async (
 ): Promise<UpdateUserAttributesResponse> => {
   try {
     const token = await getAdminToken();
-    const keycloakBaseUrl =
-      process.env.KEYCLOAK_ISSUER?.replace(/\/realms\/.*$/, "") ??
-      "http://localhost:8443";
+    const keycloakBaseUrl = getKeycloakBaseUrl();
 
     const response = await fetch(
       `${keycloakBaseUrl}/admin/realms/tumiki/users/${keycloakUserId}`,
@@ -198,6 +202,53 @@ export const updateKeycloakUserAttributes = async (
       return {
         success: false,
         error: `Failed to update user attributes: ${response.status} ${errorText}`,
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
+
+/**
+ * Keycloakユーザーセッション削除レスポンス型
+ */
+type LogoutKeycloakUserResponse = {
+  success: boolean;
+  error?: string;
+};
+
+/**
+ * Keycloakユーザーのすべてのセッションを削除
+ * Admin APIを使用してサーバーサイドでセッションを削除
+ */
+export const logoutKeycloakUser = async (
+  keycloakUserId: string,
+): Promise<LogoutKeycloakUserResponse> => {
+  try {
+    const token = await getAdminToken();
+    const keycloakBaseUrl = getKeycloakBaseUrl();
+
+    // ユーザーのすべてのセッションを削除
+    const response = await fetch(
+      `${keycloakBaseUrl}/admin/realms/tumiki/users/${keycloakUserId}/logout`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Failed to logout user sessions: ${response.status} ${errorText}`,
       };
     }
 

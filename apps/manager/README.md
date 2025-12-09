@@ -5,7 +5,7 @@ Tumiki プロジェクトのメインアプリケーションです。Next.js 15
 ## 特徴
 
 - 🚀 **Next.js 15 + App Router** - 最新のNext.jsアーキテクチャによる高速なパフォーマンス
-- 🔐 **Auth0認証** - セキュアなユーザー認証とセッション管理
+- 🔐 **Keycloak認証** - セキュアなユーザー認証とセッション管理
 - 🛠️ **MCPサーバー管理** - MCPサーバーの追加、設定、削除、ステータス管理
 - 📊 **リアルタイム分析** - MCPサーバーの利用状況とパフォーマンス分析
 - 🎨 **モダンUI** - Tailwind CSS + shadcn/ui による美しいインターフェース
@@ -42,12 +42,10 @@ pnpm preview
 プロジェクトルートの `.env` ファイルに以下の環境変数を設定してください：
 
 ```env
-# Auth0
-AUTH0_ISSUER_BASE_URL=
-AUTH0_CLIENT_ID=
-AUTH0_CLIENT_SECRET=
-AUTH0_SECRET=
-AUTH0_WEBHOOK_SECRET=
+# Keycloak
+KEYCLOAK_CLIENT_ID=
+KEYCLOAK_CLIENT_SECRET=
+KEYCLOAK_ISSUER=
 
 # Database
 DATABASE_URL=
@@ -135,7 +133,7 @@ pnpm clean
 
 ### 認証・セキュリティ
 
-- **Auth0**: 認証プロバイダー
+- **Keycloak**: 認証プロバイダー
 - **@auth/prisma-adapter**: Prismaとの統合
 
 ### AI・チャット
@@ -167,13 +165,12 @@ pnpm clean
 
 ### REST API
 
-- `/api/auth/sync-user` - Auth0ユーザー同期
 - `/api/chat` - AIチャット
 - `/api/document` - ドキュメント管理
 
 ## セキュリティ
 
-- Auth0による認証
+- Keycloakによる認証
 - JWTトークンベースのセッション管理
 - 環境変数の暗号化
 - CORS設定
@@ -199,11 +196,11 @@ pnpm install
 pnpm clean
 ```
 
-### Auth0認証エラー
+### Keycloak認証エラー
 
-- Auth0ダッシュボードでコールバックURLが設定されているか確認
+- Keycloakでリダイレクト URIが設定されているか確認
 - 環境変数が正しく設定されているか確認
-- `AUTH0_SECRET`が設定されているか確認
+- `KEYCLOAK_CLIENT_SECRET`が設定されているか確認
 
 ### データベース接続エラー
 
@@ -213,6 +210,6 @@ pnpm clean
 
 ## 注意事項
 
-- 開発環境では `https://local.tumiki.cloud:3000` でアクセスしてください
+- 開発環境では `http://localhost:3000` でアクセスしてください
 - プロダクション環境では環境変数を適切に設定してください
 - MCPサーバーの設定変更後は、サーバーの再起動が必要な場合があります

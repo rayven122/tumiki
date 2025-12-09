@@ -20,7 +20,7 @@
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest",
-    "postinstall": "pnpm lint:ws && (test -f scripts/install-python-mcp.js && node scripts/install-python-mcp.js || echo '📋 Python MCP スクリプトが見つからないか、CI環境のためスキップします')",
+    "postinstall": "pnpm lint:ws",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -45,12 +45,13 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/inspector": "^0.17.2",
-    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
-    "concurrently": "^9.0.1",
-    "turbo": "^2.5.1",
+    "concurrently": "^9.2.1",
+    "turbo": "^2.6.1",
     "typescript": "catalog:",
+    "vercel": "^39.2.11",
     "vitest": "catalog:"
   }
 }

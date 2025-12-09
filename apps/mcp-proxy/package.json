@@ -10,15 +10,18 @@
     "start": "pnpm with-env node dist/index.js",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
+    "with-env-test": "dotenv -e ../../.env.test --",
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:seed": "pnpm with-env-test tsx test/seed.ts",
+    "test:verify": "pnpm with-env-test tsx test/verify.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.7",
-    "@modelcontextprotocol/sdk": "^1.10.1",
+    "@hono/node-server": "^1.19.6",
+    "@modelcontextprotocol/sdk": "^1.24.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
     "bcryptjs": "^3.0.3",
@@ -26,7 +29,10 @@
     "hono": "^4.7.4",
     "jose": "^6.1.2",
     "openid-client": "^5.7.0",
-    "redis": "^5.0.1"
+    "redis": "^5.0.1",
+    "google-auth-library": "^10.5.0",
+    "hono": "^4.10.7",
+    "redis": "^5.10.0"
   },
   "devDependencies": {
     "@tumiki/vitest-config": "workspace:*",
@@ -35,7 +41,7 @@
     "@vitest/coverage-v8": "catalog:",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",
-    "tsx": "^4.19.2",
+    "tsx": "^4.21.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

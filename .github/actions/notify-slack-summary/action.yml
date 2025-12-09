@@ -170,14 +170,10 @@ runs:
         # Vercelデプロイ情報
         VERCEL_STATUS_TEXT=""
         if [ "${{ inputs.vercel_status }}" == "success" ]; then
-          VERCEL_STATUS_TEXT="✅ 成功"
-          # 環境別のURLを設定
-          if [ "${{ inputs.environment }}" == "production" ]; then
-            VERCEL_STATUS_TEXT="✅ 成功 | <https://www.tumiki.cloud|サイトを表示>"
-          elif [ "${{ inputs.environment }}" == "staging" ]; then
-            VERCEL_STATUS_TEXT="✅ 成功 | <https://stg.tumiki.cloud|サイトを表示>"
-          elif [ -n "${{ inputs.vercel_url }}" ]; then
-            VERCEL_STATUS_TEXT="✅ 成功 | <${{ inputs.vercel_url }}|デプロイメントを表示>"
+          if [ -n "${{ inputs.vercel_url }}" ]; then
+            VERCEL_STATUS_TEXT="✅ 成功 | <${{ inputs.vercel_url }}|サイトを表示>"
+          else
+            VERCEL_STATUS_TEXT="✅ 成功"
           fi
         else
           VERCEL_STATUS_TEXT="❌ 失敗"

@@ -8,6 +8,7 @@ export default tseslint.config(
       "dist/**",
       "node_modules/**",
       "mcp/**",
+      "src/generated/**",
       "tsup.config.ts",
       "vitest.config.ts",
       "prisma.config.ts",
@@ -48,6 +49,16 @@ export default tseslint.config(
       ],
       "@typescript-eslint/prefer-nullish-coalescing": "off",
       "@typescript-eslint/prefer-optional-chain": "off",
+    },
+  },
+  {
+    files: ["src/testing/**/*.ts", "src/__tests__/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
     },
   },
   {

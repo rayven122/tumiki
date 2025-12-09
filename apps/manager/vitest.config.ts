@@ -7,6 +7,11 @@ export default defineProject({
     ...browserTestConfig,
     name: "manager",
     setupFiles: ["@tumiki/vitest-config/setup", "./vitest.setup.ts"],
+    server: {
+      deps: {
+        inline: ["next-auth"],
+      },
+    },
   },
   resolve: {
     alias: {

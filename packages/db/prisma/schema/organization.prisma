@@ -7,6 +7,8 @@ model Organization {
   id           String                   @id @default(cuid())
   /// 組織名
   name         String
+  /// 組織のURL識別子（不変、ユニーク）
+  slug         String                   @unique
   /// 組織の説明
   description  String?
   /// 組織のロゴURL
@@ -33,16 +35,19 @@ model Organization {
   /// 組織の招待
   invitations  OrganizationInvitation[]
 
-  /// 組織に関連するツールグループ
-  toolGroups         UserToolGroup[]
   /// 組織に関連するMCPサーバー設定
-  mcpServerConfigs   UserMcpServerConfig[]
-  /// 組織に関連するMCPサーバーインスタンス
-  mcpServerInstances UserMcpServerInstance[]
-  /// 組織限定公開のMCPサーバー
+  mcpConfigs         McpConfig[]
+  /// 組織に関連するMCPサーバー
   mcpServers         McpServer[]
-  /// 組織のリクエストログ
-  requestLogs        McpServerRequestLog[]
+  /// 組織限定公開のMCPサーバーテンプレート
+  mcpServerTemplates McpServerTemplate[]
+
+  /// OAuth関連
+  mcpOAuthClients McpOAuthClient[]
+  mcpOAuthTokens  McpOAuthToken[]
+
+  /// フィードバック
+  feedbacks Feedback[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,7 +125,6 @@ model OrganizationGroup {
   updatedAt DateTime @updatedAt
 
   @@unique([organizationId, name])
-  @@index([organizationId])
 }
 
 /// ロール定義

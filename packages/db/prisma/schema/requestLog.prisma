@@ -1,0 +1,50 @@
+/// MCPサーバーリクエストログ関連のスキーマ
+/// @namespace RequestLog
+
+/// MCPサーバーインスタンスへのリクエストログ
+/// リレーションを排除し、IDのみ保持することでサイズを削減
+/// @namespace RequestLog
+model McpServerRequestLog {
+  /// レコードID（cuid: 25文字）
+  id             String  @id @default(cuid())
+  /// MCPサーバーインスタンスID
+  mcpServerId    String
+  /// 組織ID
+  organizationId String
+  /// リクエストを実行したユーザーID
+  userId         String
+  /// 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
+  mcpApiKeyId    String?
+
+  /// 実行されたツール名（最大255文字に制限）
+  toolName      String        @db.VarChar(255)
+  /// リクエスト時のトランスポートタイプ
+  transportType TransportType
+  /// MCPメソッド（例: "tools/call", "resources/read"）
+  method        String        @db.VarChar(64)
+  /// HTTPステータスコード（Int型で保存、例: 200, 404, 500）
+  httpStatus    Int           @db.SmallInt
+  /// 実行時間（ミリ秒）
+  durationMs    Int
+  /// 入力データサイズ（LLMからMCPサーバーに送信されるデータのバイト数）
+  inputBytes    Int
+  /// 出力データサイズ（MCPサーバーからLLMに返すデータのバイト数）
+  outputBytes   Int
+
+  /// エラー情報（エラー発生時のみ）
+  /// MCPエラーコード（例: -32600, -32601, -32603）
+  errorCode    Int?
+  /// エラーメッセージ要約（最大500文字、詳細はBigQuery）
+  errorSummary String? @db.VarChar(500)
+
+  /// ユーザーエージェント（最大512文字に制限）
+  userAgent String? @db.VarChar(512)
+
+  createdAt DateTime @default(now())
+
+  /// パフォーマンス最適化用インデックス
+  /// 複合インデックス（時系列検索用）
+  @@index([mcpServerId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+}
