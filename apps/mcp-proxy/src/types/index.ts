@@ -98,7 +98,7 @@ export type OAuthTokenResponse = {
 
 export type HonoEnv = {
   Variables: {
-    authMethod?: AuthType | "oauth"; // 使用された認証方式（oauth追加）
+    authMethod?: AuthType; // 使用された認証方式
     jwtPayload?: JWTPayload; // JWT認証時のみ
     authContext?: AuthContext; // 統一認証コンテキスト
     oauthAuthInfo?: OAuthAuthInfo; // OAuth認証時のみ
