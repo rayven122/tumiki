@@ -60,10 +60,47 @@ export type RemoteMcpServerConfig = {
  * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
  * - API Key認証時: authContext のみ設定、authMethod = "apikey"
  */
+/**
+ * OAuth 認証情報
+ */
+export type OAuthAuthInfo = {
+  clientId: string;
+  organizationId: string;
+  instanceId: string;
+  scope?: string;
+};
+
+/**
+ * OAuth エラーレスポンス（RFC 6749準拠）
+ */
+export type OAuthErrorResponse = {
+  error:
+    | "invalid_request"
+    | "invalid_client"
+    | "invalid_grant"
+    | "unauthorized_client"
+    | "unsupported_grant_type"
+    | "invalid_scope"
+    | "server_error";
+  error_description?: string;
+};
+
+/**
+ * OAuth トークンレスポンス（RFC 6749準拠）
+ */
+export type OAuthTokenResponse = {
+  access_token: string;
+  token_type: "Bearer";
+  expires_in: number;
+  refresh_token?: string;
+  scope?: string;
+};
+
 export type HonoEnv = {
   Variables: {
-    authMethod?: AuthType; // 使用された認証方式
+    authMethod?: AuthType | "oauth"; // 使用された認証方式（oauth追加）
     jwtPayload?: JWTPayload; // JWT認証時のみ
     authContext?: AuthContext; // 統一認証コンテキスト
+    oauthAuthInfo?: OAuthAuthInfo; // OAuth認証時のみ
   };
 };

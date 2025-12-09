@@ -26,12 +26,10 @@
     "@tumiki/oauth-token-manager": "workspace:*",
     "bcryptjs": "^3.0.3",
     "fetch-to-node": "^2.1.0",
-    "hono": "^4.7.4",
-    "jose": "^6.1.2",
-    "openid-client": "^5.7.0",
-    "redis": "^5.0.1",
     "google-auth-library": "^10.5.0",
     "hono": "^4.10.7",
+    "jose": "^6.1.2",
+    "openid-client": "^5.7.0",
     "redis": "^5.10.0"
   },
   "devDependencies": {
