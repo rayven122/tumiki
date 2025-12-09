@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { AuthType } from "@tumiki/db";
 import type { HonoEnv, OAuthAuthInfo } from "../../types/index.js";
 import { jwtVerify } from "jose";
 import { logError, logDebug } from "../../libs/logger/index.js";
@@ -198,7 +199,7 @@ export const keycloakOAuthMiddleware = async (
       scope: payload.scope,
     };
 
-    c.set("authMethod", "oauth");
+    c.set("authMethod", AuthType.OAUTH);
     c.set("oauthAuthInfo", oauthAuthInfo);
 
     logDebug("Keycloak OAuth authentication successful", {
