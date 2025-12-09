@@ -4,10 +4,7 @@ import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
 import { updateOfficialServer } from "./update";
-import {
-  findOfficialServers,
-  findOfficialServersOutputSchema,
-} from "./findOfficialServers";
+import { findOfficialServers } from "./findOfficialServers";
 import {
   deleteMcpServer,
   deleteMcpServerInputSchema,
@@ -19,7 +16,7 @@ import {
   updateDisplayOrderOutputSchema,
 } from "./updateDisplayOrder";
 import { updateName } from "./updateName";
-import { findById, findByIdOutputSchema } from "./findById";
+import { findById } from "./findById";
 import { getToolStats, getToolStatsOutputSchema } from "./getToolStats";
 import {
   updateServerStatus,
@@ -27,6 +24,13 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
+import {
+  McpServerSchema,
+  McpApiKeySchema,
+  McpServerTemplateInstanceSchema,
+  McpServerTemplateSchema,
+  McpToolSchema,
+} from "@tumiki/db/zod";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
 export const CreateApiKeyMcpServerInputV2 = z
@@ -51,6 +55,23 @@ export const UpdateOfficialServerInputV2 = z.object({
   id: z.string(),
   envVars: z.record(z.string(), z.string()),
 });
+
+// 公式MCPサーバー一覧取得用の出力スキーマ
+export const FindOfficialServersOutputV2 = z.array(
+  McpServerSchema.extend({
+    apiKeys: z.array(McpApiKeySchema),
+    templateInstances: z.array(
+      McpServerTemplateInstanceSchema.extend({
+        mcpServerTemplate: McpServerTemplateSchema,
+        tools: z.array(
+          McpToolSchema.extend({
+            isEnabled: z.boolean(),
+          }),
+        ),
+      }),
+    ),
+  }),
+);
 
 export const UpdateOfficialServerOutputV2 = z.object({
   id: z.string(),
@@ -84,7 +105,7 @@ export const UpdateServerStatusInputV2 = z.object({
 
 // ツールトグルの入力スキーマ
 export const ToggleToolInputV2 = z.object({
-  userMcpServerId: McpServerIdSchema,
+  templateInstanceId: z.string(),
   toolId: ToolIdSchema,
   isEnabled: z.boolean(),
 });
@@ -126,11 +147,10 @@ export const userMcpServerRouter = createTRPCRouter({
 
   // 公式MCPサーバー一覧取得
   findOfficialServers: protectedProcedure
-    .output(findOfficialServersOutputSchema)
+    .output(FindOfficialServersOutputV2)
     .query(async ({ ctx }) => {
       return await findOfficialServers(ctx.db, {
         organizationId: ctx.session.user.organizationId,
-        userId: ctx.session.user.id,
       });
     }),
 
@@ -172,7 +192,6 @@ export const userMcpServerRouter = createTRPCRouter({
   // サーバー詳細取得
   findById: protectedProcedure
     .input(FindByIdInputV2)
-    .output(findByIdOutputSchema)
     .query(async ({ ctx, input }) => {
       return await findById(ctx.db, {
         id: input.id,
@@ -212,10 +231,9 @@ export const userMcpServerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
         return await toggleTool(tx, {
-          userMcpServerId: input.userMcpServerId,
+          templateInstanceId: input.templateInstanceId,
           toolId: input.toolId,
           isEnabled: input.isEnabled,
-          organizationId: ctx.session.user.organizationId,
         });
       });
     }),

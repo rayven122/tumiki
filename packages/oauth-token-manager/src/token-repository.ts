@@ -4,8 +4,8 @@
  * データベースからのトークン取得・更新処理（純粋関数）
  */
 
-import { db } from "@tumiki/db/server";
 import type { Prisma } from "@tumiki/db/prisma";
+import { db } from "@tumiki/db/server";
 
 /**
  * DBからトークンを取得

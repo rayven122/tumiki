@@ -64,32 +64,34 @@ export const verifyOAuthState = async (
  */
 export const getMcpServerAndOAuthClient = async (
   tx: PrismaTransactionClient,
-  mcpServerId: string,
+  mcpServerTemplateInstanceId: string,
   organizationId: string,
 ) => {
-  // MCPサーバーを取得（テンプレート情報を含む）
-  const mcpServer = await tx.mcpServer.findUnique({
-    where: { id: mcpServerId },
-    select: {
-      id: true,
-      name: true,
-      organizationId: true,
-      mcpServers: {
-        select: {
-          id: true,
-          url: true,
-          transportType: true,
+  // MCPサーバーテンプレートインスタンスから直接取得
+  const templateInstance = await tx.mcpServerTemplateInstance.findUniqueOrThrow(
+    {
+      where: { id: mcpServerTemplateInstanceId },
+      select: {
+        id: true,
+        mcpServer: {
+          select: {
+            id: true,
+            name: true,
+            organizationId: true,
+          },
+        },
+        mcpServerTemplate: {
+          select: {
+            id: true,
+            url: true,
+            transportType: true,
+          },
         },
       },
     },
-  });
+  );
 
-  if (!mcpServer || mcpServer.mcpServers.length === 0) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "MCPサーバーまたはテンプレートが見つかりません",
-    });
-  }
+  const { mcpServer, mcpServerTemplate: template } = templateInstance;
 
   // 組織IDが一致することを確認
   if (mcpServer.organizationId !== organizationId) {
@@ -99,7 +101,6 @@ export const getMcpServerAndOAuthClient = async (
     });
   }
 
-  const template = mcpServer.mcpServers[0];
   if (!template?.url) {
     throw new TRPCError({
       code: "NOT_FOUND",

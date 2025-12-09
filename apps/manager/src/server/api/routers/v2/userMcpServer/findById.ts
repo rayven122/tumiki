@@ -1,5 +1,4 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { z } from "zod";
 import type { McpServerId } from "@/schema/ids";
 
 type FindByIdInput = {
@@ -7,46 +6,10 @@ type FindByIdInput = {
   organizationId: string;
 };
 
-// サーバー詳細のレスポンススキーマ
-export const findByIdOutputSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  iconPath: z.string().nullable(),
-  serverStatus: z.enum(["RUNNING", "STOPPED", "ERROR", "PENDING"]),
-  serverType: z.enum(["OFFICIAL", "CUSTOM"]),
-  authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
-  mcpServerTemplateId: z.string().nullable(),
-  tools: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      description: z.string(),
-      inputSchema: z.unknown(),
-      isEnabled: z.boolean(),
-    }),
-  ),
-  mcpServer: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      description: z.string().nullable(),
-      tags: z.array(z.string()),
-      iconPath: z.string().nullable(),
-      url: z.string().nullable(),
-      authType: z.enum(["NONE", "API_KEY", "OAUTH"]),
-    })
-    .nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export type FindByIdOutput = z.infer<typeof findByIdOutputSchema>;
-
 export const findById = async (
   tx: PrismaTransactionClient,
   input: FindByIdInput,
-): Promise<FindByIdOutput> => {
+) => {
   const { id, organizationId } = input;
 
   const server = await tx.mcpServer.findUnique({
@@ -56,20 +19,17 @@ export const findById = async (
       deletedAt: null,
     },
     include: {
-      allowedTools: {
-        select: {
-          id: true,
-        },
-      },
-      mcpServers: {
-        take: 1,
+      templateInstances: {
+        orderBy: [{ displayOrder: "asc" }, { updatedAt: "asc" }],
         include: {
-          mcpTools: {
+          mcpServerTemplate: {
+            include: {
+              mcpTools: true,
+            },
+          },
+          allowedTools: {
             select: {
               id: true,
-              name: true,
-              description: true,
-              inputSchema: true,
             },
           },
         },
@@ -77,41 +37,32 @@ export const findById = async (
     },
   });
 
-  if (!server || server.deletedAt !== null) {
+  if (!server) {
     throw new Error("サーバーが見つかりません");
   }
 
-  const mcpServerTemplate = server.mcpServers?.[0];
-  const allowedToolIds = new Set(server.allowedTools.map((tool) => tool.id));
-
-  // MCPテンプレートの全ツールを取得し、allowedToolsに含まれているかをisEnabledで示す
-  const allTools = mcpServerTemplate?.mcpTools ?? [];
-
+  // 各テンプレートインスタンスのツールに isEnabled を追加
   return {
-    id: server.id,
-    name: server.name,
-    description: server.description,
-    iconPath: server.iconPath,
-    serverStatus: server.serverStatus,
-    serverType: server.serverType,
-    authType: server.authType,
-    mcpServerTemplateId: mcpServerTemplate?.id ?? null,
-    tools: allTools.map((tool) => ({
-      ...tool,
-      isEnabled: allowedToolIds.has(tool.id),
-    })),
-    mcpServer: mcpServerTemplate
-      ? {
-          id: mcpServerTemplate.id,
-          name: mcpServerTemplate.name,
-          description: mcpServerTemplate.description,
-          tags: mcpServerTemplate.tags,
-          iconPath: mcpServerTemplate.iconPath,
-          url: mcpServerTemplate.url,
-          authType: mcpServerTemplate.authType,
-        }
-      : null,
-    createdAt: server.createdAt,
-    updatedAt: server.updatedAt,
+    ...server,
+    templateInstances: server.templateInstances.map((instance) => {
+      const allowedToolIds = new Set(
+        instance.allowedTools.map((tool) => tool.id),
+      );
+      const tools = instance.mcpServerTemplate.mcpTools.map((tool) => ({
+        id: tool.id,
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        isEnabled: allowedToolIds.has(tool.id),
+      }));
+      return {
+        id: instance.id,
+        mcpServerTemplateId: instance.mcpServerTemplateId,
+        isEnabled: instance.isEnabled,
+        displayOrder: instance.displayOrder,
+        mcpServerTemplate: instance.mcpServerTemplate,
+        tools,
+      };
+    }),
   };
 };
