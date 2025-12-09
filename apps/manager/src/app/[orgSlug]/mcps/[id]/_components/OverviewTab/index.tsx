@@ -41,10 +41,16 @@ export const OverviewTab = ({
           { id: serverId },
           {
             ...previousData,
-            tools: previousData.tools.map((tool) =>
-              tool.id === variables.toolId
-                ? { ...tool, isEnabled: variables.isEnabled }
-                : tool,
+            // templateInstancesのツールも更新
+            templateInstances: previousData.templateInstances.map(
+              (instance) => ({
+                ...instance,
+                tools: instance.tools.map((tool) =>
+                  tool.id === variables.toolId
+                    ? { ...tool, isEnabled: variables.isEnabled }
+                    : tool,
+                ),
+              }),
             ),
           },
         );
@@ -89,17 +95,29 @@ export const OverviewTab = ({
     });
   };
 
-  const handleToolToggle = (toolId: ToolId, enabled: boolean) => {
+  const handleToolToggle = (
+    templateInstanceId: string,
+    toolId: ToolId,
+    enabled: boolean,
+  ) => {
     toggleTool({
-      userMcpServerId: serverId,
+      templateInstanceId,
       toolId,
       isEnabled: enabled,
     });
   };
 
-  // 有効化されているツールの数（allowedTools）
-  const enabledToolCount = server.tools.filter((tool) => tool.isEnabled).length;
-  const totalToolCount = server.tools.length;
+  // OFFICIALサーバーかどうかを判定
+  const isOfficialServer = server.serverType === "OFFICIAL";
+
+  // すべてのテンプレートインスタンスからツールを集約（OFFICIALサーバー用）
+  const allTools = server.templateInstances.flatMap(
+    (instance) => instance.tools,
+  );
+
+  // 有効化されているツールの数（OFFICIALサーバー用）
+  const enabledToolCount = allTools.filter((tool) => tool.isEnabled).length;
+  const totalToolCount = allTools.length;
 
   return (
     <div className="space-y-6">
@@ -110,28 +128,74 @@ export const OverviewTab = ({
       </div>
 
       {/* ツール情報 */}
-      {server.tools.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">
-            利用可能なツール ({enabledToolCount}/{totalToolCount})
-          </h3>
+      {isOfficialServer
+        ? // OFFICIALサーバー: 単一インスタンスとして表示
+          (() => {
+            const firstInstance = server.templateInstances[0];
+            if (!firstInstance) return null;
 
-          <div className="space-y-4">
-            {server.tools.map((tool) => (
-              <ToolCard
-                key={tool.id}
-                tool={tool}
-                isExpanded={expandedTools.has(tool.id)}
-                onToggleExpansion={toggleToolExpansion}
-                isEnabled={tool.isEnabled}
-                onToggleEnabled={(enabled) =>
-                  handleToolToggle(tool.id as ToolId, enabled)
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
+            return (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">
+                  利用可能なツール ({enabledToolCount}/{totalToolCount})
+                </h3>
+                <div className="space-y-4">
+                  {firstInstance.tools.map((tool) => (
+                    <ToolCard
+                      key={tool.id}
+                      tool={tool}
+                      isExpanded={expandedTools.has(tool.id)}
+                      onToggleExpansion={toggleToolExpansion}
+                      isEnabled={tool.isEnabled}
+                      onToggleEnabled={(enabled) =>
+                        handleToolToggle(
+                          firstInstance.id,
+                          tool.id as ToolId,
+                          enabled,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()
+        : // CUSTOMサーバー: 各テンプレートインスタンスごとに表示
+          server.templateInstances.map((instance) => {
+            const instanceEnabledCount = instance.tools.filter(
+              (tool) => tool.isEnabled,
+            ).length;
+            const instanceTotalCount = instance.tools.length;
+
+            return (
+              <div key={instance.id} className="space-y-4">
+                <h3 className="text-lg font-semibold">
+                  {instance.mcpServerTemplate.name} ({instanceEnabledCount}/
+                  {instanceTotalCount})
+                </h3>
+                {instance.tools.length > 0 && (
+                  <div className="space-y-4">
+                    {instance.tools.map((tool) => (
+                      <ToolCard
+                        key={tool.id}
+                        tool={tool}
+                        isExpanded={expandedTools.has(tool.id)}
+                        onToggleExpansion={toggleToolExpansion}
+                        isEnabled={tool.isEnabled}
+                        onToggleEnabled={(enabled) =>
+                          handleToolToggle(
+                            instance.id,
+                            tool.id as ToolId,
+                            enabled,
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
     </div>
   );
 };

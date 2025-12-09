@@ -9,29 +9,38 @@ import { logError, logInfo } from "../libs/logger/index.js";
  * McpServerTemplate と McpConfig から MCP クライアントを作成
  *
  * @param mcpServerTemplate - MCPサーバーテンプレート
- * @param mcpConfig - MCPサーバー設定（認証情報）
+ * @param userId - ユーザーID（OAuth認証時に使用）
+ * @param mcpServerTemplateInstanceId - MCPサーバーテンプレートインスタンスID（OAuth認証時に使用）
+ * @param mcpConfig - MCPサーバー設定（認証情報、オプショナル）
  * @returns MCP クライアント
  */
 export const connectToMcpServer = async (
   mcpServerTemplate: McpServerTemplate,
+  userId: string,
+  mcpServerTemplateInstanceId: string,
   mcpConfig: McpConfig | null,
 ): Promise<Client> => {
-  const { transportType, name } = mcpServerTemplate;
+  const { transportType, name, authType } = mcpServerTemplate;
 
   logInfo("Connecting to MCP server", {
     templateName: name,
     transportType,
+    authType,
+    userId,
+    mcpServerTemplateInstanceId,
   });
 
   try {
     // トランスポートタイプに応じてクライアントを作成
     let transport;
-    const headers: Record<string, string> = {};
 
     // 認証ヘッダーを注入
-    if (mcpConfig) {
-      await injectAuthHeaders(mcpServerTemplate, mcpConfig, headers);
-    }
+    const headers: Record<string, string> = await injectAuthHeaders(
+      mcpServerTemplate,
+      userId,
+      mcpServerTemplateInstanceId,
+      mcpConfig,
+    );
 
     switch (transportType) {
       case "SSE": {

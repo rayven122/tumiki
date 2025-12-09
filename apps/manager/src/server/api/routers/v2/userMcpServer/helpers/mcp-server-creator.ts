@@ -4,21 +4,29 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { ServerStatus, ServerType, AuthType } from "@tumiki/db/server";
 
-type CreateMcpServerParams = {
+type CreateOfficialMcpServerParams = {
   tx: PrismaTransactionClient;
   serverName: string;
   description: string;
   templateId: string;
   organizationId: string;
+  normalizedName: string;
 };
 
 /**
- * MCPサーバーを作成
+ * 公式MCPサーバーを作成（ServerType.OFFICIAL）
  */
-export const createMcpServer = async (
-  params: CreateMcpServerParams,
-): Promise<{ id: string }> => {
-  const { tx, serverName, description, templateId, organizationId } = params;
+export const createOfficialMcpServer = async (
+  params: CreateOfficialMcpServerParams,
+): Promise<{ id: string; templateInstanceId: string }> => {
+  const {
+    tx,
+    serverName,
+    description,
+    templateId,
+    organizationId,
+    normalizedName,
+  } = params;
 
   const mcpServer = await tx.mcpServer.create({
     data: {
@@ -29,11 +37,28 @@ export const createMcpServer = async (
       serverType: ServerType.OFFICIAL,
       authType: AuthType.API_KEY,
       organizationId,
-      mcpServers: {
-        connect: { id: templateId },
+      templateInstances: {
+        create: {
+          mcpServerTemplateId: templateId,
+          normalizedName,
+          isEnabled: true,
+          displayOrder: 0,
+        },
+      },
+    },
+    include: {
+      templateInstances: {
+        select: {
+          id: true,
+        },
       },
     },
   });
 
-  return { id: mcpServer.id };
+  const templateInstanceId = mcpServer.templateInstances[0]?.id;
+  if (!templateInstanceId) {
+    throw new Error("Template instance was not created");
+  }
+
+  return { id: mcpServer.id, templateInstanceId };
 };

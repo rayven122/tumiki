@@ -15,6 +15,7 @@ export type GenerateAuthorizationUrlParams = {
   tokenEndpoint: string;
   scopes: string[];
   mcpServerId: string;
+  mcpServerTemplateInstanceId: string;
   userId: string;
   organizationId: string;
 };
@@ -40,6 +41,7 @@ export const generateAuthorizationUrl = async ({
   tokenEndpoint,
   scopes,
   mcpServerId,
+  mcpServerTemplateInstanceId,
   userId,
   organizationId,
 }: GenerateAuthorizationUrlParams): Promise<string> => {
@@ -56,6 +58,7 @@ export const generateAuthorizationUrl = async ({
     codeChallenge: pkceParams.codeChallenge,
     nonce: pkceParams.nonce,
     mcpServerId,
+    mcpServerTemplateInstanceId,
     userId,
     organizationId,
     redirectUri,
