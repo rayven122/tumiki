@@ -13,6 +13,7 @@ import {
   getMcpServerToolsSSE,
   getMcpServerToolsHTTP,
 } from "@/utils/getMcpServerTools";
+import type { McpServerTemplate } from "@tumiki/db/prisma";
 
 export type CreateApiKeyMcpServerInput = z.infer<
   typeof CreateApiKeyMcpServerInputV2
@@ -23,82 +24,53 @@ export type CreateApiKeyMcpServerOutput = {
 };
 
 /**
- * テンプレートベースのMCPサーバーを作成
- *
- * @param prisma Prismaクライアント
- * @param input 作成データ
- * @param organizationId 組織ID
- * @param userId ユーザーID
- * @returns 作成されたサーバー情報
+ * MCPサーバーインスタンスを作成（テンプレートとツールから）
  */
-const createTemplateMcpServer = async (
+const createMcpServerInstance = async (
   prisma: PrismaTransactionClient,
-  input: CreateApiKeyMcpServerInput & { mcpServerTemplateId: string },
-  organizationId: string,
-  userId: string,
+  params: {
+    name: string;
+    description: string;
+    iconPath: string | null;
+    authType: "NONE" | "API_KEY";
+    organizationId: string;
+    userId: string;
+    template: McpServerTemplate;
+    tools: Array<{ id: string }>;
+    envVars?: Record<string, string>;
+  },
 ): Promise<CreateApiKeyMcpServerOutput> => {
-  const mcpServerTemplate = await prisma.mcpServerTemplate.findUnique({
-    where: { id: input.mcpServerTemplateId },
-    include: {
-      mcpTools: true,
-    },
-  });
-
-  if (!mcpServerTemplate) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "MCPサーバーテンプレートが見つかりません",
-    });
-  }
-
-  // STDIOタイプのMCPサーバーは廃止済みのため拒否
-  if (mcpServerTemplate.transportType === "STDIO") {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message:
-        "STDIOタイプのMCPサーバーはサポートされていません。リモートMCPサーバーを使用してください。",
-    });
-  }
-
-  // 環境変数の検証
-  if (input.envVars) {
-    const envVars = Object.keys(input.envVars);
-    const isEnvVarsMatch = envVars.every((envVar) =>
-      mcpServerTemplate.envVarKeys.includes(envVar),
-    );
-    if (!isEnvVarsMatch) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "MCPサーバーの環境変数が一致しません",
-      });
-    }
-
-    // McpConfigの作成（環境変数がある場合のみ）
-    await prisma.mcpConfig.create({
-      data: {
-        mcpServerTemplateId: mcpServerTemplate.id,
-        organizationId,
-        userId,
-        envVars: JSON.stringify(input.envVars),
-      },
-    });
-  }
-
-  // McpServerの作成
   const mcpServer = await prisma.mcpServer.create({
     data: {
-      name: input.name,
-      description: input.description ?? "",
-      iconPath: mcpServerTemplate.iconPath,
+      name: params.name,
+      description: params.description,
+      iconPath: params.iconPath,
       serverStatus: ServerStatus.RUNNING,
       serverType: ServerType.OFFICIAL,
-      authType: input.authType,
-      organizationId,
-      mcpServers: {
-        connect: { id: mcpServerTemplate.id },
-      },
-      allowedTools: {
-        connect: mcpServerTemplate.mcpTools.map((tool) => ({ id: tool.id })),
+      authType: params.authType,
+      organizationId: params.organizationId,
+      templateInstances: {
+        create: {
+          mcpServerTemplateId: params.template.id,
+          normalizedName: normalizeServerName(params.name),
+          isEnabled: true,
+          displayOrder: 0,
+          allowedTools: {
+            connect: params.tools,
+          },
+          // McpConfigの作成（環境変数がある場合のみ）
+          ...(params.envVars
+            ? {
+                mcpConfigs: {
+                  create: {
+                    organizationId: params.organizationId,
+                    userId: params.userId,
+                    envVars: JSON.stringify(params.envVars),
+                  },
+                },
+              }
+            : {}),
+        },
       },
     },
   });
@@ -106,6 +78,72 @@ const createTemplateMcpServer = async (
   return {
     id: mcpServer.id,
   };
+};
+
+/**
+ * 既存のテンプレートを使用してMCPサーバーを作成
+ *
+ * @param prisma Prismaクライアント
+ * @param input 作成データ
+ * @param organizationId 組織ID
+ * @param userId ユーザーID
+ * @returns 作成されたサーバー情報
+ */
+const createFromExistingTemplate = async (
+  prisma: PrismaTransactionClient,
+  input: CreateApiKeyMcpServerInput & { mcpServerTemplateId: string },
+  organizationId: string,
+  userId: string,
+): Promise<CreateApiKeyMcpServerOutput> => {
+  // 1. テンプレートを取得
+  const template = await prisma.mcpServerTemplate.findUnique({
+    where: { id: input.mcpServerTemplateId },
+    include: {
+      mcpTools: true,
+    },
+  });
+
+  if (!template) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "MCPサーバーテンプレートが見つかりません",
+    });
+  }
+
+  // 2. バリデーション
+  if (template.transportType === "STDIO") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "STDIOタイプのMCPサーバーはサポートされていません。リモートMCPサーバーを使用してください。",
+    });
+  }
+
+  if (input.envVars) {
+    const envVars = Object.keys(input.envVars);
+    const isEnvVarsMatch = envVars.every((envVar) =>
+      template.envVarKeys.includes(envVar),
+    );
+    if (!isEnvVarsMatch) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "MCPサーバーの環境変数が一致しません",
+      });
+    }
+  }
+
+  // 3. MCPサーバーインスタンスを作成
+  return createMcpServerInstance(prisma, {
+    name: input.name,
+    description: input.description ?? "",
+    iconPath: template.iconPath,
+    authType: input.authType,
+    organizationId,
+    userId,
+    template,
+    tools: template.mcpTools.map((tool) => ({ id: tool.id })),
+    envVars: input.envVars,
+  });
 };
 
 /**
@@ -123,7 +161,7 @@ const createCustomUrlMcpServer = async (
   organizationId: string,
   userId: string,
 ): Promise<CreateApiKeyMcpServerOutput> => {
-  // ユーザー専用のカスタムテンプレートを作成
+  // 1. ユーザー専用のカスタムテンプレートを作成
   const customTemplate = await prisma.mcpServerTemplate.create({
     data: {
       name: input.name,
@@ -143,19 +181,7 @@ const createCustomUrlMcpServer = async (
     },
   });
 
-  if (input.envVars) {
-    // McpConfigを作成
-    await prisma.mcpConfig.create({
-      data: {
-        mcpServerTemplateId: customTemplate.id,
-        organizationId,
-        userId,
-        envVars: JSON.stringify(input.envVars),
-      },
-    });
-  }
-
-  // カスタムURLからツールを取得
+  // 2. カスタムURLからツールを取得
   const tools =
     input.transportType === TransportType.STREAMABLE_HTTPS
       ? await getMcpServerToolsHTTP(
@@ -167,54 +193,39 @@ const createCustomUrlMcpServer = async (
           input.envVars ?? {},
         );
 
-  // ツールが取得できない場合はエラーをスロー
+  // ツールが取得できない場合はエラー
   if (tools.length === 0) {
-    // テンプレートを削除してロールバック
-    await prisma.mcpServerTemplate.delete({
-      where: { id: customTemplate.id },
-    });
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: `MCPサーバー「${input.name}」（${input.customUrl}）からツールを取得できませんでした。サーバーのURLと通信方式が正しいか確認してください。`,
     });
   }
 
-  // 取得したツールをデータベースに保存
-  const createdTools = await Promise.all(
-    tools.map((tool) =>
-      prisma.mcpTool.create({
-        data: {
-          name: tool.name,
-          description: tool.description ?? "",
-          inputSchema: tool.inputSchema as object,
-          mcpServerTemplateId: customTemplate.id,
-        },
-      }),
-    ),
-  );
-
-  // McpServerを作成してテンプレートとツールを紐付け
-  const mcpServer = await prisma.mcpServer.create({
-    data: {
-      name: input.name,
-      description: input.description ?? "",
-      iconPath: null,
-      serverStatus: ServerStatus.RUNNING, // ツール取得に成功したのでRUNNING
-      serverType: ServerType.OFFICIAL,
-      authType: input.authType,
-      organizationId,
-      mcpServers: {
-        connect: { id: customTemplate.id },
-      },
-      allowedTools: {
-        connect: createdTools.map((tool) => ({ id: tool.id })),
-      },
+  // 3. 取得したツールをデータベースに保存
+  const createdTools = await prisma.mcpTool.createManyAndReturn({
+    data: tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description ?? "",
+      inputSchema: tool.inputSchema as object,
+      mcpServerTemplateId: customTemplate.id,
+    })),
+    select: {
+      id: true,
     },
   });
 
-  return {
-    id: mcpServer.id,
-  };
+  // 4. MCPサーバーインスタンスを作成
+  return createMcpServerInstance(prisma, {
+    name: input.name,
+    description: input.description ?? "",
+    iconPath: null,
+    authType: input.authType,
+    organizationId,
+    userId,
+    template: customTemplate,
+    tools: createdTools.map((tool) => ({ id: tool.id })),
+    envVars: input.envVars,
+  });
 };
 
 /**
@@ -234,7 +245,7 @@ export const createApiKeyMcpServer = async (
 ): Promise<CreateApiKeyMcpServerOutput> => {
   // テンプレートベースのサーバー作成
   if (input.mcpServerTemplateId) {
-    return createTemplateMcpServer(
+    return createFromExistingTemplate(
       prisma,
       { ...input, mcpServerTemplateId: input.mcpServerTemplateId },
       organizationId,

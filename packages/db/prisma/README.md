@@ -194,17 +194,12 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"_McpServerToMcpServerTemplate" {
-  String A FK
-  String B FK
-}
-"_McpServerToMcpTool" {
+"_McpServerTemplateInstanceToMcpTool" {
   String A FK
   String B FK
 }
 "McpTool" }o--|| "McpServerTemplate" : mcpServerTemplate
-"_McpServerToMcpServerTemplate" }o--|| "McpServerTemplate" : McpServerTemplate
-"_McpServerToMcpTool" }o--|| "McpTool" : McpTool
+"_McpServerTemplateInstanceToMcpTool" }o--|| "McpTool" : McpTool
 ```
 
 ### `McpServerTemplate`
@@ -251,15 +246,8 @@ organizationId が他の値の場合はユーザー作成の組織専用テン�
   - `createdAt`: 
   - `updatedAt`: 
 
-### `_McpServerToMcpServerTemplate`
-Pair relationship table between [McpServer](#McpServer) and [McpServerTemplate](#McpServerTemplate)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_McpServerToMcpTool`
-Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
+### `_McpServerTemplateInstanceToMcpTool`
+Pair relationship table between [McpServerTemplateInstance](#McpServerTemplateInstance) and [McpTool](#McpTool)
 
 **Properties**
   - `A`: 
@@ -544,7 +532,7 @@ erDiagram
 "McpConfig" {
   String id PK
   String envVars
-  String mcpServerTemplateId FK
+  String mcpServerTemplateInstanceId FK
   String organizationId FK
   String userId FK "nullable"
   DateTime createdAt
@@ -595,6 +583,7 @@ erDiagram
 "McpOAuthToken" {
   String id PK
   String oauthClientId FK
+  String mcpServerTemplateInstanceId FK
   String userId FK
   String organizationId FK
   String accessToken
@@ -604,11 +593,17 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"_McpServerToMcpServerTemplate" {
-  String A FK
-  String B FK
+"McpServerTemplateInstance" {
+  String id PK
+  String normalizedName
+  String mcpServerId FK
+  String mcpServerTemplateId FK
+  Boolean isEnabled
+  Int displayOrder
+  DateTime createdAt
+  DateTime updatedAt
 }
-"_McpServerToMcpTool" {
+"_McpServerTemplateInstanceToMcpTool" {
   String A FK
   String B FK
 }
@@ -634,13 +629,14 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
-"McpConfig" }o--|| "McpServerTemplate" : mcpServerTemplate
+"McpConfig" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
-"_McpServerToMcpServerTemplate" }o--|| "McpServer" : McpServer
-"_McpServerToMcpServerTemplate" }o--|| "McpServerTemplate" : McpServerTemplate
-"_McpServerToMcpTool" }o--|| "McpServer" : McpServer
+"McpOAuthToken" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
+"McpServerTemplateInstance" }o--|| "McpServer" : mcpServer
+"McpServerTemplateInstance" }o--|| "McpServerTemplate" : mcpServerTemplate
+"_McpServerTemplateInstanceToMcpTool" }o--|| "McpServerTemplateInstance" : McpServerTemplateInstance
 ```
 
 ### `McpConfig`
@@ -650,7 +646,7 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
 **Properties**
   - `id`: 
   - `envVars`: MCPサーバーの envVars を文字配列を key にしたオブジェクトを Object.stringify + 暗号化したもの
-  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
+  - `mcpServerTemplateInstanceId`: 関連するMCPサーバーテンプレートインスタンス（インスタンスごとに異なる設定）
   - `organizationId`: 組織（必須）
   - `userId`: ユーザー（nullの場合は組織共通設定、設定済みでユーザー個別設定）
   - `createdAt`: 
@@ -659,7 +655,6 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
 ### `McpServer`
 実際に稼働するMCPサーバー
 1つまたは複数のMcpServerTemplateから作成
-allowedTools[] で許可ツールを管理（Prisma暗黙的多対多）
 
 **Properties**
   - `id`: 
@@ -712,12 +707,13 @@ mcpServerId 設定済みの場合は外部MCPサーバー用OAuth（第2層）
   - `updatedAt`: 
 
 ### `McpOAuthToken`
-OAuth トークン情報（ユーザー×組織ごと）
+OAuth トークン情報（ユーザー×インスタンスごと）
 整合性保証: organizationIdは、参照するMcpOAuthClientのorganizationIdと一致する必要がある（アプリケーションレベルで検証）
 
 **Properties**
   - `id`: 
   - `oauthClientId`: 関連するOAuthクライアント
+  - `mcpServerTemplateInstanceId`: どのインスタンス用のトークンか（インスタンスごとに独立したOAuth認証）
   - `userId`: ユーザー
   - `organizationId`: 組織（トークンは組織ごとに発行、組織横断で使い回さない）
   - `accessToken`: トークン情報
@@ -727,15 +723,21 @@ OAuth トークン情報（ユーザー×組織ごと）
   - `createdAt`: 
   - `updatedAt`: 
 
-### `_McpServerToMcpServerTemplate`
-Pair relationship table between [McpServer](#McpServer) and [McpServerTemplate](#McpServerTemplate)
+### `McpServerTemplateInstance`
+MCPサーバーとテンプレートの関連（同じテンプレートを複数追加可能）
 
 **Properties**
-  - `A`: 
-  - `B`: 
+  - `id`: 
+  - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
+  - `mcpServerId`: 関連するMCPサーバー
+  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
+  - `isEnabled`: このテンプレートインスタンスが有効か
+  - `displayOrder`: 統合サーバー内での表示順序
+  - `createdAt`: 
+  - `updatedAt`: 
 
-### `_McpServerToMcpTool`
-Pair relationship table between [McpServer](#McpServer) and [McpTool](#McpTool)
+### `_McpServerTemplateInstanceToMcpTool`
+Pair relationship table between [McpServerTemplateInstance](#McpServerTemplateInstance) and [McpTool](#McpTool)
 
 **Properties**
   - `A`: 

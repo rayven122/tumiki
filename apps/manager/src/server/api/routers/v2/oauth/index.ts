@@ -2,7 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
-import { McpServerIdSchema } from "@/schema/ids";
+import { McpServerTemplateInstanceIdSchema } from "@/schema/ids";
 import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { handleOAuthCallback } from "./handleOAuthCallback";
 import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
@@ -42,7 +42,7 @@ export const HandleOAuthCallbackOutputV2 = z.object({
 
 // OAuth 再認証の入力スキーマ
 export const ReauthenticateOAuthMcpServerInputV2 = z.object({
-  mcpServerId: McpServerIdSchema,
+  mcpServerTemplateInstanceId: McpServerTemplateInstanceIdSchema,
 });
 
 export const ReauthenticateOAuthMcpServerOutputV2 = z.object({

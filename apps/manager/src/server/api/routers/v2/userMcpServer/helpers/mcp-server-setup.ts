@@ -64,20 +64,27 @@ export const setupMcpServerTools = async (
   const mcpServer = await tx.mcpServer.findUnique({
     where: { id: mcpServerId },
     select: {
-      mcpServers: {
-        select: { id: true },
+      templateInstances: {
+        take: 1,
+        select: {
+          id: true,
+          mcpServerTemplate: {
+            select: { id: true },
+          },
+        },
       },
     },
   });
 
-  if (!mcpServer || mcpServer.mcpServers.length === 0) {
+  if (!mcpServer?.templateInstances[0]) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "MCPサーバーテンプレートが見つかりません",
     });
   }
 
-  const mcpServerTemplateId = mcpServer.mcpServers[0]!.id;
+  const templateInstance = mcpServer.templateInstances[0];
+  const mcpServerTemplateId = templateInstance.mcpServerTemplate.id;
 
   // ツールをupsertで作成・更新（既存のツールは更新、新規ツールは作成）
   const createdTools = await Promise.all(
@@ -103,13 +110,19 @@ export const setupMcpServerTools = async (
     ),
   );
 
-  // McpServer.allowedToolsに全てのツールを紐づけ、ステータスを更新
-  await tx.mcpServer.update({
-    where: { id: mcpServerId },
+  // McpServerTemplateInstance.allowedToolsに全てのツールを紐づけ、McpServerのステータスを更新
+  await tx.mcpServerTemplateInstance.update({
+    where: { id: templateInstance.id },
     data: {
       allowedTools: {
         set: createdTools.map((tool) => ({ id: tool.id })),
       },
+    },
+  });
+
+  await tx.mcpServer.update({
+    where: { id: mcpServerId },
+    data: {
       serverStatus: ServerStatus.RUNNING,
     },
   });

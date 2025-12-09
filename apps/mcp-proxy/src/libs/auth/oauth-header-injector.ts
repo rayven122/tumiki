@@ -5,14 +5,10 @@
  * リモートMCPサーバーへのリクエストに認証ヘッダーを注入
  */
 
-import {
-  getValidToken,
-  ReAuthRequiredError,
-  isDecryptedToken,
-} from "@tumiki/oauth-token-manager";
+import { getValidToken } from "@tumiki/oauth-token-manager";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 import { getCloudRunIdToken } from "./cloudRunAuth.js";
-import { logInfo, logError } from "../logger/index.js";
+import { logError } from "../logger/index.js";
 import { z } from "zod";
 
 /**
@@ -25,166 +21,145 @@ const envVarsSchema = z.record(z.string(), z.string());
  * 認証ヘッダーを注入
  *
  * @param mcpServerTemplate - MCPサーバーテンプレート情報
- * @param mcpConfig - MCPサーバー設定（認証情報）
- * @param headers - リクエストヘッダー（in-place更新）
+ * @param userId - ユーザーID（OAuth認証時に使用）
+ * @param mcpServerTemplateInstanceId - MCPサーバーテンプレートインスタンスID（OAuth認証時に使用）
+ * @param mcpConfig - MCPサーバー設定（API Key認証時に使用、オプショナル）
+ * @returns 認証ヘッダー
  */
 export const injectAuthHeaders = async (
   mcpServerTemplate: McpServerTemplate,
-  mcpConfig: McpConfig,
-  headers: Record<string, string>,
-): Promise<void> => {
+  userId: string,
+  mcpServerTemplateInstanceId: string,
+  mcpConfig: McpConfig | null,
+): Promise<Record<string, string>> => {
   const { authType } = mcpServerTemplate;
 
   switch (authType) {
     case "OAUTH": {
-      await injectOAuthHeaders(mcpConfig, headers);
-      break;
+      return await injectOAuthHeaders(
+        mcpServerTemplate,
+        userId,
+        mcpServerTemplateInstanceId,
+        mcpConfig,
+      );
     }
-
     case "API_KEY": {
-      await injectApiKeyHeaders(mcpServerTemplate, mcpConfig, headers);
-      break;
+      return await injectApiKeyHeaders(mcpServerTemplate, mcpConfig);
     }
-
     case "NONE": {
-      // 認証不要
-      logInfo("No authentication required for MCP server", {
-        mcpServerTemplateId: mcpServerTemplate.id,
-      });
-      break;
+      return {};
     }
 
     default: {
-      const _exhaustiveCheck: never = authType;
-      throw new Error(`Unknown auth type: ${String(_exhaustiveCheck)}`);
+      throw new Error(`Unknown auth type: ${String(authType)}`);
     }
   }
 };
 
 /**
  * OAuthトークンを取得してAuthorizationヘッダーに注入
+ *
+ * @param mcpServerTemplate - MCPサーバーテンプレート情報
+ * @param userId - ユーザーID
+ * @param mcpServerTemplateInstanceId - MCPサーバーテンプレートインスタンスID
+ * @param mcpConfig - MCPサーバー設定（追加のカスタムヘッダー用、オプショナル）
+ * @returns 認証ヘッダー
  */
 const injectOAuthHeaders = async (
-  mcpConfig: McpConfig,
-  headers: Record<string, string>,
-): Promise<void> => {
+  mcpServerTemplate: McpServerTemplate,
+  userId: string,
+  mcpServerTemplateInstanceId: string,
+  mcpConfig: McpConfig | null,
+): Promise<Record<string, string>> => {
   try {
-    // userIdの検証
-    if (!mcpConfig.userId) {
-      throw new Error(
-        `userId is required for OAuth authentication. MCP Config ID: ${mcpConfig.id}`,
-      );
-    }
+    const headers: Record<string, string> = {};
 
     // @tumiki/oauth-token-manager でトークンを取得
     // 自動的にキャッシュから取得、期限切れ間近ならリフレッシュ
-    const rawToken = await getValidToken(
-      mcpConfig.mcpServerTemplateId,
-      mcpConfig.userId,
-    );
+    const rawToken = await getValidToken(mcpServerTemplateInstanceId, userId);
 
-    // 型ガードで検証
-    if (!isDecryptedToken(rawToken)) {
-      throw new Error("Invalid token format received from OAuth manager");
-    }
-
-    // Authorization: Bearer ヘッダーを追加
+    // Authorization: Bearer ヘッダーを設定
     headers.Authorization = `Bearer ${rawToken.accessToken}`;
 
-    // トークンのプレビュー（最初の20文字）
-    const tokenPreview =
-      rawToken.accessToken.length > 20
-        ? rawToken.accessToken.substring(0, 20)
-        : rawToken.accessToken;
-
-    logInfo("OAuth token injected successfully", {
-      mcpConfigId: mcpConfig.id,
-      expiresAt: rawToken.expiresAt,
-      tokenPreview,
-    });
-  } catch (error) {
-    if (error instanceof ReAuthRequiredError) {
-      // 再認証が必要な場合
-      logError("OAuth re-authentication required", error as Error);
-
-      throw new Error(
-        `OAuth token expired or invalid. Please re-authenticate in the Tumiki dashboard. ` +
-          `MCP Config ID: ${mcpConfig.id}`,
+    // mcpConfigがある場合、envVarsから追加のカスタムヘッダーを付与
+    if (mcpConfig) {
+      const customHeaders = parseAndInjectEnvVarHeaders(
+        mcpServerTemplate,
+        mcpConfig,
       );
+      Object.assign(headers, customHeaders);
     }
 
-    // その他のエラー
+    return headers;
+  } catch (error) {
     logError("Failed to inject OAuth headers", error as Error);
     throw new Error(
-      `Failed to obtain OAuth token: ${error instanceof Error ? error.message : "Unknown error"}`,
+      `Failed to inject OAuth headers: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 };
 
 /**
  * APIキーをヘッダーに注入
+ *
+ * @param mcpServerTemplate - MCPサーバーテンプレート情報
+ * @param mcpConfig - MCPサーバー設定（認証情報、オプショナル）
+ * @returns 認証ヘッダー
  */
 const injectApiKeyHeaders = async (
   mcpServerTemplate: McpServerTemplate,
-  mcpConfig: McpConfig,
-  headers: Record<string, string>,
-): Promise<void> => {
+  mcpConfig: McpConfig | null,
+): Promise<Record<string, string>> => {
   try {
+    const headers: Record<string, string> = {};
+
     // Cloud Run IAM認証が必要な場合、Authorizationヘッダーを追加
     if (mcpServerTemplate.useCloudRunIam && mcpServerTemplate.url) {
       const idToken = await getCloudRunIdToken(mcpServerTemplate.url);
       headers.Authorization = `Bearer ${idToken}`;
-
-      logInfo("Cloud Run IAM authorization header added", {
-        mcpServerTemplateId: mcpServerTemplate.id,
-        mcpServerTemplateName: mcpServerTemplate.name,
-      });
-    }
-    // envVarsをパース（Zodで型安全にバリデーション）
-    let envVars: Record<string, string>;
-    try {
-      const parsed: unknown = JSON.parse(mcpConfig.envVars);
-      envVars = envVarsSchema.parse(parsed);
-    } catch (parseError) {
-      logError("Failed to parse envVars", parseError as Error);
-      throw new Error("Invalid environment variables configuration");
     }
 
-    // MCPサーバーテンプレートで定義されたenvVarKeysのキー名を使用
-    // 例: ["Tumiki-API-Key"] → headers["Tumiki-API-Key"] = envVars["Tumiki-API-Key"]
-    if (mcpServerTemplate.envVarKeys.length > 0) {
-      const headerName = mcpServerTemplate.envVarKeys[0]; // 最初のenvVarをヘッダー名として使用
-
-      if (headerName && envVars[headerName]) {
-        headers[headerName] = envVars[headerName];
-
-        logInfo("API key header injected successfully", {
-          headerName,
-          mcpServerTemplateId: mcpServerTemplate.id,
-        });
-      } else {
-        throw new Error(`API key not found for header: ${headerName}`);
-      }
-    } else {
-      // デフォルトヘッダー名を使用
-      const defaultHeaderName = "Tumiki-API-Key";
-      const apiKey = envVars[defaultHeaderName] || envVars.API_KEY;
-
-      if (apiKey) {
-        headers[defaultHeaderName] = apiKey;
-
-        logInfo("API key header injected with default header name", {
-          headerName: defaultHeaderName,
-          mcpServerTemplateId: mcpServerTemplate.id,
-        });
-      } else {
-        throw new Error("API key not found in environment variables");
-      }
+    // mcpConfigがある場合、envVarsから追加のカスタムヘッダーを付与
+    if (mcpConfig) {
+      const customHeaders = parseAndInjectEnvVarHeaders(
+        mcpServerTemplate,
+        mcpConfig,
+      );
+      Object.assign(headers, customHeaders);
     }
+
+    return headers;
   } catch (error) {
     logError("Failed to inject API key headers", error as Error);
     throw new Error(
-      `Failed to inject API key: ${error instanceof Error ? error.message : "Unknown error"}`,
+      `Failed to inject API key headers: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
+};
+
+/**
+ * mcpConfig の envVars をパースして、envVarKeys に対応するヘッダーを生成
+ *
+ * @param mcpServerTemplate - MCPサーバーテンプレート情報
+ * @param mcpConfig - MCPサーバー設定
+ * @returns カスタムヘッダー
+ */
+const parseAndInjectEnvVarHeaders = (
+  mcpServerTemplate: McpServerTemplate,
+  mcpConfig: McpConfig,
+): Record<string, string> => {
+  const headers: Record<string, string> = {};
+
+  const parsed: unknown = JSON.parse(mcpConfig.envVars);
+  const envVars = envVarsSchema.parse(parsed);
+
+  // MCPサーバーテンプレートで定義されたenvVarKeysのキー名を使用
+  // 例: ["Tumiki-API-Key", "X-Custom-Header"] → 各キーに対応する値をヘッダーにセット
+  for (const headerName of mcpServerTemplate.envVarKeys) {
+    if (headerName && envVars[headerName]) {
+      headers[headerName] = envVars[headerName];
+    }
+  }
+
+  return headers;
 };

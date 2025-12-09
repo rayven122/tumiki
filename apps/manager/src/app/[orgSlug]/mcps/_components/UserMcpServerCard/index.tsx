@@ -35,6 +35,7 @@ import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
+import type { McpServerId } from "@/schema/ids";
 
 type UserMcpServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -58,12 +59,15 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
 
-  const { tools, mcpServer } = userMcpServer;
+  // 最初のテンプレートインスタンスを使用
+  const firstInstance = userMcpServer.templateInstances[0];
+  const tools = firstInstance?.tools ?? [];
+  const mcpServer = firstInstance?.mcpServerTemplate ?? null;
 
   // OAuth再認証フック
   const { handleReauthenticate, isPending: isReauthenticating } =
     useReauthenticateOAuth({
-      mcpServerId: userMcpServer.id,
+      mcpServerTemplateInstanceId: firstInstance?.id ?? "",
     });
 
   // OAuth認証タイプの場合は常に再認証ボタンを表示
@@ -261,7 +265,7 @@ export const UserMcpServerCard = ({
       {deleteModalOpen && (
         <DeleteConfirmModal
           open={deleteModalOpen}
-          serverInstanceId={userMcpServer.id}
+          serverInstanceId={userMcpServer.id as McpServerId}
           serverName={userMcpServer.name}
           onOpenChange={setDeleteModalOpen}
           onSuccess={async () => {
@@ -274,7 +278,7 @@ export const UserMcpServerCard = ({
       {/* 名前編集モーダル */}
       {nameEditModalOpen && (
         <NameEditModal
-          serverInstanceId={userMcpServer.id}
+          serverInstanceId={userMcpServer.id as McpServerId}
           initialName={userMcpServer.name}
           initialDescription={userMcpServer.description}
           onSuccess={async () => {

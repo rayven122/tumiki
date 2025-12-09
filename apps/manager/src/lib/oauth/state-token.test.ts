@@ -29,6 +29,7 @@ const createMockPayload = (): OAuthStatePayload => ({
   codeChallenge: "test-code-challenge-xyz",
   nonce: "test-nonce-456",
   mcpServerId: "mcp-server-789",
+  mcpServerTemplateInstanceId: "instance-abc",
   userId: "user-123",
   organizationId: "org-456",
   redirectUri: "https://example.com/callback",
