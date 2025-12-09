@@ -26,6 +26,7 @@ const mockValidateAuthResponse = vi.mocked(oauth.validateAuthResponse);
 const mockUserId = "user_123";
 const mockOrganizationId = "org_456";
 const mockMcpServerId = "mcp_789";
+const mockMcpServerTemplateInstanceId = "instance_abc";
 const mockStateToken = "valid-state-token";
 
 const createMockStatePayload = () => ({
@@ -34,6 +35,7 @@ const createMockStatePayload = () => ({
   codeChallenge: "challenge-xyz",
   nonce: "nonce-456",
   mcpServerId: mockMcpServerId,
+  mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,
   userId: mockUserId,
   organizationId: mockOrganizationId,
   redirectUri: "https://example.com/callback",
@@ -191,7 +193,7 @@ describe("getMcpServerAndOAuthClient", () => {
 
     await expect(
       getMcpServerAndOAuthClient(mockTx, mockMcpServerId, mockOrganizationId),
-    ).rejects.toThrow("MCPサーバーまたはテンプレートが見つかりません");
+    ).rejects.toThrow("MCPサーバーテンプレートのURLが見つかりません");
   });
 
   test("組織IDが一致しない場合にエラーを投げる", async () => {
