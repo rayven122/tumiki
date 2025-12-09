@@ -48,10 +48,13 @@ DROP TABLE "_McpServerToMcpTool";
 -- CreateTable
 CREATE TABLE "McpServerTemplateInstance" (
     "id" TEXT NOT NULL,
+    "normalizedName" TEXT NOT NULL,
     "mcpServerId" TEXT NOT NULL,
     "mcpServerTemplateId" TEXT NOT NULL,
     "isEnabled" BOOLEAN NOT NULL DEFAULT true,
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "McpServerTemplateInstance_pkey" PRIMARY KEY ("id")
 );
@@ -65,7 +68,7 @@ CREATE TABLE "_McpServerTemplateInstanceToMcpTool" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "McpServerTemplateInstance_mcpServerId_mcpServerTemplateId_key" ON "McpServerTemplateInstance"("mcpServerId", "mcpServerTemplateId");
+CREATE UNIQUE INDEX "McpServerTemplateInstance_mcpServerId_normalizedName_key" ON "McpServerTemplateInstance"("mcpServerId", "normalizedName");
 
 -- CreateIndex
 CREATE INDEX "_McpServerTemplateInstanceToMcpTool_B_index" ON "_McpServerTemplateInstanceToMcpTool"("B");
@@ -93,3 +96,20 @@ CREATE UNIQUE INDEX "McpConfig_mcpServerTemplateInstanceId_userId_organizationId
 
 -- CreateIndex
 CREATE UNIQUE INDEX "McpOAuthToken_userId_mcpServerTemplateInstanceId_key" ON "McpOAuthToken"("userId", "mcpServerTemplateInstanceId");
+
+-- 既存のMcpServerTemplateInstanceレコードにnormalizedNameを設定
+-- テンプレートのnormalizedNameをコピー
+UPDATE "McpServerTemplateInstance"
+SET "normalizedName" = (
+  SELECT "normalizedName"
+  FROM "McpServerTemplate"
+  WHERE "McpServerTemplate"."id" = "McpServerTemplateInstance"."mcpServerTemplateId"
+)
+WHERE "normalizedName" IS NULL OR "normalizedName" = '';
+
+-- createdAtとupdatedAtを設定（既存レコード用）
+UPDATE "McpServerTemplateInstance"
+SET
+  "createdAt" = CURRENT_TIMESTAMP,
+  "updatedAt" = CURRENT_TIMESTAMP
+WHERE "createdAt" IS NULL;

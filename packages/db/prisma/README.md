@@ -595,6 +595,7 @@ erDiagram
 }
 "McpServerTemplateInstance" {
   String id PK
+  String normalizedName
   String mcpServerId FK
   String mcpServerTemplateId FK
   Boolean isEnabled
@@ -727,6 +728,7 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
 
 **Properties**
   - `id`: 
+  - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
   - `mcpServerId`: 関連するMCPサーバー
   - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
   - `isEnabled`: このテンプレートインスタンスが有効か
