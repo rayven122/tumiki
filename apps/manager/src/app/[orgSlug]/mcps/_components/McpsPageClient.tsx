@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUpDown, X, Search } from "lucide-react";
+import { Plus, ArrowUpDown, X, Search, Workflow } from "lucide-react";
 import { useSortModeManager } from "@/hooks/useSortModeManager";
 import {
   AlertDialog,
@@ -84,6 +84,13 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
               </>
             )}
           </Button>
+          {/* 統合サーバー作成ボタン */}
+          <Link href={`/${orgSlug}/mcps/create-integrated`}>
+            <Button variant="outline" size="sm">
+              <Workflow className="mr-2 h-4 w-4" />
+              統合サーバーを作成
+            </Button>
+          </Link>
           <Link href={`/${orgSlug}/mcps/add`}>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
