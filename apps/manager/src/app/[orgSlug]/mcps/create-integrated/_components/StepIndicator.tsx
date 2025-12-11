@@ -15,8 +15,8 @@ export const StepIndicator = ({
   stepLabels,
 }: StepIndicatorProps) => {
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between">
+    <div className="mb-8 flex justify-center">
+      <div className="flex w-full max-w-3xl items-center justify-between">
         {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
           <div key={step} className="flex flex-1 items-center">
             {/* ステップ番号 */}
