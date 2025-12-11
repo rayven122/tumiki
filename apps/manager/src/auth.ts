@@ -42,7 +42,7 @@ export const {
         );
       }
 
-      // ユーザーと個人組織を作成
+      // ユーザーと個人を作成
       const { createUserWithOrganization } = await import(
         "~/server/api/routers/v2/user/createUserWithOrganization"
       );
@@ -91,7 +91,7 @@ export const {
         user.id
       ) {
         try {
-          // ユーザーの個人組織情報を取得
+          // ユーザーの個人情報を取得
           const { getUserPersonalOrganization } = await import(
             "~/server/api/routers/v2/user/getUserPersonalOrganization"
           );

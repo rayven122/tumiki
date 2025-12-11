@@ -3,6 +3,8 @@ import "server-only";
 import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import type { Prisma } from "@tumiki/db";
+import type { Session } from "next-auth";
 
 import { db } from "@tumiki/db/server";
 import { auth } from "~/auth";
@@ -107,7 +109,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * 保護されたプロシージャ（認証必須）
  *
  * ログイン済みユーザーのみアクセス可能なプロシージャです。
- * 個人組織は会員登録時に必ず作成されるため、認証済み = 組織所属済みとなります。
+ * 個人は会員登録時に必ず作成されるため、認証済み = 組織所属済みとなります。
  *
  * セッション情報には以下が含まれます：
  * - ctx.session.user.id: ユーザーID
@@ -136,13 +138,41 @@ export const protectedProcedure = t.procedure
       });
     }
 
-    // 組織内での管理者権限を確認
-    const organizationMember = await ctx.db.organizationMember.findFirst({
+    // 組織内での管理者権限と組織タイプを確認
+    const organizationMember = await ctx.db.organizationMember.findUnique({
       where: {
-        userId: ctx.session.user.sub,
-        organizationId: ctx.session.user.organizationId,
+        organizationId_userId: {
+          userId: ctx.session.user.sub,
+          organizationId: ctx.session.user.organizationId,
+        },
+      },
+      select: {
+        isAdmin: true,
+        organization: {
+          select: {
+            id: true,
+            createdBy: true,
+            isPersonal: true,
+          },
+        },
       },
     });
+
+    // 組織メンバーシップの存在を保証
+    if (!organizationMember?.organization) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "組織メンバーシップが見つかりません。",
+      });
+    }
+
+    // 取得した組織IDとセッションの組織IDが一致することを確認
+    if (organizationMember.organization.id !== ctx.session.user.organizationId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "組織情報が一致しません。",
+      });
+    }
 
     return next({
       ctx: {
@@ -157,13 +187,38 @@ export const protectedProcedure = t.procedure
             organizationSlug: ctx.session.user.organizationSlug,
           },
         },
-        currentOrganizationId: ctx.session.user.organizationId,
-        isCurrentOrganizationAdmin: organizationMember?.isAdmin ?? false,
+        currentOrg: {
+          ...organizationMember.organization,
+          isAdmin: organizationMember.isAdmin,
+        },
       },
     });
   });
 
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
+
+/**
+ * protectedProcedureで取得する組織メンバー情報の型
+ */
+type OrganizationMemberWithOrg = Prisma.OrganizationMemberGetPayload<{
+  select: {
+    isAdmin: true;
+    organization: {
+      select: {
+        id: true;
+        createdBy: true;
+        isPersonal: true;
+      };
+    };
+  };
+}>;
+
+/**
+ * currentOrgの型定義
+ */
+type CurrentOrg = OrganizationMemberWithOrg["organization"] & {
+  isAdmin: boolean; // 現在のユーザーの管理者権限
+};
 
 /**
  * 認証済みユーザーのコンテキスト型（組織所属前でも使用可能）
@@ -175,15 +230,15 @@ export type AuthenticatedContext = {
 /**
  * protectedProcedureのコンテキスト型
  * 認証済みで組織所属が保証されている状態
+ * ミドルウェアで組織メンバーシップの存在を検証済み
  */
 export type ProtectedContext = {
   session: {
-    user: {
+    user: Session["user"] & {
       id: string;
       organizationId: string; // 組織IDは必須
       organizationSlug: string; // 組織slugは必須
     };
   } & NonNullable<Context["session"]>;
-  currentOrganizationId: string; // 現在の組織ID（session.user.organizationIdのエイリアス）
-  isCurrentOrganizationAdmin: boolean; // 現在の組織での管理者権限
+  currentOrg: CurrentOrg; // non-null（ミドルウェアで存在を保証）
 } & Context;
