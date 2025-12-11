@@ -1,8 +1,55 @@
-import { PrismaClient } from "../../../prisma/generated/client";
 import { join } from "path";
 import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
+// 型定義のみをインポート
+import type { PrismaClient as PrismaClientType } from "../../../prisma/generated/client";
+
+/**
+ * Prismaクライアントを動的にインポート
+ * パッケージ化されたアプリでは app.asar.unpacked からロード
+ */
+const getPrismaClientModule =
+  (): typeof import("../../../prisma/generated/client") => {
+    try {
+      // 開発環境では相対パスで読み込み
+      if (!app.isPackaged) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        return require("../../../prisma/generated/client");
+      }
+
+      // 本番環境では app.asar.unpacked から読み込み
+      const appPath = app.getAppPath();
+      const unpackedPath = appPath.replace("app.asar", "app.asar.unpacked");
+      const prismaPath = join(unpackedPath, "prisma", "generated", "client");
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      return require(prismaPath);
+    } catch (error) {
+      logger.error(
+        "Failed to load Prisma client",
+        error instanceof Error ? error : { error },
+      );
+      throw error;
+    }
+  };
+
+// Prismaクライアントを遅延ロード（Electronアプリ初期化後に呼び出される）
+let PrismaClientClass:
+  | typeof import("../../../prisma/generated/client").PrismaClient
+  | null = null;
+
+const getPrismaClient =
+  (): typeof import("../../../prisma/generated/client").PrismaClient => {
+    if (!PrismaClientClass) {
+      const module = getPrismaClientModule();
+      PrismaClientClass = module.PrismaClient;
+    }
+    return PrismaClientClass;
+  };
+
+// 型エイリアス
+type PrismaClient = PrismaClientType;
 
 /**
  * データベースパスを取得
@@ -29,7 +76,9 @@ const getDatabasePath = (): string => {
 /**
  * Prismaクライアントの設定を取得
  */
-const getPrismaConfig = (): ConstructorParameters<typeof PrismaClient>[0] => {
+const getPrismaConfig = (): ConstructorParameters<
+  typeof PrismaClientType
+>[0] => {
   const isDevelopment = process.env.NODE_ENV === "development";
 
   return {
@@ -46,7 +95,8 @@ const getPrismaConfig = (): ConstructorParameters<typeof PrismaClient>[0] => {
  * 新しいPrisma接続を作成して接続テストを実行
  */
 const createConnection = async (): Promise<PrismaClient> => {
-  const client = new PrismaClient(getPrismaConfig());
+  const PrismaClientConstructor = getPrismaClient();
+  const client = new PrismaClientConstructor(getPrismaConfig());
 
   try {
     await client.$connect();
@@ -54,7 +104,7 @@ const createConnection = async (): Promise<PrismaClient> => {
     return client;
   } catch (error) {
     // 接続失敗時はクリーンアップ
-    await client.$disconnect().catch((disconnectError) => {
+    await client.$disconnect().catch((disconnectError: unknown) => {
       logger.debug("Failed to disconnect after connection error", {
         disconnectError,
       });

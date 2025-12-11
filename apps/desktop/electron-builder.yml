@@ -1,0 +1,96 @@
+appId: com.tumiki.desktop
+productName: Tumiki
+copyright: Copyright © 2025 Tumiki
+
+directories:
+  output: out
+  buildResources: resources
+
+files:
+  - dist-electron/**/*
+  - prisma/generated/**/*
+  - package.json
+  - "!**/*.{ts,tsx,map}"
+  - "!**/tsconfig*.json"
+  - "!**/*.test.*"
+  - "!**/__tests__/**"
+  - "!.turbo/**"
+  - "!.cache/**"
+
+# 依存関係を自動的にバンドル
+# Prismaクライアントとネイティブモジュールをasarから除外
+asarUnpack:
+  - "**/*.node"
+  - "**/prisma/generated/**/*"
+
+# node_modulesの処理方法を指定
+# モノレポ構成のため、ネイティブモジュールのリビルドをスキップ
+npmRebuild: false
+nodeGypRebuild: false
+
+# macOS設定
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: null
+  entitlementsInherit: null
+  # 将来的にコード署名を有効化する場合の設定:
+  # コード署名には Apple Developer Program への登録が必要です
+  # identity: "Developer ID Application: Your Name (TEAM_ID)"
+  # signIgnore:
+  #   - "node_modules"
+
+dmg:
+  title: "${productName} ${version}"
+  icon: null
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 410
+      y: 190
+      type: link
+      path: /Applications
+    - x: 130
+      y: 190
+      type: file
+
+# Windows設定（将来対応）
+# win:
+#   target:
+#     - target: nsis
+#       arch: [x64]
+#   icon: resources/icon.ico
+
+# Linux設定（将来対応）
+# linux:
+#   target:
+#     - target: AppImage
+#       arch: [x64]
+#   category: Development
+#   icon: resources/icon.png
+
+# 公証設定（将来対応）
+# macOS 公証（Notarization）を有効にする場合:
+# 1. Apple Developer Program への登録が必要
+# 2. App-specific パスワードの生成が必要
+# 3. 以下の環境変数を設定:
+#    - APPLE_ID: Apple ID メールアドレス
+#    - APPLE_APP_SPECIFIC_PASSWORD: App-specific パスワード
+#    - APPLE_TEAM_ID: Team ID
+#
+# afterSign: scripts/notarize.js
+#
+# notarize:
+#   teamId: ${APPLE_TEAM_ID}
+
+publish:
+  provider: github
+  owner: rayven122
+  repo: tumiki
