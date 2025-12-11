@@ -5,12 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Activity, Users, TrendingUp, Calendar } from "lucide-react";
 import { api } from "@/trpc/react";
-import { type OrganizationId } from "@/schema/ids";
-
-type UsageStatsSectionProps = {
-  organizationId: OrganizationId;
-};
-
 type MemberStat = {
   user: {
     id: string;
@@ -22,13 +16,9 @@ type MemberStat = {
   lastActivity: number | null;
 };
 
-export const UsageStatsSection = ({
-  organizationId,
-}: UsageStatsSectionProps) => {
+export const UsageStatsSection = () => {
   const { data: usageStats, isLoading } =
-    api.organization.getUsageStats.useQuery({
-      organizationId,
-    });
+    api.organization.getUsageStats.useQuery();
 
   if (isLoading) {
     return (
