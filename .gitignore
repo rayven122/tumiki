@@ -66,6 +66,7 @@ apps/manager/mcp
 
 # Electron
 dist-electron/
+out/
 *.app
 *.dmg
 *.exe
