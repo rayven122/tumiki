@@ -13,7 +13,7 @@ type ReviewStepProps = {
   serverDescription: string;
   templates: TemplateWithTools[];
   selectedTemplateIds: string[];
-  toolSelections: Map<string, Set<string>>;
+  toolSelections: Record<string, string[]>; // templateId -> toolIds[]
 };
 
 /**
@@ -60,9 +60,9 @@ export const ReviewStep = ({
         <h3 className="mb-3 text-base font-semibold">統合するテンプレート</h3>
         <div className="space-y-3">
           {selectedTemplates.map((template) => {
-            const selectedTools = toolSelections.get(template.id) ?? new Set();
+            const selectedTools = toolSelections[template.id] ?? [];
             const selectedToolsList = template.mcpTools.filter((t) =>
-              selectedTools.has(t.id),
+              selectedTools.includes(t.id),
             );
 
             return (
@@ -71,7 +71,7 @@ export const ReviewStep = ({
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{template.name}</CardTitle>
                     <Badge variant="secondary">
-                      {selectedTools.size} ツール
+                      {selectedTools.length} ツール
                     </Badge>
                   </div>
                 </CardHeader>

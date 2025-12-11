@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { McpServerTemplate, McpTool } from "@tumiki/db/server";
 import type { RouterOutputs } from "@/trpc/react";
+import { api } from "@/trpc/react";
+import { toast } from "sonner";
 import { EnvVarForm } from "./EnvVarForm";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Shield, Loader2 } from "lucide-react";
 
 type TemplateWithTools = McpServerTemplate & {
   mcpTools: McpTool[];
@@ -19,8 +21,8 @@ type OfficialServers =
 type ToolSelectorProps = {
   templates: TemplateWithTools[];
   selectedTemplateIds: string[];
-  toolSelections: Map<string, Set<string>>;
-  envVars: Map<string, Record<string, string>>;
+  toolSelections: Record<string, string[]>; // templateId -> toolIds[]
+  envVars: Record<string, Record<string, string>>; // templateId -> { key: value }
   officialServers: OfficialServers | undefined;
   onToggleTool: (templateId: string, toolId: string) => void;
   onSelectAllTools: (templateId: string) => void;
@@ -53,13 +55,30 @@ export const ToolSelector = ({
     ) ?? [],
   );
 
+  // OAuth認証mutation
+  const { mutate: authenticateOAuth, isPending: isOAuthAuthenticating } =
+    api.v2.oauth.connectMcpServerForIntegrated.useMutation({
+      onSuccess: (response) => {
+        toast.info("OAuth認証画面に移動します...");
+        // sessionStorageは自動保存済み（Jotai atomWithStorage）
+        window.location.href = response.authorizationUrl;
+      },
+      onError: (error) => {
+        toast.error(`OAuth認証の開始に失敗しました: ${error.message}`);
+      },
+    });
+
+  const handleOAuthAuthenticate = (templateId: string) => {
+    authenticateOAuth({ templateId });
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">ツールを選択</h2>
 
       {selectedTemplates.map((template) => {
-        const selectedTools = toolSelections.get(template.id) ?? new Set();
-        const allSelected = selectedTools.size === template.mcpTools.length;
+        const selectedTools = toolSelections[template.id] ?? [];
+        const allSelected = selectedTools.length === template.mcpTools.length;
         const isConfigured = configuredTemplateIds.has(template.id);
 
         return (
@@ -72,7 +91,7 @@ export const ToolSelector = ({
                       {template.name}
                     </CardTitle>
                     <p className="mt-1 text-sm text-gray-500">
-                      {selectedTools.size} / {template.mcpTools.length}{" "}
+                      {selectedTools.length} / {template.mcpTools.length}{" "}
                       ツール選択中
                     </p>
                   </div>
@@ -99,7 +118,7 @@ export const ToolSelector = ({
                     variant="outline"
                     size="sm"
                     onClick={() => onDeselectAllTools(template.id)}
-                    disabled={selectedTools.size === 0}
+                    disabled={selectedTools.length === 0}
                   >
                     全解除
                   </Button>
@@ -108,7 +127,7 @@ export const ToolSelector = ({
             </CardHeader>
             <CardContent className="space-y-3">
               {template.mcpTools.map((tool) => {
-                const isSelected = selectedTools.has(tool.id);
+                const isSelected = selectedTools.includes(tool.id);
 
                 return (
                   <div
@@ -137,17 +156,29 @@ export const ToolSelector = ({
                 );
               })}
 
-              {/* OAuth認証案内（未設定OAuthテンプレート） */}
+              {/* OAuth認証ボタン（未設定OAuthテンプレート） */}
               {template.authType === "OAUTH" && !isConfigured && (
-                <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
-                  <p className="text-sm font-medium text-blue-900">
-                    OAuth認証が必要です
-                  </p>
-                  <p className="mt-1 text-sm text-blue-800">
-                    このMCPサーバーを使用するには、事前にOAuth認証を完了してください。認証は個別のMCPサーバー追加画面から行えます。
-                  </p>
-                  <p className="mt-2 text-xs text-blue-700">
-                    ※ OAuth認証完了後、このページに戻って統合サーバーに追加できます
+                <div className="mt-4 space-y-3">
+                  <Button
+                    onClick={() => handleOAuthAuthenticate(template.id)}
+                    disabled={isOAuthAuthenticating}
+                    className="w-full"
+                    variant="default"
+                  >
+                    {isOAuthAuthenticating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        OAuth認証中...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="mr-2 h-4 w-4" />
+                        OAuth認証を開始
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-gray-500">
+                    認証画面に移動します。認証完了後、この画面に戻ります。
                   </p>
                 </div>
               )}
@@ -158,7 +189,7 @@ export const ToolSelector = ({
                 template.authType !== "OAUTH" && (
                   <EnvVarForm
                     envVarKeys={template.envVarKeys}
-                    envVars={envVars.get(template.id) ?? {}}
+                    envVars={envVars[template.id] ?? {}}
                     onEnvVarChange={(key, value) =>
                       onEnvVarChange(template.id, key, value)
                     }

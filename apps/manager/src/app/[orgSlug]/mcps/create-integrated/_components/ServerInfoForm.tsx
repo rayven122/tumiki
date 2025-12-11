@@ -16,7 +16,7 @@ type ServerInfoFormProps = {
   serverDescription: string;
   templates: McpServerTemplateWithTools[];
   selectedTemplateIds: string[];
-  toolSelections: Map<string, Set<string>>;
+  toolSelections: Record<string, string[]>; // templateId -> toolIds[]
   onServerNameChange: (value: string) => void;
   onServerDescriptionChange: (value: string) => void;
 };
@@ -44,8 +44,8 @@ export const ServerInfoForm = ({
         <h2 className="mb-4 text-lg font-semibold">選択されたテンプレート</h2>
         <div className="space-y-3">
           {selectedTemplates.map((template) => {
-            const selectedTools = toolSelections.get(template.id);
-            const toolCount = selectedTools?.size ?? 0;
+            const selectedTools = toolSelections[template.id] ?? [];
+            const toolCount = selectedTools.length;
 
             return (
               <div
