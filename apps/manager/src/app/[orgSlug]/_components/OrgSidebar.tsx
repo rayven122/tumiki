@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Server,
   Settings,
   Users,
   Shield,
   ChevronLeft,
   Activity,
   MessageSquare,
+  List,
+  Plus,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -62,9 +63,16 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       comingSoon: true,
     },
     {
-      name: "MCPサーバー",
+      name: "登録済みサーバー",
       href: `/${orgSlug}/mcps`,
-      icon: Server,
+      icon: List,
+      show: true, // 全組織で表示
+      disabled: false,
+    },
+    {
+      name: "MCPサーバーを作成",
+      href: `/${orgSlug}/mcps/create`,
+      icon: Plus,
       show: true, // 全組織で表示
       disabled: false,
     },
