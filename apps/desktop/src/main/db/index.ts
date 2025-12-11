@@ -12,10 +12,13 @@ import type { PrismaClient as PrismaClientType } from "../../../prisma/generated
 const getPrismaClientModule =
   (): typeof import("../../../prisma/generated/client") => {
     try {
-      // 開発環境では相対パスで読み込み
+      // 開発環境では __dirname を基準にした相対パスで読み込み
+      // dist-electron/main/ から ../../prisma/generated/client
       if (!app.isPackaged) {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        return require("../../../prisma/generated/client");
+        const prismaPath = join(__dirname, "..", "..", "prisma", "generated", "client");
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        return require(prismaPath);
       }
 
       // 本番環境では app.asar.unpacked から読み込み
