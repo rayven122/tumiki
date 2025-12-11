@@ -167,7 +167,9 @@ export const protectedProcedure = t.procedure
     }
 
     // 取得した組織IDとセッションの組織IDが一致することを確認
-    if (organizationMember.organization.id !== ctx.session.user.organizationId) {
+    if (
+      organizationMember.organization.id !== ctx.session.user.organizationId
+    ) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "組織情報が一致しません。",
