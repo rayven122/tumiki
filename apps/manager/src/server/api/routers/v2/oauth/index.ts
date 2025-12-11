@@ -6,6 +6,7 @@ import { McpServerTemplateInstanceIdSchema } from "@/schema/ids";
 import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { handleOAuthCallback } from "./handleOAuthCallback";
 import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
+import { connectOAuthForIntegrated } from "./connectOAuthForIntegrated";
 
 // OAuth認証MCPサーバー接続用の入力スキーマ
 export const ConnectOAuthMcpServerInputV2 = z.object({
@@ -46,6 +47,15 @@ export const ReauthenticateOAuthMcpServerInputV2 = z.object({
 });
 
 export const ReauthenticateOAuthMcpServerOutputV2 = z.object({
+  authorizationUrl: z.string(),
+});
+
+// 統合フロー用OAuth認証の入力スキーマ
+export const ConnectOAuthForIntegratedInputV2 = z.object({
+  templateId: z.string(),
+});
+
+export const ConnectOAuthForIntegratedOutputV2 = z.object({
   authorizationUrl: z.string(),
 });
 
@@ -91,6 +101,21 @@ export const oauthRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
         return await reauthenticateOAuthMcpServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // 統合フロー用OAuth認証開始
+  connectMcpServerForIntegrated: protectedProcedure
+    .input(ConnectOAuthForIntegratedInputV2)
+    .output(ConnectOAuthForIntegratedOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await connectOAuthForIntegrated(
           tx,
           input,
           ctx.session.user.organizationId,

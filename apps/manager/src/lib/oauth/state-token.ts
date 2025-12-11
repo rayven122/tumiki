@@ -14,13 +14,16 @@ export const OAuthStatePayloadSchema = z.object({
   codeVerifier: z.string(),
   codeChallenge: z.string(),
   nonce: z.string(),
-  mcpServerId: z.string(),
+  mcpServerId: z.string().nullable(), // 統合フローではnull
   mcpServerTemplateInstanceId: z.string(),
   userId: z.string(),
   organizationId: z.string(),
   redirectUri: z.string(),
   requestedScopes: z.array(z.string()),
   expiresAt: z.number(),
+  // 統合フロー用の追加フィールド
+  isIntegratedFlow: z.boolean().optional(),
+  templateId: z.string().optional(),
   // JWTの標準クレームも許容（jwtVerifyが追加するため）
   iat: z.number().optional(),
   exp: z.number().optional(),
