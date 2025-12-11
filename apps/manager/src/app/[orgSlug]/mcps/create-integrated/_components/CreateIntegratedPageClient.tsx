@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { useAtom } from "jotai";
+import { integratedFlowStateAtom } from "@/atoms/integratedFlowAtoms";
 import { StepIndicator } from "./StepIndicator";
 import { TemplateSelector } from "./TemplateSelector";
 import { ToolSelector } from "./ToolSelector";
@@ -33,29 +35,51 @@ export const CreateIntegratedPageClient = ({
 }: CreateIntegratedPageClientProps) => {
   const router = useRouter();
 
-  // ステップ管理
-  const [currentStep, setCurrentStep] = useState(1);
+  // Jotaiで状態管理（sessionStorageと自動同期）
+  const [flowState, setFlowState] = useAtom(integratedFlowStateAtom);
+
   const totalSteps = 4;
   const stepLabels = ["テンプレート選択", "ツール選択", "サーバー情報", "確認"];
 
-  // 選択状態
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  const [toolSelections, setToolSelections] = useState<
-    Map<string, Set<string>>
-  >(new Map());
-  const [envVars, setEnvVars] = useState<Map<string, Record<string, string>>>(
-    new Map(),
-  );
-  const [serverName, setServerName] = useState("");
-  const [serverDescription, setServerDescription] = useState("");
+  // 状態更新関数
+  const updateFlowState = (
+    updates: Partial<typeof flowState>,
+  ) => {
+    setFlowState((prev) => ({ ...prev, ...updates }));
+  };
 
   // データ取得
   const { data: templates, isLoading: isLoadingTemplates } =
     api.v2.mcpServer.findAll.useQuery();
-  const { data: officialServers, isLoading: isLoadingOfficialServers } =
-    api.v2.userMcpServer.findOfficialServers.useQuery();
+  const {
+    data: officialServers,
+    isLoading: isLoadingOfficialServers,
+    refetch: refetchOfficialServers,
+  } = api.v2.userMcpServer.findOfficialServers.useQuery();
 
   const isLoading = isLoadingTemplates || isLoadingOfficialServers;
+
+  // OAuth認証コールバック処理
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isOAuthCallback = searchParams.get("oauth_callback") === "true";
+    const templateId = searchParams.get("template_id");
+    const error = searchParams.get("error");
+
+    if (isOAuthCallback) {
+      if (error) {
+        toast.error(`OAuth認証エラー: ${decodeURIComponent(error)}`);
+      } else if (templateId) {
+        // 成功: テンプレート情報をrefetch
+        void refetchOfficialServers().then(() => {
+          toast.success("OAuth認証が完了しました");
+        });
+      }
+
+      // URLパラメータをクリア
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [refetchOfficialServers]);
 
   // 統合サーバー作成mutation
   const { mutate: createIntegrated, isPending } =
@@ -71,65 +95,67 @@ export const CreateIntegratedPageClient = ({
 
   // テンプレート選択ハンドラ
   const handleToggleTemplate = (templateId: string) => {
-    setSelectedTemplateIds((prev) => {
-      if (prev.includes(templateId)) {
-        // 削除
-        const newSelections = new Map(toolSelections);
-        newSelections.delete(templateId);
-        setToolSelections(newSelections);
+    if (flowState.selectedTemplateIds.includes(templateId)) {
+      // 削除
+      const { [templateId]: _, ...remainingToolSelections } =
+        flowState.toolSelections;
+      const { [templateId]: __, ...remainingEnvVars } = flowState.envVars;
 
-        const newEnvVars = new Map(envVars);
-        newEnvVars.delete(templateId);
-        setEnvVars(newEnvVars);
+      updateFlowState({
+        selectedTemplateIds: flowState.selectedTemplateIds.filter(
+          (id) => id !== templateId,
+        ),
+        toolSelections: remainingToolSelections,
+        envVars: remainingEnvVars,
+      });
+    } else {
+      // 追加：デフォルトで全ツール選択
+      const template = templates?.find((t) => t.id === templateId);
+      if (template) {
+        const allToolIds = template.mcpTools.map((t) => t.id);
 
-        return prev.filter((id) => id !== templateId);
-      } else {
-        // 追加：デフォルトで全ツール選択
-        const template = templates?.find((t) => t.id === templateId);
-        if (template) {
-          const newSelections = new Map(toolSelections);
-          newSelections.set(
-            templateId,
-            new Set(template.mcpTools.map((t) => t.id)),
-          );
-          setToolSelections(newSelections);
+        // 設定済みtemplate instanceかどうかを確認
+        const isConfigured = officialServers?.some((server) =>
+          server.templateInstances.some(
+            (instance) => instance.mcpServerTemplateId === templateId,
+          ),
+        );
 
-          // 設定済みtemplate instanceかどうかを確認
-          const isConfigured = officialServers?.some((server) =>
-            server.templateInstances.some(
-              (instance) => instance.mcpServerTemplateId === templateId,
-            ),
-          );
+        // 環境変数の初期化（未設定テンプレートのみ）
+        const newEnvVars =
+          template.envVarKeys.length > 0 && !isConfigured
+            ? {
+                ...flowState.envVars,
+                [templateId]: Object.fromEntries(
+                  template.envVarKeys.map((key) => [key, ""]),
+                ),
+              }
+            : flowState.envVars;
 
-          // 環境変数の初期化（未設定テンプレートのみ）
-          if (template.envVarKeys.length > 0 && !isConfigured) {
-            const newEnvVars = new Map(envVars);
-            newEnvVars.set(
-              templateId,
-              Object.fromEntries(template.envVarKeys.map((key) => [key, ""])),
-            );
-            setEnvVars(newEnvVars);
-          }
-        }
-        return [...prev, templateId];
+        updateFlowState({
+          selectedTemplateIds: [...flowState.selectedTemplateIds, templateId],
+          toolSelections: {
+            ...flowState.toolSelections,
+            [templateId]: allToolIds,
+          },
+          envVars: newEnvVars,
+        });
       }
-    });
+    }
   };
 
   // ツール選択ハンドラ
   const handleToggleTool = (templateId: string, toolId: string) => {
-    setToolSelections((prev) => {
-      const newSelections = new Map(prev);
-      const tools = newSelections.get(templateId) ?? new Set();
+    const currentTools = flowState.toolSelections[templateId] || [];
+    const newTools = currentTools.includes(toolId)
+      ? currentTools.filter((id) => id !== toolId)
+      : [...currentTools, toolId];
 
-      if (tools.has(toolId)) {
-        tools.delete(toolId);
-      } else {
-        tools.add(toolId);
-      }
-
-      newSelections.set(templateId, tools);
-      return newSelections;
+    updateFlowState({
+      toolSelections: {
+        ...flowState.toolSelections,
+        [templateId]: newTools,
+      },
     });
   };
 
@@ -137,23 +163,22 @@ export const CreateIntegratedPageClient = ({
   const handleSelectAllTools = (templateId: string) => {
     const template = templates?.find((t) => t.id === templateId);
     if (template) {
-      setToolSelections((prev) => {
-        const newSelections = new Map(prev);
-        newSelections.set(
-          templateId,
-          new Set(template.mcpTools.map((t) => t.id)),
-        );
-        return newSelections;
+      updateFlowState({
+        toolSelections: {
+          ...flowState.toolSelections,
+          [templateId]: template.mcpTools.map((t) => t.id),
+        },
       });
     }
   };
 
   // 全ツール解除
   const handleDeselectAllTools = (templateId: string) => {
-    setToolSelections((prev) => {
-      const newSelections = new Map(prev);
-      newSelections.set(templateId, new Set());
-      return newSelections;
+    updateFlowState({
+      toolSelections: {
+        ...flowState.toolSelections,
+        [templateId]: [],
+      },
     });
   };
 
@@ -163,46 +188,47 @@ export const CreateIntegratedPageClient = ({
     key: string,
     value: string,
   ) => {
-    setEnvVars((prev) => {
-      const newEnvVars = new Map(prev);
-      const templateEnvVars = newEnvVars.get(templateId) ?? {};
-      newEnvVars.set(templateId, { ...templateEnvVars, [key]: value });
-      return newEnvVars;
+    const templateEnvVars = flowState.envVars[templateId] ?? {};
+    updateFlowState({
+      envVars: {
+        ...flowState.envVars,
+        [templateId]: { ...templateEnvVars, [key]: value },
+      },
     });
   };
 
   // ステップ進行可否の判定
-  const canProceedToStep2 = selectedTemplateIds.length >= 2;
+  const canProceedToStep2 = flowState.selectedTemplateIds.length >= 2;
   const canProceedToStep3 = useMemo(() => {
     // 各テンプレートで最低1つのツールが選択されているか確認
-    return selectedTemplateIds.every((templateId) => {
-      const tools = toolSelections.get(templateId) ?? new Set();
-      return tools.size > 0;
+    return flowState.selectedTemplateIds.every((templateId) => {
+      const tools = flowState.toolSelections[templateId] ?? [];
+      return tools.length > 0;
     });
-  }, [selectedTemplateIds, toolSelections]);
-  const canProceedToStep4 = serverName.trim().length > 0;
+  }, [flowState.selectedTemplateIds, flowState.toolSelections]);
+  const canProceedToStep4 = flowState.serverName.trim().length > 0;
 
   // 作成実行
   const handleCreate = () => {
     // 入力データの準備
-    const templateData: TemplateSelection[] = selectedTemplateIds.map(
+    const templateData: TemplateSelection[] = flowState.selectedTemplateIds.map(
       (templateId) => {
         const template = templates?.find((t) => t.id === templateId);
-        const tools = toolSelections.get(templateId) ?? new Set();
-        const templateEnvVars = envVars.get(templateId) ?? {};
+        const tools = flowState.toolSelections[templateId] ?? [];
+        const templateEnvVars = flowState.envVars[templateId] ?? {};
 
         return {
           templateId,
           normalizedName: normalizeServerName(template?.name ?? templateId),
-          selectedToolIds: Array.from(tools),
+          selectedToolIds: tools,
           envVars: templateEnvVars,
         };
       },
     );
 
     createIntegrated({
-      name: serverName,
-      description: serverDescription || undefined,
+      name: flowState.serverName,
+      description: flowState.serverDescription || undefined,
       templates: templateData.map((t) => ({
         mcpServerTemplateId: t.templateId,
         normalizedName: t.normalizedName,
@@ -244,28 +270,28 @@ export const CreateIntegratedPageClient = ({
 
       {/* ステップインジケーター */}
       <StepIndicator
-        currentStep={currentStep}
+        currentStep={flowState.currentStep}
         totalSteps={totalSteps}
         stepLabels={stepLabels}
       />
 
       {/* ステップ内容 */}
       <div className="mb-8">
-        {currentStep === 1 && (
+        {flowState.currentStep === 1 && (
           <TemplateSelector
             templates={templates}
             officialServers={officialServers}
-            selectedTemplateIds={selectedTemplateIds}
+            selectedTemplateIds={flowState.selectedTemplateIds}
             onToggleTemplate={handleToggleTemplate}
           />
         )}
 
-        {currentStep === 2 && (
+        {flowState.currentStep === 2 && (
           <ToolSelector
             templates={templates}
-            selectedTemplateIds={selectedTemplateIds}
-            toolSelections={toolSelections}
-            envVars={envVars}
+            selectedTemplateIds={flowState.selectedTemplateIds}
+            toolSelections={flowState.toolSelections}
+            envVars={flowState.envVars}
             officialServers={officialServers}
             onToggleTool={handleToggleTool}
             onSelectAllTools={handleSelectAllTools}
@@ -274,25 +300,27 @@ export const CreateIntegratedPageClient = ({
           />
         )}
 
-        {currentStep === 3 && (
+        {flowState.currentStep === 3 && (
           <ServerInfoForm
-            serverName={serverName}
-            serverDescription={serverDescription}
+            serverName={flowState.serverName}
+            serverDescription={flowState.serverDescription}
             templates={templates}
-            selectedTemplateIds={selectedTemplateIds}
-            toolSelections={toolSelections}
-            onServerNameChange={setServerName}
-            onServerDescriptionChange={setServerDescription}
+            selectedTemplateIds={flowState.selectedTemplateIds}
+            toolSelections={flowState.toolSelections}
+            onServerNameChange={(name) => updateFlowState({ serverName: name })}
+            onServerDescriptionChange={(desc) =>
+              updateFlowState({ serverDescription: desc })
+            }
           />
         )}
 
-        {currentStep === 4 && (
+        {flowState.currentStep === 4 && (
           <ReviewStep
-            serverName={serverName}
-            serverDescription={serverDescription}
+            serverName={flowState.serverName}
+            serverDescription={flowState.serverDescription}
             templates={templates}
-            selectedTemplateIds={selectedTemplateIds}
-            toolSelections={toolSelections}
+            selectedTemplateIds={flowState.selectedTemplateIds}
+            toolSelections={flowState.toolSelections}
           />
         )}
       </div>
@@ -301,21 +329,25 @@ export const CreateIntegratedPageClient = ({
       <div className="flex items-center justify-between border-t border-gray-200 pt-6">
         <Button
           variant="outline"
-          onClick={() => setCurrentStep((prev) => prev - 1)}
-          disabled={currentStep === 1}
+          onClick={() =>
+            updateFlowState({ currentStep: flowState.currentStep - 1 })
+          }
+          disabled={flowState.currentStep === 1}
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
           戻る
         </Button>
 
         <div>
-          {currentStep < totalSteps ? (
+          {flowState.currentStep < totalSteps ? (
             <Button
-              onClick={() => setCurrentStep((prev) => prev + 1)}
+              onClick={() =>
+                updateFlowState({ currentStep: flowState.currentStep + 1 })
+              }
               disabled={
-                (currentStep === 1 && !canProceedToStep2) ||
-                (currentStep === 2 && !canProceedToStep3) ||
-                (currentStep === 3 && !canProceedToStep4)
+                (flowState.currentStep === 1 && !canProceedToStep2) ||
+                (flowState.currentStep === 2 && !canProceedToStep3) ||
+                (flowState.currentStep === 3 && !canProceedToStep4)
               }
             >
               次へ
