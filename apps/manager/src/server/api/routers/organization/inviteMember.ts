@@ -23,17 +23,18 @@ const INVITATION_MESSAGES = {
 
 /**
  * メールクライアントを初期化する
+ * デフォルト値を使用し、環境変数で上書き可能
  */
 const initializeMailClient = (): void => {
   createMailClient({
-    host: process.env.SMTP_HOST ?? "",
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
+    host: process.env.SMTP_HOST ?? "smtp.gmail.com",
+    port: Number(process.env.SMTP_PORT ?? "587"),
+    secure: Number(process.env.SMTP_PORT ?? "587") === 465,
     auth: {
-      user: process.env.SMTP_USER ?? "",
+      user: process.env.SMTP_USER ?? "TechNeighbor122@gmail.com",
       pass: process.env.SMTP_PASS ?? "",
     },
-    from: process.env.FROM_EMAIL ?? "",
+    from: process.env.FROM_EMAIL ?? "info@tumiki.cloud",
   });
 };
 
