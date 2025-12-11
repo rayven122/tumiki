@@ -3,14 +3,9 @@ import { getUserOrganizations } from "./getUserOrganizations";
 import { updateOrganization, updateOrganizationInputSchema } from "./update";
 import {
   getOrganizationById,
-  getOrganizationByIdInputSchema,
   getOrganizationByIdOutputSchema,
 } from "./getById";
-import {
-  getUsageStats,
-  getUsageStatsInputSchema,
-  getUsageStatsOutputSchema,
-} from "./getUsageStats";
+import { getUsageStats, getUsageStatsOutputSchema } from "./getUsageStats";
 import {
   inviteMember,
   inviteMemberInputSchema,
@@ -72,13 +67,11 @@ export const organizationRouter = createTRPCRouter({
 
   // 組織詳細取得
   getById: protectedProcedure
-    .input(getOrganizationByIdInputSchema)
     .output(getOrganizationByIdOutputSchema)
     .query(getOrganizationById),
 
   // 使用量統計取得
   getUsageStats: protectedProcedure
-    .input(getUsageStatsInputSchema)
     .output(getUsageStatsOutputSchema)
     .query(getUsageStats),
 

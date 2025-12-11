@@ -4,6 +4,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendInvitation } from "@tumiki/mailer";
 import { inviteMemberInput } from "@/server/utils/organizationSchemas";
+import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 
 export const inviteMemberInputSchema = inviteMemberInput;
 
@@ -101,13 +102,11 @@ export const inviteMember = async ({
   ctx: ProtectedContext;
 }): Promise<InviteMemberOutput> => {
   try {
-    // 管理者権限を検証（最適化されたバージョン）
-    if (!ctx.isCurrentOrganizationAdmin) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "この操作を行う権限がありません",
-      });
-    }
+    // チームの管理者権限を検証
+    validateOrganizationAccess(ctx.currentOrg, {
+      requireAdmin: true,
+      requireTeam: true,
+    });
 
     // トランザクションで処理
     const result = await ctx.db.$transaction(async (tx) => {
@@ -115,7 +114,7 @@ export const inviteMember = async ({
       const existingInvitation = await tx.organizationInvitation.findFirst({
         where: {
           email: input.email,
-          organizationId: ctx.currentOrganizationId,
+          organizationId: ctx.currentOrg.id,
         },
       });
 
@@ -136,7 +135,7 @@ export const inviteMember = async ({
       // 招待を作成
       const invitation = await tx.organizationInvitation.create({
         data: {
-          organizationId: ctx.currentOrganizationId,
+          organizationId: ctx.currentOrg.id,
           email: input.email,
           token,
           invitedBy: ctx.session.user.id,
