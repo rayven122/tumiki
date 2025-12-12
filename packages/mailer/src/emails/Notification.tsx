@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Img, Section, Text } from "@react-email/components";
+import DOMPurify from "isomorphic-dompurify";
 
 import { Button } from "./components/Button.js";
 import { Layout } from "./components/Layout.js";
@@ -45,7 +46,10 @@ export const Notification = ({
             <span style={highlightText}>{name} 様</span>
           </Text>
         )}
-        <div dangerouslySetInnerHTML={{ __html: message }} style={paragraph} />
+        <div
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(message) }}
+          style={paragraph}
+        />
       </Section>
 
       {/* CTA Section */}
