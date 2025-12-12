@@ -37,8 +37,9 @@ const buttonBase = {
 
 const variants = {
   primary: {
-    backgroundColor: "#4f46e5",
+    backgroundColor: "#000000",
     color: "#ffffff",
+    border: "2px solid #000000",
   },
   secondary: {
     backgroundColor: "#6b7280",
