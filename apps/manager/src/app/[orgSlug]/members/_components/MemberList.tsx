@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Crown, User, Mail } from "lucide-react";
+import { UserPlus, Trash2, Crown, User, Mail, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
 
 type MemberListProps = {
@@ -38,6 +39,7 @@ export const MemberList = ({ organization }: MemberListProps) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const utils = api.useUtils();
 
@@ -46,22 +48,42 @@ export const MemberList = ({ organization }: MemberListProps) => {
       setInviteEmail("");
       setIsInviteDialogOpen(false);
       setShowSuccessAnimation(true);
+      setErrorMessage(null);
       void utils.organization.getBySlug.invalidate({
         slug: organization.slug,
       });
       void utils.organization.getInvitations.invalidate();
-      // アニメーションを3秒後に非表示
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-      }, 3000);
+    },
+    onError: (error) => {
+      setErrorMessage(
+        error.message ||
+          "メンバーの招待に失敗しました。もう一度お試しください。",
+      );
     },
   });
 
+  // アニメーションを3秒後に非表示（メモリリーク対策）
+  useEffect(() => {
+    if (showSuccessAnimation) {
+      const timer = setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessAnimation]);
+
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
+      setErrorMessage(null);
       void utils.organization.getBySlug.invalidate({
         slug: organization.slug,
       });
+    },
+    onError: (error) => {
+      setErrorMessage(
+        error.message ||
+          "メンバーの削除に失敗しました。もう一度お試しください。",
+      );
     },
   });
 
@@ -147,6 +169,14 @@ export const MemberList = ({ organization }: MemberListProps) => {
             </Dialog>
           )}
         </CardHeader>
+        {errorMessage && (
+          <div className="px-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          </div>
+        )}
         <CardContent>
           {!organization.members || organization.members.length === 0 ? (
             <p className="py-4 text-center text-gray-500">
