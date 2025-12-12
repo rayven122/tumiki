@@ -24,6 +24,9 @@ describe("createIntegratedMcpServer", () => {
       mcpServerTemplate: {
         findUnique: vi.fn(),
       },
+      mcpServerTemplateInstance: {
+        findFirst: vi.fn(),
+      },
       mcpServer: {
         create: vi.fn(),
       },
@@ -69,6 +72,11 @@ describe("createIntegratedMcpServer", () => {
           ReturnType<typeof mockTx.mcpServerTemplate.findUnique>
         >,
       );
+
+    // envVarsが未指定の場合、既存インスタンスを探すがnullを返す
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
 
     vi.mocked(mockTx.mcpServer.create).mockResolvedValue(
       mockCreatedServer as unknown as Awaited<
@@ -173,6 +181,11 @@ describe("createIntegratedMcpServer", () => {
         >,
       );
 
+    // envVarsが未指定の場合、既存インスタンスを探すがnullを返す
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
+
     vi.mocked(mockTx.mcpServer.create).mockResolvedValue(
       mockCreatedServer as unknown as Awaited<
         ReturnType<typeof mockTx.mcpServer.create>
@@ -256,6 +269,11 @@ describe("createIntegratedMcpServer", () => {
         >,
       );
 
+    // envVarsが指定されているため、findFirstは呼ばれないが念のため設定
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
+
     vi.mocked(mockTx.mcpServer.create).mockResolvedValue(
       mockCreatedServer as unknown as Awaited<
         ReturnType<typeof mockTx.mcpServer.create>
@@ -320,6 +338,9 @@ describe("createIntegratedMcpServer", () => {
 
   test("テンプレートが見つからない場合はエラー", async () => {
     vi.mocked(mockTx.mcpServerTemplate.findUnique).mockResolvedValue(null);
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
 
     // 実行 & 検証
     await expect(
@@ -373,6 +394,10 @@ describe("createIntegratedMcpServer", () => {
         >,
       );
 
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
+
     // 実行 & 検証（存在しないツールIDを指定）
     await expect(
       createIntegratedMcpServer(
@@ -424,6 +449,10 @@ describe("createIntegratedMcpServer", () => {
           ReturnType<typeof mockTx.mcpServerTemplate.findUnique>
         >,
       );
+
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
 
     // 実行 & 検証（envVarKeysに存在しない環境変数を指定）
     await expect(
