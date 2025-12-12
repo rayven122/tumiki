@@ -6,24 +6,6 @@ settings:
 
 catalogs:
   default:
-    '@tanstack/react-query':
-      specifier: ^5.69.0
-      version: 5.84.1
-    '@trpc/client':
-      specifier: ^11.1.0
-      version: 11.4.3
-    '@trpc/react-query':
-      specifier: ^11.1.0
-      version: 11.4.3
-    '@trpc/server':
-      specifier: ^11.1.0
-      version: 11.4.3
-    '@trpc/tanstack-react-query':
-      specifier: ^11.1.0
-      version: 11.4.3
-    '@types/node':
-      specifier: ^22.15.3
-      version: 22.19.1
     '@vitest/coverage-v8':
       specifier: ^2.1.8
       version: 2.1.9
@@ -33,9 +15,6 @@ catalogs:
     prettier:
       specifier: ^3.5.3
       version: 3.6.2
-    tailwindcss:
-      specifier: ^4.1.8
-      version: 4.1.17
     typescript:
       specifier: ^5.8.3
       version: 5.9.2
@@ -666,9 +645,6 @@ importers:
       '@react-email/render':
         specifier: ^1.4.0
         version: 1.4.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      isomorphic-dompurify:
-        specifier: ^2.34.0
-        version: 2.34.0(bufferutil@4.0.9)(postcss@8.5.6)
       nodemailer:
         specifier: ^7.0.11
         version: 7.0.11
@@ -5596,9 +5572,6 @@ packages:
   dompurify@3.3.0:
     resolution: {integrity: sha512-r+f6MYR1gGN1eJv0TVQbhA7if/U7P87cdPl3HN5rikqaBSBxLiCb/b9O+2eG0cxz0ghyU+mU1QkbsOwERMYlWQ==}
 
-  dompurify@3.3.1:
-    resolution: {integrity: sha512-qkdCKzLNtrgPFP1Vo+98FRzJnBRGe4ffyCea9IwHB1fyxPOeNTHpLKYGd4Uk9xvNoH0ZoOjwZxNptyMwqrId1Q==}
-
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
 
@@ -6715,10 +6688,6 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
-
-  isomorphic-dompurify@2.34.0:
-    resolution: {integrity: sha512-7VeB/tDBQ8jt1+syT563hmmejY01nuwizpUIFPfM1aw3iTgLLiVP4/Nh+PKhNoa1V/H+E6ZlNcowsXLbChPCpw==}
-    engines: {node: '>=20.19.5'}
 
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
@@ -9512,7 +9481,8 @@ snapshots:
       '@stablelib/base64': 1.0.1
       '@stablelib/hex': 1.0.1
 
-  '@acemir/cssom@0.9.29': {}
+  '@acemir/cssom@0.9.29':
+    optional: true
 
   '@adobe/css-tools@4.4.4': {}
 
@@ -9579,6 +9549,7 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 11.2.4
+    optional: true
 
   '@asamuzakjp/dom-selector@6.7.6':
     dependencies:
@@ -9587,8 +9558,10 @@ snapshots:
       css-tree: 3.1.0
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.2.4
+    optional: true
 
-  '@asamuzakjp/nwsapi@2.3.9': {}
+  '@asamuzakjp/nwsapi@2.3.9':
+    optional: true
 
   '@auth/core@0.41.0':
     dependencies:
@@ -10306,6 +10279,7 @@ snapshots:
   '@csstools/css-syntax-patches-for-csstree@1.0.14(postcss@8.5.6)':
     dependencies:
       postcss: 8.5.6
+    optional: true
 
   '@csstools/css-tokenizer@3.0.4': {}
 
@@ -13900,6 +13874,7 @@ snapshots:
   bidi-js@1.0.3:
     dependencies:
       require-from-string: 2.0.2
+    optional: true
 
   bignumber.js@9.3.1: {}
 
@@ -14211,6 +14186,7 @@ snapshots:
     dependencies:
       mdn-data: 2.12.2
       source-map-js: 1.2.1
+    optional: true
 
   css.escape@1.5.1: {}
 
@@ -14228,6 +14204,7 @@ snapshots:
       css-tree: 3.1.0
     transitivePeerDependencies:
       - postcss
+    optional: true
 
   csstype@3.2.3: {}
 
@@ -14282,6 +14259,7 @@ snapshots:
     dependencies:
       whatwg-mimetype: 4.0.0
       whatwg-url: 15.1.0
+    optional: true
 
   data-view-buffer@1.0.2:
     dependencies:
@@ -14413,10 +14391,6 @@ snapshots:
       domelementtype: 2.3.0
 
   dompurify@3.3.0:
-    optionalDependencies:
-      '@types/trusted-types': 2.0.7
-
-  dompurify@3.3.1:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -15803,17 +15777,6 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isomorphic-dompurify@2.34.0(bufferutil@4.0.9)(postcss@8.5.6):
-    dependencies:
-      dompurify: 3.3.1
-      jsdom: 27.3.0(bufferutil@4.0.9)(postcss@8.5.6)
-    transitivePeerDependencies:
-      - bufferutil
-      - canvas
-      - postcss
-      - supports-color
-      - utf-8-validate
-
   istanbul-lib-coverage@3.2.2: {}
 
   istanbul-lib-instrument@5.2.1:
@@ -16269,6 +16232,7 @@ snapshots:
       - postcss
       - supports-color
       - utf-8-validate
+    optional: true
 
   jsesc@3.1.0: {}
 
@@ -16438,7 +16402,8 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lru-cache@11.2.4: {}
+  lru-cache@11.2.4:
+    optional: true
 
   lru-cache@5.1.1:
     dependencies:
@@ -16647,7 +16612,8 @@ snapshots:
     dependencies:
       '@types/mdast': 4.0.4
 
-  mdn-data@2.12.2: {}
+  mdn-data@2.12.2:
+    optional: true
 
   mdurl@2.0.0: {}
 
@@ -17226,6 +17192,7 @@ snapshots:
   parse5@8.0.0:
     dependencies:
       entities: 6.0.1
+    optional: true
 
   parseley@0.12.1:
     dependencies:
@@ -18443,7 +18410,8 @@ snapshots:
 
   tldts-core@6.1.86: {}
 
-  tldts-core@7.0.19: {}
+  tldts-core@7.0.19:
+    optional: true
 
   tldts@6.1.86:
     dependencies:
@@ -18452,6 +18420,7 @@ snapshots:
   tldts@7.0.19:
     dependencies:
       tldts-core: 7.0.19
+    optional: true
 
   tmpl@1.0.5: {}
 
@@ -18470,6 +18439,7 @@ snapshots:
   tough-cookie@6.0.0:
     dependencies:
       tldts: 7.0.19
+    optional: true
 
   tr46@0.0.3: {}
 
@@ -18480,6 +18450,7 @@ snapshots:
   tr46@6.0.0:
     dependencies:
       punycode: 2.3.1
+    optional: true
 
   tree-kill@1.2.2: {}
 
@@ -19171,7 +19142,8 @@ snapshots:
 
   webidl-conversions@7.0.0: {}
 
-  webidl-conversions@8.0.0: {}
+  webidl-conversions@8.0.0:
+    optional: true
 
   whatwg-encoding@3.1.1:
     dependencies:
@@ -19188,6 +19160,7 @@ snapshots:
     dependencies:
       tr46: 6.0.0
       webidl-conversions: 8.0.0
+    optional: true
 
   whatwg-url@5.0.0:
     dependencies:
