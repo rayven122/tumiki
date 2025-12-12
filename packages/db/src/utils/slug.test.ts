@@ -9,7 +9,7 @@ describe("generateBaseSlug", () => {
     expect(generateBaseSlug("  Test  Org  ", false)).toBe("test-org");
   });
 
-  test("個人組織は@プレフィックス付き", () => {
+  test("個人は@プレフィックス付き", () => {
     expect(generateBaseSlug("john doe", true)).toBe("@john-doe");
     expect(generateBaseSlug("Jane Smith", true)).toBe("@jane-smith");
     expect(generateBaseSlug("user123", true)).toBe("@user123");

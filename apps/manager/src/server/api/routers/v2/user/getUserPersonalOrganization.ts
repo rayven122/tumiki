@@ -2,7 +2,7 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import { z } from "zod";
 
 /**
- * ユーザーの個人組織取得の入力スキーマ
+ * ユーザーの個人取得の入力スキーマ
  */
 export const getUserPersonalOrganizationInputSchema = z.object({
   userId: z.string(),
@@ -13,7 +13,7 @@ export type GetUserPersonalOrganizationInput = z.infer<
 >;
 
 /**
- * ユーザーの個人組織取得の出力スキーマ
+ * ユーザーの個人取得の出力スキーマ
  */
 export const getUserPersonalOrganizationOutputSchema = z.object({
   organizationId: z.string(),
@@ -25,7 +25,7 @@ export type GetUserPersonalOrganizationOutput = z.infer<
 >;
 
 /**
- * ユーザーの個人組織情報を取得
+ * ユーザーの個人情報を取得
  *
  * signInコールバックでKeycloak属性を更新するために使用
  */

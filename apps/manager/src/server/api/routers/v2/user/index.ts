@@ -24,13 +24,13 @@ import {
  * v2 User Router
  *
  * ユーザー管理に関する API
- * - createWithOrganization: ユーザーと個人組織を同時作成
+ * - createWithOrganization: ユーザーと個人を同時作成
  * - getWithOrganization: ユーザーと組織情報を取得
- * - getPersonalOrganization: ユーザーの個人組織情報を取得
+ * - getPersonalOrganization: ユーザーの個人情報を取得
  * - getSessionAndUser: セッショントークンからセッションとユーザー情報を取得
  */
 export const userRouter = createTRPCRouter({
-  // ユーザーと個人組織を同時作成
+  // ユーザーと個人を同時作成
   createWithOrganization: publicProcedure
     .input(createUserWithOrganizationInputSchema)
     .output(createUserWithOrganizationOutputSchema)
@@ -46,7 +46,7 @@ export const userRouter = createTRPCRouter({
       return await getUserWithOrganization(ctx.db, input);
     }),
 
-  // ユーザーの個人組織情報を取得
+  // ユーザーの個人情報を取得
   getPersonalOrganization: publicProcedure
     .input(getUserPersonalOrganizationInputSchema)
     .output(getUserPersonalOrganizationOutputSchema)
