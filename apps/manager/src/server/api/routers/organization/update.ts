@@ -1,12 +1,14 @@
 import { type z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { validateOrganizationAdminAccess } from "@/server/utils/organizationPermissions";
+import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { updateOrganizationInput } from "@/server/utils/organizationSchemas";
 
 export const updateOrganizationInputSchema = updateOrganizationInput;
 
-export type UpdateOrganizationInput = z.infer<typeof updateOrganizationInput>;
+export type UpdateOrganizationInput = z.infer<
+  typeof updateOrganizationInputSchema
+>;
 
 export const updateOrganization = async ({
   input,
@@ -16,12 +18,14 @@ export const updateOrganization = async ({
   ctx: ProtectedContext;
 }) => {
   // 管理者権限を検証
-  await validateOrganizationAdminAccess(ctx.db, input.id, ctx.session.user.id);
+  validateOrganizationAccess(ctx.currentOrg, {
+    requireAdmin: true,
+  });
 
   try {
     const organization = await ctx.db.organization.update({
       where: {
-        id: input.id,
+        id: ctx.currentOrg.id,
         isDeleted: false,
       },
       data: {

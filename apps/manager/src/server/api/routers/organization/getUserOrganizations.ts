@@ -35,7 +35,7 @@ export const getUserOrganizations = async ({
     orderBy: [
       {
         organization: {
-          isPersonal: "desc", // 個人組織を先に
+          isPersonal: "desc", // 個人を先に
         },
       },
       {

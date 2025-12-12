@@ -34,18 +34,18 @@ export type CreateUserWithOrganizationOutput = z.infer<
 >;
 
 /**
- * ユーザーと個人組織を同時に作成
+ * ユーザーと個人を同時に作成
  *
  * トランザクション内で以下を実行（循環参照を回避するため段階的に作成）：
  * 1. ユーザーを defaultOrganizationSlug なしで作成
- * 2. 個人組織と OrganizationMember を同時作成
+ * 2. 個人と OrganizationMember を同時作成
  * 3. ユーザーの defaultOrganizationSlug を更新
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
   input: CreateUserWithOrganizationInput,
 ): Promise<CreateUserWithOrganizationOutput> => {
-  // ユーザー名ベースの個人組織slugを生成
+  // ユーザー名ベースの個人slugを生成
   const baseName = input.name ?? input.email ?? "User";
   const slug = await generateUniqueSlug(tx, baseName, true);
 
@@ -61,7 +61,7 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 2. 個人組織と OrganizationMember を同時作成（ユーザーが既に存在するため createdBy 制約を満たせる）
+  // 2. 個人と OrganizationMember を同時作成（ユーザーが既に存在するため createdBy 制約を満たせる）
   await tx.organization.create({
     data: {
       name: `${input.name ?? input.email ?? "User"}'s Workspace`,

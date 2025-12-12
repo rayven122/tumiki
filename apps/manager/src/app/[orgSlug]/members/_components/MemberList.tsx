@@ -25,18 +25,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Crown, User } from "lucide-react";
+import { UserPlus, Trash2, Crown, User, Mail } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-export const MemberManagementSection = () => {
+import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
+
+type MemberListProps = {
+  organization: GetOrganizationBySlugOutput;
+};
+
+export const MemberList = ({ organization }: MemberListProps) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
-
-  const { data: organization, isLoading: organizationLoading } =
-    api.organization.getById.useQuery();
-
-  const members = organization?.members;
 
   const utils = api.useUtils();
 
@@ -45,7 +46,9 @@ export const MemberManagementSection = () => {
       setInviteEmail("");
       setIsInviteDialogOpen(false);
       setShowSuccessAnimation(true);
-      void utils.organization.getById.invalidate();
+      void utils.organization.getBySlug.invalidate({
+        slug: organization.slug,
+      });
       // アニメーションを3秒後に非表示
       setTimeout(() => {
         setShowSuccessAnimation(false);
@@ -55,7 +58,9 @@ export const MemberManagementSection = () => {
 
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
-      void utils.organization.getById.invalidate();
+      void utils.organization.getBySlug.invalidate({
+        slug: organization.slug,
+      });
     },
   });
 
@@ -74,33 +79,7 @@ export const MemberManagementSection = () => {
     });
   };
 
-  const userMember = organization?.members.find(
-    (member) => member.user.id === organization.createdBy,
-  );
-  const isAdmin = userMember?.isAdmin ?? false;
-
-  if (organizationLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>メンバー管理</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="h-10 w-10 rounded-full bg-gray-200"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-1/3 rounded bg-gray-200"></div>
-                  <div className="h-3 w-1/4 rounded bg-gray-200"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isAdmin = organization.isAdmin;
 
   return (
     <>
@@ -116,7 +95,12 @@ export const MemberManagementSection = () => {
       )}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>メンバー管理</CardTitle>
+          <div>
+            <CardTitle>メンバー一覧</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              現在 {organization.members.length} 人のメンバーが参加しています
+            </p>
+          </div>
           {isAdmin && (
             <Dialog
               open={isInviteDialogOpen}
@@ -163,13 +147,13 @@ export const MemberManagementSection = () => {
           )}
         </CardHeader>
         <CardContent>
-          {!members || members.length === 0 ? (
+          {!organization.members || organization.members.length === 0 ? (
             <p className="py-4 text-center text-gray-500">
               メンバーがいません。
             </p>
           ) : (
             <div className="space-y-4">
-              {members.map((member) => (
+              {organization.members.map((member) => (
                 <div
                   key={member.id}
                   className="flex items-center justify-between rounded-lg border p-4"
@@ -185,7 +169,8 @@ export const MemberManagementSection = () => {
                       <div className="font-medium">
                         {member.user.name ?? "名前未設定"}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <Mail className="h-3 w-3" />
                         {member.user.email}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
@@ -217,7 +202,7 @@ export const MemberManagementSection = () => {
                       参加日:{" "}
                       {new Date(member.createdAt).toLocaleDateString("ja-JP")}
                     </div>
-                    {isAdmin && member.userId !== organization?.createdBy && (
+                    {isAdmin && member.userId !== organization.createdBy && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

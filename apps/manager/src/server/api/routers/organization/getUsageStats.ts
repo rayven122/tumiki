@@ -1,37 +1,26 @@
 import { type z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
-import {
-  organizationIdParamInput,
-  usageStatsOutput,
-} from "@/server/utils/organizationSchemas";
+import { usageStatsOutput } from "@/server/utils/organizationSchemas";
 
-export const getUsageStatsInputSchema = organizationIdParamInput;
 export const getUsageStatsOutputSchema = usageStatsOutput;
 
-export type GetUsageStatsInput = z.infer<typeof organizationIdParamInput>;
 export type GetUsageStatsOutput = z.infer<typeof usageStatsOutput>;
 
 export const getUsageStats = async ({
-  input,
   ctx,
 }: {
-  input: GetUsageStatsInput;
   ctx: ProtectedContext;
 }): Promise<GetUsageStatsOutput> => {
   // 権限を検証
-  await validateOrganizationAccess(
-    ctx.db,
-    input.organizationId,
-    ctx.session.user.id,
-  );
+  validateOrganizationAccess(ctx.currentOrg);
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const requestLogs = await ctx.db.mcpServerRequestLog.findMany({
     where: {
-      organizationId: input.organizationId,
+      organizationId: ctx.currentOrg.id,
       createdAt: {
         gte: thirtyDaysAgo,
       },
@@ -41,7 +30,7 @@ export const getUsageStats = async ({
   const totalRequests = requestLogs.length;
 
   const membersWithUser = await ctx.db.organizationMember.findMany({
-    where: { organizationId: input.organizationId },
+    where: { organizationId: ctx.currentOrg.id },
     include: { user: true },
   });
 
