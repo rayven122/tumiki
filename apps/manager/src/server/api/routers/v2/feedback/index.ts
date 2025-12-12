@@ -19,7 +19,7 @@ export const feedbackRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await createFeedback(ctx.db, {
         userId: ctx.session.user.id,
-        organizationId: ctx.currentOrganizationId,
+        organizationId: ctx.currentOrg.id,
         ...input,
       });
     }),

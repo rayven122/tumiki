@@ -1,21 +1,18 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import type { AuthenticatedContext } from "@/server/api/trpc";
+import { organizationWithMembersOutput } from "@/server/utils/organizationSchemas";
 
 export const getOrganizationBySlugInputSchema = z.object({
   slug: z.string().min(1),
 });
 
-export const getOrganizationBySlugOutputSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-  isPersonal: z.boolean(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  createdBy: z.string(),
-  isAdmin: z.boolean(),
-});
+export const getOrganizationBySlugOutputSchema =
+  organizationWithMembersOutput.extend({
+    slug: z.string(),
+    isPersonal: z.boolean(),
+    isAdmin: z.boolean(),
+  });
 
 export type GetOrganizationBySlugInput = z.infer<
   typeof getOrganizationBySlugInputSchema
@@ -31,13 +28,24 @@ export const getOrganizationBySlug = async ({
   input: GetOrganizationBySlugInput;
   ctx: AuthenticatedContext;
 }): Promise<GetOrganizationBySlugOutput> => {
+  // URLエンコードされた文字（%40 -> @など）をデコード
+  const decodedSlug = decodeURIComponent(input.slug);
+
   const organization = await ctx.db.organization.findUnique({
-    where: { slug: input.slug },
+    where: { slug: decodedSlug },
     include: {
       members: {
-        where: { userId: ctx.session.user.sub },
+        include: {
+          user: true,
+          roles: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
+      _count: {
         select: {
-          isAdmin: true,
+          members: true,
         },
       },
     },
@@ -50,11 +58,15 @@ export const getOrganizationBySlug = async ({
     });
   }
 
-  // ユーザーがメンバーかどうかを確認
-  if (organization.members.length === 0) {
+  // ユーザーのメンバーシップを確認
+  const userMember = organization.members.find(
+    (member) => member.userId === ctx.session.user.sub,
+  );
+
+  if (!userMember) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "この組織にアクセスする権限がありません",
+      message: "このチームにアクセスする権限がありません",
     });
   }
 
@@ -62,10 +74,15 @@ export const getOrganizationBySlug = async ({
     id: organization.id,
     name: organization.name,
     slug: organization.slug,
+    description: organization.description,
+    logoUrl: organization.logoUrl,
     isPersonal: organization.isPersonal,
     createdAt: organization.createdAt,
     updatedAt: organization.updatedAt,
     createdBy: organization.createdBy,
-    isAdmin: organization.members[0]!.isAdmin,
+    isDeleted: organization.isDeleted,
+    isAdmin: userMember.isAdmin,
+    members: organization.members,
+    _count: organization._count,
   };
 };

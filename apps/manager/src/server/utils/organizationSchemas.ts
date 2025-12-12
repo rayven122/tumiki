@@ -1,25 +1,10 @@
 import { z } from "zod";
-import { OrganizationIdSchema } from "@/schema/ids";
 import {
   OrganizationSchema,
   UserSchema,
   OrganizationMemberSchema,
   OrganizationInvitationSchema,
 } from "@tumiki/db/zod";
-
-/**
- * 組織ID入力の基本スキーマ
- */
-export const baseOrganizationIdInput = z.object({
-  id: OrganizationIdSchema,
-});
-
-/**
- * organizationId パラメータを持つ入力スキーマ
- */
-export const organizationIdParamInput = z.object({
-  organizationId: OrganizationIdSchema,
-});
 
 /**
  * 組織の基本出力スキーマ
@@ -122,7 +107,7 @@ export const usageStatsOutput = z.object({
 /**
  * 組織更新入力スキーマ
  */
-export const updateOrganizationInput = baseOrganizationIdInput.extend({
+export const updateOrganizationInput = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
   logoUrl: z.string().optional(),
@@ -141,6 +126,6 @@ export const inviteMemberInput = z.object({
 /**
  * メンバー削除入力スキーマ
  */
-export const removeMemberInput = organizationIdParamInput.extend({
+export const removeMemberInput = z.object({
   memberId: z.string(),
 });
