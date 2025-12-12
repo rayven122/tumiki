@@ -38,7 +38,7 @@ export const EnvVarForm = ({
             className="mt-1"
           />
           {index === envVarKeys.length - 1 && (
-            <p className="text-muted-foreground text-xs mt-2">
+            <p className="text-muted-foreground mt-2 text-xs">
               トークンは暗号化されて安全に保存されます
             </p>
           )}

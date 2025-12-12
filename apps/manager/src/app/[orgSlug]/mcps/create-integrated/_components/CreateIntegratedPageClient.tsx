@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,7 @@ export const CreateIntegratedPageClient = ({
   const stepLabels = ["テンプレート選択", "ツール選択", "サーバー情報", "確認"];
 
   // 状態更新関数
-  const updateFlowState = (
-    updates: Partial<typeof flowState>,
-  ) => {
+  const updateFlowState = (updates: Partial<typeof flowState>) => {
     setFlowState((prev) => ({ ...prev, ...updates }));
   };
 
@@ -97,9 +95,14 @@ export const CreateIntegratedPageClient = ({
   const handleToggleTemplate = (templateId: string) => {
     if (flowState.selectedTemplateIds.includes(templateId)) {
       // 削除
-      const { [templateId]: _, ...remainingToolSelections } =
-        flowState.toolSelections;
-      const { [templateId]: __, ...remainingEnvVars } = flowState.envVars;
+      const remainingToolSelections = Object.fromEntries(
+        Object.entries(flowState.toolSelections).filter(
+          ([key]) => key !== templateId,
+        ),
+      );
+      const remainingEnvVars = Object.fromEntries(
+        Object.entries(flowState.envVars).filter(([key]) => key !== templateId),
+      );
 
       updateFlowState({
         selectedTemplateIds: flowState.selectedTemplateIds.filter(
@@ -146,7 +149,7 @@ export const CreateIntegratedPageClient = ({
 
   // ツール選択ハンドラ
   const handleToggleTool = (templateId: string, toolId: string) => {
-    const currentTools = flowState.toolSelections[templateId] || [];
+    const currentTools = flowState.toolSelections[templateId] ?? [];
     const newTools = currentTools.includes(toolId)
       ? currentTools.filter((id) => id !== toolId)
       : [...currentTools, toolId];

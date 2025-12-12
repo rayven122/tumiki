@@ -87,9 +87,7 @@ export const ToolSelector = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div>
-                    <CardTitle className="text-base">
-                      {template.name}
-                    </CardTitle>
+                    <CardTitle className="text-base">{template.name}</CardTitle>
                     <p className="mt-1 text-sm text-gray-500">
                       {selectedTools.length} / {template.mcpTools.length}{" "}
                       ツール選択中
@@ -98,7 +96,7 @@ export const ToolSelector = ({
                   {isConfigured && (
                     <Badge
                       variant="secondary"
-                      className="px-2 py-1 text-xs text-green-800 bg-green-100 border-0"
+                      className="border-0 bg-green-100 px-2 py-1 text-xs text-green-800"
                     >
                       <CheckCircle2 className="mr-1 h-3 w-3" />
                       認証済み

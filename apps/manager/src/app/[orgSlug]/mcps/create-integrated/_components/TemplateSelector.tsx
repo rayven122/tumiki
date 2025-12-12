@@ -112,7 +112,7 @@ export const TemplateSelector = ({
                       <div className="flex items-center gap-2">
                         <Badge
                           variant="secondary"
-                          className="px-2 py-1 text-xs text-green-800 bg-green-100 border-0"
+                          className="border-0 bg-green-100 px-2 py-1 text-xs text-green-800"
                         >
                           認証済み
                         </Badge>
@@ -211,7 +211,7 @@ export const TemplateSelector = ({
                         {template.authType === "OAUTH" && (
                           <Badge
                             variant="secondary"
-                            className="px-2 py-1 text-xs text-green-800 bg-green-100 border-0"
+                            className="border-0 bg-green-100 px-2 py-1 text-xs text-green-800"
                           >
                             OAuth
                           </Badge>
@@ -219,7 +219,7 @@ export const TemplateSelector = ({
                         {template.authType === "API_KEY" && (
                           <Badge
                             variant="secondary"
-                            className="px-2 py-1 text-xs text-blue-800 bg-blue-100 border-0"
+                            className="border-0 bg-blue-100 px-2 py-1 text-xs text-blue-800"
                           >
                             API Key
                           </Badge>
@@ -227,7 +227,7 @@ export const TemplateSelector = ({
                         {template.authType === "NONE" && (
                           <Badge
                             variant="secondary"
-                            className="px-2 py-1 text-xs text-purple-800 bg-purple-100 border-0"
+                            className="border-0 bg-purple-100 px-2 py-1 text-xs text-purple-800"
                           >
                             設定不要
                           </Badge>
