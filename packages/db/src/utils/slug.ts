@@ -13,10 +13,10 @@ const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 6);
  * - 小文字化
  * - 空白をハイフンに変換
  * - 特殊文字を削除
- * - 個人組織の場合は@プレフィックスを追加
+ * - 個人の場合は@プレフィックスを追加
  *
  * @param name - 組織名またはユーザー名
- * @param isPersonal - 個人組織かどうか
+ * @param isPersonal - 個人かどうか
  * @returns 正規化されたスラッグ
  */
 export const generateBaseSlug = (name: string, isPersonal = false): string => {
@@ -39,7 +39,7 @@ export const generateBaseSlug = (name: string, isPersonal = false): string => {
  *
  * @param db - Prismaクライアントインスタンス
  * @param baseName - 基本となる名前
- * @param isPersonal - 個人組織かどうか
+ * @param isPersonal - 個人かどうか
  * @returns ユニークなスラッグ
  * @throws 10回の試行後もユニークなスラッグが生成できない場合
  */
