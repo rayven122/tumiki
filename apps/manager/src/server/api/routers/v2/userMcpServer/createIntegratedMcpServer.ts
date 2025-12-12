@@ -108,31 +108,29 @@ export const createIntegratedMcpServer = async (
       organizationId,
       displayOrder: 0,
       templateInstances: {
-        create: templates.map(
-          ({ template, tmpl, existingEnvVars }, index) => ({
-            mcpServerTemplateId: template.id,
-            normalizedName: tmpl.normalizedName,
-            isEnabled: true,
-            displayOrder: index,
-            allowedTools: {
-              connect: tmpl.toolIds.map((id) => ({ id })),
-            },
-            // McpConfigの作成（新規または既存のenvVarsを使用）
-            ...(tmpl.envVars || existingEnvVars
-              ? {
-                  mcpConfigs: {
-                    create: {
-                      organizationId,
-                      userId,
-                      envVars: tmpl.envVars
-                        ? JSON.stringify(tmpl.envVars)
-                        : existingEnvVars!,
-                    },
+        create: templates.map(({ template, tmpl, existingEnvVars }, index) => ({
+          mcpServerTemplateId: template.id,
+          normalizedName: tmpl.normalizedName,
+          isEnabled: true,
+          displayOrder: index,
+          allowedTools: {
+            connect: tmpl.toolIds.map((id) => ({ id })),
+          },
+          // McpConfigの作成（新規または既存のenvVarsを使用）
+          ...(tmpl.envVars || existingEnvVars
+            ? {
+                mcpConfigs: {
+                  create: {
+                    organizationId,
+                    userId,
+                    envVars: tmpl.envVars
+                      ? JSON.stringify(tmpl.envVars)
+                      : existingEnvVars!,
                   },
-                }
-              : {}),
-          }),
-        ),
+                },
+              }
+            : {}),
+        })),
       },
     },
   });
