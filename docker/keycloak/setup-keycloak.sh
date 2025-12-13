@@ -94,12 +94,22 @@ create_mapper() {
 # カスタムクレームマッパー作成
 create_mapper "$CLIENT_SCOPE_ID" "org_id" "tumiki_org_id" "tumiki.org_id" "String"
 create_mapper "$CLIENT_SCOPE_ID" "is_org_admin" "tumiki_is_org_admin" "tumiki.is_org_admin" "boolean"
-create_mapper "$CLIENT_SCOPE_ID" "user_db_id" "tumiki_user_db_id" "tumiki.user_db_id" "String"
+create_mapper "$CLIENT_SCOPE_ID" "tumiki_user_id" "tumiki_user_id" "tumiki.tumiki_user_id" "String"
+
+# 注意: mcp_instance_id は JWT に含めず、URL パスから取得する設計に変更
+# そのため、Keycloak での mcp_instance_id マッパーは不要
 
 # Clientに割り当て
 CLIENT_ID=$($KCADM get clients -r "$REALM" --config /tmp/kcadm.config 2>/dev/null | grep -B2 "\"clientId\" *: *\"$CLIENT_NAME\"" | grep '"id"' | cut -d'"' -f4 | head -1)
 if [ -n "$CLIENT_ID" ]; then
   $KCADM update clients/"$CLIENT_ID"/default-client-scopes/"$CLIENT_SCOPE_ID" -r "$REALM" --config /tmp/kcadm.config 2>/dev/null || true
+fi
+
+# tumiki-proxy クライアントにも割り当て
+PROXY_CLIENT_ID=$($KCADM get clients -r "$REALM" --config /tmp/kcadm.config 2>/dev/null | grep -B2 '"clientId" *: *"tumiki-proxy"' | grep '"id"' | cut -d'"' -f4 | head -1)
+if [ -n "$PROXY_CLIENT_ID" ]; then
+  echo "tumiki-proxy クライアントにスコープを割り当て中..."
+  $KCADM update clients/"$PROXY_CLIENT_ID"/default-client-scopes/"$CLIENT_SCOPE_ID" -r "$REALM" --config /tmp/kcadm.config 2>/dev/null || true
 fi
 
 # Google IdP設定（環境変数がある場合のみ）
