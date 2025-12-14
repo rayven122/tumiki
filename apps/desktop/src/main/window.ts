@@ -1,5 +1,6 @@
 import { BrowserWindow } from "electron";
 import { join } from "path";
+import { pathToFileURL } from "url";
 
 export const createMainWindow = (): BrowserWindow => {
   const mainWindow = new BrowserWindow({
@@ -17,7 +18,11 @@ export const createMainWindow = (): BrowserWindow => {
     mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    // 本番環境: file:// URLを使用してHTMLをロード
+    const indexPath = join(__dirname, "../renderer/index.html");
+    mainWindow.loadURL(pathToFileURL(indexPath).href);
+    // デバッグ用に一時的にDevToolsを開く
+    mainWindow.webContents.openDevTools();
   }
 
   return mainWindow;

@@ -169,6 +169,10 @@ export const setupAuthIpc = (): void => {
   ipcMain.handle("auth:login", async () => {
     try {
       const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        logger.warn("OAuth authentication is not available");
+        throw new Error("OAuth認証が無効になっています。環境変数を設定してください。");
+      }
       await oauthManager.startAuthFlow();
       logger.info("OAuth login flow started");
       return { success: true };
@@ -177,7 +181,7 @@ export const setupAuthIpc = (): void => {
         "Failed to start login flow",
         error instanceof Error ? error : { error },
       );
-      throw new Error("ログインフローの開始に失敗しました");
+      throw error instanceof Error ? error : new Error("ログインフローの開始に失敗しました");
     }
   });
 
@@ -185,6 +189,10 @@ export const setupAuthIpc = (): void => {
   ipcMain.handle("auth:logout", async () => {
     try {
       const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        logger.warn("OAuth authentication is not available");
+        throw new Error("OAuth認証が無効になっています。");
+      }
       await oauthManager.logout();
       logger.info("Logout completed");
       return { success: true };
@@ -193,7 +201,7 @@ export const setupAuthIpc = (): void => {
         "Failed to logout",
         error instanceof Error ? error : { error },
       );
-      throw new Error("ログアウトに失敗しました");
+      throw error instanceof Error ? error : new Error("ログアウトに失敗しました");
     }
   });
 
@@ -201,6 +209,10 @@ export const setupAuthIpc = (): void => {
   ipcMain.handle("auth:refreshToken", async () => {
     try {
       const oauthManager = getOAuthManager();
+      if (!oauthManager) {
+        logger.warn("OAuth authentication is not available");
+        throw new Error("OAuth認証が無効になっています。");
+      }
       await oauthManager.refreshToken();
       logger.info("Token refreshed manually");
       return { success: true };
@@ -209,7 +221,7 @@ export const setupAuthIpc = (): void => {
         "Failed to refresh token",
         error instanceof Error ? error : { error },
       );
-      throw new Error("トークンのリフレッシュに失敗しました");
+      throw error instanceof Error ? error : new Error("トークンのリフレッシュに失敗しました");
     }
   });
 };

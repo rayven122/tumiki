@@ -30,3 +30,19 @@ export const getKeycloakEnv = () => {
 
   return result.data;
 };
+
+/**
+ * Keycloak環境変数をオプショナルで取得
+ * 環境変数が未設定または不正な場合はnullを返す
+ */
+export const getKeycloakEnvOptional = ():
+  | z.infer<typeof keycloakEnvSchema>
+  | null => {
+  const result = keycloakEnvSchema.safeParse({
+    KEYCLOAK_ISSUER: process.env.KEYCLOAK_ISSUER,
+    KEYCLOAK_CLIENT_ID: process.env.KEYCLOAK_CLIENT_ID,
+    KEYCLOAK_CLIENT_SECRET: process.env.KEYCLOAK_CLIENT_SECRET,
+  });
+
+  return result.success ? result.data : null;
+};

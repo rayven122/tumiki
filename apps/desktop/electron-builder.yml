@@ -18,10 +18,11 @@ files:
   - "!.cache/**"
 
 # 依存関係を自動的にバンドル
-# Prismaクライアントとネイティブモジュールをasarから除外
+# Prismaクライアントとネイティブモジュール、レンダラーファイルをasarから除外
 asarUnpack:
   - "**/*.node"
   - "**/prisma/generated/**/*"
+  - "dist-electron/renderer/**/*"
 
 # node_modulesの処理方法を指定
 # モノレポ構成のため、ネイティブモジュールのリビルドをスキップ

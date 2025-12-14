@@ -3,7 +3,7 @@ import { createMainWindow } from "./window";
 import { initializeDb, closeDb } from "./db";
 import { setupAuthIpc } from "./ipc/auth";
 import { OAuthManager } from "./auth/oauth-manager";
-import { getKeycloakEnv } from "./utils/env";
+import { getKeycloakEnvOptional } from "./utils/env";
 import * as logger from "./utils/logger";
 
 let mainWindow: BrowserWindow | null = null;
@@ -115,10 +115,19 @@ const createWindow = (): void => {
 
 /**
  * OAuthマネージャーを初期化
+ * 環境変数が設定されていない場合は初期化をスキップ
  */
 const initializeOAuthManager = async (): Promise<void> => {
   try {
-    const keycloakEnv = getKeycloakEnv();
+    const keycloakEnv = getKeycloakEnvOptional();
+
+    // 環境変数が設定されていない場合はOAuth機能を無効化
+    if (!keycloakEnv) {
+      logger.warn(
+        "Keycloak environment variables not configured. OAuth authentication will be disabled.",
+      );
+      return;
+    }
 
     oauthManager = new OAuthManager({
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
@@ -136,17 +145,16 @@ const initializeOAuthManager = async (): Promise<void> => {
       "Failed to initialize OAuth manager",
       error instanceof Error ? error : { error },
     );
-    throw error;
+    // OAuth初期化失敗時もアプリは起動を続ける
+    logger.warn("OAuth authentication will be disabled due to initialization failure");
   }
 };
 
 /**
  * OAuthマネージャーを取得
+ * OAuth機能が無効の場合はnullを返す
  */
-export const getOAuthManager = (): OAuthManager => {
-  if (!oauthManager) {
-    throw new Error("OAuth manager not initialized");
-  }
+export const getOAuthManager = (): OAuthManager | null => {
   return oauthManager;
 };
 
@@ -155,10 +163,10 @@ if (app && typeof app.whenReady === "function") {
   app
     .whenReady()
     .then(async () => {
-      // データベース初期化
+      // データベース初期化（必須）
       await initializeDb();
 
-      // OAuthマネージャー初期化
+      // OAuthマネージャー初期化（オプショナル - 失敗してもアプリは続行）
       await initializeOAuthManager();
 
       // IPC ハンドラー登録
@@ -189,6 +197,7 @@ if (app && typeof app.whenReady === "function") {
       });
     })
     .catch((error) => {
+      // データベース初期化などの致命的なエラーの場合のみアプリを終了
       logger.error("Failed to initialize application", error);
       if (app) app.quit();
     });
