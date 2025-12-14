@@ -5,6 +5,17 @@ import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
 
 /**
+ * エラーを安全にError型に変換
+ * unknown型のエラーをError型に変換し、型安全性を向上
+ */
+const toError = (error: unknown): Error => {
+  if (error instanceof Error) {
+    return error;
+  }
+  return new Error(String(error));
+};
+
+/**
  * データベースパスを取得
  * Electronアプリ実行中はuserDataディレクトリ、それ以外は環境変数またはデフォルトパスを使用
  */
@@ -88,19 +99,18 @@ const createConnectionManager = (): ConnectionManager => {
   const createConnectionWithRetry = async (
     retries = 3,
   ): Promise<PrismaClient> => {
-    let lastError: unknown;
+    let lastError: Error | undefined;
 
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const client = await createConnection();
         return client;
       } catch (error) {
-        lastError = error;
+        const err = toError(error);
+        lastError = err;
         logger.warn(
           `Database connection attempt ${attempt + 1}/${retries} failed`,
-          error instanceof Error
-            ? { error: error.message, stack: error.stack }
-            : { error },
+          { error: err.message, stack: err.stack },
         );
 
         // 最後の試行でない場合は待機してからリトライ
@@ -112,7 +122,7 @@ const createConnectionManager = (): ConnectionManager => {
     }
 
     // すべてのリトライが失敗した場合
-    throw lastError;
+    throw lastError || new Error("Unknown database connection error");
   };
 
   return {
@@ -152,13 +162,14 @@ const createConnectionManager = (): ConnectionManager => {
           prisma = client;
           return client;
         } catch (error) {
-          logger.error(
-            "Failed to create database connection after retries",
-            error instanceof Error ? error : { error },
-          );
+          const err = toError(error);
+          logger.error("Failed to create database connection after retries", {
+            error: err.message,
+            stack: err.stack,
+          });
           // エラー時も確実にprismaをクリアして、再接続を確実にする
           prisma = undefined;
-          throw error;
+          throw err;
         } finally {
           // 現在のPromiseと一致する場合のみクリア（競合状態を防ぐ）
           if (connectionPromise === currentPromise) {
@@ -186,11 +197,12 @@ const createConnectionManager = (): ConnectionManager => {
           logger.debug("Database connection closed");
           prisma = undefined;
         } catch (error) {
-          logger.error(
-            "Failed to close database connection",
-            error instanceof Error ? error : { error },
-          );
-          throw error;
+          const err = toError(error);
+          logger.error("Failed to close database connection", {
+            error: err.message,
+            stack: err.stack,
+          });
+          throw err;
         }
       }
     },
@@ -227,11 +239,12 @@ export const initializeDb = async (): Promise<void> => {
     await db.$queryRaw`SELECT 1`;
     logger.info("Database initialized and connection verified");
   } catch (error) {
-    logger.error(
-      "Failed to initialize database",
-      error instanceof Error ? error : { error },
-    );
-    throw error;
+    const err = toError(error);
+    logger.error("Failed to initialize database", {
+      error: err.message,
+      stack: err.stack,
+    });
+    throw err;
   }
 };
 

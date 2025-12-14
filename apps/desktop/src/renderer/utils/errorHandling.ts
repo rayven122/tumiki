@@ -227,10 +227,11 @@ export const logError = (error: unknown, context?: string): ErrorWithStatus => {
   const errorInfo = classifyError(error);
 
   if (process.env.NODE_ENV === "development") {
+    // センシティブ情報を完全に除外してログ出力
     console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
       message: errorInfo.message,
       status: errorInfo.status,
-      originalError: sanitizeError(error),
+      // originalErrorは完全に除外（センシティブ情報漏洩リスクを回避）
     });
   } else {
     // 本番環境では最小限のログのみ
