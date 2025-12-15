@@ -47,6 +47,8 @@ vi.mock("../../utils/logger", () => ({
 
 // グローバルなクリーンアップ - すべてのテスト後にタイマーを実タイマーに戻す
 afterEach(() => {
+  // すべてのタイマーをクリアしてから実タイマーに戻す
+  vi.clearAllTimers();
   vi.useRealTimers();
 });
 
@@ -150,14 +152,18 @@ describe("getDb", () => {
 
     const promise = getDb();
 
-    // タイマーを進める
+    // タイマーを進める（タイムアウト + リトライのdelay）
+    // withTimeoutでCONNECTION_TIMEOUT_MS(30秒)が設定されるため、十分な時間を進める
     await vi.advanceTimersByTimeAsync(1000); // 1回目のリトライ（1秒待機）
     await vi.advanceTimersByTimeAsync(2000); // 2回目のリトライ（2秒待機）
 
     await promise;
 
-    // setTimeoutが呼ばれた回数を確認（リトライ回数 - 1）
-    expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+    // setTimeoutが呼ばれた回数を確認
+    // - withTimeout: 3回（各接続試行に1回）
+    // - リトライのdelay: 2回（3回目の試行は成功するので delay なし）
+    // 合計: 5回
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(5);
 
     // スパイを復元してからタイマーを戻す
     setTimeoutSpy.mockRestore();

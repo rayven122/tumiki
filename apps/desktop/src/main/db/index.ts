@@ -4,6 +4,9 @@ import { app } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
 
+// 接続タイムアウト設定（ミリ秒）
+const CONNECTION_TIMEOUT_MS = 30000; // 30秒
+
 /**
  * エラーを安全にError型に変換
  * unknown型のエラーをError型に変換し、型安全性を向上
@@ -13,6 +16,34 @@ const toError = (error: unknown): Error => {
     return error;
   }
   return new Error(String(error));
+};
+
+/**
+ * タイムアウト付きでPromiseを実行
+ * @param promise 実行するPromise
+ * @param timeoutMs タイムアウト時間（ミリ秒）
+ * @param operationName 操作名（エラーメッセージ用）
+ */
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string,
+): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((result) => {
+        clearTimeout(timeoutId);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
 };
 
 /**
@@ -92,7 +123,7 @@ const createConnectionManager = (): ConnectionManager => {
   let connectionPromise: Promise<PrismaClient> | null = null;
 
   /**
-   * リトライ機能付き接続作成
+   * リトライ機能付き接続作成（タイムアウト付き）
    * @param retries リトライ回数
    * @returns PrismaClientインスタンス
    */
@@ -103,7 +134,12 @@ const createConnectionManager = (): ConnectionManager => {
 
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
-        const client = await createConnection();
+        // 各接続試行にタイムアウトを設定
+        const client = await withTimeout(
+          createConnection(),
+          CONNECTION_TIMEOUT_MS,
+          "Database connection",
+        );
         return client;
       } catch (error) {
         const err = toError(error);

@@ -72,7 +72,7 @@ const isValidEncryptionKey = (key: Buffer): boolean => {
 /**
  * ファイル権限を検証（同期版 - 後方互換性のため残す）
  * @param filePath ファイルパス
- * @param expectedPermissions 期待されるパーミッション（8進数文字列）
+ * @param expectedPermissions 期待されるパーミッション（8進数文字列）- Unix系のみ
  * @throws {Error} 権限が一致しない場合
  */
 const validateFilePermissions = (
@@ -81,13 +81,18 @@ const validateFilePermissions = (
 ): void => {
   try {
     const stats = statSync(filePath);
-    const permissions = stats.mode & parseInt("777", 8);
-    const expected = parseInt(expectedPermissions, 8);
 
-    if (permissions !== expected) {
-      throw new Error(
-        `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
-      );
+    // Windows環境ではUnix形式の権限チェックをスキップ
+    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
+    if (process.platform !== "win32") {
+      const permissions = stats.mode & parseInt("777", 8);
+      const expected = parseInt(expectedPermissions, 8);
+
+      if (permissions !== expected) {
+        throw new Error(
+          `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
+        );
+      }
     }
 
     // ファイルサイズの検証（キーファイルは正確にKEY_LENGTHバイトであるべき）
@@ -115,7 +120,7 @@ const validateFilePermissions = (
 /**
  * ファイル権限を検証（非同期版）
  * @param filePath ファイルパス
- * @param expectedPermissions 期待されるパーミッション（8進数文字列）
+ * @param expectedPermissions 期待されるパーミッション（8進数文字列）- Unix系のみ
  * @throws {Error} 権限が一致しない場合
  */
 const validateFilePermissionsAsync = async (
@@ -124,13 +129,18 @@ const validateFilePermissionsAsync = async (
 ): Promise<void> => {
   try {
     const stats = await stat(filePath);
-    const permissions = stats.mode & parseInt("777", 8);
-    const expected = parseInt(expectedPermissions, 8);
 
-    if (permissions !== expected) {
-      throw new Error(
-        `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
-      );
+    // Windows環境ではUnix形式の権限チェックをスキップ
+    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
+    if (process.platform !== "win32") {
+      const permissions = stats.mode & parseInt("777", 8);
+      const expected = parseInt(expectedPermissions, 8);
+
+      if (permissions !== expected) {
+        throw new Error(
+          `File has unsafe permissions: ${permissions.toString(8)}. Expected: ${expectedPermissions}. Path: ${filePath}`,
+        );
+      }
     }
 
     // ファイルサイズの検証（キーファイルは正確にKEY_LENGTHバイトであるべき）
@@ -208,13 +218,16 @@ const getOrCreateEncryptionKey = (): Buffer => {
   if (!existsSync(userDataPath)) {
     mkdirSync(userDataPath, { recursive: true, mode: 0o700 });
 
-    // ディレクトリ権限の検証
-    const dirStats = statSync(userDataPath);
-    const dirPermissions = dirStats.mode & parseInt("777", 8);
-    if (dirPermissions !== parseInt("700", 8)) {
-      throw new Error(
-        `User data directory has unsafe permissions: ${dirPermissions.toString(8)}. Expected: 700`,
-      );
+    // ディレクトリ権限の検証（Unix系のみ）
+    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
+    if (process.platform !== "win32") {
+      const dirStats = statSync(userDataPath);
+      const dirPermissions = dirStats.mode & parseInt("777", 8);
+      if (dirPermissions !== parseInt("700", 8)) {
+        throw new Error(
+          `User data directory has unsafe permissions: ${dirPermissions.toString(8)}. Expected: 700`,
+        );
+      }
     }
   }
 
@@ -302,13 +315,16 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
   if (!existsSync(userDataPath)) {
     await mkdir(userDataPath, { recursive: true, mode: 0o700 });
 
-    // ディレクトリ権限の検証
-    const dirStats = await stat(userDataPath);
-    const dirPermissions = dirStats.mode & parseInt("777", 8);
-    if (dirPermissions !== parseInt("700", 8)) {
-      throw new Error(
-        `User data directory has unsafe permissions: ${dirPermissions.toString(8)}. Expected: 700`,
-      );
+    // ディレクトリ権限の検証（Unix系のみ）
+    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
+    if (process.platform !== "win32") {
+      const dirStats = await stat(userDataPath);
+      const dirPermissions = dirStats.mode & parseInt("777", 8);
+      if (dirPermissions !== parseInt("700", 8)) {
+        throw new Error(
+          `User data directory has unsafe permissions: ${dirPermissions.toString(8)}. Expected: 700`,
+        );
+      }
     }
   }
 
@@ -480,7 +496,13 @@ export const decryptToken = (encryptedText: string): string => {
       const strategy = getDecryptionStrategy(prefix);
       return strategy.decrypt(data);
     } catch (error) {
-      console.error(`Failed to decrypt with strategy: ${prefix}`, error);
+      // エラーログから機密情報を除外（errorオブジェクトにはスタックトレースや
+      // 暗号化データが含まれる可能性があるため、メッセージのみをログ出力）
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown decryption error";
+      console.error(
+        `Decryption failed with strategy "${prefix}": ${errorMessage}`,
+      );
       // フォールバック戦略で試す
       return createFallbackEncryptionStrategy().decrypt(data);
     }
@@ -642,7 +664,13 @@ export const decryptTokenAsync = async (
       const strategy = getAsyncDecryptionStrategy(prefix);
       return await strategy.decrypt(data);
     } catch (error) {
-      console.error(`Failed to decrypt with strategy: ${prefix}`, error);
+      // エラーログから機密情報を除外（errorオブジェクトにはスタックトレースや
+      // 暗号化データが含まれる可能性があるため、メッセージのみをログ出力）
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown decryption error";
+      console.error(
+        `Decryption failed with strategy "${prefix}": ${errorMessage}`,
+      );
       // フォールバック戦略で試す
       return await createAsyncFallbackEncryptionStrategy().decrypt(data);
     }
