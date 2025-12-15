@@ -8,15 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Server } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 
-type McpServerTemplateWithTools =
-  RouterOutputs["v2"]["mcpServer"]["findAll"][number];
+type OfficialServers =
+  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+
+type ConnectionConfigInstance =
+  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 type ServerInfoFormProps = {
   serverName: string;
   serverDescription: string;
-  templates: McpServerTemplateWithTools[];
-  selectedTemplateIds: string[];
-  toolSelections: Record<string, string[]>; // templateId -> toolIds[]
+  officialServers: OfficialServers | undefined;
+  selectedInstanceIds: string[];
+  toolSelections: Record<string, string[]>; // instanceId -> toolIds[]
   onServerNameChange: (value: string) => void;
   onServerDescriptionChange: (value: string) => void;
 };
@@ -27,36 +30,41 @@ type ServerInfoFormProps = {
 export const ServerInfoForm = ({
   serverName,
   serverDescription,
-  templates,
-  selectedTemplateIds,
+  officialServers,
+  selectedInstanceIds,
   toolSelections,
   onServerNameChange,
   onServerDescriptionChange,
 }: ServerInfoFormProps) => {
-  const selectedTemplates = templates.filter((t) =>
-    selectedTemplateIds.includes(t.id),
+  // 選択された接続設定を取得
+  const allConnectionConfigs: ConnectionConfigInstance[] =
+    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+
+  const selectedConfigs = allConnectionConfigs.filter((config) =>
+    selectedInstanceIds.includes(config.id),
   );
 
   return (
     <div className="space-y-6">
-      {/* 選択されたテンプレート一覧 */}
+      {/* 選択された接続設定一覧 */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold">選択されたテンプレート</h2>
+        <h2 className="mb-4 text-lg font-semibold">選択された接続設定</h2>
         <div className="space-y-3">
-          {selectedTemplates.map((template) => {
-            const selectedTools = toolSelections[template.id] ?? [];
+          {selectedConfigs.map((connectionConfig) => {
+            const serviceTemplate = connectionConfig.mcpServerTemplate;
+            const selectedTools = toolSelections[connectionConfig.id] ?? [];
             const toolCount = selectedTools.length;
 
             return (
               <div
-                key={template.id}
+                key={connectionConfig.id}
                 className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
               >
-                {/* テンプレートアイコン */}
-                {template.iconPath ? (
+                {/* サービスアイコン */}
+                {serviceTemplate.iconPath ? (
                   <Image
-                    src={template.iconPath}
-                    alt={`${template.name} icon`}
+                    src={serviceTemplate.iconPath}
+                    alt={`${serviceTemplate.name} icon`}
                     width={40}
                     height={40}
                     className="rounded-md"
@@ -67,9 +75,11 @@ export const ServerInfoForm = ({
                   </div>
                 )}
 
-                {/* テンプレート情報 */}
+                {/* 接続設定情報 */}
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{template.name}</p>
+                  <p className="text-sm font-medium">
+                    {connectionConfig.normalizedName || serviceTemplate.name}
+                  </p>
                   <p className="text-xs text-gray-500">
                     {toolCount} ツール選択中
                   </p>
@@ -77,7 +87,7 @@ export const ServerInfoForm = ({
 
                 {/* ツール数バッジ */}
                 <Badge variant="secondary" className="text-xs">
-                  {toolCount} / {template.mcpTools.length}
+                  {toolCount} / {connectionConfig.tools.length}
                 </Badge>
               </div>
             );

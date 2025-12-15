@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { integratedFlowStateAtom } from "@/atoms/integratedFlowAtoms";
@@ -14,21 +14,27 @@ import { TemplateSelector } from "./TemplateSelector";
 import { ToolSelector } from "./ToolSelector";
 import { ServerInfoForm } from "./ServerInfoForm";
 import { ReviewStep } from "./ReviewStep";
-import { normalizeServerName } from "@/utils/normalizeServerName";
 
 type CreateIntegratedPageClientProps = {
   orgSlug: string;
 };
 
-type TemplateSelection = {
-  templateId: string;
-  normalizedName: string;
-  selectedToolIds: string[];
-  envVars: Record<string, string>;
-};
+type OfficialServers =
+  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+
+type ConnectionConfigInstance =
+  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 /**
- * 統合MCPサーバー作成ページのメインクライアントコンポーネント
+ * 統合サーバー作成ページのメインクライアントコンポーネント
+ *
+ * 用語マッピング:
+ * - serviceTemplate (McpServerTemplate): サービステンプレート - 全ユーザー共通のカタログ
+ * - connectionConfig (McpServerTemplateInstance): 接続設定 - ユーザーが認証情報を設定したインスタンス
+ * - integratedServer (McpServer): 統合サーバー - 複数の接続設定を束ねて公開するサーバー
+ *
+ * このフローでは既存の設定済み接続設定（connectionConfig）のみを選択可能
+ * OAuth認証や環境変数入力は不要（既に設定済み）
  */
 export const CreateIntegratedPageClient = ({
   orgSlug,
@@ -39,45 +45,23 @@ export const CreateIntegratedPageClient = ({
   const [flowState, setFlowState] = useAtom(integratedFlowStateAtom);
 
   const totalSteps = 4;
-  const stepLabels = ["テンプレート選択", "ツール選択", "サーバー情報", "確認"];
+  const stepLabels = [
+    "接続設定を選択",
+    "ツールを選択",
+    "サーバー情報を入力",
+    "確認",
+  ];
 
   // 状態更新関数
   const updateFlowState = (updates: Partial<typeof flowState>) => {
     setFlowState((prev) => ({ ...prev, ...updates }));
   };
 
-  // データ取得
-  const { data: templates, isLoading: isLoadingTemplates } =
-    api.v2.mcpServer.findAll.useQuery();
-  const {
-    data: officialServers,
-    isLoading: isLoadingOfficialServers,
-    refetch: refetchOfficialServers,
-  } = api.v2.userMcpServer.findOfficialServers.useQuery();
+  // データ取得（設定済み接続設定のみ必要）
+  const { data: officialServers, isLoading: isLoadingOfficialServers } =
+    api.v2.userMcpServer.findOfficialServers.useQuery();
 
-  const isLoading = isLoadingTemplates || isLoadingOfficialServers;
-
-  // OAuth認証コールバック処理
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const isOAuthCallback = searchParams.get("oauth_callback") === "true";
-    const templateId = searchParams.get("template_id");
-    const error = searchParams.get("error");
-
-    if (isOAuthCallback) {
-      if (error) {
-        toast.error(`OAuth認証エラー: ${decodeURIComponent(error)}`);
-      } else if (templateId) {
-        // 成功: テンプレート情報をrefetch
-        void refetchOfficialServers().then(() => {
-          toast.success("OAuth認証が完了しました");
-        });
-      }
-
-      // URLパラメータをクリア
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [refetchOfficialServers]);
+  const isLoading = isLoadingOfficialServers;
 
   // 統合サーバー作成mutation
   const { mutate: createIntegrated, isPending } =
@@ -91,65 +75,48 @@ export const CreateIntegratedPageClient = ({
       },
     });
 
-  // テンプレート選択ハンドラ
-  const handleToggleTemplate = (templateId: string) => {
-    if (flowState.selectedTemplateIds.includes(templateId)) {
-      // 削除
+  // 接続設定（インスタンス）選択ハンドラ
+  const handleToggleInstance = (instanceId: string) => {
+    // 全ての接続設定を抽出
+    const allConnectionConfigs: ConnectionConfigInstance[] =
+      officialServers?.flatMap((server) => server.templateInstances) ?? [];
+
+    if (flowState.selectedInstanceIds.includes(instanceId)) {
+      // 削除: 選択を解除し、ツール選択もクリア
       const remainingToolSelections = Object.fromEntries(
         Object.entries(flowState.toolSelections).filter(
-          ([key]) => key !== templateId,
+          ([key]) => key !== instanceId,
         ),
-      );
-      const remainingEnvVars = Object.fromEntries(
-        Object.entries(flowState.envVars).filter(([key]) => key !== templateId),
       );
 
       updateFlowState({
-        selectedTemplateIds: flowState.selectedTemplateIds.filter(
-          (id) => id !== templateId,
+        selectedInstanceIds: flowState.selectedInstanceIds.filter(
+          (id) => id !== instanceId,
         ),
         toolSelections: remainingToolSelections,
-        envVars: remainingEnvVars,
       });
     } else {
-      // 追加：デフォルトで全ツール選択
-      const template = templates?.find((t) => t.id === templateId);
-      if (template) {
-        const allToolIds = template.mcpTools.map((t) => t.id);
-
-        // 設定済みtemplate instanceかどうかを確認
-        const isConfigured = officialServers?.some((server) =>
-          server.templateInstances.some(
-            (instance) => instance.mcpServerTemplateId === templateId,
-          ),
-        );
-
-        // 環境変数の初期化（未設定テンプレートのみ）
-        const newEnvVars =
-          template.envVarKeys.length > 0 && !isConfigured
-            ? {
-                ...flowState.envVars,
-                [templateId]: Object.fromEntries(
-                  template.envVarKeys.map((key) => [key, ""]),
-                ),
-              }
-            : flowState.envVars;
+      // 追加: デフォルトで全ツール選択
+      const connectionConfig = allConnectionConfigs.find(
+        (config) => config.id === instanceId,
+      );
+      if (connectionConfig) {
+        const allToolIds = connectionConfig.tools.map((t) => t.id);
 
         updateFlowState({
-          selectedTemplateIds: [...flowState.selectedTemplateIds, templateId],
+          selectedInstanceIds: [...flowState.selectedInstanceIds, instanceId],
           toolSelections: {
             ...flowState.toolSelections,
-            [templateId]: allToolIds,
+            [instanceId]: allToolIds,
           },
-          envVars: newEnvVars,
         });
       }
     }
   };
 
   // ツール選択ハンドラ
-  const handleToggleTool = (templateId: string, toolId: string) => {
-    const currentTools = flowState.toolSelections[templateId] ?? [];
+  const handleToggleTool = (instanceId: string, toolId: string) => {
+    const currentTools = flowState.toolSelections[instanceId] ?? [];
     const newTools = currentTools.includes(toolId)
       ? currentTools.filter((id) => id !== toolId)
       : [...currentTools, toolId];
@@ -157,87 +124,77 @@ export const CreateIntegratedPageClient = ({
     updateFlowState({
       toolSelections: {
         ...flowState.toolSelections,
-        [templateId]: newTools,
+        [instanceId]: newTools,
       },
     });
   };
 
   // 全ツール選択
-  const handleSelectAllTools = (templateId: string) => {
-    const template = templates?.find((t) => t.id === templateId);
-    if (template) {
+  const handleSelectAllTools = (instanceId: string) => {
+    const allConnectionConfigs: ConnectionConfigInstance[] =
+      officialServers?.flatMap((server) => server.templateInstances) ?? [];
+    const connectionConfig = allConnectionConfigs.find(
+      (config) => config.id === instanceId,
+    );
+    if (connectionConfig) {
       updateFlowState({
         toolSelections: {
           ...flowState.toolSelections,
-          [templateId]: template.mcpTools.map((t) => t.id),
+          [instanceId]: connectionConfig.tools.map((t) => t.id),
         },
       });
     }
   };
 
   // 全ツール解除
-  const handleDeselectAllTools = (templateId: string) => {
+  const handleDeselectAllTools = (instanceId: string) => {
     updateFlowState({
       toolSelections: {
         ...flowState.toolSelections,
-        [templateId]: [],
-      },
-    });
-  };
-
-  // 環境変数変更ハンドラ
-  const handleEnvVarChange = (
-    templateId: string,
-    key: string,
-    value: string,
-  ) => {
-    const templateEnvVars = flowState.envVars[templateId] ?? {};
-    updateFlowState({
-      envVars: {
-        ...flowState.envVars,
-        [templateId]: { ...templateEnvVars, [key]: value },
+        [instanceId]: [],
       },
     });
   };
 
   // ステップ進行可否の判定
-  const canProceedToStep2 = flowState.selectedTemplateIds.length >= 2;
+  const canProceedToStep2 = flowState.selectedInstanceIds.length >= 2;
   const canProceedToStep3 = useMemo(() => {
-    // 各テンプレートで最低1つのツールが選択されているか確認
-    return flowState.selectedTemplateIds.every((templateId) => {
-      const tools = flowState.toolSelections[templateId] ?? [];
+    // 各接続設定で最低1つのツールが選択されているか確認
+    return flowState.selectedInstanceIds.every((instanceId) => {
+      const tools = flowState.toolSelections[instanceId] ?? [];
       return tools.length > 0;
     });
-  }, [flowState.selectedTemplateIds, flowState.toolSelections]);
+  }, [flowState.selectedInstanceIds, flowState.toolSelections]);
   const canProceedToStep4 = flowState.serverName.trim().length > 0;
 
-  // 作成実行
+  // 統合サーバー作成実行
   const handleCreate = () => {
-    // 入力データの準備
-    const templateData: TemplateSelection[] = flowState.selectedTemplateIds.map(
-      (templateId) => {
-        const template = templates?.find((t) => t.id === templateId);
-        const tools = flowState.toolSelections[templateId] ?? [];
-        const templateEnvVars = flowState.envVars[templateId] ?? {};
+    // 全ての接続設定を抽出
+    const allConnectionConfigs: ConnectionConfigInstance[] =
+      officialServers?.flatMap((server) => server.templateInstances) ?? [];
 
-        return {
-          templateId,
-          normalizedName: normalizeServerName(template?.name ?? templateId),
-          selectedToolIds: tools,
-          envVars: templateEnvVars,
-        };
-      },
-    );
+    // 選択された接続設定のデータを準備
+    const templateData = flowState.selectedInstanceIds.map((instanceId) => {
+      const connectionConfig = allConnectionConfigs.find(
+        (config) => config.id === instanceId,
+      );
+      const tools = flowState.toolSelections[instanceId] ?? [];
+
+      return {
+        mcpServerTemplateId: connectionConfig?.mcpServerTemplateId ?? "",
+        normalizedName:
+          connectionConfig?.normalizedName ??
+          connectionConfig?.mcpServerTemplate.name ??
+          instanceId,
+        toolIds: tools,
+        // envVarsは未指定にすることで、バックエンドが既存のenvVarsを自動的に使用
+      };
+    });
 
     createIntegrated({
       name: flowState.serverName,
       description: flowState.serverDescription || undefined,
-      templates: templateData.map((t) => ({
-        mcpServerTemplateId: t.templateId,
-        normalizedName: t.normalizedName,
-        toolIds: t.selectedToolIds,
-        envVars: Object.keys(t.envVars).length > 0 ? t.envVars : undefined,
-      })),
+      templates: templateData,
     });
   };
 
@@ -249,10 +206,17 @@ export const CreateIntegratedPageClient = ({
     );
   }
 
-  if (!templates || templates.length === 0) {
+  // 全ての接続設定を抽出してチェック
+  const allConnectionConfigs: ConnectionConfigInstance[] =
+    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+
+  if (allConnectionConfigs.length === 0) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <p>利用可能なテンプレートがありません</p>
+        <p>設定済みの接続設定がありません</p>
+        <p className="mt-2 text-sm text-gray-500">
+          先にサービスを接続してから、統合サーバーを作成してください。
+        </p>
       </div>
     );
   }
@@ -267,7 +231,7 @@ export const CreateIntegratedPageClient = ({
               <ChevronLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">統合MCPサーバーを作成</h1>
+          <h1 className="text-2xl font-bold">統合サーバーを作成</h1>
         </div>
       </div>
 
@@ -282,24 +246,20 @@ export const CreateIntegratedPageClient = ({
       <div className="mb-8">
         {flowState.currentStep === 1 && (
           <TemplateSelector
-            templates={templates}
             officialServers={officialServers}
-            selectedTemplateIds={flowState.selectedTemplateIds}
-            onToggleTemplate={handleToggleTemplate}
+            selectedInstanceIds={flowState.selectedInstanceIds}
+            onToggleInstance={handleToggleInstance}
           />
         )}
 
         {flowState.currentStep === 2 && (
           <ToolSelector
-            templates={templates}
-            selectedTemplateIds={flowState.selectedTemplateIds}
-            toolSelections={flowState.toolSelections}
-            envVars={flowState.envVars}
             officialServers={officialServers}
+            selectedInstanceIds={flowState.selectedInstanceIds}
+            toolSelections={flowState.toolSelections}
             onToggleTool={handleToggleTool}
             onSelectAllTools={handleSelectAllTools}
             onDeselectAllTools={handleDeselectAllTools}
-            onEnvVarChange={handleEnvVarChange}
           />
         )}
 
@@ -307,8 +267,8 @@ export const CreateIntegratedPageClient = ({
           <ServerInfoForm
             serverName={flowState.serverName}
             serverDescription={flowState.serverDescription}
-            templates={templates}
-            selectedTemplateIds={flowState.selectedTemplateIds}
+            officialServers={officialServers}
+            selectedInstanceIds={flowState.selectedInstanceIds}
             toolSelections={flowState.toolSelections}
             onServerNameChange={(name) => updateFlowState({ serverName: name })}
             onServerDescriptionChange={(desc) =>
@@ -321,8 +281,8 @@ export const CreateIntegratedPageClient = ({
           <ReviewStep
             serverName={flowState.serverName}
             serverDescription={flowState.serverDescription}
-            templates={templates}
-            selectedTemplateIds={flowState.selectedTemplateIds}
+            officialServers={officialServers}
+            selectedInstanceIds={flowState.selectedInstanceIds}
             toolSelections={flowState.toolSelections}
           />
         )}

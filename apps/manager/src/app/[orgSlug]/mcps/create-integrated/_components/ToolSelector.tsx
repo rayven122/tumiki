@@ -4,110 +4,83 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { McpServerTemplate, McpTool } from "@tumiki/db/server";
 import type { RouterOutputs } from "@/trpc/react";
-import { api } from "@/trpc/react";
-import { toast } from "sonner";
-import { EnvVarForm } from "./EnvVarForm";
-import { CheckCircle2, Shield, Loader2 } from "lucide-react";
-
-type TemplateWithTools = McpServerTemplate & {
-  mcpTools: McpTool[];
-};
+import { CheckCircle2 } from "lucide-react";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
 
+type ConnectionConfigInstance =
+  NonNullable<OfficialServers>[number]["templateInstances"][number];
+
 type ToolSelectorProps = {
-  templates: TemplateWithTools[];
-  selectedTemplateIds: string[];
-  toolSelections: Record<string, string[]>; // templateId -> toolIds[]
-  envVars: Record<string, Record<string, string>>; // templateId -> { key: value }
   officialServers: OfficialServers | undefined;
-  onToggleTool: (templateId: string, toolId: string) => void;
-  onSelectAllTools: (templateId: string) => void;
-  onDeselectAllTools: (templateId: string) => void;
-  onEnvVarChange: (templateId: string, key: string, value: string) => void;
+  selectedInstanceIds: string[];
+  toolSelections: Record<string, string[]>; // instanceId -> toolIds[]
+  onToggleTool: (instanceId: string, toolId: string) => void;
+  onSelectAllTools: (instanceId: string) => void;
+  onDeselectAllTools: (instanceId: string) => void;
 };
 
 /**
  * ツール選択コンポーネント
+ *
+ * 既存の設定済み接続設定から選択されたものに対して、ツールを選択します。
+ * OAuth認証や環境変数入力は既に完了しているため不要です。
  */
 export const ToolSelector = ({
-  templates,
-  selectedTemplateIds,
-  toolSelections,
-  envVars,
   officialServers,
+  selectedInstanceIds,
+  toolSelections,
   onToggleTool,
   onSelectAllTools,
   onDeselectAllTools,
-  onEnvVarChange,
 }: ToolSelectorProps) => {
-  const selectedTemplates = templates.filter((t) =>
-    selectedTemplateIds.includes(t.id),
+  // 選択された接続設定を取得
+  const allConnectionConfigs: ConnectionConfigInstance[] =
+    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+
+  const selectedConfigs = allConnectionConfigs.filter((config) =>
+    selectedInstanceIds.includes(config.id),
   );
-
-  // 設定済みtemplate instanceを抽出
-  const configuredTemplateIds = new Set(
-    officialServers?.flatMap((server) =>
-      server.templateInstances.map((instance) => instance.mcpServerTemplateId),
-    ) ?? [],
-  );
-
-  // OAuth認証mutation
-  const { mutate: authenticateOAuth, isPending: isOAuthAuthenticating } =
-    api.v2.oauth.connectMcpServerForIntegrated.useMutation({
-      onSuccess: (response) => {
-        toast.info("OAuth認証画面に移動します...");
-        // sessionStorageは自動保存済み（Jotai atomWithStorage）
-        window.location.href = response.authorizationUrl;
-      },
-      onError: (error) => {
-        toast.error(`OAuth認証の開始に失敗しました: ${error.message}`);
-      },
-    });
-
-  const handleOAuthAuthenticate = (templateId: string) => {
-    authenticateOAuth({ templateId });
-  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">ツールを選択</h2>
 
-      {selectedTemplates.map((template) => {
-        const selectedTools = toolSelections[template.id] ?? [];
-        const allSelected = selectedTools.length === template.mcpTools.length;
-        const isConfigured = configuredTemplateIds.has(template.id);
+      {selectedConfigs.map((connectionConfig) => {
+        const serviceTemplate = connectionConfig.mcpServerTemplate;
+        const selectedTools = toolSelections[connectionConfig.id] ?? [];
+        const availableTools = connectionConfig.tools;
+        const allSelected = selectedTools.length === availableTools.length;
 
         return (
-          <Card key={template.id}>
+          <Card key={connectionConfig.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div>
-                    <CardTitle className="text-base">{template.name}</CardTitle>
+                    <CardTitle className="text-base">
+                      {connectionConfig.normalizedName || serviceTemplate.name}
+                    </CardTitle>
                     <p className="mt-1 text-sm text-gray-500">
-                      {selectedTools.length} / {template.mcpTools.length}{" "}
+                      {selectedTools.length} / {availableTools.length}{" "}
                       ツール選択中
                     </p>
                   </div>
-                  {isConfigured && (
-                    <Badge
-                      variant="secondary"
-                      className="border-0 bg-green-100 px-2 py-1 text-xs text-green-800"
-                    >
-                      <CheckCircle2 className="mr-1 h-3 w-3" />
-                      認証済み
-                    </Badge>
-                  )}
+                  <Badge
+                    variant="secondary"
+                    className="border-0 bg-green-100 px-2 py-1 text-xs text-green-800"
+                  >
+                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                    認証済み
+                  </Badge>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onSelectAllTools(template.id)}
+                    onClick={() => onSelectAllTools(connectionConfig.id)}
                     disabled={allSelected}
                   >
                     全選択
@@ -115,7 +88,7 @@ export const ToolSelector = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onDeselectAllTools(template.id)}
+                    onClick={() => onDeselectAllTools(connectionConfig.id)}
                     disabled={selectedTools.length === 0}
                   >
                     全解除
@@ -124,7 +97,7 @@ export const ToolSelector = ({
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {template.mcpTools.map((tool) => {
+              {availableTools.map((tool) => {
                 const isSelected = selectedTools.includes(tool.id);
 
                 return (
@@ -134,7 +107,9 @@ export const ToolSelector = ({
                   >
                     <Switch
                       checked={isSelected}
-                      onCheckedChange={() => onToggleTool(template.id, tool.id)}
+                      onCheckedChange={() =>
+                        onToggleTool(connectionConfig.id, tool.id)
+                      }
                       className="mt-0.5"
                     />
                     <div className="flex-1">
@@ -153,46 +128,6 @@ export const ToolSelector = ({
                   </div>
                 );
               })}
-
-              {/* OAuth認証ボタン（未設定OAuthテンプレート） */}
-              {template.authType === "OAUTH" && !isConfigured && (
-                <div className="mt-4 space-y-3">
-                  <Button
-                    onClick={() => handleOAuthAuthenticate(template.id)}
-                    disabled={isOAuthAuthenticating}
-                    className="w-full"
-                    variant="default"
-                  >
-                    {isOAuthAuthenticating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        OAuth認証中...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="mr-2 h-4 w-4" />
-                        OAuth認証を開始
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-xs text-gray-500">
-                    認証画面に移動します。認証完了後、この画面に戻ります。
-                  </p>
-                </div>
-              )}
-
-              {/* 環境変数入力フォーム（未設定API_KEYテンプレートのみ） */}
-              {template.envVarKeys.length > 0 &&
-                !isConfigured &&
-                template.authType !== "OAUTH" && (
-                  <EnvVarForm
-                    envVarKeys={template.envVarKeys}
-                    envVars={envVars[template.id] ?? {}}
-                    onEnvVarChange={(key, value) =>
-                      onEnvVarChange(template.id, key, value)
-                    }
-                  />
-                )}
             </CardContent>
           </Card>
         );
