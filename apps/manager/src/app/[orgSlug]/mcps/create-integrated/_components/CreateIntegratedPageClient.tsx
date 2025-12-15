@@ -41,7 +41,7 @@ export const CreateIntegratedPageClient = ({
 }: CreateIntegratedPageClientProps) => {
   const router = useRouter();
 
-  // Jotaiで状態管理（sessionStorageと自動同期）
+  // Jotaiで状態管理
   const [flowState, setFlowState] = useAtom(integratedFlowStateAtom);
 
   const totalSteps = 4;
