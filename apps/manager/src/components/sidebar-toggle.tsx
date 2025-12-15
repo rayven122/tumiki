@@ -11,8 +11,10 @@ import { SidebarLeftIcon } from "./icons";
 import { Button } from "./ui/chat/button";
 
 export function SidebarToggle({
-  className,
+  className: _className,
 }: ComponentProps<typeof SidebarTrigger>) {
+  // _className は将来のスタイルカスタマイズ用に予約されている
+  void _className;
   const { toggleSidebar } = useSidebar();
 
   return (

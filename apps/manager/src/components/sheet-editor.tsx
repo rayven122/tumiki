@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import DataGrid, { textEditor } from "react-data-grid";
 import { parse, unparse } from "papaparse";
 import { useTheme } from "next-themes";
@@ -22,9 +22,12 @@ const MIN_COLS = 26;
 const PureSpreadsheetEditor = ({
   content,
   saveContent,
-  status,
-  isCurrentVersion,
+  status: _status,
+  isCurrentVersion: _isCurrentVersion,
 }: SheetEditorProps) => {
+  // _status と _isCurrentVersion は areEqual で使用される
+  void _status;
+  void _isCurrentVersion;
   const { theme } = useTheme();
 
   const parseData = useMemo(() => {

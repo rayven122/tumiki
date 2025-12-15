@@ -1,7 +1,6 @@
 {
   "extends": "@tumiki/tsconfig/base.json",
   "compilerOptions": {
-    "composite": true,
     "jsx": "react-jsx",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -26,6 +25,9 @@
     "dist-electron",
     "out",
     "../manager/src/**/*.test.ts",
-    "../manager/src/**/*.spec.ts"
+    "../manager/src/**/*.test.tsx",
+    "../manager/src/**/*.spec.ts",
+    "../manager/src/**/*.spec.tsx",
+    "../manager/src/**/__tests__/**/*"
   ]
 }
