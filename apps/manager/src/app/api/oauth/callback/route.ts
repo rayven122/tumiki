@@ -66,17 +66,6 @@ export const GET = async (request: NextRequest) => {
 
     // 結果に応じてリダイレクト
     if (result.success) {
-      // 統合フロー用のリダイレクト
-      if (statePayload.isIntegratedFlow && statePayload.templateId) {
-        return NextResponse.redirect(
-          new URL(
-            `/${result.organizationSlug}/mcps/create-integrated?oauth_callback=true&template_id=${statePayload.templateId}`,
-            request.url,
-          ),
-        );
-      }
-
-      // 通常の個別追加フロー用リダイレクト
       return NextResponse.redirect(
         new URL(
           `/${result.organizationSlug}/mcps?success=OAuth+authentication+completed`,
@@ -84,11 +73,7 @@ export const GET = async (request: NextRequest) => {
         ),
       );
     } else {
-      // エラー時のリダイレクト
-      const redirectUrl = statePayload.isIntegratedFlow
-        ? `/${result.organizationSlug}/mcps/create-integrated?error=${encodeURIComponent(result.error ?? "Unknown error")}`
-        : `/${result.organizationSlug}/mcps?error=${encodeURIComponent(result.error ?? "Unknown error")}`;
-
+      const redirectUrl = `/${result.organizationSlug}/mcps?error=${encodeURIComponent(result.error ?? "Unknown error")}`;
       return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
   } catch (error) {
