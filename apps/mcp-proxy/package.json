@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:seed": "pnpm with-env-test tsx test/seed.ts",
-    "test:verify": "pnpm with-env-test tsx test/verify.ts"
+    "test:verify": "pnpm with-env-test tsx test/verify.ts",
+    "benchmark": "bash benchmark/scripts/run-benchmark.sh"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
