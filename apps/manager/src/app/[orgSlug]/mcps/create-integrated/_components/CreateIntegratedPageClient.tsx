@@ -14,6 +14,11 @@ import { TemplateSelector } from "./TemplateSelector";
 import { ToolSelector } from "./ToolSelector";
 import { ServerInfoForm } from "./ServerInfoForm";
 import { ReviewStep } from "./ReviewStep";
+import {
+  useConnectionConfigs,
+  findConnectionConfig,
+} from "../_hooks/useConnectionConfigs";
+import { prepareTemplateData } from "../_utils/prepareTemplateData";
 
 type CreateIntegratedPageClientProps = {
   orgSlug: string;
@@ -21,9 +26,6 @@ type CreateIntegratedPageClientProps = {
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
-
-type ConnectionConfigInstance =
-  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 /**
  * 統合サーバー作成ページのメインクライアントコンポーネント
@@ -63,6 +65,9 @@ export const CreateIntegratedPageClient = ({
 
   const isLoading = isLoadingOfficialServers;
 
+  // 全接続設定を取得（型安全＋パフォーマンス最適化）
+  const allConnectionConfigs = useConnectionConfigs(officialServers);
+
   // 統合サーバー作成mutation
   const { mutate: createIntegrated, isPending } =
     api.v2.userMcpServer.createIntegratedMcpServer.useMutation({
@@ -77,10 +82,6 @@ export const CreateIntegratedPageClient = ({
 
   // 接続設定（インスタンス）選択ハンドラ
   const handleToggleInstance = (instanceId: string) => {
-    // 全ての接続設定を抽出
-    const allConnectionConfigs: ConnectionConfigInstance[] =
-      officialServers?.flatMap((server) => server.templateInstances) ?? [];
-
     if (flowState.selectedInstanceIds.includes(instanceId)) {
       // 削除: 選択を解除し、ツール選択もクリア
       const remainingToolSelections = Object.fromEntries(
@@ -97,8 +98,9 @@ export const CreateIntegratedPageClient = ({
       });
     } else {
       // 追加: デフォルトで全ツール選択
-      const connectionConfig = allConnectionConfigs.find(
-        (config) => config.id === instanceId,
+      const connectionConfig = findConnectionConfig(
+        allConnectionConfigs,
+        instanceId,
       );
       if (connectionConfig) {
         const allToolIds = connectionConfig.tools.map((t) => t.id);
@@ -131,10 +133,9 @@ export const CreateIntegratedPageClient = ({
 
   // 全ツール選択
   const handleSelectAllTools = (instanceId: string) => {
-    const allConnectionConfigs: ConnectionConfigInstance[] =
-      officialServers?.flatMap((server) => server.templateInstances) ?? [];
-    const connectionConfig = allConnectionConfigs.find(
-      (config) => config.id === instanceId,
+    const connectionConfig = findConnectionConfig(
+      allConnectionConfigs,
+      instanceId,
     );
     if (connectionConfig) {
       updateFlowState({
@@ -169,33 +170,26 @@ export const CreateIntegratedPageClient = ({
 
   // 統合サーバー作成実行
   const handleCreate = () => {
-    // 全ての接続設定を抽出
-    const allConnectionConfigs: ConnectionConfigInstance[] =
-      officialServers?.flatMap((server) => server.templateInstances) ?? [];
-
-    // 選択された接続設定のデータを準備
-    const templateData = flowState.selectedInstanceIds.map((instanceId) => {
-      const connectionConfig = allConnectionConfigs.find(
-        (config) => config.id === instanceId,
+    try {
+      // 選択された接続設定のデータを準備
+      const templateData = prepareTemplateData(
+        flowState.selectedInstanceIds,
+        flowState.toolSelections,
+        allConnectionConfigs,
       );
-      const tools = flowState.toolSelections[instanceId] ?? [];
 
-      return {
-        mcpServerTemplateId: connectionConfig?.mcpServerTemplateId ?? "",
-        normalizedName:
-          connectionConfig?.normalizedName ??
-          connectionConfig?.mcpServerTemplate.name ??
-          instanceId,
-        toolIds: tools,
-        // envVarsは未指定にすることで、バックエンドが既存のenvVarsを自動的に使用
-      };
-    });
-
-    createIntegrated({
-      name: flowState.serverName,
-      description: flowState.serverDescription || undefined,
-      templates: templateData,
-    });
+      createIntegrated({
+        name: flowState.serverName,
+        description: flowState.serverDescription || undefined,
+        templates: templateData,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("統合サーバーの作成に失敗しました");
+      }
+    }
   };
 
   if (isLoading) {
@@ -205,10 +199,6 @@ export const CreateIntegratedPageClient = ({
       </div>
     );
   }
-
-  // 全ての接続設定を抽出してチェック
-  const allConnectionConfigs: ConnectionConfigInstance[] =
-    officialServers?.flatMap((server) => server.templateInstances) ?? [];
 
   if (allConnectionConfigs.length === 0) {
     return (

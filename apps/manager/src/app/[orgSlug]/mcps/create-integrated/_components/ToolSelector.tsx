@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutputs } from "@/trpc/react";
 import { CheckCircle2 } from "lucide-react";
+import {
+  useConnectionConfigs,
+  getConnectionConfigDisplayName,
+} from "../_hooks/useConnectionConfigs";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
-
-type ConnectionConfigInstance =
-  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 type ToolSelectorProps = {
   officialServers: OfficialServers | undefined;
@@ -36,9 +37,8 @@ export const ToolSelector = ({
   onSelectAllTools,
   onDeselectAllTools,
 }: ToolSelectorProps) => {
-  // 選択された接続設定を取得
-  const allConnectionConfigs: ConnectionConfigInstance[] =
-    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+  // 選択された接続設定を取得（型安全）
+  const allConnectionConfigs = useConnectionConfigs(officialServers);
 
   const selectedConfigs = allConnectionConfigs.filter((config) =>
     selectedInstanceIds.includes(config.id),
