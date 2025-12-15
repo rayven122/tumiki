@@ -106,7 +106,7 @@ const createConnection = async (): Promise<PrismaClient> => {
     return client;
   } catch (error) {
     // 接続失敗時はクリーンアップ
-    await client.$disconnect().catch((disconnectError) => {
+    await client.$disconnect().catch((disconnectError: unknown) => {
       logger.debug("Failed to disconnect after connection error", {
         disconnectError,
       });
