@@ -18,18 +18,11 @@ import {
 import { Mail, Clock, RefreshCw, X, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-import {
-  type OrganizationId,
-  type OrganizationInvitationId,
-} from "@/schema/ids";
+import { type OrganizationInvitationId } from "@/schema/ids";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useSession } from "next-auth/react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-type InvitationManagementSectionProps = {
-  organizationId: OrganizationId;
-};
 
 // 定数定義
 const ANIMATION_DURATION = 3000; // アニメーション表示時間（ミリ秒）
@@ -40,9 +33,7 @@ const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
   return expiresDate < now ? "expired" : "pending";
 };
 
-export const InvitationManagementSection = ({
-  organizationId,
-}: InvitationManagementSectionProps) => {
+export const InvitationManagementSection = () => {
   const { data: session } = useSession();
   const user = session?.user;
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -56,9 +47,7 @@ export const InvitationManagementSection = ({
   const { data: invitations, isLoading } =
     api.organization.getInvitations.useQuery();
 
-  const { data: organization } = api.organization.getById.useQuery({
-    id: organizationId,
-  });
+  const { data: organization } = api.organization.getById.useQuery();
 
   const utils = api.useUtils();
 

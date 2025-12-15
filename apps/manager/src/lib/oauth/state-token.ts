@@ -15,6 +15,7 @@ export const OAuthStatePayloadSchema = z.object({
   codeChallenge: z.string(),
   nonce: z.string(),
   mcpServerId: z.string(),
+  mcpServerTemplateInstanceId: z.string(),
   userId: z.string(),
   organizationId: z.string(),
   redirectUri: z.string(),

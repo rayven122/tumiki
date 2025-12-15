@@ -71,22 +71,11 @@ export const ServerDetailPageClient = ({
   );
 
   // リクエスト統計情報を取得
-  const { data: requestStats } = api.v2.userMcpServer.getRequestStats.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
-
-  // リクエストログ一覧を取得
-  const { data: requestLogs } = api.v2.userMcpServer.findRequestLogs.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
-
-  // ツール統計を取得
-  const { data: toolStats } = api.v2.userMcpServer.getToolStats.useQuery(
-    { userMcpServerId: serverId as McpServerId },
-    { enabled: !!serverId },
-  );
+  const { data: requestStats } =
+    api.v2.userMcpServerRequestLog.getRequestStats.useQuery(
+      { userMcpServerId: serverId as McpServerId },
+      { enabled: !!serverId },
+    );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
     api.v2.userMcpServer.updateServerStatus.useMutation({
@@ -234,9 +223,12 @@ export const ServerDetailPageClient = ({
                         height={48}
                         className="rounded-lg"
                       />
-                    ) : server.mcpServer?.iconPath ? (
+                    ) : server.templateInstances[0]?.mcpServerTemplate
+                        ?.iconPath ? (
                       <Image
-                        src={server.mcpServer.iconPath}
+                        src={
+                          server.templateInstances[0].mcpServerTemplate.iconPath
+                        }
                         alt={server.name}
                         width={48}
                         height={48}
@@ -244,7 +236,10 @@ export const ServerDetailPageClient = ({
                       />
                     ) : (
                       <FaviconImage
-                        url={server.mcpServer?.url ?? null}
+                        url={
+                          server.templateInstances[0]?.mcpServerTemplate?.url ??
+                          null
+                        }
                         alt={server.name}
                         size={48}
                         fallback={
@@ -265,13 +260,37 @@ export const ServerDetailPageClient = ({
 
                     {/* メタ情報（1行目） */}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Wrench className="h-3 w-3" />
-                        <span>ツール</span>
-                        <span className="font-medium">
-                          {server.tools.length}個
-                        </span>
-                      </div>
+                      {/* ツール情報 */}
+                      {server.serverType === ServerType.OFFICIAL ? (
+                        // OFFICIAL: 単一のツール数
+                        <div className="flex items-center gap-1">
+                          <Wrench className="h-3 w-3" />
+                          <span>ツール</span>
+                          <span className="font-medium">
+                            {server.templateInstances[0]?.tools.length ?? 0}個
+                          </span>
+                        </div>
+                      ) : (
+                        // CUSTOM: 各インスタンスごとのツール数
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Wrench className="h-3 w-3" />
+                          <span>ツール:</span>
+                          {server.templateInstances.map((instance, index) => (
+                            <div
+                              key={instance.id}
+                              className="flex items-center"
+                            >
+                              <span className="font-medium">
+                                {instance.mcpServerTemplate.name}(
+                                {instance.tools.length}個)
+                              </span>
+                              {index < server.templateInstances.length - 1 && (
+                                <span className="mx-1">|</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <span>
                         作成日:{" "}
                         {new Date(server.createdAt).toLocaleDateString("ja-JP")}
@@ -402,8 +421,6 @@ export const ServerDetailPageClient = ({
                 <OverviewTab
                   server={server}
                   requestStats={requestStats}
-                  toolStats={toolStats}
-                  requestLogs={requestLogs}
                   serverId={serverId as McpServerId}
                 />
               );
@@ -417,7 +434,12 @@ export const ServerDetailPageClient = ({
               );
             }
             if (activeTab === "logs") {
-              return <LogsAnalyticsTab requestLogs={requestLogs} />;
+              return (
+                <LogsAnalyticsTab
+                  serverId={serverId as McpServerId}
+                  requestStats={requestStats}
+                />
+              );
             }
             return null;
           }}

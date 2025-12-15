@@ -9,6 +9,8 @@ import { DEFAULT_PORT } from "./constants/server.js";
 import { TIMEOUT_CONFIG } from "./constants/config.js";
 import { healthRoute } from "./routes/health.js";
 import { mcpRoute } from "./routes/mcp.js";
+import { wellKnownRoute } from "./routes/wellKnown.js";
+import { oauthRoute } from "./routes/oauthRoute.js";
 
 // Hono アプリケーションの作成
 const app = new Hono<HonoEnv>();
@@ -19,6 +21,8 @@ app.use("/*", cors());
 // ルートをマウント
 app.route("/", healthRoute);
 app.route("/", mcpRoute);
+app.route("/.well-known", wellKnownRoute);
+app.route("/oauth", oauthRoute);
 
 // サーバー起動
 const port = Number(process.env.PORT) || DEFAULT_PORT;

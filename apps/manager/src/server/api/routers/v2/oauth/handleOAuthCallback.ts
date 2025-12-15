@@ -9,8 +9,8 @@ import {
   verifyOAuthState,
   getMcpServerAndOAuthClient,
   exchangeAuthorizationCode,
-} from "./helpers/oauth-verification";
-import { setupMcpServerTools } from "./helpers/mcp-server-setup";
+} from "../userMcpServer/helpers/oauth-verification";
+import { setupMcpServerTools } from "../userMcpServer/helpers/mcp-server-setup";
 
 export type HandleOAuthCallbackInput = {
   state: string;
@@ -41,7 +41,7 @@ export const handleOAuthCallback = async (
     const { mcpServer, oauthClient, organization } =
       await getMcpServerAndOAuthClient(
         tx,
-        statePayload.mcpServerId,
+        statePayload.mcpServerTemplateInstanceId,
         statePayload.organizationId,
       );
 
@@ -67,6 +67,7 @@ export const handleOAuthCallback = async (
         userId,
         organizationId: statePayload.organizationId,
         oauthClientId: oauthClient.id,
+        mcpServerTemplateInstanceId: statePayload.mcpServerTemplateInstanceId,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token ?? null,
         expiresAt,

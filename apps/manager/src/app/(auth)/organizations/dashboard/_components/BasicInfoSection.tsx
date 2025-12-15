@@ -8,13 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Edit2, Save, X, Users } from "lucide-react";
 import { api } from "@/trpc/react";
-import { type OrganizationId } from "@/schema/ids";
-
-type BasicInfoSectionProps = {
-  organizationId: OrganizationId;
-};
-
-export const BasicInfoSection = ({ organizationId }: BasicInfoSectionProps) => {
+export const BasicInfoSection = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -22,16 +16,14 @@ export const BasicInfoSection = ({ organizationId }: BasicInfoSectionProps) => {
     logoUrl: "",
   });
 
-  const { data: organization, isLoading } = api.organization.getById.useQuery({
-    id: organizationId,
-  });
+  const { data: organization, isLoading } = api.organization.getById.useQuery();
 
   const utils = api.useUtils();
 
   const updateMutation = api.organization.update.useMutation({
     onSuccess: () => {
       setIsEditing(false);
-      void utils.organization.getById.invalidate({ id: organizationId });
+      void utils.organization.getById.invalidate();
     },
   });
 
@@ -53,7 +45,6 @@ export const BasicInfoSection = ({ organizationId }: BasicInfoSectionProps) => {
 
   const handleSave = () => {
     updateMutation.mutate({
-      id: organizationId,
       ...formData,
     });
   };

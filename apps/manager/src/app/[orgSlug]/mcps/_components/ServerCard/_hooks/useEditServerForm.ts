@@ -60,7 +60,7 @@ export const useEditServerForm = ({
 
   // OAuth認証MCPサーバー更新（v2 APIを使用、実質は再認証のため新規接続）
   const { mutate: updateOAuthMcpServer, isPending: isOAuthConnecting } =
-    api.v2.userMcpServer.connectOAuthMcpServer.useMutation({
+    api.v2.oauth.connectMcpServer.useMutation({
       onSuccess: async (response) => {
         // OAuth認証画面にリダイレクト
         toast.info("OAuth認証画面に移動します...");

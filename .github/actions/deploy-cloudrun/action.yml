@@ -136,10 +136,10 @@ runs:
         # .env ファイルを Cloud Run の env-vars-file 形式（YAML）に変換
         # Cloud Run は値に特殊文字（=など）が含まれる場合、YAML形式を要求する
         # コメント行と空行を除外し、YAML形式に変換
-        if [ -f .env.cloud-run.local ]; then
+        if [ -f .env ]; then
           {
             # コメント行と空行を除外してYAML形式に変換
-            grep -v '^\s*#' .env.cloud-run.local | grep -v '^\s*$' | while IFS= read -r line; do
+            grep -v '^\s*#' .env | grep -v '^\s*$' | while IFS= read -r line; do
               # KEY="VALUE" の形式から KEY と VALUE を抽出
               key="${line%%=*}"
               value="${line#*=}"
@@ -155,7 +155,7 @@ runs:
           ENV_COUNT=$(wc -l < .env.cloudrun)
           echo "📋 環境変数を ${ENV_COUNT} 個変換しました"
         else
-          echo "❌ .env.cloud-run.local ファイルが見つかりません"
+          echo "❌ .env ファイルが見つかりません"
           exit 1
         fi
 

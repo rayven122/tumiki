@@ -5,10 +5,11 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { type ConnectOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
-import { getOrCreateTemplateInfo } from "./helpers/server-template";
-import { createMcpServer } from "./helpers/mcp-server-creator";
-import { getOrCreateOAuthClient } from "./helpers/oauth-client-manager";
-import { generateAuthorizationUrl } from "./helpers/generateAuthorizationUrl";
+import { getOrCreateTemplateInfo } from "../userMcpServer/helpers/server-template";
+import { createOfficialMcpServer } from "../userMcpServer/helpers/mcp-server-creator";
+import { getOrCreateOAuthClient } from "../userMcpServer/helpers/oauth-client-manager";
+import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAuthorizationUrl";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 
 type ConnectOAuthMcpServerInput = z.infer<typeof ConnectOAuthMcpServerInputV2>;
 
@@ -44,13 +45,14 @@ export const connectOAuthMcpServer = async (
     organizationId,
   });
 
-  // 2. MCPサーバーを作成
-  const mcpServer = await createMcpServer({
+  // 2. 公式MCPサーバーを作成
+  const mcpServer = await createOfficialMcpServer({
     tx,
     serverName,
     description: input.description ?? "",
     templateId,
     organizationId,
+    normalizedName: normalizeServerName(serverName),
   });
 
   // 3. OAuthクライアント情報を取得または作成
@@ -72,6 +74,7 @@ export const connectOAuthMcpServer = async (
     tokenEndpoint: oauthClient.tokenEndpoint,
     scopes: oauthClient.scopes,
     mcpServerId: mcpServer.id,
+    mcpServerTemplateInstanceId: mcpServer.templateInstanceId,
     userId,
     organizationId,
   });

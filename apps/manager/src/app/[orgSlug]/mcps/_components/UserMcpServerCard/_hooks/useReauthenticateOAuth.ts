@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { api } from "@/trpc/react";
 
 type UseReauthenticateOAuthParams = {
-  mcpServerId: string;
+  mcpServerTemplateInstanceId: string;
 };
 
 /**
@@ -12,10 +12,10 @@ type UseReauthenticateOAuthParams = {
  * 既存のMCPサーバーに対してOAuth認証を再実行します。
  */
 export const useReauthenticateOAuth = ({
-  mcpServerId,
+  mcpServerTemplateInstanceId,
 }: UseReauthenticateOAuthParams) => {
   const { mutate: reauthenticate, isPending } =
-    api.v2.userMcpServer.reauthenticateOAuthMcpServer.useMutation({
+    api.v2.oauth.reauthenticateMcpServer.useMutation({
       onSuccess: async (response) => {
         toast.info("OAuth認証画面に移動します...");
         window.location.href = response.authorizationUrl;
@@ -26,8 +26,8 @@ export const useReauthenticateOAuth = ({
     });
 
   const handleReauthenticate = useCallback(() => {
-    reauthenticate({ mcpServerId });
-  }, [reauthenticate, mcpServerId]);
+    reauthenticate({ mcpServerTemplateInstanceId });
+  }, [reauthenticate, mcpServerTemplateInstanceId]);
 
   return {
     handleReauthenticate,

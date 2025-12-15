@@ -1,105 +1,81 @@
 import { TRPCError } from "@trpc/server";
-import type { Db } from "@tumiki/db/server";
 
-export type OrganizationWithMembers = {
+/**
+ * 組織情報の型（CurrentOrgと同じ構造）
+ */
+export type OrganizationInfo = {
   id: string;
-  members: {
-    id: string;
-    userId: string;
-    isAdmin: boolean;
-  }[];
   createdBy: string;
+  isPersonal: boolean;
+  isAdmin: boolean; // 現在のユーザーの管理者権限
 };
 
 /**
- * 組織のアクセス権限を検証し、組織データとユーザーのメンバーシップ情報を返す
+ * 組織アクセス検証のオプション
  */
-export const validateOrganizationAccess = async (
-  db: Db,
-  organizationId: string,
-  userId: string,
-) => {
-  const organization = await db.organization.findUnique({
-    where: { id: organizationId },
-    include: {
-      members: {
-        select: {
-          id: true,
-          userId: true,
-          isAdmin: true,
-        },
-      },
-    },
-  });
+export type OrganizationAccessOptions = {
+  /** 管理者権限が必要か */
+  requireAdmin?: boolean;
+  /** チーム（個人不可）が必要か */
+  requireTeam?: boolean;
+};
 
+/**
+ * 組織のアクセス権限を検証する
+ *
+ * protectedProcedureのcontextから取得した組織データを使用し、
+ * データベースクエリを実行せずに検証を行う
+ *
+ * @param organization - 組織データ（ctx.currentOrgから取得）
+ * @param options - 検証オプション
+ * @returns 組織情報
+ *
+ * @example
+ * // 基本的なアクセス検証
+ * validateOrganizationAccess(ctx.currentOrg);
+ *
+ * @example
+ * // 管理者権限が必要な場合
+ * validateOrganizationAccess(ctx.currentOrg, { requireAdmin: true });
+ *
+ * @example
+ * // チームの管理者権限が必要な場合（個人は不可）
+ * validateOrganizationAccess(ctx.currentOrg, {
+ *   requireAdmin: true,
+ *   requireTeam: true,
+ * });
+ */
+export const validateOrganizationAccess = (
+  organization: OrganizationInfo | null,
+  options: OrganizationAccessOptions = {},
+) => {
+  const { requireAdmin = false, requireTeam = false } = options;
+
+  // 組織データの存在確認
   if (!organization) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "組織が見つかりません",
+      message: "チームが見つかりません",
     });
   }
 
-  const userMember = organization.members.find(
-    (member) => member.userId === userId,
-  );
-
-  if (!userMember) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "この組織にアクセスする権限がありません",
-    });
-  }
-
-  return {
-    organization,
-    userMember,
-  };
-};
-
-/**
- * 組織の管理者権限を検証する
- */
-export const validateOrganizationAdminAccess = async (
-  db: Db,
-  organizationId: string,
-  userId: string,
-) => {
-  const result = await validateOrganizationAccess(db, organizationId, userId);
-
-  if (!result.userMember.isAdmin) {
+  // 管理者権限チェック
+  if (requireAdmin && !organization.isAdmin) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "この操作を行う権限がありません",
     });
   }
 
-  return result;
-};
-
-/**
- * 組織のメンバーを検索し、権限を検証する
- */
-export const findTargetMemberAndValidatePermission = async (
-  organization: OrganizationWithMembers,
-  targetMemberId: string,
-) => {
-  const targetMember = organization.members.find(
-    (member) => member.id === targetMemberId,
-  );
-
-  if (!targetMember) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "対象のメンバーが見つかりません",
-    });
-  }
-
-  if (targetMember.userId === organization.createdBy) {
+  // チームチェック（個人不可）
+  if (requireTeam && organization.isPersonal) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "組織の作成者は削除できません",
+      message: "個人ではメンバー管理機能は利用できません",
     });
   }
 
-  return targetMember;
+  return {
+    organization,
+  };
 };
