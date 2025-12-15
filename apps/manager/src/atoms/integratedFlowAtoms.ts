@@ -1,4 +1,4 @@
-import { atomWithSessionStorage } from "@/lib/atomWithSessionStorage";
+import { atom } from "jotai";
 
 /**
  * 統合サーバー作成フロー状態の型定義
@@ -9,6 +9,7 @@ import { atomWithSessionStorage } from "@/lib/atomWithSessionStorage";
  * - integratedServer (McpServer): 統合サーバー - 複数の接続設定を束ねて公開するサーバー
  *
  * 注: このフローでは既存の設定済み接続設定（connectionConfig）のみを選択可能
+ * OAuth認証フローは不要（既に設定済み）のため、sessionStorageでの状態保持は不要
  */
 export type IntegratedFlowState = {
   // 選択された接続設定（McpServerTemplateInstance）のID配列
@@ -23,13 +24,11 @@ export type IntegratedFlowState = {
   currentStep: number;
 };
 
-// sessionStorageと同期するatom
-// 注: OAuth認証フローは不要（既存の設定済み接続設定のみ使用）
-export const integratedFlowStateAtom =
-  atomWithSessionStorage<IntegratedFlowState>("tumiki_integrated_flow", {
-    selectedInstanceIds: [],
-    toolSelections: {},
-    serverName: "",
-    serverDescription: "",
-    currentStep: 1,
-  });
+// 通常のJotai atom（sessionStorageは不要）
+export const integratedFlowStateAtom = atom<IntegratedFlowState>({
+  selectedInstanceIds: [],
+  toolSelections: {},
+  serverName: "",
+  serverDescription: "",
+  currentStep: 1,
+});
