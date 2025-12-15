@@ -11,9 +11,6 @@
     "src/**/*.test.tsx",
     "src/**/*.spec.ts",
     "src/**/*.spec.tsx",
-    "src/**/__tests__/**",
-    "../manager/src/**/*.test.ts",
-    "../manager/src/**/*.spec.ts",
-    "../manager/src/**/__tests__/**"
+    "src/**/__tests__/**"
   ]
 }

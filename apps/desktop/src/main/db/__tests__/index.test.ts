@@ -76,7 +76,7 @@ describe("getDb", () => {
     const { PrismaClient } = await import(
       "../../../../prisma/generated/client"
     );
-    mockPrismaClient = new PrismaClient() as never;
+    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
     // モジュールを再インポート
     const dbModule = await import("../index");
@@ -207,7 +207,7 @@ describe("initializeDb", () => {
     const { PrismaClient } = await import(
       "../../../../prisma/generated/client"
     );
-    mockPrismaClient = new PrismaClient() as never;
+    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
     // モジュールを再インポート
     const dbModule = await import("../index");
@@ -263,7 +263,7 @@ describe("closeDb", () => {
     const { PrismaClient } = await import(
       "../../../../prisma/generated/client"
     );
-    mockPrismaClient = new PrismaClient() as never;
+    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
     // モジュールを再インポート
     const dbModule = await import("../index");
@@ -334,7 +334,7 @@ describe("エラー回復", () => {
     const { PrismaClient } = await import(
       "../../../../prisma/generated/client"
     );
-    mockPrismaClient = new PrismaClient() as never;
+    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
     // モジュールを再インポート
     const dbModule = await import("../index");
@@ -397,7 +397,7 @@ describe("toError ユーティリティ関数の動作", () => {
     const { PrismaClient } = await import(
       "../../../../prisma/generated/client"
     );
-    mockPrismaClient = new PrismaClient() as never;
+    mockPrismaClient = new PrismaClient() as unknown as typeof mockPrismaClient;
 
     // モジュールを再インポート
     const dbModule = await import("../index");

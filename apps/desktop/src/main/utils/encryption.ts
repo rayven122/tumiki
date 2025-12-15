@@ -14,8 +14,20 @@ import {
   statSync,
   renameSync,
   unlinkSync,
+  accessSync,
+  constants as fsConstants,
 } from "fs";
-import { readFile, writeFile, mkdir, stat, rename, unlink } from "fs/promises";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  stat,
+  rename,
+  unlink,
+  access,
+  constants as fsPromiseConstants,
+} from "fs/promises";
+import * as logger from "./logger";
 
 // フォールバック暗号化用の定数
 const ALGORITHM = "aes-256-gcm";
@@ -23,6 +35,12 @@ const KEY_LENGTH = 32;
 const IV_LENGTH = 16;
 const SALT_LENGTH = 32;
 const AUTH_TAG_LENGTH = 16;
+
+// 暗号化戦略のプレフィックス定数
+const ENCRYPTION_PREFIX = {
+  SAFE_STORAGE: "safe",
+  FALLBACK: "fallback",
+} as const;
 
 /**
  * 暗号化戦略のインターフェース
@@ -82,9 +100,36 @@ const validateFilePermissions = (
   try {
     const stats = statSync(filePath);
 
-    // Windows環境ではUnix形式の権限チェックをスキップ
-    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
-    if (process.platform !== "win32") {
+    if (process.platform === "win32") {
+      // Windows環境でのセキュリティチェック
+      // NTFS ACLの完全な検証はNode.jsでは困難だが、基本的なアクセス制御を確認
+      // 注意: Windows環境ではUnixスタイルの権限モデル(chmod 600)が適用されないため、
+      // 代わりにアクセス権限とファイルパスの検証を行う
+      try {
+        // 現在のユーザーが読み書き可能かチェック
+        accessSync(filePath, fsConstants.R_OK | fsConstants.W_OK);
+      } catch {
+        throw new Error(
+          `Insufficient file access permissions on Windows. Path: ${filePath}`,
+        );
+      }
+
+      // ファイルがユーザーデータディレクトリ内にあることを確認
+      // これにより、暗号化キーがユーザー固有の保護されたディレクトリに保存されることを保証
+      const userDataPath = app.getPath("userData");
+      if (!filePath.startsWith(userDataPath)) {
+        throw new Error(
+          `Encryption key file must be in user data directory for security. Path: ${filePath}`,
+        );
+      }
+
+      // Windows環境でのセキュリティに関する情報をログ出力
+      logger.debug("Windows security check passed for encryption key file", {
+        path: filePath,
+        userDataPath,
+      });
+    } else {
+      // Unix系環境での権限チェック
       const permissions = stats.mode & parseInt("777", 8);
       const expected = parseInt(expectedPermissions, 8);
 
@@ -130,9 +175,39 @@ const validateFilePermissionsAsync = async (
   try {
     const stats = await stat(filePath);
 
-    // Windows環境ではUnix形式の権限チェックをスキップ
-    // WindowsではNTFS ACLが使用されるため、Unix権限モデルは適用されない
-    if (process.platform !== "win32") {
+    if (process.platform === "win32") {
+      // Windows環境でのセキュリティチェック
+      // NTFS ACLの完全な検証はNode.jsでは困難だが、基本的なアクセス制御を確認
+      // 注意: Windows環境ではUnixスタイルの権限モデル(chmod 600)が適用されないため、
+      // 代わりにアクセス権限とファイルパスの検証を行う
+      try {
+        // 現在のユーザーが読み書き可能かチェック
+        await access(
+          filePath,
+          fsPromiseConstants.R_OK | fsPromiseConstants.W_OK,
+        );
+      } catch {
+        throw new Error(
+          `Insufficient file access permissions on Windows. Path: ${filePath}`,
+        );
+      }
+
+      // ファイルがユーザーデータディレクトリ内にあることを確認
+      // これにより、暗号化キーがユーザー固有の保護されたディレクトリに保存されることを保証
+      const userDataPath = app.getPath("userData");
+      if (!filePath.startsWith(userDataPath)) {
+        throw new Error(
+          `Encryption key file must be in user data directory for security. Path: ${filePath}`,
+        );
+      }
+
+      // Windows環境でのセキュリティに関する情報をログ出力
+      logger.debug("Windows security check passed for encryption key file", {
+        path: filePath,
+        userDataPath,
+      });
+    } else {
+      // Unix系環境での権限チェック
       const permissions = stats.mode & parseInt("777", 8);
       const expected = parseInt(expectedPermissions, 8);
 
@@ -200,7 +275,10 @@ const getOrCreateEncryptionKey = (): Buffer => {
         // ファイルが存在しない場合は新規作成フローに進む
       } else {
         // セキュリティエラーは致命的なのでログに記録して再スロー
-        console.error("Encryption key validation failed:", error);
+        logger.error(
+          "Encryption key validation failed",
+          error instanceof Error ? error : { error },
+        );
         throw error;
       }
     }
@@ -253,7 +331,12 @@ const getOrCreateEncryptionKey = (): Buffer => {
       try {
         unlinkSync(tempPath);
       } catch (cleanupError) {
-        console.error("Failed to cleanup temporary key file:", cleanupError);
+        logger.error(
+          "Failed to cleanup temporary key file",
+          cleanupError instanceof Error
+            ? cleanupError
+            : { error: cleanupError },
+        );
       }
     }
     throw error;
@@ -297,7 +380,10 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
         // ファイルが存在しない場合は新規作成フローに進む
       } else {
         // セキュリティエラーは致命的なのでログに記録して再スロー
-        console.error("Encryption key validation failed:", error);
+        logger.error(
+          "Encryption key validation failed",
+          error instanceof Error ? error : { error },
+        );
         throw error;
       }
     }
@@ -350,7 +436,12 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
       try {
         await unlink(tempPath);
       } catch (cleanupError) {
-        console.error("Failed to cleanup temporary key file:", cleanupError);
+        logger.error(
+          "Failed to cleanup temporary key file",
+          cleanupError instanceof Error
+            ? cleanupError
+            : { error: cleanupError },
+        );
       }
     }
     throw error;
@@ -365,7 +456,7 @@ const getOrCreateEncryptionKeyAsync = async (): Promise<Buffer> => {
  */
 const createSafeStorageStrategy = (): EncryptionStrategy => ({
   isAvailable: () => safeStorage.isEncryptionAvailable(),
-  getPrefix: () => "safe",
+  getPrefix: () => ENCRYPTION_PREFIX.SAFE_STORAGE,
   encrypt: (plainText: string): string => {
     const encryptedBuffer = safeStorage.encryptString(plainText);
     return encryptedBuffer.toString("base64");
@@ -382,7 +473,7 @@ const createSafeStorageStrategy = (): EncryptionStrategy => ({
  */
 const createFallbackEncryptionStrategy = (): EncryptionStrategy => ({
   isAvailable: () => true, // 常に利用可能
-  getPrefix: () => "fallback",
+  getPrefix: () => ENCRYPTION_PREFIX.FALLBACK,
   encrypt: (plainText: string): string => {
     // ソルトとIVを生成
     const salt = randomBytes(SALT_LENGTH);
@@ -456,9 +547,9 @@ const getEncryptionStrategy = (): EncryptionStrategy => {
  */
 const getDecryptionStrategy = (prefix: string): EncryptionStrategy => {
   switch (prefix) {
-    case "safe":
+    case ENCRYPTION_PREFIX.SAFE_STORAGE:
       return createSafeStorageStrategy();
-    case "fallback":
+    case ENCRYPTION_PREFIX.FALLBACK:
       return createFallbackEncryptionStrategy();
     default:
       throw new Error(`Unknown encryption prefix: ${prefix}`);
@@ -500,9 +591,9 @@ export const decryptToken = (encryptedText: string): string => {
       // 暗号化データが含まれる可能性があるため、メッセージのみをログ出力）
       const errorMessage =
         error instanceof Error ? error.message : "Unknown decryption error";
-      console.error(
-        `Decryption failed with strategy "${prefix}": ${errorMessage}`,
-      );
+      logger.error(`Decryption failed with strategy "${prefix}"`, {
+        message: errorMessage,
+      });
       // フォールバック戦略で試す
       return createFallbackEncryptionStrategy().decrypt(data);
     }
@@ -529,7 +620,7 @@ export const decryptToken = (encryptedText: string): string => {
  */
 const createAsyncFallbackEncryptionStrategy = (): AsyncEncryptionStrategy => ({
   isAvailable: () => true, // 常に利用可能
-  getPrefix: () => "fallback",
+  getPrefix: () => ENCRYPTION_PREFIX.FALLBACK,
   encrypt: async (plainText: string): Promise<string> => {
     // ソルトとIVを生成
     const salt = randomBytes(SALT_LENGTH);
@@ -613,7 +704,7 @@ const getAsyncDecryptionStrategy = (
   prefix: string,
 ): AsyncEncryptionStrategy => {
   switch (prefix) {
-    case "safe": {
+    case ENCRYPTION_PREFIX.SAFE_STORAGE: {
       const safeStorageStrategy = createSafeStorageStrategy();
       return {
         isAvailable: safeStorageStrategy.isAvailable,
@@ -624,7 +715,7 @@ const getAsyncDecryptionStrategy = (
           Promise.resolve(safeStorageStrategy.decrypt(encryptedText)),
       };
     }
-    case "fallback":
+    case ENCRYPTION_PREFIX.FALLBACK:
       return createAsyncFallbackEncryptionStrategy();
     default:
       throw new Error(`Unknown encryption prefix: ${prefix}`);
@@ -668,9 +759,9 @@ export const decryptTokenAsync = async (
       // 暗号化データが含まれる可能性があるため、メッセージのみをログ出力）
       const errorMessage =
         error instanceof Error ? error.message : "Unknown decryption error";
-      console.error(
-        `Decryption failed with strategy "${prefix}": ${errorMessage}`,
-      );
+      logger.error(`Decryption failed with strategy "${prefix}"`, {
+        message: errorMessage,
+      });
       // フォールバック戦略で試す
       return await createAsyncFallbackEncryptionStrategy().decrypt(data);
     }

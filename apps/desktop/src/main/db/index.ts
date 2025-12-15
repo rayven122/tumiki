@@ -5,7 +5,17 @@ import { existsSync, mkdirSync } from "fs";
 import * as logger from "../utils/logger";
 
 // 接続タイムアウト設定（ミリ秒）
-const CONNECTION_TIMEOUT_MS = 30000; // 30秒
+// 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
+// デフォルト: 10秒（UX向上のため30秒から短縮）
+const CONNECTION_TIMEOUT_MS =
+  Number(process.env.DESKTOP_DB_TIMEOUT_MS) || 10000;
+
+// リトライ設定
+const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  INITIAL_DELAY_MS: 1000, // 初回遅延: 1秒
+  MAX_DELAY_MS: 15000, // 最大遅延: 15秒（5秒から延長）
+} as const;
 
 /**
  * エラーを安全にError型に変換
@@ -116,23 +126,29 @@ type ConnectionManager = {
 
 /**
  * 接続マネージャーを作成
- * シングルトンパターンで接続を管理し、競合状態を回避
+ *
+ * 設計方針:
+ * - シングルトンパターン: 単一のPrismaClientインスタンスを再利用
+ * - ミューテックス: connectionPromiseで同時接続要求を制御
+ * - リトライ: 指数バックオフで一時的な障害に対応
+ * - タイムアウト: 30秒で接続をタイムアウト
  */
 const createConnectionManager = (): ConnectionManager => {
+  // シングルトンインスタンス
   let prisma: PrismaClient | undefined;
+  // 同時接続要求を防ぐためのPromise（ミューテックス）
   let connectionPromise: Promise<PrismaClient> | null = null;
 
   /**
    * リトライ機能付き接続作成（タイムアウト付き）
-   * @param retries リトライ回数
+   * 指数バックオフで一時的な障害に対応
    * @returns PrismaClientインスタンス
    */
-  const createConnectionWithRetry = async (
-    retries = 3,
-  ): Promise<PrismaClient> => {
+  const createConnectionWithRetry = async (): Promise<PrismaClient> => {
     let lastError: Error | undefined;
+    const { MAX_RETRIES, INITIAL_DELAY_MS, MAX_DELAY_MS } = RETRY_CONFIG;
 
-    for (let attempt = 0; attempt < retries; attempt++) {
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         // 各接続試行にタイムアウトを設定
         const client = await withTimeout(
@@ -145,13 +161,18 @@ const createConnectionManager = (): ConnectionManager => {
         const err = toError(error);
         lastError = err;
         logger.warn(
-          `Database connection attempt ${attempt + 1}/${retries} failed`,
+          `Database connection attempt ${attempt + 1}/${MAX_RETRIES} failed`,
           { error: err.message, stack: err.stack },
         );
 
         // 最後の試行でない場合は待機してからリトライ
-        if (attempt < retries - 1) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // 指数バックオフ（最大5秒）
+        if (attempt < MAX_RETRIES - 1) {
+          // 指数バックオフ: 1秒 → 2秒 → 4秒 → 8秒 → 15秒（最大）
+          const delay = Math.min(
+            INITIAL_DELAY_MS * Math.pow(2, attempt),
+            MAX_DELAY_MS,
+          );
+          logger.debug(`Retrying database connection in ${delay}ms`);
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
@@ -163,13 +184,7 @@ const createConnectionManager = (): ConnectionManager => {
 
   return {
     /**
-     * データベース接続を取得
-     *
-     * ミューテックスパターン実装:
-     * - 既存接続があれば即座に返す
-     * - 接続中の場合は同じPromiseを返して競合を回避
-     * - 新規接続時はconnectionPromiseで排他制御
-     * - エラー時はPromiseをクリアして再試行可能にする
+     * データベース接続を取得（ミューテックスパターン）
      */
     getConnection: async (): Promise<PrismaClient> => {
       // 既存の接続がある場合はそれを返す
@@ -188,12 +203,11 @@ const createConnectionManager = (): ConnectionManager => {
         }
       }
 
-      // 新しい接続を作成（排他制御されている）
+      // 新しい接続を作成
       connectionPromise = (async () => {
-        // 現在のPromiseを参照保持して、競合状態を回避
         const currentPromise = connectionPromise;
         try {
-          const client = await createConnectionWithRetry(3);
+          const client = await createConnectionWithRetry();
           // 接続成功時にクロージャ内の変数に保存
           prisma = client;
           return client;
