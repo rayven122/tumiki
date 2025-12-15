@@ -31,3 +31,8 @@ Thumbs.db
 
 # Turbo
 .turbo/
+
+# Benchmark results
+benchmark/results/*
+!benchmark/results/.gitkeep
+benchmark/**/*.bin
