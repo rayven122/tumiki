@@ -39,7 +39,7 @@ export default defineConfig({
   renderer: {
     root: "src/renderer",
     build: {
-      outDir: "../../dist-electron/renderer",
+      outDir: resolve(__dirname, "dist-electron/renderer"),
     },
     resolve: {
       alias: {

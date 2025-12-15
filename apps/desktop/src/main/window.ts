@@ -1,6 +1,5 @@
 import { BrowserWindow } from "electron";
 import { join } from "path";
-import { pathToFileURL } from "url";
 
 export const createMainWindow = (): BrowserWindow => {
   const mainWindow = new BrowserWindow({
@@ -18,9 +17,9 @@ export const createMainWindow = (): BrowserWindow => {
     mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools();
   } else {
-    // 本番環境: file:// URLを使用してHTMLをロード
+    // 本番環境: loadFileを使用してHTMLをロード（HashRouterと互換性あり）
     const indexPath = join(__dirname, "../renderer/index.html");
-    mainWindow.loadURL(pathToFileURL(indexPath).href);
+    mainWindow.loadFile(indexPath, { hash: "/" });
     // デバッグ用に一時的にDevToolsを開く
     mainWindow.webContents.openDevTools();
   }
