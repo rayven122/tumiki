@@ -2,18 +2,20 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { McpServerTemplate, McpTool } from "@tumiki/db/server";
+import type { RouterOutputs } from "@/trpc/react";
 
-type TemplateWithTools = McpServerTemplate & {
-  mcpTools: McpTool[];
-};
+type OfficialServers =
+  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+
+type ConnectionConfigInstance =
+  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 type ReviewStepProps = {
   serverName: string;
   serverDescription: string;
-  templates: TemplateWithTools[];
-  selectedTemplateIds: string[];
-  toolSelections: Record<string, string[]>; // templateId -> toolIds[]
+  officialServers: OfficialServers | undefined;
+  selectedInstanceIds: string[];
+  toolSelections: Record<string, string[]>; // instanceId -> toolIds[]
 };
 
 /**
@@ -22,12 +24,17 @@ type ReviewStepProps = {
 export const ReviewStep = ({
   serverName,
   serverDescription,
-  templates,
-  selectedTemplateIds,
+  officialServers,
+  selectedInstanceIds,
   toolSelections,
 }: ReviewStepProps) => {
-  const selectedTemplates = templates.filter((t) =>
-    selectedTemplateIds.includes(t.id),
+  // 全ての接続設定を抽出
+  const allConnectionConfigs: ConnectionConfigInstance[] =
+    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+
+  // 選択された接続設定のみ抽出
+  const selectedConfigs = allConnectionConfigs.filter((config) =>
+    selectedInstanceIds.includes(config.id),
   );
 
   return (
@@ -55,21 +62,24 @@ export const ReviewStep = ({
         </Card>
       </div>
 
-      {/* 統合するテンプレート */}
+      {/* 統合する接続設定 */}
       <div>
-        <h3 className="mb-3 text-base font-semibold">統合するテンプレート</h3>
+        <h3 className="mb-3 text-base font-semibold">統合する接続設定</h3>
         <div className="space-y-3">
-          {selectedTemplates.map((template) => {
-            const selectedTools = toolSelections[template.id] ?? [];
-            const selectedToolsList = template.mcpTools.filter((t) =>
+          {selectedConfigs.map((connectionConfig) => {
+            const serviceTemplate = connectionConfig.mcpServerTemplate;
+            const selectedTools = toolSelections[connectionConfig.id] ?? [];
+            const selectedToolsList = connectionConfig.tools.filter((t) =>
               selectedTools.includes(t.id),
             );
 
             return (
-              <Card key={template.id}>
+              <Card key={connectionConfig.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{template.name}</CardTitle>
+                    <CardTitle className="text-base">
+                      {connectionConfig.normalizedName || serviceTemplate.name}
+                    </CardTitle>
                     <Badge variant="secondary">
                       {selectedTools.length} ツール
                     </Badge>
@@ -77,7 +87,7 @@ export const ReviewStep = ({
                 </CardHeader>
                 <CardContent>
                   <p className="mb-2 text-sm text-gray-600">
-                    {template.description}
+                    {serviceTemplate.description}
                   </p>
                   <div>
                     <p className="mb-2 text-sm font-medium text-gray-700">

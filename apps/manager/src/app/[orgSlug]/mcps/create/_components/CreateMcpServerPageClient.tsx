@@ -80,12 +80,18 @@ export const CreateMcpServerPageClient = ({
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground text-sm">
-                複数のMCPサーバーを統合して1つのサーバーとして利用します。
+                既存サーバーで設定を完了したものを統合して、1つのサーバーとして利用できます。
               </p>
+              <div className="mt-3 rounded-md border border-purple-200 bg-purple-50 p-3">
+                <p className="text-xs text-purple-900">
+                  💡
+                  既に「既存サーバーを追加」で追加済みのサーバーを複数選択して統合することで、複数のツールを1つのサーバーで利用できるようになります。
+                </p>
+              </div>
               <ul className="text-muted-foreground mt-3 space-y-2 text-sm">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
-                  <span>複数のテンプレートから選択（最低2つ）</span>
+                  <span>追加済みサーバーから複数選択（最低2つ）</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
@@ -93,7 +99,7 @@ export const CreateMcpServerPageClient = ({
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5">•</span>
-                  <span>カスタム名・説明を設定</span>
+                  <span>統合サーバーの名前・説明を設定</span>
                 </li>
               </ul>
             </CardContent>
