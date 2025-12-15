@@ -6,12 +6,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Server, CheckCircle2, Wrench } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
+import {
+  useConnectionConfigs,
+  getConnectionConfigDisplayName,
+} from "../_hooks/useConnectionConfigs";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
-
-type ConnectionConfigInstance =
-  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 type TemplateSelectorProps = {
   officialServers: OfficialServers | undefined;
@@ -33,9 +34,8 @@ export const TemplateSelector = ({
   selectedInstanceIds,
   onToggleInstance,
 }: TemplateSelectorProps) => {
-  // 全ての設定済み接続設定を抽出
-  const allConnectionConfigs: ConnectionConfigInstance[] =
-    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+  // 全ての設定済み接続設定を抽出（型安全）
+  const allConnectionConfigs = useConnectionConfigs(officialServers);
 
   const totalConfigs = allConnectionConfigs.length;
 
@@ -108,8 +108,7 @@ export const TemplateSelector = ({
                         )}
                         <div>
                           <CardTitle className="text-base">
-                            {connectionConfig.normalizedName ||
-                              serviceTemplate.name}
+                            {getConnectionConfigDisplayName(connectionConfig)}
                           </CardTitle>
                           <p className="mt-0.5 text-xs text-gray-500">
                             {serviceTemplate.name}

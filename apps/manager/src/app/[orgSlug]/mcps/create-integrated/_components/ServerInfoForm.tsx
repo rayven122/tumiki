@@ -7,26 +7,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Server } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
+import { useConnectionConfigs } from "../_hooks/useConnectionConfigs";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
-
-type ConnectionConfigInstance =
-  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 type ServerInfoFormProps = {
   serverName: string;
   serverDescription: string;
   officialServers: OfficialServers | undefined;
   selectedInstanceIds: string[];
-  toolSelections: Record<string, string[]>; // instanceId -> toolIds[]
+  toolSelections: Record<string, string[]>;
   onServerNameChange: (value: string) => void;
   onServerDescriptionChange: (value: string) => void;
 };
 
-/**
- * サーバー情報入力フォームコンポーネント
- */
 export const ServerInfoForm = ({
   serverName,
   serverDescription,
@@ -36,9 +31,7 @@ export const ServerInfoForm = ({
   onServerNameChange,
   onServerDescriptionChange,
 }: ServerInfoFormProps) => {
-  // 選択された接続設定を取得
-  const allConnectionConfigs: ConnectionConfigInstance[] =
-    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+  const allConnectionConfigs = useConnectionConfigs(officialServers);
 
   const selectedConfigs = allConnectionConfigs.filter((config) =>
     selectedInstanceIds.includes(config.id),

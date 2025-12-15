@@ -3,24 +3,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutputs } from "@/trpc/react";
+import {
+  useConnectionConfigs,
+  getConnectionConfigDisplayName,
+} from "../_hooks/useConnectionConfigs";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
-
-type ConnectionConfigInstance =
-  NonNullable<OfficialServers>[number]["templateInstances"][number];
 
 type ReviewStepProps = {
   serverName: string;
   serverDescription: string;
   officialServers: OfficialServers | undefined;
   selectedInstanceIds: string[];
-  toolSelections: Record<string, string[]>; // instanceId -> toolIds[]
+  toolSelections: Record<string, string[]>;
 };
 
-/**
- * 確認ステップコンポーネント
- */
 export const ReviewStep = ({
   serverName,
   serverDescription,
@@ -28,11 +26,8 @@ export const ReviewStep = ({
   selectedInstanceIds,
   toolSelections,
 }: ReviewStepProps) => {
-  // 全ての接続設定を抽出
-  const allConnectionConfigs: ConnectionConfigInstance[] =
-    officialServers?.flatMap((server) => server.templateInstances) ?? [];
+  const allConnectionConfigs = useConnectionConfigs(officialServers);
 
-  // 選択された接続設定のみ抽出
   const selectedConfigs = allConnectionConfigs.filter((config) =>
     selectedInstanceIds.includes(config.id),
   );
