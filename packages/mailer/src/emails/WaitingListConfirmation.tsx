@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Section, Text } from "@react-email/components";
+import { Img, Section, Text } from "@react-email/components";
 
 import { Button } from "./components/Button.js";
 import { Layout } from "./components/Layout.js";
@@ -21,11 +21,13 @@ export const WaitingListConfirmation = ({
     <Layout appName={appName} previewText={previewText}>
       {/* Simplified Hero Header */}
       <Section style={heroHeader}>
-        <Text style={logoLine}>
-          <span style={logoStyle}>■</span>
-          <span style={brandName}>Tumiki</span>
-          <span style={betaLabel}>BETA</span>
-        </Text>
+        <Img
+          src="https://tumiki.cloud/favicon/logo.svg"
+          alt="Tumiki Logo"
+          width="60"
+          height="60"
+          style={logoImage}
+        />
         <Text style={heroTitle}>🎉 ウェイティングリスト登録完了！</Text>
         <Text style={heroSubtitle}>
           AIブロックの革命に参加いただき、ありがとうございます
@@ -78,36 +80,9 @@ const heroHeader = {
   textAlign: "center" as const,
 };
 
-const logoLine = {
-  marginBottom: "20px",
-  textAlign: "center" as const,
-};
-
-const logoStyle = {
-  fontSize: "24px",
-  fontWeight: "900",
-  color: "#000000",
-  backgroundColor: "#ffffff",
-  padding: "6px 10px",
-  border: "2px solid #000000",
-  marginRight: "10px",
-};
-
-const brandName = {
-  fontSize: "20px",
-  fontWeight: "900",
-  color: "#000000",
-  letterSpacing: "1px",
-  marginRight: "8px",
-};
-
-const betaLabel = {
-  fontSize: "10px",
-  fontWeight: "900",
-  color: "#ffffff",
-  backgroundColor: "#000000",
-  padding: "3px 6px",
-  letterSpacing: "1px",
+const logoImage = {
+  margin: "0 auto 20px",
+  display: "block",
 };
 
 const heroTitle = {
