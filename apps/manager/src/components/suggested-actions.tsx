@@ -15,10 +15,8 @@ interface SuggestedActionsProps {
 function PureSuggestedActions({
   chatId,
   append,
-  selectedVisibilityType: _selectedVisibilityType,
+  selectedVisibilityType,
 }: SuggestedActionsProps) {
-  // _selectedVisibilityType は memo 比較で使用される
-  void _selectedVisibilityType;
   const suggestedActions = [
     {
       title: "What are the advantages",

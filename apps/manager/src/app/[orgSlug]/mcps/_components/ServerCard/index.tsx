@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import type React from "react";
 import Image from "next/image";
 
 import {

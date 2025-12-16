@@ -19,7 +19,7 @@ import { Crown } from "lucide-react";
 interface RoleAssignmentProps {
   organizationId: string;
   memberId?: string;
-  groupId?: string;
+  _groupId?: string;
   currentRoleIds?: string[];
   onAssignmentChange?: (roleIds: string[]) => void;
 }
@@ -27,12 +27,10 @@ interface RoleAssignmentProps {
 export const RoleAssignment = ({
   organizationId,
   memberId,
-  groupId: _groupId,
+  _groupId,
   currentRoleIds = [],
   onAssignmentChange,
 }: RoleAssignmentProps) => {
-  // _groupId は将来の機能拡張用に予約されている
-  void _groupId;
   const [selectedRoleIds, setSelectedRoleIds] =
     useState<string[]>(currentRoleIds);
 
