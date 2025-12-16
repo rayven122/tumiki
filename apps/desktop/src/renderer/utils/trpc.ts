@@ -20,7 +20,7 @@ export const createTRPCClient = () => {
       httpBatchLink({
         url:
           import.meta.env.VITE_MANAGER_API_URL ||
-          "https://local.tumiki.cloud:3000/api/trpc",
+          "http://localhost:3000/api/trpc",
 
         // 認証トークンを自動的に付与
         headers: async () => {
