@@ -168,3 +168,30 @@ GitHub Actionsによる自動デプロイ（`main`ブランチ → Production、
 
 - Production: <https://mcp.tumiki.cloud>
 - Staging: <https://stg-mcp.tumiki.cloud>
+
+**Keycloak (GCE)**:
+
+- Production: <https://auth.tumiki.cloud>
+
+### Keycloak デプロイ
+
+Keycloak を Google Compute Engine (GCE) にデプロイします。
+
+**料金**: 約 $37.63/月（約5,645円/月）
+
+- [デプロイガイド](./docker/keycloak/README.md) - 詳細な手順
+- [料金詳細](./docker/keycloak/PRICING.md) - 月額料金の詳細見積もり
+
+**クイックスタート**:
+```bash
+# 1. Cloud SQL セットアップ
+./docker/keycloak/setup-sql.sh
+
+# 2. GCE にデプロイ
+./docker/keycloak/prod-gce/deploy.sh
+```
+
+**メリット**:
+- ✅ コールドスタートなし（JVMアプリに最適）
+- ✅ 定額料金（トラフィック増加でも安心）
+- ✅ 十分なリソース（2GB RAM、2 vCPU）

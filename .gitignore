@@ -158,4 +158,7 @@ reports/
 
 # Keycloak credentials and setup
 docs/deployment/keycloak-credentials.md
-scripts/setup-keycloak.sh
+
+# Cloud deployment temporary files
+.env.production
+.gcp-credentials.json
