@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { getDb } from "../db";
-import { encryptToken, decryptToken } from "../utils/encryption";
+import { encryptTokenAsync, decryptTokenAsync } from "../utils/encryption";
 import type { AuthTokenData } from "../../types/auth";
 import { getOAuthManager } from "../index";
 import * as logger from "../utils/logger";
@@ -61,8 +61,8 @@ export const setupAuthIpc = (): void => {
         return null;
       }
 
-      // 暗号化されたトークンを復号化
-      const decryptedToken = decryptToken(token.accessToken);
+      // 暗号化されたトークンを非同期で復号化
+      const decryptedToken = await decryptTokenAsync(token.accessToken);
 
       // 復号化されたトークンの有効性検証
       if (!decryptedToken || decryptedToken.length === 0) {
@@ -88,11 +88,11 @@ export const setupAuthIpc = (): void => {
 
       const db = await getDb();
 
-      // 新しいトークンを暗号化して保存
+      // 新しいトークンを非同期で暗号化して保存
       const newToken = await db.authToken.create({
         data: {
-          accessToken: encryptToken(validatedData.accessToken),
-          refreshToken: encryptToken(validatedData.refreshToken),
+          accessToken: await encryptTokenAsync(validatedData.accessToken),
+          refreshToken: await encryptTokenAsync(validatedData.refreshToken),
           expiresAt: validatedData.expiresAt,
         },
       });

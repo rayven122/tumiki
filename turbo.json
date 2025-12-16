@@ -33,6 +33,13 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    "@tumiki/desktop#typecheck": {
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
+    },
+    "@tumiki/desktop#db:generate": {
+      "outputs": ["prisma/generated/**"]
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]

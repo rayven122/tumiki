@@ -2,7 +2,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/api/root";
-import { logError, toErrorWithStatus } from "./errorHandling";
+import { logError, toErrorWithStatus, classifyError } from "./errorHandling";
 
 // リクエストタイムアウト設定（ミリ秒）
 // デスクトップアプリケーションでは30秒が適切なタイムアウト時間
@@ -20,7 +20,7 @@ export const createTRPCClient = () => {
       httpBatchLink({
         url:
           import.meta.env.VITE_MANAGER_API_URL ||
-          "https://local.tumiki.cloud:3000/api/trpc",
+          "http://localhost:3000/api/trpc",
 
         // 認証トークンを自動的に付与
         headers: async () => {
@@ -43,17 +43,24 @@ export const createTRPCClient = () => {
 
         // フェッチオプション
         fetch: async (url, options) => {
-          // タイムアウト設定（10秒）
+          // タイムアウト設定
           const controller = new AbortController();
 
-          // tRPCのfetchオプション型定義
-          type TRPCFetchOptions = RequestInit & {
-            signal?: AbortSignal;
+          // 型ガード: optionsがRequestInit互換かどうかを検証
+          const isRequestInit = (
+            opt: unknown,
+          ): opt is RequestInit | undefined => {
+            return (
+              opt === undefined ||
+              opt === null ||
+              (typeof opt === "object" && opt !== null)
+            );
           };
 
-          // optionsがundefinedまたはnullの場合の処理
-          const fetchOptions: TRPCFetchOptions = {
-            ...(options as RequestInit | undefined),
+          // optionsの型安全な変換
+          const baseOptions = isRequestInit(options) ? options : undefined;
+          const fetchOptions: RequestInit = {
+            ...baseOptions,
             signal: controller.signal,
           };
 
@@ -87,8 +94,9 @@ export const createTRPCClient = () => {
 
             return response;
           } catch (error) {
-            // ネットワークエラーの統一されたログ記録
-            logError(error, "tRPC network error");
+            // エラー分類を使用した統一されたログ記録
+            const errorInfo = classifyError(error);
+            logError(error, `tRPC ${errorInfo.category} error`);
             throw error;
           }
         },

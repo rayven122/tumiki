@@ -180,46 +180,6 @@ export const calculateRetryDelay = (attemptIndex: number): number => {
 };
 
 /**
- * センシティブ情報をフィルタリング
- */
-const sanitizeError = (error: unknown): unknown => {
-  if (!error || typeof error !== "object") {
-    return error;
-  }
-
-  // センシティブなキーのリスト
-  const sensitiveKeys = [
-    "token",
-    "accessToken",
-    "refreshToken",
-    "password",
-    "secret",
-    "apiKey",
-    "authorization",
-    "cookie",
-    "session",
-  ];
-
-  const sanitized: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(error)) {
-    // センシティブなキーは [REDACTED] に置き換え
-    if (
-      sensitiveKeys.some((k) => key.toLowerCase().includes(k.toLowerCase()))
-    ) {
-      sanitized[key] = "[REDACTED]";
-    } else if (value && typeof value === "object") {
-      // ネストされたオブジェクトも再帰的にサニタイズ
-      sanitized[key] = sanitizeError(value);
-    } else {
-      sanitized[key] = value;
-    }
-  }
-
-  return sanitized;
-};
-
-/**
  * エラーをログに記録
  */
 export const logError = (error: unknown, context?: string): ErrorWithStatus => {
@@ -227,10 +187,11 @@ export const logError = (error: unknown, context?: string): ErrorWithStatus => {
   const errorInfo = classifyError(error);
 
   if (process.env.NODE_ENV === "development") {
+    // センシティブ情報を完全に除外してログ出力
     console.error(`[${errorInfo.category}] ${context || "Error"}:`, {
       message: errorInfo.message,
       status: errorInfo.status,
-      originalError: sanitizeError(error),
+      // originalErrorは完全に除外（センシティブ情報漏洩リスクを回避）
     });
   } else {
     // 本番環境では最小限のログのみ

@@ -54,6 +54,58 @@ const getPrismaClient =
 // 型エイリアス
 type PrismaClient = PrismaClientType;
 
+// 接続タイムアウト設定（ミリ秒）
+// 環境変数で設定可能（DESKTOP_DB_TIMEOUT_MS）
+// デフォルト: 10秒（UX向上のため30秒から短縮）
+const CONNECTION_TIMEOUT_MS =
+  Number(process.env.DESKTOP_DB_TIMEOUT_MS) || 10000;
+
+// リトライ設定
+const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  INITIAL_DELAY_MS: 1000, // 初回遅延: 1秒
+  MAX_DELAY_MS: 15000, // 最大遅延: 15秒（5秒から延長）
+} as const;
+
+/**
+ * エラーを安全にError型に変換
+ * unknown型のエラーをError型に変換し、型安全性を向上
+ */
+const toError = (error: unknown): Error => {
+  if (error instanceof Error) {
+    return error;
+  }
+  return new Error(String(error));
+};
+
+/**
+ * タイムアウト付きでPromiseを実行
+ * @param promise 実行するPromise
+ * @param timeoutMs タイムアウト時間（ミリ秒）
+ * @param operationName 操作名（エラーメッセージ用）
+ */
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string,
+): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((result) => {
+        clearTimeout(timeoutId);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
+};
+
 /**
  * データベースパスを取得
  * Electronアプリ実行中はuserDataディレクトリ、それ以外は環境変数またはデフォルトパスを使用
@@ -127,56 +179,65 @@ type ConnectionManager = {
 
 /**
  * 接続マネージャーを作成
- * シングルトンパターンで接続を管理し、競合状態を回避
+ *
+ * 設計方針:
+ * - シングルトンパターン: 単一のPrismaClientインスタンスを再利用
+ * - ミューテックス: connectionPromiseで同時接続要求を制御
+ * - リトライ: 指数バックオフで一時的な障害に対応
+ * - タイムアウト: 30秒で接続をタイムアウト
  */
 const createConnectionManager = (): ConnectionManager => {
+  // シングルトンインスタンス
   let prisma: PrismaClient | undefined;
+  // 同時接続要求を防ぐためのPromise（ミューテックス）
   let connectionPromise: Promise<PrismaClient> | null = null;
 
   /**
-   * リトライ機能付き接続作成
-   * @param retries リトライ回数
+   * リトライ機能付き接続作成（タイムアウト付き）
+   * 指数バックオフで一時的な障害に対応
    * @returns PrismaClientインスタンス
    */
-  const createConnectionWithRetry = async (
-    retries = 3,
-  ): Promise<PrismaClient> => {
-    let lastError: unknown;
+  const createConnectionWithRetry = async (): Promise<PrismaClient> => {
+    let lastError: Error | undefined;
+    const { MAX_RETRIES, INITIAL_DELAY_MS, MAX_DELAY_MS } = RETRY_CONFIG;
 
-    for (let attempt = 0; attempt < retries; attempt++) {
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const client = await createConnection();
+        // 各接続試行にタイムアウトを設定
+        const client = await withTimeout(
+          createConnection(),
+          CONNECTION_TIMEOUT_MS,
+          "Database connection",
+        );
         return client;
       } catch (error) {
-        lastError = error;
+        const err = toError(error);
+        lastError = err;
         logger.warn(
-          `Database connection attempt ${attempt + 1}/${retries} failed`,
-          error instanceof Error
-            ? { error: error.message, stack: error.stack }
-            : { error },
+          `Database connection attempt ${attempt + 1}/${MAX_RETRIES} failed`,
+          { error: err.message, stack: err.stack },
         );
 
         // 最後の試行でない場合は待機してからリトライ
-        if (attempt < retries - 1) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // 指数バックオフ（最大5秒）
+        if (attempt < MAX_RETRIES - 1) {
+          // 指数バックオフ: 1秒 → 2秒 → 4秒 → 8秒 → 15秒（最大）
+          const delay = Math.min(
+            INITIAL_DELAY_MS * Math.pow(2, attempt),
+            MAX_DELAY_MS,
+          );
+          logger.debug(`Retrying database connection in ${delay}ms`);
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
     }
 
     // すべてのリトライが失敗した場合
-    throw lastError;
+    throw lastError || new Error("Unknown database connection error");
   };
 
   return {
     /**
-     * データベース接続を取得
-     *
-     * ミューテックスパターン実装:
-     * - 既存接続があれば即座に返す
-     * - 接続中の場合は同じPromiseを返して競合を回避
-     * - 新規接続時はconnectionPromiseで排他制御
-     * - エラー時はPromiseをクリアして再試行可能にする
+     * データベース接続を取得（ミューテックスパターン）
      */
     getConnection: async (): Promise<PrismaClient> => {
       // 既存の接続がある場合はそれを返す
@@ -195,23 +256,23 @@ const createConnectionManager = (): ConnectionManager => {
         }
       }
 
-      // 新しい接続を作成（排他制御されている）
+      // 新しい接続を作成
       connectionPromise = (async () => {
-        // 現在のPromiseを参照保持して、競合状態を回避
         const currentPromise = connectionPromise;
         try {
-          const client = await createConnectionWithRetry(3);
+          const client = await createConnectionWithRetry();
           // 接続成功時にクロージャ内の変数に保存
           prisma = client;
           return client;
         } catch (error) {
-          logger.error(
-            "Failed to create database connection after retries",
-            error instanceof Error ? error : { error },
-          );
+          const err = toError(error);
+          logger.error("Failed to create database connection after retries", {
+            error: err.message,
+            stack: err.stack,
+          });
           // エラー時も確実にprismaをクリアして、再接続を確実にする
           prisma = undefined;
-          throw error;
+          throw err;
         } finally {
           // 現在のPromiseと一致する場合のみクリア（競合状態を防ぐ）
           if (connectionPromise === currentPromise) {
@@ -239,11 +300,12 @@ const createConnectionManager = (): ConnectionManager => {
           logger.debug("Database connection closed");
           prisma = undefined;
         } catch (error) {
-          logger.error(
-            "Failed to close database connection",
-            error instanceof Error ? error : { error },
-          );
-          throw error;
+          const err = toError(error);
+          logger.error("Failed to close database connection", {
+            error: err.message,
+            stack: err.stack,
+          });
+          throw err;
         }
       }
     },
@@ -280,11 +342,12 @@ export const initializeDb = async (): Promise<void> => {
     await db.$queryRaw`SELECT 1`;
     logger.info("Database initialized and connection verified");
   } catch (error) {
-    logger.error(
-      "Failed to initialize database",
-      error instanceof Error ? error : { error },
-    );
-    throw error;
+    const err = toError(error);
+    logger.error("Failed to initialize database", {
+      error: err.message,
+      stack: err.stack,
+    });
+    throw err;
   }
 };
 
