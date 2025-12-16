@@ -83,10 +83,24 @@ describe("cancelInvitation", () => {
         user: {
           id: mockUserId,
           email: "test@example.com",
+          organizationId: mockOrganizationId,
+          organizationSlug: "test-org",
         },
-      } as ProtectedContext["session"],
-      currentOrganizationId: mockOrganizationId,
-      isCurrentOrganizationAdmin: true,
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      } as unknown as ProtectedContext["session"],
+      currentOrg: {
+        id: mockOrganizationId,
+        createdBy: mockUserId,
+        isPersonal: false,
+        isAdmin: true,
+        members: [
+          {
+            id: "member_test123",
+            userId: mockUserId,
+            isAdmin: true,
+          },
+        ],
+      },
       headers: new Headers(),
     } as ProtectedContext;
   });
@@ -144,9 +158,12 @@ describe("cancelInvitation", () => {
 
   test("管理者でないユーザーはエラーになる", async () => {
     // 管理者でないコンテキストを作成
-    const nonAdminCtx = {
+    const nonAdminCtx: typeof mockCtx = {
       ...mockCtx,
-      isCurrentOrganizationAdmin: false,
+      currentOrg: {
+        ...mockCtx.currentOrg,
+        isAdmin: false,
+      },
     };
 
     await expect(

@@ -92,33 +92,6 @@ const main = async () => {
   console.log(`   ✓ トランスポート: ${mcpServerTemplate.transportType}`);
   console.log(`   ✓ URL: ${mcpServerTemplate.url}\n`);
 
-  // 4. McpConfig (環境変数設定) の作成
-  console.log("⚙️  McpConfigを作成中...");
-  // userId が null の場合、upsert の where 句で使用できないため、
-  // 既存レコードを検索して、存在すれば何もせず、なければ作成する
-  const existingConfig = await db.mcpConfig.findFirst({
-    where: {
-      mcpServerTemplateId: mcpServerTemplate.id,
-      organizationId: organization.id,
-      userId: null,
-    },
-  });
-
-  const mcpConfig =
-    existingConfig ??
-    (await db.mcpConfig.create({
-      data: {
-        mcpServerTemplateId: mcpServerTemplate.id,
-        organizationId: organization.id,
-        userId: null, // 組織共通設定
-        envVars: JSON.stringify({
-          CONTEXT7_API_KEY: "dummy-context7-api-key-for-testing",
-        }),
-      },
-    }));
-  console.log(`   ✓ ConfigID: ${mcpConfig.id}`);
-  console.log(`   ✓ 組織共通設定として作成\n`);
-
   // 5. McpTool の作成
   console.log("🔧 McpToolを作成中...");
   const tools = [
@@ -165,17 +138,62 @@ const main = async () => {
       serverType: ServerType.CUSTOM,
       authType: AuthType.API_KEY,
       organizationId: organization.id,
-      mcpServers: {
-        connect: [{ id: mcpServerTemplate.id }],
-      },
-      allowedTools: {
-        connect: tools.map((t) => ({ id: t.id })),
+      templateInstances: {
+        create: [
+          {
+            mcpServerTemplateId: mcpServerTemplate.id,
+            normalizedName: "context7",
+            isEnabled: true,
+            displayOrder: 0,
+            allowedTools: {
+              connect: tools.map((t) => ({ id: t.id })),
+            },
+          },
+        ],
       },
     },
   });
   console.log(`   ✓ サーバーID: ${mcpServer.id}`);
   console.log(`   ✓ サーバー名: ${mcpServer.name}`);
   console.log(`   ✓ ステータス: ${mcpServer.serverStatus}\n`);
+
+  // 6.5. McpConfig (環境変数設定) の作成
+  console.log("⚙️  McpConfigを作成中...");
+  // テンプレートインスタンスを取得
+  const templateInstance = await db.mcpServerTemplateInstance.findFirst({
+    where: {
+      mcpServerId: mcpServer.id,
+      mcpServerTemplateId: mcpServerTemplate.id,
+    },
+  });
+
+  if (!templateInstance) {
+    throw new Error("Template instance not found");
+  }
+
+  // 既存の設定を確認
+  const existingConfig = await db.mcpConfig.findFirst({
+    where: {
+      mcpServerTemplateInstanceId: templateInstance.id,
+      organizationId: organization.id,
+      userId: null,
+    },
+  });
+
+  const mcpConfig =
+    existingConfig ??
+    (await db.mcpConfig.create({
+      data: {
+        mcpServerTemplateInstanceId: templateInstance.id,
+        organizationId: organization.id,
+        userId: null, // 組織共通設定
+        envVars: JSON.stringify({
+          CONTEXT7_API_KEY: "dummy-context7-api-key-for-testing",
+        }),
+      },
+    }));
+  console.log(`   ✓ ConfigID: ${mcpConfig.id}`);
+  console.log(`   ✓ 組織共通設定として作成\n`);
 
   // 7. McpApiKey の作成
   console.log("🔑 McpApiKeyを作成中...");

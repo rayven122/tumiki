@@ -3,13 +3,8 @@ import { z } from "zod";
 import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
-import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { updateOfficialServer } from "./update";
-import { handleOAuthCallback } from "./handleOAuthCallback";
-import {
-  findOfficialServers,
-  findOfficialServersOutputSchema,
-} from "./findOfficialServers";
+import { findOfficialServers } from "./findOfficialServers";
 import {
   deleteMcpServer,
   deleteMcpServerInputSchema,
@@ -21,15 +16,7 @@ import {
   updateDisplayOrderOutputSchema,
 } from "./updateDisplayOrder";
 import { updateName } from "./updateName";
-import { findById, findByIdOutputSchema } from "./findById";
-import {
-  getRequestStats,
-  getRequestStatsOutputSchema,
-} from "./getRequestStats";
-import {
-  findRequestLogs,
-  findRequestLogsOutputSchema,
-} from "./findRequestLogs";
+import { findById } from "./findById";
 import { getToolStats, getToolStatsOutputSchema } from "./getToolStats";
 import {
   updateServerStatus,
@@ -37,7 +24,13 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
-import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
+import {
+  McpServerSchema,
+  McpApiKeySchema,
+  McpServerTemplateInstanceSchema,
+  McpServerTemplateSchema,
+  McpToolSchema,
+} from "@tumiki/db/zod";
 
 // APIキー認証MCPサーバー作成用の入力スキーマ
 export const CreateApiKeyMcpServerInputV2 = z
@@ -58,31 +51,27 @@ export const CreateApiKeyMcpServerOutputV2 = z.object({
   id: z.string(),
 });
 
-// OAuth認証MCPサーバー接続用の入力スキーマ
-export const ConnectOAuthMcpServerInputV2 = z.object({
-  // テンプレートIDまたはカスタムURL（いずれか必須）
-  templateId: z.string().optional(),
-  customUrl: z.string().url().optional(),
-  transportType: z.nativeEnum(TransportType).optional(),
-
-  // サーバー情報
-  name: nameValidationSchema.optional(),
-  description: z.string().optional(),
-
-  // OAuthクライアント情報（オプション）
-  clientId: z.string().optional(),
-  clientSecret: z.string().optional(),
-});
-
-export const ConnectOAuthMcpServerOutputV2 = z.object({
-  id: z.string(),
-  authorizationUrl: z.string(),
-});
-
 export const UpdateOfficialServerInputV2 = z.object({
   id: z.string(),
   envVars: z.record(z.string(), z.string()),
 });
+
+// 公式MCPサーバー一覧取得用の出力スキーマ
+export const FindOfficialServersOutputV2 = z.array(
+  McpServerSchema.extend({
+    apiKeys: z.array(McpApiKeySchema),
+    templateInstances: z.array(
+      McpServerTemplateInstanceSchema.extend({
+        mcpServerTemplate: McpServerTemplateSchema,
+        tools: z.array(
+          McpToolSchema.extend({
+            isEnabled: z.boolean(),
+          }),
+        ),
+      }),
+    ),
+  }),
+);
 
 export const UpdateOfficialServerOutputV2 = z.object({
   id: z.string(),
@@ -98,32 +87,9 @@ export const UpdateNameOutputV2 = z.object({
   id: z.string(),
 });
 
-// OAuth Callback処理の入力スキーマ
-export const HandleOAuthCallbackInputV2 = z.object({
-  state: z.string(),
-  currentUrl: z.string().url(),
-});
-
-export const HandleOAuthCallbackOutputV2 = z.object({
-  organizationSlug: z.string(),
-  success: z.boolean(),
-  error: z.string().optional(),
-});
-
 // サーバー詳細取得の入力スキーマ
 export const FindByIdInputV2 = z.object({
   id: McpServerIdSchema,
-});
-
-// リクエスト統計取得の入力スキーマ
-export const GetRequestStatsInputV2 = z.object({
-  userMcpServerId: McpServerIdSchema,
-});
-
-// リクエストログ取得の入力スキーマ
-export const FindRequestLogsInputV2 = z.object({
-  userMcpServerId: McpServerIdSchema,
-  limit: z.number().optional(),
 });
 
 // ツール統計取得の入力スキーマ
@@ -139,18 +105,9 @@ export const UpdateServerStatusInputV2 = z.object({
 
 // ツールトグルの入力スキーマ
 export const ToggleToolInputV2 = z.object({
-  userMcpServerId: McpServerIdSchema,
+  templateInstanceId: z.string(),
   toolId: ToolIdSchema,
   isEnabled: z.boolean(),
-});
-
-// OAuth 再認証の入力スキーマ
-export const ReauthenticateOAuthMcpServerInputV2 = z.object({
-  mcpServerId: McpServerIdSchema,
-});
-
-export const ReauthenticateOAuthMcpServerOutputV2 = z.object({
-  authorizationUrl: z.string(),
 });
 
 export const userMcpServerRouter = createTRPCRouter({
@@ -174,40 +131,6 @@ export const userMcpServerRouter = createTRPCRouter({
       );
     }),
 
-  // OAuth認証MCPサーバー接続
-  connectOAuthMcpServer: protectedProcedure
-    .input(ConnectOAuthMcpServerInputV2)
-    .output(ConnectOAuthMcpServerOutputV2)
-    .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        return await connectOAuthMcpServer(
-          tx,
-          input,
-          ctx.session.user.organizationId,
-          ctx.session.user.id,
-        );
-      });
-    }),
-
-  // OAuth Callback処理
-  handleOAuthCallback: protectedProcedure
-    .input(HandleOAuthCallbackInputV2)
-    .output(HandleOAuthCallbackOutputV2)
-    .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(
-        async (tx) => {
-          return await handleOAuthCallback(tx, {
-            state: input.state,
-            userId: ctx.session.user.id,
-            currentUrl: new URL(input.currentUrl),
-          });
-        },
-        {
-          timeout: 15000, // MCPサーバーからのツール取得に最大10秒かかるため、15秒に設定
-        },
-      );
-    }),
-
   update: protectedProcedure
     .input(UpdateOfficialServerInputV2)
     .output(UpdateOfficialServerOutputV2)
@@ -224,11 +147,10 @@ export const userMcpServerRouter = createTRPCRouter({
 
   // 公式MCPサーバー一覧取得
   findOfficialServers: protectedProcedure
-    .output(findOfficialServersOutputSchema)
+    .output(FindOfficialServersOutputV2)
     .query(async ({ ctx }) => {
       return await findOfficialServers(ctx.db, {
         organizationId: ctx.session.user.organizationId,
-        userId: ctx.session.user.id,
       });
     }),
 
@@ -270,34 +192,10 @@ export const userMcpServerRouter = createTRPCRouter({
   // サーバー詳細取得
   findById: protectedProcedure
     .input(FindByIdInputV2)
-    .output(findByIdOutputSchema)
     .query(async ({ ctx, input }) => {
       return await findById(ctx.db, {
         id: input.id,
         organizationId: ctx.session.user.organizationId,
-      });
-    }),
-
-  // リクエスト統計取得
-  getRequestStats: protectedProcedure
-    .input(GetRequestStatsInputV2)
-    .output(getRequestStatsOutputSchema)
-    .query(async ({ ctx, input }) => {
-      return await getRequestStats(ctx.db, {
-        userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
-      });
-    }),
-
-  // リクエストログ取得
-  findRequestLogs: protectedProcedure
-    .input(FindRequestLogsInputV2)
-    .output(findRequestLogsOutputSchema)
-    .query(async ({ ctx, input }) => {
-      return await findRequestLogs(ctx.db, {
-        userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
-        limit: input.limit ?? undefined,
       });
     }),
 
@@ -333,26 +231,10 @@ export const userMcpServerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
         return await toggleTool(tx, {
-          userMcpServerId: input.userMcpServerId,
+          templateInstanceId: input.templateInstanceId,
           toolId: input.toolId,
           isEnabled: input.isEnabled,
-          organizationId: ctx.session.user.organizationId,
         });
-      });
-    }),
-
-  // OAuth 再認証
-  reauthenticateOAuthMcpServer: protectedProcedure
-    .input(ReauthenticateOAuthMcpServerInputV2)
-    .output(ReauthenticateOAuthMcpServerOutputV2)
-    .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(async (tx) => {
-        return await reauthenticateOAuthMcpServer(
-          tx,
-          input,
-          ctx.session.user.organizationId,
-          ctx.session.user.id,
-        );
       });
     }),
 });

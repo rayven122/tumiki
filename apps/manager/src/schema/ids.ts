@@ -14,6 +14,9 @@ export const VerificationTokenIdSchema = z
  * McpServer関連のID型
  */
 export const McpServerIdSchema = z.string().brand<"McpServerId">();
+export const McpServerTemplateInstanceIdSchema = z
+  .string()
+  .brand<"McpServerTemplateInstanceId">();
 export const ToolIdSchema = z.string().brand<"ToolId">();
 
 /**
@@ -34,6 +37,9 @@ export type UserId = z.infer<typeof UserIdSchema>;
 export type VerificationTokenId = z.infer<typeof VerificationTokenIdSchema>;
 
 export type McpServerId = z.infer<typeof McpServerIdSchema>;
+export type McpServerTemplateInstanceId = z.infer<
+  typeof McpServerTemplateInstanceIdSchema
+>;
 export type ToolId = z.infer<typeof ToolIdSchema>;
 
 export type UserMcpServerConfigId = z.infer<typeof UserMcpServerConfigIdSchema>;

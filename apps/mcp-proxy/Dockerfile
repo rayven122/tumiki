@@ -101,11 +101,15 @@ RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/place
 # Set CI environment variable to skip Python MCP installation
 ENV CI=true
 
-# Install all dependencies (including dev dependencies for Prisma generators)
-RUN pnpm install --frozen-lockfile --prod=false
+# Install all dependencies without running scripts (to avoid network errors in postinstall)
+RUN pnpm install --frozen-lockfile --prod=false --ignore-scripts
 
-# Generate Prisma Client in production
-RUN cd packages/db && pnpm db:generate
+# Generate Prisma Client with retry logic to handle network errors
+RUN cd packages/db && \
+    for i in 1 2 3; do \
+      pnpm db:generate && break || \
+      (echo "Prisma generate failed (attempt $i/3), retrying..." && sleep 5); \
+    done
 
 # Remove dev dependencies to reduce image size
 RUN pnpm prune --prod

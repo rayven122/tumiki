@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,26 +25,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Crown, User } from "lucide-react";
+import { UserPlus, Trash2, Crown, User, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-import { type OrganizationId } from "@/schema/ids";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-type MemberManagementSectionProps = {
-  organizationId: OrganizationId;
-};
-
-export const MemberManagementSection = ({
-  organizationId,
-}: MemberManagementSectionProps) => {
+export const MemberManagementSection = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { data: organization, isLoading: organizationLoading } =
-    api.organization.getById.useQuery({
-      id: organizationId,
-    });
+    api.organization.getById.useQuery();
 
   const members = organization?.members;
 
@@ -55,17 +48,38 @@ export const MemberManagementSection = ({
       setInviteEmail("");
       setIsInviteDialogOpen(false);
       setShowSuccessAnimation(true);
-      void utils.organization.getById.invalidate({ id: organizationId });
-      // アニメーションを3秒後に非表示
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-      }, 3000);
+      setErrorMessage(null);
+      void utils.organization.getById.invalidate();
+      void utils.organization.getInvitations.invalidate();
+    },
+    onError: (error) => {
+      setErrorMessage(
+        error.message ||
+          "メンバーの招待に失敗しました。もう一度お試しください。",
+      );
     },
   });
 
+  // アニメーションを3秒後に非表示（メモリリーク対策）
+  useEffect(() => {
+    if (showSuccessAnimation) {
+      const timer = setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessAnimation]);
+
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
-      void utils.organization.getById.invalidate({ id: organizationId });
+      setErrorMessage(null);
+      void utils.organization.getById.invalidate();
+    },
+    onError: (error) => {
+      setErrorMessage(
+        error.message ||
+          "メンバーの削除に失敗しました。もう一度お試しください。",
+      );
     },
   });
 
@@ -80,7 +94,6 @@ export const MemberManagementSection = ({
 
   const handleRemoveMember = (memberId: string) => {
     removeMemberMutation.mutate({
-      organizationId,
       memberId,
     });
   };
@@ -173,6 +186,14 @@ export const MemberManagementSection = ({
             </Dialog>
           )}
         </CardHeader>
+        {errorMessage && (
+          <div className="px-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          </div>
+        )}
         <CardContent>
           {!members || members.length === 0 ? (
             <p className="py-4 text-center text-gray-500">

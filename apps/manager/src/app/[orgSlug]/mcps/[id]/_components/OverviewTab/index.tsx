@@ -6,39 +6,80 @@ import { api } from "@/trpc/react";
 import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity } from "lucide-react";
-import type {
-  UserMcpServerDetail,
-  RequestStats,
-  ToolStats,
-  RequestLog,
-} from "../types";
+import { sanitizeErrorMessage } from "./errorUtils";
+import type { UserMcpServerDetail, RequestStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
 
 type OverviewTabProps = {
   server: UserMcpServerDetail;
   requestStats?: RequestStats;
-  toolStats?: ToolStats[];
-  requestLogs?: RequestLog[];
   serverId: McpServerId;
 };
 
 export const OverviewTab = ({
   server,
   requestStats,
-  toolStats,
-  requestLogs,
   serverId,
 }: OverviewTabProps) => {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const utils = api.useUtils();
 
   const { mutate: toggleTool } = api.v2.userMcpServer.toggleTool.useMutation({
+    // 楽観的更新: サーバーレスポンスを待たずにUIを即座に更新
+    onMutate: async (variables) => {
+      // 進行中のクエリをキャンセル
+      await utils.v2.userMcpServer.findById.cancel({ id: serverId });
+
+      // 現在のデータを取得（ロールバック用）
+      const previousData = utils.v2.userMcpServer.findById.getData({
+        id: serverId,
+      });
+
+      // UIを楽観的に更新
+      if (previousData) {
+        utils.v2.userMcpServer.findById.setData(
+          { id: serverId },
+          {
+            ...previousData,
+            // templateInstancesのツールも更新
+            templateInstances: previousData.templateInstances.map(
+              (instance) => ({
+                ...instance,
+                tools: instance.tools.map((tool) =>
+                  tool.id === variables.toolId
+                    ? { ...tool, isEnabled: variables.isEnabled }
+                    : tool,
+                ),
+              }),
+            ),
+          },
+        );
+      }
+
+      // ロールバック用に前のデータを返す
+      return { previousData };
+    },
     onSuccess: () => {
       toast.success("ツールの状態を更新しました");
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error, _variables, context) => {
+      // エラー時は元のデータに戻す
+      if (context?.previousData) {
+        utils.v2.userMcpServer.findById.setData(
+          { id: serverId },
+          context.previousData,
+        );
+      }
+      // セキュリティ上の理由でエラーメッセージをサニタイズ
+      const safeErrorMessage = sanitizeErrorMessage(
+        error,
+        "ツールの更新に失敗しました",
+      );
+      toast.error(safeErrorMessage);
+    },
+    // 成功/失敗に関わらず最終的にデータを再取得して整合性を保つ
+    onSettled: async () => {
+      await utils.v2.userMcpServer.findById.invalidate({ id: serverId });
     },
   });
 
@@ -54,19 +95,29 @@ export const OverviewTab = ({
     });
   };
 
-  const handleToolToggle = (toolId: ToolId, enabled: boolean) => {
+  const handleToolToggle = (
+    templateInstanceId: string,
+    toolId: ToolId,
+    enabled: boolean,
+  ) => {
     toggleTool({
-      userMcpServerId: serverId,
+      templateInstanceId,
       toolId,
       isEnabled: enabled,
     });
   };
 
-  const enabledToolCount = server.tools.filter((tool) => tool.isEnabled).length;
-  const totalToolCount = server.tools.length;
+  // OFFICIALサーバーかどうかを判定
+  const isOfficialServer = server.serverType === "OFFICIAL";
 
-  // 最新のログを5件取得
-  const recentLogs = requestLogs?.slice(0, 5) ?? [];
+  // すべてのテンプレートインスタンスからツールを集約（OFFICIALサーバー用）
+  const allTools = server.templateInstances.flatMap(
+    (instance) => instance.tools,
+  );
+
+  // 有効化されているツールの数（OFFICIALサーバー用）
+  const enabledToolCount = allTools.filter((tool) => tool.isEnabled).length;
+  const totalToolCount = allTools.length;
 
   return (
     <div className="space-y-6">
@@ -76,78 +127,75 @@ export const OverviewTab = ({
         <DataUsageStatsCard requestStats={requestStats} />
       </div>
 
-      {/* 最近のリクエストログ */}
-      {recentLogs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="h-4 w-4" />
-              最近のリクエスト
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {recentLogs.map((log, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between border-b pb-2 last:border-b-0"
-                >
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{log.method}</span>
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                          log.httpStatus >= 200 && log.httpStatus < 300
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {log.httpStatus}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(log.createdAt).toLocaleString("ja-JP")}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-gray-500">
-                    {log.durationMs}ms
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* ツール情報 */}
-      {server.tools.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">
-            利用可能なツール ({enabledToolCount}/{totalToolCount})
-          </h3>
+      {isOfficialServer
+        ? // OFFICIALサーバー: 単一インスタンスとして表示
+          (() => {
+            const firstInstance = server.templateInstances[0];
+            if (!firstInstance) return null;
 
-          <div className="space-y-4">
-            {server.tools.map((tool) => {
-              const toolStat = toolStats?.find(
-                (stat) => stat.toolName === tool.name,
-              );
-              return (
-                <ToolCard
-                  key={tool.id}
-                  tool={tool}
-                  isExpanded={expandedTools.has(tool.id)}
-                  onToggleExpansion={toggleToolExpansion}
-                  isEnabled={tool.isEnabled}
-                  onToggleEnabled={(enabled) =>
-                    handleToolToggle(tool.id as ToolId, enabled)
-                  }
-                  callCount={toolStat?.requestCount}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
+            return (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">
+                  利用可能なツール ({enabledToolCount}/{totalToolCount})
+                </h3>
+                <div className="space-y-4">
+                  {firstInstance.tools.map((tool) => (
+                    <ToolCard
+                      key={tool.id}
+                      tool={tool}
+                      isExpanded={expandedTools.has(tool.id)}
+                      onToggleExpansion={toggleToolExpansion}
+                      isEnabled={tool.isEnabled}
+                      onToggleEnabled={(enabled) =>
+                        handleToolToggle(
+                          firstInstance.id,
+                          tool.id as ToolId,
+                          enabled,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()
+        : // CUSTOMサーバー: 各テンプレートインスタンスごとに表示
+          server.templateInstances.map((instance) => {
+            const instanceEnabledCount = instance.tools.filter(
+              (tool) => tool.isEnabled,
+            ).length;
+            const instanceTotalCount = instance.tools.length;
+
+            return (
+              <div key={instance.id} className="space-y-4">
+                <h3 className="text-lg font-semibold">
+                  {instance.mcpServerTemplate.name} ({instanceEnabledCount}/
+                  {instanceTotalCount})
+                </h3>
+                {instance.tools.length > 0 && (
+                  <div className="space-y-4">
+                    {instance.tools.map((tool) => (
+                      <ToolCard
+                        key={tool.id}
+                        tool={tool}
+                        isExpanded={expandedTools.has(tool.id)}
+                        onToggleExpansion={toggleToolExpansion}
+                        isEnabled={tool.isEnabled}
+                        onToggleEnabled={(enabled) =>
+                          handleToolToggle(
+                            instance.id,
+                            tool.id as ToolId,
+                            enabled,
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
     </div>
   );
 };

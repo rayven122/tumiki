@@ -63,9 +63,12 @@ const AsyncServerCardList = forwardRef<
       .includes(searchQuery.toLowerCase());
 
     // タグでのフィルタリング
+    const firstInstance = server.templateInstances[0];
     const matchesTags =
       selectedTags.length === 0 ||
-      selectedTags.some((tag) => server.mcpServer?.tags.includes(tag) ?? false);
+      selectedTags.some(
+        (tag) => firstInstance?.mcpServerTemplate?.tags.includes(tag) ?? false,
+      );
 
     return matchesSearch && matchesTags;
   });

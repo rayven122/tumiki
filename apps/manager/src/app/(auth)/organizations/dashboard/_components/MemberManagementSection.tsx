@@ -28,23 +28,13 @@ import {
 import { UserPlus, Trash2, Crown, User } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-import { type OrganizationId } from "@/schema/ids";
-
-type MemberManagementSectionProps = {
-  organizationId: OrganizationId;
-};
-
-export const MemberManagementSection = ({
-  organizationId,
-}: MemberManagementSectionProps) => {
+export const MemberManagementSection = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const { data: organization, isLoading: organizationLoading } =
-    api.organization.getById.useQuery({
-      id: organizationId,
-    });
+    api.organization.getById.useQuery();
 
   const members = organization?.members;
 
@@ -55,7 +45,8 @@ export const MemberManagementSection = ({
       setInviteEmail("");
       setIsInviteDialogOpen(false);
       setShowSuccessAnimation(true);
-      void utils.organization.getById.invalidate({ id: organizationId });
+      void utils.organization.getById.invalidate();
+      void utils.organization.getInvitations.invalidate();
       // アニメーションを3秒後に非表示
       setTimeout(() => {
         setShowSuccessAnimation(false);
@@ -65,7 +56,7 @@ export const MemberManagementSection = ({
 
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
-      void utils.organization.getById.invalidate({ id: organizationId });
+      void utils.organization.getById.invalidate();
     },
   });
 
@@ -80,7 +71,6 @@ export const MemberManagementSection = ({
 
   const handleRemoveMember = (memberId: string) => {
     removeMemberMutation.mutate({
-      organizationId,
       memberId,
     });
   };

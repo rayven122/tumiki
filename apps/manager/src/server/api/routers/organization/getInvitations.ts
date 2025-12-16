@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { TRPCError } from "@trpc/server";
 import {
   OrganizationInvitationIdSchema,
   OrganizationIdSchema,
@@ -9,6 +8,7 @@ import {
   OrganizationRoleIdSchema,
   OrganizationGroupIdSchema,
 } from "@/schema/ids";
+import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 
 export const getInvitationsOutputSchema = z.array(
   z.object({
@@ -39,25 +39,14 @@ export const getInvitations = async ({
 }: {
   ctx: ProtectedContext;
 }): Promise<GetInvitationsOutput> => {
-  // 現在の組織IDを取得
-  const organizationId = ctx.session.user.organizationId;
-
-  // 組織メンバーシップを取得して管理者権限を検証
-  const membership = await ctx.db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId: organizationId,
-        userId: ctx.session.user.id,
-      },
-    },
+  // チームの管理者権限を検証
+  validateOrganizationAccess(ctx.currentOrg, {
+    requireAdmin: true,
+    requireTeam: true,
   });
 
-  if (!membership?.isAdmin) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "この操作を行う権限がありません",
-    });
-  }
+  // 現在の組織IDを取得
+  const organizationId = ctx.session.user.organizationId;
 
   const invitations = await ctx.db.organizationInvitation.findMany({
     where: {

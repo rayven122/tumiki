@@ -5,15 +5,15 @@ import { TransportType } from "@tumiki/db/prisma";
 import {
   handleOAuthCallback,
   type HandleOAuthCallbackInput,
-} from "./handleOAuthCallback";
-import * as oauthVerification from "./helpers/oauth-verification";
-import * as mcpServerSetup from "./helpers/mcp-server-setup";
+} from "../handleOAuthCallback";
+import * as oauthVerification from "../../userMcpServer/helpers/oauth-verification";
+import * as mcpServerSetup from "../../userMcpServer/helpers/mcp-server-setup";
 import type { OAuthStatePayload } from "@/lib/oauth/state-token";
 import type { OAuthTokenData } from "@/lib/oauth/oauth-client";
 
 // モック設定
-vi.mock("./helpers/oauth-verification");
-vi.mock("./helpers/mcp-server-setup");
+vi.mock("../../userMcpServer/helpers/oauth-verification");
+vi.mock("../../userMcpServer/helpers/mcp-server-setup");
 
 const mockVerifyOAuthState = vi.mocked(oauthVerification.verifyOAuthState);
 const mockGetMcpServerAndOAuthClient = vi.mocked(
@@ -28,6 +28,7 @@ const mockSetupMcpServerTools = vi.mocked(mcpServerSetup.setupMcpServerTools);
 const mockUserId = "user_123";
 const mockOrganizationId = "org_456";
 const mockMcpServerId = "mcp_789";
+const mockMcpServerTemplateInstanceId = "instance_abc";
 const mockOAuthClientId = "oauth_client_123";
 const mockStateToken = "valid-state-token";
 const mockAccessToken = "access_token_xyz";
@@ -39,6 +40,7 @@ const createMockStatePayload = (): OAuthStatePayload => ({
   codeChallenge: "challenge-xyz",
   nonce: "nonce-456",
   mcpServerId: mockMcpServerId,
+  mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,
   userId: mockUserId,
   organizationId: mockOrganizationId,
   redirectUri: "https://example.com/callback",
@@ -134,7 +136,7 @@ describe("handleOAuthCallback", () => {
       );
       expect(mockGetMcpServerAndOAuthClient).toHaveBeenCalledWith(
         mockTx,
-        mockMcpServerId,
+        mockMcpServerTemplateInstanceId,
         mockOrganizationId,
       );
       expect(mockExchangeAuthorizationCode).toHaveBeenCalledWith(

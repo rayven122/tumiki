@@ -10,11 +10,11 @@ export default function SignUpPage() {
         label="Googleで登録"
       />
 
-      <div className="text-muted-foreground text-center text-sm">
+      <div className="text-center text-sm text-slate-600">
         <span>すでにアカウントをお持ちの方は </span>
         <Link
           href="/signin"
-          className="text-primary font-medium underline-offset-4 hover:underline"
+          className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
         >
           ログイン
         </Link>
