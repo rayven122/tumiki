@@ -176,7 +176,8 @@ jobs:
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
       - name: 📨 Send Slack notification
-        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        if: ${{ vars.SLACK_ENABLED == 'true' }}
+        continue-on-error: true
         uses: slackapi/slack-github-action@v2.0.0
         with:
           payload: |
