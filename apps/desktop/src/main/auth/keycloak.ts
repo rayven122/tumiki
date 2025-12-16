@@ -54,13 +54,10 @@ export class KeycloakClient {
     authUrl.searchParams.set("client_id", this.config.clientId);
     authUrl.searchParams.set("redirect_uri", this.config.redirectUri);
     authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", "openid profile email");
+    authUrl.searchParams.set("scope", "openid");
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("code_challenge", codeChallenge);
     authUrl.searchParams.set("code_challenge_method", "S256");
-
-    // Keycloakのログイン画面をスキップして直接Googleにリダイレクト
-    authUrl.searchParams.set("kc_idp_hint", "google");
 
     return authUrl.toString();
   }

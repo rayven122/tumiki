@@ -19,10 +19,10 @@
     "lint": "eslint",
     "format": "prettier --check . --ignore-path ../../.gitignore",
     "test": "vitest",
-    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "db:push": "prisma db push --schema=./prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=./prisma/schema.prisma"
+    "db:generate": "pnpm with-env prisma generate --schema=./prisma/schema.prisma",
+    "db:push": "pnpm with-env prisma db push --schema=./prisma/schema.prisma",
+    "db:migrate": "pnpm with-env prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:studio": "pnpm with-env prisma studio --schema=./prisma/schema.prisma"
   },
   "dependencies": {
     "@tanstack/react-query": "catalog:",

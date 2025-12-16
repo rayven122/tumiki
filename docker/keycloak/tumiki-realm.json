@@ -142,6 +142,36 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "tumiki-desktop",
+      "name": "Tumiki Desktop Application",
+      "description": "Electron Desktop Application",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "tumiki-desktop-secret-change-in-production",
+      "redirectUris": [
+        "tumiki-desktop://callback"
+      ],
+      "webOrigins": [],
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
     }
   ],
   "roles": {
