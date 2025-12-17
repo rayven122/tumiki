@@ -1,24 +1,32 @@
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { existsSync } from "fs";
 import { config } from "dotenv";
 
-// .envファイルを読み込み
-config({ path: resolve(__dirname, "../../.env") });
+// .envファイルが存在する場合のみ読み込み（ローカル開発用）
+// CI環境では環境変数が直接設定されるため、既存の環境変数を上書きしない
+const envPath = resolve(__dirname, "../../.env");
+if (existsSync(envPath)) {
+  config({ path: envPath, override: false });
+}
+
+// 環境変数の値を取得（CI環境ではシェル環境変数から、ローカルでは.envから）
+const KEYCLOAK_ISSUER = process.env.KEYCLOAK_ISSUER;
+const DESKTOP_KEYCLOAK_CLIENT_ID = process.env.DESKTOP_KEYCLOAK_CLIENT_ID;
+const DESKTOP_KEYCLOAK_CLIENT_SECRET = process.env.DESKTOP_KEYCLOAK_CLIENT_SECRET;
 
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     define: {
       // メインプロセス用の環境変数をビルド時に埋め込み
-      "process.env.KEYCLOAK_ISSUER": JSON.stringify(
-        process.env.KEYCLOAK_ISSUER,
-      ),
+      "process.env.KEYCLOAK_ISSUER": JSON.stringify(KEYCLOAK_ISSUER),
       "process.env.DESKTOP_KEYCLOAK_CLIENT_ID": JSON.stringify(
-        process.env.DESKTOP_KEYCLOAK_CLIENT_ID,
+        DESKTOP_KEYCLOAK_CLIENT_ID,
       ),
       "process.env.DESKTOP_KEYCLOAK_CLIENT_SECRET": JSON.stringify(
-        process.env.DESKTOP_KEYCLOAK_CLIENT_SECRET,
+        DESKTOP_KEYCLOAK_CLIENT_SECRET,
       ),
     },
     build: {
