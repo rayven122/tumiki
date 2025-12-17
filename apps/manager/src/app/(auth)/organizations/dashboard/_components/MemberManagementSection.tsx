@@ -46,6 +46,7 @@ export const MemberManagementSection = () => {
       setIsInviteDialogOpen(false);
       setShowSuccessAnimation(true);
       void utils.organization.getById.invalidate();
+      void utils.organization.getInvitations.invalidate();
       // アニメーションを3秒後に非表示
       setTimeout(() => {
         setShowSuccessAnimation(false);
