@@ -39,9 +39,9 @@ export const getInvitations = async ({
 }: {
   ctx: ProtectedContext;
 }): Promise<GetInvitationsOutput> => {
-  // チームの管理者権限を検証
+  // チームメンバーであることを検証（閲覧は一般ユーザーも可能）
   validateOrganizationAccess(ctx.currentOrg, {
-    requireAdmin: true,
+    requireAdmin: false,
     requireTeam: true,
   });
 
