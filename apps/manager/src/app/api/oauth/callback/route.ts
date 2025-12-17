@@ -9,6 +9,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { api } from "@/trpc/server";
+import { verifyStateToken } from "@/lib/oauth/state-token";
 
 /**
  * コールバックパラメータを検証
@@ -54,6 +55,9 @@ export const GET = async (request: NextRequest) => {
     }
     const { state } = paramsResult;
 
+    // State tokenを検証してpayloadを取得
+    const statePayload = await verifyStateToken(state);
+
     // tRPC APIを呼び出してOAuthコールバックを処理
     const result = await api.v2.oauth.handleCallback({
       state,
@@ -69,14 +73,8 @@ export const GET = async (request: NextRequest) => {
         ),
       );
     } else {
-      return NextResponse.redirect(
-        new URL(
-          `/${result.organizationSlug}/mcps?error=${encodeURIComponent(
-            result.error ?? "Unknown error",
-          )}`,
-          request.url,
-        ),
-      );
+      const redirectUrl = `/${result.organizationSlug}/mcps?error=${encodeURIComponent(result.error ?? "Unknown error")}`;
+      return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
