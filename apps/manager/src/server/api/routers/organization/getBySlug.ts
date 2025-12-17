@@ -39,9 +39,14 @@ export const getOrganizationBySlug = async ({
           user: true,
           roles: true,
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: [
+          {
+            isAdmin: "desc", // 管理者を上に表示
+          },
+          {
+            createdAt: "desc", // 次に作成日順
+          },
+        ],
       },
       _count: {
         select: {
