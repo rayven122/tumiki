@@ -57,6 +57,10 @@ jobs:
           cd apps/desktop
           pnpm build:release
         env:
+          # Keycloak認証用の環境変数（build:releaseが内部でpnpm buildを再実行するため必要）
+          KEYCLOAK_ISSUER: ${{ secrets.KEYCLOAK_ISSUER }}
+          DESKTOP_KEYCLOAK_CLIENT_ID: ${{ secrets.DESKTOP_KEYCLOAK_CLIENT_ID }}
+          DESKTOP_KEYCLOAK_CLIENT_SECRET: ${{ secrets.DESKTOP_KEYCLOAK_CLIENT_SECRET }}
           # 将来的にコード署名を有効化する場合:
           # Apple Developer証明書が必要です
           # CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
