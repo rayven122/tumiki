@@ -50,6 +50,8 @@ mac:
 dmg:
   title: "${productName} ${version}"
   icon: null
+  background: null
+  writeUpdateInfo: false
   window:
     width: 540
     height: 380
