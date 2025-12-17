@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -25,75 +25,97 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Crown, User, Mail, AlertCircle } from "lucide-react";
+import { UserPlus, Trash2, Crown, User, Mail } from "lucide-react";
 import { api } from "@/trpc/react";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
+import { toast } from "sonner";
 
 type MemberListProps = {
   organization: GetOrganizationBySlugOutput;
 };
 
 export const MemberList = ({ organization }: MemberListProps) => {
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteEmails, setInviteEmails] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [invitedCount, setInvitedCount] = useState(0);
 
   const utils = api.useUtils();
 
-  const inviteMutation = api.organization.inviteMember.useMutation({
-    onSuccess: () => {
-      setInviteEmail("");
+  const isAdmin = organization.isAdmin;
+
+  const inviteMembersMutation = api.organization.inviteMembers.useMutation({
+    onSuccess: async (data) => {
+      // UIを更新
+      setInviteEmails("");
       setIsInviteDialogOpen(false);
-      setShowSuccessAnimation(true);
-      setErrorMessage(null);
-      void utils.organization.getBySlug.invalidate({
-        slug: organization.slug,
-      });
-      void utils.organization.getInvitations.invalidate();
+
+      // キャッシュを無効化（並列実行して完了を待つ）
+      await Promise.all([
+        utils.organization.getBySlug.invalidate({
+          slug: organization.slug,
+        }),
+        utils.organization.getInvitations.invalidate(),
+      ]);
+
+      // 結果を通知
+      const succeeded = data.succeeded.length;
+      const failed = data.failed.length;
+
+      if (succeeded > 0 && failed === 0) {
+        setInvitedCount(succeeded);
+        setShowSuccessAnimation(true);
+        setTimeout(() => {
+          setShowSuccessAnimation(false);
+        }, 3000);
+      } else if (succeeded > 0 && failed > 0) {
+        toast.success(`${succeeded}件の招待を送信しました`);
+        toast.error(
+          `${failed}件の招待に失敗しました: ${data.failed.map((f) => `${f.email} (${f.reason})`).join(", ")}`,
+        );
+      } else {
+        toast.error(
+          `招待の送信に失敗しました: ${data.failed.map((f) => `${f.email} (${f.reason})`).join(", ")}`,
+        );
+      }
     },
     onError: (error) => {
-      setErrorMessage(
-        error.message ||
-          "メンバーの招待に失敗しました。もう一度お試しください。",
-      );
+      toast.error(error.message || "招待の送信中にエラーが発生しました");
     },
   });
 
-  // アニメーションを3秒後に非表示（メモリリーク対策）
-  useEffect(() => {
-    if (showSuccessAnimation) {
-      const timer = setTimeout(() => {
-        setShowSuccessAnimation(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccessAnimation]);
-
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
-      setErrorMessage(null);
       void utils.organization.getBySlug.invalidate({
         slug: organization.slug,
       });
+      toast.success("メンバーを削除しました");
     },
     onError: (error) => {
-      setErrorMessage(
-        error.message ||
-          "メンバーの削除に失敗しました。もう一度お試しください。",
-      );
+      toast.error(error.message || "メンバーの削除に失敗しました");
     },
   });
 
   const handleInvite = () => {
-    if (inviteEmail.trim()) {
-      inviteMutation.mutate({
-        email: inviteEmail.trim(),
-        isAdmin: false,
-      });
+    // カンマ、改行、セミコロンで分割
+    const emailList = inviteEmails
+      .split(/[,;\n]/)
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
+
+    if (emailList.length === 0) {
+      toast.error("メールアドレスを入力してください");
+      return;
     }
+
+    // サーバー側で処理
+    inviteMembersMutation.mutate({
+      emails: emailList,
+      isAdmin: false,
+      roleIds: [],
+      groupIds: [],
+    });
   };
 
   const handleRemoveMember = (memberId: string) => {
@@ -102,15 +124,17 @@ export const MemberList = ({ organization }: MemberListProps) => {
     });
   };
 
-  const isAdmin = organization.isAdmin;
-
   return (
     <>
       {/* メンバー招待成功時のアニメーション */}
       {showSuccessAnimation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
           <SuccessAnimation
-            title="招待を送信しました！"
+            title={
+              invitedCount === 1
+                ? "招待を送信しました！"
+                : `${invitedCount}件の招待を送信しました！`
+            }
             description="招待メールが送信されました。<br/>メンバーが承認するとチームに参加できます。"
             className=""
           />
@@ -141,27 +165,36 @@ export const MemberList = ({ organization }: MemberListProps) => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="email">メールアドレス</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="user@example.com"
+                    <Label htmlFor="emails">メールアドレス</Label>
+                    <Textarea
+                      id="emails"
+                      value={inviteEmails}
+                      onChange={(e) => setInviteEmails(e.target.value)}
+                      placeholder="user1@example.com, user2@example.com&#10;user3@example.com"
+                      rows={5}
+                      className="font-mono text-sm"
                     />
+                    <p className="mt-2 text-xs text-gray-500">
+                      複数のメールアドレスはカンマ（,）、改行、またはセミコロン（;）で区切ってください
+                    </p>
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
                       onClick={() => setIsInviteDialogOpen(false)}
+                      disabled={inviteMembersMutation.isPending}
                     >
                       キャンセル
                     </Button>
                     <Button
                       onClick={handleInvite}
-                      disabled={!inviteEmail.trim() || inviteMutation.isPending}
+                      disabled={
+                        !inviteEmails.trim() || inviteMembersMutation.isPending
+                      }
                     >
-                      招待を送信
+                      {inviteMembersMutation.isPending
+                        ? "送信中..."
+                        : "招待を送信"}
                     </Button>
                   </div>
                 </div>
@@ -169,14 +202,6 @@ export const MemberList = ({ organization }: MemberListProps) => {
             </Dialog>
           )}
         </CardHeader>
-        {errorMessage && (
-          <div className="px-6">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
-          </div>
-        )}
         <CardContent>
           {!organization.members || organization.members.length === 0 ? (
             <p className="py-4 text-center text-gray-500">

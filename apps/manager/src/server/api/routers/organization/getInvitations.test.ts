@@ -144,13 +144,41 @@ describe("getInvitations", () => {
     expect(result[1]?.invitedByUser.name).toStrictEqual("Inviter Name");
   });
 
-  test("管理者でないユーザーはエラーになる", async () => {
-    // 管理者でないメンバーシップをモック
+  test("一般ユーザーでも招待一覧を取得できる（閲覧のみ）", async () => {
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    // 一般ユーザーのメンバーシップをモック
     mockDb.organizationMember.findUnique.mockResolvedValue({
       isAdmin: false,
     });
 
-    // 管理者でないコンテキストを作成
+    // 招待データをモック
+    const mockInvitations: MockInvitationWithUser[] = [
+      {
+        id: "cm123456789abcdefghi1",
+        organizationId: mockOrganizationId,
+        email: "pending@example.com",
+        token: "token1",
+        invitedBy: mockInvitedUserId,
+        isAdmin: false,
+        roleIds: [],
+        groupIds: [],
+        expires: futureDate,
+        createdAt: now,
+        updatedAt: now,
+        invitedByUser: {
+          id: mockInvitedUserId,
+          name: "Inviter Name",
+          email: "inviter@example.com",
+          image: null,
+        },
+      },
+    ];
+
+    mockDb.organizationInvitation.findMany.mockResolvedValue(mockInvitations);
+
+    // 一般ユーザーのコンテキストを作成
     const nonAdminCtx: typeof mockCtx = {
       ...mockCtx,
       currentOrg: {
@@ -161,11 +189,13 @@ describe("getInvitations", () => {
       },
     };
 
-    await expect(
-      getInvitations({
-        ctx: nonAdminCtx,
-      }),
-    ).rejects.toThrow(TRPCError);
+    // 一般ユーザーでも招待一覧を取得できることを確認
+    const result = await getInvitations({
+      ctx: nonAdminCtx,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.email).toStrictEqual("pending@example.com");
   });
 
   test("招待がない場合は空の配列を返す", async () => {

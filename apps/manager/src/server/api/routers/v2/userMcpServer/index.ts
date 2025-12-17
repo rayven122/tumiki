@@ -3,6 +3,7 @@ import { z } from "zod";
 import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
+import { createIntegratedMcpServer } from "./createIntegratedMcpServer";
 import { updateOfficialServer } from "./update";
 import { findOfficialServers } from "./findOfficialServers";
 import {
@@ -48,6 +49,26 @@ export const CreateApiKeyMcpServerInputV2 = z
   });
 
 export const CreateApiKeyMcpServerOutputV2 = z.object({
+  id: z.string(),
+});
+
+// 統合MCPサーバー作成用の入力スキーマ
+export const CreateIntegratedMcpServerInputV2 = z.object({
+  name: nameValidationSchema,
+  description: z.string().optional(),
+  templates: z
+    .array(
+      z.object({
+        mcpServerTemplateId: z.string(),
+        normalizedName: z.string(),
+        toolIds: z.array(ToolIdSchema),
+        envVars: z.record(z.string(), z.string()).optional(),
+      }),
+    )
+    .min(2, "統合サーバーには2つ以上のテンプレートが必要です"),
+});
+
+export const CreateIntegratedMcpServerOutputV2 = z.object({
   id: z.string(),
 });
 
@@ -129,6 +150,21 @@ export const userMcpServerRouter = createTRPCRouter({
           timeout: 15000, // MCPサーバーからのツール取得に最大10秒かかるため、15秒に設定
         },
       );
+    }),
+
+  // 統合MCPサーバー作成
+  createIntegratedMcpServer: protectedProcedure
+    .input(CreateIntegratedMcpServerInputV2)
+    .output(CreateIntegratedMcpServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await createIntegratedMcpServer(
+          tx,
+          input,
+          ctx.session.user.organizationId,
+          ctx.session.user.id,
+        );
+      });
     }),
 
   update: protectedProcedure

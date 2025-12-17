@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Server,
   Settings,
   Users,
   Shield,
   ChevronLeft,
   Activity,
   MessageSquare,
+  List,
+  Plus,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -62,9 +63,16 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       comingSoon: true,
     },
     {
-      name: "MCPサーバー",
+      name: "登録済みサーバー",
       href: `/${orgSlug}/mcps`,
-      icon: Server,
+      icon: List,
+      show: true, // 全組織で表示
+      disabled: false,
+    },
+    {
+      name: "MCPサーバーを作成",
+      href: `/${orgSlug}/mcps/create`,
+      icon: Plus,
       show: true, // 全組織で表示
       disabled: false,
     },
@@ -75,13 +83,6 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       show: true, // 全組織で表示
       disabled: true,
       comingSoon: true,
-    },
-    {
-      name: "フィードバック",
-      href: `/${orgSlug}/feedback`,
-      icon: MessageSquare,
-      show: true, // 全ユーザーに表示
-      disabled: false,
     },
     {
       name: "メンバー管理",
@@ -105,6 +106,13 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       show: !isPersonal, // 個人組織では非表示
       disabled: true,
       comingSoon: true,
+    },
+    {
+      name: "フィードバック",
+      href: `/${orgSlug}/feedback`,
+      icon: MessageSquare,
+      show: true, // 全ユーザーに表示
+      disabled: false,
     },
   ].filter((item) => item.show);
 
