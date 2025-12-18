@@ -62,9 +62,6 @@ export const inviteMember = async ({
           email: input.email,
           token,
           invitedBy: ctx.session.user.id,
-          isAdmin: input.isAdmin,
-          roleIds: input.roleIds,
-          groupIds: input.groupIds,
           expires,
         },
         include: {
@@ -82,8 +79,7 @@ export const inviteMember = async ({
       result.email,
       inviteUrl,
       result.organization.name,
-      result.isAdmin,
-      result.roleIds,
+      result.roles,
       result.expires.toISOString(),
     );
 

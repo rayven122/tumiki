@@ -18,7 +18,7 @@ type OrganizationContextType = {
     id: OrganizationId;
     name: string;
     isPersonal: boolean;
-    isAdmin: boolean;
+    // isAdmin削除: JWTのrolesで判定（session.user.isOrganizationAdmin）
     memberCount: number;
   } | null;
   setCurrentOrganization: (organizationId: OrganizationId) => void;
@@ -47,19 +47,19 @@ export const OrganizationProvider = ({
       enabled: status === "authenticated" && !!session?.user,
     });
 
-  // 現在の組織はsessionのdefaultOrganizationから取得
+  // 現在の組織はsessionのorganizationIdから取得
   // organizationsリストから詳細情報を補完
-  const currentOrganization = session?.user?.defaultOrganization
+  const currentOrganization = session?.user?.organizationId
     ? (() => {
         const org = organizations?.find(
-          (o) => o.id === session.user.defaultOrganization?.id,
+          (o) => o.id === session.user.organizationId,
         );
         if (!org) return null;
         return {
           id: org.id,
           name: org.name,
           isPersonal: org.isPersonal,
-          isAdmin: org.isAdmin,
+          // isAdmin削除: JWTのrolesで判定（session.user.isOrganizationAdmin）
           memberCount: org.memberCount,
         };
       })()

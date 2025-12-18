@@ -22,13 +22,13 @@ export const baseOrganizationOutput = OrganizationSchema.pick({
 
 /**
  * メンバー情報を含む組織出力スキーマ
+ * Note: isAdminフィールドは削除（JWTのrolesで判定）
  */
 export const organizationWithMembersOutput = baseOrganizationOutput.extend({
   members: z.array(
     OrganizationMemberSchema.pick({
       id: true,
       userId: true,
-      isAdmin: true,
       createdAt: true,
     }).extend({
       user: UserSchema.pick({
@@ -115,12 +115,13 @@ export const updateOrganizationInput = z.object({
 
 /**
  * メンバー招待入力スキーマ
+ * Note: isAdminフィールドは削除（代わりにrolesで指定）
  */
 export const inviteMemberInput = z.object({
   email: z.string().email(),
-  isAdmin: z.boolean().default(false),
-  roleIds: z.array(z.string()).default([]),
-  groupIds: z.array(z.string()).default([]),
+  roles: z.array(z.string()).default(["Member"]), // Keycloakロール配列
+  roleIds: z.array(z.string()).default([]), // 後方互換性のため残す（非推奨）
+  groupIds: z.array(z.string()).default([]), // 後方互換性のため残す（非推奨）
 });
 
 /**

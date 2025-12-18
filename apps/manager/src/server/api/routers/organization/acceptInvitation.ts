@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { InvitationTokenSchema } from "@/schema/ids";
+import { getOrganizationProvider } from "~/lib/organizationProvider";
 
 // 入力スキーマ
 export const acceptInvitationInputSchema = z.object({
@@ -12,7 +13,6 @@ export const acceptInvitationInputSchema = z.object({
 export const acceptInvitationOutputSchema = z.object({
   organizationSlug: z.string(),
   organizationName: z.string(),
-  isAdmin: z.boolean(),
 });
 
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationInputSchema>;
@@ -96,21 +96,53 @@ export const acceptInvitation = async ({
 
     // 6. トランザクション処理
     const result = await ctx.db.$transaction(async (tx) => {
-      // OrganizationMember作成
+      // 6-1. OrganizationMember作成
       await tx.organizationMember.create({
         data: {
           organizationId: invitation.organizationId,
           userId: ctx.session.user.id,
-          isAdmin: invitation.isAdmin,
         },
       });
 
-      // TODO: ロール・グループ割り当て
-      // invitation.roleIds と invitation.groupIds を使用して
-      // 組織内のロールとグループに割り当てる処理を実装
-      // 現在は基本的なメンバー追加のみ実装
+      // 6-2. Keycloak Group にメンバー追加（招待時に指定されたロール）
+      // Note: Week 2でexternalProviderIdフィールド追加後に有効化
+      // 現時点では、externalProviderIdが存在する組織のみKeycloak統合
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _provider = getOrganizationProvider();
 
-      // 招待レコード削除（一度のみ使用可能）
+      try {
+        // 組織の基本情報を取得（Week 2以降はexternalProviderIdも含める）
+        const org = await tx.organization.findUnique({
+          where: { id: invitation.organizationId },
+          select: { id: true },
+        });
+
+        if (!org) {
+          throw new Error("Organization not found");
+        }
+
+        // TODO: Week 2でexternalProviderIdフィールド追加後にコメント解除
+        // const role = invitation.roles[0] ?? "Member";
+        // const addMemberResult = await provider.addMember({
+        //   externalId: org.externalProviderId,
+        //   userId: ctx.session.user.id,
+        //   role: role as "Owner" | "Admin" | "Member" | "Viewer",
+        // });
+        //
+        // if (!addMemberResult.success) {
+        //   throw new Error(
+        //     addMemberResult.error ?? "Failed to add member to Keycloak Group",
+        //   );
+        // }
+      } catch (error) {
+        console.error(
+          "[AcceptInvitation] Keycloak integration skipped:",
+          error,
+        );
+        // Week 2でexternalProviderIdフィールド追加まで、エラーをログのみに留める
+      }
+
+      // 6-3. 招待レコード削除（一度のみ使用可能）
       await tx.organizationInvitation.delete({
         where: { id: invitation.id },
       });
@@ -118,7 +150,6 @@ export const acceptInvitation = async ({
       return {
         organizationSlug: invitation.organization.slug,
         organizationName: invitation.organization.name,
-        isAdmin: invitation.isAdmin,
       };
     });
 

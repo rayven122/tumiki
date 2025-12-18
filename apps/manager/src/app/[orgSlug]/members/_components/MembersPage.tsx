@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
 import { MemberList } from "./MemberList";
 import { InvitationList } from "./InvitationList";
@@ -9,7 +10,10 @@ type MembersPageProps = {
 };
 
 export const MembersPage = ({ organization }: MembersPageProps) => {
-  const isAdmin = organization.isAdmin;
+  const { data: session } = useSession();
+
+  // JWT のロールから管理者権限を取得
+  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
 
   return (
     <div className="container mx-auto space-y-8 p-6">

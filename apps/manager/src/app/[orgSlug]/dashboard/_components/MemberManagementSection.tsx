@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const MemberManagementSection = () => {
+  const { data: session } = useSession();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -87,7 +89,7 @@ export const MemberManagementSection = () => {
     if (inviteEmail.trim()) {
       inviteMutation.mutate({
         email: inviteEmail.trim(),
-        isAdmin: false,
+        roles: ["Member"],
       });
     }
   };
@@ -98,10 +100,8 @@ export const MemberManagementSection = () => {
     });
   };
 
-  const userMember = organization?.members.find(
-    (member) => member.user.id === organization.createdBy,
-  );
-  const isAdmin = userMember?.isAdmin ?? false;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
 
   if (organizationLoading) {
     return (
@@ -221,7 +221,10 @@ export const MemberManagementSection = () => {
                         {member.user.email}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
-                        {member.isAdmin ? (
+                        {member.roles.some(
+                          (role) =>
+                            role.name === "Owner" || role.name === "Admin",
+                        ) ? (
                           <Badge variant="default" className="text-xs">
                             <Crown className="mr-1 h-3 w-3" />
                             管理者

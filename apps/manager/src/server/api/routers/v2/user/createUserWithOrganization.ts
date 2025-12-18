@@ -1,5 +1,6 @@
 import { Role, type PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
+import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 
 /**
@@ -62,8 +63,12 @@ export const createUserWithOrganization = async (
   });
 
   // 2. 個人と OrganizationMember を同時作成（ユーザーが既に存在するため createdBy 制約を満たせる）
+  // 注: 現在のスキーマではidを手動指定する必要がある（Week 2でスキーマ修正が必要）
+  const organizationId = createId();
+
   await tx.organization.create({
     data: {
+      id: organizationId,
       name: `${input.name ?? input.email ?? "User"}'s Workspace`,
       slug,
       description: "Personal workspace",
@@ -73,7 +78,6 @@ export const createUserWithOrganization = async (
       members: {
         create: {
           userId: input.id,
-          isAdmin: true,
         },
       },
     },

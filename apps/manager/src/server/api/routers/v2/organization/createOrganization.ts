@@ -1,5 +1,6 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
+import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -64,8 +65,12 @@ export const createOrganization = async (
   const slug = await generateUniqueSlug(tx, name, false);
 
   // 組織を作成
+  // 注: 現在のスキーマではidを手動指定する必要がある（Week 2でスキーマ修正が必要）
+  const organizationId = createId();
+
   const organization = await tx.organization.create({
     data: {
+      id: organizationId,
       name,
       slug,
       description: description ?? null,
@@ -76,7 +81,6 @@ export const createOrganization = async (
       members: {
         create: {
           userId,
-          isAdmin: true,
         },
       },
     },

@@ -17,7 +17,6 @@ export type GetUserPersonalOrganizationInput = z.infer<
  */
 export const getUserPersonalOrganizationOutputSchema = z.object({
   organizationId: z.string(),
-  isAdmin: z.boolean(),
 });
 
 export type GetUserPersonalOrganizationOutput = z.infer<
@@ -59,6 +58,5 @@ export const getUserPersonalOrganization = async (
 
   return {
     organizationId: personalOrgMember.organization.id,
-    isAdmin: personalOrgMember.isAdmin,
   };
 };

@@ -116,7 +116,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * - ctx.session.user.role: システムロール（SYSTEM_ADMIN | USER）
  * - ctx.session.user.organizationId: 組織ID（必須）
  * - ctx.session.user.organizationSlug: 組織slug（必須）
- * - ctx.session.user.isOrganizationAdmin: 組織内管理者権限
+ * - ctx.currentOrg.roles: 組織内ロール（JWTから取得）
  *
  * @see https://trpc.io/docs/procedures
  */
@@ -138,7 +138,10 @@ export const protectedProcedure = t.procedure
       });
     }
 
-    // 組織内での管理者権限と組織タイプを確認
+    // 1. セッションからロール情報を取得（JWT戦略）
+    const roles = ctx.session.user.roles ?? [];
+
+    // 2. 組織メンバーシップの存在確認
     const organizationMember = await ctx.db.organizationMember.findUnique({
       where: {
         organizationId_userId: {
@@ -147,10 +150,10 @@ export const protectedProcedure = t.procedure
         },
       },
       select: {
-        isAdmin: true,
         organization: {
           select: {
             id: true,
+            slug: true,
             createdBy: true,
             isPersonal: true,
           },
@@ -191,7 +194,7 @@ export const protectedProcedure = t.procedure
         },
         currentOrg: {
           ...organizationMember.organization,
-          isAdmin: organizationMember.isAdmin,
+          roles, // JWTから取得したロール配列
         },
       },
     });
@@ -204,10 +207,10 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
  */
 type OrganizationMemberWithOrg = Prisma.OrganizationMemberGetPayload<{
   select: {
-    isAdmin: true;
     organization: {
       select: {
         id: true;
+        slug: true;
         createdBy: true;
         isPersonal: true;
       };
@@ -219,7 +222,7 @@ type OrganizationMemberWithOrg = Prisma.OrganizationMemberGetPayload<{
  * currentOrgの型定義
  */
 type CurrentOrg = OrganizationMemberWithOrg["organization"] & {
-  isAdmin: boolean; // 現在のユーザーの管理者権限
+  roles: string[]; // JWTから取得したロール配列 ["Owner", "Engineering Manager", ...]
 };
 
 /**

@@ -61,7 +61,6 @@ export const getUserOrganizations = async (
     createdBy: membership.organization.createdBy,
     createdAt: membership.organization.createdAt,
     updatedAt: membership.organization.updatedAt,
-    isAdmin: membership.isAdmin,
     memberCount: membership.organization._count.members,
     isDefault: membership.organization.id === user?.defaultOrganization?.id,
   }));

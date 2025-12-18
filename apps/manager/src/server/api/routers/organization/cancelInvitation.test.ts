@@ -92,17 +92,15 @@ describe("cancelInvitation", () => {
         id: mockOrganizationId,
         createdBy: mockUserId,
         isPersonal: false,
-        isAdmin: true,
         members: [
           {
             id: "member_test123",
             userId: mockUserId,
-            isAdmin: true,
           },
         ],
       },
       headers: new Headers(),
-    } as ProtectedContext;
+    } as unknown as ProtectedContext;
   });
 
   test("管理者が招待をキャンセルできる", async () => {
@@ -115,9 +113,7 @@ describe("cancelInvitation", () => {
       email: "invited@example.com",
       token: "token123",
       invitedBy: mockUserId,
-      isAdmin: false,
-      roleIds: [],
-      groupIds: [],
+      roles: ["Member"],
       expires: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
       createdAt: now,
       updatedAt: now,
@@ -157,13 +153,16 @@ describe("cancelInvitation", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
-    // 管理者でないコンテキストを作成
+    // 管理者でないコンテキストを作成（session.user.isOrganizationAdminで判定されるため、currentOrgは変更不要）
     const nonAdminCtx: typeof mockCtx = {
       ...mockCtx,
-      currentOrg: {
-        ...mockCtx.currentOrg,
-        isAdmin: false,
-      },
+      session: {
+        ...mockCtx.session,
+        user: {
+          ...mockCtx.session.user,
+          isOrganizationAdmin: false,
+        },
+      } as unknown as ProtectedContext["session"],
     };
 
     await expect(

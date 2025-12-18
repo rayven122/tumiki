@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ type MemberListProps = {
 };
 
 export const MemberList = ({ organization }: MemberListProps) => {
+  const { data: session } = useSession();
   const [inviteEmails, setInviteEmails] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -43,7 +45,8 @@ export const MemberList = ({ organization }: MemberListProps) => {
 
   const utils = api.useUtils();
 
-  const isAdmin = organization.isAdmin;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
 
   const inviteMembersMutation = api.organization.inviteMembers.useMutation({
     onSuccess: async (data) => {
@@ -112,9 +115,7 @@ export const MemberList = ({ organization }: MemberListProps) => {
     // サーバー側で処理
     inviteMembersMutation.mutate({
       emails: emailList,
-      isAdmin: false,
-      roleIds: [],
-      groupIds: [],
+      roles: ["Member"],
     });
   };
 
@@ -230,7 +231,10 @@ export const MemberList = ({ organization }: MemberListProps) => {
                         {member.user.email}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
-                        {member.isAdmin ? (
+                        {member.roles.some(
+                          (role) =>
+                            role.name === "Owner" || role.name === "Admin",
+                        ) ? (
                           <Badge variant="default" className="text-xs">
                             <Crown className="mr-1 h-3 w-3" />
                             管理者

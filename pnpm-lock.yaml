@@ -21,9 +21,6 @@ catalogs:
     '@trpc/tanstack-react-query':
       specifier: ^11.1.0
       version: 11.4.3
-    '@types/node':
-      specifier: ^22.15.3
-      version: 22.19.1
     '@vitest/coverage-v8':
       specifier: ^2.1.8
       version: 2.1.9
@@ -52,12 +49,6 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.0.4
       version: 19.1.7
-    react:
-      specifier: 19.0.0
-      version: 19.0.0
-    react-dom:
-      specifier: 19.0.0
-      version: 19.0.0
 
 overrides:
   jsdom: 27.3.0

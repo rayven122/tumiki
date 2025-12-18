@@ -29,20 +29,7 @@ export const getSessionAndUserOutputSchema = z
       emailVerified: z.date().nullable(),
       name: z.string().nullable(),
       image: z.string().nullable(),
-      // AdapterUserには含まれないが、session callbackで使用するための追加フィールド
       role: z.enum(["SYSTEM_ADMIN", "USER"]),
-      defaultOrganization: z
-        .object({
-          id: z.string(),
-          slug: z.string(),
-          members: z.array(
-            z.object({
-              userId: z.string(),
-              isAdmin: z.boolean(),
-            }),
-          ),
-        })
-        .nullable(),
     }),
   })
   .nullable();
@@ -64,22 +51,7 @@ export const getSessionAndUser = async (
   const userAndSession = await tx.session.findUnique({
     where: { sessionToken: input.sessionToken },
     include: {
-      user: {
-        include: {
-          defaultOrganization: {
-            select: {
-              id: true,
-              slug: true,
-              members: {
-                select: {
-                  userId: true,
-                  isAdmin: true,
-                },
-              },
-            },
-          },
-        },
-      },
+      user: true,
     },
   });
 
@@ -105,7 +77,6 @@ export const getSessionAndUser = async (
       name: user.name,
       image: user.image,
       role: user.role,
-      defaultOrganization: user.defaultOrganization,
     },
   };
 };
