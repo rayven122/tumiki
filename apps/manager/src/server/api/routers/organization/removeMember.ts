@@ -3,6 +3,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { removeMemberInput } from "@/server/utils/organizationSchemas";
+import { getOrganizationProvider } from "~/lib/organizationProvider";
 
 export const removeMemberInputSchema = removeMemberInput;
 
@@ -68,6 +69,21 @@ export const removeMember = async ({
     });
   }
 
+  // Keycloakからメンバーを削除
+  const provider = getOrganizationProvider();
+  const removeResult = await provider.removeMember({
+    externalId: ctx.currentOrg.id, // Organization.idがKeycloak Group ID
+    userId: targetMember.userId,
+  });
+
+  if (!removeResult.success) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Keycloakからのメンバー削除に失敗しました: ${removeResult.error}`,
+    });
+  }
+
+  // DBからメンバーを削除
   return await ctx.db.organizationMember.delete({
     where: { id: input.memberId },
   });

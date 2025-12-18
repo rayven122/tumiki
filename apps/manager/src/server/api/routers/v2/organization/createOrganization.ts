@@ -1,8 +1,8 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
-import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { getOrganizationProvider } from "~/lib/organizationProvider";
 
 export const createOrganizationInputSchema = z.object({
   name: z
@@ -61,16 +61,28 @@ export const createOrganization = async (
     });
   }
 
-  // ユニークなslugを生成
+  // ユニークなslugを生成（Keycloakグループ名として使用）
   const slug = await generateUniqueSlug(tx, name, false);
 
-  // 組織を作成
-  // 注: 現在のスキーマではidを手動指定する必要がある（Week 2でスキーマ修正が必要）
-  const organizationId = createId();
+  // 1. Keycloakにグループを作成
+  const provider = getOrganizationProvider();
+  const result = await provider.createOrganization({
+    name,
+    groupName: slug, // slugをKeycloakグループ名として使用
+    ownerId: userId,
+  });
 
+  if (!result.success) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Keycloakグループの作成に失敗しました: ${result.error}`,
+    });
+  }
+
+  // 2. DBに組織を作成（idとしてKeycloak Group IDを使用）
   const organization = await tx.organization.create({
     data: {
-      id: organizationId,
+      id: result.externalId, // Keycloak Group IDを使用
       name,
       slug,
       description: description ?? null,
@@ -86,7 +98,7 @@ export const createOrganization = async (
     },
   });
 
-  // ユーザーのdefaultOrganizationSlugを設定
+  // 3. ユーザーのdefaultOrganizationSlugを設定
   await tx.user.update({
     where: { id: userId },
     data: {

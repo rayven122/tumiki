@@ -105,13 +105,10 @@ export const acceptInvitation = async ({
       });
 
       // 6-2. Keycloak Group にメンバー追加（招待時に指定されたロール）
-      // Note: Week 2でexternalProviderIdフィールド追加後に有効化
-      // 現時点では、externalProviderIdが存在する組織のみKeycloak統合
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _provider = getOrganizationProvider();
+      const provider = getOrganizationProvider();
 
       try {
-        // 組織の基本情報を取得（Week 2以降はexternalProviderIdも含める）
+        // 組織のIDを取得（idがKeycloak Group ID）
         const org = await tx.organization.findUnique({
           where: { id: invitation.organizationId },
           select: { id: true },
@@ -121,25 +118,26 @@ export const acceptInvitation = async ({
           throw new Error("Organization not found");
         }
 
-        // TODO: Week 2でexternalProviderIdフィールド追加後にコメント解除
-        // const role = invitation.roles[0] ?? "Member";
-        // const addMemberResult = await provider.addMember({
-        //   externalId: org.externalProviderId,
-        //   userId: ctx.session.user.id,
-        //   role: role as "Owner" | "Admin" | "Member" | "Viewer",
-        // });
-        //
-        // if (!addMemberResult.success) {
-        //   throw new Error(
-        //     addMemberResult.error ?? "Failed to add member to Keycloak Group",
-        //   );
-        // }
+        // 招待時に指定されたロールを使用（デフォルト: Member）
+        const role = invitation.roles[0] ?? "Member";
+        const addMemberResult = await provider.addMember({
+          externalId: org.id, // Organization.idがKeycloak Group ID
+          userId: ctx.session.user.id,
+          role: role as "Owner" | "Admin" | "Member" | "Viewer",
+        });
+
+        if (!addMemberResult.success) {
+          throw new Error(
+            addMemberResult.error ?? "Failed to add member to Keycloak Group",
+          );
+        }
       } catch (error) {
-        console.error(
-          "[AcceptInvitation] Keycloak integration skipped:",
-          error,
-        );
-        // Week 2でexternalProviderIdフィールド追加まで、エラーをログのみに留める
+        console.error("[AcceptInvitation] Keycloak integration failed:", error);
+        // Keycloak統合失敗時はロールバック
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Keycloakへのメンバー追加に失敗しました。",
+        });
       }
 
       // 6-3. 招待レコード削除（一度のみ使用可能）
