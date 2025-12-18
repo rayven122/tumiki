@@ -46,7 +46,6 @@ export const getOrganizationWithMembers = async (
       members: {
         include: {
           user: true,
-          roles: true,
         },
         orderBy: {
           createdAt: "desc",

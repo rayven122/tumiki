@@ -2,7 +2,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db, type Role } from "@tumiki/db/server";
 import NextAuth from "next-auth";
 import type { Session } from "next-auth";
-import authConfig from "~/auth.config";
+import type { JWT } from "next-auth/jwt";
+import Keycloak from "next-auth/providers/keycloak";
+import { getKeycloakEnv } from "~/utils/env";
 
 // Re-export verification utilities
 export { isVerificationModeEnabled } from "~/lib/verification";
@@ -19,8 +21,31 @@ export type SessionReturnType = Session | null;
 export type SessionData = Session;
 
 /**
+ * Keycloak JWTペイロード型定義
+ */
+type KeycloakJWTPayload = {
+  sub: string;
+  email?: string;
+  name?: string;
+  tumiki?: {
+    organization_id: string;
+    organization_group: string;
+    roles: string[];
+  };
+};
+
+/**
+ * Keycloak Profileコールバック用の型定義
+ */
+type KeycloakProfile = KeycloakJWTPayload & {
+  picture?: string;
+};
+
+const keycloakEnv = getKeycloakEnv();
+
+/**
  * Auth.js メイン設定
- * Prisma Adapterを使用したデータベースセッション管理
+ * JWT戦略でKeycloak access tokenを保持
  */
 export const {
   handlers: { GET, POST },
@@ -28,7 +53,38 @@ export const {
   signIn,
   signOut,
 } = NextAuth({
-  ...authConfig,
+  providers: [
+    Keycloak({
+      clientId: keycloakEnv.KEYCLOAK_CLIENT_ID,
+      clientSecret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
+      issuer: keycloakEnv.KEYCLOAK_ISSUER,
+      authorization: {
+        params: {
+          // Keycloakのログイン画面をスキップして直接Googleにリダイレクト
+          kc_idp_hint: "google",
+          // Googleのアカウント選択画面を常に表示
+          // prompt: アカウント選択を強制
+          // max_age: 認証の有効期限を0にして常に再認証を要求
+          prompt: "select_account",
+          max_age: "0",
+        },
+      },
+      profile: (profile: KeycloakProfile) => {
+        // Keycloakのカスタムクレーム（tumiki）を抽出
+        // Auth.js User型に準拠するため、role, defaultOrganization, tumikiを含める
+        return {
+          id: profile.sub,
+          email: profile.email ?? null,
+          name: profile.name ?? null,
+          image: profile.picture ?? null,
+          role: "USER" as const, // デフォルト値（実際にはDBから取得）
+          defaultOrganization: null, // 初回サインイン時はnull
+          // Keycloakのカスタムクレームも含める
+          tumiki: profile.tumiki ?? null,
+        };
+      },
+    }),
+  ],
   pages: {
     signIn: "/signin",
   },
@@ -56,7 +112,6 @@ export const {
       });
 
       // AdapterUser型に変換
-      // createUserは作成直後なので、roleとdefaultOrganizationはまだ設定されていない
       return {
         id: createdUser.id,
         email: createdUser.email,
@@ -67,92 +122,101 @@ export const {
         defaultOrganization: null,
       };
     },
-    // セッション取得時に組織情報も一緒に取得してパフォーマンス最適化
-    getSessionAndUser: async (sessionToken) => {
-      const { getSessionAndUser } = await import(
-        "~/server/api/routers/v2/user/getSessionAndUser"
-      );
-      return await getSessionAndUser(db, { sessionToken });
-    },
   },
   session: {
-    strategy: "database",
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30日
   },
   callbacks: {
     /**
-     * サインインコールバック
-     * ユーザーログイン時にKeycloak属性を同期
+     * JWTコールバック
+     * Keycloak access tokenとカスタムクレームをAuth.js JWTに保存
      */
-    async signIn({ user, account }): Promise<boolean> {
-      if (
-        account?.provider === "keycloak" &&
-        account.providerAccountId &&
-        user.id
-      ) {
-        try {
-          // ユーザーの個人情報を取得
-          const { getUserPersonalOrganization } = await import(
-            "~/server/api/routers/v2/user/getUserPersonalOrganization"
-          );
-          const personalOrg = await getUserPersonalOrganization(db, {
-            userId: user.id,
-          });
+    async jwt({ token, account, profile, user }): Promise<JWT> {
+      // 初回サインイン時（accountが存在する場合）
+      if (account?.provider === "keycloak") {
+        // Keycloak access tokenを保存
+        token.accessToken = account.access_token;
+        token.expiresAt = account.expires_at;
+        token.refreshToken = account.refresh_token;
 
-          // Keycloak属性を更新
-          const { updateKeycloakUserAttributes } = await import(
-            "~/lib/keycloak-admin"
-          );
+        // profileからKeycloakカスタムクレーム（tumiki）を取得
+        const keycloakProfile = profile as {
+          sub: string;
+          email?: string;
+          name?: string;
+          tumiki?: {
+            organization_id: string;
+            organization_group: string;
+            roles: string[];
+          };
+        };
 
-          const result = await updateKeycloakUserAttributes(
-            account.providerAccountId,
-            {
-              tumiki_org_id: personalOrg.organizationId,
-              tumiki_is_org_admin: personalOrg.isAdmin ? "true" : "false",
-              tumiki_tumiki_user_id: user.id,
-              // mcp_instance_id はオプショナル（管理画面JWTには不要）
-            },
-          );
-
-          if (!result.success) {
-            console.error(
-              "[Auth] Failed to update Keycloak attributes:",
-              result.error,
-            );
-          }
-        } catch (error) {
-          console.error("[Auth] Error in signIn callback:", error);
-          // エラーが発生してもログインは許可
+        // カスタムクレームをtokenに保存
+        if (keycloakProfile.tumiki) {
+          token.organizationId = keycloakProfile.tumiki.organization_id;
+          token.organizationGroup = keycloakProfile.tumiki.organization_group;
+          token.roles = keycloakProfile.tumiki.roles;
+        } else {
+          token.organizationId = null;
+          token.organizationGroup = null;
+          token.roles = [];
         }
       }
 
-      return true;
+      // userオブジェクトが存在する場合（初回サインイン時のみ）
+      if (user) {
+        token.userId = user.id;
+        token.role = (user as { role?: Role }).role ?? "USER";
+
+        // DBからdefaultOrganizationSlugを取得
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { defaultOrganizationSlug: true },
+        });
+
+        if (dbUser?.defaultOrganizationSlug) {
+          // slugからorganizationIdを取得
+          const org = await db.organization.findUnique({
+            where: { slug: dbUser.defaultOrganizationSlug },
+            select: { id: true },
+          });
+
+          if (org) {
+            token.organizationId = org.id;
+            token.organizationSlug = dbUser.defaultOrganizationSlug;
+          }
+        }
+      }
+
+      return token;
     },
 
     /**
      * セッションコールバック
-     * クライアントに返すセッション情報を構築
-     * userオブジェクトにはgetSessionAndUserで取得した組織情報が含まれている
+     * JWTトークンからクライアントに返すセッション情報を構築
      */
-    async session({ session, user }): Promise<Session> {
-      if (session.user) {
-        // 基本ユーザー情報
-        session.user.sub = user.id;
-        session.user.id = user.id;
-        session.user.email = user.email ?? null;
-        session.user.name = user.name ?? null;
-        session.user.image = user.image ?? null;
+    async session({ session, token }): Promise<Session> {
+      if (session.user && token?.userId) {
+        // Keycloak組織ロール配列
+        const roles = token.roles! ?? [];
 
-        // userオブジェクトから組織情報を取得（getSessionAndUserで既に取得済み）
-        const defaultOrg = user.defaultOrganization;
-        const member = defaultOrg?.members?.find((m) => m.userId === user.id);
-
-        // セッションにユーザー情報を設定
-        session.user.role = user.role;
-        session.user.organizationId = defaultOrg?.id ?? null;
-        session.user.organizationSlug = defaultOrg?.slug ?? null;
-        session.user.isOrganizationAdmin = member?.isAdmin ?? false;
-        session.user.defaultOrganization = defaultOrg;
+        // session.userを新しいオブジェクトとして再構築
+        // 型アサーションを使用してnext-authのデフォルト型との競合を回避
+        Object.assign(session.user, {
+          id: token.userId,
+          sub: token.userId,
+          email: (token.email as string | null) ?? null,
+          name: (token.name as string | null) ?? null,
+          image: (token.picture as string | null) ?? null,
+          role: token.role! ?? "USER",
+          organizationId: (token.organizationId as string | null) ?? null,
+          organizationSlug: (token.organizationSlug as string | null) ?? null,
+          roles: roles,
+          isOrganizationAdmin: roles.some(
+            (role) => role === "Owner" || role === "Admin",
+          ),
+        });
       }
       return session;
     },
@@ -163,6 +227,7 @@ export const {
  * Auth.js型定義の拡張
  */
 declare module "next-auth" {
+  // Session型を完全に上書き（email, name, imageをnull許容型に）
   interface Session {
     user: {
       id: string;
@@ -173,13 +238,15 @@ declare module "next-auth" {
       role: Role;
       organizationId: string | null;
       organizationSlug: string | null;
-      isOrganizationAdmin: boolean; // 組織内管理者権限
+      isOrganizationAdmin: boolean; // 組織内管理者権限（rolesから判定）
+      roles: string[]; // Keycloak組織ロール配列
       defaultOrganization: {
         id: string;
         slug: string;
-        members: Array<{ userId: string; isAdmin: boolean }>;
+        members: Array<{ userId: string }>;
       } | null;
     };
+    expires: string;
   }
 
   interface User {
@@ -187,8 +254,26 @@ declare module "next-auth" {
     defaultOrganization: {
       id: string;
       slug: string;
-      members: Array<{ userId: string; isAdmin: boolean }>;
+      members: Array<{ userId: string }>;
     } | null;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    userId?: string;
+    role?: Role;
+    organizationId?: string | null;
+    organizationSlug?: string | null;
+    organizationGroup?: string | null;
+    roles?: string[];
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    // デフォルトのJWTフィールド（next-authから継承）
+    email?: string | null;
+    name?: string | null;
+    picture?: string | null;
   }
 }
 
@@ -198,7 +283,7 @@ declare module "@auth/core/adapters" {
     defaultOrganization: {
       id: string;
       slug: string;
-      members: Array<{ userId: string; isAdmin: boolean }>;
+      members: Array<{ userId: string }>; // isAdminを削除
     } | null;
   }
 }

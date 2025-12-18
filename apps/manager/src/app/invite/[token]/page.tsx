@@ -77,12 +77,17 @@ export default async function InvitePage({ params }: InvitePageProps) {
     }
 
     // 7. 正常 → クライアントコンポーネントへ
+    // ロール配列から管理者権限を判定
+    const isAdmin = invitation.roles.some(
+      (role) => role === "Owner" || role === "Admin",
+    );
+
     return (
       <InviteAcceptClient
         token={token}
         organizationName={invitation.organization.name}
         invitedByName={invitation.invitedByUser.name}
-        isAdmin={invitation.isAdmin}
+        isAdmin={isAdmin}
       />
     );
   } catch (error) {

@@ -137,7 +137,6 @@ describe.skip("createOrganization", () => {
     });
 
     expect(membership).toBeTruthy();
-    expect(membership?.isAdmin).toBe(true);
   });
 
   test("ユーザーのdefaultOrganizationSlugが更新される", async () => {

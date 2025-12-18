@@ -58,7 +58,7 @@ export const GetUserOrganizationsInput = z.object({}).optional();
 export const GetUserOrganizationsOutput = z.array(
   OrganizationSchema.extend({
     id: OrganizationIdSchema,
-    isAdmin: z.boolean(),
+    // isAdmin削除: JWTのrolesで判定
     memberCount: z.number(),
     isDefault: z.boolean(),
   }),

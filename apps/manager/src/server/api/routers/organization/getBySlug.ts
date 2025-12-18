@@ -11,7 +11,7 @@ export const getOrganizationBySlugOutputSchema =
   organizationWithMembersOutput.extend({
     slug: z.string(),
     isPersonal: z.boolean(),
-    isAdmin: z.boolean(),
+    // isAdmin削除: JWTのrolesで判定
   });
 
 export type GetOrganizationBySlugInput = z.infer<
@@ -36,17 +36,15 @@ export const getOrganizationBySlug = async ({
     include: {
       members: {
         include: {
-          user: true,
-          roles: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
         },
-        orderBy: [
-          {
-            isAdmin: "desc", // 管理者を上に表示
-          },
-          {
-            createdAt: "desc", // 次に作成日順
-          },
-        ],
       },
       _count: {
         select: {
@@ -65,7 +63,7 @@ export const getOrganizationBySlug = async ({
 
   // ユーザーのメンバーシップを確認
   const userMember = organization.members.find(
-    (member) => member.userId === ctx.session.user.sub,
+    (m) => m.userId === ctx.session.user.sub,
   );
 
   if (!userMember) {
@@ -74,6 +72,15 @@ export const getOrganizationBySlug = async ({
       message: "このチームにアクセスする権限がありません",
     });
   }
+
+  // rolesは空配列（将来的にKeycloakから取得）
+  const membersWithRoles = organization.members.map((member) => ({
+    id: member.id,
+    userId: member.userId,
+    createdAt: member.createdAt,
+    user: member.user,
+    roles: [], // TODO: Week 2以降、Keycloakから取得
+  }));
 
   return {
     id: organization.id,
@@ -86,8 +93,7 @@ export const getOrganizationBySlug = async ({
     updatedAt: organization.updatedAt,
     createdBy: organization.createdBy,
     isDeleted: organization.isDeleted,
-    isAdmin: userMember.isAdmin,
-    members: organization.members,
+    members: membersWithRoles,
     _count: organization._count,
   };
 };

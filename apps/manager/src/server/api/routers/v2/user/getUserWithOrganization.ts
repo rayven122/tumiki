@@ -23,7 +23,7 @@ export const getUserWithOrganizationOutputSchema = z.object({
   role: z.enum(["SYSTEM_ADMIN", "USER"]),
   organizationId: z.string().nullable(),
   organizationSlug: z.string().nullable(),
-  isOrganizationAdmin: z.boolean(),
+  // isOrganizationAdminは削除（ロールはJWTから取得）
 });
 
 export type GetUserWithOrganizationOutput = z.infer<
@@ -51,16 +51,7 @@ export const getUserWithOrganization = async (
       name: true,
       image: true,
       role: true,
-      defaultOrganization: {
-        select: {
-          id: true,
-          slug: true,
-          members: {
-            where: { userId: input.userId },
-            select: { isAdmin: true },
-          },
-        },
-      },
+      defaultOrganizationSlug: true,
     },
   });
 
@@ -68,11 +59,18 @@ export const getUserWithOrganization = async (
     throw new Error(`User not found: ${input.userId}`);
   }
 
-  // デフォルト組織情報を取得
-  const organizationId = dbUser.defaultOrganization?.id ?? null;
-  const organizationSlug = dbUser.defaultOrganization?.slug ?? null;
-  const isOrganizationAdmin =
-    dbUser.defaultOrganization?.members[0]?.isAdmin ?? false;
+  // デフォルト組織slugを取得
+  const organizationSlug = dbUser.defaultOrganizationSlug;
+
+  // デフォルト組織IDを取得（slugから検索）
+  let organizationId: string | null = null;
+  if (organizationSlug) {
+    const org = await tx.organization.findUnique({
+      where: { slug: organizationSlug },
+      select: { id: true },
+    });
+    organizationId = org?.id ?? null;
+  }
 
   return {
     id: dbUser.id,
@@ -82,6 +80,6 @@ export const getUserWithOrganization = async (
     role: dbUser.role,
     organizationId,
     organizationSlug,
-    isOrganizationAdmin,
+    // isOrganizationAdminは削除（ロールはJWTから取得）
   };
 };

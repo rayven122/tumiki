@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
 import { api } from "@/trpc/react";
@@ -11,10 +12,15 @@ type MembersPageClientProps = {
 };
 
 export const MembersPageClient = ({ orgSlug }: MembersPageClientProps) => {
+  const { data: session } = useSession();
+
   // slugから組織情報（members含む）を取得
   const { data: organization, isLoading } = api.organization.getBySlug.useQuery(
     { slug: orgSlug },
   );
+
+  // JWT のロールから管理者権限を取得
+  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
 
   // ローディング状態
   if (isLoading) {
@@ -70,7 +76,7 @@ export const MembersPageClient = ({ orgSlug }: MembersPageClientProps) => {
       </div>
 
       {/* 閲覧専用モードの通知 */}
-      {!organization.isAdmin && (
+      {!isAdmin && (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>

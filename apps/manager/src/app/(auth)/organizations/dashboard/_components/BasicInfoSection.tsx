@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Edit2, Save, X, Users } from "lucide-react";
 import { api } from "@/trpc/react";
 export const BasicInfoSection = () => {
+  const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -76,10 +78,8 @@ export const BasicInfoSection = () => {
     );
   }
 
-  const userMember = organization.members.find(
-    (member) => member.user.id === organization.createdBy,
-  );
-  const isAdmin = userMember?.isAdmin ?? false;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
 
   return (
     <Card>

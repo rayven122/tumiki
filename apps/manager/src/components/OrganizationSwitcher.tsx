@@ -94,9 +94,7 @@ export const OrganizationSwitcher = () => {
               <div className="flex items-center space-x-2">
                 <Building2 className="h-4 w-4 text-blue-600" />
                 <span>{org.name}</span>
-                {org.isAdmin && (
-                  <span className="ml-auto text-xs text-gray-500">管理者</span>
-                )}
+                {/* TODO: Week 4でKeycloakから各組織のrolesを取得して管理者バッジを表示 */}
               </div>
             </SelectItem>
           ))}

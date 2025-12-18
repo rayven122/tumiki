@@ -10,7 +10,7 @@ export const removeMemberOutputSchema = z.object({
   id: z.string(),
   organizationId: z.string(),
   userId: z.string(),
-  isAdmin: z.boolean(),
+  // isAdmin削除: JWTのrolesで判定
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -40,7 +40,6 @@ export const removeMember = async ({
       id: true,
       userId: true,
       organizationId: true,
-      isAdmin: true,
       createdAt: true,
       updatedAt: true,
     },

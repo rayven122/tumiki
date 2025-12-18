@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,10 @@ type InvitationListProps = {
   organization: GetOrganizationBySlugOutput;
 };
 
-export const InvitationList = ({ organization }: InvitationListProps) => {
+export const InvitationList = ({
+  organization: _organization,
+}: InvitationListProps) => {
+  const { data: session } = useSession();
   const { data: invitations, isLoading } =
     api.organization.getInvitations.useQuery();
 
@@ -50,7 +54,8 @@ export const InvitationList = ({ organization }: InvitationListProps) => {
     cancelInvitationMutation.mutate({ invitationId });
   };
 
-  const isAdmin = organization.isAdmin;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
 
   if (isLoading) {
     return (
