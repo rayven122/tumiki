@@ -1,7 +1,8 @@
 import { Role, type PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
-import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { getOrganizationProvider } from "~/lib/organizationProvider";
 
 /**
  * ユーザー作成の入力スキーマ
@@ -35,12 +36,13 @@ export type CreateUserWithOrganizationOutput = z.infer<
 >;
 
 /**
- * ユーザーと個人を同時に作成
+ * ユーザーと個人組織を同時に作成
  *
  * トランザクション内で以下を実行（循環参照を回避するため段階的に作成）：
  * 1. ユーザーを defaultOrganizationSlug なしで作成
- * 2. 個人と OrganizationMember を同時作成
- * 3. ユーザーの defaultOrganizationSlug を更新
+ * 2. Keycloakに個人組織グループを作成（@user-id形式）
+ * 3. DBに個人組織と OrganizationMember を同時作成
+ * 4. ユーザーの defaultOrganizationSlug を更新
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -62,13 +64,26 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 2. 個人と OrganizationMember を同時作成（ユーザーが既に存在するため createdBy 制約を満たせる）
-  // 注: 現在のスキーマではidを手動指定する必要がある（Week 2でスキーマ修正が必要）
-  const organizationId = createId();
+  // 2. Keycloakに個人組織グループを作成（@user-idで個人組織を識別）
+  const provider = getOrganizationProvider();
+  const groupName = `@${input.id}`; // 個人組織は@プレフィックス付き
+  const result = await provider.createOrganization({
+    name: `${input.name ?? input.email ?? "User"}'s Workspace`,
+    groupName,
+    ownerId: input.id,
+  });
 
+  if (!result.success) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Keycloakグループの作成に失敗しました: ${result.error}`,
+    });
+  }
+
+  // 3. DBに個人組織と OrganizationMember を同時作成
   await tx.organization.create({
     data: {
-      id: organizationId,
+      id: result.externalId, // Keycloak Group IDを使用
       name: `${input.name ?? input.email ?? "User"}'s Workspace`,
       slug,
       description: "Personal workspace",
@@ -83,7 +98,7 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 3. ユーザーの defaultOrganizationSlug を更新
+  // 4. ユーザーの defaultOrganizationSlug を更新
   await tx.user.update({
     where: { id: input.id },
     data: { defaultOrganizationSlug: slug },
