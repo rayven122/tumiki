@@ -21,6 +21,7 @@
     "dev": "tsc --watch",
     "build": "tsc",
     "upsertAll": "pnpm with-env tsx src/upsertAll.ts",
+    "delete-orgs": "pnpm with-env tsx src/deleteAllOrganizations.ts",
     "security:scan:mcp": "pnpm with-env tsx src/security-scan-mcp.ts",
     "with-env": "dotenv -e ../../.env --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",

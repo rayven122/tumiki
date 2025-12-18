@@ -112,6 +112,28 @@ if [ -n "$PROXY_CLIENT_ID" ]; then
   $KCADM update clients/"$PROXY_CLIENT_ID"/default-client-scopes/"$CLIENT_SCOPE_ID" -r "$REALM" --config /tmp/kcadm.config 2>/dev/null || true
 fi
 
+# 組織管理用Realm Rolesの作成
+echo "組織管理用Realm Rolesを作成中..."
+create_realm_role() {
+  local role_name=$1
+  local role_description=$2
+
+  # ロールが既に存在するかチェック
+  if ! $KCADM get roles -r "$REALM" --config /tmp/kcadm.config 2>/dev/null | grep -q "\"name\" : \"$role_name\""; then
+    $KCADM create roles -r "$REALM" --config /tmp/kcadm.config \
+      -s name="$role_name" \
+      -s description="$role_description" 2>/dev/null || true
+    echo "  ✓ ロール '$role_name' を作成しました"
+  else
+    echo "  - ロール '$role_name' は既に存在します"
+  fi
+}
+
+create_realm_role "Owner" "Organization Owner - Full permissions"
+create_realm_role "Admin" "Organization Admin - Can manage members"
+create_realm_role "Member" "Organization Member - Basic usage"
+create_realm_role "Viewer" "Organization Viewer - Read-only access"
+
 # Google IdP設定（環境変数がある場合のみ）
 if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
   echo "Google IdP 設定中..."
