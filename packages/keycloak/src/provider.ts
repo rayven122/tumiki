@@ -4,7 +4,7 @@ import type {
   OrganizationRole,
 } from "./types.js";
 import { KeycloakAdminClient } from "./client.js";
-import * as services from "./services/index.js";
+import * as services from "./providerServices.js";
 
 /**
  * Keycloak実装の組織プロバイダー
