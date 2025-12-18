@@ -48,6 +48,16 @@ import {
   getOrganizationBySlugOutputSchema,
 } from "./getBySlug";
 import { getDefaultOrganization } from "./getDefaultOrganization";
+import {
+  deleteOrganization,
+  deleteOrganizationInputSchema,
+  deleteOrganizationOutputSchema,
+} from "./delete";
+import {
+  updateMemberRole,
+  updateMemberRoleInputSchema,
+  updateMemberRoleOutputSchema,
+} from "./updateMemberRole";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
@@ -140,4 +150,16 @@ export const organizationRouter = createTRPCRouter({
 
   // デフォルト組織取得
   getDefaultOrganization: protectedProcedure.query(getDefaultOrganization),
+
+  // 組織削除
+  delete: protectedProcedure
+    .input(deleteOrganizationInputSchema)
+    .output(deleteOrganizationOutputSchema)
+    .mutation(deleteOrganization),
+
+  // メンバーロール変更
+  updateMemberRole: protectedProcedure
+    .input(updateMemberRoleInputSchema)
+    .output(updateMemberRoleOutputSchema)
+    .mutation(updateMemberRole),
 });

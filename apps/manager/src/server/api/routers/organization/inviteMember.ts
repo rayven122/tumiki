@@ -62,6 +62,7 @@ export const inviteMember = async ({
           email: input.email,
           token,
           invitedBy: ctx.session.user.id,
+          roles: input.roles, // 招待時に指定されたロールを保存
           expires,
         },
         include: {
