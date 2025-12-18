@@ -80,6 +80,7 @@ export const createOrganization = async (
     name: string;
     groupName: string;
     ownerId: string;
+    createDefaultRoles?: boolean; // デフォルト: true
   },
   addMemberFn: (params: {
     externalId: string;
@@ -103,16 +104,47 @@ export const createOrganization = async (
     };
   }
 
-  // 2. OwnerをグループメンバーとしてOwnerロールで追加
+  const groupId = createResult.groupId;
+
+  // 2. デフォルトロールをGroup Rolesとして作成（オプション）
+  if (params.createDefaultRoles !== false) {
+    const defaultRoles: Array<{ name: OrganizationRole; description: string }> =
+      [
+        { name: "Owner", description: "組織オーナー - 全権限" },
+        { name: "Admin", description: "組織管理者 - メンバー管理可能" },
+        { name: "Member", description: "組織メンバー - 基本利用" },
+        { name: "Viewer", description: "組織閲覧者 - 読み取り専用" },
+      ];
+
+    for (const role of defaultRoles) {
+      const roleResult = await client.createGroupRole(groupId, {
+        name: role.name,
+        description: role.description,
+      });
+
+      if (!roleResult.success) {
+        // グループロール作成に失敗した場合はロールバック
+        await client.deleteGroup(groupId);
+        return {
+          success: false,
+          externalId: "",
+          error:
+            roleResult.error ?? `Failed to create group role: ${role.name}`,
+        };
+      }
+    }
+  }
+
+  // 3. OwnerをグループメンバーとしてOwnerロールで追加
   const addMemberResult = await addMemberFn({
-    externalId: createResult.groupId,
+    externalId: groupId,
     userId: params.ownerId,
     role: "Owner",
   });
 
   if (!addMemberResult.success) {
     // グループ作成は成功したが、メンバー追加に失敗した場合はロールバック
-    await client.deleteGroup(createResult.groupId);
+    await client.deleteGroup(groupId);
     return {
       success: false,
       externalId: "",
@@ -122,7 +154,7 @@ export const createOrganization = async (
 
   return {
     success: true,
-    externalId: createResult.groupId,
+    externalId: groupId,
   };
 };
 
