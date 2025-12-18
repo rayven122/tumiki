@@ -145,4 +145,76 @@ export class KeycloakAdminClient {
     await this.ensureAuth();
     return operations.getGroup(this.client, groupId);
   }
+
+  /**
+   * グループロールを作成
+   */
+  async createGroupRole(
+    groupId: string,
+    params: {
+      name: string;
+      description?: string;
+      attributes?: Record<string, string[]>;
+    },
+  ): Promise<{ success: boolean; roleId?: string; error?: string }> {
+    await this.ensureAuth();
+    return operations.createGroupRole(this.client, groupId, params);
+  }
+
+  /**
+   * グループロール一覧を取得
+   */
+  async listGroupRoles(groupId: string): Promise<{
+    success: boolean;
+    roles?: RoleRepresentation[];
+    error?: string;
+  }> {
+    await this.ensureAuth();
+    return operations.listGroupRoles(this.client, groupId);
+  }
+
+  /**
+   * グループロールを削除
+   */
+  async deleteGroupRole(
+    groupId: string,
+    roleName: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    await this.ensureAuth();
+    return operations.deleteGroupRole(this.client, groupId, roleName);
+  }
+
+  /**
+   * ユーザーにグループロールを割り当て
+   */
+  async assignGroupRoleToUser(
+    groupId: string,
+    userId: string,
+    roleName: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    await this.ensureAuth();
+    return operations.assignGroupRoleToUser(
+      this.client,
+      groupId,
+      userId,
+      roleName,
+    );
+  }
+
+  /**
+   * ユーザーからグループロールを削除
+   */
+  async removeGroupRoleFromUser(
+    groupId: string,
+    userId: string,
+    roleName: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    await this.ensureAuth();
+    return operations.removeGroupRoleFromUser(
+      this.client,
+      groupId,
+      userId,
+      roleName,
+    );
+  }
 }

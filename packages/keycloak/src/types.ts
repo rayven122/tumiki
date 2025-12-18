@@ -23,6 +23,7 @@ export type IOrganizationProvider = {
     name: string;
     groupName: string; // 例: "@user-id" or "team-slug"
     ownerId: string;
+    createDefaultRoles?: boolean; // デフォルト: true
   }) => Promise<{ success: boolean; externalId: string; error?: string }>;
 
   /**
