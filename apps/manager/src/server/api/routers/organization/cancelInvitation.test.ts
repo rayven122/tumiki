@@ -90,8 +90,10 @@ describe("cancelInvitation", () => {
       } as unknown as ProtectedContext["session"],
       currentOrg: {
         id: mockOrganizationId,
+        slug: "test-org",
         createdBy: mockUserId,
         isPersonal: false,
+        roles: ["Admin"], // 管理者権限を持つ
         members: [
           {
             id: "member_test123",
@@ -153,16 +155,13 @@ describe("cancelInvitation", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
-    // 管理者でないコンテキストを作成（session.user.isOrganizationAdminで判定されるため、currentOrgは変更不要）
+    // 管理者でないコンテキストを作成（rolesにOwner/Adminが含まれない）
     const nonAdminCtx: typeof mockCtx = {
       ...mockCtx,
-      session: {
-        ...mockCtx.session,
-        user: {
-          ...mockCtx.session.user,
-          isOrganizationAdmin: false,
-        },
-      } as unknown as ProtectedContext["session"],
+      currentOrg: {
+        ...mockCtx.currentOrg,
+        roles: ["Member"], // 管理者権限なし
+      },
     };
 
     await expect(

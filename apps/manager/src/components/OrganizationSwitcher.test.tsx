@@ -137,7 +137,6 @@ const mockOrganizations = [
     name: "Personal Workspace",
     isPersonal: true,
     isDefault: false,
-    isAdmin: true,
     memberCount: 1,
   },
   {
@@ -145,7 +144,6 @@ const mockOrganizations = [
     name: "Team Alpha",
     isPersonal: false,
     isDefault: true,
-    isAdmin: false,
     memberCount: 5,
   },
   {
@@ -153,7 +151,6 @@ const mockOrganizations = [
     name: "Team Beta",
     isPersonal: false,
     isDefault: false,
-    isAdmin: true,
     memberCount: 10,
   },
 ];
@@ -208,7 +205,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
@@ -260,7 +256,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
@@ -292,7 +287,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
@@ -325,7 +319,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
@@ -360,7 +353,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
@@ -378,7 +370,8 @@ describe("OrganizationSwitcher", () => {
     // 現実的には無効なIDはUIから選択できないため、このテストは省略可能
   });
 
-  test("管理者権限のある組織には管理者バッジが表示される", () => {
+  // Week 4でKeycloakから各組織のrolesを取得して管理者バッジを表示する予定のため、テストをスキップ
+  test.skip("管理者権限のある組織には管理者バッジが表示される", () => {
     mockUseQuery.mockReturnValue({
       data: mockOrganizations,
     });
@@ -389,7 +382,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
@@ -419,7 +411,6 @@ describe("OrganizationSwitcher", () => {
         id: "org_team1",
         name: "Team Alpha",
         isPersonal: false,
-        isAdmin: false,
         memberCount: 5,
       },
       setCurrentOrganization: mockSetCurrentOrganization,
