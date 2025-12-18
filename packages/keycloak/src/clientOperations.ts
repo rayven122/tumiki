@@ -279,8 +279,28 @@ export const createGroupRole = async (
   },
 ): Promise<{ success: boolean; roleId?: string; error?: string }> => {
   try {
+    // ロール名のバリデーション：アンダースコアを含む場合は拒否
+    if (params.name.includes("_")) {
+      return {
+        success: false,
+        error: "ロール名にアンダースコア(_)を含めることはできません",
+      };
+    }
+
     // 1. Realm Roleを作成（ロール名にグループIDをプレフィックス）
     const roleNameWithPrefix = `group_${groupId}_${params.name}`;
+
+    // 重複チェック：既に同じ名前のロールが存在する場合はエラー
+    const existingRole = await client.roles.findOneByName({
+      name: roleNameWithPrefix,
+    });
+    if (existingRole) {
+      return {
+        success: false,
+        error: `ロール "${params.name}" は既に存在します`,
+      };
+    }
+
     const response = await client.roles.create({
       name: roleNameWithPrefix,
       description: params.description,

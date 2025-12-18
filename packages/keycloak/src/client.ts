@@ -13,6 +13,9 @@ import * as operations from "./clientOperations.js";
 export class KeycloakAdminClient {
   private config: KeycloakAdminConfig;
   private client: KcAdminClient;
+  private authPromise?: Promise<void>;
+  private lastAuthTime = 0;
+  private readonly AUTH_CACHE_DURATION = 300000; // 5分
 
   constructor(config: KeycloakAdminConfig) {
     this.config = config;
@@ -23,10 +26,29 @@ export class KeycloakAdminClient {
   }
 
   /**
-   * 管理者として認証
-   * 公式クライアントは自動的にトークンを管理
+   * 管理者として認証（キャッシュ付き）
+   * トークンの有効期限内は再認証をスキップしてパフォーマンスを改善
    */
   private async ensureAuth(): Promise<void> {
+    const now = Date.now();
+
+    // 既に有効な認証がある場合はスキップ
+    if (
+      this.authPromise &&
+      now - this.lastAuthTime < this.AUTH_CACHE_DURATION
+    ) {
+      return this.authPromise;
+    }
+
+    this.authPromise = this.performAuth();
+    this.lastAuthTime = now;
+    return this.authPromise;
+  }
+
+  /**
+   * 認証処理の実行
+   */
+  private async performAuth(): Promise<void> {
     await this.client.auth({
       username: this.config.adminUsername,
       password: this.config.adminPassword,
