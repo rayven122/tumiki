@@ -70,7 +70,6 @@ const mockOrganizations = [
     name: "Organization 1",
     isPersonal: false,
     isDefault: true,
-    isAdmin: false,
     memberCount: 5,
   },
   {
@@ -78,7 +77,6 @@ const mockOrganizations = [
     name: "Organization 2",
     isPersonal: false,
     isDefault: false,
-    isAdmin: true,
     memberCount: 10,
   },
   {
@@ -86,7 +84,6 @@ const mockOrganizations = [
     name: "Personal Workspace",
     isPersonal: true,
     isDefault: false,
-    isAdmin: true,
     memberCount: 1,
   },
 ];
@@ -104,10 +101,7 @@ describe("useOrganizationContext", () => {
         user: {
           id: "user_1",
           email: "test@example.com",
-          defaultOrganization: {
-            id: "org_1",
-            name: "Organization 1",
-          },
+          organizationId: "org_1",
         },
       },
       status: "authenticated",
@@ -150,7 +144,6 @@ describe("useOrganizationContext", () => {
       id: "org_1",
       name: "Organization 1",
       isPersonal: false,
-      isAdmin: false,
       memberCount: 5,
     });
     expect(result.current.isLoading).toBe(false);
@@ -356,13 +349,13 @@ describe("useOrganizationContext", () => {
       isPending: false,
     });
 
-    // セッションのdefaultOrganizationをnullに設定
+    // セッションのorganizationIdをnullに設定
     mockUseSession.mockReturnValue({
       data: {
         user: {
           id: "user_1",
           email: "test@example.com",
-          defaultOrganization: null,
+          organizationId: null,
         },
       },
       status: "authenticated",
