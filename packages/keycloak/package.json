@@ -1,0 +1,41 @@
+{
+  "name": "@tumiki/keycloak",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@keycloak/keycloak-admin-client": "^26.0.7",
+    "dotenv-cli": "^8.0.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
+    "@types/node": "^22.19.1",
+    "@typescript/native-preview": "7.0.0-dev.20250814.1",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.48.1",
+    "vitest": "catalog:"
+  },
+  "prettier": "@tumiki/prettier-config"
+}
