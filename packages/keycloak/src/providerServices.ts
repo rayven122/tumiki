@@ -116,6 +116,8 @@ export const createOrganization = async (
         { name: "Viewer", description: "組織閲覧者 - 読み取り専用" },
       ];
 
+    const createdRoles: string[] = []; // 作成済みロールを追跡
+
     for (const role of defaultRoles) {
       const roleResult = await client.createGroupRole(groupId, {
         name: role.name,
@@ -123,7 +125,11 @@ export const createOrganization = async (
       });
 
       if (!roleResult.success) {
-        // グループロール作成に失敗した場合はロールバック
+        // グループロール作成に失敗した場合は、既に作成したロールを削除
+        for (const createdRoleName of createdRoles) {
+          await client.deleteGroupRole(groupId, createdRoleName);
+        }
+        // その後、グループ自体も削除
         await client.deleteGroup(groupId);
         return {
           success: false,
@@ -132,6 +138,8 @@ export const createOrganization = async (
             roleResult.error ?? `Failed to create group role: ${role.name}`,
         };
       }
+
+      createdRoles.push(role.name);
     }
   }
 
@@ -143,7 +151,18 @@ export const createOrganization = async (
   });
 
   if (!addMemberResult.success) {
-    // グループ作成は成功したが、メンバー追加に失敗した場合はロールバック
+    // メンバー追加に失敗した場合は、作成したロールを削除してからグループを削除
+    if (params.createDefaultRoles !== false) {
+      const defaultRoleNames: OrganizationRole[] = [
+        "Owner",
+        "Admin",
+        "Member",
+        "Viewer",
+      ];
+      for (const roleName of defaultRoleNames) {
+        await client.deleteGroupRole(groupId, roleName);
+      }
+    }
     await client.deleteGroup(groupId);
     return {
       success: false,
