@@ -58,6 +58,7 @@
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "catalog:",
     "@tumiki/db": "workspace:*",
+    "@tumiki/keycloak": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
     "@tumiki/slack": "workspace:*",
     "@uiw/react-json-view": "2.0.0-alpha.34",
