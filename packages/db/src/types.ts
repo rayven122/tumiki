@@ -1,11 +1,6 @@
 import type { Db } from "./index.js";
 
-export {
-  PermissionAction,
-  ResourceType,
-  McpServerVisibility,
-  TransportType,
-} from "@prisma/client";
+export { McpServerVisibility, TransportType } from "@prisma/client";
 
 /**
  * トランザクション内で使用可能なPrismaクライアント型
