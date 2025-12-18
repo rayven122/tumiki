@@ -1,6 +1,7 @@
 import type {
   IOrganizationProvider,
   KeycloakAdminConfig,
+  KeycloakRole,
   OrganizationRole,
 } from "./types.js";
 import { KeycloakAdminClient } from "./client.js";
@@ -25,6 +26,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     name: string;
     groupName: string;
     ownerId: string;
+    createDefaultRoles?: boolean;
   }): Promise<{ success: boolean; externalId: string; error?: string }> {
     return services.createOrganization(this.client, params, (memberParams) =>
       this.addMember(memberParams),
@@ -79,5 +81,62 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string;
   }): Promise<{ success: boolean; error?: string }> {
     return services.invalidateUserSessions(this.client, params);
+  }
+
+  /**
+   * グループロールを作成（Keycloak固有機能）
+   */
+  async createGroupRole(
+    groupId: string,
+    params: {
+      name: string;
+      description?: string;
+      attributes?: Record<string, string[]>;
+    },
+  ): Promise<{ success: boolean; roleId?: string; error?: string }> {
+    return this.client.createGroupRole(groupId, params);
+  }
+
+  /**
+   * グループロール一覧を取得（Keycloak固有機能）
+   */
+  async listGroupRoles(groupId: string): Promise<{
+    success: boolean;
+    roles?: KeycloakRole[];
+    error?: string;
+  }> {
+    return this.client.listGroupRoles(groupId);
+  }
+
+  /**
+   * グループロールを削除（Keycloak固有機能）
+   */
+  async deleteGroupRole(
+    groupId: string,
+    roleName: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    return this.client.deleteGroupRole(groupId, roleName);
+  }
+
+  /**
+   * ユーザーにグループロールを割り当て（Keycloak固有機能）
+   */
+  async assignGroupRoleToUser(
+    groupId: string,
+    userId: string,
+    roleName: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    return this.client.assignGroupRoleToUser(groupId, userId, roleName);
+  }
+
+  /**
+   * ユーザーからグループロールを削除（Keycloak固有機能）
+   */
+  async removeGroupRoleFromUser(
+    groupId: string,
+    userId: string,
+    roleName: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    return this.client.removeGroupRoleFromUser(groupId, userId, roleName);
   }
 }
