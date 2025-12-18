@@ -3,7 +3,7 @@ import type RoleRepresentation from "@keycloak/keycloak-admin-client/lib/defs/ro
 import KcAdminClient from "@keycloak/keycloak-admin-client";
 
 import type { KeycloakAdminConfig, OrganizationRole } from "./types.js";
-import * as operations from "./operations/index.js";
+import * as operations from "./clientOperations.js";
 
 /**
  * Keycloak Admin APIクライアント
