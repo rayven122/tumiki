@@ -48,7 +48,65 @@
       "authorizationServicesEnabled": false,
       "attributes": {
         "pkce.code.challenge.method": "S256"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "Tumiki Organization ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tumiki_organization_id",
+            "claim.name": "tumiki.organization_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "Tumiki Organization Group",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tumiki_organization_group",
+            "claim.name": "tumiki.organization_group",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "Tumiki Organization Roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "tumiki.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "Tumiki Keycloak Managed Flag",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tumiki_is_keycloak_managed",
+            "claim.name": "tumiki.is_keycloak_managed",
+            "jsonType.label": "boolean",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "tumiki-proxy",
@@ -157,6 +215,22 @@
       {
         "name": "viewer",
         "description": "Read-only user role"
+      },
+      {
+        "name": "Owner",
+        "description": "Organization Owner - Full permissions"
+      },
+      {
+        "name": "Admin",
+        "description": "Organization Admin - Can manage members"
+      },
+      {
+        "name": "Member",
+        "description": "Organization Member - Basic usage"
+      },
+      {
+        "name": "Viewer",
+        "description": "Organization Viewer - Read-only access"
       }
     ]
   },
