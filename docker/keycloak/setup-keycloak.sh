@@ -213,13 +213,14 @@ EOF
       return 0
     fi
 
-    $KCADM create identity-provider/instances/"$IDP_ALIAS"/mappers -r "$REALM" --config /tmp/kcadm.config \
-      -s name="$name" \
-      -s identityProviderAlias="$IDP_ALIAS" \
-      -s identityProviderMapper="$type" \
-      -s config.syncMode="INHERIT" \
-      -s config.claim="$claim" \
-      -s config.user.attribute="$attr" 2>/dev/null || true
+    # oidc-username-idp-mapper用の特別処理
+    if [ "$type" = "oidc-username-idp-mapper" ]; then
+      $KCADM create identity-provider/instances/"$IDP_ALIAS"/mappers -r "$REALM" --config /tmp/kcadm.config \
+        --body "{\"name\":\"$name\",\"identityProviderAlias\":\"$IDP_ALIAS\",\"identityProviderMapper\":\"$type\",\"config\":{\"syncMode\":\"INHERIT\",\"template\":\"\${CLAIM.$claim}\"}}" 2>/dev/null || true
+    else
+      $KCADM create identity-provider/instances/"$IDP_ALIAS"/mappers -r "$REALM" --config /tmp/kcadm.config \
+        --body "{\"name\":\"$name\",\"identityProviderAlias\":\"$IDP_ALIAS\",\"identityProviderMapper\":\"$type\",\"config\":{\"syncMode\":\"INHERIT\",\"claim\":\"$claim\",\"user.attribute\":\"$attr\"}}" 2>/dev/null || true
+    fi
   }
 
   # Google IdPマッパー作成

@@ -67,12 +67,27 @@ export const addUserToGroup = async (
   groupId: string,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    // デバッグ: ユーザーIDとグループIDをログ出力
+    console.log("[DEBUG] addUserToGroup:", {
+      userId,
+      groupId,
+      currentRealm: client.realmName,
+    });
+
     await client.users.addToGroup({
       id: userId,
       groupId,
     });
     return { success: true };
   } catch (error) {
+    // エラーの詳細をログ出力
+    console.error("[ERROR] addUserToGroup failed:", {
+      userId,
+      groupId,
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
