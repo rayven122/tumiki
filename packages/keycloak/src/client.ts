@@ -19,9 +19,11 @@ export class KeycloakAdminClient {
 
   constructor(config: KeycloakAdminConfig) {
     this.config = config;
+    // admin-cli クライアントは master realm にのみ存在するため、
+    // 初期化時は master realm を指定
     this.client = new KcAdminClient({
       baseUrl: config.baseUrl,
-      realmName: config.realm,
+      realmName: "master",
     });
   }
 
@@ -49,11 +51,31 @@ export class KeycloakAdminClient {
    * 認証処理の実行
    */
   private async performAuth(): Promise<void> {
+    console.log("[DEBUG] performAuth: Before auth", {
+      currentRealm: this.client.realmName,
+      targetRealm: this.config.realm,
+    });
+
+    // master realm で認証（admin-cli クライアントは master realm にのみ存在）
     await this.client.auth({
       username: this.config.adminUsername,
       password: this.config.adminPassword,
       grantType: "password",
       clientId: "admin-cli",
+    });
+
+    console.log("[DEBUG] performAuth: After auth, before setConfig", {
+      currentRealm: this.client.realmName,
+    });
+
+    // 認証後、対象レルム（tumiki）に切り替え
+    this.client.setConfig({
+      realmName: this.config.realm,
+    });
+
+    console.log("[DEBUG] performAuth: After setConfig", {
+      currentRealm: this.client.realmName,
+      targetRealm: this.config.realm,
     });
   }
 
