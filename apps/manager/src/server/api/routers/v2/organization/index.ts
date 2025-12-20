@@ -29,7 +29,6 @@ export const getUserOrganizationsOutputSchema = z.array(
     updatedAt: z.date(),
     // isAdmin削除: JWTのrolesで判定
     memberCount: z.number(),
-    isDefault: z.boolean(),
   }),
 );
 
