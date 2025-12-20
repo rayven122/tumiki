@@ -3,11 +3,11 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 export default async function SignInPage() {
   const session = await auth();
-  // セッションから直接組織slugを取得
-  const orgSlug = session?.user.organizationSlug;
+  const orgSlug = getSessionInfo(session).organizationSlug;
 
   // 組織情報がない場合はオンボーディングへ（初回ログインフラグ付き）
   const redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding?first=true";

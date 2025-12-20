@@ -23,6 +23,7 @@ import { OrganizationCreateForm } from "./OrganizationCreateForm";
 import { toast } from "@/utils/client/toast";
 import { WelcomeLoadingOverlay } from "./WelcomeLoadingOverlay";
 import type { Session } from "next-auth";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type OnboardingClientProps = {
   session: Session | null;
@@ -49,7 +50,7 @@ export const OnboardingClient = ({
     setSelectedOption("personal");
 
     // セッションからチーム情報を取得（個人チームは会員登録時に自動作成済み）
-    const orgSlug = session?.user?.organizationSlug;
+    const orgSlug = getSessionInfo(session).organizationSlug;
     if (orgSlug) {
       // 初回ログイン時はウェルカムオーバーレイを表示
       if (isFirstLogin) {
@@ -58,13 +59,14 @@ export const OnboardingClient = ({
         router.push(`/${orgSlug}/mcps`);
       }
     } else {
-      // エラーケース: セッションにチーム情報が存在しない
-      console.error(
-        "No organization found in session. This should not happen.",
-      );
       toast.error(
-        "チーム情報の取得に失敗しました。サポートにお問い合わせください。",
+        "チーム情報の取得に失敗しました。3秒後に自動的に再読み込みします。",
       );
+
+      // 3秒後に自動リロード（個人組織作成の遅延に対応）
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
     }
   };
 
@@ -73,7 +75,7 @@ export const OnboardingClient = ({
     setShowWelcomeOverlay(false);
 
     // セッションからチームslugを取得してリダイレクト
-    const orgSlug = session?.user?.organizationSlug;
+    const orgSlug = getSessionInfo(session).organizationSlug;
     if (orgSlug) {
       router.push(`/${orgSlug}/mcps`);
     }

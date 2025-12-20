@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Edit2, Save, X, Users } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 export const BasicInfoSection = () => {
   const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
@@ -79,7 +80,7 @@ export const BasicInfoSection = () => {
   }
 
   // JWT のロールから管理者権限を取得
-  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   return (
     <Card>

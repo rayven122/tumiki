@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { UserPlus, Trash2, Crown, User, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -101,7 +102,7 @@ export const MemberManagementSection = () => {
   };
 
   // JWT のロールから管理者権限を取得
-  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   if (organizationLoading) {
     return (
