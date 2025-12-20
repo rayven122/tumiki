@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { UserPlus, Trash2, Crown, User, Mail } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ export const MemberList = ({ organization }: MemberListProps) => {
   const utils = api.useUtils();
 
   // JWT のロールから管理者権限を取得
-  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   const inviteMembersMutation = api.organization.inviteMembers.useMutation({
     onSuccess: async (data) => {
