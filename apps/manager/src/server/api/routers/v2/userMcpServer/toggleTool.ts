@@ -1,6 +1,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { z } from "zod";
 import type { ToolId } from "@/schema/ids";
+import { createNotification } from "../notification/createNotification";
 
 type ToggleToolInput = {
   templateInstanceId: string;
@@ -19,6 +20,8 @@ export type ToggleToolOutput = z.infer<typeof toggleToolOutputSchema>;
 export const toggleTool = async (
   tx: PrismaTransactionClient,
   input: ToggleToolInput,
+  userId: string,
+  organizationId: string,
 ): Promise<ToggleToolOutput> => {
   const { templateInstanceId, toolId, isEnabled } = input;
 
@@ -26,6 +29,14 @@ export const toggleTool = async (
   const templateInstance = await tx.mcpServerTemplateInstance.findUnique({
     where: {
       id: templateInstanceId,
+    },
+    include: {
+      mcpServer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 
@@ -71,6 +82,28 @@ export const toggleTool = async (
           },
         },
       },
+    });
+  }
+
+  // 組織の全メンバーに通知を作成
+  const orgMembers = await tx.organizationMember.findMany({
+    where: { organizationId },
+    select: { userId: true },
+  });
+
+  const statusText = isEnabled ? "有効化" : "無効化";
+
+  // 各メンバーに通知を作成
+  for (const member of orgMembers) {
+    await createNotification(tx, {
+      type: "MCP_TOOL_CHANGED",
+      priority: "NORMAL",
+      title: `MCPツールが${statusText}されました`,
+      message: `${templateInstance.mcpServer.name}の「${tool.name}」が${statusText}されました。`,
+      linkUrl: `/${organizationId}/mcps/${templateInstance.mcpServer.id}`,
+      userId: member.userId,
+      organizationId,
+      triggeredById: userId,
     });
   }
 

@@ -44,6 +44,9 @@ model Organization {
   /// フィードバック
   feedbacks Feedback[]
 
+  /// 通知関連
+  notifications Notification[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -80,6 +83,7 @@ model OrganizationInvitation {
 
   /// 招待の有効期限
   expires   DateTime
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
