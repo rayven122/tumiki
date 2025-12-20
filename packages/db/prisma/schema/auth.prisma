@@ -49,6 +49,10 @@ model User {
   /// フィードバック
   feedbacks Feedback[]
 
+  /// 通知関連
+  notifications         Notification[]
+  triggeredNotifications Notification[] @relation("NotificationTriggeredBy")
+
   /// Auth.js adapter
   accounts Account[]
   sessions Session[]

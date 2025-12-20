@@ -4,6 +4,7 @@
 - [Auth](#auth)
 - [Feedback](#feedback)
 - [McpServer](#mcpserver)
+- [Notification](#notification)
 - [Organization](#organization)
 - [RequestLog](#requestlog)
 - [UserMcpServer](#usermcpserver)
@@ -252,6 +253,51 @@ Pair relationship table between [McpServerTemplateInstance](#McpServerTemplateIn
 **Properties**
   - `A`: 
   - `B`: 
+
+
+## Notification
+```mermaid
+erDiagram
+"Notification" {
+  String id PK
+  String type
+  NotificationPriority priority
+  String title
+  String message
+  String linkUrl "nullable"
+  Boolean isRead
+  DateTime readAt "nullable"
+  String organizationId FK
+  String userId FK
+  String triggeredById FK "nullable"
+  Boolean isDeleted
+  DateTime expiresAt "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+```
+
+### `Notification`
+通知テーブル
+
+**Properties**
+  - `id`: 
+  - `type`
+    > 通知タイプ（文字列で管理）
+    > 例: "MCP_TOOL_CHANGED", "MCP_SERVER_STATUS_CHANGED", "ORGANIZATION_INVITATION_SENT" など
+  - `priority`: 通知優先度
+  - `title`: 通知タイトル（日本語）
+  - `message`: 通知メッセージ（日本語）
+  - `linkUrl`: リンク先URL（クリック時の遷移先）
+  - `isRead`: 既読フラグ
+  - `readAt`: 既読日時
+  - `organizationId`: 関連する組織ID
+  - `userId`: 通知の受信者（ユーザーID）
+  - `triggeredById`: アクションをトリガーしたユーザー（誰が変更したか）
+  - `isDeleted`: 論理削除フラグ（非表示）
+  - `expiresAt`: 有効期限（古い通知の自動削除用）
+  - `createdAt`: 
+  - `updatedAt`: 
 
 
 ## Organization
