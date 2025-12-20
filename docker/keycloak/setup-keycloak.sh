@@ -232,6 +232,32 @@ EOF
   create_idp_mapper "google-picture" "oidc-user-attribute-idp-mapper" "picture" "picture"
 fi
 
+# ユーザープロフィール設定: firstName と lastName を任意にする
+# 注: この設定は新規ユーザー作成時とプロフィール更新時の両方に適用される
+echo "ユーザープロフィール設定: firstName と lastName を任意にしています..."
+
+# User Profile を有効化（Keycloak 21+）
+$KCADM update realms/"$REALM" -r "$REALM" --config /tmp/kcadm.config \
+  -s 'attributes."userProfileEnabled"=true' 2>/dev/null || true
+
+# 既存のUser Profileを取得し、firstName/lastNameのrequiredを削除
+# これにより新規作成時も更新時も両方で任意フィールドになる
+if $KCADM get users/profile -r "$REALM" --config /tmp/kcadm.config > /tmp/user-profile-orig.json 2>/dev/null; then
+  # sedを使ってfirstName/lastNameのrequiredブロックを削除
+  # JSONの"required": {...}ブロック全体を、firstName/lastNameの属性から削除
+  sed -E '/"name" *: *"(firstName|lastName)"/,/"multivalued"/{ /"required" *: *\{/,/\},?/d; }' \
+    /tmp/user-profile-orig.json > /tmp/user-profile.json
+
+  # 設定を適用
+  if $KCADM update users/profile -r "$REALM" --config /tmp/kcadm.config -f /tmp/user-profile.json 2>&1; then
+    echo "✓ firstName と lastName を任意フィールドに設定しました"
+  else
+    echo "警告: User Profile設定の更新に失敗しました"
+  fi
+else
+  echo "警告: User Profileの取得に失敗しました"
+fi
+
 # masterレルムのSSL要件を無効化（開発環境用）
 # 注: tumikiレルムはtumiki-realm.jsonで既にsslRequired=noneが設定済み
 echo "masterレルムのSSL要件を無効化中..."
