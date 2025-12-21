@@ -19,6 +19,8 @@ export type ToggleToolOutput = z.infer<typeof toggleToolOutputSchema>;
 export const toggleTool = async (
   tx: PrismaTransactionClient,
   input: ToggleToolInput,
+  _userId: string,
+  _organizationId: string,
 ): Promise<ToggleToolOutput> => {
   const { templateInstanceId, toolId, isEnabled } = input;
 
@@ -26,6 +28,14 @@ export const toggleTool = async (
   const templateInstance = await tx.mcpServerTemplateInstance.findUnique({
     where: {
       id: templateInstanceId,
+    },
+    include: {
+      mcpServer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 

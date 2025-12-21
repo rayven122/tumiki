@@ -248,11 +248,15 @@ export const userMcpServerRouter = createTRPCRouter({
     .output(updateServerStatusOutputSchema)
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
-        return await updateServerStatus(tx, {
-          id: input.id,
-          isEnabled: input.isEnabled,
-          organizationId: ctx.currentOrg.id,
-        });
+        return await updateServerStatus(
+          tx,
+          {
+            id: input.id,
+            isEnabled: input.isEnabled,
+            organizationId: ctx.currentOrg.id,
+          },
+          ctx.session.user.id,
+        );
       });
     }),
 
@@ -262,11 +266,16 @@ export const userMcpServerRouter = createTRPCRouter({
     .output(toggleToolOutputSchema)
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
-        return await toggleTool(tx, {
-          templateInstanceId: input.templateInstanceId,
-          toolId: input.toolId,
-          isEnabled: input.isEnabled,
-        });
+        return await toggleTool(
+          tx,
+          {
+            templateInstanceId: input.templateInstanceId,
+            toolId: input.toolId,
+            isEnabled: input.isEnabled,
+          },
+          ctx.session.user.id,
+          ctx.currentOrg.id,
+        );
       });
     }),
 });

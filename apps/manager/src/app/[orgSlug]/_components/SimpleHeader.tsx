@@ -8,6 +8,7 @@ import { Menu } from "lucide-react";
 import { useSetAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 import { useSession } from "next-auth/react";
+import { NotificationCenter } from "./notification/NotificationCenter";
 
 export const SimpleHeader = () => {
   const { data: session } = useSession();
@@ -50,8 +51,9 @@ export const SimpleHeader = () => {
           <OrganizationSwitcher />
         </div>
 
-        {/* 右側: ユーザーメニュー */}
-        <div className="ml-auto">
+        {/* 右側: 通知センターとユーザーメニュー */}
+        <div className="ml-auto flex items-center gap-2">
+          <NotificationCenter />
           <HeaderClient user={user} />
         </div>
       </div>

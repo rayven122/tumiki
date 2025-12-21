@@ -1,0 +1,65 @@
+/**
+ * @namespace Notification
+ */
+
+/// 通知優先度
+/// @namespace Notification
+enum NotificationPriority {
+  /// 低優先度
+  LOW
+  /// 通常
+  NORMAL
+  /// 高優先度
+  HIGH
+  /// 緊急
+  URGENT
+}
+
+/// 通知テーブル
+/// @namespace Notification
+model Notification {
+  id String @id @default(cuid())
+
+  /// 通知タイプ（文字列で管理）
+  /// 例: "MCP_TOOL_CHANGED", "MCP_SERVER_STATUS_CHANGED", "ORGANIZATION_INVITATION_SENT" など
+  type String
+
+  /// 通知優先度
+  priority NotificationPriority @default(NORMAL)
+
+  /// 通知タイトル（日本語）
+  title String
+
+  /// 通知メッセージ（日本語）
+  message String @db.Text
+
+  /// リンク先URL（クリック時の遷移先）
+  linkUrl String?
+
+  /// 既読フラグ
+  isRead Boolean @default(false)
+
+  /// 既読日時
+  readAt DateTime?
+
+  /// 関連する組織ID
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// 通知の受信者（ユーザーID）
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// アクションをトリガーしたユーザー（誰が変更したか）
+  triggeredById String?
+  triggeredBy   User? @relation("NotificationTriggeredBy", fields: [triggeredById], references: [id], onDelete: SetNull)
+
+  /// 論理削除フラグ（非表示）
+  isDeleted Boolean @default(false)
+
+  /// 有効期限（古い通知の自動削除用）
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
