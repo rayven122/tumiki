@@ -26,8 +26,10 @@ model Organization {
   /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
   /// この組織をデフォルト組織として設定しているユーザー
   defaultUsers User[]                   @relation("UserDefaultOrganization")
-  /// 組織のメンバー
-  members   OrganizationMember[]
+  /// 組織のメンバー（メタデータのみ、実際のメンバーシップはKeycloak管理）
+  members      OrganizationMember[]
+  /// 組織のアプリケーションロール（権限定義）
+  roles        OrganizationRole[]
   /// 組織の招待
   invitations  OrganizationInvitation[]
 
@@ -86,4 +88,66 @@ model OrganizationInvitation {
 
   @@unique([organizationId, email])
   @@index([token])
+}
+
+/// アプリケーションロール定義（権限セット）
+/// @namespace Organization
+model OrganizationRole {
+  /// 組織ID
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// URL識別子（例: data-engineer）
+  slug           String
+  /// ロール名（表示用）
+  name           String
+  /// ロールの説明
+  description    String?
+  /// デフォルトロールか（新メンバーに自動付与）
+  isDefault      Boolean          @default(false)
+  /// このロールが持つ詳細な権限
+  permissions    RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([organizationId, slug])
+}
+
+
+/// リソースタイプ
+/// @namespace Organization
+enum ResourceType {
+  /// MCPサーバー設定
+  MCP_SERVER_CONFIG
+  /// MCPサーバー
+  MCP_SERVER
+  /// MCPサーバーテンプレート
+  MCP_SERVER_TEMPLATE
+}
+
+/// ロールに付与された権限（Unix型権限）
+/// @namespace Organization
+model RolePermission {
+  id             String           @id @default(cuid())
+  /// 組織ID
+  organizationId String
+  /// ロールslug
+  roleSlug       String
+  role           OrganizationRole @relation(fields: [organizationId, roleSlug], references: [organizationId, slug], onDelete: Cascade)
+  /// リソースタイプ
+  resourceType   ResourceType
+  /// リソースID（空文字列の場合は全リソースに適用）
+  resourceId     String           @default("")
+
+  /// 読み取り権限（閲覧）
+  read    Boolean @default(false)
+  /// 書き込み権限（作成・更新・削除）
+  write   Boolean @default(false)
+  /// 実行権限（MCPツール実行）
+  execute Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, roleSlug, resourceType, resourceId])
 }
