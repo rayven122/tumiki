@@ -84,25 +84,39 @@ export const deleteOrganization = async ({
       });
     }
 
-    // トランザクション内でDB削除とKeycloak削除を実行
-    // DB削除を先に実行することで、Keycloak削除失敗時に自動ロールバック可能
+    // Sagaパターン: Keycloak削除を先に実行し、成功したらDB削除を実行
+    // これにより、Keycloak削除失敗時にDBが変更されないことを保証
     const provider = getOrganizationProvider();
-    await ctx.db.$transaction(async (tx) => {
-      // 1. DB削除を先に実行（カスケード削除により関連データも削除される）
-      await tx.organization.delete({
+
+    // 1. Keycloak削除を先に実行
+    const deleteResult = await provider.deleteOrganization({
+      externalId: organization.id, // Organization.idがKeycloak Group ID
+    });
+
+    if (!deleteResult.success) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `外部認証システムでの削除に失敗しました。管理者にお問い合わせください。`,
+      });
+    }
+
+    // 2. Keycloak削除成功後にDB削除を実行
+    try {
+      await ctx.db.organization.delete({
         where: { id: input.organizationId },
       });
-
-      // 2. DB削除成功後にKeycloak削除
-      const deleteResult = await provider.deleteOrganization({
-        externalId: organization.id, // Organization.idがKeycloak Group ID
+    } catch (error) {
+      // DB削除失敗時のエラーログ（Keycloakは削除済みのため手動修正が必要）
+      console.error(
+        `組織DB削除失敗（Keycloakは削除済み）: organizationId=${input.organizationId}`,
+        error,
+      );
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          "データベースでの削除に失敗しました。管理者にお問い合わせください。",
       });
-
-      if (!deleteResult.success) {
-        // トランザクション内でエラーを投げてDB削除をロールバック
-        throw new Error(`Keycloak削除失敗: ${deleteResult.error}`);
-      }
-    });
+    }
 
     return {
       success: true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -59,12 +59,26 @@ export const MapView = ({
     useEdgesState<DepartmentEdgeType>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // nodesとedgesの最新値を保持するref（無限レンダリング防止）
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+
+  // nodesとedgesが変更されたらrefを更新
+  useEffect(() => {
+    nodesRef.current = nodes;
+    edgesRef.current = edges;
+  }, [nodes, edges]);
+
   // レイアウト調整関数（useCallbackで安定化）
+  // 依存配列からnodesとedgesを除外し、refを使用して最新値を参照
   const arrangeNodesCallback = useCallback(() => {
-    const layoutedNodes = getLayoutedElements(nodes, edges);
+    const layoutedNodes = getLayoutedElements(
+      nodesRef.current,
+      edgesRef.current,
+    );
     setNodes(layoutedNodes);
     toast.success("レイアウトを調整しました");
-  }, [nodes, edges, setNodes]);
+  }, [setNodes]);
 
   // レイアウト調整関数をrefに設定（クリーンアップ処理付き）
   useEffect(() => {
