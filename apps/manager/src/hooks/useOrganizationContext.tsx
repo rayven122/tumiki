@@ -2,12 +2,13 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
 import { type getUserOrganizationsOutputSchema } from "@/server/api/routers/v2/organization";
 import { type z } from "zod";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 // tRPCのZod型定義から型を生成
 type Organization = z.infer<typeof getUserOrganizationsOutputSchema>[number];
@@ -39,27 +40,36 @@ export const OrganizationProvider = ({
 }: OrganizationProviderProps) => {
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const utils = api.useUtils();
 
-  // 認証済みユーザーのみ組織リストを取得
+  // 組織データが不要なページでは取得しない
+  const isPublicPage =
+    pathname?.startsWith("/onboarding") ||
+    pathname?.startsWith("/invite") ||
+    pathname === "/" ||
+    pathname === "/jp";
+
+  // 認証済みユーザーのみ組織リストを取得（パブリックページでは取得しない）
   const { data: organizations, isLoading } =
     api.v2.organization.getUserOrganizations.useQuery(undefined, {
-      enabled: status === "authenticated" && !!session?.user,
+      enabled: !isPublicPage && status === "authenticated" && !!session?.user,
+      retry: false,
+      refetchOnWindowFocus: false,
     });
 
   // 現在の組織はsessionのorganizationIdから取得
   // organizationsリストから詳細情報を補完
-  const currentOrganization = session?.user?.organizationId
+  const { organizationId } = getSessionInfo(session);
+  const currentOrganization = organizationId
     ? (() => {
-        const org = organizations?.find(
-          (o) => o.id === session.user.organizationId,
-        );
+        const org = organizations?.find((o) => o.id === organizationId);
         if (!org) return null;
         return {
           id: org.id,
           name: org.name,
           isPersonal: org.isPersonal,
-          // isAdmin削除: JWTのrolesで判定（session.user.isOrganizationAdmin）
+          // isAdmin削除: JWTのrolesで判定（session.user.tumiki.roles）
           memberCount: org.memberCount,
         };
       })()
@@ -73,7 +83,7 @@ export const OrganizationProvider = ({
 
         // Auth.jsのセッションを強制更新
         // DBの最新のdefaultOrganization情報を取得
-        await update();
+        await update({});
 
         // tRPCの全キャッシュを無効化して最新データを取得
         await utils.invalidate();
