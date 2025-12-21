@@ -1,13 +1,23 @@
 import type { Role } from "@tumiki/db/server";
 
 /**
- * Tumiki カスタムクレーム型定義
- * Keycloak JWTに含まれる組織関連情報
+ * Keycloakから実際に来るカスタムクレーム型定義
+ * Protocol Mapperで設定されたクレームの構造
+ */
+export type KeycloakTumikiClaims = {
+  group_roles: string[]; // ユーザーが所属する組織グループのリスト
+  roles: string[]; // Keycloakロールのリスト
+};
+
+/**
+ * Auth.js内部で使用するカスタムクレーム型定義
+ * JWTコールバックで変換後の構造
  */
 export type TumikiClaims = {
-  organization_id: string;
-  organization_group: string;
-  roles: string[];
+  org_slugs: string[]; // group_rolesから名称変更
+  org_id: string | null; // ユーザーの操作に応じて変更
+  org_slug: string | null; // ユーザーの操作に応じて変更
+  roles: string[]; // 変更なし
 };
 
 /**
@@ -17,7 +27,7 @@ export type KeycloakJWTPayload = {
   sub: string;
   email?: string;
   name?: string;
-  tumiki?: TumikiClaims;
+  tumiki?: KeycloakTumikiClaims; // Keycloakからのクレーム型を使用
 };
 
 /**
@@ -48,6 +58,7 @@ declare module "next-auth" {
 
   interface User {
     role?: Role;
+    profileSub?: string; // Keycloak subをカスタムフィールドとして保持
   }
 }
 

@@ -40,9 +40,8 @@ export type CreateUserWithOrganizationOutput = z.infer<
  *
  * トランザクション内で以下を実行：
  * 1. ユーザーを作成
- * 2. Keycloakに個人組織グループを作成（@user-id形式）
+ * 2. Keycloakに個人組織グループを作成（slugをグループ名として使用）
  * 3. DBに個人組織と OrganizationMember を同時作成
- * 4. Keycloakのユーザー属性にデフォルト組織を設定
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -63,12 +62,12 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 2. Keycloakに個人組織グループを作成（@user-idで個人組織を識別）
+  // 2. Keycloakに個人組織グループを作成
+  // slugをKeycloakグループ名として使用
   const provider = getOrganizationProvider();
-  const groupName = `@${input.id}`; // 個人組織は@プレフィックス付き
   const result = await provider.createOrganization({
-    name: `${input.name ?? input.email ?? "User"}'s Workspace`,
-    groupName,
+    name: `${baseName}'s Workspace`,
+    groupName: slug,
     ownerId: input.id, // User.id = Keycloak subを使用
   });
 
@@ -83,7 +82,7 @@ export const createUserWithOrganization = async (
   await tx.organization.create({
     data: {
       id: result.externalId, // Keycloak Group IDを使用
-      name: `${input.name ?? input.email ?? "User"}'s Workspace`,
+      name: `${baseName}'s Workspace`,
       slug,
       description: "Personal workspace",
       isPersonal: true,
@@ -96,20 +95,6 @@ export const createUserWithOrganization = async (
       },
     },
   });
-
-  // 4. Keycloakのユーザー属性にデフォルト組織を設定
-  // User.id = Keycloak subなので、input.idを直接使用
-  const setDefaultResult = await provider.setUserDefaultOrganization({
-    userId: input.id,
-    organizationId: result.externalId,
-  });
-
-  if (!setDefaultResult.success) {
-    console.warn(
-      `[CreateUserWithOrganization] Keycloakのデフォルト組織設定に失敗: ${setDefaultResult.error}`,
-    );
-    // ユーザー作成は継続（Keycloak属性設定失敗は致命的ではない）
-  }
 
   // データベースからのemailを検証
   if (!createdUser.email) {

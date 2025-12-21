@@ -11,32 +11,30 @@ export type SessionInfo = {
 };
 
 /**
+ * group_rolesから個人組織のslugを取得
+ * 個人組織のslugは@で始まる
+ *
+ * @param groupRoles - Keycloakのgroup_roles配列
+ * @returns 個人組織のslug、見つからない場合はnull
+ */
+export const getPersonalOrgSlug = (groupRoles: string[]): string | null => {
+  return groupRoles.find((slug) => slug.startsWith("@")) ?? null;
+};
+
+/**
  * セッションから組織関連情報を取得する統合関数
- * Keycloakのtumiki claimsから必要な情報を抽出してオブジェクトで返す
+ * Auth.jsのJWTコールバックで変換されたtumiki claimsから必要な情報を抽出
  *
  * @param session - Next-Authセッションオブジェクト
  * @returns 組織slug、組織ID、ロール配列、管理者フラグを含むオブジェクト
- *
- * @example
- * ```typescript
- * // 必要な値だけ分割代入で取得
- * const { organizationSlug } = getSessionInfo(session);
- * const { isAdmin } = getSessionInfo(session);
- * const { organizationId, roles } = getSessionInfo(session);
- *
- * // すべての値を取得
- * const sessionInfo = getSessionInfo(session);
- * ```
  */
 export const getSessionInfo = (session: Session | null): SessionInfo => {
-  // organization_groupパスから最後のセグメントを抽出してslugとする
-  // 例: "/tumiki/org-slug" → "org-slug"
-  const organizationGroup = session?.user?.tumiki?.organization_group;
-  const organizationSlug = organizationGroup
-    ? (organizationGroup.split("/").filter(Boolean).pop() ?? null)
-    : null;
+  // JWTコールバックで設定済みのorg_slugから直接取得
+  const organizationSlug = session?.user?.tumiki?.org_slug ?? null;
 
-  const organizationId = session?.user?.tumiki?.organization_id ?? null;
+  // JWTコールバックで設定済みのorg_idから直接取得
+  const organizationId = session?.user?.tumiki?.org_id ?? null;
+
   const roles = session?.user?.tumiki?.roles ?? [];
   const isAdmin = roles.some((role) => role === "Owner" || role === "Admin");
 
