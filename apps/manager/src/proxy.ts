@@ -126,9 +126,10 @@ export async function proxy(request: NextRequest) {
     "/error",
     "/signin",
     "/signup",
+    "/mock", // モック検証用
   ];
   const isPublicPath = publicPaths.some((path) => {
-    if (path === "/legal") {
+    if (path === "/legal" || path === "/mock") {
       return pathname.startsWith(path);
     }
     return pathname === path;
