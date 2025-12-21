@@ -41,6 +41,64 @@ export const deleteGroup = async (
 };
 
 /**
+ * サブグループを作成
+ * @param client - Keycloak Admin Client
+ * @param parentGroupId - 親グループID（組織のKeycloak Group ID）
+ * @param params - サブグループ作成パラメータ
+ * @returns サブグループID
+ */
+export const createSubgroup = async (
+  client: KcAdminClient,
+  parentGroupId: string,
+  params: {
+    name: string;
+    attributes?: Record<string, string[]>;
+  },
+): Promise<{ subgroupId: string }> => {
+  const response = await client.groups.createChildGroup(
+    { id: parentGroupId },
+    {
+      name: params.name,
+      attributes: params.attributes ?? {},
+    },
+  );
+
+  const subgroupId = response.id;
+
+  if (!subgroupId) {
+    throw new Error("Failed to extract subgroup ID from response");
+  }
+
+  return { subgroupId };
+};
+
+/**
+ * サブグループを削除
+ */
+export const deleteSubgroup = async (
+  client: KcAdminClient,
+  subgroupId: string,
+): Promise<void> => {
+  await client.groups.del({ id: subgroupId });
+};
+
+/**
+ * グループのサブグループ一覧を取得
+ */
+export const listSubgroups = async (
+  client: KcAdminClient,
+  parentGroupId: string,
+): Promise<GroupRepresentation[]> => {
+  const group = await client.groups.findOne({ id: parentGroupId });
+
+  if (!group) {
+    throw new Error(`Group not found: ${parentGroupId}`);
+  }
+
+  return group.subGroups ?? [];
+};
+
+/**
  * ユーザーをグループに追加
  */
 export const addUserToGroup = async (

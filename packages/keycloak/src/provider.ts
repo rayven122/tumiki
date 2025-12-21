@@ -1,6 +1,7 @@
 import type {
   IOrganizationProvider,
   KeycloakAdminConfig,
+  KeycloakGroup,
   KeycloakRole,
   OrganizationRole,
 } from "./types.js";
@@ -218,6 +219,78 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
       this.client.updateUserAttributes(params.userId, {
         default_organization_id: [params.organizationId],
       }),
+    );
+  }
+
+  /**
+   * サブグループ（部署）を作成
+   */
+  async createSubgroup(params: {
+    organizationId: string;
+    name: string;
+    parentSubgroupId?: string;
+  }): Promise<{ success: boolean; subgroupId: string; error?: string }> {
+    const result = await this.executeWithResult(() =>
+      this.client.createSubgroup(
+        params.parentSubgroupId ?? params.organizationId,
+        { name: params.name },
+      ),
+    );
+    return {
+      success: result.success,
+      subgroupId: result.result ?? "",
+      error: result.error,
+    };
+  }
+
+  /**
+   * サブグループを削除
+   */
+  async deleteSubgroup(params: {
+    subgroupId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() => this.client.deleteSubgroup(params.subgroupId));
+  }
+
+  /**
+   * サブグループ一覧を取得
+   */
+  async listSubgroups(params: { organizationId: string }): Promise<{
+    success: boolean;
+    subgroups?: KeycloakGroup[];
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.listSubgroups(params.organizationId),
+    );
+    return {
+      success: result.success,
+      subgroups: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * ユーザーをサブグループに追加
+   */
+  async addUserToSubgroup(params: {
+    subgroupId: string;
+    userId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.addUserToGroup(params.userId, params.subgroupId),
+    );
+  }
+
+  /**
+   * ユーザーをサブグループから削除
+   */
+  async removeUserFromSubgroup(params: {
+    subgroupId: string;
+    userId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.removeUserFromGroup(params.userId, params.subgroupId),
     );
   }
 }

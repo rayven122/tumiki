@@ -152,6 +152,43 @@ export class KeycloakAdminClient {
   }
 
   /**
+   * サブグループを作成
+   */
+  async createSubgroup(
+    parentGroupId: string,
+    params: {
+      name: string;
+      attributes?: Record<string, string[]>;
+    },
+  ): Promise<string> {
+    await this.ensureAuth();
+    const result = await this.executeWithAutoRetry(() =>
+      operations.createSubgroup(this.client, parentGroupId, params),
+    );
+    return result.subgroupId;
+  }
+
+  /**
+   * サブグループを削除
+   */
+  async deleteSubgroup(subgroupId: string): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.deleteSubgroup(this.client, subgroupId),
+    );
+  }
+
+  /**
+   * サブグループ一覧を取得
+   */
+  async listSubgroups(parentGroupId: string): Promise<GroupRepresentation[]> {
+    await this.ensureAuth();
+    return this.executeWithAutoRetry(() =>
+      operations.listSubgroups(this.client, parentGroupId),
+    );
+  }
+
+  /**
    * ユーザーをグループに追加
    */
   async addUserToGroup(userId: string, groupId: string): Promise<void> {
