@@ -2,13 +2,15 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 
 type GetUserOrganizationsInput = {
   userId: string;
+  /** セッションから取得した現在の組織ID（Keycloak tumikiクレームから） */
+  currentOrganizationId?: string;
 };
 
 export const getUserOrganizations = async (
   tx: PrismaTransactionClient,
   input: GetUserOrganizationsInput,
 ) => {
-  const { userId } = input;
+  const { userId, currentOrganizationId } = input;
 
   // ユーザーが所属する組織の一覧を取得（詳細情報含む）
   const memberships = await tx.organizationMember.findMany({
@@ -43,12 +45,6 @@ export const getUserOrganizations = async (
     ],
   });
 
-  // ユーザーのデフォルト組織を取得
-  const user = await tx.user.findUnique({
-    where: { id: userId },
-    select: { defaultOrganization: { select: { id: true } } },
-  });
-
   return memberships.map((membership) => ({
     id: membership.organization.id,
     name: membership.organization.name,
@@ -62,6 +58,7 @@ export const getUserOrganizations = async (
     createdAt: membership.organization.createdAt,
     updatedAt: membership.organization.updatedAt,
     memberCount: membership.organization._count.members,
-    isDefault: membership.organization.id === user?.defaultOrganization?.id,
+    // Keycloakセッションの現在の組織IDと比較（tumikiクレームから取得）
+    isDefault: membership.organization.id === currentOrganizationId,
   }));
 };

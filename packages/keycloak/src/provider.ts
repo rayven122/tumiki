@@ -20,6 +20,42 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   }
 
   /**
+   * voidを返す操作用のラッパー
+   * 例外を { success, error } 形式に変換
+   */
+  private async execute(
+    operation: () => Promise<void>,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await operation();
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 値を返す操作用のラッパー
+   * 例外を { success, result, error } 形式に変換
+   */
+  private async executeWithResult<T>(
+    operation: () => Promise<T>,
+  ): Promise<{ success: boolean; result?: T; error?: string }> {
+    try {
+      const result = await operation();
+      return { success: true, result };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
    * 組織グループを作成
    */
   async createOrganization(params: {
@@ -28,9 +64,19 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     ownerId: string;
     createDefaultRoles?: boolean;
   }): Promise<{ success: boolean; externalId: string; error?: string }> {
-    return services.createOrganization(this.client, params, (memberParams) =>
-      this.addMember(memberParams),
+    const result = await this.executeWithResult(() =>
+      services.createOrganization(this.client, params, async (memberParams) => {
+        const memberResult = await this.addMember(memberParams);
+        if (!memberResult.success) {
+          throw new Error(memberResult.error ?? "Failed to add member");
+        }
+      }),
     );
+    return {
+      success: result.success,
+      externalId: result.result ?? "",
+      error: result.error,
+    };
   }
 
   /**
@@ -39,7 +85,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   async deleteOrganization(params: {
     externalId: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.deleteOrganization(this.client, params);
+    return this.execute(() => services.deleteOrganization(this.client, params));
   }
 
   /**
@@ -50,7 +96,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string;
     role: OrganizationRole;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.addMember(this.client, params);
+    return this.execute(() => services.addMember(this.client, params));
   }
 
   /**
@@ -60,7 +106,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     externalId: string;
     userId: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.removeMember(this.client, params);
+    return this.execute(() => services.removeMember(this.client, params));
   }
 
   /**
@@ -71,7 +117,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string;
     newRole: OrganizationRole;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.updateMemberRole(this.client, params);
+    return this.execute(() => services.updateMemberRole(this.client, params));
   }
 
   /**
@@ -80,7 +126,9 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   async invalidateUserSessions(params: {
     userId: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.invalidateUserSessions(this.client, params);
+    return this.execute(() =>
+      services.invalidateUserSessions(this.client, params),
+    );
   }
 
   /**
@@ -94,7 +142,14 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
       attributes?: Record<string, string[]>;
     },
   ): Promise<{ success: boolean; roleId?: string; error?: string }> {
-    return this.client.createGroupRole(groupId, params);
+    const result = await this.executeWithResult(() =>
+      this.client.createGroupRole(groupId, params),
+    );
+    return {
+      success: result.success,
+      roleId: result.result,
+      error: result.error,
+    };
   }
 
   /**
@@ -105,7 +160,14 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     roles?: KeycloakRole[];
     error?: string;
   }> {
-    return this.client.listGroupRoles(groupId);
+    const result = await this.executeWithResult(() =>
+      this.client.listGroupRoles(groupId),
+    );
+    return {
+      success: result.success,
+      roles: result.result,
+      error: result.error,
+    };
   }
 
   /**
@@ -115,7 +177,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     groupId: string,
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return this.client.deleteGroupRole(groupId, roleName);
+    return this.execute(() => this.client.deleteGroupRole(groupId, roleName));
   }
 
   /**
@@ -126,7 +188,9 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string,
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return this.client.assignGroupRoleToUser(groupId, userId, roleName);
+    return this.execute(() =>
+      this.client.assignGroupRoleToUser(groupId, userId, roleName),
+    );
   }
 
   /**
@@ -137,6 +201,23 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string,
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return this.client.removeGroupRoleFromUser(groupId, userId, roleName);
+    return this.execute(() =>
+      this.client.removeGroupRoleFromUser(groupId, userId, roleName),
+    );
+  }
+
+  /**
+   * ユーザーのデフォルト組織を設定（Keycloak固有機能）
+   * ユーザーのカスタム属性に default_organization_id を保存
+   */
+  async setUserDefaultOrganization(params: {
+    userId: string;
+    organizationId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.updateUserAttributes(params.userId, {
+        default_organization_id: [params.organizationId],
+      }),
+    );
   }
 }

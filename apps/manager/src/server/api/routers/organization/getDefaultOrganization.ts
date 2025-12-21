@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "../../trpc";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 export const getDefaultOrganization = async ({
   ctx,
@@ -7,7 +8,14 @@ export const getDefaultOrganization = async ({
   ctx: ProtectedContext;
 }) => {
   // セッションから組織slugを取得（protectedProcedureで保証されている）
-  const organizationSlug = ctx.session.user.organizationSlug;
+  const { organizationSlug } = getSessionInfo(ctx.session);
+
+  if (!organizationSlug) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "組織への所属が必要です",
+    });
+  }
 
   // slugから組織を取得（メンバーシップも検証）
   const organization = await ctx.db.organization.findUnique({

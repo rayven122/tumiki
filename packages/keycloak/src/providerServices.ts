@@ -8,28 +8,12 @@ export const assignRole = async (
   client: KeycloakAdminClient,
   userId: string,
   roleName: OrganizationRole,
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<void> => {
   // Realm Roleを取得
-  const roleResult = await client.getRealmRole(roleName);
-
-  if (!roleResult.success || !roleResult.role) {
-    return {
-      success: false,
-      error: roleResult.error ?? `Failed to get realm role: ${roleName}`,
-    };
-  }
+  const role = await client.getRealmRole(roleName);
 
   // ロールを割り当て
-  const assignResult = await client.assignRealmRole(userId, roleResult.role);
-
-  if (!assignResult.success) {
-    return {
-      success: false,
-      error: assignResult.error ?? "Failed to assign realm role",
-    };
-  }
-
-  return { success: true };
+  await client.assignRealmRole(userId, role);
 };
 
 /**
@@ -42,33 +26,17 @@ export const addMember = async (
     userId: string;
     role: OrganizationRole;
   },
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<void> => {
   // 1. ユーザーをグループに追加
-  const addToGroupResult = await client.addUserToGroup(
-    params.userId,
-    params.externalId,
-  );
+  await client.addUserToGroup(params.userId, params.externalId);
 
-  if (!addToGroupResult.success) {
-    return {
-      success: false,
-      error: addToGroupResult.error ?? "Failed to add user to group",
-    };
-  }
-
-  // 2. ロールを割り当て
-  const assignRoleResult = await assignRole(client, params.userId, params.role);
-
-  if (!assignRoleResult.success) {
-    // ロール割り当てに失敗した場合、グループから削除してロールバック
+  // 2. ロールを割り当て（失敗時はグループから削除してロールバック）
+  try {
+    await assignRole(client, params.userId, params.role);
+  } catch (error) {
     await client.removeUserFromGroup(params.userId, params.externalId);
-    return {
-      success: false,
-      error: assignRoleResult.error ?? "Failed to assign role to user",
-    };
+    throw error;
   }
-
-  return { success: true };
 };
 
 /**
@@ -86,72 +54,57 @@ export const createOrganization = async (
     externalId: string;
     userId: string;
     role: OrganizationRole;
-  }) => Promise<{ success: boolean; error?: string }>,
-): Promise<{ success: boolean; externalId: string; error?: string }> => {
+  }) => Promise<void>,
+): Promise<string> => {
   // 1. Keycloakにグループを作成
-  const createResult = await client.createGroup({
+  const groupId = await client.createGroup({
     name: params.groupName,
     attributes: {
       displayName: [params.name],
     },
   });
 
-  if (!createResult.success || !createResult.groupId) {
-    return {
-      success: false,
-      externalId: "",
-      error: createResult.error ?? "Failed to create group",
-    };
-  }
-
-  const groupId = createResult.groupId;
-
   // 2. デフォルトロールをGroup Rolesとして作成（オプション）
   if (params.createDefaultRoles !== false) {
-    const defaultRoles: Array<{ name: OrganizationRole; description: string }> =
-      [
-        { name: "Owner", description: "組織オーナー - 全権限" },
-        { name: "Admin", description: "組織管理者 - メンバー管理可能" },
-        { name: "Member", description: "組織メンバー - 基本利用" },
-        { name: "Viewer", description: "組織閲覧者 - 読み取り専用" },
-      ];
+    const defaultRoles: Array<{
+      name: OrganizationRole;
+      description: string;
+    }> = [
+      { name: "Owner", description: "組織オーナー - 全権限" },
+      { name: "Admin", description: "組織管理者 - メンバー管理可能" },
+      { name: "Member", description: "組織メンバー - 基本利用" },
+      { name: "Viewer", description: "組織閲覧者 - 読み取り専用" },
+    ];
 
-    const createdRoles: string[] = []; // 作成済みロールを追跡
+    const createdRoles: string[] = [];
 
-    for (const role of defaultRoles) {
-      const roleResult = await client.createGroupRole(groupId, {
-        name: role.name,
-        description: role.description,
-      });
-
-      if (!roleResult.success) {
-        // グループロール作成に失敗した場合は、既に作成したロールを削除
-        for (const createdRoleName of createdRoles) {
-          await client.deleteGroupRole(groupId, createdRoleName);
-        }
-        // その後、グループ自体も削除
-        await client.deleteGroup(groupId);
-        return {
-          success: false,
-          externalId: "",
-          error:
-            roleResult.error ?? `Failed to create group role: ${role.name}`,
-        };
+    try {
+      for (const role of defaultRoles) {
+        await client.createGroupRole(groupId, {
+          name: role.name,
+          description: role.description,
+        });
+        createdRoles.push(role.name);
       }
-
-      createdRoles.push(role.name);
+    } catch (error) {
+      // グループロール作成に失敗 → 作成済みロールとグループを削除
+      for (const createdRoleName of createdRoles) {
+        await client.deleteGroupRole(groupId, createdRoleName);
+      }
+      await client.deleteGroup(groupId);
+      throw error;
     }
   }
 
   // 3. OwnerをグループメンバーとしてOwnerロールで追加
-  const addMemberResult = await addMemberFn({
-    externalId: groupId,
-    userId: params.ownerId,
-    role: "Owner",
-  });
-
-  if (!addMemberResult.success) {
-    // メンバー追加に失敗した場合は、作成したロールを削除してからグループを削除
+  try {
+    await addMemberFn({
+      externalId: groupId,
+      userId: params.ownerId,
+      role: "Owner",
+    });
+  } catch (error) {
+    // メンバー追加に失敗 → 作成したロールとグループを削除
     if (params.createDefaultRoles !== false) {
       const defaultRoleNames: OrganizationRole[] = [
         "Owner",
@@ -164,17 +117,10 @@ export const createOrganization = async (
       }
     }
     await client.deleteGroup(groupId);
-    return {
-      success: false,
-      externalId: "",
-      error: addMemberResult.error ?? "Failed to add owner to group",
-    };
+    throw error;
   }
 
-  return {
-    success: true,
-    externalId: groupId,
-  };
+  return groupId;
 };
 
 /**
@@ -185,17 +131,8 @@ export const deleteOrganization = async (
   params: {
     externalId: string;
   },
-): Promise<{ success: boolean; error?: string }> => {
-  const result = await client.deleteGroup(params.externalId);
-
-  if (!result.success) {
-    return {
-      success: false,
-      error: result.error ?? "Failed to delete organization group",
-    };
-  }
-
-  return { success: true };
+): Promise<void> => {
+  await client.deleteGroup(params.externalId);
 };
 
 /**
@@ -207,39 +144,25 @@ export const removeMember = async (
     externalId: string;
     userId: string;
   },
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<void> => {
   // 1. ユーザーのロールを全て削除
-  const rolesResult = await client.getUserRealmRoles(params.userId);
+  const roles = await client.getUserRealmRoles(params.userId);
 
-  if (rolesResult.success && rolesResult.roles) {
-    // 組織ロールのみを削除（Owner/Admin/Member/Viewer）
-    const orgRoles = rolesResult.roles.filter(
-      (role) =>
-        role.name && ["Owner", "Admin", "Member", "Viewer"].includes(role.name),
-    );
+  // 組織ロールのみを削除（Owner/Admin/Member/Viewer）
+  const orgRoles = roles.filter(
+    (role) =>
+      role.name && ["Owner", "Admin", "Member", "Viewer"].includes(role.name),
+  );
 
-    for (const role of orgRoles) {
-      await client.removeRealmRole(params.userId, role);
-    }
+  for (const role of orgRoles) {
+    await client.removeRealmRole(params.userId, role);
   }
 
   // 2. ユーザーをグループから削除
-  const removeResult = await client.removeUserFromGroup(
-    params.userId,
-    params.externalId,
-  );
-
-  if (!removeResult.success) {
-    return {
-      success: false,
-      error: removeResult.error ?? "Failed to remove user from group",
-    };
-  }
+  await client.removeUserFromGroup(params.userId, params.externalId);
 
   // 3. セッションを無効化（即時反映）
   await client.invalidateUserSessions(params.userId);
-
-  return { success: true };
 };
 
 /**
@@ -252,49 +175,25 @@ export const updateMemberRole = async (
     userId: string;
     newRole: OrganizationRole;
   },
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<void> => {
   // 1. 既存のロールを全て削除
-  const rolesResult = await client.getUserRealmRoles(params.userId);
+  const roles = await client.getUserRealmRoles(params.userId);
 
-  if (rolesResult.success && rolesResult.roles) {
-    // 組織ロールのみを削除（Owner/Admin/Member/Viewer）
-    const orgRoles = rolesResult.roles.filter(
-      (role) =>
-        role.name && ["Owner", "Admin", "Member", "Viewer"].includes(role.name),
-    );
+  // 組織ロールのみを削除（Owner/Admin/Member/Viewer）
+  const orgRoles = roles.filter(
+    (role) =>
+      role.name && ["Owner", "Admin", "Member", "Viewer"].includes(role.name),
+  );
 
-    for (const role of orgRoles) {
-      const removeResult = await client.removeRealmRole(params.userId, role);
-      if (!removeResult.success) {
-        return {
-          success: false,
-          error: removeResult.error ?? `Failed to remove role: ${role.name}`,
-        };
-      }
-    }
+  for (const role of orgRoles) {
+    await client.removeRealmRole(params.userId, role);
   }
 
   // 2. 新しいロールを割り当て
-  const assignResult = await assignRole(client, params.userId, params.newRole);
-
-  if (!assignResult.success) {
-    return {
-      success: false,
-      error: assignResult.error ?? "Failed to assign new role",
-    };
-  }
+  await assignRole(client, params.userId, params.newRole);
 
   // 3. セッションを無効化（即時反映）
-  const invalidateResult = await client.invalidateUserSessions(params.userId);
-
-  if (!invalidateResult.success) {
-    return {
-      success: false,
-      error: invalidateResult.error ?? "Failed to invalidate user sessions",
-    };
-  }
-
-  return { success: true };
+  await client.invalidateUserSessions(params.userId);
 };
 
 /**
@@ -305,15 +204,6 @@ export const invalidateUserSessions = async (
   params: {
     userId: string;
   },
-): Promise<{ success: boolean; error?: string }> => {
-  const result = await client.invalidateUserSessions(params.userId);
-
-  if (!result.success) {
-    return {
-      success: false,
-      error: result.error ?? "Failed to invalidate user sessions",
-    };
-  }
-
-  return { success: true };
+): Promise<void> => {
+  await client.invalidateUserSessions(params.userId);
 };
