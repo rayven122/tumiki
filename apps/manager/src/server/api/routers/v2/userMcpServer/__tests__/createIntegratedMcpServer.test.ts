@@ -30,6 +30,12 @@ describe("createIntegratedMcpServer", () => {
       mcpServer: {
         create: vi.fn(),
       },
+      organizationMember: {
+        findMany: vi.fn(),
+      },
+      notification: {
+        createMany: vi.fn(),
+      },
     } as unknown as PrismaTransactionClient;
   });
 
@@ -83,6 +89,10 @@ describe("createIntegratedMcpServer", () => {
         ReturnType<typeof mockTx.mcpServer.create>
       >,
     );
+
+    // 通知作成のモック（空の配列を返して通知をスキップ）
+    vi.mocked(mockTx.organizationMember.findMany).mockResolvedValue([]);
+    vi.mocked(mockTx.notification.createMany).mockResolvedValue({ count: 0 });
 
     // 実行
     const result = await createIntegratedMcpServer(
@@ -192,6 +202,10 @@ describe("createIntegratedMcpServer", () => {
       >,
     );
 
+    // 通知作成のモック（空の配列を返して通知をスキップ）
+    vi.mocked(mockTx.organizationMember.findMany).mockResolvedValue([]);
+    vi.mocked(mockTx.notification.createMany).mockResolvedValue({ count: 0 });
+
     // 実行（一部ツールのみ選択）
     await createIntegratedMcpServer(
       mockTx,
@@ -279,6 +293,10 @@ describe("createIntegratedMcpServer", () => {
         ReturnType<typeof mockTx.mcpServer.create>
       >,
     );
+
+    // 通知作成のモック（空の配列を返して通知をスキップ）
+    vi.mocked(mockTx.organizationMember.findMany).mockResolvedValue([]);
+    vi.mocked(mockTx.notification.createMany).mockResolvedValue({ count: 0 });
 
     // 実行（envVars付き）
     await createIntegratedMcpServer(

@@ -10,22 +10,24 @@ import {
 } from "@/components/ui/popover";
 import { api } from "@/trpc/react";
 import { notificationPanelOpenAtom } from "@/store/notification";
+import { useAdaptivePolling } from "@/hooks/useAdaptivePolling";
 import { NotificationList } from "./NotificationList";
-
-const POLLING_INTERVAL = 30000; // 30秒
 
 /**
  * 通知センターコンポーネント
  * - ベルアイコンと未読バッジ表示
- * - 30秒ごとに未読数をポーリング
+ * - アダプティブなポーリング間隔で未読数を取得（アクティブ時30秒、非アクティブ時2分）
  * - Popover で通知リストを表示
  */
 export const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useAtom(notificationPanelOpenAtom);
 
-  // 未読数を取得（ポーリング）
+  // アダプティブなポーリング間隔を取得
+  const pollingInterval = useAdaptivePolling();
+
+  // 未読数を取得（アダプティブポーリング）
   const { data } = api.v2.notification.getUnreadCount.useQuery(undefined, {
-    refetchInterval: POLLING_INTERVAL,
+    refetchInterval: pollingInterval || false,
     refetchOnWindowFocus: true,
   });
 

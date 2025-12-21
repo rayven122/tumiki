@@ -22,13 +22,13 @@ export const markAsRead = async ({
 }): Promise<MarkAsReadOutput> => {
   const { id } = input;
 
-  // 権限チェック: 自分の通知のみ既読可能
+  // 権限チェック: 自分の通知のみ既読可能（削除済みを除外）
   const notification = await ctx.db.notification.findUnique({
     where: { id },
-    select: { userId: true },
+    select: { userId: true, isDeleted: true },
   });
 
-  if (!notification) {
+  if (!notification || notification.isDeleted) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "通知が見つかりません",
