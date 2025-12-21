@@ -65,6 +65,14 @@ export type IOrganizationProvider = {
   invalidateUserSessions: (params: {
     userId: string;
   }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * ユーザーのデフォルト組織を設定（Keycloakユーザー属性に保存）
+   */
+  setUserDefaultOrganization: (params: {
+    userId: string;
+    organizationId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
 };
 
 /**

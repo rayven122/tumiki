@@ -25,8 +25,10 @@ model User {
   image                 String?
   /// ユーザーの権限
   role                    Role          @default(USER)
+  /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
   /// デフォルト組織のスラッグ
   defaultOrganizationSlug String?
+  /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
   /// デフォルト組織への参照
   defaultOrganization     Organization? @relation("UserDefaultOrganization", fields: [defaultOrganizationSlug], references: [slug])
   organizations           Organization[]

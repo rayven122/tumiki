@@ -1,6 +1,7 @@
 import { type AuthenticatedContext } from "@/server/api/trpc";
 import { type z } from "zod";
 import type { GetUserOrganizationsInput } from ".";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type GetUserOrganizationsProps = {
   ctx: AuthenticatedContext;
@@ -12,6 +13,7 @@ export const getUserOrganizations = async ({
 }: GetUserOrganizationsProps) => {
   const { db, session } = ctx;
   const userId = session.user.sub;
+  const { organizationId: currentOrgId } = getSessionInfo(session);
 
   // ユーザーが所属する組織の一覧を取得（詳細情報含む）
   const memberships = await db.organizationMember.findMany({
@@ -75,7 +77,7 @@ export const getUserOrganizations = async ({
       createdAt: membership.organization.createdAt,
       updatedAt: membership.organization.updatedAt,
       memberCount: membership.organization._count.members,
-      isDefault: membership.organization.id === ctx.session.user.organizationId,
+      isDefault: membership.organization.id === currentOrgId,
     }),
   );
 };

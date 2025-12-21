@@ -84,8 +84,11 @@ export const deleteOrganization = async ({
       });
     }
 
-    // Keycloakから組織グループを削除
+    // Sagaパターン: Keycloak削除を先に実行し、成功したらDB削除を実行
+    // これにより、Keycloak削除失敗時にDBが変更されないことを保証
     const provider = getOrganizationProvider();
+
+    // 1. Keycloak削除を先に実行
     const deleteResult = await provider.deleteOrganization({
       externalId: organization.id, // Organization.idがKeycloak Group ID
     });
@@ -93,14 +96,27 @@ export const deleteOrganization = async ({
     if (!deleteResult.success) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: `Keycloakからの組織削除に失敗しました: ${deleteResult.error}`,
+        message: `外部認証システムでの削除に失敗しました。管理者にお問い合わせください。`,
       });
     }
 
-    // DBから組織を削除（カスケード削除により関連データも削除される）
-    await ctx.db.organization.delete({
-      where: { id: input.organizationId },
-    });
+    // 2. Keycloak削除成功後にDB削除を実行
+    try {
+      await ctx.db.organization.delete({
+        where: { id: input.organizationId },
+      });
+    } catch (error) {
+      // DB削除失敗時のエラーログ（Keycloakは削除済みのため手動修正が必要）
+      console.error(
+        `組織DB削除失敗（Keycloakは削除済み）: organizationId=${input.organizationId}`,
+        error,
+      );
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          "データベースでの削除に失敗しました。管理者にお問い合わせください。",
+      });
+    }
 
     return {
       success: true,

@@ -43,8 +43,12 @@ export const getOrganizationProvider = (): IOrganizationProvider => {
         );
       }
 
+      // issuerからベースURLを抽出（/realms/{realm}を削除）
+      // 例: http://localhost:8443/realms/tumiki → http://localhost:8443
+      const baseUrl = keycloakIssuer.replace(/\/realms\/[^/]+$/, "");
+
       providerInstance = new KeycloakOrganizationProvider({
-        baseUrl: keycloakIssuer,
+        baseUrl,
         realm: "tumiki",
         adminUsername: keycloakAdminUsername,
         adminPassword: keycloakAdminPassword,

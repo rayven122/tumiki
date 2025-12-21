@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { MemberList } from "./MemberList";
 import { InvitationList } from "./InvitationList";
 
@@ -20,7 +21,7 @@ export const MembersPageClient = ({ orgSlug }: MembersPageClientProps) => {
   );
 
   // JWT のロールから管理者権限を取得
-  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   // ローディング状態
   if (isLoading) {

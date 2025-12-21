@@ -57,7 +57,7 @@ export const getNotifications = async ({
   // WHERE条件の構築
   const where = {
     userId: ctx.session.user.id,
-    organizationId: ctx.session.user.organizationId,
+    organizationId: ctx.currentOrg.id,
     isDeleted: false,
     ...(isRead !== undefined && { isRead }),
     ...(type && { type }),

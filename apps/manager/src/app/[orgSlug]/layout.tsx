@@ -5,6 +5,7 @@ import { SimpleHeader } from "./_components/SimpleHeader";
 import { OrgSidebar } from "./_components/OrgSidebar";
 import { MainContent } from "./_components/MainContent";
 import { auth } from "~/auth";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type OrgSlugLayoutProps = {
   children: ReactNode;
@@ -53,8 +54,9 @@ export default async function OrgSlugLayout({
       `[OrgSlugLayout] Error fetching organization ${decodedSlug}:`,
       error,
     );
-    if (session.user.organizationSlug) {
-      redirect(`/${session.user.organizationSlug}/mcps`);
+    const userOrgSlug = getSessionInfo(session).organizationSlug;
+    if (userOrgSlug) {
+      redirect(`/${userOrgSlug}/mcps`);
     }
     redirect("/");
   }

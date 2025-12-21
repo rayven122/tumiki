@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Mail, RefreshCw, X, Clock } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
 
 type InvitationListProps = {
@@ -55,7 +56,7 @@ export const InvitationList = ({
   };
 
   // JWT のロールから管理者権限を取得
-  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   if (isLoading) {
     return (

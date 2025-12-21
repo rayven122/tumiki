@@ -85,29 +85,44 @@ export const updateMemberRole = async ({
       });
     }
 
-    // Keycloakでロールを更新
+    // Keycloakでロールを更新とセッション無効化を並列実行
     const provider = getOrganizationProvider();
-    const updateResult = await provider.updateMemberRole({
-      externalId: ctx.currentOrg.id, // Organization.idがKeycloak Group ID
-      userId: targetMember.userId,
-      newRole: input.newRole,
-    });
+    const [updateResult, invalidateResult] = await Promise.allSettled([
+      provider.updateMemberRole({
+        externalId: ctx.currentOrg.id, // Organization.idがKeycloak Group ID
+        userId: targetMember.userId,
+        newRole: input.newRole,
+      }),
+      provider.invalidateUserSessions({
+        userId: targetMember.userId,
+      }),
+    ]);
 
-    if (!updateResult.success) {
+    // ロール変更結果チェック
+    if (updateResult.status === "rejected" || !updateResult.value.success) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: `Keycloakでのロール変更に失敗しました: ${updateResult.error}`,
+        message: `Keycloakでのロール変更に失敗しました: ${
+          updateResult.status === "rejected"
+            ? updateResult.reason
+            : updateResult.value.error
+        }`,
       });
     }
 
-    // セッション無効化により即時JWT更新
-    const invalidateResult = await provider.invalidateUserSessions({
-      userId: targetMember.userId,
-    });
-
-    if (!invalidateResult.success) {
-      console.warn(`セッション無効化に失敗しました: ${invalidateResult.error}`);
-      // セッション無効化の失敗は致命的ではないため、警告のみ
+    // セッション無効化結果チェック（警告のみ）
+    if (
+      invalidateResult.status === "rejected" ||
+      !invalidateResult.value.success
+    ) {
+      // セッション無効化失敗は警告のみ（セッションは自動更新されるため非致命的）
+      console.warn(
+        `セッション無効化に失敗: ${
+          invalidateResult.status === "rejected"
+            ? invalidateResult.reason
+            : invalidateResult.value.error
+        }`,
+      );
     }
 
     return {

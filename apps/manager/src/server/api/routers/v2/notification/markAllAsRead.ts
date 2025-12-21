@@ -15,7 +15,7 @@ export const markAllAsRead = async ({
   const result = await ctx.db.notification.updateMany({
     where: {
       userId: ctx.session.user.id,
-      organizationId: ctx.session.user.organizationId,
+      organizationId: ctx.currentOrg.id,
       isRead: false,
       isDeleted: false,
     },
