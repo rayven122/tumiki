@@ -59,17 +59,22 @@ export const MapView = ({
     useEdgesState<DepartmentEdgeType>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // レイアウト調整関数
-  const arrangeNodes = useCallback(() => {
+  // レイアウト調整関数（useCallbackで安定化）
+  const arrangeNodesCallback = useCallback(() => {
     const layoutedNodes = getLayoutedElements(nodes, edges);
     setNodes(layoutedNodes);
     toast.success("レイアウトを調整しました");
   }, [nodes, edges, setNodes]);
 
-  // レイアウト調整関数をrefに設定
+  // レイアウト調整関数をrefに設定（クリーンアップ処理付き）
   useEffect(() => {
-    onArrangeNodesRef.current = arrangeNodes;
-  }, [arrangeNodes, onArrangeNodesRef]);
+    onArrangeNodesRef.current = arrangeNodesCallback;
+
+    // クリーンアップ処理を追加
+    return () => {
+      onArrangeNodesRef.current = null;
+    };
+  }, [arrangeNodesCallback, onArrangeNodesRef]);
 
   // 初期データ変換とレイアウト
   useEffect(() => {

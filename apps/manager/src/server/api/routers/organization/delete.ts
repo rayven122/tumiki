@@ -84,22 +84,24 @@ export const deleteOrganization = async ({
       });
     }
 
-    // Keycloakから組織グループを削除
+    // トランザクション内でDB削除とKeycloak削除を実行
+    // DB削除を先に実行することで、Keycloak削除失敗時に自動ロールバック可能
     const provider = getOrganizationProvider();
-    const deleteResult = await provider.deleteOrganization({
-      externalId: organization.id, // Organization.idがKeycloak Group ID
-    });
-
-    if (!deleteResult.success) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Keycloakからの組織削除に失敗しました: ${deleteResult.error}`,
+    await ctx.db.$transaction(async (tx) => {
+      // 1. DB削除を先に実行（カスケード削除により関連データも削除される）
+      await tx.organization.delete({
+        where: { id: input.organizationId },
       });
-    }
 
-    // DBから組織を削除（カスケード削除により関連データも削除される）
-    await ctx.db.organization.delete({
-      where: { id: input.organizationId },
+      // 2. DB削除成功後にKeycloak削除
+      const deleteResult = await provider.deleteOrganization({
+        externalId: organization.id, // Organization.idがKeycloak Group ID
+      });
+
+      if (!deleteResult.success) {
+        // トランザクション内でエラーを投げてDB削除をロールバック
+        throw new Error(`Keycloak削除失敗: ${deleteResult.error}`);
+      }
     });
 
     return {
