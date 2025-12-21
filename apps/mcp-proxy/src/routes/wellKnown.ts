@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { HonoEnv } from "../types/index.js";
+import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
 
 export const wellKnownRoute = new Hono<HonoEnv>();
 
@@ -26,44 +27,76 @@ export const wellKnownRoute = new Hono<HonoEnv>();
  * - mcp_instance_id は URL パスから取得
  * - Instance ID ごとに異なる認可サーバー設定を返す予定（現在は TODO）
  */
-wellKnownRoute.get("/oauth-authorization-server/mcp/:devInstanceId", (c) => {
-  const devMode = process.env.DEV_MODE === "true";
+wellKnownRoute.get(
+  "/oauth-authorization-server/mcp/:devInstanceId",
+  async (c) => {
+    const devMode = process.env.DEV_MODE === "true";
 
-  // DEV_MODE 以外は未実装
-  if (!devMode) {
-    // TODO: Implement instance-specific authorization server discovery
-    // - Fetch instance-specific Keycloak realm or authorization server URL from database
-    // - Support multiple authorization servers per instance
-    // - Handle instance-not-found scenarios
-    return c.json(
-      {
-        error: "not_implemented",
-        error_description:
-          "Instance-specific OAuth authorization server metadata is not yet implemented",
-      },
-      501,
-    );
-  }
+    // DEV_MODE 以外は未実装
+    if (!devMode) {
+      // TODO: Implement instance-specific authorization server discovery
+      // - Fetch instance-specific Keycloak realm or authorization server URL from database
+      // - Support multiple authorization servers per instance
+      // - Handle instance-not-found scenarios
+      return c.json(
+        {
+          error: "not_implemented",
+          error_description:
+            "Instance-specific OAuth authorization server metadata is not yet implemented",
+        },
+        501,
+      );
+    }
 
-  // DEV_MODE: 現在の実装を維持
-  const keycloakIssuer = process.env.KEYCLOAK_ISSUER;
+    // DEV_MODE: JSON メタデータを返却
+    const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
+    const mcpProxyUrl = process.env.MCP_PROXY_URL ?? "http://localhost:8080";
 
-  if (!keycloakIssuer) {
-    return c.json(
-      {
-        error: "server_misconfiguration",
-        error_description:
-          "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
-      },
-      500,
-    );
-  }
+    if (!keycloakIssuerUrl) {
+      return c.json(
+        {
+          error: "server_misconfiguration",
+          error_description:
+            "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
+        },
+        500,
+      );
+    }
 
-  // TODO: Redirect to instance-specific authorization server configuration
-  // For now, redirect to the shared Keycloak instance
-  const keycloakDiscoveryUrl = `${keycloakIssuer}/.well-known/openid-configuration`;
-  return c.redirect(keycloakDiscoveryUrl, 302);
-});
+    // Keycloak メタデータを取得
+    const keycloakIssuer = await getKeycloakIssuer();
+
+    // RFC 8414 準拠の Authorization Server Metadata を返却
+    // mcp-proxy の token/register エンドポイントを使用
+    return c.json({
+      // 必須フィールド
+      issuer: mcpProxyUrl,
+
+      // Keycloak のエンドポイントを使用（認可フロー）
+      authorization_endpoint: keycloakIssuer.metadata.authorization_endpoint,
+
+      // mcp-proxy のエンドポイントを使用
+      token_endpoint: `${mcpProxyUrl}/oauth/token`,
+      registration_endpoint: `${mcpProxyUrl}/oauth/register`,
+
+      // Keycloak の JWKS を使用
+      jwks_uri: keycloakIssuer.metadata.jwks_uri,
+
+      // サポートする機能
+      response_types_supported: ["code"],
+      grant_types_supported: [
+        "authorization_code",
+        "refresh_token",
+        "client_credentials",
+      ],
+      token_endpoint_auth_methods_supported: [
+        "client_secret_post",
+        "client_secret_basic",
+      ],
+      code_challenge_methods_supported: ["S256"],
+    });
+  },
+);
 
 /**
  * RFC 9728 - OAuth 2.0 Protected Resource Metadata (Instance-specific)
@@ -130,7 +163,6 @@ wellKnownRoute.get("/oauth-protected-resource/mcp/:devInstanceId", (c) => {
     authorization_servers: [keycloakIssuer],
 
     // RFC 9728 推奨フィールド
-    scopes_supported: ["mcp:access"],
     bearer_methods_supported: ["header"],
     resource_documentation: "https://docs.tumiki.cloud/mcp",
     resource_signing_alg_values_supported: ["RS256"],

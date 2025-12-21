@@ -54,3 +54,9 @@ KEYCLOAK_ADMIN_USERNAME=admin
 KEYCLOAK_ADMIN_PASSWORD=admin123
 ORGANIZATION_PROVIDER=keycloak  # デフォルト値、省略可能
 ```
+
+## Dynamic Client Registration（DCR）
+
+mcp-proxy は DCR リクエストを Keycloak にプロキシします。追加設定は不要です。
+
+詳細は [DCR 設定ガイド](../../docs/auth/keycloak-dcr-setup.md) を参照してください。

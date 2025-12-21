@@ -2,6 +2,16 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import { wellKnownRoute } from "../wellKnown.js";
+import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
+
+// vi.hoisted でモック関数を定義（ホイスティング問題を回避）
+const { mockDiscover, MockClient } = vi.hoisted(() => {
+  const Client = vi.fn().mockImplementation(() => ({}));
+  return {
+    mockDiscover: vi.fn(),
+    MockClient: Client,
+  };
+});
 
 // モックの設定
 vi.mock("../../libs/logger/index.js", () => ({
@@ -11,10 +21,35 @@ vi.mock("../../libs/logger/index.js", () => ({
   logWarn: vi.fn(),
 }));
 
+// openid-client のモック
+vi.mock("openid-client", () => ({
+  Issuer: {
+    discover: mockDiscover,
+  },
+}));
+
+// デフォルトの Issuer モック値を作成するヘルパー
+const createMockIssuer = () => ({
+  issuer: "https://keycloak.example.com/realms/tumiki",
+  metadata: {
+    issuer: "https://keycloak.example.com/realms/tumiki",
+    authorization_endpoint:
+      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/auth",
+    token_endpoint:
+      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
+    jwks_uri:
+      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+    registration_endpoint:
+      "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect",
+  },
+  Client: MockClient,
+});
+
 describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () => {
   let app: Hono<HonoEnv>;
   let originalKeycloakIssuer: string | undefined;
   let originalDevMode: string | undefined;
+  let originalMcpProxyUrl: string | undefined;
 
   beforeEach(() => {
     app = new Hono<HonoEnv>();
@@ -23,11 +58,19 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
     // 環境変数を保存
     originalKeycloakIssuer = process.env.KEYCLOAK_ISSUER;
     originalDevMode = process.env.DEV_MODE;
+    originalMcpProxyUrl = process.env.MCP_PROXY_URL;
 
     // テスト用の環境変数を設定
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/tumiki";
+    process.env.MCP_PROXY_URL = "http://localhost:8080";
+
+    // キャッシュをクリア
+    clearKeycloakCache();
 
     vi.clearAllMocks();
+
+    // デフォルトの Issuer モックを設定
+    mockDiscover.mockResolvedValue(createMockIssuer());
   });
 
   afterEach(() => {
@@ -43,6 +86,15 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
     } else {
       delete process.env.DEV_MODE;
     }
+
+    if (originalMcpProxyUrl !== undefined) {
+      process.env.MCP_PROXY_URL = originalMcpProxyUrl;
+    } else {
+      delete process.env.MCP_PROXY_URL;
+    }
+
+    // キャッシュをクリア
+    clearKeycloakCache();
   });
 
   describe("DEV_MODE=true の場合", () => {
@@ -50,31 +102,52 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
       process.env.DEV_MODE = "true";
     });
 
-    test("認証なしで302リダイレクトを返す", async () => {
+    test("認証なしで200 JSONメタデータを返す", async () => {
       const res = await app.request(
         "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
-          redirect: "manual", // リダイレクトを手動処理
         },
       );
 
-      expect(res.status).toBe(302);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        issuer: "http://localhost:8080",
+        token_endpoint: "http://localhost:8080/oauth/token",
+        registration_endpoint: "http://localhost:8080/oauth/register",
+      });
     });
 
-    test("Keycloak の OpenID Configuration にリダイレクトする", async () => {
+    test("RFC 8414 準拠のメタデータを返す", async () => {
       const res = await app.request(
         "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
-          redirect: "manual",
         },
       );
 
-      const location = res.headers.get("Location");
-      expect(location).toBe(
-        "https://keycloak.example.com/realms/tumiki/.well-known/openid-configuration",
-      );
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toStrictEqual({
+        issuer: "http://localhost:8080",
+        authorization_endpoint:
+          "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/auth",
+        token_endpoint: "http://localhost:8080/oauth/token",
+        registration_endpoint: "http://localhost:8080/oauth/register",
+        jwks_uri:
+          "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+        response_types_supported: ["code"],
+        grant_types_supported: [
+          "authorization_code",
+          "refresh_token",
+          "client_credentials",
+        ],
+        token_endpoint_auth_methods_supported: [
+          "client_secret_post",
+          "client_secret_basic",
+        ],
+        code_challenge_methods_supported: ["S256"],
+      });
     });
 
     test("パスパラメータ devInstanceId を受け取る", async () => {
@@ -82,12 +155,11 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
         "/.well-known/oauth-authorization-server/mcp/test-instance-123",
         {
           method: "GET",
-          redirect: "manual",
         },
       );
 
-      // DEV_MODE では instance ID に関わらずリダイレクトが成功する
-      expect(res.status).toBe(302);
+      // DEV_MODE では instance ID に関わらずメタデータが返される
+      expect(res.status).toBe(200);
     });
 
     test("Authorization ヘッダーなしでアクセスできる（認証不要）", async () => {
@@ -95,11 +167,10 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
         "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
         {
           method: "GET",
-          redirect: "manual",
         },
       );
 
-      expect(res.status).toBe(302);
+      expect(res.status).toBe(200);
     });
 
     test("Authorization ヘッダーがあっても無視される", async () => {
@@ -110,12 +181,11 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
           headers: {
             Authorization: "Bearer invalid-token",
           },
-          redirect: "manual",
         },
       );
 
-      // 認証エラーにならず、リダイレクトする
-      expect(res.status).toBe(302);
+      // 認証エラーにならず、メタデータを返す
+      expect(res.status).toBe(200);
     });
   });
 
@@ -270,13 +340,11 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
         const body = (await res.json()) as Record<string, unknown>;
 
         // RFC 9728 推奨フィールド
-        expect(body).toHaveProperty("scopes_supported");
         expect(body).toHaveProperty("bearer_methods_supported");
         expect(body).toHaveProperty("resource_documentation");
         expect(body).toHaveProperty("resource_signing_alg_values_supported");
 
         // 値の検証
-        expect(body.scopes_supported).toStrictEqual(["mcp:access"]);
         expect(body.bearer_methods_supported).toStrictEqual(["header"]);
         expect(body.resource_documentation).toBe(
           "https://docs.tumiki.cloud/mcp",
@@ -349,19 +417,6 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
         if (Array.isArray(body.authorization_servers)) {
           expect(body.authorization_servers.length).toBeGreaterThan(0);
         }
-      });
-
-      test("scopes_supported は配列である", async () => {
-        const res = await app.request(
-          "/.well-known/oauth-protected-resource/mcp/dev-mcp-instance-id",
-          {
-            method: "GET",
-          },
-        );
-
-        const body = (await res.json()) as Record<string, unknown>;
-        expect(Array.isArray(body.scopes_supported)).toBe(true);
-        expect(body.scopes_supported).toContain("mcp:access");
       });
 
       test("bearer_methods_supported は配列である", async () => {
