@@ -61,6 +61,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),
+  usePathname: () => "/org_1/mcps",
 }));
 
 // テスト用の組織データ
@@ -101,7 +102,12 @@ describe("useOrganizationContext", () => {
         user: {
           id: "user_1",
           email: "test@example.com",
-          organizationId: "org_1",
+          tumiki: {
+            org_id: "org_1",
+            org_slug: "org-1-slug",
+            org_slugs: ["org-1-slug"],
+            roles: [],
+          },
         },
       },
       status: "authenticated",
@@ -349,13 +355,18 @@ describe("useOrganizationContext", () => {
       isPending: false,
     });
 
-    // セッションのorganizationIdをnullに設定
+    // セッションのorg_idをnullに設定
     mockUseSession.mockReturnValue({
       data: {
         user: {
           id: "user_1",
           email: "test@example.com",
-          organizationId: null,
+          tumiki: {
+            org_id: null,
+            org_slug: null,
+            org_slugs: [],
+            roles: [],
+          },
         },
       },
       status: "authenticated",

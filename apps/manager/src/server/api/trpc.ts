@@ -4,10 +4,10 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import type { Prisma } from "@tumiki/db";
-import type { Session } from "next-auth";
 
 import { db } from "@tumiki/db/server";
 import { auth } from "~/auth";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 /**
  * 1. コンテキスト
@@ -127,10 +127,12 @@ export const protectedProcedure = t.procedure
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
 
-    if (
-      !ctx.session.user.organizationId ||
-      !ctx.session.user.organizationSlug
-    ) {
+    // tumikiクレームから組織情報を取得
+    const { organizationId, organizationSlug, roles } = getSessionInfo(
+      ctx.session,
+    );
+
+    if (!organizationId || !organizationSlug) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
@@ -138,15 +140,12 @@ export const protectedProcedure = t.procedure
       });
     }
 
-    // 1. セッションからロール情報を取得（JWT戦略）
-    const roles = ctx.session.user.roles ?? [];
-
     // 2. 組織メンバーシップの存在確認
     const organizationMember = await ctx.db.organizationMember.findUnique({
       where: {
         organizationId_userId: {
           userId: ctx.session.user.sub,
-          organizationId: ctx.session.user.organizationId,
+          organizationId,
         },
       },
       select: {
@@ -170,9 +169,7 @@ export const protectedProcedure = t.procedure
     }
 
     // 取得した組織IDとセッションの組織IDが一致することを確認
-    if (
-      organizationMember.organization.id !== ctx.session.user.organizationId
-    ) {
+    if (organizationMember.organization.id !== organizationId) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "組織情報が一致しません。",
@@ -188,13 +185,13 @@ export const protectedProcedure = t.procedure
           user: {
             ...ctx.session.user,
             id: ctx.session.user.sub,
-            organizationId: ctx.session.user.organizationId,
-            organizationSlug: ctx.session.user.organizationSlug,
           },
         },
         currentOrg: {
           ...organizationMember.organization,
-          roles, // JWTから取得したロール配列
+          organizationId, // tumikiクレームから取得
+          organizationSlug, // tumikiクレームから取得
+          roles, // tumikiクレームから取得したロール配列
         },
       },
     });
@@ -238,12 +235,6 @@ export type AuthenticatedContext = {
  * ミドルウェアで組織メンバーシップの存在を検証済み
  */
 export type ProtectedContext = {
-  session: {
-    user: Session["user"] & {
-      id: string;
-      organizationId: string; // 組織IDは必須
-      organizationSlug: string; // 組織slugは必須
-    };
-  } & NonNullable<Context["session"]>;
+  session: NonNullable<Context["session"]>;
   currentOrg: CurrentOrg; // non-null（ミドルウェアで存在を保証）
 } & Context;

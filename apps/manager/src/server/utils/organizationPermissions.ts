@@ -70,6 +70,16 @@ export type OrganizationAccessOptions = {
 };
 
 /**
+ * 型ガード関数: 文字列が組織ロールかをチェック
+ *
+ * @param role - チェックする文字列
+ * @returns OrganizationRole型である場合はtrue
+ */
+const isOrganizationRole = (role: string): role is OrganizationRole => {
+  return ["Owner", "Admin", "Member", "Viewer"].includes(role);
+};
+
+/**
  * 固定ロールで権限をチェック
  *
  * @param roles - ユーザーのロール配列
@@ -80,11 +90,8 @@ export const checkPermission = (
   roles: string[],
   permission: Permission,
 ): boolean => {
-  // 固定ロール（Owner/Admin/Member/Viewer）のいずれかが権限を持つか
-  const fixedRoles = ["Owner", "Admin", "Member", "Viewer"];
-  const userFixedRoles = roles.filter((r) =>
-    fixedRoles.includes(r),
-  ) as OrganizationRole[];
+  // 型ガードを使用して安全にフィルタリング
+  const userFixedRoles = roles.filter(isOrganizationRole);
 
   return userFixedRoles.some((role) =>
     ROLE_PERMISSIONS[role]?.includes(permission),
