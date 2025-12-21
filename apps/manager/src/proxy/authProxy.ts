@@ -29,6 +29,7 @@ export const authProxy = async (
     "/error",
     "/signin",
     "/signup",
+    "/mock", // モック検証用
   ];
 
   const isPublicPath = publicPaths.some((path) => {
