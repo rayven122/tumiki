@@ -57,6 +57,12 @@ export const setDefaultOrganization = async (
     });
   }
 
+  // ユーザーのdefaultOrganizationSlugを更新
+  await tx.user.update({
+    where: { id: userId },
+    data: { defaultOrganizationSlug: membership.organization.slug },
+  });
+
   return {
     success: true,
     organizationId,

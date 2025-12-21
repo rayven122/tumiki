@@ -46,7 +46,7 @@ export const OrganizationCreateForm = ({
       // すべてのtRPCクエリをinvalidate
       await utils.invalidate();
       // Auth.jsセッションを更新
-      await updateSession();
+      await updateSession({});
       // フォームをリセット
       form.reset();
       onSuccess?.();

@@ -42,6 +42,7 @@ export type CreateUserWithOrganizationOutput = z.infer<
  * 1. ユーザーを作成
  * 2. Keycloakに個人組織グループを作成（slugをグループ名として使用）
  * 3. DBに個人組織と OrganizationMember を同時作成
+ * 4. ユーザーのdefaultOrganizationSlugを個人組織に設定
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -51,7 +52,7 @@ export const createUserWithOrganization = async (
   const baseName = input.name ?? input.email ?? "User";
   const slug = await generateUniqueSlug(tx, baseName, true);
 
-  // 1. ユーザーを作成
+  // 1. ユーザーを作成（defaultOrganizationSlugは組織作成後に設定）
   const createdUser = await tx.user.create({
     data: {
       id: input.id,
@@ -94,6 +95,12 @@ export const createUserWithOrganization = async (
         },
       },
     },
+  });
+
+  // 4. ユーザーのdefaultOrganizationSlugを個人組織に設定
+  await tx.user.update({
+    where: { id: input.id },
+    data: { defaultOrganizationSlug: slug },
   });
 
   // データベースからのemailを検証

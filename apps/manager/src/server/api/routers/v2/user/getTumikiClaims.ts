@@ -1,4 +1,3 @@
-import { getPersonalOrgSlug } from "@/lib/auth/session-utils";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import type { TumikiClaims } from "~/lib/auth/types";
 
@@ -49,26 +48,29 @@ export const getTumikiClaims = async (
     };
   }
 
-  // 既存ユーザー: group_rolesから個人組織のslugを取得（@で始まるものが個人組織）
-  const personalOrgSlug = getPersonalOrgSlug(groupRoles);
-  if (!personalOrgSlug) {
-    return {
-      org_slugs: groupRoles,
-      org_id: null,
-      org_slug: null,
-      roles,
-    };
-  }
-
-  const personalOrg = await db.organization.findUnique({
-    where: { slug: personalOrgSlug },
-    select: { id: true, slug: true },
+  // ユーザーのdefaultOrganizationを取得
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      defaultOrganization: {
+        select: { id: true, slug: true },
+      },
+    },
   });
+
+  // 組織作成後に必ずdefaultOrganizationSlugが設定されるため、
+  // 存在しない場合はデータ不整合としてエラーをスロー
+  const defaultOrg = user?.defaultOrganization;
+  if (!defaultOrg) {
+    throw new Error(
+      `User ${userId} does not have a default organization. This should not happen.`,
+    );
+  }
 
   return {
     org_slugs: groupRoles,
-    org_id: personalOrg?.id ?? null,
-    org_slug: personalOrg?.slug ?? null,
+    org_id: defaultOrg.id,
+    org_slug: defaultOrg.slug,
     roles,
   };
 };
