@@ -8,7 +8,6 @@ import { getOrganizationProvider } from "~/lib/organizationProvider";
  */
 export const createPersonalOrganizationInputSchema = z.object({
   userId: z.string(),
-  providerAccountId: z.string(),
   userName: z.string().nullable().optional(),
   userEmail: z.string().nullable().optional(),
 });
@@ -43,7 +42,7 @@ export const createPersonalOrganization = async (
   tx: PrismaTransactionClient,
   input: CreatePersonalOrganizationInput,
 ): Promise<CreatePersonalOrganizationOutput> => {
-  const { userId, providerAccountId, userName, userEmail } = input;
+  const { userId, userName, userEmail } = input;
 
   // ユーザー情報を取得
   const user = await tx.user.findUnique({
@@ -81,13 +80,14 @@ export const createPersonalOrganization = async (
   const slug = await generateUniqueSlug(tx, baseName, true);
 
   // Keycloakに個人組織グループを作成
+  // User.id = Keycloak subなので、userIdを直接使用
   const provider = getOrganizationProvider();
   const groupName = slug; // slugをグループ名として使用
 
   const orgResult = await provider.createOrganization({
     name: `${baseName}'s Workspace`,
     groupName,
-    ownerId: providerAccountId, // Keycloakのユーザーidを使用
+    ownerId: userId,
   });
 
   if (!orgResult.success) {
@@ -113,8 +113,9 @@ export const createPersonalOrganization = async (
   });
 
   // Keycloakのカスタム属性にデフォルト組織を設定
+  // User.id = Keycloak subなので、userIdを直接使用
   const setDefaultResult = await provider.setUserDefaultOrganization({
-    userId: providerAccountId,
+    userId,
     organizationId: orgResult.externalId,
   });
 

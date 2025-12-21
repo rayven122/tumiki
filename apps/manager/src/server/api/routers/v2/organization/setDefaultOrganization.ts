@@ -59,6 +59,7 @@ export const setDefaultOrganization = async (
   }
 
   // Keycloak側でユーザーのデフォルト組織を更新
+  // User.id = Keycloak subなので、userIdを直接使用
   const provider = getOrganizationProvider();
   const result = await provider.setUserDefaultOrganization({
     userId,

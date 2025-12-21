@@ -69,7 +69,7 @@ export const createUserWithOrganization = async (
   const result = await provider.createOrganization({
     name: `${input.name ?? input.email ?? "User"}'s Workspace`,
     groupName,
-    ownerId: input.id,
+    ownerId: input.id, // User.id = Keycloak subを使用
   });
 
   if (!result.success) {
@@ -98,6 +98,7 @@ export const createUserWithOrganization = async (
   });
 
   // 4. Keycloakのユーザー属性にデフォルト組織を設定
+  // User.id = Keycloak subなので、input.idを直接使用
   const setDefaultResult = await provider.setUserDefaultOrganization({
     userId: input.id,
     organizationId: result.externalId,

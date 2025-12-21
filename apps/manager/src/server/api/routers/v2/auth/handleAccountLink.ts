@@ -8,7 +8,6 @@ import { createPersonalOrganization } from "../organization/createPersonalOrgani
 export const handleAccountLinkInputSchema = z.object({
   userId: z.string(),
   provider: z.string(),
-  providerAccountId: z.string(),
 });
 
 export type HandleAccountLinkInput = z.infer<
@@ -27,7 +26,7 @@ export const handleAccountLink = async (
   tx: PrismaTransactionClient,
   input: HandleAccountLinkInput,
 ): Promise<void> => {
-  const { userId, provider, providerAccountId } = input;
+  const { userId, provider } = input;
 
   // Keycloakプロバイダーの場合のみ、個人組織を作成
   if (provider !== "keycloak") {
@@ -41,9 +40,9 @@ export const handleAccountLink = async (
   });
 
   // 個人組織を作成
+  // User.id = Keycloak sub = providerAccountIdなので、userIdのみを渡す
   await createPersonalOrganization(tx, {
     userId,
-    providerAccountId,
     userName: user?.name,
     userEmail: user?.email,
   });
