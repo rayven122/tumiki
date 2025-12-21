@@ -334,12 +334,35 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"OrganizationRole" {
+  String organizationId FK
+  String slug
+  String name
+  String description "nullable"
+  Boolean isDefault
+  DateTime createdAt
+  DateTime updatedAt
+}
+"RolePermission" {
+  String id PK
+  String organizationId FK
+  String roleSlug
+  ResourceType resourceType
+  String resourceId
+  Boolean read
+  Boolean write
+  Boolean execute
+  DateTime createdAt
+  DateTime updatedAt
+}
 "_OrganizationToUser" {
   String A FK
   String B FK
 }
 "OrganizationMember" }o--|| "Organization" : organization
 "OrganizationInvitation" }o--|| "Organization" : organization
+"OrganizationRole" }o--|| "Organization" : organization
+"RolePermission" }o--|| "OrganizationRole" : role
 "_OrganizationToUser" }o--|| "Organization" : Organization
 ```
 
@@ -377,6 +400,33 @@ erDiagram
   - `invitedBy`: 招待者のユーザーID
   - `roles`: 招待時に付与するロール（Keycloak管理）
   - `expires`: 招待の有効期限
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `OrganizationRole`
+アプリケーションロール定義（権限セット）
+
+**Properties**
+  - `organizationId`: 組織ID
+  - `slug`: URL識別子（例: data-engineer）
+  - `name`: ロール名（表示用）
+  - `description`: ロールの説明
+  - `isDefault`: デフォルトロールか（新メンバーに自動付与）
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `RolePermission`
+ロールに付与された権限（Unix型権限）
+
+**Properties**
+  - `id`: 
+  - `organizationId`: 組織ID
+  - `roleSlug`: ロールslug
+  - `resourceType`: リソースタイプ
+  - `resourceId`: リソースID（空文字列の場合は全リソースに適用）
+  - `read`: 読み取り権限（閲覧）
+  - `write`: 書き込み権限（作成・更新・削除）
+  - `execute`: 実行権限（MCPツール実行）
   - `createdAt`: 
   - `updatedAt`: 
 
