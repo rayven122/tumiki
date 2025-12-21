@@ -83,7 +83,7 @@ export const OrganizationProvider = ({
 
         // Auth.jsのセッションを強制更新
         // DBの最新のdefaultOrganization情報を取得
-        await update();
+        await update({});
 
         // tRPCの全キャッシュを無効化して最新データを取得
         await utils.invalidate();

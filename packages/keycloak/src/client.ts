@@ -28,11 +28,53 @@ export class KeycloakAdminClient {
   }
 
   /**
+   * 401エラーかどうかを判定
+   */
+  private is401Error(error: unknown): boolean {
+    if (error && typeof error === "object") {
+      // Keycloak Admin Client のエラーオブジェクトから401を検出
+      const errorObj = error as {
+        response?: { status?: number };
+        status?: number;
+        message?: string;
+      };
+
+      // HTTPステータスコードが401の場合
+      if (errorObj.response?.status === 401 || errorObj.status === 401) {
+        return true;
+      }
+
+      // エラーメッセージに "401" または "Unauthorized" が含まれる場合
+      if (errorObj.message) {
+        const msg = errorObj.message.toLowerCase();
+        if (msg.includes("401") || msg.includes("unauthorized")) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 認証キャッシュを強制的にクリア
+   */
+  private clearAuthCache(): void {
+    this.authPromise = undefined;
+    this.lastAuthTime = 0;
+  }
+
+  /**
    * 管理者として認証（キャッシュ付き）
    * トークンの有効期限内は再認証をスキップしてパフォーマンスを改善
    */
-  private async ensureAuth(): Promise<void> {
+  private async ensureAuth(forceRefresh = false): Promise<void> {
     const now = Date.now();
+
+    // 強制リフレッシュが指定された場合、キャッシュをクリア
+    if (forceRefresh) {
+      this.clearAuthCache();
+    }
 
     // 既に有効な認証がある場合はスキップ
     if (
@@ -66,6 +108,25 @@ export class KeycloakAdminClient {
   }
 
   /**
+   * 操作を実行し、401エラー時に自動再認証してリトライ
+   */
+  private async executeWithAutoRetry<T>(
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      // 401エラーの場合、認証キャッシュをクリアして再認証後にリトライ
+      if (this.is401Error(error)) {
+        await this.ensureAuth(true); // 強制再認証
+        return await operation(); // リトライ
+      }
+      // 401以外のエラーはそのまま再スロー
+      throw error;
+    }
+  }
+
+  /**
    * グループを作成（フラット構造）
    */
   async createGroup(params: {
@@ -73,7 +134,9 @@ export class KeycloakAdminClient {
     attributes?: Record<string, string[]>;
   }): Promise<{ success: boolean; groupId?: string; error?: string }> {
     await this.ensureAuth();
-    return operations.createGroup(this.client, params);
+    return this.executeWithAutoRetry(() =>
+      operations.createGroup(this.client, params),
+    );
   }
 
   /**
@@ -83,7 +146,9 @@ export class KeycloakAdminClient {
     groupId: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.deleteGroup(this.client, groupId);
+    return this.executeWithAutoRetry(() =>
+      operations.deleteGroup(this.client, groupId),
+    );
   }
 
   /**
@@ -94,7 +159,9 @@ export class KeycloakAdminClient {
     groupId: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.addUserToGroup(this.client, userId, groupId);
+    return this.executeWithAutoRetry(() =>
+      operations.addUserToGroup(this.client, userId, groupId),
+    );
   }
 
   /**
@@ -105,7 +172,9 @@ export class KeycloakAdminClient {
     groupId: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.removeUserFromGroup(this.client, userId, groupId);
+    return this.executeWithAutoRetry(() =>
+      operations.removeUserFromGroup(this.client, userId, groupId),
+    );
   }
 
   /**
@@ -117,7 +186,9 @@ export class KeycloakAdminClient {
     error?: string;
   }> {
     await this.ensureAuth();
-    return operations.getRealmRole(this.client, roleName);
+    return this.executeWithAutoRetry(() =>
+      operations.getRealmRole(this.client, roleName),
+    );
   }
 
   /**
@@ -128,7 +199,9 @@ export class KeycloakAdminClient {
     role: RoleRepresentation,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.assignRealmRole(this.client, userId, role);
+    return this.executeWithAutoRetry(() =>
+      operations.assignRealmRole(this.client, userId, role),
+    );
   }
 
   /**
@@ -139,7 +212,9 @@ export class KeycloakAdminClient {
     role: RoleRepresentation,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.removeRealmRole(this.client, userId, role);
+    return this.executeWithAutoRetry(() =>
+      operations.removeRealmRole(this.client, userId, role),
+    );
   }
 
   /**
@@ -151,7 +226,9 @@ export class KeycloakAdminClient {
     error?: string;
   }> {
     await this.ensureAuth();
-    return operations.getUserRealmRoles(this.client, userId);
+    return this.executeWithAutoRetry(() =>
+      operations.getUserRealmRoles(this.client, userId),
+    );
   }
 
   /**
@@ -161,7 +238,9 @@ export class KeycloakAdminClient {
     userId: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.invalidateUserSessions(this.client, userId);
+    return this.executeWithAutoRetry(() =>
+      operations.invalidateUserSessions(this.client, userId),
+    );
   }
 
   /**
@@ -173,7 +252,9 @@ export class KeycloakAdminClient {
     error?: string;
   }> {
     await this.ensureAuth();
-    return operations.getGroup(this.client, groupId);
+    return this.executeWithAutoRetry(() =>
+      operations.getGroup(this.client, groupId),
+    );
   }
 
   /**
@@ -188,7 +269,9 @@ export class KeycloakAdminClient {
     },
   ): Promise<{ success: boolean; roleId?: string; error?: string }> {
     await this.ensureAuth();
-    return operations.createGroupRole(this.client, groupId, params);
+    return this.executeWithAutoRetry(() =>
+      operations.createGroupRole(this.client, groupId, params),
+    );
   }
 
   /**
@@ -200,7 +283,9 @@ export class KeycloakAdminClient {
     error?: string;
   }> {
     await this.ensureAuth();
-    return operations.listGroupRoles(this.client, groupId);
+    return this.executeWithAutoRetry(() =>
+      operations.listGroupRoles(this.client, groupId),
+    );
   }
 
   /**
@@ -211,7 +296,9 @@ export class KeycloakAdminClient {
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.deleteGroupRole(this.client, groupId, roleName);
+    return this.executeWithAutoRetry(() =>
+      operations.deleteGroupRole(this.client, groupId, roleName),
+    );
   }
 
   /**
@@ -223,11 +310,8 @@ export class KeycloakAdminClient {
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.assignGroupRoleToUser(
-      this.client,
-      groupId,
-      userId,
-      roleName,
+    return this.executeWithAutoRetry(() =>
+      operations.assignGroupRoleToUser(this.client, groupId, userId, roleName),
     );
   }
 
@@ -240,11 +324,13 @@ export class KeycloakAdminClient {
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.removeGroupRoleFromUser(
-      this.client,
-      groupId,
-      userId,
-      roleName,
+    return this.executeWithAutoRetry(() =>
+      operations.removeGroupRoleFromUser(
+        this.client,
+        groupId,
+        userId,
+        roleName,
+      ),
     );
   }
 
@@ -256,6 +342,8 @@ export class KeycloakAdminClient {
     attributes: Record<string, string[]>,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureAuth();
-    return operations.updateUserAttributes(this.client, userId, attributes);
+    return this.executeWithAutoRetry(() =>
+      operations.updateUserAttributes(this.client, userId, attributes),
+    );
   }
 }
