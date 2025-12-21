@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Mail, Clock, RefreshCw, X, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { type OrganizationInvitationId } from "@/schema/ids";
 import { format, formatDistanceToNow } from "date-fns";
@@ -114,7 +115,7 @@ export const InvitationManagementSection = () => {
   };
 
   // 現在のログインユーザーの権限を確認（JWT のロールから取得）
-  const isAdmin = session?.user?.isOrganizationAdmin ?? false;
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   if (isLoading) {
     return (

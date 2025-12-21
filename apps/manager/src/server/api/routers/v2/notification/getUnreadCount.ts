@@ -15,7 +15,7 @@ export const getUnreadCount = async ({
   const count = await ctx.db.notification.count({
     where: {
       userId: ctx.session.user.id,
-      organizationId: ctx.session.user.organizationId,
+      organizationId: ctx.currentOrg.id,
       isRead: false,
       isDeleted: false,
     },

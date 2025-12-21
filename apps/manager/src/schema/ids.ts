@@ -59,10 +59,7 @@ export const ApiKeyIdSchema = z.string().brand<"ApiKeyId">();
 export const FeedbackIdSchema = z.string().brand<"FeedbackId">();
 export type FeedbackId = z.infer<typeof FeedbackIdSchema>;
 
-export const OrganizationIdSchema = z
-  .string()
-  .cuid("有効な組織IDを入力してください")
-  .brand<"OrganizationId">();
+export const OrganizationIdSchema = z.string().brand<"OrganizationId">();
 export const OrganizationMemberIdSchema = z
   .string()
   .brand<"OrganizationMemberId">();
@@ -94,3 +91,9 @@ export type ResourceAccessControlId = z.infer<
   typeof ResourceAccessControlIdSchema
 >;
 export type ApiKeyId = z.infer<typeof ApiKeyIdSchema>;
+
+/**
+ * Department関連のID型
+ */
+export const DepartmentIdSchema = z.string().brand<"DepartmentId">();
+export type DepartmentId = z.infer<typeof DepartmentIdSchema>;

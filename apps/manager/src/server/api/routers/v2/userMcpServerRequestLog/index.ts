@@ -61,7 +61,7 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await getRequestStats(ctx.db, {
         userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -72,7 +72,7 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await findRequestLogs(ctx.db, {
         userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
         page: input.page,
         pageSize: input.pageSize,
         startDate: input.startDate,
@@ -87,7 +87,7 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await getRequestLogsStats(ctx.db, {
         userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
         days: input.days,
         timezone: input.timezone,
       });

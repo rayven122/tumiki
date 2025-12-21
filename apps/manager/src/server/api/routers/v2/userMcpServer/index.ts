@@ -142,7 +142,7 @@ export const userMcpServerRouter = createTRPCRouter({
           return await createApiKeyMcpServer(
             tx,
             input,
-            ctx.session.user.organizationId,
+            ctx.currentOrg.id,
             ctx.session.user.id,
           );
         },
@@ -161,7 +161,7 @@ export const userMcpServerRouter = createTRPCRouter({
         return await createIntegratedMcpServer(
           tx,
           input,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
           ctx.session.user.id,
         );
       });
@@ -175,7 +175,7 @@ export const userMcpServerRouter = createTRPCRouter({
         return await updateOfficialServer(
           tx,
           input,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
           ctx.session.user.id,
         );
       });
@@ -186,7 +186,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .output(FindOfficialServersOutputV2)
     .query(async ({ ctx }) => {
       return await findOfficialServers(ctx.db, {
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -197,7 +197,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await deleteMcpServer(ctx.db, {
         id: input.id,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -207,11 +207,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .output(updateDisplayOrderOutputSchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.$transaction(async (tx) => {
-        return await updateDisplayOrder(
-          tx,
-          input,
-          ctx.session.user.organizationId,
-        );
+        return await updateDisplayOrder(tx, input, ctx.currentOrg.id);
       });
     }),
 
@@ -221,7 +217,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .output(UpdateNameOutputV2)
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
-        return await updateName(tx, input, ctx.session.user.organizationId);
+        return await updateName(tx, input, ctx.currentOrg.id);
       });
     }),
 
@@ -231,7 +227,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await findById(ctx.db, {
         id: input.id,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -242,7 +238,7 @@ export const userMcpServerRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return await getToolStats(ctx.db, {
         userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -257,7 +253,7 @@ export const userMcpServerRouter = createTRPCRouter({
           {
             id: input.id,
             isEnabled: input.isEnabled,
-            organizationId: ctx.session.user.organizationId,
+            organizationId: ctx.currentOrg.id,
           },
           ctx.session.user.id,
         );
@@ -278,7 +274,7 @@ export const userMcpServerRouter = createTRPCRouter({
             isEnabled: input.isEnabled,
           },
           ctx.session.user.id,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
         );
       });
     }),

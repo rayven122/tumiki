@@ -14,8 +14,10 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
   // 1. セッション確認
   const session = await auth();
+
   if (!session?.user) {
-    redirect(`/signin?redirect=/invite/${encodeURIComponent(token)}`);
+    const callbackUrl = `/invite/${token}`;
+    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
   // 2. トークン検証（サーバー側）
