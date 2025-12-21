@@ -267,8 +267,7 @@ export const InvitationManagementSection = () => {
                                   招待をキャンセル
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  {invitation.email}{" "}
-                                  への招待をキャンセルしますか？
+                                  {invitation.email} への招待を取消しますか？
                                   招待リンクは無効になります。
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
@@ -280,7 +279,7 @@ export const InvitationManagementSection = () => {
                                   }
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  キャンセル
+                                  取消す
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

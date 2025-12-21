@@ -14,30 +14,30 @@ enum Role {
 /// @namespace Chat
 model User {
   /// ユーザーID - 主キーとして使用
-  id                    String                   @id
+  id                      String                   @id
   /// ユーザー名
-  name                  String?
+  name                    String?
   /// メールアドレス
-  email                 String?                  @unique
+  email                   String?                  @unique
   /// メールアドレス検証日時 (Auth.js required)
-  emailVerified         DateTime?
+  emailVerified           DateTime?
   /// プロフィール画像のURL
-  image                 String?
+  image                   String?
   /// ユーザーの権限
-  role                    Role          @default(USER)
-  /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
+  role                    Role                     @default(USER)
+  /// セッション管理に移行。新規コードでは使用しないこと。
   /// デフォルト組織のスラッグ
   defaultOrganizationSlug String?
-  /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
+  /// セッション管理に移行。新規コードでは使用しないこと。
   /// デフォルト組織への参照
-  defaultOrganization     Organization? @relation("UserDefaultOrganization", fields: [defaultOrganizationSlug], references: [slug])
+  defaultOrganization     Organization?            @relation("UserDefaultOrganization", fields: [defaultOrganizationSlug], references: [slug])
   organizations           Organization[]
-  members               OrganizationMember[]
-  invitations           OrganizationInvitation[]
+  members                 OrganizationMember[]
+  invitations             OrganizationInvitation[]
   /// Chat関連
-  Chat                  Chat[]
-  Document              Document[]
-  Suggestion            Suggestion[]
+  Chat                    Chat[]
+  Document                Document[]
+  Suggestion              Suggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -52,7 +52,7 @@ model User {
   feedbacks Feedback[]
 
   /// 通知関連
-  notifications         Notification[]
+  notifications          Notification[]
   triggeredNotifications Notification[] @relation("NotificationTriggeredBy")
 
   /// Auth.js adapter

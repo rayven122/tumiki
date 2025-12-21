@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +39,8 @@ type MemberListProps = {
 };
 
 export const MemberList = ({ organization }: MemberListProps) => {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const router = useRouter();
   const [inviteEmails, setInviteEmails] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -91,6 +93,7 @@ export const MemberList = ({ organization }: MemberListProps) => {
 
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
+      // メンバーリストの更新
       void utils.organization.getBySlug.invalidate({
         slug: organization.slug,
       });
@@ -120,10 +123,18 @@ export const MemberList = ({ organization }: MemberListProps) => {
     });
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    removeMemberMutation.mutate({
+  const handleRemoveMember = async (memberId: string, userId: string) => {
+    await removeMemberMutation.mutateAsync({
       memberId,
     });
+
+    // 自分自身を削除した場合
+    if (userId === session?.user.id) {
+      toast.info("組織から退会しました。組織一覧ページに移動します。");
+      // セッション更新を待ってからリダイレクト
+      await update({});
+      router.push("/organizations/dashboard");
+    }
   };
 
   return (
@@ -286,7 +297,9 @@ export const MemberList = ({ organization }: MemberListProps) => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>キャンセル</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleRemoveMember(member.id)}
+                              onClick={() =>
+                                handleRemoveMember(member.id, member.userId)
+                              }
                               className="bg-red-600 hover:bg-red-700"
                             >
                               削除

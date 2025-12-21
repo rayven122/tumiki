@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,9 +32,11 @@ import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 export const MemberManagementSection = () => {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -76,6 +79,7 @@ export const MemberManagementSection = () => {
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
       setErrorMessage(null);
+      // メンバーリストの更新
       void utils.organization.getById.invalidate();
     },
     onError: (error) => {
@@ -95,10 +99,18 @@ export const MemberManagementSection = () => {
     }
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    removeMemberMutation.mutate({
+  const handleRemoveMember = async (memberId: string, userId: string) => {
+    await removeMemberMutation.mutateAsync({
       memberId,
     });
+
+    // 自分自身を削除した場合
+    if (userId === session?.user.id) {
+      toast.info("組織から退会しました。組織一覧ページに移動します。");
+      // セッション更新を待ってからリダイレクト
+      await update();
+      router.push("/organizations/dashboard");
+    }
   };
 
   // JWT のロールから管理者権限を取得
@@ -276,7 +288,9 @@ export const MemberManagementSection = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>キャンセル</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleRemoveMember(member.id)}
+                              onClick={() =>
+                                handleRemoveMember(member.id, member.userId)
+                              }
                               className="bg-red-600 hover:bg-red-700"
                             >
                               削除

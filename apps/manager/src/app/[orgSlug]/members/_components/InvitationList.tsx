@@ -148,7 +148,7 @@ export const InvitationList = ({
                         <AlertDialogHeader>
                           <AlertDialogTitle>招待をキャンセル</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {invitation.email} への招待をキャンセルしますか？
+                            {invitation.email} への招待を取消しますか？
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -159,7 +159,7 @@ export const InvitationList = ({
                             }
                             className="bg-red-600 hover:bg-red-700"
                           >
-                            キャンセル
+                            取消す
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

@@ -1,5 +1,6 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import type { NotificationPriority } from "@tumiki/db/prisma";
+import { createManyNotifications } from "./createNotification";
 
 /**
  * 通知タイプの定義
@@ -42,22 +43,17 @@ export const createBulkNotifications = async (
     return;
   }
 
-  const now = new Date();
-  const expiresAt =
-    input.expiresAt ?? new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // デフォルト30日後
+  const userIds = orgMembers.map((member) => member.userId);
 
-  // バルクインサートで一括作成（N+1クエリ問題を回避）
-  await tx.notification.createMany({
-    data: orgMembers.map((member) => ({
-      type: input.type,
-      priority: input.priority ?? "NORMAL",
-      title: input.title,
-      message: input.message,
-      linkUrl: input.linkUrl,
-      userId: member.userId,
-      organizationId: input.organizationId,
-      triggeredById: input.triggeredById,
-      expiresAt,
-    })),
+  // createManyNotifications を使って一括作成
+  await createManyNotifications(tx, userIds, {
+    type: input.type,
+    priority: input.priority,
+    title: input.title,
+    message: input.message,
+    linkUrl: input.linkUrl,
+    organizationId: input.organizationId,
+    triggeredById: input.triggeredById,
+    expiresAt: input.expiresAt,
   });
 };

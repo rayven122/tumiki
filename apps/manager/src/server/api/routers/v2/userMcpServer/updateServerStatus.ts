@@ -2,7 +2,7 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { z } from "zod";
 import type { McpServerId } from "@/schema/ids";
-import { createNotification } from "../notification/createNotification";
+import { createManyNotifications } from "../notification/createNotification";
 
 type UpdateServerStatusInput = {
   id: McpServerId;
@@ -61,19 +61,17 @@ export const updateServerStatus = async (
   const statusText = isEnabled ? "起動" : "停止";
   const priority = isEnabled ? "NORMAL" : "HIGH"; // 停止時は高優先度
 
-  // 各メンバーに通知を作成
-  for (const member of orgMembers) {
-    await createNotification(tx, {
-      type: "MCP_SERVER_STATUS_CHANGED",
-      priority,
-      title: `MCPサーバーが${statusText}しました`,
-      message: `「${updatedServer.name}」が${statusText}しました。`,
-      linkUrl: `/${organizationId}/mcps/${id}`,
-      userId: member.userId,
-      organizationId,
-      triggeredById: userId,
-    });
-  }
+  const notificationUserIds = orgMembers.map((member) => member.userId);
+
+  await createManyNotifications(tx, notificationUserIds, {
+    type: "MCP_SERVER_STATUS_CHANGED",
+    priority,
+    title: `MCPサーバーが${statusText}しました`,
+    message: `「${updatedServer.name}」が${statusText}しました。`,
+    linkUrl: `/${organizationId}/mcps/${id}`,
+    organizationId,
+    triggeredById: userId,
+  });
 
   return {
     id: updatedServer.id,
