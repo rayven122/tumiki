@@ -15,7 +15,7 @@ export class KeycloakAdminClient {
   private client: KcAdminClient;
   private authPromise?: Promise<void>;
   private lastAuthTime = 0;
-  private readonly AUTH_CACHE_DURATION = 300000; // 5分
+  private readonly AUTH_CACHE_DURATION = 50000; // 50秒（トークン有効期限60秒より短く設定）
 
   constructor(config: KeycloakAdminConfig) {
     this.config = config;
@@ -66,7 +66,8 @@ export class KeycloakAdminClient {
 
   /**
    * 管理者として認証（キャッシュ付き）
-   * トークンの有効期限内は再認証をスキップしてパフォーマンスを改善
+   * トークンの有効期限（デフォルト60秒）を考慮し、50秒間キャッシュ
+   * これにより、トークン期限切れによる401エラーを防ぎつつパフォーマンスを改善
    */
   private async ensureAuth(forceRefresh = false): Promise<void> {
     const now = Date.now();
@@ -132,21 +133,20 @@ export class KeycloakAdminClient {
   async createGroup(params: {
     name: string;
     attributes?: Record<string, string[]>;
-  }): Promise<{ success: boolean; groupId?: string; error?: string }> {
+  }): Promise<string> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    const result = await this.executeWithAutoRetry(() =>
       operations.createGroup(this.client, params),
     );
+    return result.groupId;
   }
 
   /**
    * グループを削除
    */
-  async deleteGroup(
-    groupId: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async deleteGroup(groupId: string): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.deleteGroup(this.client, groupId),
     );
   }
@@ -154,12 +154,9 @@ export class KeycloakAdminClient {
   /**
    * ユーザーをグループに追加
    */
-  async addUserToGroup(
-    userId: string,
-    groupId: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async addUserToGroup(userId: string, groupId: string): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.addUserToGroup(this.client, userId, groupId),
     );
   }
@@ -167,12 +164,9 @@ export class KeycloakAdminClient {
   /**
    * ユーザーをグループから削除
    */
-  async removeUserFromGroup(
-    userId: string,
-    groupId: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async removeUserFromGroup(userId: string, groupId: string): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.removeUserFromGroup(this.client, userId, groupId),
     );
   }
@@ -180,11 +174,7 @@ export class KeycloakAdminClient {
   /**
    * Realm Roleを取得
    */
-  async getRealmRole(roleName: OrganizationRole): Promise<{
-    success: boolean;
-    role?: RoleRepresentation;
-    error?: string;
-  }> {
+  async getRealmRole(roleName: OrganizationRole): Promise<RoleRepresentation> {
     await this.ensureAuth();
     return this.executeWithAutoRetry(() =>
       operations.getRealmRole(this.client, roleName),
@@ -197,9 +187,9 @@ export class KeycloakAdminClient {
   async assignRealmRole(
     userId: string,
     role: RoleRepresentation,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.assignRealmRole(this.client, userId, role),
     );
   }
@@ -210,9 +200,9 @@ export class KeycloakAdminClient {
   async removeRealmRole(
     userId: string,
     role: RoleRepresentation,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.removeRealmRole(this.client, userId, role),
     );
   }
@@ -220,11 +210,7 @@ export class KeycloakAdminClient {
   /**
    * ユーザーの現在のRealm Rolesを取得
    */
-  async getUserRealmRoles(userId: string): Promise<{
-    success: boolean;
-    roles?: RoleRepresentation[];
-    error?: string;
-  }> {
+  async getUserRealmRoles(userId: string): Promise<RoleRepresentation[]> {
     await this.ensureAuth();
     return this.executeWithAutoRetry(() =>
       operations.getUserRealmRoles(this.client, userId),
@@ -234,11 +220,9 @@ export class KeycloakAdminClient {
   /**
    * ユーザーの全セッションを無効化
    */
-  async invalidateUserSessions(
-    userId: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async invalidateUserSessions(userId: string): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.invalidateUserSessions(this.client, userId),
     );
   }
@@ -246,11 +230,7 @@ export class KeycloakAdminClient {
   /**
    * グループ情報を取得
    */
-  async getGroup(groupId: string): Promise<{
-    success: boolean;
-    group?: GroupRepresentation;
-    error?: string;
-  }> {
+  async getGroup(groupId: string): Promise<GroupRepresentation> {
     await this.ensureAuth();
     return this.executeWithAutoRetry(() =>
       operations.getGroup(this.client, groupId),
@@ -267,21 +247,18 @@ export class KeycloakAdminClient {
       description?: string;
       attributes?: Record<string, string[]>;
     },
-  ): Promise<{ success: boolean; roleId?: string; error?: string }> {
+  ): Promise<string> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    const result = await this.executeWithAutoRetry(() =>
       operations.createGroupRole(this.client, groupId, params),
     );
+    return result.roleId;
   }
 
   /**
    * グループロール一覧を取得
    */
-  async listGroupRoles(groupId: string): Promise<{
-    success: boolean;
-    roles?: RoleRepresentation[];
-    error?: string;
-  }> {
+  async listGroupRoles(groupId: string): Promise<RoleRepresentation[]> {
     await this.ensureAuth();
     return this.executeWithAutoRetry(() =>
       operations.listGroupRoles(this.client, groupId),
@@ -291,12 +268,9 @@ export class KeycloakAdminClient {
   /**
    * グループロールを削除
    */
-  async deleteGroupRole(
-    groupId: string,
-    roleName: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async deleteGroupRole(groupId: string, roleName: string): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.deleteGroupRole(this.client, groupId, roleName),
     );
   }
@@ -308,9 +282,9 @@ export class KeycloakAdminClient {
     groupId: string,
     userId: string,
     roleName: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.assignGroupRoleToUser(this.client, groupId, userId, roleName),
     );
   }
@@ -322,9 +296,9 @@ export class KeycloakAdminClient {
     groupId: string,
     userId: string,
     roleName: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.removeGroupRoleFromUser(
         this.client,
         groupId,
@@ -340,9 +314,9 @@ export class KeycloakAdminClient {
   async updateUserAttributes(
     userId: string,
     attributes: Record<string, string[]>,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<void> {
     await this.ensureAuth();
-    return this.executeWithAutoRetry(() =>
+    await this.executeWithAutoRetry(() =>
       operations.updateUserAttributes(this.client, userId, attributes),
     );
   }

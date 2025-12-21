@@ -72,13 +72,7 @@ export const OnboardingClient = ({
 
   // アニメーション完了後の遷移処理
   const handleAnimationComplete = () => {
-    setShowWelcomeOverlay(false);
-
-    // セッションからチームslugを取得してリダイレクト
-    const orgSlug = getSessionInfo(session).organizationSlug;
-    if (orgSlug) {
-      router.push(`/${orgSlug}/mcps`);
-    }
+    router.push("/mcp");
   };
 
   const handleTeamUse = () => {
