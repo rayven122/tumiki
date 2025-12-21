@@ -56,7 +56,6 @@ export const createCustomAdapter = () => {
         await handleAccountLink(tx, {
           userId: account.userId,
           provider: account.provider,
-          providerAccountId: account.providerAccountId,
         });
 
         return result ?? undefined;
