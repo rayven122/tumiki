@@ -5,9 +5,14 @@ import { logError } from "../../libs/logger/index.js";
 import {
   createUnauthorizedError,
   createPermissionDeniedError,
+  createNotFoundError,
 } from "../../libs/error/index.js";
 import { keycloakAuth } from "./jwt.js";
-import { checkPermission } from "../../services/permissionService.js";
+import {
+  getMcpServerOrganization,
+  checkOrganizationMembership,
+  getUserIdFromKeycloakId,
+} from "../../services/mcpServerService.js";
 
 /**
  * OAuth/JWT認証ミドルウェア
@@ -15,13 +20,16 @@ import { checkPermission } from "../../services/permissionService.js";
  * 以下の検証を早期returnで順次実行します:
  * 1. JWTトークンの検証（Keycloak）
  * 2. JWTペイロードの存在確認
- * 3. mcp_server_idの存在確認
- * 4. リクエストパスのmcpServerIdの確認
- * 5. mcpServerIdの一致確認
- * 6. MCP_SERVER_INSTANCEへのREAD権限確認
+ * 3. リクエストパスのmcpServerIdの確認
+ * 4. McpServerからorganizationIdを取得（JWTからは取得しない）
+ * 5. ユーザーが組織のメンバーかどうかを確認
+ *
+ * 認可ロジック:
+ * - mcpServerId → organizationId → OrganizationMember → userId
+ * - ユーザーが組織のメンバーであれば、その組織のMCPサーバーにアクセス可能
  *
  * Cloud Runのステートレス環境向けに設計:
- * - JWT検証とPermissionチェックを毎回実行
+ * - JWT検証とメンバーシップチェックを毎回実行
  * - セッション状態は保持しない
  */
 export const oauthMiddleware = async (
@@ -53,27 +61,73 @@ export const oauthMiddleware = async (
     );
   }
 
-  // MCP_SERVER_INSTANCEへのREAD権限をチェック
-  let hasPermission: boolean;
+  // McpServerからorganizationIdを取得
+  let orgId: string;
   try {
-    hasPermission = await checkPermission(
-      jwtPayload.sub,
-      jwtPayload.org_id,
-      "MCP_SERVER_INSTANCE",
-      "READ",
-      pathMcpServerId,
-    );
+    const mcpServer = await getMcpServerOrganization(pathMcpServerId);
+
+    // McpServerが見つからない場合は404を返す
+    if (!mcpServer) {
+      return c.json(
+        createNotFoundError(`MCP Server not found: ${pathMcpServerId}`),
+        404,
+      );
+    }
+
+    // McpServerが削除されている場合は404を返す
+    if (mcpServer.deletedAt) {
+      return c.json(
+        createNotFoundError(`MCP Server has been deleted: ${pathMcpServerId}`),
+        404,
+      );
+    }
+
+    orgId = mcpServer.organizationId;
   } catch (error) {
-    logError("Permission check failed, denying access", error as Error);
-    return c.json(createPermissionDeniedError("Permission check failed"), 403);
+    logError("Failed to get McpServer organization", error as Error, {
+      mcpServerId: pathMcpServerId,
+    });
+    return c.json(
+      createPermissionDeniedError("Failed to verify MCP server access"),
+      403,
+    );
   }
 
-  // 権限がない場合は403を返す
-  if (!hasPermission) {
+  // Keycloak ID から Tumiki User ID を解決
+  // Account.providerAccountId = jwtPayload.sub で検索
+  let userId: string;
+  try {
+    const resolvedUserId = await getUserIdFromKeycloakId(jwtPayload.sub);
+    if (!resolvedUserId) {
+      return c.json(
+        createUnauthorizedError("User not found for Keycloak ID"),
+        401,
+      );
+    }
+    userId = resolvedUserId;
+  } catch (error) {
+    logError("Failed to resolve user ID from Keycloak ID", error as Error, {
+      keycloakId: jwtPayload.sub,
+    });
     return c.json(
-      createPermissionDeniedError(
-        "Permission denied: READ access to MCP_SERVER_INSTANCE",
-      ),
+      createUnauthorizedError("Failed to verify user identity"),
+      401,
+    );
+  }
+
+  // 組織メンバーシップをチェック（Tumiki User ID を使用）
+  let isMember: boolean;
+  try {
+    isMember = await checkOrganizationMembership(orgId, userId);
+  } catch (error) {
+    logError("Organization membership check failed", error as Error);
+    return c.json(createPermissionDeniedError("Membership check failed"), 403);
+  }
+
+  // 組織のメンバーでない場合は403を返す
+  if (!isMember) {
+    return c.json(
+      createPermissionDeniedError("User is not a member of this organization"),
       403,
     );
   }
@@ -84,8 +138,8 @@ export const oauthMiddleware = async (
   // 統一認証コンテキストを設定
   c.set("authContext", {
     authMethod: AuthType.OAUTH,
-    organizationId: jwtPayload.org_id,
-    userId: jwtPayload.sub,
+    organizationId: orgId,
+    userId: userId, // Tumiki User ID（Keycloak ID ではなく）
     mcpServerId: pathMcpServerId,
   });
 

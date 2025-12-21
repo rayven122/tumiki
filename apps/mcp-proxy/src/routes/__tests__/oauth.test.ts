@@ -5,20 +5,24 @@ import { oauthTokenHandler } from "../oauth.js";
 import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
 
 // vi.hoisted でモック関数を定義（ホイスティング問題を回避）
-const { mockDiscover, mockGrant, mockRefresh, MockClient } = vi.hoisted(() => {
-  const grant = vi.fn();
-  const refresh = vi.fn();
-  const Client = vi.fn().mockImplementation(() => ({
-    grant,
-    refresh,
-  }));
-  return {
-    mockDiscover: vi.fn(),
-    mockGrant: grant,
-    mockRefresh: refresh,
-    MockClient: Client,
-  };
-});
+const { mockDiscover, mockGrant, mockRefresh, mockCallback, MockClient } =
+  vi.hoisted(() => {
+    const grant = vi.fn();
+    const refresh = vi.fn();
+    const callback = vi.fn();
+    const Client = vi.fn().mockImplementation(() => ({
+      grant,
+      refresh,
+      callback,
+    }));
+    return {
+      mockDiscover: vi.fn(),
+      mockGrant: grant,
+      mockRefresh: refresh,
+      mockCallback: callback,
+      MockClient: Client,
+    };
+  });
 
 // モックの設定
 vi.mock("../../libs/logger/index.js", () => ({
@@ -85,6 +89,7 @@ describe("oauthTokenHandler", () => {
     MockClient.mockImplementation(() => ({
       grant: mockGrant,
       refresh: mockRefresh,
+      callback: mockCallback,
     }));
 
     // デフォルトの Issuer モックを設定
@@ -145,7 +150,7 @@ describe("oauthTokenHandler", () => {
       expect(body).toStrictEqual({
         error: "unsupported_grant_type",
         error_description:
-          "Only client_credentials and refresh_token grant types are supported",
+          "Only authorization_code, client_credentials and refresh_token grant types are supported",
       });
     });
 
@@ -187,7 +192,8 @@ describe("oauthTokenHandler", () => {
       const body = await res.json();
       expect(body).toStrictEqual({
         error: "invalid_request",
-        error_description: "client_secret is required",
+        error_description:
+          "client_secret is required for client_credentials grant",
       });
     });
 
@@ -360,6 +366,188 @@ describe("oauthTokenHandler", () => {
       expect(body).toStrictEqual({
         error: "invalid_grant",
         error_description: "Invalid refresh token",
+      });
+    });
+  });
+
+  describe("Authorization Code Grant", () => {
+    test("正常なauthorization_codeでトークンを取得できる", async () => {
+      // openid-client TokenSet のモック
+      const mockTokenSet = {
+        access_token: "eyJhbGc_auth_code...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "eyJhbGc_refresh...",
+        scope: "openid profile",
+      };
+
+      mockCallback.mockResolvedValueOnce(mockTokenSet);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("code", "test-authorization-code");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+      formData.append("code_verifier", "test-code-verifier-12345");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        access_token: "eyJhbGc_auth_code...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "eyJhbGc_refresh...",
+        scope: "openid profile",
+      });
+
+      // callback メソッドが正しく呼ばれたか確認
+      expect(mockCallback).toHaveBeenCalledWith(
+        "http://localhost:3000/callback",
+        { code: "test-authorization-code" },
+        { code_verifier: "test-code-verifier-12345" },
+      );
+    });
+
+    test("codeが存在しない場合、400エラーを返す", async () => {
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+      formData.append("code_verifier", "test-code-verifier");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_request",
+        error_description: "code is required for authorization_code grant",
+      });
+    });
+
+    test("redirect_uriが存在しない場合、400エラーを返す", async () => {
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("code", "test-authorization-code");
+      formData.append("code_verifier", "test-code-verifier");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_request",
+        error_description:
+          "redirect_uri is required for authorization_code grant",
+      });
+    });
+
+    test("code_verifierが存在しない場合、400エラーを返す（PKCE必須）", async () => {
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("code", "test-authorization-code");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_request",
+        error_description:
+          "code_verifier is required for authorization_code grant (PKCE)",
+      });
+    });
+
+    test("client_secretなしでも認証できる（Public Client）", async () => {
+      const mockTokenSet = {
+        access_token: "eyJhbGc_public_client...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "eyJhbGc_refresh...",
+        scope: "openid",
+      };
+
+      mockCallback.mockResolvedValueOnce(mockTokenSet);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "public-client");
+      // client_secret を省略（Public Client）
+      formData.append("code", "test-authorization-code");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+      formData.append("code_verifier", "test-code-verifier");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { access_token: string };
+      expect(body.access_token).toBe("eyJhbGc_public_client...");
+    });
+
+    test("無効なcodeの場合、エラーレスポンスを返す", async () => {
+      const { errors } = await import("openid-client");
+      mockCallback.mockRejectedValueOnce(
+        new errors.OPError({
+          error: "invalid_grant",
+          error_description: "Invalid authorization code",
+        }),
+      );
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("code", "invalid-code");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+      formData.append("code_verifier", "test-code-verifier");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_grant",
+        error_description: "Invalid authorization code",
       });
     });
   });

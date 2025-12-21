@@ -17,17 +17,19 @@ import {
  * Keycloak Client を作成
  *
  * @param clientId - クライアントID
- * @param clientSecret - クライアントシークレット
+ * @param clientSecret - クライアントシークレット（オプション、Public Client の場合は undefined）
  * @returns openid-client の Client インスタンス
  */
 const createKeycloakClient = async (
   clientId: string,
-  clientSecret: string,
+  clientSecret?: string,
 ): Promise<Client> => {
   const issuer = await getKeycloakIssuer();
   return new issuer.Client({
     client_id: clientId,
     client_secret: clientSecret,
+    // Public Client（client_secret なし）の場合は token_endpoint_auth_method を none に
+    token_endpoint_auth_method: clientSecret ? "client_secret_post" : "none",
   });
 };
 
@@ -55,19 +57,20 @@ const validateTokenRequest = (
   // grant_type の検証
   if (
     req.grant_type !== "client_credentials" &&
-    req.grant_type !== "refresh_token"
+    req.grant_type !== "refresh_token" &&
+    req.grant_type !== "authorization_code"
   ) {
     return {
       valid: false,
       error: {
         error: "unsupported_grant_type",
         error_description:
-          "Only client_credentials and refresh_token grant types are supported",
+          "Only authorization_code, client_credentials and refresh_token grant types are supported",
       },
     };
   }
 
-  // client_id と client_secret の検証
+  // client_id の検証（全グラントタイプで必須）
   if (typeof req.client_id !== "string" || req.client_id.trim() === "") {
     return {
       valid: false,
@@ -78,17 +81,21 @@ const validateTokenRequest = (
     };
   }
 
-  if (
-    typeof req.client_secret !== "string" ||
-    req.client_secret.trim() === ""
-  ) {
-    return {
-      valid: false,
-      error: {
-        error: "invalid_request",
-        error_description: "client_secret is required",
-      },
-    };
+  // client_secret の検証（client_credentials では必須、authorization_code ではオプショナル）
+  if (req.grant_type === "client_credentials") {
+    if (
+      typeof req.client_secret !== "string" ||
+      req.client_secret.trim() === ""
+    ) {
+      return {
+        valid: false,
+        error: {
+          error: "invalid_request",
+          error_description:
+            "client_secret is required for client_credentials grant",
+        },
+      };
+    }
   }
 
   // refresh_token grant の場合の追加検証
@@ -108,6 +115,46 @@ const validateTokenRequest = (
     }
   }
 
+  // authorization_code grant の場合の追加検証
+  if (req.grant_type === "authorization_code") {
+    if (typeof req.code !== "string" || req.code.trim() === "") {
+      return {
+        valid: false,
+        error: {
+          error: "invalid_request",
+          error_description: "code is required for authorization_code grant",
+        },
+      };
+    }
+    if (
+      typeof req.redirect_uri !== "string" ||
+      req.redirect_uri.trim() === ""
+    ) {
+      return {
+        valid: false,
+        error: {
+          error: "invalid_request",
+          error_description:
+            "redirect_uri is required for authorization_code grant",
+        },
+      };
+    }
+    // PKCE: code_verifier は必須（MCP仕様）
+    if (
+      typeof req.code_verifier !== "string" ||
+      req.code_verifier.trim() === ""
+    ) {
+      return {
+        valid: false,
+        error: {
+          error: "invalid_request",
+          error_description:
+            "code_verifier is required for authorization_code grant (PKCE)",
+        },
+      };
+    }
+  }
+
   return { valid: true };
 };
 
@@ -117,6 +164,7 @@ const validateTokenRequest = (
  * Keycloak Token Endpoint へのプロキシとして機能
  *
  * サポートするグラントタイプ:
+ * - authorization_code: 認可コードによるトークン取得（PKCE必須）
  * - client_credentials: クライアント認証情報によるトークン取得
  * - refresh_token: リフレッシュトークンによるトークン更新
  *
@@ -169,6 +217,25 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
 
     if (req.grant_type === "refresh_token") {
       const tokenSet = await client.refresh(req.refresh_token);
+
+      const tokenResponse: OAuthTokenResponse = {
+        access_token: tokenSet.access_token ?? "",
+        token_type: "Bearer",
+        expires_in: tokenSet.expires_in ?? 0,
+        refresh_token: tokenSet.refresh_token,
+        scope: tokenSet.scope,
+      };
+
+      return c.json(tokenResponse, 200);
+    }
+
+    if (req.grant_type === "authorization_code") {
+      // PKCE を使用して認可コードをトークンに交換
+      const tokenSet = await client.callback(
+        req.redirect_uri,
+        { code: req.code },
+        { code_verifier: req.code_verifier },
+      );
 
       const tokenResponse: OAuthTokenResponse = {
         access_token: tokenSet.access_token ?? "",
