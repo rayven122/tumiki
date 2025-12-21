@@ -244,34 +244,6 @@
       },
       "protocolMappers": [
         {
-          "name": "Tumiki Organization ID",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.attribute": "tumiki_organization_id",
-            "claim.name": "tumiki.organization_id",
-            "jsonType.label": "String",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "name": "Tumiki Organization Group",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.attribute": "tumiki_organization_group",
-            "claim.name": "tumiki.organization_group",
-            "jsonType.label": "String",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
           "name": "Tumiki Organization Roles",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-realm-role-mapper",
@@ -286,20 +258,6 @@
           }
         },
         {
-          "name": "Tumiki Keycloak Managed Flag",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.attribute": "tumiki_is_keycloak_managed",
-            "claim.name": "tumiki.is_keycloak_managed",
-            "jsonType.label": "boolean",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
           "name": "Tumiki Group Roles",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-group-membership-mapper",
@@ -307,20 +265,6 @@
           "config": {
             "claim.name": "tumiki.group_roles",
             "full.path": "false",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "name": "Tumiki Default Organization ID",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.attribute": "default_organization_id",
-            "claim.name": "tumiki.default_organization_id",
-            "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
@@ -425,20 +369,6 @@
             "access.token.claim": "true",
             "claim.name": "clientAddress",
             "jsonType.label": "String"
-          }
-        },
-        {
-          "name": "Tumiki Default Organization ID",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.attribute": "default_organization_id",
-            "claim.name": "tumiki.default_organization_id",
-            "jsonType.label": "String",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
           }
         }
       ]

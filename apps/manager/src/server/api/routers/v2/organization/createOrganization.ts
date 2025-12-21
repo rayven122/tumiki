@@ -99,18 +99,6 @@ export const createOrganization = async (
     },
   });
 
-  // 3. Keycloakのカスタム属性にデフォルト組織を設定
-  const setDefaultResult = await provider.setUserDefaultOrganization({
-    userId,
-    organizationId: result.externalId,
-  });
-
-  if (!setDefaultResult.success) {
-    console.warn(
-      `[CreateOrganization] Keycloakのデフォルト組織設定に失敗: ${setDefaultResult.error}`,
-    );
-  }
-
   return {
     id: organization.id,
     name: organization.name,

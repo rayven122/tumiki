@@ -52,6 +52,7 @@ export const {
         image: profile.picture ?? null,
         role: "USER" as const,
         tumiki: profile.tumiki ?? null,
+        profileSub: profile.sub, // Keycloak subをカスタムフィールドとして保持
       }),
     }),
   ],
