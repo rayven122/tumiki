@@ -6,21 +6,32 @@ import { redirect } from "next/navigation";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type SignInPageProps = {
-  searchParams: Promise<{ inviteToken?: string }>;
+  searchParams: Promise<{ callbackUrl?: string }>;
 };
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await auth();
-  const { inviteToken } = await searchParams;
+  const { callbackUrl } = await searchParams;
   const orgSlug = getSessionInfo(session).organizationSlug;
 
-  // inviteTokenがある場合は招待ページへ、なければデフォルト組織へ
+  // callbackUrlのバリデーション（サインインループを防ぐ）
+  const dangerousPaths = ["/signin", "/signup", "/api/auth/"];
+  const validatedCallbackUrl =
+    callbackUrl && !dangerousPaths.some((path) => callbackUrl.startsWith(path))
+      ? callbackUrl
+      : null;
+
+  // リダイレクト先の優先順位:
+  // 1. デフォルト組織ページ
+  // 2. callbackUrl
+  // 3. 初回ユーザー（org_slug なし）
   let redirectUrl: string;
-  if (inviteToken) {
-    redirectUrl = `/invite/${inviteToken}`;
+  if (orgSlug) {
+    redirectUrl = `/${orgSlug}/mcps`;
+  } else if (validatedCallbackUrl) {
+    redirectUrl = validatedCallbackUrl;
   } else {
-    // 組織情報がない場合はオンボーディングへ（初回ログインフラグ付き）
-    redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding?first=true";
+    redirectUrl = "/onboarding?first=true";
   }
 
   // 既にログイン済みの場合は、リダイレクト先へ

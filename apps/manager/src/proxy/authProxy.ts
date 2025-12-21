@@ -52,7 +52,9 @@ export const authProxy = async (
   // 認証が必要なパスで未ログインの場合はサインインページにリダイレクト
   if (!isLoggedIn) {
     const signInUrl = new URL("/signin", request.url);
-    signInUrl.searchParams.set("callbackUrl", request.url);
+    // callbackUrlには相対パスのみを設定（セキュリティ向上）
+    const callbackPath = request.nextUrl.pathname + request.nextUrl.search;
+    signInUrl.searchParams.set("callbackUrl", callbackPath);
     return NextResponse.redirect(signInUrl);
   }
 
