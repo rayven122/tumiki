@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { HonoEnv } from "../types/index.js";
 import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
+import { getMcpServerOrganization } from "../services/mcpServerService.js";
 
 export const wellKnownRoute = new Hono<HonoEnv>();
 
@@ -73,6 +74,7 @@ wellKnownRoute.get("/oauth-protected-resource", (c) => {
   return c.json({
     resource: mcpResourceUrl,
     authorization_servers: [mcpProxyUrl],
+    scopes_supported: [],
     bearer_methods_supported: ["header"],
     resource_documentation: "https://docs.tumiki.cloud/mcp",
     resource_signing_alg_values_supported: ["RS256"],
@@ -188,30 +190,9 @@ wellKnownRoute.get(
  * - 認証は不要（公開メタデータ）
  * - RFC 9728 に準拠したリソースメタデータを返す
  * - MCP 2025-DRAFT-v2 仕様で必須実装
- * - Instance ID ごとに異なるメタデータを返す予定（現在は TODO）
+ * - データベースから McpServer の存在確認を行う
  */
-wellKnownRoute.get("/oauth-protected-resource/mcp/:devInstanceId", (c) => {
-  const devMode = process.env.DEV_MODE === "true";
-
-  // DEV_MODE 以外は未実装
-  if (!devMode) {
-    // TODO: Implement instance-specific protected resource metadata
-    // - Fetch instance-specific metadata from database
-    // - Different scopes per instance
-    // - Different authorization servers per instance
-    // - Instance-specific resource documentation
-    // - Handle instance-not-found scenarios
-    return c.json(
-      {
-        error: "not_implemented",
-        error_description:
-          "Instance-specific OAuth protected resource metadata is not yet implemented",
-      },
-      501,
-    );
-  }
-
-  // DEV_MODE: instance ID を resource に含める
+wellKnownRoute.get("/oauth-protected-resource/mcp/:mcpServerId", async (c) => {
   const keycloakIssuer = process.env.KEYCLOAK_ISSUER;
   const mcpResourceUrl =
     process.env.MCP_RESOURCE_URL ?? "http://localhost:8080/mcp";
@@ -227,26 +208,33 @@ wellKnownRoute.get("/oauth-protected-resource/mcp/:devInstanceId", (c) => {
     );
   }
 
-  // URL パスパラメータから instance ID を取得
-  const instanceId = c.req.param("devInstanceId");
-  const resourceWithInstanceId = `${mcpResourceUrl}/${instanceId}`;
+  // URL パスパラメータから mcpServerId を取得
+  const mcpServerId = c.req.param("mcpServerId");
+
+  // データベースから McpServer の存在確認
+  const mcpServer = await getMcpServerOrganization(mcpServerId);
+  if (!mcpServer) {
+    return c.json(
+      {
+        error: "not_found",
+        error_description: `MCP Server not found: ${mcpServerId}`,
+      },
+      404,
+    );
+  }
+
+  const resourceWithMcpServerId = `${mcpResourceUrl}/${mcpServerId}`;
 
   // RFC 9728 準拠のリソースメタデータを返す
   return c.json({
     // RFC 9728 必須フィールド
-    resource: resourceWithInstanceId,
+    resource: resourceWithMcpServerId,
     authorization_servers: [keycloakIssuer],
 
     // RFC 9728 推奨フィールド
+    scopes_supported: [],
     bearer_methods_supported: ["header"],
     resource_documentation: "https://docs.tumiki.cloud/mcp",
     resource_signing_alg_values_supported: ["RS256"],
-
-    // TODO: Implement instance-specific metadata
-    // - Different scopes per instance (e.g., ["mcp:read", "mcp:write", "mcp:admin"])
-    // - Different authorization servers per instance
-    // - Instance-specific resource documentation URLs
-    // - Custom bearer methods per instance
-    // - Additional metadata fields as needed
   });
 });
