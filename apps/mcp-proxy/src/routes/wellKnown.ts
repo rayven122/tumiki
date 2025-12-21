@@ -5,6 +5,81 @@ import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
 export const wellKnownRoute = new Hono<HonoEnv>();
 
 /**
+ * RFC 8414 - OAuth 2.0 Authorization Server Metadata（ルートレベル）
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc8414
+ * @see https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization
+ *
+ * MCP Proxy 全体の認可サーバーメタデータを提供。
+ * MCPクライアントはこのエンドポイントからOAuth設定を自動検出する。
+ *
+ * 注意: DEV_MODE チェックなし（常に有効）
+ */
+wellKnownRoute.get("/oauth-authorization-server", async (c) => {
+  const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
+  const mcpProxyUrl = process.env.MCP_PROXY_URL ?? "http://localhost:8080";
+
+  if (!keycloakIssuerUrl) {
+    return c.json(
+      {
+        error: "server_misconfiguration",
+        error_description:
+          "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
+      },
+      500,
+    );
+  }
+
+  // Keycloak メタデータを取得
+  const keycloakIssuer = await getKeycloakIssuer();
+
+  // RFC 8414 準拠の Authorization Server Metadata を返却
+  return c.json({
+    issuer: mcpProxyUrl,
+    authorization_endpoint: keycloakIssuer.metadata.authorization_endpoint,
+    token_endpoint: `${mcpProxyUrl}/oauth/token`,
+    registration_endpoint: `${mcpProxyUrl}/oauth/register`,
+    jwks_uri: keycloakIssuer.metadata.jwks_uri,
+    response_types_supported: ["code"],
+    grant_types_supported: [
+      "authorization_code",
+      "refresh_token",
+      "client_credentials",
+    ],
+    token_endpoint_auth_methods_supported: [
+      "client_secret_post",
+      "client_secret_basic",
+    ],
+    code_challenge_methods_supported: ["S256"],
+  });
+});
+
+/**
+ * RFC 9728 - OAuth 2.0 Protected Resource Metadata（ルートレベル）
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc9728
+ * @see https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization
+ *
+ * MCP Proxy 全体のリソースメタデータを提供。
+ * MCPクライアントはこのエンドポイントから認証に必要な情報を自動検出する。
+ *
+ * 注意: DEV_MODE チェックなし（常に有効）
+ */
+wellKnownRoute.get("/oauth-protected-resource", (c) => {
+  const mcpProxyUrl = process.env.MCP_PROXY_URL ?? "http://localhost:8080";
+  const mcpResourceUrl = process.env.MCP_RESOURCE_URL ?? `${mcpProxyUrl}/mcp`;
+
+  // RFC 9728 準拠のリソースメタデータを返す
+  return c.json({
+    resource: mcpResourceUrl,
+    authorization_servers: [mcpProxyUrl],
+    bearer_methods_supported: ["header"],
+    resource_documentation: "https://docs.tumiki.cloud/mcp",
+    resource_signing_alg_values_supported: ["RS256"],
+  });
+});
+
+/**
  * RFC 8414 - OAuth 2.0 Authorization Server Metadata (Instance-specific)
  *
  * @see https://datatracker.ietf.org/doc/html/rfc8414

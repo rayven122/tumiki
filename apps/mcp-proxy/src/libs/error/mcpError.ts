@@ -79,3 +79,14 @@ export const createInvalidRequestError = (
 ): McpErrorResponse => {
   return createMcpError(ErrorCode.InvalidRequest, message, data);
 };
+
+/**
+ * リソースが見つからないエラーレスポンスを生成
+ * InvalidRequest (-32600) を使用
+ */
+export const createNotFoundError = (
+  message = "Resource not found",
+  data?: unknown,
+): McpErrorResponse => {
+  return createMcpError(ErrorCode.InvalidRequest, message, data);
+};

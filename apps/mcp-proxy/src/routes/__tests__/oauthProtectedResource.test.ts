@@ -566,3 +566,233 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:devInstanceId", () => {
     });
   });
 });
+
+/**
+ * ルートレベルのメタデータエンドポイントのテスト
+ * MCPクライアントはこれらのエンドポイントからOAuth設定を自動検出する
+ */
+describe("GET /.well-known/oauth-authorization-server（ルートレベル）", () => {
+  let app: Hono<HonoEnv>;
+  let originalKeycloakIssuer: string | undefined;
+  let originalMcpProxyUrl: string | undefined;
+
+  beforeEach(() => {
+    app = new Hono<HonoEnv>();
+    app.route("/.well-known", wellKnownRoute);
+
+    // 環境変数を保存
+    originalKeycloakIssuer = process.env.KEYCLOAK_ISSUER;
+    originalMcpProxyUrl = process.env.MCP_PROXY_URL;
+
+    // テスト用の環境変数を設定
+    process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/tumiki";
+    process.env.MCP_PROXY_URL = "http://localhost:8080";
+
+    // キャッシュをクリア
+    clearKeycloakCache();
+
+    vi.clearAllMocks();
+
+    // デフォルトの Issuer モックを設定
+    mockDiscover.mockResolvedValue(createMockIssuer());
+  });
+
+  afterEach(() => {
+    // 環境変数を復元
+    if (originalKeycloakIssuer !== undefined) {
+      process.env.KEYCLOAK_ISSUER = originalKeycloakIssuer;
+    } else {
+      delete process.env.KEYCLOAK_ISSUER;
+    }
+
+    if (originalMcpProxyUrl !== undefined) {
+      process.env.MCP_PROXY_URL = originalMcpProxyUrl;
+    } else {
+      delete process.env.MCP_PROXY_URL;
+    }
+
+    // キャッシュをクリア
+    clearKeycloakCache();
+  });
+
+  test("RFC 8414準拠のメタデータを返す", async () => {
+    const res = await app.request("/.well-known/oauth-authorization-server", {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    // RFC 8414 必須フィールド
+    expect(body).toHaveProperty("issuer");
+    expect(body).toHaveProperty("authorization_endpoint");
+    expect(body).toHaveProperty("token_endpoint");
+
+    // 値の検証
+    expect(body.issuer).toBe("http://localhost:8080");
+    expect(body.authorization_endpoint).toBe(
+      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/auth",
+    );
+    expect(body.token_endpoint).toBe("http://localhost:8080/oauth/token");
+    expect(body.registration_endpoint).toBe(
+      "http://localhost:8080/oauth/register",
+    );
+  });
+
+  test("DEV_MODE に関わらず常に有効", async () => {
+    // DEV_MODE を未設定にする
+    delete process.env.DEV_MODE;
+
+    const res = await app.request("/.well-known/oauth-authorization-server", {
+      method: "GET",
+    });
+
+    // ルートレベルは DEV_MODE チェックなしで常に有効
+    expect(res.status).toBe(200);
+  });
+
+  test("完全なメタデータ構造を返す", async () => {
+    const res = await app.request("/.well-known/oauth-authorization-server", {
+      method: "GET",
+    });
+
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toStrictEqual({
+      issuer: "http://localhost:8080",
+      authorization_endpoint:
+        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/auth",
+      token_endpoint: "http://localhost:8080/oauth/token",
+      registration_endpoint: "http://localhost:8080/oauth/register",
+      jwks_uri:
+        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+      response_types_supported: ["code"],
+      grant_types_supported: [
+        "authorization_code",
+        "refresh_token",
+        "client_credentials",
+      ],
+      token_endpoint_auth_methods_supported: [
+        "client_secret_post",
+        "client_secret_basic",
+      ],
+      code_challenge_methods_supported: ["S256"],
+    });
+  });
+
+  test("KEYCLOAK_ISSUER が設定されていない場合、500エラーを返す", async () => {
+    delete process.env.KEYCLOAK_ISSUER;
+
+    const res = await app.request("/.well-known/oauth-authorization-server", {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toStrictEqual({
+      error: "server_misconfiguration",
+      error_description:
+        "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
+    });
+  });
+});
+
+describe("GET /.well-known/oauth-protected-resource（ルートレベル）", () => {
+  let app: Hono<HonoEnv>;
+  let originalMcpProxyUrl: string | undefined;
+  let originalMcpResourceUrl: string | undefined;
+
+  beforeEach(() => {
+    app = new Hono<HonoEnv>();
+    app.route("/.well-known", wellKnownRoute);
+
+    // 環境変数を保存
+    originalMcpProxyUrl = process.env.MCP_PROXY_URL;
+    originalMcpResourceUrl = process.env.MCP_RESOURCE_URL;
+
+    // テスト用の環境変数を設定
+    process.env.MCP_PROXY_URL = "http://localhost:8080";
+
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // 環境変数を復元
+    if (originalMcpProxyUrl !== undefined) {
+      process.env.MCP_PROXY_URL = originalMcpProxyUrl;
+    } else {
+      delete process.env.MCP_PROXY_URL;
+    }
+
+    if (originalMcpResourceUrl !== undefined) {
+      process.env.MCP_RESOURCE_URL = originalMcpResourceUrl;
+    } else {
+      delete process.env.MCP_RESOURCE_URL;
+    }
+  });
+
+  test("RFC 9728準拠のメタデータを返す", async () => {
+    const res = await app.request("/.well-known/oauth-protected-resource", {
+      method: "GET",
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    // RFC 9728 必須フィールド
+    expect(body).toHaveProperty("resource");
+    expect(body).toHaveProperty("authorization_servers");
+
+    // 値の検証
+    expect(body.resource).toBe("http://localhost:8080/mcp");
+    expect(body.authorization_servers).toStrictEqual(["http://localhost:8080"]);
+  });
+
+  test("DEV_MODE に関わらず常に有効", async () => {
+    // DEV_MODE を未設定にする
+    delete process.env.DEV_MODE;
+
+    const res = await app.request("/.well-known/oauth-protected-resource", {
+      method: "GET",
+    });
+
+    // ルートレベルは DEV_MODE チェックなしで常に有効
+    expect(res.status).toBe(200);
+  });
+
+  test("完全なメタデータ構造を返す", async () => {
+    const res = await app.request("/.well-known/oauth-protected-resource", {
+      method: "GET",
+    });
+
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toStrictEqual({
+      resource: "http://localhost:8080/mcp",
+      authorization_servers: ["http://localhost:8080"],
+      bearer_methods_supported: ["header"],
+      resource_documentation: "https://docs.tumiki.cloud/mcp",
+      resource_signing_alg_values_supported: ["RS256"],
+    });
+  });
+
+  test("MCP_RESOURCE_URL が設定されている場合、その値を使用", async () => {
+    process.env.MCP_RESOURCE_URL = "https://custom-mcp.example.com/mcp";
+
+    const res = await app.request("/.well-known/oauth-protected-resource", {
+      method: "GET",
+    });
+
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.resource).toBe("https://custom-mcp.example.com/mcp");
+  });
+
+  test("MCP_RESOURCE_URL が未設定の場合、MCP_PROXY_URL から導出", async () => {
+    delete process.env.MCP_RESOURCE_URL;
+
+    const res = await app.request("/.well-known/oauth-protected-resource", {
+      method: "GET",
+    });
+
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.resource).toBe("http://localhost:8080/mcp");
+  });
+});

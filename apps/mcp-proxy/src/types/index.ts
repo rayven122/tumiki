@@ -19,10 +19,14 @@ export type AuthContext = {
 
 /**
  * JWT ペイロード（Keycloak OAuth 認証）
+ *
+ * Keycloakのカスタムクレームは `tumiki` ネームスペース内に格納される
  */
 export type JWTPayload = {
   sub: string; // ユーザーID（Keycloak Subject）
-  org_id: string; // 組織ID（Organization.id）
+  tumiki?: {
+    org_id?: string; // 組織ID（Organization.id）
+  };
   azp?: string; // クライアントID (authorized party)
   scope?: string; // スコープ（スペース区切り）
   email?: string; // メールアドレス
