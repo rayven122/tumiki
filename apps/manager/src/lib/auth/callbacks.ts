@@ -25,106 +25,55 @@ export const jwtCallback = async ({
   profile?: Profile;
   user?: User | AdapterUser;
 }): Promise<JWT> => {
-  // ========================================
-  // ケース1: Keycloak初回サインイン
-  // 発火条件: account?.provider === "keycloak"
-  // ========================================
-  if (account?.provider === "keycloak") {
-    return await handleKeycloakSignIn(token, account, profile, user);
-  }
-
-  // ========================================
-  // ケース2: session.update({})による組織切り替え
-  // 発火条件: accountなし、token.sub存在、token.tumiki存在
-  // ========================================
-  if (!account && token.sub && token.tumiki) {
-    return await handleSessionUpdate(token);
-  }
-
-  // ========================================
-  // ケース3: その他（Keycloak以外のプロバイダー、JWTリフレッシュなど）
-  // 発火条件: 上記以外
-  // ========================================
-  // 初回サインイン時はuserオブジェクトが存在する
   if (user) {
     token.sub = user.id!;
     token.role = (user as { role?: Role }).role ?? "USER";
   }
 
-  return token;
-};
+  if (account) {
+    token.accessToken = account.access_token;
+    token.expiresAt = account.expires_at;
+    token.refreshToken = account.refresh_token;
 
-/**
- * Keycloak初回サインイン時の処理
- * Keycloak access tokenとカスタムクレームをAuth.js JWTに保存
- */
-const handleKeycloakSignIn = async (
-  token: JWT,
-  account: Account,
-  profile: Profile | undefined,
-  user: User | AdapterUser | undefined,
-): Promise<JWT> => {
-  // 初回サインイン時のユーザー情報設定
-  if (user) {
-    token.sub = user.id!;
-    token.role = (user as { role?: Role }).role ?? "USER";
-  }
+    const keycloakProfile = profile as KeycloakJWTPayload;
+    token.sub = keycloakProfile.sub;
+    token.email = keycloakProfile.email ?? null;
+    token.name = keycloakProfile.name ?? null;
 
-  // Keycloak access tokenを保存
-  token.accessToken = account.access_token;
-  token.expiresAt = account.expires_at;
-  token.refreshToken = account.refresh_token;
+    // DBから最新のtumikiクレームを取得
+    const updatedTumiki = await getTumikiClaims(
+      db,
+      token.sub,
+      keycloakProfile.tumiki?.roles,
+    );
 
-  // Keycloakプロファイルからカスタムクレームを取得
-  const keycloakProfile = profile as KeycloakJWTPayload;
-  token.sub = keycloakProfile.sub;
-  token.email = keycloakProfile.email ?? null;
-  token.name = keycloakProfile.name ?? null;
+    if (!updatedTumiki) {
+      throw new Error(
+        `Failed to get tumiki claims for user ${token.sub}. This should not happen.`,
+      );
+    }
 
-  // tumikiクレームを取得（初回登録時/既存ユーザー対応）
-  const keycloakTumiki = keycloakProfile.tumiki;
-  token.tumiki = await getTumikiClaims(
-    db,
-    token.sub,
-    keycloakTumiki?.group_roles,
-    keycloakTumiki?.roles,
-  );
-
-  return token;
-};
-
-/**
- * session.update({})実行時の処理
- * DBから最新のdefaultOrganizationを取得してorg_id/org_slugを更新
- */
-const handleSessionUpdate = async (token: JWT): Promise<JWT> => {
-  if (!token.sub || !token.tumiki) {
+    token.tumiki = updatedTumiki;
     return token;
   }
 
-  // DBから最新のdefaultOrganizationを取得
-  const user = await db.user.findUniqueOrThrow({
-    where: { id: token.sub },
-    select: {
-      defaultOrganization: {
-        select: { id: true, slug: true },
-      },
-    },
-  });
-
-  const defaultOrg = user.defaultOrganization;
-  if (!defaultOrg) {
-    throw new Error(
-      `User ${token.sub} does not have a default organization. This should not happen.`,
+  if (!account && token.sub && token.tumiki) {
+    // DBから最新のtumikiクレームを取得（rolesは既存の値を保持）
+    const updatedTumiki = await getTumikiClaims(
+      db,
+      token.sub,
+      token.tumiki.roles,
     );
-  }
 
-  // org_idとorg_slugのみ更新、org_slugsとrolesはKeycloakから取得した値を保持
-  token.tumiki = {
-    ...token.tumiki,
-    org_id: defaultOrg.id,
-    org_slug: defaultOrg.slug,
-  };
+    if (!updatedTumiki) {
+      throw new Error(
+        `Failed to get tumiki claims for user ${token.sub}. This should not happen.`,
+      );
+    }
+
+    token.tumiki = updatedTumiki;
+    return token;
+  }
 
   return token;
 };
