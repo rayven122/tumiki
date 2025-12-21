@@ -38,11 +38,11 @@ export type CreateUserWithOrganizationOutput = z.infer<
 /**
  * ユーザーと個人組織を同時に作成
  *
- * トランザクション内で以下を実行（循環参照を回避するため段階的に作成）：
- * 1. ユーザーを defaultOrganizationSlug なしで作成
+ * トランザクション内で以下を実行：
+ * 1. ユーザーを作成
  * 2. Keycloakに個人組織グループを作成（@user-id形式）
  * 3. DBに個人組織と OrganizationMember を同時作成
- * 4. ユーザーの defaultOrganizationSlug を更新
+ * 4. Keycloakのユーザー属性にデフォルト組織を設定
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -52,7 +52,7 @@ export const createUserWithOrganization = async (
   const baseName = input.name ?? input.email ?? "User";
   const slug = await generateUniqueSlug(tx, baseName, true);
 
-  // 1. ユーザーを defaultOrganizationSlug なしで作成（循環参照を回避）
+  // 1. ユーザーを作成
   const createdUser = await tx.user.create({
     data: {
       id: input.id,
@@ -60,7 +60,6 @@ export const createUserWithOrganization = async (
       email: input.email,
       emailVerified: input.emailVerified ?? null,
       image: input.image ?? null,
-      // defaultOrganizationSlug は後で設定
     },
   });
 
@@ -98,13 +97,20 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 4. ユーザーの defaultOrganizationSlug を更新
-  await tx.user.update({
-    where: { id: input.id },
-    data: { defaultOrganizationSlug: slug },
+  // 4. Keycloakのユーザー属性にデフォルト組織を設定
+  const setDefaultResult = await provider.setUserDefaultOrganization({
+    userId: input.id,
+    organizationId: result.externalId,
   });
 
-  // データベースからのemailも検証（念のため）
+  if (!setDefaultResult.success) {
+    console.warn(
+      `[CreateUserWithOrganization] Keycloakのデフォルト組織設定に失敗: ${setDefaultResult.error}`,
+    );
+    // ユーザー作成は継続（Keycloak属性設定失敗は致命的ではない）
+  }
+
+  // データベースからのemailを検証
   if (!createdUser.email) {
     throw new Error(
       "User was created but email is null in database. This should not happen.",

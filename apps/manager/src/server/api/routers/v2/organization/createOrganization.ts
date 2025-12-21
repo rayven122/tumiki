@@ -64,12 +64,27 @@ export const createOrganization = async (
   // ユニークなslugを生成（Keycloakグループ名として使用）
   const slug = await generateUniqueSlug(tx, name, false);
 
+  // ユーザーのKeycloak IDを取得
+  const account = await tx.account.findFirst({
+    where: {
+      userId,
+      provider: "keycloak",
+    },
+  });
+
+  if (!account) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Keycloakアカウントが見つかりません",
+    });
+  }
+
   // 1. Keycloakにグループを作成
   const provider = getOrganizationProvider();
   const result = await provider.createOrganization({
     name,
     groupName: slug, // slugをKeycloakグループ名として使用
-    ownerId: userId,
+    ownerId: account.providerAccountId, // KeycloakのユーザーIDを使用
   });
 
   if (!result.success) {
@@ -98,13 +113,17 @@ export const createOrganization = async (
     },
   });
 
-  // 3. ユーザーのdefaultOrganizationSlugを設定
-  await tx.user.update({
-    where: { id: userId },
-    data: {
-      defaultOrganizationSlug: organization.slug,
-    },
+  // 3. Keycloakのカスタム属性にデフォルト組織を設定
+  const setDefaultResult = await provider.setUserDefaultOrganization({
+    userId: account.providerAccountId,
+    organizationId: result.externalId,
   });
+
+  if (!setDefaultResult.success) {
+    console.warn(
+      `[CreateOrganization] Keycloakのデフォルト組織設定に失敗: ${setDefaultResult.error}`,
+    );
+  }
 
   return {
     id: organization.id,

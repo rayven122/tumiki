@@ -482,3 +482,42 @@ export const removeGroupRoleFromUser = async (
     };
   }
 };
+
+/**
+ * ユーザーのカスタム属性を更新
+ */
+export const updateUserAttributes = async (
+  client: KcAdminClient,
+  userId: string,
+  attributes: Record<string, string[]>,
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // ユーザーの現在の属性を取得
+    const user = await client.users.findOne({ id: userId });
+
+    if (!user) {
+      return {
+        success: false,
+        error: `User not found: ${userId}`,
+      };
+    }
+
+    // 属性をマージして更新
+    await client.users.update(
+      { id: userId },
+      {
+        attributes: {
+          ...(user.attributes ?? {}),
+          ...attributes,
+        },
+      },
+    );
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};

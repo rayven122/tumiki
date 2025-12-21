@@ -51,7 +51,6 @@ export const {
         name: profile.name ?? null,
         image: profile.picture ?? null,
         role: "USER" as const,
-        defaultOrganization: null,
         tumiki: profile.tumiki ?? null,
       }),
     }),

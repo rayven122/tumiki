@@ -139,4 +139,17 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   ): Promise<{ success: boolean; error?: string }> {
     return this.client.removeGroupRoleFromUser(groupId, userId, roleName);
   }
+
+  /**
+   * ユーザーのデフォルト組織を設定（Keycloak固有機能）
+   * ユーザーのカスタム属性に default_organization_id を保存
+   */
+  async setUserDefaultOrganization(params: {
+    userId: string;
+    organizationId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.client.updateUserAttributes(params.userId, {
+      default_organization_id: [params.organizationId],
+    });
+  }
 }
