@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { inviteMemberInput } from "@/server/utils/organizationSchemas";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { sendInvitationEmail, generateInviteUrl } from "@/server/lib/mail";
-import { createNotification } from "../v2/notification/createNotification";
+import { createManyNotifications } from "../v2/notification/createNotification";
 
 export const inviteMemberInputSchema = inviteMemberInput;
 
@@ -82,20 +82,19 @@ export const inviteMember = async ({
       });
 
       // 管理者以外には通知しない（簡易版：Owner/Admin判定はKeycloakのため、ここでは全メンバーから自分を除く）
-      for (const member of orgMembers) {
-        if (member.userId !== ctx.session.user.id) {
-          await createNotification(tx, {
-            type: "ORGANIZATION_INVITATION_SENT",
-            priority: "NORMAL",
-            title: "新しいメンバーが招待されました",
-            message: `${input.email}が組織に招待されました。`,
-            linkUrl: `/${ctx.currentOrg.slug}/settings/members`,
-            userId: member.userId,
-            organizationId: ctx.currentOrg.id,
-            triggeredById: ctx.session.user.id,
-          });
-        }
-      }
+      const notificationUserIds = orgMembers
+        .filter((member) => member.userId !== ctx.session.user.id)
+        .map((member) => member.userId);
+
+      await createManyNotifications(tx, notificationUserIds, {
+        type: "ORGANIZATION_INVITATION_SENT",
+        priority: "NORMAL",
+        title: "新しいメンバーが招待されました",
+        message: `${input.email}が組織に招待されました。`,
+        linkUrl: `/${ctx.currentOrg.slug}/settings/members`,
+        organizationId: ctx.currentOrg.id,
+        triggeredById: ctx.session.user.id,
+      });
 
       return invitation;
     });

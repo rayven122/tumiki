@@ -72,7 +72,9 @@ erDiagram
   - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `defaultOrganizationSlug`: デフォルト組織のスラッグ
+  - `defaultOrganizationSlug`
+    > セッション管理に移行。新規コードでは使用しないこと。
+    > デフォルト組織のスラッグ
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -766,7 +768,9 @@ erDiagram
   - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `defaultOrganizationSlug`: デフォルト組織のスラッグ
+  - `defaultOrganizationSlug`
+    > セッション管理に移行。新規コードでは使用しないこと。
+    > デフォルト組織のスラッグ
   - `createdAt`: 
   - `updatedAt`: 
 

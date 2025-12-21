@@ -3,7 +3,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { InvitationTokenSchema } from "@/schema/ids";
 import { getOrganizationProvider } from "~/lib/organizationProvider";
-import { createNotification } from "../v2/notification/createNotification";
+import { createManyNotifications } from "../v2/notification/createNotification";
 
 // 入力スキーマ
 export const acceptInvitationInputSchema = z.object({
@@ -152,18 +152,17 @@ export const acceptInvitation = async ({
         },
       });
 
-      for (const member of orgMembers) {
-        await createNotification(tx, {
-          type: "ORGANIZATION_INVITATION_ACCEPTED",
-          priority: "NORMAL",
-          title: "招待が受け入れられました",
-          message: `${ctx.session.user.email ?? "新しいメンバー"}が組織に参加しました。`,
-          linkUrl: `/${invitation.organization.slug}/settings/members`,
-          userId: member.userId,
-          organizationId: invitation.organizationId,
-          triggeredById: ctx.session.user.id,
-        });
-      }
+      const notificationUserIds = orgMembers.map((member) => member.userId);
+
+      await createManyNotifications(tx, notificationUserIds, {
+        type: "ORGANIZATION_INVITATION_ACCEPTED",
+        priority: "NORMAL",
+        title: "招待が受け入れられました",
+        message: `${ctx.session.user.email ?? "新しいメンバー"}が組織に参加しました。`,
+        linkUrl: `/${invitation.organization.slug}/settings/members`,
+        organizationId: invitation.organizationId,
+        triggeredById: ctx.session.user.id,
+      });
 
       // 6-4. 招待レコード削除（一度のみ使用可能）
       await tx.organizationInvitation.delete({
