@@ -261,4 +261,15 @@ export class KeycloakAdminClient {
       roleName,
     );
   }
+
+  /**
+   * ユーザーのカスタム属性を更新
+   */
+  async updateUserAttributes(
+    userId: string,
+    attributes: Record<string, string[]>,
+  ): Promise<{ success: boolean; error?: string }> {
+    await this.ensureAuth();
+    return operations.updateUserAttributes(this.client, userId, attributes);
+  }
 }

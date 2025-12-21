@@ -41,12 +41,7 @@ declare module "next-auth" {
       name: string | null;
       image: string | null;
       role: Role; // アプリケーション内のロール
-      organizationSlug: string | null; // DB管理の組織slug
-      isOrganizationAdmin: boolean; // 組織内管理者権限（tumiki.rolesから判定）
-      tumiki: TumikiClaims | null; // Keycloakカスタムクレーム（そのまま保持）
-      // 既存コードとの互換性のための派生プロパティ
-      organizationId: string | null; // tumiki.organization_id のエイリアス
-      roles: string[]; // tumiki.roles のエイリアス
+      tumiki: TumikiClaims | null; // Keycloakカスタムクレーム（組織情報はここに含まれる）
     };
     expires: string;
   }
@@ -72,6 +67,5 @@ declare module "next-auth/jwt" {
 
     // アプリケーション固有フィールド
     role?: Role; // DB管理のユーザーロール
-    organizationSlug?: string | null; // DB管理の組織slug
   }
 }

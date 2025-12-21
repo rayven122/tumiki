@@ -12,6 +12,7 @@ import {
 } from "./createOrganization";
 import { z } from "zod";
 import { OrganizationIdSchema } from "@/schema/ids";
+import { getSessionInfo } from "@/lib/auth/session-utils";
 
 // ユーザーの組織一覧のレスポンス型
 export const getUserOrganizationsOutputSchema = z.array(
@@ -45,8 +46,10 @@ export const organizationRouter = createTRPCRouter({
   getUserOrganizations: protectedProcedure
     .output(getUserOrganizationsOutputSchema)
     .query(async ({ ctx }) => {
+      const { organizationId } = getSessionInfo(ctx.session);
       return await getUserOrganizations(ctx.db, {
         userId: ctx.session.user.id,
+        currentOrganizationId: organizationId ?? undefined,
       });
     }),
 

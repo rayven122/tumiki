@@ -23,10 +23,11 @@ model Organization {
   /// 組織の作成者
   createdBy    String
   creator      User                     @relation(fields: [createdBy], references: [id])
+  /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
   /// この組織をデフォルト組織として設定しているユーザー
   defaultUsers User[]                   @relation("UserDefaultOrganization")
   /// 組織のメンバー
-  members      OrganizationMember[]
+  members   OrganizationMember[]
   /// 組織の招待
   invitations  OrganizationInvitation[]
 
