@@ -42,7 +42,7 @@ export const getInvitations = async ({
   });
 
   // 現在の組織IDを取得
-  const organizationId = ctx.session.user.organizationId;
+  const organizationId = ctx.currentOrg.id;
 
   const invitations = await ctx.db.organizationInvitation.findMany({
     where: {

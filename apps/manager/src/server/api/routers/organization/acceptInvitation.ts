@@ -127,6 +127,7 @@ export const acceptInvitation = async ({
         });
 
         if (!addMemberResult.success) {
+          // Keycloak統合失敗は致命的エラー（DB-Keycloak整合性維持のため）
           throw new Error(
             addMemberResult.error ?? "Failed to add member to Keycloak Group",
           );

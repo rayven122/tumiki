@@ -59,7 +59,7 @@ export const oauthRouter = createTRPCRouter({
         return await connectOAuthMcpServer(
           tx,
           input,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
           ctx.session.user.id,
         );
       });
@@ -93,7 +93,7 @@ export const oauthRouter = createTRPCRouter({
         return await reauthenticateOAuthMcpServer(
           tx,
           input,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
           ctx.session.user.id,
         );
       });

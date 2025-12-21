@@ -14,30 +14,20 @@ export const createGroup = async (
     name: string;
     attributes?: Record<string, string[]>;
   },
-): Promise<{ success: boolean; groupId?: string; error?: string }> => {
-  try {
-    const response = await client.groups.create({
-      name: params.name,
-      attributes: params.attributes ?? {},
-    });
+): Promise<{ groupId: string }> => {
+  const response = await client.groups.create({
+    name: params.name,
+    attributes: params.attributes ?? {},
+  });
 
-    // レスポンスのidがgroupIdとして返される
-    const groupId = response.id;
+  // レスポンスのidがgroupIdとして返される
+  const groupId = response.id;
 
-    if (!groupId) {
-      return {
-        success: false,
-        error: "Failed to extract group ID from response",
-      };
-    }
-
-    return { success: true, groupId };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+  if (!groupId) {
+    throw new Error("Failed to extract group ID from response");
   }
+
+  return { groupId };
 };
 
 /**
@@ -46,16 +36,8 @@ export const createGroup = async (
 export const deleteGroup = async (
   client: KcAdminClient,
   groupId: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    await client.groups.del({ id: groupId });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+): Promise<void> => {
+  await client.groups.del({ id: groupId });
 };
 
 /**
@@ -65,19 +47,11 @@ export const addUserToGroup = async (
   client: KcAdminClient,
   userId: string,
   groupId: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    await client.users.addToGroup({
-      id: userId,
-      groupId,
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+): Promise<void> => {
+  await client.users.addToGroup({
+    id: userId,
+    groupId,
+  });
 };
 
 /**
@@ -87,19 +61,11 @@ export const removeUserFromGroup = async (
   client: KcAdminClient,
   userId: string,
   groupId: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    await client.users.delFromGroup({
-      id: userId,
-      groupId,
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+): Promise<void> => {
+  await client.users.delFromGroup({
+    id: userId,
+    groupId,
+  });
 };
 
 /**
@@ -108,28 +74,14 @@ export const removeUserFromGroup = async (
 export const getRealmRole = async (
   client: KcAdminClient,
   roleName: OrganizationRole,
-): Promise<{
-  success: boolean;
-  role?: RoleRepresentation;
-  error?: string;
-}> => {
-  try {
-    const role = await client.roles.findOneByName({ name: roleName });
+): Promise<RoleRepresentation> => {
+  const role = await client.roles.findOneByName({ name: roleName });
 
-    if (!role) {
-      return {
-        success: false,
-        error: `Role not found: ${roleName}`,
-      };
-    }
-
-    return { success: true, role };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+  if (!role) {
+    throw new Error(`Role not found: ${roleName}`);
   }
+
+  return role;
 };
 
 /**
@@ -139,27 +91,16 @@ export const assignRealmRole = async (
   client: KcAdminClient,
   userId: string,
   role: RoleRepresentation,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    // RoleRepresentationをRoleMappingPayloadに変換
-    if (!role.id || !role.name) {
-      return {
-        success: false,
-        error: "Role must have id and name",
-      };
-    }
-
-    await client.users.addRealmRoleMappings({
-      id: userId,
-      roles: [role as RoleMappingPayload],
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+): Promise<void> => {
+  // RoleRepresentationをRoleMappingPayloadに変換
+  if (!role.id || !role.name) {
+    throw new Error("Role must have id and name");
   }
+
+  await client.users.addRealmRoleMappings({
+    id: userId,
+    roles: [role as RoleMappingPayload],
+  });
 };
 
 /**
@@ -169,27 +110,16 @@ export const removeRealmRole = async (
   client: KcAdminClient,
   userId: string,
   role: RoleRepresentation,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    // RoleRepresentationをRoleMappingPayloadに変換
-    if (!role.id || !role.name) {
-      return {
-        success: false,
-        error: "Role must have id and name",
-      };
-    }
-
-    await client.users.delRealmRoleMappings({
-      id: userId,
-      roles: [role as RoleMappingPayload],
-    });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+): Promise<void> => {
+  // RoleRepresentationをRoleMappingPayloadに変換
+  if (!role.id || !role.name) {
+    throw new Error("Role must have id and name");
   }
+
+  await client.users.delRealmRoleMappings({
+    id: userId,
+    roles: [role as RoleMappingPayload],
+  });
 };
 
 /**
@@ -198,22 +128,11 @@ export const removeRealmRole = async (
 export const getUserRealmRoles = async (
   client: KcAdminClient,
   userId: string,
-): Promise<{
-  success: boolean;
-  roles?: RoleRepresentation[];
-  error?: string;
-}> => {
-  try {
-    const roles = await client.users.listRealmRoleMappings({
-      id: userId,
-    });
-    return { success: true, roles };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+): Promise<RoleRepresentation[]> => {
+  const roles = await client.users.listRealmRoleMappings({
+    id: userId,
+  });
+  return roles;
 };
 
 /**
@@ -222,16 +141,8 @@ export const getUserRealmRoles = async (
 export const invalidateUserSessions = async (
   client: KcAdminClient,
   userId: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    await client.users.logout({ id: userId });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+): Promise<void> => {
+  await client.users.logout({ id: userId });
 };
 
 /**
@@ -240,28 +151,14 @@ export const invalidateUserSessions = async (
 export const getGroup = async (
   client: KcAdminClient,
   groupId: string,
-): Promise<{
-  success: boolean;
-  group?: GroupRepresentation;
-  error?: string;
-}> => {
-  try {
-    const group = await client.groups.findOne({ id: groupId });
+): Promise<GroupRepresentation> => {
+  const group = await client.groups.findOne({ id: groupId });
 
-    if (!group) {
-      return {
-        success: false,
-        error: `Group not found: ${groupId}`,
-      };
-    }
-
-    return { success: true, group };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+  if (!group) {
+    throw new Error(`Group not found: ${groupId}`);
   }
+
+  return group;
 };
 
 /**
@@ -277,56 +174,40 @@ export const createGroupRole = async (
     description?: string;
     attributes?: Record<string, string[]>;
   },
-): Promise<{ success: boolean; roleId?: string; error?: string }> => {
-  try {
-    // ロール名のバリデーション：アンダースコアを含む場合は拒否
-    if (params.name.includes("_")) {
-      return {
-        success: false,
-        error: "ロール名にアンダースコア(_)を含めることはできません",
-      };
-    }
-
-    // 1. Realm Roleを作成（ロール名にグループIDをプレフィックス）
-    const roleNameWithPrefix = `group_${groupId}_${params.name}`;
-
-    // 重複チェック：既に同じ名前のロールが存在する場合はエラー
-    const existingRole = await client.roles.findOneByName({
-      name: roleNameWithPrefix,
-    });
-    if (existingRole) {
-      return {
-        success: false,
-        error: `ロール "${params.name}" は既に存在します`,
-      };
-    }
-
-    const response = await client.roles.create({
-      name: roleNameWithPrefix,
-      description: params.description,
-      attributes: {
-        ...params.attributes,
-        groupId: [groupId], // グループIDを属性に保存
-        originalName: [params.name], // 元のロール名を保存
-      },
-    });
-
-    const roleId = response.roleName;
-
-    if (!roleId) {
-      return {
-        success: false,
-        error: "Failed to extract role ID from response",
-      };
-    }
-
-    return { success: true, roleId };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+): Promise<{ roleId: string }> => {
+  // ロール名のバリデーション：アンダースコアを含む場合は拒否
+  if (params.name.includes("_")) {
+    throw new Error("ロール名にアンダースコア(_)を含めることはできません");
   }
+
+  // 1. Realm Roleを作成（ロール名にグループIDをプレフィックス）
+  const roleNameWithPrefix = `group_${groupId}_${params.name}`;
+
+  // 重複チェック：既に同じ名前のロールが存在する場合はエラー
+  const existingRole = await client.roles.findOneByName({
+    name: roleNameWithPrefix,
+  });
+  if (existingRole) {
+    throw new Error(`ロール "${params.name}" は既に存在します`);
+  }
+
+  const response = await client.roles.create({
+    name: roleNameWithPrefix,
+    description: params.description,
+    attributes: {
+      ...params.attributes,
+      groupId: [groupId], // グループIDを属性に保存
+      originalName: [params.name], // 元のロール名を保存
+    },
+  });
+
+  const roleId = response.roleName;
+
+  if (!roleId) {
+    throw new Error("Failed to extract role ID from response");
+  }
+
+  return { roleId };
 };
 
 /**
@@ -337,33 +218,22 @@ export const createGroupRole = async (
 export const listGroupRoles = async (
   client: KcAdminClient,
   groupId: string,
-): Promise<{
-  success: boolean;
-  roles?: RoleRepresentation[];
-  error?: string;
-}> => {
-  try {
-    // グループにマッピングされたRealm Rolesを取得
-    const allRoles = await client.groups.listRealmRoleMappings({ id: groupId });
+): Promise<RoleRepresentation[]> => {
+  // グループにマッピングされたRealm Rolesを取得
+  const allRoles = await client.groups.listRealmRoleMappings({ id: groupId });
 
-    // グループIDをプレフィックスに持つロールのみをフィルタ
-    const groupRoles = allRoles.filter(
-      (role) => role.name && role.name.startsWith(`group_${groupId}_`),
-    );
+  // グループIDをプレフィックスに持つロールのみをフィルタ
+  const groupRoles = allRoles.filter(
+    (role) => role.name && role.name.startsWith(`group_${groupId}_`),
+  );
 
-    // ロール名からプレフィックスを除去して返す
-    const rolesWithOriginalNames = groupRoles.map((role) => ({
-      ...role,
-      name: role.attributes?.originalName?.[0] || role.name,
-    }));
+  // ロール名からプレフィックスを除去して返す
+  const rolesWithOriginalNames = groupRoles.map((role) => ({
+    ...role,
+    name: role.attributes?.originalName?.[0] || role.name,
+  }));
 
-    return { success: true, roles: rolesWithOriginalNames };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+  return rolesWithOriginalNames;
 };
 
 /**
@@ -374,20 +244,12 @@ export const deleteGroupRole = async (
   client: KcAdminClient,
   groupId: string,
   roleName: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    // プレフィックス付きのロール名を作成
-    const roleNameWithPrefix = `group_${groupId}_${roleName}`;
+): Promise<void> => {
+  // プレフィックス付きのロール名を作成
+  const roleNameWithPrefix = `group_${groupId}_${roleName}`;
 
-    // Realm Roleを削除
-    await client.roles.delByName({ name: roleNameWithPrefix });
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+  // Realm Roleを削除
+  await client.roles.delByName({ name: roleNameWithPrefix });
 };
 
 /**
@@ -399,34 +261,22 @@ export const assignGroupRoleToUser = async (
   groupId: string,
   userId: string,
   roleName: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    // プレフィックス付きのロール名を作成
-    const roleNameWithPrefix = `group_${groupId}_${roleName}`;
+): Promise<void> => {
+  // プレフィックス付きのロール名を作成
+  const roleNameWithPrefix = `group_${groupId}_${roleName}`;
 
-    // Realm Roleを取得
-    const role = await client.roles.findOneByName({ name: roleNameWithPrefix });
+  // Realm Roleを取得
+  const role = await client.roles.findOneByName({ name: roleNameWithPrefix });
 
-    if (!role?.id || !role.name) {
-      return {
-        success: false,
-        error: `Role not found: ${roleName}`,
-      };
-    }
-
-    // ユーザーにRealm Roleを割り当て
-    await client.users.addRealmRoleMappings({
-      id: userId,
-      roles: [role as RoleMappingPayload],
-    });
-
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+  if (!role?.id || !role.name) {
+    throw new Error(`Role not found: ${roleName}`);
   }
+
+  // ユーザーにRealm Roleを割り当て
+  await client.users.addRealmRoleMappings({
+    id: userId,
+    roles: [role as RoleMappingPayload],
+  });
 };
 
 /**
@@ -438,32 +288,47 @@ export const removeGroupRoleFromUser = async (
   groupId: string,
   userId: string,
   roleName: string,
-): Promise<{ success: boolean; error?: string }> => {
-  try {
-    // プレフィックス付きのロール名を作成
-    const roleNameWithPrefix = `group_${groupId}_${roleName}`;
+): Promise<void> => {
+  // プレフィックス付きのロール名を作成
+  const roleNameWithPrefix = `group_${groupId}_${roleName}`;
 
-    // Realm Roleを取得
-    const role = await client.roles.findOneByName({ name: roleNameWithPrefix });
+  // Realm Roleを取得
+  const role = await client.roles.findOneByName({ name: roleNameWithPrefix });
 
-    if (!role?.id || !role.name) {
-      return {
-        success: false,
-        error: `Role not found: ${roleName}`,
-      };
-    }
-
-    // ユーザーからRealm Roleを削除
-    await client.users.delRealmRoleMappings({
-      id: userId,
-      roles: [role as RoleMappingPayload],
-    });
-
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+  if (!role?.id || !role.name) {
+    throw new Error(`Role not found: ${roleName}`);
   }
+
+  // ユーザーからRealm Roleを削除
+  await client.users.delRealmRoleMappings({
+    id: userId,
+    roles: [role as RoleMappingPayload],
+  });
+};
+
+/**
+ * ユーザーのカスタム属性を更新
+ */
+export const updateUserAttributes = async (
+  client: KcAdminClient,
+  userId: string,
+  attributes: Record<string, string[]>,
+): Promise<void> => {
+  // ユーザーの現在の属性を取得
+  const user = await client.users.findOne({ id: userId });
+
+  if (!user) {
+    throw new Error(`User not found: ${userId}`);
+  }
+
+  // 属性をマージして更新
+  await client.users.update(
+    { id: userId },
+    {
+      attributes: {
+        ...(user.attributes ?? {}),
+        ...attributes,
+      },
+    },
+  );
 };
