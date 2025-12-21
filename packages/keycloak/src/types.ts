@@ -73,6 +73,47 @@ export type IOrganizationProvider = {
     userId: string;
     organizationId: string;
   }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * サブグループ（部署）を作成
+   */
+  createSubgroup: (params: {
+    organizationId: string; // Organization.id（= Keycloak Group ID）
+    name: string;
+    parentSubgroupId?: string; // 親サブグループID（オプション）
+  }) => Promise<{ success: boolean; subgroupId: string; error?: string }>;
+
+  /**
+   * サブグループを削除
+   */
+  deleteSubgroup: (params: {
+    subgroupId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * サブグループ一覧を取得
+   */
+  listSubgroups: (params: { organizationId: string }) => Promise<{
+    success: boolean;
+    subgroups?: KeycloakGroup[];
+    error?: string;
+  }>;
+
+  /**
+   * ユーザーをサブグループに追加
+   */
+  addUserToSubgroup: (params: {
+    subgroupId: string;
+    userId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * ユーザーをサブグループから削除
+   */
+  removeUserFromSubgroup: (params: {
+    subgroupId: string;
+    userId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
 };
 
 /**
