@@ -365,3 +365,133 @@ export const invalidateKeycloakUserCache = async (
     });
   }
 };
+
+/**
+ * McpServerTemplateInstance 検索結果の型
+ */
+export type TemplateInstanceLookupResult = {
+  id: string;
+  mcpServerId: string;
+};
+
+/**
+ * McpServerTemplateInstance を ID で取得
+ *
+ * Protected Resource Metadata エンドポイントで
+ * インスタンスの存在確認に使用する。
+ *
+ * @param instanceId - McpServerTemplateInstance ID
+ * @returns インスタンス情報（見つからない場合はnull）
+ */
+export const getTemplateInstanceById = async (
+  instanceId: string,
+): Promise<TemplateInstanceLookupResult | null> => {
+  // キャッシュキー
+  const cacheKey = `template:instance:${instanceId}`;
+
+  // キャッシュ確認
+  try {
+    const redis = await getRedisClient();
+    if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached !== null) {
+        logDebug("Template instance cache hit", { cacheKey });
+        // ネガティブキャッシュのチェック
+        if (cached === "null") {
+          if (!ENABLE_NEGATIVE_CACHE) {
+            logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
+            await redis.del(cacheKey);
+            // フォールスルーしてDBから取得
+          } else {
+            return null;
+          }
+        } else {
+          return JSON.parse(cached) as TemplateInstanceLookupResult;
+        }
+      }
+    }
+  } catch (error) {
+    logError("Redis cache error for template instance", error as Error);
+    // キャッシュエラー時はフォールスルー（DB直接アクセス）
+  }
+
+  // DBから取得
+  const result = await getTemplateInstanceFromDB(instanceId);
+
+  // キャッシュに保存（5分）
+  try {
+    const redis = await getRedisClient();
+    if (redis) {
+      if (result === null) {
+        if (ENABLE_NEGATIVE_CACHE) {
+          await redis.setEx(cacheKey, CACHE_TTL_SECONDS, "null");
+        }
+      } else {
+        await redis.setEx(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(result));
+      }
+    }
+  } catch (error) {
+    logError("Redis cache save error for template instance", error as Error);
+  }
+
+  return result;
+};
+
+/**
+ * DBから McpServerTemplateInstance を取得する内部関数
+ */
+const getTemplateInstanceFromDB = async (
+  instanceId: string,
+): Promise<TemplateInstanceLookupResult | null> => {
+  try {
+    const instance = await db.mcpServerTemplateInstance.findUnique({
+      where: { id: instanceId },
+      select: {
+        id: true,
+        mcpServerId: true,
+      },
+    });
+
+    if (!instance) {
+      logWarn("McpServerTemplateInstance not found", { instanceId });
+      return null;
+    }
+
+    return instance;
+  } catch (error) {
+    logError(
+      "Failed to get McpServerTemplateInstance from DB",
+      error as Error,
+      { instanceId },
+    );
+    throw error;
+  }
+};
+
+/**
+ * McpServerTemplateInstance キャッシュを無効化
+ *
+ * インスタンス削除・更新時に呼び出す。
+ */
+export const invalidateTemplateInstanceCache = async (
+  instanceId: string,
+): Promise<void> => {
+  const cacheKey = `template:instance:${instanceId}`;
+
+  try {
+    const redis = await getRedisClient();
+    if (!redis) {
+      logDebug(
+        "Redis not available, skipping template instance cache invalidation",
+      );
+      return;
+    }
+
+    await redis.del(cacheKey);
+    logDebug("Template instance cache invalidated", { instanceId });
+  } catch (error) {
+    logError("Failed to invalidate template instance cache", error as Error, {
+      instanceId,
+    });
+  }
+};
