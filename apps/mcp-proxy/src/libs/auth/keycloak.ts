@@ -142,6 +142,19 @@ export const getJWKS = async (): Promise<JWKSFunction> => {
 };
 
 /**
+ * Keycloak の registration_endpoint を取得（キャッシュ付き）
+ *
+ * DCR (Dynamic Client Registration) 用のエンドポイントを
+ * Keycloak メタデータから取得
+ *
+ * @returns registration_endpoint URL または null（未サポート時）
+ */
+export const getRegistrationEndpoint = async (): Promise<string | null> => {
+  const issuer = await getKeycloakIssuer();
+  return issuer.metadata.registration_endpoint ?? null;
+};
+
+/**
  * キャッシュをクリア（テスト用・設定変更時）
  */
 export const clearKeycloakCache = (): void => {
