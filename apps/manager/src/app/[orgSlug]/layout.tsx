@@ -5,7 +5,6 @@ import { SimpleHeader } from "./_components/SimpleHeader";
 import { OrgSidebar } from "./_components/OrgSidebar";
 import { MainContent } from "./_components/MainContent";
 import { auth } from "~/auth";
-import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type OrgSlugLayoutProps = {
   children: ReactNode;
@@ -23,9 +22,10 @@ export default async function OrgSlugLayout({
   // auth.jsのセッションを取得
   const session = await auth();
 
-  // ログインしていない場合はサインインページにリダイレクト
+  // session が存在しない場合は空を返す
+  // proxy.ts でログイン画面に遷移されるため、 redirect は不要
   if (!session?.user) {
-    redirect("/signin");
+    return null;
   }
 
   try {
@@ -33,6 +33,11 @@ export default async function OrgSlugLayout({
     const organization = await api.organization.getBySlug({
       slug: decodedSlug,
     });
+
+    // DBのdefaultOrgSlugとURLのslugが不一致の場合はエラー
+    if (organization.defaultOrgSlug !== decodedSlug) {
+      throw new Error("defaultOrgSlug mismatch");
+    }
 
     return (
       <div className="flex min-h-screen flex-col">
@@ -54,10 +59,32 @@ export default async function OrgSlugLayout({
       `[OrgSlugLayout] Error fetching organization ${decodedSlug}:`,
       error,
     );
-    const userOrgSlug = getSessionInfo(session).organizationSlug;
-    if (userOrgSlug) {
-      redirect(`/${userOrgSlug}/mcps`);
+
+    // アクセスエラーの場合、個人組織をdefaultに設定してリダイレクト
+    try {
+      // ユーザーの組織一覧を取得（個人組織が最初）
+      const organizations = await api.organization.getUserOrganizations();
+
+      // 個人組織を探す
+      const personalOrg = organizations.find((org) => org.isPersonal);
+
+      if (personalOrg) {
+        // defaultOrganizationを個人組織に更新
+        await api.organization.setDefaultOrganization({
+          organizationId: personalOrg.id,
+        });
+
+        // 個人組織にリダイレクト
+        redirect(`/${personalOrg.slug}/mcps`);
+      }
+    } catch (recoveryError) {
+      console.error(
+        "[OrgSlugLayout] Failed to recover from error:",
+        recoveryError,
+      );
     }
-    redirect("/");
+
+    // リカバリー失敗時は組織一覧へ
+    redirect("/organizations/dashboard");
   }
 }

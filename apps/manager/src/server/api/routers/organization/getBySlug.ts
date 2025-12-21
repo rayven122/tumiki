@@ -11,7 +11,7 @@ export const getOrganizationBySlugOutputSchema =
   organizationWithMembersOutput.extend({
     slug: z.string(),
     isPersonal: z.boolean(),
-    // isAdmin削除: JWTのrolesで判定
+    defaultOrgSlug: z.string().nullable(),
   });
 
 export type GetOrganizationBySlugInput = z.infer<
@@ -42,6 +42,7 @@ export const getOrganizationBySlug = async ({
               name: true,
               email: true,
               image: true,
+              defaultOrganizationSlug: true,
             },
           },
         },
@@ -93,6 +94,7 @@ export const getOrganizationBySlug = async ({
     updatedAt: organization.updatedAt,
     createdBy: organization.createdBy,
     isDeleted: organization.isDeleted,
+    defaultOrgSlug: userMember.user.defaultOrganizationSlug,
     members: membersWithRoles,
     _count: organization._count,
   };
