@@ -26,13 +26,13 @@ export const deleteNotification = async ({
 }): Promise<DeleteNotificationOutput> => {
   const { notificationId } = input;
 
-  // 権限チェック
+  // 権限チェック（削除済みを除外）
   const notification = await ctx.db.notification.findUnique({
     where: { id: notificationId },
-    select: { userId: true },
+    select: { userId: true, isDeleted: true },
   });
 
-  if (!notification) {
+  if (!notification || notification.isDeleted) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "通知が見つかりません",
