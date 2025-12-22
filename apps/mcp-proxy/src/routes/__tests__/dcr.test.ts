@@ -3,12 +3,17 @@ import { Hono } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import { dcrHandler } from "../oauth.js";
 import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
+import { errors } from "openid-client";
 
 // vi.hoisted でモック関数を定義（ホイスティング問題を回避）
-const { mockDiscover, MockClient } = vi.hoisted(() => {
+const { mockDiscover, mockRegister, MockClient } = vi.hoisted(() => {
+  const register = vi.fn();
   const Client = vi.fn().mockImplementation(() => ({}));
+  // Client.register を静的メソッドとして追加
+  (Client as unknown as { register: typeof register }).register = register;
   return {
     mockDiscover: vi.fn(),
+    mockRegister: register,
     MockClient: Client,
   };
 });
@@ -22,32 +27,49 @@ vi.mock("../../libs/logger/index.js", () => ({
 }));
 
 // openid-client のモック
-vi.mock("openid-client", () => ({
-  Issuer: {
-    discover: mockDiscover,
-  },
-}));
-
-// fetch のモック
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
+vi.mock("openid-client", async (importOriginal) => {
+  const original = await importOriginal<typeof import("openid-client")>();
+  return {
+    ...original,
+    Issuer: {
+      discover: mockDiscover,
+    },
+  };
+});
 
 // デフォルトの Issuer モック値を作成するヘルパー
-const createMockIssuer = (registrationEndpoint?: string | null) => ({
-  issuer: "https://keycloak.example.com/realms/tumiki",
-  metadata: {
+const createMockIssuer = (registrationEndpoint?: string | null) => {
+  // Client.register を含む Issuer を返す
+  const issuer = {
     issuer: "https://keycloak.example.com/realms/tumiki",
-    token_endpoint:
-      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
-    jwks_uri:
-      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
-    registration_endpoint:
-      registrationEndpoint === null
-        ? undefined
-        : (registrationEndpoint ??
-          "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect"),
+    metadata: {
+      issuer: "https://keycloak.example.com/realms/tumiki",
+      token_endpoint:
+        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
+      jwks_uri:
+        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+      registration_endpoint:
+        registrationEndpoint === null
+          ? undefined
+          : (registrationEndpoint ??
+            "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect"),
+    },
+    Client: MockClient,
+  };
+
+  // Client に register 静的メソッドを追加
+  (issuer.Client as unknown as { register: typeof mockRegister }).register =
+    mockRegister;
+
+  return issuer;
+};
+
+// モック登録済みクライアントを作成するヘルパー
+const createMockRegisteredClient = (metadata: Record<string, unknown>) => ({
+  metadata: {
+    client_id: "generated-client-id",
+    ...metadata,
   },
-  Client: MockClient,
 });
 
 describe("dcrHandler", () => {
@@ -194,16 +216,11 @@ describe("dcrHandler", () => {
     });
 
     test("localhostの場合はHTTPを許可する", async () => {
-      const mockClientResponse = {
-        client_id: "generated-client-id",
-        redirect_uris: ["http://localhost:3000/callback"],
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        json: async () => mockClientResponse,
-      });
+      mockRegister.mockResolvedValueOnce(
+        createMockRegisteredClient({
+          redirect_uris: ["http://localhost:3000/callback"],
+        }),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -219,16 +236,11 @@ describe("dcrHandler", () => {
     });
 
     test("127.0.0.1の場合もHTTPを許可する", async () => {
-      const mockClientResponse = {
-        client_id: "generated-client-id",
-        redirect_uris: ["http://127.0.0.1:3000/callback"],
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        json: async () => mockClientResponse,
-      });
+      mockRegister.mockResolvedValueOnce(
+        createMockRegisteredClient({
+          redirect_uris: ["http://127.0.0.1:3000/callback"],
+        }),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -246,22 +258,18 @@ describe("dcrHandler", () => {
 
   describe("正常系", () => {
     test("正常なリクエストでクライアントが登録される", async () => {
-      const mockClientResponse = {
+      const mockClientMetadata = {
         client_id: "generated-client-id",
         client_secret: "generated-secret",
         client_id_issued_at: 1234567890,
         client_secret_expires_at: 0,
         redirect_uris: ["https://example.com/callback"],
         client_name: "Test Client",
-        grant_types: ["authorization_code"],
-        response_types: ["code"],
       };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        json: async () => mockClientResponse,
-      });
+      mockRegister.mockResolvedValueOnce(
+        createMockRegisteredClient(mockClientMetadata),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -278,37 +286,34 @@ describe("dcrHandler", () => {
 
       expect(res.status).toBe(201);
       const body = await res.json();
-      expect(body).toStrictEqual(mockClientResponse);
+      // JSON シリアライズ時に undefined は省略されるため、含まれないプロパティは検証しない
+      expect(body).toStrictEqual({
+        client_id: "generated-client-id",
+        client_secret: "generated-secret",
+        client_id_issued_at: 1234567890,
+        client_secret_expires_at: 0,
+        redirect_uris: ["https://example.com/callback"],
+        client_name: "Test Client",
+      });
 
-      // fetch が正しく呼ばれたか確認
-      expect(mockFetch).toHaveBeenCalledWith(
-        "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect",
+      // Client.register が正しく呼ばれたか確認
+      expect(mockRegister).toHaveBeenCalledWith(
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            redirect_uris: ["https://example.com/callback"],
-            client_name: "Test Client",
-            grant_types: ["authorization_code"],
-            response_types: ["code"],
-          }),
+          redirect_uris: ["https://example.com/callback"],
+          client_name: "Test Client",
+          grant_types: ["authorization_code"],
+          response_types: ["code"],
         },
+        { initialAccessToken: undefined },
       );
     });
 
-    test("Initial Access Tokenがヘッダーで転送される", async () => {
-      const mockClientResponse = {
-        client_id: "generated-client-id",
-        redirect_uris: ["https://example.com/callback"],
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        json: async () => mockClientResponse,
-      });
+    test("Initial Access Tokenが渡される", async () => {
+      mockRegister.mockResolvedValueOnce(
+        createMockRegisteredClient({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      );
 
       await app.request("/oauth/register", {
         method: "POST",
@@ -321,20 +326,22 @@ describe("dcrHandler", () => {
         }),
       });
 
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[1]).toMatchObject({
-        headers: {
-          Authorization: "Bearer initial-access-token",
-        },
-      });
+      // initialAccessToken が渡されたか確認
+      expect(mockRegister).toHaveBeenCalledWith(
+        { redirect_uris: ["https://example.com/callback"] },
+        { initialAccessToken: "initial-access-token" },
+      );
     });
-  });
 
-  describe("エラーハンドリング", () => {
-    test("registration_endpointがない場合、501エラーを返す", async () => {
-      // registration_endpoint がない Issuer を返す
-      mockDiscover.mockResolvedValueOnce(createMockIssuer(null));
-      clearKeycloakCache();
+    test("registration_access_tokenとregistration_client_uriが返される", async () => {
+      mockRegister.mockResolvedValueOnce(
+        createMockRegisteredClient({
+          redirect_uris: ["https://example.com/callback"],
+          registration_access_token: "reg-access-token",
+          registration_client_uri:
+            "https://keycloak.example.com/clients/generated-client-id",
+        }),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -346,24 +353,32 @@ describe("dcrHandler", () => {
         }),
       });
 
-      expect(res.status).toBe(501);
-      const body = await res.json();
-      expect(body).toStrictEqual({
-        error: "invalid_client_metadata",
-        error_description:
-          "Server does not support Dynamic Client Registration",
-      });
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as {
+        registration_access_token: string;
+        registration_client_uri: string;
+      };
+      expect(body.registration_access_token).toBe("reg-access-token");
+      expect(body.registration_client_uri).toBe(
+        "https://keycloak.example.com/clients/generated-client-id",
+      );
     });
+  });
 
-    test("Keycloakがエラーを返した場合、エラーレスポンスを転送する", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({
-          error: "invalid_redirect_uri",
-          error_description: "Invalid redirect URI",
-        }),
+  describe("エラーハンドリング", () => {
+    test("OPErrorが発生した場合、RFC 7591形式のエラーを返す", async () => {
+      // OPError をシミュレート
+      const opError = new errors.OPError({
+        error: "invalid_redirect_uri",
+        error_description: "Invalid redirect URI",
       });
+      // response プロパティを追加（http.IncomingMessage の statusCode を使用）
+      Object.defineProperty(opError, "response", {
+        value: { statusCode: 400 },
+        writable: true,
+      });
+
+      mockRegister.mockRejectedValueOnce(opError);
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -383,15 +398,17 @@ describe("dcrHandler", () => {
       });
     });
 
-    test("Keycloakが認証エラーを返した場合、401エラーを返す", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => ({
-          error: "invalid_client_metadata",
-          error_description: "Initial access token required",
-        }),
+    test("OPErrorで認証エラーが発生した場合、401エラーを返す", async () => {
+      const opError = new errors.OPError({
+        error: "invalid_client_metadata",
+        error_description: "Initial access token required",
       });
+      Object.defineProperty(opError, "response", {
+        value: { statusCode: 401 },
+        writable: true,
+      });
+
+      mockRegister.mockRejectedValueOnce(opError);
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -411,8 +428,35 @@ describe("dcrHandler", () => {
       });
     });
 
+    test("未知のOPErrorコードはinvalid_client_metadataに変換される", async () => {
+      const opError = new errors.OPError({
+        error: "unknown_error_code",
+        error_description: "Some unknown error",
+      });
+      Object.defineProperty(opError, "response", {
+        value: { statusCode: 400 },
+        writable: true,
+      });
+
+      mockRegister.mockRejectedValueOnce(opError);
+
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe("invalid_client_metadata");
+    });
+
     test("ネットワークエラーが発生した場合、500エラーを返す", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockRegister.mockRejectedValueOnce(new Error("Network error"));
 
       const res = await app.request("/oauth/register", {
         method: "POST",

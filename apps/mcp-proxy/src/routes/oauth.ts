@@ -8,10 +8,7 @@ import type {
 } from "../types/index.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 import { type Client, errors } from "openid-client";
-import {
-  getKeycloakIssuer,
-  getRegistrationEndpoint,
-} from "../libs/auth/keycloak.js";
+import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
 
 /**
  * Keycloak Client を作成
@@ -396,9 +393,42 @@ const validateDCRRequest = (
 };
 
 /**
+ * RFC 7591 エラーコードへのマッピング
+ *
+ * @param error - openid-client の OPError から取得したエラーコード
+ * @returns RFC 7591 準拠のエラーコード
+ */
+const mapToRFC7591Error = (error?: string): DCRErrorResponse["error"] => {
+  const knownErrors = [
+    "invalid_redirect_uri",
+    "invalid_client_metadata",
+    "invalid_software_statement",
+    "unapproved_software_statement",
+  ] as const;
+  return knownErrors.includes(error as (typeof knownErrors)[number])
+    ? (error as DCRErrorResponse["error"])
+    : "invalid_client_metadata";
+};
+
+/**
+ * OPError から HTTP ステータスコードを決定
+ *
+ * @param error - openid-client の OPError
+ * @returns HTTP ステータスコード
+ */
+const determineStatusCode = (error: errors.OPError): 400 | 401 | 403 | 500 => {
+  // OPError.response は http.IncomingMessage を継承しているため、statusCode を使用
+  const status = error.response?.statusCode;
+  if (status === 401 || status === 403 || status === 500) {
+    return status;
+  }
+  return 400;
+};
+
+/**
  * POST /oauth/register - OAuth 2.0 Dynamic Client Registration（RFC 7591準拠）
  *
- * Keycloak の registration_endpoint へプロキシとして機能
+ * openid-client の Issuer.Client.register() を使用して Keycloak に DCR リクエストを送信
  *
  * @param c - Honoコンテキスト
  * @returns DCR レスポンスまたはエラー
@@ -427,93 +457,65 @@ export const dcrHandler = async (c: Context): Promise<Response> => {
       return c.json(errorResponse, 400);
     }
 
-    // バリデーション
+    // mcp-proxy 固有バリデーション（localhost 例外の HTTPS チェック）
     const validation = validateDCRRequest(body);
     if (!validation.valid) {
       return c.json(validation.error, 400);
     }
 
-    // Keycloak の registration_endpoint を取得
-    const registrationEndpoint = await getRegistrationEndpoint();
-    if (!registrationEndpoint) {
-      const errorResponse: DCRErrorResponse = {
-        error: "invalid_client_metadata",
-        error_description:
-          "Server does not support Dynamic Client Registration",
-      };
-      return c.json(errorResponse, 501);
-    }
-
-    // Authorization ヘッダーを転送（Initial Access Token 対応）
+    // openid-client の Client.register() を使用
+    const issuer = await getKeycloakIssuer();
     const authHeader = c.req.header("authorization");
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (authHeader) {
-      headers.Authorization = authHeader;
-    }
+    const initialAccessToken = authHeader?.replace(/^Bearer\s+/i, "");
 
-    // Keycloak にプロキシ
-    logInfo("Proxying DCR request to Keycloak", {
-      registrationEndpoint,
+    logInfo("Registering client via openid-client", {
       clientName: (body as DCRRequest).client_name,
     });
 
-    const response = await fetch(registrationEndpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
+    // openid-client の Client.register() を使用
+    // issuer.Client は BaseClient クラス自体を返すため、静的メソッド register にアクセス可能
+    const ClientClass = issuer.Client as unknown as {
+      register: (
+        metadata: Record<string, unknown>,
+        options?: { initialAccessToken?: string },
+      ) => Promise<Client>;
+    };
+    const registeredClient = await ClientClass.register(
+      body as Record<string, unknown>,
+      { initialAccessToken: initialAccessToken || undefined },
+    );
 
-    const responseBody = (await response.json()) as
-      | DCRResponse
-      | { error?: string; error_description?: string };
+    // レスポンス生成
+    const response: DCRResponse = {
+      client_id: registeredClient.metadata.client_id,
+      client_secret: registeredClient.metadata.client_secret,
+      client_id_issued_at: registeredClient.metadata.client_id_issued_at as
+        | number
+        | undefined,
+      client_secret_expires_at: registeredClient.metadata
+        .client_secret_expires_at as number | undefined,
+      registration_access_token: registeredClient.metadata
+        .registration_access_token as string | undefined,
+      registration_client_uri: registeredClient.metadata
+        .registration_client_uri as string | undefined,
+      redirect_uris: registeredClient.metadata.redirect_uris ?? [],
+      client_name: registeredClient.metadata.client_name as string | undefined,
+    };
 
-    // 成功レスポンス
-    if (response.ok) {
-      logInfo("DCR successful", {
-        clientId: (responseBody as DCRResponse).client_id,
-      });
-      return c.json(responseBody as DCRResponse, 201);
+    logInfo("DCR successful", { clientId: response.client_id });
+    return c.json(response, 201);
+  } catch (error) {
+    // OPError ハンドリング（openid-client からのエラー）
+    if (error instanceof errors.OPError) {
+      logError("DCR failed", error);
+
+      const errorResponse: DCRErrorResponse = {
+        error: mapToRFC7591Error(error.error),
+        error_description: error.error_description ?? error.message,
+      };
+      return c.json(errorResponse, determineStatusCode(error));
     }
 
-    // Keycloak エラーレスポンスを転送
-    logError("DCR failed", new Error(JSON.stringify(responseBody)));
-
-    // Keycloak のエラーを RFC 7591 形式にマッピング
-    const keycloakError = responseBody as {
-      error?: string;
-      error_description?: string;
-    };
-
-    // RFC 7591 で定義されたエラーコードかチェック
-    const knownErrors = [
-      "invalid_redirect_uri",
-      "invalid_client_metadata",
-      "invalid_software_statement",
-      "unapproved_software_statement",
-    ] as const;
-
-    const errorCode = knownErrors.includes(
-      keycloakError.error as (typeof knownErrors)[number],
-    )
-      ? (keycloakError.error as DCRErrorResponse["error"])
-      : "invalid_client_metadata";
-
-    const errorResponse: DCRErrorResponse = {
-      error: errorCode,
-      error_description:
-        keycloakError.error_description ?? "Registration failed",
-    };
-
-    // HTTP ステータスコードの決定
-    const statusCode =
-      response.status >= 400 && response.status < 500
-        ? (response.status as 400 | 401 | 403)
-        : 400;
-
-    return c.json(errorResponse, statusCode);
-  } catch (error) {
     logError("DCR handler error", error as Error);
 
     const errorResponse: DCRErrorResponse = {
