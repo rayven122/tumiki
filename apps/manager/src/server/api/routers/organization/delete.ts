@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { getOrganizationProvider } from "~/lib/organizationProvider";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import { OrganizationIdSchema } from "@/schema/ids";
 
 /**
@@ -86,7 +86,7 @@ export const deleteOrganization = async ({
 
     // Sagaパターン: Keycloak削除を先に実行し、成功したらDB削除を実行
     // これにより、Keycloak削除失敗時にDBが変更されないことを保証
-    const provider = getOrganizationProvider();
+    const provider = KeycloakOrganizationProvider.fromEnv();
 
     // 1. Keycloak削除を先に実行
     const deleteResult = await provider.deleteOrganization({

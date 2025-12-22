@@ -95,18 +95,22 @@ export class KeycloakAdminClient {
    * 認証処理の実行
    */
   private async performAuth(): Promise<void> {
-    // master realm で認証（admin-cli クライアントは master realm にのみ存在）
-    await this.client.auth({
-      username: this.config.adminUsername,
-      password: this.config.adminPassword,
-      grantType: "password",
-      clientId: "admin-cli",
-    });
+    try {
+      // master realm で認証（admin-cli クライアントは master realm にのみ存在）
+      await this.client.auth({
+        username: this.config.adminUsername,
+        password: this.config.adminPassword,
+        grantType: "password",
+        clientId: "admin-cli",
+      });
 
-    // 認証後、対象レルム（tumiki）に切り替え
-    this.client.setConfig({
-      realmName: this.config.realm,
-    });
+      // 認証後、対象レルム（tumiki）に切り替え
+      this.client.setConfig({
+        realmName: this.config.realm,
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**

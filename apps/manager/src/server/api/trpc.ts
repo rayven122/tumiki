@@ -106,9 +106,9 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
 /**
- * 保護されたプロシージャ（認証必須）
+ * 保護されたプロシージャ（認証必須、組織メンバーシップ必須）
  *
- * ログイン済みユーザーのみアクセス可能なプロシージャです。
+ * ログイン済みで組織に所属しているユーザーのみアクセス可能なプロシージャです。
  * 個人は会員登録時に必ず作成されるため、認証済み = 組織所属済みとなります。
  *
  * セッション情報には以下が含まれます：
@@ -221,13 +221,6 @@ type OrganizationMemberWithOrg = Prisma.OrganizationMemberGetPayload<{
 type CurrentOrg = OrganizationMemberWithOrg["organization"] & {
   roles: string[]; // JWTから取得したロール配列 ["Owner", "Engineering Manager", ...]
 };
-
-/**
- * 認証済みユーザーのコンテキスト型（組織所属前でも使用可能）
- */
-export type AuthenticatedContext = {
-  session: NonNullable<Context["session"]>;
-} & Context;
 
 /**
  * protectedProcedureのコンテキスト型

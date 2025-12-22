@@ -7,7 +7,6 @@ export const getFullOrganizationInclude = () => ({
   members: {
     include: {
       user: true,
-      roles: true,
     },
     orderBy: {
       createdAt: "desc" as const,

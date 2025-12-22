@@ -28,25 +28,30 @@ export const listGroups = async (
     });
   }
 
-  // Keycloakプロバイダーを初期化
-  const keycloakProvider = new KeycloakOrganizationProvider({
-    baseUrl: process.env.KEYCLOAK_URL ?? "",
-    realm: process.env.KEYCLOAK_REALM ?? "tumiki",
-    adminUsername: process.env.KEYCLOAK_ADMIN_USERNAME ?? "",
-    adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD ?? "",
-  });
-
-  // 組織のサブグループ一覧を取得
-  const result = await keycloakProvider.listSubgroups({
-    organizationId: organization.id,
-  });
-
-  if (!result.success) {
+  // Keycloakプロバイダーを初期化（環境変数から自動設定）
+  let keycloakProvider: KeycloakOrganizationProvider;
+  try {
+    keycloakProvider = KeycloakOrganizationProvider.fromEnv();
+  } catch (error) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: result.error ?? "グループ一覧の取得に失敗しました",
+      message:
+        error instanceof Error ? error.message : "Keycloak設定が不完全です",
     });
   }
 
-  return result.subgroups ?? [];
+  // 組織グループ自体の情報を取得
+  const orgGroupResult = await keycloakProvider.getGroup({
+    groupId: organization.id,
+  });
+
+  if (!orgGroupResult.success || !orgGroupResult.group) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: orgGroupResult.error ?? "組織グループが見つかりません",
+    });
+  }
+
+  // 組織グループをルートノードとして返す（subGroupsはKeycloakが自動的に含めている）
+  return [orgGroupResult.group];
 };

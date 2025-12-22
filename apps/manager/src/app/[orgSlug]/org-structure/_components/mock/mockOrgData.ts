@@ -1,6 +1,3 @@
-// DepartmentIdは削除されたため、stringを使用
-import type * as Icons from "lucide-react";
-
 /**
  * メンバー情報型
  */
@@ -17,7 +14,7 @@ export type Member = {
 export type Department = {
   id: string;
   name: string;
-  icon: keyof typeof Icons;
+  icon: string; // lucide-reactのアイコン名（例: "Building2"）
   color: string;
   leader: Member; // 部署長/責任者
   members: Member[]; // メンバー一覧

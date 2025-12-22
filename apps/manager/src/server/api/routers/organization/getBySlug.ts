@@ -1,7 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import type { AuthenticatedContext } from "@/server/api/trpc";
+import type { ProtectedContext } from "@/server/api/trpc";
 import { organizationWithMembersOutput } from "@/server/utils/organizationSchemas";
+import {
+  KeycloakAdminClient,
+  loadKeycloakConfigFromEnv,
+} from "@tumiki/keycloak";
 
 export const getOrganizationBySlugInputSchema = z.object({
   slug: z.string().min(1),
@@ -26,7 +30,7 @@ export const getOrganizationBySlug = async ({
   ctx,
 }: {
   input: GetOrganizationBySlugInput;
-  ctx: AuthenticatedContext;
+  ctx: ProtectedContext;
 }): Promise<GetOrganizationBySlugOutput> => {
   // URLエンコードされた文字（%40 -> @など）をデコード
   const decodedSlug = decodeURIComponent(input.slug);
@@ -74,14 +78,48 @@ export const getOrganizationBySlug = async ({
     });
   }
 
-  // rolesは空配列（将来的にKeycloakから取得）
-  const membersWithRoles = organization.members.map((member) => ({
-    id: member.id,
-    userId: member.userId,
-    createdAt: member.createdAt,
-    user: member.user,
-    roles: [], // TODO: Week 2以降、Keycloakから取得
-  }));
+  // Keycloakから各メンバーのロールを取得
+  const keycloakConfig = loadKeycloakConfigFromEnv();
+  const keycloakClient = new KeycloakAdminClient(keycloakConfig);
+
+  // 各メンバーのロールを並列で取得
+  const membersWithRolesPromises = organization.members.map(async (member) => {
+    try {
+      // ユーザーのRealmロールを取得
+      const rolesResult = await keycloakClient.getUserRealmRoles(member.userId);
+
+      // 組織ロール（Owner/Admin/Member/Viewer）のみを抽出
+      const organizationRoles = rolesResult
+        .filter(
+          (role: { name?: string }) =>
+            role.name &&
+            ["Owner", "Admin", "Member", "Viewer"].includes(role.name),
+        )
+        .map((role: { id?: string; name?: string }) => ({
+          id: role.id ?? "",
+          name: role.name ?? "",
+        }));
+
+      return {
+        id: member.id,
+        userId: member.userId,
+        createdAt: member.createdAt,
+        user: member.user,
+        roles: organizationRoles,
+      };
+    } catch (error) {
+      // ロール取得失敗時は空配列を返す（部分的な失敗を許容）
+      return {
+        id: member.id,
+        userId: member.userId,
+        createdAt: member.createdAt,
+        user: member.user,
+        roles: [],
+      };
+    }
+  });
+
+  const membersWithRoles = await Promise.all(membersWithRolesPromises);
 
   return {
     id: organization.id,

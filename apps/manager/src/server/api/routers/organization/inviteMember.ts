@@ -91,7 +91,7 @@ export const inviteMember = async ({
         priority: "NORMAL",
         title: "新しいメンバーが招待されました",
         message: `${input.email}が組織に招待されました。`,
-        linkUrl: `/${ctx.currentOrg.slug}/settings/members`,
+        linkUrl: `/${ctx.currentOrg.slug}/members`,
         organizationId: ctx.currentOrg.id,
         triggeredById: ctx.session.user.id,
       });

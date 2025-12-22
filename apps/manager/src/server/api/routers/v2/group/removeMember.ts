@@ -29,12 +29,16 @@ export const removeMember = async (
   }
 
   // Keycloakプロバイダーを初期化
-  const keycloakProvider = new KeycloakOrganizationProvider({
-    baseUrl: process.env.KEYCLOAK_URL ?? "",
-    realm: process.env.KEYCLOAK_REALM ?? "tumiki",
-    adminUsername: process.env.KEYCLOAK_ADMIN_USERNAME ?? "",
-    adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD ?? "",
-  });
+  let keycloakProvider: KeycloakOrganizationProvider;
+  try {
+    keycloakProvider = KeycloakOrganizationProvider.fromEnv();
+  } catch (error) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        error instanceof Error ? error.message : "Keycloak設定が不完全です",
+    });
+  }
 
   // グループが組織のサブグループであることを確認
   const groupsResult = await keycloakProvider.listSubgroups({

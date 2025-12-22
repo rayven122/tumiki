@@ -2,7 +2,7 @@ import { Role, type PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getOrganizationProvider } from "~/lib/organizationProvider";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 
 /**
  * ユーザー作成の入力スキーマ
@@ -65,7 +65,7 @@ export const createUserWithOrganization = async (
 
   // 2. Keycloakに個人組織グループを作成
   // slugをKeycloakグループ名として使用
-  const provider = getOrganizationProvider();
+  const provider = KeycloakOrganizationProvider.fromEnv();
   const result = await provider.createOrganization({
     name: `${baseName}'s Workspace`,
     groupName: slug,

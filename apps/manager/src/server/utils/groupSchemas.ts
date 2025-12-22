@@ -54,19 +54,38 @@ export const removeMemberInputSchema = z.object({
 });
 
 /**
- * グループ情報の出力スキーマ
+ * グループ情報の出力型
  * KeycloakのGroupRepresentationに合わせた定義
+ *
+ * 再帰的な型定義：subGroupsは自身の配列を含む
  */
-export const groupOutputSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  path: z.string().optional(),
-  subGroups: z.array(z.unknown()).optional(),
-  attributes: z.record(z.string(), z.array(z.string())).optional(),
-  realmRoles: z.array(z.string()).optional(),
-  clientRoles: z.record(z.string(), z.array(z.string())).optional(),
-  access: z.record(z.string(), z.boolean()).optional(),
-});
+export type GroupOutput = {
+  id?: string;
+  name?: string;
+  path?: string;
+  subGroups?: GroupOutput[];
+  attributes?: Record<string, string[]>;
+  realmRoles?: string[];
+  clientRoles?: Record<string, string[]>;
+  access?: Record<string, boolean>;
+};
+
+/**
+ * グループ情報の出力スキーマ
+ * z.lazy()を使用した再帰的スキーマ定義
+ */
+export const groupOutputSchema: z.ZodType<GroupOutput> = z.lazy(() =>
+  z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    path: z.string().optional(),
+    subGroups: z.array(groupOutputSchema).optional(),
+    attributes: z.record(z.string(), z.array(z.string())).optional(),
+    realmRoles: z.array(z.string()).optional(),
+    clientRoles: z.record(z.string(), z.array(z.string())).optional(),
+    access: z.record(z.string(), z.boolean()).optional(),
+  }),
+);
 
 /**
  * グループメンバー取得の入力スキーマ
@@ -94,5 +113,4 @@ export type GetGroupByIdInput = z.infer<typeof getGroupByIdInputSchema>;
 export type AddMemberInput = z.infer<typeof addMemberInputSchema>;
 export type RemoveMemberInput = z.infer<typeof removeMemberInputSchema>;
 export type GetGroupMembersInput = z.infer<typeof getGroupMembersInputSchema>;
-export type GroupOutput = z.infer<typeof groupOutputSchema>;
 export type Member = z.infer<typeof memberSchema>;
