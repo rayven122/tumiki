@@ -6,6 +6,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -15,6 +16,14 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Save, ArrowDownUp } from "lucide-react";
 import {
   DepartmentNode,
   type DepartmentNodeType,
@@ -25,6 +34,7 @@ import {
 } from "./edges/DepartmentEdge";
 import { getLayoutedElements } from "./utils/layoutNodes";
 import { convertOrgDataToFlow } from "./utils/orgDataConverter";
+import { detectOrphanedDepartments } from "./utils/validation";
 import type { OrgData } from "./mock/mockOrgData";
 
 // カスタムノードとエッジの型定義
@@ -33,9 +43,12 @@ const edgeTypes = { department: DepartmentEdge };
 
 type MapViewProps = {
   orgData: OrgData;
+  nodes: DepartmentNodeType[];
+  edges: DepartmentEdgeType[];
   onNodesChange: (nodes: DepartmentNodeType[]) => void;
   onEdgesChange: (edges: DepartmentEdgeType[]) => void;
   onArrangeNodesRef: React.MutableRefObject<(() => void) | null>;
+  onArrangeNodes: () => void;
 };
 
 /**
@@ -46,18 +59,27 @@ type MapViewProps = {
  * 2. エッジ作成（選択状態チェック）
  * 3. エッジ削除（選択状態チェック）
  * 4. ノード選択管理
+ * 5. ボード内ボタン表示（保存、レイアウト調整）
  */
 export const MapView = ({
   orgData,
+  nodes: parentNodes,
+  edges: parentEdges,
   onNodesChange,
   onEdgesChange,
   onArrangeNodesRef,
+  onArrangeNodes,
 }: MapViewProps) => {
   const [nodes, setNodes, onNodesChangeInternal] =
     useNodesState<DepartmentNodeType>([]);
   const [edges, setEdges, onEdgesChangeInternal] =
     useEdgesState<DepartmentEdgeType>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // 保存ボタンの状態制御
+  const hasOrphanedDepartments = useMemo(() => {
+    return detectOrphanedDepartments(parentNodes, parentEdges);
+  }, [parentNodes, parentEdges]);
 
   // nodesとedgesの最新値を保持するref（無限レンダリング防止）
   const nodesRef = useRef(nodes);
@@ -182,6 +204,19 @@ export const MapView = ({
     setSelectedNodeId(null);
   }, []);
 
+  /**
+   * 保存処理
+   */
+  const handleSave = useCallback(() => {
+    if (hasOrphanedDepartments) {
+      toast.error("全ての部署に親部署を設定してください");
+      return;
+    }
+
+    // TODO: tRPC経由でKeycloak APIに保存
+    toast.success("組織構造を保存しました");
+  }, [hasOrphanedDepartments]);
+
   return (
     <div className="h-full w-full">
       <ReactFlow
@@ -201,10 +236,47 @@ export const MapView = ({
         zoomOnPinch
         minZoom={0.5}
         maxZoom={2}
+        proOptions={{ hideAttribution: true }}
       >
         <Background />
         <Controls />
         <MiniMap />
+
+        {/* ボード内ボタン */}
+        <Panel position="top-right" className="flex gap-2">
+          <Button
+            onClick={onArrangeNodes}
+            variant="outline"
+            size="sm"
+            className="bg-background h-8 gap-1.5 px-2.5 text-xs shadow-md"
+          >
+            <ArrowDownUp className="h-3.5 w-3.5" />
+            レイアウト調整
+          </Button>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    onClick={handleSave}
+                    disabled={hasOrphanedDepartments}
+                    size="sm"
+                    className="h-8 gap-1.5 px-2.5 text-xs shadow-md"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    保存
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {hasOrphanedDepartments && (
+                <TooltipContent>
+                  <p>全ての部署に親部署を設定してください</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        </Panel>
       </ReactFlow>
     </div>
   );

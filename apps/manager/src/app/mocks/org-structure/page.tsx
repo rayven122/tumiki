@@ -7,5 +7,5 @@ import { OrgStructureClient } from "@/app/[orgSlug]/org-structure/_components/Or
  * 開発・検証用
  */
 export default function MockOrgStructurePage() {
-  return <OrgStructureClient orgSlug="mock-org" />;
+  return <OrgStructureClient />;
 }

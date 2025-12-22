@@ -91,9 +91,3 @@ export type ResourceAccessControlId = z.infer<
   typeof ResourceAccessControlIdSchema
 >;
 export type ApiKeyId = z.infer<typeof ApiKeyIdSchema>;
-
-/**
- * Department関連のID型
- */
-export const DepartmentIdSchema = z.string().brand<"DepartmentId">();
-export type DepartmentId = z.infer<typeof DepartmentIdSchema>;

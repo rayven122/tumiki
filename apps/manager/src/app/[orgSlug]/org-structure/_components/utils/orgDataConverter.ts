@@ -1,7 +1,7 @@
 import type { OrgData } from "../mock/mockOrgData";
 import type { DepartmentNodeType } from "../nodes/DepartmentNode";
 import type { DepartmentEdgeType } from "../edges/DepartmentEdge";
-import type { DepartmentId } from "@/schema/ids";
+// DepartmentIdは削除されたため、stringを使用
 
 /**
  * 指定された部署の子部署IDを取得する
@@ -11,9 +11,9 @@ import type { DepartmentId } from "@/schema/ids";
  * @returns 子部署IDの配列
  */
 const getChildDepartmentIds = (
-  departmentId: DepartmentId,
+  departmentId: string,
   orgData: OrgData,
-): DepartmentId[] => {
+): string[] => {
   return orgData.relations
     .filter((rel) => rel.parentId === departmentId)
     .map((rel) => rel.childId);
@@ -27,7 +27,7 @@ const getChildDepartmentIds = (
  * @returns 合計メンバー数
  */
 const calculateTotalMemberCount = (
-  departmentId: DepartmentId,
+  departmentId: string,
   orgData: OrgData,
 ): number => {
   // 現在の部署のメンバー数
