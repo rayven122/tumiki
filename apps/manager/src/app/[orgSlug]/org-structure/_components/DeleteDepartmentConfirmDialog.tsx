@@ -75,7 +75,7 @@ export const DeleteDepartmentConfirmDialog = ({
           <AlertDialogTitle>部署を削除しますか？</AlertDialogTitle>
           <AlertDialogDescription>
             「{department?.name}」を削除します。この操作は取り消せません。
-            {department && department.memberCount > 0 && (
+            {department && (department.memberCount ?? 0) > 0 && (
               <span className="mt-2 block font-medium text-amber-600">
                 この部署には {department.memberCount}{" "}
                 人のメンバーが所属しています。
