@@ -1,5 +1,6 @@
 import type GroupRepresentation from "@keycloak/keycloak-admin-client/lib/defs/groupRepresentation.js";
 import type RoleRepresentation from "@keycloak/keycloak-admin-client/lib/defs/roleRepresentation.js";
+import type UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation.js";
 import KcAdminClient from "@keycloak/keycloak-admin-client";
 
 import type { KeycloakAdminConfig, OrganizationRole } from "./types.js";
@@ -355,6 +356,16 @@ export class KeycloakAdminClient {
     await this.ensureAuth();
     await this.executeWithAutoRetry(() =>
       operations.updateUserAttributes(this.client, userId, attributes),
+    );
+  }
+
+  /**
+   * グループのメンバー一覧を取得
+   */
+  async listGroupMembers(groupId: string): Promise<UserRepresentation[]> {
+    await this.ensureAuth();
+    return this.executeWithAutoRetry(() =>
+      operations.listGroupMembers(this.client, groupId),
     );
   }
 }

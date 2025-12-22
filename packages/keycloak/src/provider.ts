@@ -3,6 +3,7 @@ import type {
   KeycloakAdminConfig,
   KeycloakGroup,
   KeycloakRole,
+  KeycloakUser,
   OrganizationRole,
 } from "./types.js";
 import { KeycloakAdminClient } from "./client.js";
@@ -292,5 +293,23 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     return this.execute(() =>
       this.client.removeUserFromGroup(params.userId, params.subgroupId),
     );
+  }
+
+  /**
+   * グループのメンバー一覧を取得
+   */
+  async listGroupMembers(params: { groupId: string }): Promise<{
+    success: boolean;
+    members?: KeycloakUser[];
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.listGroupMembers(params.groupId),
+    );
+    return {
+      success: result.success,
+      members: result.result,
+      error: result.error,
+    };
   }
 }
