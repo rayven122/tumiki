@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Save, ArrowDownUp } from "lucide-react";
 import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
+import { DeleteDepartmentDialog } from "./DeleteDepartmentDialog";
 import {
   DepartmentNode,
   type DepartmentNodeType,
@@ -83,6 +84,14 @@ export const MapView = ({
   const hasOrphanedDepartments = useMemo(() => {
     return detectOrphanedDepartments(parentNodes, parentEdges);
   }, [parentNodes, parentEdges]);
+
+  // 選択された部署を取得
+  const selectedDepartment = useMemo(() => {
+    if (!selectedNodeId) return null;
+    return (
+      orgData.departments.find((dept) => dept.id === selectedNodeId) ?? null
+    );
+  }, [selectedNodeId, orgData.departments]);
 
   // nodesとedgesの最新値を保持するref（無限レンダリング防止）
   const nodesRef = useRef(nodes);
@@ -250,6 +259,11 @@ export const MapView = ({
           <CreateDepartmentDialog
             organizationId={organizationId}
             departments={orgData.departments}
+          />
+
+          <DeleteDepartmentDialog
+            organizationId={organizationId}
+            selectedDepartment={selectedDepartment}
           />
 
           <Button
