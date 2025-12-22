@@ -54,8 +54,9 @@ export const DepartmentNode = memo(
 
     // メンバーアイコン表示：最大4人まで、残りは "+N" で省略
     const maxVisibleMembers = 4;
-    const visibleMembers = data.members.slice(0, maxVisibleMembers);
-    const remainingCount = Math.max(0, data.members.length - maxVisibleMembers);
+    const members = data.members ?? [];
+    const visibleMembers = members.slice(0, maxVisibleMembers);
+    const remainingCount = Math.max(0, members.length - maxVisibleMembers);
 
     return (
       <div
@@ -142,9 +143,9 @@ export const DepartmentNode = memo(
         <div className="mb-3 flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100/50 px-4 py-2.5">
           <Users className="h-5 w-5 text-gray-600" strokeWidth={2.5} />
           <span className="text-sm font-semibold text-gray-700">
-            {data.memberCount} メンバー
+            {data.memberCount ?? 0} メンバー
             {data.totalMemberCount !== undefined &&
-              data.totalMemberCount > data.memberCount && (
+              data.totalMemberCount > (data.memberCount ?? 0) && (
                 <span className="ml-1 text-gray-500">
                   （合計 {data.totalMemberCount}人）
                 </span>
