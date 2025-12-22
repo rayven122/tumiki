@@ -1,4 +1,4 @@
-import type { DepartmentId } from "@/schema/ids";
+// DepartmentIdは削除されたため、stringを使用
 import type * as Icons from "lucide-react";
 
 /**
@@ -15,7 +15,7 @@ export type Member = {
  * 部署データ型
  */
 export type Department = {
-  id: DepartmentId;
+  id: string;
   name: string;
   icon: keyof typeof Icons;
   color: string;
@@ -29,8 +29,8 @@ export type Department = {
  * 部署間の親子関係
  */
 export type DepartmentRelation = {
-  parentId: DepartmentId;
-  childId: DepartmentId;
+  parentId: string;
+  childId: string;
 };
 
 /**
@@ -55,7 +55,7 @@ export type OrgData = {
 export const mockOrgData: OrgData = {
   departments: [
     {
-      id: "dept-1" as DepartmentId,
+      id: "dept-1",
       name: "本社",
       icon: "Building2",
       color: "#6366f1", // Indigo
@@ -71,7 +71,7 @@ export const mockOrgData: OrgData = {
       isRoot: true,
     },
     {
-      id: "dept-2" as DepartmentId,
+      id: "dept-2",
       name: "開発部",
       icon: "Code2",
       color: "#3b82f6", // Blue
@@ -85,7 +85,7 @@ export const mockOrgData: OrgData = {
       memberCount: 4,
     },
     {
-      id: "dept-3" as DepartmentId,
+      id: "dept-3",
       name: "営業部",
       icon: "Briefcase",
       color: "#8b5cf6", // Purple
@@ -101,7 +101,7 @@ export const mockOrgData: OrgData = {
       memberCount: 6,
     },
     {
-      id: "dept-4" as DepartmentId,
+      id: "dept-4",
       name: "総務部",
       icon: "FileText",
       color: "#ec4899", // Pink
@@ -114,7 +114,7 @@ export const mockOrgData: OrgData = {
       memberCount: 3,
     },
     {
-      id: "dept-5" as DepartmentId,
+      id: "dept-5",
       name: "開発1課",
       icon: "Monitor",
       color: "#14b8a6", // Teal
@@ -131,7 +131,7 @@ export const mockOrgData: OrgData = {
       memberCount: 7,
     },
     {
-      id: "dept-6" as DepartmentId,
+      id: "dept-6",
       name: "開発2課",
       icon: "Database",
       color: "#f59e0b", // Amber
@@ -147,10 +147,10 @@ export const mockOrgData: OrgData = {
     },
   ],
   relations: [
-    { parentId: "dept-1" as DepartmentId, childId: "dept-2" as DepartmentId },
-    { parentId: "dept-1" as DepartmentId, childId: "dept-3" as DepartmentId },
-    { parentId: "dept-1" as DepartmentId, childId: "dept-4" as DepartmentId },
-    { parentId: "dept-2" as DepartmentId, childId: "dept-5" as DepartmentId },
-    { parentId: "dept-2" as DepartmentId, childId: "dept-6" as DepartmentId },
+    { parentId: "dept-1", childId: "dept-2" },
+    { parentId: "dept-1", childId: "dept-3" },
+    { parentId: "dept-1", childId: "dept-4" },
+    { parentId: "dept-2", childId: "dept-5" },
+    { parentId: "dept-2", childId: "dept-6" },
   ],
 };

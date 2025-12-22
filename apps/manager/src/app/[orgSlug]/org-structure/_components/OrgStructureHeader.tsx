@@ -15,14 +15,13 @@ import type { DepartmentNodeType } from "./nodes/DepartmentNode";
 import type { DepartmentEdgeType } from "./edges/DepartmentEdge";
 
 type OrgStructureHeaderProps = {
-  orgSlug: string;
   nodes: DepartmentNodeType[];
   edges: DepartmentEdgeType[];
   onArrangeNodes: () => void;
 };
 
 /**
- * 組織構造編集ページのヘッダーコンポーネント
+ * 組織構造編集ページのヘッダーコンポーネント（コンパクト版）
  *
  * 機能:
  * - 保存ボタン（バリデーション結果に基づく有効/無効制御）
@@ -30,7 +29,6 @@ type OrgStructureHeaderProps = {
  * - 保存成功時: トースト通知
  */
 export const OrgStructureHeader = ({
-  orgSlug,
   nodes,
   edges,
   onArrangeNodes,
@@ -55,17 +53,21 @@ export const OrgStructureHeader = ({
   };
 
   return (
-    <header className="border-b border-gray-200 bg-white px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">組織構造編集</h1>
-          <p className="text-sm text-gray-500">{orgSlug}</p>
-        </div>
+    <header className="bg-background border-b px-4 py-1.5">
+      <div className="flex items-center justify-between gap-4">
+        {/* 見出し */}
+        <h1 className="text-sm font-semibold">組織構造</h1>
 
-        <div className="flex items-center gap-3">
+        {/* ボタングループ */}
+        <div className="flex items-center gap-2">
           {/* レイアウト調整ボタン */}
-          <Button onClick={onArrangeNodes} variant="outline" className="gap-2">
-            <ArrowDownUp className="h-4 w-4" />
+          <Button
+            onClick={onArrangeNodes}
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-2.5 text-xs"
+          >
+            <ArrowDownUp className="h-3.5 w-3.5" />
             レイアウト調整
           </Button>
 
@@ -77,9 +79,10 @@ export const OrgStructureHeader = ({
                   <Button
                     onClick={handleSave}
                     disabled={hasOrphanedDepartments}
-                    className="gap-2"
+                    size="sm"
+                    className="h-8 gap-1.5 px-2.5 text-xs"
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className="h-3.5 w-3.5" />
                     保存
                   </Button>
                 </span>
