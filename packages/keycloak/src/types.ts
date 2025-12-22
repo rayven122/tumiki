@@ -5,8 +5,8 @@ import type UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/us
 /**
  * 組織内のロール定義
  * Owner: 全権限
- * Admin: メンバー管理可能
- * Member: 基本利用
+ * Admin: メンバー管理、グループ管理可能
+ * Member: 基本利用（MCP作成・利用）
  * Viewer: 読み取り専用
  */
 export type OrganizationRole = "Owner" | "Admin" | "Member" | "Viewer";

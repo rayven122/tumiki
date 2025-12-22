@@ -279,7 +279,7 @@ export const InvitationManagementSection = () => {
                                   }
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  取消す
+                                  取消
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

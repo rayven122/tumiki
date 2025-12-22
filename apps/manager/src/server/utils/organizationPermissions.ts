@@ -2,22 +2,37 @@ import { TRPCError } from "@trpc/server";
 
 /**
  * 固定組織ロール
+ *
+ * このファイルは組織全体の基本的な権限（Owner/Admin/Member/Viewer）を管理します。
+ * リソース別の細粒度権限（MCPサーバーなど）については、
+ * 将来的にデータベースのUnix型権限システム（RolePermission）を使用します。
+ *
+ * @see /docs/auth/permission-guide.md - 権限システム全体の設計
  */
 export type OrganizationRole = "Owner" | "Admin" | "Member" | "Viewer";
 
 /**
- * 権限定義
+ * 権限定義（組織操作・管理権限）
  */
 export type Permission =
-  | "org:delete" // 組織削除
-  | "org:update" // 組織更新
+  // 組織管理
+  | "org:delete" // 組織削除（Ownerのみ）
+  | "org:update" // 組織設定更新
+  // メンバー管理
+  | "member:read" // メンバー一覧閲覧
   | "member:invite" // メンバー招待
   | "member:remove" // メンバー削除
   | "member:role:update" // ロール変更
+  // ロール管理（カスタムロール）
   | "role:create" // カスタムロール作成
   | "role:delete" // カスタムロール削除
+  // MCP管理
   | "mcp:create" // MCPサーバー作成
-  | "mcp:delete"; // MCPサーバー削除
+  | "mcp:delete" // MCPサーバー削除
+  | "mcp:use" // MCPサーバー利用
+  // グループ管理
+  | "group:read" // グループ一覧閲覧
+  | "group:manage"; // グループ管理（作成・削除・メンバー管理）
 
 /**
  * ロールごとの権限マッピング
@@ -26,35 +41,47 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, Permission[]> = {
   Owner: [
     "org:delete",
     "org:update",
+    "member:read",
     "member:invite",
     "member:remove",
     "member:role:update",
+    "group:read",
+    "group:manage",
     "role:create",
     "role:delete",
     "mcp:create",
     "mcp:delete",
+    "mcp:use",
   ],
   Admin: [
     "org:update",
+    "member:read",
     "member:invite",
     "member:remove",
     "member:role:update",
+    "group:read",
+    "group:manage",
     "mcp:create",
     "mcp:delete",
+    "mcp:use",
   ],
-  Member: ["mcp:create"],
-  Viewer: [],
+  Member: ["member:read", "group:read", "mcp:create"],
+  Viewer: ["member:read", "group:read"],
 };
 
 /**
- * 組織情報の型（CurrentOrgと同じ構造）
+ * 組織情報の型（protectedProcedureのctx.currentOrgから取得）
+ *
+ * roles配列にはKeycloakのRealm Roleが含まれます：
+ * - 固定ロール: "Owner", "Admin", "Member", "Viewer"
+ * - カスタムロール: "org:{orgSlug}:role:{roleSlug}"形式（将来実装予定）
  */
 export type OrganizationInfo = {
   id: string;
   slug: string;
   createdBy: string;
   isPersonal: boolean;
-  roles: string[]; // JWTから取得したロール配列 ["Owner", "Engineering Manager", ...]
+  roles: string[]; // JWTから取得したロール配列
 };
 
 /**

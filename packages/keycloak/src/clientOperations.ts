@@ -2,6 +2,7 @@ import type KcAdminClient from "@keycloak/keycloak-admin-client";
 import type GroupRepresentation from "@keycloak/keycloak-admin-client/lib/defs/groupRepresentation.js";
 import type RoleRepresentation from "@keycloak/keycloak-admin-client/lib/defs/roleRepresentation.js";
 import type { RoleMappingPayload } from "@keycloak/keycloak-admin-client/lib/defs/roleRepresentation.js";
+import type UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation.js";
 
 import type { OrganizationRole } from "./types.js";
 
@@ -389,4 +390,15 @@ export const updateUserAttributes = async (
       },
     },
   );
+};
+
+/**
+ * グループのメンバー一覧を取得
+ */
+export const listGroupMembers = async (
+  client: KcAdminClient,
+  groupId: string,
+): Promise<UserRepresentation[]> => {
+  const members = await client.groups.listMembers({ id: groupId });
+  return members;
 };
