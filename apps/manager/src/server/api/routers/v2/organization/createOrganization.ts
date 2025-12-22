@@ -2,7 +2,7 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { getOrganizationProvider } from "~/lib/organizationProvider";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 
 export const createOrganizationInputSchema = z.object({
   name: z
@@ -70,7 +70,7 @@ export const createOrganization = async (
 
   // 1. Keycloakにグループを作成
   // User.id = Keycloak subなので、userIdを直接使用
-  const provider = getOrganizationProvider();
+  const provider = KeycloakOrganizationProvider.fromEnv();
   const result = await provider.createOrganization({
     name,
     groupName: slug, // slugをKeycloakグループ名として使用

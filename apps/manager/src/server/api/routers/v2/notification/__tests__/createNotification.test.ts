@@ -83,7 +83,7 @@ describe("createManyNotifications", () => {
       priority: "NORMAL",
       title: "新しいメンバーが招待されました",
       message: "test@example.comが組織に招待されました。",
-      linkUrl: "/test-org/settings/members",
+      linkUrl: "/test-org/members",
       organizationId,
       triggeredById: userIds[0],
     };
@@ -120,7 +120,7 @@ describe("createManyNotifications", () => {
       priority: "NORMAL",
       title: "新しいメンバーが招待されました",
       message: "test@example.comが組織に招待されました。",
-      linkUrl: "/test-org/settings/members",
+      linkUrl: "/test-org/members",
       organizationId,
     };
 
@@ -143,7 +143,7 @@ describe("createManyNotifications", () => {
       type: "ORGANIZATION_INVITATION_SENT",
       title: "新しいメンバーが招待されました",
       message: "test@example.comが組織に招待されました。",
-      linkUrl: "/test-org/settings/members",
+      linkUrl: "/test-org/members",
       organizationId,
     };
 
@@ -167,7 +167,7 @@ describe("createManyNotifications", () => {
       type: "ORGANIZATION_INVITATION_SENT",
       title: "新しいメンバーが招待されました",
       message: "test@example.comが組織に招待されました。",
-      linkUrl: "/test-org/settings/members",
+      linkUrl: "/test-org/members",
       organizationId,
     };
 
@@ -201,7 +201,7 @@ describe("createManyNotifications", () => {
       type: "ORGANIZATION_INVITATION_SENT",
       title: "新しいメンバーが招待されました",
       message: "test@example.comが組織に招待されました。",
-      linkUrl: "/test-org/settings/members",
+      linkUrl: "/test-org/members",
       organizationId,
       expiresAt: customExpiresAt,
     };

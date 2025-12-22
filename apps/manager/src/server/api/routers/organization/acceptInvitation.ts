@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { InvitationTokenSchema } from "@/schema/ids";
-import { getOrganizationProvider } from "~/lib/organizationProvider";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import { createManyNotifications } from "../v2/notification/createNotification";
 
 // 入力スキーマ
@@ -26,7 +26,7 @@ export type AcceptInvitationOutput = z.infer<
  *
  * @param input - 招待トークン
  * @param ctx - 保護されたコンテキスト
- * @returns 組織情報（slug, name, isAdmin）
+ * @returns 組織情報（slug, name）
  *
  * @throws NOT_FOUND - トークンが存在しない
  * @throws BAD_REQUEST - 有効期限切れ
@@ -95,9 +95,18 @@ export const acceptInvitation = async ({
       });
     }
 
-    // 6. トランザクション処理
+    // 6. Ownerロール検証
+    if (invitation.roles.includes("Owner")) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Ownerロールは組織作成者のみが持つ特別なロールです。招待では指定できません。",
+      });
+    }
+
+    // 7. トランザクション処理
     const result = await ctx.db.$transaction(async (tx) => {
-      // 6-1. OrganizationMember作成
+      // 7-1. OrganizationMember作成
       await tx.organizationMember.create({
         data: {
           organizationId: invitation.organizationId,
@@ -105,8 +114,8 @@ export const acceptInvitation = async ({
         },
       });
 
-      // 6-2. Keycloak Group にメンバー追加（招待時に指定されたロール）
-      const provider = getOrganizationProvider();
+      // 7-2. Keycloak Group にメンバー追加（招待時に指定されたロール）
+      const provider = KeycloakOrganizationProvider.fromEnv();
 
       try {
         // 組織のIDを取得（idがKeycloak Group ID）
@@ -142,7 +151,7 @@ export const acceptInvitation = async ({
         });
       }
 
-      // 6-3. 組織の全メンバーに通知を作成
+      // 7-3. 組織の全メンバーに通知を作成
       const orgMembers = await tx.organizationMember.findMany({
         where: {
           organizationId: invitation.organizationId,
@@ -157,14 +166,14 @@ export const acceptInvitation = async ({
       await createManyNotifications(tx, notificationUserIds, {
         type: "ORGANIZATION_INVITATION_ACCEPTED",
         priority: "NORMAL",
-        title: "招待が受け入れられました",
+        title: "新しいメンバーが参加しました",
         message: `${ctx.session.user.email ?? "新しいメンバー"}が組織に参加しました。`,
-        linkUrl: `/${invitation.organization.slug}/settings/members`,
+        linkUrl: `/${invitation.organization.slug}/members`,
         organizationId: invitation.organizationId,
         triggeredById: ctx.session.user.id,
       });
 
-      // 6-4. 招待レコード削除（一度のみ使用可能）
+      // 7-4. 招待レコード削除（一度のみ使用可能）
       await tx.organizationInvitation.delete({
         where: { id: invitation.id },
       });

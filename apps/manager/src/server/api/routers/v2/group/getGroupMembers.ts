@@ -7,12 +7,42 @@ import type {
 } from "../../../../utils/groupSchemas";
 
 /**
+ * ユーザー名からイニシャルを生成
+ *
+ * @param name - ユーザー名またはメールアドレス
+ * @returns イニシャル（最大2文字）
+ */
+const generateInitials = (name: string): string => {
+  if (!name) return "?";
+
+  // メールアドレスの場合は@より前を使用
+  const displayName = name.includes("@") ? name.split("@")[0] : name;
+
+  if (!displayName) return "?";
+
+  // スペースで分割して名前の各部分の最初の文字を取得
+  const parts = displayName.trim().split(/\s+/);
+
+  if (parts.length >= 2) {
+    // 姓名がある場合は最初の2文字
+    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+  }
+
+  // 1単語の場合は最初の1-2文字
+  return displayName.slice(0, 2).toUpperCase();
+};
+
+/**
  * グループメンバー一覧取得
  *
  * セキュリティ：
  * - データベースで組織の存在を確認
  * - すべてのグループIDが組織のサブグループであることを確認
  * - 複数グループのメンバーを一括取得（パフォーマンス最適化）
+ *
+ * パフォーマンス最適化：
+ * - メンバー詳細情報はDBから一括取得（Keycloak APIの呼び出しを削減）
+ * - KeycloakからはグループメンバーシップのIDのみを取得
  *
  * @param db - Prisma transaction client
  * @param input - グループメンバー取得パラメータ
@@ -35,13 +65,17 @@ export const getGroupMembers = async (
     });
   }
 
-  // Keycloakプロバイダーを初期化
-  const keycloakProvider = new KeycloakOrganizationProvider({
-    baseUrl: process.env.KEYCLOAK_URL ?? "",
-    realm: process.env.KEYCLOAK_REALM ?? "tumiki",
-    adminUsername: process.env.KEYCLOAK_ADMIN_USERNAME ?? "",
-    adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD ?? "",
-  });
+  // Keycloakプロバイダーを初期化（環境変数から自動設定）
+  let keycloakProvider: KeycloakOrganizationProvider;
+  try {
+    keycloakProvider = KeycloakOrganizationProvider.fromEnv();
+  } catch (error) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        error instanceof Error ? error.message : "Keycloak設定が不完全です",
+    });
+  }
 
   // 組織のサブグループ一覧を取得してすべてのgroupIdを検証
   const groupsResult = await keycloakProvider.listSubgroups({
@@ -76,8 +110,12 @@ export const getGroupMembers = async (
     return false;
   };
 
-  // すべてのgroupIdが組織のサブグループであることを確認
+  // すべてのgroupIdが組織のサブグループ、または組織グループ自体であることを確認
   for (const groupId of input.groupIds) {
+    // 組織グループ自体のIDは許可
+    if (groupId === organization.id) continue;
+
+    // サブグループの場合は検証
     if (!isValidGroup(groupsResult.subgroups, groupId)) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -87,34 +125,71 @@ export const getGroupMembers = async (
     }
   }
 
-  // 各グループのメンバーを取得
+  // 組織の全メンバーをDBから取得（効率化）
+  // 参加が古い順にソート（createdAt昇順）
+  const organizationMembers = await db.organizationMember.findMany({
+    where: { organizationId: organization.id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc", // 参加が古い順
+    },
+  });
+
+  // ユーザーIDをキーとしたマップを作成
+  const userMap = new Map<string, Member>(
+    organizationMembers.map((om) => [
+      om.userId,
+      {
+        id: om.userId,
+        name: om.user.name ?? om.user.email ?? "名前未設定",
+        initials: generateInitials(om.user.name ?? om.user.email ?? "?"),
+        email: om.user.email ?? undefined,
+        avatarUrl: om.user.image ?? undefined,
+      },
+    ]),
+  );
+
+  // 各グループのメンバーIDをKeycloakから取得
   const membersMap: Record<string, Member[]> = {};
 
   for (const groupId of input.groupIds) {
     const result = await keycloakProvider.listGroupMembers({ groupId });
 
     if (result.success && result.members) {
-      membersMap[groupId] = result.members.map((user) => {
-        // 名前の構築
-        const firstName = user.firstName ?? "";
-        const lastName = user.lastName ?? "";
-        const fullName = `${firstName} ${lastName}`.trim();
-        const displayName = fullName || user.email || "名前未設定";
+      // KeycloakのユーザーIDとDBのユーザーをマッピング
+      const members: Member[] = [];
+      for (const keycloakUser of result.members) {
+        const userId = keycloakUser.id;
+        if (!userId) continue;
 
-        // イニシャルの生成
-        const initials =
-          firstName && lastName
-            ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-            : displayName.charAt(0).toUpperCase();
+        // DBから取得したユーザー情報を使用
+        const member = userMap.get(userId);
+        if (member) {
+          members.push(member);
+        }
+      }
 
-        return {
-          id: user.id ?? "",
-          name: displayName,
-          email: user.email,
-          avatarUrl: user.attributes?.avatarUrl?.[0],
-          initials,
-        };
+      // 参加が古い順にソート（organizationMembersの順序を使用）
+      members.sort((a, b) => {
+        const aIndex = organizationMembers.findIndex(
+          (om) => om.userId === a.id,
+        );
+        const bIndex = organizationMembers.findIndex(
+          (om) => om.userId === b.id,
+        );
+        return aIndex - bIndex;
       });
+
+      membersMap[groupId] = members;
     } else {
       // エラー時は空配列を設定（部分的な失敗を許容）
       membersMap[groupId] = [];

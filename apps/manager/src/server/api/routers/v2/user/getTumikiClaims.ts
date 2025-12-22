@@ -32,7 +32,7 @@ export const getTumikiClaims = async (
         },
         select: {
           organization: {
-            select: { slug: true },
+            select: { id: true, slug: true, isPersonal: true },
           },
         },
       },
@@ -44,19 +44,40 @@ export const getTumikiClaims = async (
     return null;
   }
 
-  // 組織作成後に必ずdefaultOrganizationSlugが設定されるため、
-  // 存在しない場合はデータ不整合としてエラーをスロー
-  const defaultOrg = user.defaultOrganization;
-  if (!defaultOrg) {
-    throw new Error(
-      `User ${userId} does not have a default organization. This should not happen.`,
-    );
-  }
-
   // DBから取得した組織slugリストを構築
   const orgSlugs = user.members.map(
     (membership) => membership.organization.slug,
   );
+
+  // デフォルト組織を決定
+  let defaultOrg = user.defaultOrganization;
+
+  // デフォルト組織が設定されていない、または実際のメンバーシップに含まれていない場合
+  if (
+    !defaultOrg ||
+    !user.members.some((m) => m.organization.id === defaultOrg!.id)
+  ) {
+    // 個人組織を探す
+    const personalOrg = user.members.find((m) => m.organization.isPersonal);
+
+    if (!personalOrg) {
+      throw new Error(
+        `User ${userId} does not have a personal organization. This should not happen.`,
+      );
+    }
+
+    // 個人組織をデフォルトに設定
+    defaultOrg = {
+      id: personalOrg.organization.id,
+      slug: personalOrg.organization.slug,
+    };
+
+    // DBのdefaultOrganizationSlugも更新
+    await db.user.update({
+      where: { id: userId },
+      data: { defaultOrganizationSlug: personalOrg.organization.slug },
+    });
+  }
 
   return {
     org_slugs: orgSlugs,

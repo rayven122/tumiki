@@ -42,9 +42,9 @@ export const NotificationCenter = () => {
           className="relative"
           aria-label={`通知センター${unreadCount > 0 ? ` - ${unreadCount}件の未読通知` : ""}`}
         >
-          <Bell className="size-5" />
+          <Bell className="size-6" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-xs font-semibold text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}

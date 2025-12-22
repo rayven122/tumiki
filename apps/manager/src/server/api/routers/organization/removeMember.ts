@@ -3,7 +3,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { removeMemberInput } from "@/server/utils/organizationSchemas";
-import { getOrganizationProvider } from "~/lib/organizationProvider";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 
 export const removeMemberInputSchema = removeMemberInput;
 
@@ -26,9 +26,9 @@ export const removeMember = async ({
   input: RemoveMemberInput;
   ctx: ProtectedContext;
 }): Promise<RemoveMemberOutput> => {
-  // チームの管理者権限を検証
+  // メンバー削除権限を検証
   validateOrganizationAccess(ctx.currentOrg, {
-    requireAdmin: true,
+    requirePermission: "member:remove",
     requireTeam: true,
   });
 
@@ -70,7 +70,7 @@ export const removeMember = async ({
   }
 
   // Keycloakからメンバーを削除
-  const provider = getOrganizationProvider();
+  const provider = KeycloakOrganizationProvider.fromEnv();
   const removeResult = await provider.removeMember({
     externalId: ctx.currentOrg.id, // Organization.idがKeycloak Group ID
     userId: targetMember.userId,

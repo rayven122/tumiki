@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
-import { getOrganizationProvider } from "~/lib/organizationProvider";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 
 /**
  * メンバーロール変更入力スキーマ
@@ -44,9 +44,9 @@ export const updateMemberRole = async ({
   ctx: ProtectedContext;
 }): Promise<UpdateMemberRoleOutput> => {
   try {
-    // チームの管理者権限を検証
+    // メンバーロール変更権限を検証
     validateOrganizationAccess(ctx.currentOrg, {
-      requireAdmin: true,
+      requirePermission: "member:role:update",
       requireTeam: true,
     });
 
@@ -86,7 +86,7 @@ export const updateMemberRole = async ({
     }
 
     // Keycloakでロールを更新とセッション無効化を並列実行
-    const provider = getOrganizationProvider();
+    const provider = KeycloakOrganizationProvider.fromEnv();
     const [updateResult, invalidateResult] = await Promise.allSettled([
       provider.updateMemberRole({
         externalId: ctx.currentOrg.id, // Organization.idがKeycloak Group ID

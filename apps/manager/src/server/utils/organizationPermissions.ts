@@ -12,6 +12,14 @@ import { TRPCError } from "@trpc/server";
 export type OrganizationRole = "Owner" | "Admin" | "Member" | "Viewer";
 
 /**
+ * 割り当て可能なロール（招待・変更時に使用）
+ *
+ * Ownerロールは組織作成者のみが持つ特別なロールであり、
+ * 招待やロール変更で割り当てることはできません。
+ */
+export type AssignableRole = "Admin" | "Member" | "Viewer";
+
+/**
  * 権限定義（組織操作・管理権限）
  */
 export type Permission =

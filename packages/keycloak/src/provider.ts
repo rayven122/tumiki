@@ -7,6 +7,7 @@ import type {
   OrganizationRole,
 } from "./types.js";
 import { KeycloakAdminClient } from "./client.js";
+import { loadKeycloakConfigFromEnv } from "./config.js";
 import * as services from "./providerServices.js";
 
 /**
@@ -19,6 +20,19 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
 
   constructor(config: KeycloakAdminConfig) {
     this.client = new KeycloakAdminClient(config);
+  }
+
+  /**
+   * 環境変数からKeycloak設定を読み込んでインスタンスを作成
+   *
+   * 環境変数の詳細は `loadKeycloakConfigFromEnv()` を参照
+   *
+   * @throws {Error} 必須の環境変数が設定されていない場合
+   * @returns KeycloakOrganizationProvider インスタンス
+   */
+  static fromEnv(): KeycloakOrganizationProvider {
+    const config = loadKeycloakConfigFromEnv();
+    return new KeycloakOrganizationProvider(config);
   }
 
   /**
@@ -309,6 +323,24 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     return {
       success: result.success,
       members: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * グループ情報を取得
+   */
+  async getGroup(params: { groupId: string }): Promise<{
+    success: boolean;
+    group?: KeycloakGroup;
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.getGroup(params.groupId),
+    );
+    return {
+      success: result.success,
+      group: result.result,
       error: result.error,
     };
   }

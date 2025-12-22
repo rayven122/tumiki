@@ -12,7 +12,7 @@ import type { Member } from "../mock/mockOrgData";
  */
 export type DepartmentNodeData = {
   name: string;
-  icon: keyof typeof Icons;
+  icon: string; // lucide-reactのアイコン名（例: "Building2"）
   color: string;
   leader: Member;
   members: Member[];
@@ -36,7 +36,9 @@ export type DepartmentNodeType = Node<DepartmentNodeData>;
  */
 export const DepartmentNode = memo(
   ({ data, selected }: NodeProps<DepartmentNodeType>) => {
-    const IconComponent = Icons[data.icon] as React.ComponentType<{
+    const IconComponent = Icons[
+      data.icon as keyof typeof Icons
+    ] as React.ComponentType<{
       className?: string;
     }>;
 
@@ -92,7 +94,22 @@ export const DepartmentNode = memo(
 
         {/* 部署長 */}
         <div className="mb-3 flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50/50 px-4 py-2.5">
-          <UserCircle2 className="h-5 w-5 text-blue-600" strokeWidth={2.5} />
+          <div className="relative h-6 w-6 overflow-hidden rounded-full border-2 border-blue-200">
+            {data.leader.avatarUrl ? (
+              <img
+                src={data.leader.avatarUrl}
+                alt={data.leader.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
+                <UserCircle2
+                  className="h-4 w-4 text-blue-600"
+                  strokeWidth={2.5}
+                />
+              </div>
+            )}
+          </div>
           <span className="text-sm font-semibold text-gray-800">
             {data.leader.name}
           </span>
@@ -118,11 +135,21 @@ export const DepartmentNode = memo(
             {visibleMembers.map((member, index) => (
               <div
                 key={member.id}
-                className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-gray-100 to-gray-200 text-xs font-bold text-gray-700 shadow-sm transition-transform hover:z-10 hover:scale-110"
+                className="relative h-8 w-8 overflow-hidden rounded-full border-2 border-white shadow-sm transition-transform hover:z-10 hover:scale-110"
                 style={{ zIndex: visibleMembers.length - index }}
                 title={member.name}
               >
-                {member.initials}
+                {member.avatarUrl ? (
+                  <img
+                    src={member.avatarUrl}
+                    alt={member.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-xs font-bold text-gray-700">
+                    {member.initials}
+                  </div>
+                )}
               </div>
             ))}
           </div>
