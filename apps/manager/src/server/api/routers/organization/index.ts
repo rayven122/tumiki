@@ -62,6 +62,11 @@ import {
   updateMemberRoleInputSchema,
   updateMemberRoleOutputSchema,
 } from "./updateMemberRole";
+import {
+  getMembers,
+  getMembersInputSchema,
+  getMembersOutputSchema,
+} from "./getMembers";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
@@ -93,6 +98,12 @@ export const organizationRouter = createTRPCRouter({
   getById: protectedProcedure
     .output(getOrganizationByIdOutputSchema)
     .query(getOrganizationById),
+
+  // 組織メンバー一覧取得（ページネーション付き）
+  getMembers: protectedProcedure
+    .input(getMembersInputSchema)
+    .output(getMembersOutputSchema)
+    .query(getMembers),
 
   // 使用量統計取得
   getUsageStats: protectedProcedure

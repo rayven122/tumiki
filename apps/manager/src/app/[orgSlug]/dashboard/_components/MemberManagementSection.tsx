@@ -42,10 +42,15 @@ export const MemberManagementSection = () => {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { data: organization, isLoading: organizationLoading } =
-    api.organization.getById.useQuery();
+  const { data: organization } = api.organization.getById.useQuery();
 
-  const members = organization?.members;
+  const { data: membersData, isLoading: organizationLoading } =
+    api.organization.getMembers.useQuery({
+      limit: 20,
+      offset: 0,
+    });
+
+  const members = membersData?.members;
 
   const utils = api.useUtils();
 
