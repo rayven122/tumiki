@@ -129,6 +129,7 @@ export const OrgStructureClient = ({
     >
       <MapView
         orgData={orgData}
+        organizationId={organizationId}
         nodes={nodes}
         edges={edges}
         onNodesChange={setNodes}

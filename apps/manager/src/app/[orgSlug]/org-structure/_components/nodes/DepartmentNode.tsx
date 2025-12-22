@@ -100,6 +100,7 @@ export const DepartmentNode = memo(
                 src={data.leader.avatarUrl}
                 alt={data.leader.name}
                 className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
@@ -144,6 +145,7 @@ export const DepartmentNode = memo(
                     src={member.avatarUrl}
                     alt={member.name}
                     className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-xs font-bold text-gray-700">

@@ -84,18 +84,51 @@ export const deleteSubgroup = async (
 };
 
 /**
- * グループのサブグループ一覧を取得
+ * グループ情報を取得（サブグループを再帰的に取得）
+ *
+ * 注意: Keycloak API の groups.findOne は subGroups を返さないため、
+ * listSubGroups を使用してサブグループを別途取得する必要がある
+ */
+export const getGroup = async (
+  client: KcAdminClient,
+  groupId: string,
+): Promise<GroupRepresentation> => {
+  // グループの基本情報を取得
+  const group = await client.groups.findOne({ id: groupId });
+
+  if (!group) {
+    throw new Error(`Group not found: ${groupId}`);
+  }
+
+  // listSubGroups APIを使用してサブグループを取得
+  // （groups.findOne は subGroups を返さないため）
+  const subGroups = await client.groups.listSubGroups({ parentId: groupId });
+
+  // 各サブグループに対して再帰的に処理
+  if (subGroups && subGroups.length > 0) {
+    group.subGroups = await Promise.all(
+      subGroups.map(async (subGroup) => {
+        if (subGroup.id) {
+          return getGroup(client, subGroup.id);
+        }
+        return subGroup;
+      }),
+    );
+  } else {
+    group.subGroups = [];
+  }
+
+  return group;
+};
+
+/**
+ * グループのサブグループ一覧を取得（再帰的に全階層を取得）
  */
 export const listSubgroups = async (
   client: KcAdminClient,
   parentGroupId: string,
 ): Promise<GroupRepresentation[]> => {
-  const group = await client.groups.findOne({ id: parentGroupId });
-
-  if (!group) {
-    throw new Error(`Group not found: ${parentGroupId}`);
-  }
-
+  const group = await getGroup(client, parentGroupId);
   return group.subGroups ?? [];
 };
 
@@ -202,22 +235,6 @@ export const invalidateUserSessions = async (
   userId: string,
 ): Promise<void> => {
   await client.users.logout({ id: userId });
-};
-
-/**
- * グループ情報を取得
- */
-export const getGroup = async (
-  client: KcAdminClient,
-  groupId: string,
-): Promise<GroupRepresentation> => {
-  const group = await client.groups.findOne({ id: groupId });
-
-  if (!group) {
-    throw new Error(`Group not found: ${groupId}`);
-  }
-
-  return group;
 };
 
 /**
