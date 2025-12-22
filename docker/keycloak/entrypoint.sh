@@ -7,11 +7,21 @@ set -e
 echo "Starting Keycloak..."
 
 # Keycloakをバックグラウンドで起動（start-dev モード）
+# KC_HOSTNAME, KC_HOSTNAME_PORT 環境変数が設定されている場合はそれを使用
+HOSTNAME_OPTS=""
+if [ -n "$KC_HOSTNAME" ]; then
+  HOSTNAME_OPTS="--hostname=$KC_HOSTNAME"
+  if [ -n "$KC_HOSTNAME_PORT" ]; then
+    HOSTNAME_OPTS="$HOSTNAME_OPTS --hostname-port=$KC_HOSTNAME_PORT"
+  fi
+fi
+
 /opt/keycloak/bin/kc.sh start-dev \
   --import-realm \
   --http-enabled=true \
   --hostname-strict=false \
-  --health-enabled=true &
+  --health-enabled=true \
+  $HOSTNAME_OPTS &
 
 KEYCLOAK_PID=$!
 
