@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,36 +9,33 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { Department } from "./mock/mockOrgData";
 
-type DeleteDepartmentDialogProps = {
+type DeleteDepartmentConfirmDialogProps = {
   organizationId: string;
-  selectedDepartment: Department | null;
+  department: Department | null;
+  onClose: () => void;
 };
 
 /**
- * 部署削除確認ダイアログ
+ * 部署削除確認ダイアログ（制御型）
  *
- * - 選択された部署を削除する
- * - ルート部署は削除できない
- * - 確認ダイアログで削除を確認
+ * - departmentがnullでない場合に表示
+ * - 削除成功時にダイアログを閉じてデータを再取得
  */
-export const DeleteDepartmentDialog = ({
+export const DeleteDepartmentConfirmDialog = ({
   organizationId,
-  selectedDepartment,
-}: DeleteDepartmentDialogProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-
+  department,
+  onClose,
+}: DeleteDepartmentConfirmDialogProps) => {
   const utils = api.useUtils();
 
   const deleteMutation = api.v2.group.delete.useMutation({
     onSuccess: () => {
-      setIsOpen(false);
+      onClose();
       void utils.v2.group.list.invalidate();
       void utils.v2.group.getMembers.invalidate();
       toast.success("部署を削除しました");
@@ -59,52 +54,30 @@ export const DeleteDepartmentDialog = ({
   });
 
   const handleDelete = () => {
-    if (selectedDepartment && !selectedDepartment.isRoot) {
+    if (department) {
       deleteMutation.mutate({
         organizationId,
-        groupId: selectedDepartment.id,
+        groupId: department.id,
       });
     }
   };
 
-  // ボタンの無効状態
-  const isDisabled =
-    !selectedDepartment ||
-    selectedDepartment.isRoot ||
-    deleteMutation.isPending;
-
-  // ルートノードが選択されている場合のツールチップメッセージ
-  const getTooltipMessage = () => {
-    if (!selectedDepartment) return "削除する部署を選択してください";
-    if (selectedDepartment.isRoot) return "ルート部署は削除できません";
-    return null;
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !deleteMutation.isPending) {
+      onClose();
+    }
   };
 
-  const tooltipMessage = getTooltipMessage();
-
   return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={isDisabled}
-          className="bg-background h-8 gap-1.5 px-2.5 text-xs shadow-md disabled:opacity-50"
-          title={tooltipMessage ?? undefined}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          削除
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={department !== null} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>部署を削除しますか？</AlertDialogTitle>
           <AlertDialogDescription>
-            「{selectedDepartment?.name}
-            」を削除します。この操作は取り消せません。
-            {selectedDepartment && selectedDepartment.memberCount > 0 && (
+            「{department?.name}」を削除します。この操作は取り消せません。
+            {department && department.memberCount > 0 && (
               <span className="mt-2 block font-medium text-amber-600">
-                この部署には {selectedDepartment.memberCount}{" "}
+                この部署には {department.memberCount}{" "}
                 人のメンバーが所属しています。
               </span>
             )}

@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
-import { Users, UserCircle2 } from "lucide-react";
+import { Users, UserCircle2, X } from "lucide-react";
 import type { Member } from "../mock/mockOrgData";
 
 /**
@@ -19,6 +19,7 @@ export type DepartmentNodeData = {
   memberCount: number;
   totalMemberCount?: number; // 子部署を含む合計メンバー数（オプション）
   isRoot?: boolean;
+  onDelete?: (nodeId: string) => void; // 削除ボタンクリック時のコールバック
 };
 
 /**
@@ -35,12 +36,21 @@ export type DepartmentNodeType = Node<DepartmentNodeData>;
  * - グラデーション背景でブランドカラー表現
  */
 export const DepartmentNode = memo(
-  ({ data, selected }: NodeProps<DepartmentNodeType>) => {
+  ({ id, data, selected }: NodeProps<DepartmentNodeType>) => {
     const IconComponent = Icons[
       data.icon as keyof typeof Icons
     ] as React.ComponentType<{
       className?: string;
     }>;
+
+    // 削除ボタンのクリックハンドラー
+    const handleDeleteClick = (e: React.MouseEvent) => {
+      e.stopPropagation(); // ノード選択イベントを止める
+      data.onDelete?.(id);
+    };
+
+    // 削除ボタンを表示するか（選択中かつルートでない場合）
+    const showDeleteButton = selected && !data.isRoot && data.onDelete;
 
     // メンバーアイコン表示：最大4人まで、残りは "+N" で省略
     const maxVisibleMembers = 4;
@@ -56,6 +66,18 @@ export const DepartmentNode = memo(
             : "border-gray-200/80 shadow-lg hover:border-gray-300 hover:shadow-xl",
         )}
       >
+        {/* 削除ボタン（選択時のみ表示） */}
+        {showDeleteButton && (
+          <button
+            type="button"
+            onClick={handleDeleteClick}
+            className="absolute -top-2 -right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600"
+            title="部署を削除"
+          >
+            <X className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        )}
+
         {/* トップハンドル（クリック範囲拡大） */}
         <Handle
           type="target"

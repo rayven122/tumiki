@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Save, ArrowDownUp } from "lucide-react";
 import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
-import { DeleteDepartmentDialog } from "./DeleteDepartmentDialog";
+import { DeleteDepartmentConfirmDialog } from "./DeleteDepartmentConfirmDialog";
+import type { Department } from "./mock/mockOrgData";
 import {
   DepartmentNode,
   type DepartmentNodeType,
@@ -79,19 +80,13 @@ export const MapView = ({
   const [edges, setEdges, onEdgesChangeInternal] =
     useEdgesState<DepartmentEdgeType>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [departmentToDelete, setDepartmentToDelete] =
+    useState<Department | null>(null);
 
   // 保存ボタンの状態制御
   const hasOrphanedDepartments = useMemo(() => {
     return detectOrphanedDepartments(parentNodes, parentEdges);
   }, [parentNodes, parentEdges]);
-
-  // 選択された部署を取得
-  const selectedDepartment = useMemo(() => {
-    if (!selectedNodeId) return null;
-    return (
-      orgData.departments.find((dept) => dept.id === selectedNodeId) ?? null
-    );
-  }, [selectedNodeId, orgData.departments]);
 
   // nodesとedgesの最新値を保持するref（無限レンダリング防止）
   const nodesRef = useRef(nodes);
@@ -229,10 +224,34 @@ export const MapView = ({
     toast.success("組織構造を保存しました");
   }, [hasOrphanedDepartments]);
 
+  /**
+   * ノード削除ボタンクリック時のハンドラー
+   */
+  const handleNodeDeleteClick = useCallback(
+    (nodeId: string) => {
+      const department = orgData.departments.find((d) => d.id === nodeId);
+      if (department && !department.isRoot) {
+        setDepartmentToDelete(department);
+      }
+    },
+    [orgData.departments],
+  );
+
+  // ノードに削除コールバックを追加
+  const nodesWithDeleteHandler = useMemo(() => {
+    return nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        onDelete: handleNodeDeleteClick,
+      },
+    }));
+  }, [nodes, handleNodeDeleteClick]);
+
   return (
     <div className="h-full w-full">
       <ReactFlow
-        nodes={nodes}
+        nodes={nodesWithDeleteHandler}
         edges={edgesWithSelection}
         onNodesChange={onNodesChangeInternal}
         onEdgesChange={onEdgesChangeInternal}
@@ -259,11 +278,6 @@ export const MapView = ({
           <CreateDepartmentDialog
             organizationId={organizationId}
             departments={orgData.departments}
-          />
-
-          <DeleteDepartmentDialog
-            organizationId={organizationId}
-            selectedDepartment={selectedDepartment}
           />
 
           <Button
@@ -300,6 +314,13 @@ export const MapView = ({
           </TooltipProvider>
         </Panel>
       </ReactFlow>
+
+      {/* 削除確認ダイアログ */}
+      <DeleteDepartmentConfirmDialog
+        organizationId={organizationId}
+        department={departmentToDelete}
+        onClose={() => setDepartmentToDelete(null)}
+      />
     </div>
   );
 };
