@@ -1,4 +1,8 @@
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import { getUserOrganizations } from "./getUserOrganizations";
 import { updateOrganization, updateOrganizationInputSchema } from "./update";
 import {
@@ -76,7 +80,7 @@ export const GetUserOrganizationsOutput = z.array(
 
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
-  getUserOrganizations: protectedProcedure
+  getUserOrganizations: publicProcedure
     .output(GetUserOrganizationsOutput)
     .query(getUserOrganizations),
 
