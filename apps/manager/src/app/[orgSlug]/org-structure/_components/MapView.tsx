@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Save, ArrowDownUp } from "lucide-react";
+import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
 import {
   DepartmentNode,
   type DepartmentNodeType,
@@ -43,6 +44,7 @@ const edgeTypes = { department: DepartmentEdge };
 
 type MapViewProps = {
   orgData: OrgData;
+  organizationId: string;
   nodes: DepartmentNodeType[];
   edges: DepartmentEdgeType[];
   onNodesChange: (nodes: DepartmentNodeType[]) => void;
@@ -63,6 +65,7 @@ type MapViewProps = {
  */
 export const MapView = ({
   orgData,
+  organizationId,
   nodes: parentNodes,
   edges: parentEdges,
   onNodesChange,
@@ -244,6 +247,11 @@ export const MapView = ({
 
         {/* ボード内ボタン */}
         <Panel position="top-right" className="flex gap-2">
+          <CreateDepartmentDialog
+            organizationId={organizationId}
+            departments={orgData.departments}
+          />
+
           <Button
             onClick={onArrangeNodes}
             variant="outline"
