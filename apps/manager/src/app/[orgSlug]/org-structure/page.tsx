@@ -23,9 +23,9 @@ export default async function OrgStructurePage({
   const session = await auth();
   const { organizationId } = getSessionInfo(session);
 
-  // 組織IDが取得できない場合はダッシュボードにリダイレクト
+  // 組織IDが取得できない場合はオンボーディングへリダイレクト
   if (!organizationId) {
-    redirect("/organizations/dashboard");
+    redirect("/onboarding");
   }
 
   return <OrgStructureClient organizationId={organizationId} />;
