@@ -3,6 +3,7 @@ import { z } from "zod";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import type { ProtectedContext } from "@/server/api/trpc";
+import { createAdminNotifications } from "../notification/createBulkNotifications";
 
 /**
  * ロール削除 Input スキーマ
@@ -98,6 +99,16 @@ export const deleteRole = async ({
           slug: input.slug,
         },
       },
+    });
+
+    // セキュリティアラート: 管理者に通知（非同期で実行）
+    void createAdminNotifications(ctx.db, {
+      type: "SECURITY_ROLE_DELETED",
+      priority: "HIGH",
+      title: "ロールが削除されました",
+      message: `カスタムロール「${roleBackup.name}」（${input.slug}）が削除されました`,
+      organizationId: ctx.currentOrg.id,
+      triggeredById: ctx.session.user.id,
     });
 
     return { success: true };

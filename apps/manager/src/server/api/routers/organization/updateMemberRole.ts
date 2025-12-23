@@ -3,6 +3,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
+import { createAdminNotifications } from "../v2/notification/createBulkNotifications";
 
 /**
  * メンバーロール変更入力スキーマ
@@ -50,7 +51,7 @@ export const updateMemberRole = async ({
       requireTeam: true,
     });
 
-    // 対象メンバーを取得
+    // 対象メンバーを取得（ユーザー情報も含む）
     const targetMember = await ctx.db.organizationMember.findUnique({
       where: {
         id: input.memberId,
@@ -59,6 +60,12 @@ export const updateMemberRole = async ({
         id: true,
         userId: true,
         organizationId: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -124,6 +131,18 @@ export const updateMemberRole = async ({
         }`,
       );
     }
+
+    // セキュリティアラート: 管理者に通知（非同期で実行）
+    const memberDisplayName =
+      targetMember.user?.name ?? targetMember.user?.email ?? "不明";
+    void createAdminNotifications(ctx.db, {
+      type: "SECURITY_ROLE_ASSIGNED",
+      priority: "HIGH",
+      title: "メンバーのロールが変更されました",
+      message: `${memberDisplayName} さんのロールが「${input.newRole}」に変更されました`,
+      organizationId: ctx.currentOrg.id,
+      triggeredById: ctx.session.user.id,
+    });
 
     return {
       success: true,

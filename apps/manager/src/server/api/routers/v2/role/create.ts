@@ -3,6 +3,7 @@ import { z } from "zod";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import type { ProtectedContext } from "@/server/api/trpc";
+import { createAdminNotifications } from "../notification/createBulkNotifications";
 
 // 予約語スラッグ
 const RESERVED_ROLE_SLUGS = ["owner", "admin", "member", "viewer", "guest"];
@@ -150,6 +151,16 @@ export const createRole = async ({
         return newRole;
       },
     );
+
+    // セキュリティアラート: 管理者に通知（非同期で実行）
+    void createAdminNotifications(ctx.db, {
+      type: "SECURITY_ROLE_CREATED",
+      priority: "HIGH",
+      title: "新しいロールが作成されました",
+      message: `カスタムロール「${input.name}」（${input.slug}）が作成されました`,
+      organizationId: ctx.currentOrg.id,
+      triggeredById: ctx.session.user.id,
+    });
 
     return {
       ...role,
