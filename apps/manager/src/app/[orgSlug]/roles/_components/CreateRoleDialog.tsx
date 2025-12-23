@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { PermissionSelector, type Permission } from "./PermissionSelector";
+import { PermissionSelector, type McpPermission } from "./PermissionSelector";
 import { Tag, Shield } from "lucide-react";
 
 /**
@@ -55,14 +55,14 @@ const createRoleSchema = z.object({
     .max(500, "説明は500文字以内で入力してください")
     .optional(),
   isDefault: z.boolean(),
-  permissions: z.array(
+  // デフォルト権限（全MCPサーバーに適用）
+  defaultRead: z.boolean().optional(),
+  defaultWrite: z.boolean().optional(),
+  defaultExecute: z.boolean().optional(),
+  // 特定MCPサーバーへの追加権限
+  mcpPermissions: z.array(
     z.object({
-      resourceType: z.enum([
-        "MCP_SERVER_CONFIG",
-        "MCP_SERVER",
-        "MCP_SERVER_TEMPLATE",
-      ]),
-      resourceId: z.string(),
+      mcpServerId: z.string(),
       read: z.boolean(),
       write: z.boolean(),
       execute: z.boolean(),
@@ -94,16 +94,33 @@ export const CreateRoleDialog = ({
       name: "",
       description: "",
       isDefault: false,
-      permissions: [],
+      defaultRead: false,
+      defaultWrite: false,
+      defaultExecute: false,
+      mcpPermissions: [],
     },
   });
 
   const utils = api.useUtils();
   const name = watch("name");
-  const permissions = watch("permissions");
+  const mcpPermissions = watch("mcpPermissions");
 
   // ロール名からスラッグを自動生成
   const generatedSlug = useMemo(() => generateSlugFromName(name), [name]);
+
+  // 組織内のMCPサーバー一覧を取得
+  const { data: mcpServers, isLoading: isLoadingServers } =
+    api.v2.userMcpServer.findOfficialServers.useQuery(undefined, {
+      enabled: open,
+    });
+
+  // MCPサーバーのオプション形式に変換
+  const mcpServerOptions = useMemo(() => {
+    return (mcpServers ?? []).map((server) => ({
+      id: server.id,
+      name: server.name,
+    }));
+  }, [mcpServers]);
 
   const createMutation = api.v2.role.create.useMutation({
     onSuccess: () => {
@@ -153,7 +170,7 @@ export const CreateRoleDialog = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
-          {/* ロール名 */}
+          {/* ロール名とロール識別子 */}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium">
               ロール名 <span className="text-destructive">*</span>
@@ -167,20 +184,16 @@ export const CreateRoleDialog = ({
             {errors.name && (
               <p className="text-destructive text-xs">{errors.name.message}</p>
             )}
-          </div>
 
-          {/* ロール識別子プレビュー */}
-          {generatedSlug && (
-            <div className="bg-muted/50 rounded-lg border p-3">
-              <div className="flex items-center gap-2">
-                <Tag className="text-muted-foreground h-4 w-4" />
-                <span className="text-muted-foreground text-xs font-medium">
-                  ロール識別子
-                </span>
+            {/* ロール識別子プレビュー（ロール名の直下） */}
+            {generatedSlug && (
+              <div className="bg-muted/50 mt-2 flex items-center gap-2 rounded-md px-3 py-2">
+                <Tag className="text-muted-foreground h-3.5 w-3.5" />
+                <span className="text-muted-foreground text-xs">識別子:</span>
+                <span className="font-mono text-xs">{generatedSlug}</span>
               </div>
-              <p className="mt-1 font-mono text-sm">{generatedSlug}</p>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* 説明 */}
           <div className="space-y-2">
@@ -213,16 +226,18 @@ export const CreateRoleDialog = ({
               </p>
             </div>
             <PermissionSelector
-              value={permissions}
+              value={mcpPermissions}
               onChange={(newPermissions) =>
-                setValue("permissions", newPermissions)
+                setValue("mcpPermissions", newPermissions)
               }
+              mcpServers={mcpServerOptions}
+              isLoading={isLoadingServers}
             />
           </div>
 
-          {errors.permissions && (
+          {errors.mcpPermissions && (
             <p className="text-destructive text-xs">
-              {errors.permissions.message}
+              {errors.mcpPermissions.message}
             </p>
           )}
 

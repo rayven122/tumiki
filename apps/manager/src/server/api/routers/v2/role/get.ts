@@ -16,20 +16,18 @@ export type GetRoleInput = z.infer<typeof getRoleInputSchema>;
  * ロール詳細取得 Output スキーマ
  */
 export const getRoleOutputSchema = z.object({
-  organizationId: z.string(),
+  organizationSlug: z.string(),
   slug: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   isDefault: z.boolean(),
-  permissions: z.array(
+  defaultRead: z.boolean(),
+  defaultWrite: z.boolean(),
+  defaultExecute: z.boolean(),
+  mcpPermissions: z.array(
     z.object({
       id: z.string(),
-      resourceType: z.enum([
-        "MCP_SERVER_CONFIG",
-        "MCP_SERVER",
-        "MCP_SERVER_TEMPLATE",
-      ]),
-      resourceId: z.string(),
+      mcpServerId: z.string(),
       read: z.boolean(),
       write: z.boolean(),
       execute: z.boolean(),
@@ -58,13 +56,13 @@ export const getRole = async ({
 
   const role = await ctx.db.organizationRole.findUnique({
     where: {
-      organizationId_slug: {
-        organizationId: ctx.currentOrg.id,
+      organizationSlug_slug: {
+        organizationSlug: ctx.currentOrg.slug,
         slug: input.slug,
       },
     },
     include: {
-      permissions: true,
+      mcpPermissions: true,
     },
   });
 

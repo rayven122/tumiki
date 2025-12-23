@@ -82,6 +82,9 @@ model McpServer {
   /// 表示順序（ユーザーごと）
   displayOrder   Int          @default(0)
 
+  /// 権限設定（サーバー削除時に自動削除）
+  mcpPermissions McpPermission[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   /// 論理削除用のタイムスタンプ
