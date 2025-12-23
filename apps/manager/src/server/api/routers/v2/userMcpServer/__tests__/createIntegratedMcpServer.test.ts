@@ -62,7 +62,7 @@ describe("createIntegratedMcpServer", () => {
       iconPath: null,
       serverStatus: "RUNNING",
       serverType: "CUSTOM",
-      authType: "API_KEY",
+      authType: "OAUTH",
       organizationId: testOrganizationId,
       displayOrder: 0,
     };
@@ -130,7 +130,7 @@ describe("createIntegratedMcpServer", () => {
         iconPath: null,
         serverStatus: "RUNNING",
         serverType: "CUSTOM",
-        authType: "API_KEY",
+        authType: "OAUTH",
         organizationId: testOrganizationId,
         displayOrder: 0,
         templateInstances: {
