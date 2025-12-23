@@ -163,6 +163,11 @@ model RolePermission {
 - `resourceId = ""`: 全リソースに適用
 - `resourceId = "specific_id"`: 特定リソースのみに適用
 
+**フロントエンドでの注意事項**:
+- UIコンポーネント（SelectItem等）では空文字列が使用できないため、「全リソース」を表す値として `"__all__"` を使用
+- データベースに保存する際は `"__all__"` → `""` に変換が必要
+- 定数定義: `const ALL_RESOURCES_VALUE = "__all__"` （`PermissionSelector.tsx`）
+
 ### OrganizationMember（メンバーメタデータ）
 
 ```prisma
