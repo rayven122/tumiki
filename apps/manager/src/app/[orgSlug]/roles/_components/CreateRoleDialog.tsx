@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { PermissionSelector, type McpPermission } from "./PermissionSelector";
+import { PermissionSelector } from "./PermissionSelector";
 import { Tag, Shield } from "lucide-react";
 
 /**
