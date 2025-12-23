@@ -10,12 +10,18 @@ import { getRedisClient } from "../libs/cache/redis.js";
 import { logDebug, logError, logWarn } from "../libs/logger/index.js";
 
 /**
+ * 認証タイプ（Prisma の AuthType enum と同期）
+ */
+export type AuthType = "NONE" | "API_KEY" | "OAUTH";
+
+/**
  * McpServer検索結果の型
  */
 export type McpServerLookupResult = {
   id: string;
   organizationId: string;
   deletedAt: Date | null;
+  authType: AuthType;
 };
 
 /**
@@ -25,6 +31,7 @@ type CachedMcpServerResult = {
   id: string;
   organizationId: string;
   deletedAt: string | null;
+  authType: AuthType;
 };
 
 // キャッシュのTTL（秒）
@@ -69,6 +76,7 @@ export const getMcpServerOrganization = async (
             id: parsed.id,
             organizationId: parsed.organizationId,
             deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
+            authType: parsed.authType,
           };
         }
       }
@@ -95,6 +103,7 @@ export const getMcpServerOrganization = async (
           id: result.id,
           organizationId: result.organizationId,
           deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
+          authType: result.authType,
         };
         await redis.setEx(
           cacheKey,
@@ -123,6 +132,7 @@ const getMcpServerFromDB = async (
         id: true,
         organizationId: true,
         deletedAt: true,
+        authType: true,
       },
     });
 
