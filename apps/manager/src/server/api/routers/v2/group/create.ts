@@ -101,11 +101,18 @@ export const createGroup = async (
     }
   }
 
+  // 属性を構築（アイコンが指定されている場合）
+  const attributes: Record<string, string[]> = {};
+  if (input.icon) {
+    attributes.icon = [input.icon];
+  }
+
   // サブグループを作成
   const result = await keycloakProvider.createSubgroup({
     organizationId: organization.id,
     name: input.name,
     parentSubgroupId: input.parentGroupId,
+    attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
   });
 
   if (!result.success) {

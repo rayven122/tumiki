@@ -49,11 +49,11 @@ export const RoleList = () => {
 
     // デフォルト権限（全MCPサーバーに適用）
     const defaultFlags: string[] = [];
-    if (role.defaultRead) defaultFlags.push("R");
-    if (role.defaultWrite) defaultFlags.push("W");
-    if (role.defaultExecute) defaultFlags.push("X");
+    if (role.defaultRead) defaultFlags.push("閲覧");
+    if (role.defaultWrite) defaultFlags.push("編集");
+    if (role.defaultExecute) defaultFlags.push("実行");
     if (defaultFlags.length > 0) {
-      parts.push(`全サーバー: ${defaultFlags.join("")}`);
+      parts.push(`全サーバー: ${defaultFlags.join("/")}`);
     }
 
     // 特定サーバーへの追加権限

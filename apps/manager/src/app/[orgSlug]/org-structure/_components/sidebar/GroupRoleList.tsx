@@ -1,6 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Shield, Trash2, Loader2 } from "lucide-react";
 import type { GroupRoleOutput } from "@/server/utils/groupSchemas";
 
@@ -77,26 +83,57 @@ const PermissionBadges = ({
   write: boolean;
   execute: boolean;
 }) => {
+  const permissions = [
+    {
+      key: "read",
+      enabled: read,
+      label: "閲覧",
+      description: "ツールの情報を閲覧できます",
+      bgColor: "bg-blue-100",
+      textColor: "text-blue-700",
+    },
+    {
+      key: "write",
+      enabled: write,
+      label: "編集",
+      description: "ツールの設定を変更できます",
+      bgColor: "bg-green-100",
+      textColor: "text-green-700",
+    },
+    {
+      key: "execute",
+      enabled: execute,
+      label: "実行",
+      description: "ツールを実行できます",
+      bgColor: "bg-orange-100",
+      textColor: "text-orange-700",
+    },
+  ] as const;
+
+  const enabledPermissions = permissions.filter((p) => p.enabled);
+
+  if (enabledPermissions.length === 0) {
+    return <span className="text-muted-foreground text-[10px]">権限なし</span>;
+  }
+
   return (
-    <div className="flex gap-1.5">
-      {read && (
-        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-          R
-        </span>
-      )}
-      {write && (
-        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
-          W
-        </span>
-      )}
-      {execute && (
-        <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
-          X
-        </span>
-      )}
-      {!read && !write && !execute && (
-        <span className="text-muted-foreground text-[10px]">権限なし</span>
-      )}
-    </div>
+    <TooltipProvider>
+      <div className="flex gap-1.5">
+        {enabledPermissions.map((perm) => (
+          <Tooltip key={perm.key}>
+            <TooltipTrigger asChild>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${perm.bgColor} ${perm.textColor}`}
+              >
+                {perm.label}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {perm.description}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 };

@@ -74,10 +74,11 @@ export const deleteRole = async ({
     };
 
     // 1. Keycloakからグループロール削除
+    // 作成時と同じ命名規則を使用: org:{orgSlug}:role:{roleSlug}
     const keycloak = KeycloakOrganizationProvider.fromEnv();
     const keycloakResult = await keycloak.deleteGroupRole(
       ctx.currentOrg.id,
-      input.slug,
+      keycloakRoleName,
     );
 
     if (!keycloakResult.success) {
