@@ -36,7 +36,6 @@ const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
 
 export const InvitationManagementSection = () => {
   const { data: session } = useSession();
-  const _user = session?.user;
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState({
     title: "",
@@ -47,8 +46,6 @@ export const InvitationManagementSection = () => {
 
   const { data: invitations, isLoading } =
     api.organization.getInvitations.useQuery();
-
-  const { data: _organization } = api.organization.getById.useQuery();
 
   const utils = api.useUtils();
 

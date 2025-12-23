@@ -3,10 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutputs } from "@/trpc/react";
-import {
-  useConnectionConfigs,
-  getConnectionConfigDisplayName,
-} from "../_hooks/useConnectionConfigs";
+import { useConnectionConfigs } from "../_hooks/useConnectionConfigs";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];

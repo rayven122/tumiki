@@ -132,7 +132,7 @@ export const getOrganizationBySlug = async ({
         user: member.user,
         roles: organizationRoles,
       };
-    } catch (error) {
+    } catch {
       // ロール取得失敗時は空配列を返す（部分的な失敗を許容）
       return {
         id: member.id,
