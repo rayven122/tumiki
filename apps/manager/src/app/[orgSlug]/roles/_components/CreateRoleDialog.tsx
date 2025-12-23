@@ -1,0 +1,254 @@
+"use client";
+
+import { useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { api } from "@/trpc/react";
+import { toast } from "sonner";
+import { PermissionSelector, type Permission } from "./PermissionSelector";
+import { Tag, Shield } from "lucide-react";
+
+/**
+ * ロール名からスラッグを自動生成
+ * - 英数字とスペース、ハイフン、アンダースコアのみ抽出
+ * - スペースとアンダースコアはハイフンに変換
+ * - 小文字化、連続ハイフンは1つに、先頭・末尾のハイフンは削除
+ * - 日本語のみの場合はタイムスタンプベースのスラッグを生成
+ */
+const generateSlugFromName = (name: string): string => {
+  if (!name.trim()) return "";
+
+  // 英数字、スペース、ハイフン、アンダースコアのみ抽出
+  const alphanumeric = name.replace(/[^a-zA-Z0-9\s\-_]/g, "");
+
+  if (!alphanumeric.trim()) {
+    // 日本語のみの場合はタイムスタンプベースのスラッグ
+    return `role-${Date.now().toString(36)}`;
+  }
+
+  return alphanumeric
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-") // スペースとアンダースコアをハイフンに
+    .replace(/-+/g, "-") // 連続ハイフンを1つに
+    .replace(/^-|-$/g, ""); // 先頭・末尾のハイフンを削除
+};
+
+const createRoleSchema = z.object({
+  name: z
+    .string()
+    .min(1, "ロール名は必須です")
+    .max(100, "ロール名は100文字以内で入力してください"),
+  description: z
+    .string()
+    .max(500, "説明は500文字以内で入力してください")
+    .optional(),
+  isDefault: z.boolean(),
+  permissions: z.array(
+    z.object({
+      resourceType: z.enum([
+        "MCP_SERVER_CONFIG",
+        "MCP_SERVER",
+        "MCP_SERVER_TEMPLATE",
+      ]),
+      resourceId: z.string(),
+      read: z.boolean(),
+      write: z.boolean(),
+      execute: z.boolean(),
+    }),
+  ),
+});
+
+type CreateRoleFormData = z.infer<typeof createRoleSchema>;
+
+type CreateRoleDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+export const CreateRoleDialog = ({
+  open,
+  onOpenChange,
+}: CreateRoleDialogProps) => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setValue,
+  } = useForm<CreateRoleFormData>({
+    resolver: zodResolver(createRoleSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      isDefault: false,
+      permissions: [],
+    },
+  });
+
+  const utils = api.useUtils();
+  const name = watch("name");
+  const permissions = watch("permissions");
+
+  // ロール名からスラッグを自動生成
+  const generatedSlug = useMemo(() => generateSlugFromName(name), [name]);
+
+  const createMutation = api.v2.role.create.useMutation({
+    onSuccess: () => {
+      onOpenChange(false);
+      reset();
+      void utils.v2.role.list.invalidate();
+      toast.success("ロールを作成しました");
+    },
+    onError: (error) => {
+      if (error.data?.code === "FORBIDDEN") {
+        toast.error("ロールを作成する権限がありません");
+      } else if (error.message.includes("予約語")) {
+        toast.error("このロール識別子は予約語のため使用できません");
+      } else if (error.message.includes("既に存在")) {
+        toast.error("このロール識別子は既に使用されています");
+      } else {
+        toast.error(`ロールの作成に失敗しました: ${error.message}`);
+      }
+    },
+  });
+
+  const onSubmit = (data: CreateRoleFormData) => {
+    if (!generatedSlug) {
+      toast.error("ロール名を入力してください");
+      return;
+    }
+
+    createMutation.mutate({
+      slug: generatedSlug,
+      ...data,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader className="space-y-3">
+          <div className="bg-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+            <Shield className="text-primary h-6 w-6" />
+          </div>
+          <div className="text-center">
+            <DialogTitle className="text-xl">新しいロールを作成</DialogTitle>
+            <DialogDescription className="mt-1.5">
+              カスタムロールを作成し、MCPサーバーへのアクセス権限を設定します
+            </DialogDescription>
+          </div>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
+          {/* ロール名 */}
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-medium">
+              ロール名 <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="name"
+              {...register("name")}
+              placeholder="例: データエンジニア"
+              className={errors.name ? "border-destructive" : ""}
+            />
+            {errors.name && (
+              <p className="text-destructive text-xs">{errors.name.message}</p>
+            )}
+          </div>
+
+          {/* ロール識別子プレビュー */}
+          {generatedSlug && (
+            <div className="bg-muted/50 rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <Tag className="text-muted-foreground h-4 w-4" />
+                <span className="text-muted-foreground text-xs font-medium">
+                  ロール識別子
+                </span>
+              </div>
+              <p className="mt-1 font-mono text-sm">{generatedSlug}</p>
+            </div>
+          )}
+
+          {/* 説明 */}
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium">
+              説明
+              <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+                （任意）
+              </span>
+            </Label>
+            <Textarea
+              id="description"
+              {...register("description")}
+              placeholder="このロールの目的や権限内容を説明してください"
+              rows={2}
+              className={errors.description ? "border-destructive" : ""}
+            />
+            {errors.description && (
+              <p className="text-destructive text-xs">
+                {errors.description.message}
+              </p>
+            )}
+          </div>
+
+          {/* 権限設定 */}
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium">権限設定</Label>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                MCPサーバーへのアクセス権限を設定します
+              </p>
+            </div>
+            <PermissionSelector
+              value={permissions}
+              onChange={(newPermissions) =>
+                setValue("permissions", newPermissions)
+              }
+            />
+          </div>
+
+          {errors.permissions && (
+            <p className="text-destructive text-xs">
+              {errors.permissions.message}
+            </p>
+          )}
+
+          {/* アクションボタン */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onOpenChange(false);
+                reset();
+              }}
+              className="flex-1"
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              disabled={createMutation.isPending || !generatedSlug}
+              className="flex-1"
+            >
+              {createMutation.isPending ? "作成中..." : "作成"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
