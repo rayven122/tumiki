@@ -34,6 +34,7 @@ import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
+import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 import type { McpServerId } from "@/schema/ids";
 
@@ -215,6 +216,11 @@ export const UserMcpServerCard = ({
         </CardHeader>
 
         <CardContent className="flex-1 space-y-3">
+          {/* OAuth接続URLを表示（OAuthサーバーのみ） */}
+          {isOAuthServer && (
+            <OAuthEndpointUrl userMcpServerId={userMcpServer.id} />
+          )}
+
           {/* ツール一覧を表示するボタン */}
           <Button
             variant="outline"
