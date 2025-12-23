@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { removeMemberInput } from "@/server/utils/organizationSchemas";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
+import { createBulkNotifications } from "../v2/notification/createBulkNotifications";
 
 export const removeMemberInputSchema = removeMemberInput;
 
@@ -32,7 +33,7 @@ export const removeMember = async ({
     requireTeam: true,
   });
 
-  // 削除対象メンバーを取得
+  // 削除対象メンバーを取得（ユーザー情報も含む）
   const targetMember = await ctx.db.organizationMember.findUnique({
     where: {
       id: input.memberId,
@@ -43,6 +44,12 @@ export const removeMember = async ({
       organizationId: true,
       createdAt: true,
       updatedAt: true,
+      user: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -84,7 +91,21 @@ export const removeMember = async ({
   }
 
   // DBからメンバーを削除
-  return await ctx.db.organizationMember.delete({
+  const deletedMember = await ctx.db.organizationMember.delete({
     where: { id: input.memberId },
   });
+
+  // セキュリティアラート: 全メンバーに通知（非同期で実行）
+  const memberDisplayName =
+    targetMember.user?.name ?? targetMember.user?.email ?? "不明";
+  void createBulkNotifications(ctx.db, {
+    type: "SECURITY_MEMBER_REMOVED",
+    priority: "NORMAL",
+    title: "メンバーが削除されました",
+    message: `${memberDisplayName} さんがチームから削除されました`,
+    organizationId: ctx.currentOrg.id,
+    triggeredById: ctx.session.user.id,
+  });
+
+  return deletedMember;
 };

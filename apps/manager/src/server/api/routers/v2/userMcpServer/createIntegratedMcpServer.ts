@@ -136,10 +136,10 @@ export const createIntegratedMcpServer = async (
     },
   });
 
-  // 組織の全メンバーに通知を送信
-  await createBulkNotifications(prisma, {
+  // 組織の全メンバーに通知を送信（非同期で実行）
+  void createBulkNotifications(prisma, {
     type: "MCP_SERVER_ADDED",
-    priority: "NORMAL",
+    priority: "LOW",
     title: "MCPサーバーが追加されました",
     message: `「${input.name}」が組織に追加されました。`,
     linkUrl: `/${organizationId}/mcps/${mcpServer.id}`,
