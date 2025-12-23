@@ -106,6 +106,15 @@ export const memberSchema = z.object({
   initials: z.string(),
 });
 
+/**
+ * グループ移動の入力スキーマ
+ */
+export const moveGroupInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+  newParentGroupId: z.string().min(1, "新しい親グループIDは必須です"),
+});
+
 export type ListGroupsInput = z.infer<typeof listGroupsInputSchema>;
 export type CreateGroupInput = z.infer<typeof createGroupInputSchema>;
 export type DeleteGroupInput = z.infer<typeof deleteGroupInputSchema>;
@@ -113,4 +122,5 @@ export type GetGroupByIdInput = z.infer<typeof getGroupByIdInputSchema>;
 export type AddMemberInput = z.infer<typeof addMemberInputSchema>;
 export type RemoveMemberInput = z.infer<typeof removeMemberInputSchema>;
 export type GetGroupMembersInput = z.infer<typeof getGroupMembersInputSchema>;
+export type MoveGroupInput = z.infer<typeof moveGroupInputSchema>;
 export type Member = z.infer<typeof memberSchema>;

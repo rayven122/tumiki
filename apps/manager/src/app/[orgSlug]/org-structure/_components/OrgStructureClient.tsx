@@ -13,6 +13,32 @@ import {
   extractAllGroupIds,
 } from "./utils/keycloakToOrgDataConverter";
 import type { OrgData } from "./mock/mockOrgData";
+import { Loader2, Network } from "lucide-react";
+
+/**
+ * 空の組織データ（ローディング中に使用）
+ */
+const emptyOrgData: OrgData = {
+  departments: [],
+  relations: [],
+};
+
+/**
+ * ローディングオーバーレイコンポーネント
+ */
+const LoadingOverlay = () => (
+  <div className="bg-background/80 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative">
+        <Network className="text-muted-foreground h-12 w-12" />
+        <Loader2 className="text-primary absolute -right-1 -bottom-1 h-5 w-5 animate-spin" />
+      </div>
+      <p className="text-muted-foreground text-sm">
+        組織構造を読み込んでいます...
+      </p>
+    </div>
+  </div>
+);
 
 type OrgStructureClientProps = {
   organizationId: string;
@@ -72,21 +98,7 @@ export const OrgStructureClient = ({
     arrangeNodesRef.current?.();
   };
 
-  // ローディング状態
-  if (groupsLoading || membersLoading) {
-    return (
-      <div
-        className={cn(
-          "fixed inset-0 top-14 flex items-center justify-center",
-          isOpen ? "md:left-64" : "md:left-16",
-        )}
-      >
-        <div className="text-muted-foreground">
-          組織構造を読み込んでいます...
-        </div>
-      </div>
-    );
-  }
+  const isLoading = groupsLoading || membersLoading;
 
   // エラー状態
   if (groupsError) {
@@ -104,22 +116,6 @@ export const OrgStructureClient = ({
     );
   }
 
-  // データなし（通常は発生しない - 空でもルートノードが作成される）
-  if (!orgData) {
-    return (
-      <div
-        className={cn(
-          "fixed inset-0 top-14 flex items-center justify-center",
-          isOpen ? "md:left-64" : "md:left-16",
-        )}
-      >
-        <div className="text-muted-foreground">
-          データの読み込みに失敗しました
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(
@@ -128,7 +124,7 @@ export const OrgStructureClient = ({
       )}
     >
       <MapView
-        orgData={orgData}
+        orgData={orgData ?? emptyOrgData}
         organizationId={organizationId}
         nodes={nodes}
         edges={edges}
@@ -137,6 +133,9 @@ export const OrgStructureClient = ({
         onArrangeNodesRef={arrangeNodesRef}
         onArrangeNodes={handleArrangeNodes}
       />
+
+      {/* ローディング中はオーバーレイを表示 */}
+      {isLoading && <LoadingOverlay />}
     </div>
   );
 };

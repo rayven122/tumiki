@@ -5,6 +5,7 @@ import type {
   GetGroupMembersInput,
   Member,
 } from "../../../../utils/groupSchemas";
+import type { OrganizationInfo } from "../../../../utils/organizationPermissions";
 
 /**
  * ユーザー名からイニシャルを生成
@@ -36,6 +37,7 @@ const generateInitials = (name: string): string => {
  * グループメンバー一覧取得
  *
  * セキュリティ：
+ * - 操作対象の組織が現在のユーザーの所属組織であることを確認
  * - データベースで組織の存在を確認
  * - すべてのグループIDが組織のサブグループであることを確認
  * - 複数グループのメンバーを一括取得（パフォーマンス最適化）
@@ -46,12 +48,21 @@ const generateInitials = (name: string): string => {
  *
  * @param db - Prisma transaction client
  * @param input - グループメンバー取得パラメータ
+ * @param currentOrg - 現在のユーザーの所属組織情報
  * @returns グループIDをキーとしたメンバーマップ
  */
 export const getGroupMembers = async (
   db: PrismaTransactionClient,
   input: GetGroupMembersInput,
+  currentOrg: OrganizationInfo,
 ): Promise<Record<string, Member[]>> => {
+  // セキュリティチェック: 組織IDが現在のコンテキストと一致するか
+  if (currentOrg.id !== input.organizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "他の組織のグループメンバーにアクセスすることはできません",
+    });
+  }
   // データベースで組織の存在を確認
   const organization = await db.organization.findUnique({
     where: { id: input.organizationId },
