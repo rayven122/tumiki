@@ -32,8 +32,7 @@ export type Permission =
   | "member:remove" // メンバー削除
   | "member:role:update" // ロール変更
   // ロール管理（カスタムロール）
-  | "role:create" // カスタムロール作成
-  | "role:delete" // カスタムロール削除
+  | "role:manage" // ロール管理（作成・更新・削除・権限管理）
   // MCP管理
   | "mcp:create" // MCPサーバー作成
   | "mcp:delete" // MCPサーバー削除
@@ -55,8 +54,7 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, Permission[]> = {
     "member:role:update",
     "group:read",
     "group:manage",
-    "role:create",
-    "role:delete",
+    "role:manage",
     "mcp:create",
     "mcp:delete",
     "mcp:use",
