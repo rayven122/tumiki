@@ -223,6 +223,19 @@ wellKnownRoute.get("/oauth-protected-resource/mcp/:mcpServerId", async (c) => {
     );
   }
 
+  // authType が OAUTH でない場合は OAuth メタデータを返さない
+  // これにより、OAuth 非対応のサーバーへの DCR を防止する
+  if (mcpServer.authType !== "OAUTH") {
+    return c.json(
+      {
+        error: "oauth_not_supported",
+        error_description:
+          "This MCP Server does not support OAuth authentication. DCR is not available.",
+      },
+      404,
+    );
+  }
+
   const resourceWithMcpServerId = `${mcpResourceUrl}/${mcpServerId}`;
 
   // RFC 9728 準拠のリソースメタデータを返す

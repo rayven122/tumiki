@@ -269,11 +269,12 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
   let originalKeycloakIssuer: string | undefined;
   let originalMcpResourceUrl: string | undefined;
 
-  // テスト用のモック McpServer データ
+  // テスト用のモック McpServer データ（authType: OAUTH）
   const mockMcpServer: McpServerLookupResult = {
     id: "test-mcp-server-id",
     organizationId: "test-org-id",
     deletedAt: null,
+    authType: "OAUTH",
   };
 
   beforeEach(() => {
@@ -369,6 +370,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
         id: "another-server-id",
         organizationId: "another-org-id",
         deletedAt: null,
+        authType: "OAUTH" as const,
       });
 
       const res = await app.request(
@@ -416,6 +418,77 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
         error: "not_found",
         error_description: "MCP Server not found: non-existent-id",
       });
+    });
+  });
+
+  describe("authType が OAUTH でない場合", () => {
+    test("authType が API_KEY の場合、404 を返す", async () => {
+      mockGetMcpServerOrganization.mockResolvedValue({
+        id: "api-key-server-id",
+        organizationId: "test-org-id",
+        deletedAt: null,
+        authType: "API_KEY" as const,
+      });
+
+      const res = await app.request(
+        "/.well-known/oauth-protected-resource/mcp/api-key-server-id",
+        {
+          method: "GET",
+        },
+      );
+
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toStrictEqual({
+        error: "oauth_not_supported",
+        error_description:
+          "This MCP Server does not support OAuth authentication. DCR is not available.",
+      });
+    });
+
+    test("authType が NONE の場合、404 を返す", async () => {
+      mockGetMcpServerOrganization.mockResolvedValue({
+        id: "no-auth-server-id",
+        organizationId: "test-org-id",
+        deletedAt: null,
+        authType: "NONE" as const,
+      });
+
+      const res = await app.request(
+        "/.well-known/oauth-protected-resource/mcp/no-auth-server-id",
+        {
+          method: "GET",
+        },
+      );
+
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toStrictEqual({
+        error: "oauth_not_supported",
+        error_description:
+          "This MCP Server does not support OAuth authentication. DCR is not available.",
+      });
+    });
+
+    test("authType が OAUTH の場合のみ、OAuth メタデータを返す", async () => {
+      mockGetMcpServerOrganization.mockResolvedValue({
+        id: "oauth-server-id",
+        organizationId: "test-org-id",
+        deletedAt: null,
+        authType: "OAUTH" as const,
+      });
+
+      const res = await app.request(
+        "/.well-known/oauth-protected-resource/mcp/oauth-server-id",
+        {
+          method: "GET",
+        },
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty("authorization_servers");
+      expect(body.resource).toBe("http://localhost:8080/mcp/oauth-server-id");
     });
   });
 
