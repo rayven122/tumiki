@@ -337,20 +337,22 @@ erDiagram
   DateTime updatedAt
 }
 "OrganizationRole" {
-  String organizationId FK
+  String organizationSlug FK
   String slug
   String name
   String description "nullable"
   Boolean isDefault
+  Boolean defaultRead
+  Boolean defaultWrite
+  Boolean defaultExecute
   DateTime createdAt
   DateTime updatedAt
 }
-"RolePermission" {
+"McpPermission" {
   String id PK
-  String organizationId FK
+  String organizationSlug FK
   String roleSlug
-  ResourceType resourceType
-  String resourceId
+  String mcpServerId FK
   Boolean read
   Boolean write
   Boolean execute
@@ -364,7 +366,7 @@ erDiagram
 "OrganizationMember" }o--|| "Organization" : organization
 "OrganizationInvitation" }o--|| "Organization" : organization
 "OrganizationRole" }o--|| "Organization" : organization
-"RolePermission" }o--|| "OrganizationRole" : role
+"McpPermission" }o--|| "OrganizationRole" : role
 "_OrganizationToUser" }o--|| "Organization" : Organization
 ```
 
@@ -409,26 +411,28 @@ erDiagram
 アプリケーションロール定義（権限セット）
 
 **Properties**
-  - `organizationId`: 組織ID
-  - `slug`: URL識別子（例: data-engineer）
+  - `organizationSlug`: 組織slug（URLで使用される識別子）
+  - `slug`: ロールslug（例: data-engineer）
   - `name`: ロール名（表示用）
   - `description`: ロールの説明
   - `isDefault`: デフォルトロールか（新メンバーに自動付与）
+  - `defaultRead`: 全MCPサーバーに適用するデフォルト権限
+  - `defaultWrite`: 
+  - `defaultExecute`: 
   - `createdAt`: 
   - `updatedAt`: 
 
-### `RolePermission`
-ロールに付与された権限（Unix型権限）
+### `McpPermission`
+特定MCPサーバーへの権限設定（参照整合性あり）
 
 **Properties**
   - `id`: 
-  - `organizationId`: 組織ID
-  - `roleSlug`: ロールslug
-  - `resourceType`: リソースタイプ
-  - `resourceId`: リソースID（空文字列の場合は全リソースに適用）
-  - `read`: 読み取り権限（閲覧）
-  - `write`: 書き込み権限（作成・更新・削除）
-  - `execute`: 実行権限（MCPツール実行）
+  - `organizationSlug`: 親のロール
+  - `roleSlug`: 
+  - `mcpServerId`: 対象MCPサーバー（削除時に自動削除）
+  - `read`: 権限（trueで権限付与）
+  - `write`: 
+  - `execute`: 
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -692,7 +696,7 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
   - `id`: 
   - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
   - `mcpServerId`: 関連するMCPサーバー
-  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
+  - `mcpServerTemplateId`: 関連するMCPサ��バーテンプレート
   - `isEnabled`: このテンプレートインスタンスが有効か
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 

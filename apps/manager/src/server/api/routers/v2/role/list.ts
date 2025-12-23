@@ -16,21 +16,19 @@ export type ListRolesInput = z.infer<typeof listRolesInputSchema>;
  */
 export const listRolesOutputSchema = z.array(
   z.object({
-    organizationId: z.string(),
+    organizationSlug: z.string(),
     slug: z.string(),
     name: z.string(),
     description: z.string().nullable(),
     isDefault: z.boolean(),
-    permissions: z
+    defaultRead: z.boolean(),
+    defaultWrite: z.boolean(),
+    defaultExecute: z.boolean(),
+    mcpPermissions: z
       .array(
         z.object({
           id: z.string(),
-          resourceType: z.enum([
-            "MCP_SERVER_CONFIG",
-            "MCP_SERVER",
-            "MCP_SERVER_TEMPLATE",
-          ]),
-          resourceId: z.string(),
+          mcpServerId: z.string(),
           read: z.boolean(),
           write: z.boolean(),
           execute: z.boolean(),
@@ -61,10 +59,10 @@ export const listRoles = async ({
 
   const roles = await ctx.db.organizationRole.findMany({
     where: {
-      organizationId: ctx.currentOrg.id,
+      organizationSlug: ctx.currentOrg.slug,
     },
     include: {
-      permissions: input.includePermissions,
+      mcpPermissions: input.includePermissions,
     },
     orderBy: {
       createdAt: "asc",

@@ -1,9 +1,10 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import type { ProtectedContext } from "@/server/api/trpc";
 
 /**
- * 権限削除 Input スキーマ
+ * MCPサーバー権限削除 Input スキーマ
  */
 export const removePermissionInputSchema = z.object({
   permissionId: z.string(),
@@ -12,7 +13,7 @@ export const removePermissionInputSchema = z.object({
 export type RemovePermissionInput = z.infer<typeof removePermissionInputSchema>;
 
 /**
- * 権限削除 Output スキーマ
+ * MCPサーバー権限削除 Output スキーマ
  */
 export const removePermissionOutputSchema = z.object({
   success: z.boolean(),
@@ -23,7 +24,7 @@ export type RemovePermissionOutput = z.infer<
 >;
 
 /**
- * 権限削除実装
+ * MCPサーバー権限削除実装
  */
 export const removePermission = async ({
   input,
@@ -38,13 +39,21 @@ export const removePermission = async ({
     requireTeam: true,
   });
 
-  // 組織境界チェックを含めて削除
-  await ctx.db.rolePermission.delete({
-    where: {
-      id: input.permissionId,
-      organizationId: ctx.currentOrg.id,
-    },
-  });
+  try {
+    // 組織境界チェックを含めて削除
+    await ctx.db.mcpPermission.delete({
+      where: {
+        id: input.permissionId,
+        organizationSlug: ctx.currentOrg.slug,
+      },
+    });
 
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error("権限削除エラー:", error);
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "指定された権限が見つかりません",
+    });
+  }
 };

@@ -43,51 +43,34 @@ export const RoleList = () => {
     );
   }
 
-  const formatPermissions = (
-    permissions: ListRolesOutput[number]["permissions"] | undefined,
-  ) => {
-    if (!permissions || permissions.length === 0) {
-      return null;
+  // 権限情報を表示用にフォーマット
+  const formatPermissions = (role: ListRolesOutput[number]) => {
+    const parts: string[] = [];
+
+    // デフォルト権限（全MCPサーバーに適用）
+    const defaultFlags: string[] = [];
+    if (role.defaultRead) defaultFlags.push("R");
+    if (role.defaultWrite) defaultFlags.push("W");
+    if (role.defaultExecute) defaultFlags.push("X");
+    if (defaultFlags.length > 0) {
+      parts.push(`全サーバー: ${defaultFlags.join("")}`);
     }
 
-    const grouped = permissions.reduce(
-      (acc, perm) => {
-        const key = `${perm.resourceType}:${perm.resourceId || "全リソース"}`;
-        acc[key] ??= {
-          resourceType: perm.resourceType,
-          resourceId: perm.resourceId,
-          flags: [],
-        };
-        if (perm.read) acc[key].flags.push("R");
-        if (perm.write) acc[key].flags.push("W");
-        if (perm.execute) acc[key].flags.push("X");
-        return acc;
-      },
-      {} as Record<
-        string,
-        { resourceType: string; resourceId: string; flags: string[] }
-      >,
-    );
+    // 特定サーバーへの追加権限
+    const mcpPermissions = role.mcpPermissions ?? [];
+    if (mcpPermissions.length > 0) {
+      const overrideCount = mcpPermissions.length;
+      parts.push(`+${overrideCount}サーバー追加`);
+    }
 
-    return Object.entries(grouped)
-      .map(([, value]) => {
-        const typeLabel =
-          value.resourceType === "MCP_SERVER"
-            ? "サーバー"
-            : value.resourceType === "MCP_SERVER_CONFIG"
-              ? "設定"
-              : "テンプレート";
-        const scope = value.resourceId ? "" : "(全)";
-        return `${typeLabel}${scope}: ${value.flags.join("")}`;
-      })
-      .join(" / ");
+    return parts.length > 0 ? parts.join(" / ") : null;
   };
 
   return (
     <>
       <div className="divide-y">
         {roles.map((role) => {
-          const permissionText = formatPermissions(role.permissions);
+          const permissionText = formatPermissions(role);
 
           return (
             <div

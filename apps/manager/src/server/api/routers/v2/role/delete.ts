@@ -27,7 +27,7 @@ export type DeleteRoleOutput = z.infer<typeof deleteRoleOutputSchema>;
  *
  * Sagaパターン:
  * 1. Keycloakグループロール削除
- * 2. DB OrganizationRole削除（CASCADE → RolePermission自動削除）
+ * 2. DB OrganizationRole削除（CASCADE → McpPermission自動削除）
  * 3. エラー時: 補償トランザクション（Keycloakロール再作成）
  */
 export const deleteRole = async ({
@@ -54,8 +54,8 @@ export const deleteRole = async ({
     // ロール情報をバックアップ（補償トランザクション用）
     const existingRole = await ctx.db.organizationRole.findUnique({
       where: {
-        organizationId_slug: {
-          organizationId: ctx.currentOrg.id,
+        organizationSlug_slug: {
+          organizationSlug: ctx.currentOrg.slug,
           slug: input.slug,
         },
       },
@@ -89,11 +89,11 @@ export const deleteRole = async ({
 
     roleDeleted = true;
 
-    // 2. DBから削除（CASCADE: RolePermission自動削除）
+    // 2. DBから削除（CASCADE: McpPermission自動削除）
     await ctx.db.organizationRole.delete({
       where: {
-        organizationId_slug: {
-          organizationId: ctx.currentOrg.id,
+        organizationSlug_slug: {
+          organizationSlug: ctx.currentOrg.slug,
           slug: input.slug,
         },
       },

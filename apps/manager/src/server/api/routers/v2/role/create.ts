@@ -26,21 +26,10 @@ export const createRoleInputSchema = z
       .max(100, "ロール名は100文字以内で入力してください"),
     description: z.string().max(500).optional(),
     isDefault: z.boolean().default(false),
-    permissions: z
-      .array(
-        z.object({
-          resourceType: z.enum([
-            "MCP_SERVER_CONFIG",
-            "MCP_SERVER",
-            "MCP_SERVER_TEMPLATE",
-          ]),
-          resourceId: z.string().default(""), // 空文字列 = 全リソース
-          read: z.boolean().default(false),
-          write: z.boolean().default(false),
-          execute: z.boolean().default(false),
-        }),
-      )
-      .default([]),
+    // デフォルト権限（全MCPサーバーに適用）
+    defaultRead: z.boolean().default(false),
+    defaultWrite: z.boolean().default(false),
+    defaultExecute: z.boolean().default(false),
   })
   .refine((data) => !RESERVED_ROLE_SLUGS.includes(data.slug), {
     message:
@@ -54,21 +43,19 @@ export type CreateRoleInput = z.infer<typeof createRoleInputSchema>;
  * ロール作成 Output スキーマ
  */
 export const createRoleOutputSchema = z.object({
-  organizationId: z.string(),
+  organizationSlug: z.string(),
   slug: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   isDefault: z.boolean(),
+  defaultRead: z.boolean(),
+  defaultWrite: z.boolean(),
+  defaultExecute: z.boolean(),
   keycloakRoleName: z.string(),
-  permissions: z.array(
+  mcpPermissions: z.array(
     z.object({
       id: z.string(),
-      resourceType: z.enum([
-        "MCP_SERVER_CONFIG",
-        "MCP_SERVER",
-        "MCP_SERVER_TEMPLATE",
-      ]),
-      resourceId: z.string(),
+      mcpServerId: z.string(),
       read: z.boolean(),
       write: z.boolean(),
       execute: z.boolean(),
@@ -87,7 +74,7 @@ export type CreateRoleOutput = z.infer<typeof createRoleOutputSchema>;
  *
  * Sagaパターン:
  * 1. Keycloakグループロール作成
- * 2. DB OrganizationRole + RolePermission作成
+ * 2. DB OrganizationRole作成
  * 3. エラー時: Keycloakロールバック（削除）
  */
 export const createRole = async ({
@@ -123,14 +110,14 @@ export const createRole = async ({
 
     keycloakRoleCreated = true;
 
-    // 3. DBトランザクション（OrganizationRole + RolePermission）
+    // 3. DBトランザクション（OrganizationRole作成）
     const role = await ctx.db.$transaction(
       async (tx: Parameters<Parameters<typeof ctx.db.$transaction>[0]>[0]) => {
         // 既存ロールチェック
         const existing = await tx.organizationRole.findUnique({
           where: {
-            organizationId_slug: {
-              organizationId: ctx.currentOrg.id,
+            organizationSlug_slug: {
+              organizationSlug: ctx.currentOrg.slug,
               slug: input.slug,
             },
           },
@@ -143,58 +130,29 @@ export const createRole = async ({
           });
         }
 
-        // OrganizationRole作成
+        // OrganizationRole作成（デフォルト権限を含む）
         const newRole = await tx.organizationRole.create({
           data: {
-            organizationId: ctx.currentOrg.id,
+            organizationSlug: ctx.currentOrg.slug,
             slug: input.slug,
             name: input.name,
             description: input.description ?? null,
             isDefault: input.isDefault,
+            defaultRead: input.defaultRead,
+            defaultWrite: input.defaultWrite,
+            defaultExecute: input.defaultExecute,
+          },
+          include: {
+            mcpPermissions: true,
           },
         });
-
-        // 権限が指定されている場合は作成
-        if (input.permissions.length > 0) {
-          await tx.rolePermission.createMany({
-            data: input.permissions.map((perm) => ({
-              organizationId: ctx.currentOrg.id,
-              roleSlug: input.slug,
-              resourceType: perm.resourceType,
-              resourceId: perm.resourceId,
-              read: perm.read,
-              write: perm.write,
-              execute: perm.execute,
-            })),
-          });
-        }
 
         return newRole;
       },
     );
 
-    // 4. 権限情報を含む完全なレスポンスを取得
-    const fullRole = await ctx.db.organizationRole.findUnique({
-      where: {
-        organizationId_slug: {
-          organizationId: ctx.currentOrg.id,
-          slug: input.slug,
-        },
-      },
-      include: {
-        permissions: true,
-      },
-    });
-
-    if (!fullRole) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "ロールの作成後の取得に失敗しました",
-      });
-    }
-
     return {
-      ...fullRole,
+      ...role,
       keycloakRoleName,
     };
   } catch (error) {

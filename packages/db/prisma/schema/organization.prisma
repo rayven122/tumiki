@@ -97,61 +97,53 @@ model OrganizationInvitation {
 /// アプリケーションロール定義（権限セット）
 /// @namespace Organization
 model OrganizationRole {
-  /// 組織ID
-  organizationId String
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  /// URL識別子（例: data-engineer）
-  slug           String
+  /// 組織slug（URLで使用される識別子）
+  organizationSlug String
+  organization     Organization                  @relation(fields: [organizationSlug], references: [slug], onDelete: Cascade)
+  /// ロールslug（例: data-engineer）
+  slug             String
   /// ロール名（表示用）
-  name           String
+  name             String
   /// ロールの説明
-  description    String?
+  description      String?
   /// デフォルトロールか（新メンバーに自動付与）
-  isDefault      Boolean          @default(false)
-  /// このロールが持つ詳細な権限
-  permissions    RolePermission[]
+  isDefault        Boolean                       @default(false)
+
+  /// 全MCPサーバーに適用するデフォルト権限
+  defaultRead      Boolean                       @default(false)
+  defaultWrite     Boolean                       @default(false)
+  defaultExecute   Boolean                       @default(false)
+
+  /// 特定サーバーへの権限設定
+  mcpPermissions   McpPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@id([organizationId, slug])
+  @@id([organizationSlug, slug])
 }
 
-
-/// リソースタイプ
+/// 特定MCPサーバーへの権限設定（参照整合性あり）
 /// @namespace Organization
-enum ResourceType {
-  /// MCPサーバー設定
-  MCP_SERVER_CONFIG
-  /// MCPサーバー
-  MCP_SERVER
-  /// MCPサーバーテンプレート
-  MCP_SERVER_TEMPLATE
-}
+model McpPermission {
+  id               String           @id @default(cuid())
 
-/// ロールに付与された権限（Unix型権限）
-/// @namespace Organization
-model RolePermission {
-  id             String           @id @default(cuid())
-  /// 組織ID
-  organizationId String
-  /// ロールslug
-  roleSlug       String
-  role           OrganizationRole @relation(fields: [organizationId, roleSlug], references: [organizationId, slug], onDelete: Cascade)
-  /// リソースタイプ
-  resourceType   ResourceType
-  /// リソースID（空文字列の場合は全リソースに適用）
-  resourceId     String           @default("")
+  /// 親のロール
+  organizationSlug String
+  roleSlug         String
+  role             OrganizationRole @relation(fields: [organizationSlug, roleSlug], references: [organizationSlug, slug], onDelete: Cascade)
 
-  /// 読み取り権限（閲覧）
-  read    Boolean @default(false)
-  /// 書き込み権限（作成・更新・削除）
-  write   Boolean @default(false)
-  /// 実行権限（MCPツール実行）
-  execute Boolean @default(false)
+  /// 対象MCPサーバー（削除時に自動削除）
+  mcpServerId      String
+  mcpServer        McpServer        @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+
+  /// 権限（trueで権限付与）
+  read             Boolean          @default(false)
+  write            Boolean          @default(false)
+  execute          Boolean          @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([organizationId, roleSlug, resourceType, resourceId])
+  @@unique([organizationSlug, roleSlug, mcpServerId])
 }

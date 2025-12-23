@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Server, FileCode, Layout } from "lucide-react";
+import { Plus, Trash2, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -12,83 +12,61 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-// 全リソースを表す特別な値（空文字列はSelectItemで使用不可のため）
-const ALL_RESOURCES_VALUE = "__all__";
-
-type ResourceType = "MCP_SERVER_CONFIG" | "MCP_SERVER" | "MCP_SERVER_TEMPLATE";
-
-export type Permission = {
-  resourceType: ResourceType;
-  resourceId: string;
+// MCPサーバー固有の追加権限
+// 「全サーバー」のデフォルト権限はOrganizationRoleのdefaultRead/Write/Executeで管理
+export type McpPermission = {
+  mcpServerId: string;
   read: boolean;
   write: boolean;
   execute: boolean;
 };
 
-type PermissionSelectorProps = {
-  value: Permission[];
-  onChange: (permissions: Permission[]) => void;
+export type McpServerOption = {
+  id: string;
+  name: string;
 };
 
-const RESOURCE_TYPE_CONFIG: Record<
-  ResourceType,
-  { label: string; icon: typeof Server; color: string }
-> = {
-  MCP_SERVER: {
-    label: "MCPサーバー",
-    icon: Server,
-    color: "bg-blue-500/10 text-blue-600 border-blue-200",
-  },
-  MCP_SERVER_CONFIG: {
-    label: "サーバー設定",
-    icon: FileCode,
-    color: "bg-purple-500/10 text-purple-600 border-purple-200",
-  },
-  MCP_SERVER_TEMPLATE: {
-    label: "テンプレート",
-    icon: Layout,
-    color: "bg-amber-500/10 text-amber-600 border-amber-200",
-  },
+type PermissionSelectorProps = {
+  value: McpPermission[];
+  onChange: (permissions: McpPermission[]) => void;
+  mcpServers: McpServerOption[];
+  isLoading?: boolean;
 };
 
 export const PermissionSelector = ({
   value,
   onChange,
+  mcpServers,
+  isLoading = false,
 }: PermissionSelectorProps) => {
   const [newPermission, setNewPermission] = useState<{
-    resourceType: ResourceType;
-    resourceId: string;
+    mcpServerId: string;
     read: boolean;
     write: boolean;
     execute: boolean;
   }>({
-    resourceType: "MCP_SERVER",
-    resourceId: ALL_RESOURCES_VALUE,
+    mcpServerId: "",
     read: false,
     write: false,
     execute: false,
   });
 
   const handleAdd = () => {
+    // サーバーが選択されていないか確認
+    if (!newPermission.mcpServerId) {
+      return;
+    }
+
     // 少なくとも1つの権限が有効かチェック
     if (!newPermission.read && !newPermission.write && !newPermission.execute) {
       return;
     }
 
-    // 実際に保存するresourceId（ALL_RESOURCES_VALUEの場合は空文字列に変換）
-    const actualResourceId =
-      newPermission.resourceId === ALL_RESOURCES_VALUE
-        ? ""
-        : newPermission.resourceId;
-
-    // 同じリソースタイプ+リソースIDの組み合わせが既に存在するかチェック
+    // 同じmcpServerIdが既に存在するかチェック
     const exists = value.some(
-      (p) =>
-        p.resourceType === newPermission.resourceType &&
-        p.resourceId === actualResourceId,
+      (p) => p.mcpServerId === newPermission.mcpServerId,
     );
 
     if (exists) {
@@ -98,15 +76,16 @@ export const PermissionSelector = ({
     onChange([
       ...value,
       {
-        ...newPermission,
-        resourceId: actualResourceId,
+        mcpServerId: newPermission.mcpServerId,
+        read: newPermission.read,
+        write: newPermission.write,
+        execute: newPermission.execute,
       },
     ]);
 
     // リセット
     setNewPermission({
-      resourceType: "MCP_SERVER",
-      resourceId: ALL_RESOURCES_VALUE,
+      mcpServerId: "",
       read: false,
       write: false,
       execute: false,
@@ -117,143 +96,120 @@ export const PermissionSelector = ({
     onChange(value.filter((_, i) => i !== index));
   };
 
-  const handleUpdate = (index: number, updates: Partial<Permission>) => {
+  const handleUpdate = (index: number, updates: Partial<McpPermission>) => {
     onChange(value.map((p, i) => (i === index ? { ...p, ...updates } : p)));
   };
 
-  const getResourceConfig = (resourceType: ResourceType) =>
-    RESOURCE_TYPE_CONFIG[resourceType];
-
   const canAdd =
-    newPermission.read || newPermission.write || newPermission.execute;
+    newPermission.mcpServerId &&
+    (newPermission.read || newPermission.write || newPermission.execute);
+
+  // 既に追加されたmcpServerIdを除外した選択可能なオプション
+  const availableOptions = mcpServers.filter(
+    (server) => !value.some((p) => p.mcpServerId === server.id),
+  );
+
+  // サーバー名を取得するヘルパー
+  const getServerName = (mcpServerId: string): string => {
+    const server = mcpServers.find((s) => s.id === mcpServerId);
+    return server?.name ?? "不明なサーバー";
+  };
 
   return (
     <div className="space-y-4">
       {/* 既存権限リスト */}
       {value.length > 0 && (
         <div className="space-y-2">
-          {value.map((perm, index) => {
-            const config = getResourceConfig(perm.resourceType);
-            const Icon = config.icon;
-
-            return (
-              <div
-                key={index}
-                className="bg-muted/30 flex items-center justify-between rounded-lg border p-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-md border",
-                      config.color,
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {config.label}
-                      </span>
-                      {!perm.resourceId && (
-                        <Badge variant="secondary" className="text-xs">
-                          全リソース
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-1 flex gap-2">
-                      {["read", "write", "execute"].map((permType) => {
-                        const isChecked = perm[
-                          permType as keyof typeof perm
-                        ] as boolean;
-                        const labels = { read: "R", write: "W", execute: "X" };
-                        return (
-                          <button
-                            key={permType}
-                            type="button"
-                            onClick={() =>
-                              handleUpdate(index, { [permType]: !isChecked })
-                            }
-                            className={cn(
-                              "flex h-6 w-6 items-center justify-center rounded text-xs font-medium transition-colors",
-                              isChecked
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80",
-                            )}
-                          >
-                            {labels[permType as keyof typeof labels]}
-                          </button>
-                        );
-                      })}
-                    </div>
+          {value.map((perm, index) => (
+            <div
+              key={perm.mcpServerId}
+              className="bg-muted/30 flex items-center justify-between rounded-lg border p-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-blue-500/10 text-blue-600">
+                  <Server className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium">
+                    {getServerName(perm.mcpServerId)}
+                  </span>
+                  <div className="mt-1 flex gap-2">
+                    {["read", "write", "execute"].map((permType) => {
+                      const isChecked = perm[
+                        permType as keyof typeof perm
+                      ] as boolean;
+                      const labels = { read: "R", write: "W", execute: "X" };
+                      return (
+                        <button
+                          key={permType}
+                          type="button"
+                          onClick={() =>
+                            handleUpdate(index, { [permType]: !isChecked })
+                          }
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded text-xs font-medium transition-colors",
+                            isChecked
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80",
+                          )}
+                        >
+                          {labels[permType as keyof typeof labels]}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemove(index)}
-                  className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
-            );
-          })}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemove(index)}
+                className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
         </div>
       )}
 
       {/* 新規追加セクション */}
       <div className="rounded-lg border border-dashed p-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* リソースタイプ */}
-          <div className="space-y-1.5">
-            <Label className="text-muted-foreground text-xs">
-              リソースタイプ
-            </Label>
-            <Select
-              value={newPermission.resourceType}
-              onValueChange={(value) =>
-                setNewPermission({
-                  ...newPermission,
-                  resourceType: value as ResourceType,
-                })
-              }
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(RESOURCE_TYPE_CONFIG).map(([key, config]) => (
-                  <SelectItem key={key} value={key}>
-                    <div className="flex items-center gap-2">
-                      <config.icon className="h-4 w-4" />
-                      {config.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 対象範囲 */}
-          <div className="space-y-1.5">
-            <Label className="text-muted-foreground text-xs">対象範囲</Label>
-            <Select
-              value={newPermission.resourceId}
-              onValueChange={(value) =>
-                setNewPermission({ ...newPermission, resourceId: value })
-              }
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_RESOURCES_VALUE}>全リソース</SelectItem>
-                {/* TODO: 個別サーバーの一覧を取得して表示 */}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* MCPサーバー選択 */}
+        <div className="space-y-1.5">
+          <Label className="text-muted-foreground text-xs">
+            追加権限を設定するサーバー
+          </Label>
+          <Select
+            value={newPermission.mcpServerId}
+            onValueChange={(val) =>
+              setNewPermission({ ...newPermission, mcpServerId: val })
+            }
+            disabled={isLoading || availableOptions.length === 0}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue
+                placeholder={
+                  isLoading
+                    ? "読み込み中..."
+                    : availableOptions.length === 0
+                      ? "追加可能なサーバーがありません"
+                      : "サーバーを選択"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {availableOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  <div className="flex items-center gap-2">
+                    <Server className="h-4 w-4 text-blue-500" />
+                    {option.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* 権限チェックボックス */}
@@ -288,7 +244,7 @@ export const PermissionSelector = ({
           <Button
             type="button"
             onClick={handleAdd}
-            disabled={!canAdd}
+            disabled={!canAdd || availableOptions.length === 0}
             size="sm"
             className="h-8"
           >

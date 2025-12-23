@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,14 +32,14 @@ const editRoleSchema = z.object({
     .max(500, "説明は500文字以内で入力してください")
     .optional(),
   isDefault: z.boolean().optional(),
-  permissions: z.array(
+  // デフォルト権限（全MCPサーバーに適用）
+  defaultRead: z.boolean().optional(),
+  defaultWrite: z.boolean().optional(),
+  defaultExecute: z.boolean().optional(),
+  // 特定MCPサーバーへの追加権限
+  mcpPermissions: z.array(
     z.object({
-      resourceType: z.enum([
-        "MCP_SERVER_CONFIG",
-        "MCP_SERVER",
-        "MCP_SERVER_TEMPLATE",
-      ]),
-      resourceId: z.string(),
+      mcpServerId: z.string(),
       read: z.boolean(),
       write: z.boolean(),
       execute: z.boolean(),
@@ -60,6 +60,18 @@ export const EditRoleDialog = ({
   open,
   onOpenChange,
 }: EditRoleDialogProps) => {
+  // MCPサーバー権限をフォーム用の型に変換
+  const mapMcpPermissions = (
+    mcpPermissions: typeof role.mcpPermissions,
+  ): EditRoleFormData["mcpPermissions"] => {
+    return (mcpPermissions ?? []).map((p) => ({
+      mcpServerId: p.mcpServerId,
+      read: p.read,
+      write: p.write,
+      execute: p.execute,
+    }));
+  };
+
   const {
     register,
     handleSubmit,
@@ -73,7 +85,10 @@ export const EditRoleDialog = ({
       name: role.name,
       description: role.description ?? "",
       isDefault: role.isDefault,
-      permissions: role.permissions ?? [],
+      defaultRead: role.defaultRead,
+      defaultWrite: role.defaultWrite,
+      defaultExecute: role.defaultExecute,
+      mcpPermissions: mapMcpPermissions(role.mcpPermissions),
     },
   });
 
@@ -83,11 +98,28 @@ export const EditRoleDialog = ({
       name: role.name,
       description: role.description ?? "",
       isDefault: role.isDefault,
-      permissions: role.permissions ?? [],
+      defaultRead: role.defaultRead,
+      defaultWrite: role.defaultWrite,
+      defaultExecute: role.defaultExecute,
+      mcpPermissions: mapMcpPermissions(role.mcpPermissions),
     });
   }, [role, reset]);
 
   const utils = api.useUtils();
+
+  // 組織内のMCPサーバー一覧を取得
+  const { data: mcpServers, isLoading: isLoadingServers } =
+    api.v2.userMcpServer.findOfficialServers.useQuery(undefined, {
+      enabled: open,
+    });
+
+  // MCPサーバーのオプション形式に変換
+  const mcpServerOptions = useMemo(() => {
+    return (mcpServers ?? []).map((server) => ({
+      id: server.id,
+      name: server.name,
+    }));
+  }, [mcpServers]);
 
   const updateMutation = api.v2.role.update.useMutation({
     onSuccess: () => {
@@ -113,7 +145,7 @@ export const EditRoleDialog = ({
     });
   };
 
-  const permissions = watch("permissions");
+  const mcpPermissions = watch("mcpPermissions");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -131,18 +163,7 @@ export const EditRoleDialog = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
-          {/* ロール識別子（変更不可） */}
-          <div className="bg-muted/50 rounded-lg border p-3">
-            <div className="flex items-center gap-2">
-              <Tag className="text-muted-foreground h-4 w-4" />
-              <span className="text-muted-foreground text-xs font-medium">
-                ロール識別子（変更不可）
-              </span>
-            </div>
-            <p className="mt-1 font-mono text-sm">{role.slug}</p>
-          </div>
-
-          {/* ロール名 */}
+          {/* ロール名とロール識別子 */}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium">
               ロール名
@@ -156,6 +177,13 @@ export const EditRoleDialog = ({
             {errors.name && (
               <p className="text-destructive text-xs">{errors.name.message}</p>
             )}
+
+            {/* ロール識別子（ロール名の直下、変更不可） */}
+            <div className="bg-muted/50 mt-2 flex items-center gap-2 rounded-md px-3 py-2">
+              <Tag className="text-muted-foreground h-3.5 w-3.5" />
+              <span className="text-muted-foreground text-xs">識別子:</span>
+              <span className="font-mono text-xs">{role.slug}</span>
+            </div>
           </div>
 
           {/* 説明 */}
@@ -189,16 +217,18 @@ export const EditRoleDialog = ({
               </p>
             </div>
             <PermissionSelector
-              value={permissions}
+              value={mcpPermissions}
               onChange={(newPermissions) =>
-                setValue("permissions", newPermissions)
+                setValue("mcpPermissions", newPermissions)
               }
+              mcpServers={mcpServerOptions}
+              isLoading={isLoadingServers}
             />
           </div>
 
-          {errors.permissions && (
+          {errors.mcpPermissions && (
             <p className="text-destructive text-xs">
-              {errors.permissions.message}
+              {errors.mcpPermissions.message}
             </p>
           )}
 
