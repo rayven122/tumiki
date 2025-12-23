@@ -361,6 +361,21 @@ const provider = new KeycloakOrganizationProvider({
 
 ### 組織管理
 
+#### デフォルトロール初期化（アプリ起動時に一度だけ呼び出す）
+
+デフォルトロール（Owner, Admin, Member, Viewer）は全組織で共通のRealm Rolesとして
+アプリケーション初期化時に作成されている必要があります。
+
+```typescript
+const provider = KeycloakOrganizationProvider.fromEnv();
+
+// アプリ起動時に一度だけ呼び出す
+const result = await provider.ensureDefaultRealmRolesExist();
+if (!result.success) {
+  console.error("デフォルトロール作成失敗:", result.error);
+}
+```
+
 #### 組織作成
 
 ```typescript
@@ -368,7 +383,6 @@ const result = await provider.createOrganization({
   name: "My Organization",
   groupName: "my-org",
   ownerId: "user-sub",
-  createDefaultRoles: true, // デフォルトロールを作成
 });
 
 if (result.success) {

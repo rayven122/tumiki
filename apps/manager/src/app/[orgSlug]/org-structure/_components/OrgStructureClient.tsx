@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { useAtomValue } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 import { cn } from "@/lib/utils";
 import { MapView } from "./MapView";
+import { GroupDetailSidebar } from "./sidebar/GroupDetailSidebar";
 import type { DepartmentNodeType } from "./nodes/DepartmentNode";
 import type { DepartmentEdgeType } from "./edges/DepartmentEdge";
 import { api } from "@/trpc/react";
@@ -58,6 +59,8 @@ export const OrgStructureClient = ({
 }: OrgStructureClientProps) => {
   const [nodes, setNodes] = useState<DepartmentNodeType[]>([]);
   const [edges, setEdges] = useState<DepartmentEdgeType[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const isOpen = useAtomValue(sidebarOpenAtom);
 
   // レイアウト調整関数のref
@@ -98,6 +101,39 @@ export const OrgStructureClient = ({
     arrangeNodesRef.current?.();
   };
 
+  /**
+   * ノード選択ハンドラー
+   */
+  const handleNodeSelect = useCallback((groupId: string | null) => {
+    setSelectedGroupId(groupId);
+  }, []);
+
+  /**
+   * サイドバーを閉じるハンドラー
+   */
+  const handleSidebarClose = useCallback(() => {
+    setSelectedGroupId(null);
+  }, []);
+
+  /**
+   * 編集モード変更ハンドラー
+   */
+  const handleEditModeChange = useCallback((editMode: boolean) => {
+    setIsEditMode(editMode);
+    // 編集モードに入ったらサイドバーを閉じる
+    if (editMode) {
+      setSelectedGroupId(null);
+    }
+  }, []);
+
+  /**
+   * 選択されたグループの部署情報を取得
+   */
+  const selectedDepartment = useMemo(() => {
+    if (!selectedGroupId || !orgData) return null;
+    return orgData.departments.find((d) => d.id === selectedGroupId) ?? null;
+  }, [selectedGroupId, orgData]);
+
   const isLoading = groupsLoading || membersLoading;
 
   // エラー状態
@@ -132,7 +168,21 @@ export const OrgStructureClient = ({
         onEdgesChange={setEdges}
         onArrangeNodesRef={arrangeNodesRef}
         onArrangeNodes={handleArrangeNodes}
+        onNodeSelect={handleNodeSelect}
+        onEditModeChange={handleEditModeChange}
       />
+
+      {/* グループ詳細サイドバー（編集モード中は非表示） */}
+      {!isEditMode && (
+        <GroupDetailSidebar
+          department={selectedDepartment}
+          groupId={selectedGroupId}
+          organizationId={organizationId}
+          isOpen={selectedGroupId !== null}
+          onClose={handleSidebarClose}
+          canEdit={true}
+        />
+      )}
 
       {/* ローディング中はオーバーレイを表示 */}
       {isLoading && <LoadingOverlay />}

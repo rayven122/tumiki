@@ -17,13 +17,26 @@ export type OrganizationRole = "Owner" | "Admin" | "Member" | "Viewer";
  */
 export type IOrganizationProvider = {
   /**
+   * デフォルトRealm Rolesが存在することを確認し、なければ作成
+   * これらは全組織で共通して使用されるロール（Owner, Admin, Member, Viewer）
+   * アプリケーション初期化時に一度だけ呼び出す
+   */
+  ensureDefaultRealmRolesExist: () => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+
+  /**
    * 組織グループを作成
+   *
+   * 注意: デフォルトロール（Owner, Admin, Member, Viewer）は全組織で共通の
+   * Realm Rolesとして事前に作成されている必要があります。
+   * アプリケーション初期化時に ensureDefaultRealmRolesExist() を呼び出してください。
    */
   createOrganization: (params: {
     name: string;
     groupName: string; // 例: "@user-id" or "team-slug"
     ownerId: string;
-    createDefaultRoles?: boolean; // デフォルト: true
   }) => Promise<{ success: boolean; externalId: string; error?: string }>;
 
   /**
