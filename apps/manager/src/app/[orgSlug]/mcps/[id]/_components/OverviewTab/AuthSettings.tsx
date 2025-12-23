@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Shield, AlertCircle, Info } from "lucide-react";
+import { Shield, Info } from "lucide-react";
 import { toast } from "@/utils/client/toast";
 import { api } from "@/trpc/react";
 import { AuthType } from "@tumiki/db/prisma";
@@ -19,7 +18,7 @@ type AuthSettingsProps = {
 
 export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType>(
-    AuthType.API_KEY,
+    AuthType.OAUTH,
   );
 
   const utils = api.useUtils();
@@ -112,7 +111,7 @@ export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
             {/* APIキー使用方法の説明 */}
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
               <div className="flex items-start space-x-2">
-                <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                 <div className="flex-1 space-y-2">
                   <p className="text-sm font-medium text-blue-900">
                     APIキーの設定方法
@@ -155,14 +154,27 @@ export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
           </>
         )}
 
+        {/* OAuth認証の設定説明 */}
         {selectedAuthType === AuthType.OAUTH && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>近日リリース予定</AlertTitle>
-            <AlertDescription>
-              OAuth認証は近日中にリリース予定です。もうしばらくお待ちください。
-            </AlertDescription>
-          </Alert>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <div className="flex items-start space-x-2">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-blue-900">
+                  OAuth認証の設定方法
+                </p>
+                <div className="space-y-1 text-xs text-blue-800">
+                  <p>
+                    クライアント接続カード内の接続URLをMCPクライアントに登録してください。
+                  </p>
+                  <p className="mt-2">
+                    <span className="font-medium">対応クライアント：</span>{" "}
+                    Claude Desktop、Cursor など
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
