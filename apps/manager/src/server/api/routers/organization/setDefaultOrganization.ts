@@ -9,7 +9,8 @@ export const setDefaultOrganizationInputSchema = z.object({
 
 export const setDefaultOrganizationOutputSchema = z.object({
   success: z.boolean(),
-  defaultOrganizationId: OrganizationIdSchema,
+  organizationId: OrganizationIdSchema,
+  organizationSlug: z.string(),
 });
 
 type SetDefaultOrganizationProps = {
@@ -34,6 +35,11 @@ export const setDefaultOrganization = async ({
         isDeleted: false,
       },
     },
+    include: {
+      organization: {
+        select: { slug: true },
+      },
+    },
   });
 
   if (!membership) {
@@ -43,26 +49,9 @@ export const setDefaultOrganization = async ({
     });
   }
 
-  // デフォルト組織を更新
-  const organization = await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { slug: true },
-  });
-
-  if (!organization) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "組織が見つかりません",
-    });
-  }
-
-  await db.user.update({
-    where: { id: userId },
-    data: { defaultOrganizationSlug: organization.slug },
-  });
-
   return {
     success: true,
-    defaultOrganizationId: organizationId,
+    organizationId,
+    organizationSlug: membership.organization.slug,
   };
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,13 +17,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Mail, RefreshCw, X, Clock } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
 
 type InvitationListProps = {
   organization: GetOrganizationBySlugOutput;
 };
 
-export const InvitationList = ({ organization }: InvitationListProps) => {
+export const InvitationList = ({
+  organization: _organization,
+}: InvitationListProps) => {
+  const { data: session } = useSession();
   const { data: invitations, isLoading } =
     api.organization.getInvitations.useQuery();
 
@@ -50,7 +55,8 @@ export const InvitationList = ({ organization }: InvitationListProps) => {
     cancelInvitationMutation.mutate({ invitationId });
   };
 
-  const isAdmin = organization.isAdmin;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   if (isLoading) {
     return (
@@ -142,7 +148,7 @@ export const InvitationList = ({ organization }: InvitationListProps) => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>招待をキャンセル</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {invitation.email} への招待をキャンセルしますか？
+                            {invitation.email} への招待を取消しますか？
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -153,7 +159,7 @@ export const InvitationList = ({ organization }: InvitationListProps) => {
                             }
                             className="bg-red-600 hover:bg-red-700"
                           >
-                            キャンセル
+                            取消
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

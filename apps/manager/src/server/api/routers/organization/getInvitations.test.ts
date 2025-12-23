@@ -7,7 +7,6 @@ import {
   type MockedFunction,
 } from "vitest";
 import { getInvitations } from "./getInvitations";
-import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { type OrganizationId } from "@/schema/ids";
 import type { OrganizationInvitation, User } from "@tumiki/db";
@@ -64,28 +63,21 @@ describe("getInvitations", () => {
         id: mockOrganizationId,
         createdBy: mockUserId,
         isPersonal: false,
-        isAdmin: true,
         members: [
           {
             id: "member_test123",
             userId: mockUserId,
-            isAdmin: true,
           },
         ],
       },
       headers: new Headers(),
-    } as ProtectedContext;
+    } as unknown as ProtectedContext;
   });
 
   test("管理者が招待一覧を取得できる", async () => {
     const now = new Date();
     const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7日後
     const pastDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000); // 1日前
-
-    // 管理者メンバーシップをモック
-    mockDb.organizationMember.findUnique.mockResolvedValue({
-      isAdmin: true,
-    });
 
     // 招待データをモック
     const mockInvitations: MockInvitationWithUser[] = [
@@ -95,9 +87,7 @@ describe("getInvitations", () => {
         email: "pending@example.com",
         token: "token1",
         invitedBy: mockInvitedUserId,
-        isAdmin: false,
-        roleIds: [],
-        groupIds: [],
+        roles: ["Member"],
         expires: futureDate,
         createdAt: now,
         updatedAt: now,
@@ -114,9 +104,7 @@ describe("getInvitations", () => {
         email: "expired@example.com",
         token: "token2",
         invitedBy: mockInvitedUserId,
-        isAdmin: true,
-        roleIds: ["role1"],
-        groupIds: ["group1"],
+        roles: ["Admin"],
         expires: pastDate,
         createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000),
         updatedAt: now,
@@ -148,11 +136,6 @@ describe("getInvitations", () => {
     const now = new Date();
     const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // 一般ユーザーのメンバーシップをモック
-    mockDb.organizationMember.findUnique.mockResolvedValue({
-      isAdmin: false,
-    });
-
     // 招待データをモック
     const mockInvitations: MockInvitationWithUser[] = [
       {
@@ -161,9 +144,7 @@ describe("getInvitations", () => {
         email: "pending@example.com",
         token: "token1",
         invitedBy: mockInvitedUserId,
-        isAdmin: false,
-        roleIds: [],
-        groupIds: [],
+        roles: ["Member"],
         expires: futureDate,
         createdAt: now,
         updatedAt: now,
@@ -178,15 +159,16 @@ describe("getInvitations", () => {
 
     mockDb.organizationInvitation.findMany.mockResolvedValue(mockInvitations);
 
-    // 一般ユーザーのコンテキストを作成
+    // 一般ユーザーのコンテキストを作成（session.user.isOrganizationAdminで判定されるため、currentOrgは変更不要）
     const nonAdminCtx: typeof mockCtx = {
       ...mockCtx,
-      currentOrg: {
-        id: mockOrganizationId,
-        createdBy: mockUserId,
-        isPersonal: false,
-        isAdmin: false,
-      },
+      session: {
+        ...mockCtx.session,
+        user: {
+          ...mockCtx.session.user,
+          isOrganizationAdmin: false,
+        },
+      } as unknown as ProtectedContext["session"],
     };
 
     // 一般ユーザーでも招待一覧を取得できることを確認

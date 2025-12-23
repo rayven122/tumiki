@@ -4,10 +4,11 @@
 
 /// @namespace Organization
 model Organization {
-  id           String                   @id @default(cuid())
-  /// 組織名
+  /// Keycloak Group ID
+  id           String                   @id
+  /// 組織名（表示名）
   name         String
-  /// 組織のURL識別子（不変、ユニーク）
+  /// 組織のURL識別子（Keycloak Group名: "@user-id" or "team-slug"）
   slug         String                   @unique
   /// 組織の説明
   description  String?
@@ -22,16 +23,13 @@ model Organization {
   /// 組織の作成者
   createdBy    String
   creator      User                     @relation(fields: [createdBy], references: [id])
-  /// この組織をデフォルトとするユーザー
+  /// @deprecated セッション管理に移行。新規コードでは使用しないこと。
+  /// この組織をデフォルト組織として設定しているユーザー
   defaultUsers User[]                   @relation("UserDefaultOrganization")
-  /// 組織のメンバー
+  /// 組織のメンバー（メタデータのみ、実際のメンバーシップはKeycloak管理）
   members      OrganizationMember[]
-  /// 組織のグループ
-  groups       OrganizationGroup[]
-  /// 組織のロール
+  /// 組織のアプリケーションロール（権限定義）
   roles        OrganizationRole[]
-  /// リソース固有の権限
-  resourceAcls ResourceAccessControl[]
   /// 組織の招待
   invitations  OrganizationInvitation[]
 
@@ -49,25 +47,20 @@ model Organization {
   /// フィードバック
   feedbacks Feedback[]
 
+  /// 通知関連
+  notifications Notification[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 /// @namespace Organization
 model OrganizationMember {
-  id             String                  @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
-  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
-  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// このメンバーが管理者権限を持つか
-  isAdmin        Boolean                 @default(false)
-  /// 割り当てられたロール
-  roles          OrganizationRole[]
-  /// 所属グループ
-  groups         OrganizationGroup[]
-  /// 個別リソースへのアクセス権限
-  resourceAcls   ResourceAccessControl[]
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,15 +81,12 @@ model OrganizationInvitation {
   /// 招待者のユーザーID
   invitedBy     String
   invitedByUser User     @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
-  /// 招待された人が管理者になるか
-  isAdmin       Boolean  @default(false)
-  /// 付与される予定のロールID配列
-  roleIds       String[]
-  /// 招待時に追加するグループID配列
-  groupIds      String[]
+  /// 招待時に付与するロール（Keycloak管理）
+  roles         String[] @default(["Member"])
 
   /// 招待の有効期限
   expires   DateTime
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -104,130 +94,56 @@ model OrganizationInvitation {
   @@index([token])
 }
 
-/// @namespace Organization
-model OrganizationGroup {
-  id             String                  @id @default(cuid())
-  /// グループ名
-  name           String
-  /// グループの説明
-  description    String?
-  /// 組織ID
-  organizationId String
-  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  /// グループメンバー
-  members        OrganizationMember[]
-  /// グループに割り当てられたロール
-  roles          OrganizationRole[]
-  /// グループ固有のリソースアクセス権限
-  resourceAcls   ResourceAccessControl[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([organizationId, name])
-}
-
-/// ロール定義
+/// アプリケーションロール定義（権限セット）
 /// @namespace Organization
 model OrganizationRole {
-  id             String               @id @default(cuid())
-  /// ロール名
-  name           String
+  /// 組織slug（URLで使用される識別子）
+  organizationSlug String
+  organization     Organization                  @relation(fields: [organizationSlug], references: [slug], onDelete: Cascade)
+  /// ロールslug（例: data-engineer）
+  slug             String
+  /// ロール名（表示用）
+  name             String
   /// ロールの説明
-  description    String?
-  /// 組織ID
-  organizationId String
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  /// デフォルトロールか
-  isDefault      Boolean              @default(false)
-  /// ロールに割り当てられた権限
-  permissions    RolePermission[]
-  /// このロールを持つメンバー
-  members        OrganizationMember[]
-  /// このロールを持つグループ
-  groups         OrganizationGroup[]
+  description      String?
+  /// デフォルトロールか（新メンバーに自動付与）
+  isDefault        Boolean                       @default(false)
+
+  /// 全MCPサーバーに適用するデフォルト権限
+  defaultRead      Boolean                       @default(false)
+  defaultWrite     Boolean                       @default(false)
+  defaultExecute   Boolean                       @default(false)
+
+  /// 特定サーバーへの権限設定
+  mcpPermissions   McpPermission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([organizationId, name])
+  @@id([organizationSlug, slug])
 }
 
-/// 権限タイプ
+/// 特定MCPサーバーへの権限設定（参照整合性あり）
 /// @namespace Organization
-enum PermissionAction {
-  /// 作成権限
-  CREATE
-  /// 読み取り権限
-  READ
-  /// 編集権限
-  UPDATE
-  /// 削除権限
-  DELETE
-  /// 管理権限（権限の管理や設定変更など）
-  MANAGE
-}
+model McpPermission {
+  id               String           @id @default(cuid())
 
-/// リソースタイプ
-/// @namespace Organization
-enum ResourceType {
-  /// 組織グループ
-  GROUP
-  /// 組織メンバー
-  MEMBER
-  /// 組織ロール
-  ROLE
-  /// MCPサーバー設定
-  MCP_SERVER_CONFIG
-  /// ツールグループ
-  TOOL_GROUP
-  /// MCPサーバーインスタンス
-  MCP_SERVER_INSTANCE
-}
+  /// 親のロール
+  organizationSlug String
+  roleSlug         String
+  role             OrganizationRole @relation(fields: [organizationSlug, roleSlug], references: [organizationSlug, slug], onDelete: Cascade)
 
-/// ロールに付与された権限
-/// @namespace Organization
-model RolePermission {
-  id           String           @id @default(cuid())
-  /// ロールID
-  roleId       String
-  role         OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  /// リソースタイプ
-  resourceType ResourceType
-  /// 権限アクション
-  action       PermissionAction
+  /// 対象MCPサーバー（削除時に自動削除）
+  mcpServerId      String
+  mcpServer        McpServer        @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+
+  /// 権限（trueで権限付与）
+  read             Boolean          @default(false)
+  write            Boolean          @default(false)
+  execute          Boolean          @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([roleId, resourceType, action])
-}
-
-/// 特定リソースへのアクセス制御
-/// @namespace Organization
-model ResourceAccessControl {
-  id             String              @id @default(cuid())
-  /// 組織ID
-  organizationId String
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  /// リソースタイプ
-  resourceType   ResourceType
-  /// リソースID
-  resourceId     String
-  /// 対象メンバー（nullの場合はグループまたはすべてのメンバー）
-  memberId       String?
-  member         OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  /// 対象グループ（nullの場合はメンバー個人またはすべてのメンバー）
-  groupId        String?
-  group          OrganizationGroup?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  /// 許可されたアクション
-  allowedActions PermissionAction[]
-  /// 拒否されたアクション　(※許可よりも拒否が優先される)
-  deniedActions  PermissionAction[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([organizationId, resourceType, resourceId, memberId, groupId])
-  @@index([organizationId, resourceType, resourceId])
+  @@unique([organizationSlug, roleSlug, mcpServerId])
 }

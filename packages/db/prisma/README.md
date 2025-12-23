@@ -4,6 +4,7 @@
 - [Auth](#auth)
 - [Feedback](#feedback)
 - [McpServer](#mcpserver)
+- [Notification](#notification)
 - [Organization](#organization)
 - [RequestLog](#requestlog)
 - [UserMcpServer](#usermcpserver)
@@ -71,7 +72,9 @@ erDiagram
   - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `defaultOrganizationSlug`: デフォルト組織のスラッグ
+  - `defaultOrganizationSlug`
+    > セッション管理に移行。新規コードでは使用しないこと。
+    > デフォルト組織のスラッグ
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -254,6 +257,51 @@ Pair relationship table between [McpServerTemplateInstance](#McpServerTemplateIn
   - `B`: 
 
 
+## Notification
+```mermaid
+erDiagram
+"Notification" {
+  String id PK
+  String type
+  NotificationPriority priority
+  String title
+  String message
+  String linkUrl "nullable"
+  Boolean isRead
+  DateTime readAt "nullable"
+  String organizationId FK
+  String userId FK
+  String triggeredById FK "nullable"
+  Boolean isDeleted
+  DateTime expiresAt "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+```
+
+### `Notification`
+通知テーブル
+
+**Properties**
+  - `id`: 
+  - `type`
+    > 通知タイプ（文字列で管理）
+    > 例: "MCP_TOOL_CHANGED", "MCP_SERVER_STATUS_CHANGED", "ORGANIZATION_INVITATION_SENT" など
+  - `priority`: 通知優先度
+  - `title`: 通知タイトル（日本語）
+  - `message`: 通知メッセージ（日本語）
+  - `linkUrl`: リンク先URL（クリック時の遷移先）
+  - `isRead`: 既読フラグ
+  - `readAt`: 既読日時
+  - `organizationId`: 関連する組織ID
+  - `userId`: 通知の受信者（ユーザーID）
+  - `triggeredById`: アクションをトリガーしたユーザー（誰が変更したか）
+  - `isDeleted`: 論理削除フラグ（非表示）
+  - `expiresAt`: 有効期限（古い通知の自動削除用）
+  - `createdAt`: 
+  - `updatedAt`: 
+
+
 ## Organization
 ```mermaid
 erDiagram
@@ -274,7 +322,6 @@ erDiagram
   String id PK
   String organizationId FK
   String userId FK
-  Boolean isAdmin
   DateTime createdAt
   DateTime updatedAt
 }
@@ -284,47 +331,31 @@ erDiagram
   String email
   String token UK
   String invitedBy FK
-  Boolean isAdmin
-  String roleIds
-  String groupIds
+  String roles
   DateTime expires
   DateTime createdAt
   DateTime updatedAt
 }
-"OrganizationGroup" {
-  String id PK
-  String name
-  String description "nullable"
-  String organizationId FK
-  DateTime createdAt
-  DateTime updatedAt
-}
 "OrganizationRole" {
-  String id PK
+  String organizationSlug FK
+  String slug
   String name
   String description "nullable"
-  String organizationId FK
   Boolean isDefault
+  Boolean defaultRead
+  Boolean defaultWrite
+  Boolean defaultExecute
   DateTime createdAt
   DateTime updatedAt
 }
-"RolePermission" {
+"McpPermission" {
   String id PK
-  String roleId FK
-  ResourceType resourceType
-  PermissionAction action
-  DateTime createdAt
-  DateTime updatedAt
-}
-"ResourceAccessControl" {
-  String id PK
-  String organizationId FK
-  ResourceType resourceType
-  String resourceId
-  String memberId FK "nullable"
-  String groupId FK "nullable"
-  PermissionAction allowedActions
-  PermissionAction deniedActions
+  String organizationSlug FK
+  String roleSlug
+  String mcpServerId FK
+  Boolean read
+  Boolean write
+  Boolean execute
   DateTime createdAt
   DateTime updatedAt
 }
@@ -332,41 +363,19 @@ erDiagram
   String A FK
   String B FK
 }
-"_OrganizationMemberToOrganizationRole" {
-  String A FK
-  String B FK
-}
-"_OrganizationGroupToOrganizationMember" {
-  String A FK
-  String B FK
-}
-"_OrganizationGroupToOrganizationRole" {
-  String A FK
-  String B FK
-}
 "OrganizationMember" }o--|| "Organization" : organization
 "OrganizationInvitation" }o--|| "Organization" : organization
-"OrganizationGroup" }o--|| "Organization" : organization
 "OrganizationRole" }o--|| "Organization" : organization
-"RolePermission" }o--|| "OrganizationRole" : role
-"ResourceAccessControl" }o--|| "Organization" : organization
-"ResourceAccessControl" }o--o| "OrganizationMember" : member
-"ResourceAccessControl" }o--o| "OrganizationGroup" : group
+"McpPermission" }o--|| "OrganizationRole" : role
 "_OrganizationToUser" }o--|| "Organization" : Organization
-"_OrganizationMemberToOrganizationRole" }o--|| "OrganizationMember" : OrganizationMember
-"_OrganizationMemberToOrganizationRole" }o--|| "OrganizationRole" : OrganizationRole
-"_OrganizationGroupToOrganizationMember" }o--|| "OrganizationGroup" : OrganizationGroup
-"_OrganizationGroupToOrganizationMember" }o--|| "OrganizationMember" : OrganizationMember
-"_OrganizationGroupToOrganizationRole" }o--|| "OrganizationGroup" : OrganizationGroup
-"_OrganizationGroupToOrganizationRole" }o--|| "OrganizationRole" : OrganizationRole
 ```
 
 ### `Organization`
 
 **Properties**
-  - `id`: 
-  - `name`: 組織名
-  - `slug`: 組織のURL識別子（不変、ユニーク）
+  - `id`: Keycloak Group ID
+  - `name`: 組織名（表示名）
+  - `slug`: 組織のURL識別子（Keycloak Group名: "@user-id" or "team-slug"）
   - `description`: 組織の説明
   - `logoUrl`: 組織のロゴURL
   - `isDeleted`: 論理削除フラグ
@@ -382,7 +391,6 @@ erDiagram
   - `id`: 
   - `organizationId`: 
   - `userId`: 
-  - `isAdmin`: このメンバーが管理者権限を持つか
   - `createdAt`: 
   - `updatedAt`: 
 
@@ -394,84 +402,42 @@ erDiagram
   - `email`: 招待先メールアドレス
   - `token`: 招待トークン
   - `invitedBy`: 招待者のユーザーID
-  - `isAdmin`: 招待された人が管理者になるか
-  - `roleIds`: 付与される予定のロールID配列
-  - `groupIds`: 招待時に追加するグループID配列
+  - `roles`: 招待時に付与するロール（Keycloak管理）
   - `expires`: 招待の有効期限
   - `createdAt`: 
   - `updatedAt`: 
 
-### `OrganizationGroup`
-
-**Properties**
-  - `id`: 
-  - `name`: グループ名
-  - `description`: グループの説明
-  - `organizationId`: 組織ID
-  - `createdAt`: 
-  - `updatedAt`: 
-
 ### `OrganizationRole`
-ロール定義
+アプリケーションロール定義（権限セット）
 
 **Properties**
-  - `id`: 
-  - `name`: ロール名
+  - `organizationSlug`: 組織slug（URLで使用される識別子）
+  - `slug`: ロールslug（例: data-engineer）
+  - `name`: ロール名（表示用）
   - `description`: ロールの説明
-  - `organizationId`: 組織ID
-  - `isDefault`: デフォルトロールか
+  - `isDefault`: デフォルトロールか（新メンバーに自動付与）
+  - `defaultRead`: 全MCPサーバーに適用するデフォルト権限
+  - `defaultWrite`: 
+  - `defaultExecute`: 
   - `createdAt`: 
   - `updatedAt`: 
 
-### `RolePermission`
-ロールに付与された権限
+### `McpPermission`
+特定MCPサーバーへの権限設定（参照整合性あり）
 
 **Properties**
   - `id`: 
-  - `roleId`: ロールID
-  - `resourceType`: リソースタイプ
-  - `action`: 権限アクション
-  - `createdAt`: 
-  - `updatedAt`: 
-
-### `ResourceAccessControl`
-特定リソースへのアクセス制御
-
-**Properties**
-  - `id`: 
-  - `organizationId`: 組織ID
-  - `resourceType`: リソースタイプ
-  - `resourceId`: リソースID
-  - `memberId`: 対象メンバー（nullの場合はグループまたはすべてのメンバー）
-  - `groupId`: 対象グループ（nullの場合はメンバー個人またはすべてのメンバー）
-  - `allowedActions`: 許可されたアクション
-  - `deniedActions`: 拒否されたアクション　(※許可よりも拒否が優先される)
+  - `organizationSlug`: 親のロール
+  - `roleSlug`: 
+  - `mcpServerId`: 対象MCPサーバー（削除時に自動削除）
+  - `read`: 権限（trueで権限付与）
+  - `write`: 
+  - `execute`: 
   - `createdAt`: 
   - `updatedAt`: 
 
 ### `_OrganizationToUser`
 Pair relationship table between [Organization](#Organization) and [User](#User)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_OrganizationMemberToOrganizationRole`
-Pair relationship table between [OrganizationMember](#OrganizationMember) and [OrganizationRole](#OrganizationRole)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_OrganizationGroupToOrganizationMember`
-Pair relationship table between [OrganizationGroup](#OrganizationGroup) and [OrganizationMember](#OrganizationMember)
-
-**Properties**
-  - `A`: 
-  - `B`: 
-
-### `_OrganizationGroupToOrganizationRole`
-Pair relationship table between [OrganizationGroup](#OrganizationGroup) and [OrganizationRole](#OrganizationRole)
 
 **Properties**
   - `A`: 
@@ -730,7 +696,7 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
   - `id`: 
   - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
   - `mcpServerId`: 関連するMCPサーバー
-  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
+  - `mcpServerTemplateId`: 関連するMCPサ��バーテンプレート
   - `isEnabled`: このテンプレートインスタンスが有効か
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 
@@ -806,7 +772,9 @@ erDiagram
   - `emailVerified`: メールアドレス検証日時 (Auth.js required)
   - `image`: プロフィール画像のURL
   - `role`: ユーザーの権限
-  - `defaultOrganizationSlug`: デフォルト組織のスラッグ
+  - `defaultOrganizationSlug`
+    > セッション管理に移行。新規コードでは使用しないこと。
+    > デフォルト組織のスラッグ
   - `createdAt`: 
   - `updatedAt`: 
 

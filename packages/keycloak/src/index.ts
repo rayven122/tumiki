@@ -24,3 +24,6 @@ export { KeycloakOrganizationProvider } from "./provider.js";
 
 // Keycloak Admin APIクライアントのエクスポート
 export { KeycloakAdminClient } from "./client.js";
+
+// 環境変数設定ヘルパーのエクスポート
+export { loadKeycloakConfigFromEnv } from "./config.js";

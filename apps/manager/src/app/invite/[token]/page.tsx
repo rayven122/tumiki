@@ -14,8 +14,10 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
   // 1. セッション確認
   const session = await auth();
+
   if (!session?.user) {
-    redirect(`/signin?redirect=/invite/${encodeURIComponent(token)}`);
+    const callbackUrl = `/invite/${token}`;
+    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
   // 2. トークン検証（サーバー側）
@@ -77,12 +79,17 @@ export default async function InvitePage({ params }: InvitePageProps) {
     }
 
     // 7. 正常 → クライアントコンポーネントへ
+    // ロール配列から管理者権限を判定
+    const isAdmin = invitation.roles.some(
+      (role) => role === "Owner" || role === "Admin",
+    );
+
     return (
       <InviteAcceptClient
         token={token}
         organizationName={invitation.organization.name}
         invitedByName={invitation.invitedByUser.name}
-        isAdmin={invitation.isAdmin}
+        isAdmin={isAdmin}
       />
     );
   } catch (error) {

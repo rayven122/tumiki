@@ -85,8 +85,7 @@ export const resendInvitation = async ({
       result.email,
       inviteUrl,
       result.organization.name,
-      result.isAdmin,
-      result.roleIds,
+      result.roles,
       result.expires.toISOString(),
     );
 

@@ -61,6 +61,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),
+  usePathname: () => "/org_1/mcps",
 }));
 
 // テスト用の組織データ
@@ -70,7 +71,6 @@ const mockOrganizations = [
     name: "Organization 1",
     isPersonal: false,
     isDefault: true,
-    isAdmin: false,
     memberCount: 5,
   },
   {
@@ -78,7 +78,6 @@ const mockOrganizations = [
     name: "Organization 2",
     isPersonal: false,
     isDefault: false,
-    isAdmin: true,
     memberCount: 10,
   },
   {
@@ -86,7 +85,6 @@ const mockOrganizations = [
     name: "Personal Workspace",
     isPersonal: true,
     isDefault: false,
-    isAdmin: true,
     memberCount: 1,
   },
 ];
@@ -104,9 +102,11 @@ describe("useOrganizationContext", () => {
         user: {
           id: "user_1",
           email: "test@example.com",
-          defaultOrganization: {
-            id: "org_1",
-            name: "Organization 1",
+          tumiki: {
+            org_id: "org_1",
+            org_slug: "org-1-slug",
+            org_slugs: ["org-1-slug"],
+            roles: [],
           },
         },
       },
@@ -150,7 +150,6 @@ describe("useOrganizationContext", () => {
       id: "org_1",
       name: "Organization 1",
       isPersonal: false,
-      isAdmin: false,
       memberCount: 5,
     });
     expect(result.current.isLoading).toBe(false);
@@ -356,13 +355,18 @@ describe("useOrganizationContext", () => {
       isPending: false,
     });
 
-    // セッションのdefaultOrganizationをnullに設定
+    // セッションのorg_idをnullに設定
     mockUseSession.mockReturnValue({
       data: {
         user: {
           id: "user_1",
           email: "test@example.com",
-          defaultOrganization: null,
+          tumiki: {
+            org_id: null,
+            org_slug: null,
+            org_slugs: [],
+            roles: [],
+          },
         },
       },
       status: "authenticated",

@@ -47,7 +47,7 @@ export const InviteMemberDialog = ({
     if (email.trim()) {
       inviteMutation.mutate({
         email: email.trim(),
-        isAdmin: false,
+        roles: ["Member"],
       });
     }
   };

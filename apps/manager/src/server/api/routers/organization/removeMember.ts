@@ -3,6 +3,8 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { removeMemberInput } from "@/server/utils/organizationSchemas";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
+import { createBulkNotifications } from "../v2/notification/createBulkNotifications";
 
 export const removeMemberInputSchema = removeMemberInput;
 
@@ -10,7 +12,7 @@ export const removeMemberOutputSchema = z.object({
   id: z.string(),
   organizationId: z.string(),
   userId: z.string(),
-  isAdmin: z.boolean(),
+  // isAdmin削除: JWTのrolesで判定
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -25,13 +27,13 @@ export const removeMember = async ({
   input: RemoveMemberInput;
   ctx: ProtectedContext;
 }): Promise<RemoveMemberOutput> => {
-  // チームの管理者権限を検証
+  // メンバー削除権限を検証
   validateOrganizationAccess(ctx.currentOrg, {
-    requireAdmin: true,
+    requirePermission: "member:remove",
     requireTeam: true,
   });
 
-  // 削除対象メンバーを取得
+  // 削除対象メンバーを取得（ユーザー情報も含む）
   const targetMember = await ctx.db.organizationMember.findUnique({
     where: {
       id: input.memberId,
@@ -40,9 +42,14 @@ export const removeMember = async ({
       id: true,
       userId: true,
       organizationId: true,
-      isAdmin: true,
       createdAt: true,
       updatedAt: true,
+      user: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -69,7 +76,36 @@ export const removeMember = async ({
     });
   }
 
-  return await ctx.db.organizationMember.delete({
+  // Keycloakからメンバーを削除
+  const provider = KeycloakOrganizationProvider.fromEnv();
+  const removeResult = await provider.removeMember({
+    externalId: ctx.currentOrg.id, // Organization.idがKeycloak Group ID
+    userId: targetMember.userId,
+  });
+
+  if (!removeResult.success) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Keycloakからのメンバー削除に失敗しました: ${removeResult.error}`,
+    });
+  }
+
+  // DBからメンバーを削除
+  const deletedMember = await ctx.db.organizationMember.delete({
     where: { id: input.memberId },
   });
+
+  // セキュリティアラート: 全メンバーに通知（非同期で実行）
+  const memberDisplayName =
+    targetMember.user?.name ?? targetMember.user?.email ?? "不明";
+  void createBulkNotifications(ctx.db, {
+    type: "SECURITY_MEMBER_REMOVED",
+    priority: "NORMAL",
+    title: "メンバーが削除されました",
+    message: `${memberDisplayName} さんがチームから削除されました`,
+    organizationId: ctx.currentOrg.id,
+    triggeredById: ctx.session.user.id,
+  });
+
+  return deletedMember;
 };

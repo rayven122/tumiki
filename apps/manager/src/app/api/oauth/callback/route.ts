@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { api } from "@/trpc/server";
 import { verifyStateToken } from "@/lib/oauth/state-token";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 /**
  * コールバックパラメータを検証
@@ -55,8 +56,8 @@ export const GET = async (request: NextRequest) => {
     }
     const { state } = paramsResult;
 
-    // State tokenを検証してpayloadを取得
-    const statePayload = await verifyStateToken(state);
+    // State tokenを検証
+    await verifyStateToken(state);
 
     // tRPC APIを呼び出してOAuthコールバックを処理
     const result = await api.v2.oauth.handleCallback({
@@ -78,7 +79,7 @@ export const GET = async (request: NextRequest) => {
     }
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
-    const organizationSlug = session.user.organizationSlug;
+    const organizationSlug = getSessionInfo(session).organizationSlug;
 
     // organizationSlugがnullの場合はホームにリダイレクト
     if (!organizationSlug) {

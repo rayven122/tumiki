@@ -1,7 +1,6 @@
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { waitingListRouter } from "./routers/waitingList";
 import { organizationRouter } from "./routers/organization/index";
-import { organizationRoleRouter } from "./routers/organizationRole";
 import { v2Router } from "./routers/v2";
 // TODO: Rewrite OAuth token management for Auth.js
 // import { oauthRouter } from "./routers/oauth/index";
@@ -14,7 +13,6 @@ import { v2Router } from "./routers/v2";
 export const appRouter = createTRPCRouter({
   waitingList: waitingListRouter,
   organization: organizationRouter,
-  organizationRole: organizationRoleRouter,
   v2: v2Router,
   // TODO: Rewrite OAuth token management for Auth.js
   // oauth: oauthRouter,

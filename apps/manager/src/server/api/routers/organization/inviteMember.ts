@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { inviteMemberInput } from "@/server/utils/organizationSchemas";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { sendInvitationEmail, generateInviteUrl } from "@/server/lib/mail";
+import { createManyNotifications } from "../v2/notification/createNotification";
 
 export const inviteMemberInputSchema = inviteMemberInput;
 
@@ -62,14 +63,37 @@ export const inviteMember = async ({
           email: input.email,
           token,
           invitedBy: ctx.session.user.id,
-          isAdmin: input.isAdmin,
-          roleIds: input.roleIds,
-          groupIds: input.groupIds,
+          roles: input.roles, // 招待時に指定されたロールを保存
           expires,
         },
         include: {
           organization: true,
         },
+      });
+
+      // 組織の管理者に通知を作成（自分以外）
+      const orgMembers = await tx.organizationMember.findMany({
+        where: {
+          organizationId: ctx.currentOrg.id,
+        },
+        select: {
+          userId: true,
+        },
+      });
+
+      // 管理者以外には通知しない（簡易版：Owner/Admin判定はKeycloakのため、ここでは全メンバーから自分を除く）
+      const notificationUserIds = orgMembers
+        .filter((member) => member.userId !== ctx.session.user.id)
+        .map((member) => member.userId);
+
+      await createManyNotifications(tx, notificationUserIds, {
+        type: "ORGANIZATION_INVITATION_SENT",
+        priority: "NORMAL",
+        title: "新しいメンバーが招待されました",
+        message: `${input.email}が組織に招待されました。`,
+        linkUrl: `/${ctx.currentOrg.slug}/members`,
+        organizationId: ctx.currentOrg.id,
+        triggeredById: ctx.session.user.id,
       });
 
       return invitation;
@@ -82,8 +106,7 @@ export const inviteMember = async ({
       result.email,
       inviteUrl,
       result.organization.name,
-      result.isAdmin,
-      result.roleIds,
+      result.roles,
       result.expires.toISOString(),
     );
 

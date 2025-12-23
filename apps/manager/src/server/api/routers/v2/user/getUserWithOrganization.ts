@@ -23,7 +23,7 @@ export const getUserWithOrganizationOutputSchema = z.object({
   role: z.enum(["SYSTEM_ADMIN", "USER"]),
   organizationId: z.string().nullable(),
   organizationSlug: z.string().nullable(),
-  isOrganizationAdmin: z.boolean(),
+  // isOrganizationAdminは削除（ロールはJWTから取得）
 });
 
 export type GetUserWithOrganizationOutput = z.infer<
@@ -31,13 +31,12 @@ export type GetUserWithOrganizationOutput = z.infer<
 >;
 
 /**
- * ユーザーとデフォルト組織情報を取得
+ * ユーザーと最新所属組織情報を取得
  *
  * セッションコールバックで使用される情報を取得：
  * - ユーザーの基本情報
  * - システムロール
- * - デフォルト組織の情報
- * - 組織内管理者権限
+ * - 最新加入組織の情報（OrganizationMember.createdAt desc）
  */
 export const getUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -51,16 +50,6 @@ export const getUserWithOrganization = async (
       name: true,
       image: true,
       role: true,
-      defaultOrganization: {
-        select: {
-          id: true,
-          slug: true,
-          members: {
-            where: { userId: input.userId },
-            select: { isAdmin: true },
-          },
-        },
-      },
     },
   });
 
@@ -68,11 +57,23 @@ export const getUserWithOrganization = async (
     throw new Error(`User not found: ${input.userId}`);
   }
 
-  // デフォルト組織情報を取得
-  const organizationId = dbUser.defaultOrganization?.id ?? null;
-  const organizationSlug = dbUser.defaultOrganization?.slug ?? null;
-  const isOrganizationAdmin =
-    dbUser.defaultOrganization?.members[0]?.isAdmin ?? false;
+  // 最新加入組織を取得（セッション管理方式）
+  const latestMembership = await tx.organizationMember.findFirst({
+    where: {
+      userId: input.userId,
+      organization: {
+        isDeleted: false,
+      },
+    },
+    include: {
+      organization: {
+        select: { id: true, slug: true },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
   return {
     id: dbUser.id,
@@ -80,8 +81,7 @@ export const getUserWithOrganization = async (
     name: dbUser.name,
     image: dbUser.image,
     role: dbUser.role,
-    organizationId,
-    organizationSlug,
-    isOrganizationAdmin,
+    organizationId: latestMembership?.organization.id ?? null,
+    organizationSlug: latestMembership?.organization.slug ?? null,
   };
 };

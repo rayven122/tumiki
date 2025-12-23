@@ -25,6 +25,7 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
+import { validateMcpPermission } from "@/server/utils/mcpPermissions";
 import {
   McpServerSchema,
   McpApiKeySchema,
@@ -137,12 +138,17 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(CreateApiKeyMcpServerInputV2)
     .output(CreateApiKeyMcpServerOutputV2)
     .mutation(async ({ ctx, input }) => {
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
+
       return await ctx.db.$transaction(
         async (tx) => {
           return await createApiKeyMcpServer(
             tx,
             input,
-            ctx.session.user.organizationId,
+            ctx.currentOrg.id,
             ctx.session.user.id,
           );
         },
@@ -157,11 +163,16 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(CreateIntegratedMcpServerInputV2)
     .output(CreateIntegratedMcpServerOutputV2)
     .mutation(async ({ ctx, input }) => {
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
+
       return await ctx.db.$transaction(async (tx) => {
         return await createIntegratedMcpServer(
           tx,
           input,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
           ctx.session.user.id,
         );
       });
@@ -171,11 +182,17 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(UpdateOfficialServerInputV2)
     .output(UpdateOfficialServerOutputV2)
     .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
       return await ctx.db.$transaction(async (tx) => {
         return await updateOfficialServer(
           tx,
           input,
-          ctx.session.user.organizationId,
+          ctx.currentOrg.id,
           ctx.session.user.id,
         );
       });
@@ -185,8 +202,13 @@ export const userMcpServerRouter = createTRPCRouter({
   findOfficialServers: protectedProcedure
     .output(FindOfficialServersOutputV2)
     .query(async ({ ctx }) => {
+      // MCP読み取り権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "read",
+      });
+
       return await findOfficialServers(ctx.db, {
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -195,9 +217,15 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(deleteMcpServerInputSchema)
     .output(deleteMcpServerOutputSchema)
     .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
       return await deleteMcpServer(ctx.db, {
         id: input.id,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -206,12 +234,13 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(updateDisplayOrderInputSchema)
     .output(updateDisplayOrderOutputSchema)
     .mutation(async ({ ctx, input }) => {
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
+
       return ctx.db.$transaction(async (tx) => {
-        return await updateDisplayOrder(
-          tx,
-          input,
-          ctx.session.user.organizationId,
-        );
+        return await updateDisplayOrder(tx, input, ctx.currentOrg.id);
       });
     }),
 
@@ -220,8 +249,14 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(UpdateNameInputV2)
     .output(UpdateNameOutputV2)
     .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
       return await ctx.db.$transaction(async (tx) => {
-        return await updateName(tx, input, ctx.session.user.organizationId);
+        return await updateName(tx, input, ctx.currentOrg.id);
       });
     }),
 
@@ -229,9 +264,15 @@ export const userMcpServerRouter = createTRPCRouter({
   findById: protectedProcedure
     .input(FindByIdInputV2)
     .query(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの読み取り権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "read",
+        mcpServerId: input.id,
+      });
+
       return await findById(ctx.db, {
         id: input.id,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -240,9 +281,15 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(GetToolStatsInputV2)
     .output(getToolStatsOutputSchema)
     .query(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの読み取り権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "read",
+        mcpServerId: input.userMcpServerId,
+      });
+
       return await getToolStats(ctx.db, {
         userMcpServerId: input.userMcpServerId,
-        organizationId: ctx.session.user.organizationId,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 
@@ -251,12 +298,22 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(UpdateServerStatusInputV2)
     .output(updateServerStatusOutputSchema)
     .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
       return await ctx.db.$transaction(async (tx) => {
-        return await updateServerStatus(tx, {
-          id: input.id,
-          isEnabled: input.isEnabled,
-          organizationId: ctx.session.user.organizationId,
-        });
+        return await updateServerStatus(
+          tx,
+          {
+            id: input.id,
+            isEnabled: input.isEnabled,
+            organizationId: ctx.currentOrg.id,
+          },
+          ctx.session.user.id,
+        );
       });
     }),
 
@@ -265,12 +322,22 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(ToggleToolInputV2)
     .output(toggleToolOutputSchema)
     .mutation(async ({ ctx, input }) => {
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
+
       return await ctx.db.$transaction(async (tx) => {
-        return await toggleTool(tx, {
-          templateInstanceId: input.templateInstanceId,
-          toolId: input.toolId,
-          isEnabled: input.isEnabled,
-        });
+        return await toggleTool(
+          tx,
+          {
+            templateInstanceId: input.templateInstanceId,
+            toolId: input.toolId,
+            isEnabled: input.isEnabled,
+          },
+          ctx.session.user.id,
+          ctx.currentOrg.id,
+        );
       });
     }),
 });
