@@ -86,13 +86,34 @@ export const OrgStructureClient = ({
       { enabled: groupIds.length > 0 },
     );
 
-  // 4. データを変換
+  // 4. ロール情報を一括取得
+  const { data: allRolesData, isLoading: rolesLoading } =
+    api.v2.group.listAllRoles.useQuery(
+      { organizationId, groupIds },
+      { enabled: groupIds.length > 0 },
+    );
+
+  // 5. ロール情報をRole型に変換（roleSlugとnameのみ抽出）
+  const rolesMap = useMemo(() => {
+    if (!allRolesData) return undefined;
+    const result: Record<string, { roleSlug: string; name: string }[]> = {};
+    for (const [groupId, roles] of Object.entries(allRolesData)) {
+      result[groupId] = roles.map((role) => ({
+        roleSlug: role.roleSlug,
+        name: role.name,
+      }));
+    }
+    return result;
+  }, [allRolesData]);
+
+  // 6. データを変換
   const orgData: OrgData | null = useMemo(() => {
     if (!groups) return null;
     return keycloakGroupsToOrgData(groups, {
       membersMap,
+      rolesMap,
     });
-  }, [groups, membersMap]);
+  }, [groups, membersMap, rolesMap]);
 
   /**
    * レイアウト調整ボタンのハンドラー
@@ -134,7 +155,7 @@ export const OrgStructureClient = ({
     return orgData.departments.find((d) => d.id === selectedGroupId) ?? null;
   }, [selectedGroupId, orgData]);
 
-  const isLoading = groupsLoading || membersLoading;
+  const isLoading = groupsLoading || membersLoading || rolesLoading;
 
   // エラー状態
   if (groupsError) {

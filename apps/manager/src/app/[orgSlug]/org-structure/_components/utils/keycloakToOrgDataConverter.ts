@@ -4,10 +4,12 @@ import type {
   Department,
   DepartmentRelation,
   Member,
+  Role,
 } from "../mock/mockOrgData";
 
 type ConversionOptions = {
   membersMap?: Record<string, Member[]>; // グループIDをキーとしたメンバーマップ
+  rolesMap?: Record<string, Role[]>; // グループIDをキーとしたロールマップ
   defaultIcon?: string;
   defaultColor?: string;
 };
@@ -25,6 +27,7 @@ export const keycloakGroupsToOrgData = (
 ): OrgData => {
   const {
     membersMap = {},
+    rolesMap = {},
     defaultIcon = "Building2",
     defaultColor = "#6366f1",
   } = options;
@@ -50,6 +53,9 @@ export const keycloakGroupsToOrgData = (
     // メンバー情報を取得
     const members = membersMap[group.id] ?? [];
 
+    // ロール情報を取得
+    const roles = rolesMap[group.id] ?? [];
+
     // リーダーの決定
     let leader: Member | undefined;
     if (isRoot) {
@@ -74,6 +80,7 @@ export const keycloakGroupsToOrgData = (
       },
       members,
       memberCount: members.length,
+      roles,
       isRoot,
     });
 

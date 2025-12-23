@@ -218,3 +218,15 @@ export type RemoveRoleFromGroupInput = z.infer<
 >;
 export type ListGroupRolesInput = z.infer<typeof listGroupRolesInputSchema>;
 export type GroupRoleOutput = z.infer<typeof groupRoleOutputSchema>;
+
+/**
+ * 複数グループのロール一覧取得の入力スキーマ
+ */
+export const listAllGroupRolesInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupIds: z.array(z.string().min(1, "グループIDは必須です")),
+});
+
+export type ListAllGroupRolesInput = z.infer<
+  typeof listAllGroupRolesInputSchema
+>;

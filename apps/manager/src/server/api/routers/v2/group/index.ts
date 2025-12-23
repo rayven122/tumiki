@@ -17,6 +17,7 @@ import {
   assignRoleToGroupInputSchema,
   removeRoleFromGroupInputSchema,
   listGroupRolesInputSchema,
+  listAllGroupRolesInputSchema,
   groupRoleOutputSchema,
 } from "../../../../utils/groupSchemas";
 import { listGroups } from "./list";
@@ -33,6 +34,7 @@ import { updateGroup } from "./update";
 import { assignRoleToGroup } from "./assignRole";
 import { removeRoleFromGroup } from "./removeRole";
 import { listGroupRoles } from "./listRoles";
+import { listAllGroupRoles } from "./listAllRoles";
 import { z } from "zod";
 
 /**
@@ -166,5 +168,13 @@ export const groupRouter = createTRPCRouter({
     .output(z.array(groupRoleOutputSchema))
     .query(async ({ ctx, input }) => {
       return await listGroupRoles(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // 複数グループのロール一覧を一括取得（組織メンバー）
+  listAllRoles: protectedProcedure
+    .input(listAllGroupRolesInputSchema)
+    .output(z.record(z.string(), z.array(groupRoleOutputSchema)))
+    .query(async ({ ctx, input }) => {
+      return await listAllGroupRoles(ctx.db, input, ctx.currentOrg);
     }),
 });
