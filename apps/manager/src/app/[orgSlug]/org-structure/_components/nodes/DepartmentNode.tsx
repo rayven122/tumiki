@@ -4,8 +4,14 @@ import { memo } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
-import { Users, UserCircle2, X } from "lucide-react";
-import type { Member } from "../mock/mockOrgData";
+import { Users, UserCircle2, X, Shield } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { Member, Role } from "../mock/mockOrgData";
 
 /**
  * 部署ノードのデータ型
@@ -18,6 +24,7 @@ export type DepartmentNodeData = {
   members: Member[];
   memberCount: number;
   totalMemberCount?: number; // 子部署を含む合計メンバー数（オプション）
+  roles?: Role[]; // 割り当てられたロール一覧
   isRoot?: boolean;
   onDelete?: (nodeId: string) => void; // 削除ボタンクリック時のコールバック
 };
@@ -56,7 +63,16 @@ export const DepartmentNode = memo(
     const maxVisibleMembers = 4;
     const members = data.members ?? [];
     const visibleMembers = members.slice(0, maxVisibleMembers);
-    const remainingCount = Math.max(0, members.length - maxVisibleMembers);
+    const remainingMemberCount = Math.max(
+      0,
+      members.length - maxVisibleMembers,
+    );
+
+    // ロールアイコン表示：最大3つまで、残りは "+N" で省略
+    const maxVisibleRoles = 3;
+    const roles = data.roles ?? [];
+    const visibleRoles = roles.slice(0, maxVisibleRoles);
+    const remainingRoleCount = Math.max(0, roles.length - maxVisibleRoles);
 
     return (
       <div
@@ -91,7 +107,7 @@ export const DepartmentNode = memo(
         />
 
         {/* アイコン＋チーム名 */}
-        <div className="mb-4 flex items-center gap-4">
+        <div className="mb-3 flex items-center gap-4">
           {/* アイコン */}
           <div
             className={cn(
@@ -114,6 +130,37 @@ export const DepartmentNode = memo(
             </h3>
           </div>
         </div>
+
+        {/* ロールバッジ（チーム名直下） */}
+        {roles.length > 0 && (
+          <TooltipProvider>
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              {visibleRoles.map((role) => (
+                <Tooltip key={role.roleSlug}>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 rounded-full border border-purple-200 bg-gradient-to-r from-violet-50 to-purple-50 px-2.5 py-1 shadow-sm transition-transform hover:scale-105">
+                      <Shield
+                        className="h-3.5 w-3.5 text-purple-600"
+                        strokeWidth={2.5}
+                      />
+                      <span className="max-w-[80px] truncate text-xs font-medium text-purple-700">
+                        {role.name}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {role.name}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+              {remainingRoleCount > 0 && (
+                <div className="flex h-6 items-center justify-center rounded-full bg-purple-100 px-2 text-[10px] font-bold text-purple-600">
+                  +{remainingRoleCount}
+                </div>
+              )}
+            </div>
+          </TooltipProvider>
+        )}
 
         {/* 部署長 */}
         <div className="mb-3 flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50/50 px-4 py-2.5">
@@ -178,9 +225,9 @@ export const DepartmentNode = memo(
               </div>
             ))}
           </div>
-          {remainingCount > 0 && (
+          {remainingMemberCount > 0 && (
             <div className="ml-1 flex h-8 items-center justify-center rounded-full bg-gray-200 px-2.5 text-xs font-bold text-gray-600">
-              +{remainingCount}
+              +{remainingMemberCount}
             </div>
           )}
         </div>

@@ -9,6 +9,14 @@ export type Member = {
 };
 
 /**
+ * ロール情報型（ノード表示用）
+ */
+export type Role = {
+  roleSlug: string;
+  name: string;
+};
+
+/**
  * 部署データ型
  */
 export type Department = {
@@ -19,6 +27,7 @@ export type Department = {
   leader: Member; // 部署長/責任者
   members: Member[]; // メンバー一覧
   memberCount: number;
+  roles?: Role[]; // 割り当てられたロール一覧
   isRoot?: boolean; // ルート組織かどうか
 };
 

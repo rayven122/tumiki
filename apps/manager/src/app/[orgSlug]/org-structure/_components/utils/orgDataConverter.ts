@@ -72,6 +72,7 @@ export const convertOrgDataToFlow = (
         members: dept.members,
         memberCount: dept.memberCount,
         totalMemberCount, // 子部署を含む合計メンバー数
+        roles: dept.roles, // 割り当てられたロール一覧
         isRoot: dept.isRoot,
       },
     };
