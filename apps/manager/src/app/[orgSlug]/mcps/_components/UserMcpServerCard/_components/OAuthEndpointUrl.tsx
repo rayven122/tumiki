@@ -37,22 +37,17 @@ export const OAuthEndpointUrl = ({
   };
 
   return (
-    <div
-      className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2"
-      onClick={(e) => e.stopPropagation()}
+    <Button
+      variant="outline"
+      size="sm"
+      className="flex w-full items-center justify-between"
+      onClick={handleCopy}
     >
-      <Link2 className="h-3.5 w-3.5 flex-shrink-0 text-green-600" />
-      <code className="min-w-0 flex-1 truncate text-xs text-green-700">
-        {truncateUrl(endpointUrl)}
-      </code>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 flex-shrink-0 px-2 hover:bg-green-100"
-        onClick={handleCopy}
-      >
-        <Copy className="h-3.5 w-3.5 text-green-600" />
-      </Button>
-    </div>
+      <span className="flex min-w-0 items-center">
+        <Link2 className="mr-2 size-4 shrink-0" />
+        <code className="truncate text-xs">{truncateUrl(endpointUrl)}</code>
+      </span>
+      <Copy className="ml-2 size-4 shrink-0" />
+    </Button>
   );
 };

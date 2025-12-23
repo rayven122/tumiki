@@ -105,7 +105,7 @@ export const createIntegratedMcpServer = async (
       iconPath: null,
       serverStatus: ServerStatus.RUNNING,
       serverType: ServerType.CUSTOM,
-      authType: AuthType.API_KEY,
+      authType: AuthType.OAUTH,
       organizationId,
       displayOrder: 0,
       templateInstances: {

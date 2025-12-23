@@ -231,10 +231,13 @@ model OrganizationInvitation {
 
 ### 基本ロール（システム定義）
 
+基本ロールは全組織で共通のRealm Roleとして定義されています:
+
 ```
-org:{orgSlug}:owner              # 組織オーナー（全権限）
-org:{orgSlug}:admin              # 組織管理者
-org:{orgSlug}:member             # 組織メンバー（デフォルト）
+Owner    # 組織オーナー（全権限）
+Admin    # 組織管理者
+Member   # 組織メンバー（デフォルト）
+Viewer   # 閲覧専用
 ```
 
 ### カスタムロール（組織が定義）

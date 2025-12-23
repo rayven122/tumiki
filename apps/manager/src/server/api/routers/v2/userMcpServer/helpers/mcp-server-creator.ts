@@ -35,7 +35,7 @@ export const createOfficialMcpServer = async (
       iconPath: null,
       serverStatus: ServerStatus.PENDING,
       serverType: ServerType.OFFICIAL,
-      authType: AuthType.API_KEY,
+      authType: AuthType.OAUTH,
       organizationId,
       templateInstances: {
         create: {

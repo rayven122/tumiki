@@ -71,8 +71,8 @@ export const UserMcpServerCard = ({
       mcpServerTemplateInstanceId: firstInstance?.id ?? "",
     });
 
-  // OAuth認証タイプの場合は常に再認証ボタンを表示
-  const isOAuthServer = mcpServer?.authType === "OAUTH";
+  // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
+  const isOAuthServer = userMcpServer.authType === "OAUTH";
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
@@ -121,7 +121,7 @@ export const UserMcpServerCard = ({
         {/* 右上のバッジとメニュー */}
         {!isSortMode && (
           <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-            {/* Backend認証タイプバッジ */}
+            {/* Backend認証タイプバッジ（テンプレートのauthType） */}
             {mcpServer?.authType && (
               <AuthTypeBadge authType={mcpServer.authType} />
             )}
