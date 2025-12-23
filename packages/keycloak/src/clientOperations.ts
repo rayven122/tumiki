@@ -419,3 +419,32 @@ export const listGroupMembers = async (
   const members = await client.groups.listMembers({ id: groupId });
   return members;
 };
+
+/**
+ * サブグループを別の親に移動
+ * Keycloak の updateChildGroup API を使用
+ *
+ * @param client - Keycloak Admin Client
+ * @param groupId - 移動するグループのID
+ * @param newParentGroupId - 新しい親グループのID
+ */
+export const moveSubgroup = async (
+  client: KcAdminClient,
+  groupId: string,
+  newParentGroupId: string,
+): Promise<void> => {
+  // 移動するグループの情報を取得
+  const group = await client.groups.findOne({ id: groupId });
+
+  if (!group || !group.name) {
+    throw new Error(`Group not found: ${groupId}`);
+  }
+
+  // updateChildGroup: 既存のグループを新しい親に移動する
+  // id: 新しい親グループのID
+  // payload: 移動するグループの情報（idとnameが必須）
+  await client.groups.updateChildGroup(
+    { id: newParentGroupId },
+    { id: groupId, name: group.name },
+  );
+};

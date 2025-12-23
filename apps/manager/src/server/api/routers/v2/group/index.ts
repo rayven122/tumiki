@@ -1,6 +1,4 @@
 import { createTRPCRouter, protectedProcedure } from "../../../trpc";
-import { TRPCError } from "@trpc/server";
-import { validateOrganizationAccess } from "../../../../utils/organizationPermissions";
 import {
   listGroupsInputSchema,
   createGroupInputSchema,
@@ -9,6 +7,7 @@ import {
   addMemberInputSchema,
   removeMemberInputSchema,
   getGroupMembersInputSchema,
+  moveGroupInputSchema,
   groupOutputSchema,
   memberSchema,
 } from "../../../../utils/groupSchemas";
@@ -19,6 +18,7 @@ import { getGroupById } from "./getById";
 import { addMember } from "./addMember";
 import { removeMember } from "./removeMember";
 import { getGroupMembers } from "./getGroupMembers";
+import { moveGroup } from "./move";
 import { z } from "zod";
 
 /**
@@ -30,8 +30,11 @@ import { z } from "zod";
  * - getMembers: グループメンバー一覧取得（組織メンバー）
  * - create: グループ作成（管理者のみ）
  * - delete: グループ削除（管理者のみ）
+ * - move: グループ移動（管理者のみ）
  * - addMember: メンバー追加（管理者のみ）
  * - removeMember: メンバー削除（管理者のみ）
+ *
+ * セキュリティチェックは各ハンドラ関数内で行われます
  */
 export const groupRouter = createTRPCRouter({
   // グループ一覧取得（組織メンバー）
@@ -39,15 +42,7 @@ export const groupRouter = createTRPCRouter({
     .input(listGroupsInputSchema)
     .output(z.array(groupOutputSchema))
     .query(async ({ ctx, input }) => {
-      // セキュリティチェック: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織のグループにアクセスすることはできません",
-        });
-      }
-
-      return await listGroups(ctx.db, input);
+      return await listGroups(ctx.db, input, ctx.currentOrg);
     }),
 
   // グループ詳細取得（組織メンバー）
@@ -55,15 +50,7 @@ export const groupRouter = createTRPCRouter({
     .input(getGroupByIdInputSchema)
     .output(groupOutputSchema)
     .query(async ({ ctx, input }) => {
-      // セキュリティチェック: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織のグループにアクセスすることはできません",
-        });
-      }
-
-      return await getGroupById(ctx.db, input);
+      return await getGroupById(ctx.db, input, ctx.currentOrg);
     }),
 
   // グループメンバー一覧取得（組織メンバー）
@@ -71,15 +58,7 @@ export const groupRouter = createTRPCRouter({
     .input(getGroupMembersInputSchema)
     .output(z.record(z.string(), z.array(memberSchema)))
     .query(async ({ ctx, input }) => {
-      // セキュリティチェック: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織のグループメンバーにアクセスすることはできません",
-        });
-      }
-
-      return await getGroupMembers(ctx.db, input);
+      return await getGroupMembers(ctx.db, input, ctx.currentOrg);
     }),
 
   // グループ作成（管理者のみ）
@@ -87,20 +66,7 @@ export const groupRouter = createTRPCRouter({
     .input(createGroupInputSchema)
     .output(z.object({ id: z.string(), name: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // セキュリティチェック1: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織にグループを作成することはできません",
-        });
-      }
-
-      // セキュリティチェック2: グループ管理権限を検証
-      validateOrganizationAccess(ctx.currentOrg, {
-        requirePermission: "group:manage",
-      });
-
-      return await createGroup(ctx.db, input);
+      return await createGroup(ctx.db, input, ctx.currentOrg);
     }),
 
   // グループ削除（管理者のみ）
@@ -108,20 +74,15 @@ export const groupRouter = createTRPCRouter({
     .input(deleteGroupInputSchema)
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      // セキュリティチェック1: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織のグループを削除することはできません",
-        });
-      }
+      return await deleteGroup(ctx.db, input, ctx.currentOrg);
+    }),
 
-      // セキュリティチェック2: グループ管理権限を検証
-      validateOrganizationAccess(ctx.currentOrg, {
-        requirePermission: "group:manage",
-      });
-
-      return await deleteGroup(ctx.db, input);
+  // グループ移動（管理者のみ）
+  move: protectedProcedure
+    .input(moveGroupInputSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return await moveGroup(ctx.db, input, ctx.currentOrg);
     }),
 
   // メンバー追加（管理者のみ）
@@ -129,20 +90,7 @@ export const groupRouter = createTRPCRouter({
     .input(addMemberInputSchema)
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      // セキュリティチェック1: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織のグループにメンバーを追加することはできません",
-        });
-      }
-
-      // セキュリティチェック2: グループ管理権限を検証
-      validateOrganizationAccess(ctx.currentOrg, {
-        requirePermission: "group:manage",
-      });
-
-      return await addMember(ctx.db, input);
+      return await addMember(ctx.db, input, ctx.currentOrg);
     }),
 
   // メンバー削除（管理者のみ）
@@ -150,19 +98,6 @@ export const groupRouter = createTRPCRouter({
     .input(removeMemberInputSchema)
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      // セキュリティチェック1: 組織IDが現在のコンテキストと一致するか
-      if (!ctx.currentOrg || ctx.currentOrg.id !== input.organizationId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "他の組織のグループからメンバーを削除することはできません",
-        });
-      }
-
-      // セキュリティチェック2: グループ管理権限を検証
-      validateOrganizationAccess(ctx.currentOrg, {
-        requirePermission: "group:manage",
-      });
-
-      return await removeMember(ctx.db, input);
+      return await removeMember(ctx.db, input, ctx.currentOrg);
     }),
 });

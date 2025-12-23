@@ -3,18 +3,28 @@ import { TRPCError } from "@trpc/server";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import type { ListGroupsInput } from "../../../../utils/groupSchemas";
 import type { KeycloakGroup } from "@tumiki/keycloak";
+import type { OrganizationInfo } from "../../../../utils/organizationPermissions";
 
 /**
  * グループ一覧取得
  *
  * セキュリティ：
+ * - 操作対象の組織が現在のユーザーの所属組織であることを確認
  * - データベースで組織の存在を確認
  * - Keycloakから組織のサブグループ一覧を取得
  */
 export const listGroups = async (
   db: PrismaTransactionClient,
   input: ListGroupsInput,
+  currentOrg: OrganizationInfo,
 ): Promise<KeycloakGroup[]> => {
+  // セキュリティチェック: 組織IDが現在のコンテキストと一致するか
+  if (currentOrg.id !== input.organizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "他の組織のグループにアクセスすることはできません",
+    });
+  }
   // データベースで組織の存在を確認
   const organization = await db.organization.findUnique({
     where: { id: input.organizationId },

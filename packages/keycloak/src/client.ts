@@ -372,4 +372,14 @@ export class KeycloakAdminClient {
       operations.listGroupMembers(this.client, groupId),
     );
   }
+
+  /**
+   * サブグループを別の親グループに移動
+   */
+  async moveSubgroup(groupId: string, newParentGroupId: string): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.moveSubgroup(this.client, groupId, newParentGroupId),
+    );
+  }
 }

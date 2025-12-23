@@ -4,11 +4,13 @@ import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import { KeycloakAdminClient } from "@tumiki/keycloak";
 import type { GetGroupByIdInput } from "../../../../utils/groupSchemas";
 import type { KeycloakGroup } from "@tumiki/keycloak";
+import type { OrganizationInfo } from "../../../../utils/organizationPermissions";
 
 /**
  * グループ詳細取得
  *
  * セキュリティ：
+ * - 操作対象の組織が現在のユーザーの所属組織であることを確認
  * - データベースで組織の存在を確認
  * - 取得対象のグループが組織のサブグループであることを確認
  * - Keycloakからグループ詳細を取得
@@ -16,7 +18,15 @@ import type { KeycloakGroup } from "@tumiki/keycloak";
 export const getGroupById = async (
   db: PrismaTransactionClient,
   input: GetGroupByIdInput,
+  currentOrg: OrganizationInfo,
 ): Promise<KeycloakGroup> => {
+  // セキュリティチェック: 組織IDが現在のコンテキストと一致するか
+  if (currentOrg.id !== input.organizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "他の組織のグループにアクセスすることはできません",
+    });
+  }
   // データベースで組織の存在を確認
   const organization = await db.organization.findUnique({
     where: { id: input.organizationId },

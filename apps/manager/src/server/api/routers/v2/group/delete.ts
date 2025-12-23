@@ -2,11 +2,17 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import type { DeleteGroupInput } from "../../../../utils/groupSchemas";
+import {
+  validateOrganizationAccess,
+  type OrganizationInfo,
+} from "../../../../utils/organizationPermissions";
 
 /**
  * グループ削除
  *
  * セキュリティ：
+ * - 操作対象の組織が現在のユーザーの所属組織であることを確認
+ * - group:manage 権限を確認
  * - データベースで組織の存在を確認
  * - 削除対象のグループが組織のサブグループであることを確認
  * - Keycloakからグループを削除
@@ -14,7 +20,20 @@ import type { DeleteGroupInput } from "../../../../utils/groupSchemas";
 export const deleteGroup = async (
   db: PrismaTransactionClient,
   input: DeleteGroupInput,
+  currentOrg: OrganizationInfo,
 ): Promise<{ success: boolean }> => {
+  // セキュリティチェック1: 組織IDが現在のコンテキストと一致するか
+  if (currentOrg.id !== input.organizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "他の組織のグループを削除することはできません",
+    });
+  }
+
+  // セキュリティチェック2: グループ管理権限を検証
+  validateOrganizationAccess(currentOrg, {
+    requirePermission: "group:manage",
+  });
   // データベースで組織の存在を確認
   const organization = await db.organization.findUnique({
     where: { id: input.organizationId },

@@ -344,4 +344,16 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
       error: result.error,
     };
   }
+
+  /**
+   * サブグループを別の親グループに移動
+   */
+  async moveSubgroup(params: {
+    groupId: string;
+    newParentGroupId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.moveSubgroup(params.groupId, params.newParentGroupId),
+    );
+  }
 }
