@@ -160,7 +160,8 @@ export const createRole = async ({
     if (keycloakRoleCreated) {
       try {
         const keycloak = KeycloakOrganizationProvider.fromEnv();
-        await keycloak.deleteGroupRole(ctx.currentOrg.id, input.slug);
+        // 作成時と同じ命名規則を使用: org:{orgSlug}:role:{roleSlug}
+        await keycloak.deleteGroupRole(ctx.currentOrg.id, keycloakRoleName);
         console.error(`Keycloakロールバック実行: ${keycloakRoleName}`, error);
       } catch (rollbackError) {
         console.error(

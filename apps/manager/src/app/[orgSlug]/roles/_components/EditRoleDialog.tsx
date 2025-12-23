@@ -217,8 +217,12 @@ export const EditRoleDialog = ({
               </p>
             </div>
             <PermissionSelector
-              value={mcpPermissions}
-              onChange={(newPermissions) =>
+              defaultRead={watch("defaultRead") ?? false}
+              defaultWrite={watch("defaultWrite") ?? false}
+              defaultExecute={watch("defaultExecute") ?? false}
+              onDefaultChange={(key, value) => setValue(key, value)}
+              mcpPermissions={mcpPermissions}
+              onMcpPermissionsChange={(newPermissions) =>
                 setValue("mcpPermissions", newPermissions)
               }
               mcpServers={mcpServerOptions}

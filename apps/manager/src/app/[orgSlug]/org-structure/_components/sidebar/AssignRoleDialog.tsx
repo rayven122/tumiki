@@ -189,26 +189,46 @@ const PermissionBadges = ({
   write: boolean;
   execute: boolean;
 }) => {
+  const permissions = [
+    {
+      key: "read",
+      enabled: read,
+      label: "閲覧",
+      bgColor: "bg-blue-100",
+      textColor: "text-blue-700",
+    },
+    {
+      key: "write",
+      enabled: write,
+      label: "編集",
+      bgColor: "bg-green-100",
+      textColor: "text-green-700",
+    },
+    {
+      key: "execute",
+      enabled: execute,
+      label: "実行",
+      bgColor: "bg-orange-100",
+      textColor: "text-orange-700",
+    },
+  ] as const;
+
+  const enabledPermissions = permissions.filter((p) => p.enabled);
+
+  if (enabledPermissions.length === 0) {
+    return <span className="text-muted-foreground text-[10px]">権限なし</span>;
+  }
+
   return (
     <div className="flex gap-1.5">
-      {read && (
-        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-          Read
+      {enabledPermissions.map((perm) => (
+        <span
+          key={perm.key}
+          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${perm.bgColor} ${perm.textColor}`}
+        >
+          {perm.label}
         </span>
-      )}
-      {write && (
-        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
-          Write
-        </span>
-      )}
-      {execute && (
-        <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
-          Execute
-        </span>
-      )}
-      {!read && !write && !execute && (
-        <span className="text-muted-foreground text-[10px]">権限なし</span>
-      )}
+      ))}
     </div>
   );
 };
