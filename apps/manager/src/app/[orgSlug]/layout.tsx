@@ -84,7 +84,7 @@ export default async function OrgSlugLayout({
       );
     }
 
-    // リカバリー失敗時は組織一覧へ
-    redirect("/organizations/dashboard");
+    // リカバリー失敗時はオンボーディングへ
+    redirect("/onboarding");
   }
 }

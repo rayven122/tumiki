@@ -167,10 +167,10 @@ export const MemberList = ({ organization }: MemberListProps) => {
 
     // 自分自身を削除した場合
     if (userId === session?.user.id) {
-      toast.info("組織から退会しました。組織一覧ページに移動します。");
+      toast.info("組織から退会しました。");
       // セッション更新を待ってからリダイレクト
       await update({});
-      router.push("/organizations/dashboard");
+      router.push("/onboarding");
     }
   };
 
