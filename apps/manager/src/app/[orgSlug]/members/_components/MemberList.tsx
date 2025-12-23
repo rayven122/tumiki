@@ -400,11 +400,7 @@ export const MemberList = ({ organization }: MemberListProps) => {
                       {isAdmin && member.userId !== organization.createdBy && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600"
-                            >
+                            <Button variant="ghost" size="sm">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>

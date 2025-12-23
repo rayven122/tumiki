@@ -105,8 +105,7 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       href: `/${orgSlug}/roles`,
       icon: Shield,
       show: !isPersonal, // 個人組織では非表示
-      disabled: true,
-      comingSoon: true,
+      disabled: false,
     },
     {
       name: "設定",
