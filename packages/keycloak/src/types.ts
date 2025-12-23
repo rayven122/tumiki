@@ -5,8 +5,8 @@ import type UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/us
 /**
  * 組織内のロール定義
  * Owner: 全権限
- * Admin: メンバー管理可能
- * Member: 基本利用
+ * Admin: メンバー管理、グループ管理可能
+ * Member: 基本利用（MCP作成・利用）
  * Viewer: 読み取り専用
  */
 export type OrganizationRole = "Owner" | "Admin" | "Member" | "Viewer";
@@ -17,13 +17,26 @@ export type OrganizationRole = "Owner" | "Admin" | "Member" | "Viewer";
  */
 export type IOrganizationProvider = {
   /**
+   * デフォルトRealm Rolesが存在することを確認し、なければ作成
+   * これらは全組織で共通して使用されるロール（Owner, Admin, Member, Viewer）
+   * アプリケーション初期化時に一度だけ呼び出す
+   */
+  ensureDefaultRealmRolesExist: () => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+
+  /**
    * 組織グループを作成
+   *
+   * 注意: デフォルトロール（Owner, Admin, Member, Viewer）は全組織で共通の
+   * Realm Rolesとして事前に作成されている必要があります。
+   * アプリケーション初期化時に ensureDefaultRealmRolesExist() を呼び出してください。
    */
   createOrganization: (params: {
     name: string;
     groupName: string; // 例: "@user-id" or "team-slug"
     ownerId: string;
-    createDefaultRoles?: boolean; // デフォルト: true
   }) => Promise<{ success: boolean; externalId: string; error?: string }>;
 
   /**
@@ -63,6 +76,55 @@ export type IOrganizationProvider = {
    * ユーザーのセッションを無効化（ロール変更の即時反映用）
    */
   invalidateUserSessions: (params: {
+    userId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * ユーザーのデフォルト組織を設定（Keycloakユーザー属性に保存）
+   */
+  setUserDefaultOrganization: (params: {
+    userId: string;
+    organizationId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * サブグループ（部署）を作成
+   */
+  createSubgroup: (params: {
+    organizationId: string; // Organization.id（= Keycloak Group ID）
+    name: string;
+    parentSubgroupId?: string; // 親サブグループID（オプション）
+  }) => Promise<{ success: boolean; subgroupId: string; error?: string }>;
+
+  /**
+   * サブグループを削除
+   */
+  deleteSubgroup: (params: {
+    subgroupId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * サブグループ一覧を取得
+   */
+  listSubgroups: (params: { organizationId: string }) => Promise<{
+    success: boolean;
+    subgroups?: KeycloakGroup[];
+    error?: string;
+  }>;
+
+  /**
+   * ユーザーをサブグループに追加
+   */
+  addUserToSubgroup: (params: {
+    subgroupId: string;
+    userId: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+
+  /**
+   * ユーザーをサブグループから削除
+   */
+  removeUserFromSubgroup: (params: {
+    subgroupId: string;
     userId: string;
   }) => Promise<{ success: boolean; error?: string }>;
 };

@@ -13,6 +13,7 @@ import {
   MessageSquare,
   List,
   Plus,
+  Network,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -85,19 +86,26 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       comingSoon: true,
     },
     {
+      name: "組織構造",
+      href: `/${orgSlug}/org-structure`,
+      icon: Network,
+      show: !isPersonal, // 個人組織では非表示
+      disabled: false,
+    },
+    {
       name: "メンバー管理",
       href: `/${orgSlug}/members`,
       icon: Users,
       show: !isPersonal, // 個人組織では非表示
       disabled: false,
     },
+
     {
       name: "ロール・権限",
       href: `/${orgSlug}/roles`,
       icon: Shield,
       show: !isPersonal, // 個人組織では非表示
-      disabled: true,
-      comingSoon: true,
+      disabled: false,
     },
     {
       name: "設定",

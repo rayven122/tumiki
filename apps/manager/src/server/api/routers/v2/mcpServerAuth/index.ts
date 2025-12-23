@@ -50,7 +50,7 @@ export const mcpServerAuthRouter = createTRPCRouter({
       return await ctx.db.$transaction(async (tx) => {
         return await updateAuthType(tx, {
           ...input,
-          organizationId: ctx.session.user.organizationId,
+          organizationId: ctx.currentOrg.id,
         });
       });
     }),
@@ -65,7 +65,7 @@ export const mcpServerAuthRouter = createTRPCRouter({
       return await ctx.db.$transaction(async (tx) => {
         return await generateApiKey(tx, {
           ...input,
-          organizationId: ctx.session.user.organizationId,
+          organizationId: ctx.currentOrg.id,
           userId: ctx.session.user.id,
         });
       });
@@ -81,7 +81,7 @@ export const mcpServerAuthRouter = createTRPCRouter({
       return await ctx.db.$transaction(async (tx) => {
         return await listApiKeys(tx, {
           ...input,
-          organizationId: ctx.session.user.organizationId,
+          organizationId: ctx.currentOrg.id,
           userId: ctx.session.user.id,
         });
       });

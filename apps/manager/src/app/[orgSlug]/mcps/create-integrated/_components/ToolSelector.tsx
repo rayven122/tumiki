@@ -6,10 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutputs } from "@/trpc/react";
 import { CheckCircle2 } from "lucide-react";
-import {
-  useConnectionConfigs,
-  getConnectionConfigDisplayName,
-} from "../_hooks/useConnectionConfigs";
+import { useConnectionConfigs } from "../_hooks/useConnectionConfigs";
 
 type OfficialServers =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];

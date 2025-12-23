@@ -1,9 +1,11 @@
-import { type AuthenticatedContext } from "@/server/api/trpc";
+import { type Context } from "@/server/api/trpc";
 import { type z } from "zod";
 import type { GetUserOrganizationsInput } from ".";
+import { getSessionInfo } from "~/lib/auth/session-utils";
+import { TRPCError } from "@trpc/server";
 
 type GetUserOrganizationsProps = {
-  ctx: AuthenticatedContext;
+  ctx: Context;
   input?: z.infer<typeof GetUserOrganizationsInput>;
 };
 
@@ -11,7 +13,17 @@ export const getUserOrganizations = async ({
   ctx,
 }: GetUserOrganizationsProps) => {
   const { db, session } = ctx;
+
+  // セッションの存在確認
+  if (!session?.user?.sub) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "認証が必要です",
+    });
+  }
+
   const userId = session.user.sub;
+  const { organizationId: currentOrgId } = getSessionInfo(session);
 
   // ユーザーが所属する組織の一覧を取得（詳細情報含む）
   const memberships = await db.organizationMember.findMany({
@@ -48,7 +60,6 @@ export const getUserOrganizations = async ({
 
   return memberships.map(
     (membership: {
-      isAdmin: boolean;
       organization: {
         id: string;
         name: string;
@@ -75,9 +86,8 @@ export const getUserOrganizations = async ({
       createdBy: membership.organization.createdBy,
       createdAt: membership.organization.createdAt,
       updatedAt: membership.organization.updatedAt,
-      isAdmin: membership.isAdmin,
       memberCount: membership.organization._count.members,
-      isDefault: membership.organization.id === ctx.session.user.organizationId,
+      isDefault: membership.organization.id === currentOrgId,
     }),
   );
 };

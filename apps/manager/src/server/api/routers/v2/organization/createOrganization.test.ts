@@ -137,26 +137,5 @@ describe.skip("createOrganization", () => {
     });
 
     expect(membership).toBeTruthy();
-    expect(membership?.isAdmin).toBe(true);
-  });
-
-  test("ユーザーのdefaultOrganizationSlugが更新される", async () => {
-    const result = await db.$transaction(async (tx) => {
-      return await createOrganization(tx, {
-        userId: testUserId,
-        name: "デフォルト組織更新テスト",
-        description: "defaultOrganizationSlugの更新をテスト",
-      });
-    });
-
-    createdOrgIds.push(result.id);
-
-    // ユーザーのdefaultOrganizationSlugが更新されているか確認
-    const user = await db.user.findUnique({
-      where: { id: testUserId },
-      select: { defaultOrganizationSlug: true },
-    });
-
-    expect(user?.defaultOrganizationSlug).toBe(result.slug);
   });
 });

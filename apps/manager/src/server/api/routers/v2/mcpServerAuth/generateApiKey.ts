@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { McpServerIdSchema } from "@/schema/ids";
 import { generateApiKey as generateTumikiApiKey } from "@/utils/server/apiKey";
+import { createAdminNotifications } from "../notification/createBulkNotifications";
 
 export const generateApiKeyInputSchema = z.object({
   serverId: McpServerIdSchema,
@@ -65,6 +66,16 @@ export const generateApiKey = async (
       mcpServerId: serverId,
       expiresAt,
     },
+  });
+
+  // セキュリティアラート: 管理者に通知（非同期で実行）
+  void createAdminNotifications(db, {
+    type: "SECURITY_API_KEY_CREATED",
+    priority: "NORMAL",
+    title: "APIキーが発行されました",
+    message: `MCPサーバー「${server.name}」のAPIキー「${keyName}」が発行されました`,
+    organizationId,
+    triggeredById: userId,
   });
 
   return {

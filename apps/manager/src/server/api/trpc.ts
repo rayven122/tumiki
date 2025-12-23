@@ -4,10 +4,10 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import type { Prisma } from "@tumiki/db";
-import type { Session } from "next-auth";
 
 import { db } from "@tumiki/db/server";
 import { auth } from "~/auth";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 /**
  * 1. コンテキスト
@@ -106,9 +106,9 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 export const publicProcedure = t.procedure.use(timingMiddleware);
 
 /**
- * 保護されたプロシージャ（認証必須）
+ * 保護されたプロシージャ（認証必須、組織メンバーシップ必須）
  *
- * ログイン済みユーザーのみアクセス可能なプロシージャです。
+ * ログイン済みで組織に所属しているユーザーのみアクセス可能なプロシージャです。
  * 個人は会員登録時に必ず作成されるため、認証済み = 組織所属済みとなります。
  *
  * セッション情報には以下が含まれます：
@@ -116,7 +116,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * - ctx.session.user.role: システムロール（SYSTEM_ADMIN | USER）
  * - ctx.session.user.organizationId: 組織ID（必須）
  * - ctx.session.user.organizationSlug: 組織slug（必須）
- * - ctx.session.user.isOrganizationAdmin: 組織内管理者権限
+ * - ctx.currentOrg.roles: 組織内ロール（JWTから取得）
  *
  * @see https://trpc.io/docs/procedures
  */
@@ -127,10 +127,12 @@ export const protectedProcedure = t.procedure
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
 
-    if (
-      !ctx.session.user.organizationId ||
-      !ctx.session.user.organizationSlug
-    ) {
+    // tumikiクレームから組織情報を取得
+    const { organizationId, organizationSlug, roles } = getSessionInfo(
+      ctx.session,
+    );
+
+    if (!organizationId || !organizationSlug) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
@@ -138,19 +140,19 @@ export const protectedProcedure = t.procedure
       });
     }
 
-    // 組織内での管理者権限と組織タイプを確認
+    // 2. 組織メンバーシップの存在確認
     const organizationMember = await ctx.db.organizationMember.findUnique({
       where: {
         organizationId_userId: {
           userId: ctx.session.user.sub,
-          organizationId: ctx.session.user.organizationId,
+          organizationId,
         },
       },
       select: {
-        isAdmin: true,
         organization: {
           select: {
             id: true,
+            slug: true,
             createdBy: true,
             isPersonal: true,
           },
@@ -167,9 +169,7 @@ export const protectedProcedure = t.procedure
     }
 
     // 取得した組織IDとセッションの組織IDが一致することを確認
-    if (
-      organizationMember.organization.id !== ctx.session.user.organizationId
-    ) {
+    if (organizationMember.organization.id !== organizationId) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "組織情報が一致しません。",
@@ -185,13 +185,13 @@ export const protectedProcedure = t.procedure
           user: {
             ...ctx.session.user,
             id: ctx.session.user.sub,
-            organizationId: ctx.session.user.organizationId,
-            organizationSlug: ctx.session.user.organizationSlug,
           },
         },
         currentOrg: {
           ...organizationMember.organization,
-          isAdmin: organizationMember.isAdmin,
+          organizationId, // tumikiクレームから取得
+          organizationSlug, // tumikiクレームから取得
+          roles, // tumikiクレームから取得したロール配列
         },
       },
     });
@@ -204,10 +204,10 @@ export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
  */
 type OrganizationMemberWithOrg = Prisma.OrganizationMemberGetPayload<{
   select: {
-    isAdmin: true;
     organization: {
       select: {
         id: true;
+        slug: true;
         createdBy: true;
         isPersonal: true;
       };
@@ -219,15 +219,8 @@ type OrganizationMemberWithOrg = Prisma.OrganizationMemberGetPayload<{
  * currentOrgの型定義
  */
 type CurrentOrg = OrganizationMemberWithOrg["organization"] & {
-  isAdmin: boolean; // 現在のユーザーの管理者権限
+  roles: string[]; // JWTから取得したロール配列 ["Owner", "Engineering Manager", ...]
 };
-
-/**
- * 認証済みユーザーのコンテキスト型（組織所属前でも使用可能）
- */
-export type AuthenticatedContext = {
-  session: NonNullable<Context["session"]>;
-} & Context;
 
 /**
  * protectedProcedureのコンテキスト型
@@ -235,12 +228,6 @@ export type AuthenticatedContext = {
  * ミドルウェアで組織メンバーシップの存在を検証済み
  */
 export type ProtectedContext = {
-  session: {
-    user: Session["user"] & {
-      id: string;
-      organizationId: string; // 組織IDは必須
-      organizationSlug: string; // 組織slugは必須
-    };
-  } & NonNullable<Context["session"]>;
+  session: NonNullable<Context["session"]>;
   currentOrg: CurrentOrg; // non-null（ミドルウェアで存在を保証）
 } & Context;

@@ -1,10 +1,13 @@
 import type {
   IOrganizationProvider,
   KeycloakAdminConfig,
+  KeycloakGroup,
   KeycloakRole,
+  KeycloakUser,
   OrganizationRole,
 } from "./types.js";
 import { KeycloakAdminClient } from "./client.js";
+import { loadKeycloakConfigFromEnv } from "./config.js";
 import * as services from "./providerServices.js";
 
 /**
@@ -20,17 +23,79 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   }
 
   /**
+   * 環境変数からKeycloak設定を読み込んでインスタンスを作成
+   *
+   * 環境変数の詳細は `loadKeycloakConfigFromEnv()` を参照
+   *
+   * @throws {Error} 必須の環境変数が設定されていない場合
+   * @returns KeycloakOrganizationProvider インスタンス
+   */
+  static fromEnv(): KeycloakOrganizationProvider {
+    const config = loadKeycloakConfigFromEnv();
+    return new KeycloakOrganizationProvider(config);
+  }
+
+  /**
+   * voidを返す操作用のラッパー
+   * 例外を { success, error } 形式に変換
+   */
+  private async execute(
+    operation: () => Promise<void>,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await operation();
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * 値を返す操作用のラッパー
+   * 例外を { success, result, error } 形式に変換
+   */
+  private async executeWithResult<T>(
+    operation: () => Promise<T>,
+  ): Promise<{ success: boolean; result?: T; error?: string }> {
+    try {
+      const result = await operation();
+      return { success: true, result };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
    * 組織グループを作成
+   *
+   * 注意: デフォルトロール（Owner, Admin, Member, Viewer）は全組織で共通の
+   * Realm Rolesとして事前に作成されている必要があります。
+   * アプリケーション初期化時に ensureDefaultRealmRolesExist() を呼び出してください。
    */
   async createOrganization(params: {
     name: string;
     groupName: string;
     ownerId: string;
-    createDefaultRoles?: boolean;
   }): Promise<{ success: boolean; externalId: string; error?: string }> {
-    return services.createOrganization(this.client, params, (memberParams) =>
-      this.addMember(memberParams),
+    const result = await this.executeWithResult(() =>
+      services.createOrganization(this.client, params, async (memberParams) => {
+        const memberResult = await this.addMember(memberParams);
+        if (!memberResult.success) {
+          throw new Error(memberResult.error ?? "Failed to add member");
+        }
+      }),
     );
+    return {
+      success: result.success,
+      externalId: result.result ?? "",
+      error: result.error,
+    };
   }
 
   /**
@@ -39,7 +104,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   async deleteOrganization(params: {
     externalId: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.deleteOrganization(this.client, params);
+    return this.execute(() => services.deleteOrganization(this.client, params));
   }
 
   /**
@@ -50,7 +115,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string;
     role: OrganizationRole;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.addMember(this.client, params);
+    return this.execute(() => services.addMember(this.client, params));
   }
 
   /**
@@ -60,7 +125,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     externalId: string;
     userId: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.removeMember(this.client, params);
+    return this.execute(() => services.removeMember(this.client, params));
   }
 
   /**
@@ -71,7 +136,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string;
     newRole: OrganizationRole;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.updateMemberRole(this.client, params);
+    return this.execute(() => services.updateMemberRole(this.client, params));
   }
 
   /**
@@ -80,7 +145,9 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
   async invalidateUserSessions(params: {
     userId: string;
   }): Promise<{ success: boolean; error?: string }> {
-    return services.invalidateUserSessions(this.client, params);
+    return this.execute(() =>
+      services.invalidateUserSessions(this.client, params),
+    );
   }
 
   /**
@@ -94,7 +161,14 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
       attributes?: Record<string, string[]>;
     },
   ): Promise<{ success: boolean; roleId?: string; error?: string }> {
-    return this.client.createGroupRole(groupId, params);
+    const result = await this.executeWithResult(() =>
+      this.client.createGroupRole(groupId, params),
+    );
+    return {
+      success: result.success,
+      roleId: result.result,
+      error: result.error,
+    };
   }
 
   /**
@@ -105,7 +179,14 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     roles?: KeycloakRole[];
     error?: string;
   }> {
-    return this.client.listGroupRoles(groupId);
+    const result = await this.executeWithResult(() =>
+      this.client.listGroupRoles(groupId),
+    );
+    return {
+      success: result.success,
+      roles: result.result,
+      error: result.error,
+    };
   }
 
   /**
@@ -115,7 +196,7 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     groupId: string,
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return this.client.deleteGroupRole(groupId, roleName);
+    return this.execute(() => this.client.deleteGroupRole(groupId, roleName));
   }
 
   /**
@@ -126,7 +207,9 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string,
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return this.client.assignGroupRoleToUser(groupId, userId, roleName);
+    return this.execute(() =>
+      this.client.assignGroupRoleToUser(groupId, userId, roleName),
+    );
   }
 
   /**
@@ -137,6 +220,234 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     userId: string,
     roleName: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return this.client.removeGroupRoleFromUser(groupId, userId, roleName);
+    return this.execute(() =>
+      this.client.removeGroupRoleFromUser(groupId, userId, roleName),
+    );
+  }
+
+  /**
+   * ユーザーのデフォルト組織を設定（Keycloak固有機能）
+   * ユーザーのカスタム属性に default_organization_id を保存
+   */
+  async setUserDefaultOrganization(params: {
+    userId: string;
+    organizationId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.updateUserAttributes(params.userId, {
+        default_organization_id: [params.organizationId],
+      }),
+    );
+  }
+
+  /**
+   * サブグループ（部署）を作成
+   */
+  async createSubgroup(params: {
+    organizationId: string;
+    name: string;
+    parentSubgroupId?: string;
+    attributes?: Record<string, string[]>;
+  }): Promise<{ success: boolean; subgroupId: string; error?: string }> {
+    const result = await this.executeWithResult(() =>
+      this.client.createSubgroup(
+        params.parentSubgroupId ?? params.organizationId,
+        { name: params.name, attributes: params.attributes },
+      ),
+    );
+    return {
+      success: result.success,
+      subgroupId: result.result ?? "",
+      error: result.error,
+    };
+  }
+
+  /**
+   * サブグループを削除
+   */
+  async deleteSubgroup(params: {
+    subgroupId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() => this.client.deleteSubgroup(params.subgroupId));
+  }
+
+  /**
+   * サブグループ一覧を取得
+   */
+  async listSubgroups(params: { organizationId: string }): Promise<{
+    success: boolean;
+    subgroups?: KeycloakGroup[];
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.listSubgroups(params.organizationId),
+    );
+    return {
+      success: result.success,
+      subgroups: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * ユーザーをサブグループに追加
+   */
+  async addUserToSubgroup(params: {
+    subgroupId: string;
+    userId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.addUserToGroup(params.userId, params.subgroupId),
+    );
+  }
+
+  /**
+   * ユーザーをサブグループから削除
+   */
+  async removeUserFromSubgroup(params: {
+    subgroupId: string;
+    userId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.removeUserFromGroup(params.userId, params.subgroupId),
+    );
+  }
+
+  /**
+   * グループのメンバー一覧を取得
+   */
+  async listGroupMembers(params: { groupId: string }): Promise<{
+    success: boolean;
+    members?: KeycloakUser[];
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.listGroupMembers(params.groupId),
+    );
+    return {
+      success: result.success,
+      members: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * グループ情報を取得
+   */
+  async getGroup(params: { groupId: string }): Promise<{
+    success: boolean;
+    group?: KeycloakGroup;
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.getGroup(params.groupId),
+    );
+    return {
+      success: result.success,
+      group: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * サブグループを別の親グループに移動
+   */
+  async moveSubgroup(params: {
+    groupId: string;
+    newParentGroupId: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.moveSubgroup(params.groupId, params.newParentGroupId),
+    );
+  }
+
+  /**
+   * サブグループの属性を更新
+   */
+  async updateSubgroupAttributes(params: {
+    subgroupId: string;
+    attributes: Record<string, string[]>;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.updateGroupAttributes(params.subgroupId, params.attributes),
+    );
+  }
+
+  /**
+   * サブグループ（部署）を更新（名前と属性）
+   */
+  async updateSubgroup(params: {
+    subgroupId: string;
+    name?: string;
+    attributes?: Record<string, string[]>;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.updateGroup(params.subgroupId, {
+        name: params.name,
+        attributes: params.attributes,
+      }),
+    );
+  }
+
+  /**
+   * グループにRealm Roleをマッピング
+   * 組織のカスタムロール（org:{orgSlug}:role:{roleSlug}形式）をグループに割り当てる
+   */
+  async addRoleMappingToGroup(params: {
+    groupId: string;
+    roleName: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.addRoleMappingToGroup(params.groupId, params.roleName),
+    );
+  }
+
+  /**
+   * グループからRealm Roleマッピングを削除
+   */
+  async removeRoleMappingFromGroup(params: {
+    groupId: string;
+    roleName: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.removeRoleMappingFromGroup(params.groupId, params.roleName),
+    );
+  }
+
+  /**
+   * グループにマッピングされた組織ロール一覧を取得
+   * org:{orgSlug}:role:{roleSlug} 形式のロールのみをフィルタして返す
+   */
+  async listOrganizationRoleMappingsForGroup(params: {
+    groupId: string;
+    orgSlug: string;
+  }): Promise<{
+    success: boolean;
+    roles?: { roleSlug: string; roleName: string }[];
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.listOrganizationRoleMappingsForGroup(
+        params.groupId,
+        params.orgSlug,
+      ),
+    );
+    return {
+      success: result.success,
+      roles: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * デフォルトRealm Rolesが存在することを確認し、なければ作成
+   * これらは全組織で共通して使用されるロール（Owner, Admin, Member, Viewer）
+   * アプリケーション初期化時に一度だけ呼び出す
+   */
+  async ensureDefaultRealmRolesExist(): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    return this.execute(() => this.client.ensureDefaultRealmRolesExist());
   }
 }

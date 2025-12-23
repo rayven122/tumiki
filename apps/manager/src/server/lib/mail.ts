@@ -39,16 +39,14 @@ export const initializeMailClient = (): void => {
  * @param email - 送信先メールアドレス
  * @param inviteUrl - 招待URL
  * @param organizationName - 組織名
- * @param isAdmin - 管理者フラグ（デフォルト: false）
- * @param roleIds - ロールID配列（デフォルト: []）
+ * @param roles - ロール配列（デフォルト: ["Member"]）
  * @param expiresAt - 有効期限（ISO形式文字列、オプション）
  */
 export const sendInvitationEmail = async (
   email: string,
   inviteUrl: string,
   organizationName: string,
-  isAdmin = false,
-  roleIds: string[] = [],
+  roles: string[] = ["Member"],
   expiresAt?: string,
 ): Promise<void> => {
   try {
@@ -56,13 +54,10 @@ export const sendInvitationEmail = async (
     initializeMailClient();
 
     // 役割情報を含むカスタマイズメッセージ
-    const roleInfo = isAdmin
-      ? "管理者として"
-      : roleIds.length > 0
-        ? `${roleIds.length}個の役割と共に`
-        : "";
+    const roleInfo =
+      roles.length > 0 ? `${roles.join(", ")}として` : "メンバーとして";
 
-    const customName = roleInfo ? `${email}（${roleInfo}招待）` : email;
+    const customName = `${email}（${roleInfo}招待）`;
 
     void sendInvitation({
       email,

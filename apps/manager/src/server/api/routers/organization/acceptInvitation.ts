@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { InvitationTokenSchema } from "@/schema/ids";
+import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
+import { createManyNotifications } from "../v2/notification/createNotification";
 
 // 入力スキーマ
 export const acceptInvitationInputSchema = z.object({
@@ -12,7 +14,6 @@ export const acceptInvitationInputSchema = z.object({
 export const acceptInvitationOutputSchema = z.object({
   organizationSlug: z.string(),
   organizationName: z.string(),
-  isAdmin: z.boolean(),
 });
 
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationInputSchema>;
@@ -25,7 +26,7 @@ export type AcceptInvitationOutput = z.infer<
  *
  * @param input - 招待トークン
  * @param ctx - 保護されたコンテキスト
- * @returns 組織情報（slug, name, isAdmin）
+ * @returns 組織情報（slug, name）
  *
  * @throws NOT_FOUND - トークンが存在しない
  * @throws BAD_REQUEST - 有効期限切れ
@@ -94,23 +95,85 @@ export const acceptInvitation = async ({
       });
     }
 
-    // 6. トランザクション処理
+    // 6. Ownerロール検証
+    if (invitation.roles.includes("Owner")) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Ownerロールは組織作成者のみが持つ特別なロールです。招待では指定できません。",
+      });
+    }
+
+    // 7. トランザクション処理
     const result = await ctx.db.$transaction(async (tx) => {
-      // OrganizationMember作成
+      // 7-1. OrganizationMember作成
       await tx.organizationMember.create({
         data: {
           organizationId: invitation.organizationId,
           userId: ctx.session.user.id,
-          isAdmin: invitation.isAdmin,
         },
       });
 
-      // TODO: ロール・グループ割り当て
-      // invitation.roleIds と invitation.groupIds を使用して
-      // 組織内のロールとグループに割り当てる処理を実装
-      // 現在は基本的なメンバー追加のみ実装
+      // 7-2. Keycloak Group にメンバー追加（招待時に指定されたロール）
+      const provider = KeycloakOrganizationProvider.fromEnv();
 
-      // 招待レコード削除（一度のみ使用可能）
+      try {
+        // 組織のIDを取得（idがKeycloak Group ID）
+        const org = await tx.organization.findUnique({
+          where: { id: invitation.organizationId },
+          select: { id: true },
+        });
+
+        if (!org) {
+          throw new Error("Organization not found");
+        }
+
+        // 招待時に指定されたロールを使用（デフォルト: Member）
+        const role = invitation.roles[0] ?? "Member";
+        const addMemberResult = await provider.addMember({
+          externalId: org.id, // Organization.idがKeycloak Group ID
+          userId: ctx.session.user.id,
+          role: role as "Owner" | "Admin" | "Member" | "Viewer",
+        });
+
+        if (!addMemberResult.success) {
+          // Keycloak統合失敗は致命的エラー（DB-Keycloak整合性維持のため）
+          throw new Error(
+            addMemberResult.error ?? "Failed to add member to Keycloak Group",
+          );
+        }
+      } catch (error) {
+        console.error("[AcceptInvitation] Keycloak integration failed:", error);
+        // Keycloak統合失敗時はロールバック
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Keycloakへのメンバー追加に失敗しました。",
+        });
+      }
+
+      // 7-3. 組織の全メンバーに通知を作成
+      const orgMembers = await tx.organizationMember.findMany({
+        where: {
+          organizationId: invitation.organizationId,
+        },
+        select: {
+          userId: true,
+        },
+      });
+
+      const notificationUserIds = orgMembers.map((member) => member.userId);
+
+      await createManyNotifications(tx, notificationUserIds, {
+        type: "ORGANIZATION_INVITATION_ACCEPTED",
+        priority: "NORMAL",
+        title: "新しいメンバーが参加しました",
+        message: `${ctx.session.user.email ?? "新しいメンバー"}が組織に参加しました。`,
+        linkUrl: `/${invitation.organization.slug}/members`,
+        organizationId: invitation.organizationId,
+        triggeredById: ctx.session.user.id,
+      });
+
+      // 7-4. 招待レコード削除（一度のみ使用可能）
       await tx.organizationInvitation.delete({
         where: { id: invitation.id },
       });
@@ -118,7 +181,6 @@ export const acceptInvitation = async ({
       return {
         organizationSlug: invitation.organization.slug,
         organizationName: invitation.organization.name,
-        isAdmin: invitation.isAdmin,
       };
     });
 

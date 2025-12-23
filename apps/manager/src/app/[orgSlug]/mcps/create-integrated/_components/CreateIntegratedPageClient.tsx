@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { api, type RouterOutputs } from "@/trpc/react";
+import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { integratedFlowStateAtom } from "@/atoms/integratedFlowAtoms";
@@ -23,9 +23,6 @@ import { prepareTemplateData } from "../_utils/prepareTemplateData";
 type CreateIntegratedPageClientProps = {
   orgSlug: string;
 };
-
-type OfficialServers =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
 
 /**
  * 統合サーバー作成ページのメインクライアントコンポーネント

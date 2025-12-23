@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,19 +29,28 @@ import {
 } from "@/components/ui/alert-dialog";
 import { UserPlus, Trash2, Crown, User, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 export const MemberManagementSection = () => {
+  const { data: session, update } = useSession();
+  const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { data: organization, isLoading: organizationLoading } =
-    api.organization.getById.useQuery();
+  const { data: organization } = api.organization.getById.useQuery();
 
-  const members = organization?.members;
+  const { data: membersData, isLoading: organizationLoading } =
+    api.organization.getMembers.useQuery({
+      limit: 20,
+      offset: 0,
+    });
+
+  const members = membersData?.members;
 
   const utils = api.useUtils();
 
@@ -73,6 +84,7 @@ export const MemberManagementSection = () => {
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
       setErrorMessage(null);
+      // メンバーリストの更新
       void utils.organization.getById.invalidate();
     },
     onError: (error) => {
@@ -87,21 +99,27 @@ export const MemberManagementSection = () => {
     if (inviteEmail.trim()) {
       inviteMutation.mutate({
         email: inviteEmail.trim(),
-        isAdmin: false,
+        roles: ["Member"],
       });
     }
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    removeMemberMutation.mutate({
+  const handleRemoveMember = async (memberId: string, userId: string) => {
+    await removeMemberMutation.mutateAsync({
       memberId,
     });
+
+    // 自分自身を削除した場合
+    if (userId === session?.user.id) {
+      toast.info("組織から退会しました。組織一覧ページに移動します。");
+      // セッション更新を待ってからリダイレクト
+      await update();
+      router.push("/organizations/dashboard");
+    }
   };
 
-  const userMember = organization?.members.find(
-    (member) => member.user.id === organization.createdBy,
-  );
-  const isAdmin = userMember?.isAdmin ?? false;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   if (organizationLoading) {
     return (
@@ -221,7 +239,10 @@ export const MemberManagementSection = () => {
                         {member.user.email}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
-                        {member.isAdmin ? (
+                        {member.roles.some(
+                          (role) =>
+                            role.name === "Owner" || role.name === "Admin",
+                        ) ? (
                           <Badge variant="default" className="text-xs">
                             <Crown className="mr-1 h-3 w-3" />
                             管理者
@@ -272,7 +293,9 @@ export const MemberManagementSection = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>キャンセル</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleRemoveMember(member.id)}
+                              onClick={() =>
+                                handleRemoveMember(member.id, member.userId)
+                              }
                               className="bg-red-600 hover:bg-red-700"
                             >
                               削除

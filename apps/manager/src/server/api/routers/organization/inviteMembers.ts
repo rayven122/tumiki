@@ -11,9 +11,7 @@ export const inviteMembersInputSchema = z.object({
     .array(z.string().email("有効なメールアドレスを入力してください"))
     .min(1, "少なくとも1つのメールアドレスが必要です")
     .max(50, "一度に招待できるのは最大50人までです"),
-  isAdmin: z.boolean().default(false),
-  roleIds: z.array(z.string()).default([]),
-  groupIds: z.array(z.string()).default([]),
+  roles: z.array(z.string()).default(["Member"]), // デフォルトロール
 });
 
 // 出力スキーマ
@@ -53,9 +51,9 @@ export const inviteMembers = async ({
   ctx: ProtectedContext;
 }): Promise<InviteMembersOutput> => {
   try {
-    // チームの管理者権限を検証
+    // メンバー招待権限を検証
     validateOrganizationAccess(ctx.currentOrg, {
-      requireAdmin: true,
+      requirePermission: "member:invite",
       requireTeam: true,
     });
 
@@ -130,9 +128,7 @@ export const inviteMembers = async ({
               email,
               token,
               invitedBy: ctx.session.user.id,
-              isAdmin: input.isAdmin,
-              roleIds: input.roleIds,
-              groupIds: input.groupIds,
+              roles: input.roles,
               expires,
             },
           });
@@ -165,8 +161,7 @@ export const inviteMembers = async ({
           invitation.email,
           inviteUrl,
           organization.name,
-          input.isAdmin,
-          input.roleIds,
+          input.roles,
           invitation.expires.toISOString(),
         );
       }),

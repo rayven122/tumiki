@@ -5,8 +5,6 @@ import {
   OrganizationIdSchema,
   UserIdSchema,
   InvitationTokenSchema,
-  OrganizationRoleIdSchema,
-  OrganizationGroupIdSchema,
 } from "@/schema/ids";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 
@@ -23,9 +21,7 @@ export const getInvitationsOutputSchema = z.array(
       email: z.string().email().nullable(),
       image: z.string().url().nullable(),
     }),
-    isAdmin: z.boolean(),
-    roleIds: z.array(OrganizationRoleIdSchema),
-    groupIds: z.array(OrganizationGroupIdSchema),
+    roles: z.array(z.string()),
     expires: z.date(),
     createdAt: z.date(),
     updatedAt: z.date(),
@@ -46,7 +42,7 @@ export const getInvitations = async ({
   });
 
   // 現在の組織IDを取得
-  const organizationId = ctx.session.user.organizationId;
+  const organizationId = ctx.currentOrg.id;
 
   const invitations = await ctx.db.organizationInvitation.findMany({
     where: {

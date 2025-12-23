@@ -22,13 +22,13 @@ export const baseOrganizationOutput = OrganizationSchema.pick({
 
 /**
  * メンバー情報を含む組織出力スキーマ
+ * Note: isAdminフィールドは削除（JWTのrolesで判定）
  */
 export const organizationWithMembersOutput = baseOrganizationOutput.extend({
   members: z.array(
     OrganizationMemberSchema.pick({
       id: true,
       userId: true,
-      isAdmin: true,
       createdAt: true,
     }).extend({
       user: UserSchema.pick({
@@ -115,13 +115,20 @@ export const updateOrganizationInput = z.object({
 
 /**
  * メンバー招待入力スキーマ
+ * Note: isAdminフィールドは削除（代わりにrolesで指定）
+ * Note: Ownerロールは組織作成者のみが持つ特別なロールであり、招待では指定できません
  */
-export const inviteMemberInput = z.object({
-  email: z.string().email(),
-  isAdmin: z.boolean().default(false),
-  roleIds: z.array(z.string()).default([]),
-  groupIds: z.array(z.string()).default([]),
-});
+export const inviteMemberInput = z
+  .object({
+    email: z.string().email(),
+    roles: z.array(z.enum(["Admin", "Member", "Viewer"])).default(["Member"]), // 割り当て可能なロールのみ（Ownerは除外）
+    roleIds: z.array(z.string()).default([]), // 後方互換性のため残す（非推奨）
+    groupIds: z.array(z.string()).default([]), // 後方互換性のため残す（非推奨）
+  })
+  .refine((data) => !data.roles.includes("Owner" as never), {
+    message: "Ownerロールは組織作成者のみが持つ特別なロールです",
+    path: ["roles"],
+  });
 
 /**
  * メンバー削除入力スキーマ

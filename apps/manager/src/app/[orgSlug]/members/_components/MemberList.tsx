@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,25 +27,66 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Crown, User, Mail } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { UserPlus, Trash2, Crown, User, Mail, Shield, Eye } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
 import { toast } from "sonner";
+import type { OrganizationRole } from "@/server/utils/organizationPermissions";
+import { MemberRoleSelector } from "./MemberRoleSelector";
 
 type MemberListProps = {
   organization: GetOrganizationBySlugOutput;
 };
 
+// ロールの説明
+const ROLE_DESCRIPTIONS: Record<
+  OrganizationRole,
+  { label: string; description: string; icon: typeof Crown }
+> = {
+  Owner: {
+    label: "オーナー",
+    description: "全権限（組織削除含む）",
+    icon: Crown,
+  },
+  Admin: {
+    label: "管理者",
+    description: "組織削除以外の全機能",
+    icon: Shield,
+  },
+  Member: {
+    label: "メンバー",
+    description: "MCP作成・メンバー閲覧",
+    icon: User,
+  },
+  Viewer: {
+    label: "閲覧者",
+    description: "読み取り専用",
+    icon: Eye,
+  },
+};
+
 export const MemberList = ({ organization }: MemberListProps) => {
+  const { data: session, update } = useSession();
+  const router = useRouter();
   const [inviteEmails, setInviteEmails] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [invitedCount, setInvitedCount] = useState(0);
+  const [selectedRole, setSelectedRole] = useState<OrganizationRole>("Member");
 
   const utils = api.useUtils();
 
-  const isAdmin = organization.isAdmin;
+  // JWT のロールから管理者権限を取得
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   const inviteMembersMutation = api.organization.inviteMembers.useMutation({
     onSuccess: async (data) => {
@@ -87,6 +130,7 @@ export const MemberList = ({ organization }: MemberListProps) => {
 
   const removeMemberMutation = api.organization.removeMember.useMutation({
     onSuccess: () => {
+      // メンバーリストの更新
       void utils.organization.getBySlug.invalidate({
         slug: organization.slug,
       });
@@ -109,19 +153,25 @@ export const MemberList = ({ organization }: MemberListProps) => {
       return;
     }
 
-    // サーバー側で処理
+    // サーバー側で処理（選択されたロールを使用）
     inviteMembersMutation.mutate({
       emails: emailList,
-      isAdmin: false,
-      roleIds: [],
-      groupIds: [],
+      roles: [selectedRole],
     });
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    removeMemberMutation.mutate({
+  const handleRemoveMember = async (memberId: string, userId: string) => {
+    await removeMemberMutation.mutateAsync({
       memberId,
     });
+
+    // 自分自身を削除した場合
+    if (userId === session?.user.id) {
+      toast.info("組織から退会しました。組織一覧ページに移動します。");
+      // セッション更新を待ってからリダイレクト
+      await update({});
+      router.push("/organizations/dashboard");
+    }
   };
 
   return (
@@ -159,12 +209,12 @@ export const MemberList = ({ organization }: MemberListProps) => {
                   メンバーを招待
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>メンバーを招待</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div>
+                <div className="space-y-5">
+                  <div className="space-y-2">
                     <Label htmlFor="emails">メールアドレス</Label>
                     <Textarea
                       id="emails"
@@ -174,11 +224,64 @@ export const MemberList = ({ organization }: MemberListProps) => {
                       rows={5}
                       className="font-mono text-sm"
                     />
-                    <p className="mt-2 text-xs text-gray-500">
+                    <p className="text-muted-foreground text-xs">
                       複数のメールアドレスはカンマ（,）、改行、またはセミコロン（;）で区切ってください
                     </p>
                   </div>
-                  <div className="flex justify-end gap-2">
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="role">ロール</Label>
+                      <Select
+                        value={selectedRole}
+                        onValueChange={(value) =>
+                          setSelectedRole(value as OrganizationRole)
+                        }
+                      >
+                        <SelectTrigger id="role">
+                          <SelectValue placeholder="ロールを選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(["Admin", "Member", "Viewer"] as const).map(
+                            (role) => {
+                              const roleInfo = ROLE_DESCRIPTIONS[role];
+                              const Icon = roleInfo.icon;
+                              return (
+                                <SelectItem key={role} value={role}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <span>{roleInfo.label}</span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            },
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* 選択されたロールの説明を表示 */}
+                    <div className="bg-muted/40 rounded-md border p-3">
+                      <div className="flex items-start gap-2">
+                        {(() => {
+                          const roleInfo = ROLE_DESCRIPTIONS[selectedRole];
+                          const Icon = roleInfo.icon;
+                          return (
+                            <>
+                              <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">
+                                  {roleInfo.label}
+                                </p>
+                                <p className="text-muted-foreground text-xs">
+                                  {roleInfo.description}
+                                </p>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
                     <Button
                       variant="outline"
                       onClick={() => setIsInviteDialogOpen(false)}
@@ -209,90 +312,127 @@ export const MemberList = ({ organization }: MemberListProps) => {
             </p>
           ) : (
             <div className="space-y-4">
-              {organization.members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
-                >
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarImage src={member.user.image ?? undefined} />
-                      <AvatarFallback>
-                        {member.user.name?.charAt(0)?.toUpperCase() ?? "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">
-                        {member.user.name ?? "名前未設定"}
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
-                        <Mail className="h-3 w-3" />
-                        {member.user.email}
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        {member.isAdmin ? (
-                          <Badge variant="default" className="text-xs">
-                            <Crown className="mr-1 h-3 w-3" />
-                            管理者
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">
-                            <User className="mr-1 h-3 w-3" />
-                            メンバー
-                          </Badge>
-                        )}
-                        {member.roles.map((role) => (
-                          <Badge
-                            key={role.id}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {role.name}
-                          </Badge>
-                        ))}
+              {organization.members.map((member) => {
+                const isOwner = member.userId === organization.createdBy;
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between rounded-lg border p-4"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <Avatar>
+                        <AvatarImage src={member.user.image ?? undefined} />
+                        <AvatarFallback>
+                          {member.user.name?.charAt(0)?.toUpperCase() ?? "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">
+                          {member.user.name ?? "名前未設定"}
+                        </div>
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <Mail className="h-3 w-3" />
+                          {member.user.email}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-gray-400">
-                      参加日:{" "}
-                      {new Date(member.createdAt).toLocaleDateString("ja-JP")}
+                    <div className="flex items-center gap-2">
+                      {/* ロールセレクター/バッジ */}
+                      {isOwner ? (
+                        <Select value="Owner" disabled>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Owner">
+                              <div className="flex items-center gap-2">
+                                <Crown className="h-4 w-4 shrink-0" />
+                                <span>オーナー</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : isAdmin ? (
+                        <MemberRoleSelector
+                          memberId={member.id}
+                          memberName={
+                            member.user.name ?? member.user.email ?? ""
+                          }
+                          currentRole={
+                            (member.roles.find((r) =>
+                              ["Owner", "Admin", "Member", "Viewer"].includes(
+                                r.name,
+                              ),
+                            )?.name ?? "Member") as OrganizationRole
+                          }
+                          organizationSlug={organization.slug}
+                        />
+                      ) : (
+                        <>
+                          {member.roles.map((role) => {
+                            const roleInfo =
+                              ROLE_DESCRIPTIONS[role.name as OrganizationRole];
+                            if (roleInfo) {
+                              const Icon = roleInfo.icon;
+                              return (
+                                <Badge
+                                  key={role.id}
+                                  variant={
+                                    role.name === "Admin"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className="text-xs"
+                                >
+                                  <Icon className="mr-1 h-3 w-3" />
+                                  {roleInfo.label}
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })}
+                        </>
+                      )}
+                      <div className="text-xs text-gray-400">
+                        参加日:{" "}
+                        {new Date(member.createdAt).toLocaleDateString("ja-JP")}
+                      </div>
+                      {isAdmin && member.userId !== organization.createdBy && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                メンバーを削除
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {member.user.name ?? member.user.email}{" "}
+                                を組織から削除しますか？
+                                この操作は取り消せません。
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  handleRemoveMember(member.id, member.userId)
+                                }
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                削除
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
-                    {isAdmin && member.userId !== organization.createdBy && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>メンバーを削除</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {member.user.name ?? member.user.email}{" "}
-                              を組織から削除しますか？
-                              この操作は取り消せません。
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleRemoveMember(member.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              削除
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

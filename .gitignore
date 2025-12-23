@@ -159,3 +159,5 @@ reports/
 # Keycloak credentials and setup
 docs/deployment/keycloak-credentials.md
 scripts/setup-keycloak.sh
+# Playwright MCP outputs
+.playwright-mcp/

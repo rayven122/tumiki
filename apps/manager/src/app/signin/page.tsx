@@ -3,16 +3,38 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
-export default async function SignInPage() {
+type SignInPageProps = {
+  searchParams: Promise<{ callbackUrl?: string }>;
+};
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await auth();
-  // セッションから直接組織slugを取得
-  const orgSlug = session?.user.organizationSlug;
+  const { callbackUrl } = await searchParams;
+  const orgSlug = getSessionInfo(session).organizationSlug;
 
-  // 組織情報がない場合はオンボーディングへ（初回ログインフラグ付き）
-  const redirectUrl = orgSlug ? `/${orgSlug}/mcps` : "/onboarding?first=true";
+  // callbackUrlのバリデーション（サインインループを防ぐ）
+  const dangerousPaths = ["/signin", "/signup", "/api/auth/"];
+  const validatedCallbackUrl =
+    callbackUrl && !dangerousPaths.some((path) => callbackUrl.startsWith(path))
+      ? callbackUrl
+      : null;
 
-  // 既にログイン済みの場合は、デフォルト組織のMCPページにリダイレクト
+  // リダイレクト先の優先順位:
+  // 1. デフォルト組織ページ
+  // 2. callbackUrl
+  // 3. 初回ユーザー（org_slug なし）
+  let redirectUrl: string;
+  if (orgSlug) {
+    redirectUrl = `/${orgSlug}/mcps`;
+  } else if (validatedCallbackUrl) {
+    redirectUrl = validatedCallbackUrl;
+  } else {
+    redirectUrl = "/onboarding?first=true";
+  }
+
+  // 既にログイン済みの場合は、リダイレクト先へ
   if (session?.user) {
     redirect(redirectUrl);
   }

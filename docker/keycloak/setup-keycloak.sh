@@ -95,6 +95,7 @@ create_mapper() {
 create_mapper "$CLIENT_SCOPE_ID" "org_id" "tumiki_org_id" "tumiki.org_id" "String"
 create_mapper "$CLIENT_SCOPE_ID" "is_org_admin" "tumiki_is_org_admin" "tumiki.is_org_admin" "boolean"
 create_mapper "$CLIENT_SCOPE_ID" "tumiki_user_id" "tumiki_user_id" "tumiki.tumiki_user_id" "String"
+create_mapper "$CLIENT_SCOPE_ID" "default_organization_id" "default_organization_id" "tumiki.default_organization_id" "String"
 
 # 注意: mcp_instance_id は JWT に含めず、URL パスから取得する設計に変更
 # そのため、Keycloak での mcp_instance_id マッパーは不要
@@ -213,13 +214,14 @@ EOF
       return 0
     fi
 
-    $KCADM create identity-provider/instances/"$IDP_ALIAS"/mappers -r "$REALM" --config /tmp/kcadm.config \
-      -s name="$name" \
-      -s identityProviderAlias="$IDP_ALIAS" \
-      -s identityProviderMapper="$type" \
-      -s config.syncMode="INHERIT" \
-      -s config.claim="$claim" \
-      -s config.user.attribute="$attr" 2>/dev/null || true
+    # oidc-username-idp-mapper用の特別処理
+    if [ "$type" = "oidc-username-idp-mapper" ]; then
+      $KCADM create identity-provider/instances/"$IDP_ALIAS"/mappers -r "$REALM" --config /tmp/kcadm.config \
+        --body "{\"name\":\"$name\",\"identityProviderAlias\":\"$IDP_ALIAS\",\"identityProviderMapper\":\"$type\",\"config\":{\"syncMode\":\"INHERIT\",\"template\":\"\${CLAIM.$claim}\"}}" 2>/dev/null || true
+    else
+      $KCADM create identity-provider/instances/"$IDP_ALIAS"/mappers -r "$REALM" --config /tmp/kcadm.config \
+        --body "{\"name\":\"$name\",\"identityProviderAlias\":\"$IDP_ALIAS\",\"identityProviderMapper\":\"$type\",\"config\":{\"syncMode\":\"INHERIT\",\"claim\":\"$claim\",\"user.attribute\":\"$attr\"}}" 2>/dev/null || true
+    fi
   }
 
   # Google IdPマッパー作成
@@ -229,6 +231,32 @@ EOF
   create_idp_mapper "google-last-name" "oidc-user-attribute-idp-mapper" "family_name" "lastName"
   create_idp_mapper "google-email-verified" "oidc-user-attribute-idp-mapper" "email_verified" "emailVerified"
   create_idp_mapper "google-picture" "oidc-user-attribute-idp-mapper" "picture" "picture"
+fi
+
+# ユーザープロフィール設定: firstName と lastName を任意にする
+# 注: この設定は新規ユーザー作成時とプロフィール更新時の両方に適用される
+echo "ユーザープロフィール設定: firstName と lastName を任意にしています..."
+
+# User Profile を有効化（Keycloak 21+）
+$KCADM update realms/"$REALM" -r "$REALM" --config /tmp/kcadm.config \
+  -s 'attributes."userProfileEnabled"=true' 2>/dev/null || true
+
+# 既存のUser Profileを取得し、firstName/lastNameのrequiredを削除
+# これにより新規作成時も更新時も両方で任意フィールドになる
+if $KCADM get users/profile -r "$REALM" --config /tmp/kcadm.config > /tmp/user-profile-orig.json 2>/dev/null; then
+  # sedを使ってfirstName/lastNameのrequiredブロックを削除
+  # JSONの"required": {...}ブロック全体を、firstName/lastNameの属性から削除
+  sed -E '/"name" *: *"(firstName|lastName)"/,/"multivalued"/{ /"required" *: *\{/,/\},?/d; }' \
+    /tmp/user-profile-orig.json > /tmp/user-profile.json
+
+  # 設定を適用
+  if $KCADM update users/profile -r "$REALM" --config /tmp/kcadm.config -f /tmp/user-profile.json 2>&1; then
+    echo "✓ firstName と lastName を任意フィールドに設定しました"
+  else
+    echo "警告: User Profile設定の更新に失敗しました"
+  fi
+else
+  echo "警告: User Profileの取得に失敗しました"
 fi
 
 # masterレルムのSSL要件を無効化（開発環境用）

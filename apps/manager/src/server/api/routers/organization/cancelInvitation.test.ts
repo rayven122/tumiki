@@ -90,19 +90,19 @@ describe("cancelInvitation", () => {
       } as unknown as ProtectedContext["session"],
       currentOrg: {
         id: mockOrganizationId,
+        slug: "test-org",
         createdBy: mockUserId,
         isPersonal: false,
-        isAdmin: true,
+        roles: ["Admin"], // 管理者権限を持つ
         members: [
           {
             id: "member_test123",
             userId: mockUserId,
-            isAdmin: true,
           },
         ],
       },
       headers: new Headers(),
-    } as ProtectedContext;
+    } as unknown as ProtectedContext;
   });
 
   test("管理者が招待をキャンセルできる", async () => {
@@ -115,9 +115,7 @@ describe("cancelInvitation", () => {
       email: "invited@example.com",
       token: "token123",
       invitedBy: mockUserId,
-      isAdmin: false,
-      roleIds: [],
-      groupIds: [],
+      roles: ["Member"],
       expires: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
       createdAt: now,
       updatedAt: now,
@@ -157,12 +155,12 @@ describe("cancelInvitation", () => {
   });
 
   test("管理者でないユーザーはエラーになる", async () => {
-    // 管理者でないコンテキストを作成
+    // 管理者でないコンテキストを作成（rolesにOwner/Adminが含まれない）
     const nonAdminCtx: typeof mockCtx = {
       ...mockCtx,
       currentOrg: {
         ...mockCtx.currentOrg,
-        isAdmin: false,
+        roles: ["Member"], // 管理者権限なし
       },
     };
 

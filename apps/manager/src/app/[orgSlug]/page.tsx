@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "~/auth";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type OrgSlugPageProps = {
   params: Promise<{ orgSlug: string }>;
@@ -22,15 +23,17 @@ export default async function OrgSlugPage({ params }: OrgSlugPageProps) {
     redirect("/signin");
   }
 
+  const userOrgSlug = getSessionInfo(session).organizationSlug;
+
   // セッションに組織スラッグがない場合はホームにリダイレクト
-  if (!session.user.organizationSlug) {
+  if (!userOrgSlug) {
     redirect("/");
   }
 
   // URLの組織スラッグとセッションの組織スラッグが一致しない場合、
   // セッションの組織スラッグにリダイレクト
-  if (decodedSlug !== session.user.organizationSlug) {
-    redirect(`/${session.user.organizationSlug}/mcps`);
+  if (decodedSlug !== userOrgSlug) {
+    redirect(`/${userOrgSlug}/mcps`);
   }
 
   // 正しい組織スラッグの場合、デフォルトページ（mcps）にリダイレクト

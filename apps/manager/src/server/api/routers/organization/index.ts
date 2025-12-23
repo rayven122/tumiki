@@ -1,4 +1,8 @@
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import { getUserOrganizations } from "./getUserOrganizations";
 import { updateOrganization, updateOrganizationInputSchema } from "./update";
 import {
@@ -48,6 +52,21 @@ import {
   getOrganizationBySlugOutputSchema,
 } from "./getBySlug";
 import { getDefaultOrganization } from "./getDefaultOrganization";
+import {
+  deleteOrganization,
+  deleteOrganizationInputSchema,
+  deleteOrganizationOutputSchema,
+} from "./delete";
+import {
+  updateMemberRole,
+  updateMemberRoleInputSchema,
+  updateMemberRoleOutputSchema,
+} from "./updateMemberRole";
+import {
+  getMembers,
+  getMembersInputSchema,
+  getMembersOutputSchema,
+} from "./getMembers";
 
 import { z } from "zod";
 import { OrganizationSchema } from "@tumiki/db/zod";
@@ -58,7 +77,7 @@ export const GetUserOrganizationsInput = z.object({}).optional();
 export const GetUserOrganizationsOutput = z.array(
   OrganizationSchema.extend({
     id: OrganizationIdSchema,
-    isAdmin: z.boolean(),
+    // isAdmin削除: JWTのrolesで判定
     memberCount: z.number(),
     isDefault: z.boolean(),
   }),
@@ -66,7 +85,7 @@ export const GetUserOrganizationsOutput = z.array(
 
 export const organizationRouter = createTRPCRouter({
   // ユーザーの組織一覧取得
-  getUserOrganizations: protectedProcedure
+  getUserOrganizations: publicProcedure
     .output(GetUserOrganizationsOutput)
     .query(getUserOrganizations),
 
@@ -79,6 +98,12 @@ export const organizationRouter = createTRPCRouter({
   getById: protectedProcedure
     .output(getOrganizationByIdOutputSchema)
     .query(getOrganizationById),
+
+  // 組織メンバー一覧取得（ページネーション付き）
+  getMembers: protectedProcedure
+    .input(getMembersInputSchema)
+    .output(getMembersOutputSchema)
+    .query(getMembers),
 
   // 使用量統計取得
   getUsageStats: protectedProcedure
@@ -140,4 +165,16 @@ export const organizationRouter = createTRPCRouter({
 
   // デフォルト組織取得
   getDefaultOrganization: protectedProcedure.query(getDefaultOrganization),
+
+  // 組織削除
+  delete: protectedProcedure
+    .input(deleteOrganizationInputSchema)
+    .output(deleteOrganizationOutputSchema)
+    .mutation(deleteOrganization),
+
+  // メンバーロール変更
+  updateMemberRole: protectedProcedure
+    .input(updateMemberRoleInputSchema)
+    .output(updateMemberRoleOutputSchema)
+    .mutation(updateMemberRole),
 });

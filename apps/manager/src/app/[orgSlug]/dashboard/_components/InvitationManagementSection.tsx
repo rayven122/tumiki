@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Mail, Clock, RefreshCw, X, AlertCircle } from "lucide-react";
 import { api } from "@/trpc/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { type OrganizationInvitationId } from "@/schema/ids";
 import { format, formatDistanceToNow } from "date-fns";
@@ -35,7 +36,6 @@ const getInvitationStatus = (expiresDate: Date): "pending" | "expired" => {
 
 export const InvitationManagementSection = () => {
   const { data: session } = useSession();
-  const user = session?.user;
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState({
     title: "",
@@ -46,8 +46,6 @@ export const InvitationManagementSection = () => {
 
   const { data: invitations, isLoading } =
     api.organization.getInvitations.useQuery();
-
-  const { data: organization } = api.organization.getById.useQuery();
 
   const utils = api.useUtils();
 
@@ -113,11 +111,8 @@ export const InvitationManagementSection = () => {
     });
   };
 
-  // 現在のログインユーザーの権限を確認
-  const currentUserMember = organization?.members.find(
-    (member) => member.user.id === user?.sub,
-  );
-  const isAdmin = currentUserMember?.isAdmin ?? false;
+  // 現在のログインユーザーの権限を確認（JWT のロールから取得）
+  const isAdmin = getSessionInfo(session).isAdmin;
 
   if (isLoading) {
     return (
@@ -211,7 +206,9 @@ export const InvitationManagementSection = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{invitation.email}</div>
-                          {invitation.isAdmin && (
+                          {invitation.roles.some(
+                            (role) => role === "Owner" || role === "Admin",
+                          ) && (
                             <Badge variant="default" className="text-xs">
                               管理者として招待
                             </Badge>

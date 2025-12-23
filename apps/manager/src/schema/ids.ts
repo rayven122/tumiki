@@ -59,10 +59,7 @@ export const ApiKeyIdSchema = z.string().brand<"ApiKeyId">();
 export const FeedbackIdSchema = z.string().brand<"FeedbackId">();
 export type FeedbackId = z.infer<typeof FeedbackIdSchema>;
 
-export const OrganizationIdSchema = z
-  .string()
-  .cuid("有効な組織IDを入力してください")
-  .brand<"OrganizationId">();
+export const OrganizationIdSchema = z.string().brand<"OrganizationId">();
 export const OrganizationMemberIdSchema = z
   .string()
   .brand<"OrganizationMemberId">();
@@ -76,7 +73,7 @@ export const OrganizationGroupIdSchema = z
 export const OrganizationRoleIdSchema = z
   .string()
   .brand<"OrganizationRoleId">();
-export const RolePermissionIdSchema = z.string().brand<"RolePermissionId">();
+export const McpPermissionIdSchema = z.string().brand<"McpPermissionId">();
 export const ResourceAccessControlIdSchema = z
   .string()
   .brand<"ResourceAccessControlId">();
@@ -89,7 +86,7 @@ export type OrganizationInvitationId = z.infer<
 export type InvitationToken = z.infer<typeof InvitationTokenSchema>;
 export type OrganizationGroupId = z.infer<typeof OrganizationGroupIdSchema>;
 export type OrganizationRoleId = z.infer<typeof OrganizationRoleIdSchema>;
-export type RolePermissionId = z.infer<typeof RolePermissionIdSchema>;
+export type McpPermissionId = z.infer<typeof McpPermissionIdSchema>;
 export type ResourceAccessControlId = z.infer<
   typeof ResourceAccessControlIdSchema
 >;
