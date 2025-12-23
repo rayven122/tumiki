@@ -41,6 +41,10 @@ export const addMember = async (
 
 /**
  * 組織グループを作成
+ *
+ * 注意: デフォルトロール（Owner, Admin, Member, Viewer）は全組織で共通の
+ * Realm Rolesとして事前に作成されている必要があります。
+ * アプリケーション初期化時に ensureDefaultRealmRolesExist() を呼び出してください。
  */
 export const createOrganization = async (
   client: KeycloakAdminClient,
@@ -48,7 +52,6 @@ export const createOrganization = async (
     name: string;
     groupName: string;
     ownerId: string;
-    createDefaultRoles?: boolean; // デフォルト: true
   },
   addMemberFn: (params: {
     externalId: string;
@@ -64,39 +67,8 @@ export const createOrganization = async (
     },
   });
 
-  // 2. デフォルトロールをGroup Rolesとして作成（オプション）
-  if (params.createDefaultRoles !== false) {
-    const defaultRoles: Array<{
-      name: OrganizationRole;
-      description: string;
-    }> = [
-      { name: "Owner", description: "組織オーナー - 全権限" },
-      { name: "Admin", description: "組織管理者 - メンバー管理可能" },
-      { name: "Member", description: "組織メンバー - 基本利用" },
-      { name: "Viewer", description: "組織閲覧者 - 読み取り専用" },
-    ];
-
-    const createdRoles: string[] = [];
-
-    try {
-      for (const role of defaultRoles) {
-        await client.createGroupRole(groupId, {
-          name: role.name,
-          description: role.description,
-        });
-        createdRoles.push(role.name);
-      }
-    } catch (error) {
-      // グループロール作成に失敗 → 作成済みロールとグループを削除
-      for (const createdRoleName of createdRoles) {
-        await client.deleteGroupRole(groupId, createdRoleName);
-      }
-      await client.deleteGroup(groupId);
-      throw error;
-    }
-  }
-
-  // 3. OwnerをグループメンバーとしてOwnerロールで追加
+  // 2. OwnerをグループメンバーとしてOwnerロールで追加
+  // デフォルトロール（Owner, Admin, Member, Viewer）は共通のRealm Rolesを使用
   try {
     await addMemberFn({
       externalId: groupId,
@@ -104,18 +76,7 @@ export const createOrganization = async (
       role: "Owner",
     });
   } catch (error) {
-    // メンバー追加に失敗 → 作成したロールとグループを削除
-    if (params.createDefaultRoles !== false) {
-      const defaultRoleNames: OrganizationRole[] = [
-        "Owner",
-        "Admin",
-        "Member",
-        "Viewer",
-      ];
-      for (const roleName of defaultRoleNames) {
-        await client.deleteGroupRole(groupId, roleName);
-      }
-    }
+    // メンバー追加に失敗 → グループを削除してロールバック
     await client.deleteGroup(groupId);
     throw error;
   }

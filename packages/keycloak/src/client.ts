@@ -281,13 +281,15 @@ export class KeycloakAdminClient {
 
   /**
    * グループロールを作成
+   *
+   * ロール名は呼び出し側が適切な命名規則で渡す
+   * 例: "org:rayven:role:data-engineer"
    */
   async createGroupRole(
     groupId: string,
     params: {
       name: string;
       description?: string;
-      attributes?: Record<string, string[]>;
     },
   ): Promise<string> {
     await this.ensureAuth();
@@ -380,6 +382,91 @@ export class KeycloakAdminClient {
     await this.ensureAuth();
     await this.executeWithAutoRetry(() =>
       operations.moveSubgroup(this.client, groupId, newParentGroupId),
+    );
+  }
+
+  /**
+   * グループの属性を更新
+   */
+  async updateGroupAttributes(
+    groupId: string,
+    attributes: Record<string, string[]>,
+  ): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.updateGroupAttributes(this.client, groupId, attributes),
+    );
+  }
+
+  /**
+   * グループを更新（名前と属性）
+   */
+  async updateGroup(
+    groupId: string,
+    params: {
+      name?: string;
+      attributes?: Record<string, string[]>;
+    },
+  ): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.updateGroup(this.client, groupId, params),
+    );
+  }
+
+  /**
+   * グループにRealm Roleをマッピング
+   * 組織のカスタムロール（org:{orgSlug}:role:{roleSlug}形式）をグループに割り当てる
+   */
+  async addRoleMappingToGroup(
+    groupId: string,
+    roleName: string,
+  ): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.addRoleMappingToGroup(this.client, groupId, roleName),
+    );
+  }
+
+  /**
+   * グループからRealm Roleマッピングを削除
+   */
+  async removeRoleMappingFromGroup(
+    groupId: string,
+    roleName: string,
+  ): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.removeRoleMappingFromGroup(this.client, groupId, roleName),
+    );
+  }
+
+  /**
+   * グループにマッピングされた組織ロール一覧を取得
+   * org:{orgSlug}:role:{roleSlug} 形式のロールのみをフィルタして返す
+   */
+  async listOrganizationRoleMappingsForGroup(
+    groupId: string,
+    orgSlug: string,
+  ): Promise<{ roleSlug: string; roleName: string }[]> {
+    await this.ensureAuth();
+    return this.executeWithAutoRetry(() =>
+      operations.listOrganizationRoleMappingsForGroup(
+        this.client,
+        groupId,
+        orgSlug,
+      ),
+    );
+  }
+
+  /**
+   * デフォルトRealm Rolesが存在することを確認し、なければ作成
+   * これらは全組織で共通して使用されるロール（Owner, Admin, Member, Viewer）
+   */
+  async ensureDefaultRealmRolesExist(): Promise<void> {
+    await this.ensureAuth();
+    await this.executeWithAutoRetry(() =>
+      operations.ensureDefaultRealmRolesExist(this.client),
     );
   }
 }

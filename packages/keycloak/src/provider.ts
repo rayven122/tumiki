@@ -73,12 +73,15 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
 
   /**
    * 組織グループを作成
+   *
+   * 注意: デフォルトロール（Owner, Admin, Member, Viewer）は全組織で共通の
+   * Realm Rolesとして事前に作成されている必要があります。
+   * アプリケーション初期化時に ensureDefaultRealmRolesExist() を呼び出してください。
    */
   async createOrganization(params: {
     name: string;
     groupName: string;
     ownerId: string;
-    createDefaultRoles?: boolean;
   }): Promise<{ success: boolean; externalId: string; error?: string }> {
     const result = await this.executeWithResult(() =>
       services.createOrganization(this.client, params, async (memberParams) => {
@@ -244,11 +247,12 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     organizationId: string;
     name: string;
     parentSubgroupId?: string;
+    attributes?: Record<string, string[]>;
   }): Promise<{ success: boolean; subgroupId: string; error?: string }> {
     const result = await this.executeWithResult(() =>
       this.client.createSubgroup(
         params.parentSubgroupId ?? params.organizationId,
-        { name: params.name },
+        { name: params.name, attributes: params.attributes },
       ),
     );
     return {
@@ -355,5 +359,95 @@ export class KeycloakOrganizationProvider implements IOrganizationProvider {
     return this.execute(() =>
       this.client.moveSubgroup(params.groupId, params.newParentGroupId),
     );
+  }
+
+  /**
+   * サブグループの属性を更新
+   */
+  async updateSubgroupAttributes(params: {
+    subgroupId: string;
+    attributes: Record<string, string[]>;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.updateGroupAttributes(params.subgroupId, params.attributes),
+    );
+  }
+
+  /**
+   * サブグループ（部署）を更新（名前と属性）
+   */
+  async updateSubgroup(params: {
+    subgroupId: string;
+    name?: string;
+    attributes?: Record<string, string[]>;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.updateGroup(params.subgroupId, {
+        name: params.name,
+        attributes: params.attributes,
+      }),
+    );
+  }
+
+  /**
+   * グループにRealm Roleをマッピング
+   * 組織のカスタムロール（org:{orgSlug}:role:{roleSlug}形式）をグループに割り当てる
+   */
+  async addRoleMappingToGroup(params: {
+    groupId: string;
+    roleName: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.addRoleMappingToGroup(params.groupId, params.roleName),
+    );
+  }
+
+  /**
+   * グループからRealm Roleマッピングを削除
+   */
+  async removeRoleMappingFromGroup(params: {
+    groupId: string;
+    roleName: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.execute(() =>
+      this.client.removeRoleMappingFromGroup(params.groupId, params.roleName),
+    );
+  }
+
+  /**
+   * グループにマッピングされた組織ロール一覧を取得
+   * org:{orgSlug}:role:{roleSlug} 形式のロールのみをフィルタして返す
+   */
+  async listOrganizationRoleMappingsForGroup(params: {
+    groupId: string;
+    orgSlug: string;
+  }): Promise<{
+    success: boolean;
+    roles?: { roleSlug: string; roleName: string }[];
+    error?: string;
+  }> {
+    const result = await this.executeWithResult(() =>
+      this.client.listOrganizationRoleMappingsForGroup(
+        params.groupId,
+        params.orgSlug,
+      ),
+    );
+    return {
+      success: result.success,
+      roles: result.result,
+      error: result.error,
+    };
+  }
+
+  /**
+   * デフォルトRealm Rolesが存在することを確認し、なければ作成
+   * これらは全組織で共通して使用されるロール（Owner, Admin, Member, Viewer）
+   * アプリケーション初期化時に一度だけ呼び出す
+   */
+  async ensureDefaultRealmRolesExist(): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    return this.execute(() => this.client.ensureDefaultRealmRolesExist());
   }
 }

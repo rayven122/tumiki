@@ -23,6 +23,7 @@ import { Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { type Department } from "./mock/mockOrgData";
+import { IconPicker } from "./sidebar/IconPicker";
 
 type CreateDepartmentDialogProps = {
   organizationId: string;
@@ -36,6 +37,7 @@ export const CreateDepartmentDialog = ({
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [parentGroupId, setParentGroupId] = useState<string | undefined>();
+  const [icon, setIcon] = useState<string | undefined>();
 
   const utils = api.useUtils();
 
@@ -44,6 +46,7 @@ export const CreateDepartmentDialog = ({
       setIsOpen(false);
       setName("");
       setParentGroupId(undefined);
+      setIcon(undefined);
       void utils.v2.group.list.invalidate();
       void utils.v2.group.getMembers.invalidate();
       toast.success("部署を作成しました");
@@ -65,6 +68,7 @@ export const CreateDepartmentDialog = ({
         organizationId,
         name: name.trim(),
         parentGroupId,
+        icon,
       });
     }
   };
@@ -92,18 +96,22 @@ export const CreateDepartmentDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {/* 部署名入力 */}
+          {/* 部署名とアイコン */}
           <div>
             <Label htmlFor="department-name">部署名</Label>
-            <Input
-              id="department-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="例: 開発部、営業部"
-              maxLength={100}
-            />
+            <div className="flex gap-2">
+              <IconPicker selectedIcon={icon} onIconChange={setIcon} />
+              <Input
+                id="department-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="例: 開発部、営業部"
+                maxLength={100}
+                className="flex-1"
+              />
+            </div>
             {name.length > 0 && (
               <p className="text-muted-foreground mt-1 text-xs">
                 {name.length}/100文字

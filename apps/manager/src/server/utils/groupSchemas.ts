@@ -17,6 +17,7 @@ export const createGroupInputSchema = z.object({
     .min(1, "グループ名は必須です")
     .max(100, "グループ名は100文字以内で入力してください"),
   parentGroupId: z.string().optional(),
+  icon: z.string().optional(),
 });
 
 /**
@@ -115,6 +116,87 @@ export const moveGroupInputSchema = z.object({
   newParentGroupId: z.string().min(1, "新しい親グループIDは必須です"),
 });
 
+/**
+ * リーダー更新の入力スキーマ
+ */
+export const updateLeaderInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+  leaderId: z.string().min(1, "リーダーIDは必須です"),
+});
+
+/**
+ * 複数メンバー追加の入力スキーマ
+ */
+export const addMembersInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+  userIds: z
+    .array(z.string().min(1, "ユーザーIDは必須です"))
+    .min(1, "少なくとも1人のユーザーを指定してください"),
+});
+
+/**
+ * 複数メンバー追加の結果スキーマ
+ */
+export const addMembersResultSchema = z.object({
+  success: z.boolean(),
+  addedCount: z.number(),
+  failedUserIds: z.array(z.string()),
+});
+
+/**
+ * グループ更新の入力スキーマ
+ */
+export const updateGroupInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+  name: z
+    .string()
+    .min(1, "グループ名は必須です")
+    .max(100, "グループ名は100文字以内で入力してください")
+    .optional(),
+  icon: z.string().optional(),
+});
+
+/**
+ * グループにロールを割り当ての入力スキーマ
+ */
+export const assignRoleToGroupInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+  roleSlug: z.string().min(1, "ロールスラッグは必須です"),
+});
+
+/**
+ * グループからロールを解除の入力スキーマ
+ */
+export const removeRoleFromGroupInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+  roleSlug: z.string().min(1, "ロールスラッグは必須です"),
+});
+
+/**
+ * グループのロール一覧取得の入力スキーマ
+ */
+export const listGroupRolesInputSchema = z.object({
+  organizationId: z.string().min(1, "組織IDは必須です"),
+  groupId: z.string().min(1, "グループIDは必須です"),
+});
+
+/**
+ * グループロール情報の出力スキーマ
+ */
+export const groupRoleOutputSchema = z.object({
+  roleSlug: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  defaultRead: z.boolean(),
+  defaultWrite: z.boolean(),
+  defaultExecute: z.boolean(),
+});
+
 export type ListGroupsInput = z.infer<typeof listGroupsInputSchema>;
 export type CreateGroupInput = z.infer<typeof createGroupInputSchema>;
 export type DeleteGroupInput = z.infer<typeof deleteGroupInputSchema>;
@@ -123,4 +205,16 @@ export type AddMemberInput = z.infer<typeof addMemberInputSchema>;
 export type RemoveMemberInput = z.infer<typeof removeMemberInputSchema>;
 export type GetGroupMembersInput = z.infer<typeof getGroupMembersInputSchema>;
 export type MoveGroupInput = z.infer<typeof moveGroupInputSchema>;
+export type UpdateLeaderInput = z.infer<typeof updateLeaderInputSchema>;
+export type AddMembersInput = z.infer<typeof addMembersInputSchema>;
+export type AddMembersResult = z.infer<typeof addMembersResultSchema>;
+export type UpdateGroupInput = z.infer<typeof updateGroupInputSchema>;
 export type Member = z.infer<typeof memberSchema>;
+export type AssignRoleToGroupInput = z.infer<
+  typeof assignRoleToGroupInputSchema
+>;
+export type RemoveRoleFromGroupInput = z.infer<
+  typeof removeRoleFromGroupInputSchema
+>;
+export type ListGroupRolesInput = z.infer<typeof listGroupRolesInputSchema>;
+export type GroupRoleOutput = z.infer<typeof groupRoleOutputSchema>;

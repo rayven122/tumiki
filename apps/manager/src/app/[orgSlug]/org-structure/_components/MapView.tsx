@@ -23,9 +23,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Save, ArrowDownUp } from "lucide-react";
+import { Save, ArrowDownUp, Pencil, X } from "lucide-react";
 import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
 import { DeleteDepartmentConfirmDialog } from "./DeleteDepartmentConfirmDialog";
+import { MoveConfirmDialog, type MoveOperation } from "./MoveConfirmDialog";
 import type { Department } from "./mock/mockOrgData";
 import {
   DepartmentNode,
@@ -39,6 +40,7 @@ import { getLayoutedElements } from "./utils/layoutNodes";
 import { convertOrgDataToFlow } from "./utils/orgDataConverter";
 import { detectOrphanedDepartments } from "./utils/validation";
 import type { OrgData } from "./mock/mockOrgData";
+import { api } from "@/trpc/react";
 
 // カスタムノードとエッジの型定義
 const nodeTypes = { department: DepartmentNode };
@@ -53,6 +55,8 @@ type MapViewProps = {
   onEdgesChange: (edges: DepartmentEdgeType[]) => void;
   onArrangeNodesRef: React.MutableRefObject<(() => void) | null>;
   onArrangeNodes: () => void;
+  onNodeSelect?: (groupId: string | null) => void;
+  onEditModeChange?: (isEditMode: boolean) => void;
 };
 
 /**
@@ -74,6 +78,8 @@ export const MapView = ({
   onEdgesChange,
   onArrangeNodesRef,
   onArrangeNodes,
+  onNodeSelect,
+  onEditModeChange,
 }: MapViewProps) => {
   const [nodes, setNodes, onNodesChangeInternal] =
     useNodesState<DepartmentNodeType>([]);
@@ -82,6 +88,24 @@ export const MapView = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [departmentToDelete, setDepartmentToDelete] =
     useState<Department | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // 編集モードの変更を親に通知
+  useEffect(() => {
+    onEditModeChange?.(isEditMode);
+  }, [isEditMode, onEditModeChange]);
+
+  // 編集開始時のエッジを保存（変更検出用）
+  const initialEdgesRef = useRef<DepartmentEdgeType[]>([]);
+
+  // 移動確認モーダル用の状態
+  const [pendingMoves, setPendingMoves] = useState<MoveOperation[]>([]);
+  const [showMoveConfirm, setShowMoveConfirm] = useState(false);
+
+  const utils = api.useUtils();
+
+  // グループ移動mutation
+  const moveMutation = api.v2.group.move.useMutation();
 
   // 保存ボタンの状態制御
   const hasOrphanedDepartments = useMemo(() => {
@@ -136,28 +160,36 @@ export const MapView = ({
     onEdgesChange(edges);
   }, [edges, onEdgesChange]);
 
-  // エッジに選択状態を反映
+  // エッジに選択状態を反映（編集モード時のみ削除可能）
   const edgesWithSelection = useMemo(() => {
     return edges.map((edge) => ({
       ...edge,
       data: {
         ...edge.data,
-        isRelatedToSelected: selectedNodeId
-          ? edge.source === selectedNodeId || edge.target === selectedNodeId
+        isRelatedToSelected:
+          isEditMode && selectedNodeId
+            ? edge.source === selectedNodeId || edge.target === selectedNodeId
+            : undefined,
+        onDelete: isEditMode
+          ? (edgeId: string) => {
+              setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+              toast.success("エッジを削除しました");
+            }
           : undefined,
-        onDelete: (edgeId: string) => {
-          setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-          toast.success("エッジを削除しました");
-        },
       },
     }));
-  }, [edges, selectedNodeId, setEdges]);
+  }, [edges, selectedNodeId, setEdges, isEditMode]);
 
   /**
-   * FR-1.2: エッジ作成（選択状態チェック）
+   * FR-1.2: エッジ作成（選択状態チェック、編集モード時のみ）
    */
   const onConnect = useCallback(
     (params: Connection) => {
+      // 編集モードでない場合は何もしない
+      if (!isEditMode) {
+        return;
+      }
+
       // VR-2: 選択状態チェック
       if (
         !selectedNodeId ||
@@ -176,14 +208,19 @@ export const MapView = ({
 
       setEdges((eds) => addEdge({ ...params, type: "department" }, eds));
     },
-    [selectedNodeId, nodes, setEdges],
+    [selectedNodeId, nodes, setEdges, isEditMode],
   );
 
   /**
-   * FR-2.2: エッジ削除（選択状態チェック）
+   * FR-2.2: エッジ削除（選択状態チェック、編集モード時のみ）
    */
   const onEdgesDelete = useCallback(
     (deletedEdges: Edge[]) => {
+      // 編集モードでない場合は何もしない
+      if (!isEditMode) {
+        return;
+      }
+
       const edge = deletedEdges[0];
       if (
         !edge ||
@@ -194,35 +231,147 @@ export const MapView = ({
         return;
       }
     },
-    [selectedNodeId],
+    [selectedNodeId, isEditMode],
   );
 
   /**
    * ノード選択
    */
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    setSelectedNodeId(node.id);
-  }, []);
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      setSelectedNodeId(node.id);
+      onNodeSelect?.(node.id);
+    },
+    [onNodeSelect],
+  );
 
   /**
    * 背景クリックで選択解除
    */
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
-  }, []);
+    onNodeSelect?.(null);
+  }, [onNodeSelect]);
 
   /**
-   * 保存処理
+   * エッジ変更を検出して移動操作を生成
    */
-  const handleSave = useCallback(() => {
+  const detectEdgeChanges = useCallback((): MoveOperation[] => {
+    const moves: MoveOperation[] = [];
+
+    // 初期エッジから親子関係マップを作成（target -> source）
+    const initialParentMap = new Map<string, string>();
+    for (const edge of initialEdgesRef.current) {
+      initialParentMap.set(edge.target, edge.source);
+    }
+
+    // 現在のエッジから親子関係マップを作成
+    const currentParentMap = new Map<string, string>();
+    for (const edge of edges) {
+      currentParentMap.set(edge.target, edge.source);
+    }
+
+    // 親が変わったグループを検出
+    for (const [childId, currentParentId] of currentParentMap.entries()) {
+      const initialParentId = initialParentMap.get(childId);
+      if (initialParentId && initialParentId !== currentParentId) {
+        // 親が変更された
+        const childNode = nodes.find((n) => n.id === childId);
+        const oldParentNode = nodes.find((n) => n.id === initialParentId);
+        const newParentNode = nodes.find((n) => n.id === currentParentId);
+
+        if (childNode && oldParentNode && newParentNode) {
+          moves.push({
+            groupId: childId,
+            groupName: childNode.data.name,
+            oldParentId: initialParentId,
+            oldParentName: oldParentNode.data.name,
+            newParentId: currentParentId,
+            newParentName: newParentNode.data.name,
+          });
+        }
+      }
+    }
+
+    return moves;
+  }, [edges, nodes]);
+
+  /**
+   * 保存ボタンクリック時の処理
+   * 変更がある場合は確認モーダルを表示、ない場合は編集モードを終了
+   */
+  const handleSaveClick = useCallback(() => {
     if (hasOrphanedDepartments) {
       toast.error("全ての部署に親部署を設定してください");
       return;
     }
 
-    // TODO: tRPC経由でKeycloak APIに保存
-    toast.success("組織構造を保存しました");
-  }, [hasOrphanedDepartments]);
+    const moves = detectEdgeChanges();
+
+    if (moves.length === 0) {
+      // 変更なし、編集モード終了
+      setIsEditMode(false);
+      toast.success("編集を終了しました");
+      return;
+    }
+
+    // 変更あり、確認モーダルを表示
+    setPendingMoves(moves);
+    setShowMoveConfirm(true);
+  }, [hasOrphanedDepartments, detectEdgeChanges]);
+
+  /**
+   * 確認後の保存実行
+   */
+  const handleConfirmSave = useCallback(async () => {
+    try {
+      // 各移動を順番に実行
+      for (const move of pendingMoves) {
+        await moveMutation.mutateAsync({
+          organizationId,
+          groupId: move.groupId,
+          newParentGroupId: move.newParentId,
+        });
+      }
+
+      // 成功時
+      setShowMoveConfirm(false);
+      setPendingMoves([]);
+      setIsEditMode(false);
+      toast.success("組織構造を保存しました");
+
+      // データを再取得
+      await utils.v2.group.list.invalidate();
+    } catch {
+      toast.error("保存に失敗しました");
+    }
+  }, [pendingMoves, organizationId, moveMutation, utils.v2.group.list]);
+
+  /**
+   * 確認モーダルキャンセル
+   */
+  const handleCancelSave = useCallback(() => {
+    setShowMoveConfirm(false);
+    setPendingMoves([]);
+  }, []);
+
+  /**
+   * 編集モードを開始（初期エッジを保存）
+   */
+  const handleStartEdit = useCallback(() => {
+    initialEdgesRef.current = [...edges];
+    setIsEditMode(true);
+  }, [edges]);
+
+  /**
+   * 編集モードを終了（変更を破棄）
+   */
+  const handleCancelEdit = useCallback(() => {
+    // 初期エッジに戻す
+    setEdges(initialEdgesRef.current);
+    setIsEditMode(false);
+    toast.info("編集をキャンセルしました");
+  }, [setEdges]);
 
   /**
    * ノード削除ボタンクリック時のハンドラー
@@ -237,16 +386,16 @@ export const MapView = ({
     [orgData.departments],
   );
 
-  // ノードに削除コールバックを追加
+  // ノードに削除コールバックを追加（編集モード時のみ）
   const nodesWithDeleteHandler = useMemo(() => {
     return nodes.map((node) => ({
       ...node,
       data: {
         ...node.data,
-        onDelete: handleNodeDeleteClick,
+        onDelete: isEditMode ? handleNodeDeleteClick : undefined,
       },
     }));
-  }, [nodes, handleNodeDeleteClick]);
+  }, [nodes, handleNodeDeleteClick, isEditMode]);
 
   return (
     <div className="h-full w-full">
@@ -268,6 +417,9 @@ export const MapView = ({
         minZoom={0.5}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
+        nodesDraggable={isEditMode}
+        nodesConnectable={isEditMode}
+        elementsSelectable={isEditMode}
       >
         <Background />
         <Controls />
@@ -275,43 +427,67 @@ export const MapView = ({
 
         {/* ボード内ボタン */}
         <Panel position="top-right" className="flex gap-2">
-          <CreateDepartmentDialog
-            organizationId={organizationId}
-            departments={orgData.departments}
-          />
+          {isEditMode ? (
+            <>
+              <CreateDepartmentDialog
+                organizationId={organizationId}
+                departments={orgData.departments}
+              />
 
-          <Button
-            onClick={onArrangeNodes}
-            variant="outline"
-            size="sm"
-            className="bg-background h-8 gap-1.5 px-2.5 text-xs shadow-md"
-          >
-            <ArrowDownUp className="h-3.5 w-3.5" />
-            レイアウト調整
-          </Button>
+              <Button
+                onClick={onArrangeNodes}
+                variant="outline"
+                size="sm"
+                className="bg-background h-8 gap-1.5 px-2.5 text-xs shadow-md"
+              >
+                <ArrowDownUp className="h-3.5 w-3.5" />
+                レイアウト調整
+              </Button>
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    onClick={handleSave}
-                    disabled={hasOrphanedDepartments}
-                    size="sm"
-                    className="h-8 gap-1.5 px-2.5 text-xs shadow-md"
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    保存
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {hasOrphanedDepartments && (
-                <TooltipContent>
-                  <p>全ての部署に親部署を設定してください</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+              <Button
+                onClick={handleCancelEdit}
+                variant="outline"
+                size="sm"
+                className="bg-background h-8 gap-1.5 px-2.5 text-xs shadow-md"
+              >
+                <X className="h-3.5 w-3.5" />
+                キャンセル
+              </Button>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        onClick={handleSaveClick}
+                        disabled={hasOrphanedDepartments}
+                        size="sm"
+                        className="h-8 gap-1.5 px-2.5 text-xs shadow-md"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        保存して終了
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {hasOrphanedDepartments && (
+                    <TooltipContent>
+                      <p>全ての部署に親部署を設定してください</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            </>
+          ) : (
+            <Button
+              onClick={handleStartEdit}
+              variant="outline"
+              size="sm"
+              className="bg-background h-8 gap-1.5 px-2.5 text-xs shadow-md"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              編集
+            </Button>
+          )}
         </Panel>
       </ReactFlow>
 
@@ -320,6 +496,15 @@ export const MapView = ({
         organizationId={organizationId}
         department={departmentToDelete}
         onClose={() => setDepartmentToDelete(null)}
+      />
+
+      {/* 移動確認ダイアログ */}
+      <MoveConfirmDialog
+        open={showMoveConfirm}
+        moves={pendingMoves}
+        isLoading={moveMutation.isPending}
+        onConfirm={handleConfirmSave}
+        onCancel={handleCancelSave}
       />
     </div>
   );

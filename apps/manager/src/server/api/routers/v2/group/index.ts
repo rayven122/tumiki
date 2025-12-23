@@ -8,17 +8,31 @@ import {
   removeMemberInputSchema,
   getGroupMembersInputSchema,
   moveGroupInputSchema,
+  updateLeaderInputSchema,
+  addMembersInputSchema,
+  addMembersResultSchema,
+  updateGroupInputSchema,
   groupOutputSchema,
   memberSchema,
+  assignRoleToGroupInputSchema,
+  removeRoleFromGroupInputSchema,
+  listGroupRolesInputSchema,
+  groupRoleOutputSchema,
 } from "../../../../utils/groupSchemas";
 import { listGroups } from "./list";
 import { createGroup } from "./create";
 import { deleteGroup } from "./delete";
 import { getGroupById } from "./getById";
 import { addMember } from "./addMember";
+import { addMembers } from "./addMembers";
 import { removeMember } from "./removeMember";
 import { getGroupMembers } from "./getGroupMembers";
 import { moveGroup } from "./move";
+import { updateLeader } from "./updateLeader";
+import { updateGroup } from "./update";
+import { assignRoleToGroup } from "./assignRole";
+import { removeRoleFromGroup } from "./removeRole";
+import { listGroupRoles } from "./listRoles";
 import { z } from "zod";
 
 /**
@@ -32,7 +46,12 @@ import { z } from "zod";
  * - delete: グループ削除（管理者のみ）
  * - move: グループ移動（管理者のみ）
  * - addMember: メンバー追加（管理者のみ）
+ * - addMembers: 複数メンバー一括追加（管理者のみ）
  * - removeMember: メンバー削除（管理者のみ）
+ * - updateLeader: リーダー更新（管理者のみ）
+ * - assignRole: グループにロール割り当て（管理者のみ）
+ * - removeRole: グループからロール解除（管理者のみ）
+ * - listRoles: グループのロール一覧取得（組織メンバー）
  *
  * セキュリティチェックは各ハンドラ関数内で行われます
  */
@@ -99,5 +118,53 @@ export const groupRouter = createTRPCRouter({
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return await removeMember(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // 複数メンバー一括追加（管理者のみ）
+  addMembers: protectedProcedure
+    .input(addMembersInputSchema)
+    .output(addMembersResultSchema)
+    .mutation(async ({ ctx, input }) => {
+      return await addMembers(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // リーダー更新（管理者のみ）
+  updateLeader: protectedProcedure
+    .input(updateLeaderInputSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return await updateLeader(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // グループ更新（管理者のみ）
+  update: protectedProcedure
+    .input(updateGroupInputSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return await updateGroup(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // グループにロール割り当て（管理者のみ）
+  assignRole: protectedProcedure
+    .input(assignRoleToGroupInputSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return await assignRoleToGroup(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // グループからロール解除（管理者のみ）
+  removeRole: protectedProcedure
+    .input(removeRoleFromGroupInputSchema)
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return await removeRoleFromGroup(ctx.db, input, ctx.currentOrg);
+    }),
+
+  // グループのロール一覧取得（組織メンバー）
+  listRoles: protectedProcedure
+    .input(listGroupRolesInputSchema)
+    .output(z.array(groupRoleOutputSchema))
+    .query(async ({ ctx, input }) => {
+      return await listGroupRoles(ctx.db, input, ctx.currentOrg);
     }),
 });
