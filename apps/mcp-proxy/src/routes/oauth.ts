@@ -420,24 +420,6 @@ const validateDCRRequest = (
 };
 
 /**
- * RFC 7591 エラーコードへのマッピング
- *
- * @param error - openid-client からのエラーコード
- * @returns RFC 7591 準拠のエラーコード
- */
-const mapToRFC7591Error = (error?: string): DCRErrorResponse["error"] => {
-  const knownErrors = [
-    "invalid_redirect_uri",
-    "invalid_client_metadata",
-    "invalid_software_statement",
-    "unapproved_software_statement",
-  ] as const;
-  return knownErrors.includes(error as (typeof knownErrors)[number])
-    ? (error as DCRErrorResponse["error"])
-    : "invalid_client_metadata";
-};
-
-/**
  * ResponseBodyError から HTTP ステータスコードを決定
  *
  * @param error - openid-client v6 の ResponseBodyError
@@ -554,7 +536,9 @@ export const dcrHandler = async (c: Context): Promise<Response> => {
       logError("DCR failed", error);
 
       const errorResponse: DCRErrorResponse = {
-        error: mapToRFC7591Error(error.error),
+        error:
+          (error.error as DCRErrorResponse["error"]) ||
+          "invalid_client_metadata",
         error_description: error.error_description ?? error.message,
       };
       return c.json(errorResponse, determineStatusCode(error));
