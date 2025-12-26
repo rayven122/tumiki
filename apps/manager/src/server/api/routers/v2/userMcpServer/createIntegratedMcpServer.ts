@@ -3,7 +3,6 @@ import type { CreateIntegratedMcpServerInputV2 } from ".";
 import { ServerStatus, ServerType, AuthType } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
-import { createBulkNotifications } from "../notification/createBulkNotifications";
 
 export type CreateIntegratedMcpServerInput = z.infer<
   typeof CreateIntegratedMcpServerInputV2
@@ -134,17 +133,6 @@ export const createIntegratedMcpServer = async (
         })),
       },
     },
-  });
-
-  // 組織の全メンバーに通知を送信（非同期で実行）
-  void createBulkNotifications(prisma, {
-    type: "MCP_SERVER_ADDED",
-    priority: "LOW",
-    title: "MCPサーバーが追加されました",
-    message: `「${input.name}」が組織に追加されました。`,
-    linkUrl: `/${organizationId}/mcps/${mcpServer.id}`,
-    organizationId,
-    triggeredById: userId,
   });
 
   return {

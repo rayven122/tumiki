@@ -8,11 +8,7 @@ export const createOrganizationInputSchema = z.object({
   name: z
     .string()
     .min(1, "組織名は必須です")
-    .max(100, "組織名は100文字以内で入力してください")
-    .regex(
-      /^[a-zA-Z0-9_-]+$/,
-      "組織名は英数字、ハイフン、アンダースコアのみ使用できます",
-    ),
+    .max(100, "組織名は100文字以内で入力してください"),
   description: z.string().optional().nullable(),
 });
 
@@ -66,7 +62,7 @@ export const createOrganization = async (
   }
 
   // ユニークなslugを生成（Keycloakグループ名として使用）
-  const slug = await generateUniqueSlug(tx, name, false);
+  const slug = await generateUniqueSlug(tx, name, "org");
 
   // 1. Keycloakにグループを作成
   // User.id = Keycloak subなので、userIdを直接使用

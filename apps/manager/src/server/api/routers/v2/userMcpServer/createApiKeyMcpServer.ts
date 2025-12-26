@@ -15,7 +15,6 @@ import {
   getMcpServerToolsHTTP,
 } from "@/utils/getMcpServerTools";
 import type { McpServerTemplate } from "@tumiki/db/prisma";
-import { createBulkNotifications } from "../notification/createBulkNotifications";
 
 export type CreateApiKeyMcpServerInput = z.infer<
   typeof CreateApiKeyMcpServerInputV2
@@ -74,17 +73,6 @@ const createMcpServerInstance = async (
         },
       },
     },
-  });
-
-  // 組織の全メンバーに通知を送信（非同期で実行）
-  void createBulkNotifications(prisma, {
-    type: "MCP_SERVER_ADDED",
-    priority: "LOW",
-    title: "MCPサーバーが追加されました",
-    message: `「${params.name}」が組織に追加されました。`,
-    linkUrl: `/${params.organizationId}/mcps/${mcpServer.id}`,
-    organizationId: params.organizationId,
-    triggeredById: params.userId,
   });
 
   return {

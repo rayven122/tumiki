@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/utils/client/toast";
+
+/**
+ * 組織名からslugプレビューを生成
+ * 空文字列の場合はプレースホルダーを表示
+ */
+const generateSlugPreview = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  // 空文字列になった場合（日本語名など）、プレースホルダーを表示
+  return normalized || "org-xxxxxx";
+};
 
 const createOrganizationSchema = z.object({
   name: z
@@ -64,6 +75,10 @@ export const OrganizationCreateForm = ({
     },
   });
 
+  // 組織名の変更をリアルタイムで監視してslugプレビューを表示
+  const watchedName = form.watch("name");
+  const slugPreview = generateSlugPreview(watchedName);
+
   const onSubmit = async (data: CreateOrganizationFormData) => {
     await createMutation.mutateAsync(data);
   };
@@ -83,6 +98,20 @@ export const OrganizationCreateForm = ({
               <FormDescription>
                 チームの名前を入力してください（100文字以内）
               </FormDescription>
+              {/* slugプレビュー表示 */}
+              {watchedName && (
+                <div className="mt-2 rounded-md bg-gray-50 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">チームURL: </span>
+                  <code className="font-mono text-gray-700">
+                    /{slugPreview}/mcps
+                  </code>
+                  {slugPreview === "org-xxxxxx" && (
+                    <span className="text-muted-foreground ml-2 text-xs">
+                      （日本語名の場合はランダムなIDが生成されます）
+                    </span>
+                  )}
+                </div>
+              )}
               <FormMessage />
             </FormItem>
           )}

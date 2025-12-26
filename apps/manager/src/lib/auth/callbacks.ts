@@ -24,7 +24,7 @@ export const jwtCallback = async ({
   account?: Account | null;
   profile?: Profile;
   user?: User | AdapterUser;
-}): Promise<JWT> => {
+}): Promise<JWT | null> => {
   if (user) {
     token.sub = user.id!;
     token.role = (user as { role?: Role }).role ?? "USER";
@@ -48,9 +48,12 @@ export const jwtCallback = async ({
     );
 
     if (!updatedTumiki) {
-      throw new Error(
-        `Failed to get tumiki claims for user ${token.sub}. This should not happen.`,
+      // 組織メンバーシップが見つからない場合はセッションを無効化
+      // これにより、ユーザーはサインインページへリダイレクトされる
+      console.error(
+        `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
       );
+      return null;
     }
 
     token.tumiki = updatedTumiki;
@@ -66,9 +69,12 @@ export const jwtCallback = async ({
     );
 
     if (!updatedTumiki) {
-      throw new Error(
-        `Failed to get tumiki claims for user ${token.sub}. This should not happen.`,
+      // 組織メンバーシップが見つからない場合はセッションを無効化
+      // これにより、ユーザーはサインインページへリダイレクトされる
+      console.error(
+        `[jwtCallback] Failed to get tumiki claims for user ${token.sub}. Session will be invalidated.`,
       );
+      return null;
     }
 
     token.tumiki = updatedTumiki;

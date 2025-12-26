@@ -25,6 +25,7 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
+import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
 import {
   McpServerSchema,
@@ -143,7 +144,7 @@ export const userMcpServerRouter = createTRPCRouter({
         permission: "write",
       });
 
-      return await ctx.db.$transaction(
+      const result = await ctx.db.$transaction(
         async (tx) => {
           return await createApiKeyMcpServer(
             tx,
@@ -156,6 +157,19 @@ export const userMcpServerRouter = createTRPCRouter({
           timeout: 15000, // MCPサーバーからのツール取得に最大10秒かかるため、15秒に設定
         },
       );
+
+      // トランザクション完了後に通知を送信（トランザクション外で実行）
+      void createBulkNotifications(ctx.db, {
+        type: "MCP_SERVER_ADDED",
+        priority: "LOW",
+        title: "MCPサーバーが追加されました",
+        message: `「${input.name}」が組織に追加されました。`,
+        linkUrl: `/${ctx.currentOrg.id}/mcps/${result.id}`,
+        organizationId: ctx.currentOrg.id,
+        triggeredById: ctx.session.user.id,
+      });
+
+      return result;
     }),
 
   // 統合MCPサーバー作成
@@ -168,7 +182,7 @@ export const userMcpServerRouter = createTRPCRouter({
         permission: "write",
       });
 
-      return await ctx.db.$transaction(async (tx) => {
+      const result = await ctx.db.$transaction(async (tx) => {
         return await createIntegratedMcpServer(
           tx,
           input,
@@ -176,6 +190,19 @@ export const userMcpServerRouter = createTRPCRouter({
           ctx.session.user.id,
         );
       });
+
+      // トランザクション完了後に通知を送信（トランザクション外で実行）
+      void createBulkNotifications(ctx.db, {
+        type: "MCP_SERVER_ADDED",
+        priority: "LOW",
+        title: "MCPサーバーが追加されました",
+        message: `「${input.name}」が組織に追加されました。`,
+        linkUrl: `/${ctx.currentOrg.id}/mcps/${result.id}`,
+        organizationId: ctx.currentOrg.id,
+        triggeredById: ctx.session.user.id,
+      });
+
+      return result;
     }),
 
   update: protectedProcedure
