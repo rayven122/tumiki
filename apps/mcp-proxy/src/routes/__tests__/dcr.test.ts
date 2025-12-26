@@ -429,7 +429,7 @@ describe("dcrHandler", () => {
       });
     });
 
-    test("未知のResponseBodyErrorコードはinvalid_client_metadataに変換される", async () => {
+    test("ResponseBodyErrorコードはそのまま返される", async () => {
       mockDynamicClientRegistration.mockRejectedValueOnce(
         new MockResponseBodyError(new Response(null, { status: 400 }), {
           error: "unknown_error_code",
@@ -449,7 +449,8 @@ describe("dcrHandler", () => {
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: string };
-      expect(body.error).toBe("invalid_client_metadata");
+      // 案1: openid-client のエラーフィールドをそのまま使用
+      expect(body.error).toBe("unknown_error_code");
     });
 
     test("ネットワークエラーが発生した場合、500エラーを返す", async () => {

@@ -82,7 +82,7 @@ export const keycloakOAuthMiddleware = async (
     try {
       const jwks = await getJWKS();
       const { payload: verifiedPayload } = await jwtVerify(accessToken, jwks, {
-        issuer: issuer.issuer as string,
+        issuer: issuer.issuer,
         clockTolerance: 60, // 60秒のクロックスキュー許容
       });
 
