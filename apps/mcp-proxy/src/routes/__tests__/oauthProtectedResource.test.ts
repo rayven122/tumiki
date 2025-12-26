@@ -67,11 +67,11 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
     // 環境変数を保存
     originalKeycloakIssuer = process.env.KEYCLOAK_ISSUER;
     originalDevMode = process.env.DEV_MODE;
-    originalMcpProxyUrl = process.env.MCP_PROXY_URL;
+    originalMcpProxyUrl = process.env.NEXT_PUBLIC_MCP_PROXY_URL;
 
     // テスト用の環境変数を設定
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/tumiki";
-    process.env.MCP_PROXY_URL = "http://localhost:8080";
+    process.env.NEXT_PUBLIC_MCP_PROXY_URL = "http://localhost:8080";
 
     // キャッシュをクリア
     clearKeycloakCache();
@@ -97,9 +97,9 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
     }
 
     if (originalMcpProxyUrl !== undefined) {
-      process.env.MCP_PROXY_URL = originalMcpProxyUrl;
+      process.env.NEXT_PUBLIC_MCP_PROXY_URL = originalMcpProxyUrl;
     } else {
-      delete process.env.MCP_PROXY_URL;
+      delete process.env.NEXT_PUBLIC_MCP_PROXY_URL;
     }
 
     // キャッシュをクリア
@@ -636,11 +636,11 @@ describe("GET /.well-known/oauth-authorization-server（ルートレベル）", 
 
     // 環境変数を保存
     originalKeycloakIssuer = process.env.KEYCLOAK_ISSUER;
-    originalMcpProxyUrl = process.env.MCP_PROXY_URL;
+    originalMcpProxyUrl = process.env.NEXT_PUBLIC_MCP_PROXY_URL;
 
     // テスト用の環境変数を設定
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/tumiki";
-    process.env.MCP_PROXY_URL = "http://localhost:8080";
+    process.env.NEXT_PUBLIC_MCP_PROXY_URL = "http://localhost:8080";
 
     // キャッシュをクリア
     clearKeycloakCache();
@@ -660,9 +660,9 @@ describe("GET /.well-known/oauth-authorization-server（ルートレベル）", 
     }
 
     if (originalMcpProxyUrl !== undefined) {
-      process.env.MCP_PROXY_URL = originalMcpProxyUrl;
+      process.env.NEXT_PUBLIC_MCP_PROXY_URL = originalMcpProxyUrl;
     } else {
-      delete process.env.MCP_PROXY_URL;
+      delete process.env.NEXT_PUBLIC_MCP_PROXY_URL;
     }
 
     // キャッシュをクリア
@@ -760,11 +760,11 @@ describe("GET /.well-known/oauth-protected-resource（ルートレベル）", ()
     app.route("/.well-known", wellKnownRoute);
 
     // 環境変数を保存
-    originalMcpProxyUrl = process.env.MCP_PROXY_URL;
+    originalMcpProxyUrl = process.env.NEXT_PUBLIC_MCP_PROXY_URL;
     originalMcpResourceUrl = process.env.MCP_RESOURCE_URL;
 
     // テスト用の環境変数を設定
-    process.env.MCP_PROXY_URL = "http://localhost:8080";
+    process.env.NEXT_PUBLIC_MCP_PROXY_URL = "http://localhost:8080";
 
     vi.clearAllMocks();
   });
@@ -772,9 +772,9 @@ describe("GET /.well-known/oauth-protected-resource（ルートレベル）", ()
   afterEach(() => {
     // 環境変数を復元
     if (originalMcpProxyUrl !== undefined) {
-      process.env.MCP_PROXY_URL = originalMcpProxyUrl;
+      process.env.NEXT_PUBLIC_MCP_PROXY_URL = originalMcpProxyUrl;
     } else {
-      delete process.env.MCP_PROXY_URL;
+      delete process.env.NEXT_PUBLIC_MCP_PROXY_URL;
     }
 
     if (originalMcpResourceUrl !== undefined) {
@@ -840,7 +840,7 @@ describe("GET /.well-known/oauth-protected-resource（ルートレベル）", ()
     expect(body.resource).toBe("https://custom-mcp.example.com/mcp");
   });
 
-  test("MCP_RESOURCE_URL が未設定の場合、MCP_PROXY_URL から導出", async () => {
+  test("MCP_RESOURCE_URL が未設定の場合、NEXT_PUBLIC_MCP_PROXY_URL から導出", async () => {
     delete process.env.MCP_RESOURCE_URL;
 
     const res = await app.request("/.well-known/oauth-protected-resource", {
