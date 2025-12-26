@@ -5,6 +5,7 @@ import {
   ServerType,
   TransportType,
   McpServerVisibility,
+  AuthType,
 } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { normalizeServerName } from "@/utils/normalizeServerName";
@@ -33,7 +34,6 @@ const createMcpServerInstance = async (
     name: string;
     description: string;
     iconPath: string | null;
-    authType: "NONE" | "API_KEY";
     organizationId: string;
     userId: string;
     template: McpServerTemplate;
@@ -48,7 +48,7 @@ const createMcpServerInstance = async (
       iconPath: params.iconPath,
       serverStatus: ServerStatus.RUNNING,
       serverType: ServerType.OFFICIAL,
-      authType: params.authType,
+      authType: AuthType.OAUTH,
       organizationId: params.organizationId,
       templateInstances: {
         create: {
@@ -149,7 +149,6 @@ const createFromExistingTemplate = async (
     name: input.name,
     description: input.description ?? "",
     iconPath: template.iconPath,
-    authType: input.authType,
     organizationId,
     userId,
     template,
@@ -231,7 +230,6 @@ const createCustomUrlMcpServer = async (
     name: input.name,
     description: input.description ?? "",
     iconPath: null,
-    authType: input.authType,
     organizationId,
     userId,
     template: customTemplate,
