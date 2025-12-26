@@ -18,6 +18,12 @@ type ApiKey = {
   createdAt: Date;
   lastUsedAt: Date | null;
   expiresAt: Date | null;
+  isOwner: boolean;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  };
 };
 
 type ApiKeyListProps = {
@@ -161,7 +167,9 @@ export const ApiKeyList = ({
               apiKey={key}
               isVisible={showApiKeys[key.id] ?? false}
               onToggleVisibility={() => toggleApiKeyVisibility(key.id)}
-              onCopy={() => key.apiKey && handleCopyApiKey(key.apiKey)}
+              onCopy={() =>
+                key.isOwner && key.apiKey && handleCopyApiKey(key.apiKey)
+              }
               onDeactivate={() => handleDeactivateClick(key.id, key.name)}
               onDelete={() => handleDeleteClick(key.id, key.name, key.isActive)}
             />
