@@ -18,7 +18,8 @@ export const wellKnownRoute = new Hono<HonoEnv>();
  */
 wellKnownRoute.get("/oauth-authorization-server", async (c) => {
   const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
-  const mcpProxyUrl = process.env.MCP_PROXY_URL ?? "http://localhost:8080";
+  const mcpProxyUrl =
+    process.env.NEXT_PUBLIC_MCP_PROXY_URL ?? "http://localhost:8080";
 
   if (!keycloakIssuerUrl) {
     return c.json(
@@ -67,7 +68,8 @@ wellKnownRoute.get("/oauth-authorization-server", async (c) => {
  * 注意: DEV_MODE チェックなし（常に有効）
  */
 wellKnownRoute.get("/oauth-protected-resource", (c) => {
-  const mcpProxyUrl = process.env.MCP_PROXY_URL ?? "http://localhost:8080";
+  const mcpProxyUrl =
+    process.env.NEXT_PUBLIC_MCP_PROXY_URL ?? "http://localhost:8080";
   const mcpResourceUrl = process.env.MCP_RESOURCE_URL ?? `${mcpProxyUrl}/mcp`;
 
   // RFC 9728 準拠のリソースメタデータを返す
@@ -127,7 +129,8 @@ wellKnownRoute.get(
 
     // DEV_MODE: JSON メタデータを返却
     const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
-    const mcpProxyUrl = process.env.MCP_PROXY_URL ?? "http://localhost:8080";
+    const mcpProxyUrl =
+      process.env.NEXT_PUBLIC_MCP_PROXY_URL ?? "http://localhost:8080";
 
     if (!keycloakIssuerUrl) {
       return c.json(

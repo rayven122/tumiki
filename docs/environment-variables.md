@@ -85,7 +85,8 @@ Tumikiプロジェクトで使用される環境変数の完全なリファレ�
 
 **使用箇所:**
 
-- フロントエンド - MCPサーバーへのAPI呼び出し
+- `apps/manager` - フロントエンドからMCPサーバーへのAPI呼び出し
+- `apps/mcp-proxy` - OAuthメタデータのエンドポイント生成（issuer, token_endpoint, registration_endpoint）
 
 ---
 
