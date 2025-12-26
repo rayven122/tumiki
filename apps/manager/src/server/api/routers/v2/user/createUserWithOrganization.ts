@@ -48,9 +48,9 @@ export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
   input: CreateUserWithOrganizationInput,
 ): Promise<CreateUserWithOrganizationOutput> => {
-  // ユーザー名ベースの個人slugを生成
+  // ユーザー名ベースの個人slugを生成（@プレフィックス付き）
   const baseName = input.name ?? input.email ?? "User";
-  const slug = await generateUniqueSlug(tx, baseName, true);
+  const slug = await generateUniqueSlug(tx, baseName, "personalOrg");
 
   // 1. ユーザーを作成（defaultOrganizationSlugは組織作成後に設定）
   const createdUser = await tx.user.create({

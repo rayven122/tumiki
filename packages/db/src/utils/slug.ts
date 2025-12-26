@@ -3,52 +3,50 @@ import { customAlphabet } from "nanoid";
 
 import type { PrismaTransactionClient } from "../types.js";
 
-/**
- * URL安全なランダム文字列生成（英数字のみ、6文字）
- */
 const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 6);
 
 /**
- * 組織名から基本スラッグを生成
- * - 小文字化
- * - 空白をハイフンに変換
- * - 特殊文字を削除
- * - 個人の場合は@プレフィックスを追加
- *
- * @param name - 組織名またはユーザー名
- * @param isPersonal - 個人かどうか
- * @returns 正規化されたスラッグ
+ * 文字列をslug形式に正規化（小文字化、空白→ハイフン、許可文字以外削除）
  */
-export const generateBaseSlug = (name: string, isPersonal = false): string => {
-  const normalized = name
+const normalizeToSlug = (name: string): string => {
+  return name
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, "-") // 空白をハイフンに
-    .replace(/[^a-z0-9\-_]/g, "") // 許可文字以外を削除
-    .replace(/-+/g, "-") // 連続ハイフンを1つに
-    .replace(/^-+|-+$/g, ""); // 先頭・末尾のハイフンを削除
-
-  // 空文字列になった場合（日本語名など）、ランダム文字列を使用
-  const baseSlug = normalized || `user-${nanoid()}`;
-
-  return isPersonal ? `@${baseSlug}` : baseSlug;
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-_]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 };
 
-/**
- * ユニークなスラッグを生成（重複時はランダムサフィックス付与）
- *
- * @param db - Prismaクライアントインスタンス
- * @param baseName - 基本となる名前
- * @param isPersonal - 個人かどうか
- * @returns ユニークなスラッグ
- * @throws 10回の試行後もユニークなスラッグが生成できない場合
- */
+export type SlugType = "org" | "personalOrg" | "role";
+
+const SLUG_TYPE_CONFIGS: Record<
+  SlugType,
+  { prefix: string; fallbackPrefix: string }
+> = {
+  org: { prefix: "", fallbackPrefix: "org" },
+  personalOrg: { prefix: "@", fallbackPrefix: "user" },
+  role: { prefix: "", fallbackPrefix: "role" },
+};
+
+/** 文字列をslug形式に正規化 */
+export const normalizeSlug = normalizeToSlug;
+
+/** 名前から基本スラッグを生成 */
+export const generateBaseSlug = (name: string, type: SlugType): string => {
+  const config = SLUG_TYPE_CONFIGS[type];
+  const normalized = normalizeToSlug(name);
+  const baseSlug = normalized || `${config.fallbackPrefix}-${nanoid()}`;
+  return `${config.prefix}${baseSlug}`;
+};
+
+/** ユニークなスラッグを生成（重複時はランダムサフィックス付与） */
 export const generateUniqueSlug = async (
   db: PrismaTransactionClient,
   baseName: string,
-  isPersonal = false,
+  type: SlugType,
 ): Promise<string> => {
-  const baseSlug = generateBaseSlug(baseName, isPersonal);
+  const baseSlug = generateBaseSlug(baseName, type);
   let slug = baseSlug;
   let attempts = 0;
   const maxAttempts = 10;
@@ -63,7 +61,6 @@ export const generateUniqueSlug = async (
       return slug;
     }
 
-    // 重複時: ランダムサフィックスを追加
     slug = `${baseSlug}-${nanoid()}`;
     attempts++;
   }
@@ -71,18 +68,11 @@ export const generateUniqueSlug = async (
   throw new Error("Failed to generate unique slug after multiple attempts");
 };
 
-/**
- * カスタムスラッグの検証と利用可能性チェック
- *
- * @param db - Prismaクライアントインスタンス
- * @param slug - 検証するスラッグ
- * @returns 検証結果オブジェクト
- */
+/** カスタムスラッグの検証と利用可能性チェック */
 export const validateCustomSlug = async (
   db: PrismaClient,
   slug: string,
 ): Promise<{ valid: boolean; available: boolean; error?: string }> => {
-  // フォーマット検証
   const slugRegex = /^@?[a-z0-9][a-z0-9\-_]*$/;
   if (!slugRegex.test(slug)) {
     return {
@@ -100,7 +90,6 @@ export const validateCustomSlug = async (
     };
   }
 
-  // 連続ハイフンチェック
   if (slug.includes("--")) {
     return {
       valid: false,
@@ -109,7 +98,6 @@ export const validateCustomSlug = async (
     };
   }
 
-  // 重複チェック
   const existing = await db.organization.findUnique({
     where: { slug },
     select: { id: true },
