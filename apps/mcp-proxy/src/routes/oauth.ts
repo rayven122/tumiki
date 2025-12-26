@@ -7,28 +7,16 @@ import type {
   DCRErrorResponse,
 } from "../types/index.js";
 import { logError, logInfo } from "../libs/logger/index.js";
-import { type Client, errors } from "openid-client";
-import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
-
-/**
- * Keycloak Client を作成
- *
- * @param clientId - クライアントID
- * @param clientSecret - クライアントシークレット（オプション、Public Client の場合は undefined）
- * @returns openid-client の Client インスタンス
- */
-const createKeycloakClient = async (
-  clientId: string,
-  clientSecret?: string,
-): Promise<Client> => {
-  const issuer = await getKeycloakIssuer();
-  return new issuer.Client({
-    client_id: clientId,
-    client_secret: clientSecret,
-    // Public Client（client_secret なし）の場合は token_endpoint_auth_method を none に
-    token_endpoint_auth_method: clientSecret ? "client_secret_post" : "none",
-  });
-};
+import * as openidClient from "openid-client";
+import {
+  ResponseBodyError,
+  allowInsecureRequests,
+  skipStateCheck,
+} from "openid-client";
+import {
+  createKeycloakConfiguration,
+  isLocalhostUrl,
+} from "../libs/auth/keycloak.js";
 
 /**
  * リクエストボディのバリデーション
@@ -190,59 +178,97 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
       return c.json(validation.error, 400);
     }
 
-    // openid-client を使用してトークンを取得
+    // openid-client v6 を使用してトークンを取得
     const req = body as Record<string, string>;
-    const client = await createKeycloakClient(req.client_id, req.client_secret);
 
     // Grant Type に応じた処理
     if (req.grant_type === "client_credentials") {
-      const tokenSet = await client.grant({
-        grant_type: "client_credentials",
+      // v6: Configuration を作成して clientCredentialsGrant を実行
+      const config = await createKeycloakConfiguration(
+        req.client_id,
+        req.client_secret,
+      );
+      const tokenResponse = await openidClient.clientCredentialsGrant(config, {
         scope: req.scope,
       });
 
-      const tokenResponse: OAuthTokenResponse = {
-        access_token: tokenSet.access_token ?? "",
+      const response: OAuthTokenResponse = {
+        access_token: tokenResponse.access_token ?? "",
         token_type: "Bearer",
-        expires_in: tokenSet.expires_in ?? 0,
-        refresh_token: tokenSet.refresh_token,
-        scope: tokenSet.scope,
+        expires_in: tokenResponse.expires_in ?? 0,
+        refresh_token: tokenResponse.refresh_token,
+        scope: tokenResponse.scope,
       };
 
-      return c.json(tokenResponse, 200);
+      return c.json(response, 200);
     }
 
     if (req.grant_type === "refresh_token") {
-      const tokenSet = await client.refresh(req.refresh_token);
+      // v6: Configuration を作成して refreshTokenGrant を実行
+      const config = await createKeycloakConfiguration(
+        req.client_id,
+        req.client_secret,
+      );
+      const tokenResponse = await openidClient.refreshTokenGrant(
+        config,
+        req.refresh_token,
+      );
 
-      const tokenResponse: OAuthTokenResponse = {
-        access_token: tokenSet.access_token ?? "",
+      const response: OAuthTokenResponse = {
+        access_token: tokenResponse.access_token ?? "",
         token_type: "Bearer",
-        expires_in: tokenSet.expires_in ?? 0,
-        refresh_token: tokenSet.refresh_token,
-        scope: tokenSet.scope,
+        expires_in: tokenResponse.expires_in ?? 0,
+        refresh_token: tokenResponse.refresh_token,
+        scope: tokenResponse.scope,
       };
 
-      return c.json(tokenResponse, 200);
+      return c.json(response, 200);
     }
 
     if (req.grant_type === "authorization_code") {
-      // PKCE を使用して認可コードをトークンに交換
-      const tokenSet = await client.callback(
-        req.redirect_uri,
-        { code: req.code },
-        { code_verifier: req.code_verifier },
+      // v6: Configuration を作成して authorizationCodeGrant を実行
+      const config = await createKeycloakConfiguration(
+        req.client_id,
+        req.client_secret,
       );
 
-      const tokenResponse: OAuthTokenResponse = {
-        access_token: tokenSet.access_token ?? "",
+      // ServerMetadata から issuer を取得
+      const serverMetadata = config.serverMetadata();
+
+      // コールバック URL を構築（認可レスポンスパラメータを含む）
+      const callbackUrl = new URL(req.redirect_uri);
+      callbackUrl.searchParams.set("code", req.code);
+
+      // RFC 9207: issuer パラメータを追加
+      // Keycloak が authorization_response_iss_parameter_supported: true の場合に必要
+      callbackUrl.searchParams.set("iss", serverMetadata.issuer);
+
+      // state が提供された場合は URL に含める
+      if (req.state) {
+        callbackUrl.searchParams.set("state", req.state);
+      }
+
+      // checks の設定：
+      // - state が提供された場合: expectedState で検証
+      // - state がない場合: skipStateCheck で検証をスキップ
+      const tokenResponse = await openidClient.authorizationCodeGrant(
+        config,
+        callbackUrl,
+        {
+          pkceCodeVerifier: req.code_verifier,
+          expectedState: req.state ?? skipStateCheck,
+        },
+      );
+
+      const response: OAuthTokenResponse = {
+        access_token: tokenResponse.access_token ?? "",
         token_type: "Bearer",
-        expires_in: tokenSet.expires_in ?? 0,
-        refresh_token: tokenSet.refresh_token,
-        scope: tokenSet.scope,
+        expires_in: tokenResponse.expires_in ?? 0,
+        refresh_token: tokenResponse.refresh_token,
+        scope: tokenResponse.scope,
       };
 
-      return c.json(tokenResponse, 200);
+      return c.json(response, 200);
     }
 
     // ここに到達することはないはず（validateTokenRequestでチェック済み）
@@ -254,9 +280,9 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
   } catch (error) {
     logError("OAuth token endpoint error", error as Error);
 
-    // openid-client の OPError をハンドリング
-    if (error instanceof errors.OPError) {
-      // OPErrorのエラーコードをOAuthErrorResponseの型にマッピング
+    // openid-client v6 の ResponseBodyError をハンドリング
+    if (error instanceof ResponseBodyError) {
+      // ResponseBodyError のエラーコードを OAuthErrorResponse の型にマッピング
       const knownErrors = [
         "invalid_request",
         "invalid_client",
@@ -279,6 +305,7 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
       };
 
       // HTTPステータスコードの決定
+      // v6 では error.status で直接取得可能
       const statusCode =
         errorCode === "invalid_client" ||
         errorCode === "invalid_grant" ||
@@ -289,16 +316,16 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
       return c.json(errorResponse, statusCode);
     }
 
-    // RPError（Relying Party側のエラー）をハンドリング
-    if (error instanceof errors.RPError) {
+    // ClientError（検証エラーなど）
+    if (error instanceof Error && error.name === "ClientError") {
       const errorResponse: OAuthErrorResponse = {
-        error: "server_error",
+        error: "invalid_request",
         error_description: error.message,
       };
-      return c.json(errorResponse, 500);
+      return c.json(errorResponse, 400);
     }
 
-    // その他のエラー
+    // その他のエラー（v5 の RPError に相当するものを含む）
     const errorResponse: OAuthErrorResponse = {
       error: "server_error",
       error_description:
@@ -395,7 +422,7 @@ const validateDCRRequest = (
 /**
  * RFC 7591 エラーコードへのマッピング
  *
- * @param error - openid-client の OPError から取得したエラーコード
+ * @param error - openid-client からのエラーコード
  * @returns RFC 7591 準拠のエラーコード
  */
 const mapToRFC7591Error = (error?: string): DCRErrorResponse["error"] => {
@@ -411,14 +438,16 @@ const mapToRFC7591Error = (error?: string): DCRErrorResponse["error"] => {
 };
 
 /**
- * OPError から HTTP ステータスコードを決定
+ * ResponseBodyError から HTTP ステータスコードを決定
  *
- * @param error - openid-client の OPError
+ * @param error - openid-client v6 の ResponseBodyError
  * @returns HTTP ステータスコード
  */
-const determineStatusCode = (error: errors.OPError): 400 | 401 | 403 | 500 => {
-  // OPError.response は http.IncomingMessage を継承しているため、statusCode を使用
-  const status = error.response?.statusCode;
+const determineStatusCode = (
+  error: ResponseBodyError,
+): 400 | 401 | 403 | 500 => {
+  // v6 では error.status で直接取得可能
+  const status = error.status;
   if (status === 401 || status === 403 || status === 500) {
     return status;
   }
@@ -428,7 +457,7 @@ const determineStatusCode = (error: errors.OPError): 400 | 401 | 403 | 500 => {
 /**
  * POST /oauth/register - OAuth 2.0 Dynamic Client Registration（RFC 7591準拠）
  *
- * openid-client の Issuer.Client.register() を使用して Keycloak に DCR リクエストを送信
+ * openid-client v6 の dynamicClientRegistration() を使用して Keycloak に DCR リクエストを送信
  *
  * @param c - Honoコンテキスト
  * @returns DCR レスポンスまたはエラー
@@ -463,50 +492,65 @@ export const dcrHandler = async (c: Context): Promise<Response> => {
       return c.json(validation.error, 400);
     }
 
-    // openid-client の Client.register() を使用
-    const issuer = await getKeycloakIssuer();
+    // Authorization ヘッダーから Initial Access Token を取得
     const authHeader = c.req.header("authorization");
     const initialAccessToken = authHeader?.replace(/^Bearer\s+/i, "");
 
-    logInfo("Registering client via openid-client", {
+    logInfo("Registering client via openid-client v6", {
       clientName: (body as DCRRequest).client_name,
     });
 
-    // openid-client の Client.register() を使用
-    // issuer.Client は BaseClient クラス自体を返すため、静的メソッド register にアクセス可能
-    const ClientClass = issuer.Client as unknown as {
-      register: (
-        metadata: Record<string, unknown>,
-        options?: { initialAccessToken?: string },
-      ) => Promise<Client>;
-    };
-    const registeredClient = await ClientClass.register(
-      body as Record<string, unknown>,
-      { initialAccessToken: initialAccessToken || undefined },
+    // Keycloak Issuer URL を取得
+    const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
+    if (!keycloakIssuerUrl) {
+      throw new Error("KEYCLOAK_ISSUER environment variable is not set");
+    }
+
+    // localhost の場合は HTTP を許可（ローカル開発用）
+    const executeOptions = isLocalhostUrl(keycloakIssuerUrl)
+      ? [allowInsecureRequests]
+      : undefined;
+
+    // openid-client v6 の dynamicClientRegistration() を使用
+    const registrationConfig = await openidClient.dynamicClientRegistration(
+      new URL(keycloakIssuerUrl),
+      body as Partial<openidClient.ClientMetadata>,
+      undefined, // clientAuth（登録時は不要）
+      {
+        ...(initialAccessToken && { initialAccessToken }),
+        ...(executeOptions && { execute: executeOptions }),
+      },
     );
+
+    // v6: Configuration から clientMetadata() でクライアントメタデータを取得
+    const clientMetadata = registrationConfig.clientMetadata();
 
     // レスポンス生成
     const response: DCRResponse = {
-      client_id: registeredClient.metadata.client_id,
-      client_secret: registeredClient.metadata.client_secret,
-      client_id_issued_at: registeredClient.metadata.client_id_issued_at as
+      client_id: clientMetadata.client_id,
+      client_secret: clientMetadata.client_secret,
+      client_id_issued_at: clientMetadata.client_id_issued_at as
         | number
         | undefined,
-      client_secret_expires_at: registeredClient.metadata
-        .client_secret_expires_at as number | undefined,
-      registration_access_token: registeredClient.metadata
-        .registration_access_token as string | undefined,
-      registration_client_uri: registeredClient.metadata
-        .registration_client_uri as string | undefined,
-      redirect_uris: registeredClient.metadata.redirect_uris ?? [],
-      client_name: registeredClient.metadata.client_name as string | undefined,
+      client_secret_expires_at: clientMetadata.client_secret_expires_at as
+        | number
+        | undefined,
+      registration_access_token: clientMetadata.registration_access_token as
+        | string
+        | undefined,
+      registration_client_uri: clientMetadata.registration_client_uri as
+        | string
+        | undefined,
+      redirect_uris:
+        (clientMetadata.redirect_uris as string[] | undefined) ?? [],
+      client_name: clientMetadata.client_name as string | undefined,
     };
 
     logInfo("DCR successful", { clientId: response.client_id });
     return c.json(response, 201);
   } catch (error) {
-    // OPError ハンドリング（openid-client からのエラー）
-    if (error instanceof errors.OPError) {
+    // ResponseBodyError ハンドリング（openid-client v6 からのエラー）
+    if (error instanceof ResponseBodyError) {
       logError("DCR failed", error);
 
       const errorResponse: DCRErrorResponse = {

@@ -3,20 +3,36 @@ import { Hono } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import { dcrHandler } from "../oauth.js";
 import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
-import { errors } from "openid-client";
 
-// vi.hoisted でモック関数を定義（ホイスティング問題を回避）
-const { mockDiscover, mockRegister, MockClient } = vi.hoisted(() => {
-  const register = vi.fn();
-  const Client = vi.fn().mockImplementation(() => ({}));
-  // Client.register を静的メソッドとして追加
-  (Client as unknown as { register: typeof register }).register = register;
-  return {
-    mockDiscover: vi.fn(),
-    mockRegister: register,
-    MockClient: Client,
-  };
-});
+// vi.hoisted でモック関数とクラスを定義（ホイスティング問題を回避）
+const { mockDiscovery, mockDynamicClientRegistration, MockResponseBodyError } =
+  vi.hoisted(() => {
+    // テスト用 ResponseBodyError クラス（v6 のコンストラクタシグネチャに対応）
+    class MockResponseBodyErrorClass extends Error {
+      error: string;
+      error_description?: string;
+      status: number;
+      response: Response;
+
+      constructor(
+        response: Response,
+        cause: { error: string; error_description?: string },
+      ) {
+        super(cause.error_description ?? cause.error);
+        this.name = "ResponseBodyError";
+        this.error = cause.error;
+        this.error_description = cause.error_description;
+        this.status = response.status;
+        this.response = response;
+      }
+    }
+
+    return {
+      mockDiscovery: vi.fn(),
+      mockDynamicClientRegistration: vi.fn(),
+      MockResponseBodyError: MockResponseBodyErrorClass,
+    };
+  });
 
 // モックの設定
 vi.mock("../../libs/logger/index.js", () => ({
@@ -26,50 +42,39 @@ vi.mock("../../libs/logger/index.js", () => ({
   logWarn: vi.fn(),
 }));
 
-// openid-client のモック
-vi.mock("openid-client", async (importOriginal) => {
-  const original = await importOriginal<typeof import("openid-client")>();
-  return {
-    ...original,
-    Issuer: {
-      discover: mockDiscover,
-    },
-  };
-});
+// openid-client v6 のモック
+vi.mock("openid-client", () => ({
+  discovery: mockDiscovery,
+  dynamicClientRegistration: mockDynamicClientRegistration,
+  Configuration: vi.fn(),
+  ClientSecretPost: vi.fn(() => "client_secret_post"),
+  None: vi.fn(() => "none"),
+  ResponseBodyError: MockResponseBodyError,
+}));
 
-// デフォルトの Issuer モック値を作成するヘルパー
-const createMockIssuer = (registrationEndpoint?: string | null) => {
-  // Client.register を含む Issuer を返す
-  const issuer = {
-    issuer: "https://keycloak.example.com/realms/tumiki",
-    metadata: {
-      issuer: "https://keycloak.example.com/realms/tumiki",
-      token_endpoint:
-        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
-      jwks_uri:
-        "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
-      registration_endpoint:
-        registrationEndpoint === null
-          ? undefined
-          : (registrationEndpoint ??
-            "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect"),
-    },
-    Client: MockClient,
-  };
-
-  // Client に register 静的メソッドを追加
-  (issuer.Client as unknown as { register: typeof mockRegister }).register =
-    mockRegister;
-
-  return issuer;
+// テスト用の ServerMetadata
+const mockServerMetadata = {
+  issuer: "https://keycloak.example.com/realms/tumiki",
+  token_endpoint:
+    "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
+  jwks_uri:
+    "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+  registration_endpoint:
+    "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect",
 };
 
-// モック登録済みクライアントを作成するヘルパー
-const createMockRegisteredClient = (metadata: Record<string, unknown>) => ({
-  metadata: {
+// モック Configuration オブジェクトを作成するヘルパー
+const createMockConfiguration = (metadata = mockServerMetadata) => ({
+  serverMetadata: () => metadata,
+});
+
+// v6: dynamicClientRegistration は Configuration を返す
+// clientMetadata() でクライアントメタデータを取得
+const createMockRegistrationResponse = (metadata: Record<string, unknown>) => ({
+  clientMetadata: () => ({
     client_id: "generated-client-id",
     ...metadata,
-  },
+  }),
 });
 
 describe("dcrHandler", () => {
@@ -91,8 +96,8 @@ describe("dcrHandler", () => {
 
     vi.clearAllMocks();
 
-    // デフォルトの Issuer モックを設定
-    mockDiscover.mockResolvedValue(createMockIssuer());
+    // デフォルトの discovery モックを設定
+    mockDiscovery.mockResolvedValue(createMockConfiguration());
   });
 
   afterEach(() => {
@@ -216,8 +221,8 @@ describe("dcrHandler", () => {
     });
 
     test("localhostの場合はHTTPを許可する", async () => {
-      mockRegister.mockResolvedValueOnce(
-        createMockRegisteredClient({
+      mockDynamicClientRegistration.mockResolvedValueOnce(
+        createMockRegistrationResponse({
           redirect_uris: ["http://localhost:3000/callback"],
         }),
       );
@@ -236,8 +241,8 @@ describe("dcrHandler", () => {
     });
 
     test("127.0.0.1の場合もHTTPを許可する", async () => {
-      mockRegister.mockResolvedValueOnce(
-        createMockRegisteredClient({
+      mockDynamicClientRegistration.mockResolvedValueOnce(
+        createMockRegistrationResponse({
           redirect_uris: ["http://127.0.0.1:3000/callback"],
         }),
       );
@@ -267,8 +272,8 @@ describe("dcrHandler", () => {
         client_name: "Test Client",
       };
 
-      mockRegister.mockResolvedValueOnce(
-        createMockRegisteredClient(mockClientMetadata),
+      mockDynamicClientRegistration.mockResolvedValueOnce(
+        createMockRegistrationResponse(mockClientMetadata),
       );
 
       const res = await app.request("/oauth/register", {
@@ -296,21 +301,23 @@ describe("dcrHandler", () => {
         client_name: "Test Client",
       });
 
-      // Client.register が正しく呼ばれたか確認
-      expect(mockRegister).toHaveBeenCalledWith(
+      // v6: dynamicClientRegistration が正しく呼ばれたか確認
+      expect(mockDynamicClientRegistration).toHaveBeenCalledWith(
+        expect.any(URL), // Keycloak Issuer URL
         {
           redirect_uris: ["https://example.com/callback"],
           client_name: "Test Client",
           grant_types: ["authorization_code"],
           response_types: ["code"],
         },
-        { initialAccessToken: undefined },
+        undefined, // clientAuth
+        {}, // options（Initial Access Token なし、HTTPS なので execute もなし）
       );
     });
 
     test("Initial Access Tokenが渡される", async () => {
-      mockRegister.mockResolvedValueOnce(
-        createMockRegisteredClient({
+      mockDynamicClientRegistration.mockResolvedValueOnce(
+        createMockRegistrationResponse({
           redirect_uris: ["https://example.com/callback"],
         }),
       );
@@ -326,16 +333,18 @@ describe("dcrHandler", () => {
         }),
       });
 
-      // initialAccessToken が渡されたか確認
-      expect(mockRegister).toHaveBeenCalledWith(
+      // v6: initialAccessToken がオプションとして渡されるか確認
+      expect(mockDynamicClientRegistration).toHaveBeenCalledWith(
+        expect.any(URL),
         { redirect_uris: ["https://example.com/callback"] },
+        undefined,
         { initialAccessToken: "initial-access-token" },
       );
     });
 
     test("registration_access_tokenとregistration_client_uriが返される", async () => {
-      mockRegister.mockResolvedValueOnce(
-        createMockRegisteredClient({
+      mockDynamicClientRegistration.mockResolvedValueOnce(
+        createMockRegistrationResponse({
           redirect_uris: ["https://example.com/callback"],
           registration_access_token: "reg-access-token",
           registration_client_uri:
@@ -366,19 +375,14 @@ describe("dcrHandler", () => {
   });
 
   describe("エラーハンドリング", () => {
-    test("OPErrorが発生した場合、RFC 7591形式のエラーを返す", async () => {
-      // OPError をシミュレート
-      const opError = new errors.OPError({
-        error: "invalid_redirect_uri",
-        error_description: "Invalid redirect URI",
-      });
-      // response プロパティを追加（http.IncomingMessage の statusCode を使用）
-      Object.defineProperty(opError, "response", {
-        value: { statusCode: 400 },
-        writable: true,
-      });
-
-      mockRegister.mockRejectedValueOnce(opError);
+    test("ResponseBodyErrorが発生した場合、RFC 7591形式のエラーを返す", async () => {
+      // openid-client v6 ResponseBodyError をスロー
+      mockDynamicClientRegistration.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 400 }), {
+          error: "invalid_redirect_uri",
+          error_description: "Invalid redirect URI",
+        }),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -398,17 +402,14 @@ describe("dcrHandler", () => {
       });
     });
 
-    test("OPErrorで認証エラーが発生した場合、401エラーを返す", async () => {
-      const opError = new errors.OPError({
-        error: "invalid_client_metadata",
-        error_description: "Initial access token required",
-      });
-      Object.defineProperty(opError, "response", {
-        value: { statusCode: 401 },
-        writable: true,
-      });
-
-      mockRegister.mockRejectedValueOnce(opError);
+    test("ResponseBodyErrorで認証エラーが発生した場合、401エラーを返す", async () => {
+      // openid-client v6 ResponseBodyError をスロー
+      mockDynamicClientRegistration.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 401 }), {
+          error: "invalid_client_metadata",
+          error_description: "Initial access token required",
+        }),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -428,17 +429,13 @@ describe("dcrHandler", () => {
       });
     });
 
-    test("未知のOPErrorコードはinvalid_client_metadataに変換される", async () => {
-      const opError = new errors.OPError({
-        error: "unknown_error_code",
-        error_description: "Some unknown error",
-      });
-      Object.defineProperty(opError, "response", {
-        value: { statusCode: 400 },
-        writable: true,
-      });
-
-      mockRegister.mockRejectedValueOnce(opError);
+    test("未知のResponseBodyErrorコードはinvalid_client_metadataに変換される", async () => {
+      mockDynamicClientRegistration.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 400 }), {
+          error: "unknown_error_code",
+          error_description: "Some unknown error",
+        }),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -456,7 +453,9 @@ describe("dcrHandler", () => {
     });
 
     test("ネットワークエラーが発生した場合、500エラーを返す", async () => {
-      mockRegister.mockRejectedValueOnce(new Error("Network error"));
+      mockDynamicClientRegistration.mockRejectedValueOnce(
+        new Error("Network error"),
+      );
 
       const res = await app.request("/oauth/register", {
         method: "POST",
@@ -480,8 +479,9 @@ describe("dcrHandler", () => {
       delete process.env.KEYCLOAK_ISSUER;
       clearKeycloakCache();
 
-      // Issuer.discover がエラーをスローするようにモック
-      mockDiscover.mockRejectedValueOnce(
+      // DCR ハンドラーは直接 KEYCLOAK_ISSUER をチェックするので、
+      // dynamicClientRegistration がエラーをスローする前にエラーになる
+      mockDynamicClientRegistration.mockRejectedValueOnce(
         new Error("KEYCLOAK_ISSUER environment variable is not set"),
       );
 
