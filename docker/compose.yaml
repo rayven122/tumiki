@@ -60,7 +60,8 @@ services:
       KC_HOSTNAME_PORT: 8888
       KC_HOSTNAME_STRICT: "false"
       KC_PROXY_HEADERS: xforwarded
-      KEYCLOAK_URL: http://localhost:8888
+      # セットアップスクリプト用（コンテナ内部からアクセス）
+      KEYCLOAK_URL: http://localhost:8080
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tumiki}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tumiki-manager}
     entrypoint: ["/opt/keycloak/entrypoint.sh"]

@@ -15,12 +15,14 @@ mcp-proxy は DCR リクエストを Keycloak にプロキシします。クラ�
 
 ## デフォルト設定での利用
 
-### Keycloak 26.0 のデフォルト動作
-
-**追加設定は不要です。** Keycloak 26.0 では DCR エンドポイントがデフォルトで有効になっています。
+### Keycloak 26.x のデフォルト動作
 
 - **DCR エンドポイント**: `{KEYCLOAK_ISSUER}/clients-registrations/openid-connect`
 - **自動検出**: OpenID Connect Discovery（`.well-known/openid-configuration`）の `registration_endpoint` に含まれる
+
+> **Note**: Keycloak 26.x では「Trusted Hosts」ポリシーがデフォルトで有効なため、匿名 DCR はブロックされます。
+> ローカル開発環境では `setup-keycloak.sh` により匿名 DCR が自動的に有効化されます。
+> 本番環境では IAT（Initial Access Token）を使用するか、Admin Console で Trusted Hosts ポリシーを削除してください。
 
 ### 動作確認
 
@@ -62,13 +64,14 @@ curl -X POST http://localhost:8080/oauth/register \
 }
 ```
 
-## セキュリティ強化（オプション）
+## セキュリティ強化（本番環境）
 
-デフォルトでは匿名での DCR が許可されています。本番環境ではセキュリティ強化を検討してください。
+Keycloak 26.x のデフォルトでは Trusted Hosts ポリシーにより匿名 DCR がブロックされます。
+本番環境では IAT を使用した DCR を推奨します。
 
 ### Initial Access Token（IAT）による保護
 
-IAT を使用すると、事前発行したトークンを持つリクエストのみが DCR を実行できます。
+IAT を使用すると、Trusted Hosts ポリシーをバイパスして DCR を実行できます。
 
 #### IAT の発行手順
 

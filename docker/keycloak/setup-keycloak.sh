@@ -265,4 +265,23 @@ echo "masterレルムのSSL要件を無効化中..."
 $KCADM update realms/master -r master --config /tmp/kcadm.config \
   -s sslRequired=NONE 2>/dev/null || true
 
+# DCR (Dynamic Client Registration) の匿名アクセスを有効化
+# Trusted Hosts ポリシーを削除することで、IAT なしでの DCR を許可
+echo "DCR 匿名アクセスを有効化中..."
+POLICIES_JSON=$($KCADM get components -r "$REALM" --config /tmp/kcadm.config \
+  -q type=org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy 2>/dev/null || echo "[]")
+
+# Anonymous Access Policies の Trusted Hosts ポリシー ID を取得して削除
+TRUSTED_HOSTS_ID=$(echo "$POLICIES_JSON" | grep -B10 '"name" : "Trusted Hosts"' | grep -A10 '"subType" : "anonymous"' | grep '"id"' | head -1 | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+
+if [ -n "$TRUSTED_HOSTS_ID" ]; then
+  if $KCADM delete components/"$TRUSTED_HOSTS_ID" -r "$REALM" --config /tmp/kcadm.config 2>/dev/null; then
+    echo "  ✓ Trusted Hosts ポリシーを削除しました（匿名 DCR 有効）"
+  else
+    echo "  - Trusted Hosts ポリシーの削除に失敗しました"
+  fi
+else
+  echo "  - Trusted Hosts ポリシーは既に削除済みです"
+fi
+
 echo "セットアップ完了"
