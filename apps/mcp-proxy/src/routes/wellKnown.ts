@@ -197,8 +197,9 @@ wellKnownRoute.get(
  */
 wellKnownRoute.get("/oauth-protected-resource/mcp/:mcpServerId", async (c) => {
   const keycloakIssuer = process.env.KEYCLOAK_ISSUER;
-  const mcpResourceUrl =
-    process.env.MCP_RESOURCE_URL ?? "http://localhost:8080/mcp";
+  const mcpProxyUrl =
+    process.env.NEXT_PUBLIC_MCP_PROXY_URL ?? "http://localhost:8080";
+  const mcpResourceUrl = process.env.MCP_RESOURCE_URL ?? `${mcpProxyUrl}/mcp`;
 
   if (!keycloakIssuer) {
     return c.json(
