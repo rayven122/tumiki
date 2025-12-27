@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Key, Copy, Eye, EyeOff, Trash2, Clock } from "lucide-react";
+import { Key, Copy, Eye, EyeOff, Trash2, Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 
@@ -15,6 +15,12 @@ type ApiKeyItemProps = {
     createdAt: Date;
     lastUsedAt: Date | null;
     expiresAt: Date | null;
+    isOwner: boolean;
+    user: {
+      id: string;
+      name: string | null;
+      email: string | null;
+    };
   };
   isVisible: boolean;
   onToggleVisibility: () => void;
@@ -79,9 +85,10 @@ export const ApiKeyItem = ({
 
           <div className="flex items-center space-x-2">
             <code className="flex-1 truncate rounded bg-gray-100 px-2 py-1 font-mono text-xs">
-              {isVisible ? apiKey.apiKey : "••••••••••••••••"}
+              {apiKey.isOwner && isVisible ? apiKey.apiKey : "••••••••••••••••"}
             </code>
-            {apiKey.isActive && (
+            {/* 自分のキーのみ表示/コピー操作可能 */}
+            {apiKey.isOwner && apiKey.isActive && (
               <>
                 <Button
                   variant="ghost"
@@ -109,6 +116,16 @@ export const ApiKeyItem = ({
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+            {/* 発行者情報 */}
+            <span className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {apiKey.user.name ?? apiKey.user.email ?? "不明"}
+              {apiKey.isOwner && (
+                <Badge variant="outline" className="ml-1 text-[10px]">
+                  自分
+                </Badge>
+              )}
+            </span>
             <span>
               作成日: {new Date(apiKey.createdAt).toLocaleDateString("ja-JP")}
             </span>
@@ -127,22 +144,25 @@ export const ApiKeyItem = ({
           </div>
         </div>
 
-        <div className="flex flex-col space-y-2">
-          {apiKey.isActive && (
-            <Button variant="outline" size="sm" onClick={onDeactivate}>
-              無効化
+        {/* 自分のキーのみ無効化・削除可能 */}
+        {apiKey.isOwner && (
+          <div className="flex flex-col space-y-2">
+            {apiKey.isActive && (
+              <Button variant="outline" size="sm" onClick={onDeactivate}>
+                無効化
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDelete}
+              className="text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="mr-1 h-3 w-3" />
+              削除
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDelete}
-            className="text-red-600 hover:bg-red-50"
-          >
-            <Trash2 className="mr-1 h-3 w-3" />
-            削除
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
