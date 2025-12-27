@@ -271,17 +271,37 @@ echo "DCR 匿名アクセスを有効化中..."
 POLICIES_JSON=$($KCADM get components -r "$REALM" --config /tmp/kcadm.config \
   -q type=org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy 2>/dev/null || echo "[]")
 
-# Anonymous Access Policies の Trusted Hosts ポリシー ID を取得して削除
-TRUSTED_HOSTS_ID=$(echo "$POLICIES_JSON" | grep -B10 '"name" : "Trusted Hosts"' | grep -A10 '"subType" : "anonymous"' | grep '"id"' | head -1 | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+# Anonymous Access Policies のポリシーを削除する関数
+delete_anonymous_policy() {
+  local policy_name=$1
+  local policy_id
 
-if [ -n "$TRUSTED_HOSTS_ID" ]; then
-  if $KCADM delete components/"$TRUSTED_HOSTS_ID" -r "$REALM" --config /tmp/kcadm.config 2>/dev/null; then
-    echo "  ✓ Trusted Hosts ポリシーを削除しました（匿名 DCR 有効）"
+  # jq を使って正確に ID を取得（jq がない場合は grep で代替）
+  if command -v jq &> /dev/null; then
+    policy_id=$(echo "$POLICIES_JSON" | jq -r ".[] | select(.name == \"$policy_name\" and .subType == \"anonymous\") | .id" 2>/dev/null)
   else
-    echo "  - Trusted Hosts ポリシーの削除に失敗しました"
+    # grep での代替（より正確なパターン）
+    policy_id=$(echo "$POLICIES_JSON" | awk -v name="$policy_name" '
+      /"id"/ { id = $3; gsub(/[",]/, "", id) }
+      /"name"/ && $0 ~ name { found_name = 1 }
+      /"subType"/ && /anonymous/ && found_name { print id; found_name = 0 }
+    ' | head -1)
   fi
-else
-  echo "  - Trusted Hosts ポリシーは既に削除済みです"
-fi
+
+  if [ -n "$policy_id" ]; then
+    if $KCADM delete components/"$policy_id" -r "$REALM" --config /tmp/kcadm.config 2>/dev/null; then
+      echo "  ✓ $policy_name ポリシーを削除しました（匿名 DCR 有効）"
+    else
+      echo "  - $policy_name ポリシーの削除に失敗しました"
+    fi
+  else
+    echo "  - $policy_name ポリシーは既に削除済みです"
+  fi
+}
+
+# Anonymous Access Policies から DCR をブロックするポリシーを削除
+delete_anonymous_policy "Trusted Hosts"
+delete_anonymous_policy "Allowed Client Scopes"
+
 
 echo "セットアップ完了"

@@ -1,0 +1,65 @@
+# Keycloak 本番環境用 Docker Compose
+# さくらのクラウドVM向け（外部PostgreSQL使用）
+# Cloudflare Tunnel は tumiki-main の既存 cloudflared を使用
+
+services:
+  # nginx リバースプロキシ（CORS対応 + バッファサイズ調整）
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: keycloak-proxy
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  # Keycloak 認証サーバー
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    container_name: keycloak
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # 管理者認証情報
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      # 外部データベース設定
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${KC_DB_HOST:?KC_DB_HOST is required}:${KC_DB_PORT:-5432}/${KC_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:?KC_DB_USERNAME is required}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?KC_DB_PASSWORD is required}
+      # ヘルスチェック
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      # ホスト名設定（本番ドメイン）
+      KC_HOSTNAME: ${KC_HOSTNAME:?KC_HOSTNAME is required}
+      KC_HOSTNAME_STRICT: "true"
+      # プロキシ設定（nginx経由）
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      # Realm設定（ハードコード）
+      KEYCLOAK_REALM: tumiki
+      KEYCLOAK_CLIENT_ID: tumiki-manager
+      # Google IdP 設定
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+    entrypoint: ["/opt/keycloak/entrypoint.sh"]
+    command: ["start"]
+    # nginx 経由でのみアクセス（外部公開しない）
+    expose:
+      - "8080"
+    volumes:
+      - ./keycloak/tumiki-realm.json:/opt/keycloak/data/import/tumiki-realm.json:ro
+      - ./keycloak/init-scripts:/opt/keycloak/init-scripts:ro
+      - ./keycloak/setup-keycloak.sh:/opt/keycloak/setup-keycloak.sh:ro
+      - ./keycloak/entrypoint.sh:/opt/keycloak/entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
