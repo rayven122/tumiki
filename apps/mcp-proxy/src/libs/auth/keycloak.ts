@@ -193,7 +193,7 @@ export const createKeycloakConfiguration = async (
 /**
  * Keycloak Issuer 互換オブジェクトを取得（後方互換性用）
  *
- * wellKnown.ts、keycloakOAuth.ts などの既存コードとの互換性を維持するためのラッパー
+ * wellKnown.ts などの既存コードとの互換性を維持するためのラッパー
  *
  * @deprecated 新規コードでは getKeycloakServerMetadata() を直接使用してください
  */
