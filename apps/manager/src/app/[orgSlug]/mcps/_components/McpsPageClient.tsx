@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useState, useMemo } from "react";
 import { api } from "@/trpc/react";
+import { useSession } from "next-auth/react";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 import { ServerCardList } from "./ServerCardList";
 import { ServerList } from "../add/_components/ServerList";
@@ -27,6 +29,9 @@ type McpsPageClientProps = {
 };
 
 export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
+  const { data: session } = useSession();
+  const isAdmin = getSessionInfo(session).isAdmin;
+
   const {
     isSortMode,
     showConfirmDialog,
@@ -84,19 +89,24 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
               </>
             )}
           </Button>
-          {/* 統合サーバー作成ボタン */}
-          <Link href={`/${orgSlug}/mcps/create-integrated`}>
-            <Button variant="outline" size="sm">
-              <Workflow className="mr-2 h-4 w-4" />
-              統合サーバーを作成
-            </Button>
-          </Link>
-          <Link href={`/${orgSlug}/mcps/add`}>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              MCPサーバーを追加
-            </Button>
-          </Link>
+          {/* 統合サーバー作成ボタン（管理者・オーナーのみ） */}
+          {isAdmin && (
+            <Link href={`/${orgSlug}/mcps/create-integrated`}>
+              <Button variant="outline" size="sm">
+                <Workflow className="mr-2 h-4 w-4" />
+                統合サーバーを作成
+              </Button>
+            </Link>
+          )}
+          {/* MCPサーバー追加ボタン（管理者・オーナーのみ） */}
+          {isAdmin && (
+            <Link href={`/${orgSlug}/mcps/add`}>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                MCPサーバーを追加
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -179,8 +189,8 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
         />
       </div>
 
-      {/* カスタムMCPサーバーを追加セクション */}
-      {!isSortMode && (
+      {/* カスタムMCPサーバーを追加セクション（管理者・オーナーのみ表示） */}
+      {!isSortMode && isAdmin && (
         <div className="mt-12">
           <div className="mb-6">
             <h2 className="text-2xl font-bold">MCPサーバーを追加</h2>
