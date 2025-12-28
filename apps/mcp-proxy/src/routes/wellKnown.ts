@@ -243,10 +243,13 @@ wellKnownRoute.get("/oauth-protected-resource/mcp/:mcpServerId", async (c) => {
   const resourceWithMcpServerId = `${mcpResourceUrl}/${mcpServerId}`;
 
   // RFC 9728 準拠のリソースメタデータを返す
+  // authorization_servers には mcp-proxy の URL を指定
+  // クライアントはこの URL から AS メタデータを取得し、
+  // mcp-proxy の /oauth/token, /oauth/register エンドポイントを使用する
   return c.json({
     // RFC 9728 必須フィールド
     resource: resourceWithMcpServerId,
-    authorization_servers: [keycloakIssuer],
+    authorization_servers: [mcpProxyUrl],
 
     // RFC 9728 推奨フィールド
     scopes_supported: [],
