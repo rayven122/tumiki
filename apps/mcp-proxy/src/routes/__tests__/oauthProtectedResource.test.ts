@@ -6,16 +6,10 @@ import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
 import type { McpServerLookupResult } from "../../services/mcpServerService.js";
 
 // vi.hoisted でモック関数を定義（ホイスティング問題を回避）
-const { mockDiscover, MockClient, mockGetMcpServerOrganization } = vi.hoisted(
-  () => {
-    const Client = vi.fn().mockImplementation(() => ({}));
-    return {
-      mockDiscover: vi.fn(),
-      MockClient: Client,
-      mockGetMcpServerOrganization: vi.fn(),
-    };
-  },
-);
+const { mockDiscovery, mockGetMcpServerOrganization } = vi.hoisted(() => ({
+  mockDiscovery: vi.fn(),
+  mockGetMcpServerOrganization: vi.fn(),
+}));
 
 // モックの設定
 vi.mock("../../libs/logger/index.js", () => ({
@@ -25,11 +19,12 @@ vi.mock("../../libs/logger/index.js", () => ({
   logWarn: vi.fn(),
 }));
 
-// openid-client のモック
+// openid-client v6 のモック
 vi.mock("openid-client", () => ({
-  Issuer: {
-    discover: mockDiscover,
-  },
+  discovery: mockDiscovery,
+  Configuration: vi.fn(),
+  ClientSecretPost: vi.fn(() => "client_secret_post"),
+  None: vi.fn(() => "none"),
 }));
 
 // mcpServerService のモック
@@ -37,21 +32,22 @@ vi.mock("../../services/mcpServerService.js", () => ({
   getMcpServerOrganization: mockGetMcpServerOrganization,
 }));
 
-// デフォルトの Issuer モック値を作成するヘルパー
-const createMockIssuer = () => ({
+// テスト用の ServerMetadata
+const mockServerMetadata = {
   issuer: "https://keycloak.example.com/realms/tumiki",
-  metadata: {
-    issuer: "https://keycloak.example.com/realms/tumiki",
-    authorization_endpoint:
-      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/auth",
-    token_endpoint:
-      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
-    jwks_uri:
-      "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
-    registration_endpoint:
-      "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect",
-  },
-  Client: MockClient,
+  authorization_endpoint:
+    "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/auth",
+  token_endpoint:
+    "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/token",
+  jwks_uri:
+    "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs",
+  registration_endpoint:
+    "https://keycloak.example.com/realms/tumiki/clients-registrations/openid-connect",
+};
+
+// v6: Configuration を返すヘルパー
+const createMockConfiguration = (metadata = mockServerMetadata) => ({
+  serverMetadata: () => metadata,
 });
 
 describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () => {
@@ -78,8 +74,8 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     vi.clearAllMocks();
 
-    // デフォルトの Issuer モックを設定
-    mockDiscover.mockResolvedValue(createMockIssuer());
+    // デフォルトの discovery モックを設定
+    mockDiscovery.mockResolvedValue(createMockConfiguration());
   });
 
   afterEach(() => {
@@ -328,7 +324,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
 
       expect(body).toStrictEqual({
         resource: "http://localhost:8080/mcp/test-mcp-server-id",
-        authorization_servers: ["https://keycloak.example.com/realms/tumiki"],
+        authorization_servers: ["http://localhost:8080"],
         scopes_supported: [],
         bearer_methods_supported: ["header"],
         resource_documentation: "https://docs.tumiki.cloud/mcp",
@@ -566,7 +562,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
       }
     });
 
-    test("Keycloak Issuer URL が authorization_servers に含まれる", async () => {
+    test("MCP Proxy URL が authorization_servers に含まれる", async () => {
       const res = await app.request(
         "/.well-known/oauth-protected-resource/mcp/test-mcp-server-id",
         {
@@ -575,9 +571,9 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
       );
 
       const body = (await res.json()) as Record<string, unknown>;
-      expect(body.authorization_servers).toContain(
-        "https://keycloak.example.com/realms/tumiki",
-      );
+      // RFC 9728: authorization_servers には mcp-proxy の URL を指定
+      // クライアントはここから AS Metadata を取得する
+      expect(body.authorization_servers).toContain("http://localhost:8080");
     });
   });
 
@@ -647,8 +643,8 @@ describe("GET /.well-known/oauth-authorization-server（ルートレベル）", 
 
     vi.clearAllMocks();
 
-    // デフォルトの Issuer モックを設定
-    mockDiscover.mockResolvedValue(createMockIssuer());
+    // デフォルトの discovery モックを設定
+    mockDiscovery.mockResolvedValue(createMockConfiguration());
   });
 
   afterEach(() => {

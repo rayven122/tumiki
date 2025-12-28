@@ -8,13 +8,14 @@ import {
   AuthType,
 } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { Prisma } from "@tumiki/db/prisma";
+import type { McpServerTemplate } from "@tumiki/db/prisma";
 import { normalizeServerName } from "@/utils/normalizeServerName";
 import { TRPCError } from "@trpc/server";
 import {
   getMcpServerToolsSSE,
   getMcpServerToolsHTTP,
 } from "@/utils/getMcpServerTools";
-import type { McpServerTemplate } from "@tumiki/db/prisma";
 
 export type CreateApiKeyMcpServerInput = z.infer<
   typeof CreateApiKeyMcpServerInputV2
@@ -161,24 +162,40 @@ const createCustomUrlMcpServer = async (
   userId: string,
 ): Promise<CreateApiKeyMcpServerOutput> => {
   // 1. ユーザー専用のカスタムテンプレートを作成
-  const customTemplate = await prisma.mcpServerTemplate.create({
-    data: {
-      name: input.name,
-      normalizedName: normalizeServerName(input.name),
-      description: input.description ?? "",
-      tags: [],
-      iconPath: null,
-      transportType: input.transportType ?? TransportType.STREAMABLE_HTTPS,
-      args: [],
-      url: input.customUrl,
-      envVarKeys: input.envVars ? Object.keys(input.envVars) : [],
-      authType: input.authType,
-      oauthScopes: [],
-      createdBy: userId,
-      visibility: McpServerVisibility.PRIVATE,
-      organizationId,
-    },
-  });
+  let customTemplate: McpServerTemplate;
+  try {
+    customTemplate = await prisma.mcpServerTemplate.create({
+      data: {
+        name: input.name,
+        normalizedName: normalizeServerName(input.name),
+        description: input.description ?? "",
+        tags: [],
+        iconPath: null,
+        transportType: input.transportType ?? TransportType.STREAMABLE_HTTPS,
+        args: [],
+        url: input.customUrl,
+        envVarKeys: input.envVars ? Object.keys(input.envVars) : [],
+        authType: input.authType,
+        oauthScopes: [],
+        createdBy: userId,
+        visibility: McpServerVisibility.PRIVATE,
+        organizationId,
+      },
+    });
+  } catch (error) {
+    // 名前重複エラー（P2002: Unique constraint failed）の場合
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "既存のMCPサーバーテンプレートと同じ名前は使えません。MCPサーバーテンプレート一覧を確認してください。",
+      });
+    }
+    throw error;
+  }
 
   // 2. カスタムURLからツールを取得
   const tools =

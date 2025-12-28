@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { db } from "@tumiki/db/server";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendWaitingListConfirmation } from "@tumiki/mailer";
+import { getAppBaseUrl } from "@/lib/url";
 
 const WAITING_LIST_MESSAGES = {
   SUCCESS: "Waiting Listへの登録が完了しました。確認メールをお送りしました。",
@@ -26,22 +27,6 @@ interface WaitingListResponse {
   message: string;
   id: string;
 }
-
-/**
- * メールクライアントを初期化する
- */
-const initializeMailClient = (): void => {
-  createMailClient({
-    host: process.env.SMTP_HOST ?? "",
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER ?? "",
-      pass: process.env.SMTP_PASS ?? "",
-    },
-    from: process.env.FROM_EMAIL ?? "",
-  });
-};
 
 /**
  * 重複するメールアドレスをチェックする
@@ -82,10 +67,7 @@ const sendConfirmationEmail = async (
   language: "ja" | "en" = "ja",
 ): Promise<void> => {
   try {
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? process.env.NEXTAUTH_URL
-        : "http://localhost:3000";
+    const baseUrl = getAppBaseUrl();
     const confirmUrl = language === "ja" ? `${baseUrl}/jp` : `${baseUrl}`;
 
     void sendWaitingListConfirmation({
@@ -122,7 +104,8 @@ async function registerToWaitingList(
 
   const waitingListEntry = await createWaitingListEntry(input);
 
-  initializeMailClient();
+  // メールクライアントを初期化（環境変数から自動読み込み）
+  createMailClient();
   await sendConfirmationEmail(input.email, input.name, language);
 
   return {

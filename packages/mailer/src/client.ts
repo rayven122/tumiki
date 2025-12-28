@@ -5,6 +5,30 @@ import nodemailer from "nodemailer";
 import type { MailConfig, MailResult, SendMailOptions } from "./types/index.js";
 import { mailConfigSchema } from "./types/index.js";
 
+/**
+ * 環境変数からデフォルトのSMTP設定を取得
+ *
+ * 使用する環境変数:
+ * - SMTP_HOST: SMTPサーバーのホスト名（デフォルト: smtp.gmail.com）
+ * - SMTP_PORT: SMTPサーバーのポート番号（デフォルト: 587）
+ * - SMTP_USER: SMTP認証ユーザー名
+ * - SMTP_PASS: SMTP認証パスワード
+ * - FROM_EMAIL: 送信元メールアドレス（デフォルト: info@tumiki.cloud）
+ */
+export const getDefaultMailConfig = (): MailConfig => {
+  const port = Number(process.env.SMTP_PORT ?? "587");
+  return {
+    host: process.env.SMTP_HOST ?? "smtp.gmail.com",
+    port,
+    secure: port === 465,
+    auth: {
+      user: process.env.SMTP_USER ?? "",
+      pass: process.env.SMTP_PASS ?? "",
+    },
+    from: process.env.FROM_EMAIL ?? "info@tumiki.cloud",
+  };
+};
+
 export class MailClient {
   private transporter: Transporter;
   private config: MailConfig;
@@ -81,9 +105,16 @@ export class MailClient {
 
 let globalMailClient: MailClient | null = null;
 
-export function createMailClient(config: MailConfig): MailClient {
+/**
+ * メールクライアントを作成（シングルトン）
+ *
+ * @param config - SMTP設定（省略時は環境変数から自動読み込み）
+ * @returns MailClientインスタンス
+ */
+export function createMailClient(config?: MailConfig): MailClient {
   if (!globalMailClient) {
-    globalMailClient = new MailClient(config);
+    const mailConfig = config ?? getDefaultMailConfig();
+    globalMailClient = new MailClient(mailConfig);
   }
   return globalMailClient;
 }
