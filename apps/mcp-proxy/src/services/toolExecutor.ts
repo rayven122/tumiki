@@ -155,11 +155,12 @@ export const executeTool = async (
       httpStatus: errorInfo.httpStatus,
     });
 
-    // ログコンテキストにエラー情報を記録
+    // ログコンテキストにエラー情報を記録（インシデント追跡用）
     updateRequestLoggingContext({
       httpStatus: errorInfo.httpStatus,
       errorCode: errorInfo.errorCode,
-      errorSummary: errorInfo.errorMessage,
+      errorMessage: errorInfo.errorMessage,
+      errorDetails: error,
     });
 
     throw new Error(
