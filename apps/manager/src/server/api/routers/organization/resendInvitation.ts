@@ -4,7 +4,8 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { OrganizationInvitationIdSchema } from "@/schema/ids";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
-import { sendInvitationEmail, generateInviteUrl } from "@/server/lib/mail";
+import { sendInvitationEmail } from "@/server/lib/mail";
+import { generateInviteUrl } from "@/lib/url";
 
 export const resendInvitationInputSchema = z.object({
   invitationId: OrganizationInvitationIdSchema,
