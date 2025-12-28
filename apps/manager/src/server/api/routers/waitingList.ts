@@ -29,22 +29,6 @@ interface WaitingListResponse {
 }
 
 /**
- * メールクライアントを初期化する
- */
-const initializeMailClient = (): void => {
-  createMailClient({
-    host: process.env.SMTP_HOST ?? "",
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER ?? "",
-      pass: process.env.SMTP_PASS ?? "",
-    },
-    from: process.env.FROM_EMAIL ?? "",
-  });
-};
-
-/**
  * 重複するメールアドレスをチェックする
  */
 const checkDuplicateEmail = async (email: string): Promise<void> => {
@@ -120,7 +104,8 @@ async function registerToWaitingList(
 
   const waitingListEntry = await createWaitingListEntry(input);
 
-  initializeMailClient();
+  // メールクライアントを初期化（環境変数から自動読み込み）
+  createMailClient();
   await sendConfirmationEmail(input.email, input.name, language);
 
   return {
