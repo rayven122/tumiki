@@ -162,15 +162,11 @@ export const OnboardingClient = ({
                   後からチーム招待も可能
                 </li>
               </ul>
-              <Button
-                className="mt-6 w-full"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handlePersonalUse();
-                }}
-              >
-                {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button className="mt-6 w-full" tabIndex={-1} asChild>
+                <span>
+                  {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </span>
               </Button>
             </CardContent>
           </Card>
@@ -234,14 +230,15 @@ export const OnboardingClient = ({
               <Button
                 className="mt-6 w-full"
                 variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTeamUse();
-                }}
-                disabled={!isTeamUnlocked}
+                tabIndex={-1}
+                asChild
               >
-                チームを作成
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <span
+                  className={clsx(!isTeamUnlocked && "pointer-events-none")}
+                >
+                  チームを作成
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </span>
               </Button>
             </CardContent>
           </Card>
