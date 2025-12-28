@@ -7,6 +7,7 @@ import { createManyNotifications } from "./createNotification";
  */
 type NotificationType =
   | "MCP_SERVER_ADDED"
+  | "MCP_SERVER_DELETED"
   | "MCP_SERVER_STATUS_CHANGED"
   | "MCP_TOOL_CHANGED"
   | "ORGANIZATION_INVITATION_SENT"

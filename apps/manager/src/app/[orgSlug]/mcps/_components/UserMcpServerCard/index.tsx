@@ -286,7 +286,6 @@ export const UserMcpServerCard = ({
         <NameEditModal
           serverInstanceId={userMcpServer.id as McpServerId}
           initialName={userMcpServer.name}
-          initialDescription={userMcpServer.description}
           onSuccess={async () => {
             await revalidate?.();
             setNameEditModalOpen(false);
