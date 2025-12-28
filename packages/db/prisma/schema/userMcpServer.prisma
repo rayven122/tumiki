@@ -82,6 +82,11 @@ model McpServer {
   /// 表示順序（ユーザーごと）
   displayOrder   Int          @default(0)
 
+  /// PIIマスキング設定（GCP DLPによるマスキング）
+  /// true: リクエスト/レスポンスをGCP DLPでマスキング
+  /// false: マスキングなし（デフォルト）
+  piiMaskingEnabled Boolean @default(false)
+
   /// 権限設定（サーバー削除時に自動削除）
   mcpPermissions McpPermission[]
 

@@ -514,6 +514,7 @@ erDiagram
   AuthType authType
   String organizationId FK
   Int displayOrder
+  Boolean piiMaskingEnabled
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -632,6 +633,10 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
   - `authType`: 使用する認証タイプ（API_KEY, OAUTH, NONE）
   - `organizationId`: 組織
   - `displayOrder`: 表示順序（ユーザーごと）
+  - `piiMaskingEnabled`
+    > PIIマスキング設定（GCP DLPによるマスキング）
+    > true: リクエスト/レスポンスをGCP DLPでマスキング
+    > false: マスキングなし（デフォルト）
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ
@@ -696,7 +701,7 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
   - `id`: 
   - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
   - `mcpServerId`: 関連するMCPサーバー
-  - `mcpServerTemplateId`: 関��するMCPサーバーテンプレート
+  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
   - `isEnabled`: このテンプレートインスタンスが有効か
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 
