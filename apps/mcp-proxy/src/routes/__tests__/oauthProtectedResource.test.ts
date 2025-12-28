@@ -328,7 +328,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
 
       expect(body).toStrictEqual({
         resource: "http://localhost:8080/mcp/test-mcp-server-id",
-        authorization_servers: ["https://keycloak.example.com/realms/tumiki"],
+        authorization_servers: ["http://localhost:8080"],
         scopes_supported: [],
         bearer_methods_supported: ["header"],
         resource_documentation: "https://docs.tumiki.cloud/mcp",
@@ -566,7 +566,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
       }
     });
 
-    test("Keycloak Issuer URL が authorization_servers に含まれる", async () => {
+    test("MCP Proxy URL が authorization_servers に含まれる", async () => {
       const res = await app.request(
         "/.well-known/oauth-protected-resource/mcp/test-mcp-server-id",
         {
@@ -575,9 +575,9 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
       );
 
       const body = (await res.json()) as Record<string, unknown>;
-      expect(body.authorization_servers).toContain(
-        "https://keycloak.example.com/realms/tumiki",
-      );
+      // RFC 9728: authorization_servers には mcp-proxy の URL を指定
+      // クライアントはここから AS Metadata を取得する
+      expect(body.authorization_servers).toContain("http://localhost:8080");
     });
   });
 

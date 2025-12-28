@@ -20,6 +20,9 @@ export type HandleOAuthCallbackInput = {
 
 export type HandleOAuthCallbackOutput = {
   organizationSlug: string;
+  organizationId: string;
+  mcpServerId: string;
+  mcpServerName: string;
   success: boolean;
   error?: string;
 };
@@ -86,6 +89,9 @@ export const handleOAuthCallback = async (
 
     return {
       organizationSlug: organization.slug,
+      organizationId: statePayload.organizationId,
+      mcpServerId: mcpServer.id,
+      mcpServerName: mcpServer.name,
       success: true,
     };
   } catch (error) {
