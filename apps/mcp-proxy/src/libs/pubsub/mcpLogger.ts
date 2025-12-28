@@ -38,9 +38,9 @@ export type McpLogEntry = {
   userAgent?: string;
   timestamp: string;
 
-  // リクエスト・レスポンスJSON
-  requestBody?: unknown;
-  responseBody?: unknown;
+  // リクエスト・レスポンス（JSON文字列）
+  requestBody?: string;
+  responseBody?: string;
 
   // PostgreSQLログ記録状態
   // true: PostgreSQLへの記録が失敗（idはBigQuery用に生成されたUUID）
@@ -71,7 +71,14 @@ export const publishMcpLog = async (log: McpLogEntry): Promise<void> => {
   // 注意: 機密情報のマスキングは行わない（組織・ユーザー単位のアクセス制御で保護）
   // 将来的にGCP DLPによるマスキングオプションを追加予定
   try {
-    await topic.publishMessage({ json: log });
+    // organizationId, userIdをメッセージ属性として送信（BigQueryでの効率的なフィルタリング用）
+    await topic.publishMessage({
+      json: log,
+      attributes: {
+        organizationId: log.organizationId,
+        userId: log.userId,
+      },
+    });
   } catch (err) {
     logError("Failed to publish MCP log to Pub/Sub", err as Error, {
       mcpServerId: log.mcpServerId,

@@ -72,55 +72,53 @@ describe("publishMcpLog", () => {
     expect(mockPublishMessage).toHaveBeenCalledTimes(1);
     expect(mockPublishMessage).toHaveBeenCalledWith({
       json: baseLogEntry,
+      attributes: {
+        organizationId: baseLogEntry.organizationId,
+        userId: baseLogEntry.userId,
+      },
     });
   });
 
-  test("リクエスト・レスポンスボディをそのまま送信する", async () => {
+  test("リクエスト・レスポンスボディをJSON文字列として送信する", async () => {
     vi.mocked(isBigQueryLoggingEnabled).mockReturnValue(true);
     vi.mocked(getMcpLogsTopic).mockReturnValue(mockTopic as never);
 
+    const requestBodyJson = JSON.stringify({
+      method: "tools/call",
+      params: {
+        name: "test-tool",
+        arguments: {
+          api_key: "secret-key-12345",
+          data: "normal-data",
+        },
+      },
+    });
+
+    const responseBodyJson = JSON.stringify({
+      result: {
+        content: [{ type: "text", text: "response" }],
+        token: "jwt-token",
+      },
+    });
+
     const logWithBody: McpLogEntry = {
       ...baseLogEntry,
-      requestBody: {
-        method: "tools/call",
-        params: {
-          name: "test-tool",
-          arguments: {
-            api_key: "secret-key-12345",
-            data: "normal-data",
-          },
-        },
-      },
-      responseBody: {
-        result: {
-          content: [{ type: "text", text: "response" }],
-          token: "jwt-token",
-        },
-      },
+      requestBody: requestBodyJson,
+      responseBody: responseBodyJson,
     };
 
     await publishMcpLog(logWithBody);
 
-    // マスキングなしでそのまま送信されることを確認
+    // JSON文字列としてそのまま送信されることを確認
     expect(mockPublishMessage).toHaveBeenCalledWith({
       json: expect.objectContaining({
-        requestBody: {
-          method: "tools/call",
-          params: {
-            name: "test-tool",
-            arguments: {
-              api_key: "secret-key-12345",
-              data: "normal-data",
-            },
-          },
-        },
-        responseBody: {
-          result: {
-            content: [{ type: "text", text: "response" }],
-            token: "jwt-token",
-          },
-        },
+        requestBody: requestBodyJson,
+        responseBody: responseBodyJson,
       }) as McpLogEntry,
+      attributes: {
+        organizationId: baseLogEntry.organizationId,
+        userId: baseLogEntry.userId,
+      },
     });
   });
 
@@ -158,6 +156,10 @@ describe("publishMcpLog", () => {
       json: expect.objectContaining({
         mcpApiKeyId: "api-key-id-123",
       }) as McpLogEntry,
+      attributes: {
+        organizationId: baseLogEntry.organizationId,
+        userId: baseLogEntry.userId,
+      },
     });
   });
 
@@ -180,6 +182,10 @@ describe("publishMcpLog", () => {
         errorCode: -32603,
         errorMessage: "Internal error",
       }) as McpLogEntry,
+      attributes: {
+        organizationId: baseLogEntry.organizationId,
+        userId: baseLogEntry.userId,
+      },
     });
   });
 
@@ -198,6 +204,10 @@ describe("publishMcpLog", () => {
       json: expect.objectContaining({
         userAgent: "Mozilla/5.0 (compatible; ClaudeBot/1.0)",
       }) as McpLogEntry,
+      attributes: {
+        organizationId: baseLogEntry.organizationId,
+        userId: baseLogEntry.userId,
+      },
     });
   });
 });

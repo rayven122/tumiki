@@ -75,22 +75,6 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   const inputBytes = textEncoder.encode(requestText).length;
   const outputBytes = textEncoder.encode(responseText).length;
 
-  // リクエスト/レスポンスをJSONとしてパース（BigQueryでJSON型として格納）
-  let requestBody: unknown = null;
-  let responseBody: unknown = null;
-  try {
-    requestBody = JSON.parse(requestText);
-  } catch {
-    // JSONパースに失敗した場合は文字列のまま格納
-    requestBody = requestText;
-  }
-  try {
-    responseBody = JSON.parse(responseText);
-  } catch {
-    // JSONパースに失敗した場合は文字列のまま格納
-    responseBody = responseText;
-  }
-
   // 実行時間を計算
   const durationMs = loggingContext.requestStartTime
     ? Date.now() - loggingContext.requestStartTime
@@ -132,8 +116,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     // PostgreSQL記録成功時はそのIDを使用、失敗時は新しいUUIDを生成
     id: requestLogId ?? crypto.randomUUID(),
     timestamp: new Date().toISOString(),
-    requestBody,
-    responseBody,
+    requestBody: requestText,
+    responseBody: responseText,
     // エラー情報（インシデント追跡用）
     errorCode: loggingContext.errorCode,
     errorMessage: loggingContext.errorMessage,
