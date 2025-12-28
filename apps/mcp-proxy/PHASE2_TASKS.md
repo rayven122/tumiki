@@ -27,7 +27,7 @@ Phase 1で基本的なJWT認証機能を実装しました。Phase 2では、本
   - [ ] JWKS キャッシュの取得・保存関数
   - [ ] キャッシュのTTL設定（デフォルト: 3600秒）
   - [ ] キャッシュミスハンドリング
-- [ ] `src/middleware/keycloakAuth.ts` にキャッシュ統合
+- [ ] `src/middleware/auth/jwt.ts` にキャッシュ統合
   - [ ] JWKS取得前にRedisをチェック
   - [ ] キャッシュヒット時の処理
   - [ ] キャッシュミス時にKeycloakから取得してRedisに保存

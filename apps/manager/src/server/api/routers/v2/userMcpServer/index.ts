@@ -250,10 +250,22 @@ export const userMcpServerRouter = createTRPCRouter({
         mcpServerId: input.id,
       });
 
-      return await deleteMcpServer(ctx.db, {
+      const result = await deleteMcpServer(ctx.db, {
         id: input.id,
         organizationId: ctx.currentOrg.id,
       });
+
+      // 削除完了後に通知を送信（トランザクション外で実行）
+      void createBulkNotifications(ctx.db, {
+        type: "MCP_SERVER_DELETED",
+        priority: "NORMAL",
+        title: "MCPサーバーが削除されました",
+        message: `「${result.name}」が組織から削除されました。`,
+        organizationId: ctx.currentOrg.id,
+        triggeredById: ctx.session.user.id,
+      });
+
+      return result;
     }),
 
   // 表示順序更新

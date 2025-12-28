@@ -13,11 +13,10 @@ let authClient: GoogleAuth | undefined;
 
 /**
  * Google Auth クライアントを取得（遅延初期化）
+ * 注: IDトークン取得時は scopes を指定しない（scopes はアクセストークン用）
  */
 const getAuthClient = (): GoogleAuth => {
-  authClient ??= new GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-  });
+  authClient ??= new GoogleAuth();
   return authClient;
 };
 

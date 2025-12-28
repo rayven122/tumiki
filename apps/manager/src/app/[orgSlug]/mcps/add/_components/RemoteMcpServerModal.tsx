@@ -31,17 +31,17 @@ import { toast } from "react-toastify";
 import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/_hooks/useCreateServerForm";
 import { normalizeServerName } from "@/utils/normalizeServerName";
 
-type CustomMcpServerModalProps = {
+type RemoteMcpServerModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orgSlug: string;
 };
 
-export const CustomMcpServerModal = ({
+export const RemoteMcpServerModal = ({
   open,
   onOpenChange,
   orgSlug: _orgSlug,
-}: CustomMcpServerModalProps) => {
+}: RemoteMcpServerModalProps) => {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [transportType, setTransportType] =

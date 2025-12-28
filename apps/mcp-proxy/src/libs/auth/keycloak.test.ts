@@ -1,29 +1,47 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { Issuer } from "openid-client";
 import {
   getKeycloakIssuer,
+  getKeycloakServerMetadata,
   getJWKS,
   clearKeycloakCache,
   getKeycloakCacheStatus,
 } from "./keycloak.js";
 
-// vi.hoistedを使用してモック関数を先に定義（ホイスティング問題を回避）
-const { mockDiscover, mockCreateRemoteJWKSet } = vi.hoisted(() => ({
-  mockDiscover: vi.fn(),
+// vi.hoisted を使用してモック関数を先に定義（ホイスティング問題を回避）
+const { mockDiscovery, mockCreateRemoteJWKSet } = vi.hoisted(() => ({
+  mockDiscovery: vi.fn(),
   mockCreateRemoteJWKSet: vi.fn(() => "mocked-jwks"),
 }));
 
-// openid-client の Issuer をモック
+// openid-client v6 をモック
 vi.mock("openid-client", () => ({
-  Issuer: {
-    discover: mockDiscover,
-  },
+  discovery: mockDiscovery,
+  Configuration: vi.fn(),
+  ClientSecretPost: vi.fn(() => "client_secret_post"),
+  None: vi.fn(() => "none"),
 }));
 
 // jose の createRemoteJWKSet をモック
 vi.mock("jose", () => ({
   createRemoteJWKSet: mockCreateRemoteJWKSet,
 }));
+
+// テスト用の ServerMetadata
+const mockServerMetadata = {
+  issuer: "https://keycloak.example.com/realms/test",
+  jwks_uri:
+    "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
+  token_endpoint:
+    "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
+};
+
+// モック Configuration オブジェクトを作成するヘルパー
+// 引数なしの場合は mockServerMetadata を使用、引数ありの場合は任意の型を受け入れる
+const createMockConfiguration = <T = typeof mockServerMetadata>(
+  metadata?: T,
+) => ({
+  serverMetadata: () => metadata ?? mockServerMetadata,
+});
 
 // 環境変数のバックアップ
 let originalKeycloakIssuer: string | undefined;
@@ -45,102 +63,87 @@ afterEach(() => {
   clearKeycloakCache();
 });
 
-describe("getKeycloakIssuer", () => {
+describe("getKeycloakServerMetadata", () => {
   test("環境変数が設定されていない場合はエラーをスローする", async () => {
     delete process.env.KEYCLOAK_ISSUER;
 
-    await expect(getKeycloakIssuer()).rejects.toThrow(
+    await expect(getKeycloakServerMetadata()).rejects.toThrow(
       "KEYCLOAK_ISSUER environment variable is not set",
     );
   });
 
-  test("Issuer Discoveryを実行してIssuerを返す", async () => {
+  test("Discovery を実行して ServerMetadata を返す", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
 
-    mockDiscover.mockResolvedValueOnce(mockIssuer as unknown as Issuer);
+    const result = await getKeycloakServerMetadata();
 
-    const result = await getKeycloakIssuer();
-
-    expect(mockDiscover).toHaveBeenCalledWith(
-      "https://keycloak.example.com/realms/test",
+    // v6: discovery() は URL オブジェクトと clientId を受け取る
+    // HTTPS URL の場合は execute オプションなし（undefined）
+    expect(mockDiscovery).toHaveBeenCalledWith(
+      new URL("https://keycloak.example.com/realms/test"),
+      "__metadata_only__",
+      undefined, // clientMetadata
+      undefined, // clientAuth
+      undefined, // executeOptions（HTTPS なので不要）
     );
-    expect(result).toStrictEqual(mockIssuer);
+    expect(result).toStrictEqual(mockServerMetadata);
   });
 
   test("2回目以降の呼び出しではキャッシュを使用する", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    mockDiscover.mockResolvedValue(mockIssuer as unknown as Issuer);
+    mockDiscovery.mockResolvedValue(createMockConfiguration());
 
     // 1回目の呼び出し
-    const result1 = await getKeycloakIssuer();
+    const result1 = await getKeycloakServerMetadata();
     // 2回目の呼び出し
-    const result2 = await getKeycloakIssuer();
+    const result2 = await getKeycloakServerMetadata();
 
-    // Issuer.discoverは1回だけ呼ばれる
-    expect(mockDiscover).toHaveBeenCalledTimes(1);
+    // discovery() は1回だけ呼ばれる
+    expect(mockDiscovery).toHaveBeenCalledTimes(1);
     expect(result1).toStrictEqual(result2);
   });
 });
 
-describe("getJWKS", () => {
-  test("Issuerからjwks_uriが取得できない場合はエラーをスローする", async () => {
+describe("getKeycloakIssuer（後方互換性）", () => {
+  test("issuer と metadata を含むオブジェクトを返す", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
+
+    const result = await getKeycloakIssuer();
+
+    expect(result.issuer).toBe("https://keycloak.example.com/realms/test");
+    expect(result.metadata).toStrictEqual(mockServerMetadata);
+  });
+});
+
+describe("getJWKS", () => {
+  test("ServerMetadata から jwks_uri が取得できない場合はエラーをスローする", async () => {
+    process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
+
+    const metadataWithoutJwks = {
       issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri: undefined,
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
+      jwks_uri: undefined,
+      token_endpoint:
+        "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
     };
 
-    mockDiscover.mockResolvedValueOnce(mockIssuer as unknown as Issuer);
+    mockDiscovery.mockResolvedValueOnce(
+      createMockConfiguration(metadataWithoutJwks),
+    );
 
     await expect(getJWKS()).rejects.toThrow(
       "JWKS URI not found in Keycloak metadata",
     );
   });
 
-  test("JWKSを取得して返す", async () => {
+  test("JWKS を取得して返す", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    mockDiscover.mockResolvedValueOnce(mockIssuer as unknown as Issuer);
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
 
     const result = await getJWKS();
 
@@ -150,26 +153,15 @@ describe("getJWKS", () => {
   test("2回目以降の呼び出しではキャッシュを使用する", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    mockDiscover.mockResolvedValue(mockIssuer as unknown as Issuer);
+    mockDiscovery.mockResolvedValue(createMockConfiguration());
 
     // 1回目の呼び出し
     const result1 = await getJWKS();
     // 2回目の呼び出し
     const result2 = await getJWKS();
 
-    // Issuer.discoverは1回だけ呼ばれる（getJWKS内でgetKeycloakIssuerを呼ぶため）
-    expect(mockDiscover).toHaveBeenCalledTimes(1);
+    // discovery() は1回だけ呼ばれる（getJWKS 内で getKeycloakServerMetadata を呼ぶため）
+    expect(mockDiscovery).toHaveBeenCalledTimes(1);
     expect(result1).toStrictEqual(result2);
   });
 });
@@ -178,167 +170,112 @@ describe("clearKeycloakCache", () => {
   test("キャッシュをクリアすると次回呼び出しで再取得する", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    mockDiscover.mockResolvedValue(mockIssuer as unknown as Issuer);
+    mockDiscovery.mockResolvedValue(createMockConfiguration());
 
     // 1回目の呼び出し
-    await getKeycloakIssuer();
-    expect(mockDiscover).toHaveBeenCalledTimes(1);
+    await getKeycloakServerMetadata();
+    expect(mockDiscovery).toHaveBeenCalledTimes(1);
 
     // キャッシュをクリア
     clearKeycloakCache();
 
     // 2回目の呼び出し（キャッシュクリア後）
-    await getKeycloakIssuer();
-    expect(mockDiscover).toHaveBeenCalledTimes(2);
+    await getKeycloakServerMetadata();
+    expect(mockDiscovery).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("getKeycloakCacheStatus", () => {
-  test("初期状態では全てのフラグがfalse", () => {
+  test("初期状態では全てのフラグが false", () => {
     const status = getKeycloakCacheStatus();
 
     expect(status).toStrictEqual({
-      hasIssuerCache: false,
+      hasMetadataCache: false,
       hasJwksCache: false,
       isDiscovering: false,
       isCreatingJwks: false,
     });
   });
 
-  test("Issuerキャッシュ後はhasIssuerCacheがtrue", async () => {
+  test("ServerMetadata キャッシュ後は hasMetadataCache が true", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
 
-    mockDiscover.mockResolvedValueOnce(mockIssuer as unknown as Issuer);
-
-    await getKeycloakIssuer();
+    await getKeycloakServerMetadata();
 
     const status = getKeycloakCacheStatus();
-    expect(status.hasIssuerCache).toBe(true);
+    expect(status.hasMetadataCache).toBe(true);
     expect(status.hasJwksCache).toBe(false);
   });
 
-  test("JWKSキャッシュ後はhasJwksCacheがtrue", async () => {
+  test("JWKS キャッシュ後は hasJwksCache が true", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    mockDiscover.mockResolvedValueOnce(mockIssuer as unknown as Issuer);
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
 
     await getJWKS();
 
     const status = getKeycloakCacheStatus();
-    expect(status.hasIssuerCache).toBe(true);
+    expect(status.hasMetadataCache).toBe(true);
     expect(status.hasJwksCache).toBe(true);
   });
 });
 
 describe("競合状態テスト", () => {
-  test("並行リクエスト時にIssuer Discoveryは1回のみ実行される", async () => {
+  test("並行リクエスト時に Discovery は1回のみ実行される", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    let resolveDiscover: ((value: unknown) => void) | null = null;
+    let resolveDiscovery: ((value: unknown) => void) | null = null;
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    // Promiseを手動で解決できるようにする
-    mockDiscover.mockImplementation(() => {
+    // Promise を手動で解決できるようにする
+    mockDiscovery.mockImplementation(() => {
       return new Promise((resolve) => {
-        resolveDiscover = resolve;
+        resolveDiscovery = resolve;
       });
     });
 
-    // 並行で3回呼び出し（Promiseは未解決のまま）
-    const promise1 = getKeycloakIssuer();
-    const promise2 = getKeycloakIssuer();
-    const promise3 = getKeycloakIssuer();
+    // 並行で3回呼び出し（Promise は未解決のまま）
+    const promise1 = getKeycloakServerMetadata();
+    const promise2 = getKeycloakServerMetadata();
+    const promise3 = getKeycloakServerMetadata();
 
-    // Discoveryは1回だけ呼ばれる（競合状態が防止されている）
-    expect(mockDiscover).toHaveBeenCalledTimes(1);
+    // discovery() は1回だけ呼ばれる（競合状態が防止されている）
+    expect(mockDiscovery).toHaveBeenCalledTimes(1);
 
-    // Discovery中の状態を確認
+    // Discovery 中の状態を確認
     const statusDuring = getKeycloakCacheStatus();
     expect(statusDuring.isDiscovering).toBe(true);
-    expect(statusDuring.hasIssuerCache).toBe(false);
+    expect(statusDuring.hasMetadataCache).toBe(false);
 
-    // Promiseを解決
-    resolveDiscover!(mockIssuer);
+    // Promise を解決
+    resolveDiscovery!(createMockConfiguration());
 
-    // 全てのPromiseが同じ結果を返す
+    // 全ての Promise が同じ結果を返す
     const [result1, result2, result3] = await Promise.all([
       promise1,
       promise2,
       promise3,
     ]);
-    expect(result1).toBe(result2);
-    expect(result2).toBe(result3);
-    expect(result1).toStrictEqual(mockIssuer);
+    expect(result1).toStrictEqual(result2);
+    expect(result2).toStrictEqual(result3);
+    expect(result1).toStrictEqual(mockServerMetadata);
 
-    // Discovery完了後の状態を確認
+    // Discovery 完了後の状態を確認
     const statusAfter = getKeycloakCacheStatus();
     expect(statusAfter.isDiscovering).toBe(false);
-    expect(statusAfter.hasIssuerCache).toBe(true);
+    expect(statusAfter.hasMetadataCache).toBe(true);
   });
 
-  test("並行リクエスト時にJWKS作成は1回のみ実行される", async () => {
+  test("並行リクエスト時に JWKS 作成は1回のみ実行される", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    let resolveDiscover: ((value: unknown) => void) | null = null;
+    let resolveDiscovery: ((value: unknown) => void) | null = null;
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
-    // Promiseを手動で解決できるようにする
-    mockDiscover.mockImplementation(() => {
+    // Promise を手動で解決できるようにする
+    mockDiscovery.mockImplementation(() => {
       return new Promise((resolve) => {
-        resolveDiscover = resolve;
+        resolveDiscovery = resolve;
       });
     });
 
@@ -347,13 +284,13 @@ describe("競合状態テスト", () => {
     const promise2 = getJWKS();
     const promise3 = getJWKS();
 
-    // Issuer Discoveryは1回だけ呼ばれる
-    expect(mockDiscover).toHaveBeenCalledTimes(1);
+    // discovery() は1回だけ呼ばれる
+    expect(mockDiscovery).toHaveBeenCalledTimes(1);
 
-    // Promiseを解決
-    resolveDiscover!(mockIssuer);
+    // Promise を解決
+    resolveDiscovery!(createMockConfiguration());
 
-    // 全てのPromiseが同じ結果を返す
+    // 全ての Promise が同じ結果を返す
     const [result1, result2, result3] = await Promise.all([
       promise1,
       promise2,
@@ -362,46 +299,35 @@ describe("競合状態テスト", () => {
     expect(result1).toBe(result2);
     expect(result2).toBe(result3);
 
-    // JWKS作成完了後の状態を確認
+    // JWKS 作成完了後の状態を確認
     const statusAfter = getKeycloakCacheStatus();
     expect(statusAfter.hasJwksCache).toBe(true);
     expect(statusAfter.isCreatingJwks).toBe(false);
   });
 
-  test("Discoveryエラー時は次回再試行する", async () => {
+  test("Discovery エラー時は次回再試行する", async () => {
     process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
 
-    const mockIssuer = {
-      issuer: "https://keycloak.example.com/realms/test",
-      metadata: {
-        issuer: "https://keycloak.example.com/realms/test",
-        jwks_uri:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/certs",
-        token_endpoint:
-          "https://keycloak.example.com/realms/test/protocol/openid-connect/token",
-      },
-    };
-
     // 1回目はエラー、2回目は成功
-    mockDiscover
+    mockDiscovery
       .mockRejectedValueOnce(new Error("Network error"))
-      .mockResolvedValueOnce(mockIssuer as unknown as Issuer);
+      .mockResolvedValueOnce(createMockConfiguration());
 
     // 1回目: エラー
-    await expect(getKeycloakIssuer()).rejects.toThrow("Network error");
+    await expect(getKeycloakServerMetadata()).rejects.toThrow("Network error");
 
-    // エラー後はキャッシュなし、Discovery中でもない
+    // エラー後はキャッシュなし、Discovery 中でもない
     const statusAfterError = getKeycloakCacheStatus();
-    expect(statusAfterError.hasIssuerCache).toBe(false);
+    expect(statusAfterError.hasMetadataCache).toBe(false);
     expect(statusAfterError.isDiscovering).toBe(false);
 
     // 2回目: 成功（再試行される）
-    const result = await getKeycloakIssuer();
-    expect(result).toStrictEqual(mockIssuer);
-    expect(mockDiscover).toHaveBeenCalledTimes(2);
+    const result = await getKeycloakServerMetadata();
+    expect(result).toStrictEqual(mockServerMetadata);
+    expect(mockDiscovery).toHaveBeenCalledTimes(2);
 
     // 成功後はキャッシュあり
     const statusAfterSuccess = getKeycloakCacheStatus();
-    expect(statusAfterSuccess.hasIssuerCache).toBe(true);
+    expect(statusAfterSuccess.hasMetadataCache).toBe(true);
   });
 });

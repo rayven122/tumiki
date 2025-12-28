@@ -1,21 +1,6 @@
 import { createMailClient, sendInvitation } from "@tumiki/mailer";
 
 /**
- * SMTP設定のデフォルト値
- * 環境変数で上書き可能
- */
-const SMTP_CONFIG = {
-  host: process.env.SMTP_HOST ?? "smtp.gmail.com",
-  port: Number(process.env.SMTP_PORT ?? "587"),
-  secure: Number(process.env.SMTP_PORT ?? "587") === 465,
-  auth: {
-    user: process.env.SMTP_USER ?? "TechNeighbor122@gmail.com",
-    pass: process.env.SMTP_PASS ?? "",
-  },
-  from: process.env.FROM_EMAIL ?? "info@tumiki.cloud",
-} as const;
-
-/**
  * メールクライアントの初期化状態を管理
  */
 let isMailClientInitialized = false;
@@ -23,13 +8,21 @@ let isMailClientInitialized = false;
 /**
  * メールクライアントを初期化（シングルトンパターン）
  * アプリケーション全体で1回のみ実行される
+ *
+ * SMTP設定は環境変数から自動的に読み込まれます:
+ * - SMTP_HOST: SMTPサーバーのホスト名
+ * - SMTP_PORT: SMTPサーバーのポート番号
+ * - SMTP_USER: SMTP認証ユーザー名
+ * - SMTP_PASS: SMTP認証パスワード
+ * - FROM_EMAIL: 送信元メールアドレス
  */
 export const initializeMailClient = (): void => {
   if (isMailClientInitialized) {
     return;
   }
 
-  createMailClient(SMTP_CONFIG);
+  // 環境変数から自動的にSMTP設定を読み込む
+  createMailClient();
   isMailClientInitialized = true;
 };
 
@@ -79,18 +72,4 @@ export const sendInvitationEmail = async (
     // メール送信失敗でもユーザーには招待成功を返す
     // （グレースフルデグラデーション）
   }
-};
-
-/**
- * 招待URLを生成する
- *
- * @param token - 招待トークン
- * @returns 招待URL
- */
-export const generateInviteUrl = (token: string): string => {
-  const baseUrl =
-    process.env.NODE_ENV === "production"
-      ? process.env.NEXTAUTH_URL
-      : "http://localhost:3000";
-  return `${baseUrl}/invite/${token}`;
 };

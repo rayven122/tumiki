@@ -126,6 +126,9 @@ describe("handleOAuthCallback", () => {
       // 結果の検証
       expect(result).toStrictEqual({
         organizationSlug: "test-org",
+        organizationId: mockOrganizationId,
+        mcpServerId: mockMcpServerId,
+        mcpServerName: "Test MCP Server",
         success: true,
       });
 
