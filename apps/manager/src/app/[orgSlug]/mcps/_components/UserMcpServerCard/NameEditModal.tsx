@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
+import { normalizeServerName } from "@/utils/normalizeServerName";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,26 +14,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { type McpServerId } from "@/schema/ids";
 
 type NameEditModalProps = {
   serverInstanceId: McpServerId;
   initialName: string;
-  initialDescription?: string;
   onSuccess?: () => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
 };
 
 export const NameEditModal = ({
   initialName,
-  initialDescription = "",
   serverInstanceId,
   onSuccess,
   onOpenChange,
 }: NameEditModalProps) => {
   const [newName, setNewName] = useState(initialName);
-  const [description, setDescription] = useState(initialDescription);
 
   const { mutate: updateServerName, isPending } =
     api.v2.userMcpServer.updateName.useMutation({
@@ -51,7 +48,6 @@ export const NameEditModal = ({
     updateServerName({
       id: serverInstanceId,
       name: newName,
-      description,
     });
   };
 
@@ -59,10 +55,8 @@ export const NameEditModal = ({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>サーバー情報を編集</DialogTitle>
-          <DialogDescription>
-            サーバーの表示名と説明を変更します。
-          </DialogDescription>
+          <DialogTitle>サーバー名を編集</DialogTitle>
+          <DialogDescription>サーバーの表示名を変更します。</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
@@ -73,20 +67,17 @@ export const NameEditModal = ({
               onChange={(e) => setNewName(e.target.value)}
               placeholder="サーバー名を入力"
             />
-            <p className="text-muted-foreground text-sm">
-              英数字、ハイフン、アンダースコアのみ使用可能
+            <p className="text-muted-foreground text-xs">
+              表示されるサーバー名を設定できます（空白や大文字を含むことができます）
             </p>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="description">説明</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="このMCPサーバーの説明を入力"
-              rows={3}
-            />
+            <div className="bg-muted rounded-md px-3 py-2">
+              <p className="text-muted-foreground text-xs font-medium">
+                MCPサーバー識別子
+              </p>
+              <p className="font-mono text-sm">
+                {normalizeServerName(newName)}
+              </p>
+            </div>
           </div>
         </div>
         <DialogFooter>

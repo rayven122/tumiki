@@ -14,15 +14,40 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { CreateServerModal } from "./CreateServerModal";
-import { Server, Wrench } from "lucide-react";
+import {
+  Server,
+  Wrench,
+  Building2,
+  Trash2,
+  MoreHorizontal,
+} from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 import { AuthTypeBadge } from "./_components/AuthTypeBadge";
+import { FaviconImage } from "@/components/ui/FaviconImage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertTriangleIcon } from "lucide-react";
+import { api } from "@/trpc/react";
+import { toast } from "@/utils/client/toast";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };
 }> & {
   tools: Prisma.McpToolGetPayload<object>[];
+  isOrgTemplate?: boolean;
 };
 
 type ServerCardProps = {
@@ -32,35 +57,100 @@ type ServerCardProps = {
 export function ServerCard({ mcpServer }: ServerCardProps) {
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  const utils = api.useUtils();
+  const deleteTemplateMutation = api.v2.mcpServer.deleteTemplate.useMutation({
+    onSuccess: () => {
+      toast.success(`${mcpServer.name}のテンプレートを削除しました。`);
+      setDeleteModalOpen(false);
+      void utils.v2.mcpServer.findAll.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "テンプレートの削除に失敗しました");
+    },
+  });
+
+  const handleDeleteTemplate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deleteTemplateMutation.mutate({ templateId: mcpServer.id });
+  };
+
+  // デフォルトアイコン（ファビコン取得失敗時のフォールバック）
+  const defaultIcon = (
+    <div className="rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
+      <div className="flex h-8 w-8 items-center justify-center">
+        <Server className="h-4 w-4 text-white" />
+      </div>
+    </div>
+  );
 
   return (
-    <Card className="relative flex h-full w-full flex-col">
-      {/* 認証タイプタグ（右上） */}
-      <div className="absolute top-3 right-3 z-10">
-        <AuthTypeBadge authType={mcpServer.authType} />
+    <Card
+      className={`relative flex h-full w-full flex-col ${
+        mcpServer.isOrgTemplate ? "border-2 border-emerald-200" : ""
+      }`}
+    >
+      {/* バッジエリア（右上） */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1">
+        {/* 認証タイプバッジ + 三点メニュー */}
+        <div className="flex items-center gap-1">
+          <AuthTypeBadge authType={mcpServer.authType} />
+          {mcpServer.isOrgTemplate && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-gray-100"
+                >
+                  <span className="sr-only">メニューを開く</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setDeleteModalOpen(true)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  削除
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        {/* プライベートテンプレートバッジ */}
+        {mcpServer.isOrgTemplate && (
+          <Badge
+            variant="secondary"
+            className="bg-emerald-100 text-emerald-700"
+          >
+            <Building2 className="mr-1 h-3 w-3" />
+            プライベート
+          </Badge>
+        )}
       </div>
 
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-        {mcpServer.iconPath ? (
-          <div className="mr-2 rounded-md p-2">
+        <div className="mr-2 rounded-md p-2">
+          {mcpServer.iconPath ? (
             <Image
               src={mcpServer.iconPath}
               alt={mcpServer.name}
               width={32}
               height={32}
             />
-          </div>
-        ) : (
-          <div className="mr-2 rounded-md p-2">
-            <div className="rounded-md bg-gradient-to-br from-blue-500 to-purple-600 p-2">
-              <div className="flex h-8 w-8 items-center justify-center">
-                <Server className="h-4 w-4 text-white" />
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="flex-1">
-          <CardTitle>{mcpServer.name}</CardTitle>
+          ) : (
+            <FaviconImage
+              url={mcpServer.url}
+              alt={mcpServer.name}
+              size={32}
+              fallback={defaultIcon}
+              className="rounded-md"
+            />
+          )}
+        </div>
+        <div className="min-w-0 flex-1 pr-24">
+          <CardTitle className="truncate">{mcpServer.name}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-3">
@@ -127,6 +217,37 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
         serverName={mcpServer.name}
         tools={mcpServer.tools}
       />
+
+      {/* テンプレート削除確認モーダル */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertTriangleIcon className="mr-2 h-5 w-5 text-red-500" />
+              テンプレートを削除
+            </DialogTitle>
+            <DialogDescription>
+              {`"${mcpServer.name}" を削除してもよろしいですか？この操作は元に戻せません。`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deleteTemplateMutation.isPending}
+            >
+              キャンセル
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteTemplate}
+              disabled={deleteTemplateMutation.isPending}
+            >
+              {deleteTemplateMutation.isPending ? "削除中..." : "削除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
