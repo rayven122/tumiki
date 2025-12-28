@@ -140,9 +140,15 @@ export const exchangeCodeForToken = async (
     codeVerifier,
   );
 
-  // Figmaの非標準エラーレスポンスを処理
   let processedResponse = response;
-  if (!response.ok) {
+  if (response.ok) {
+    const responseBody = await response.clone().text();
+    processedResponse = new Response(responseBody, {
+      status: 200,
+      statusText: "OK",
+      headers: response.headers,
+    });
+  } else {
     try {
       const errorBody: unknown = await response.clone().json();
       const parseResult = FigmaErrorResponseSchema.safeParse(errorBody);
@@ -206,10 +212,20 @@ export const refreshAccessToken = async (
     refreshToken,
   );
 
+  let processedResponse = response;
+  if (response.ok) {
+    const responseBody = await response.clone().text();
+    processedResponse = new Response(responseBody, {
+      status: 200,
+      statusText: "OK",
+      headers: response.headers,
+    });
+  }
+
   const result = await oauth.processRefreshTokenResponse(
     authServer,
     client,
-    response,
+    processedResponse,
   );
 
   return {

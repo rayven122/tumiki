@@ -2,6 +2,7 @@
  * MCPサーバーテンプレート関連のヘルパー関数
  */
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { Prisma } from "@tumiki/db/prisma";
 import {
   AuthType,
   TransportType,
@@ -89,28 +90,43 @@ export const getOrCreateTemplateInfo = async (
     });
   }
 
-  const customTemplate = await tx.mcpServerTemplate.create({
-    data: {
-      name,
-      normalizedName: normalizeServerName(name),
-      description: description ?? "",
-      tags: [],
-      iconPath: null,
-      transportType: transportType ?? TransportType.SSE,
-      args: [],
-      url: customUrl,
-      envVarKeys: [],
-      authType: AuthType.OAUTH,
-      oauthScopes: [],
-      createdBy: userId,
-      visibility: McpServerVisibility.PRIVATE,
-      organizationId,
-    },
-  });
+  try {
+    const customTemplate = await tx.mcpServerTemplate.create({
+      data: {
+        name,
+        normalizedName: normalizeServerName(name),
+        description: description ?? "",
+        tags: [],
+        iconPath: null,
+        transportType: transportType ?? TransportType.SSE,
+        args: [],
+        url: customUrl,
+        envVarKeys: [],
+        authType: AuthType.OAUTH,
+        oauthScopes: [],
+        createdBy: userId,
+        visibility: McpServerVisibility.PRIVATE,
+        organizationId,
+      },
+    });
 
-  return {
-    serverUrl: customUrl,
-    serverName: name,
-    templateId: customTemplate.id,
-  };
+    return {
+      serverUrl: customUrl,
+      serverName: name,
+      templateId: customTemplate.id,
+    };
+  } catch (error) {
+    // 名前重複エラー（P2002: Unique constraint failed）の場合
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "既存のMCPサーバーテンプレートと同じ名前は使えません。MCPサーバーテンプレート一覧を確認してください。",
+      });
+    }
+    throw error;
+  }
 };
