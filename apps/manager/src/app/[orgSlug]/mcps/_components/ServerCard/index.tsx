@@ -61,10 +61,10 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
 
   const utils = api.useUtils();
   const deleteTemplateMutation = api.v2.mcpServer.deleteTemplate.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(`${mcpServer.name}のテンプレートを削除しました。`);
+      await utils.v2.mcpServer.findAll.invalidate();
       setDeleteModalOpen(false);
-      void utils.v2.mcpServer.findAll.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "テンプレートの削除に失敗しました");

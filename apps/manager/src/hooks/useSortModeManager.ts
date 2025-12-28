@@ -9,8 +9,15 @@ export const useSortModeManager = () => {
 
   const handleSortModeToggle = () => {
     if (isSortMode) {
-      // ソートモード終了時は確認ダイアログを表示
-      setShowConfirmDialog(true);
+      // ソートモード終了時
+      const hasChanges = serverCardListRef.current?.hasChanges() ?? false;
+      if (hasChanges) {
+        // 変更がある場合のみ確認ダイアログを表示
+        setShowConfirmDialog(true);
+      } else {
+        // 変更がない場合は直接通常モードに戻す
+        setIsSortMode(false);
+      }
     } else {
       // ソートモード開始
       setIsSortMode(true);
