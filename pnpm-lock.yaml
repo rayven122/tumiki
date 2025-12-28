@@ -544,6 +544,9 @@ importers:
 
   apps/mcp-proxy:
     dependencies:
+      '@google-cloud/dlp':
+        specifier: ^6.5.0
+        version: 6.5.0
       '@google-cloud/pubsub':
         specifier: ^5.2.0
         version: 5.2.0
@@ -2111,6 +2114,10 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@google-cloud/dlp@6.5.0':
+    resolution: {integrity: sha512-kCZJX3kxf4TJ9BxXxXfyDqdPziEi7WWEF4lKssbN95KLsRFx0luj5q9QNoGEYmw8Nds3EGaiyabp3HeGkcBCWw==}
+    engines: {node: '>=18'}
 
   '@google-cloud/paginator@6.0.0':
     resolution: {integrity: sha512-g5nmMnzC+94kBxOKkLGpK1ikvolTFCC3s2qtE4F+1EuArcJ7HHC23RDQVt3Ra3CqpUYZ+oXNKZ8n5Cn5yug8DA==}
@@ -10794,6 +10801,12 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@google-cloud/dlp@6.5.0':
+    dependencies:
+      google-gax: 5.0.6
+    transitivePeerDependencies:
+      - supports-color
 
   '@google-cloud/paginator@6.0.0':
     dependencies:
