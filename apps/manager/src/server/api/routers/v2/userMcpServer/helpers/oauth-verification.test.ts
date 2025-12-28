@@ -525,11 +525,12 @@ describe("exchangeAuthorizationCode", () => {
     expect(result).toStrictEqual(mockTokenData);
 
     // client_secretが含まれていないクライアントオブジェクトが渡されることを確認
+    // パブリッククライアントなのでtoken_endpoint_auth_methodは"none"
     expect(mockValidateAuthResponse).toHaveBeenCalledWith(
       mockAuthServer,
       {
         client_id: "client-123",
-        token_endpoint_auth_method: "client_secret_post",
+        token_endpoint_auth_method: "none",
         // client_secretは含まれない
       },
       mockCurrentUrl,

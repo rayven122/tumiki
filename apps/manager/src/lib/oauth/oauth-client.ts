@@ -113,6 +113,26 @@ const getClientAuth = (client: oauth.Client): ReturnType<typeof oauth.None> => {
 };
 
 /**
+ * カスタムfetch関数
+ * oauth4webapiが送信するContent-Typeヘッダーから charset=UTF-8 を削除する
+ * 一部のサーバー（Neonなど）は charset=UTF-8 を受け入れず 415 エラーを返す
+ */
+const customFetch: typeof fetch = async (input, init) => {
+  const headers = new Headers(init?.headers);
+
+  // Content-Type から charset を削除
+  const contentType = headers.get("content-type");
+  if (contentType?.includes("charset")) {
+    headers.set(
+      "content-type",
+      contentType.replace(/;\s*charset=[^;]*/i, "").trim(),
+    );
+  }
+
+  return fetch(input, { ...init, headers });
+};
+
+/**
  * トークンを取得（Authorization Code Grant）
  *
  * @param authServer - OAuth Authorization Server
@@ -138,6 +158,7 @@ export const exchangeCodeForToken = async (
     callbackParams,
     redirectUri,
     codeVerifier,
+    { [oauth.customFetch]: customFetch },
   );
 
   let processedResponse = response;
@@ -210,6 +231,7 @@ export const refreshAccessToken = async (
     client,
     clientAuth,
     refreshToken,
+    { [oauth.customFetch]: customFetch },
   );
 
   let processedResponse = response;
