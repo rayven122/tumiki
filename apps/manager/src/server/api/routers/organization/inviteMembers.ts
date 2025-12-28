@@ -3,7 +3,8 @@ import { createId } from "@paralleldrive/cuid2";
 import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
-import { sendInvitationEmail, generateInviteUrl } from "@/server/lib/mail";
+import { sendInvitationEmail } from "@/server/lib/mail";
+import { generateInviteUrl } from "@/lib/url";
 
 // 入力スキーマ
 export const inviteMembersInputSchema = z.object({

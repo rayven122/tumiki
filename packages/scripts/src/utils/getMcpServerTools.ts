@@ -17,9 +17,8 @@ import type { McpServerTemplate } from "@tumiki/db/server";
  * @returns IDトークン
  */
 const getCloudRunIdToken = async (targetAudience: string): Promise<string> => {
-  const auth = new GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-  });
+  // IDトークン取得時は scopes を指定しない（scopes はアクセストークン用）
+  const auth = new GoogleAuth();
 
   // IDトークンクライアントを取得（targetAudienceをオーディエンスとして指定）
   const client = await auth.getIdTokenClient(targetAudience);

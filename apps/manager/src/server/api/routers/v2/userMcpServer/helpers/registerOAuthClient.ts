@@ -5,7 +5,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { performDCR, DCRError } from "@/lib/oauth/dcr";
-import { getOAuthRedirectUri } from "@/lib/oauth/utils";
+import { getOAuthRedirectUri } from "@/lib/url";
 
 export type RegisterOAuthClientParams = {
   tx: PrismaTransactionClient;
