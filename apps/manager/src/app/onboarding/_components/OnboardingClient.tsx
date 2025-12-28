@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
 import { toast } from "@/utils/client/toast";
-import { WelcomeLoadingOverlay } from "./WelcomeLoadingOverlay";
+import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import type { Session } from "next-auth";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
@@ -29,6 +29,8 @@ type OnboardingClientProps = {
   session: Session | null;
   isFirstLogin: boolean;
 };
+
+const ANIMATION_DURATION = 3000;
 
 export const OnboardingClient = ({
   session,
@@ -40,7 +42,7 @@ export const OnboardingClient = ({
     "personal" | "team" | null
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
-  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   // クエリパラメータからアンロックキーを取得
   const unlockKey = searchParams.get("unlock");
@@ -52,9 +54,14 @@ export const OnboardingClient = ({
     // セッションからチーム情報を取得（個人チームは会員登録時に自動作成済み）
     const orgSlug = getSessionInfo(session).organizationSlug;
     if (orgSlug) {
-      // 初回ログイン時はウェルカムオーバーレイを表示
+      // 初回ログイン時はアニメーションを表示
       if (isFirstLogin) {
-        setShowWelcomeOverlay(true);
+        setShowSuccessAnimation(true);
+
+        // アニメーション後に遷移
+        setTimeout(() => {
+          router.push(`/${orgSlug}/mcps`);
+        }, ANIMATION_DURATION);
       } else {
         router.push(`/${orgSlug}/mcps`);
       }
@@ -67,14 +74,6 @@ export const OnboardingClient = ({
       setTimeout(() => {
         window.location.reload();
       }, 3000);
-    }
-  };
-
-  // アニメーション完了後の遷移処理
-  const handleAnimationComplete = () => {
-    const orgSlug = getSessionInfo(session).organizationSlug;
-    if (orgSlug) {
-      router.push(`/${orgSlug}/mcps`);
     }
   };
 
@@ -94,8 +93,19 @@ export const OnboardingClient = ({
   const handleOrganizationCreated = () => {
     setIsOrgDialogOpen(false);
 
-    // チーム作成後はウェルカムオーバーレイを表示
-    setShowWelcomeOverlay(true);
+    // チーム作成後はアニメーションを表示
+    setShowSuccessAnimation(true);
+
+    // アニメーション後に遷移
+    const orgSlug = getSessionInfo(session).organizationSlug;
+    setTimeout(() => {
+      // ページをリロードして新しい組織情報を取得
+      if (orgSlug) {
+        router.push(`/${orgSlug}/mcps`);
+      } else {
+        window.location.reload();
+      }
+    }, ANIMATION_DURATION);
   };
 
   return (
@@ -238,11 +248,21 @@ export const OnboardingClient = ({
         </div>
       </div>
 
-      {/* ウェルカムローディングオーバーレイ */}
-      <WelcomeLoadingOverlay
-        isVisible={showWelcomeOverlay}
-        onAnimationComplete={handleAnimationComplete}
-      />
+      {/* 成功アニメーションオーバーレイ */}
+      {showSuccessAnimation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+          <SuccessAnimation
+            title={
+              selectedOption === "team" ? "チーム作成完了！" : "準備完了！"
+            }
+            description={
+              selectedOption === "team"
+                ? "チームの準備が整いました"
+                : "Tumikiの利用を開始します"
+            }
+          />
+        </div>
+      )}
 
       {/* チーム作成ダイアログ */}
       <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
