@@ -9,13 +9,14 @@ import { X, Search, Plus } from "lucide-react";
 import { ServerCard } from "../../_components/ServerCard";
 import { api } from "@/trpc/react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CustomMcpServerModal } from "./CustomMcpServerModal";
+import { RemoteMcpServerModal } from "./RemoteMcpServerModal";
 import type { Prisma } from "@tumiki/db/prisma";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };
 }> & {
   tools: Prisma.McpToolGetPayload<object>[];
+  isOrgTemplate?: boolean;
 };
 
 const AsyncServerList = ({
@@ -59,7 +60,7 @@ const AsyncServerList = ({
           <CardContent className="flex flex-col items-center justify-center p-6">
             <Plus className="mb-2 h-12 w-12 text-gray-400" />
             <p className="text-center text-sm font-medium text-gray-600">
-              カスタムMCPサーバーを追加
+              リモートMCPサーバーを追加
             </p>
           </CardContent>
         </Card>
@@ -219,7 +220,7 @@ export const ServerList = ({
         selectedTags={selectedTags}
         mcpServers={mcpServers}
       />
-      <CustomMcpServerModal
+      <RemoteMcpServerModal
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         orgSlug={orgSlug}

@@ -1,17 +1,13 @@
 /**
  * OAuth 2.0 Dynamic Client Registration (DCR)
- * RFC 7591準拠のクライアント登録実装
- * oauth4webapiを使用したモダンな実装
  *
- * @see https://datatracker.ietf.org/doc/html/rfc7591
- * @see https://datatracker.ietf.org/doc/html/rfc8414
+ * MCP仕様（2025-06-18）に準拠した2段階discovery:
+ * 1. Protected Resource Metadata (RFC 9728) を取得
+ * 2. Authorization Server Metadata (RFC 8414) を取得
  */
 
 import * as oauth from "oauth4webapi";
 
-/**
- * DCRエラー
- */
 export class DCRError extends Error {
   constructor(
     message: string,
@@ -23,166 +19,123 @@ export class DCRError extends Error {
   }
 }
 
+/** URLを正規化（クエリ、フラグメント、末尾スラッシュを削除） */
+const normalizeUrl = (serverUrl: string): URL => {
+  const url = new URL(serverUrl);
+  url.search = "";
+  url.hash = "";
+  if (url.pathname.endsWith("/") && url.pathname !== "/") {
+    url.pathname = url.pathname.slice(0, -1);
+  }
+  return url;
+};
+
 /**
  * OAuth Authorization Server Metadataを取得
  *
- * @param serverUrl - MCPサーバーのベースURL
- * @returns OAuth Authorization Server
- * @throws {DCRError} メタデータ取得に失敗した場合
+ * 2段階discoveryを実行:
+ * 1. Protected Resource Metadata (RFC 9728) からAS URLを取得
+ * 2. Authorization Server Metadata (RFC 8414) を取得
  */
 export const discoverOAuthMetadata = async (
   serverUrl: string,
 ): Promise<oauth.AuthorizationServer> => {
+  const url = normalizeUrl(serverUrl);
+
+  // Step 1: Protected Resource Metadata を試す
+  const protectedResourceUrl = new URL(
+    `/.well-known/oauth-protected-resource${url.pathname}`,
+    url.origin,
+  );
+
+  let asUrl: string | null = null;
   try {
-    // URLを正規化（パス名を除いてオリジンのみを使用）
-    // 例: https://mcp.linear.app/sse → https://mcp.linear.app
-    const url = new URL(serverUrl);
-    const issuer = new URL(url.origin);
-
-    console.log(`[DCR] Discovering OAuth metadata for: ${issuer.toString()}`);
-
-    // OAuth 2.0 Authorization Server Metadata (RFC 8414) エンドポイントを使用
-    // algorithm: 'oauth2' により /.well-known/oauth-authorization-server にアクセス
-    // デフォルトは /.well-known/openid-configuration (OpenID Connect)
-    const response = await oauth.discoveryRequest(issuer, {
-      algorithm: "oauth2",
+    const res = await fetch(protectedResourceUrl.toString(), {
+      headers: { Accept: "application/json" },
     });
-
-    console.log(
-      `[DCR] Discovery response status: ${response.status} ${response.statusText}`,
-    );
-
-    // レスポンスを処理してメタデータを取得
-    // 一部のサーバー（Figmaなど）はissuerが異なるドメインを返すことがあるため、
-    // 厳格な検証を回避する
-    const responseClone = response.clone();
-    const responseText = await responseClone.text();
-    const metadata = JSON.parse(responseText) as oauth.AuthorizationServer;
-
-    console.log(`[DCR] Metadata issuer: ${metadata.issuer}`);
-
-    // issuerが異なる場合でも、取得したメタデータのissuerを使用して再検証
-    if (metadata.issuer !== issuer.toString()) {
-      console.log(
-        `[DCR] Issuer mismatch detected. Expected: ${issuer.toString()}, Got: ${metadata.issuer}`,
-      );
-      console.log(
-        `[DCR] Using actual issuer from metadata: ${metadata.issuer}`,
-      );
-
-      // 実際のissuerで再度検証を試みる
-      // ただし、oauth4webapiの検証をスキップして直接メタデータを返す
-      return metadata;
+    if (res.ok) {
+      const metadata = (await res.json()) as {
+        authorization_servers?: string[];
+      };
+      if (metadata.authorization_servers?.[0]) {
+        asUrl = metadata.authorization_servers[0];
+      }
     }
-
-    return await oauth.processDiscoveryResponse(issuer, response);
   } catch (error) {
-    console.error(`[DCR] Discovery failed for ${serverUrl}:`, error);
+    // Protected Resource Metadata が見つからない場合はデバッグログを記録
+    // ネットワークエラー（TypeError）やパースエラー（SyntaxError）は許容
+    if (
+      !(error instanceof TypeError) &&
+      !(error instanceof SyntaxError) &&
+      !(error instanceof Error && error.name === "AbortError")
+    ) {
+      // 予期しないエラータイプの場合は警告を出力
+      console.warn(
+        `Unexpected error fetching Protected Resource Metadata: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
 
-    if (error instanceof oauth.WWWAuthenticateChallengeError) {
-      throw new DCRError(
-        `OAuth discovery failed for ${serverUrl}: ${error.message} (HTTP ${error.status})`,
+  // Step 2: AS Metadata を取得（複数のURLを試行）
+  const urlsToTry = asUrl
+    ? [asUrl, `${asUrl}${url.pathname}`]
+    : [serverUrl, url.origin];
+
+  let lastError: Error | null = null;
+  for (const issuerUrl of urlsToTry) {
+    try {
+      const issuer = normalizeUrl(issuerUrl);
+      const response = await oauth.discoveryRequest(issuer, {
+        algorithm: "oauth2",
+      });
+
+      if (!response.ok) {
+        lastError = new DCRError(
+          `AS Metadata not found: ${response.status}`,
+          "AS_DISCOVERY_ERROR",
+          response.status,
+        );
+        continue;
+      }
+
+      // issuerが異なる場合はorigin一致性を検証
+      const metadata = (await response
+        .clone()
+        .json()) as oauth.AuthorizationServer;
+      if (metadata.issuer !== issuer.toString()) {
+        // セキュリティ: issuer不一致を検出した場合、originの一致を検証
+        console.warn(
+          `Issuer mismatch: expected ${issuer.toString()}, got ${metadata.issuer}`,
+        );
+
+        // originが一致しない場合は攻撃の可能性があるためエラー
+        const metadataIssuerUrl = new URL(metadata.issuer);
+        if (metadataIssuerUrl.origin !== issuer.origin) {
+          throw new DCRError(
+            `Invalid issuer: origin mismatch (expected ${issuer.origin}, got ${metadataIssuerUrl.origin})`,
+            "ISSUER_VALIDATION_ERROR",
+          );
+        }
+
+        // originは一致するが完全一致ではない場合、メタデータを使用（パス違いなど）
+        return metadata;
+      }
+      return await oauth.processDiscoveryResponse(issuer, response);
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+    }
+  }
+
+  throw lastError instanceof DCRError
+    ? lastError
+    : new DCRError(
+        `OAuth discovery failed for ${serverUrl}: ${lastError?.message}`,
         "DISCOVERY_ERROR",
-        error.status,
       );
-    }
-
-    throw new DCRError(
-      error instanceof Error
-        ? `OAuth discovery failed for ${serverUrl}: ${error.message}`
-        : "Unknown error during metadata discovery",
-      "DISCOVERY_ERROR",
-    );
-  }
-};
-
-/**
- * OAuthクライアントを登録
- *
- * @param authServer - OAuth Authorization Server
- * @param clientMetadata - クライアントメタデータ
- * @param initialAccessToken - 初期アクセストークン（オプション）
- * @returns 登録されたクライアント情報
- * @throws {DCRError} 登録に失敗した場合
- */
-export const registerOAuthClient = async (
-  authServer: oauth.AuthorizationServer,
-  clientMetadata: Partial<oauth.Client>,
-  initialAccessToken?: string,
-): Promise<oauth.Client> => {
-  if (!authServer.registration_endpoint) {
-    throw new DCRError(
-      "Server does not support Dynamic Client Registration",
-      "DCR_NOT_SUPPORTED",
-    );
-  }
-
-  try {
-    const headers = new Headers();
-    if (initialAccessToken) {
-      headers.set("Authorization", `Bearer ${initialAccessToken}`);
-    }
-
-    const response = await oauth.dynamicClientRegistrationRequest(
-      authServer,
-      clientMetadata,
-      { headers },
-    );
-
-    console.log(`[DCR] Registration response status: ${response.status}`);
-
-    // oauth4webapiの厳格な検証を回避するため、レスポンスボディとステータスコードを修正
-    // client_secret_expires_atが存在しない場合は0（期限なし）を追加
-    const responseClone = response.clone();
-    const responseText = await responseClone.text();
-    const responseJson = JSON.parse(responseText) as Record<string, unknown>;
-
-    if (!("client_secret_expires_at" in responseJson)) {
-      responseJson.client_secret_expires_at = 0; // 0 = 期限なし
-    }
-
-    // 修正したボディで新しいResponseオブジェクトを作成
-    // RFC 7591では201を期待するが、一部のサーバー（Figmaなど）は200を返すため、
-    // 200も成功とみなして201に変換する
-    const modifiedResponse = new Response(JSON.stringify(responseJson), {
-      status: response.status === 200 ? 201 : response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
-
-    return await oauth.processDynamicClientRegistrationResponse(
-      modifiedResponse,
-    );
-  } catch (error) {
-    console.error(`[DCR] Registration failed:`, error);
-
-    if (error instanceof oauth.WWWAuthenticateChallengeError) {
-      throw new DCRError(
-        `Client registration failed: ${error.message}`,
-        "REGISTRATION_FAILED",
-        error.status,
-      );
-    }
-
-    throw new DCRError(
-      error instanceof Error
-        ? error.message
-        : "Unknown error during client registration",
-      "REGISTRATION_ERROR",
-    );
-  }
 };
 
 /**
  * DCR統合関数: メタデータ取得からクライアント登録まで
- *
- * @param serverUrl - MCPサーバーのベースURL
- * @param redirectUris - リダイレクトURI配列
- * @param scopes - 要求するスコープ（スペース区切り、オプション）
- * @param initialAccessToken - 初期アクセストークン（オプション）
- * @param clientIdentifier - OAuth登録時に使用するクライアント識別子（デフォルト: "Claude Code"）
- * @returns メタデータと登録情報を含むオブジェクト
- * @throws {DCRError} 処理に失敗した場合
  */
 export const performDCR = async (
   serverUrl: string,
@@ -194,12 +147,20 @@ export const performDCR = async (
   metadata: oauth.AuthorizationServer;
   registration: oauth.Client;
 }> => {
-  // Step 1: OAuth メタデータを取得
   const metadata = await discoverOAuthMetadata(serverUrl);
 
-  // Step 2: クライアントを登録
-  // ホワイトリスト制限があるサーバー（Figmaなど）に対応するため、
-  // 承認されたクライアント名を使用
+  if (!metadata.registration_endpoint) {
+    throw new DCRError(
+      "Server does not support Dynamic Client Registration",
+      "DCR_NOT_SUPPORTED",
+    );
+  }
+
+  const headers = new Headers();
+  if (initialAccessToken) {
+    headers.set("Authorization", `Bearer ${initialAccessToken}`);
+  }
+
   const clientMetadata: Partial<oauth.Client> = {
     client_name: clientIdentifier ?? "Claude Code",
     redirect_uris: redirectUris,
@@ -209,14 +170,30 @@ export const performDCR = async (
     ...(scopes && { scope: scopes }),
   };
 
-  const registration = await registerOAuthClient(
+  const response = await oauth.dynamicClientRegistrationRequest(
     metadata,
     clientMetadata,
-    initialAccessToken,
+    { headers },
   );
 
-  return {
-    metadata,
-    registration,
-  };
+  // oauth4webapiの厳格な検証を回避
+  const responseJson = (await response.clone().json()) as Record<
+    string,
+    unknown
+  >;
+  if (!("client_secret_expires_at" in responseJson)) {
+    responseJson.client_secret_expires_at = 0;
+  }
+
+  // 一部サーバーは200を返すため201に変換
+  const modifiedResponse = new Response(JSON.stringify(responseJson), {
+    status: response.status === 200 ? 201 : response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+
+  const registration =
+    await oauth.processDynamicClientRegistrationResponse(modifiedResponse);
+
+  return { metadata, registration };
 };

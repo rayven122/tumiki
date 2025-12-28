@@ -6,6 +6,7 @@ import { McpServerTemplateInstanceIdSchema } from "@/schema/ids";
 import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { handleOAuthCallback } from "./handleOAuthCallback";
 import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
+import { createBulkNotifications } from "../notification/createBulkNotifications";
 
 // OAuth認証MCPサーバー接続用の入力スキーマ
 export const ConnectOAuthMcpServerInputV2 = z.object({
@@ -70,7 +71,7 @@ export const oauthRouter = createTRPCRouter({
     .input(HandleOAuthCallbackInputV2)
     .output(HandleOAuthCallbackOutputV2)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.$transaction(
+      const result = await ctx.db.$transaction(
         async (tx) => {
           return await handleOAuthCallback(tx, {
             state: input.state,
@@ -82,6 +83,25 @@ export const oauthRouter = createTRPCRouter({
           timeout: 15000, // MCPサーバーからのツール取得に最大10秒かかるため、15秒に設定
         },
       );
+
+      // トランザクション完了後に通知を送信（トランザクション外で実行）
+      if (result.success) {
+        void createBulkNotifications(ctx.db, {
+          type: "MCP_SERVER_ADDED",
+          priority: "LOW",
+          title: "MCPサーバーが追加されました",
+          message: `「${result.mcpServerName}」が組織に追加されました。`,
+          linkUrl: `/${result.organizationSlug}/mcps/${result.mcpServerId}`,
+          organizationId: result.organizationId,
+          triggeredById: ctx.session.user.id,
+        });
+      }
+
+      return {
+        organizationSlug: result.organizationSlug,
+        success: result.success,
+        error: result.error,
+      };
     }),
 
   // OAuth 再認証

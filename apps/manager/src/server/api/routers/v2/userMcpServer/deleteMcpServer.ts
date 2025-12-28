@@ -15,6 +15,7 @@ export const deleteMcpServerInputSchema = z.object({
 export const deleteMcpServerOutputSchema = z.object({
   success: z.boolean(),
   id: McpServerIdSchema,
+  name: z.string(),
 });
 
 export type DeleteMcpServerOutput = z.infer<typeof deleteMcpServerOutputSchema>;
@@ -25,7 +26,7 @@ export const deleteMcpServer = async (
 ): Promise<DeleteMcpServerOutput> => {
   const { id, organizationId } = input;
 
-  // 既存のMCPサーバーを取得して存在確認
+  // 削除対象のMCPサーバーが存在するか確認
   const existingServer = await tx.mcpServer.findUnique({
     where: {
       id,
@@ -33,17 +34,19 @@ export const deleteMcpServer = async (
     },
     select: {
       id: true,
+      name: true,
     },
   });
 
   if (!existingServer) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "MCPサーバーが見つかりません",
+      message:
+        "削除対象のMCPサーバーが見つかりません。すでに削除されているか、アクセス権限がない可能性があります。",
     });
   }
 
-  // 物理削除を実行
+  // MCPサーバーを物理削除（Cascadeでテンプレートインスタンスも削除される）
   await tx.mcpServer.delete({
     where: {
       id,
@@ -54,5 +57,6 @@ export const deleteMcpServer = async (
   return {
     success: true,
     id,
+    name: existingServer.name,
   };
 };
