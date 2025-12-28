@@ -10,6 +10,7 @@ import { logError, logWarn } from "../logger/index.js";
 
 import {
   DEFAULT_INFO_TYPES,
+  type DetectedPii,
   type JsonMaskingResult,
   type MaskingResult,
   type PiiMaskingConfig,
@@ -86,6 +87,7 @@ export const maskText = async (
     return {
       maskedText: text,
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: Date.now() - startTime,
     };
   }
@@ -123,12 +125,25 @@ export const maskText = async (
     });
 
     const maskedText = response.item?.value ?? text;
-    const detectedCount =
-      response.overview?.transformationSummaries?.length ?? 0;
+
+    // transformationSummariesからdetectedPiiListを抽出
+    // 各InfoTypeの検出件数をリストに変換
+    const detectedPiiList: DetectedPii[] =
+      response.overview?.transformationSummaries?.map((summary) => ({
+        infoType: summary.infoType?.name ?? "UNKNOWN",
+        count: Number(summary.results?.[0]?.count ?? 0),
+      })) ?? [];
+
+    // 検出件数の合計を計算
+    const detectedCount = detectedPiiList.reduce(
+      (sum, pii) => sum + pii.count,
+      0,
+    );
 
     return {
       maskedText,
       detectedCount,
+      detectedPiiList,
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error) {
@@ -141,6 +156,7 @@ export const maskText = async (
     return {
       maskedText: text,
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: Date.now() - startTime,
     };
   }
@@ -167,6 +183,7 @@ export const maskJson = async <T>(
     return {
       maskedData: data,
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: Date.now() - startTime,
     };
   }
@@ -176,6 +193,7 @@ export const maskJson = async <T>(
     return {
       maskedData: data,
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: Date.now() - startTime,
     };
   }
@@ -190,6 +208,7 @@ export const maskJson = async <T>(
     return {
       maskedData,
       detectedCount: result.detectedCount,
+      detectedPiiList: result.detectedPiiList,
       processingTimeMs: Date.now() - startTime,
     };
   } catch {
@@ -201,6 +220,7 @@ export const maskJson = async <T>(
     return {
       maskedData: data,
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: Date.now() - startTime,
     };
   }
