@@ -9,3 +9,4 @@ export {
   clearKeycloakCache,
   getKeycloakCacheStatus,
 } from "./keycloak.js";
+export { verifyKeycloakJWT } from "./jwt-verifier.js";

@@ -5,7 +5,7 @@ import { logInfo } from "../../libs/logger/index.js";
 import { AUTH_CONFIG } from "../../constants/config.js";
 import { createUnauthorizedError } from "../../libs/error/index.js";
 import { apiKeyAuthMiddleware } from "./apiKey.js";
-import { oauthMiddleware } from "./oauth.js";
+import { jwtAuthMiddleware } from "./jwt.js";
 
 /**
  * 認証方式を判定
@@ -47,10 +47,10 @@ export const authMiddleware = async (
 ): Promise<Response | void> => {
   const authType = detectAuthType(c);
 
-  // OAuth/JWT認証
+  // JWT認証
   if (authType === AuthType.OAUTH) {
-    logInfo("Using OAuth/JWT authentication");
-    return oauthMiddleware(c, next);
+    logInfo("Using JWT authentication");
+    return jwtAuthMiddleware(c, next);
   }
 
   // API Key認証
