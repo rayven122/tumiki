@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { db } from "@tumiki/db/server";
 import { TRPCError } from "@trpc/server";
 import { createMailClient, sendWaitingListConfirmation } from "@tumiki/mailer";
+import { getAppBaseUrl } from "@/lib/url";
 
 const WAITING_LIST_MESSAGES = {
   SUCCESS: "Waiting Listへの登録が完了しました。確認メールをお送りしました。",
@@ -82,10 +83,7 @@ const sendConfirmationEmail = async (
   language: "ja" | "en" = "ja",
 ): Promise<void> => {
   try {
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? process.env.NEXTAUTH_URL
-        : "http://localhost:3000";
+    const baseUrl = getAppBaseUrl();
     const confirmUrl = language === "ja" ? `${baseUrl}/jp` : `${baseUrl}`;
 
     void sendWaitingListConfirmation({
