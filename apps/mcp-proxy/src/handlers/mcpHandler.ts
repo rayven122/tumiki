@@ -10,6 +10,7 @@ import type { Context } from "hono";
 import type { HonoEnv } from "../types/index.js";
 import { getAllowedTools, executeTool } from "../services/toolExecutor.js";
 import { handleError } from "../libs/error/handler.js";
+import { getExecutionContext } from "../middleware/requestLogging/context.js";
 
 /**
  * MCPメインハンドラー
@@ -44,7 +45,11 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
 
     // HTTPリクエストを処理
     // SDKがJSON-RPC 2.0プロトコル（検証、ルーティング、エラー処理）を自動処理
-    const body: unknown = await c.req.json();
+    // PIIマスキング済みボディがある場合はそれを使用（piiMaskingMiddlewareで設定）
+    const executionContext = getExecutionContext();
+    const body: unknown = executionContext?.requestBody
+      ? JSON.parse(executionContext.requestBody)
+      : await c.req.json();
     await transport.handleRequest(req, res, body);
 
     // Node.jsレスポンスをFetch APIレスポンスに変換して返却

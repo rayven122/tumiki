@@ -271,6 +271,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
     organizationId: "test-org-id",
     deletedAt: null,
     authType: "OAUTH",
+    piiMaskingEnabled: false,
   };
 
   beforeEach(() => {

@@ -15,6 +15,8 @@ export type AuthContext = {
   userId: string;
   mcpServerId: string;
   mcpApiKeyId?: string; // API Key認証時のみ
+  /** PIIマスキング有効フラグ（GCP DLPによるマスキング） */
+  piiMaskingEnabled: boolean;
 };
 
 /**

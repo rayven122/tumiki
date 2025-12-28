@@ -72,6 +72,7 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingEnabled: false,
       };
 
       mockGetRedisClient.mockResolvedValue(null);
@@ -87,6 +88,7 @@ describe("mcpServerService", () => {
           organizationId: true,
           deletedAt: true,
           authType: true,
+          piiMaskingEnabled: true,
         },
       });
     });
@@ -107,6 +109,7 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt,
         authType: "API_KEY" as const,
+        piiMaskingEnabled: false,
       };
 
       mockGetRedisClient.mockResolvedValue(null);
@@ -124,6 +127,7 @@ describe("mcpServerService", () => {
         organizationId: "cached-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingEnabled: false,
       };
       const mockRedis = {
         get: vi.fn().mockResolvedValue(JSON.stringify(cachedData)),
@@ -148,6 +152,7 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingEnabled: false,
       };
       const mockRedis = {
         get: vi.fn().mockResolvedValue(null),
@@ -170,6 +175,7 @@ describe("mcpServerService", () => {
           organizationId: "test-org-id",
           deletedAt: null,
           authType: "OAUTH",
+          piiMaskingEnabled: false,
         }),
       );
     });
@@ -224,6 +230,7 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingEnabled: false,
       };
       const mockRedis = {
         get: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
