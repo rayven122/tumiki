@@ -46,6 +46,13 @@ export type McpLogEntry = {
   // true: PostgreSQLへの記録が失敗（idはBigQuery用に生成されたUUID）
   // false/undefined: PostgreSQLへの記録が成功（idはPostgreSQLのログID）
   postgresLogFailed?: boolean;
+
+  // PII検出情報
+  piiMaskingEnabled?: boolean;
+  piiDetectedRequestCount?: number;
+  piiDetectedResponseCount?: number;
+  piiDetectedInfoTypes?: string[];
+  piiDetectionDetails?: Record<string, Record<string, number>>;
 };
 
 /**

@@ -81,6 +81,45 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     ? Date.now() - executionContext.requestStartTime
     : 0;
 
+  // PII検出情報を計算
+  const piiMaskingEnabled = executionContext.piiMaskingEnabled ?? false;
+  const piiDetectedRequest = executionContext.piiDetectedRequest ?? [];
+  const piiDetectedResponse = executionContext.piiDetectedResponse ?? [];
+
+  // リクエスト/レスポンスそれぞれの検出件数を合計
+  const piiDetectedRequestCount =
+    piiDetectedRequest.length > 0
+      ? piiDetectedRequest.reduce((sum, pii) => sum + pii.count, 0)
+      : undefined;
+  const piiDetectedResponseCount =
+    piiDetectedResponse.length > 0
+      ? piiDetectedResponse.reduce((sum, pii) => sum + pii.count, 0)
+      : undefined;
+
+  // InfoType名の配列（重複なし）
+  const allInfoTypes = new Set<string>();
+  for (const pii of piiDetectedRequest) {
+    allInfoTypes.add(pii.infoType);
+  }
+  for (const pii of piiDetectedResponse) {
+    allInfoTypes.add(pii.infoType);
+  }
+  const piiDetectedInfoTypes = Array.from(allInfoTypes);
+
+  // 方向別・InfoType別の詳細
+  const requestDetails: Record<string, number> = {};
+  for (const pii of piiDetectedRequest) {
+    requestDetails[pii.infoType] = pii.count;
+  }
+  const responseDetails: Record<string, number> = {};
+  for (const pii of piiDetectedResponse) {
+    responseDetails[pii.infoType] = pii.count;
+  }
+  const piiDetectionDetails =
+    piiDetectedRequest.length > 0 || piiDetectedResponse.length > 0
+      ? { request: requestDetails, response: responseDetails }
+      : undefined;
+
   // ログデータを構築
   const logData = {
     // 認証情報
@@ -98,6 +137,13 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     inputBytes,
     outputBytes,
     userAgent: c.req.header("user-agent"),
+
+    // PII検出情報
+    piiMaskingEnabled,
+    piiDetectedRequestCount,
+    piiDetectedResponseCount,
+    piiDetectedInfoTypes,
+    piiDetectionDetails,
   };
 
   // PostgreSQLにログ記録し、IDを取得

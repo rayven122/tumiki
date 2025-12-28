@@ -153,7 +153,9 @@ describe("maskText", () => {
       {
         item: { value: "****@*******.com" },
         overview: {
-          transformationSummaries: [{ infoType: { name: "EMAIL_ADDRESS" } }],
+          transformationSummaries: [
+            { infoType: { name: "EMAIL_ADDRESS" }, results: [{ count: "1" }] },
+          ],
         },
       },
     ]);
@@ -164,6 +166,9 @@ describe("maskText", () => {
 
     expect(result.maskedText).toBe("****@*******.com");
     expect(result.detectedCount).toBe(1);
+    expect(result.detectedPiiList).toStrictEqual([
+      { infoType: "EMAIL_ADDRESS", count: 1 },
+    ]);
     expect(result.processingTimeMs).toBeGreaterThanOrEqual(0);
     expect(mockDeidentifyContent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -179,8 +184,8 @@ describe("maskText", () => {
         item: { value: "****@*******.com, ************" },
         overview: {
           transformationSummaries: [
-            { infoType: { name: "EMAIL_ADDRESS" } },
-            { infoType: { name: "PHONE_NUMBER" } },
+            { infoType: { name: "EMAIL_ADDRESS" }, results: [{ count: "1" }] },
+            { infoType: { name: "PHONE_NUMBER" }, results: [{ count: "1" }] },
           ],
         },
       },
@@ -194,6 +199,10 @@ describe("maskText", () => {
     );
 
     expect(result.detectedCount).toBe(2);
+    expect(result.detectedPiiList).toStrictEqual([
+      { infoType: "EMAIL_ADDRESS", count: 1 },
+      { infoType: "PHONE_NUMBER", count: 1 },
+    ]);
   });
 
   test("DLP APIエラー時は元のテキストを返す（フェイルオープン）", async () => {

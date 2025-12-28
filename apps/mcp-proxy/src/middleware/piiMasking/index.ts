@@ -61,6 +61,9 @@ export const piiMaskingMiddleware = async (
     mcpServerId: authContext.mcpServerId,
   });
 
+  // PIIマスキングが有効であることをコンテキストに記録
+  updateExecutionContext({ piiMaskingEnabled: true });
+
   // リクエストボディをマスキング
   await maskRequestBody(c, config);
 
@@ -94,14 +97,18 @@ const maskRequestBody = async (
     if (result.detectedCount > 0) {
       logInfo("PII detected and masked in request", {
         detectedCount: result.detectedCount,
+        detectedPiiList: result.detectedPiiList,
         processingTimeMs: result.processingTimeMs,
       });
     }
 
-    // マスキング済みリクエストボディを実行コンテキストに保存
+    // マスキング済みリクエストボディと検出情報を実行コンテキストに保存
     // mcpHandlerがこのコンテキストからマスキング済みボディを取得して使用
     // PIIが検出されなくても保存（ログ記録時に再マスキング不要にするため）
-    updateExecutionContext({ requestBody: result.maskedText });
+    updateExecutionContext({
+      requestBody: result.maskedText,
+      piiDetectedRequest: result.detectedPiiList,
+    });
   } catch (error) {
     logError("Failed to mask request body", error as Error);
     // エラー時は元のリクエストをそのまま使用（フェイルオープン）
@@ -129,13 +136,17 @@ const maskResponseBody = async (
     // JSON-RPC 2.0対応マスキング（jsonrpc, id, error.code, error.message は維持）
     const result = await maskMcpMessage(responseText, config);
 
-    // マスキング済みレスポンスボディを実行コンテキストに保存
+    // マスキング済みレスポンスボディと検出情報を実行コンテキストに保存
     // PIIが検出されなくても保存（ログ記録時に再マスキング不要にするため）
-    updateExecutionContext({ responseBody: result.maskedText });
+    updateExecutionContext({
+      responseBody: result.maskedText,
+      piiDetectedResponse: result.detectedPiiList,
+    });
 
     if (result.detectedCount > 0) {
       logInfo("PII detected and masked in response", {
         detectedCount: result.detectedCount,
+        detectedPiiList: result.detectedPiiList,
         processingTimeMs: result.processingTimeMs,
       });
 

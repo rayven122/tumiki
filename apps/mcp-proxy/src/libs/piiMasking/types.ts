@@ -13,6 +13,16 @@ export type PiiMaskingConfig = {
 };
 
 /**
+ * 検出されたPII情報
+ */
+export type DetectedPii = {
+  /** InfoType名（例: EMAIL_ADDRESS, PHONE_NUMBER） */
+  infoType: string;
+  /** 検出件数 */
+  count: number;
+};
+
+/**
  * テキストマスキング結果
  */
 export type MaskingResult = {
@@ -20,6 +30,8 @@ export type MaskingResult = {
   maskedText: string;
   /** 検出されたPIIの総数 */
   detectedCount: number;
+  /** 検出されたPIIのリスト */
+  detectedPiiList: DetectedPii[];
   /** 処理時間（ミリ秒） */
   processingTimeMs: number;
 };
@@ -32,6 +44,8 @@ export type JsonMaskingResult<T = unknown> = {
   maskedData: T;
   /** 検出されたPIIの総数 */
   detectedCount: number;
+  /** 検出されたPIIのリスト */
+  detectedPiiList: DetectedPii[];
   /** 処理時間（ミリ秒） */
   processingTimeMs: number;
 };
