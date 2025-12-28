@@ -19,7 +19,12 @@ export type McpRequestLoggingContext = {
   method?: string;
   httpStatus?: number;
   errorCode?: number;
-  errorSummary?: string;
+  errorMessage?: string;
+  errorDetails?: unknown; // エラーオブジェクト全体
+
+  // リクエスト・レスポンスJSON（BigQueryログ用）
+  requestBody?: unknown;
+  responseBody?: unknown;
 };
 
 const requestLoggingStorage = new AsyncLocalStorage<McpRequestLoggingContext>();

@@ -14,14 +14,17 @@ import {
 } from "./context.js";
 import { db, type Prisma } from "@tumiki/db/server";
 import { logError, logInfo } from "../../libs/logger/index.js";
+import { publishMcpLog } from "../../libs/pubsub/mcpLogger.js";
 
 /**
  * MCP サーバー request log を記録
  * Prisma UncheckedCreateInput を使用してシンプルに実装
+ *
+ * @returns 作成されたログのID（BigQueryとの紐付けに使用）、エラー時はnull
  */
 const logMcpServerRequest = async (
   data: Prisma.McpServerRequestLogUncheckedCreateInput,
-): Promise<void> => {
+): Promise<string | null> => {
   try {
     const requestLog = await db.mcpServerRequestLog.create({ data });
 
@@ -31,11 +34,14 @@ const logMcpServerRequest = async (
       toolName: data.toolName,
       durationMs: data.durationMs,
     });
+
+    return requestLog.id;
   } catch (error) {
     logError("Failed to log MCP server request", error as Error, {
       mcpServerId: data.mcpServerId,
       toolName: data.toolName,
     });
+    return null;
   }
 };
 
@@ -69,13 +75,29 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   const inputBytes = textEncoder.encode(requestText).length;
   const outputBytes = textEncoder.encode(responseText).length;
 
+  // リクエスト/レスポンスをJSONとしてパース（BigQueryでJSON型として格納）
+  let requestBody: unknown = null;
+  let responseBody: unknown = null;
+  try {
+    requestBody = JSON.parse(requestText);
+  } catch {
+    // JSONパースに失敗した場合は文字列のまま格納
+    requestBody = requestText;
+  }
+  try {
+    responseBody = JSON.parse(responseText);
+  } catch {
+    // JSONパースに失敗した場合は文字列のまま格納
+    responseBody = responseText;
+  }
+
   // 実行時間を計算
   const durationMs = loggingContext.requestStartTime
     ? Date.now() - loggingContext.requestStartTime
     : 0;
 
-  // 非同期でログ記録（リクエストレスポンスをブロックしない）
-  await logMcpServerRequest({
+  // ログデータを構築
+  const logData = {
     // 認証情報
     mcpServerId: authContext.mcpServerId,
     mcpApiKeyId: authContext.mcpApiKeyId ?? null,
@@ -91,12 +113,33 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     inputBytes,
     outputBytes,
     userAgent: c.req.header("user-agent"),
-  }).catch((error) => {
+  };
+
+  // PostgreSQLにログ記録し、IDを取得
+  const requestLogId = await logMcpServerRequest(logData).catch((error) => {
     // エラーをキャッチしてログに記録（リクエストには影響させない）
     logError("Failed to log MCP server request in middleware", error as Error, {
       toolName: loggingContext.toolName,
       mcpServerId: authContext.mcpServerId,
     });
+    return null;
+  });
+
+  // BigQueryへ非同期送信（Pub/Sub経由）
+  // PostgreSQLへの記録成否に関わらず送信し、失敗時はフラグで識別可能にする
+  await publishMcpLog({
+    ...logData,
+    // PostgreSQL記録成功時はそのIDを使用、失敗時は新しいUUIDを生成
+    id: requestLogId ?? crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    requestBody,
+    responseBody,
+    // エラー情報（インシデント追跡用）
+    errorCode: loggingContext.errorCode,
+    errorMessage: loggingContext.errorMessage,
+    errorDetails: loggingContext.errorDetails,
+    // PostgreSQL記録が失敗した場合はフラグを立てる
+    postgresLogFailed: requestLogId === null,
   });
 };
 
