@@ -555,7 +555,7 @@ importers:
         version: 1.19.6(hono@4.10.7)
       '@modelcontextprotocol/sdk':
         specifier: ^1.24.0
-        version: 1.24.1(@cfworker/json-schema@4.1.1)(zod@4.2.0-canary.20251202T062120)
+        version: 1.24.1(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -583,6 +583,9 @@ importers:
       redis:
         specifier: ^5.10.0
         version: 5.10.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.13
     devDependencies:
       '@tumiki/vitest-config':
         specifier: workspace:*
@@ -9611,9 +9614,6 @@ packages:
   zod@4.1.13:
     resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
 
-  zod@4.2.0-canary.20251202T062120:
-    resolution: {integrity: sha512-aRtBjDv5mpi3y7m0S6No8O6+OIJUALL1nTbLCsB2lExcxPZ6xYFHSztjzjHDLX2QHgJDlGuLP/Gwo7gQ546Mxg==}
-
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
     engines: {node: '>=12.7.0'}
@@ -11447,27 +11447,6 @@ snapshots:
       raw-body: 3.0.2
       zod: 4.1.13
       zod-to-json-schema: 3.25.0(zod@4.1.13)
-    optionalDependencies:
-      '@cfworker/json-schema': 4.1.1
-    transitivePeerDependencies:
-      - supports-color
-
-  '@modelcontextprotocol/sdk@1.24.1(@cfworker/json-schema@4.1.1)(zod@4.2.0-canary.20251202T062120)':
-    dependencies:
-      ajv: 8.17.1
-      ajv-formats: 3.0.1(ajv@8.17.1)
-      content-type: 1.0.5
-      cors: 2.8.5
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.0.6
-      express: 5.2.1
-      express-rate-limit: 7.5.1(express@5.2.1)
-      jose: 6.1.3
-      pkce-challenge: 5.0.1
-      raw-body: 3.0.2
-      zod: 4.2.0-canary.20251202T062120
-      zod-to-json-schema: 3.25.0(zod@4.2.0-canary.20251202T062120)
     optionalDependencies:
       '@cfworker/json-schema': 4.1.1
     transitivePeerDependencies:
@@ -20164,10 +20143,6 @@ snapshots:
     dependencies:
       zod: 4.1.13
 
-  zod-to-json-schema@3.25.0(zod@4.2.0-canary.20251202T062120):
-    dependencies:
-      zod: 4.2.0-canary.20251202T062120
-
   zod-validation-error@4.0.2(zod@4.1.13):
     dependencies:
       zod: 4.1.13
@@ -20175,8 +20150,6 @@ snapshots:
   zod@3.25.76: {}
 
   zod@4.1.13: {}
-
-  zod@4.2.0-canary.20251202T062120: {}
 
   zustand@4.5.7(@types/react@19.1.9)(immer@11.0.1)(react@19.2.0):
     dependencies:
