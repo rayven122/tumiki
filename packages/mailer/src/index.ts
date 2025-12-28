@@ -3,6 +3,7 @@ export {
   createMailClient,
   getMailClient,
   resetMailClient,
+  getDefaultMailConfig,
 } from "./client.js";
 
 export * from "./templates/index.js";
