@@ -22,6 +22,8 @@ export type McpServerLookupResult = {
   organizationId: string;
   deletedAt: Date | null;
   authType: AuthType;
+  /** PIIマスキング有効フラグ（GCP DLPによるマスキング） */
+  piiMaskingEnabled: boolean;
 };
 
 /**
@@ -32,6 +34,7 @@ type CachedMcpServerResult = {
   organizationId: string;
   deletedAt: string | null;
   authType: AuthType;
+  piiMaskingEnabled: boolean;
 };
 
 // キャッシュのTTL（秒）
@@ -77,6 +80,7 @@ export const getMcpServerOrganization = async (
             organizationId: parsed.organizationId,
             deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
             authType: parsed.authType,
+            piiMaskingEnabled: parsed.piiMaskingEnabled,
           };
         }
       }
@@ -104,6 +108,7 @@ export const getMcpServerOrganization = async (
           organizationId: result.organizationId,
           deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
           authType: result.authType,
+          piiMaskingEnabled: result.piiMaskingEnabled,
         };
         await redis.setEx(
           cacheKey,
@@ -133,6 +138,7 @@ const getMcpServerFromDB = async (
         organizationId: true,
         deletedAt: true,
         authType: true,
+        piiMaskingEnabled: true,
       },
     });
 

@@ -8,9 +8,9 @@
 import type { Context, Next } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import {
-  runWithRequestLoggingContext,
-  getRequestLoggingContext,
-  type McpRequestLoggingContext,
+  runWithExecutionContext,
+  getExecutionContext,
+  type McpExecutionContext,
 } from "./context.js";
 import { db, type Prisma } from "@tumiki/db/server";
 import { logError, logInfo } from "../../libs/logger/index.js";
@@ -56,28 +56,29 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     return;
   }
 
-  // ログコンテキストを取得
-  const loggingContext = getRequestLoggingContext();
+  // 実行コンテキストを取得
+  const executionContext = getExecutionContext();
 
   // toolNameが存在しない場合はログを記録しない（MCP以外のリクエスト）
-  if (!loggingContext?.toolName) {
+  if (!executionContext?.toolName) {
     return;
   }
 
-  // リクエストボディを再取得（キャッシュから）
-  const requestText = await c.req.text();
+  // 実行コンテキストからリクエスト/レスポンスボディを取得
+  // piiMaskingMiddlewareで既にマスキング済みのデータがあればそれを使用
+  // なければ元のデータを取得
+  const requestText = executionContext.requestBody ?? (await c.req.text());
+  const responseText =
+    executionContext.responseBody ?? (await c.res.clone().text());
 
-  // レスポンス情報を取得
-  const responseText = await c.res.clone().text();
-
-  // UTF-8エンコードでのバイト数を計算
+  // UTF-8エンコードでのバイト数を計算（マスキング後のサイズ）
   const textEncoder = new TextEncoder();
   const inputBytes = textEncoder.encode(requestText).length;
   const outputBytes = textEncoder.encode(responseText).length;
 
   // 実行時間を計算
-  const durationMs = loggingContext.requestStartTime
-    ? Date.now() - loggingContext.requestStartTime
+  const durationMs = executionContext.requestStartTime
+    ? Date.now() - executionContext.requestStartTime
     : 0;
 
   // ログデータを構築
@@ -89,9 +90,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     organizationId: authContext.organizationId,
 
     // リクエスト情報
-    toolName: loggingContext.toolName,
-    transportType: loggingContext.transportType ?? "STREAMABLE_HTTPS",
-    method: loggingContext.method ?? "tools/call", // toolExecutorで設定される
+    toolName: executionContext.toolName,
+    transportType: executionContext.transportType ?? "STREAMABLE_HTTPS",
+    method: executionContext.method ?? "tools/call", // toolExecutorで設定される
     httpStatus: c.res.status,
     durationMs,
     inputBytes,
@@ -103,7 +104,7 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   const requestLogId = await logMcpServerRequest(logData).catch((error) => {
     // エラーをキャッチしてログに記録（リクエストには影響させない）
     logError("Failed to log MCP server request in middleware", error as Error, {
-      toolName: loggingContext.toolName,
+      toolName: executionContext.toolName,
       mcpServerId: authContext.mcpServerId,
     });
     return null;
@@ -119,9 +120,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     requestBody: requestText,
     responseBody: responseText,
     // エラー情報（インシデント追跡用）
-    errorCode: loggingContext.errorCode,
-    errorMessage: loggingContext.errorMessage,
-    errorDetails: loggingContext.errorDetails,
+    errorCode: executionContext.errorCode,
+    errorMessage: executionContext.errorMessage,
+    errorDetails: executionContext.errorDetails,
     // PostgreSQL記録が失敗した場合はフラグを立てる
     postgresLogFailed: requestLogId === null,
   });
@@ -143,9 +144,9 @@ export const mcpRequestLoggingMiddleware = async (
     requestStartTime: Date.now(),
     // inputBytesはrecordRequestLogAsyncで計算
     inputBytes: 0,
-  } satisfies McpRequestLoggingContext;
+  } satisfies McpExecutionContext;
 
-  await runWithRequestLoggingContext(initialContext, async () => {
+  await runWithExecutionContext(initialContext, async () => {
     try {
       // 次のミドルウェア/ハンドラーを実行（authMiddlewareで認証コンテキストが設定される）
       await next();

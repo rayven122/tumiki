@@ -81,8 +81,9 @@ export const jwtAuthMiddleware = async (
     );
   }
 
-  // Step 4: McpServer から organizationId を取得
+  // Step 4: McpServer から organizationId と piiMaskingEnabled を取得
   let orgId: string;
+  let piiMaskingEnabled: boolean;
   try {
     const mcpServer = await getMcpServerOrganization(pathMcpServerId);
 
@@ -101,6 +102,7 @@ export const jwtAuthMiddleware = async (
     }
 
     orgId = mcpServer.organizationId;
+    piiMaskingEnabled = mcpServer.piiMaskingEnabled;
   } catch (error) {
     logError("Failed to get McpServer organization", error as Error, {
       mcpServerId: pathMcpServerId,
@@ -155,6 +157,7 @@ export const jwtAuthMiddleware = async (
     organizationId: orgId,
     userId: userId,
     mcpServerId: pathMcpServerId,
+    piiMaskingEnabled,
   });
 
   await next();
