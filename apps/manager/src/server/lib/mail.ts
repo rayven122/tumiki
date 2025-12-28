@@ -80,17 +80,3 @@ export const sendInvitationEmail = async (
     // （グレースフルデグラデーション）
   }
 };
-
-/**
- * 招待URLを生成する
- *
- * @param token - 招待トークン
- * @returns 招待URL
- */
-export const generateInviteUrl = (token: string): string => {
-  const baseUrl =
-    process.env.NODE_ENV === "production"
-      ? process.env.NEXTAUTH_URL
-      : "http://localhost:3000";
-  return `${baseUrl}/invite/${token}`;
-};

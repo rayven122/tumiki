@@ -9,6 +9,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { api } from "@/trpc/server";
+import { getAppBaseUrl } from "@/lib/url";
 import { verifyStateToken } from "@/lib/oauth/state-token";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
@@ -36,11 +37,14 @@ const validateCallbackParams = (
 };
 
 export const GET = async (request: NextRequest) => {
+  // Cloudflare Tunnel等のリバースプロキシ環境対応のため、環境変数からベースURLを取得
+  const baseUrl = getAppBaseUrl();
+
   // 認証チェック
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.redirect(
-      new URL("/auth/signin?error=Unauthorized", request.url),
+      new URL("/auth/signin?error=Unauthorized", baseUrl),
     );
   }
 
@@ -51,7 +55,7 @@ export const GET = async (request: NextRequest) => {
     const paramsResult = validateCallbackParams(searchParams);
     if ("error" in paramsResult) {
       return NextResponse.redirect(
-        new URL(`/?error=${paramsResult.error}`, request.url),
+        new URL(`/?error=${paramsResult.error}`, baseUrl),
       );
     }
     const { state } = paramsResult;
@@ -60,9 +64,12 @@ export const GET = async (request: NextRequest) => {
     await verifyStateToken(state);
 
     // tRPC APIを呼び出してOAuthコールバックを処理
+    // currentUrlはトークン交換時に使用するため、環境変数ベースのURLを使用
+    const callbackUrl = new URL("/api/oauth/callback", baseUrl);
+    callbackUrl.search = request.nextUrl.search;
     const result = await api.v2.oauth.handleCallback({
       state,
-      currentUrl: request.nextUrl.toString(),
+      currentUrl: callbackUrl.toString(),
     });
 
     // 結果に応じてリダイレクト
@@ -70,12 +77,12 @@ export const GET = async (request: NextRequest) => {
       return NextResponse.redirect(
         new URL(
           `/${result.organizationSlug}/mcps?success=OAuth+authentication+completed`,
-          request.url,
+          baseUrl,
         ),
       );
     } else {
       const redirectUrl = `/${result.organizationSlug}/mcps?error=${encodeURIComponent(result.error ?? "Unknown error")}`;
-      return NextResponse.redirect(new URL(redirectUrl, request.url));
+      return NextResponse.redirect(new URL(redirectUrl, baseUrl));
     }
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
@@ -84,7 +91,7 @@ export const GET = async (request: NextRequest) => {
     // organizationSlugがnullの場合はホームにリダイレクト
     if (!organizationSlug) {
       return NextResponse.redirect(
-        new URL("/?error=Missing+organization", request.url),
+        new URL("/?error=Missing+organization", baseUrl),
       );
     }
 
@@ -94,7 +101,7 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.redirect(
       new URL(
         `/${organizationSlug}/mcps?error=${encodeURIComponent(errorMessage)}`,
-        request.url,
+        baseUrl,
       ),
     );
   }

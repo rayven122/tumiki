@@ -4,7 +4,8 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { inviteMemberInput } from "@/server/utils/organizationSchemas";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
-import { sendInvitationEmail, generateInviteUrl } from "@/server/lib/mail";
+import { sendInvitationEmail } from "@/server/lib/mail";
+import { generateInviteUrl } from "@/lib/url";
 import { createManyNotifications } from "../v2/notification/createNotification";
 
 export const inviteMemberInputSchema = inviteMemberInput;

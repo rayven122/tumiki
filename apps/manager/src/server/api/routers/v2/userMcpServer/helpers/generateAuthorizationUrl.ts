@@ -4,7 +4,7 @@
  */
 import { generatePKCEParams } from "@/lib/oauth/pkce";
 import { createStateToken } from "@/lib/oauth/state-token";
-import { getOAuthRedirectUri } from "@/lib/oauth/utils";
+import { getOAuthRedirectUri } from "@/lib/url";
 import { generateAuthorizationUrl as buildAuthUrl } from "@/lib/oauth/oauth-client";
 import type * as oauth from "oauth4webapi";
 
