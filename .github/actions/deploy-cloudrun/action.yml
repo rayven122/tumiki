@@ -34,7 +34,7 @@ inputs:
     required: false
   max_instances:
     description: 'Maximum number of instances'
-    default: '3'
+    default: '1'
     required: false
 
 outputs:
