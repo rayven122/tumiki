@@ -61,8 +61,19 @@ export const discoverOAuthMetadata = async (
         asUrl = metadata.authorization_servers[0];
       }
     }
-  } catch {
-    // Protected Resource Metadata が見つからない場合は無視
+  } catch (error) {
+    // Protected Resource Metadata が見つからない場合はデバッグログを記録
+    // ネットワークエラー（TypeError）やパースエラー（SyntaxError）は許容
+    if (
+      !(error instanceof TypeError) &&
+      !(error instanceof SyntaxError) &&
+      !(error instanceof Error && error.name === "AbortError")
+    ) {
+      // 予期しないエラータイプの場合は警告を出力
+      console.warn(
+        `Unexpected error fetching Protected Resource Metadata: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   // Step 2: AS Metadata を取得（複数のURLを試行）
@@ -87,11 +98,26 @@ export const discoverOAuthMetadata = async (
         continue;
       }
 
-      // issuerが異なる場合でも取得したメタデータを使用
+      // issuerが異なる場合はorigin一致性を検証
       const metadata = (await response
         .clone()
         .json()) as oauth.AuthorizationServer;
       if (metadata.issuer !== issuer.toString()) {
+        // セキュリティ: issuer不一致を検出した場合、originの一致を検証
+        console.warn(
+          `Issuer mismatch: expected ${issuer.toString()}, got ${metadata.issuer}`,
+        );
+
+        // originが一致しない場合は攻撃の可能性があるためエラー
+        const metadataIssuerUrl = new URL(metadata.issuer);
+        if (metadataIssuerUrl.origin !== issuer.origin) {
+          throw new DCRError(
+            `Invalid issuer: origin mismatch (expected ${issuer.origin}, got ${metadataIssuerUrl.origin})`,
+            "ISSUER_VALIDATION_ERROR",
+          );
+        }
+
+        // originは一致するが完全一致ではない場合、メタデータを使用（パス違いなど）
         return metadata;
       }
       return await oauth.processDiscoveryResponse(issuer, response);
