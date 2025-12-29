@@ -9,7 +9,6 @@ export {
   maskText,
   resetProjectIdCache,
 } from "./gcpDlpClient.js";
-export { maskMcpMessage } from "./jsonRpcMasker.js";
 export {
   DEFAULT_INFO_TYPES,
   type DetectedPii,
