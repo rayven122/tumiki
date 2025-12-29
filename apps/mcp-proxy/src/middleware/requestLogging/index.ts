@@ -97,14 +97,12 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
       : undefined;
 
   // InfoType名の配列（重複なし）
-  const allInfoTypes = new Set<string>();
-  for (const pii of piiDetectedRequest) {
-    allInfoTypes.add(pii.infoType);
-  }
-  for (const pii of piiDetectedResponse) {
-    allInfoTypes.add(pii.infoType);
-  }
-  const piiDetectedInfoTypes = Array.from(allInfoTypes);
+  const piiDetectedInfoTypes = [
+    ...new Set([
+      ...piiDetectedRequest.map((pii) => pii.infoType),
+      ...piiDetectedResponse.map((pii) => pii.infoType),
+    ]),
+  ];
 
   // InfoType別の詳細（リクエスト/レスポンス別々に保存）
   const piiDetectionDetailsRequest: Record<string, number> | undefined =
