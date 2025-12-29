@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import type { Context } from "hono";
+import { PiiMaskingMode } from "@tumiki/db/server";
 import type { HonoEnv, AuthContext } from "../../../types/index.js";
 import { piiMaskingMiddleware } from "../index.js";
 
@@ -70,7 +71,8 @@ const createAuthContext = (
   organizationId: "org-1",
   userId: "user-1",
   mcpServerId: "server-1",
-  piiMaskingEnabled: true,
+  piiMaskingMode: PiiMaskingMode.BOTH,
+  piiInfoTypes: [],
   ...overrides,
 });
 
@@ -101,8 +103,10 @@ describe("piiMaskingMiddleware", () => {
     expect(mockGetPiiMaskingConfig).not.toHaveBeenCalled();
   });
 
-  test("piiMaskingEnabled が false の場合はスキップ", async () => {
-    const authContext = createAuthContext({ piiMaskingEnabled: false });
+  test("piiMaskingMode が DISABLED の場合はスキップ", async () => {
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.DISABLED,
+    });
     const c = createMockContext({ authContext });
 
     await piiMaskingMiddleware(c, mockNext);
@@ -117,7 +121,9 @@ describe("piiMaskingMiddleware", () => {
       isAvailable: false,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({ authContext });
 
     await piiMaskingMiddleware(c, mockNext);
@@ -134,7 +140,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 50,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"email":"test@example.com"}',
@@ -166,7 +174,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 50,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"query":"hello"}',
@@ -183,7 +193,9 @@ describe("piiMaskingMiddleware", () => {
   });
 
   test("空のリクエストボディはスキップ", async () => {
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: "",
@@ -205,7 +217,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"request":"data"}',
@@ -225,7 +239,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const originalResponseBody = '{"result":"no-pii"}';
     const c = createMockContext({
       authContext,
@@ -250,7 +266,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"request":"with-pii"}',
@@ -273,7 +291,9 @@ describe("piiMaskingMiddleware", () => {
     // レスポンスマスキングでエラー
     mockMaskMcpMessage.mockRejectedValueOnce(new Error("DLP error"));
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"request":"data"}',
@@ -301,7 +321,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"email":"test@example.com"}',
@@ -332,7 +354,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 50,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"query":"hello"}',
@@ -364,7 +388,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"query":"hello"}',
@@ -384,7 +410,7 @@ describe("piiMaskingMiddleware", () => {
     });
   });
 
-  test("piiMaskingEnabledをコンテキストに保存", async () => {
+  test("piiMaskingModeをコンテキストに保存", async () => {
     mockMaskMcpMessage.mockResolvedValue({
       maskedData: { data: "text" },
       detectedCount: 0,
@@ -392,7 +418,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
 
-    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const authContext = createAuthContext({
+      piiMaskingMode: PiiMaskingMode.BOTH,
+    });
     const c = createMockContext({
       authContext,
       requestBody: '{"data":"request"}',
@@ -401,9 +429,10 @@ describe("piiMaskingMiddleware", () => {
 
     await piiMaskingMiddleware(c, mockNext);
 
-    // piiMaskingEnabled が true としてコンテキストに保存されていることを確認
+    // piiMaskingMode と piiInfoTypes がコンテキストに保存されていることを確認
     expect(mockUpdateExecutionContext).toHaveBeenCalledWith({
-      piiMaskingEnabled: true,
+      piiMaskingMode: PiiMaskingMode.BOTH,
+      piiInfoTypes: [],
     });
   });
 });

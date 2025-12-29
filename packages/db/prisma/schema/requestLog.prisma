@@ -40,9 +40,9 @@ model McpServerRequestLog {
   /// ユーザーエージェント（最大512文字に制限）
   userAgent String? @db.VarChar(512)
 
-  /// PIIマスキングが有効だったかどうか
-  /// MCPサーバー設定でpiiMaskingEnabledがtrueかつGCP DLPが利用可能な場合にtrue
-  piiMaskingEnabled Boolean @default(false)
+  /// PIIマスキングモード（DISABLEDの場合はマスキング無効）
+  /// MCPサーバー設定のpiiMaskingModeをそのまま記録
+  piiMaskingMode PiiMaskingMode @default(DISABLED)
 
   /// リクエストPII検出件数
   piiDetectedRequestCount Int?

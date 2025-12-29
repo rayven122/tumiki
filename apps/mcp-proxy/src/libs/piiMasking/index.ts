@@ -16,4 +16,5 @@ export {
   type InfoType,
   type JsonMaskingResult,
   type TextMaskingResult,
+  type PiiMaskingOptions,
 } from "./types.js";

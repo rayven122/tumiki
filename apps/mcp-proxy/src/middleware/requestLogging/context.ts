@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { TransportType } from "@tumiki/db/server";
+import type { PiiMaskingMode, TransportType } from "@tumiki/db/server";
 
 import type { DetectedPii } from "../../libs/piiMasking/index.js";
 
@@ -27,13 +27,15 @@ export type McpExecutionContext = {
   errorMessage?: string;
   errorDetails?: unknown; // エラーオブジェクト全体
 
-  // リクエスト・レスポンスボディ（piiMaskingEnabled が true の時、PIIマスキング済み）
+  // リクエスト・レスポンスボディ（piiMaskingMode が DISABLED 以外の時、PIIマスキング済み）
   requestBody?: unknown;
   responseBody?: unknown;
 
   // PII検出情報
-  /** PIIマスキングが実行されたかどうか（設定有効かつGCP DLP利用可能な場合にtrue） */
-  piiMaskingEnabled?: boolean;
+  /** PIIマスキングモード */
+  piiMaskingMode?: PiiMaskingMode;
+  /** 使用したInfoType一覧 */
+  piiInfoTypes?: string[];
   /** リクエストで検出されたPII情報 */
   piiDetectedRequest?: DetectedPii[];
   /** レスポンスで検出されたPII情報 */

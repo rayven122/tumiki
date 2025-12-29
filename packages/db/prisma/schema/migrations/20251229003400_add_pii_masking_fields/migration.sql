@@ -1,10 +1,16 @@
--- AlterTable
-ALTER TABLE "McpServer" ADD COLUMN     "piiMaskingEnabled" BOOLEAN NOT NULL DEFAULT false;
+-- CreateEnum
+CREATE TYPE "PiiMaskingMode" AS ENUM ('DISABLED', 'REQUEST', 'RESPONSE', 'BOTH');
 
 -- AlterTable
-ALTER TABLE "McpServerRequestLog" ADD COLUMN     "piiDetectedInfoTypes" TEXT[],
+ALTER TABLE "McpServer"
+ADD COLUMN     "piiInfoTypes" TEXT[] DEFAULT ARRAY[]::TEXT[],
+ADD COLUMN     "piiMaskingMode" "PiiMaskingMode" NOT NULL DEFAULT 'DISABLED';
+
+-- AlterTable
+ALTER TABLE "McpServerRequestLog"
+ADD COLUMN     "piiDetectedInfoTypes" TEXT[],
 ADD COLUMN     "piiDetectedRequestCount" INTEGER,
 ADD COLUMN     "piiDetectedResponseCount" INTEGER,
 ADD COLUMN     "piiDetectionDetailsRequest" JSONB,
 ADD COLUMN     "piiDetectionDetailsResponse" JSONB,
-ADD COLUMN     "piiMaskingEnabled" BOOLEAN NOT NULL DEFAULT false;
+ADD COLUMN     "piiMaskingMode" "PiiMaskingMode" NOT NULL DEFAULT 'DISABLED';

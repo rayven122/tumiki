@@ -12,7 +12,12 @@
 
 import { z } from "zod";
 
-import { maskJson, type DetectedPii, type JsonMaskingResult } from "./index.js";
+import {
+  maskJson,
+  type DetectedPii,
+  type JsonMaskingResult,
+  type PiiMaskingOptions,
+} from "./index.js";
 
 /**
  * JSON-RPC 2.0 リクエストスキーマ
@@ -70,10 +75,12 @@ const isJsonRpcRequest = (
  * params/result/error.data のみをDLPに送信してコストを削減する。
  *
  * @param messageData MCPメッセージデータ（JSON-RPC 2.0形式）
+ * @param options マスキングオプション（使用するInfoType一覧）
  * @returns マスキング結果（パース済みJSON）
  */
 export const maskMcpMessage = async (
   messageData: unknown,
+  options?: PiiMaskingOptions,
 ): Promise<JsonMaskingResult<unknown>> => {
   const startTime = Date.now();
 
@@ -89,14 +96,14 @@ export const maskMcpMessage = async (
 
   // 配列の場合（バッチリクエスト）は全体をマスキング
   if (Array.isArray(messageData)) {
-    return maskJson(messageData);
+    return maskJson(messageData, options);
   }
 
   // JSON-RPCメッセージのバリデーション
   const parseResult = jsonRpcMessageSchema.safeParse(messageData);
   if (!parseResult.success) {
     // JSON-RPCメッセージでない場合は全体をマスキング
-    return maskJson(messageData);
+    return maskJson(messageData, options);
   }
 
   const message = parseResult.data;
@@ -108,7 +115,7 @@ export const maskMcpMessage = async (
   if (isJsonRpcRequest(message)) {
     // リクエスト: params をマスキング
     if (message.params !== undefined) {
-      const result = await maskJson(message.params);
+      const result = await maskJson(message.params, options);
       totalDetected += result.detectedCount;
       allDetectedPii.push(...result.detectedPiiList);
       message.params = result.maskedData;
@@ -116,13 +123,13 @@ export const maskMcpMessage = async (
   } else {
     // レスポンス: result または error.data をマスキング
     if (message.result !== undefined) {
-      const result = await maskJson(message.result);
+      const result = await maskJson(message.result, options);
       totalDetected += result.detectedCount;
       allDetectedPii.push(...result.detectedPiiList);
       message.result = result.maskedData;
     }
     if (message.error?.data !== undefined) {
-      const result = await maskJson(message.error.data);
+      const result = await maskJson(message.error.data, options);
       totalDetected += result.detectedCount;
       allDetectedPii.push(...result.detectedPiiList);
       message.error.data = result.maskedData;

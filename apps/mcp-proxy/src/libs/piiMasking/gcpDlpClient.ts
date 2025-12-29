@@ -12,6 +12,7 @@ import {
   DEFAULT_INFO_TYPES,
   type DetectedPii,
   type JsonMaskingResult,
+  type PiiMaskingOptions,
   type TextMaskingResult,
 } from "./types.js";
 
@@ -59,9 +60,13 @@ const getProjectId = async (): Promise<string | null> => {
 /**
  * テキストをGCP DLPでマスキング
  * @param text マスキング対象のテキスト
+ * @param options マスキングオプション（使用するInfoType一覧）
  * @returns マスキング結果（テキスト）
  */
-export const maskText = async (text: string): Promise<TextMaskingResult> => {
+export const maskText = async (
+  text: string,
+  options?: PiiMaskingOptions,
+): Promise<TextMaskingResult> => {
   const startTime = Date.now();
 
   // 空文字列の場合はそのまま返す
@@ -88,8 +93,12 @@ export const maskText = async (text: string): Promise<TextMaskingResult> => {
     const client = getDlpClient();
     const parent = `projects/${projectId}/locations/global`;
 
-    // InfoTypeの設定
-    const infoTypes = DEFAULT_INFO_TYPES.map((name: string) => ({ name }));
+    // InfoTypeの設定（オプションで指定されていれば使用、なければデフォルト全て）
+    const infoTypeNames =
+      options?.infoTypes && options.infoTypes.length > 0
+        ? options.infoTypes
+        : DEFAULT_INFO_TYPES;
+    const infoTypes = infoTypeNames.map((name: string) => ({ name }));
 
     // 非識別化リクエスト
     // replaceWithInfoTypeConfig を使用して [EMAIL_ADDRESS] のような形式で置換
@@ -161,9 +170,13 @@ export const maskText = async (text: string): Promise<TextMaskingResult> => {
  * DLPはJSON構造を維持するため、オブジェクトをそのまま渡して結果を受け取れる。
  *
  * @param data マスキング対象のJSONデータ
+ * @param options マスキングオプション（使用するInfoType一覧）
  * @returns マスキング結果（元の型を維持）
  */
-export const maskJson = async <T>(data: T): Promise<JsonMaskingResult<T>> => {
+export const maskJson = async <T>(
+  data: T,
+  options?: PiiMaskingOptions,
+): Promise<JsonMaskingResult<T>> => {
   const startTime = Date.now();
 
   // null/undefinedの場合はそのまま返す
@@ -178,7 +191,7 @@ export const maskJson = async <T>(data: T): Promise<JsonMaskingResult<T>> => {
 
   // JSONにシリアライズしてマスキング
   const jsonText = JSON.stringify(data);
-  const result = await maskText(jsonText);
+  const result = await maskText(jsonText, options);
 
   // マスキング結果をパースして返す
   try {
