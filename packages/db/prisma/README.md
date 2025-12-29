@@ -463,6 +463,12 @@ erDiagram
   Int errorCode "nullable"
   String(500) errorSummary "nullable"
   String(512) userAgent "nullable"
+  Boolean piiMaskingEnabled
+  Int piiDetectedRequestCount "nullable"
+  Int piiDetectedResponseCount "nullable"
+  String piiDetectedInfoTypes
+  Json piiDetectionDetailsRequest "nullable"
+  Json piiDetectionDetailsResponse "nullable"
   DateTime createdAt
 }
 ```
@@ -489,6 +495,20 @@ MCPサーバーインスタンスへのリクエストログ
     > MCPエラーコード（例: -32600, -32601, -32603）
   - `errorSummary`: エラーメッセージ要約（最大500文字、詳細はBigQuery）
   - `userAgent`: ユーザーエージェント（最大512文字に制限）
+  - `piiMaskingEnabled`
+    > PIIマスキングが有効だったかどうか
+    > MCPサーバー設定でpiiMaskingEnabledがtrueかつGCP DLPが利用可能な場合にtrue
+  - `piiDetectedRequestCount`: リクエストPII検出件数
+  - `piiDetectedResponseCount`: レスポンスPII検出件数
+  - `piiDetectedInfoTypes`
+    > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+    > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
+  - `piiDetectionDetailsRequest`
+    > リクエスト検出詳細（InfoType別の件数）
+    > 例: {"EMAIL_ADDRESS": 2, "PHONE_NUMBER": 1}
+  - `piiDetectionDetailsResponse`
+    > レスポンス検出詳細（InfoType別の件数）
+    > 例: {"EMAIL_ADDRESS": 1, "CREDIT_CARD_NUMBER": 3}
   - `createdAt`: 
 
 

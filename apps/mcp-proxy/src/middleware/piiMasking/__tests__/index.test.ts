@@ -8,8 +8,10 @@ const mockGetPiiMaskingConfig = vi.fn();
 const mockMaskMcpMessage = vi.fn();
 
 vi.mock("../../../libs/piiMasking/index.js", () => ({
-  getPiiMaskingConfig: async () => mockGetPiiMaskingConfig(),
-  maskMcpMessage: (...args: unknown[]) => mockMaskMcpMessage(...args),
+  getPiiMaskingConfig: (): Promise<unknown> =>
+    Promise.resolve(mockGetPiiMaskingConfig() as unknown),
+  maskMcpMessage: (...args: unknown[]): Promise<unknown> =>
+    Promise.resolve(mockMaskMcpMessage(...args) as unknown),
 }));
 
 // logger をモック
@@ -23,8 +25,9 @@ vi.mock("../../../libs/logger/index.js", () => ({
 const mockUpdateExecutionContext = vi.fn();
 
 vi.mock("../../requestLogging/context.js", () => ({
-  updateExecutionContext: (updates: unknown) =>
-    mockUpdateExecutionContext(updates),
+  updateExecutionContext: (updates: unknown): void => {
+    mockUpdateExecutionContext(updates);
+  },
 }));
 
 // モックコンテキストを作成するヘルパー
@@ -71,14 +74,10 @@ const createAuthContext = (
 });
 
 describe("piiMaskingMiddleware", () => {
-  let nextCalled: boolean;
-  const mockNext = vi.fn(async () => {
-    nextCalled = true;
-  });
+  const mockNext = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    nextCalled = false;
     mockGetPiiMaskingConfig.mockReturnValue({
       projectId: "test-project",
       isAvailable: true,
@@ -86,6 +85,7 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValue({
       maskedText: "masked-text",
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
     mockUpdateExecutionContext.mockClear();
@@ -129,6 +129,7 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValue({
       maskedText: '{"email":"****@*******.com"}',
       detectedCount: 1,
+      detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
       processingTimeMs: 50,
     });
 
@@ -154,12 +155,14 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: '{"query":"hello"}',
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
     // レスポンスマスキング（PII検出あり）
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: '{"email":"****@*******.com"}',
       detectedCount: 1,
+      detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
       processingTimeMs: 50,
     });
 
@@ -201,6 +204,7 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: "request",
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
 
@@ -220,6 +224,7 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValue({
       maskedText: "no-pii-text",
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
 
@@ -264,6 +269,7 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: "request",
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
     // レスポンスマスキングでエラー
@@ -283,14 +289,17 @@ describe("piiMaskingMiddleware", () => {
   });
 
   test("マスキング済みリクエストボディを実行コンテキストに保存", async () => {
+    const requestPiiList = [{ infoType: "EMAIL_ADDRESS", count: 1 }];
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: '{"email":"****@*******.com"}',
       detectedCount: 1,
+      detectedPiiList: requestPiiList,
       processingTimeMs: 50,
     });
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: '{"result":"ok"}',
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
 
@@ -303,9 +312,10 @@ describe("piiMaskingMiddleware", () => {
 
     await piiMaskingMiddleware(c, mockNext);
 
-    // マスキング済みリクエストボディが実行コンテキストに保存されていることを確認
+    // マスキング済みリクエストボディとPII検出情報が実行コンテキストに保存されていることを確認
     expect(mockUpdateExecutionContext).toHaveBeenCalledWith({
       requestBody: '{"email":"****@*******.com"}',
+      piiDetectedRequest: requestPiiList,
     });
   });
 
@@ -313,11 +323,14 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: '{"query":"hello"}',
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
+    const responsePiiList = [{ infoType: "EMAIL_ADDRESS", count: 1 }];
     mockMaskMcpMessage.mockResolvedValueOnce({
       maskedText: '{"result":"****@*******.com"}',
       detectedCount: 1,
+      detectedPiiList: responsePiiList,
       processingTimeMs: 50,
     });
 
@@ -330,9 +343,10 @@ describe("piiMaskingMiddleware", () => {
 
     await piiMaskingMiddleware(c, mockNext);
 
-    // マスキング済みレスポンスボディが実行コンテキストに保存されていることを確認
+    // マスキング済みレスポンスボディとPII検出情報が実行コンテキストに保存されていることを確認
     expect(mockUpdateExecutionContext).toHaveBeenCalledWith({
       responseBody: '{"result":"****@*******.com"}',
+      piiDetectedResponse: responsePiiList,
     });
   });
 
@@ -340,6 +354,7 @@ describe("piiMaskingMiddleware", () => {
     mockMaskMcpMessage.mockResolvedValue({
       maskedText: "no-pii-text",
       detectedCount: 0,
+      detectedPiiList: [],
       processingTimeMs: 10,
     });
 
@@ -355,9 +370,34 @@ describe("piiMaskingMiddleware", () => {
     // PII未検出でも実行コンテキストに保存される（ログ記録時に再マスキング不要）
     expect(mockUpdateExecutionContext).toHaveBeenCalledWith({
       requestBody: "no-pii-text",
+      piiDetectedRequest: [],
     });
     expect(mockUpdateExecutionContext).toHaveBeenCalledWith({
       responseBody: "no-pii-text",
+      piiDetectedResponse: [],
+    });
+  });
+
+  test("piiMaskingEnabledをコンテキストに保存", async () => {
+    mockMaskMcpMessage.mockResolvedValue({
+      maskedText: "text",
+      detectedCount: 0,
+      detectedPiiList: [],
+      processingTimeMs: 10,
+    });
+
+    const authContext = createAuthContext({ piiMaskingEnabled: true });
+    const c = createMockContext({
+      authContext,
+      requestBody: "request",
+      responseBody: "response",
+    });
+
+    await piiMaskingMiddleware(c, mockNext);
+
+    // piiMaskingEnabled が true としてコンテキストに保存されていることを確認
+    expect(mockUpdateExecutionContext).toHaveBeenCalledWith({
+      piiMaskingEnabled: true,
     });
   });
 });

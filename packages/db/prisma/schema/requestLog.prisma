@@ -40,6 +40,24 @@ model McpServerRequestLog {
   /// ユーザーエージェント（最大512文字に制限）
   userAgent String? @db.VarChar(512)
 
+  /// PIIマスキングが有効だったかどうか
+  /// MCPサーバー設定でpiiMaskingEnabledがtrueかつGCP DLPが利用可能な場合にtrue
+  piiMaskingEnabled Boolean @default(false)
+
+  /// リクエストPII検出件数
+  piiDetectedRequestCount Int?
+  /// レスポンスPII検出件数
+  piiDetectedResponseCount Int?
+  /// 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+  /// 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
+  piiDetectedInfoTypes String[]
+  /// リクエスト検出詳細（InfoType別の件数）
+  /// 例: {"EMAIL_ADDRESS": 2, "PHONE_NUMBER": 1}
+  piiDetectionDetailsRequest  Json? @db.JsonB
+  /// レスポンス検出詳細（InfoType別の件数）
+  /// 例: {"EMAIL_ADDRESS": 1, "CREDIT_CARD_NUMBER": 3}
+  piiDetectionDetailsResponse Json? @db.JsonB
+
   createdAt DateTime @default(now())
 
   /// パフォーマンス最適化用インデックス
