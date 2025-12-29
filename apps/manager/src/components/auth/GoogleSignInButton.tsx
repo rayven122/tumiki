@@ -20,7 +20,7 @@ export const GoogleSignInButton = ({
   return (
     <button
       onClick={handleSignIn}
-      className="group relative flex w-full items-center justify-between overflow-hidden border-2 border-black bg-white px-6 py-4 font-bold text-gray-800 shadow-[var(--shadow-hard)] transition-all duration-200 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[var(--shadow-hard-sm)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+      className="group relative flex w-full items-center justify-between overflow-hidden border-2 border-black bg-white px-6 py-4 font-bold text-gray-800 shadow-(--shadow-hard) transition-all duration-200 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-(--shadow-hard-sm) active:translate-x-1 active:translate-y-1 active:shadow-none"
     >
       <div className="absolute inset-0 bg-linear-to-r from-indigo-50 to-purple-50 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></div>
       <div className="relative flex items-center gap-4">

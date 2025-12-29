@@ -1,9 +1,14 @@
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import Link from "next/link";
-import Image from "next/image";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getSessionInfo } from "~/lib/auth/session-utils";
+import {
+  PageContainer,
+  NeoBrutalismCard,
+  LogoWithGlow,
+  GradientTitle,
+} from "@/components/ui/neo-brutalism";
 
 type SignInPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;
@@ -40,29 +45,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-indigo-50 via-white to-purple-50 p-4">
+    <PageContainer>
       <div className="w-full max-w-md">
-        <div className="relative w-full border-2 border-black bg-white p-8 shadow-[var(--shadow-hard)] transition-all duration-300 hover:shadow-[6px_6px_0px_0px_#000000] sm:p-10">
+        <NeoBrutalismCard className="p-8 sm:p-10">
           {/* ヘッダー */}
           <div className="mb-10 text-center">
             {/* アイコン */}
-            <div className="mb-8 flex justify-center">
-              <div className="relative">
-                <div className="absolute -inset-2 animate-pulse bg-linear-to-r from-indigo-500 to-purple-500 opacity-20 blur-xl"></div>
-                <Image
-                  src="/favicon/logo.svg"
-                  alt="Tumiki"
-                  width={80}
-                  height={80}
-                  className="relative h-20 w-20"
-                />
-              </div>
-            </div>
+            <LogoWithGlow className="mb-8" />
 
             {/* タイトル */}
-            <h1 className="mb-3 bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+            <GradientTitle className="mb-3 text-3xl">
               おかえりなさい
-            </h1>
+            </GradientTitle>
             <p className="text-sm font-medium text-gray-600">
               MCPサーバー統合管理プラットフォーム
               <br />
@@ -92,8 +86,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </Link>
             </p>
           </div>
-        </div>
+        </NeoBrutalismCard>
       </div>
-    </div>
+    </PageContainer>
   );
 }
