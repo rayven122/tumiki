@@ -4,7 +4,7 @@
  * Pub/Sub経由でBigQueryにMCPリクエストログを送信する
  */
 
-import type { TransportType } from "@tumiki/db/server";
+import type { TransportType, PiiMaskingMode } from "@tumiki/db/server";
 import { logError } from "../logger/index.js";
 import { getMcpLogsTopic, isBigQueryLoggingEnabled } from "./index.js";
 
@@ -48,7 +48,7 @@ export type McpLogEntry = {
   postgresLogFailed?: boolean;
 
   // PII検出情報
-  piiMaskingEnabled?: boolean;
+  piiMaskingMode?: PiiMaskingMode;
   piiDetectedRequestCount?: number;
   piiDetectedResponseCount?: number;
   piiDetectedInfoTypes?: string[];

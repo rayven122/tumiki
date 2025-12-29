@@ -1,4 +1,4 @@
-import type { PrismaTransactionClient } from "@tumiki/db";
+import { type PrismaTransactionClient, PiiMaskingMode } from "@tumiki/db";
 import type { McpServerId } from "@/schema/ids";
 
 type FindByIdInput = {
@@ -42,8 +42,12 @@ export const findById = async (
   }
 
   // 各テンプレートインスタンスのツールに isEnabled を追加
+  // UI互換性のため piiMaskingEnabled を piiMaskingMode から計算
+  const piiMaskingEnabled = server.piiMaskingMode !== PiiMaskingMode.DISABLED;
+
   return {
     ...server,
+    piiMaskingEnabled,
     templateInstances: server.templateInstances.map((instance) => {
       const allowedToolIds = new Set(
         instance.allowedTools.map((tool) => tool.id),

@@ -463,7 +463,7 @@ erDiagram
   Int errorCode "nullable"
   String(500) errorSummary "nullable"
   String(512) userAgent "nullable"
-  Boolean piiMaskingEnabled
+  PiiMaskingMode piiMaskingMode
   Int piiDetectedRequestCount "nullable"
   Int piiDetectedResponseCount "nullable"
   String piiDetectedInfoTypes
@@ -495,9 +495,9 @@ MCPサーバーインスタンスへのリクエストログ
     > MCPエラーコード（例: -32600, -32601, -32603）
   - `errorSummary`: エラーメッセージ要約（最大500文字、詳細はBigQuery）
   - `userAgent`: ユーザーエージェント（最大512文字に制限）
-  - `piiMaskingEnabled`
-    > PIIマスキングが有効だったかどうか
-    > MCPサーバー設定でpiiMaskingEnabledがtrueかつGCP DLPが利用可能な場合にtrue
+  - `piiMaskingMode`
+    > PIIマスキングモード（DISABLEDの場合はマスキング無効）
+    > MCPサーバー設定のpiiMaskingModeをそのまま記録
   - `piiDetectedRequestCount`: リクエストPII検出件数
   - `piiDetectedResponseCount`: レスポンスPII検出件数
   - `piiDetectedInfoTypes`
@@ -534,7 +534,8 @@ erDiagram
   AuthType authType
   String organizationId FK
   Int displayOrder
-  Boolean piiMaskingEnabled
+  PiiMaskingMode piiMaskingMode
+  String piiInfoTypes
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -653,10 +654,15 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
   - `authType`: 使用する認証タイプ（API_KEY, OAUTH, NONE）
   - `organizationId`: 組織
   - `displayOrder`: 表示順序（ユーザーごと）
-  - `piiMaskingEnabled`
-    > PIIマスキング設定（GCP DLPによるマスキング）
-    > true: リクエスト/レスポンスをGCP DLPでマスキング
-    > false: マスキングなし（デフォルト）
+  - `piiMaskingMode`
+    > PIIマスキングモード設定（GCP DLPによるマスキング）
+    > DISABLED: マスキングなし（デフォルト）
+    > REQUEST: リクエストのみマスキング
+    > RESPONSE: レスポンスのみマスキング
+    > BOTH: 両方マスキング
+  - `piiInfoTypes`
+    > 使用するInfoType一覧（GCP DLP）
+    > 空配列の場合は全InfoTypeを使用
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ

@@ -12,7 +12,7 @@ import {
   getExecutionContext,
   type McpExecutionContext,
 } from "./context.js";
-import { db, type Prisma } from "@tumiki/db/server";
+import { db, type Prisma, PiiMaskingMode } from "@tumiki/db/server";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { publishMcpLog } from "../../libs/pubsub/mcpLogger.js";
 
@@ -83,7 +83,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     : 0;
 
   // PII検出情報を計算
-  const piiMaskingEnabled = executionContext.piiMaskingEnabled ?? false;
+  const piiMaskingMode =
+    executionContext.piiMaskingMode ?? PiiMaskingMode.DISABLED;
   const piiDetectedRequest = executionContext.piiDetectedRequest ?? [];
   const piiDetectedResponse = executionContext.piiDetectedResponse ?? [];
 
@@ -138,7 +139,7 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     userAgent: c.req.header("user-agent"),
 
     // PII検出情報
-    piiMaskingEnabled,
+    piiMaskingMode,
     piiDetectedRequestCount,
     piiDetectedResponseCount,
     piiDetectedInfoTypes,

@@ -76,3 +76,11 @@ export const DEFAULT_INFO_TYPES = [
 ] as const;
 
 export type InfoType = (typeof DEFAULT_INFO_TYPES)[number];
+
+/**
+ * PIIマスキングオプション
+ */
+export type PiiMaskingOptions = {
+  /** 使用するInfoType一覧（空配列 = DEFAULT_INFO_TYPES全て使用） */
+  infoTypes?: readonly string[];
+};
