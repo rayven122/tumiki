@@ -101,7 +101,7 @@ export const maskText = async (
     const infoTypes = infoTypeNames.map((name: string) => ({ name }));
 
     // 非識別化リクエスト
-    // replaceWithInfoTypeConfig を使用して [EMAIL_ADDRESS] のような形式で置換
+    // replaceWithInfoTypeConfig で自動的に [INFO_TYPE] 形式に置換
     const [response] = await client.deidentifyContent({
       parent,
       deidentifyConfig: {
@@ -204,9 +204,13 @@ export const maskJson = async <T>(
     };
   } catch (error) {
     // パースに失敗した場合は元のデータを返す（フェイルオープン）
+
     logError("マスキング結果のJSONパースに失敗しました", error as Error, {
       originalDataType: typeof data,
+      originalTextLength: jsonText.length,
       maskedTextLength: result.maskedText.length,
+      detectedCount: result.detectedCount,
+      detectedPiiList: result.detectedPiiList,
     });
     return {
       maskedData: data,

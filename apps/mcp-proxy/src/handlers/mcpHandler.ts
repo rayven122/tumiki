@@ -33,8 +33,10 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
 
     // HTTPトランスポートを作成（ステートレスモード）
     // Cloud Run向けにセッション管理を無効化
+    // enableJsonResponse: true でSSEではなくJSON形式でレスポンスを返す
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // ステートレスモード
+      enableJsonResponse: true, // PIIマスキングのためJSON形式でレスポンス
     });
 
     // サーバーとトランスポートを接続

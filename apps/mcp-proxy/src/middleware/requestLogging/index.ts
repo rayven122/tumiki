@@ -64,13 +64,20 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     return;
   }
 
-  // 実行コンテキストからリクエスト/レスポンスボディを取得
-  // piiMaskingMiddlewareで既にマスキング済みのデータがあればそれを使用
-  // なければ元のデータを取得
+  // リクエストボディ: piiMaskingMiddlewareでマスキング済みならそれを使用
   const requestBody: unknown =
     executionContext.requestBody ?? (await c.req.json());
-  const responseBody =
-    executionContext.responseBody ?? (await c.res.clone().json());
+  // レスポンスボディ: piiMaskingMiddlewareでマスキング済みResponseに置換されているため
+  // c.resから取得すればマスキング済みデータが得られる
+  // JSONパースを試み、失敗したらテキストとして取得
+  const responseText = await c.res.clone().text();
+  let responseBody: unknown;
+  try {
+    responseBody = JSON.parse(responseText);
+  } catch {
+    // JSONパースに失敗した場合はテキストとして扱う
+    responseBody = responseText;
+  }
 
   // UTF-8エンコードでのバイト数を計算（マスキング後のサイズ）
   const textEncoder = new TextEncoder();
