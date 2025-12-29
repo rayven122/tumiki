@@ -3,16 +3,6 @@
  */
 
 /**
- * PIIマスキングの設定
- */
-export type PiiMaskingConfig = {
-  /** GCPプロジェクトID */
-  projectId: string;
-  /** PIIマスキング機能が利用可能かどうか */
-  isAvailable: boolean;
-};
-
-/**
  * 検出されたPII情報
  */
 export type DetectedPii = {
@@ -25,7 +15,7 @@ export type DetectedPii = {
 /**
  * テキストマスキング結果
  */
-export type MaskingResult = {
+export type TextMaskingResult = {
   /** マスキング後のテキスト */
   maskedText: string;
   /** 検出されたPIIの総数 */

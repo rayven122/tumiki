@@ -28,8 +28,8 @@ export type McpExecutionContext = {
   errorDetails?: unknown; // エラーオブジェクト全体
 
   // リクエスト・レスポンスボディ（piiMaskingEnabled が true の時、PIIマスキング済み）
-  requestBody?: string;
-  responseBody?: string;
+  requestBody?: unknown;
+  responseBody?: unknown;
 
   // PII検出情報
   /** PIIマスキングが実行されたかどうか（設定有効かつGCP DLP利用可能な場合にtrue） */

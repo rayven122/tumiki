@@ -5,7 +5,6 @@
 
 export {
   closeDlpClient,
-  getPiiMaskingConfig,
   maskJson,
   maskText,
   resetProjectIdCache,
@@ -16,6 +15,5 @@ export {
   type DetectedPii,
   type InfoType,
   type JsonMaskingResult,
-  type MaskingResult,
-  type PiiMaskingConfig,
+  type TextMaskingResult,
 } from "./types.js";

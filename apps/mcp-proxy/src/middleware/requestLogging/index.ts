@@ -67,14 +67,15 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   // 実行コンテキストからリクエスト/レスポンスボディを取得
   // piiMaskingMiddlewareで既にマスキング済みのデータがあればそれを使用
   // なければ元のデータを取得
-  const requestText = executionContext.requestBody ?? (await c.req.text());
-  const responseText =
-    executionContext.responseBody ?? (await c.res.clone().text());
+  const requestBody: unknown =
+    executionContext.requestBody ?? (await c.req.json());
+  const responseBody =
+    executionContext.responseBody ?? (await c.res.clone().json());
 
   // UTF-8エンコードでのバイト数を計算（マスキング後のサイズ）
   const textEncoder = new TextEncoder();
-  const inputBytes = textEncoder.encode(requestText).length;
-  const outputBytes = textEncoder.encode(responseText).length;
+  const inputBytes = textEncoder.encode(JSON.stringify(requestBody)).length;
+  const outputBytes = textEncoder.encode(JSON.stringify(responseBody)).length;
 
   // 実行時間を計算
   const durationMs = executionContext.requestStartTime
@@ -162,8 +163,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     // PostgreSQL記録成功時はそのIDを使用、失敗時は新しいUUIDを生成
     id: requestLogId ?? crypto.randomUUID(),
     timestamp: new Date().toISOString(),
-    requestBody: requestText,
-    responseBody: responseText,
+    requestBody,
+    responseBody,
     // エラー情報（インシデント追跡用）
     errorCode: executionContext.errorCode,
     errorMessage: executionContext.errorMessage,

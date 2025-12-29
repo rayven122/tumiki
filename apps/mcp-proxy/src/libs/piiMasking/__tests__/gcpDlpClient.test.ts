@@ -1,5 +1,4 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import type { PiiMaskingConfig } from "../types.js";
 
 // モック関数を定義
 const mockDeidentifyContent = vi.fn();
@@ -99,16 +98,6 @@ describe("getPiiMaskingConfig", () => {
 });
 
 describe("maskText", () => {
-  const validConfig: PiiMaskingConfig = {
-    projectId: "test-project",
-    isAvailable: true,
-  };
-
-  const disabledConfig: PiiMaskingConfig = {
-    projectId: "test-project",
-    isAvailable: false,
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -117,31 +106,19 @@ describe("maskText", () => {
   test("空文字列の場合はそのまま返す", async () => {
     const { maskText } = await import("../gcpDlpClient.js");
 
-    const result = await maskText("", validConfig);
+    const result = await maskText("");
 
     expect(result.maskedText).toBe("");
     expect(result.detectedCount).toBe(0);
     expect(mockDeidentifyContent).not.toHaveBeenCalled();
   });
 
-  test("設定が無効な場合はそのまま返す", async () => {
+  test("プロジェクトIDが取得できない場合はそのまま返す", async () => {
+    mockGetProjectId.mockRejectedValue(new Error("No credentials"));
+
     const { maskText } = await import("../gcpDlpClient.js");
 
-    const result = await maskText("test@example.com", disabledConfig);
-
-    expect(result.maskedText).toBe("test@example.com");
-    expect(result.detectedCount).toBe(0);
-    expect(mockDeidentifyContent).not.toHaveBeenCalled();
-  });
-
-  test("projectId が空の場合はそのまま返す", async () => {
-    const { maskText } = await import("../gcpDlpClient.js");
-    const configWithoutProject: PiiMaskingConfig = {
-      projectId: "",
-      isAvailable: true,
-    };
-
-    const result = await maskText("test@example.com", configWithoutProject);
+    const result = await maskText("test@example.com");
 
     expect(result.maskedText).toBe("test@example.com");
     expect(result.detectedCount).toBe(0);
@@ -149,6 +126,7 @@ describe("maskText", () => {
   });
 
   test("正常にマスキングが行われる", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockResolvedValue([
       {
         item: { value: "****@*******.com" },
@@ -162,7 +140,7 @@ describe("maskText", () => {
 
     const { maskText } = await import("../gcpDlpClient.js");
 
-    const result = await maskText("test@example.com", validConfig);
+    const result = await maskText("test@example.com");
 
     expect(result.maskedText).toBe("****@*******.com");
     expect(result.detectedCount).toBe(1);
@@ -179,6 +157,7 @@ describe("maskText", () => {
   });
 
   test("複数のPIIが検出される場合", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockResolvedValue([
       {
         item: { value: "****@*******.com, ************" },
@@ -193,10 +172,7 @@ describe("maskText", () => {
 
     const { maskText } = await import("../gcpDlpClient.js");
 
-    const result = await maskText(
-      "test@example.com, 090-1234-5678",
-      validConfig,
-    );
+    const result = await maskText("test@example.com, 090-1234-5678");
 
     expect(result.detectedCount).toBe(2);
     expect(result.detectedPiiList).toStrictEqual([
@@ -206,17 +182,19 @@ describe("maskText", () => {
   });
 
   test("DLP APIエラー時は元のテキストを返す（フェイルオープン）", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockRejectedValue(new Error("DLP API error"));
 
     const { maskText } = await import("../gcpDlpClient.js");
 
-    const result = await maskText("test@example.com", validConfig);
+    const result = await maskText("test@example.com");
 
     expect(result.maskedText).toBe("test@example.com");
     expect(result.detectedCount).toBe(0);
   });
 
   test("レスポンスにitemがない場合は元のテキストを返す", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockResolvedValue([
       {
         item: null,
@@ -226,9 +204,93 @@ describe("maskText", () => {
 
     const { maskText } = await import("../gcpDlpClient.js");
 
-    const result = await maskText("test@example.com", validConfig);
+    const result = await maskText("test@example.com");
 
     expect(result.maskedText).toBe("test@example.com");
+  });
+});
+
+describe("maskJson", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  test("nullの場合はそのまま返す", async () => {
+    const { maskJson } = await import("../gcpDlpClient.js");
+
+    const result = await maskJson(null);
+
+    expect(result.maskedData).toBe(null);
+    expect(result.detectedCount).toBe(0);
+    expect(mockDeidentifyContent).not.toHaveBeenCalled();
+  });
+
+  test("undefinedの場合はそのまま返す", async () => {
+    const { maskJson } = await import("../gcpDlpClient.js");
+
+    const result = await maskJson(undefined);
+
+    expect(result.maskedData).toBe(undefined);
+    expect(result.detectedCount).toBe(0);
+    expect(mockDeidentifyContent).not.toHaveBeenCalled();
+  });
+
+  test("オブジェクトのマスキングが行われる", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
+    mockDeidentifyContent.mockResolvedValue([
+      {
+        item: { value: '{"email":"[EMAIL_ADDRESS]"}' },
+        overview: {
+          transformationSummaries: [
+            { infoType: { name: "EMAIL_ADDRESS" }, results: [{ count: "1" }] },
+          ],
+        },
+      },
+    ]);
+
+    const { maskJson } = await import("../gcpDlpClient.js");
+
+    const result = await maskJson({ email: "test@example.com" });
+
+    expect(result.maskedData).toStrictEqual({ email: "[EMAIL_ADDRESS]" });
+    expect(result.detectedCount).toBe(1);
+    expect(result.detectedPiiList).toStrictEqual([
+      { infoType: "EMAIL_ADDRESS", count: 1 },
+    ]);
+  });
+
+  test("プロジェクトIDが取得できない場合は元のデータを返す", async () => {
+    mockGetProjectId.mockRejectedValue(new Error("No credentials"));
+
+    const { maskJson } = await import("../gcpDlpClient.js");
+    const originalData = { email: "test@example.com" };
+
+    const result = await maskJson(originalData);
+
+    expect(result.maskedData).toStrictEqual(originalData);
+    expect(result.detectedCount).toBe(0);
+    expect(mockDeidentifyContent).not.toHaveBeenCalled();
+  });
+
+  test("マスキング結果のJSONパースに失敗した場合は元のデータを返す", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
+    // 不正なJSONを返す
+    mockDeidentifyContent.mockResolvedValue([
+      {
+        item: { value: "invalid json {{{" },
+        overview: { transformationSummaries: [] },
+      },
+    ]);
+
+    const { maskJson } = await import("../gcpDlpClient.js");
+    const originalData = { email: "test@example.com" };
+
+    const result = await maskJson(originalData);
+
+    // フェイルオープン: 元のデータを返す
+    expect(result.maskedData).toStrictEqual(originalData);
+    expect(result.detectedCount).toBe(0);
   });
 });
 
@@ -239,6 +301,7 @@ describe("closeDlpClient", () => {
   });
 
   test("クライアントを正常にクローズする", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
     mockClose.mockResolvedValue(undefined);
     mockDeidentifyContent.mockResolvedValue([
       {
@@ -249,13 +312,8 @@ describe("closeDlpClient", () => {
 
     const { maskText, closeDlpClient } = await import("../gcpDlpClient.js");
 
-    const config: PiiMaskingConfig = {
-      projectId: "test-project",
-      isAvailable: true,
-    };
-
     // まずマスキングを実行してクライアントを初期化
-    await maskText("test", config);
+    await maskText("test");
 
     // クローズを実行
     await closeDlpClient();

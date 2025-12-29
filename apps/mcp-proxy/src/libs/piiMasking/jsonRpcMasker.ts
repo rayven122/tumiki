@@ -12,13 +12,7 @@
 
 import { z } from "zod";
 
-import {
-  maskJson,
-  maskText,
-  type DetectedPii,
-  type PiiMaskingConfig,
-  type MaskingResult,
-} from "./index.js";
+import { maskJson, type DetectedPii, type JsonMaskingResult } from "./index.js";
 
 /**
  * JSON-RPC 2.0 リクエストスキーマ
@@ -75,55 +69,34 @@ const isJsonRpcRequest = (
  * JSON-RPC 2.0メッセージの場合、PIIが含まれる可能性のある
  * params/result/error.data のみをDLPに送信してコストを削減する。
  *
- * @param messageText MCPメッセージのテキスト（JSON-RPC 2.0形式）
- * @param config PIIマスキング設定
- * @returns マスキング結果
+ * @param messageData MCPメッセージデータ（JSON-RPC 2.0形式）
+ * @returns マスキング結果（パース済みJSON）
  */
 export const maskMcpMessage = async (
-  messageText: string,
-  config: PiiMaskingConfig,
-): Promise<MaskingResult> => {
+  messageData: unknown,
+): Promise<JsonMaskingResult<unknown>> => {
   const startTime = Date.now();
 
-  // 空文字列の場合はそのまま返す
-  if (!messageText.trim()) {
+  // nullやundefinedの場合はそのまま返す
+  if (messageData === null || messageData === undefined) {
     return {
-      maskedText: messageText,
+      maskedData: messageData,
       detectedCount: 0,
       detectedPiiList: [],
       processingTimeMs: 0,
     };
   }
 
-  // 設定が無効な場合はそのまま返す
-  if (!config.isAvailable || !config.projectId) {
-    return {
-      maskedText: messageText,
-      detectedCount: 0,
-      detectedPiiList: [],
-      processingTimeMs: Date.now() - startTime,
-    };
-  }
-
-  // JSONパースを試みる
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(messageText);
-  } catch {
-    // JSONパースに失敗した場合は通常のテキストマスキング
-    return maskText(messageText, config);
-  }
-
   // 配列の場合（バッチリクエスト）は全体をマスキング
-  if (Array.isArray(parsed)) {
-    return maskText(messageText, config);
+  if (Array.isArray(messageData)) {
+    return maskJson(messageData);
   }
 
   // JSON-RPCメッセージのバリデーション
-  const parseResult = jsonRpcMessageSchema.safeParse(parsed);
+  const parseResult = jsonRpcMessageSchema.safeParse(messageData);
   if (!parseResult.success) {
-    // JSON-RPCメッセージでない場合は通常のテキストマスキング
-    return maskText(messageText, config);
+    // JSON-RPCメッセージでない場合は全体をマスキング
+    return maskJson(messageData);
   }
 
   const message = parseResult.data;
@@ -135,7 +108,7 @@ export const maskMcpMessage = async (
   if (isJsonRpcRequest(message)) {
     // リクエスト: params をマスキング
     if (message.params !== undefined) {
-      const result = await maskJson(message.params, config);
+      const result = await maskJson(message.params);
       totalDetected += result.detectedCount;
       allDetectedPii.push(...result.detectedPiiList);
       message.params = result.maskedData;
@@ -143,13 +116,13 @@ export const maskMcpMessage = async (
   } else {
     // レスポンス: result または error.data をマスキング
     if (message.result !== undefined) {
-      const result = await maskJson(message.result, config);
+      const result = await maskJson(message.result);
       totalDetected += result.detectedCount;
       allDetectedPii.push(...result.detectedPiiList);
       message.result = result.maskedData;
     }
     if (message.error?.data !== undefined) {
-      const result = await maskJson(message.error.data, config);
+      const result = await maskJson(message.error.data);
       totalDetected += result.detectedCount;
       allDetectedPii.push(...result.detectedPiiList);
       message.error.data = result.maskedData;
@@ -167,7 +140,7 @@ export const maskMcpMessage = async (
   );
 
   return {
-    maskedText: JSON.stringify(message),
+    maskedData: message,
     detectedCount: totalDetected,
     detectedPiiList,
     processingTimeMs: Date.now() - startTime,

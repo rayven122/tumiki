@@ -12,8 +12,7 @@ import {
   DEFAULT_INFO_TYPES,
   type DetectedPii,
   type JsonMaskingResult,
-  type MaskingResult,
-  type PiiMaskingConfig,
+  type TextMaskingResult,
 } from "./types.js";
 
 // DLPクライアントのシングルトンインスタンス
@@ -58,32 +57,25 @@ const getProjectId = async (): Promise<string | null> => {
 };
 
 /**
- * PIIマスキング設定を取得
- * GCP認証情報からプロジェクトIDを自動検出
- */
-export const getPiiMaskingConfig = async (): Promise<PiiMaskingConfig> => {
-  const projectId = await getProjectId();
-
-  return {
-    projectId: projectId ?? "",
-    isAvailable: projectId !== null,
-  };
-};
-
-/**
  * テキストをGCP DLPでマスキング
  * @param text マスキング対象のテキスト
- * @param config PIIマスキング設定
- * @returns マスキング結果
+ * @returns マスキング結果（テキスト）
  */
-export const maskText = async (
-  text: string,
-  config: PiiMaskingConfig,
-): Promise<MaskingResult> => {
+export const maskText = async (text: string): Promise<TextMaskingResult> => {
   const startTime = Date.now();
 
-  // 空文字列や設定が無効な場合はそのまま返す
-  if (!text || !config.isAvailable || !config.projectId) {
+  // 空文字列の場合はそのまま返す
+  if (!text) {
+    return {
+      maskedText: text,
+      detectedCount: 0,
+      detectedPiiList: [],
+      processingTimeMs: Date.now() - startTime,
+    };
+  }
+
+  const projectId = await getProjectId();
+  if (!projectId) {
     return {
       maskedText: text,
       detectedCount: 0,
@@ -94,7 +86,7 @@ export const maskText = async (
 
   try {
     const client = getDlpClient();
-    const parent = `projects/${config.projectId}/locations/global`;
+    const parent = `projects/${projectId}/locations/global`;
 
     // InfoTypeの設定
     const infoTypes = DEFAULT_INFO_TYPES.map((name: string) => ({ name }));
@@ -169,13 +161,9 @@ export const maskText = async (
  * DLPはJSON構造を維持するため、オブジェクトをそのまま渡して結果を受け取れる。
  *
  * @param data マスキング対象のJSONデータ
- * @param config PIIマスキング設定
  * @returns マスキング結果（元の型を維持）
  */
-export const maskJson = async <T>(
-  data: T,
-  config: PiiMaskingConfig,
-): Promise<JsonMaskingResult<T>> => {
+export const maskJson = async <T>(data: T): Promise<JsonMaskingResult<T>> => {
   const startTime = Date.now();
 
   // null/undefinedの場合はそのまま返す
@@ -188,19 +176,9 @@ export const maskJson = async <T>(
     };
   }
 
-  // 設定が無効な場合はそのまま返す
-  if (!config.isAvailable || !config.projectId) {
-    return {
-      maskedData: data,
-      detectedCount: 0,
-      detectedPiiList: [],
-      processingTimeMs: Date.now() - startTime,
-    };
-  }
-
   // JSONにシリアライズしてマスキング
   const jsonText = JSON.stringify(data);
-  const result = await maskText(jsonText, config);
+  const result = await maskText(jsonText);
 
   // マスキング結果をパースして返す
   try {
