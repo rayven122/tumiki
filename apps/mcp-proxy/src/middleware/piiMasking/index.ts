@@ -18,7 +18,7 @@
 import type { Context, Next } from "hono";
 import { PiiMaskingMode } from "@tumiki/db";
 import type { HonoEnv } from "../../types/index.js";
-import { logDebug, logError, logInfo } from "../../libs/logger/index.js";
+import { logError, logInfo } from "../../libs/logger/index.js";
 import {
   maskJson,
   maskText,
@@ -44,9 +44,6 @@ export const piiMaskingMiddleware = async (
 
   // PIIマスキングが無効の場合はスキップ
   if (!piiMaskingMode || piiMaskingMode === PiiMaskingMode.DISABLED) {
-    logDebug("PII masking skipped: disabled for this MCP server", {
-      mcpServerId: authContext?.mcpServerId,
-    });
     return next();
   }
 
@@ -127,10 +124,8 @@ const maskRequestBody = async (
 /**
  * レスポンスボディをマスキング
  *
- * Content-Type に応じて適切なマスキング処理を実行:
- * - application/json: JSON-RPC 2.0対応マスキング
- * - text/event-stream: SSE形式のマスキング
- * - その他: スキップ（元のレスポンスをそのまま返す）
+ * enableJsonResponse: true により、レスポンスは常にJSON形式。
+ * JSON-RPC 2.0の規格を維持しながら、result/error.data内のデータのみをマスキング。
  *
  * @param c - Honoコンテキスト
  * @param options - マスキングオプション（使用するInfoType一覧）
@@ -140,73 +135,45 @@ const maskResponseBody = async (
   options?: PiiMaskingOptions,
 ): Promise<Response> => {
   const originalResponse = c.res;
-  const contentType = originalResponse.headers.get("content-type") ?? "";
-
-  // SSEの場合は専用関数でマスキング
-  if (contentType.includes("text/event-stream")) {
-    return maskSseResponseBody(c, options);
-  }
-
-  // JSON以外はスキップ
-  if (!contentType.includes("application/json")) {
-    logDebug("PII masking skipped: unsupported content type", { contentType });
-    return originalResponse;
-  }
-
-  return maskJsonResponseBody(c, options);
-};
-
-/**
- * JSONレスポンスボディをマスキング
- *
- * JSON-RPC 2.0の規格を維持しながら、result/error.data内のデータのみをマスキング。
- * マスキング済みボディで新しいResponseを作成して返す。
- *
- * @param c - Honoコンテキスト
- * @param options - マスキングオプション（使用するInfoType一覧）
- */
-const maskJsonResponseBody = async (
-  c: Context<HonoEnv>,
-  options?: PiiMaskingOptions,
-): Promise<Response> => {
-  const originalResponse = c.res;
 
   try {
+    // JSONレスポンスとしてパース
     const responseData: unknown = await originalResponse.clone().json();
 
     // JSON-RPC 2.0対応マスキング（jsonrpc, id, error.code, error.message は維持）
     const result = await maskJson(responseData, options);
 
-    // マスキング済みレスポンスボディと検出情報を実行コンテキストに保存
-    // PIIが検出されなくても保存（ログ記録時に再マスキング不要にするため）
+    // 検出情報を実行コンテキストに保存
     updateExecutionContext({
-      responseBody: result.maskedData,
       piiDetectedResponse: result.detectedPiiList,
     });
 
     // マスキング済みレスポンスで新しいResponseを作成
-    return new Response(JSON.stringify(result.maskedData), {
+    // 上流のミドルウェアが戻り値をreturnしない場合でもc.resが使われるため、
+    // c.resを明示的に更新する
+    const maskedResponse = new Response(JSON.stringify(result.maskedData), {
       status: originalResponse.status,
       statusText: originalResponse.statusText,
       headers: originalResponse.headers,
     });
-  } catch (error) {
-    logError("Failed to mask response body", error as Error);
-    // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
-    return originalResponse;
+    c.res = maskedResponse;
+    return maskedResponse;
+  } catch {
+    // JSONパースに失敗した場合はテキストとしてマスキング（フォールバック）
+    return maskTextResponseBody(c, options);
   }
 };
 
 /**
- * SSEレスポンスボディをマスキング
+ * テキストレスポンスボディをマスキング（フォールバック用）
  *
- * DLPはテキスト内のPIIパターンのみをマスキングし、データ構造は変更しないため、
- * SSEテキスト全体を直接 maskText に渡すだけでよい。
+ * JSONパースに失敗した場合のフォールバック処理。
+ * テキスト全体をGCP DLPでマスキングする。
  *
  * @param c - Honoコンテキスト
  * @param options - マスキングオプション（使用するInfoType一覧）
  */
-const maskSseResponseBody = async (
+const maskTextResponseBody = async (
   c: Context<HonoEnv>,
   options?: PiiMaskingOptions,
 ): Promise<Response> => {
@@ -216,19 +183,21 @@ const maskSseResponseBody = async (
     const text = await originalResponse.clone().text();
     const result = await maskText(text, options);
 
-    // マスキング済みレスポンスボディと検出情報を実行コンテキストに保存
+    // 検出情報を実行コンテキストに保存
     updateExecutionContext({
-      responseBody: result.maskedText,
       piiDetectedResponse: result.detectedPiiList,
     });
 
-    return new Response(result.maskedText, {
+    // マスキング済みレスポンスで新しいResponseを作成
+    const maskedResponse = new Response(result.maskedText, {
       status: originalResponse.status,
       statusText: originalResponse.statusText,
       headers: originalResponse.headers,
     });
+    c.res = maskedResponse;
+    return maskedResponse;
   } catch (error) {
-    logError("Failed to mask SSE response body", error as Error);
+    logError("Failed to mask text response body", error as Error);
     // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
     return originalResponse;
   }

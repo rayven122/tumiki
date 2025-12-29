@@ -62,7 +62,7 @@ describe("maskText", () => {
     mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockResolvedValue([
       {
-        item: { value: "****@*******.com" },
+        item: { value: "[EMAIL_ADDRESS]" },
         overview: {
           transformationSummaries: [
             { infoType: { name: "EMAIL_ADDRESS" }, results: [{ count: "1" }] },
@@ -75,7 +75,7 @@ describe("maskText", () => {
 
     const result = await maskText("test@example.com");
 
-    expect(result.maskedText).toBe("****@*******.com");
+    expect(result.maskedText).toBe("[EMAIL_ADDRESS]");
     expect(result.detectedCount).toBe(1);
     expect(result.detectedPiiList).toStrictEqual([
       { infoType: "EMAIL_ADDRESS", count: 1 },
@@ -89,11 +89,43 @@ describe("maskText", () => {
     );
   });
 
+  test("replaceWithInfoTypeConfigで置換設定される", async () => {
+    mockGetProjectId.mockResolvedValue("test-project");
+    mockDeidentifyContent.mockResolvedValue([
+      {
+        item: { value: "[EMAIL_ADDRESS]" },
+        overview: { transformationSummaries: [] },
+      },
+    ]);
+
+    const { maskText } = await import("../gcpDlpClient.js");
+
+    await maskText("test@example.com", { infoTypes: ["EMAIL_ADDRESS"] });
+
+    // replaceWithInfoTypeConfig が正しく設定されていることを確認
+    expect(mockDeidentifyContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deidentifyConfig: {
+          infoTypeTransformations: {
+            transformations: [
+              {
+                infoTypes: [{ name: "EMAIL_ADDRESS" }],
+                primitiveTransformation: {
+                  replaceWithInfoTypeConfig: {},
+                },
+              },
+            ],
+          },
+        },
+      }),
+    );
+  });
+
   test("複数のPIIが検出される場合", async () => {
     mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockResolvedValue([
       {
-        item: { value: "****@*******.com, ************" },
+        item: { value: "[EMAIL_ADDRESS], [PHONE_NUMBER]" },
         overview: {
           transformationSummaries: [
             { infoType: { name: "EMAIL_ADDRESS" }, results: [{ count: "1" }] },

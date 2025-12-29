@@ -27,9 +27,8 @@ export type McpExecutionContext = {
   errorMessage?: string;
   errorDetails?: unknown; // エラーオブジェクト全体
 
-  // リクエスト・レスポンスボディ（piiMaskingMode が DISABLED 以外の時、PIIマスキング済み）
+  // リクエストボディ（piiMaskingMode が DISABLED 以外の時、PIIマスキング済み）
   requestBody?: unknown;
-  responseBody?: unknown;
 
   // PII検出情報
   /** PIIマスキングモード */
