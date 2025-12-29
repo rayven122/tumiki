@@ -106,18 +106,18 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   }
   const piiDetectedInfoTypes = Array.from(allInfoTypes);
 
-  // 方向別・InfoType別の詳細
-  const requestDetails: Record<string, number> = {};
-  for (const pii of piiDetectedRequest) {
-    requestDetails[pii.infoType] = pii.count;
-  }
-  const responseDetails: Record<string, number> = {};
-  for (const pii of piiDetectedResponse) {
-    responseDetails[pii.infoType] = pii.count;
-  }
-  const piiDetectionDetails =
-    piiDetectedRequest.length > 0 || piiDetectedResponse.length > 0
-      ? { request: requestDetails, response: responseDetails }
+  // InfoType別の詳細（リクエスト/レスポンス別々に保存）
+  const piiDetectionDetailsRequest: Record<string, number> | undefined =
+    piiDetectedRequest.length > 0
+      ? Object.fromEntries(
+          piiDetectedRequest.map((pii) => [pii.infoType, pii.count]),
+        )
+      : undefined;
+  const piiDetectionDetailsResponse: Record<string, number> | undefined =
+    piiDetectedResponse.length > 0
+      ? Object.fromEntries(
+          piiDetectedResponse.map((pii) => [pii.infoType, pii.count]),
+        )
       : undefined;
 
   // ログデータを構築
@@ -143,7 +143,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     piiDetectedRequestCount,
     piiDetectedResponseCount,
     piiDetectedInfoTypes,
-    piiDetectionDetails,
+    piiDetectionDetailsRequest,
+    piiDetectionDetailsResponse,
   };
 
   // PostgreSQLにログ記録し、IDを取得

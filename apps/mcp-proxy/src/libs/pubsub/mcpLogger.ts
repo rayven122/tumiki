@@ -52,7 +52,8 @@ export type McpLogEntry = {
   piiDetectedRequestCount?: number;
   piiDetectedResponseCount?: number;
   piiDetectedInfoTypes?: string[];
-  piiDetectionDetails?: Record<string, Record<string, number>>;
+  piiDetectionDetailsRequest?: Record<string, number>;
+  piiDetectionDetailsResponse?: Record<string, number>;
 };
 
 /**
