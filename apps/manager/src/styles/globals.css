@@ -115,6 +115,11 @@
   --color-gray-600: oklch(0.554 0.046 257.417);
   --color-gray-700: oklch(0.455 0.052 257.417);
   --color-gray-900: oklch(0.129 0.042 264.695);
+
+  /* NeoBrutalism shadows */
+  --shadow-hard: 4px 4px 0px 0px #000000;
+  --shadow-hard-sm: 2px 2px 0px 0px #000000;
+  --shadow-hard-primary: 4px 4px 0px 0px oklch(0.56 0.12 255.508);
 }
 
 @layer base {

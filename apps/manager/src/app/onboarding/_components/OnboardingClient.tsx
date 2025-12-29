@@ -4,14 +4,6 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User, Users, ArrowRight, CheckCircle, Lock } from "lucide-react";
 import { clsx } from "clsx";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -109,14 +101,14 @@ export const OnboardingClient = ({
   };
 
   return (
-    <div className="container mx-auto flex min-h-screen items-center justify-center py-10">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-indigo-50 via-white to-purple-50 p-4">
       <div className="w-full max-w-4xl">
         {/* ヘッダー */}
         <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold">
+          <h1 className="mb-4 bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent">
             {isFirstLogin ? "Tumikiへようこそ！" : "新しいチームを作成"}
           </h1>
-          <p className="text-muted-foreground text-xl">
+          <p className="text-xl font-medium text-gray-600">
             {isFirstLogin
               ? "MCPサーバー管理を始めるために、利用形態を選択してください"
               : "チーム利用のための新しいチームを作成します。利用形態を選択してください"}
@@ -126,122 +118,140 @@ export const OnboardingClient = ({
         {/* オプション選択 */}
         <div className="grid gap-8 md:grid-cols-2">
           {/* 個人利用オプション */}
-          <Card
+          <div
             className={clsx(
-              "transition-all hover:shadow-lg",
-              selectedOption === "personal" && "ring-primary ring-2",
-              "cursor-pointer",
+              "group relative cursor-pointer overflow-hidden border-2 border-black bg-white p-8 shadow-[var(--shadow-hard)] transition-all duration-200 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[var(--shadow-hard-sm)]",
+              selectedOption === "personal" &&
+                "ring-4 ring-indigo-500 ring-offset-2",
             )}
             onClick={handlePersonalUse}
           >
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-                <User className="h-8 w-8 text-blue-600" />
+            {/* グラデーションオーバーレイ */}
+            <div className="absolute inset-0 bg-linear-to-br from-indigo-50 to-blue-50 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></div>
+
+            <div className="relative text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center">
+                <div className="relative">
+                  <div className="absolute -inset-1 animate-pulse bg-linear-to-r from-indigo-400 to-blue-400 opacity-0 blur-lg transition-opacity duration-200 group-hover:opacity-30"></div>
+                  <div className="relative flex h-16 w-16 items-center justify-center border-2 border-black bg-indigo-100">
+                    <User className="h-8 w-8 text-indigo-600" />
+                  </div>
+                </div>
               </div>
-              <CardTitle className="text-2xl">個人利用</CardTitle>
-              <CardDescription className="text-base">
+              <h2 className="mb-2 text-2xl font-bold text-gray-900">
+                個人利用
+              </h2>
+              <p className="mb-6 text-base text-gray-600">
                 一人でMCPサーバーを管理したい
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  簡単セットアップ
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  即座に利用開始
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  すべての機能を利用可能
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  後からチーム招待も可能
-                </li>
-              </ul>
-              <Button className="mt-6 w-full" tabIndex={-1} asChild>
-                <span>
-                  {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </span>
-              </Button>
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            <ul className="relative mb-6 space-y-3 text-sm">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                簡単セットアップ
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                即座に利用開始
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                すべての機能を利用可能
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                後からチーム招待も可能
+              </li>
+            </ul>
+            <button className="relative flex w-full items-center justify-center border-2 border-black bg-indigo-600 px-6 py-3 font-bold text-white shadow-[var(--shadow-hard-sm)] transition-all duration-200 hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-indigo-700 hover:shadow-none">
+              {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
 
           {/* チーム利用オプション */}
-          <Card
+          <div
             className={clsx(
-              "relative transition-all",
-              selectedOption === "team" && "ring-primary ring-2",
+              "group relative overflow-hidden border-2 border-black bg-white p-8 shadow-[var(--shadow-hard)] transition-all duration-200",
+              selectedOption === "team" &&
+                "ring-4 ring-purple-500 ring-offset-2",
               isTeamUnlocked
-                ? "cursor-pointer hover:shadow-lg"
+                ? "cursor-pointer hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[var(--shadow-hard-sm)]"
                 : "cursor-not-allowed",
             )}
             onClick={handleTeamUse}
           >
+            {/* グラデーションオーバーレイ */}
+            {isTeamUnlocked && (
+              <div className="absolute inset-0 bg-linear-to-br from-purple-50 to-pink-50 opacity-0 transition-opacity duration-200 group-hover:opacity-100"></div>
+            )}
+
             {/* ロックオーバーレイ */}
             {!isTeamUnlocked && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/50">
-                <div className="flex flex-col items-center gap-3 rounded-lg bg-white px-6 py-4 shadow-2xl">
-                  <Lock className="h-12 w-12 text-gray-400" strokeWidth={2} />
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-700">
-                      ウェイティングリスト登録者限定
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      アーリーアクセスをお待ちください
-                    </p>
+              <div className="absolute inset-0 z-10 flex items-center justify-center backdrop-blur-sm">
+                <div className="relative">
+                  <div className="absolute -inset-3 animate-pulse bg-linear-to-r from-gray-300 to-gray-400 opacity-20 blur-xl"></div>
+                  <div className="relative flex flex-col items-center gap-3 border-2 border-black bg-white px-6 py-4 shadow-[var(--shadow-hard)]">
+                    <Lock className="h-12 w-12 text-gray-400" strokeWidth={2} />
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-gray-700">
+                        ウェイティングリスト登録者限定
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        アーリーアクセスをお待ちください
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
-                <Users className="h-8 w-8 text-purple-600" />
+            <div className="relative text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center">
+                <div className="relative">
+                  <div className="absolute -inset-1 animate-pulse bg-linear-to-r from-purple-400 to-pink-400 opacity-0 blur-lg transition-opacity duration-200 group-hover:opacity-30"></div>
+                  <div className="relative flex h-16 w-16 items-center justify-center border-2 border-black bg-purple-100">
+                    <Users className="h-8 w-8 text-purple-600" />
+                  </div>
+                </div>
               </div>
-              <CardTitle className="text-2xl">チーム利用</CardTitle>
-              <CardDescription className="text-base">
+              <h2 className="mb-2 text-2xl font-bold text-gray-900">
+                チーム利用
+              </h2>
+              <p className="mb-6 text-base text-gray-600">
                 チームでMCPサーバーを共有管理したい
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  チーム名とロゴを設定
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  メンバー招待機能
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  ロールベース権限管理
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  チーム用ダッシュボード
-                </li>
-              </ul>
-              <Button
-                className="mt-6 w-full"
-                variant="outline"
-                tabIndex={-1}
-                asChild
-              >
-                <span
-                  className={clsx(!isTeamUnlocked && "pointer-events-none")}
-                >
-                  チームを作成
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </span>
-              </Button>
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            <ul className="relative mb-6 space-y-3 text-sm">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                チーム名とロゴを設定
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                メンバー招待機能
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                ロールベース権限管理
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                チーム用ダッシュボード
+              </li>
+            </ul>
+            <button
+              className={clsx(
+                "relative flex w-full items-center justify-center border-2 border-black px-6 py-3 font-bold shadow-[var(--shadow-hard-sm)] transition-all duration-200",
+                isTeamUnlocked
+                  ? "bg-purple-600 text-white hover:translate-x-[1px] hover:translate-y-[1px] hover:bg-purple-700 hover:shadow-none"
+                  : "pointer-events-none bg-gray-100 text-gray-400 opacity-50",
+              )}
+            >
+              チームを作成
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
         </div>
       </div>
 

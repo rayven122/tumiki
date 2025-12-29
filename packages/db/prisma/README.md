@@ -696,7 +696,7 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
   - `id`: 
   - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
   - `mcpServerId`: 関連するMCPサーバー
-  - `mcpServerTemplateId`: 関��するMCPサーバーテンプレート
+  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
   - `isEnabled`: このテンプレートインスタンスが有効か
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 
