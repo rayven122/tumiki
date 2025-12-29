@@ -211,12 +211,12 @@ export const maskJson = async <T>(
       detectedPiiList: result.detectedPiiList,
       processingTimeMs: Date.now() - startTime,
     };
-  } catch {
+  } catch (error) {
     // パースに失敗した場合は元のデータを返す（フェイルオープン）
-    logError(
-      "マスキング結果のJSONパースに失敗しました",
-      new Error("JSON parse failed after masking"),
-    );
+    logError("マスキング結果のJSONパースに失敗しました", error as Error, {
+      originalDataType: typeof data,
+      maskedTextLength: result.maskedText.length,
+    });
     return {
       maskedData: data,
       detectedCount: 0,
