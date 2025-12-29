@@ -47,9 +47,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
     // SDKがJSON-RPC 2.0プロトコル（検証、ルーティング、エラー処理）を自動処理
     // PIIマスキング済みボディがある場合はそれを使用（piiMaskingMiddlewareで設定）
     const executionContext = getExecutionContext();
-    const body: unknown = executionContext?.requestBody
-      ? JSON.parse(executionContext.requestBody)
-      : await c.req.json();
+    const body: unknown = executionContext?.requestBody ?? (await c.req.json());
     await transport.handleRequest(req, res, body);
 
     // Node.jsレスポンスをFetch APIレスポンスに変換して返却

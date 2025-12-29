@@ -1,9 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
-import type {
-  PiiMaskingConfig,
-  MaskingResult,
-  JsonMaskingResult,
-} from "../types.js";
+import type { JsonMaskingResult } from "../types.js";
 
 // テスト用のJSON-RPC型定義
 type JsonRpcRequest = {
@@ -30,74 +26,37 @@ type JsonRpcErrorResponse = {
 };
 
 // モック関数を定義
-const mockMaskText =
-  vi.fn<(text: string, config: PiiMaskingConfig) => Promise<MaskingResult>>();
 const mockMaskJson =
-  vi.fn<
-    <T>(data: T, config: PiiMaskingConfig) => Promise<JsonMaskingResult<T>>
-  >();
+  vi.fn<(data: unknown) => Promise<JsonMaskingResult<unknown>>>();
 
 // gcpDlpClient をモック
 vi.mock("../gcpDlpClient.js", () => ({
-  maskText: (text: string, config: PiiMaskingConfig) =>
-    mockMaskText(text, config),
-  maskJson: <T>(data: T, config: PiiMaskingConfig) =>
-    mockMaskJson(data, config),
+  maskJson: (data: unknown) => mockMaskJson(data),
 }));
 
 describe("maskMcpMessage", () => {
-  const validConfig: PiiMaskingConfig = {
-    projectId: "test-project",
-    isAvailable: true,
-  };
-
-  const disabledConfig: PiiMaskingConfig = {
-    projectId: "test-project",
-    isAvailable: false,
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
   });
 
-  test("空文字列の場合はそのまま返す", async () => {
+  test("nullの場合はそのまま返す", async () => {
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const result = await maskMcpMessage("", validConfig);
+    const result = await maskMcpMessage(null);
 
-    expect(result.maskedText).toBe("");
+    expect(result.maskedData).toBe(null);
     expect(result.detectedCount).toBe(0);
-    expect(mockMaskText).not.toHaveBeenCalled();
     expect(mockMaskJson).not.toHaveBeenCalled();
   });
 
-  test("空白のみの場合はそのまま返す", async () => {
+  test("undefinedの場合はそのまま返す", async () => {
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const result = await maskMcpMessage("   ", validConfig);
+    const result = await maskMcpMessage(undefined);
 
-    expect(result.maskedText).toBe("   ");
+    expect(result.maskedData).toBe(undefined);
     expect(result.detectedCount).toBe(0);
-    expect(mockMaskText).not.toHaveBeenCalled();
-    expect(mockMaskJson).not.toHaveBeenCalled();
-  });
-
-  test("設定が無効な場合はそのまま返す", async () => {
-    const { maskMcpMessage } = await import("../jsonRpcMasker.js");
-
-    const message = JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "tools/call",
-      params: { email: "test@example.com" },
-    });
-
-    const result = await maskMcpMessage(message, disabledConfig);
-
-    expect(result.maskedText).toBe(message);
-    expect(result.detectedCount).toBe(0);
-    expect(mockMaskText).not.toHaveBeenCalled();
     expect(mockMaskJson).not.toHaveBeenCalled();
   });
 
@@ -111,28 +70,25 @@ describe("maskMcpMessage", () => {
 
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const originalMessage = JSON.stringify({
+    const originalMessage = {
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
       params: { email: "test@example.com" },
-    });
+    };
 
-    const result = await maskMcpMessage(originalMessage, validConfig);
+    const result = await maskMcpMessage(originalMessage);
 
     // paramsのみがマスキングされる（jsonrpc, id, methodは送信されない）
     expect(mockMaskJson).toHaveBeenCalledTimes(1);
-    expect(mockMaskJson).toHaveBeenCalledWith(
-      { email: "test@example.com" },
-      validConfig,
-    );
+    expect(mockMaskJson).toHaveBeenCalledWith({ email: "test@example.com" });
 
     // 結果のJSON-RPC構造が維持される
-    const parsed = JSON.parse(result.maskedText) as JsonRpcRequest;
-    expect(parsed.jsonrpc).toBe("2.0");
-    expect(parsed.id).toBe(1);
-    expect(parsed.method).toBe("tools/call");
-    expect((parsed.params as Record<string, string>).email).toBe(
+    const masked = result.maskedData as JsonRpcRequest;
+    expect(masked.jsonrpc).toBe("2.0");
+    expect(masked.id).toBe(1);
+    expect(masked.method).toBe("tools/call");
+    expect((masked.params as Record<string, string>).email).toBe(
       "[EMAIL_ADDRESS]",
     );
   });
@@ -147,25 +103,22 @@ describe("maskMcpMessage", () => {
 
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const originalMessage = JSON.stringify({
+    const originalMessage = {
       jsonrpc: "2.0",
       id: 1,
       result: { name: "John Doe" },
-    });
+    };
 
-    const result = await maskMcpMessage(originalMessage, validConfig);
+    const result = await maskMcpMessage(originalMessage);
 
     // resultのみがマスキングされる
     expect(mockMaskJson).toHaveBeenCalledTimes(1);
-    expect(mockMaskJson).toHaveBeenCalledWith(
-      { name: "John Doe" },
-      validConfig,
-    );
+    expect(mockMaskJson).toHaveBeenCalledWith({ name: "John Doe" });
 
-    const parsed = JSON.parse(result.maskedText) as JsonRpcResponse;
-    expect(parsed.jsonrpc).toBe("2.0");
-    expect(parsed.id).toBe(1);
-    expect((parsed.result as Record<string, string>).name).toBe(
+    const masked = result.maskedData as JsonRpcResponse;
+    expect(masked.jsonrpc).toBe("2.0");
+    expect(masked.id).toBe(1);
+    expect((masked.result as Record<string, string>).name).toBe(
       "[PERSON_NAME]",
     );
   });
@@ -180,7 +133,7 @@ describe("maskMcpMessage", () => {
 
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const originalMessage = JSON.stringify({
+    const originalMessage = {
       jsonrpc: "2.0",
       id: 1,
       error: {
@@ -188,21 +141,18 @@ describe("maskMcpMessage", () => {
         message: "Invalid Request",
         data: { sensitive: "user secret" },
       },
-    });
+    };
 
-    const result = await maskMcpMessage(originalMessage, validConfig);
+    const result = await maskMcpMessage(originalMessage);
 
     // error.dataのみがマスキングされる（code, messageは送信されない）
     expect(mockMaskJson).toHaveBeenCalledTimes(1);
-    expect(mockMaskJson).toHaveBeenCalledWith(
-      { sensitive: "user secret" },
-      validConfig,
-    );
+    expect(mockMaskJson).toHaveBeenCalledWith({ sensitive: "user secret" });
 
-    const parsed = JSON.parse(result.maskedText) as JsonRpcErrorResponse;
-    expect(parsed.error.code).toBe(-32600);
-    expect(parsed.error.message).toBe("Invalid Request");
-    expect((parsed.error.data as Record<string, string>).sensitive).toBe(
+    const masked = result.maskedData as JsonRpcErrorResponse;
+    expect(masked.error.code).toBe(-32600);
+    expect(masked.error.message).toBe("Invalid Request");
+    expect((masked.error.data as Record<string, string>).sensitive).toBe(
       "[SENSITIVE_DATA]",
     );
   });
@@ -210,44 +160,45 @@ describe("maskMcpMessage", () => {
   test("paramsがない場合はマスキングを呼ばない", async () => {
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const message = JSON.stringify({
+    const message = {
       jsonrpc: "2.0",
       id: 1,
       method: "ping",
-    });
+    };
 
-    const result = await maskMcpMessage(message, validConfig);
+    const result = await maskMcpMessage(message);
 
     expect(mockMaskJson).not.toHaveBeenCalled();
     expect(result.detectedCount).toBe(0);
+    expect((result.maskedData as JsonRpcRequest).method).toBe("ping");
   });
 
   test("resultがないレスポンスはマスキングを呼ばない", async () => {
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const message = JSON.stringify({
+    const message = {
       jsonrpc: "2.0",
       id: 1,
-    });
+    };
 
-    const result = await maskMcpMessage(message, validConfig);
+    const result = await maskMcpMessage(message);
 
     expect(mockMaskJson).not.toHaveBeenCalled();
     expect(result.detectedCount).toBe(0);
   });
 
-  test("バッチリクエストは全体をmaskTextに送信する", async () => {
-    const maskedMessages = JSON.stringify([
+  test("バッチリクエスト（配列）は全体をmaskJsonに送信する", async () => {
+    const maskedMessages = [
       {
         jsonrpc: "2.0",
         id: 1,
         method: "tools/call",
         params: { email: "[EMAIL_ADDRESS]" },
       },
-    ]);
+    ];
 
-    mockMaskText.mockResolvedValue({
-      maskedText: maskedMessages,
+    mockMaskJson.mockResolvedValue({
+      maskedData: maskedMessages,
       detectedCount: 1,
       detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
       processingTimeMs: 50,
@@ -255,26 +206,26 @@ describe("maskMcpMessage", () => {
 
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const originalMessages = JSON.stringify([
+    const originalMessages = [
       {
         jsonrpc: "2.0",
         id: 1,
         method: "tools/call",
         params: { email: "test@example.com" },
       },
-    ]);
+    ];
 
-    const result = await maskMcpMessage(originalMessages, validConfig);
+    const result = await maskMcpMessage(originalMessages);
 
-    // バッチリクエストは全体がmaskTextに送信される
-    expect(mockMaskText).toHaveBeenCalledWith(originalMessages, validConfig);
-    expect(mockMaskJson).not.toHaveBeenCalled();
-    expect(result.maskedText).toBe(maskedMessages);
+    // バッチリクエストは全体がmaskJsonに送信される
+    expect(mockMaskJson).toHaveBeenCalledWith(originalMessages);
+    expect(result.maskedData).toStrictEqual(maskedMessages);
   });
 
-  test("非JSON-RPCメッセージは全体をmaskTextに送信する", async () => {
-    mockMaskText.mockResolvedValue({
-      maskedText: JSON.stringify({ email: "[EMAIL_ADDRESS]" }),
+  test("非JSON-RPCメッセージは全体をmaskJsonに送信する", async () => {
+    const maskedMessage = { email: "[EMAIL_ADDRESS]" };
+    mockMaskJson.mockResolvedValue({
+      maskedData: maskedMessage,
       detectedCount: 1,
       detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
       processingTimeMs: 50,
@@ -282,34 +233,15 @@ describe("maskMcpMessage", () => {
 
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const message = JSON.stringify({
+    const message = {
       notJsonRpc: true,
       email: "test@example.com",
-    });
+    };
 
-    await maskMcpMessage(message, validConfig);
+    await maskMcpMessage(message);
 
-    // JSON-RPCでないため全体がmaskTextに送信される
-    expect(mockMaskText).toHaveBeenCalledWith(message, validConfig);
-    expect(mockMaskJson).not.toHaveBeenCalled();
-  });
-
-  test("JSONパースに失敗した場合は全体をmaskTextに送信する", async () => {
-    mockMaskText.mockResolvedValue({
-      maskedText: "invalid json with [EMAIL_ADDRESS]",
-      detectedCount: 1,
-      detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
-      processingTimeMs: 50,
-    });
-
-    const { maskMcpMessage } = await import("../jsonRpcMasker.js");
-
-    const text = "invalid json with email";
-
-    await maskMcpMessage(text, validConfig);
-
-    expect(mockMaskText).toHaveBeenCalledWith(text, validConfig);
-    expect(mockMaskJson).not.toHaveBeenCalled();
+    // JSON-RPCでないため全体がmaskJsonに送信される
+    expect(mockMaskJson).toHaveBeenCalledWith(message);
   });
 
   test("ネストされたオブジェクト内のPIIもマスキングされる", async () => {
@@ -324,19 +256,60 @@ describe("maskMcpMessage", () => {
 
     const { maskMcpMessage } = await import("../jsonRpcMasker.js");
 
-    const originalMessage = JSON.stringify({
+    const originalMessage = {
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
       params: {
         user: { contact: { email: "test@example.com" } },
       },
-    });
+    };
 
-    const result = await maskMcpMessage(originalMessage, validConfig);
-    const parsed = JSON.parse(result.maskedText) as JsonRpcRequest;
-    const params = parsed.params as { user: { contact: { email: string } } };
+    const result = await maskMcpMessage(originalMessage);
+    const masked = result.maskedData as JsonRpcRequest;
+    const params = masked.params as { user: { contact: { email: string } } };
 
     expect(params.user.contact.email).toBe("[EMAIL_ADDRESS]");
+  });
+
+  test("同じInfoTypeが複数回検出された場合はマージされる", async () => {
+    // paramsにemail、responseにもemailがある場合を想定
+    // ただし実際にはリクエストかレスポンスのどちらかなので、
+    // paramsとresultの両方がある（テスト用に想定外のケース）
+    mockMaskJson
+      .mockResolvedValueOnce({
+        maskedData: { email1: "[EMAIL_ADDRESS]" },
+        detectedCount: 1,
+        detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
+        processingTimeMs: 25,
+      })
+      .mockResolvedValueOnce({
+        maskedData: { email2: "[EMAIL_ADDRESS]" },
+        detectedCount: 1,
+        detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
+        processingTimeMs: 25,
+      });
+
+    const { maskMcpMessage } = await import("../jsonRpcMasker.js");
+
+    // resultとerror.dataの両方がある（実際には稀なケース）
+    const originalMessage = {
+      jsonrpc: "2.0",
+      id: 1,
+      result: { email1: "test1@example.com" },
+      error: {
+        code: -32600,
+        message: "Error",
+        data: { email2: "test2@example.com" },
+      },
+    };
+
+    const result = await maskMcpMessage(originalMessage);
+
+    // 同じInfoTypeがマージされる
+    expect(result.detectedCount).toBe(2);
+    expect(result.detectedPiiList).toStrictEqual([
+      { infoType: "EMAIL_ADDRESS", count: 2 },
+    ]);
   });
 });

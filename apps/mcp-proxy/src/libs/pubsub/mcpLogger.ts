@@ -38,9 +38,9 @@ export type McpLogEntry = {
   userAgent?: string;
   timestamp: string;
 
-  // リクエスト・レスポンス（JSON文字列）
-  requestBody?: string;
-  responseBody?: string;
+  // リクエスト・レスポンス（JSONオブジェクト）
+  requestBody?: unknown;
+  responseBody?: unknown;
 
   // PostgreSQLログ記録状態
   // true: PostgreSQLへの記録が失敗（idはBigQuery用に生成されたUUID）
