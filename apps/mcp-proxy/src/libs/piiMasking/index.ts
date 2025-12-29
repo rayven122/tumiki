@@ -13,6 +13,7 @@ export {
 export { maskMcpMessage } from "./jsonRpcMasker.js";
 export {
   DEFAULT_INFO_TYPES,
+  type DetectedPii,
   type InfoType,
   type JsonMaskingResult,
   type MaskingResult,
