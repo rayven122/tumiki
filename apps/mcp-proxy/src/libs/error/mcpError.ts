@@ -2,14 +2,20 @@
  * MCP (JSON-RPC 2.0) エラー生成ユーティリティ
  */
 
+import { error as jsonrpcError, JsonRpcError } from "jsonrpc-lite";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+
+/**
+ * JSON-RPC 2.0 ID型
+ */
+type JsonRpcId = string | number | null;
 
 /**
  * JSON-RPC 2.0 エラーレスポンス型
  */
 export type McpErrorResponse = {
   jsonrpc: "2.0";
-  id: string | number | null;
+  id: JsonRpcId;
   error: {
     code: number;
     message: string;
@@ -35,15 +41,19 @@ export const createMcpError = (
   code: number,
   message: string,
   data?: unknown,
-  requestId: string | number | null = null,
+  requestId: JsonRpcId = null,
 ): McpErrorResponse => {
+  const errorObj = jsonrpcError(
+    requestId,
+    new JsonRpcError(message, code, data),
+  );
   return {
     jsonrpc: "2.0",
-    id: requestId,
+    id: errorObj.id,
     error: {
-      code,
-      message,
-      ...(data !== undefined && { data }),
+      code: errorObj.error.code,
+      message: errorObj.error.message,
+      ...(errorObj.error.data !== undefined && { data: errorObj.error.data }),
     },
   };
 };

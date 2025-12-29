@@ -20,7 +20,8 @@ import { PiiMaskingMode } from "@tumiki/db";
 import type { HonoEnv } from "../../types/index.js";
 import { logDebug, logError, logInfo } from "../../libs/logger/index.js";
 import {
-  maskMcpMessage,
+  maskJson,
+  maskText,
   type PiiMaskingOptions,
 } from "../../libs/piiMasking/index.js";
 import { updateExecutionContext } from "../requestLogging/context.js";
@@ -108,7 +109,7 @@ const maskRequestBody = async (
     }
 
     // JSON-RPC 2.0対応マスキング（jsonrpc, id, method は維持）
-    const result = await maskMcpMessage(requestData, options);
+    const result = await maskJson(requestData, options);
 
     // マスキング済みリクエストボディと検出情報を実行コンテキストに保存
     // mcpHandlerがこのコンテキストからマスキング済みボディを取得して使用
@@ -126,8 +127,10 @@ const maskRequestBody = async (
 /**
  * レスポンスボディをマスキング
  *
- * JSON-RPC 2.0の規格を維持しながら、result/error.data内のデータのみをマスキング。
- * マスキング済みボディで新しいResponseを作成して返す。
+ * Content-Type に応じて適切なマスキング処理を実行:
+ * - application/json: JSON-RPC 2.0対応マスキング
+ * - text/event-stream: SSE形式のマスキング
+ * - その他: スキップ（元のレスポンスをそのまま返す）
  *
  * @param c - Honoコンテキスト
  * @param options - マスキングオプション（使用するInfoType一覧）
@@ -137,12 +140,42 @@ const maskResponseBody = async (
   options?: PiiMaskingOptions,
 ): Promise<Response> => {
   const originalResponse = c.res;
+  const contentType = originalResponse.headers.get("content-type") ?? "";
+
+  // SSEの場合は専用関数でマスキング
+  if (contentType.includes("text/event-stream")) {
+    return maskSseResponseBody(c, options);
+  }
+
+  // JSON以外はスキップ
+  if (!contentType.includes("application/json")) {
+    logDebug("PII masking skipped: unsupported content type", { contentType });
+    return originalResponse;
+  }
+
+  return maskJsonResponseBody(c, options);
+};
+
+/**
+ * JSONレスポンスボディをマスキング
+ *
+ * JSON-RPC 2.0の規格を維持しながら、result/error.data内のデータのみをマスキング。
+ * マスキング済みボディで新しいResponseを作成して返す。
+ *
+ * @param c - Honoコンテキスト
+ * @param options - マスキングオプション（使用するInfoType一覧）
+ */
+const maskJsonResponseBody = async (
+  c: Context<HonoEnv>,
+  options?: PiiMaskingOptions,
+): Promise<Response> => {
+  const originalResponse = c.res;
 
   try {
     const responseData: unknown = await originalResponse.clone().json();
 
     // JSON-RPC 2.0対応マスキング（jsonrpc, id, error.code, error.message は維持）
-    const result = await maskMcpMessage(responseData, options);
+    const result = await maskJson(responseData, options);
 
     // マスキング済みレスポンスボディと検出情報を実行コンテキストに保存
     // PIIが検出されなくても保存（ログ記録時に再マスキング不要にするため）
@@ -159,6 +192,43 @@ const maskResponseBody = async (
     });
   } catch (error) {
     logError("Failed to mask response body", error as Error);
+    // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
+    return originalResponse;
+  }
+};
+
+/**
+ * SSEレスポンスボディをマスキング
+ *
+ * DLPはテキスト内のPIIパターンのみをマスキングし、データ構造は変更しないため、
+ * SSEテキスト全体を直接 maskText に渡すだけでよい。
+ *
+ * @param c - Honoコンテキスト
+ * @param options - マスキングオプション（使用するInfoType一覧）
+ */
+const maskSseResponseBody = async (
+  c: Context<HonoEnv>,
+  options?: PiiMaskingOptions,
+): Promise<Response> => {
+  const originalResponse = c.res;
+
+  try {
+    const text = await originalResponse.clone().text();
+    const result = await maskText(text, options);
+
+    // マスキング済みレスポンスボディと検出情報を実行コンテキストに保存
+    updateExecutionContext({
+      responseBody: result.maskedText,
+      piiDetectedResponse: result.detectedPiiList,
+    });
+
+    return new Response(result.maskedText, {
+      status: originalResponse.status,
+      statusText: originalResponse.statusText,
+      headers: originalResponse.headers,
+    });
+  } catch (error) {
+    logError("Failed to mask SSE response body", error as Error);
     // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
     return originalResponse;
   }
