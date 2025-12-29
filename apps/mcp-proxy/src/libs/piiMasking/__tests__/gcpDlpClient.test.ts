@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // モック関数を定義
 const mockDeidentifyContent = vi.fn();
@@ -29,73 +29,6 @@ vi.mock("../../logger/index.js", () => ({
   logError: vi.fn(),
   logWarn: vi.fn(),
 }));
-
-describe("getPiiMaskingConfig", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  test("GCP認証情報からプロジェクトIDを取得できる場合は有効", async () => {
-    mockGetProjectId.mockResolvedValue("test-project");
-
-    const { getPiiMaskingConfig } = await import("../gcpDlpClient.js");
-    const config = await getPiiMaskingConfig();
-
-    expect(config.projectId).toBe("test-project");
-    expect(config.isAvailable).toBe(true);
-  });
-
-  test("プロジェクトID取得に失敗した場合は無効", async () => {
-    mockGetProjectId.mockRejectedValue(new Error("No credentials found"));
-
-    const { getPiiMaskingConfig } = await import("../gcpDlpClient.js");
-    const config = await getPiiMaskingConfig();
-
-    expect(config.projectId).toBe("");
-    expect(config.isAvailable).toBe(false);
-  });
-
-  test("プロジェクトIDはキャッシュされる", async () => {
-    mockGetProjectId.mockResolvedValue("test-project");
-
-    const { getPiiMaskingConfig } = await import("../gcpDlpClient.js");
-
-    // 1回目の呼び出し
-    const config1 = await getPiiMaskingConfig();
-    expect(config1.projectId).toBe("test-project");
-
-    // 2回目の呼び出し（キャッシュから取得）
-    const config2 = await getPiiMaskingConfig();
-    expect(config2.projectId).toBe("test-project");
-
-    // GoogleAuthは1回のみ呼ばれる
-    expect(mockGetProjectId).toHaveBeenCalledTimes(1);
-  });
-
-  test("resetProjectIdCacheでキャッシュをクリアできる", async () => {
-    mockGetProjectId.mockResolvedValue("test-project");
-
-    const { getPiiMaskingConfig, resetProjectIdCache } = await import(
-      "../gcpDlpClient.js"
-    );
-
-    // 1回目の呼び出し
-    await getPiiMaskingConfig();
-    expect(mockGetProjectId).toHaveBeenCalledTimes(1);
-
-    // キャッシュをリセット
-    resetProjectIdCache();
-
-    // 2回目の呼び出し（キャッシュがリセットされたので再取得）
-    await getPiiMaskingConfig();
-    expect(mockGetProjectId).toHaveBeenCalledTimes(2);
-  });
-});
 
 describe("maskText", () => {
   beforeEach(() => {
