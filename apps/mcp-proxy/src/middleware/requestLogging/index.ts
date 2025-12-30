@@ -129,8 +129,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
 
   // TOON変換メトリクスを取得
   const toonConversionEnabled = executionContext.toonConversionEnabled;
-  const toonOriginalBytes = executionContext.toonOriginalBytes;
-  const toonConvertedBytes = executionContext.toonConvertedBytes;
+  const inputTokens = executionContext.inputTokens;
+  const outputTokens = executionContext.outputTokens;
 
   // PostgreSQL用ログデータを構築（詳細フィールドはBigQueryのみに保存）
   const postgresLogData = {
@@ -158,8 +158,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
 
     // TOON変換メトリクス
     toonConversionEnabled,
-    toonOriginalBytes,
-    toonConvertedBytes,
+    inputTokens,
+    outputTokens,
   };
 
   // PostgreSQLにログ記録し、IDを取得

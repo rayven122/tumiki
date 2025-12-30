@@ -14,7 +14,7 @@ import {
   type McpContentItem,
   type McpToolCallResult,
 } from "../../utils/jsonRpc/typeGuards.js";
-import { byteLength } from "../../utils/index.js";
+import { countTokens } from "../../utils/index.js";
 
 /**
  * TOON変換結果
@@ -24,10 +24,10 @@ type ToonConversionResult = {
   convertedData: string;
   /** 変換が実行されたかどうか */
   wasConverted: boolean;
-  /** 変換前のバイト数 */
-  originalBytes: number;
-  /** 変換後のバイト数 */
-  convertedBytes: number;
+  /** 変換前のトークン数（元データのトークン数） */
+  inputTokens: number;
+  /** 変換後のトークン数（AIに渡される最終的なトークン数） */
+  outputTokens: number;
 };
 
 /**
@@ -77,12 +77,15 @@ const convertMcpResult = (result: unknown): unknown => {
 /**
  * 変換なしの結果を返す
  */
-const noConversion = (data: string, bytes: number): ToonConversionResult => ({
-  convertedData: data,
-  wasConverted: false,
-  originalBytes: bytes,
-  convertedBytes: bytes,
-});
+const noConversion = (data: string): ToonConversionResult => {
+  const tokens = countTokens(data);
+  return {
+    convertedData: data,
+    wasConverted: false,
+    inputTokens: tokens,
+    outputTokens: tokens,
+  };
+};
 
 /**
  * MCPレスポンス（JSON-RPC 2.0形式）をTOON形式に変換する
@@ -93,12 +96,13 @@ const noConversion = (data: string, bytes: number): ToonConversionResult => ({
 export const convertMcpResponseToToon = (
   responseText: string,
 ): ToonConversionResult => {
-  const originalBytes = byteLength(responseText);
-
   // 空文字列の場合はそのまま返す
   if (!responseText) {
-    return noConversion(responseText, originalBytes);
+    return noConversion(responseText);
   }
+
+  // 変換前のトークン数を計算
+  const inputTokens = countTokens(responseText);
 
   const parsed: unknown = JSON.parse(responseText);
 
@@ -114,8 +118,8 @@ export const convertMcpResponseToToon = (
     return {
       convertedData: converted,
       wasConverted: true,
-      originalBytes,
-      convertedBytes: byteLength(converted),
+      inputTokens,
+      outputTokens: countTokens(converted),
     };
   }
 
@@ -133,8 +137,8 @@ export const convertMcpResponseToToon = (
     return {
       convertedData: converted,
       wasConverted: true,
-      originalBytes,
-      convertedBytes: byteLength(converted),
+      inputTokens,
+      outputTokens: countTokens(converted),
     };
   }
 
@@ -143,8 +147,8 @@ export const convertMcpResponseToToon = (
   return {
     convertedData: converted,
     wasConverted: true,
-    originalBytes,
-    convertedBytes: byteLength(converted),
+    inputTokens,
+    outputTokens: countTokens(converted),
   };
 };
 
@@ -161,7 +165,6 @@ export const convertMcpResponseToToonSafe = (
     return convertMcpResponseToToon(responseText);
   } catch {
     // エラー時は元のデータをそのまま返す（フェイルオープン）
-    const originalBytes = byteLength(responseText);
-    return noConversion(responseText, originalBytes);
+    return noConversion(responseText);
   }
 };

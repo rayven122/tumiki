@@ -57,8 +57,10 @@ export type McpLogEntry = {
 
   // TOON変換メトリクス
   toonConversionEnabled?: boolean;
-  toonOriginalBytes?: number;
-  toonConvertedBytes?: number;
+  /** TOON変換前のトークン数（元データのトークン数） */
+  inputTokens?: number;
+  /** AIに渡される最終的な出力トークン数 */
+  outputTokens?: number;
 };
 
 /**
