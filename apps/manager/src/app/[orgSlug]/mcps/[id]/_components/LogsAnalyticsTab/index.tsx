@@ -68,13 +68,14 @@ export const LogsAnalyticsTab = ({
       { enabled: !!serverId },
     );
 
-  // グラフ用の日別統計データを取得
+  // グラフ用の統計データを取得（日別または時間別）
   const { data: statsData } =
     api.v2.userMcpServerRequestLog.getRequestLogsStats.useQuery(
       {
         userMcpServerId: serverId,
         days: daysAndTimezone.days,
         timezone: daysAndTimezone.timezone,
+        granularity: daysAndTimezone.granularity,
       },
       { enabled: !!serverId },
     );
@@ -82,8 +83,9 @@ export const LogsAnalyticsTab = ({
   const successRate = calculateSuccessRate(requestStats);
   const errorPercentage = calculateErrorPercentage(requestStats);
 
-  // グラフデータを生成（24時間表示も日別データを使用）
-  const chartData = convertDailyStatsToChartData(statsData).dailyData;
+  // グラフデータを生成（24時間は時間別、それ以外は日別）
+  const { dailyData, hourlyData } = convertDailyStatsToChartData(statsData);
+  const chartData = timeRange === "24h" ? hourlyData : dailyData;
 
   const chartConfig = {
     count: {
