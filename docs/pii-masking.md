@@ -95,7 +95,9 @@ gcloud iam service-accounts keys create ./service-account-key.json \
 
 1. **リクエスト受信時**: リクエストボディ内のPIIを検出・マスキング
 2. **レスポンス送信時**: レスポンスボディ内のPIIを検出・マスキング
-3. **ログ保存時**: マスキング済みデータをPostgreSQL/BigQueryに保存
+3. **ログ保存時**: マスキング済みデータを保存
+   - **PostgreSQL**: 集計データ（検出件数、InfoType名一覧）のみ保存
+   - **BigQuery**: 詳細データ（InfoType別件数）を含む全データを保存
 
 ## アーキテクチャ
 

@@ -127,8 +127,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
         )
       : undefined;
 
-  // ログデータを構築
-  const logData = {
+  // PostgreSQL用ログデータを構築（詳細フィールドはBigQueryのみに保存）
+  const postgresLogData = {
     // 認証情報
     mcpServerId: authContext.mcpServerId,
     mcpApiKeyId: authContext.mcpApiKeyId ?? null,
@@ -145,29 +145,34 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     outputBytes,
     userAgent: c.req.header("user-agent"),
 
-    // PII検出情報
+    // PII検出情報（集計データのみ、詳細はBigQuery）
     piiMaskingMode,
     piiDetectedRequestCount,
     piiDetectedResponseCount,
     piiDetectedInfoTypes,
-    piiDetectionDetailsRequest,
-    piiDetectionDetailsResponse,
   };
 
   // PostgreSQLにログ記録し、IDを取得
-  const requestLogId = await logMcpServerRequest(logData).catch((error) => {
-    // エラーをキャッチしてログに記録（リクエストには影響させない）
-    logError("Failed to log MCP server request in middleware", error as Error, {
-      toolName: executionContext.toolName,
-      mcpServerId: authContext.mcpServerId,
-    });
-    return null;
-  });
+  const requestLogId = await logMcpServerRequest(postgresLogData).catch(
+    (error) => {
+      // エラーをキャッチしてログに記録（リクエストには影響させない）
+      logError(
+        "Failed to log MCP server request in middleware",
+        error as Error,
+        {
+          toolName: executionContext.toolName,
+          mcpServerId: authContext.mcpServerId,
+        },
+      );
+      return null;
+    },
+  );
 
   // BigQueryへ非同期送信（Pub/Sub経由）
   // PostgreSQLへの記録成否に関わらず送信し、失敗時はフラグで識別可能にする
+  // 注意: PostgreSQLには保存しない詳細フィールドもBigQueryには送信する
   await publishMcpLog({
-    ...logData,
+    ...postgresLogData,
     // PostgreSQL記録成功時はそのIDを使用、失敗時は新しいUUIDを生成
     id: requestLogId ?? crypto.randomUUID(),
     timestamp: new Date().toISOString(),
@@ -177,6 +182,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     errorCode: executionContext.errorCode,
     errorMessage: executionContext.errorMessage,
     errorDetails: executionContext.errorDetails,
+    // PII検出詳細（BigQueryのみ、PostgreSQLには保存しない）
+    piiDetectionDetailsRequest,
+    piiDetectionDetailsResponse,
     // PostgreSQL記録が失敗した場合はフラグを立てる
     postgresLogFailed: requestLogId === null,
   });
