@@ -43,10 +43,10 @@ export type McpExecutionContext = {
   // TOON変換メトリクス
   /** TOON変換が有効だったかどうか */
   toonConversionEnabled?: boolean;
-  /** TOON変換前のバイト数 */
-  toonOriginalBytes?: number;
-  /** TOON変換後のバイト数 */
-  toonConvertedBytes?: number;
+  /** TOON変換前のトークン数（元データのトークン数） */
+  inputTokens?: number;
+  /** AIに渡される最終的な出力トークン数 */
+  outputTokens?: number;
 };
 
 const executionStorage = new AsyncLocalStorage<McpExecutionContext>();

@@ -76,10 +76,10 @@ const convertResponseToToon = async (
     // TOON変換（フェイルセーフ版）
     const result = convertMcpResponseToToonSafe(responseJson);
 
-    // 変換メトリクスを実行コンテキストに保存
+    // トークン数を実行コンテキストに保存
     updateExecutionContext({
-      toonOriginalBytes: result.originalBytes,
-      toonConvertedBytes: result.convertedBytes,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
     });
 
     // TOON変換済みレスポンスを返す

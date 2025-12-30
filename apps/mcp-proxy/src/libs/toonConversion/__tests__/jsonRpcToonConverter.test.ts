@@ -18,6 +18,8 @@ describe("convertMcpResponseToToon", () => {
 
       expect(result.wasConverted).toBe(true);
       expect(typeof result.convertedData).toBe("string");
+      expect(result.inputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeGreaterThan(0);
 
       // JSON文字列をパースして検証
       const parsed = JSON.parse(result.convertedData) as {
@@ -45,8 +47,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
-      expect(result.originalBytes).toBeGreaterThan(0);
-      expect(result.convertedBytes).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
 
     test("空のresultを変換する", () => {
@@ -59,6 +60,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
 
     test("nullのresultを変換する", () => {
@@ -71,6 +73,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
   });
 
@@ -90,6 +93,7 @@ describe("convertMcpResponseToToon", () => {
 
       expect(result.wasConverted).toBe(true);
       expect(typeof result.convertedData).toBe("string");
+      expect(result.outputTokens).toBeGreaterThan(0);
 
       // JSON文字列をパースして検証
       const parsed = JSON.parse(result.convertedData) as {
@@ -115,6 +119,7 @@ describe("convertMcpResponseToToon", () => {
 
       expect(result.wasConverted).toBe(true);
       expect(typeof result.convertedData).toBe("string");
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
   });
 
@@ -132,6 +137,7 @@ describe("convertMcpResponseToToon", () => {
       expect(result.wasConverted).toBe(true);
       // 全体がTOON文字列に変換される
       expect(typeof result.convertedData).toBe("string");
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
 
     test("配列はTOON変換される", () => {
@@ -144,6 +150,7 @@ describe("convertMcpResponseToToon", () => {
 
       expect(result.wasConverted).toBe(true);
       expect(typeof result.convertedData).toBe("string");
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
   });
 
@@ -153,12 +160,16 @@ describe("convertMcpResponseToToon", () => {
 
       expect(result.wasConverted).toBe(false);
       expect(result.convertedData).toBe("");
+      expect(result.inputTokens).toBe(0);
+      expect(result.outputTokens).toBe(0);
     });
 
     test("'null'文字列はTOON変換される", () => {
       const result = convertMcpResponseToToon("null");
 
       expect(result.wasConverted).toBe(true);
+      expect(result.inputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeGreaterThan(0);
     });
   });
 
@@ -184,6 +195,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeGreaterThan(0);
 
       // パースして構造を検証
       const parsed = JSON.parse(result.convertedData) as {
@@ -207,7 +219,9 @@ describe("convertMcpResponseToToon", () => {
       const convertedText = parsed.result.content[0].text;
       expect(typeof convertedText).toBe("string");
       // TOON形式はJSONとは異なる形式になるため、パースできない
-      expect(() => JSON.parse(convertedText)).toThrow();
+      expect(() => {
+        JSON.parse(convertedText);
+      }).toThrow();
     });
 
     test("type が text 以外の content は変換しない", () => {
@@ -228,6 +242,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeGreaterThan(0);
 
       const parsed = JSON.parse(result.convertedData) as {
         result: {
@@ -257,6 +272,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeGreaterThan(0);
 
       const parsed = JSON.parse(result.convertedData) as {
         result: {
@@ -286,6 +302,7 @@ describe("convertMcpResponseToToon", () => {
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeGreaterThan(0);
 
       const parsed = JSON.parse(result.convertedData) as {
         jsonrpc: string;
@@ -299,8 +316,8 @@ describe("convertMcpResponseToToon", () => {
     });
   });
 
-  describe("圧縮メトリクスの計算", () => {
-    test("圧縮メトリクスが正しく計算される", () => {
+  describe("トークン数メトリクスの計算", () => {
+    test("入力・出力トークン数が正しく計算される", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -313,8 +330,27 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.originalBytes).toBeGreaterThan(0);
-      expect(result.convertedBytes).toBeGreaterThan(0);
+      expect(result.inputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeGreaterThan(0);
+      expect(typeof result.inputTokens).toBe("number");
+      expect(typeof result.outputTokens).toBe("number");
+    });
+
+    test("TOON変換により出力トークン数は入力より少なくなる", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: [
+          { id: 1, name: "Alice", role: "admin" },
+          { id: 2, name: "Bob", role: "user" },
+          { id: 3, name: "Charlie", role: "user" },
+        ],
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      // TOON変換によりトークン数が削減される
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
     });
   });
 });
@@ -330,12 +366,16 @@ describe("convertMcpResponseToToonSafe", () => {
     const result = convertMcpResponseToToonSafe(input);
 
     expect(result.wasConverted).toBe(true);
+    expect(result.inputTokens).toBeGreaterThan(0);
+    expect(result.outputTokens).toBeGreaterThan(0);
   });
 
   test("'null'文字列はTOON変換される", () => {
     const result = convertMcpResponseToToonSafe("null");
 
     expect(result.wasConverted).toBe(true);
+    expect(result.inputTokens).toBeGreaterThan(0);
+    expect(result.outputTokens).toBeGreaterThan(0);
   });
 
   test("不正なJSON文字列はエラー時にフォールバックする", () => {
@@ -346,6 +386,9 @@ describe("convertMcpResponseToToonSafe", () => {
     // フェイルオープンで元データが返される
     expect(result.wasConverted).toBe(false);
     expect(result.convertedData).toBe(invalidJson);
-    expect(result.originalBytes).toBeGreaterThan(0);
+    // エラー時も元データのトークン数が計算される（inputとoutputは同じ）
+    expect(result.inputTokens).toBeGreaterThan(0);
+    expect(result.outputTokens).toBeGreaterThan(0);
+    expect(result.inputTokens).toBe(result.outputTokens);
   });
 });
