@@ -55,10 +55,10 @@ model McpServerRequestLog {
   /// TOON変換メトリクス
   /// TOON変換が有効だったかどうか
   toonConversionEnabled Boolean?
-  /// TOON変換前のバイト数
-  toonOriginalBytes     Int?
-  /// TOON変換後のバイト数
-  toonConvertedBytes    Int?
+  /// TOON変換前のトークン数（元データのトークン数）
+  inputTokens           Int?
+  /// AIに渡される最終的な出力トークン数
+  outputTokens          Int?
 
   createdAt DateTime @default(now())
 

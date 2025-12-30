@@ -468,8 +468,8 @@ erDiagram
   Int piiDetectedResponseCount "nullable"
   String piiDetectedInfoTypes
   Boolean toonConversionEnabled "nullable"
-  Int toonOriginalBytes "nullable"
-  Int toonConvertedBytes "nullable"
+  Int inputTokens "nullable"
+  Int outputTokens "nullable"
   DateTime createdAt
 }
 ```
@@ -507,8 +507,8 @@ MCPサーバーインスタンスへのリクエストログ
   - `toonConversionEnabled`
     > TOON変換メトリクス
     > TOON変換が有効だったかどうか
-  - `toonOriginalBytes`: TOON変換前のバイト数
-  - `toonConvertedBytes`: TOON変換後のバイト数
+  - `inputTokens`: TOON変換前のトークン数（元データのトークン数）
+  - `outputTokens`: AIに渡される最終的な出力トークン数
   - `createdAt`: 
 
 
