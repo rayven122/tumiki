@@ -8,8 +8,11 @@
 import { encode } from "@toon-format/toon";
 
 import {
+  isMcpToolCallResult,
   isJsonRpcErrorResponse,
   isJsonRpcSuccessResponse,
+  type McpContentItem,
+  type McpToolCallResult,
 } from "../../utils/jsonRpc/typeGuards.js";
 import { byteLength } from "../../utils/index.js";
 
@@ -25,6 +28,50 @@ type ToonConversionResult = {
   originalBytes: number;
   /** 変換後のバイト数 */
   convertedBytes: number;
+};
+
+/**
+ * テキストをTOON変換する
+ * JSON文字列の場合はパースしてからエンコード、そうでなければ文字列をそのままエンコード
+ */
+const convertTextToToon = (text: string): string => {
+  try {
+    // JSON文字列の場合はパースしてからTOON変換
+    const parsed: unknown = JSON.parse(text);
+    return encode(parsed);
+  } catch {
+    // JSONでない場合は文字列をそのままTOON変換
+    return encode(text);
+  }
+};
+
+/**
+ * MCP result の content[].text を TOON 変換する
+ * MCP プロトコルの構造（content 配列）は維持しながら、text フィールドのみを変換
+ */
+const convertMcpResult = (result: unknown): unknown => {
+  // MCP tools/call レスポンスでない場合は全体を TOON 変換
+  if (!isMcpToolCallResult(result)) {
+    return encode(result);
+  }
+
+  // content 配列構造を維持しながら text フィールドのみを TOON 変換
+  const convertedContent: McpContentItem[] = result.content.map((item) => {
+    if (item.type === "text") {
+      return {
+        ...item,
+        text: convertTextToToon(item.text),
+      };
+    }
+    return item;
+  });
+
+  const convertedResult: McpToolCallResult = {
+    ...result,
+    content: convertedContent,
+  };
+
+  return convertedResult;
 };
 
 /**
@@ -57,10 +104,12 @@ export const convertMcpResponseToToon = (
 
   // 成功レスポンスの場合
   if (isJsonRpcSuccessResponse(parsed)) {
+    // MCP tools/call のレスポンス構造を維持しながら content[].text のみ変換
+    const convertedResult = convertMcpResult(parsed.result);
     const converted = JSON.stringify({
       jsonrpc: "2.0",
       id: parsed.id,
-      result: encode(parsed.result),
+      result: convertedResult,
     });
     return {
       convertedData: converted,

@@ -20,7 +20,7 @@
 import type { Context, Next } from "hono";
 import { PiiMaskingMode } from "@tumiki/db";
 import type { HonoEnv } from "../../types/index.js";
-import { logError, logInfo } from "../../libs/logger/index.js";
+import { logError } from "../../libs/logger/index.js";
 import {
   maskJson,
   maskText,
@@ -40,24 +40,9 @@ import { updateExecutionContext } from "../requestLogging/context.js";
 export const piiMaskingMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
-): Promise<Response | void> => {
+): Promise<void> => {
   const authContext = c.get("authContext");
   const piiMaskingMode = authContext?.piiMaskingMode;
-
-  // PIIマスキングが無効の場合はスキップ
-  if (!piiMaskingMode || piiMaskingMode === PiiMaskingMode.DISABLED) {
-    return next();
-  }
-
-  logInfo("PII masking enabled for request", {
-    mcpServerId: authContext?.mcpServerId,
-    piiMaskingMode,
-  });
-
-  // マスキングオプション（使用するInfoType一覧）
-  const maskingOptions: PiiMaskingOptions = {
-    infoTypes: authContext?.piiInfoTypes,
-  };
 
   // PIIマスキングモードと使用するInfoTypeをコンテキストに記録
   updateExecutionContext({
@@ -70,7 +55,9 @@ export const piiMaskingMiddleware = async (
     piiMaskingMode === PiiMaskingMode.REQUEST ||
     piiMaskingMode === PiiMaskingMode.BOTH;
   if (shouldMaskRequest) {
-    await maskRequestBody(c, maskingOptions);
+    await maskRequestBody(c, {
+      infoTypes: authContext?.piiInfoTypes,
+    });
   }
 
   // ハンドラーを実行
@@ -81,7 +68,9 @@ export const piiMaskingMiddleware = async (
     piiMaskingMode === PiiMaskingMode.RESPONSE ||
     piiMaskingMode === PiiMaskingMode.BOTH;
   if (shouldMaskResponse) {
-    return maskResponseBody(c, maskingOptions);
+    c.res = await maskResponseBody(c, {
+      infoTypes: authContext?.piiInfoTypes,
+    });
   }
 };
 
