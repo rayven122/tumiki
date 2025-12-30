@@ -3,5 +3,5 @@ ALTER TABLE "McpServer" ADD COLUMN     "toonConversionEnabled" BOOLEAN NOT NULL 
 
 -- AlterTable
 ALTER TABLE "McpServerRequestLog" ADD COLUMN     "toonConversionEnabled" BOOLEAN,
-ADD COLUMN     "toonConvertedBytes" INTEGER,
-ADD COLUMN     "toonOriginalBytes" INTEGER;
+ADD COLUMN     "inputTokens" INTEGER,
+ADD COLUMN     "outputTokens" INTEGER;
