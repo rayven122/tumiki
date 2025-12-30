@@ -25,6 +25,7 @@ import {
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { updatePiiMasking } from "./updatePiiMasking";
+import { updateToonConversion } from "./updateToonConversion";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
@@ -142,6 +143,17 @@ export const UpdatePiiMaskingInputV2 = z.object({
 
 // PIIマスキング設定更新の出力スキーマ
 export const UpdatePiiMaskingOutputV2 = z.object({
+  id: z.string(),
+});
+
+// TOON変換設定更新の入力スキーマ
+export const UpdateToonConversionInputV2 = z.object({
+  id: McpServerIdSchema,
+  toonConversionEnabled: z.boolean(),
+});
+
+// TOON変換設定更新の出力スキーマ
+export const UpdateToonConversionOutputV2 = z.object({
   id: z.string(),
 });
 
@@ -409,6 +421,24 @@ export const userMcpServerRouter = createTRPCRouter({
           piiMaskingEnabled: input.piiMaskingEnabled,
           organizationId: ctx.currentOrg.id,
         });
+      });
+    }),
+
+  // TOON変換設定更新
+  updateToonConversion: protectedProcedure
+    .input(UpdateToonConversionInputV2)
+    .output(UpdateToonConversionOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
+      return await updateToonConversion(ctx.db, {
+        id: input.id,
+        toonConversionEnabled: input.toonConversionEnabled,
+        organizationId: ctx.currentOrg.id,
       });
     }),
 });
