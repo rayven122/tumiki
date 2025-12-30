@@ -81,10 +81,11 @@ export const jwtAuthMiddleware = async (
     );
   }
 
-  // Step 4: McpServer から organizationId と piiMaskingMode, piiInfoTypes を取得
+  // Step 4: McpServer から organizationId と piiMaskingMode, piiInfoTypes, toonConversionEnabled を取得
   let orgId: string;
   let piiMaskingMode: PiiMaskingMode;
   let piiInfoTypes: string[];
+  let toonConversionEnabled: boolean;
   try {
     const mcpServer = await getMcpServerOrganization(pathMcpServerId);
 
@@ -105,6 +106,7 @@ export const jwtAuthMiddleware = async (
     orgId = mcpServer.organizationId;
     piiMaskingMode = mcpServer.piiMaskingMode;
     piiInfoTypes = mcpServer.piiInfoTypes;
+    toonConversionEnabled = mcpServer.toonConversionEnabled;
   } catch (error) {
     logError("Failed to get McpServer organization", error as Error, {
       mcpServerId: pathMcpServerId,
@@ -161,6 +163,7 @@ export const jwtAuthMiddleware = async (
     mcpServerId: pathMcpServerId,
     piiMaskingMode,
     piiInfoTypes,
+    toonConversionEnabled,
   });
 
   await next();

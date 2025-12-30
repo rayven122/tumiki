@@ -16,6 +16,20 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
     // 日付をモック
     vi.setSystemTime(mockNow);
 
+    // 既存のテストデータをクリーンアップ（前回のテストが途中で失敗した場合に備えて）
+    await db.mcpServerRequestLog.deleteMany({
+      where: { mcpServerId: testMcpServerId },
+    });
+    await db.mcpServer.deleteMany({
+      where: { id: testMcpServerId },
+    });
+    await db.organization.deleteMany({
+      where: { id: testOrganizationId },
+    });
+    await db.user.deleteMany({
+      where: { id: testUserId },
+    });
+
     // テスト用のユーザーを作成
     await db.user.create({
       data: {
@@ -184,20 +198,20 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
     // モックをクリーンアップ
     vi.useRealTimers();
 
-    // テストデータのクリーンアップ
+    // テストデータのクリーンアップ（deleteManyでレコードがなくてもエラーにならない）
     await db.mcpServerRequestLog.deleteMany({
       where: { mcpServerId: testMcpServerId },
     });
 
-    await db.mcpServer.delete({
+    await db.mcpServer.deleteMany({
       where: { id: testMcpServerId },
     });
 
-    await db.organization.delete({
+    await db.organization.deleteMany({
       where: { id: testOrganizationId },
     });
 
-    await db.user.delete({
+    await db.user.deleteMany({
       where: { id: testUserId },
     });
   });
@@ -208,6 +222,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
       organizationId: testOrganizationId,
       days: 5,
       timezone: "UTC",
+      granularity: "day",
     });
 
     expect(result).toHaveLength(5);
@@ -260,6 +275,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
         organizationId: testOrganizationId,
         days: 5,
         timezone: "UTC",
+        granularity: "day",
       }),
     ).rejects.toThrow("サーバーが見つかりません");
   });
@@ -270,6 +286,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
       organizationId: testOrganizationId,
       days: 5,
       timezone: "Asia/Tokyo",
+      granularity: "day",
     });
 
     // Asia/Tokyo（UTC+9）でも同じ結果になることを確認

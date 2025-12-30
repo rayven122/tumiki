@@ -54,6 +54,13 @@ export type McpLogEntry = {
   piiDetectedInfoTypes?: string[];
   piiDetectionDetailsRequest?: Record<string, number>;
   piiDetectionDetailsResponse?: Record<string, number>;
+
+  // TOON変換メトリクス
+  toonConversionEnabled?: boolean;
+  /** TOON変換前のトークン数（元データのトークン数） */
+  inputTokens?: number;
+  /** AIに渡される最終的な出力トークン数 */
+  outputTokens?: number;
 };
 
 /**

@@ -15,6 +15,7 @@ import {
 import { db, type Prisma, PiiMaskingMode } from "@tumiki/db/server";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { publishMcpLog } from "../../libs/pubsub/mcpLogger.js";
+import { byteLength } from "../../utils/index.js";
 
 /**
  * MCP サーバー request log を記録
@@ -80,9 +81,8 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   }
 
   // UTF-8エンコードでのバイト数を計算（マスキング後のサイズ）
-  const textEncoder = new TextEncoder();
-  const inputBytes = textEncoder.encode(JSON.stringify(requestBody)).length;
-  const outputBytes = textEncoder.encode(JSON.stringify(responseBody)).length;
+  const inputBytes = byteLength(JSON.stringify(requestBody));
+  const outputBytes = byteLength(JSON.stringify(responseBody));
 
   // 実行時間を計算
   const durationMs = executionContext.requestStartTime
@@ -127,6 +127,11 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
         )
       : undefined;
 
+  // TOON変換メトリクスを取得
+  const toonConversionEnabled = executionContext.toonConversionEnabled;
+  const inputTokens = executionContext.inputTokens;
+  const outputTokens = executionContext.outputTokens;
+
   // PostgreSQL用ログデータを構築（詳細フィールドはBigQueryのみに保存）
   const postgresLogData = {
     // 認証情報
@@ -150,6 +155,11 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     piiDetectedRequestCount,
     piiDetectedResponseCount,
     piiDetectedInfoTypes,
+
+    // TOON変換メトリクス
+    toonConversionEnabled,
+    inputTokens,
+    outputTokens,
   };
 
   // PostgreSQLにログ記録し、IDを取得
