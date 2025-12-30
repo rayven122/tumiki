@@ -467,6 +467,9 @@ erDiagram
   Int piiDetectedRequestCount "nullable"
   Int piiDetectedResponseCount "nullable"
   String piiDetectedInfoTypes
+  Boolean toonConversionEnabled "nullable"
+  Int inputTokens "nullable"
+  Int outputTokens "nullable"
   DateTime createdAt
 }
 ```
@@ -501,6 +504,11 @@ MCPサーバーインスタンスへのリクエストログ
   - `piiDetectedInfoTypes`
     > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
     > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
+  - `toonConversionEnabled`
+    > TOON変換メトリクス
+    > TOON変換が有効だったかどうか
+  - `inputTokens`: TOON変換前のトークン数（元データのトークン数）
+  - `outputTokens`: AIに渡される最終的な出力トークン数
   - `createdAt`: 
 
 
@@ -528,6 +536,7 @@ erDiagram
   Int displayOrder
   PiiMaskingMode piiMaskingMode
   String piiInfoTypes
+  Boolean toonConversionEnabled
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -655,6 +664,10 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
   - `piiInfoTypes`
     > 使用するInfoType一覧（GCP DLP）
     > 空配列の場合は全InfoTypeを使用
+  - `toonConversionEnabled`
+    > TOON変換を有効にするかどうか（AIへのトークン削減用）
+    > true: レスポンスをTOON形式に変換してからAIに返す
+    > false: JSONのままAIに返す（デフォルト）
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ

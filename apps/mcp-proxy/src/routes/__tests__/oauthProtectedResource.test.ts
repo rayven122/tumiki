@@ -274,6 +274,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
     authType: "OAUTH",
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
+    toonConversionEnabled: false,
   };
 
   beforeEach(() => {

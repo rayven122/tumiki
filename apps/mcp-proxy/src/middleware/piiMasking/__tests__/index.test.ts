@@ -78,6 +78,7 @@ const createAuthContext = (
   mcpServerId: "server-1",
   piiMaskingMode: PiiMaskingMode.BOTH,
   piiInfoTypes: [],
+  toonConversionEnabled: false,
   ...overrides,
 });
 
@@ -174,13 +175,10 @@ describe("piiMaskingMiddleware", () => {
       responseBody: '{"email":"test@example.com"}',
     });
 
-    const result = await piiMaskingMiddleware(c, mockNext);
+    await piiMaskingMiddleware(c, mockNext);
 
-    expect(result).toBeInstanceOf(Response);
-    if (result instanceof Response) {
-      const body = await result.text();
-      expect(body).toBe('{"email":"****@*******.com"}');
-    }
+    const body = await c.res.text();
+    expect(body).toBe('{"email":"****@*******.com"}');
   });
 
   test("空のリクエストボディはスキップ", async () => {
@@ -219,14 +217,22 @@ describe("piiMaskingMiddleware", () => {
       responseBody: "",
     });
 
-    const result = await piiMaskingMiddleware(c, mockNext);
+    await piiMaskingMiddleware(c, mockNext);
 
-    expect(result).toBeInstanceOf(Response);
+    // 空のレスポンスの場合、c.resは変更されない（元のままで空文字）
+    const body = await c.res.text();
+    expect(body).toBe("");
   });
 
-  test("PIIが検出されない場合は元のレスポンスを返す", async () => {
+  test("PIIが検出されない場合でもマスキング処理は実行される", async () => {
     mockMaskJson.mockResolvedValue({
       maskedData: { result: "no-pii" },
+      detectedCount: 0,
+      detectedPiiList: [],
+      processingTimeMs: 10,
+    });
+    mockMaskText.mockResolvedValueOnce({
+      maskedText: '{"result":"no-pii"}',
       detectedCount: 0,
       detectedPiiList: [],
       processingTimeMs: 10,
@@ -242,10 +248,10 @@ describe("piiMaskingMiddleware", () => {
       responseBody: originalResponseBody,
     });
 
-    const result = await piiMaskingMiddleware(c, mockNext);
+    await piiMaskingMiddleware(c, mockNext);
 
-    // PII未検出の場合は元のレスポンスを返す
-    expect(result).toBeInstanceOf(Response);
+    // PII未検出でもmaskTextは呼び出される
+    expect(mockMaskText).toHaveBeenCalled();
   });
 
   test("リクエストマスキングエラー時はフェイルオープン", async () => {
@@ -293,14 +299,11 @@ describe("piiMaskingMiddleware", () => {
       responseBody: '{"response":"with-pii"}',
     });
 
-    const result = await piiMaskingMiddleware(c, mockNext);
+    await piiMaskingMiddleware(c, mockNext);
 
     // エラー時は元のレスポンスを返す（フェイルオープン）
-    expect(result).toBeInstanceOf(Response);
-    if (result instanceof Response) {
-      const body = await result.text();
-      expect(body).toBe('{"response":"with-pii"}');
-    }
+    const body = await c.res.text();
+    expect(body).toBe('{"response":"with-pii"}');
   });
 
   test("マスキング済みリクエストボディを実行コンテキストに保存", async () => {
@@ -461,13 +464,10 @@ describe("piiMaskingMiddleware", () => {
         responseContentType: "text/plain",
       });
 
-      const result = await piiMaskingMiddleware(c, mockNext);
+      await piiMaskingMiddleware(c, mockNext);
 
-      expect(result).toBeInstanceOf(Response);
-      if (result instanceof Response) {
-        const body = await result.text();
-        expect(body).toBe("plain text with [EMAIL_ADDRESS]");
-      }
+      const body = await c.res.text();
+      expect(body).toBe("plain text with [EMAIL_ADDRESS]");
       expect(mockMaskText).toHaveBeenCalledWith(
         "plain text with test@example.com",
         { infoTypes: [] },
@@ -498,13 +498,10 @@ describe("piiMaskingMiddleware", () => {
         responseContentType: "application/json",
       });
 
-      const result = await piiMaskingMiddleware(c, mockNext);
+      await piiMaskingMiddleware(c, mockNext);
 
-      expect(result).toBeInstanceOf(Response);
-      if (result instanceof Response) {
-        const body = await result.text();
-        expect(body).toBe('{"email":"[EMAIL_ADDRESS]"}');
-      }
+      const body = await c.res.text();
+      expect(body).toBe('{"email":"[EMAIL_ADDRESS]"}');
     });
   });
 });
