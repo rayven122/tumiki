@@ -9,8 +9,14 @@ type DailyData = {
   count: number;
 };
 
+type HourlyData = {
+  hour: number;
+  count: number;
+};
+
 export type DailyStatsData = {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD（日別）or YYYY-MM-DD HH（時間別）
+  hour?: number; // 0-23（時間別集計時のみ）
   successCount: number;
   errorCount: number;
   totalCount: number;
@@ -87,15 +93,29 @@ export const calculateErrorPercentage = (
 };
 
 /**
- * サーバーから取得した日別統計データをグラフ用のDailyDataに変換
+ * サーバーから取得した統計データをグラフ用データに変換
+ * 日別データと時間別データ両方に対応
  */
 export const convertDailyStatsToChartData = (
   dailyStats: DailyStatsData[] | undefined,
-): { dailyData: DailyData[]; maxCount: number } => {
+): { dailyData: DailyData[]; hourlyData: HourlyData[]; maxCount: number } => {
   if (!dailyStats || dailyStats.length === 0) {
-    return { dailyData: [], maxCount: 0 };
+    return { dailyData: [], hourlyData: [], maxCount: 0 };
   }
 
+  // 時間別データの場合（hourフィールドが存在する）
+  const hasHourlyData = dailyStats.some((stat) => stat.hour !== undefined);
+
+  if (hasHourlyData) {
+    const hourlyData: HourlyData[] = dailyStats.map((stat) => ({
+      hour: stat.hour ?? 0,
+      count: stat.totalCount,
+    }));
+    const maxCount = Math.max(...hourlyData.map((d) => d.count));
+    return { dailyData: [], hourlyData, maxCount };
+  }
+
+  // 日別データの場合
   const dailyData: DailyData[] = dailyStats.map((stat) => {
     const date = new Date(stat.date);
     return {
@@ -106,7 +126,7 @@ export const convertDailyStatsToChartData = (
 
   const maxCount = Math.max(...dailyData.map((d) => d.count));
 
-  return { dailyData, maxCount };
+  return { dailyData, hourlyData: [], maxCount };
 };
 
 /**
@@ -126,18 +146,23 @@ const formatDateWithTimezone = (date: Date): string => {
   return formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
 };
 
+export type Granularity = "day" | "hour";
+
 /**
- * 時間範囲から日数とタイムゾーンを取得
+ * 時間範囲から日数、タイムゾーン、粒度を取得
  */
 export const getDaysAndTimezoneFromTimeRange = (
   range: TimeRange,
-): { days: number; timezone: string } => {
+): { days: number; timezone: string; granularity: Granularity } => {
   const timezone = getUserTimezone();
   const days = timeRangeToDays(range);
+  // 24時間表示の場合は時間別、それ以外は日別
+  const granularity: Granularity = range === "24h" ? "hour" : "day";
 
   return {
     days,
     timezone,
+    granularity,
   };
 };
 

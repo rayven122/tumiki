@@ -208,6 +208,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
       organizationId: testOrganizationId,
       days: 5,
       timezone: "UTC",
+      granularity: "day",
     });
 
     expect(result).toHaveLength(5);
@@ -260,6 +261,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
         organizationId: testOrganizationId,
         days: 5,
         timezone: "UTC",
+        granularity: "day",
       }),
     ).rejects.toThrow("サーバーが見つかりません");
   });
@@ -270,6 +272,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
       organizationId: testOrganizationId,
       days: 5,
       timezone: "Asia/Tokyo",
+      granularity: "day",
     });
 
     // Asia/Tokyo（UTC+9）でも同じ結果になることを確認

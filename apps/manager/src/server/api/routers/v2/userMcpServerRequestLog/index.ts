@@ -51,6 +51,10 @@ export const GetRequestLogsStatsInputV2 = z.object({
     },
     { message: "無効なタイムゾーンです" },
   ),
+  // 集計の粒度（日別 or 時間別）
+  // "day": 日別集計（デフォルト）
+  // "hour": 時間別集計（24時間表示用）
+  granularity: z.enum(["day", "hour"]).default("day"),
 });
 
 export const userMcpServerRequestLogRouter = createTRPCRouter({
@@ -90,6 +94,7 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
         organizationId: ctx.currentOrg.id,
         days: input.days,
         timezone: input.timezone,
+        granularity: input.granularity,
       });
     }),
 });
