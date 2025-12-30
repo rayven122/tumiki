@@ -83,8 +83,6 @@ export const piiMaskingMiddleware = async (
   if (shouldMaskResponse) {
     return maskResponseBody(c, maskingOptions);
   }
-
-  return c.res;
 };
 
 /**
@@ -126,15 +124,11 @@ const maskResponseBody = async (
   options?: PiiMaskingOptions,
 ): Promise<Response> => {
   const originalResponse = c.res;
-  const responseText = await originalResponse.text();
+  const responseText = await originalResponse.clone().text();
 
   // 空のレスポンスの場合はそのまま返す
   if (!responseText) {
-    return new Response(responseText, {
-      status: originalResponse.status,
-      statusText: originalResponse.statusText,
-      headers: originalResponse.headers,
-    });
+    return originalResponse;
   }
 
   // テキストを直接マスキング
@@ -152,10 +146,6 @@ const maskResponseBody = async (
   } catch (error) {
     logError("Failed to mask response body", error as Error);
     // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
-    return new Response(responseText, {
-      status: originalResponse.status,
-      statusText: originalResponse.statusText,
-      headers: originalResponse.headers,
-    });
+    return originalResponse;
   }
 };

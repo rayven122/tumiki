@@ -467,8 +467,6 @@ erDiagram
   Int piiDetectedRequestCount "nullable"
   Int piiDetectedResponseCount "nullable"
   String piiDetectedInfoTypes
-  Json piiDetectionDetailsRequest "nullable"
-  Json piiDetectionDetailsResponse "nullable"
   DateTime createdAt
 }
 ```
@@ -503,12 +501,6 @@ MCPサーバーインスタンスへのリクエストログ
   - `piiDetectedInfoTypes`
     > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
     > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
-  - `piiDetectionDetailsRequest`
-    > リクエスト検出詳細（InfoType別の件数）
-    > 例: {"EMAIL_ADDRESS": 2, "PHONE_NUMBER": 1}
-  - `piiDetectionDetailsResponse`
-    > レスポンス検出詳細（InfoType別の件数）
-    > 例: {"EMAIL_ADDRESS": 1, "CREDIT_CARD_NUMBER": 3}
   - `createdAt`: 
 
 
