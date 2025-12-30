@@ -81,6 +81,7 @@ describe("mcpServerService", () => {
         authType: "OAUTH" as const,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
+        toonConversionEnabled: false,
       };
 
       mockGetRedisClient.mockResolvedValue(null);
@@ -98,6 +99,7 @@ describe("mcpServerService", () => {
           authType: true,
           piiMaskingMode: true,
           piiInfoTypes: true,
+          toonConversionEnabled: true,
         },
       });
     });
@@ -120,6 +122,7 @@ describe("mcpServerService", () => {
         authType: "API_KEY" as const,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
+        toonConversionEnabled: false,
       };
 
       mockGetRedisClient.mockResolvedValue(null);
@@ -139,6 +142,7 @@ describe("mcpServerService", () => {
         authType: "OAUTH" as const,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
+        toonConversionEnabled: false,
       };
       const mockRedis = {
         get: vi.fn().mockResolvedValue(JSON.stringify(cachedData)),
@@ -165,6 +169,7 @@ describe("mcpServerService", () => {
         authType: "OAUTH" as const,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
+        toonConversionEnabled: false,
       };
       const mockRedis = {
         get: vi.fn().mockResolvedValue(null),
@@ -189,6 +194,7 @@ describe("mcpServerService", () => {
           authType: "OAUTH",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
+          toonConversionEnabled: false,
         }),
       );
     });
@@ -245,6 +251,7 @@ describe("mcpServerService", () => {
         authType: "OAUTH" as const,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
+        toonConversionEnabled: false,
       };
       const mockRedis = {
         get: vi.fn().mockRejectedValue(new Error("Redis connection failed")),

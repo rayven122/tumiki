@@ -25,6 +25,7 @@ const fetchApiKeyFromDatabase = async (apiKey: string) => {
             organizationId: true,
             piiMaskingMode: true,
             piiInfoTypes: true,
+            toonConversionEnabled: true,
           },
         },
       },
@@ -102,6 +103,7 @@ export const apiKeyAuthMiddleware = async (
     mcpApiKeyId: mcpApiKey.id,
     piiMaskingMode: mcpApiKey.mcpServer.piiMaskingMode,
     piiInfoTypes: mcpApiKey.mcpServer.piiInfoTypes,
+    toonConversionEnabled: mcpApiKey.mcpServer.toonConversionEnabled,
   });
 
   await next();

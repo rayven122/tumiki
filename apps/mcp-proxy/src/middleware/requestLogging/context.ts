@@ -39,6 +39,14 @@ export type McpExecutionContext = {
   piiDetectedRequest?: DetectedPii[];
   /** レスポンスで検出されたPII情報 */
   piiDetectedResponse?: DetectedPii[];
+
+  // TOON変換メトリクス
+  /** TOON変換が有効だったかどうか */
+  toonConversionEnabled?: boolean;
+  /** TOON変換前のバイト数 */
+  toonOriginalBytes?: number;
+  /** TOON変換後のバイト数 */
+  toonConvertedBytes?: number;
 };
 
 const executionStorage = new AsyncLocalStorage<McpExecutionContext>();

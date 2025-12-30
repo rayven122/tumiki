@@ -26,6 +26,8 @@ export type McpServerLookupResult = {
   piiMaskingMode: PiiMaskingMode;
   /** 使用するInfoType一覧（空配列 = 全InfoType使用） */
   piiInfoTypes: string[];
+  /** TOON変換を有効にするかどうか（AIへのトークン削減用） */
+  toonConversionEnabled: boolean;
 };
 
 /**
@@ -38,6 +40,7 @@ type CachedMcpServerResult = {
   authType: AuthType;
   piiMaskingMode: PiiMaskingMode;
   piiInfoTypes: string[];
+  toonConversionEnabled: boolean;
 };
 
 // キャッシュのTTL（秒）
@@ -85,6 +88,7 @@ export const getMcpServerOrganization = async (
             authType: parsed.authType,
             piiMaskingMode: parsed.piiMaskingMode,
             piiInfoTypes: parsed.piiInfoTypes,
+            toonConversionEnabled: parsed.toonConversionEnabled,
           };
         }
       }
@@ -114,6 +118,7 @@ export const getMcpServerOrganization = async (
           authType: result.authType,
           piiMaskingMode: result.piiMaskingMode,
           piiInfoTypes: result.piiInfoTypes,
+          toonConversionEnabled: result.toonConversionEnabled,
         };
         await redis.setEx(
           cacheKey,
@@ -145,6 +150,7 @@ const getMcpServerFromDB = async (
         authType: true,
         piiMaskingMode: true,
         piiInfoTypes: true,
+        toonConversionEnabled: true,
       },
     });
 
