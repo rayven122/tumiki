@@ -157,9 +157,9 @@ describe("piiMaskingMiddleware", () => {
       detectedPiiList: [],
       processingTimeMs: 10,
     });
-    // レスポンスマスキング（PII検出あり）
-    mockMaskJson.mockResolvedValueOnce({
-      maskedData: { email: "****@*******.com" },
+    // レスポンスマスキング（PII検出あり）- maskTextを使用
+    mockMaskText.mockResolvedValueOnce({
+      maskedText: '{"email":"****@*******.com"}',
       detectedCount: 1,
       detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
       processingTimeMs: 50,
@@ -195,12 +195,11 @@ describe("piiMaskingMiddleware", () => {
 
     await piiMaskingMiddleware(c, mockNext);
 
-    // レスポンスのマスキングのみ呼ばれる（パース済みオブジェクトが渡される）
-    expect(mockMaskJson).toHaveBeenCalledTimes(1);
-    expect(mockMaskJson).toHaveBeenCalledWith(
-      { result: "ok" },
-      { infoTypes: [] },
-    );
+    // リクエストマスキングはスキップ、レスポンスマスキング(maskText)のみ呼ばれる
+    expect(mockMaskJson).not.toHaveBeenCalled();
+    expect(mockMaskText).toHaveBeenCalledWith('{"result":"ok"}', {
+      infoTypes: [],
+    });
   });
 
   test("空のレスポンスボディの場合は元のレスポンスを返す", async () => {
@@ -282,8 +281,8 @@ describe("piiMaskingMiddleware", () => {
       detectedPiiList: [],
       processingTimeMs: 10,
     });
-    // レスポンスマスキングでエラー
-    mockMaskJson.mockRejectedValueOnce(new Error("DLP error"));
+    // レスポンスマスキング(maskText)でエラー
+    mockMaskText.mockRejectedValueOnce(new Error("DLP error"));
 
     const authContext = createAuthContext({
       piiMaskingMode: PiiMaskingMode.BOTH,
@@ -296,8 +295,12 @@ describe("piiMaskingMiddleware", () => {
 
     const result = await piiMaskingMiddleware(c, mockNext);
 
-    // エラー時は元のレスポンスを返す
+    // エラー時は元のレスポンスを返す（フェイルオープン）
     expect(result).toBeInstanceOf(Response);
+    if (result instanceof Response) {
+      const body = await result.text();
+      expect(body).toBe('{"response":"with-pii"}');
+    }
   });
 
   test("マスキング済みリクエストボディを実行コンテキストに保存", async () => {
@@ -308,8 +311,9 @@ describe("piiMaskingMiddleware", () => {
       detectedPiiList: requestPiiList,
       processingTimeMs: 50,
     });
-    mockMaskJson.mockResolvedValueOnce({
-      maskedData: { result: "ok" },
+    // レスポンスマスキングはmaskTextを使用
+    mockMaskText.mockResolvedValueOnce({
+      maskedText: '{"result":"ok"}',
       detectedCount: 0,
       detectedPiiList: [],
       processingTimeMs: 10,
@@ -341,8 +345,9 @@ describe("piiMaskingMiddleware", () => {
       processingTimeMs: 10,
     });
     const responsePiiList = [{ infoType: "EMAIL_ADDRESS", count: 1 }];
-    mockMaskJson.mockResolvedValueOnce({
-      maskedData: { result: "****@*******.com" },
+    // レスポンスマスキングはmaskTextを使用
+    mockMaskText.mockResolvedValueOnce({
+      maskedText: '{"result":"****@*******.com"}',
       detectedCount: 1,
       detectedPiiList: responsePiiList,
       processingTimeMs: 50,
@@ -374,9 +379,9 @@ describe("piiMaskingMiddleware", () => {
       detectedPiiList: [],
       processingTimeMs: 10,
     });
-    // レスポンス用のモック
-    mockMaskJson.mockResolvedValueOnce({
-      maskedData: { result: "world" },
+    // レスポンス用のモック（maskTextを使用）
+    mockMaskText.mockResolvedValueOnce({
+      maskedText: '{"result":"world"}',
       detectedCount: 0,
       detectedPiiList: [],
       processingTimeMs: 10,
@@ -411,6 +416,12 @@ describe("piiMaskingMiddleware", () => {
       detectedPiiList: [],
       processingTimeMs: 10,
     });
+    mockMaskText.mockResolvedValue({
+      maskedText: '{"data":"response"}',
+      detectedCount: 0,
+      detectedPiiList: [],
+      processingTimeMs: 10,
+    });
 
     const authContext = createAuthContext({
       piiMaskingMode: PiiMaskingMode.BOTH,
@@ -430,9 +441,9 @@ describe("piiMaskingMiddleware", () => {
     });
   });
 
-  describe("JSONパース失敗時のフォールバック", () => {
-    test("text/plainのレスポンスはテキストとしてマスキングされる", async () => {
-      // JSONパースに失敗するのでテキストマスキングが呼ばれる
+  describe("レスポンスマスキング", () => {
+    test("text/plainのレスポンスもマスキングされる", async () => {
+      // maskTextはJSON/非JSONに関わらずテキストをマスキング
       mockMaskText.mockResolvedValueOnce({
         maskedText: "plain text with [EMAIL_ADDRESS]",
         detectedCount: 1,
@@ -455,25 +466,23 @@ describe("piiMaskingMiddleware", () => {
       expect(result).toBeInstanceOf(Response);
       if (result instanceof Response) {
         const body = await result.text();
-        // テキストマスキングされる
         expect(body).toBe("plain text with [EMAIL_ADDRESS]");
       }
-      // テキストマスキングが呼ばれたことを確認
       expect(mockMaskText).toHaveBeenCalledWith(
         "plain text with test@example.com",
         { infoTypes: [] },
       );
     });
 
-    test("application/jsonのレスポンスはJSONマスキングされる", async () => {
+    test("application/jsonのレスポンスもマスキングされる", async () => {
       mockMaskJson.mockResolvedValueOnce({
         maskedData: { query: "hello" },
         detectedCount: 0,
         detectedPiiList: [],
         processingTimeMs: 10,
       });
-      mockMaskJson.mockResolvedValueOnce({
-        maskedData: { email: "****@*******.com" },
+      mockMaskText.mockResolvedValueOnce({
+        maskedText: '{"email":"[EMAIL_ADDRESS]"}',
         detectedCount: 1,
         detectedPiiList: [{ infoType: "EMAIL_ADDRESS", count: 1 }],
         processingTimeMs: 50,
@@ -494,7 +503,7 @@ describe("piiMaskingMiddleware", () => {
       expect(result).toBeInstanceOf(Response);
       if (result instanceof Response) {
         const body = await result.text();
-        expect(body).toBe('{"email":"****@*******.com"}');
+        expect(body).toBe('{"email":"[EMAIL_ADDRESS]"}');
       }
     });
   });

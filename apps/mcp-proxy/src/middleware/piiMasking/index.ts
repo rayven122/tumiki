@@ -13,6 +13,8 @@
  * - REQUEST: リクエストのみマスキング
  * - RESPONSE: レスポンスのみマスキング
  * - BOTH: 両方マスキング
+ *
+ * エラー時はフェイルオープン（元データをそのまま通過）
  */
 
 import type { Context, Next } from "hono";
@@ -87,12 +89,7 @@ export const piiMaskingMiddleware = async (
 
 /**
  * リクエストボディをマスキング
- *
- * JSON-RPC 2.0の規格を維持しながら、params内のデータのみをマスキング。
- * マスキング済みボディはコンテキストに保存し、ハンドラー（toolExecutor）が取得できるようにする。
- *
- * @param c - Honoコンテキスト
- * @param options - マスキングオプション（使用するInfoType一覧）
+ * マスキング済みボディと検出情報は実行コンテキストに保存
  */
 const maskRequestBody = async (
   c: Context<HonoEnv>,
@@ -123,82 +120,42 @@ const maskRequestBody = async (
 
 /**
  * レスポンスボディをマスキング
- *
- * enableJsonResponse: true により、レスポンスは常にJSON形式。
- * JSON-RPC 2.0の規格を維持しながら、result/error.data内のデータのみをマスキング。
- *
- * @param c - Honoコンテキスト
- * @param options - マスキングオプション（使用するInfoType一覧）
  */
 const maskResponseBody = async (
   c: Context<HonoEnv>,
   options?: PiiMaskingOptions,
 ): Promise<Response> => {
   const originalResponse = c.res;
+  const responseText = await originalResponse.text();
 
-  try {
-    // JSONレスポンスとしてパース
-    const responseData: unknown = await originalResponse.clone().json();
-
-    // JSON-RPC 2.0対応マスキング（jsonrpc, id, error.code, error.message は維持）
-    const result = await maskJson(responseData, options);
-
-    // 検出情報を実行コンテキストに保存
-    updateExecutionContext({
-      piiDetectedResponse: result.detectedPiiList,
-    });
-
-    // マスキング済みレスポンスで新しいResponseを作成
-    // 上流のミドルウェアが戻り値をreturnしない場合でもc.resが使われるため、
-    // c.resを明示的に更新する
-    const maskedResponse = new Response(JSON.stringify(result.maskedData), {
+  // 空のレスポンスの場合はそのまま返す
+  if (!responseText) {
+    return new Response(responseText, {
       status: originalResponse.status,
       statusText: originalResponse.statusText,
       headers: originalResponse.headers,
     });
-    c.res = maskedResponse;
-    return maskedResponse;
-  } catch {
-    // JSONパースに失敗した場合はテキストとしてマスキング（フォールバック）
-    return maskTextResponseBody(c, options);
   }
-};
 
-/**
- * テキストレスポンスボディをマスキング（フォールバック用）
- *
- * JSONパースに失敗した場合のフォールバック処理。
- * テキスト全体をGCP DLPでマスキングする。
- *
- * @param c - Honoコンテキスト
- * @param options - マスキングオプション（使用するInfoType一覧）
- */
-const maskTextResponseBody = async (
-  c: Context<HonoEnv>,
-  options?: PiiMaskingOptions,
-): Promise<Response> => {
-  const originalResponse = c.res;
-
+  // テキストを直接マスキング
+  // maskText内部でもフェイルオープンしているが、予期せぬエラーに備えてここでも捕捉
   try {
-    const text = await originalResponse.clone().text();
-    const result = await maskText(text, options);
-
-    // 検出情報を実行コンテキストに保存
+    const result = await maskText(responseText, options);
     updateExecutionContext({
       piiDetectedResponse: result.detectedPiiList,
     });
-
-    // マスキング済みレスポンスで新しいResponseを作成
-    const maskedResponse = new Response(result.maskedText, {
+    return new Response(result.maskedText, {
       status: originalResponse.status,
       statusText: originalResponse.statusText,
       headers: originalResponse.headers,
     });
-    c.res = maskedResponse;
-    return maskedResponse;
   } catch (error) {
-    logError("Failed to mask text response body", error as Error);
+    logError("Failed to mask response body", error as Error);
     // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
-    return originalResponse;
+    return new Response(responseText, {
+      status: originalResponse.status,
+      statusText: originalResponse.statusText,
+      headers: originalResponse.headers,
+    });
   }
 };
