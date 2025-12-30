@@ -5,7 +5,7 @@
  * Redis キャッシュで高速化（TTL: 5分）
  */
 
-import { db } from "@tumiki/db/server";
+import { db, type PiiMaskingMode } from "@tumiki/db/server";
 import { getRedisClient } from "../libs/cache/redis.js";
 import { logDebug, logError, logWarn } from "../libs/logger/index.js";
 
@@ -22,6 +22,10 @@ export type McpServerLookupResult = {
   organizationId: string;
   deletedAt: Date | null;
   authType: AuthType;
+  /** PIIマスキングモード（GCP DLPによるマスキング） */
+  piiMaskingMode: PiiMaskingMode;
+  /** 使用するInfoType一覧（空配列 = 全InfoType使用） */
+  piiInfoTypes: string[];
 };
 
 /**
@@ -32,6 +36,8 @@ type CachedMcpServerResult = {
   organizationId: string;
   deletedAt: string | null;
   authType: AuthType;
+  piiMaskingMode: PiiMaskingMode;
+  piiInfoTypes: string[];
 };
 
 // キャッシュのTTL（秒）
@@ -77,6 +83,8 @@ export const getMcpServerOrganization = async (
             organizationId: parsed.organizationId,
             deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
             authType: parsed.authType,
+            piiMaskingMode: parsed.piiMaskingMode,
+            piiInfoTypes: parsed.piiInfoTypes,
           };
         }
       }
@@ -104,6 +112,8 @@ export const getMcpServerOrganization = async (
           organizationId: result.organizationId,
           deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
           authType: result.authType,
+          piiMaskingMode: result.piiMaskingMode,
+          piiInfoTypes: result.piiInfoTypes,
         };
         await redis.setEx(
           cacheKey,
@@ -133,6 +143,8 @@ const getMcpServerFromDB = async (
         organizationId: true,
         deletedAt: true,
         authType: true,
+        piiMaskingMode: true,
+        piiInfoTypes: true,
       },
     });
 

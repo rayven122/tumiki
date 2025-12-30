@@ -4,7 +4,7 @@
  * Pub/Sub経由でBigQueryにMCPリクエストログを送信する
  */
 
-import type { TransportType } from "@tumiki/db/server";
+import type { TransportType, PiiMaskingMode } from "@tumiki/db/server";
 import { logError } from "../logger/index.js";
 import { getMcpLogsTopic, isBigQueryLoggingEnabled } from "./index.js";
 
@@ -38,14 +38,22 @@ export type McpLogEntry = {
   userAgent?: string;
   timestamp: string;
 
-  // リクエスト・レスポンス（JSON文字列）
-  requestBody?: string;
-  responseBody?: string;
+  // リクエスト・レスポンス（JSONオブジェクト）
+  requestBody?: unknown;
+  responseBody?: unknown;
 
   // PostgreSQLログ記録状態
   // true: PostgreSQLへの記録が失敗（idはBigQuery用に生成されたUUID）
   // false/undefined: PostgreSQLへの記録が成功（idはPostgreSQLのログID）
   postgresLogFailed?: boolean;
+
+  // PII検出情報
+  piiMaskingMode?: PiiMaskingMode;
+  piiDetectedRequestCount?: number;
+  piiDetectedResponseCount?: number;
+  piiDetectedInfoTypes?: string[];
+  piiDetectionDetailsRequest?: Record<string, number>;
+  piiDetectionDetailsResponse?: Record<string, number>;
 };
 
 /**

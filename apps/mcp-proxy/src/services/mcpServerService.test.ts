@@ -19,19 +19,23 @@ const {
   mockGetRedisClient: vi.fn(),
 }));
 
-vi.mock("@tumiki/db/server", () => ({
-  db: {
-    mcpServer: {
-      findUnique: mockMcpServerFindUnique,
+vi.mock("@tumiki/db/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tumiki/db/server")>();
+  return {
+    ...actual,
+    db: {
+      mcpServer: {
+        findUnique: mockMcpServerFindUnique,
+      },
+      organizationMember: {
+        findUnique: mockOrganizationMemberFindUnique,
+      },
+      account: {
+        findFirst: mockAccountFindFirst,
+      },
     },
-    organizationMember: {
-      findUnique: mockOrganizationMemberFindUnique,
-    },
-    account: {
-      findFirst: mockAccountFindFirst,
-    },
-  },
-}));
+  };
+});
 
 vi.mock("../libs/cache/redis.js", () => ({
   getRedisClient: mockGetRedisClient,
@@ -42,6 +46,9 @@ vi.mock("../libs/logger/index.js", () => ({
   logError: vi.fn(),
   logWarn: vi.fn(),
 }));
+
+// PiiMaskingMode をインポート
+import { PiiMaskingMode } from "@tumiki/db/server";
 
 // モック設定後にインポート
 import {
@@ -72,6 +79,8 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingMode: PiiMaskingMode.DISABLED,
+        piiInfoTypes: [] as string[],
       };
 
       mockGetRedisClient.mockResolvedValue(null);
@@ -87,6 +96,8 @@ describe("mcpServerService", () => {
           organizationId: true,
           deletedAt: true,
           authType: true,
+          piiMaskingMode: true,
+          piiInfoTypes: true,
         },
       });
     });
@@ -107,6 +118,8 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt,
         authType: "API_KEY" as const,
+        piiMaskingMode: PiiMaskingMode.DISABLED,
+        piiInfoTypes: [] as string[],
       };
 
       mockGetRedisClient.mockResolvedValue(null);
@@ -124,6 +137,8 @@ describe("mcpServerService", () => {
         organizationId: "cached-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingMode: PiiMaskingMode.DISABLED,
+        piiInfoTypes: [] as string[],
       };
       const mockRedis = {
         get: vi.fn().mockResolvedValue(JSON.stringify(cachedData)),
@@ -148,6 +163,8 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingMode: PiiMaskingMode.DISABLED,
+        piiInfoTypes: [] as string[],
       };
       const mockRedis = {
         get: vi.fn().mockResolvedValue(null),
@@ -170,6 +187,8 @@ describe("mcpServerService", () => {
           organizationId: "test-org-id",
           deletedAt: null,
           authType: "OAUTH",
+          piiMaskingMode: "DISABLED",
+          piiInfoTypes: [],
         }),
       );
     });
@@ -224,6 +243,8 @@ describe("mcpServerService", () => {
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        piiMaskingMode: PiiMaskingMode.DISABLED,
+        piiInfoTypes: [] as string[],
       };
       const mockRedis = {
         get: vi.fn().mockRejectedValue(new Error("Redis connection failed")),

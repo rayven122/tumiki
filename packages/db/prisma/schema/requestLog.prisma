@@ -40,6 +40,18 @@ model McpServerRequestLog {
   /// ユーザーエージェント（最大512文字に制限）
   userAgent String? @db.VarChar(512)
 
+  /// PIIマスキングモード（DISABLEDの場合はマスキング無効）
+  /// MCPサーバー設定のpiiMaskingModeをそのまま記録
+  piiMaskingMode PiiMaskingMode @default(DISABLED)
+
+  /// リクエストPII検出件数
+  piiDetectedRequestCount Int?
+  /// レスポンスPII検出件数
+  piiDetectedResponseCount Int?
+  /// 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+  /// 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
+  piiDetectedInfoTypes String[]
+
   createdAt DateTime @default(now())
 
   /// パフォーマンス最適化用インデックス

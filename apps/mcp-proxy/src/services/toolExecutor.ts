@@ -1,7 +1,7 @@
 import { db } from "@tumiki/db/server";
 import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
-import { updateRequestLoggingContext } from "../middleware/requestLogging/context.js";
+import { updateExecutionContext } from "../middleware/requestLogging/context.js";
 import { extractMcpErrorInfo, getErrorCodeName } from "../libs/error/index.js";
 
 /**
@@ -80,8 +80,8 @@ export const executeTool = async (
 
     const template = templateInstance.mcpServerTemplate;
 
-    // 4. transportType を logging context に追加
-    updateRequestLoggingContext({
+    // 4. transportType を実行コンテキストに追加
+    updateExecutionContext({
       method: "tools/call",
       transportType: template.transportType,
       toolName: fullToolName,
@@ -155,8 +155,8 @@ export const executeTool = async (
       httpStatus: errorInfo.httpStatus,
     });
 
-    // ログコンテキストにエラー情報を記録（インシデント追跡用）
-    updateRequestLoggingContext({
+    // 実行コンテキストにエラー情報を記録（インシデント追跡用）
+    updateExecutionContext({
       httpStatus: errorInfo.httpStatus,
       errorCode: errorInfo.errorCode,
       errorMessage: errorInfo.errorMessage,
