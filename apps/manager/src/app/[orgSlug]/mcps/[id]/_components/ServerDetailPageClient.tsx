@@ -31,7 +31,7 @@ import { api } from "@/trpc/react";
 import { ServerStatus, AuthType, ServerType } from "@tumiki/db/prisma";
 import type { McpServerId } from "@/schema/ids";
 import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
-import { ShieldCheck, Info } from "lucide-react";
+import { ShieldCheck, Info, Zap } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -137,6 +137,54 @@ export const ServerDetailPageClient = ({
     updatePiiMasking({
       id: serverId as McpServerId,
       piiMaskingEnabled: checked,
+    });
+  };
+
+  // TOON変換設定更新
+  const { mutate: updateToonConversion } =
+    api.v2.userMcpServer.updateToonConversion.useMutation({
+      // 楽観的更新
+      onMutate: async (variables) => {
+        await utils.v2.userMcpServer.findById.cancel({
+          id: serverId as McpServerId,
+        });
+        const previousData = utils.v2.userMcpServer.findById.getData({
+          id: serverId as McpServerId,
+        });
+        if (previousData) {
+          utils.v2.userMcpServer.findById.setData(
+            { id: serverId as McpServerId },
+            {
+              ...previousData,
+              toonConversionEnabled: variables.toonConversionEnabled,
+            },
+          );
+        }
+        return { previousData };
+      },
+      onSuccess: () => {
+        toast.success("TOON変換設定を更新しました");
+      },
+      onError: (error, _variables, context) => {
+        if (context?.previousData) {
+          utils.v2.userMcpServer.findById.setData(
+            { id: serverId as McpServerId },
+            context.previousData,
+          );
+        }
+        toast.error(`エラーが発生しました: ${error.message}`);
+      },
+      onSettled: async () => {
+        await utils.v2.userMcpServer.findById.invalidate({
+          id: serverId as McpServerId,
+        });
+      },
+    });
+
+  const handleToonConversionToggle = (checked: boolean) => {
+    updateToonConversion({
+      id: serverId as McpServerId,
+      toonConversionEnabled: checked,
     });
   };
 
@@ -417,6 +465,39 @@ export const ServerDetailPageClient = ({
                             server.piiMaskingEnabled
                               ? "PIIマスキングを無効にする"
                               : "PIIマスキングを有効にする"
+                          }
+                        />
+                      </div>
+
+                      {/* TOON変換 */}
+                      <div className="flex items-center gap-1.5">
+                        <Zap className="h-3 w-3" />
+                        <span>TOON変換:</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex cursor-help text-gray-400 hover:text-gray-600"
+                              aria-label="TOON変換について"
+                            >
+                              <Info className="h-3 w-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className="max-w-xs text-left"
+                          >
+                            レスポンスをTOON形式に変換し、AIへのトークン量を30〜60%削減します。特に配列データで効果的です
+                          </TooltipContent>
+                        </Tooltip>
+                        <Switch
+                          checked={server.toonConversionEnabled}
+                          onCheckedChange={handleToonConversionToggle}
+                          className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
+                          aria-label={
+                            server.toonConversionEnabled
+                              ? "TOON変換を無効にする"
+                              : "TOON変換を有効にする"
                           }
                         />
                       </div>
