@@ -73,6 +73,7 @@ export const UserMcpServerCard = ({
 
   // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
   const isOAuthServer = userMcpServer.authType === "OAUTH";
+  const isOAuthTemplateServer = mcpServer?.authType === "OAUTH";
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
@@ -146,7 +147,7 @@ export const UserMcpServerCard = ({
                   </Link>
                 </DropdownMenuItem>
                 {/* OAuthサーバーの場合は常に再認証オプションを表示 */}
-                {isOAuthServer && (
+                {isOAuthTemplateServer && (
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();

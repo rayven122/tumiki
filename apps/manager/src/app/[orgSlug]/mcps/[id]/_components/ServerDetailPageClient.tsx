@@ -31,6 +31,12 @@ import { api } from "@/trpc/react";
 import { ServerStatus, AuthType, ServerType } from "@tumiki/db/prisma";
 import type { McpServerId } from "@/schema/ids";
 import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
+import { ShieldCheck, Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CustomTabs } from "./CustomTabs";
 import { OverviewTab } from "./OverviewTab";
 import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
@@ -87,6 +93,52 @@ export const ServerDetailPageClient = ({
         toast.error(`エラーが発生しました: ${error.message}`);
       },
     });
+
+  // PIIマスキング設定更新
+  const utils = api.useUtils();
+  const { mutate: updatePiiMasking } =
+    api.v2.userMcpServer.updatePiiMasking.useMutation({
+      // 楽観的更新
+      onMutate: async (variables) => {
+        await utils.v2.userMcpServer.findById.cancel({
+          id: serverId as McpServerId,
+        });
+        const previousData = utils.v2.userMcpServer.findById.getData({
+          id: serverId as McpServerId,
+        });
+        if (previousData) {
+          utils.v2.userMcpServer.findById.setData(
+            { id: serverId as McpServerId },
+            { ...previousData, piiMaskingEnabled: variables.piiMaskingEnabled },
+          );
+        }
+        return { previousData };
+      },
+      onSuccess: () => {
+        toast.success("PIIマスキング設定を更新しました");
+      },
+      onError: (error, _variables, context) => {
+        if (context?.previousData) {
+          utils.v2.userMcpServer.findById.setData(
+            { id: serverId as McpServerId },
+            context.previousData,
+          );
+        }
+        toast.error(`エラーが発生しました: ${error.message}`);
+      },
+      onSettled: async () => {
+        await utils.v2.userMcpServer.findById.invalidate({
+          id: serverId as McpServerId,
+        });
+      },
+    });
+
+  const handlePiiMaskingToggle = (checked: boolean) => {
+    updatePiiMasking({
+      id: serverId as McpServerId,
+      piiMaskingEnabled: checked,
+    });
+  };
 
   // APIキー一覧取得（表示用）
   const { data: apiKeys } = api.v2.mcpServerAuth.listApiKeys.useQuery(
@@ -335,6 +387,39 @@ export const ServerDetailPageClient = ({
                           )}
                         </>
                       )}
+
+                      {/* PIIマスキング */}
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="h-3 w-3" />
+                        <span>PIIマスキング:</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex cursor-help text-gray-400 hover:text-gray-600"
+                              aria-label="PIIマスキングについて"
+                            >
+                              <Info className="h-3 w-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className="max-w-xs text-left"
+                          >
+                            リクエスト・レスポンスに含まれる個人情報（メールアドレス、電話番号など）を自動マスキングし、AIやMCPサーバーに意図せず個人情報が渡ることを防ぎます
+                          </TooltipContent>
+                        </Tooltip>
+                        <Switch
+                          checked={server.piiMaskingEnabled}
+                          onCheckedChange={handlePiiMaskingToggle}
+                          className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
+                          aria-label={
+                            server.piiMaskingEnabled
+                              ? "PIIマスキングを無効にする"
+                              : "PIIマスキングを有効にする"
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

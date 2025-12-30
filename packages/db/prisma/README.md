@@ -463,6 +463,10 @@ erDiagram
   Int errorCode "nullable"
   String(500) errorSummary "nullable"
   String(512) userAgent "nullable"
+  PiiMaskingMode piiMaskingMode
+  Int piiDetectedRequestCount "nullable"
+  Int piiDetectedResponseCount "nullable"
+  String piiDetectedInfoTypes
   DateTime createdAt
 }
 ```
@@ -489,6 +493,14 @@ MCPサーバーインスタンスへのリクエストログ
     > MCPエラーコード（例: -32600, -32601, -32603）
   - `errorSummary`: エラーメッセージ要約（最大500文字、詳細はBigQuery）
   - `userAgent`: ユーザーエージェント（最大512文字に制限）
+  - `piiMaskingMode`
+    > PIIマスキングモード（DISABLEDの場合はマスキング無効）
+    > MCPサーバー設定のpiiMaskingModeをそのまま記録
+  - `piiDetectedRequestCount`: リクエストPII検出件数
+  - `piiDetectedResponseCount`: レスポンスPII検出件数
+  - `piiDetectedInfoTypes`
+    > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+    > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
   - `createdAt`: 
 
 
@@ -514,6 +526,8 @@ erDiagram
   AuthType authType
   String organizationId FK
   Int displayOrder
+  PiiMaskingMode piiMaskingMode
+  String piiInfoTypes
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -632,6 +646,15 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
   - `authType`: 使用する認証タイプ（API_KEY, OAUTH, NONE）
   - `organizationId`: 組織
   - `displayOrder`: 表示順序（ユーザーごと）
+  - `piiMaskingMode`
+    > PIIマスキングモード設定（GCP DLPによるマスキング）
+    > DISABLED: マスキングなし（デフォルト）
+    > REQUEST: リクエストのみマスキング
+    > RESPONSE: レスポンスのみマスキング
+    > BOTH: 両方マスキング
+  - `piiInfoTypes`
+    > 使用するInfoType一覧（GCP DLP）
+    > 空配列の場合は全InfoTypeを使用
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ
@@ -696,7 +719,7 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
   - `id`: 
   - `normalizedName`: インスタンスの識別用正規化名（例: "github-work", "github-personal"）
   - `mcpServerId`: 関連するMCPサーバー
-  - `mcpServerTemplateId`: 関��するMCPサーバーテンプレート
+  - `mcpServerTemplateId`: 関連するMCPサーバーテンプレート
   - `isEnabled`: このテンプレートインスタンスが有効か
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { HonoEnv } from "../types/index.js";
 import { authMiddleware } from "../middleware/auth/index.js";
+import { piiMaskingMiddleware } from "../middleware/piiMasking/index.js";
 import { mcpRequestLoggingMiddleware } from "../middleware/requestLogging/index.js";
 import { mcpHandler } from "../handlers/mcpHandler.js";
 
@@ -10,5 +11,6 @@ mcpRoute.post(
   "/mcp/:mcpServerId",
   mcpRequestLoggingMiddleware,
   authMiddleware,
+  piiMaskingMiddleware,
   mcpHandler,
 );

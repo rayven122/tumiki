@@ -8,11 +8,11 @@
 import type { Context, Next } from "hono";
 import type { HonoEnv } from "../../types/index.js";
 import {
-  runWithRequestLoggingContext,
-  getRequestLoggingContext,
-  type McpRequestLoggingContext,
+  runWithExecutionContext,
+  getExecutionContext,
+  type McpExecutionContext,
 } from "./context.js";
-import { db, type Prisma } from "@tumiki/db/server";
+import { db, type Prisma, PiiMaskingMode } from "@tumiki/db/server";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { publishMcpLog } from "../../libs/pubsub/mcpLogger.js";
 
@@ -56,32 +56,79 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     return;
   }
 
-  // ログコンテキストを取得
-  const loggingContext = getRequestLoggingContext();
+  // 実行コンテキストを取得
+  const executionContext = getExecutionContext();
 
   // toolNameが存在しない場合はログを記録しない（MCP以外のリクエスト）
-  if (!loggingContext?.toolName) {
+  if (!executionContext?.toolName) {
     return;
   }
 
-  // リクエストボディを再取得（キャッシュから）
-  const requestText = await c.req.text();
-
-  // レスポンス情報を取得
+  // リクエストボディ: piiMaskingMiddlewareでマスキング済みならそれを使用
+  const requestBody: unknown =
+    executionContext.requestBody ?? (await c.req.json());
+  // レスポンスボディ: piiMaskingMiddlewareでマスキング済みResponseに置換されているため
+  // c.resから取得すればマスキング済みデータが得られる
+  // JSONパースを試み、失敗したらテキストとして取得
   const responseText = await c.res.clone().text();
+  let responseBody: unknown;
+  try {
+    responseBody = JSON.parse(responseText);
+  } catch {
+    // JSONパースに失敗した場合はテキストとして扱う
+    responseBody = responseText;
+  }
 
-  // UTF-8エンコードでのバイト数を計算
+  // UTF-8エンコードでのバイト数を計算（マスキング後のサイズ）
   const textEncoder = new TextEncoder();
-  const inputBytes = textEncoder.encode(requestText).length;
-  const outputBytes = textEncoder.encode(responseText).length;
+  const inputBytes = textEncoder.encode(JSON.stringify(requestBody)).length;
+  const outputBytes = textEncoder.encode(JSON.stringify(responseBody)).length;
 
   // 実行時間を計算
-  const durationMs = loggingContext.requestStartTime
-    ? Date.now() - loggingContext.requestStartTime
+  const durationMs = executionContext.requestStartTime
+    ? Date.now() - executionContext.requestStartTime
     : 0;
 
-  // ログデータを構築
-  const logData = {
+  // PII検出情報を計算
+  const piiMaskingMode =
+    executionContext.piiMaskingMode ?? PiiMaskingMode.DISABLED;
+  const piiDetectedRequest = executionContext.piiDetectedRequest ?? [];
+  const piiDetectedResponse = executionContext.piiDetectedResponse ?? [];
+
+  // リクエスト/レスポンスそれぞれの検出件数を合計
+  const piiDetectedRequestCount =
+    piiDetectedRequest.length > 0
+      ? piiDetectedRequest.reduce((sum, pii) => sum + pii.count, 0)
+      : undefined;
+  const piiDetectedResponseCount =
+    piiDetectedResponse.length > 0
+      ? piiDetectedResponse.reduce((sum, pii) => sum + pii.count, 0)
+      : undefined;
+
+  // InfoType名の配列（重複なし）
+  const piiDetectedInfoTypes = [
+    ...new Set([
+      ...piiDetectedRequest.map((pii) => pii.infoType),
+      ...piiDetectedResponse.map((pii) => pii.infoType),
+    ]),
+  ];
+
+  // InfoType別の詳細（リクエスト/レスポンス別々に保存）
+  const piiDetectionDetailsRequest: Record<string, number> | undefined =
+    piiDetectedRequest.length > 0
+      ? Object.fromEntries(
+          piiDetectedRequest.map((pii) => [pii.infoType, pii.count]),
+        )
+      : undefined;
+  const piiDetectionDetailsResponse: Record<string, number> | undefined =
+    piiDetectedResponse.length > 0
+      ? Object.fromEntries(
+          piiDetectedResponse.map((pii) => [pii.infoType, pii.count]),
+        )
+      : undefined;
+
+  // PostgreSQL用ログデータを構築（詳細フィールドはBigQueryのみに保存）
+  const postgresLogData = {
     // 認証情報
     mcpServerId: authContext.mcpServerId,
     mcpApiKeyId: authContext.mcpApiKeyId ?? null,
@@ -89,39 +136,55 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     organizationId: authContext.organizationId,
 
     // リクエスト情報
-    toolName: loggingContext.toolName,
-    transportType: loggingContext.transportType ?? "STREAMABLE_HTTPS",
-    method: loggingContext.method ?? "tools/call", // toolExecutorで設定される
+    toolName: executionContext.toolName,
+    transportType: executionContext.transportType ?? "STREAMABLE_HTTPS",
+    method: executionContext.method ?? "tools/call", // toolExecutorで設定される
     httpStatus: c.res.status,
     durationMs,
     inputBytes,
     outputBytes,
     userAgent: c.req.header("user-agent"),
+
+    // PII検出情報（集計データのみ、詳細はBigQuery）
+    piiMaskingMode,
+    piiDetectedRequestCount,
+    piiDetectedResponseCount,
+    piiDetectedInfoTypes,
   };
 
   // PostgreSQLにログ記録し、IDを取得
-  const requestLogId = await logMcpServerRequest(logData).catch((error) => {
-    // エラーをキャッチしてログに記録（リクエストには影響させない）
-    logError("Failed to log MCP server request in middleware", error as Error, {
-      toolName: loggingContext.toolName,
-      mcpServerId: authContext.mcpServerId,
-    });
-    return null;
-  });
+  const requestLogId = await logMcpServerRequest(postgresLogData).catch(
+    (error) => {
+      // エラーをキャッチしてログに記録（リクエストには影響させない）
+      logError(
+        "Failed to log MCP server request in middleware",
+        error as Error,
+        {
+          toolName: executionContext.toolName,
+          mcpServerId: authContext.mcpServerId,
+        },
+      );
+      return null;
+    },
+  );
 
   // BigQueryへ非同期送信（Pub/Sub経由）
   // PostgreSQLへの記録成否に関わらず送信し、失敗時はフラグで識別可能にする
+  // 注意: PostgreSQLには保存しない詳細フィールドもBigQueryには送信する
   await publishMcpLog({
-    ...logData,
+    ...postgresLogData,
     // PostgreSQL記録成功時はそのIDを使用、失敗時は新しいUUIDを生成
     id: requestLogId ?? crypto.randomUUID(),
     timestamp: new Date().toISOString(),
-    requestBody: requestText,
-    responseBody: responseText,
+    requestBody,
+    responseBody,
     // エラー情報（インシデント追跡用）
-    errorCode: loggingContext.errorCode,
-    errorMessage: loggingContext.errorMessage,
-    errorDetails: loggingContext.errorDetails,
+    errorCode: executionContext.errorCode,
+    errorMessage: executionContext.errorMessage,
+    errorDetails: executionContext.errorDetails,
+    // PII検出詳細（BigQueryのみ、PostgreSQLには保存しない）
+    piiDetectionDetailsRequest,
+    piiDetectionDetailsResponse,
     // PostgreSQL記録が失敗した場合はフラグを立てる
     postgresLogFailed: requestLogId === null,
   });
@@ -143,9 +206,9 @@ export const mcpRequestLoggingMiddleware = async (
     requestStartTime: Date.now(),
     // inputBytesはrecordRequestLogAsyncで計算
     inputBytes: 0,
-  } satisfies McpRequestLoggingContext;
+  } satisfies McpExecutionContext;
 
-  await runWithRequestLoggingContext(initialContext, async () => {
+  await runWithExecutionContext(initialContext, async () => {
     try {
       // 次のミドルウェア/ハンドラーを実行（authMiddlewareで認証コンテキストが設定される）
       await next();

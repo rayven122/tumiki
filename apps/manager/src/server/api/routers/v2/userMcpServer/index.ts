@@ -24,6 +24,7 @@ import {
   updateServerStatusOutputSchema,
 } from "./updateServerStatus";
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
+import { updatePiiMasking } from "./updatePiiMasking";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
@@ -131,6 +132,17 @@ export const ToggleToolInputV2 = z.object({
   templateInstanceId: z.string(),
   toolId: ToolIdSchema,
   isEnabled: z.boolean(),
+});
+
+// PIIマスキング設定更新の入力スキーマ
+export const UpdatePiiMaskingInputV2 = z.object({
+  id: McpServerIdSchema,
+  piiMaskingEnabled: z.boolean(),
+});
+
+// PIIマスキング設定更新の出力スキーマ
+export const UpdatePiiMaskingOutputV2 = z.object({
+  id: z.string(),
 });
 
 export const userMcpServerRouter = createTRPCRouter({
@@ -377,6 +389,26 @@ export const userMcpServerRouter = createTRPCRouter({
           ctx.session.user.id,
           ctx.currentOrg.id,
         );
+      });
+    }),
+
+  // PIIマスキング設定更新
+  updatePiiMasking: protectedProcedure
+    .input(UpdatePiiMaskingInputV2)
+    .output(UpdatePiiMaskingOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
+      return await ctx.db.$transaction(async (tx) => {
+        return await updatePiiMasking(tx, {
+          id: input.id,
+          piiMaskingEnabled: input.piiMaskingEnabled,
+          organizationId: ctx.currentOrg.id,
+        });
       });
     }),
 });
