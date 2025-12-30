@@ -127,6 +127,11 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
         )
       : undefined;
 
+  // TOON変換メトリクスを取得
+  const toonConversionEnabled = executionContext.toonConversionEnabled;
+  const toonOriginalBytes = executionContext.toonOriginalBytes;
+  const toonConvertedBytes = executionContext.toonConvertedBytes;
+
   // ログデータを構築
   const logData = {
     // 認証情報
@@ -152,6 +157,11 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     piiDetectedInfoTypes,
     piiDetectionDetailsRequest,
     piiDetectionDetailsResponse,
+
+    // TOON変換メトリクス
+    toonConversionEnabled,
+    toonOriginalBytes,
+    toonConvertedBytes,
   };
 
   // PostgreSQLにログ記録し、IDを取得

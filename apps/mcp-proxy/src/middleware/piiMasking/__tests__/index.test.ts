@@ -78,6 +78,7 @@ const createAuthContext = (
   mcpServerId: "server-1",
   piiMaskingMode: PiiMaskingMode.BOTH,
   piiInfoTypes: [],
+  toonConversionEnabled: false,
   ...overrides,
 });
 

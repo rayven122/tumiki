@@ -19,6 +19,8 @@ export type AuthContext = {
   piiMaskingMode: PiiMaskingMode;
   /** 使用するInfoType一覧（空配列 = 全InfoType使用） */
   piiInfoTypes: string[];
+  /** TOON変換を有効にするかどうか（AIへのトークン削減用） */
+  toonConversionEnabled: boolean;
 };
 
 /**
