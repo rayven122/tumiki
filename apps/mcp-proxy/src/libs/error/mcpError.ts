@@ -2,7 +2,6 @@
  * MCP (JSON-RPC 2.0) エラー生成ユーティリティ
  */
 
-import { error as jsonrpcError, JsonRpcError } from "jsonrpc-lite";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 /**
@@ -42,21 +41,15 @@ export const createMcpError = (
   message: string,
   data?: unknown,
   requestId: JsonRpcId = null,
-): McpErrorResponse => {
-  const errorObj = jsonrpcError(
-    requestId,
-    new JsonRpcError(message, code, data),
-  );
-  return {
-    jsonrpc: "2.0",
-    id: errorObj.id,
-    error: {
-      code: errorObj.error.code,
-      message: errorObj.error.message,
-      ...(errorObj.error.data !== undefined && { data: errorObj.error.data }),
-    },
-  };
-};
+): McpErrorResponse => ({
+  jsonrpc: "2.0",
+  id: requestId,
+  error: {
+    code,
+    message,
+    ...(data !== undefined && { data }),
+  },
+});
 
 /**
  * 認証エラーレスポンスを生成
@@ -65,9 +58,7 @@ export const createMcpError = (
 export const createUnauthorizedError = (
   message = "Authentication required",
   data?: unknown,
-): McpErrorResponse => {
-  return createMcpError(ErrorCode.InvalidRequest, message, data);
-};
+): McpErrorResponse => createMcpError(ErrorCode.InvalidRequest, message, data);
 
 /**
  * 権限拒否エラーレスポンスを生成
@@ -76,9 +67,7 @@ export const createUnauthorizedError = (
 export const createPermissionDeniedError = (
   message = "Permission denied",
   data?: unknown,
-): McpErrorResponse => {
-  return createMcpError(ErrorCode.InvalidRequest, message, data);
-};
+): McpErrorResponse => createMcpError(ErrorCode.InvalidRequest, message, data);
 
 /**
  * 無効なリクエストエラーレスポンスを生成
@@ -86,9 +75,7 @@ export const createPermissionDeniedError = (
 export const createInvalidRequestError = (
   message = "Invalid request",
   data?: unknown,
-): McpErrorResponse => {
-  return createMcpError(ErrorCode.InvalidRequest, message, data);
-};
+): McpErrorResponse => createMcpError(ErrorCode.InvalidRequest, message, data);
 
 /**
  * リソースが見つからないエラーレスポンスを生成
@@ -97,6 +84,4 @@ export const createInvalidRequestError = (
 export const createNotFoundError = (
   message = "Resource not found",
   data?: unknown,
-): McpErrorResponse => {
-  return createMcpError(ErrorCode.InvalidRequest, message, data);
-};
+): McpErrorResponse => createMcpError(ErrorCode.InvalidRequest, message, data);

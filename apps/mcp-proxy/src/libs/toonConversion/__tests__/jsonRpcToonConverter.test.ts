@@ -101,22 +101,20 @@ describe("convertMcpResponseToToon", () => {
       expect(typeof parsed.error.data).toBe("string");
     });
 
-    test("error.dataがない場合は変換しない", () => {
-      const inputObj = {
+    test("error.dataがない場合は全体がTOON変換される", () => {
+      const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
         error: {
           code: -32600,
           message: "Invalid Request",
         },
-      };
-      const input = JSON.stringify(inputObj);
+      });
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(false);
-      // 変換なしの場合は元のJSON文字列が返される
-      expect(result.convertedData).toBe(input);
+      expect(result.wasConverted).toBe(true);
+      expect(typeof result.convertedData).toBe("string");
     });
   });
 
@@ -136,7 +134,7 @@ describe("convertMcpResponseToToon", () => {
       expect(typeof result.convertedData).toBe("string");
     });
 
-    test("配列はJSON-RPCバッチとして扱われ、変換されない", () => {
+    test("配列はTOON変換される", () => {
       const input = JSON.stringify([
         { id: 1, name: "Alice" },
         { id: 2, name: "Bob" },
@@ -144,10 +142,8 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      // JSON-RPCバッチはサポートしていないため、変換されない
-      expect(result.wasConverted).toBe(false);
-      // 変換なしの場合は元のJSON文字列が返される
-      expect(result.convertedData).toBe(input);
+      expect(result.wasConverted).toBe(true);
+      expect(typeof result.convertedData).toBe("string");
     });
   });
 
@@ -159,11 +155,10 @@ describe("convertMcpResponseToToon", () => {
       expect(result.convertedData).toBe("");
     });
 
-    test("'null'文字列は変換しない", () => {
+    test("'null'文字列はTOON変換される", () => {
       const result = convertMcpResponseToToon("null");
 
-      expect(result.wasConverted).toBe(false);
-      expect(result.convertedData).toBe("null");
+      expect(result.wasConverted).toBe(true);
     });
   });
 
@@ -200,11 +195,10 @@ describe("convertMcpResponseToToonSafe", () => {
     expect(result.wasConverted).toBe(true);
   });
 
-  test("'null'文字列は変換されずに返される", () => {
+  test("'null'文字列はTOON変換される", () => {
     const result = convertMcpResponseToToonSafe("null");
 
-    expect(result.wasConverted).toBe(false);
-    expect(result.convertedData).toBe("null");
+    expect(result.wasConverted).toBe(true);
   });
 
   test("不正なJSON文字列はエラー時にフォールバックする", () => {

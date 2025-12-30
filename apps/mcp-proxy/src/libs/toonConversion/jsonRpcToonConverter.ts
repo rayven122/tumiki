@@ -6,7 +6,12 @@
  */
 
 import { encode } from "@toon-format/toon";
-import { parse } from "jsonrpc-lite";
+
+import {
+  isJsonRpcErrorResponse,
+  isJsonRpcSuccessResponse,
+} from "../../utils/jsonRpc/typeGuards.js";
+import { byteLength } from "../../utils/index.js";
 
 /**
  * TOON変換結果
@@ -22,151 +27,92 @@ type ToonConversionResult = {
   convertedBytes: number;
 };
 
-const textEncoder = new TextEncoder();
-
-/**
- * バイト数を計算する
- */
-const calculateBytes = (text: string): number => {
-  return textEncoder.encode(text).length;
-};
-
 /**
  * 変換なしの結果を返す
  */
-const createNoConversionResult = (
-  originalData: string,
-  originalBytes: number,
-): ToonConversionResult => ({
-  convertedData: originalData,
+const noConversion = (data: string, bytes: number): ToonConversionResult => ({
+  convertedData: data,
   wasConverted: false,
-  originalBytes,
-  convertedBytes: originalBytes,
+  originalBytes: bytes,
+  convertedBytes: bytes,
 });
 
 /**
  * MCPレスポンス（JSON-RPC 2.0形式）をTOON形式に変換する
  *
- * @param responseJson - レスポンスJSON文字列
+ * @param responseText - レスポンスJSON文字列
  * @returns TOON変換結果（メトリクス付き）
- *
- * @example
- * // 成功レスポンスの場合
- * const result = convertMcpResponseToToon(JSON.stringify({
- *   jsonrpc: "2.0",
- *   id: 1,
- *   result: { users: [{ id: 1, name: "Alice" }] }
- * }));
- * // result.convertedData.result はTOON文字列に変換される
  */
 export const convertMcpResponseToToon = (
-  responseJson: string,
+  responseText: string,
 ): ToonConversionResult => {
-  const originalBytes = calculateBytes(responseJson);
+  const originalBytes = byteLength(responseText);
 
   // 空文字列の場合はそのまま返す
-  if (responseJson === "" || responseJson === "null") {
-    return createNoConversionResult(responseJson, originalBytes);
+  if (!responseText) {
+    return noConversion(responseText, originalBytes);
   }
 
-  // jsonrpc-liteでパース
-  const parsedResult = parse(responseJson);
-
-  // 配列の場合はサポートしない（単一レスポンスのみ対応）
-  if (Array.isArray(parsedResult)) {
-    return createNoConversionResult(responseJson, originalBytes);
-  }
-
-  const parsed = parsedResult;
+  const parsed: unknown = JSON.parse(responseText);
 
   // 成功レスポンスの場合
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison -- const enumは実行時に文字列として存在
-  if (parsed.type === "success") {
-    const successPayload = parsed.payload;
-    const result: unknown = successPayload.result;
-    const toonResult = encode(result);
-
-    const converted = {
-      jsonrpc: "2.0" as const,
-      id: successPayload.id,
-      result: toonResult,
-    };
-
-    const convertedJson = JSON.stringify(converted);
-    const convertedBytes = calculateBytes(convertedJson);
-
+  if (isJsonRpcSuccessResponse(parsed)) {
+    const converted = JSON.stringify({
+      jsonrpc: "2.0",
+      id: parsed.id,
+      result: encode(parsed.result),
+    });
     return {
-      convertedData: convertedJson,
+      convertedData: converted,
       wasConverted: true,
       originalBytes,
-      convertedBytes,
+      convertedBytes: byteLength(converted),
     };
   }
 
-  // エラーレスポンスの場合
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison -- const enumは実行時に文字列として存在
-  if (parsed.type === "error") {
-    const errorPayload = parsed.payload;
-    const error = errorPayload.error;
-
-    // error.dataが存在する場合のみTOON変換
-    if (error.data !== undefined) {
-      const errorData: unknown = error.data;
-      const toonData = encode(errorData);
-
-      const converted = {
-        jsonrpc: "2.0" as const,
-        id: errorPayload.id,
-        error: {
-          code: error.code,
-          message: error.message,
-          data: toonData,
-        },
-      };
-
-      const convertedJson = JSON.stringify(converted);
-      const convertedBytes = calculateBytes(convertedJson);
-
-      return {
-        convertedData: convertedJson,
-        wasConverted: true,
-        originalBytes,
-        convertedBytes,
-      };
-    }
-
-    // error.dataがない場合は変換しない
-    return createNoConversionResult(responseJson, originalBytes);
+  // エラーレスポンスの場合（data がある場合のみ変換）
+  if (isJsonRpcErrorResponse(parsed) && parsed.error.data !== undefined) {
+    const converted = JSON.stringify({
+      jsonrpc: "2.0",
+      id: parsed.id,
+      error: {
+        code: parsed.error.code,
+        message: parsed.error.message,
+        data: encode(parsed.error.data),
+      },
+    });
+    return {
+      convertedData: converted,
+      wasConverted: true,
+      originalBytes,
+      convertedBytes: byteLength(converted),
+    };
   }
 
-  // JSON-RPC形式でない場合は全体をTOON変換
-  const parsedData: unknown = JSON.parse(responseJson);
-  const toonData = encode(parsedData);
-  const convertedBytes = calculateBytes(toonData);
-
+  // JSON-RPC形式でない場合、またはエラーレスポンス（dataなし）の場合は全体をTOON変換
+  const converted = encode(parsed);
   return {
-    convertedData: toonData,
+    convertedData: converted,
     wasConverted: true,
     originalBytes,
-    convertedBytes,
+    convertedBytes: byteLength(converted),
   };
 };
 
 /**
  * TOON変換を安全に実行する（エラー時はフォールバック）
  *
- * @param responseJson - レスポンスJSON文字列
+ * @param responseText - レスポンスJSON文字列
  * @returns TOON変換結果（エラー時は元データを返す）
  */
 export const convertMcpResponseToToonSafe = (
-  responseJson: string,
+  responseText: string,
 ): ToonConversionResult => {
   try {
-    return convertMcpResponseToToon(responseJson);
+    return convertMcpResponseToToon(responseText);
   } catch {
     // エラー時は元のデータをそのまま返す（フェイルオープン）
-    const originalBytes = calculateBytes(responseJson);
-
-    return createNoConversionResult(responseJson, originalBytes);
+    const originalBytes = byteLength(responseText);
+    return noConversion(responseText, originalBytes);
   }
 };
