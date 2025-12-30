@@ -58,6 +58,14 @@ model McpServerRequestLog {
   /// 例: {"EMAIL_ADDRESS": 1, "CREDIT_CARD_NUMBER": 3}
   piiDetectionDetailsResponse Json? @db.JsonB
 
+  /// TOON変換メトリクス
+  /// TOON変換が有効だったかどうか
+  toonConversionEnabled Boolean?
+  /// TOON変換前のバイト数
+  toonOriginalBytes     Int?
+  /// TOON変換後のバイト数
+  toonConvertedBytes    Int?
+
   createdAt DateTime @default(now())
 
   /// パフォーマンス最適化用インデックス
