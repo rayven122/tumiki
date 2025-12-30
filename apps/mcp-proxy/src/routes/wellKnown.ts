@@ -89,45 +89,18 @@ wellKnownRoute.get("/oauth-protected-resource", (c) => {
  * @see https://datatracker.ietf.org/doc/html/rfc8414
  * @see https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization
  *
- * Keycloak OAuth 2.1 Authorization Server Metadataへのリダイレクト
- *
- * このエンドポイントは、AI クライアントが MCP Proxy の OAuth 設定を
- * 自動検出できるようにするためのものです。
- *
- * Keycloakが認証・認可を担当するため、Keycloak の OpenID Connect
- * 設定エンドポイントにリダイレクトします。
- *
- * Keycloak の OpenID Connect Discovery エンドポイント:
- * {KEYCLOAK_ISSUER}/.well-known/openid-configuration
+ * MCP サーバーインスタンス固有の認可サーバーメタデータを提供。
+ * MCPクライアント（Claude Desktop等）がこのエンドポイントからOAuth設定を自動検出する。
  *
  * 注意事項：
  * - Keycloakでは Client Credentials Grant をサポート
  * - カスタムクレーム (tumiki.org_id) の設定が必要
- * - mcp_instance_id は URL パスから取得
- * - Instance ID ごとに異なる認可サーバー設定を返す予定（現在は TODO）
+ * - mcp_server_id は URL パスから取得
+ * - authType が OAUTH のサーバーのみメタデータを返却
  */
 wellKnownRoute.get(
-  "/oauth-authorization-server/mcp/:devInstanceId",
+  "/oauth-authorization-server/mcp/:mcpServerId",
   async (c) => {
-    const devMode = process.env.DEV_MODE === "true";
-
-    // DEV_MODE 以外は未実装
-    if (!devMode) {
-      // TODO: Implement instance-specific authorization server discovery
-      // - Fetch instance-specific Keycloak realm or authorization server URL from database
-      // - Support multiple authorization servers per instance
-      // - Handle instance-not-found scenarios
-      return c.json(
-        {
-          error: "not_implemented",
-          error_description:
-            "Instance-specific OAuth authorization server metadata is not yet implemented",
-        },
-        501,
-      );
-    }
-
-    // DEV_MODE: JSON メタデータを返却
     const keycloakIssuerUrl = process.env.KEYCLOAK_ISSUER;
     const mcpProxyUrl =
       process.env.NEXT_PUBLIC_MCP_PROXY_URL ?? "http://localhost:8080";
@@ -140,6 +113,34 @@ wellKnownRoute.get(
             "KEYCLOAK_ISSUER environment variable is not set. Please configure Keycloak integration.",
         },
         500,
+      );
+    }
+
+    // URL パスパラメータから mcpServerId を取得
+    const mcpServerId = c.req.param("mcpServerId");
+
+    // データベースから McpServer の存在確認
+    const mcpServer = await getMcpServerOrganization(mcpServerId);
+    if (!mcpServer) {
+      return c.json(
+        {
+          error: "not_found",
+          error_description: `MCP Server not found: ${mcpServerId}`,
+        },
+        404,
+      );
+    }
+
+    // authType が OAUTH でない場合は OAuth メタデータを返さない
+    // これにより、OAuth 非対応のサーバーへの DCR を防止する
+    if (mcpServer.authType !== "OAUTH") {
+      return c.json(
+        {
+          error: "oauth_not_supported",
+          error_description:
+            "This MCP Server does not support OAuth authentication. DCR is not available.",
+        },
+        404,
       );
     }
 
