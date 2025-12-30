@@ -15,9 +15,12 @@
 
 import type { Context, Next } from "hono";
 import type { HonoEnv } from "../../types/index.js";
-import { logError, logInfo } from "../../libs/logger/index.js";
+import { logError } from "../../libs/logger/index.js";
 import { convertMcpResponseToToonSafe } from "../../libs/toonConversion/index.js";
-import { updateExecutionContext } from "../requestLogging/context.js";
+import {
+  getExecutionContext,
+  updateExecutionContext,
+} from "../requestLogging/context.js";
 
 /**
  * TOON 変換ミドルウェア
@@ -29,7 +32,7 @@ import { updateExecutionContext } from "../requestLogging/context.js";
 export const toonConversionMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
-): Promise<Response | void> => {
+): Promise<void> => {
   // ハンドラーを実行
   await next();
 
@@ -39,23 +42,25 @@ export const toonConversionMiddleware = async (
     return;
   }
 
-  logInfo("TOON conversion enabled for response", {
-    mcpServerId: authContext.mcpServerId,
-  });
+  // tools/call 以外のメソッドはスキップ
+  const executionContext = getExecutionContext();
+  if (executionContext?.method !== "tools/call") {
+    return;
+  }
 
   // TOON変換が有効であることをコンテキストに記録
   updateExecutionContext({
     toonConversionEnabled: true,
   });
 
-  // レスポンスをTOON形式に変換
-  return convertResponseToToon(c);
+  // レスポンスをTOON形式に変換し、c.resを上書き
+  c.res = await convertResponseToToon(c);
 };
 
 /**
  * レスポンスボディをTOON形式に変換
  *
- * JSON-RPC 2.0の規格を維持しながら、result/error.data内のデータのみをTOON変換。
+ * JSON-RPC 2.0の規格を維持しながら、result.content をTOON変換。
  *
  * @param c - Honoコンテキスト
  */
@@ -65,7 +70,7 @@ const convertResponseToToon = async (
   const originalResponse = c.res;
 
   try {
-    // レスポンスをテキストとして取得（.json()より効率的）
+    // レスポンスをテキストとして取得
     const responseJson = await originalResponse.clone().text();
 
     // TOON変換（フェイルセーフ版）
@@ -84,7 +89,7 @@ const convertResponseToToon = async (
       headers: originalResponse.headers,
     });
   } catch (error) {
-    logError("Failed to convert response to TOON", error as Error);
+    logError("[TOON] Failed to convert response to TOON", error as Error);
     // エラー時は元のレスポンスをそのまま返す（フェイルオープン）
     return originalResponse;
   }

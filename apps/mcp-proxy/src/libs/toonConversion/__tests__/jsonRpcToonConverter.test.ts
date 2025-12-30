@@ -162,6 +162,143 @@ describe("convertMcpResponseToToon", () => {
     });
   });
 
+  describe("MCP tools/call レスポンスの変換", () => {
+    test("content[].text のJSON文字列をTOON変換する", () => {
+      const teamsData = [
+        { id: "team-1", name: "Developers", icon: "GitHub" },
+        { id: "team-2", name: "Designers", icon: "Figma" },
+      ];
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(teamsData),
+            },
+          ],
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      expect(result.wasConverted).toBe(true);
+
+      // パースして構造を検証
+      const parsed = JSON.parse(result.convertedData) as {
+        jsonrpc: string;
+        id: number;
+        result: {
+          content: Array<{ type: string; text: string }>;
+        };
+      };
+
+      // JSON-RPC構造が維持されている
+      expect(parsed.jsonrpc).toBe("2.0");
+      expect(parsed.id).toBe(1);
+
+      // MCP result.content 配列構造が維持されている
+      expect(Array.isArray(parsed.result.content)).toBe(true);
+      expect(parsed.result.content).toHaveLength(1);
+      expect(parsed.result.content[0].type).toBe("text");
+
+      // text フィールドはTOON形式に変換されている（元のJSON文字列ではない）
+      const convertedText = parsed.result.content[0].text;
+      expect(typeof convertedText).toBe("string");
+      // TOON形式はJSONとは異なる形式になるため、パースできない
+      expect(() => JSON.parse(convertedText)).toThrow();
+    });
+
+    test("type が text 以外の content は変換しない", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          content: [
+            {
+              type: "image",
+              data: "base64data",
+              mimeType: "image/png",
+            },
+          ],
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      expect(result.wasConverted).toBe(true);
+
+      const parsed = JSON.parse(result.convertedData) as {
+        result: {
+          content: Array<{ type: string; data: string; mimeType: string }>;
+        };
+      };
+
+      // image content はそのまま維持される
+      expect(parsed.result.content[0].type).toBe("image");
+      expect(parsed.result.content[0].data).toBe("base64data");
+      expect(parsed.result.content[0].mimeType).toBe("image/png");
+    });
+
+    test("複数の content を持つレスポンスを変換する", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          content: [
+            { type: "text", text: JSON.stringify({ key: "value" }) },
+            { type: "image", data: "base64", mimeType: "image/png" },
+            { type: "text", text: "plain text" },
+          ],
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      expect(result.wasConverted).toBe(true);
+
+      const parsed = JSON.parse(result.convertedData) as {
+        result: {
+          content: Array<{ type: string; text?: string; data?: string }>;
+        };
+      };
+
+      expect(parsed.result.content).toHaveLength(3);
+      // 最初のtext contentはTOON変換されている
+      expect(typeof parsed.result.content[0].text).toBe("string");
+      // image contentはそのまま
+      expect(parsed.result.content[1].type).toBe("image");
+      expect(parsed.result.content[1].data).toBe("base64");
+      // 2番目のtext contentもTOON変換されている
+      expect(typeof parsed.result.content[2].text).toBe("string");
+    });
+
+    test("content配列がない場合はresult全体をTOON変換する", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          data: { key: "value" },
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      expect(result.wasConverted).toBe(true);
+
+      const parsed = JSON.parse(result.convertedData) as {
+        jsonrpc: string;
+        id: number;
+        result: string; // result全体がTOON文字列に変換される
+      };
+
+      expect(parsed.jsonrpc).toBe("2.0");
+      expect(parsed.id).toBe(1);
+      expect(typeof parsed.result).toBe("string");
+    });
+  });
+
   describe("圧縮メトリクスの計算", () => {
     test("圧縮メトリクスが正しく計算される", () => {
       const input = JSON.stringify({

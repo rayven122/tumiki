@@ -78,3 +78,45 @@ export const isJsonRpcSuccessResponse = (
 export const isJsonRpcErrorResponse = (
   obj: unknown,
 ): obj is JsonRpcErrorResponse => isJsonRpcObject(obj) && "error" in obj;
+
+// ============================================================
+// MCP (Model Context Protocol) 型定義
+// ============================================================
+
+/**
+ * MCP content item の型
+ * MCP 仕様で定義される content 配列の要素
+ *
+ * @see https://modelcontextprotocol.io/
+ */
+export type McpContentItem =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "image";
+      data: string;
+      mimeType: string;
+    }
+  | {
+      type: "resource";
+      resource: unknown;
+    };
+
+/**
+ * MCP tools/call レスポンスの result 型
+ */
+export type McpToolCallResult = {
+  content: McpContentItem[];
+  isError?: boolean;
+};
+
+/**
+ * MCP tools/call レスポンスの result かどうかの型ガード
+ */
+export const isMcpToolCallResult = (obj: unknown): obj is McpToolCallResult =>
+  typeof obj === "object" &&
+  obj !== null &&
+  "content" in obj &&
+  Array.isArray((obj as McpToolCallResult).content);
