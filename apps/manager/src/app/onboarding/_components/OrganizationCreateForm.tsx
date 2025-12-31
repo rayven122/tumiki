@@ -42,7 +42,7 @@ const createOrganizationSchema = z.object({
 type CreateOrganizationFormData = z.infer<typeof createOrganizationSchema>;
 
 type OrganizationCreateFormProps = {
-  onSuccess?: () => void;
+  onSuccess?: (newOrgSlug: string) => void;
 };
 
 export const OrganizationCreateForm = ({
@@ -60,7 +60,8 @@ export const OrganizationCreateForm = ({
       await updateSession({});
       // フォームをリセット
       form.reset();
-      onSuccess?.();
+      // 新しい組織の slug を渡す
+      onSuccess?.(data.slug);
     },
     onError: (error) => {
       toast.error(error.message);

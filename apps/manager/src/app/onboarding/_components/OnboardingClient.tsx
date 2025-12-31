@@ -90,21 +90,15 @@ export const OnboardingClient = ({
     setIsOrgDialogOpen(true);
   };
 
-  const handleOrganizationCreated = () => {
+  const handleOrganizationCreated = (newOrgSlug: string) => {
     setIsOrgDialogOpen(false);
 
     // チーム作成後はアニメーションを表示
     setShowSuccessAnimation(true);
 
-    // アニメーション後に遷移
-    const orgSlug = getSessionInfo(session).organizationSlug;
+    // アニメーション後に新しく作成した組織へ遷移
     setTimeout(() => {
-      // ページをリロードして新しい組織情報を取得
-      if (orgSlug) {
-        router.push(`/${orgSlug}/mcps`);
-      } else {
-        window.location.reload();
-      }
+      router.push(`/${newOrgSlug}/mcps`);
     }, ANIMATION_DURATION);
   };
 
