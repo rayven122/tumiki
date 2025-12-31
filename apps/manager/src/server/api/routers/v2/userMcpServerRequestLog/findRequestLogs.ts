@@ -11,6 +11,7 @@ type FindRequestLogsInput = {
   pageSize: number;
   startDate: string; // ISO 8601形式（タイムゾーン情報付き）必須
   endDate?: string; // ISO 8601形式（タイムゾーン情報付き）オプショナル
+  method?: string; // メソッドでフィルター（例: "tools/call", "tools/list"）
 };
 
 // リクエストログのレスポンススキーマ
@@ -27,6 +28,15 @@ export const findRequestLogsOutputSchema = z.object({
       outputBytes: z.number(),
       userAgent: z.string().nullable(),
       createdAt: z.date(),
+      // TOON変換関連
+      toonConversionEnabled: z.boolean().nullable(),
+      inputTokens: z.number().nullable(),
+      outputTokens: z.number().nullable(),
+      // PIIマスキング関連
+      piiMaskingMode: z.enum(["DISABLED", "REQUEST", "RESPONSE", "BOTH"]),
+      piiDetectedRequestCount: z.number().nullable(),
+      piiDetectedResponseCount: z.number().nullable(),
+      piiDetectedInfoTypes: z.array(z.string()),
     }),
   ),
   pageInfo: z.object({
@@ -50,6 +60,7 @@ export const findRequestLogs = async (
     pageSize,
     startDate,
     endDate,
+    method,
   } = input;
 
   // サーバーの存在確認
@@ -84,6 +95,8 @@ export const findRequestLogs = async (
     transportType: {
       in: [TransportType.SSE, TransportType.STREAMABLE_HTTPS],
     },
+    // メソッドフィルター（指定がある場合のみ）
+    ...(method && { method }),
   };
 
   // 総件数を取得（フィルタ後）
@@ -114,6 +127,15 @@ export const findRequestLogs = async (
       outputBytes: true,
       userAgent: true,
       createdAt: true,
+      // TOON変換関連
+      toonConversionEnabled: true,
+      inputTokens: true,
+      outputTokens: true,
+      // PIIマスキング関連
+      piiMaskingMode: true,
+      piiDetectedRequestCount: true,
+      piiDetectedResponseCount: true,
+      piiDetectedInfoTypes: true,
     },
   });
 
