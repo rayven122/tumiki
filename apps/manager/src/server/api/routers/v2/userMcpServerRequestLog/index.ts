@@ -30,6 +30,8 @@ export const FindRequestLogsInputV2 = z.object({
   // 終了日時（ISO 8601形式、タイムゾーン情報付き、オプショナル）
   // 例: "2024-12-05T23:59:59.999+09:00"
   endDate: z.iso.datetime({ offset: true }).optional(),
+  // メソッドフィルター（例: "tools/call", "tools/list"）
+  method: z.string().optional(),
 });
 
 // リクエストログ統計取得の入力スキーマ
@@ -81,6 +83,7 @@ export const userMcpServerRequestLogRouter = createTRPCRouter({
         pageSize: input.pageSize,
         startDate: input.startDate,
         endDate: input.endDate,
+        method: input.method,
       });
     }),
 

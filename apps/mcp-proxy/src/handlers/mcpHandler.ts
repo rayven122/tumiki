@@ -10,7 +10,10 @@ import type { Context } from "hono";
 import type { HonoEnv } from "../types/index.js";
 import { getAllowedTools, executeTool } from "../services/toolExecutor.js";
 import { handleError } from "../libs/error/handler.js";
-import { getExecutionContext } from "../middleware/requestLogging/context.js";
+import {
+  getExecutionContext,
+  updateExecutionContext,
+} from "../middleware/requestLogging/context.js";
 
 /**
  * MCPメインハンドラー
@@ -102,6 +105,12 @@ const createMcpServer = (
   // Tools list handler - SDKが自動的にバリデーションとJSON-RPC形式化
   // "{template名}__{ツール名}" 形式でツールリストを返す
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    // ログ記録用にコンテキストを更新
+    updateExecutionContext({
+      toolName: "",
+      method: "tools/list",
+    });
+
     const tools = await getAllowedTools(mcpServerId);
 
     return {

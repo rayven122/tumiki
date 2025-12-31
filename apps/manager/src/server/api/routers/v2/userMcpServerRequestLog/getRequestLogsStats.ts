@@ -112,9 +112,11 @@ const getHourlyStats = async (
     }
   >();
 
-  // 過去24時間の全時間を初期化
+  // 過去24時間の全時間を初期化（現在の時間枠も含めるため25回ループ）
+  // 例: 現在13:36の場合、13時(昨日)～13時(今日)の25時間枠を生成
+  // ログクエリは startDate(24時間前) ～ now なので、現在の時間枠も含む必要がある
   let currentHour = startDate;
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 25; i++) {
     const dateTimeStr = formatInTimeZone(
       currentHour,
       timezone,
