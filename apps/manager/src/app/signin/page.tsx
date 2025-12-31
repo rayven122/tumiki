@@ -15,18 +15,22 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const orgSlug = getSessionInfo(session).organizationSlug;
 
   // callbackUrlのバリデーション（サインインループを防ぐ）
-  const dangerousPaths = ["/signin", "/signup", "/api/auth/"];
+  const disallowedCallbackPaths = ["/signin", "/signup", "/api/auth/"];
   const validatedCallbackUrl =
-    callbackUrl && !dangerousPaths.some((path) => callbackUrl.startsWith(path))
+    callbackUrl &&
+    !disallowedCallbackPaths.some((path) => callbackUrl.startsWith(path))
       ? callbackUrl
       : null;
 
   // リダイレクト先の優先順位:
-  // 1. デフォルト組織ページ
-  // 2. callbackUrl
-  // 3. 初回ユーザー（org_slug なし）
+  // 1. 招待リンク（最優先）
+  // 2. デフォルト組織ページ
+  // 3. その他の callbackUrl
+  // 4. 初回ユーザー（org_slug なし）
   let redirectUrl: string;
-  if (orgSlug) {
+  if (validatedCallbackUrl?.startsWith("/invite/")) {
+    redirectUrl = validatedCallbackUrl; // 招待リンクは最優先
+  } else if (orgSlug) {
     redirectUrl = `/${orgSlug}/mcps`;
   } else if (validatedCallbackUrl) {
     redirectUrl = validatedCallbackUrl;
@@ -49,7 +53,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       <div className="text-center text-sm text-slate-600">
         <span>アカウントをお持ちでない方は </span>
         <Link
-          href="/signup"
+          href={`/signup${validatedCallbackUrl ? `?callbackUrl=${encodeURIComponent(validatedCallbackUrl)}` : ""}`}
           className="text-primary font-medium underline-offset-4 hover:underline"
         >
           新規登録
