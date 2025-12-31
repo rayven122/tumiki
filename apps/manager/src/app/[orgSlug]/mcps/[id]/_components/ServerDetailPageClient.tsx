@@ -31,7 +31,7 @@ import { api } from "@/trpc/react";
 import { ServerStatus, AuthType, ServerType } from "@tumiki/db/prisma";
 import type { McpServerId } from "@/schema/ids";
 import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
-import { ShieldCheck, Info, Zap } from "lucide-react";
+import { ShieldCheck, Info, Shrink } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -115,7 +115,7 @@ export const ServerDetailPageClient = ({
         return { previousData };
       },
       onSuccess: () => {
-        toast.success("PIIマスキング設定を更新しました");
+        toast.success("マスキング設定を更新しました");
       },
       onError: (error, _variables, context) => {
         if (context?.previousData) {
@@ -163,7 +163,7 @@ export const ServerDetailPageClient = ({
         return { previousData };
       },
       onSuccess: () => {
-        toast.success("TOON変換設定を更新しました");
+        toast.success("データ圧縮設定を更新しました");
       },
       onError: (error, _variables, context) => {
         if (context?.previousData) {
@@ -229,7 +229,7 @@ export const ServerDetailPageClient = ({
             <CardContent className="p-6">
               <div className="flex flex-col space-y-4 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
                 <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
-                  <div className="h-16 w-16 flex-shrink-0 animate-pulse rounded-lg bg-gray-200"></div>
+                  <div className="h-16 w-16 shrink-0 animate-pulse rounded-lg bg-gray-200"></div>
                   <div className="flex-1 space-y-3">
                     <div className="h-6 w-24 animate-pulse rounded bg-gray-200"></div>
                     <div className="h-4 w-full max-w-md animate-pulse rounded bg-gray-200"></div>
@@ -314,7 +314,7 @@ export const ServerDetailPageClient = ({
                 {/* 左側: アイコン + 情報 */}
                 <div className="flex min-w-0 flex-1 items-start gap-4">
                   {/* アイコン */}
-                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border bg-gray-50">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-gray-50">
                     {server.iconPath ? (
                       <Image
                         src={server.iconPath}
@@ -343,7 +343,7 @@ export const ServerDetailPageClient = ({
                         alt={server.name}
                         size={48}
                         fallback={
-                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-linear-to-br from-blue-50 to-blue-100">
                             <Server className="h-8 w-8 text-blue-600" />
                           </div>
                         }
@@ -354,7 +354,7 @@ export const ServerDetailPageClient = ({
                   {/* サーバー情報 */}
                   <div className="min-w-0 flex-1 space-y-2">
                     {/* 説明 */}
-                    <p className="text-sm leading-relaxed break-words whitespace-pre-line text-gray-600">
+                    <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-line text-gray-600">
                       {server.description}
                     </p>
 
@@ -436,16 +436,16 @@ export const ServerDetailPageClient = ({
                         </>
                       )}
 
-                      {/* PIIマスキング */}
+                      {/* マスキング */}
                       <div className="flex items-center gap-1.5">
                         <ShieldCheck className="h-3 w-3" />
-                        <span>PIIマスキング:</span>
+                        <span>マスキング:</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
                               type="button"
                               className="inline-flex cursor-help text-gray-400 hover:text-gray-600"
-                              aria-label="PIIマスキングについて"
+                              aria-label="マスキングについて"
                             >
                               <Info className="h-3 w-3" />
                             </button>
@@ -463,22 +463,22 @@ export const ServerDetailPageClient = ({
                           className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
                           aria-label={
                             server.piiMaskingEnabled
-                              ? "PIIマスキングを無効にする"
-                              : "PIIマスキングを有効にする"
+                              ? "マスキングを無効にする"
+                              : "マスキングを有効にする"
                           }
                         />
                       </div>
 
-                      {/* TOON変換 */}
+                      {/* データ圧縮 */}
                       <div className="flex items-center gap-1.5">
-                        <Zap className="h-3 w-3" />
-                        <span>TOON変換:</span>
+                        <Shrink className="h-3 w-3" />
+                        <span>データ圧縮:</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
                               type="button"
                               className="inline-flex cursor-help text-gray-400 hover:text-gray-600"
-                              aria-label="TOON変換について"
+                              aria-label="データ圧縮について"
                             >
                               <Info className="h-3 w-3" />
                             </button>
@@ -496,8 +496,8 @@ export const ServerDetailPageClient = ({
                           className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
                           aria-label={
                             server.toonConversionEnabled
-                              ? "TOON変換を無効にする"
-                              : "TOON変換を有効にする"
+                              ? "データ圧縮を無効にする"
+                              : "データ圧縮を有効にする"
                           }
                         />
                       </div>
@@ -506,7 +506,7 @@ export const ServerDetailPageClient = ({
                 </div>
 
                 {/* 右側: スイッチ + メニュー */}
-                <div className="flex flex-shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
                       {server.serverStatus === ServerStatus.RUNNING
