@@ -16,6 +16,7 @@ import { db, type Prisma, PiiMaskingMode } from "@tumiki/db/server";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { publishMcpLog } from "../../libs/pubsub/mcpLogger.js";
 import { byteLength } from "../../utils/index.js";
+import { countTokens } from "../../utils/tokenCount.js";
 
 /**
  * MCP サーバー request log を記録
@@ -130,7 +131,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
   // TOON変換メトリクスを取得
   const toonConversionEnabled = executionContext.toonConversionEnabled;
   const inputTokens = executionContext.inputTokens;
-  const outputTokens = executionContext.outputTokens;
+  // outputTokensが未設定の場合（TOON変換無効時）はレスポンスから計算
+  const outputTokens =
+    executionContext.outputTokens ?? countTokens(responseText);
 
   // PostgreSQL用ログデータを構築（詳細フィールドはBigQueryのみに保存）
   const postgresLogData = {

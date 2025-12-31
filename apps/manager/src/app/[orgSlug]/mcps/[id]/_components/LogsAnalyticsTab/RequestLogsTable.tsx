@@ -9,10 +9,22 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Shrink,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDataSize } from "@/utils/formatters";
-import { TRANSPORT_TYPE_LABELS } from "./constants";
 import { getPaginationPages } from "./utils";
+import { MaskingInfoCell } from "./MaskingInfoCell";
+import { TokenInfoCell } from "./TokenInfoCell";
 import type { RequestLog } from "../types";
 
 type RequestLogsTableProps = {
@@ -52,26 +64,68 @@ export const RequestLogsTable = ({
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200">
-                    <TableHead className="h-12 w-32 font-semibold text-gray-700">
+                    <TableHead className="h-12 w-40 font-semibold text-gray-700">
                       時刻
+                    </TableHead>
+                    <TableHead className="h-12 w-28 font-semibold text-gray-700">
+                      メソッド
                     </TableHead>
                     <TableHead className="h-12 min-w-40 font-semibold text-gray-700">
                       ツール名
                     </TableHead>
-                    <TableHead className="h-12 w-32 font-semibold text-gray-700">
-                      メソッド
-                    </TableHead>
                     <TableHead className="h-12 w-24 font-semibold text-gray-700">
-                      ステータス
-                    </TableHead>
-                    <TableHead className="h-12 w-28 font-semibold text-gray-700">
                       実行時間
                     </TableHead>
-                    <TableHead className="h-12 w-32 font-semibold text-gray-700">
+                    <TableHead className="h-12 w-28 font-semibold text-gray-700">
                       データサイズ
                     </TableHead>
                     <TableHead className="h-12 w-32 font-semibold text-gray-700">
-                      トランスポート
+                      <div className="flex items-center gap-1">
+                        トークン
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 cursor-help text-gray-400" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <div className="space-y-2 text-xs">
+                              <p>
+                                GPT-4モデル（cl100k_base）での推定値です。
+                                実際のトークン数はモデルによって異なります。
+                              </p>
+                              <div className="flex items-center gap-2 border-t border-gray-600 pt-2">
+                                <div className="flex h-5 w-5 items-center justify-center rounded border border-green-200 bg-green-50">
+                                  <Shrink className="h-3 w-3 text-green-600" />
+                                </div>
+                                <span>データ圧縮が有効</span>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableHead>
+                    <TableHead className="h-12 w-36 font-semibold text-gray-700">
+                      <div className="flex items-center gap-1">
+                        マスキング
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 cursor-help text-gray-400" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <div className="space-y-2 text-xs">
+                              <p>
+                                機密情報（メール、電話番号、氏名など）を
+                                自動検出しマスキングします。
+                              </p>
+                              <div className="flex items-center gap-2 border-t border-gray-600 pt-2">
+                                <div className="flex h-5 w-5 items-center justify-center rounded border border-orange-200 bg-orange-50">
+                                  <ShieldCheck className="h-3 w-3 text-orange-600" />
+                                </div>
+                                <span>マスキング有効</span>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -81,46 +135,36 @@ export const RequestLogsTable = ({
                       key={log.id}
                       className="group transition-all duration-150 hover:bg-blue-50/50 hover:shadow-sm"
                     >
-                      <TableCell className="font-mono text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-blue-100 group-hover:to-blue-200">
-                            <Clock className="h-4 w-4 text-blue-600" />
-                          </div>
-                          <span className="text-gray-700">
-                            {new Date(log.createdAt).toLocaleString("ja-JP", {
-                              month: "2-digit",
-                              day: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              second: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate font-mono text-sm font-medium text-gray-900">
-                          {log.toolName}
-                        </div>
+                      <TableCell className="font-mono text-xs text-gray-700">
+                        {new Date(log.createdAt).toLocaleString("ja-JP", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         <Badge
                           variant="outline"
-                          className="border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
+                          className={
+                            log.method === "tools/call"
+                              ? "border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
+                              : "border-gray-200 bg-gray-50 text-gray-600 shadow-sm"
+                          }
                         >
                           {log.method}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            log.httpStatus >= 200 && log.httpStatus < 300
-                              ? "default"
-                              : "destructive"
-                          }
-                          className="font-mono text-xs shadow-sm"
-                        >
-                          {log.httpStatus}
-                        </Badge>
+                      <TableCell className="max-w-xs">
+                        {log.method === "tools/list" ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          <div className="truncate font-mono text-sm font-medium text-gray-900">
+                            {log.toolName}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         <div className="flex items-center gap-1.5">
@@ -147,12 +191,21 @@ export const RequestLogsTable = ({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 shadow-sm"
-                        >
-                          {TRANSPORT_TYPE_LABELS[log.transportType]}
-                        </Badge>
+                        <TokenInfoCell
+                          inputTokens={log.inputTokens}
+                          outputTokens={log.outputTokens}
+                          toonConversionEnabled={log.toonConversionEnabled}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <MaskingInfoCell
+                          piiMaskingMode={log.piiMaskingMode}
+                          piiDetectedRequestCount={log.piiDetectedRequestCount}
+                          piiDetectedResponseCount={
+                            log.piiDetectedResponseCount
+                          }
+                          piiDetectedInfoTypes={log.piiDetectedInfoTypes}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
