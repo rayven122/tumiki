@@ -8,11 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, User, ChevronDown } from "lucide-react";
+import { Settings, User, ChevronDown, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { guestRegex } from "@/lib/constants";
 
 interface HeaderClientProps {
@@ -25,6 +25,7 @@ interface HeaderClientProps {
 
 export const HeaderClient = ({ user }: HeaderClientProps) => {
   const params = useParams();
+  const pathname = usePathname();
   const orgSlug = params.orgSlug as string | undefined;
 
   const isGuest = useMemo(() => {
@@ -33,6 +34,9 @@ export const HeaderClient = ({ user }: HeaderClientProps) => {
 
   const profilePath = `/${orgSlug}/profile`;
   const settingsPath = `/${orgSlug}/settings`;
+
+  // アカウント切り替え（Keycloak + Auth.jsログアウト後、再ログイン画面へ）
+  const switchAccountUrl = `/api/auth/switch-account?callbackUrl=${encodeURIComponent(pathname ?? "/")}`;
 
   return (
     <div className="flex items-center space-x-3">
@@ -102,6 +106,12 @@ export const HeaderClient = ({ user }: HeaderClientProps) => {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href={switchAccountUrl} className="flex items-center">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              <span>アカウント切り替え</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/api/auth/logout" className="flex items-center">
               ログアウト

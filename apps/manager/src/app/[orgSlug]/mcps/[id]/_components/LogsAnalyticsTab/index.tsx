@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -14,7 +15,14 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Activity, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import {
+  Activity,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  RefreshCw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import type { RequestStats } from "../types";
 import { StatsCard } from "./StatsCard";
@@ -36,6 +44,9 @@ type LogsAnalyticsTabProps = {
   requestStats?: RequestStats;
 };
 
+// メソッドフィルターの型定義
+type MethodFilter = "all" | "tools/call" | "tools/list";
+
 export const LogsAnalyticsTab = ({
   serverId,
   requestStats,
@@ -43,6 +54,10 @@ export const LogsAnalyticsTab = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
+  // リロード時に日付範囲を再計算するためのキー
+  const [refreshKey, setRefreshKey] = useState(0);
+  // メソッドフィルター（すべて / tools/call / tools/list）
+  const [methodFilter, setMethodFilter] = useState<MethodFilter>("all");
 
   // useMemoでメモ化して、timeRangeが変更されない限り同じオブジェクトを返す
   const daysAndTimezone = useMemo(
@@ -50,31 +65,42 @@ export const LogsAnalyticsTab = ({
     [timeRange],
   );
 
+  // refreshKeyが変わると現在時刻を基準に日付範囲を再計算
   const dateRange = useMemo(
     () => getDateRangeFromTimeRange(timeRange),
-    [timeRange],
+    [timeRange, refreshKey],
   );
 
   // リクエストログ一覧を取得（ページネーション対応）
-  const { data: logsData, isLoading } =
-    api.v2.userMcpServerRequestLog.findRequestLogs.useQuery(
-      {
-        userMcpServerId: serverId,
-        page: currentPage,
-        pageSize,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-      },
-      { enabled: !!serverId },
-    );
+  const {
+    data: logsData,
+    isLoading,
+    isFetching,
+  } = api.v2.userMcpServerRequestLog.findRequestLogs.useQuery(
+    {
+      userMcpServerId: serverId,
+      page: currentPage,
+      pageSize,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+      // "all"の場合はundefinedを渡してフィルターなし
+      method: methodFilter === "all" ? undefined : methodFilter,
+    },
+    {
+      enabled: !!serverId,
+      // フィルター変更時に前のデータを保持（ローディング中のちらつき防止）
+      placeholderData: keepPreviousData,
+    },
+  );
 
-  // グラフ用の日別統計データを取得
+  // グラフ用の統計データを取得（日別または時間別）
   const { data: statsData } =
     api.v2.userMcpServerRequestLog.getRequestLogsStats.useQuery(
       {
         userMcpServerId: serverId,
         days: daysAndTimezone.days,
         timezone: daysAndTimezone.timezone,
+        granularity: daysAndTimezone.granularity,
       },
       { enabled: !!serverId },
     );
@@ -82,8 +108,9 @@ export const LogsAnalyticsTab = ({
   const successRate = calculateSuccessRate(requestStats);
   const errorPercentage = calculateErrorPercentage(requestStats);
 
-  // グラフデータを生成（24時間表示も日別データを使用）
-  const chartData = convertDailyStatsToChartData(statsData).dailyData;
+  // グラフデータを生成（24時間は時間別、それ以外は日別）
+  const { dailyData, hourlyData } = convertDailyStatsToChartData(statsData);
+  const chartData = timeRange === "24h" ? hourlyData : dailyData;
 
   const chartConfig = {
     count: {
@@ -187,9 +214,62 @@ export const LogsAnalyticsTab = ({
 
       {/* ログセクション */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">リクエストログ</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">リクエストログ</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                // refreshKeyを更新して日付範囲を再計算し、最新データを取得
+                setRefreshKey((prev) => prev + 1);
+                setCurrentPage(1);
+              }}
+              disabled={isFetching}
+              className="h-8 w-8"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* メソッドフィルター */}
+            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+              <Button
+                variant={methodFilter === "all" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  setMethodFilter("all");
+                  setCurrentPage(1);
+                }}
+                className="h-7 rounded-md px-3 text-xs"
+              >
+                すべて
+              </Button>
+              <Button
+                variant={methodFilter === "tools/call" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  setMethodFilter("tools/call");
+                  setCurrentPage(1);
+                }}
+                className="h-7 rounded-md px-3 font-mono text-xs"
+              >
+                tools/call
+              </Button>
+              <Button
+                variant={methodFilter === "tools/list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  setMethodFilter("tools/list");
+                  setCurrentPage(1);
+                }}
+                className="h-7 rounded-md px-3 font-mono text-xs"
+              >
+                tools/list
+              </Button>
+            </div>
             <span className="text-sm text-gray-500">表示件数:</span>
             <Select
               value={String(pageSize)}

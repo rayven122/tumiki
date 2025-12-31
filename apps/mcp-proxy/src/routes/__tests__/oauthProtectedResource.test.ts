@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
+import { PiiMaskingMode } from "@tumiki/db/server";
 import type { HonoEnv } from "../../types/index.js";
 import { wellKnownRoute } from "../wellKnown.js";
 import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
@@ -50,11 +51,21 @@ const createMockConfiguration = (metadata = mockServerMetadata) => ({
   serverMetadata: () => metadata,
 });
 
-describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () => {
+describe("GET /.well-known/oauth-authorization-server/mcp/:mcpServerId", () => {
   let app: Hono<HonoEnv>;
   let originalKeycloakIssuer: string | undefined;
-  let originalDevMode: string | undefined;
   let originalMcpProxyUrl: string | undefined;
+
+  // テスト用のモック McpServer データ（authType: OAUTH）
+  const mockMcpServer: McpServerLookupResult = {
+    id: "test-mcp-server-id",
+    organizationId: "test-org-id",
+    deletedAt: null,
+    authType: "OAUTH",
+    piiMaskingMode: PiiMaskingMode.DISABLED,
+    piiInfoTypes: [],
+    toonConversionEnabled: false,
+  };
 
   beforeEach(() => {
     app = new Hono<HonoEnv>();
@@ -62,7 +73,6 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     // 環境変数を保存
     originalKeycloakIssuer = process.env.KEYCLOAK_ISSUER;
-    originalDevMode = process.env.DEV_MODE;
     originalMcpProxyUrl = process.env.NEXT_PUBLIC_MCP_PROXY_URL;
 
     // テスト用の環境変数を設定
@@ -76,6 +86,9 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     // デフォルトの discovery モックを設定
     mockDiscovery.mockResolvedValue(createMockConfiguration());
+
+    // デフォルトで McpServer が存在するモックを設定
+    mockGetMcpServerOrganization.mockResolvedValue(mockMcpServer);
   });
 
   afterEach(() => {
@@ -84,12 +97,6 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
       process.env.KEYCLOAK_ISSUER = originalKeycloakIssuer;
     } else {
       delete process.env.KEYCLOAK_ISSUER;
-    }
-
-    if (originalDevMode !== undefined) {
-      process.env.DEV_MODE = originalDevMode;
-    } else {
-      delete process.env.DEV_MODE;
     }
 
     if (originalMcpProxyUrl !== undefined) {
@@ -102,14 +109,14 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
     clearKeycloakCache();
   });
 
-  describe("DEV_MODE=true の場合", () => {
+  describe("McpServer が存在し authType が OAUTH の場合", () => {
     beforeEach(() => {
-      process.env.DEV_MODE = "true";
+      mockGetMcpServerOrganization.mockResolvedValue(mockMcpServer);
     });
 
     test("認証なしで200 JSONメタデータを返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/test-mcp-server-id",
         {
           method: "GET",
         },
@@ -126,7 +133,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("RFC 8414 準拠のメタデータを返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/test-mcp-server-id",
         {
           method: "GET",
         },
@@ -155,21 +162,9 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
       });
     });
 
-    test("パスパラメータ devInstanceId を受け取る", async () => {
-      const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/test-instance-123",
-        {
-          method: "GET",
-        },
-      );
-
-      // DEV_MODE では instance ID に関わらずメタデータが返される
-      expect(res.status).toBe(200);
-    });
-
     test("Authorization ヘッダーなしでアクセスできる（認証不要）", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/test-mcp-server-id",
         {
           method: "GET",
         },
@@ -180,7 +175,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
 
     test("Authorization ヘッダーがあっても無視される", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/test-mcp-server-id",
         {
           method: "GET",
           headers: {
@@ -192,58 +187,99 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:devInstanceId", () =>
       // 認証エラーにならず、メタデータを返す
       expect(res.status).toBe(200);
     });
-  });
 
-  describe("DEV_MODE=false の場合", () => {
-    beforeEach(() => {
-      process.env.DEV_MODE = "false";
-    });
-
-    test("501 Not Implemented を返す", async () => {
-      const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+    test("getMcpServerOrganization が正しい mcpServerId で呼び出される", async () => {
+      await app.request(
+        "/.well-known/oauth-authorization-server/mcp/test-mcp-server-id",
         {
           method: "GET",
         },
       );
 
-      expect(res.status).toBe(501);
+      expect(mockGetMcpServerOrganization).toHaveBeenCalledWith(
+        "test-mcp-server-id",
+      );
+    });
+  });
+
+  describe("McpServer が存在しない場合", () => {
+    beforeEach(() => {
+      mockGetMcpServerOrganization.mockResolvedValue(null);
+    });
+
+    test("404 Not Found を返す", async () => {
+      const res = await app.request(
+        "/.well-known/oauth-authorization-server/mcp/non-existent-id",
+        {
+          method: "GET",
+        },
+      );
+
+      expect(res.status).toBe(404);
       const body = (await res.json()) as Record<string, unknown>;
       expect(body).toStrictEqual({
-        error: "not_implemented",
-        error_description:
-          "Instance-specific OAuth authorization server metadata is not yet implemented",
+        error: "not_found",
+        error_description: "MCP Server not found: non-existent-id",
       });
     });
   });
 
-  describe("DEV_MODE未設定の場合", () => {
-    beforeEach(() => {
-      delete process.env.DEV_MODE;
-    });
+  describe("authType が OAUTH でない場合", () => {
+    test("authType が API_KEY の場合、404 を返す", async () => {
+      mockGetMcpServerOrganization.mockResolvedValue({
+        id: "api-key-server-id",
+        organizationId: "test-org-id",
+        deletedAt: null,
+        authType: "API_KEY" as const,
+      });
 
-    test("501 Not Implemented を返す", async () => {
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/api-key-server-id",
         {
           method: "GET",
         },
       );
 
-      expect(res.status).toBe(501);
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toStrictEqual({
+        error: "oauth_not_supported",
+        error_description:
+          "This MCP Server does not support OAuth authentication. DCR is not available.",
+      });
+    });
+
+    test("authType が NONE の場合、404 を返す", async () => {
+      mockGetMcpServerOrganization.mockResolvedValue({
+        id: "no-auth-server-id",
+        organizationId: "test-org-id",
+        deletedAt: null,
+        authType: "NONE" as const,
+      });
+
+      const res = await app.request(
+        "/.well-known/oauth-authorization-server/mcp/no-auth-server-id",
+        {
+          method: "GET",
+        },
+      );
+
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toStrictEqual({
+        error: "oauth_not_supported",
+        error_description:
+          "This MCP Server does not support OAuth authentication. DCR is not available.",
+      });
     });
   });
 
   describe("エラーハンドリング", () => {
-    beforeEach(() => {
-      process.env.DEV_MODE = "true";
-    });
-
     test("KEYCLOAK_ISSUER が設定されていない場合、500エラーを返す", async () => {
       delete process.env.KEYCLOAK_ISSUER;
 
       const res = await app.request(
-        "/.well-known/oauth-authorization-server/mcp/dev-mcp-instance-id",
+        "/.well-known/oauth-authorization-server/mcp/test-mcp-server-id",
         {
           method: "GET",
         },
@@ -271,6 +307,9 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
     organizationId: "test-org-id",
     deletedAt: null,
     authType: "OAUTH",
+    piiMaskingMode: PiiMaskingMode.DISABLED,
+    piiInfoTypes: [],
+    toonConversionEnabled: false,
   };
 
   beforeEach(() => {

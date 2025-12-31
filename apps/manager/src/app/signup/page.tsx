@@ -7,7 +7,21 @@ import {
   GradientTitle,
 } from "@/components/ui/neo-brutalism";
 
-export default function SignUpPage() {
+type SignUpPageProps = {
+  searchParams: Promise<{ callbackUrl?: string }>;
+};
+
+export default async function SignUpPage({ searchParams }: SignUpPageProps) {
+  const { callbackUrl } = await searchParams;
+
+  // callbackUrlのバリデーション
+  const disallowedCallbackPaths = ["/signin", "/signup", "/api/auth/"];
+  const redirectUrl =
+    callbackUrl &&
+    !disallowedCallbackPaths.some((path) => callbackUrl.startsWith(path))
+      ? callbackUrl
+      : "/onboarding?first=true";
+
   return (
     <PageContainer>
       <div className="w-full max-w-md">
@@ -33,7 +47,7 @@ export default function SignUpPage() {
           {/* Googleボタン */}
           <div className="space-y-4">
             <GoogleSignInButton
-              callbackUrl="/onboarding?first=true"
+              callbackUrl={redirectUrl}
               label="Googleで続行"
             />
           </div>

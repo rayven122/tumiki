@@ -463,6 +463,13 @@ erDiagram
   Int errorCode "nullable"
   String(500) errorSummary "nullable"
   String(512) userAgent "nullable"
+  PiiMaskingMode piiMaskingMode
+  Int piiDetectedRequestCount "nullable"
+  Int piiDetectedResponseCount "nullable"
+  String piiDetectedInfoTypes
+  Boolean toonConversionEnabled "nullable"
+  Int inputTokens "nullable"
+  Int outputTokens "nullable"
   DateTime createdAt
 }
 ```
@@ -489,6 +496,19 @@ MCPサーバーインスタンスへのリクエストログ
     > MCPエラーコード（例: -32600, -32601, -32603）
   - `errorSummary`: エラーメッセージ要約（最大500文字、詳細はBigQuery）
   - `userAgent`: ユーザーエージェント（最大512文字に制限）
+  - `piiMaskingMode`
+    > PIIマスキングモード（DISABLEDの場合はマスキング無効）
+    > MCPサーバー設定のpiiMaskingModeをそのまま記録
+  - `piiDetectedRequestCount`: リクエストPII検出件数
+  - `piiDetectedResponseCount`: レスポンスPII検出件数
+  - `piiDetectedInfoTypes`
+    > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+    > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
+  - `toonConversionEnabled`
+    > TOON変換メトリクス
+    > TOON変換が有効だったかどうか
+  - `inputTokens`: TOON変換前のトークン数（元データのトークン数）
+  - `outputTokens`: AIに渡される最終的な出力トークン数
   - `createdAt`: 
 
 
@@ -514,6 +534,9 @@ erDiagram
   AuthType authType
   String organizationId FK
   Int displayOrder
+  PiiMaskingMode piiMaskingMode
+  String piiInfoTypes
+  Boolean toonConversionEnabled
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -632,6 +655,19 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
   - `authType`: 使用する認証タイプ（API_KEY, OAUTH, NONE）
   - `organizationId`: 組織
   - `displayOrder`: 表示順序（ユーザーごと）
+  - `piiMaskingMode`
+    > PIIマスキングモード設定（GCP DLPによるマスキング）
+    > DISABLED: マスキングなし（デフォルト）
+    > REQUEST: リクエストのみマスキング
+    > RESPONSE: レスポンスのみマスキング
+    > BOTH: 両方マスキング
+  - `piiInfoTypes`
+    > 使用するInfoType一覧（GCP DLP）
+    > 空配列の場合は全InfoTypeを使用
+  - `toonConversionEnabled`
+    > TOON変換を有効にするかどうか（AIへのトークン削減用）
+    > true: レスポンスをTOON形式に変換してからAIに返す
+    > false: JSONのままAIに返す（デフォルト）
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ

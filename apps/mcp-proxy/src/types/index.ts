@@ -1,6 +1,6 @@
-import type { AuthType } from "@tumiki/db";
+import type { AuthType, PiiMaskingMode } from "@tumiki/db";
 
-export type { AuthType };
+export type { AuthType, PiiMaskingMode };
 
 /**
  * 統一認証コンテキスト
@@ -15,6 +15,12 @@ export type AuthContext = {
   userId: string;
   mcpServerId: string;
   mcpApiKeyId?: string; // API Key認証時のみ
+  /** PIIマスキングモード（GCP DLPによるマスキング） */
+  piiMaskingMode: PiiMaskingMode;
+  /** 使用するInfoType一覧（空配列 = 全InfoType使用） */
+  piiInfoTypes: string[];
+  /** TOON変換を有効にするかどうか（AIへのトークン削減用） */
+  toonConversionEnabled: boolean;
 };
 
 /**

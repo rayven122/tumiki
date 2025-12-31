@@ -52,6 +52,19 @@ enum ServerType {
   OFFICIAL
 }
 
+/// PIIマスキングモード
+/// @namespace UserMcpServer
+enum PiiMaskingMode {
+  /// マスキング無効
+  DISABLED
+  /// リクエストのみマスキング
+  REQUEST
+  /// レスポンスのみマスキング
+  RESPONSE
+  /// 両方マスキング
+  BOTH
+}
+
 /// 実際に稼働するMCPサーバー
 /// 1つまたは複数のMcpServerTemplateから作成
 /// @namespace UserMcpServer
@@ -81,6 +94,22 @@ model McpServer {
   organization   Organization @relation(fields: [organizationId], references: [id])
   /// 表示順序（ユーザーごと）
   displayOrder   Int          @default(0)
+
+  /// PIIマスキングモード設定（GCP DLPによるマスキング）
+  /// DISABLED: マスキングなし（デフォルト）
+  /// REQUEST: リクエストのみマスキング
+  /// RESPONSE: レスポンスのみマスキング
+  /// BOTH: 両方マスキング
+  piiMaskingMode PiiMaskingMode @default(DISABLED)
+
+  /// 使用するInfoType一覧（GCP DLP）
+  /// 空配列の場合は全InfoTypeを使用
+  piiInfoTypes String[] @default([])
+
+  /// TOON変換を有効にするかどうか（AIへのトークン削減用）
+  /// true: レスポンスをTOON形式に変換してからAIに返す
+  /// false: JSONのままAIに返す（デフォルト）
+  toonConversionEnabled Boolean @default(false)
 
   /// 権限設定（サーバー削除時に自動削除）
   mcpPermissions McpPermission[]

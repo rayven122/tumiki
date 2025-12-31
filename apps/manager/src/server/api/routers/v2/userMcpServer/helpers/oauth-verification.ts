@@ -177,9 +177,12 @@ export const exchangeAuthorizationCode = async (
   const authServer = await discoverOAuthMetadata(originalServerUrl);
 
   // OAuth Clientオブジェクトを構築
+  // clientSecretの有無で認証方式を決定（パブリッククライアント対応）
   const client: oauth.Client = {
     client_id: oauthClient.clientId,
-    token_endpoint_auth_method: "client_secret_post",
+    token_endpoint_auth_method: oauthClient.clientSecret
+      ? "client_secret_post"
+      : "none",
     ...(oauthClient.clientSecret && {
       client_secret: oauthClient.clientSecret,
     }),
