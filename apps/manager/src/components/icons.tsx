@@ -831,6 +831,23 @@ export const ChevronDownIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
+export const HistoryIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: "currentcolor" }}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M8 0C3.58172 0 0 3.58172 0 8C0 12.4183 3.58172 16 8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 0 8 0ZM1.5 8C1.5 4.41015 4.41015 1.5 8 1.5C11.5899 1.5 14.5 4.41015 14.5 8C14.5 11.5899 11.5899 14.5 8 14.5C4.41015 14.5 1.5 11.5899 1.5 8ZM8.75 4V7.68934L10.7803 9.71967L11.3107 10.25L10.25 11.3107L9.71967 10.7803L7.46967 8.53033C7.32902 8.38968 7.25 8.19891 7.25 8V4H8.75Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
 export const SparklesIcon = ({ size = 16 }: { size?: number }) => (
   <svg
     height={size}

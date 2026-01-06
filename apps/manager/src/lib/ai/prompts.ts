@@ -59,7 +59,12 @@ export const systemPrompt = ({
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
-  if (selectedChatModel === "chat-model-reasoning") {
+  // 推論モデルはアーティファクト機能を使用しない (grok-4-reasoning, o1, o3-mini)
+  const isReasoningModel =
+    selectedChatModel.includes("reasoning") ||
+    selectedChatModel === "o1" ||
+    selectedChatModel === "o3-mini";
+  if (isReasoningModel) {
     return `${regularPrompt}\n\n${requestPrompt}`;
   } else {
     return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;

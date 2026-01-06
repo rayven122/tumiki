@@ -4,7 +4,8 @@ import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { History, Plus, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
+import { ChevronDownIcon, HistoryIcon } from "@/components/icons";
 import Link from "next/link";
 import useSWRInfinite from "swr/infinite";
 
@@ -13,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/chat/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -227,8 +228,13 @@ export const ChatHistoryDropdown = ({ orgSlug }: ChatHistoryDropdownProps) => {
         {/* 履歴ドロップダウン */}
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <History className="h-4 w-4" />
+            <Button
+              variant="outline"
+              className="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:h-[34px] md:px-2"
+            >
+              <HistoryIcon />
+              履歴
+              <ChevronDownIcon />
             </Button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-2">

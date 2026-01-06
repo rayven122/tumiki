@@ -150,7 +150,10 @@ export const POST = async (request: Request) => {
           messages,
           maxSteps: 5,
           experimental_activeTools:
-            selectedChatModel === "chat-model-reasoning"
+            // 推論モデルはツールを使用しない (grok-4-reasoning, o1, o3-mini)
+            selectedChatModel.includes("reasoning") ||
+            selectedChatModel === "o1" ||
+            selectedChatModel === "o3-mini"
               ? []
               : [
                   "getWeather",
