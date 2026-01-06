@@ -19,7 +19,26 @@ export const entitlementsByUserType: Record<"regular", Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ["chat-model", "chat-model-reasoning"],
+    availableChatModelIds: [
+      // xAI (Grok)
+      "grok-4-fast",
+      "grok-4-reasoning",
+      "grok-4-vision",
+      "grok-3-mini",
+      // Anthropic (Claude)
+      "claude-sonnet-4",
+      "claude-opus-4",
+      "claude-haiku-3.5",
+      // OpenAI
+      "gpt-4o",
+      "gpt-4o-mini",
+      "o1",
+      "o3-mini",
+      // Google (Gemini)
+      "gemini-2.0-flash",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+    ],
   },
 
   /*

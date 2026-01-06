@@ -138,4 +138,4 @@ export const TEST_PROMPTS = {
       },
     ],
   },
-} satisfies Record<string, CoreMessage>;
+} as const satisfies Record<string, CoreMessage>;
