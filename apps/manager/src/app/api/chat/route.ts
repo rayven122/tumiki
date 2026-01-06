@@ -35,13 +35,13 @@ import { after } from "next/server";
 import type { Chat } from "@tumiki/db/prisma";
 import { differenceInSeconds } from "date-fns";
 import { ChatSDKError } from "@/lib/errors";
-import { generateTitleFromUserMessage } from "@/app/(chat)/chat/actions";
+import { generateTitleFromUserMessage } from "@/app/[orgSlug]/chat/actions";
 
 export const maxDuration = 60;
 
 let globalStreamContext: ResumableStreamContext | null = null;
 
-function getStreamContext() {
+const getStreamContext = () => {
   if (!globalStreamContext) {
     try {
       globalStreamContext = createResumableStreamContext({
@@ -59,9 +59,9 @@ function getStreamContext() {
   }
 
   return globalStreamContext;
-}
+};
 
-export async function POST(request: Request) {
+export const POST = async (request: Request) => {
   let requestBody: PostRequestBody;
 
   try {
@@ -194,10 +194,17 @@ export async function POST(request: Request) {
                         id: assistantId,
                         chatId: id,
                         role: assistantMessage.role,
-                        parts: assistantMessage.parts as any,
+                        parts: assistantMessage.parts as unknown as Array<{
+                          text: string;
+                          type: string;
+                        }>,
                         attachments:
-                          assistantMessage.experimental_attachments ??
-                          ([] as any),
+                          (assistantMessage.experimental_attachments ??
+                            []) as unknown as Array<{
+                            url: string;
+                            name: string;
+                            contentType: string;
+                          }>,
                         createdAt: new Date(),
                       },
                     ],
@@ -239,9 +246,9 @@ export async function POST(request: Request) {
       return error.toResponse();
     }
   }
-}
+};
 
-export async function GET(request: Request) {
+export const GET = async (request: Request) => {
   const streamContext = getStreamContext();
   const resumeRequestedAt = new Date();
 
@@ -336,9 +343,9 @@ export async function GET(request: Request) {
   }
 
   return new Response(stream, { status: 200 });
-}
+};
 
-export async function DELETE(request: Request) {
+export const DELETE = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -361,4 +368,4 @@ export async function DELETE(request: Request) {
   const deletedChat = await deleteChatById({ id });
 
   return Response.json(deletedChat, { status: 200 });
-}
+};

@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { Textarea } from "./ui/chat/textarea";
-import { deleteTrailingMessages } from "@/app/(chat)/chat/actions";
+import { deleteTrailingMessages } from "@/app/[orgSlug]/chat/actions";
 import type { UseChatHelpers } from "@ai-sdk/react";
 
 export type MessageEditorProps = {

@@ -14,6 +14,7 @@ import {
   List,
   Plus,
   Network,
+  Bot,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -74,6 +75,13 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       name: "MCPサーバーを作成",
       href: `/${orgSlug}/mcps/create`,
       icon: Plus,
+      show: true, // 全組織で表示
+      disabled: false,
+    },
+    {
+      name: "AIチャット",
+      href: `/${orgSlug}/chat`,
+      icon: Bot,
       show: true, // 全組織で表示
       disabled: false,
     },
