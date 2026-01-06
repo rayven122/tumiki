@@ -2,7 +2,7 @@ import { auth } from "~/auth";
 import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
 import { ChatSDKError } from "@/lib/errors";
 
-export async function GET(request: Request) {
+export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const chatId = searchParams.get("chatId");
 
@@ -32,9 +32,9 @@ export async function GET(request: Request) {
   const votes = await getVotesByChatId({ id: chatId });
 
   return Response.json(votes, { status: 200 });
-}
+};
 
-export async function PATCH(request: Request) {
+export const PATCH = async (request: Request) => {
   const {
     chatId,
     messageId,
@@ -72,4 +72,4 @@ export async function PATCH(request: Request) {
   });
 
   return new Response("Message voted", { status: 200 });
-}
+};

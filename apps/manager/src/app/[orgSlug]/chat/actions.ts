@@ -10,16 +10,16 @@ import {
 import type { VisibilityType } from "@/components/visibility-selector";
 import { myProvider } from "@/lib/ai/providers";
 
-export async function saveChatModelAsCookie(model: string) {
+export const saveChatModelAsCookie = async (model: string) => {
   const cookieStore = await cookies();
   cookieStore.set("chat-model", model);
-}
+};
 
-export async function generateTitleFromUserMessage({
+export const generateTitleFromUserMessage = async ({
   message,
 }: {
   message: UIMessage;
-}) {
+}) => {
   const { text: title } = await generateText({
     model: myProvider.languageModel("title-model"),
     system: `\n
@@ -31,9 +31,9 @@ export async function generateTitleFromUserMessage({
   });
 
   return title;
-}
+};
 
-export async function deleteTrailingMessages({ id }: { id: string }) {
+export const deleteTrailingMessages = async ({ id }: { id: string }) => {
   const message = await getMessageById({ id });
 
   if (message) {
@@ -42,14 +42,14 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
       timestamp: message.createdAt,
     });
   }
-}
+};
 
-export async function updateChatVisibility({
+export const updateChatVisibility = async ({
   chatId,
   visibility,
 }: {
   chatId: string;
   visibility: VisibilityType;
-}) {
+}) => {
   await updateChatVisiblityById({ chatId, visibility });
-}
+};
