@@ -35,12 +35,11 @@ export const GET = async (request: Request) => {
 };
 
 export const PATCH = async (request: Request) => {
-  const {
-    chatId,
-    messageId,
-    type,
-  }: { chatId: string; messageId: string; type: "up" | "down" } =
-    await request.json();
+  const { chatId, messageId, type } = (await request.json()) as {
+    chatId: string;
+    messageId: string;
+    type: "up" | "down";
+  };
 
   if (!chatId || !messageId || !type) {
     return new ChatSDKError(

@@ -65,6 +65,14 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       comingSoon: true,
     },
     {
+      name: "AIチャット",
+      href: `/${orgSlug}/chat`,
+      icon: Bot,
+      show: true, // 全組織で表示
+      disabled: false,
+      beta: true,
+    },
+    {
       name: "登録済みサーバー",
       href: `/${orgSlug}/mcps`,
       icon: List,
@@ -78,28 +86,14 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       show: true, // 全組織で表示
       disabled: false,
     },
-    {
-      name: "AIチャット",
-      href: `/${orgSlug}/chat`,
-      icon: Bot,
-      show: true, // 全組織で表示
-      disabled: false,
-    },
-    {
-      name: "アクティビティ",
-      href: `/${orgSlug}/activity`,
-      icon: Activity,
-      show: true, // 全組織で表示
-      disabled: true,
-      comingSoon: true,
-    },
-    {
-      name: "組織構造",
-      href: `/${orgSlug}/org-structure`,
-      icon: Network,
-      show: !isPersonal, // 個人組織では非表示
-      disabled: false,
-    },
+    // {
+    //   name: "アクティビティ",
+    //   href: `/${orgSlug}/activity`,
+    //   icon: Activity,
+    //   show: true, // 全組織で表示
+    //   disabled: true,
+    //   comingSoon: true,
+    // },
     {
       name: "メンバー管理",
       href: `/${orgSlug}/members`,
@@ -107,13 +101,21 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       show: !isPersonal, // 個人組織では非表示
       disabled: false,
     },
-
+    {
+      name: "組織構造",
+      href: `/${orgSlug}/org-structure`,
+      icon: Network,
+      show: !isPersonal, // 個人組織では非表示
+      disabled: false,
+      beta: true,
+    },
     {
       name: "ロール・権限",
       href: `/${orgSlug}/roles`,
       icon: Shield,
       show: !isPersonal, // 個人組織では非表示
       disabled: false,
+      beta: true,
     },
     {
       name: "設定",
@@ -173,6 +175,7 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
                 const isDisabled = item.disabled;
+                const isBeta = "beta" in item && item.beta;
                 const tooltipText = item.comingSoon ? "近日公開" : item.name;
 
                 const linkContent = (
@@ -181,6 +184,11 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
                     <span className={cn("md:inline", !isOpen && "md:hidden")}>
                       {item.name}
                     </span>
+                    {isBeta && isOpen && (
+                      <span className="bg-primary/10 text-primary ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium">
+                        Beta
+                      </span>
+                    )}
                   </>
                 );
 
