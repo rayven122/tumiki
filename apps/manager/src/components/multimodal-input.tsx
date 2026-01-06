@@ -291,9 +291,11 @@ function PureMultimodalInput({
         }}
       />
 
+      {/* 画像アップロード機能は一時的に無効化（さくらVM対応後に復活予定）
       <div className="absolute bottom-0 flex w-fit flex-row justify-start p-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
       </div>
+      */}
 
       <div className="absolute right-0 bottom-0 flex w-fit flex-row justify-end p-2">
         {status === "submitted" ? (
