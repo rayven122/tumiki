@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Settings, AlertTriangle, Trash2, Info, Loader2 } from "lucide-react";
+import { AlertTriangle, Trash2, Info, Loader2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 
@@ -82,14 +82,11 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
+    <div className="container mx-auto space-y-6 px-4 py-6 md:px-6">
       {/* ヘッダー */}
-      <div className="flex items-center space-x-3">
-        <Settings className="h-8 w-8" />
-        <div>
-          <h1 className="text-3xl font-bold">設定</h1>
-          <p className="text-muted-foreground">組織の設定を管理</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">設定</h1>
+        <p className="text-muted-foreground mt-2">組織の設定を管理</p>
       </div>
 
       {/* 一般設定セクション（開発中） */}
@@ -115,21 +112,19 @@ const SettingsPage = () => {
 
       {/* 危険なゾーンセクション（オーナーのみ表示） */}
       {isOwner && (
-        <Card className="border-red-200 dark:border-red-800">
+        <Card className="border-red-300 bg-red-50">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-red-600 dark:text-red-400">
+            <CardTitle className="flex items-center space-x-2 text-red-700">
               <AlertTriangle className="h-5 w-5" />
               <span>危険なゾーン</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
+            <div className="rounded-lg border border-red-300 bg-white p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <h4 className="font-medium text-red-800 dark:text-red-200">
-                    組織を削除
-                  </h4>
-                  <p className="text-sm text-red-700 dark:text-red-300">
+                  <h4 className="font-medium text-red-800">組織を削除</h4>
+                  <p className="text-sm text-red-700">
                     この操作は取り消せません。組織に関連するすべてのデータ（メンバー、MCPサーバー設定、招待など）が完全に削除されます。
                   </p>
                 </div>
@@ -158,7 +153,7 @@ const SettingsPage = () => {
                             </strong>{" "}
                             を削除しようとしています。
                           </p>
-                          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+                          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
                             <ul className="list-inside list-disc space-y-1">
                               <li>すべてのメンバーが組織から削除されます</li>
                               <li>MCPサーバー設定が削除されます</li>
@@ -178,7 +173,7 @@ const SettingsPage = () => {
                               value={confirmText}
                               onChange={(e) => setConfirmText(e.target.value)}
                               placeholder={organization?.name}
-                              className="border-red-200 focus:border-red-400 dark:border-red-800"
+                              className="border-red-300 focus:border-red-400"
                             />
                           </div>
                         </div>

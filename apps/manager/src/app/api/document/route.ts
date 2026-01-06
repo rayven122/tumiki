@@ -56,12 +56,11 @@ export const POST = async (request: Request) => {
     return new ChatSDKError("not_found:document").toResponse();
   }
 
-  const {
-    content,
-    title,
-    kind,
-  }: { content: string; title: string; kind: ArtifactKind } =
-    await request.json();
+  const { content, title, kind } = (await request.json()) as {
+    content: string;
+    title: string;
+    kind: ArtifactKind;
+  };
 
   const documents = await getDocumentsById({ id });
 

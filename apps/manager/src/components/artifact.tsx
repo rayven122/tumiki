@@ -11,6 +11,7 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
+import { useAtomValue } from "jotai";
 import type { Document, Vote } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { MultimodalInput } from "./multimodal-input";
@@ -19,7 +20,7 @@ import { VersionFooter } from "./version-footer";
 import { ArtifactActions } from "./artifact-actions";
 import { ArtifactCloseButton } from "./artifact-close-button";
 import { ArtifactMessages } from "./artifact-messages";
-import { useSidebar } from "./ui/chat/sidebar";
+import { sidebarOpenAtom } from "@/store/sidebar";
 import { useArtifact } from "@/hooks/use-artifact";
 import { imageArtifact } from "@/artifacts/image/client";
 import { codeArtifact } from "@/artifacts/code/client";
@@ -102,7 +103,8 @@ function PureArtifact({
   const [document, setDocument] = useState<Document | null>(null);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1);
 
-  const { open: isSidebarOpen } = useSidebar();
+  // OrgSidebarの開閉状態を取得
+  const isSidebarOpen = useAtomValue(sidebarOpenAtom);
 
   useEffect(() => {
     if (documents && documents.length > 0) {
