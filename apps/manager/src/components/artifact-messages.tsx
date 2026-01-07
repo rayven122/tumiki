@@ -83,6 +83,10 @@ function areEqual(
   prevProps: ArtifactMessagesProps,
   nextProps: ArtifactMessagesProps,
 ) {
+  // メッセージのストリーミング中は常に再レンダーして、リアルタイム表示を保証
+  if (nextProps.status === "streaming") return false;
+
+  // アーティファクトがストリーミング中は再レンダーを最小化
   if (
     prevProps.artifactStatus === "streaming" &&
     nextProps.artifactStatus === "streaming"
@@ -90,8 +94,8 @@ function areEqual(
     return true;
 
   if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.status && nextProps.status) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
+  if (!equal(prevProps.messages, nextProps.messages)) return false;
   if (!equal(prevProps.votes, nextProps.votes)) return false;
 
   return true;

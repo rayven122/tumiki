@@ -116,6 +116,15 @@ const PurePreviewMessage = ({
               }
 
               if (type === "text") {
+                // 最後のテキストパーツかどうかを判定（タイプライターカーソル表示用）
+                const textParts = message.parts?.filter(
+                  (p) => p.type === "text",
+                );
+                const isLastTextPart =
+                  textParts && textParts[textParts.length - 1] === part;
+                const showCursor =
+                  isLoading && message.role === "assistant" && isLastTextPart;
+
                 if (mode === "view") {
                   return (
                     <div key={key} className="flex flex-row items-start gap-2">
@@ -144,7 +153,15 @@ const PurePreviewMessage = ({
                             message.role === "user",
                         })}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        <span className="inline">
+                          <Markdown>{sanitizeText(part.text)}</Markdown>
+                          {showCursor && (
+                            <span
+                              className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-[blink_1s_step-end_infinite] bg-current align-middle"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </span>
                       </div>
                     </div>
                   );
@@ -296,6 +313,9 @@ const PurePreviewMessage = ({
 export const PreviewMessage = memo(
   PurePreviewMessage,
   (prevProps, nextProps) => {
+    // ストリーミング中（isLoading=true）は常に再レンダーして、リアルタイム表示を保証
+    if (nextProps.isLoading) return false;
+
     if (prevProps.isLoading !== nextProps.isLoading) return false;
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
