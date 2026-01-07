@@ -6,7 +6,8 @@ import { getPublicChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { SharedChatMessages } from "./_components/SharedChatMessages";
 import { Button } from "@/components/ui/button";
 import type { Message } from "@tumiki/db/prisma";
-import type { Attachment, UIMessage } from "ai";
+import type { UIMessage } from "ai";
+import type { Attachment } from "@/lib/types";
 
 type PageProps = {
   params: Promise<{ chatId: string }>;

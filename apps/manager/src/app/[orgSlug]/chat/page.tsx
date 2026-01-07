@@ -48,6 +48,7 @@ export default async function Page(props: PageProps) {
         key={id}
         id={id}
         organizationId={organization.id}
+        orgSlug={decodedSlug}
         initialMessages={[]}
         initialChatModel={chatModel}
         initialVisibilityType="PRIVATE"

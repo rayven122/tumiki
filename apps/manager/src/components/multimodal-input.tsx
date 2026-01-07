@@ -1,6 +1,7 @@
 "use client";
 
-import type { Attachment, UIMessage } from "ai";
+import type { UIMessage } from "ai";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import cx from "classnames";
 import type React from "react";
 import {
@@ -30,6 +31,7 @@ import type { VisibilityType } from "./visibility-selector";
 
 function PureMultimodalInput({
   chatId,
+  orgSlug,
   input,
   setInput,
   status,
@@ -38,22 +40,21 @@ function PureMultimodalInput({
   setAttachments,
   messages,
   setMessages,
-  append,
-  handleSubmit,
+  sendMessage,
   className,
   selectedVisibilityType,
 }: {
   chatId: string;
-  input: UseChatHelpers["input"];
-  setInput: UseChatHelpers["setInput"];
-  status: UseChatHelpers["status"];
+  orgSlug: string;
+  input: string;
+  setInput: Dispatch<SetStateAction<string>>;
+  status: UseChatHelpers<ChatMessage>["status"];
   stop: () => void;
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers["setMessages"];
-  append: UseChatHelpers["append"];
-  handleSubmit: UseChatHelpers["handleSubmit"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   className?: string;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -108,26 +109,42 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    window.history.replaceState({}, "", `/chat/${chatId}`);
+    window.history.replaceState({}, "", `/${orgSlug}/chat/${chatId}`);
 
-    handleSubmit(undefined, {
-      experimental_attachments: attachments,
+    sendMessage({
+      role: "user",
+      parts: [
+        ...attachments.map((attachment) => ({
+          type: "file" as const,
+          url: attachment.url,
+          name: attachment.name,
+          mediaType: attachment.contentType,
+        })),
+        {
+          type: "text" as const,
+          text: input,
+        },
+      ],
     });
 
     setAttachments([]);
     setLocalStorageInput("");
     resetHeight();
+    setInput("");
 
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
   }, [
+    input,
+    setInput,
     attachments,
-    handleSubmit,
+    sendMessage,
     setAttachments,
     setLocalStorageInput,
     width,
     chatId,
+    orgSlug,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -224,8 +241,9 @@ function PureMultimodalInput({
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
           <SuggestedActions
-            append={append}
+            sendMessage={sendMessage}
             chatId={chatId}
+            orgSlug={orgSlug}
             selectedVisibilityType={selectedVisibilityType}
           />
         )}
@@ -330,7 +348,7 @@ function PureAttachmentsButton({
   status,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
-  status: UseChatHelpers["status"];
+  status: UseChatHelpers<ChatMessage>["status"];
 }) {
   return (
     <Button
@@ -355,7 +373,7 @@ function PureStopButton({
   setMessages,
 }: {
   stop: () => void;
-  setMessages: UseChatHelpers["setMessages"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
 }) {
   return (
     <Button
@@ -364,7 +382,7 @@ function PureStopButton({
       onClick={(event) => {
         event.preventDefault();
         stop();
-        setMessages((messages) => messages);
+        setMessages((messages: ChatMessage[]) => messages);
       }}
     >
       <StopIcon size={14} />

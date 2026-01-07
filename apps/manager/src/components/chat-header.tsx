@@ -21,6 +21,7 @@ import {
 function PureChatHeader({
   chatId,
   selectedModelId,
+  onModelChange,
   selectedVisibilityType,
   selectedMcpServerIds,
   isReadonly,
@@ -31,6 +32,7 @@ function PureChatHeader({
 }: {
   chatId: string;
   selectedModelId: string;
+  onModelChange?: (modelId: string) => void;
   selectedVisibilityType: VisibilityType;
   selectedMcpServerIds: string[];
   isReadonly: boolean;
@@ -73,6 +75,7 @@ function PureChatHeader({
         <ModelSelector
           session={session}
           selectedModelId={selectedModelId}
+          onModelChange={onModelChange}
           className="order-1"
         />
       )}

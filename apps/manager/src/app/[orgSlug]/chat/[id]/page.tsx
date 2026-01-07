@@ -8,7 +8,7 @@ import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import type { Message } from "@tumiki/db/prisma";
-import type { Attachment, UIMessage } from "ai";
+import type { ChatMessage } from "@/lib/types";
 import { getMcpServerIdsFromCookie } from "../actions";
 import { api } from "@/trpc/server";
 
@@ -57,16 +57,18 @@ export default async function Page(props: PageProps) {
     id,
   });
 
-  const convertToUIMessages = (messages: Array<Message>): Array<UIMessage> => {
+  // AI SDK 6: ChatMessage型で返す（metadataはcreatedAtを含む）
+  const convertToUIMessages = (
+    messages: Array<Message>,
+  ): Array<ChatMessage> => {
     return messages.map((message) => ({
       id: message.id,
-      parts: message.parts as UIMessage["parts"],
-      role: message.role as UIMessage["role"],
-      // Note: content will soon be deprecated in @ai-sdk/react
-      content: "",
-      createdAt: message.createdAt,
-      experimental_attachments:
-        (message.attachments as unknown as Array<Attachment>) ?? [],
+      parts: message.parts as ChatMessage["parts"],
+      role: message.role as ChatMessage["role"],
+      // AI SDK 6: metadataにcreatedAtを設定
+      metadata: {
+        createdAt: message.createdAt.toISOString(),
+      },
     }));
   };
 
@@ -94,6 +96,7 @@ export default async function Page(props: PageProps) {
       <Chat
         id={chat.id}
         organizationId={organization.id}
+        orgSlug={decodedSlug}
         initialMessages={convertToUIMessages(messagesFromDb)}
         initialChatModel={chatModel}
         initialVisibilityType={chat.visibility}

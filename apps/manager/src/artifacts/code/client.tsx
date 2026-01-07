@@ -258,9 +258,15 @@ export const codeArtifact = new Artifact<"code", Metadata>({
       icon: <MessageIcon />,
       description: "Add comments",
       onClick: ({ appendMessage }) => {
+        // AI SDK 6: content → parts
         appendMessage({
           role: "user",
-          content: "Add comments to the code snippet for understanding",
+          parts: [
+            {
+              type: "text",
+              text: "Add comments to the code snippet for understanding",
+            },
+          ],
         });
       },
     },
@@ -268,9 +274,15 @@ export const codeArtifact = new Artifact<"code", Metadata>({
       icon: <LogsIcon />,
       description: "Add logs",
       onClick: ({ appendMessage }) => {
+        // AI SDK 6: content → parts
         appendMessage({
           role: "user",
-          content: "Add logs to the code snippet for debugging",
+          parts: [
+            {
+              type: "text",
+              text: "Add logs to the code snippet for debugging",
+            },
+          ],
         });
       },
     },

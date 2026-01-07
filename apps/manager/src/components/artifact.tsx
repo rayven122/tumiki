@@ -1,4 +1,5 @@
-import type { Attachment, UIMessage } from "ai";
+import type { UIMessage } from "ai";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import { formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -38,7 +39,7 @@ export const artifactDefinitions = [
 ];
 export type ArtifactKind = (typeof artifactDefinitions)[number]["kind"];
 
-export interface UIArtifact {
+export type UIArtifact = {
   title: string;
   documentId: string;
   kind: ArtifactKind;
@@ -51,38 +52,38 @@ export interface UIArtifact {
     width: number;
     height: number;
   };
-}
+};
 
 function PureArtifact({
   chatId,
+  orgSlug,
   input,
   setInput,
-  handleSubmit,
+  sendMessage,
   status,
   stop,
   attachments,
   setAttachments,
-  append,
   messages,
   setMessages,
-  reload,
+  regenerate,
   votes,
   isReadonly,
   selectedVisibilityType,
 }: {
   chatId: string;
+  orgSlug: string;
   input: string;
-  setInput: UseChatHelpers["setInput"];
-  status: UseChatHelpers["status"];
-  stop: UseChatHelpers["stop"];
+  setInput: Dispatch<SetStateAction<string>>;
+  status: UseChatHelpers<ChatMessage>["status"];
+  stop: UseChatHelpers<ChatMessage>["stop"];
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers["setMessages"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   votes: Array<Vote> | undefined;
-  append: UseChatHelpers["append"];
-  handleSubmit: UseChatHelpers["handleSubmit"];
-  reload: UseChatHelpers["reload"];
+  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -321,7 +322,7 @@ function PureArtifact({
                   votes={votes}
                   messages={messages}
                   setMessages={setMessages}
-                  reload={reload}
+                  regenerate={regenerate}
                   isReadonly={isReadonly}
                   artifactStatus={artifact.status}
                 />
@@ -329,15 +330,15 @@ function PureArtifact({
                 <form className="relative flex w-full flex-row items-end gap-2 px-4 pb-4">
                   <MultimodalInput
                     chatId={chatId}
+                    orgSlug={orgSlug}
                     input={input}
                     setInput={setInput}
-                    handleSubmit={handleSubmit}
+                    sendMessage={sendMessage}
                     status={status}
                     stop={stop}
                     attachments={attachments}
                     setAttachments={setAttachments}
                     messages={messages}
-                    append={append}
                     className="bg-background dark:bg-muted"
                     setMessages={setMessages}
                     selectedVisibilityType={selectedVisibilityType}
@@ -478,7 +479,7 @@ function PureArtifact({
                   <Toolbar
                     isToolbarVisible={isToolbarVisible}
                     setIsToolbarVisible={setIsToolbarVisible}
-                    append={append}
+                    sendMessage={sendMessage}
                     status={status}
                     stop={stop}
                     setMessages={setMessages}

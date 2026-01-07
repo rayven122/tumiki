@@ -1,6 +1,7 @@
 "use client";
 
-import type { Attachment, UIMessage } from "ai";
+import { DefaultChatTransport } from "ai";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
@@ -24,6 +25,7 @@ import type { SessionData } from "~/auth";
 export function Chat({
   id,
   organizationId,
+  orgSlug,
   initialMessages,
   initialChatModel,
   initialVisibilityType,
@@ -36,7 +38,8 @@ export function Chat({
 }: {
   id: string;
   organizationId: string;
-  initialMessages: Array<UIMessage>;
+  orgSlug: string;
+  initialMessages: Array<ChatMessage>;
   initialChatModel: string;
   initialVisibilityType: VisibilityType;
   initialMcpServerIds: string[];
@@ -47,6 +50,8 @@ export function Chat({
   isNewChat?: boolean;
 }) {
   const { mutate } = useSWRConfig();
+  const [selectedChatModel, setSelectedChatModel] = useState(initialChatModel);
+  const [input, setInput] = useState<string>("");
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -57,29 +62,34 @@ export function Chat({
   const {
     messages,
     setMessages,
-    handleSubmit,
-    input,
-    setInput,
-    append,
+    sendMessage,
     status,
     stop,
-    reload,
-    experimental_resume,
-    data,
-  } = useChat({
+    regenerate,
+    resumeStream,
+  } = useChat<ChatMessage>({
     id,
-    initialMessages,
+    messages: initialMessages,
     experimental_throttle: 100,
-    sendExtraMessageFields: true,
     generateId: generateCUID,
-    fetch: fetch,
-    experimental_prepareRequestBody: (body) => ({
-      id,
-      organizationId,
-      message: body.messages.at(-1),
-      selectedChatModel: initialChatModel,
-      selectedVisibilityType: visibilityType,
-      selectedMcpServerIds: initialMcpServerIds,
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      fetch: fetchWithErrorHandlers,
+      prepareSendMessagesRequest(request) {
+        const lastMessage = request.messages.at(-1);
+
+        return {
+          body: {
+            id: request.id,
+            organizationId,
+            message: lastMessage,
+            selectedChatModel,
+            selectedVisibilityType: visibilityType,
+            selectedMcpServerIds: initialMcpServerIds,
+            ...request.body,
+          },
+        };
+      },
     }),
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey(organizationId)));
@@ -101,15 +111,15 @@ export function Chat({
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
-      append({
+      sendMessage({
         role: "user",
-        content: query,
+        parts: [{ type: "text", text: query }],
       });
 
       setHasAppendedQuery(true);
-      window.history.replaceState({}, "", `/chat/${id}`);
+      window.history.replaceState({}, "", `/${orgSlug}/chat/${id}`);
     }
-  }, [query, append, hasAppendedQuery, id]);
+  }, [query, sendMessage, hasAppendedQuery, id]);
 
   const { data: votes } = useSWR<Array<Vote>>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
@@ -122,8 +132,7 @@ export function Chat({
   useAutoResume({
     autoResume,
     initialMessages,
-    experimental_resume,
-    data,
+    resumeStream,
     setMessages,
   });
 
@@ -132,7 +141,8 @@ export function Chat({
       <div className="bg-background flex h-full min-w-0 flex-col">
         <ChatHeader
           chatId={id}
-          selectedModelId={initialChatModel}
+          selectedModelId={selectedChatModel}
+          onModelChange={setSelectedChatModel}
           selectedVisibilityType={initialVisibilityType}
           selectedMcpServerIds={initialMcpServerIds}
           isReadonly={isReadonly}
@@ -148,7 +158,7 @@ export function Chat({
           votes={votes}
           messages={messages}
           setMessages={setMessages}
-          reload={reload}
+          regenerate={regenerate}
           isReadonly={isReadonly}
           isArtifactVisible={isArtifactVisible}
         />
@@ -157,16 +167,16 @@ export function Chat({
           {!isReadonly && (
             <MultimodalInput
               chatId={id}
+              orgSlug={orgSlug}
               input={input}
               setInput={setInput}
-              handleSubmit={handleSubmit}
+              sendMessage={sendMessage}
               status={status}
               stop={stop}
               attachments={attachments}
               setAttachments={setAttachments}
               messages={messages}
               setMessages={setMessages}
-              append={append}
               selectedVisibilityType={visibilityType}
             />
           )}
@@ -175,17 +185,17 @@ export function Chat({
 
       <Artifact
         chatId={id}
+        orgSlug={orgSlug}
         input={input}
         setInput={setInput}
-        handleSubmit={handleSubmit}
+        sendMessage={sendMessage}
         status={status}
         stop={stop}
         attachments={attachments}
         setAttachments={setAttachments}
-        append={append}
         messages={messages}
         setMessages={setMessages}
-        reload={reload}
+        regenerate={regenerate}
         votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
