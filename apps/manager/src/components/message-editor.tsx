@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message } from "ai";
+import type { UIMessage, TextUIPart } from "ai";
 import { Button } from "./ui/chat/button";
 import {
   type Dispatch,
@@ -12,23 +12,34 @@ import {
 import { Textarea } from "./ui/chat/textarea";
 import { deleteTrailingMessages } from "@/app/[orgSlug]/chat/actions";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import type { ChatMessage } from "@/lib/types";
 
 export type MessageEditorProps = {
-  message: Message;
+  message: UIMessage;
   setMode: Dispatch<SetStateAction<"view" | "edit">>;
-  setMessages: UseChatHelpers["setMessages"];
-  reload: UseChatHelpers["reload"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
+};
+
+// AI SDK 6: contentプロパティは削除され、partsから取得する必要がある
+const getMessageText = (message: UIMessage): string => {
+  const textPart = message.parts?.find(
+    (part): part is TextUIPart => part.type === "text",
+  );
+  return textPart?.text || "";
 };
 
 export function MessageEditor({
   message,
   setMode,
   setMessages,
-  reload,
+  regenerate,
 }: MessageEditorProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const [draftContent, setDraftContent] = useState<string>(message.content);
+  const [draftContent, setDraftContent] = useState<string>(
+    getMessageText(message),
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -81,15 +92,16 @@ export function MessageEditor({
               id: message.id,
             });
 
-            // @ts-expect-error todo: support UIMessage in setMessages
             setMessages((messages) => {
               const index = messages.findIndex((m) => m.id === message.id);
 
               if (index !== -1) {
-                const updatedMessage = {
-                  ...message,
-                  content: draftContent,
-                  parts: [{ type: "text", text: draftContent }],
+                // AI SDK 6: ChatMessage型に合わせてmetadataを明示的に設定
+                const updatedMessage: ChatMessage = {
+                  id: message.id,
+                  role: message.role,
+                  parts: [{ type: "text" as const, text: draftContent }],
+                  metadata: message.metadata as ChatMessage["metadata"],
                 };
 
                 return [...messages.slice(0, index), updatedMessage];
@@ -99,7 +111,7 @@ export function MessageEditor({
             });
 
             setMode("view");
-            reload();
+            regenerate();
           }}
         >
           {isSubmitting ? "Sending..." : "Send"}

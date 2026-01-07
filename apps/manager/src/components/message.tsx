@@ -5,12 +5,13 @@ import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useState } from "react";
 import type { Vote } from "@tumiki/db/prisma";
+import type { ArtifactKind } from "./artifact";
 import { DocumentToolCall, DocumentToolResult } from "./document";
 import { PencilEditIcon, SparklesIcon } from "./icons";
 import { Markdown } from "./markdown";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
-import { Weather } from "./weather";
+import { Weather, type WeatherAtLocation } from "./weather";
 import equal from "fast-deep-equal";
 import { cn, sanitizeText } from "@/lib/utils";
 import { Button } from "./ui/chat/button";
@@ -19,6 +20,7 @@ import { MessageEditor } from "./message-editor";
 import { DocumentPreview } from "./document-preview";
 import { MessageReasoning } from "./message-reasoning";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import type { ChatMessage } from "@/lib/types";
 
 const PurePreviewMessage = ({
   chatId,
@@ -26,7 +28,7 @@ const PurePreviewMessage = ({
   vote,
   isLoading,
   setMessages,
-  reload,
+  regenerate,
   isReadonly,
   requiresScrollPadding,
 }: {
@@ -34,12 +36,24 @@ const PurePreviewMessage = ({
   message: UIMessage;
   vote: Vote | undefined;
   isLoading: boolean;
-  setMessages: UseChatHelpers["setMessages"];
-  reload: UseChatHelpers["reload"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
+
+  // AI SDK 6: experimental_attachments は削除され、parts内のfileタイプに変更
+  const fileAttachments = message.parts
+    ?.filter(
+      (part): part is { type: "file"; url: string; mediaType: string } =>
+        part.type === "file" && "url" in part,
+    )
+    .map((part) => ({
+      url: part.url,
+      name: part.url.split("/").pop() ?? "file",
+      contentType: part.mediaType,
+    }));
 
   return (
     <AnimatePresence>
@@ -72,31 +86,31 @@ const PurePreviewMessage = ({
               "min-h-96": message.role === "assistant" && requiresScrollPadding,
             })}
           >
-            {message.experimental_attachments &&
-              message.experimental_attachments.length > 0 && (
-                <div
-                  data-testid={`message-attachments`}
-                  className="flex flex-row justify-end gap-2"
-                >
-                  {message.experimental_attachments.map((attachment) => (
-                    <PreviewAttachment
-                      key={attachment.url}
-                      attachment={attachment}
-                    />
-                  ))}
-                </div>
-              )}
+            {fileAttachments && fileAttachments.length > 0 && (
+              <div
+                data-testid={`message-attachments`}
+                className="flex flex-row justify-end gap-2"
+              >
+                {fileAttachments.map((attachment) => (
+                  <PreviewAttachment
+                    key={attachment.url}
+                    attachment={attachment}
+                  />
+                ))}
+              </div>
+            )}
 
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
 
               if (type === "reasoning") {
+                // AI SDK 6: reasoning プロパティは text に変更
                 return (
                   <MessageReasoning
                     key={key}
                     isLoading={isLoading}
-                    reasoning={part.reasoning}
+                    reasoning={part.text}
                   />
                 );
               }
@@ -146,19 +160,34 @@ const PurePreviewMessage = ({
                         message={message}
                         setMode={setMode}
                         setMessages={setMessages}
-                        reload={reload}
+                        regenerate={regenerate}
                       />
                     </div>
                   );
                 }
               }
 
-              if (type === "tool-invocation") {
-                const { toolInvocation } = part;
-                const { toolName, toolCallId, state } = toolInvocation;
+              // AI SDK 6: tool-invocation は tool-${toolName} 形式に変更
+              // ツールパーツの処理
+              if (type.startsWith("tool-")) {
+                // AI SDK 6のツールパーツ構造
+                // 型アサーションには unknown を経由する必要がある
+                const toolPart = part as unknown as {
+                  type: `tool-${string}`;
+                  toolCallId: string;
+                  state: "call" | "partial-call" | "result" | "error";
+                  input?: unknown;
+                  output?: unknown;
+                };
+                const { toolCallId, state } = toolPart;
+                // ツール名を抽出 (tool-getWeather → getWeather)
+                const toolName = type.replace("tool-", "");
 
-                if (state === "call") {
-                  const { args } = toolInvocation;
+                if (state === "call" || state === "partial-call") {
+                  // args を適切な型にキャスト（デフォルト値を設定）
+                  const args = (toolPart.input as
+                    | { title: string }
+                    | undefined) ?? { title: "" };
 
                   return (
                     <div
@@ -189,27 +218,52 @@ const PurePreviewMessage = ({
                 }
 
                 if (state === "result") {
-                  const { result } = toolInvocation;
+                  // AI SDK 6: result → output
+                  // result を適切な型にキャスト
+                  const result = toolPart.output as
+                    | WeatherAtLocation
+                    | { id: string; title: string; kind: ArtifactKind }
+                    | undefined;
 
                   return (
                     <div key={toolCallId}>
                       {toolName === "getWeather" ? (
-                        <Weather weatherAtLocation={result} />
+                        <Weather
+                          weatherAtLocation={result as WeatherAtLocation}
+                        />
                       ) : toolName === "createDocument" ? (
                         <DocumentPreview
                           isReadonly={isReadonly}
-                          result={result}
+                          result={
+                            result as {
+                              id: string;
+                              title: string;
+                              kind: ArtifactKind;
+                            }
+                          }
                         />
                       ) : toolName === "updateDocument" ? (
                         <DocumentToolResult
                           type="update"
-                          result={result}
+                          result={
+                            result as {
+                              id: string;
+                              title: string;
+                              kind: ArtifactKind;
+                            }
+                          }
                           isReadonly={isReadonly}
                         />
                       ) : toolName === "requestSuggestions" ? (
                         <DocumentToolResult
                           type="request-suggestions"
-                          result={result}
+                          result={
+                            result as {
+                              id: string;
+                              title: string;
+                              kind: ArtifactKind;
+                            }
+                          }
                           isReadonly={isReadonly}
                         />
                       ) : (
@@ -219,6 +273,8 @@ const PurePreviewMessage = ({
                   );
                 }
               }
+
+              return null;
             })}
 
             {!isReadonly && (

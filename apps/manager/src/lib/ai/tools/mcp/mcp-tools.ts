@@ -1,11 +1,12 @@
-import { tool, type Tool } from "ai";
+import { tool } from "ai";
+import type { z } from "zod";
 import { makeHttpProxyServerUrl } from "~/utils/url";
 import { convertJsonSchemaToZod } from "./schema-converter";
 
 /**
  * MCPツールの型定義（executeを持つツール）
  */
-type McpTool = Tool<Parameters<typeof tool>[0]["parameters"], string>;
+type McpTool = ReturnType<typeof tool<z.ZodObject<z.ZodRawShape>, string>>;
 
 /**
  * MCPツール定義
@@ -166,7 +167,7 @@ export const createMcpTool = (
 
   return tool({
     description: toolDef.description,
-    parameters: zodSchema,
+    inputSchema: zodSchema,
     execute: async (args) => {
       return executeMcpTool(
         mcpServerId,

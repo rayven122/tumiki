@@ -1,91 +1,92 @@
+import { gateway } from "@ai-sdk/gateway";
 import {
   customProvider,
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
-import { xai } from "@ai-sdk/xai";
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
 import { isTestEnvironment } from "../constants";
-import {
-  artifactModel,
-  chatModel,
-  reasoningModel,
-  titleModel,
-} from "./models.mock";
 
-// マルチプロバイダー対応のAIモデル設定
-// 各プロバイダーのAPIキーは環境変数で設定:
-// - XAI_API_KEY
-// - ANTHROPIC_API_KEY
-// - OPENAI_API_KEY
-// - GOOGLE_GENERATIVE_AI_API_KEY
+// 推論モデル識別用の正規表現（-thinking サフィックス）
+const THINKING_SUFFIX_REGEX = /-thinking$/;
+
+// テスト環境用のモックプロバイダー
 export const myProvider = isTestEnvironment
-  ? customProvider({
-      languageModels: {
-        // テスト環境用モック
-        // xAI
-        "grok-4-fast": chatModel,
-        "grok-4-reasoning": reasoningModel,
-        "grok-4-vision": chatModel,
-        "grok-3-mini": chatModel,
-        // Anthropic
-        "claude-sonnet-4": chatModel,
-        "claude-opus-4": chatModel,
-        "claude-haiku-3.5": chatModel,
-        // OpenAI
-        "gpt-4o": chatModel,
-        "gpt-4o-mini": chatModel,
-        o1: reasoningModel,
-        "o3-mini": reasoningModel,
-        // Google
-        "gemini-2.0-flash": chatModel,
-        "gemini-2.5-pro": chatModel,
-        "gemini-2.5-flash": chatModel,
-        // 内部用
-        "title-model": titleModel,
-        "artifact-model": artifactModel,
-      },
-    })
-  : customProvider({
-      languageModels: {
-        // ========== xAI (Grok) ==========
-        "grok-4-fast": xai("grok-4-1-fast-non-reasoning"),
-        "grok-4-reasoning": wrapLanguageModel({
-          model: xai("grok-4-1-fast-reasoning"),
-          middleware: extractReasoningMiddleware({ tagName: "think" }),
-        }),
-        "grok-4-vision": xai("grok-2-vision-1212"),
-        "grok-3-mini": xai("grok-3-mini-beta"),
+  ? (() => {
+      const { artifactModel, chatModel, reasoningModel, titleModel } =
+        require("./models.mock") as typeof import("./models.mock");
+      return customProvider({
+        languageModels: {
+          // テスト環境用モック - Gateway形式のIDを使用
+          // Anthropic
+          "anthropic/claude-haiku-4.5": chatModel,
+          "anthropic/claude-sonnet-4": chatModel,
+          "anthropic/claude-opus-4.5": chatModel,
+          // OpenAI
+          "openai/gpt-4o-mini": chatModel,
+          "openai/gpt-4o": chatModel,
+          // Google
+          "google/gemini-2.0-flash": chatModel,
+          "google/gemini-2.5-pro-preview": chatModel,
+          "google/gemini-2.5-flash-preview": chatModel,
+          // xAI
+          "xai/grok-4-fast": chatModel,
+          // Reasoning models
+          "anthropic/claude-sonnet-4-thinking": reasoningModel,
+          "xai/grok-4-reasoning": reasoningModel,
+          // 内部用
+          "title-model": titleModel,
+          "artifact-model": artifactModel,
+        },
+      });
+    })()
+  : null;
 
-        // ========== Anthropic (Claude) ==========
-        "claude-sonnet-4": anthropic("claude-sonnet-4-20250514"),
-        "claude-opus-4": anthropic("claude-opus-4-20250514"),
-        "claude-haiku-3.5": anthropic("claude-3-5-haiku-20241022"),
+/**
+ * モデルIDからLanguageModelを取得
+ * Vercel AI Gateway を使用して各プロバイダーにルーティング
+ *
+ * 環境変数: AI_GATEWAY_API_KEY
+ */
+export function getLanguageModel(modelId: string) {
+  // テスト環境ではモックを使用
+  if (isTestEnvironment && myProvider) {
+    return myProvider.languageModel(modelId);
+  }
 
-        // ========== OpenAI ==========
-        "gpt-4o": openai("gpt-4o"),
-        "gpt-4o-mini": openai("gpt-4o-mini"),
-        o1: wrapLanguageModel({
-          model: openai("o1"),
-          middleware: extractReasoningMiddleware({ tagName: "thinking" }),
-        }),
-        "o3-mini": wrapLanguageModel({
-          model: openai("o3-mini"),
-          middleware: extractReasoningMiddleware({ tagName: "thinking" }),
-        }),
+  // 推論モデル（-thinking サフィックス）かどうかを判定
+  const isReasoningModel =
+    modelId.includes("reasoning") || modelId.endsWith("-thinking");
 
-        // ========== Google (Gemini) ==========
-        "gemini-2.0-flash": google("gemini-2.0-flash"),
-        "gemini-2.5-pro": google("gemini-2.5-pro-preview-06-05"),
-        "gemini-2.5-flash": google("gemini-2.5-flash-preview-05-20"),
+  if (isReasoningModel) {
+    // -thinking サフィックスを除去してGatewayモデルIDを取得
+    const gatewayModelId = modelId.replace(THINKING_SUFFIX_REGEX, "");
 
-        // ========== 内部用モデル ==========
-        "title-model": xai("grok-3-mini-beta"),
-        "artifact-model": xai("grok-3-mini-beta"),
-      },
-      imageModels: {
-        "small-model": xai.image("grok-2-image"),
-      },
+    return wrapLanguageModel({
+      model: gateway.languageModel(gatewayModelId),
+      middleware: extractReasoningMiddleware({ tagName: "thinking" }),
     });
+  }
+
+  return gateway.languageModel(modelId);
+}
+
+/**
+ * タイトル生成用モデルを取得
+ * コスト効率の良い軽量モデルを使用
+ */
+export function getTitleModel() {
+  if (isTestEnvironment && myProvider) {
+    return myProvider.languageModel("title-model");
+  }
+  return gateway.languageModel("anthropic/claude-haiku-4.5");
+}
+
+/**
+ * アーティファクト生成用モデルを取得
+ */
+export function getArtifactModel() {
+  if (isTestEnvironment && myProvider) {
+    return myProvider.languageModel("artifact-model");
+  }
+  return gateway.languageModel("anthropic/claude-haiku-4.5");
+}

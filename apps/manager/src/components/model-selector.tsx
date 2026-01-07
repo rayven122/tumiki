@@ -20,10 +20,12 @@ import type { SessionData } from "~/auth";
 export function ModelSelector({
   session: _,
   selectedModelId,
+  onModelChange,
   className,
 }: {
   session: SessionData;
   selectedModelId: string;
+  onModelChange?: (modelId: string) => void;
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
   const [optimisticModelId, setOptimisticModelId] =
@@ -75,6 +77,7 @@ export function ModelSelector({
                 startTransition(() => {
                   setOptimisticModelId(id);
                   saveChatModelAsCookie(id);
+                  onModelChange?.(id);
                 });
               }}
               data-active={id === optimisticModelId}

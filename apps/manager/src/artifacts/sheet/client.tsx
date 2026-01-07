@@ -94,9 +94,12 @@ export const sheetArtifact = new Artifact<"sheet", Metadata>({
       description: "Format and clean data",
       icon: <SparklesIcon />,
       onClick: ({ appendMessage }) => {
+        // AI SDK 6: content → parts
         appendMessage({
           role: "user",
-          content: "Can you please format and clean the data?",
+          parts: [
+            { type: "text", text: "Can you please format and clean the data?" },
+          ],
         });
       },
     },
@@ -104,10 +107,15 @@ export const sheetArtifact = new Artifact<"sheet", Metadata>({
       description: "Analyze and visualize data",
       icon: <LineChartIcon />,
       onClick: ({ appendMessage }) => {
+        // AI SDK 6: content → parts
         appendMessage({
           role: "user",
-          content:
-            "Can you please analyze and visualize the data by creating a new code artifact in python?",
+          parts: [
+            {
+              type: "text",
+              text: "Can you please analyze and visualize the data by creating a new code artifact in python?",
+            },
+          ],
         });
       },
     },

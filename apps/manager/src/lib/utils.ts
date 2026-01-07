@@ -1,4 +1,4 @@
-import type { CoreAssistantMessage, CoreToolMessage, UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Document } from "@tumiki/db/prisma";
@@ -52,8 +52,14 @@ export function generateCUID(): string {
   return "c" + createId();
 }
 
-type ResponseMessageWithoutId = CoreToolMessage | CoreAssistantMessage;
-type ResponseMessage = ResponseMessageWithoutId & { id: string };
+export function generateMessageId(): string {
+  // メッセージID用のユニークID生成（msg_プレフィックス）
+  return "msg_" + createId();
+}
+
+// AI SDK 6では CoreAssistantMessage/CoreToolMessage が削除されたため
+// シンプルな型定義に変更
+type ResponseMessage = { id: string; role: string };
 
 export function getMostRecentUserMessage(messages: Array<UIMessage>) {
   const userMessages = messages.filter((message) => message.role === "user");

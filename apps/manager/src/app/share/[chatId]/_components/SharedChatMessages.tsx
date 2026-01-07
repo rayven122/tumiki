@@ -30,6 +30,18 @@ export const SharedChatMessages = ({ messages }: SharedChatMessagesProps) => {
 };
 
 const SharedMessage = ({ message }: { message: UIMessage }) => {
+  // AI SDK 6: experimental_attachments は削除され、parts内のfileタイプに変更
+  const fileAttachments = message.parts
+    ?.filter(
+      (part): part is { type: "file"; url: string; mediaType: string } =>
+        part.type === "file" && "url" in part,
+    )
+    .map((part) => ({
+      url: part.url,
+      name: part.url.split("/").pop() ?? "file",
+      contentType: part.mediaType,
+    }));
+
   return (
     <div
       className="group/message w-full"
@@ -52,17 +64,16 @@ const SharedMessage = ({ message }: { message: UIMessage }) => {
 
         <div className="flex w-full flex-col gap-4">
           {/* 添付ファイル */}
-          {message.experimental_attachments &&
-            message.experimental_attachments.length > 0 && (
-              <div className="flex flex-row justify-end gap-2">
-                {message.experimental_attachments.map((attachment) => (
-                  <PreviewAttachment
-                    key={attachment.url}
-                    attachment={attachment}
-                  />
-                ))}
-              </div>
-            )}
+          {fileAttachments && fileAttachments.length > 0 && (
+            <div className="flex flex-row justify-end gap-2">
+              {fileAttachments.map((attachment) => (
+                <PreviewAttachment
+                  key={attachment.url}
+                  attachment={attachment}
+                />
+              ))}
+            </div>
+          )}
 
           {/* メッセージパーツ */}
           {message.parts?.map((part, index) => {
@@ -70,11 +81,12 @@ const SharedMessage = ({ message }: { message: UIMessage }) => {
             const key = `message-${message.id}-part-${index}`;
 
             if (type === "reasoning") {
+              // AI SDK 6: reasoning プロパティは text に変更
               return (
                 <MessageReasoning
                   key={key}
                   isLoading={false}
-                  reasoning={part.reasoning}
+                  reasoning={part.text}
                 />
               );
             }

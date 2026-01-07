@@ -1,20 +1,39 @@
 import { z } from "zod";
+import { chatModels } from "@/lib/ai/models";
 
+// AI SDK 6: parts配列内のテキストパート
 const textPartSchema = z.object({
+  type: z.literal("text"),
   text: z.string().min(1).max(2000),
-  type: z.enum(["text"]),
 });
+
+// AI SDK 6: parts配列内のファイルパート（画像添付用）
+const filePartSchema = z.object({
+  type: z.literal("file"),
+  url: z.string().url(),
+  mediaType: z.enum(["image/png", "image/jpg", "image/jpeg"]),
+});
+
+// AI SDK 6: partsはテキストまたはファイルの配列
+const messagePartSchema = z.union([textPartSchema, filePartSchema]);
+
+// chatModels からモデルIDを動的に取得
+const chatModelIds = chatModels.map((model) => model.id) as [
+  string,
+  ...string[],
+];
 
 export const postRequestBodySchema = z.object({
   id: z.string().cuid(),
   /// 組織ID
   organizationId: z.string(),
+  // AI SDK 6: メッセージ形式が変更（content → parts、experimental_attachments 廃止）
   message: z.object({
     id: z.string(),
-    createdAt: z.coerce.date(),
     role: z.enum(["user"]),
-    content: z.string().min(1).max(2000),
-    parts: z.array(textPartSchema),
+    parts: z.array(messagePartSchema).min(1),
+    // AI SDK 6: experimental_attachments は廃止され、parts内のfileタイプに移行
+    // 後方互換性のためオプショナルで残す
     experimental_attachments: z
       .array(
         z.object({
@@ -25,26 +44,8 @@ export const postRequestBodySchema = z.object({
       )
       .optional(),
   }),
-  selectedChatModel: z.enum([
-    // xAI (Grok)
-    "grok-4-fast",
-    "grok-4-reasoning",
-    "grok-4-vision",
-    "grok-3-mini",
-    // Anthropic (Claude)
-    "claude-sonnet-4",
-    "claude-opus-4",
-    "claude-haiku-3.5",
-    // OpenAI
-    "gpt-4o",
-    "gpt-4o-mini",
-    "o1",
-    "o3-mini",
-    // Google (Gemini)
-    "gemini-2.0-flash",
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-  ]),
+  // Vercel AI Gateway 形式のモデルID（provider/model-name）
+  selectedChatModel: z.enum(chatModelIds),
   /// チャットの可視性（PRIVATE, ORGANIZATION, PUBLIC）
   selectedVisibilityType: z.enum(["PRIVATE", "ORGANIZATION", "PUBLIC"]),
   /// 選択されたMCPサーバーIDの配列

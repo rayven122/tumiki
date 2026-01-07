@@ -1,10 +1,13 @@
 import {
-  appendClientMessage,
-  appendResponseMessages,
-  createDataStream,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  convertToModelMessages,
   smoothStream,
   streamText,
+  stepCountIs,
+  JsonToSseTransformStream,
   type Tool,
+  type UIMessageStreamWriter,
 } from "ai";
 import { auth } from "~/auth";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
@@ -19,14 +22,14 @@ import {
   saveMessages,
   updateChatMcpServers,
 } from "@/lib/db/queries";
-import { generateCUID, getTrailingMessageId } from "@/lib/utils";
+import { generateCUID, generateMessageId } from "@/lib/utils";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
 import { isProductionEnvironment } from "@/lib/constants";
-import { myProvider } from "@/lib/ai/providers";
+import { getLanguageModel } from "@/lib/ai/providers";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { postRequestBodySchema, type PostRequestBody } from "./schema";
 import { geolocation } from "@vercel/functions";
@@ -127,21 +130,7 @@ export const POST = async (request: Request) => {
 
     const previousMessages = await getMessagesByChatId({ id });
 
-    const messages = appendClientMessage({
-      // @ts-expect-error: todo add type conversion from DBMessage[] to UIMessage[]
-      messages: previousMessages,
-      message,
-    });
-
-    const { longitude, latitude, city, country } = geolocation(request);
-
-    const requestHints: RequestHints = {
-      longitude,
-      latitude,
-      city,
-      country,
-    };
-
+    // ユーザーメッセージを保存
     await saveMessages({
       messages: [
         {
@@ -154,6 +143,34 @@ export const POST = async (request: Request) => {
         },
       ],
     });
+
+    // 前のメッセージとユーザーメッセージを結合してUIMessage形式に変換
+    const allMessages = [
+      ...previousMessages.map((msg) => ({
+        id: msg.id,
+        role: msg.role as "user" | "assistant" | "system",
+        parts: msg.parts as Array<{ type: "text"; text: string }>,
+      })),
+      {
+        id: message.id,
+        role: "user" as const,
+        parts: message.parts,
+      },
+    ];
+
+    // UIMessageからModelMessageに変換
+    const modelMessages = await convertToModelMessages(
+      allMessages as Parameters<typeof convertToModelMessages>[0],
+    );
+
+    const { longitude, latitude, city, country } = geolocation(request);
+
+    const requestHints: RequestHints = {
+      longitude,
+      latitude,
+      city,
+      country,
+    };
 
     const streamId = generateCUID();
     await createStreamId({ streamId, chatId: id });
@@ -188,16 +205,30 @@ export const POST = async (request: Request) => {
       ...mcpToolNames,
     ] as (typeof baseToolNames)[number][];
 
-    const stream = createDataStream({
-      execute: (dataStream) => {
+    // 推論モデルはツールを使用しない
+    const isReasoningModel =
+      selectedChatModel.includes("reasoning") ||
+      selectedChatModel.endsWith("-thinking");
+
+    // AI SDK 6: UIMessage形式のメッセージを作成
+    const uiMessages = allMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role,
+      parts: msg.parts,
+    }));
+
+    const stream = createUIMessageStream({
+      originalMessages: uiMessages,
+      generateId: generateCUID,
+      execute: async ({ writer }: { writer: UIMessageStreamWriter }) => {
         // 基本ツールとMCPツールをマージ
         const baseTools = {
           getWeather,
-          createDocument: createDocument({ session, dataStream }),
-          updateDocument: updateDocument({ session, dataStream }),
+          createDocument: createDocument({ session, writer }),
+          updateDocument: updateDocument({ session, writer }),
           requestSuggestions: requestSuggestions({
             session,
-            dataStream,
+            writer,
           }),
         };
 
@@ -207,61 +238,44 @@ export const POST = async (request: Request) => {
         };
 
         const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
+          model: getLanguageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
-          messages,
-          maxSteps: 5,
-          experimental_activeTools:
-            // 推論モデルはツールを使用しない (grok-4-reasoning, o1, o3-mini)
-            selectedChatModel.includes("reasoning") ||
-            selectedChatModel === "o1" ||
-            selectedChatModel === "o3-mini"
-              ? []
-              : allActiveToolNames,
+          messages: modelMessages,
+          stopWhen: stepCountIs(5),
+          activeTools: isReasoningModel ? [] : allActiveToolNames,
           experimental_transform: smoothStream({ chunking: "word" }),
-          experimental_generateMessageId: generateCUID,
           tools: allTools,
+          abortSignal: request.signal,
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
-                const assistantId = getTrailingMessageId({
-                  messages: response.messages.filter(
-                    (message) => message.role === "assistant",
-                  ),
-                });
+                // AI SDK 6: response.messagesにはidが含まれないため、新しいIDを生成
+                const assistantMessage = response.messages.find(
+                  (msg) => msg.role === "assistant",
+                );
 
-                if (!assistantId) {
+                if (!assistantMessage) {
                   throw new Error("No assistant message found!");
                 }
 
-                const [, assistantMessage] = appendResponseMessages({
-                  messages: [message],
-                  responseMessages: response.messages,
-                });
+                // 新しいメッセージIDを生成
+                const assistantId = generateMessageId();
 
-                if (assistantMessage) {
-                  await saveMessages({
-                    messages: [
-                      {
-                        id: assistantId,
-                        chatId: id,
-                        role: assistantMessage.role,
-                        parts: assistantMessage.parts as unknown as Array<{
-                          text: string;
-                          type: string;
-                        }>,
-                        attachments:
-                          (assistantMessage.experimental_attachments ??
-                            []) as unknown as Array<{
-                            url: string;
-                            name: string;
-                            contentType: string;
-                          }>,
-                        createdAt: new Date(),
-                      },
-                    ],
-                  });
-                }
+                await saveMessages({
+                  messages: [
+                    {
+                      id: assistantId,
+                      chatId: id,
+                      role: "assistant",
+                      parts: assistantMessage.content as unknown as Array<{
+                        text: string;
+                        type: string;
+                      }>,
+                      attachments: [],
+                      createdAt: new Date(),
+                    },
+                  ],
+                });
               } catch {
                 console.error("Failed to save chat");
               }
@@ -273,30 +287,50 @@ export const POST = async (request: Request) => {
           },
         });
 
-        void result.consumeStream();
-
-        result.mergeIntoDataStream(dataStream, {
-          sendReasoning: true,
-        });
+        // streamTextの結果をUIMessageStreamにマージ
+        await writer.merge(
+          result.toUIMessageStream({
+            sendReasoning: true,
+          }),
+        );
       },
-      onError: () => {
-        return "Oops, an error occurred!";
+      onError: (error) => {
+        console.error("UIMessageStream error:", error);
+        return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
       },
     });
 
     const streamContext = getStreamContext();
 
     if (streamContext) {
-      return new Response(
-        await streamContext.resumableStream(streamId, () => stream),
+      // resumableStreamの場合はSSEヘッダーを手動で設定
+      const resumableStream = await streamContext.resumableStream(
+        streamId,
+        () => stream.pipeThrough(new JsonToSseTransformStream()),
       );
+      return new Response(resumableStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
     } else {
-      return new Response(stream);
+      // createUIMessageStreamResponseを使用して適切なヘッダーを設定
+      return createUIMessageStreamResponse({ stream });
     }
   } catch (error) {
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
+    // エラーログを出力してデバッグ
+    console.error("Chat API error:", error);
+    return new Response(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Unknown error",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
   }
 };
 
@@ -352,15 +386,14 @@ export const GET = async (request: Request) => {
     return new ChatSDKError("not_found:stream").toResponse();
   }
 
-  const emptyDataStream = createDataStream({
+  const emptyStream = createUIMessageStream({
     execute: () => {
       // No-op: Empty stream for SSR resume functionality
     },
   });
 
-  const stream = await streamContext.resumableStream(
-    recentStreamId,
-    () => emptyDataStream,
+  const stream = await streamContext.resumableStream(recentStreamId, () =>
+    emptyStream.pipeThrough(new JsonToSseTransformStream()),
   );
 
   /*
@@ -372,32 +405,40 @@ export const GET = async (request: Request) => {
     const mostRecentMessage = messages.at(-1);
 
     if (!mostRecentMessage) {
-      return new Response(emptyDataStream, { status: 200 });
+      return createUIMessageStreamResponse({ stream: emptyStream });
     }
 
     if (mostRecentMessage.role !== "assistant") {
-      return new Response(emptyDataStream, { status: 200 });
+      return createUIMessageStreamResponse({ stream: emptyStream });
     }
 
     const messageCreatedAt = new Date(mostRecentMessage.createdAt);
 
     if (differenceInSeconds(resumeRequestedAt, messageCreatedAt) > 15) {
-      return new Response(emptyDataStream, { status: 200 });
+      return createUIMessageStreamResponse({ stream: emptyStream });
     }
 
-    const restoredStream = createDataStream({
-      execute: (buffer) => {
-        buffer.writeData({
-          type: "append-message",
-          message: JSON.stringify(mostRecentMessage),
+    const restoredStream = createUIMessageStream({
+      execute: ({ writer }) => {
+        writer.write({
+          type: "data-append-message" as const,
+          data: mostRecentMessage,
         });
       },
     });
 
-    return new Response(restoredStream, { status: 200 });
+    return createUIMessageStreamResponse({ stream: restoredStream });
   }
 
-  return new Response(stream, { status: 200 });
+  // resumableStreamの場合はSSEヘッダーを手動で設定
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 };
 
 export const DELETE = async (request: Request) => {
