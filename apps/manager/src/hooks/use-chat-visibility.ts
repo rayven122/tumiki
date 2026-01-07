@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
+import { useParams } from "next/navigation";
 import { updateChatVisibility } from "@/app/[orgSlug]/chat/actions";
 import {
   getChatHistoryPaginationKey,
@@ -10,13 +11,15 @@ import {
 } from "@/components/sidebar-history";
 import type { VisibilityType } from "@/components/visibility-selector";
 
-export function useChatVisibility({
+export const useChatVisibility = ({
   chatId,
   initialVisibilityType,
+  organizationId,
 }: {
   chatId: string;
   initialVisibilityType: VisibilityType;
-}) {
+  organizationId: string;
+}) => {
   const { mutate, cache } = useSWRConfig();
   const history: ChatHistory = cache.get("/api/history")?.data;
 
@@ -31,13 +34,13 @@ export function useChatVisibility({
   const visibilityType = useMemo(() => {
     if (!history) return localVisibility;
     const chat = history.chats.find((chat) => chat.id === chatId);
-    if (!chat) return "private";
+    if (!chat) return "PRIVATE";
     return chat.visibility;
   }, [history, chatId, localVisibility]);
 
   const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
     setLocalVisibility(updatedVisibilityType);
-    mutate(unstable_serialize(getChatHistoryPaginationKey));
+    mutate(unstable_serialize(getChatHistoryPaginationKey(organizationId)));
 
     updateChatVisibility({
       chatId: chatId,
@@ -46,4 +49,4 @@ export function useChatVisibility({
   };
 
   return { visibilityType, setVisibilityType };
-}
+};

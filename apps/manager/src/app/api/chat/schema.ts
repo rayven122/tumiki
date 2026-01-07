@@ -7,6 +7,8 @@ const textPartSchema = z.object({
 
 export const postRequestBodySchema = z.object({
   id: z.string().cuid(),
+  /// 組織ID
+  organizationId: z.string(),
   message: z.object({
     id: z.string(),
     createdAt: z.coerce.date(),
@@ -43,7 +45,10 @@ export const postRequestBodySchema = z.object({
     "gemini-2.5-pro",
     "gemini-2.5-flash",
   ]),
-  selectedVisibilityType: z.enum(["public", "private"]),
+  /// チャットの可視性（PRIVATE, ORGANIZATION, PUBLIC）
+  selectedVisibilityType: z.enum(["PRIVATE", "ORGANIZATION", "PUBLIC"]),
+  /// 選択されたMCPサーバーIDの配列
+  selectedMcpServerIds: z.array(z.string()).optional().default([]),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

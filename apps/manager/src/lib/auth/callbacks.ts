@@ -107,5 +107,7 @@ export const sessionCallback = async ({
       tumiki: token.tumiki ?? null, // Keycloakカスタムクレーム（組織情報を含む）
     });
   }
+  // MCP Proxy認証用にaccessTokenを公開
+  session.accessToken = token.accessToken;
   return session;
 };

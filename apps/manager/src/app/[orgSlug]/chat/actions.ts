@@ -15,6 +15,24 @@ export const saveChatModelAsCookie = async (model: string) => {
   cookieStore.set("chat-model", model);
 };
 
+export const saveMcpServerIdsAsCookie = async (mcpServerIds: string[]) => {
+  const cookieStore = await cookies();
+  cookieStore.set("chat-mcp-servers", JSON.stringify(mcpServerIds));
+};
+
+export const getMcpServerIdsFromCookie = async (): Promise<string[]> => {
+  const cookieStore = await cookies();
+  const mcpServersCookie = cookieStore.get("chat-mcp-servers");
+  if (!mcpServersCookie?.value) {
+    return [];
+  }
+  try {
+    return JSON.parse(mcpServersCookie.value) as string[];
+  } catch {
+    return [];
+  }
+};
+
 export const generateTitleFromUserMessage = async ({
   message,
 }: {

@@ -9,6 +9,8 @@ import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import type { Message } from "@tumiki/db/prisma";
 import type { Attachment, UIMessage } from "ai";
+import { getMcpServerIdsFromCookie } from "../actions";
+import { api } from "@/trpc/server";
 
 type PageProps = {
   params: Promise<{ orgSlug: string; id: string }>;
@@ -16,7 +18,9 @@ type PageProps = {
 
 export default async function Page(props: PageProps) {
   const params = await props.params;
-  const { id } = params;
+  const { orgSlug, id } = params;
+  const decodedSlug = decodeURIComponent(orgSlug);
+
   const chat = await getChatById({ id });
 
   if (!chat) {
@@ -30,11 +34,23 @@ export default async function Page(props: PageProps) {
     return null;
   }
 
-  // プライベートチャットのアクセス制御
-  if (chat.visibility === "private") {
-    if (session.user.id !== chat.userId) {
-      return notFound();
-    }
+  // 組織IDを取得
+  const organization = await api.organization.getBySlug({ slug: decodedSlug });
+
+  // アクセス権限チェック
+  const isOwner = chat.userId === session.user.id;
+  const isOrganizationShared =
+    chat.visibility === "ORGANIZATION" &&
+    chat.organizationId === organization.id;
+
+  // PRIVATEチャットは所有者のみアクセス可能
+  if (chat.visibility === "PRIVATE" && !isOwner) {
+    return notFound();
+  }
+
+  // ORGANIZATIONチャットは同じ組織のメンバーのみアクセス可能
+  if (chat.visibility === "ORGANIZATION" && !isOwner && !isOrganizationShared) {
+    return notFound();
   }
 
   const messagesFromDb = await getMessagesByChatId({
@@ -59,6 +75,16 @@ export default async function Page(props: PageProps) {
 
   const chatModel = chatModelFromCookie?.value ?? DEFAULT_CHAT_MODEL;
 
+  // DBからMCPサーバーIDを取得、なければCookieからフォールバック
+  const mcpServerIdsFromDb = chat.mcpServers.map((server) => server.id);
+  const mcpServerIds =
+    mcpServerIdsFromDb.length > 0
+      ? mcpServerIdsFromDb
+      : await getMcpServerIdsFromCookie();
+
+  // 編集可能かどうか: 所有者または組織内共有チャット
+  const canEdit = isOwner || isOrganizationShared;
+
   return (
     <>
       <Script
@@ -67,12 +93,15 @@ export default async function Page(props: PageProps) {
       />
       <Chat
         id={chat.id}
+        organizationId={organization.id}
         initialMessages={convertToUIMessages(messagesFromDb)}
         initialChatModel={chatModel}
         initialVisibilityType={chat.visibility}
-        isReadonly={session.user.id !== chat.userId}
+        initialMcpServerIds={mcpServerIds}
+        isReadonly={!canEdit}
         session={session}
         autoResume={true}
+        isPersonalOrg={organization.isPersonal}
       />
       <DataStreamHandler id={id} />
     </>

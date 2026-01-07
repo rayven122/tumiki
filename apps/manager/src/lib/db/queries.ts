@@ -5,23 +5,26 @@ import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
 import type { Message, Prisma, Suggestion } from "@tumiki/db/server";
 
-export async function saveChat({
+export const saveChat = async ({
   id,
   userId,
+  organizationId,
   title,
   visibility,
 }: {
   id: string;
   userId: string;
+  organizationId: string;
   title: string;
   visibility: VisibilityType;
-}) {
+}) => {
   try {
     return await db.chat.create({
       data: {
         id,
         createdAt: new Date(),
         userId,
+        organizationId,
         title,
         visibility,
       },
@@ -29,7 +32,7 @@ export async function saveChat({
   } catch {
     throw new ChatSDKError("bad_request:database", "Failed to save chat");
   }
-}
+};
 
 export async function deleteChatById({ id }: { id: string }) {
   try {
@@ -58,17 +61,24 @@ export async function deleteChatById({ id }: { id: string }) {
   }
 }
 
-export async function getChatsByUserId({
+/**
+ * ユーザーのチャット一覧を取得
+ * - 自分が作成したチャット（visibility問わず）
+ * - 組織内共有チャット（ORGANIZATION visibility）
+ */
+export const getChatsByUserId = async ({
   id,
+  organizationId,
   limit,
   startingAfter,
   endingBefore,
 }: {
   id: string;
+  organizationId: string;
   limit: number;
   startingAfter: string | null;
   endingBefore: string | null;
-}) {
+}) => {
   try {
     const extendedLimit = limit + 1;
 
@@ -97,16 +107,31 @@ export async function getChatsByUserId({
 
     const chats = await db.chat.findMany({
       where: {
-        userId: id,
-        createdAt:
+        AND: [
+          // 組織でフィルタ
+          { organizationId },
+          // 自分のチャット または 組織内共有チャット
+          {
+            OR: [{ userId: id }, { visibility: "ORGANIZATION" }],
+          },
+          // カーソルベースのページネーション
           direction === "after"
-            ? { gt: cursorDate! }
+            ? { createdAt: { gt: cursorDate! } }
             : direction === "before"
-              ? { lt: cursorDate! }
-              : undefined,
+              ? { createdAt: { lt: cursorDate! } }
+              : {},
+        ],
       },
       orderBy: { createdAt: "desc" },
       take: extendedLimit,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     const hasMore = chats.length > limit;
@@ -120,11 +145,18 @@ export async function getChatsByUserId({
       "Failed to get chats by user id",
     );
   }
-}
+};
 
 export async function getChatById({ id }: { id: string }) {
   try {
-    return await db.chat.findUnique({ where: { id } });
+    return await db.chat.findUnique({
+      where: { id },
+      include: {
+        mcpServers: {
+          select: { id: true },
+        },
+      },
+    });
   } catch {
     throw new ChatSDKError("bad_request:database", "Failed to get chat by id");
   }
@@ -387,13 +419,13 @@ export async function deleteMessagesByChatIdAfterTimestamp({
   }
 }
 
-export async function updateChatVisiblityById({
+export const updateChatVisiblityById = async ({
   chatId,
   visibility,
 }: {
   chatId: string;
-  visibility: "private" | "public";
-}) {
+  visibility: VisibilityType;
+}) => {
   try {
     return await db.chat.update({
       where: { id: chatId },
@@ -403,6 +435,31 @@ export async function updateChatVisiblityById({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to update chat visibility by id",
+    );
+  }
+};
+
+/**
+ * チャットに紐づくMCPサーバーを更新する
+ * 暗黙的多対多リレーションを使用
+ */
+export async function updateChatMcpServers(
+  chatId: string,
+  mcpServerIds: string[],
+) {
+  try {
+    return await db.chat.update({
+      where: { id: chatId },
+      data: {
+        mcpServers: {
+          set: mcpServerIds.map((id) => ({ id })),
+        },
+      },
+    });
+  } catch {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update chat MCP servers",
     );
   }
 }
@@ -472,6 +529,35 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get stream ids by chat id",
+    );
+  }
+}
+
+/**
+ * 公開チャットを取得（認証不要）
+ * visibility が PUBLIC のチャットのみ取得可能
+ */
+export async function getPublicChatById({ id }: { id: string }) {
+  try {
+    return await db.chat.findFirst({
+      where: {
+        id,
+        visibility: "PUBLIC",
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+  } catch {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get public chat by id",
     );
   }
 }
