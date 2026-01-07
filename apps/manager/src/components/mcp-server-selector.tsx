@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/chat/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { CheckCircleFillIcon, ChevronDownIcon, PlugIcon } from "./icons";
+import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
 import { saveMcpServerIdsAsCookie } from "@/app/[orgSlug]/chat/actions";
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -98,7 +98,7 @@ export const McpServerSelector = ({
           variant="outline"
           className="min-h-[44px] gap-1.5 md:h-[34px] md:min-h-0 md:px-2"
         >
-          <PlugIcon />
+          <RouteIcon />
           <span className="hidden sm:inline">MCP</span>
           {/* 視覚的階層: 選択数をバッジで強調表示 */}
           {selectedCount > 0 && (
@@ -169,6 +169,11 @@ export const McpServerSelector = ({
                   0,
                 );
 
+                // アイコンパス: McpServer.iconPath がなければ最初のテンプレートのアイコンを使用
+                const iconPath =
+                  server.iconPath ||
+                  server.templateInstances[0]?.mcpServerTemplate?.iconPath;
+
                 return (
                   <DropdownMenuItem
                     data-testid={`mcp-server-selector-item-${server.id}`}
@@ -188,14 +193,14 @@ export const McpServerSelector = ({
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       {/* アイコン表示: 視覚的な識別を容易に */}
                       <div className="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded">
-                        {server.iconPath ? (
+                        {iconPath ? (
                           <img
-                            src={server.iconPath}
+                            src={iconPath}
                             alt=""
                             className="h-5 w-5 object-contain"
                           />
                         ) : (
-                          <PlugIcon size={16} />
+                          <RouteIcon size={16} />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">

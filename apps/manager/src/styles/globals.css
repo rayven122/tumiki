@@ -125,3 +125,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* タイプライターカーソルの点滅アニメーション */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
