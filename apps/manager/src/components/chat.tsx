@@ -23,26 +23,35 @@ import type { SessionData } from "~/auth";
 
 export function Chat({
   id,
+  organizationId,
   initialMessages,
   initialChatModel,
   initialVisibilityType,
+  initialMcpServerIds,
   isReadonly,
   session,
   autoResume,
+  isPersonalOrg,
+  isNewChat = false,
 }: {
   id: string;
+  organizationId: string;
   initialMessages: Array<UIMessage>;
   initialChatModel: string;
   initialVisibilityType: VisibilityType;
+  initialMcpServerIds: string[];
   isReadonly: boolean;
   session: SessionData;
   autoResume: boolean;
+  isPersonalOrg: boolean;
+  isNewChat?: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
+    organizationId,
   });
 
   const {
@@ -66,12 +75,14 @@ export function Chat({
     fetch: fetch,
     experimental_prepareRequestBody: (body) => ({
       id,
+      organizationId,
       message: body.messages.at(-1),
       selectedChatModel: initialChatModel,
       selectedVisibilityType: visibilityType,
+      selectedMcpServerIds: initialMcpServerIds,
     }),
     onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      mutate(unstable_serialize(getChatHistoryPaginationKey(organizationId)));
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
@@ -123,8 +134,12 @@ export function Chat({
           chatId={id}
           selectedModelId={initialChatModel}
           selectedVisibilityType={initialVisibilityType}
+          selectedMcpServerIds={initialMcpServerIds}
           isReadonly={isReadonly}
           session={session}
+          organizationId={organizationId}
+          isPersonalOrg={isPersonalOrg}
+          isNewChat={isNewChat}
         />
 
         <Messages

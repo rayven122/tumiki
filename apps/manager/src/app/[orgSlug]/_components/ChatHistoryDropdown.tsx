@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
-import { ChevronDownIcon, HistoryIcon } from "@/components/icons";
+import { ChevronDownIcon, HistoryIcon, UsersIcon } from "@/components/icons";
 import Link from "next/link";
 import useSWRInfinite from "swr/infinite";
 
@@ -31,26 +31,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Chat } from "@tumiki/db/prisma";
+import type { Chat, McpServerVisibility } from "@tumiki/db/prisma";
 import { cn, fetcher } from "@/lib/utils";
 import { LoaderIcon } from "@/components/icons";
 
+// 組織内共有チャットにはユーザー情報も含まれる
+type ChatWithUser = Chat & {
+  user: {
+    id: string;
+    name: string | null;
+  };
+  visibility: McpServerVisibility;
+};
+
 type GroupedChats = {
-  today: Chat[];
-  yesterday: Chat[];
-  lastWeek: Chat[];
-  lastMonth: Chat[];
-  older: Chat[];
+  today: ChatWithUser[];
+  yesterday: ChatWithUser[];
+  lastWeek: ChatWithUser[];
+  lastMonth: ChatWithUser[];
+  older: ChatWithUser[];
 };
 
 type ChatHistory = {
-  chats: Chat[];
+  chats: ChatWithUser[];
   hasMore: boolean;
 };
 
 const PAGE_SIZE = 20;
 
-const groupChatsByDate = (chats: Chat[]): GroupedChats => {
+const groupChatsByDate = (chats: ChatWithUser[]): GroupedChats => {
   const now = new Date();
   const oneWeekAgo = subWeeks(now, 1);
   const oneMonthAgo = subMonths(now, 1);
@@ -83,28 +92,38 @@ const groupChatsByDate = (chats: Chat[]): GroupedChats => {
   );
 };
 
-const getChatHistoryPaginationKey = (
-  pageIndex: number,
-  previousPageData: ChatHistory | null,
-) => {
-  if (previousPageData?.hasMore === false) {
-    return null;
-  }
+/**
+ * チャット履歴のページネーションキーを生成
+ * organizationId は外部から渡す必要があるため、クロージャで取得
+ */
+const getChatHistoryPaginationKey =
+  (organizationId: string) =>
+  (pageIndex: number, previousPageData: ChatHistory | null) => {
+    if (previousPageData?.hasMore === false) {
+      return null;
+    }
 
-  if (pageIndex === 0) return `/api/history?limit=${PAGE_SIZE}`;
+    if (pageIndex === 0)
+      return `/api/history?limit=${PAGE_SIZE}&organization_id=${organizationId}`;
 
-  const firstChatFromPage = previousPageData?.chats.at(-1);
+    const firstChatFromPage = previousPageData?.chats.at(-1);
 
-  if (!firstChatFromPage) return null;
+    if (!firstChatFromPage) return null;
 
-  return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
-};
+    return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}&organization_id=${organizationId}`;
+  };
 
 type ChatHistoryDropdownProps = {
   orgSlug: string;
+  organizationId: string;
+  currentUserId: string;
 };
 
-export const ChatHistoryDropdown = ({ orgSlug }: ChatHistoryDropdownProps) => {
+export const ChatHistoryDropdown = ({
+  orgSlug,
+  organizationId,
+  currentUserId,
+}: ChatHistoryDropdownProps) => {
   const router = useRouter();
   const { id } = useParams();
   const [isOpen, setIsOpen] = useState(false);
@@ -115,9 +134,13 @@ export const ChatHistoryDropdown = ({ orgSlug }: ChatHistoryDropdownProps) => {
     data: paginatedChatHistories,
     isLoading,
     mutate,
-  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher, {
-    fallbackData: [],
-  });
+  } = useSWRInfinite<ChatHistory>(
+    getChatHistoryPaginationKey(organizationId),
+    fetcher,
+    {
+      fallbackData: [],
+    },
+  );
 
   const hasEmptyChatHistory = paginatedChatHistories
     ? paginatedChatHistories.every((page) => page.chats.length === 0)
@@ -162,7 +185,7 @@ export const ChatHistoryDropdown = ({ orgSlug }: ChatHistoryDropdownProps) => {
     paginatedChatHistories?.flatMap((page) => page.chats) ?? [];
   const groupedChats = groupChatsByDate(chatsFromHistory);
 
-  const renderChatGroup = (title: string, chats: Chat[]) => {
+  const renderChatGroup = (title: string, chats: ChatWithUser[]) => {
     if (chats.length === 0) return null;
 
     return (
@@ -170,46 +193,65 @@ export const ChatHistoryDropdown = ({ orgSlug }: ChatHistoryDropdownProps) => {
         <div className="text-muted-foreground mb-1 px-2 text-xs font-medium">
           {title}
         </div>
-        {chats.map((chat) => (
-          <div
-            key={chat.id}
-            className={cn(
-              "group hover:bg-accent flex items-center justify-between rounded-md px-2 py-1.5",
-              chat.id === id && "bg-accent",
-            )}
-          >
-            <Link
-              href={`/${orgSlug}/chat/${chat.id}`}
-              className="min-w-0 flex-1 truncate text-sm"
-              onClick={() => setIsOpen(false)}
+        {chats.map((chat) => {
+          const isOwner = chat.userId === currentUserId;
+          const isOrganizationShared =
+            chat.visibility === "ORGANIZATION" && !isOwner;
+
+          return (
+            <div
+              key={chat.id}
+              className={cn(
+                "group hover:bg-accent flex items-center justify-between rounded-md px-2 py-1.5",
+                chat.id === id && "bg-accent",
+              )}
             >
-              {chat.title || "新しいチャット"}
-            </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => {
-                    setDeleteId(chat.id);
-                    setShowDeleteDialog(true);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  削除
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ))}
+              <Link
+                href={`/${orgSlug}/chat/${chat.id}`}
+                className="min-w-0 flex-1"
+                onClick={() => setIsOpen(false)}
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="truncate text-sm">
+                    {chat.title || "新しいチャット"}
+                  </span>
+                  {isOrganizationShared && chat.user.name && (
+                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                      <UsersIcon size={10} />
+                      {chat.user.name}
+                    </span>
+                  )}
+                </div>
+              </Link>
+              {/* 自分のチャットのみ削除可能 */}
+              {isOwner && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => {
+                        setDeleteId(chat.id);
+                        setShowDeleteDialog(true);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      削除
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };

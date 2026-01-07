@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo, useState } from "react";
+import type { McpServerVisibility } from "@tumiki/db";
 import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
@@ -14,10 +15,11 @@ import {
   ChevronDownIcon,
   GlobeIcon,
   LockIcon,
+  UsersIcon,
 } from "./icons";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 
-export type VisibilityType = "private" | "public";
+export type VisibilityType = McpServerVisibility;
 
 const visibilities: Array<{
   id: VisibilityType;
@@ -26,13 +28,19 @@ const visibilities: Array<{
   icon: ReactNode;
 }> = [
   {
-    id: "private",
+    id: "PRIVATE",
     label: "非公開",
     description: "あなただけがこのチャットにアクセスできます",
     icon: <LockIcon />,
   },
   {
-    id: "public",
+    id: "ORGANIZATION",
+    label: "組織内共有",
+    description: "組織のメンバーがアクセス・編集できます",
+    icon: <UsersIcon />,
+  },
+  {
+    id: "PUBLIC",
     label: "公開",
     description: "リンクを知っている人は誰でもアクセスできます",
     icon: <GlobeIcon />,
@@ -43,20 +51,37 @@ export function VisibilitySelector({
   chatId,
   className,
   selectedVisibilityType,
+  organizationId,
+  isPersonalOrg = false,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;
+  organizationId: string;
+  isPersonalOrg?: boolean;
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
 
   const { visibilityType, setVisibilityType } = useChatVisibility({
     chatId,
     initialVisibilityType: selectedVisibilityType,
+    organizationId,
   });
 
+  // 個人組織の場合は「組織内共有」オプションを除外
+  const availableVisibilities = useMemo(
+    () =>
+      isPersonalOrg
+        ? visibilities.filter((v) => v.id !== "ORGANIZATION")
+        : visibilities,
+    [isPersonalOrg],
+  );
+
   const selectedVisibility = useMemo(
-    () => visibilities.find((visibility) => visibility.id === visibilityType),
-    [visibilityType],
+    () =>
+      availableVisibilities.find(
+        (visibility) => visibility.id === visibilityType,
+      ),
+    [availableVisibilities, visibilityType],
   );
 
   return (
@@ -80,7 +105,7 @@ export function VisibilitySelector({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="min-w-[300px]">
-        {visibilities.map((visibility) => (
+        {availableVisibilities.map((visibility) => (
           <DropdownMenuItem
             data-testid={`visibility-selector-item-${visibility.id}`}
             key={visibility.id}

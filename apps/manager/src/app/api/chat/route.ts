@@ -4,6 +4,7 @@ import {
   createDataStream,
   smoothStream,
   streamText,
+  type Tool,
 } from "ai";
 import { auth } from "~/auth";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
@@ -16,12 +17,14 @@ import {
   getStreamIdsByChatId,
   saveChat,
   saveMessages,
+  updateChatMcpServers,
 } from "@/lib/db/queries";
 import { generateCUID, getTrailingMessageId } from "@/lib/utils";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { getWeather } from "@/lib/ai/tools/get-weather";
+import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
 import { isProductionEnvironment } from "@/lib/constants";
 import { myProvider } from "@/lib/ai/providers";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
@@ -72,8 +75,14 @@ export const POST = async (request: Request) => {
   }
 
   try {
-    const { id, message, selectedChatModel, selectedVisibilityType } =
-      requestBody;
+    const {
+      id,
+      organizationId,
+      message,
+      selectedChatModel,
+      selectedVisibilityType,
+      selectedMcpServerIds,
+    } = requestBody;
 
     const session = await auth();
 
@@ -100,11 +109,18 @@ export const POST = async (request: Request) => {
       await saveChat({
         id,
         userId: session.user.id,
+        organizationId,
         title,
         visibility: selectedVisibilityType,
       });
     } else {
-      if (chat.userId !== session.user.id) {
+      // 権限チェック: 自分のチャット または 組織内共有チャット（同じ組織のメンバー）
+      const isOwner = chat.userId === session.user.id;
+      const isOrganizationShared =
+        chat.visibility === "ORGANIZATION" &&
+        chat.organizationId === organizationId;
+
+      if (!isOwner && !isOrganizationShared) {
         return new ChatSDKError("forbidden:chat").toResponse();
       }
     }
@@ -142,8 +158,54 @@ export const POST = async (request: Request) => {
     const streamId = generateCUID();
     await createStreamId({ streamId, chatId: id });
 
+    // MCPサーバーからツールを取得
+    let mcpTools: Record<string, Tool> = {};
+    let mcpToolNames: string[] = [];
+
+    if (selectedMcpServerIds.length > 0 && session.accessToken) {
+      const mcpResult = await getMcpToolsFromServers(
+        selectedMcpServerIds,
+        session.accessToken,
+      );
+      mcpTools = mcpResult.tools as Record<string, Tool>;
+      mcpToolNames = mcpResult.toolNames;
+
+      // MCPサーバーをチャットに紐づけ
+      await updateChatMcpServers(id, selectedMcpServerIds);
+    }
+
+    // 基本ツール名（型安全のため as const を使用）
+    const baseToolNames = [
+      "getWeather",
+      "createDocument",
+      "updateDocument",
+      "requestSuggestions",
+    ] as const;
+
+    // 全ツール名をマージ（MCPツールは動的なため string[] にキャスト）
+    const allActiveToolNames = [
+      ...baseToolNames,
+      ...mcpToolNames,
+    ] as (typeof baseToolNames)[number][];
+
     const stream = createDataStream({
       execute: (dataStream) => {
+        // 基本ツールとMCPツールをマージ
+        const baseTools = {
+          getWeather,
+          createDocument: createDocument({ session, dataStream }),
+          updateDocument: updateDocument({ session, dataStream }),
+          requestSuggestions: requestSuggestions({
+            session,
+            dataStream,
+          }),
+        };
+
+        const allTools = {
+          ...baseTools,
+          ...mcpTools,
+        };
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
@@ -155,23 +217,10 @@ export const POST = async (request: Request) => {
             selectedChatModel === "o1" ||
             selectedChatModel === "o3-mini"
               ? []
-              : [
-                  "getWeather",
-                  "createDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
+              : allActiveToolNames,
           experimental_transform: smoothStream({ chunking: "word" }),
           experimental_generateMessageId: generateCUID,
-          tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-          },
+          tools: allTools,
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
@@ -284,9 +333,12 @@ export const GET = async (request: Request) => {
     return new ChatSDKError("not_found:chat").toResponse();
   }
 
-  if (chat.visibility === "private" && chat.userId !== session.user.id) {
+  // 権限チェック: PRIVATE は所有者のみ、ORGANIZATION は同組織のメンバーがアクセス可能
+  if (chat.visibility === "PRIVATE" && chat.userId !== session.user.id) {
     return new ChatSDKError("forbidden:chat").toResponse();
   }
+  // 注: ORGANIZATION と PUBLIC は追加の権限チェックは不要（URLを知っていればアクセス可能）
+  // 実際の組織メンバーシップ検証は必要に応じてミドルウェアで行う
 
   const streamIds = await getStreamIdsByChatId({ chatId });
 

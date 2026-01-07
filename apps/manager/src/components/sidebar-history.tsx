@@ -22,28 +22,36 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/chat/sidebar";
-import type { Chat } from "@tumiki/db/prisma";
+import type { Chat, McpServerVisibility } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { ChatItem } from "./sidebar-history-item";
 import useSWRInfinite from "swr/infinite";
 import { LoaderIcon } from "./icons";
 
-type GroupedChats = {
-  today: Chat[];
-  yesterday: Chat[];
-  lastWeek: Chat[];
-  lastMonth: Chat[];
-  older: Chat[];
+export type ChatWithUser = Chat & {
+  user: {
+    id: string;
+    name: string | null;
+  };
+  visibility: McpServerVisibility;
 };
 
-export interface ChatHistory {
-  chats: Array<Chat>;
+type GroupedChats = {
+  today: ChatWithUser[];
+  yesterday: ChatWithUser[];
+  lastWeek: ChatWithUser[];
+  lastMonth: ChatWithUser[];
+  older: ChatWithUser[];
+};
+
+export type ChatHistory = {
+  chats: Array<ChatWithUser>;
   hasMore: boolean;
-}
+};
 
 const PAGE_SIZE = 20;
 
-const groupChatsByDate = (chats: Chat[]): GroupedChats => {
+const groupChatsByDate = (chats: ChatWithUser[]): GroupedChats => {
   const now = new Date();
   const oneWeekAgo = subWeeks(now, 1);
   const oneMonthAgo = subMonths(now, 1);
@@ -76,26 +84,36 @@ const groupChatsByDate = (chats: Chat[]): GroupedChats => {
   );
 };
 
-export function getChatHistoryPaginationKey(
-  pageIndex: number,
-  previousPageData: ChatHistory,
-) {
-  if (previousPageData && previousPageData.hasMore === false) {
-    return null;
-  }
+/**
+ * チャット履歴のページネーションキーを生成
+ * organizationId は外部から渡す必要があるため、クロージャで取得
+ */
+export const getChatHistoryPaginationKey =
+  (organizationId: string) =>
+  (pageIndex: number, previousPageData: ChatHistory | null) => {
+    if (previousPageData && previousPageData.hasMore === false) {
+      return null;
+    }
 
-  if (pageIndex === 0) return `/api/history?limit=${PAGE_SIZE}`;
+    if (pageIndex === 0)
+      return `/api/history?limit=${PAGE_SIZE}&organization_id=${organizationId}`;
 
-  const firstChatFromPage = previousPageData.chats.at(-1);
+    const firstChatFromPage = previousPageData?.chats.at(-1);
 
-  if (!firstChatFromPage) return null;
+    if (!firstChatFromPage) return null;
 
-  return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
-}
+    return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}&organization_id=${organizationId}`;
+  };
 
-export function SidebarHistory({ user }: { user: User | undefined }) {
+export const SidebarHistory = ({
+  user,
+  organizationId,
+}: {
+  user: User | undefined;
+  organizationId: string;
+}) => {
   const { setOpenMobile } = useSidebar();
-  const { id } = useParams();
+  const { id, orgSlug } = useParams();
 
   const {
     data: paginatedChatHistories,
@@ -103,9 +121,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     isValidating,
     isLoading,
     mutate,
-  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher, {
-    fallbackData: [],
-  });
+  } = useSWRInfinite<ChatHistory>(
+    getChatHistoryPaginationKey(organizationId),
+    fetcher,
+    {
+      fallbackData: [],
+    },
+  );
 
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -144,7 +166,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     setShowDeleteDialog(false);
 
     if (deleteId === id) {
-      router.push("/chat");
+      router.push(`/${orgSlug}/chat`);
     }
   };
 
@@ -207,19 +229,22 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
         <SidebarGroupContent>
           <SidebarMenu>
             {paginatedChatHistories &&
+              user?.id &&
               (() => {
                 const chatsFromHistory = paginatedChatHistories.flatMap(
                   (paginatedChatHistory) => paginatedChatHistory.chats,
                 );
 
                 const groupedChats = groupChatsByDate(chatsFromHistory);
+                const currentOrgSlug = String(orgSlug);
+                const currentUserId = user.id;
 
                 return (
                   <div className="flex flex-col gap-6">
                     {groupedChats.today.length > 0 && (
                       <div>
                         <div className="text-sidebar-foreground/50 px-2 py-1 text-xs">
-                          Today
+                          今日
                         </div>
                         {groupedChats.today.map((chat) => (
                           <ChatItem
@@ -231,6 +256,9 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            orgSlug={currentOrgSlug}
+                            currentUserId={currentUserId}
+                            organizationId={organizationId}
                           />
                         ))}
                       </div>
@@ -239,7 +267,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                     {groupedChats.yesterday.length > 0 && (
                       <div>
                         <div className="text-sidebar-foreground/50 px-2 py-1 text-xs">
-                          Yesterday
+                          昨日
                         </div>
                         {groupedChats.yesterday.map((chat) => (
                           <ChatItem
@@ -251,6 +279,9 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            orgSlug={currentOrgSlug}
+                            currentUserId={currentUserId}
+                            organizationId={organizationId}
                           />
                         ))}
                       </div>
@@ -259,7 +290,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                     {groupedChats.lastWeek.length > 0 && (
                       <div>
                         <div className="text-sidebar-foreground/50 px-2 py-1 text-xs">
-                          Last 7 days
+                          過去7日間
                         </div>
                         {groupedChats.lastWeek.map((chat) => (
                           <ChatItem
@@ -271,6 +302,9 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            orgSlug={currentOrgSlug}
+                            currentUserId={currentUserId}
+                            organizationId={organizationId}
                           />
                         ))}
                       </div>
@@ -279,7 +313,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                     {groupedChats.lastMonth.length > 0 && (
                       <div>
                         <div className="text-sidebar-foreground/50 px-2 py-1 text-xs">
-                          Last 30 days
+                          過去30日間
                         </div>
                         {groupedChats.lastMonth.map((chat) => (
                           <ChatItem
@@ -291,6 +325,9 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            orgSlug={currentOrgSlug}
+                            currentUserId={currentUserId}
+                            organizationId={organizationId}
                           />
                         ))}
                       </div>
@@ -299,7 +336,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                     {groupedChats.older.length > 0 && (
                       <div>
                         <div className="text-sidebar-foreground/50 px-2 py-1 text-xs">
-                          Older than last month
+                          それ以前
                         </div>
                         {groupedChats.older.map((chat) => (
                           <ChatItem
@@ -311,6 +348,9 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            orgSlug={currentOrgSlug}
+                            currentUserId={currentUserId}
+                            organizationId={organizationId}
                           />
                         ))}
                       </div>
@@ -362,4 +402,4 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       </AlertDialog>
     </>
   );
-}
+};
