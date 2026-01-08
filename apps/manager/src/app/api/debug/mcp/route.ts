@@ -6,7 +6,7 @@
  */
 import { auth } from "~/auth";
 import { isProductionEnvironment } from "@/lib/constants";
-import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
+import { closeMcpClients, getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
 
 export const GET = async (request: Request) => {
   // 本番環境では無効
@@ -44,15 +44,21 @@ export const GET = async (request: Request) => {
       session.accessToken,
     );
 
-    debugInfo.mcpResult = {
-      toolCount: mcpResult.toolNames.length,
-      toolNames: mcpResult.toolNames,
-      successfulServers: mcpResult.successfulServers,
-      errors: mcpResult.errors.map((e) => ({
-        mcpServerId: e.mcpServerId,
-        message: e.message,
-      })),
-    };
+    // 非ストリーミングの場合は取得後にクライアントを閉じる
+    // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
+    try {
+      debugInfo.mcpResult = {
+        toolCount: mcpResult.toolNames.length,
+        toolNames: mcpResult.toolNames,
+        successfulServers: mcpResult.successfulServers,
+        errors: mcpResult.errors.map((e) => ({
+          mcpServerId: e.mcpServerId,
+          message: e.message,
+        })),
+      };
+    } finally {
+      await closeMcpClients(mcpResult.clients);
+    }
   }
 
   return Response.json(debugInfo, {
