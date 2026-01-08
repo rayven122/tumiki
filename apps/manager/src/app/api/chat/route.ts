@@ -27,7 +27,8 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { getWeather } from "@/lib/ai/tools/get-weather";
-import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
+import { getMcpToolsFromServers, closeMcpClients } from "@/lib/ai/tools/mcp";
+import type { MCPClient } from "@ai-sdk/mcp";
 import { isProductionEnvironment } from "@/lib/constants";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
@@ -42,6 +43,7 @@ import type { Chat } from "@tumiki/db/prisma";
 import { differenceInSeconds } from "date-fns";
 import { ChatSDKError } from "@/lib/errors";
 import { generateTitleFromUserMessage } from "@/app/[orgSlug]/chat/actions";
+import { checkChatAccess } from "@/lib/auth/chat-permissions";
 
 export const maxDuration = 60;
 
@@ -117,13 +119,16 @@ export const POST = async (request: Request) => {
         visibility: selectedVisibilityType,
       });
     } else {
-      // 権限チェック: 自分のチャット または 組織内共有チャット（同じ組織のメンバー）
-      const isOwner = chat.userId === session.user.id;
-      const isOrganizationShared =
-        chat.visibility === "ORGANIZATION" &&
-        chat.organizationId === organizationId;
+      // 権限チェック（共通関数を使用）
+      const accessResult = checkChatAccess({
+        chatUserId: chat.userId,
+        chatVisibility: chat.visibility,
+        chatOrganizationId: chat.organizationId,
+        currentUserId: session.user.id,
+        currentOrganizationId: organizationId,
+      });
 
-      if (!isOwner && !isOrganizationShared) {
+      if (!accessResult.canAccess) {
         return new ChatSDKError("forbidden:chat").toResponse();
       }
     }
@@ -176,19 +181,66 @@ export const POST = async (request: Request) => {
     await createStreamId({ streamId, chatId: id });
 
     // MCPサーバーからツールを取得
+    // クライアントはストリーミング終了時に閉じる必要あり
+    // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
     let mcpTools: Record<string, Tool> = {};
     let mcpToolNames: string[] = [];
+    const mcpClients: MCPClient[] = [];
+    const mcpDebugInfo = {
+      selectedMcpServerIds,
+      hasAccessToken: !!session.accessToken,
+      toolCount: 0,
+      toolNames: [] as string[],
+      successfulServers: [] as string[],
+      errors: [] as Array<{ mcpServerId: string; message: string }>,
+    };
+
+    // デバッグログ: MCPツール取得の条件を確認
+    console.log("[MCP Debug] selectedMcpServerIds:", selectedMcpServerIds);
+    console.log(
+      "[MCP Debug] session.accessToken exists:",
+      !!session.accessToken,
+    );
 
     if (selectedMcpServerIds.length > 0 && session.accessToken) {
+      console.log("[MCP Debug] Fetching MCP tools...");
       const mcpResult = await getMcpToolsFromServers(
         selectedMcpServerIds,
         session.accessToken,
       );
-      mcpTools = mcpResult.tools as Record<string, Tool>;
+      mcpTools = mcpResult.tools;
       mcpToolNames = mcpResult.toolNames;
+      // クライアントを保持（onFinish/onError で閉じるため）
+      mcpClients.push(...mcpResult.clients);
+
+      // デバッグ情報を更新
+      mcpDebugInfo.toolCount = mcpToolNames.length;
+      mcpDebugInfo.toolNames = mcpToolNames;
+      mcpDebugInfo.successfulServers = mcpResult.successfulServers;
+      mcpDebugInfo.errors = mcpResult.errors.map((e) => ({
+        mcpServerId: e.mcpServerId,
+        message: e.message,
+      }));
+
+      // デバッグログ: 取得結果を出力
+      console.log("[MCP Debug] MCP tools fetched:", {
+        toolCount: mcpToolNames.length,
+        toolNames: mcpToolNames,
+        successfulServers: mcpResult.successfulServers,
+        errors: mcpResult.errors,
+      });
 
       // MCPサーバーをチャットに紐づけ
       await updateChatMcpServers(id, selectedMcpServerIds);
+    } else {
+      console.log(
+        "[MCP Debug] Skipping MCP tools fetch - no servers selected or no access token",
+      );
+    }
+
+    // 開発環境でのみデバッグ情報をログ出力
+    if (!isProductionEnvironment) {
+      console.log("[MCP Debug] Full debug info:", JSON.stringify(mcpDebugInfo));
     }
 
     // 基本ツール名（型安全のため as const を使用）
@@ -239,7 +291,11 @@ export const POST = async (request: Request) => {
 
         const result = streamText({
           model: getLanguageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+          system: systemPrompt({
+            selectedChatModel,
+            requestHints,
+            mcpToolNames,
+          }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           activeTools: isReasoningModel ? [] : allActiveToolNames,
@@ -280,6 +336,14 @@ export const POST = async (request: Request) => {
                 console.error("Failed to save chat");
               }
             }
+
+            // MCPクライアントを閉じる（after で非同期実行）
+            // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
+            if (mcpClients.length > 0) {
+              after(async () => {
+                await closeMcpClients(mcpClients);
+              });
+            }
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
@@ -288,7 +352,7 @@ export const POST = async (request: Request) => {
         });
 
         // streamTextの結果をUIMessageStreamにマージ
-        await writer.merge(
+        writer.merge(
           result.toUIMessageStream({
             sendReasoning: true,
           }),
@@ -296,6 +360,15 @@ export const POST = async (request: Request) => {
       },
       onError: (error) => {
         console.error("UIMessageStream error:", error);
+
+        // エラー時もMCPクライアントを閉じる
+        // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
+        if (mcpClients.length > 0) {
+          after(async () => {
+            await closeMcpClients(mcpClients);
+          });
+        }
+
         return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
       },
     });
@@ -367,12 +440,20 @@ export const GET = async (request: Request) => {
     return new ChatSDKError("not_found:chat").toResponse();
   }
 
-  // 権限チェック: PRIVATE は所有者のみ、ORGANIZATION は同組織のメンバーがアクセス可能
-  if (chat.visibility === "PRIVATE" && chat.userId !== session.user.id) {
+  // 権限チェック（共通関数を使用）
+  // 注: GET ハンドラーでは organizationId がリクエストに含まれないため、
+  // チャット自体の organizationId を使用してアクセス権限をチェック
+  const accessResult = checkChatAccess({
+    chatUserId: chat.userId,
+    chatVisibility: chat.visibility,
+    chatOrganizationId: chat.organizationId,
+    currentUserId: session.user.id,
+    currentOrganizationId: chat.organizationId, // 同一組織内でのアクセスを仮定
+  });
+
+  if (!accessResult.canAccess) {
     return new ChatSDKError("forbidden:chat").toResponse();
   }
-  // 注: ORGANIZATION と PUBLIC は追加の権限チェックは不要（URLを知っていればアクセス可能）
-  // 実際の組織メンバーシップ検証は必要に応じてミドルウェアで行う
 
   const streamIds = await getStreamIdsByChatId({ chatId });
 

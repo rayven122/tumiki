@@ -50,23 +50,75 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
+/**
+ * MCPツールに関するプロンプトを生成
+ * ツール名のフォーマット: {serverId}__{toolName}
+ */
+export const getMcpToolsPrompt = (mcpToolNames: string[]) => {
+  if (mcpToolNames.length === 0) {
+    return "";
+  }
+
+  // サーバーIDごとにツールをグループ化
+  const toolsByServer: Record<string, string[]> = {};
+  for (const toolName of mcpToolNames) {
+    const [serverId, ...rest] = toolName.split("__");
+    const originalToolName = rest.join("__");
+    if (serverId && originalToolName) {
+      if (!toolsByServer[serverId]) {
+        toolsByServer[serverId] = [];
+      }
+      toolsByServer[serverId].push(originalToolName);
+    }
+  }
+
+  const serverSections = Object.entries(toolsByServer)
+    .map(([serverId, tools]) => {
+      return `- **${serverId}**: ${tools.join(", ")}`;
+    })
+    .join("\n");
+
+  return `
+## Available MCP Tools
+
+You have access to external MCP (Model Context Protocol) tools. These tools allow you to interact with external services.
+
+**Important:** When you need to use an MCP tool, call it with the full tool name format: \`{serverId}__{toolName}\`
+
+Available tools by server:
+${serverSections}
+
+**When to use MCP tools:**
+- When the user asks for information from external services (e.g., Linear issues, teams, projects)
+- When you need to perform actions in external systems
+- Always prefer using these tools over asking the user to check manually
+
+**How to use:**
+- Call the tool directly with the required parameters
+- The tool name must include the server ID prefix (e.g., \`linear__list_teams\`)
+`;
+};
+
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
+  mcpToolNames = [],
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
+  mcpToolNames?: string[];
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
+  const mcpToolsPrompt = getMcpToolsPrompt(mcpToolNames);
 
   // 推論モデルはアーティファクト機能を使用しない（-thinking サフィックスまたは -reasoning サフィックス）
   const isReasoningModel =
     selectedChatModel.includes("reasoning") ||
     selectedChatModel.endsWith("-thinking");
   if (isReasoningModel) {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}${mcpToolsPrompt}`;
   } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}${mcpToolsPrompt}`;
   }
 };
 

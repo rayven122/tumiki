@@ -19,6 +19,7 @@ type OfficialServer =
 
 type McpServerSelectorProps = {
   selectedMcpServerIds: string[];
+  onSelectionChange?: (ids: string[]) => void;
   className?: string;
 };
 
@@ -36,6 +37,7 @@ type McpServerSelectorProps = {
  */
 export const McpServerSelector = ({
   selectedMcpServerIds: initialSelectedIds,
+  onSelectionChange,
   className,
 }: McpServerSelectorProps) => {
   const [open, setOpen] = useState(false);
@@ -54,6 +56,20 @@ export const McpServerSelector = ({
 
   const selectedCount = optimisticSelectedIds.length;
 
+  // 選択されたサーバーの有効ツール総数を計算
+  const totalToolsCount = availableServers
+    .filter((server) => optimisticSelectedIds.includes(server.id))
+    .reduce(
+      (total, server) =>
+        total +
+        server.templateInstances.reduce(
+          (count, instance) =>
+            count + instance.tools.filter((tool) => tool.isEnabled).length,
+          0,
+        ),
+      0,
+    );
+
   const handleToggleServer = (serverId: string) => {
     const isSelected = optimisticSelectedIds.includes(serverId);
     const newSelectedIds = isSelected
@@ -64,6 +80,9 @@ export const McpServerSelector = ({
       setOptimisticSelectedIds(newSelectedIds);
       saveMcpServerIdsAsCookie(newSelectedIds);
     });
+
+    // 親コンポーネントに選択変更を通知
+    onSelectionChange?.(newSelectedIds);
   };
 
   const handleSelectAll = () => {
@@ -72,6 +91,8 @@ export const McpServerSelector = ({
       setOptimisticSelectedIds(allIds);
       saveMcpServerIdsAsCookie(allIds);
     });
+    // 親コンポーネントに選択変更を通知
+    onSelectionChange?.(allIds);
     // ユーザー歓喜: 全選択後もドロップダウンを開いたままにして確認感を与える
   };
 
@@ -80,6 +101,8 @@ export const McpServerSelector = ({
       setOptimisticSelectedIds([]);
       saveMcpServerIdsAsCookie([]);
     });
+    // 親コンポーネントに選択変更を通知
+    onSelectionChange?.([]);
     // 誘導抵抗: 強制感を与えないよう、いつでも解除可能
   };
 
@@ -104,6 +127,12 @@ export const McpServerSelector = ({
           {selectedCount > 0 && (
             <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 text-xs font-medium">
               {selectedCount}
+            </span>
+          )}
+          {/* ツール数バッジ: 認知負荷軽減のため数のみ表示 */}
+          {totalToolsCount > 0 && (
+            <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs">
+              {totalToolsCount}ツール
             </span>
           )}
           <ChevronDownIcon />

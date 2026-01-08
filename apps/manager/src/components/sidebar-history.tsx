@@ -22,32 +22,14 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/chat/sidebar";
-import type { Chat, McpServerVisibility } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { ChatItem } from "./sidebar-history-item";
 import useSWRInfinite from "swr/infinite";
 import { LoaderIcon } from "./icons";
+import type { ChatWithUser, ChatHistory, GroupedChats } from "@/lib/types/chat";
 
-export type ChatWithUser = Chat & {
-  user: {
-    id: string;
-    name: string | null;
-  };
-  visibility: McpServerVisibility;
-};
-
-type GroupedChats = {
-  today: ChatWithUser[];
-  yesterday: ChatWithUser[];
-  lastWeek: ChatWithUser[];
-  lastMonth: ChatWithUser[];
-  older: ChatWithUser[];
-};
-
-export type ChatHistory = {
-  chats: Array<ChatWithUser>;
-  hasMore: boolean;
-};
+// 再エクスポート（後方互換性のため）
+export type { ChatWithUser, ChatHistory };
 
 const PAGE_SIZE = 20;
 
