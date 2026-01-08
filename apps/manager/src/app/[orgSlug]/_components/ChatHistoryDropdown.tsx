@@ -31,31 +31,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Chat, McpServerVisibility } from "@tumiki/db/prisma";
 import { cn, fetcher } from "@/lib/utils";
 import { LoaderIcon } from "@/components/icons";
-
-// 組織内共有チャットにはユーザー情報も含まれる
-type ChatWithUser = Chat & {
-  user: {
-    id: string;
-    name: string | null;
-  };
-  visibility: McpServerVisibility;
-};
-
-type GroupedChats = {
-  today: ChatWithUser[];
-  yesterday: ChatWithUser[];
-  lastWeek: ChatWithUser[];
-  lastMonth: ChatWithUser[];
-  older: ChatWithUser[];
-};
-
-type ChatHistory = {
-  chats: ChatWithUser[];
-  hasMore: boolean;
-};
+import type { ChatWithUser, ChatHistory, GroupedChats } from "@/lib/types/chat";
 
 const PAGE_SIZE = 20;
 

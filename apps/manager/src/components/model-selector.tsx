@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/chat/dropdown-menu";
-import { chatModels } from "@/lib/ai/models";
+import { chatModels, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { cn } from "@/lib/utils";
 
 import { CheckCircleFillIcon, ChevronDownIcon } from "./icons";
@@ -37,13 +37,18 @@ export function ModelSelector({
     availableChatModelIds.includes(chatModel.id),
   );
 
-  const selectedChatModel = useMemo(
-    () =>
-      availableChatModels.find(
-        (chatModel) => chatModel.id === optimisticModelId,
-      ),
-    [optimisticModelId, availableChatModels],
-  );
+  // 選択されたモデルを取得、見つからない場合はデフォルトモデルにフォールバック
+  const selectedChatModel = useMemo(() => {
+    const found = availableChatModels.find(
+      (chatModel) => chatModel.id === optimisticModelId,
+    );
+    if (found) return found;
+
+    // フォールバック: デフォルトモデルを返す
+    return availableChatModels.find(
+      (chatModel) => chatModel.id === DEFAULT_CHAT_MODEL,
+    );
+  }, [optimisticModelId, availableChatModels]);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>

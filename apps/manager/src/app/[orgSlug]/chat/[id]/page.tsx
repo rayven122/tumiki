@@ -11,6 +11,7 @@ import type { Message } from "@tumiki/db/prisma";
 import type { ChatMessage } from "@/lib/types";
 import { getMcpServerIdsFromCookie } from "../actions";
 import { api } from "@/trpc/server";
+import { checkChatAccess, canEditChat } from "@/lib/auth/chat-permissions";
 
 type PageProps = {
   params: Promise<{ orgSlug: string; id: string }>;
@@ -37,19 +38,16 @@ export default async function Page(props: PageProps) {
   // 組織IDを取得
   const organization = await api.organization.getBySlug({ slug: decodedSlug });
 
-  // アクセス権限チェック
-  const isOwner = chat.userId === session.user.id;
-  const isOrganizationShared =
-    chat.visibility === "ORGANIZATION" &&
-    chat.organizationId === organization.id;
+  // アクセス権限チェック（共通関数を使用）
+  const accessResult = checkChatAccess({
+    chatUserId: chat.userId,
+    chatVisibility: chat.visibility,
+    chatOrganizationId: chat.organizationId,
+    currentUserId: session.user.id,
+    currentOrganizationId: organization.id,
+  });
 
-  // PRIVATEチャットは所有者のみアクセス可能
-  if (chat.visibility === "PRIVATE" && !isOwner) {
-    return notFound();
-  }
-
-  // ORGANIZATIONチャットは同じ組織のメンバーのみアクセス可能
-  if (chat.visibility === "ORGANIZATION" && !isOwner && !isOrganizationShared) {
+  if (!accessResult.canAccess) {
     return notFound();
   }
 
@@ -84,8 +82,8 @@ export default async function Page(props: PageProps) {
       ? mcpServerIdsFromDb
       : await getMcpServerIdsFromCookie();
 
-  // 編集可能かどうか: 所有者または組織内共有チャット
-  const canEdit = isOwner || isOrganizationShared;
+  // 編集可能かどうか（共通関数を使用）
+  const isEditable = canEditChat(accessResult);
 
   return (
     <>
@@ -101,7 +99,7 @@ export default async function Page(props: PageProps) {
         initialChatModel={chatModel}
         initialVisibilityType={chat.visibility}
         initialMcpServerIds={mcpServerIds}
-        isReadonly={!canEdit}
+        isReadonly={!isEditable}
         session={session}
         autoResume={true}
         isPersonalOrg={organization.isPersonal}

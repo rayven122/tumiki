@@ -3,7 +3,7 @@
 import { DefaultChatTransport } from "ai";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { ChatHeader } from "@/components/chat-header";
 import type { Vote } from "@tumiki/db/prisma";
@@ -53,6 +53,16 @@ export function Chat({
   const [selectedChatModel, setSelectedChatModel] = useState(initialChatModel);
   const [input, setInput] = useState<string>("");
 
+  // MCPサーバーIDを状態で管理（チャット中の変更に対応）
+  const [selectedMcpServerIds, setSelectedMcpServerIds] =
+    useState<string[]>(initialMcpServerIds);
+
+  // useRef で最新値を保持（prepareSendMessagesRequest のクロージャ問題を回避）
+  const mcpServerIdsRef = useRef(selectedMcpServerIds);
+  useEffect(() => {
+    mcpServerIdsRef.current = selectedMcpServerIds;
+  }, [selectedMcpServerIds]);
+
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
@@ -85,7 +95,8 @@ export function Chat({
             message: lastMessage,
             selectedChatModel,
             selectedVisibilityType: visibilityType,
-            selectedMcpServerIds: initialMcpServerIds,
+            // useRef経由で最新のMCPサーバーIDを参照
+            selectedMcpServerIds: mcpServerIdsRef.current,
             ...request.body,
           },
         };
@@ -144,7 +155,8 @@ export function Chat({
           selectedModelId={selectedChatModel}
           onModelChange={setSelectedChatModel}
           selectedVisibilityType={initialVisibilityType}
-          selectedMcpServerIds={initialMcpServerIds}
+          selectedMcpServerIds={selectedMcpServerIds}
+          onMcpServerSelectionChange={setSelectedMcpServerIds}
           isReadonly={isReadonly}
           session={session}
           organizationId={organizationId}

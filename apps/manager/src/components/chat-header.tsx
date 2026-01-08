@@ -24,6 +24,7 @@ function PureChatHeader({
   onModelChange,
   selectedVisibilityType,
   selectedMcpServerIds,
+  onMcpServerSelectionChange,
   isReadonly,
   session,
   organizationId,
@@ -35,6 +36,7 @@ function PureChatHeader({
   onModelChange?: (modelId: string) => void;
   selectedVisibilityType: VisibilityType;
   selectedMcpServerIds: string[];
+  onMcpServerSelectionChange?: (ids: string[]) => void;
   isReadonly: boolean;
   session: SessionData;
   organizationId: string;
@@ -84,6 +86,7 @@ function PureChatHeader({
       {!isReadonly && (
         <McpServerSelector
           selectedMcpServerIds={selectedMcpServerIds}
+          onSelectionChange={onMcpServerSelectionChange}
           className="order-2"
         />
       )}
@@ -130,5 +133,13 @@ function PureChatHeader({
 }
 
 export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
-  return prevProps.selectedModelId === nextProps.selectedModelId;
+  // selectedModelId と selectedMcpServerIds の両方を比較
+  return (
+    prevProps.selectedModelId === nextProps.selectedModelId &&
+    prevProps.selectedMcpServerIds.length ===
+      nextProps.selectedMcpServerIds.length &&
+    prevProps.selectedMcpServerIds.every(
+      (id, index) => id === nextProps.selectedMcpServerIds[index],
+    )
+  );
 });
