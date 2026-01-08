@@ -1,8 +1,10 @@
 /**
  * @ai-sdk/mcp を使用した MCP クライアント実装
  * AI SDK Tool 形式への変換を自動的に行う
+ *
+ * @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools
  */
-import { createMCPClient } from "@ai-sdk/mcp";
+import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { makeHttpProxyServerUrl } from "~/utils/url";
 import type { Tool } from "ai";
 
@@ -50,13 +52,18 @@ const classifyError = (error: unknown): McpServerError["errorType"] => {
 };
 
 /**
- * MCPサーバーからツールを取得
+ * MCPサーバーからツールとクライアントを取得
+ *
+ * 重要: ストリーミング時はツール実行のためクライアントを開いたままにする必要があります。
+ * 呼び出し元で onFinish/onError コールバックでクライアントを閉じてください。
+ *
+ * @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
  */
 export const getMcpToolsFromServer = async (
   mcpServerId: string,
   accessToken: string,
 ): Promise<
-  | { success: true; tools: Record<string, Tool> }
+  | { success: true; tools: Record<string, Tool>; client: MCPClient }
   | { success: false; error: McpServerError }
 > => {
   const proxyUrl = makeHttpProxyServerUrl(mcpServerId);
@@ -64,7 +71,7 @@ export const getMcpToolsFromServer = async (
   try {
     const client = await createMCPClient({
       transport: {
-        type: "sse",
+        type: "http",
         url: proxyUrl,
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -72,14 +79,12 @@ export const getMcpToolsFromServer = async (
       },
     });
 
-    try {
-      // AI SDK Tool 形式で直接取得
-      // @ai-sdk/mcp は FlexibleSchema<unknown> を使用するため、Tool 型にキャスト
-      const tools = (await client.tools()) as Record<string, Tool>;
-      return { success: true, tools };
-    } finally {
-      await client.close();
-    }
+    // AI SDK Tool 形式で直接取得
+    // @ai-sdk/mcp は FlexibleSchema<unknown> を使用するため、Tool 型にキャスト
+    const tools = (await client.tools()) as Record<string, Tool>;
+
+    // クライアントも返す（ストリーミング終了時に閉じるため）
+    return { success: true, tools, client };
   } catch (error) {
     const errorType = classifyError(error);
     const message =
@@ -121,6 +126,8 @@ export type GetMcpToolsFromServersResult = {
   successfulServers: string[];
   /** 失敗したサーバーのエラー情報 */
   errors: McpServerError[];
+  /** MCPクライアントの配列（ストリーミング終了時に閉じる必要あり） */
+  clients: MCPClient[];
 };
 
 /**
@@ -131,6 +138,23 @@ export type GetMcpToolsFromServersResult = {
  *
  * 一部のサーバーが失敗しても、成功したサーバーからのツールは返される。
  * 失敗情報は errors 配列に格納され、呼び出し元で適切に処理できる。
+ *
+ * 重要: 返されたクライアントは onFinish/onError で閉じる必要があります。
+ *
+ * @example
+ * ```typescript
+ * const mcpResult = await getMcpToolsFromServers(serverIds, token);
+ *
+ * const result = streamText({
+ *   tools: mcpResult.tools,
+ *   onFinish: async () => {
+ *     await closeMcpClients(mcpResult.clients);
+ *   },
+ *   onError: async () => {
+ *     await closeMcpClients(mcpResult.clients);
+ *   },
+ * });
+ * ```
  */
 export const getMcpToolsFromServers = async (
   mcpServerIds: string[],
@@ -140,6 +164,7 @@ export const getMcpToolsFromServers = async (
   const toolNames: string[] = [];
   const successfulServers: string[] = [];
   const errors: McpServerError[] = [];
+  const clients: MCPClient[] = [];
 
   // 並列でツール取得
   const results = await Promise.all(
@@ -152,6 +177,7 @@ export const getMcpToolsFromServers = async (
   for (const { mcpServerId, result } of results) {
     if (result.success) {
       successfulServers.push(mcpServerId);
+      clients.push(result.client);
       // ツール名にサーバーIDをプレフィックス
       for (const [toolName, tool] of Object.entries(result.tools)) {
         const uniqueName = `${mcpServerId}__${toolName}`;
@@ -176,5 +202,39 @@ export const getMcpToolsFromServers = async (
     toolNames,
     successfulServers,
     errors,
+    clients,
   };
+};
+
+/**
+ * MCPクライアントを安全に閉じる
+ *
+ * ストリーミング終了時（onFinish/onError）に呼び出してください。
+ *
+ * @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
+ */
+export const closeMcpClients = async (clients: MCPClient[]): Promise<void> => {
+  if (clients.length === 0) return;
+
+  try {
+    await Promise.all(
+      clients.map(async (client) => {
+        try {
+          await client.close();
+        } catch (error) {
+          // クライアントが既に閉じられている場合などのエラーは無視
+          console.warn(
+            "[MCP] Error closing client:",
+            error instanceof Error ? error.message : "Unknown error",
+          );
+        }
+      }),
+    );
+    console.log(`[MCP] Closed ${clients.length} MCP client(s)`);
+  } catch (error) {
+    console.error(
+      "[MCP] Failed to close clients:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+  }
 };
