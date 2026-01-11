@@ -10,6 +10,20 @@ mcp-proxyに「統合MCPエンドポイント」機能を追加する。ユー�
 
 統合エンドポイントにより、ユーザーが選択した複数のMCPサーバーのツールを単一エンドポイントで公開し、AIクライアントからの利便性を向上させる。
 
+### 実装スコープ
+
+**今回の実装範囲:**
+- mcp-proxyに統合MCPエンドポイント機能を追加
+- CRUD API（POST/GET/PUT/DELETE /unified）を追加
+- `/mcp/unified/:unifiedId` エンドポイントを追加
+- Prismaスキーマに UnifiedMcpServer を追加
+- McpServerRequestLog に unifiedMcpServerId カラムを追加
+
+**第2段階:**
+- 管理UI（managerアプリ）
+- Dynamic Toolsets（search_tools, describe_tools, execute_tool）
+- dynamicToolsetsEnabledフラグ管理
+
 ## 要件
 
 ### 基本仕様
@@ -23,20 +37,22 @@ mcp-proxyに「統合MCPエンドポイント」機能を追加する。ユー�
 
 ### データモデル
 
-新規 `UnifiedMcpServer` テーブルを作成：
+新規 `UnifiedMcpServer` テーブルを作成（明示的多対多リレーション）：
 
 ```prisma
 model UnifiedMcpServer {
   id             String   @id @default(cuid())
-  name           String   // 必須、表示名
+  name           String   // 必須、表示名（重複許可）
   description    String?  // オプショナル
 
   organizationId String
-  organization   Organization @relation(...)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   createdBy      String   // 作成者のuserId
+  creator        User     @relation(fields: [createdBy], references: [id])
 
-  mcpServers     McpServer[] // 多対多リレーション
+  // 明示的多対多リレーション
+  childServers   UnifiedMcpServerChild[]
 
   deletedAt      DateTime?
   createdAt      DateTime @default(now())
@@ -46,6 +62,38 @@ model UnifiedMcpServer {
   @@index([createdBy])
   @@index([deletedAt])
 }
+
+model UnifiedMcpServerChild {
+  id                  String   @id @default(cuid())
+
+  unifiedMcpServerId  String
+  unifiedMcpServer    UnifiedMcpServer @relation(fields: [unifiedMcpServerId], references: [id], onDelete: Cascade)
+
+  mcpServerId         String
+  mcpServer           McpServer @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+
+  displayOrder        Int @default(0)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([unifiedMcpServerId, mcpServerId])
+  @@index([mcpServerId])
+}
+```
+
+### ログテーブル拡張
+
+既存の `McpServerRequestLog` テーブルに以下のカラムを追加：
+
+```prisma
+model McpServerRequestLog {
+  // ... 既存フィールド ...
+
+  unifiedMcpServerId String?  // 統合エンドポイント経由の場合のみ設定
+
+  @@index([unifiedMcpServerId, createdAt])
+}
 ```
 
 ### 制約条件
@@ -53,11 +101,12 @@ model UnifiedMcpServer {
 | 項目 | 仕様 |
 |------|------|
 | 子サーバー範囲 | 同一組織内のMCPサーバーのみ |
-| 子サーバー数上限 | なし |
+| 子サーバー数 | 最低1件必須、上限なし |
 | 作成権限 | 組織の全メンバー |
 | 共有 | 作成者専用（他ユーザーへの共有なし） |
-| 名前 | 必須（name）、IDはcuid |
-| 説明 | オプショナル（description） |
+| 名前 | 必須、重複許可（IDで一意識別） |
+| 説明 | オプショナル |
+| OAuthトークン | 作成時に全子サーバーのOAuthトークン保持を確認必須 |
 
 ### ツール名フォーマット
 
@@ -67,11 +116,11 @@ model UnifiedMcpServer {
 {mcpServerId}__{instanceName}__{toolName}
 ```
 
-- `mcpServerId`: McpServer.idの最初の8文字（衝突防止のため）
+- `mcpServerId`: McpServer.id（完全なID）
 - `instanceName`: McpServerTemplateInstance.normalizedName
 - `toolName`: MCPツールの元の名前
 
-例: `abc12345__personal__list_repos`
+例: `cm1abc2def3ghi__personal__list_repos`
 
 **ツール名重複**: 子MCPサーバー間で同名ツールがあっても全て公開（3階層フォーマットで一意性保証）
 
@@ -81,32 +130,42 @@ model UnifiedMcpServer {
 |------|------|
 | キャッシュ | Redis TTL 5分（キー: `unified:tools:{unifiedId}`） |
 | キャッシュ無効化 | TTLのみ（即時無効化なし） |
-| タイムアウト | 30秒 |
+| タイムアウト | リクエスト全体で30秒 |
+| 並列度制限 | 子サーバーへのアクセスは同時に5件まで |
 
 ### エラーハンドリング
 
-**Fail-fast戦略**: tools/list時に1つのMCPサーバーでもエラーが発生した場合、全体をエラーとして返却する。
-
-子MCPサーバーのステータス:
+**tools/list: Fail-fast戦略**
+- 1つのMCPサーバーでもエラーが発生した場合、全体をエラーとして返却
 - `serverStatus=RUNNING`, `deletedAt=null` のサーバーのみ対象
 - 1つでも `STOPPED` や `ERROR` 状態があれば全体エラー
+- **論理削除された子サーバーは自動除外**（エラーにはしない）
+- 全ての子サーバーが除外された場合は空のtools/listを返却
+
+**tools/call: 接続時判断**
+- 事前のserverStatusチェックは行わず、実際に接続を試みてから判断
+- 接続失敗時にエラーを返却（既存実装と同じ動作）
+
+**エラーメッセージ**
+- 子MCPサーバー名、ツール名、エラー詳細を含める（デバッグ性優先）
 
 ### PII/TOON設定
 
-**ツール単位適用**: tools/call実行時、対象ツールが属するMCPサーバーのPII/TOON設定を適用する。
+**子サーバーの設定のみ使用**:
+- 統合MCPサーバー自体にはPII/TOON設定を持たない
+- tools/call実行時、対象ツールが属するMCPサーバーのPII/TOON設定を適用
 
 ### ログ記録
 
 **両方に記録**:
-- 統合MCPサーバー（unifiedMcpServerId）のログエントリを記録
-- 実際にツールが実行されたMCPサーバー（mcpServerId）のログエントリも記録
-- ログには両方のIDを含める
+- 統合MCPサーバー（unifiedMcpServerId）と実際のMCPサーバー（mcpServerId）の両方のIDをログに含める
+- 既存の `McpServerRequestLog` テーブルを使用
 
 ### MCP serverInfo
 
 initialize時に返すserverInfo:
 - `name`: UnifiedMcpServer.name
-- `version`: 固定値（例: "1.0.0"）
+- `version`: 固定値 `"1.0.0"`
 
 ## 処理フロー
 
@@ -119,26 +178,27 @@ initialize時に返すserverInfo:
 3. キャッシュヒット時: キャッシュから返却
 4. キャッシュミス時:
    a. DBからUnifiedMcpServerの子MCPサーバー一覧を取得
-   b. 全子MCPサーバーがserverStatus=RUNNING, deletedAt=nullであることを確認
-   c. 1つでも異常があればエラー返却（Fail-fast）
-   d. 各McpServerのtemplateInstances→allowedToolsを展開
-   e. 3階層フォーマットでツール名を生成
-   f. Redisに保存（TTL: 5分）
-5. ツール一覧を返却
+   b. deletedAt=nullの子サーバーのみをフィルタ（削除済みは自動除外）
+   c. 全残存サーバーがserverStatus=RUNNINGであることを確認
+   d. 1つでもSTOPPED/ERROR状態があればエラー返却（Fail-fast）
+   e. 各McpServerのtemplateInstances→allowedToolsを展開（並列度5件制限）
+   f. 3階層フォーマットでツール名を生成
+   g. Redisに保存（TTL: 5分）
+5. ツール一覧を返却（全除外時は空リスト）
 ```
 
 ### tools/call フロー
 
 ```
 1. JWT認証・アクセス制御チェック
-2. 3階層ツール名をパース
-3. mcpServerIdプレフィックスでMcpServerを検索
+2. 3階層ツール名をパース（{mcpServerId}__{instanceName}__{toolName}）
+3. mcpServerIdでMcpServerを検索
 4. instanceNameでtemplateInstanceを検索
 5. 対象McpServerのPII/TOON設定を実行コンテキストに設定
 6. リクエストユーザーの認証情報（McpConfig, OAuthToken）を使用
-7. 既存のconnectToMcpServer()でリモートMCPに接続
+7. 既存のconnectToMcpServer()でリモートMCPに接続（接続失敗時にエラー）
 8. ツールを実行
-9. ログ記録（統合MCP + 子MCPサーバー両方）
+9. ログ記録（unifiedMcpServerId + mcpServerId両方を記録）
 10. 結果を返却
 ```
 
@@ -154,7 +214,7 @@ initialize時に返すserverInfo:
 
 ## CRUD API
 
-mcp-proxyにREST APIとして実装:
+mcp-proxyにREST APIとして実装（JWT認証のみ）:
 
 ### エンドポイント一覧
 
@@ -171,11 +231,76 @@ mcp-proxyにREST APIとして実装:
 ```typescript
 // POST /unified
 // Authorization: Bearer {JWT}
+
+// リクエスト
 {
   name: string,           // 必須
   description?: string,   // オプショナル
-  mcpServerIds: string[]  // 必須、子MCPサーバーID配列
+  mcpServerIds: string[]  // 必須、最低1件
 }
+
+// バリデーション
+// - mcpServerIds が空配列の場合はエラー
+// - 指定されたmcpServerIdが同一組織内に存在しない場合はエラー
+// - ユーザーがOAuthトークンを持っていないサーバーが含まれる場合はエラー
+
+// レスポンス
+{
+  id: string,
+  name: string,
+  description: string | null,
+  organizationId: string,
+  createdBy: string,
+  mcpServers: [
+    { id: string, name: string, serverStatus: ServerStatus }
+  ],
+  createdAt: string,
+  updatedAt: string
+}
+```
+
+### 一覧API
+
+```typescript
+// GET /unified
+// Authorization: Bearer {JWT}
+
+// レスポンス
+{
+  items: [
+    {
+      id: string,
+      name: string,
+      description: string | null,
+      mcpServers: [
+        { id: string, name: string, serverStatus: ServerStatus }
+      ],
+      createdAt: string,
+      updatedAt: string
+    }
+  ]
+}
+
+// 作成者（createdBy = 認証ユーザー）の統合サーバーのみ返却
+```
+
+### 更新API
+
+```typescript
+// PUT /unified/:id
+// Authorization: Bearer {JWT}
+
+// リクエスト
+{
+  name?: string,
+  description?: string,
+  mcpServerIds?: string[]  // 指定した場合は完全置換
+}
+
+// mcpServerIdsを指定した場合:
+// - 最低1件必須
+// - 既存の関連を全て削除し、新しい関連を作成
+// - OAuthトークンチェックを再実行
 ```
 
 ### 削除時の挙動
@@ -189,7 +314,7 @@ mcp-proxyにREST APIとして実装:
 
 ```
 packages/db/prisma/schema/
-└── unifiedMcpServer.prisma          # UnifiedMcpServerモデル
+└── unifiedMcpServer.prisma          # UnifiedMcpServer, UnifiedMcpServerChildモデル
 
 apps/mcp-proxy/src/
 ├── routes/
@@ -200,8 +325,9 @@ apps/mcp-proxy/src/
 ├── services/
 │   └── unifiedMcp/
 │       ├── index.ts                 # エクスポート
-│       ├── toolsAggregator.ts       # ツール集約
-│       ├── toolExecutor.ts          # 3階層ツール実行
+│       ├── toolsAggregator.ts       # ツール集約（並列度制限付き）
+│       ├── toolNameParser.ts        # 3階層ツール名パース
+│       ├── toolExecutor.ts          # ツール実行
 │       └── types.ts                 # 型定義
 ├── middleware/
 │   └── auth/
@@ -214,6 +340,9 @@ apps/mcp-proxy/src/
 ### 変更
 
 ```
+packages/db/prisma/schema/
+└── mcpServerRequestLog.prisma       # unifiedMcpServerIdカラム追加
+
 apps/mcp-proxy/src/
 ├── index.ts                         # ルートマウント追加
 └── types/index.ts                   # AuthContext型拡張
@@ -223,11 +352,21 @@ apps/mcp-proxy/src/
 
 ### Dynamic Toolsets
 
-Speakeasy方式のDynamic Toolsets機能を追加予定（第2段階の詳細は未定）。
+Speakeasy方式のDynamic Toolsets機能を追加予定。
 
-- `search_tools`: ツール検索（内部検索はclaude-3-5-haikuを使用）
+**フラグ管理:**
+- McpServerに `dynamicToolsetsEnabled` フラグを追加
+- MCPサーバー詳細画面のPII/TOON設定と同じセクションで管理
+
+**ツール構成:**
+- `search_tools`: ツール検索（AIベース、claude-3-5-haiku使用予定）
 - `describe_tools`: ツールスキーマ取得
 - `execute_tool`: ツール実行
+
+**統合エンドポイントでの挙動:**
+- フラグがtrueのサーバーのツールは、上記3つのメタツールのみ公開
+- 統合レベルで1セットの3ツールに集約（サーバー単位ではない）
+- 複数のDynamic Toolsets対応サーバーがある場合、全サーバーをまとめて検索
 
 参考: https://www.speakeasy.com/blog/how-we-reduced-token-usage-by-100x-dynamic-toolsets-v2
 
@@ -255,13 +394,35 @@ manager アプリに統合MCPサーバー作成/編集画面を追加予定。
 - 共有機能は将来の拡張として検討可能
 - 権限管理の複雑さを回避
 
-### なぜFail-fastか
+### なぜFail-fast（tools/list）か
 
 - 部分的な成功を返すと、AIクライアントが不完全なツール一覧で動作し、予期しない挙動を引き起こす可能性
 - エラーの原因を明確にすることで、問題の特定と解決が容易
+
+### なぜtools/callは接続時判断か
+
+- 既存の個別エンドポイントと同じ動作を維持
+- serverStatusはあくまで参考情報であり、実際の接続性とは異なる場合がある
+
+### なぜ3階層ツール名で完全なIDを使用するか
+
+- 8文字短縮では衝突の可能性がある
+- 完全なIDを使用することで確実な一意性を保証
+- ツール名は長くなるが、AIクライアントには透過的
+
+### なぜ論理削除された子サーバーを自動除外するか
+
+- ユーザー体験の向上（エラーではなく利用可能なサーバーで継続）
+- 管理者が子サーバーを削除しても、統合サーバー利用者への影響を最小化
 
 ### なぜRedisキャッシュTTL 5分か
 
 - 現在のMcpServer情報キャッシュと同じ設定で一貫性を維持
 - ツール一覧の変更頻度は低いため、5分は妥当
 - 即時無効化は実装複雑度が上がるため初期リリースではTTLのみ
+
+### なぜOAuthトークンを事前チェックするか
+
+- tools/call時に認証エラーが発生することを防ぐ
+- 作成時に問題を検出し、ユーザーに適切な対応を促す
+- 統合サーバーの品質を保証
