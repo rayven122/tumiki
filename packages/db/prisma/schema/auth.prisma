@@ -55,6 +55,9 @@ model User {
   notifications          Notification[]
   triggeredNotifications Notification[] @relation("NotificationTriggeredBy")
 
+  /// 統合MCPサーバー（作成者として）
+  unifiedMcpServers UnifiedMcpServer[]
+
   /// Auth.js adapter
   accounts Account[]
   sessions Session[]

@@ -7,6 +7,7 @@
 - [Notification](#notification)
 - [Organization](#organization)
 - [RequestLog](#requestlog)
+- [UnifiedMcpServer](#unifiedmcpserver)
 - [UserMcpServer](#usermcpserver)
 - [Chat](#chat)
 - [default](#default)
@@ -453,6 +454,7 @@ erDiagram
   String organizationId
   String userId
   String mcpApiKeyId "nullable"
+  String unifiedMcpServerId "nullable"
   String(255) toolName
   TransportType transportType
   String(64) method
@@ -484,6 +486,7 @@ MCPサーバーインスタンスへのリクエストログ
   - `organizationId`: 組織ID
   - `userId`: リクエストを実行したユーザーID
   - `mcpApiKeyId`: 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
+  - `unifiedMcpServerId`: 統合MCPサーバーID（統合エンドポイント経由の場合のみ設定）
   - `toolName`: 実行されたツール名（最大255文字に制限）
   - `transportType`: リクエスト時のトランスポートタイプ
   - `method`: MCPメソッド（例: "tools/call", "resources/read"）
@@ -510,6 +513,57 @@ MCPサーバーインスタンスへのリクエストログ
   - `inputTokens`: TOON変換前のトークン数（元データのトークン数）
   - `outputTokens`: AIに渡される最終的な出力トークン数
   - `createdAt`: 
+
+
+## UnifiedMcpServer
+```mermaid
+erDiagram
+"UnifiedMcpServer" {
+  String id PK
+  String name
+  String description "nullable"
+  String organizationId FK
+  String createdBy FK
+  DateTime deletedAt "nullable"
+  DateTime createdAt
+  DateTime updatedAt
+}
+"UnifiedMcpServerChild" {
+  String id PK
+  String unifiedMcpServerId FK
+  String mcpServerId FK
+  Int displayOrder
+  DateTime createdAt
+  DateTime updatedAt
+}
+"UnifiedMcpServerChild" }o--|| "UnifiedMcpServer" : unifiedMcpServer
+```
+
+### `UnifiedMcpServer`
+統合MCPサーバー設定
+ユーザーが複数のMCPサーバーを1つのエンドポイントで利用するための設定
+
+**Properties**
+  - `id`: レコードID（cuid: 25文字）
+  - `name`: 統合サーバー名（表示名、重複許可）
+  - `description`: 統合サーバーの説明（オプショナル）
+  - `organizationId`: 所属組織のID
+  - `createdBy`: 作成者のユーザーID（このユーザーのみがアクセス可能）
+  - `deletedAt`: 論理削除用のタイムスタンプ
+  - `createdAt`: 
+  - `updatedAt`: 
+
+### `UnifiedMcpServerChild`
+統合MCPサーバーの子サーバー（中間テーブル）
+UnifiedMcpServerとMcpServerの明示的多対多リレーション
+
+**Properties**
+  - `id`: レコードID（cuid: 25文字）
+  - `unifiedMcpServerId`: 親の統合MCPサーバーID
+  - `mcpServerId`: 子のMCPサーバーID
+  - `displayOrder`: 表示順序（ツール一覧での並び順）
+  - `createdAt`: 
+  - `updatedAt`: 
 
 
 ## UserMcpServer

@@ -21,6 +21,10 @@ export type AuthContext = {
   piiInfoTypes: string[];
   /** TOON変換を有効にするかどうか（AIへのトークン削減用） */
   toonConversionEnabled: boolean;
+  /** 統合エンドポイントからのリクエストかどうか */
+  isUnifiedEndpoint?: boolean;
+  /** 統合MCPサーバーID（統合エンドポイントの場合のみ設定） */
+  unifiedMcpServerId?: string;
 };
 
 /**

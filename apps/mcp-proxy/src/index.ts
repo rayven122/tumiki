@@ -9,6 +9,8 @@ import { DEFAULT_PORT } from "./constants/server.js";
 import { TIMEOUT_CONFIG } from "./constants/config.js";
 import { healthRoute } from "./routes/health.js";
 import { mcpRoute } from "./routes/mcp.js";
+import { mcpUnifiedRoute } from "./routes/mcpUnified.js";
+import { unifiedCrudRoute } from "./routes/unifiedCrud.js";
 import { wellKnownRoute } from "./routes/wellKnown.js";
 import { oauthRoute } from "./routes/oauthRoute.js";
 
@@ -21,6 +23,8 @@ app.use("/*", cors());
 // ルートをマウント
 app.route("/", healthRoute);
 app.route("/", mcpRoute);
+app.route("/mcp/unified", mcpUnifiedRoute);
+app.route("/unified", unifiedCrudRoute);
 app.route("/.well-known", wellKnownRoute);
 app.route("/oauth", oauthRoute);
 

@@ -136,12 +136,18 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     executionContext.outputTokens ?? countTokens(responseText);
 
   // PostgreSQL用ログデータを構築（詳細フィールドはBigQueryのみに保存）
+  // 統合エンドポイント経由の場合、actualMcpServerIdを使用
+  const mcpServerId =
+    executionContext.actualMcpServerId ?? authContext.mcpServerId;
+
   const postgresLogData = {
     // 認証情報
-    mcpServerId: authContext.mcpServerId,
+    mcpServerId,
     mcpApiKeyId: authContext.mcpApiKeyId ?? null,
     userId: authContext.userId,
     organizationId: authContext.organizationId,
+    // 統合MCPサーバーID（統合エンドポイント経由の場合のみ設定）
+    unifiedMcpServerId: authContext.unifiedMcpServerId ?? null,
 
     // リクエスト情報
     toolName: executionContext.toolName,

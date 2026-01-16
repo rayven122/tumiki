@@ -114,6 +114,9 @@ model McpServer {
   /// 権限設定（サーバー削除時に自動削除）
   mcpPermissions McpPermission[]
 
+  /// 統合MCPサーバーの子サーバーとしての参照
+  unifiedMcpServerChildren UnifiedMcpServerChild[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   /// 論理削除用のタイムスタンプ

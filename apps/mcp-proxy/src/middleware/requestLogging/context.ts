@@ -27,6 +27,9 @@ export type McpExecutionContext = {
   errorMessage?: string;
   errorDetails?: unknown; // エラーオブジェクト全体
 
+  // 統合エンドポイント用: 実際に使用されたMCPサーバーID
+  actualMcpServerId?: string;
+
   // リクエストボディ（piiMaskingMode が DISABLED 以外の時、PIIマスキング済み）
   requestBody?: unknown;
 

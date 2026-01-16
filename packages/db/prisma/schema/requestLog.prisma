@@ -15,6 +15,8 @@ model McpServerRequestLog {
   userId         String
   /// 使用されたAPIキーID（認証タイプがAPI_KEYの場合のみ）
   mcpApiKeyId    String?
+  /// 統合MCPサーバーID（統合エンドポイント経由の場合のみ設定）
+  unifiedMcpServerId String?
 
   /// 実行されたツール名（最大255文字に制限）
   toolName      String        @db.VarChar(255)
@@ -67,4 +69,6 @@ model McpServerRequestLog {
   @@index([mcpServerId, createdAt])
   @@index([organizationId, createdAt])
   @@index([userId, createdAt])
+  /// 統合MCPサーバー用インデックス
+  @@index([unifiedMcpServerId, createdAt])
 }
