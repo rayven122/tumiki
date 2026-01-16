@@ -276,6 +276,27 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - ロールベースアクセス制御
 - JWT セッション管理
 
+### スキル（Skills）
+
+プロジェクト固有の知識やガイドラインを Claude Code で活用するためのスキルファイルを提供しています。
+
+#### 利用可能なスキル
+
+```bash
+/ux-psychology-principles     # UX心理学原則 - UI実装リファレンス
+/mcp-proxy-unified-feature    # 統合MCPエンドポイント機能 - 実装リファレンス
+```
+
+#### スキルファイルの配置
+
+スキルは `.claude/skills/{skill-name}/SKILL.md` に配置します。
+
+#### 機能変更時のスキル更新ルール
+
+- 統合MCPエンドポイント機能を変更した場合は、対応するスキルファイル（`.claude/skills/mcp-proxy-unified-feature/SKILL.md`）も更新すること
+- 新しい機能を追加した場合は、関連するスキルを作成することを検討すること
+- スキルの説明（frontmatter の description）は、Claude Code がスキルを選択する際に使用されるため、明確に記述すること
+
 ### 開発時の重要事項
 
 - **Node.js**: >=22.14.0 必須

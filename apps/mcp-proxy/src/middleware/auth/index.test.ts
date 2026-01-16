@@ -17,8 +17,7 @@ import type { McpServerLookupResult } from "../../services/mcpServerService.js";
 
 // DBをモック
 vi.mock("@tumiki/db/server", async (importOriginal) => {
-  const mod =
-    await importOriginal<typeof import("@tumiki/db/server")>();
+  const mod = await importOriginal<typeof import("@tumiki/db/server")>();
   return {
     ...mod,
     db: {
@@ -49,9 +48,11 @@ vi.mock("../../libs/logger/index.js", () => ({
 
 // apiKeyAuthMiddlewareをモック
 vi.mock("./apiKey.js", () => ({
-  apiKeyAuthMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) => {
-    await next();
-  }),
+  apiKeyAuthMiddleware: vi.fn(
+    async (_c: unknown, next: () => Promise<void>) => {
+      await next();
+    },
+  ),
 }));
 
 import { db } from "@tumiki/db/server";
