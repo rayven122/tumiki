@@ -11,6 +11,8 @@
     "dist",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "vitest.config.ts",
+    "vitest.e2e.config.ts"
   ]
 }
