@@ -16,6 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "pnpm with-env-test vitest run --config vitest.e2e.config.ts",
+    "test:e2e:watch": "pnpm with-env-test vitest --config vitest.e2e.config.ts",
     "test:seed": "pnpm with-env-test tsx test/seed.ts",
     "test:verify": "pnpm with-env-test tsx test/verify.ts",
     "benchmark": "bash benchmark/scripts/run-benchmark.sh"

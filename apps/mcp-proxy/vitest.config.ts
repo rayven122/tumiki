@@ -8,6 +8,7 @@ export default defineProject({
     name: "mcp-proxy",
     globals: true,
     environment: "node",
+    exclude: ["tests/e2e/**/*.test.ts", "**/node_modules/**"],
   },
   resolve: {
     alias: {
