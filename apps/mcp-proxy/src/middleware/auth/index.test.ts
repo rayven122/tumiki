@@ -347,7 +347,7 @@ describe("authMiddleware", () => {
       expect(body.authContext.unifiedMcpServerId).toBe(mockServerId);
     });
 
-    test("作成者でないユーザーの場合は403エラーを返す", async () => {
+    test("同一組織の別ユーザーでもアクセスできる", async () => {
       const differentUserId = "different-user-id";
 
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
@@ -356,6 +356,36 @@ describe("authMiddleware", () => {
       vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
         mockUnifiedServer as never,
       );
+      vi.mocked(checkOrganizationMembership).mockResolvedValue(true);
+
+      const app = createTestApp();
+      const res = await app.request(`/mcp/${mockServerId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${mockAccessToken}`,
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        success: boolean;
+        authContext: AuthContext;
+      };
+      expect(body.success).toBe(true);
+      expect(body.authContext.userId).toBe(differentUserId);
+      expect(body.authContext.isUnifiedEndpoint).toBe(true);
+    });
+
+    test("組織外ユーザーの場合は403エラーを返す", async () => {
+      const outsideUserId = "outside-user-id";
+
+      vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
+      vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(outsideUserId);
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
+      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+        mockUnifiedServer as never,
+      );
+      vi.mocked(checkOrganizationMembership).mockResolvedValue(false);
 
       const app = createTestApp();
       const res = await app.request(`/mcp/${mockServerId}`, {
@@ -368,7 +398,7 @@ describe("authMiddleware", () => {
       expect(res.status).toBe(403);
       const body = (await res.json()) as { error: { message: string } };
       expect(body.error.message).toBe(
-        "Only the creator can access this unified MCP server",
+        "User is not a member of this organization",
       );
     });
 

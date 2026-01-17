@@ -9,12 +9,11 @@ import {
   createNotFoundError,
 } from "../../libs/error/index.js";
 import { apiKeyAuthMiddleware } from "./apiKey.js";
-import { verifyKeycloakJWT } from "../../libs/auth/jwt-verifier.js";
 import {
-  getMcpServerOrganization,
-  checkOrganizationMembership,
-  getUserIdFromKeycloakId,
-} from "../../services/mcpServerService.js";
+  authenticateWithJwt,
+  validateOrganizationMembership,
+} from "../../libs/auth/index.js";
+import { getMcpServerOrganization } from "../../services/mcpServerService.js";
 
 import type { McpServerLookupResult } from "../../services/mcpServerService.js";
 
@@ -154,54 +153,53 @@ export const authMiddleware = async (
  * JWT 認証ミドルウェア（サーバー種類自動判定版）
  *
  * 以下の検証を順次実行:
- * 1. Authorization ヘッダーから Bearer トークンを抽出
- * 2. JWT トークンの検証（Keycloak JWKS 使用）
- * 3. リクエストパスの serverId の確認
- * 4. serverId の種類を判定（McpServer or UnifiedMcpServer）
- * 5. 種類に応じた認可ロジックを実行:
- *    - McpServer: 組織メンバーシップチェック
- *    - UnifiedMcpServer: 作成者チェック + 組織メンバーシップチェック
+ * 1. JWT認証（トークン抽出、検証、ユーザーID解決）
+ * 2. リクエストパスの serverId の確認
+ * 3. serverId の種類を判定（McpServer or UnifiedMcpServer）
+ * 4. 種類に応じた認可ロジックを実行
  */
 const jwtAuthWithServerTypeDetection = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
-  // Step 1: Authorization ヘッダーから Bearer トークンを抽出
-  const authorization = c.req.header("Authorization");
+  // Step 1: JWT認証（トークン抽出、検証、ユーザーID解決）
+  const authResult = await authenticateWithJwt(c);
 
-  if (!authorization?.startsWith("Bearer ")) {
-    return c.json(
-      createUnauthorizedError("Bearer token required in Authorization header"),
-      401,
-    );
+  if (!authResult.success) {
+    // エラータイプに応じたレスポンスを返す
+    switch (authResult.error) {
+      case "no_bearer_token":
+        return c.json(
+          createUnauthorizedError(
+            "Bearer token required in Authorization header",
+          ),
+          401,
+        );
+      case "token_expired":
+        return c.json(createUnauthorizedError("Token has expired"), 401);
+      case "invalid_signature":
+        return c.json(createUnauthorizedError("Invalid token signature"), 401);
+      case "invalid_token":
+        return c.json(createUnauthorizedError("Invalid access token"), 401);
+      case "user_not_found":
+        return c.json(
+          createUnauthorizedError("User not found for Keycloak ID"),
+          401,
+        );
+      case "resolution_failed":
+        return c.json(
+          createUnauthorizedError("Failed to verify user identity"),
+          401,
+        );
+    }
   }
 
-  const accessToken = authorization.substring(7); // "Bearer " を除去
-
-  // Step 2: JWT トークンの検証
-  let jwtPayload;
-  try {
-    jwtPayload = await verifyKeycloakJWT(accessToken);
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-
-    // エラーメッセージから原因を判定
-    if (errorMessage.includes("expired")) {
-      return c.json(createUnauthorizedError("Token has expired"), 401);
-    }
-
-    if (errorMessage.includes("signature")) {
-      return c.json(createUnauthorizedError("Invalid token signature"), 401);
-    }
-
-    logError("JWT verification failed", error as Error);
-    return c.json(createUnauthorizedError("Invalid access token"), 401);
-  }
+  const { payload: jwtPayload, userId } = authResult;
 
   // JWT ペイロードをコンテキストに設定
   c.set("jwtPayload", jwtPayload);
 
-  // Step 3: serverId の確認（統合パラメータ名に変更）
+  // Step 2: serverId の確認
   const serverId = c.req.param("serverId");
 
   if (!serverId) {
@@ -211,28 +209,7 @@ const jwtAuthWithServerTypeDetection = async (
     );
   }
 
-  // Step 4: Keycloak ID から Tumiki User ID を解決
-  let userId: string;
-  try {
-    const resolvedUserId = await getUserIdFromKeycloakId(jwtPayload.sub);
-    if (!resolvedUserId) {
-      return c.json(
-        createUnauthorizedError("User not found for Keycloak ID"),
-        401,
-      );
-    }
-    userId = resolvedUserId;
-  } catch (error) {
-    logError("Failed to resolve user ID from Keycloak ID", error as Error, {
-      keycloakId: jwtPayload.sub,
-    });
-    return c.json(
-      createUnauthorizedError("Failed to verify user identity"),
-      401,
-    );
-  }
-
-  // Step 5: サーバー種類を判定
+  // Step 3: サーバー種類を判定
   let serverTypeResult: ServerTypeResult;
   try {
     serverTypeResult = await detectServerType(serverId);
@@ -248,12 +225,10 @@ const jwtAuthWithServerTypeDetection = async (
     return c.json(createNotFoundError(`Server not found: ${serverId}`), 404);
   }
 
-  // Step 6: 種類に応じた認可ロジック
+  // Step 4: 種類に応じた認可ロジック
   if (serverTypeResult.type === "mcp") {
-    // 通常MCPサーバーの処理
     return handleMcpServerAuth(c, next, serverTypeResult.server, userId);
   } else {
-    // 統合MCPサーバーの処理
     return handleUnifiedServerAuth(c, next, serverTypeResult.server, userId);
   }
 };
@@ -276,15 +251,18 @@ const handleMcpServerAuth = async (
   }
 
   // 組織メンバーシップチェック
-  let isMember: boolean;
-  try {
-    isMember = await checkOrganizationMembership(server.organizationId, userId);
-  } catch (error) {
-    logError("Organization membership check failed", error as Error);
-    return c.json(createPermissionDeniedError("Membership check failed"), 403);
-  }
+  const membershipResult = await validateOrganizationMembership(
+    server.organizationId,
+    userId,
+  );
 
-  if (!isMember) {
+  if (!membershipResult.isMember) {
+    if (membershipResult.error === "check_failed") {
+      return c.json(
+        createPermissionDeniedError("Membership check failed"),
+        403,
+      );
+    }
     return c.json(
       createPermissionDeniedError("User is not a member of this organization"),
       403,
@@ -309,6 +287,8 @@ const handleMcpServerAuth = async (
 
 /**
  * 統合MCPサーバーの認証処理
+ *
+ * 組織メンバーシップのみをチェック（ツール利用は組織メンバー全員に開放）
  */
 const handleUnifiedServerAuth = async (
   c: Context<HonoEnv>,
@@ -324,26 +304,19 @@ const handleUnifiedServerAuth = async (
     );
   }
 
-  // 作成者チェック（createdBy == userId）
-  if (server.createdBy !== userId) {
-    return c.json(
-      createPermissionDeniedError(
-        "Only the creator can access this unified MCP server",
-      ),
-      403,
-    );
-  }
+  // 組織メンバーシップチェック
+  const membershipResult = await validateOrganizationMembership(
+    server.organizationId,
+    userId,
+  );
 
-  // 組織メンバーシップチェック（追加の安全チェック）
-  let isMember: boolean;
-  try {
-    isMember = await checkOrganizationMembership(server.organizationId, userId);
-  } catch (error) {
-    logError("Organization membership check failed", error as Error);
-    return c.json(createPermissionDeniedError("Membership check failed"), 403);
-  }
-
-  if (!isMember) {
+  if (!membershipResult.isMember) {
+    if (membershipResult.error === "check_failed") {
+      return c.json(
+        createPermissionDeniedError("Membership check failed"),
+        403,
+      );
+    }
     return c.json(
       createPermissionDeniedError("User is not a member of this organization"),
       403,

@@ -18,11 +18,18 @@ import { logError, logInfo } from "../libs/logger/index.js";
 import {
   createInvalidRequestError,
   createNotFoundError,
+  createPermissionDeniedError,
 } from "../libs/error/index.js";
+import { isAdmin } from "../services/roleService.js";
+import {
+  validateMcpServersInOrganization,
+  validateOAuthTokensExist,
+  mapToUnifiedMcpServerResponse,
+  mapToUnifiedMcpServerListResponse,
+} from "../services/unifiedMcp/index.js";
 import type {
   CreateUnifiedMcpServerRequest,
   UpdateUnifiedMcpServerRequest,
-  UnifiedMcpServerResponse,
   UnifiedMcpServerListResponse,
 } from "../services/unifiedMcp/types.js";
 
@@ -54,6 +61,18 @@ unifiedCrudRoute.post("/", async (c) => {
 
   const { organizationId, userId } = authContext;
 
+  // 管理者権限チェック（Owner/Adminのみ作成可能）
+  const jwtPayload = c.get("jwtPayload");
+  const roles = jwtPayload?.realm_access?.roles ?? [];
+  if (!isAdmin(roles)) {
+    return c.json(
+      createPermissionDeniedError(
+        "Only Owner or Admin can create unified MCP servers",
+      ),
+      403,
+    );
+  }
+
   try {
     const body = await c.req.json<CreateUnifiedMcpServerRequest>();
 
@@ -71,66 +90,30 @@ unifiedCrudRoute.post("/", async (c) => {
     }
 
     // 指定されたMCPサーバーが同一組織内に存在するか確認
-    const mcpServers = await db.mcpServer.findMany({
-      where: {
-        id: { in: body.mcpServerIds },
-        organizationId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        name: true,
-        serverStatus: true,
-      },
-    });
+    const serverValidation = await validateMcpServersInOrganization(
+      body.mcpServerIds,
+      organizationId,
+    );
 
-    if (mcpServers.length !== body.mcpServerIds.length) {
-      const foundIds = new Set(mcpServers.map((s) => s.id));
-      const missingIds = body.mcpServerIds.filter((id) => !foundIds.has(id));
+    if (!serverValidation.valid) {
       return c.json(
         createInvalidRequestError(
-          `Some MCP servers not found or not in organization: ${missingIds.join(", ")}`,
+          `Some MCP servers not found or not in organization: ${serverValidation.missingIds.join(", ")}`,
         ),
         400,
       );
     }
 
-    // OAuthトークンの存在確認（各MCPサーバーのテンプレートインスタンスに対して）
-    const templateInstances = await db.mcpServerTemplateInstance.findMany({
-      where: {
-        mcpServerId: { in: body.mcpServerIds },
-      },
-      include: {
-        mcpServerTemplate: {
-          select: {
-            authType: true,
-          },
-        },
-        oauthTokens: {
-          where: {
-            userId,
-          },
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
-
-    // OAuth認証が必要なインスタンスでトークンがないものをチェック
-    const missingOAuthInstances = templateInstances.filter(
-      (instance) =>
-        instance.mcpServerTemplate.authType === "OAUTH" &&
-        instance.oauthTokens.length === 0,
+    // OAuthトークンの存在確認
+    const oauthValidation = await validateOAuthTokensExist(
+      body.mcpServerIds,
+      userId,
     );
 
-    if (missingOAuthInstances.length > 0) {
-      const instanceNames = missingOAuthInstances
-        .map((i) => i.normalizedName)
-        .join(", ");
+    if (!oauthValidation.valid) {
       return c.json(
         createInvalidRequestError(
-          `OAuth tokens not found for some instances: ${instanceNames}. Please authenticate first.`,
+          `OAuth tokens not found for some instances: ${oauthValidation.missingInstances.join(", ")}. Please authenticate first.`,
         ),
         400,
       );
@@ -160,6 +143,7 @@ unifiedCrudRoute.post("/", async (c) => {
                 id: true,
                 name: true,
                 serverStatus: true,
+                deletedAt: true,
               },
             },
           },
@@ -173,20 +157,10 @@ unifiedCrudRoute.post("/", async (c) => {
       childServerCount: unifiedServer.childServers.length,
     });
 
-    const response: UnifiedMcpServerResponse = {
-      id: unifiedServer.id,
-      name: unifiedServer.name,
-      description: unifiedServer.description,
-      organizationId: unifiedServer.organizationId,
-      createdBy: unifiedServer.createdBy,
-      mcpServers: unifiedServer.childServers.map((child) => ({
-        id: child.mcpServer.id,
-        name: child.mcpServer.name,
-        serverStatus: child.mcpServer.serverStatus,
-      })),
-      createdAt: unifiedServer.createdAt.toISOString(),
-      updatedAt: unifiedServer.updatedAt.toISOString(),
-    };
+    // 新規作成時は子サーバーは削除されていないため、フィルタリング不要
+    const response = mapToUnifiedMcpServerResponse(unifiedServer, {
+      excludeDeletedChildren: false,
+    });
 
     return c.json(response, 201);
   } catch (error) {
@@ -203,7 +177,7 @@ unifiedCrudRoute.post("/", async (c) => {
  *
  * GET /unified
  *
- * 作成者（createdBy = 認証ユーザー）の統合サーバーのみ返却
+ * 同一組織内の統合サーバーをすべて返却（組織メンバー全員がアクセス可能）
  */
 unifiedCrudRoute.get("/", async (c) => {
   const authContext = c.get("authContext");
@@ -211,12 +185,12 @@ unifiedCrudRoute.get("/", async (c) => {
     return c.json(createInvalidRequestError("Authentication required"), 401);
   }
 
-  const { userId } = authContext;
+  const { organizationId } = authContext;
 
   try {
     const unifiedServers = await db.unifiedMcpServer.findMany({
       where: {
-        createdBy: userId,
+        organizationId: organizationId,
         deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
@@ -238,22 +212,7 @@ unifiedCrudRoute.get("/", async (c) => {
     });
 
     const response: UnifiedMcpServerListResponse = {
-      items: unifiedServers.map((server) => ({
-        id: server.id,
-        name: server.name,
-        description: server.description,
-        organizationId: server.organizationId,
-        createdBy: server.createdBy,
-        mcpServers: server.childServers
-          .filter((child) => child.mcpServer.deletedAt === null)
-          .map((child) => ({
-            id: child.mcpServer.id,
-            name: child.mcpServer.name,
-            serverStatus: child.mcpServer.serverStatus,
-          })),
-        createdAt: server.createdAt.toISOString(),
-        updatedAt: server.updatedAt.toISOString(),
-      })),
+      items: mapToUnifiedMcpServerListResponse(unifiedServers),
     };
 
     return c.json(response);
@@ -271,7 +230,7 @@ unifiedCrudRoute.get("/", async (c) => {
  *
  * GET /unified/:id
  *
- * 作成者のみアクセス可能
+ * 組織メンバー全員がアクセス可能
  */
 unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
   const unifiedId = c.req.param("id");
@@ -303,22 +262,7 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
       );
     }
 
-    const response: UnifiedMcpServerResponse = {
-      id: unifiedServer.id,
-      name: unifiedServer.name,
-      description: unifiedServer.description,
-      organizationId: unifiedServer.organizationId,
-      createdBy: unifiedServer.createdBy,
-      mcpServers: unifiedServer.childServers
-        .filter((child) => child.mcpServer.deletedAt === null)
-        .map((child) => ({
-          id: child.mcpServer.id,
-          name: child.mcpServer.name,
-          serverStatus: child.mcpServer.serverStatus,
-        })),
-      createdAt: unifiedServer.createdAt.toISOString(),
-      updatedAt: unifiedServer.updatedAt.toISOString(),
-    };
+    const response = mapToUnifiedMcpServerResponse(unifiedServer);
 
     return c.json(response);
   } catch (error) {
@@ -334,6 +278,8 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
  * 統合MCPサーバー更新
  *
  * PUT /unified/:id
+ *
+ * 作成者 または Owner/Admin のみアクセス可能
  *
  * リクエスト:
  * - name?: string - 統合サーバー名
@@ -364,61 +310,30 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
       }
 
       // 指定されたMCPサーバーが同一組織内に存在するか確認
-      const mcpServers = await db.mcpServer.findMany({
-        where: {
-          id: { in: body.mcpServerIds },
-          organizationId,
-          deletedAt: null,
-        },
-        select: { id: true },
-      });
+      const serverValidation = await validateMcpServersInOrganization(
+        body.mcpServerIds,
+        organizationId,
+      );
 
-      if (mcpServers.length !== body.mcpServerIds.length) {
-        const foundIds = new Set(mcpServers.map((s) => s.id));
-        const missingIds = body.mcpServerIds.filter((id) => !foundIds.has(id));
+      if (!serverValidation.valid) {
         return c.json(
           createInvalidRequestError(
-            `Some MCP servers not found or not in organization: ${missingIds.join(", ")}`,
+            `Some MCP servers not found or not in organization: ${serverValidation.missingIds.join(", ")}`,
           ),
           400,
         );
       }
 
       // OAuthトークンの存在確認
-      const templateInstances = await db.mcpServerTemplateInstance.findMany({
-        where: {
-          mcpServerId: { in: body.mcpServerIds },
-        },
-        include: {
-          mcpServerTemplate: {
-            select: {
-              authType: true,
-            },
-          },
-          oauthTokens: {
-            where: {
-              userId,
-            },
-            select: {
-              id: true,
-            },
-          },
-        },
-      });
-
-      const missingOAuthInstances = templateInstances.filter(
-        (instance) =>
-          instance.mcpServerTemplate.authType === "OAUTH" &&
-          instance.oauthTokens.length === 0,
+      const oauthValidation = await validateOAuthTokensExist(
+        body.mcpServerIds,
+        userId,
       );
 
-      if (missingOAuthInstances.length > 0) {
-        const instanceNames = missingOAuthInstances
-          .map((i) => i.normalizedName)
-          .join(", ");
+      if (!oauthValidation.valid) {
         return c.json(
           createInvalidRequestError(
-            `OAuth tokens not found for some instances: ${instanceNames}. Please authenticate first.`,
+            `OAuth tokens not found for some instances: ${oauthValidation.missingInstances.join(", ")}. Please authenticate first.`,
           ),
           400,
         );
@@ -471,6 +386,7 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
                   id: true,
                   name: true,
                   serverStatus: true,
+                  deletedAt: true,
                 },
               },
             },
@@ -484,20 +400,10 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
       name: unifiedServer.name,
     });
 
-    const response: UnifiedMcpServerResponse = {
-      id: unifiedServer.id,
-      name: unifiedServer.name,
-      description: unifiedServer.description,
-      organizationId: unifiedServer.organizationId,
-      createdBy: unifiedServer.createdBy,
-      mcpServers: unifiedServer.childServers.map((child) => ({
-        id: child.mcpServer.id,
-        name: child.mcpServer.name,
-        serverStatus: child.mcpServer.serverStatus,
-      })),
-      createdAt: unifiedServer.createdAt.toISOString(),
-      updatedAt: unifiedServer.updatedAt.toISOString(),
-    };
+    // 更新時も新規作成と同様、子サーバーは削除されていないはず
+    const response = mapToUnifiedMcpServerResponse(unifiedServer, {
+      excludeDeletedChildren: false,
+    });
 
     return c.json(response);
   } catch (error) {
@@ -514,7 +420,7 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
  *
  * DELETE /unified/:id
  *
- * 作成者のみアクセス可能
+ * 作成者 または Owner/Admin のみアクセス可能
  */
 unifiedCrudRoute.delete("/:id", unifiedOwnershipMiddleware, async (c) => {
   const unifiedId = c.req.param("id");

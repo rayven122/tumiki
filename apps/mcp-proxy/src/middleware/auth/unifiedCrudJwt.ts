@@ -8,26 +8,24 @@
 import type { Context, Next } from "hono";
 import { AuthType, PiiMaskingMode, db } from "@tumiki/db/server";
 import type { HonoEnv } from "../../types/index.js";
-import { logError } from "../../libs/logger/index.js";
 import {
   createUnauthorizedError,
   createPermissionDeniedError,
   createNotFoundError,
 } from "../../libs/error/index.js";
-import { verifyKeycloakJWT } from "../../libs/auth/jwt-verifier.js";
 import {
-  checkOrganizationMembership,
-  getUserIdFromKeycloakId,
-} from "../../services/mcpServerService.js";
+  authenticateWithJwt,
+  validateOrganizationMembership,
+} from "../../libs/auth/index.js";
+import { isAdmin } from "../../services/roleService.js";
 
 /**
  * CRUD API用JWT認証ミドルウェア
  *
  * 以下の検証を順次実行:
- * 1. Authorization ヘッダーから Bearer トークンを抽出
- * 2. JWT トークンの検証（Keycloak JWKS 使用）
- * 3. Keycloak ID から Tumiki User ID を解決
- * 4. JWTクレームから組織IDを取得
+ * 1. JWT認証（トークン抽出、検証、ユーザーID解決）
+ * 2. JWTクレームから組織IDを取得
+ * 3. 組織メンバーシップをチェック
  *
  * 認可ロジック:
  * - JWTのsub → userId
@@ -37,62 +35,44 @@ export const unifiedCrudJwtAuthMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
-  // Step 1: Authorization ヘッダーから Bearer トークンを抽出
-  const authorization = c.req.header("Authorization");
+  // Step 1: JWT認証（トークン抽出、検証、ユーザーID解決）
+  const authResult = await authenticateWithJwt(c);
 
-  if (!authorization?.startsWith("Bearer ")) {
-    return c.json(
-      createUnauthorizedError("Bearer token required in Authorization header"),
-      401,
-    );
+  if (!authResult.success) {
+    // エラータイプに応じたレスポンスを返す
+    switch (authResult.error) {
+      case "no_bearer_token":
+        return c.json(
+          createUnauthorizedError(
+            "Bearer token required in Authorization header",
+          ),
+          401,
+        );
+      case "token_expired":
+        return c.json(createUnauthorizedError("Token has expired"), 401);
+      case "invalid_signature":
+        return c.json(createUnauthorizedError("Invalid token signature"), 401);
+      case "invalid_token":
+        return c.json(createUnauthorizedError("Invalid access token"), 401);
+      case "user_not_found":
+        return c.json(
+          createUnauthorizedError("User not found for Keycloak ID"),
+          401,
+        );
+      case "resolution_failed":
+        return c.json(
+          createUnauthorizedError("Failed to verify user identity"),
+          401,
+        );
+    }
   }
 
-  const accessToken = authorization.substring(7); // "Bearer " を除去
-
-  // Step 2: JWT トークンの検証
-  let jwtPayload;
-  try {
-    jwtPayload = await verifyKeycloakJWT(accessToken);
-  } catch (error) {
-    const errorMessage = (error as Error).message;
-
-    if (errorMessage.includes("expired")) {
-      return c.json(createUnauthorizedError("Token has expired"), 401);
-    }
-
-    if (errorMessage.includes("signature")) {
-      return c.json(createUnauthorizedError("Invalid token signature"), 401);
-    }
-
-    logError("JWT verification failed", error as Error);
-    return c.json(createUnauthorizedError("Invalid access token"), 401);
-  }
+  const { payload: jwtPayload, userId } = authResult;
 
   // JWT ペイロードをコンテキストに設定
   c.set("jwtPayload", jwtPayload);
 
-  // Step 3: Keycloak ID から Tumiki User ID を解決
-  let userId: string;
-  try {
-    const resolvedUserId = await getUserIdFromKeycloakId(jwtPayload.sub);
-    if (!resolvedUserId) {
-      return c.json(
-        createUnauthorizedError("User not found for Keycloak ID"),
-        401,
-      );
-    }
-    userId = resolvedUserId;
-  } catch (error) {
-    logError("Failed to resolve user ID from Keycloak ID", error as Error, {
-      keycloakId: jwtPayload.sub,
-    });
-    return c.json(
-      createUnauthorizedError("Failed to verify user identity"),
-      401,
-    );
-  }
-
-  // Step 4: JWTクレームから組織IDを取得
+  // Step 2: JWTクレームから組織IDを取得
   const organizationId = jwtPayload.tumiki?.org_id;
 
   if (!organizationId) {
@@ -102,16 +82,19 @@ export const unifiedCrudJwtAuthMiddleware = async (
     );
   }
 
-  // Step 5: 組織メンバーシップをチェック
-  let isMember: boolean;
-  try {
-    isMember = await checkOrganizationMembership(organizationId, userId);
-  } catch (error) {
-    logError("Organization membership check failed", error as Error);
-    return c.json(createPermissionDeniedError("Membership check failed"), 403);
-  }
+  // Step 3: 組織メンバーシップをチェック
+  const membershipResult = await validateOrganizationMembership(
+    organizationId,
+    userId,
+  );
 
-  if (!isMember) {
+  if (!membershipResult.isMember) {
+    if (membershipResult.error === "check_failed") {
+      return c.json(
+        createPermissionDeniedError("Membership check failed"),
+        403,
+      );
+    }
     return c.json(
       createPermissionDeniedError("User is not a member of this organization"),
       403,
@@ -138,7 +121,10 @@ export const unifiedCrudJwtAuthMiddleware = async (
  * 統合MCPサーバー所有権検証ミドルウェア
  *
  * CRUD API (GET/PUT/DELETE) でIDパラメータがある場合に使用。
- * 認証されたユーザーが統合MCPサーバーの作成者であることを確認。
+ *
+ * アクセス制御:
+ * - GET (詳細取得): 組織メンバー全員がアクセス可能
+ * - PUT/DELETE: 作成者 または Owner/Admin のみアクセス可能
  */
 export const unifiedOwnershipMiddleware = async (
   c: Context<HonoEnv>,
@@ -181,19 +167,34 @@ export const unifiedOwnershipMiddleware = async (
     );
   }
 
-  // 作成者チェック
-  if (unifiedServer.createdBy !== authContext.userId) {
+  // 組織IDの一致確認（全操作で必須）
+  if (unifiedServer.organizationId !== authContext.organizationId) {
+    return c.json(createPermissionDeniedError("Organization mismatch"), 403);
+  }
+
+  // HTTPメソッドに応じた権限チェック
+  const method = c.req.method;
+
+  if (method === "GET") {
+    // GET (詳細取得): 組織メンバーであれば誰でもアクセス可能
+    // (組織メンバーシップは unifiedCrudJwtAuthMiddleware で既にチェック済み)
+    await next();
+    return;
+  }
+
+  // PUT/DELETE: 作成者 または Owner/Admin のみアクセス可能
+  const isCreator = unifiedServer.createdBy === authContext.userId;
+  const jwtPayload = c.get("jwtPayload");
+  const roles = jwtPayload?.realm_access?.roles ?? [];
+  const hasAdminRole = isAdmin(roles);
+
+  if (!isCreator && !hasAdminRole) {
     return c.json(
       createPermissionDeniedError(
-        "Only the creator can access this unified MCP server",
+        "Only the creator or organization admins can modify this unified MCP server",
       ),
       403,
     );
-  }
-
-  // 組織IDの一致確認
-  if (unifiedServer.organizationId !== authContext.organizationId) {
-    return c.json(createPermissionDeniedError("Organization mismatch"), 403);
   }
 
   await next();
