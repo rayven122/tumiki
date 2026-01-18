@@ -1,0 +1,18 @@
+# Terraform
+.terraform/
+# Note: .terraform.lock.hcl should be committed to version control
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive variable files
+*.auto.tfvars
+*.auto.tfvars.json
+secret.tfvars
+secrets.tfvars

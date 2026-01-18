@@ -26,11 +26,19 @@ pnpm test:coverage     # カバレッジ付きテスト
 pnpm test:ui           # Vitest UI
 
 # Docker操作
-pnpm docker:up         # コンテナ起動（PostgreSQL, Redis）
+pnpm docker:up         # コンテナ起動（PostgreSQL, Redis, Keycloak）
 pnpm docker:stop       # コンテナ停止
 pnpm docker:down       # コンテナ削除
 pnpm docker:ps         # コンテナ状態確認
 pnpm docker:logs       # コンテナログ表示
+
+# Keycloak操作（Terraform管理）
+pnpm setup:dev         # 開発環境一括セットアップ（Docker起動 + Keycloak設定）
+pnpm keycloak:init     # Terraform初期化
+pnpm keycloak:plan     # 設定変更のプレビュー
+pnpm keycloak:apply    # Keycloak設定を適用
+pnpm keycloak:wait     # Keycloak起動完了を待機
+pnpm keycloak:destroy  # Keycloak設定を削除
 
 # データベース操作（packages/db内で実行）
 cd packages/db
@@ -290,7 +298,8 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **@tumiki/ パッケージのimportエラー**: `@tumiki/` で始まるパッケージのimportに失敗する場合は、該当パッケージのビルドが必要。
   例: `@tumiki/db` のimportエラーが発生した場合 → `cd packages/db && pnpm build` を実行
 - **Turboキャッシュ**: `.cache/` ディレクトリにビルドキャッシュが保存される（ESLint、Prettier、TypeScript）
-- **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）が`docker/compose.yaml`で管理
+- **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）、Keycloak（ポート8443/8888）が`docker/compose.yaml`で管理
+- **Keycloak設定**: Terraform（`terraform/keycloak/`）で管理。初回は`pnpm setup:dev`で一括セットアップ
 - **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
 ## 実装後の必須アクション

@@ -60,18 +60,16 @@ services:
       KC_HOSTNAME: http://localhost:8888
       KC_HOSTNAME_STRICT: "false"
       KC_PROXY_HEADERS: xforwarded
-      # セットアップスクリプト用（コンテナ内からのアクセス）
-      KEYCLOAK_URL: http://localhost:8080
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tumiki}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tumiki-manager}
-    entrypoint: ["/opt/keycloak/entrypoint.sh"]
+    # 標準のstart-devコマンドを使用（Terraformで設定を適用するため）
+    command: ["start-dev", "--http-enabled=true", "--hostname-strict=false", "--health-enabled=true"]
     ports:
       - "8443:8080"
-    volumes:
-      - ./keycloak/tumiki-realm.json:/opt/keycloak/data/import/tumiki-realm.json:ro
-      - ./keycloak/init-scripts:/opt/keycloak/init-scripts:ro
-      - ./keycloak/setup-keycloak.sh:/opt/keycloak/setup-keycloak.sh:ro
-      - ./keycloak/entrypoint.sh:/opt/keycloak/entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     depends_on:
       db:
         condition: service_healthy
