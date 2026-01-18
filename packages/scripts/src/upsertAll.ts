@@ -3,6 +3,7 @@ import { db } from "@tumiki/db/server";
 import { getValidMcpServers, validateEnv } from "./env";
 import { upsertMcpServers } from "./upsertMcpServers";
 import { upsertMcpTools } from "./upsertMcpTools";
+import { upsertUnifiedMcpServers } from "./upsertUnifiedMcpServers";
 
 /**
  * MCPサーバーとツールを一括で登録する
@@ -28,6 +29,10 @@ const upsertAll = async () => {
 
     // MCPツールを登録（有効なサーバーのみ）
     await upsertMcpTools(validServerNames);
+    console.log("");
+
+    // UnifiedMcpServerを登録（有効なサーバーのみ）
+    await upsertUnifiedMcpServers(validServerNames);
     console.log("");
 
     console.log("✨ 処理が完了しました");
