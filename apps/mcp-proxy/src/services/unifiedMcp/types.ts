@@ -82,15 +82,27 @@ export type CachedUnifiedTools = {
 };
 
 /**
+ * テンプレートインスタンス作成リクエスト
+ */
+export type CreateTemplateInstanceRequest = {
+  /** テンプレートID */
+  templateId: string;
+  /** 正規化名（ユニーク識別子） */
+  normalizedName: string;
+  /** 有効化状態（デフォルト: true） */
+  isEnabled?: boolean;
+};
+
+/**
  * 統合MCPサーバー作成リクエスト
  */
 export type CreateUnifiedMcpServerRequest = {
   /** 統合サーバー名（必須） */
   name: string;
-  /** 統合サーバーの説明（オプショナル） */
-  description?: string;
-  /** 子MCPサーバーIDの配列（最低1件必須） */
-  mcpServerIds: string[];
+  /** 統合サーバーの説明（必須） */
+  description: string;
+  /** テンプレートインスタンス配列（最低1件必須） */
+  templates: CreateTemplateInstanceRequest[];
 };
 
 /**
@@ -101,8 +113,8 @@ export type UpdateUnifiedMcpServerRequest = {
   name?: string;
   /** 統合サーバーの説明（オプショナル） */
   description?: string;
-  /** 子MCPサーバーIDの配列（指定した場合は完全置換、最低1件必須） */
-  mcpServerIds?: string[];
+  /** テンプレートインスタンス配列（指定した場合は完全置換、最低1件必須） */
+  templates?: CreateTemplateInstanceRequest[];
 };
 
 /**
@@ -118,6 +130,24 @@ export type ChildServerResponse = {
 };
 
 /**
+ * テンプレートインスタンスのレスポンス形式（UNIFIED用）
+ */
+export type TemplateInstanceResponse = {
+  /** インスタンスID */
+  id: string;
+  /** 正規化名 */
+  normalizedName: string;
+  /** テンプレート名 */
+  templateName: string;
+  /** テンプレートID */
+  templateId: string;
+  /** 表示順序 */
+  displayOrder: number;
+  /** 有効化状態 */
+  isEnabled: boolean;
+};
+
+/**
  * 統合MCPサーバーレスポンス
  */
 export type UnifiedMcpServerResponse = {
@@ -125,14 +155,12 @@ export type UnifiedMcpServerResponse = {
   id: string;
   /** 統合サーバー名 */
   name: string;
-  /** 統合サーバーの説明 */
-  description: string | null;
+  /** 統合サーバーの説明（必須） */
+  description: string;
   /** 組織ID */
   organizationId: string;
-  /** 作成者ID */
-  createdBy: string;
-  /** 子MCPサーバー一覧 */
-  mcpServers: ChildServerResponse[];
+  /** テンプレートインスタンス一覧 */
+  templateInstances: TemplateInstanceResponse[];
   /** 作成日時（ISO8601形式） */
   createdAt: string;
   /** 更新日時（ISO8601形式） */

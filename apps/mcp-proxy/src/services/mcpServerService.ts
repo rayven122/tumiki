@@ -25,8 +25,6 @@ export type McpServerLookupResult = {
   authType: AuthType;
   /** サーバーの種類（CUSTOM/OFFICIAL/UNIFIED） */
   serverType: ServerType;
-  /** 作成者ID（UNIFIEDで必須） */
-  createdBy: string | null;
   /** PIIマスキングモード（GCP DLPによるマスキング） */
   piiMaskingMode: PiiMaskingMode;
   /** 使用するInfoType一覧（空配列 = 全InfoType使用） */
@@ -45,7 +43,6 @@ type CachedMcpServerResult = {
   deletedAt: string | null;
   authType: AuthType;
   serverType: ServerType;
-  createdBy: string | null;
   piiMaskingMode: PiiMaskingMode;
   piiInfoTypes: string[];
   toonConversionEnabled: boolean;
@@ -96,7 +93,6 @@ export const getMcpServerOrganization = async (
             deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
             authType: parsed.authType,
             serverType: parsed.serverType,
-            createdBy: parsed.createdBy,
             piiMaskingMode: parsed.piiMaskingMode,
             piiInfoTypes: parsed.piiInfoTypes,
             toonConversionEnabled: parsed.toonConversionEnabled,
@@ -129,7 +125,6 @@ export const getMcpServerOrganization = async (
           deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
           authType: result.authType,
           serverType: result.serverType,
-          createdBy: result.createdBy,
           piiMaskingMode: result.piiMaskingMode,
           piiInfoTypes: result.piiInfoTypes,
           toonConversionEnabled: result.toonConversionEnabled,
@@ -164,7 +159,6 @@ const getMcpServerFromDB = async (
         deletedAt: true,
         authType: true,
         serverType: true,
-        createdBy: true,
         piiMaskingMode: true,
         piiInfoTypes: true,
         toonConversionEnabled: true,

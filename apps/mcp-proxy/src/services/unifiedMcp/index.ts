@@ -10,9 +10,11 @@ export type {
   AggregatedTool,
   ChildServerInfo,
   CachedUnifiedTools,
+  CreateTemplateInstanceRequest,
   CreateUnifiedMcpServerRequest,
   UpdateUnifiedMcpServerRequest,
   ChildServerResponse,
+  TemplateInstanceResponse,
   UnifiedMcpServerResponse,
   UnifiedMcpServerListResponse,
   UnifiedAuthContextExtension,
@@ -25,16 +27,16 @@ export {
 } from "./toolNameParser.js";
 
 // ツール集約サービス
-export { aggregateTools, getChildServers } from "./toolsAggregator.js";
+export { aggregateTools } from "./toolsAggregator.js";
 
 // ツール実行サービス
 export { executeUnifiedTool, getChildServerSettings } from "./toolExecutor.js";
 
 // バリデーション
 export {
-  validateMcpServersInOrganization,
+  validateTemplatesInOrganization,
   validateOAuthTokensExist,
-  type McpServerValidationResult,
+  type TemplateValidationResult,
   type OAuthTokenValidationResult,
 } from "./validators.js";
 
@@ -42,5 +44,5 @@ export {
 export {
   mapToUnifiedMcpServerResponse,
   mapToUnifiedMcpServerListResponse,
-  type UnifiedServerWithChildren,
+  type UnifiedServerWithTemplateInstances,
 } from "./responseMapper.js";

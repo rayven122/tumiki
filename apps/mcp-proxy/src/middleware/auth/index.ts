@@ -24,7 +24,6 @@ type UnifiedMcpServerInfo = {
   id: string;
   name: string;
   organizationId: string;
-  createdBy: string;
   deletedAt: Date | null;
 };
 
@@ -64,7 +63,6 @@ export const detectServerType = async (
           id: mcpServer.id,
           name: mcpServer.name,
           organizationId: mcpServer.organizationId,
-          createdBy: mcpServer.createdBy ?? "", // UNIFIEDでは必須
           deletedAt: mcpServer.deletedAt,
         },
       };

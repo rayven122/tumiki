@@ -132,9 +132,11 @@ describe("upsertUnifiedMcpServers", () => {
         id: "existing-unified-1",
         name: "Calculator MCP",
         serverType: "UNIFIED",
-        childServers: [
+        templateInstances: [
           {
-            childMcpServer: { id: "existing-mcp-1" },
+            id: "instance-1",
+            mcpServerTemplateId: "template-add",
+            normalizedName: "add-mcp",
           },
         ],
       };
@@ -153,9 +155,8 @@ describe("upsertUnifiedMcpServers", () => {
                 .fn()
                 .mockResolvedValue({ id: existingUnifiedServer.id }),
             },
-            mcpServerChild: {
+            mcpServerTemplateInstance: {
               deleteMany: vi.fn(),
-              createMany: vi.fn(),
             },
           };
           return callback(txMock);

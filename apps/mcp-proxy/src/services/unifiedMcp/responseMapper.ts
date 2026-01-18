@@ -4,28 +4,28 @@
  * Prismaモデルから API レスポンス形式への変換を行う
  */
 
-import type { ServerStatus } from "@tumiki/db";
 import type { UnifiedMcpServerResponse } from "./types.js";
 
 /**
  * Prisma から取得した統合MCPサーバーデータの型
  *
- * serverType = UNIFIED の McpServer と McpServerChild を組み合わせた形式
+ * serverType = UNIFIED の McpServer と templateInstances を組み合わせた形式
  */
-export type UnifiedServerWithChildren = {
+export type UnifiedServerWithTemplateInstances = {
   id: string;
   name: string;
-  description: string | null;
+  description: string;
   organizationId: string;
-  createdBy: string; // UNIFIED では必須
   createdAt: Date;
   updatedAt: Date;
-  childServers: Array<{
-    childMcpServer: {
+  templateInstances: Array<{
+    id: string;
+    normalizedName: string;
+    displayOrder: number;
+    isEnabled: boolean;
+    mcpServerTemplate: {
       id: string;
       name: string;
-      serverStatus: ServerStatus;
-      deletedAt?: Date | null;
     };
   }>;
 };
@@ -33,37 +33,24 @@ export type UnifiedServerWithChildren = {
 /**
  * 統合MCPサーバーをAPIレスポンス形式にマッピング
  *
- * 論理削除された子サーバーをフィルタリングするかどうかを制御可能
- *
  * @param server - Prismaから取得した統合サーバーデータ
- * @param options - マッピングオプション
  * @returns APIレスポンス形式の統合サーバーデータ
  */
 export const mapToUnifiedMcpServerResponse = (
-  server: UnifiedServerWithChildren,
-  options: {
-    /** 論理削除された子サーバーを除外するかどうか（デフォルト: true） */
-    excludeDeletedChildren?: boolean;
-  } = {},
+  server: UnifiedServerWithTemplateInstances,
 ): UnifiedMcpServerResponse => {
-  const { excludeDeletedChildren = true } = options;
-
-  const childServers = excludeDeletedChildren
-    ? server.childServers.filter(
-        (child) => child.childMcpServer.deletedAt === null,
-      )
-    : server.childServers;
-
   return {
     id: server.id,
     name: server.name,
     description: server.description,
     organizationId: server.organizationId,
-    createdBy: server.createdBy,
-    mcpServers: childServers.map((child) => ({
-      id: child.childMcpServer.id,
-      name: child.childMcpServer.name,
-      serverStatus: child.childMcpServer.serverStatus,
+    templateInstances: server.templateInstances.map((instance) => ({
+      id: instance.id,
+      normalizedName: instance.normalizedName,
+      templateName: instance.mcpServerTemplate.name,
+      templateId: instance.mcpServerTemplate.id,
+      displayOrder: instance.displayOrder,
+      isEnabled: instance.isEnabled,
     })),
     createdAt: server.createdAt.toISOString(),
     updatedAt: server.updatedAt.toISOString(),
@@ -77,6 +64,6 @@ export const mapToUnifiedMcpServerResponse = (
  * @returns APIレスポンス形式の統合サーバー一覧
  */
 export const mapToUnifiedMcpServerListResponse = (
-  servers: UnifiedServerWithChildren[],
+  servers: UnifiedServerWithTemplateInstances[],
 ): UnifiedMcpServerResponse[] =>
   servers.map((server) => mapToUnifiedMcpServerResponse(server));

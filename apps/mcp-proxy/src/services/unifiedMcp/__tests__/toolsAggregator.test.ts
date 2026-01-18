@@ -5,7 +5,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { ServerStatus } from "@tumiki/db/server";
 
 // DBをモック
 vi.mock("@tumiki/db/server", async (importOriginal) => {
@@ -37,7 +36,7 @@ import {
   getUnifiedToolsFromCache,
   setUnifiedToolsCache,
 } from "../../../libs/cache/unifiedToolsCache.js";
-import { aggregateTools, getChildServers } from "../toolsAggregator.js";
+import { aggregateTools } from "../toolsAggregator.js";
 
 describe("aggregateTools", () => {
   const unifiedMcpServerId = "unified-server-123";
@@ -54,41 +53,38 @@ describe("aggregateTools", () => {
     inputSchema: { type: "object", properties: { name: { type: "string" } } },
   };
 
-  const mockInstance1 = {
+  const mockTemplate1 = {
+    id: "template-1",
+    name: "Template 1",
+    mcpTools: [mockTool1],
+  };
+
+  const mockTemplate2 = {
+    id: "template-2",
+    name: "Template 2",
+    mcpTools: [mockTool2],
+  };
+
+  const mockTemplateInstance1 = {
     id: "instance-1",
     normalizedName: "instance_a",
-    allowedTools: [mockTool1],
+    isEnabled: true,
+    displayOrder: 0,
+    mcpServerTemplate: mockTemplate1,
   };
 
-  const mockInstance2 = {
+  const mockTemplateInstance2 = {
     id: "instance-2",
     normalizedName: "instance_b",
-    allowedTools: [mockTool2],
-  };
-
-  const mockChildServer1 = {
-    id: "server-1",
-    name: "Server 1",
-    serverStatus: ServerStatus.RUNNING,
-    deletedAt: null,
-    templateInstances: [mockInstance1],
-  };
-
-  const mockChildServer2 = {
-    id: "server-2",
-    name: "Server 2",
-    serverStatus: ServerStatus.RUNNING,
-    deletedAt: null,
-    templateInstances: [mockInstance2],
+    isEnabled: true,
+    displayOrder: 1,
+    mcpServerTemplate: mockTemplate2,
   };
 
   const mockUnifiedServer = {
     id: unifiedMcpServerId,
     name: "Unified Server",
-    childServers: [
-      { displayOrder: 0, childMcpServer: mockChildServer1 },
-      { displayOrder: 1, childMcpServer: mockChildServer2 },
-    ],
+    templateInstances: [mockTemplateInstance1, mockTemplateInstance2],
   };
 
   beforeEach(() => {
@@ -102,10 +98,10 @@ describe("aggregateTools", () => {
   test("キャッシュがある場合はキャッシュを返す", async () => {
     const cachedTools = [
       {
-        name: "server-1__instance_a__tool1",
+        name: `${unifiedMcpServerId}__instance_a__tool1`,
         description: "Tool 1 description",
         inputSchema: { type: "object" },
-        mcpServerId: "server-1",
+        mcpServerId: unifiedMcpServerId,
         instanceName: "instance_a",
       },
     ];
@@ -130,17 +126,17 @@ describe("aggregateTools", () => {
 
     expect(result).toHaveLength(2);
     expect(result[0]).toStrictEqual({
-      name: "server-1__instance_a__tool1",
+      name: `${unifiedMcpServerId}__instance_a__tool1`,
       description: "Tool 1 description",
       inputSchema: { type: "object" },
-      mcpServerId: "server-1",
+      mcpServerId: unifiedMcpServerId,
       instanceName: "instance_a",
     });
     expect(result[1]).toStrictEqual({
-      name: "server-2__instance_b__tool2",
+      name: `${unifiedMcpServerId}__instance_b__tool2`,
       description: "Tool 2 description",
       inputSchema: { type: "object", properties: { name: { type: "string" } } },
-      mcpServerId: "server-2",
+      mcpServerId: unifiedMcpServerId,
       instanceName: "instance_b",
     });
 
@@ -159,126 +155,15 @@ describe("aggregateTools", () => {
     );
   });
 
-  test("子サーバーがSTOPPEDの場合はエラーをスローする（Fail-fast）", async () => {
-    const stoppedServer = {
-      ...mockChildServer1,
-      serverStatus: ServerStatus.STOPPED,
-    };
-
-    const unifiedServerWithStopped = {
+  test("有効なテンプレートインスタンスがない場合は空配列を返す", async () => {
+    const unifiedServerWithNoInstances = {
       ...mockUnifiedServer,
-      childServers: [{ displayOrder: 0, childMcpServer: stoppedServer }],
+      templateInstances: [],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
     vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithStopped as never,
-    );
-
-    await expect(aggregateTools(unifiedMcpServerId)).rejects.toThrow(
-      "Cannot aggregate tools: some child servers are not running: Server 1 (STOPPED)",
-    );
-  });
-
-  test("子サーバーがERRORの場合はエラーをスローする（Fail-fast）", async () => {
-    const errorServer = {
-      ...mockChildServer1,
-      serverStatus: ServerStatus.ERROR,
-    };
-
-    const unifiedServerWithError = {
-      ...mockUnifiedServer,
-      childServers: [{ displayOrder: 0, childMcpServer: errorServer }],
-    };
-
-    vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithError as never,
-    );
-
-    await expect(aggregateTools(unifiedMcpServerId)).rejects.toThrow(
-      "Cannot aggregate tools: some child servers are not running: Server 1 (ERROR)",
-    );
-  });
-
-  test("複数の子サーバーがSTOPPED/ERRORの場合は全て報告する", async () => {
-    const stoppedServer = {
-      ...mockChildServer1,
-      serverStatus: ServerStatus.STOPPED,
-    };
-
-    const errorServer = {
-      ...mockChildServer2,
-      serverStatus: ServerStatus.ERROR,
-    };
-
-    const unifiedServerWithProblems = {
-      ...mockUnifiedServer,
-      childServers: [
-        { displayOrder: 0, childMcpServer: stoppedServer },
-        { displayOrder: 1, childMcpServer: errorServer },
-      ],
-    };
-
-    vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithProblems as never,
-    );
-
-    await expect(aggregateTools(unifiedMcpServerId)).rejects.toThrow(
-      "Cannot aggregate tools: some child servers are not running: Server 1 (STOPPED), Server 2 (ERROR)",
-    );
-  });
-
-  test("論理削除された子サーバーは除外される", async () => {
-    const deletedServer = {
-      ...mockChildServer2,
-      deletedAt: new Date("2024-01-01"),
-    };
-
-    const unifiedServerWithDeleted = {
-      ...mockUnifiedServer,
-      childServers: [
-        { displayOrder: 0, childMcpServer: mockChildServer1 },
-        { displayOrder: 1, childMcpServer: deletedServer },
-      ],
-    };
-
-    vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithDeleted as never,
-    );
-    vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
-
-    const result = await aggregateTools(unifiedMcpServerId);
-
-    // server-2 は削除されているので、server-1 のツールのみ返される
-    expect(result).toHaveLength(1);
-    expect(result[0]?.mcpServerId).toBe("server-1");
-  });
-
-  test("全ての子サーバーが論理削除された場合は空配列を返す", async () => {
-    const deletedServer1 = {
-      ...mockChildServer1,
-      deletedAt: new Date("2024-01-01"),
-    };
-
-    const deletedServer2 = {
-      ...mockChildServer2,
-      deletedAt: new Date("2024-01-02"),
-    };
-
-    const unifiedServerWithAllDeleted = {
-      ...mockUnifiedServer,
-      childServers: [
-        { displayOrder: 0, childMcpServer: deletedServer1 },
-        { displayOrder: 1, childMcpServer: deletedServer2 },
-      ],
-    };
-
-    vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithAllDeleted as never,
+      unifiedServerWithNoInstances as never,
     );
     vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
 
@@ -288,114 +173,77 @@ describe("aggregateTools", () => {
     expect(setUnifiedToolsCache).toHaveBeenCalledWith(unifiedMcpServerId, []);
   });
 
-  test("複数インスタンスを持つサーバーの全ツールを集約する", async () => {
-    const serverWithMultipleInstances = {
-      ...mockChildServer1,
-      templateInstances: [mockInstance1, mockInstance2],
+  test("複数ツールを持つテンプレートの全ツールを集約する", async () => {
+    const mockTool3 = {
+      name: "tool3",
+      description: "Tool 3 description",
+      inputSchema: { type: "object" },
     };
 
-    const unifiedServerWithMultipleInstances = {
-      ...mockUnifiedServer,
-      childServers: [
-        { displayOrder: 0, childMcpServer: serverWithMultipleInstances },
-      ],
+    const templateWithMultipleTools = {
+      id: "template-multi",
+      name: "Multi Tool Template",
+      mcpTools: [mockTool1, mockTool3],
+    };
+
+    const instanceWithMultipleTools = {
+      id: "instance-multi",
+      normalizedName: "multi_tools",
+      isEnabled: true,
+      displayOrder: 0,
+      mcpServerTemplate: templateWithMultipleTools,
+    };
+
+    const unifiedServerWithMultipleTools = {
+      id: unifiedMcpServerId,
+      name: "Unified Server",
+      templateInstances: [instanceWithMultipleTools],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
     vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithMultipleInstances as never,
+      unifiedServerWithMultipleTools as never,
     );
     vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
 
     const result = await aggregateTools(unifiedMcpServerId);
 
     expect(result).toHaveLength(2);
-    expect(result[0]?.name).toBe("server-1__instance_a__tool1");
-    expect(result[1]?.name).toBe("server-1__instance_b__tool2");
-  });
-});
-
-describe("getChildServers", () => {
-  const unifiedMcpServerId = "unified-server-456";
-
-  const mockChildServer1 = {
-    id: "server-1",
-    name: "Server 1",
-    serverStatus: ServerStatus.RUNNING,
-    deletedAt: null,
-  };
-
-  const mockChildServer2 = {
-    id: "server-2",
-    name: "Server 2",
-    serverStatus: ServerStatus.STOPPED,
-    deletedAt: null,
-  };
-
-  const mockUnifiedServer = {
-    id: unifiedMcpServerId,
-    name: "Unified Server",
-    childServers: [
-      { displayOrder: 0, childMcpServer: mockChildServer1 },
-      { displayOrder: 1, childMcpServer: mockChildServer2 },
-    ],
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
+    expect(result[0]?.name).toBe(`${unifiedMcpServerId}__multi_tools__tool1`);
+    expect(result[1]?.name).toBe(`${unifiedMcpServerId}__multi_tools__tool3`);
   });
 
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
-
-  test("子サーバー一覧を取得できる", async () => {
+  test("ツール名は3階層フォーマットで生成される", async () => {
+    vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
     vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       mockUnifiedServer as never,
     );
+    vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
 
-    const result = await getChildServers(unifiedMcpServerId);
+    const result = await aggregateTools(unifiedMcpServerId);
 
-    expect(result).toHaveLength(2);
-    expect(result).toStrictEqual([
-      { id: "server-1", name: "Server 1", serverStatus: ServerStatus.RUNNING },
-      { id: "server-2", name: "Server 2", serverStatus: ServerStatus.STOPPED },
-    ]);
+    // 全てのツール名が 統合サーバーID__インスタンス名__ツール名 の形式であることを確認
+    for (const tool of result) {
+      const parts = tool.name.split("__");
+      expect(parts).toHaveLength(3);
+      expect(parts[0]).toBe(unifiedMcpServerId);
+      expect(parts[1]).toMatch(/^instance_[ab]$/);
+      expect(parts[2]).toMatch(/^tool[12]$/);
+    }
   });
 
-  test("統合MCPサーバーが見つからない場合はエラーをスローする", async () => {
-    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(null);
-
-    await expect(getChildServers(unifiedMcpServerId)).rejects.toThrow(
-      `Unified MCP server not found: ${unifiedMcpServerId}`,
-    );
-  });
-
-  test("論理削除された子サーバーは除外される", async () => {
-    const deletedServer = {
-      ...mockChildServer2,
-      deletedAt: new Date("2024-01-01"),
-    };
-
-    const unifiedServerWithDeleted = {
-      ...mockUnifiedServer,
-      childServers: [
-        { displayOrder: 0, childMcpServer: mockChildServer1 },
-        { displayOrder: 1, childMcpServer: deletedServer },
-      ],
-    };
-
+  test("mcpServerIdは統合サーバーIDが設定される", async () => {
+    vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
     vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
-      unifiedServerWithDeleted as never,
+      mockUnifiedServer as never,
     );
+    vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
 
-    const result = await getChildServers(unifiedMcpServerId);
+    const result = await aggregateTools(unifiedMcpServerId);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toStrictEqual({
-      id: "server-1",
-      name: "Server 1",
-      serverStatus: ServerStatus.RUNNING,
-    });
+    // 全てのツールで mcpServerId が統合サーバーIDであることを確認
+    for (const tool of result) {
+      expect(tool.mcpServerId).toBe(unifiedMcpServerId);
+    }
   });
 });

@@ -529,7 +529,7 @@ erDiagram
 "McpServer" {
   String id PK
   String name
-  String description "nullable"
+  String description
   String iconPath "nullable"
   ServerStatus serverStatus
   ServerType serverType
@@ -539,18 +539,9 @@ erDiagram
   PiiMaskingMode piiMaskingMode
   String piiInfoTypes
   Boolean toonConversionEnabled
-  String createdBy FK "nullable"
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
-}
-"McpServerChild" {
-  String id PK
-  String parentMcpServerId FK
-  String childMcpServerId FK
-  Int displayOrder
-  DateTime createdAt
-  DateTime updatedAt
 }
 "McpApiKey" {
   String id PK
@@ -630,8 +621,6 @@ erDiagram
   DateTime updatedAt
 }
 "McpConfig" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
-"McpServerChild" }o--|| "McpServer" : parentMcpServer
-"McpServerChild" }o--|| "McpServer" : childMcpServer
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
@@ -662,7 +651,7 @@ serverType = UNIFIED の場合は複数のMCPサーバーを統合したエン�
 **Properties**
   - `id`: 
   - `name`: 稼働中のMCPサーバー名
-  - `description`: サーバーの説明
+  - `description`: サーバーの説明（必須）
   - `iconPath`: アイコンパス
   - `serverStatus`: サーバーの状態
   - `serverType`: サーバーの種類
@@ -682,24 +671,9 @@ serverType = UNIFIED の場合は複数のMCPサーバーを統合したエン�
     > TOON変換を有効にするかどうか（AIへのトークン削減用）
     > true: レスポンスをTOON形式に変換してからAIに返す
     > false: JSONのままAIに返す（デフォルト）
-  - `createdBy`
-    > UNIFIED用: 作成者のユーザーID（このユーザーのみがアクセス可能）
-    > UNIFIED以外のserverTypeでもオプションで設定可能
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ
-
-### `McpServerChild`
-統合MCPサーバーの子サーバー（中間テーブル）
-McpServer間の明示的多対多リレーション（serverType=UNIFIED のサーバーとその子サーバー）
-
-**Properties**
-  - `id`: レコードID（cuid: 25文字）
-  - `parentMcpServerId`: 親の統合MCPサーバーID（serverType=UNIFIED のサーバー）
-  - `childMcpServerId`: 子のMCPサーバーID
-  - `displayOrder`: 表示順序（ツール一覧での並び順）
-  - `createdAt`: 
-  - `updatedAt`: 
 
 ### `McpApiKey`
 APIキー管理テーブル

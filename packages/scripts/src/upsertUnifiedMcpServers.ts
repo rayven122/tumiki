@@ -55,6 +55,12 @@ const ensureOfficialUserAndOrganization = async () => {
 
 /**
  * 統合MCPサーバー（serverType=UNIFIED）と関連データを登録する
+ *
+ * 新アーキテクチャ:
+ * - UNIFIED サーバーは templateInstances を直接持つ
+ * - 中間の McpServer は作成しない
+ * - 各テンプレートは normalizedName で識別される
+ *
  * @param validServerNames 有効なサーバー名のリスト（環境変数が設定されているサーバー）
  */
 export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
@@ -63,9 +69,9 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
   // 公式ユーザーと組織を確保
   await ensureOfficialUserAndOrganization();
 
-  // 有効な子サーバーのみを含む定義をフィルタリング
+  // 有効なテンプレートのみを含む定義をフィルタリング
   const serversToUpsert = UNIFIED_MCP_SERVERS.map((definition) => {
-    const availableChildren = validServerNames
+    const availableTemplates = validServerNames
       ? definition.childServerNames.filter((name) =>
           validServerNames.includes(name),
         )
@@ -73,9 +79,9 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
 
     return {
       ...definition,
-      availableChildServerNames: availableChildren,
+      availableTemplateNames: availableTemplates,
     };
-  }).filter((definition) => definition.availableChildServerNames.length > 0);
+  }).filter((definition) => definition.availableTemplateNames.length > 0);
 
   // スキップされた定義を特定
   const skippedDefinitions = UNIFIED_MCP_SERVERS.filter(
@@ -84,7 +90,7 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
 
   if (skippedDefinitions.length > 0) {
     console.log(
-      "📝 以下の統合MCPサーバーは子サーバーが利用不可のためスキップされました:",
+      "📝 以下の統合MCPサーバーはテンプレートが利用不可のためスキップされました:",
     );
     skippedDefinitions.forEach((def) => {
       console.log(`  - ${def.name}`);
@@ -97,10 +103,10 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
   for (const definition of serversToUpsert) {
     console.log(`📦 ${definition.name} を処理中...`);
 
-    // 子サーバーのMcpServerTemplateを取得
-    const childTemplates = await db.mcpServerTemplate.findMany({
+    // テンプレートを取得
+    const templates = await db.mcpServerTemplate.findMany({
       where: {
-        name: { in: definition.availableChildServerNames },
+        name: { in: definition.availableTemplateNames },
         organizationId: OFFICIAL_ORGANIZATION_ID,
       },
       include: {
@@ -108,21 +114,21 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
       },
     });
 
-    if (childTemplates.length === 0) {
+    if (templates.length === 0) {
       console.log(
-        `  ⚠️ ${definition.name}: 子サーバーのテンプレートが見つかりません。スキップします。`,
+        `  ⚠️ ${definition.name}: テンプレートが見つかりません。スキップします。`,
       );
       continue;
     }
 
     // 見つからなかったテンプレートを警告
-    const foundNames = childTemplates.map((t) => t.name);
-    const missingNames = definition.availableChildServerNames.filter(
+    const foundNames = templates.map((t) => t.name);
+    const missingNames = definition.availableTemplateNames.filter(
       (name) => !foundNames.includes(name),
     );
     if (missingNames.length > 0) {
       console.log(
-        `  ⚠️ 以下の子サーバーテンプレートが見つかりませんでした: ${missingNames.join(", ")}`,
+        `  ⚠️ 以下のテンプレートが見つかりませんでした: ${missingNames.join(", ")}`,
       );
     }
 
@@ -135,103 +141,52 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
         deletedAt: null,
       },
       include: {
-        childServers: {
-          include: {
-            childMcpServer: true,
-          },
-        },
+        templateInstances: true,
       },
     });
 
     // トランザクションで処理
     await db.$transaction(async (tx) => {
-      // 各子サーバーテンプレートに対してMcpServerを作成/取得
-      const childMcpServers: { id: string; displayOrder: number }[] = [];
-
-      for (let i = 0; i < childTemplates.length; i++) {
-        const template = childTemplates[i];
-        if (!template) continue;
-        const normalizedName = normalizeServerName(
-          `${definition.name}-${template.name}`,
-        );
-
-        // 既存のMcpServerを確認
-        let mcpServer = await tx.mcpServer.findFirst({
-          where: {
-            name: `${definition.name} - ${template.name}`,
-            organizationId: OFFICIAL_ORGANIZATION_ID,
-            deletedAt: null,
-          },
-        });
-
-        if (!mcpServer) {
-          // McpServerを新規作成
-          mcpServer = await tx.mcpServer.create({
-            data: {
-              name: `${definition.name} - ${template.name}`,
-              description: template.description ?? "",
-              iconPath: template.iconPath,
-              serverStatus: ServerStatus.RUNNING,
-              serverType: ServerType.OFFICIAL,
-              authType: AuthType.NONE,
-              piiMaskingMode: PiiMaskingMode.DISABLED,
-              piiInfoTypes: [],
-              toonConversionEnabled: false,
-              organizationId: OFFICIAL_ORGANIZATION_ID,
-              displayOrder: i,
-              templateInstances: {
-                create: {
-                  mcpServerTemplateId: template.id,
-                  normalizedName: normalizedName,
-                  isEnabled: true,
-                  displayOrder: 0,
-                  allowedTools: {
-                    connect: template.mcpTools.map((tool) => ({ id: tool.id })),
-                  },
-                },
-              },
-            },
-          });
-          console.log(`    ✓ McpServer 作成: ${mcpServer.name}`);
-        } else {
-          console.log(`    → McpServer 既存: ${mcpServer.name}`);
-        }
-
-        childMcpServers.push({ id: mcpServer.id, displayOrder: i });
-      }
-
       if (existingUnifiedServer) {
         // 既存の統合MCPサーバーを更新
+        // 既存の templateInstances を削除して再作成
+        await tx.mcpServerTemplateInstance.deleteMany({
+          where: { mcpServerId: existingUnifiedServer.id },
+        });
+
         await tx.mcpServer.update({
           where: { id: existingUnifiedServer.id },
           data: {
             description: definition.description,
             updatedAt: new Date(),
+            templateInstances: {
+              create: templates.map((template, index) => ({
+                mcpServerTemplateId: template.id,
+                normalizedName: normalizeServerName(template.name),
+                isEnabled: true,
+                displayOrder: index,
+                allowedTools: {
+                  connect: template.mcpTools.map((tool) => ({ id: tool.id })),
+                },
+              })),
+            },
           },
         });
 
-        // 既存の子サーバー関連を削除して再作成
-        await tx.mcpServerChild.deleteMany({
-          where: { parentMcpServerId: existingUnifiedServer.id },
-        });
-
-        await tx.mcpServerChild.createMany({
-          data: childMcpServers.map((child) => ({
-            parentMcpServerId: existingUnifiedServer.id,
-            childMcpServerId: child.id,
-            displayOrder: child.displayOrder,
-          })),
-        });
-
         console.log(`  ✓ 統合MCPサーバー 更新: ${definition.name}`);
+        templates.forEach((template) => {
+          console.log(
+            `    → テンプレートインスタンス: ${normalizeServerName(template.name)}`,
+          );
+        });
       } else {
         // 新規作成（serverType=UNIFIED として McpServer を作成）
+        // templateInstances を直接作成
         await tx.mcpServer.create({
           data: {
             name: definition.name,
             description: definition.description,
             organizationId: OFFICIAL_ORGANIZATION_ID,
-            createdBy: OFFICIAL_USER_ID,
             serverType: ServerType.UNIFIED,
             serverStatus: ServerStatus.RUNNING,
             authType: AuthType.NONE,
@@ -239,16 +194,26 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
             piiInfoTypes: [],
             toonConversionEnabled: false,
             displayOrder: 0,
-            childServers: {
-              create: childMcpServers.map((child) => ({
-                childMcpServerId: child.id,
-                displayOrder: child.displayOrder,
+            templateInstances: {
+              create: templates.map((template, index) => ({
+                mcpServerTemplateId: template.id,
+                normalizedName: normalizeServerName(template.name),
+                isEnabled: true,
+                displayOrder: index,
+                allowedTools: {
+                  connect: template.mcpTools.map((tool) => ({ id: tool.id })),
+                },
               })),
             },
           },
         });
 
         console.log(`  ✓ 統合MCPサーバー 作成: ${definition.name}`);
+        templates.forEach((template) => {
+          console.log(
+            `    → テンプレートインスタンス: ${normalizeServerName(template.name)}`,
+          );
+        });
       }
     });
 

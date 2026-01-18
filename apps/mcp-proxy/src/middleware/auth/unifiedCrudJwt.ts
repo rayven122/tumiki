@@ -124,7 +124,7 @@ export const unifiedCrudJwtAuthMiddleware = async (
  *
  * アクセス制御:
  * - GET (詳細取得): 組織メンバー全員がアクセス可能
- * - PUT/DELETE: 作成者 または Owner/Admin のみアクセス可能
+ * - PUT/DELETE: Owner/Admin のみアクセス可能
  */
 export const unifiedOwnershipMiddleware = async (
   c: Context<HonoEnv>,
@@ -150,7 +150,6 @@ export const unifiedOwnershipMiddleware = async (
     },
     select: {
       id: true,
-      createdBy: true,
       organizationId: true,
       deletedAt: true,
     },
@@ -185,16 +184,15 @@ export const unifiedOwnershipMiddleware = async (
     return;
   }
 
-  // PUT/DELETE: 作成者 または Owner/Admin のみアクセス可能
-  const isCreator = unifiedServer.createdBy === authContext.userId;
+  // PUT/DELETE: Owner/Admin のみアクセス可能
   const jwtPayload = c.get("jwtPayload");
   const roles = jwtPayload?.realm_access?.roles ?? [];
   const hasAdminRole = isAdmin(roles);
 
-  if (!isCreator && !hasAdminRole) {
+  if (!hasAdminRole) {
     return c.json(
       createPermissionDeniedError(
-        "Only the creator or organization admins can modify this unified MCP server",
+        "Only Owner or Admin can modify unified MCP servers",
       ),
       403,
     );

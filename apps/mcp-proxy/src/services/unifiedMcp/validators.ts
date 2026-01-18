@@ -5,17 +5,18 @@
  */
 
 import { db } from "@tumiki/db/server";
+import type { CreateTemplateInstanceRequest } from "./types.js";
 
 /**
- * MCPサーバー存在検証の結果
+ * テンプレート存在検証の結果
  */
-export type McpServerValidationResult =
+export type TemplateValidationResult =
   | {
       valid: true;
-      servers: Array<{
+      templates: Array<{
         id: string;
         name: string;
-        serverStatus: string;
+        authType: string;
       }>;
     }
   | {
@@ -32,87 +33,102 @@ export type OAuthTokenValidationResult =
     }
   | {
       valid: false;
-      missingInstances: string[];
+      missingTemplateNames: string[];
     };
 
 /**
- * 指定されたMCPサーバーが同一組織内に存在するか検証
+ * 指定されたテンプレートが同一組織内に存在するか検証
  *
- * @param mcpServerIds - 検証対象のMCPサーバーID配列
+ * @param templates - 検証対象のテンプレート配列
  * @param organizationId - 組織ID
- * @returns 検証結果（成功時はサーバー情報、失敗時は欠損ID一覧）
+ * @returns 検証結果（成功時はテンプレート情報、失敗時は欠損ID一覧）
  */
-export const validateMcpServersInOrganization = async (
-  mcpServerIds: string[],
+export const validateTemplatesInOrganization = async (
+  templates: CreateTemplateInstanceRequest[],
   organizationId: string,
-): Promise<McpServerValidationResult> => {
-  const mcpServers = await db.mcpServer.findMany({
+): Promise<TemplateValidationResult> => {
+  const templateIds = templates.map((t) => t.templateId);
+
+  const foundTemplates = await db.mcpServerTemplate.findMany({
     where: {
-      id: { in: mcpServerIds },
+      id: { in: templateIds },
       organizationId,
-      deletedAt: null,
     },
     select: {
       id: true,
       name: true,
-      serverStatus: true,
+      authType: true,
     },
   });
 
-  if (mcpServers.length !== mcpServerIds.length) {
-    const foundIds = new Set(mcpServers.map((s) => s.id));
-    const missingIds = mcpServerIds.filter((id) => !foundIds.has(id));
+  if (foundTemplates.length !== templateIds.length) {
+    const foundIds = new Set(foundTemplates.map((t) => t.id));
+    const missingIds = templateIds.filter((id) => !foundIds.has(id));
     return { valid: false, missingIds };
   }
 
-  return { valid: true, servers: mcpServers };
+  return { valid: true, templates: foundTemplates };
 };
 
 /**
  * ユーザーがOAuthトークンを持っているか検証
  *
- * OAuth認証が必要なテンプレートインスタンスで、
+ * OAuth認証が必要なテンプレートで、
  * ユーザーのトークンが存在することを確認
  *
- * @param mcpServerIds - 検証対象のMCPサーバーID配列
+ * @param templates - 検証対象のテンプレート配列
  * @param userId - ユーザーID
- * @returns 検証結果（失敗時はトークンが不足しているインスタンス名一覧）
+ * @param organizationId - 組織ID
+ * @returns 検証結果（失敗時はトークンが不足しているテンプレート名一覧）
  */
 export const validateOAuthTokensExist = async (
-  mcpServerIds: string[],
+  templates: CreateTemplateInstanceRequest[],
   userId: string,
+  organizationId: string,
 ): Promise<OAuthTokenValidationResult> => {
-  const templateInstances = await db.mcpServerTemplateInstance.findMany({
+  const templateIds = templates.map((t) => t.templateId);
+
+  // テンプレート情報とOAuthクライアント・トークンを取得
+  const templateData = await db.mcpServerTemplate.findMany({
     where: {
-      mcpServerId: { in: mcpServerIds },
+      id: { in: templateIds },
     },
-    include: {
-      mcpServerTemplate: {
-        select: {
-          authType: true,
-        },
-      },
-      oauthTokens: {
+    select: {
+      id: true,
+      name: true,
+      authType: true,
+      oauthClients: {
         where: {
-          userId,
+          organizationId,
         },
         select: {
           id: true,
+          oauthTokens: {
+            where: {
+              userId,
+            },
+            select: {
+              id: true,
+            },
+          },
         },
       },
     },
   });
 
-  // OAuth認証が必要なインスタンスでトークンがないものをチェック
-  const missingOAuthInstances = templateInstances.filter(
-    (instance) =>
-      instance.mcpServerTemplate.authType === "OAUTH" &&
-      instance.oauthTokens.length === 0,
+  // OAuth認証が必要なテンプレートでトークンがないものをチェック
+  const missingOAuthTemplates = templateData.filter(
+    (template) =>
+      template.authType === "OAUTH" &&
+      (template.oauthClients.length === 0 ||
+        template.oauthClients.every(
+          (client) => client.oauthTokens.length === 0,
+        )),
   );
 
-  if (missingOAuthInstances.length > 0) {
-    const missingInstances = missingOAuthInstances.map((i) => i.normalizedName);
-    return { valid: false, missingInstances };
+  if (missingOAuthTemplates.length > 0) {
+    const missingTemplateNames = missingOAuthTemplates.map((t) => t.name);
+    return { valid: false, missingTemplateNames };
   }
 
   return { valid: true };

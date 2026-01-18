@@ -1,7 +1,7 @@
 /**
  * 統合MCPエンドポイント E2Eテスト
  *
- * 統合MCPサーバー（複数の子サーバーを束ねる）のエンドツーエンドテスト。
+ * 統合MCPサーバー（複数のテンプレートインスタンスを持つ）のエンドツーエンドテスト。
  * モックMCPサーバーを起動し、テスト専用のHonoアプリを使用して動作を検証。
  *
  * テストフロー:
@@ -202,7 +202,7 @@ describe("統合MCPエンドポイント E2Eテスト", () => {
   });
 
   describe("tools/list", () => {
-    test("2つの子サーバーから集約された3つのツールを返す", async () => {
+    test("2つのテンプレートインスタンスから集約された3つのツールを返す", async () => {
       const response = await sendJsonRpcRequest(
         app,
         TEST_UNIFIED_MCP_SERVER_ID,
@@ -229,15 +229,15 @@ describe("統合MCPエンドポイント E2Eテスト", () => {
       expect(body.result).toBeDefined();
       expect(body.result?.tools).toBeDefined();
 
-      // 3つのツールが返される（echo, add from ServerA, multiply from ServerB）
+      // 3つのツールが返される（echo, add from Template A, multiply from Template B）
       expect(body.result?.tools.length).toBe(3);
 
-      // ツール名が3階層フォーマット（{mcpServerId}__{instanceNormalizedName}__{toolName}）になっていることを確認
+      // ツール名が3階層フォーマット（{unifiedMcpServerId}__{normalizedName}__{toolName}）になっていることを確認
       const toolNames = body.result?.tools.map((t) => t.name);
-      // 形式: mcp_server_a_e2e__instance_a__echo
-      expect(toolNames).toContain("mcp_server_a_e2e__instance_a__echo");
-      expect(toolNames).toContain("mcp_server_a_e2e__instance_a__add");
-      expect(toolNames).toContain("mcp_server_b_e2e__instance_b__multiply");
+      // 形式: unified_mcp_server_e2e__server_a__echo
+      expect(toolNames).toContain("unified_mcp_server_e2e__server_a__echo");
+      expect(toolNames).toContain("unified_mcp_server_e2e__server_a__add");
+      expect(toolNames).toContain("unified_mcp_server_e2e__server_b__multiply");
     });
 
     test("ツールの説明とinputSchemaが正しく含まれる", async () => {

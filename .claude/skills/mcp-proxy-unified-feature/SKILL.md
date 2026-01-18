@@ -35,7 +35,7 @@ POST /mcp/:serverId
       │
       └── YES → 統合MCPサーバー処理
                 - 組織メンバーシップチェック
-                - PII/TOONは子サーバーごとに適用
+                - PII/TOONはテンプレートインスタンスごとに適用
 ```
 
 ### サーバー種類の自動判定
@@ -63,7 +63,6 @@ export const detectServerType = async (
           id: mcpServer.id,
           name: mcpServer.name,
           organizationId: mcpServer.organizationId,
-          createdBy: mcpServer.createdBy ?? "",
           deletedAt: mcpServer.deletedAt,
         },
       };
@@ -82,28 +81,29 @@ export const detectServerType = async (
 ### McpServer (serverType=UNIFIED)
 
 統合MCPサーバーは `McpServer` テーブルに `serverType: UNIFIED` として保存される。
+テンプレートインスタンスを直接持ち、複数のテンプレートを束ねる。
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|
 | id | String | CUID |
 | name | String | 統合サーバー名 |
-| description | String? | 説明 |
+| description | String | 説明（必須） |
 | organizationId | String | 所属組織 |
 | serverType | ServerType | `UNIFIED` |
-| createdBy | String? | 作成者ID（UNIFIEDでは必須） |
 | deletedAt | DateTime? | 論理削除 |
-| childServers | McpServerChild[] | 子サーバー関連 |
+| templateInstances | McpServerTemplateInstance[] | テンプレートインスタンス |
 
-### McpServerChild
+### データ構造
 
-子MCPサーバーとの関連（自己参照リレーション）。
-
-| フィールド | 型 | 説明 |
-|-----------|-----|------|
-| id | String | CUID |
-| parentMcpServerId | String | 親（UNIFIED）サーバーID |
-| childMcpServerId | String | 子MCPサーバーID |
-| displayOrder | Int | 表示順 |
+```
+McpServer (serverType=UNIFIED)
+    ↓ templateInstances[] （直接リレーション）
+McpServerTemplateInstance
+    ↓ mcpServerTemplate
+McpServerTemplate
+    ↓ mcpTools[]
+McpTool[]
+```
 
 ### ServerType enum
 
@@ -139,7 +139,7 @@ type AuthContext = {
 
 ### 統合サーバーの認可ロジック
 
-統合サーバーへのアクセスは **組織メンバーシップのみ** でチェックされる（作成者チェックなし）。
+統合サーバーへのアクセスは **組織メンバーシップのみ** でチェックされる。
 
 ```typescript
 // apps/mcp-proxy/src/middleware/auth/index.ts
@@ -167,11 +167,20 @@ const handleUnifiedServerAuth = async (...) => {
     isUnifiedEndpoint: true,
     unifiedMcpServerId: server.id,
     mcpServerId: "",  // 統合エンドポイントではtools/call時に動的に設定
-    piiMaskingMode: PiiMaskingMode.DISABLED,  // 子サーバーごとに適用
+    piiMaskingMode: PiiMaskingMode.DISABLED,  // テンプレートインスタンスごとに適用
     toonConversionEnabled: false,
   });
 };
 ```
+
+### CRUD API の認可
+
+| 操作 | 権限 |
+|------|------|
+| GET (一覧/詳細) | 組織メンバー全員 |
+| POST (作成) | Owner/Admin のみ |
+| PUT (更新) | Owner/Admin のみ |
+| DELETE (削除) | Owner/Admin のみ |
 
 ---
 
@@ -180,17 +189,17 @@ const handleUnifiedServerAuth = async (...) => {
 ### フォーマット
 
 ```
-{mcpServerId}__{instanceName}__{toolName}
+{unifiedMcpServerId}__{normalizedName}__{toolName}
 ```
 
-例: `cm1abc2def3ghi__personal__list_repos`
+例: `unified_server_123__github_server__list_repos`
 
 ### パース処理
 
 ```typescript
 // apps/mcp-proxy/src/services/unifiedMcp/toolNameParser.ts
 export type ParsedToolName = {
-  mcpServerId: string;      // MCPサーバーID
+  mcpServerId: string;      // 統合MCPサーバーID
   instanceName: string;     // テンプレートインスタンスの正規化名
   toolName: string;         // ツール名（MCPツールの元の名前）
 };
@@ -223,7 +232,7 @@ export const formatUnifiedToolName = (
 
 ## 条件付きミドルウェア
 
-統合エンドポイントではPII/TOONミドルウェアを親レベルでスキップし、`tools/call` 時に子サーバーの設定を動的に適用する。
+統合エンドポイントではPII/TOONミドルウェアを親レベルでスキップし、`tools/call` 時にテンプレートインスタンスの設定を動的に適用する。
 
 ```typescript
 // apps/mcp-proxy/src/routes/mcp.ts
@@ -255,9 +264,9 @@ mcpRoute.post(
 
 ## ツール集約 (tools/list)
 
-### Fail-fast戦略
+### テンプレートインスタンスからの集約
 
-子サーバーに `STOPPED` または `ERROR` 状態のサーバーがあれば即座にエラーを返す。
+統合MCPサーバーの `templateInstances` から直接ツールを収集する。
 
 ```typescript
 // apps/mcp-proxy/src/services/unifiedMcp/toolsAggregator.ts
@@ -268,58 +277,59 @@ export const aggregateTools = async (
   const cached = await getUnifiedToolsFromCache(unifiedMcpServerId);
   if (cached !== null) return cached;
 
-  // 2. DBから子サーバーを取得（McpServerの自己参照リレーション）
+  // 2. DBから統合MCPサーバーとテンプレートインスタンスを取得
   const unifiedServer = await db.mcpServer.findUnique({
-    where: { id: unifiedMcpServerId },
+    where: {
+      id: unifiedMcpServerId,
+      serverType: ServerType.UNIFIED,
+    },
     include: {
-      childServers: {
+      templateInstances: {
+        orderBy: { displayOrder: "asc" },
+        where: { isEnabled: true },
         include: {
-          childMcpServer: {
-            include: {
-              templateInstances: { include: { allowedTools: true } },
+          mcpServerTemplate: {
+            select: {
+              id: true,
+              name: true,
+              mcpTools: {
+                select: {
+                  name: true,
+                  description: true,
+                  inputSchema: true,
+                },
+              },
             },
           },
         },
-        orderBy: { displayOrder: "asc" },
       },
     },
   });
 
-  // 3. 論理削除された子サーバーを除外
-  const activeChildServers = unifiedServer.childServers
-    .map((child) => child.childMcpServer)
-    .filter((server) => server.deletedAt === null);
-
-  // 4. Fail-fast: STOPPED/ERRORのサーバーがあればエラー
-  const problemServers = activeChildServers.filter(
-    (server) =>
-      server.serverStatus === ServerStatus.STOPPED ||
-      server.serverStatus === ServerStatus.ERROR,
-  );
-
-  if (problemServers.length > 0) {
-    throw new Error(
-      `Cannot aggregate tools: some child servers are not running`
-    );
+  // 3. テンプレートインスタンスがない場合は空配列
+  if (unifiedServer.templateInstances.length === 0) {
+    return [];
   }
 
-  // 5. ツールを集約（3階層フォーマット）
+  // 4. ツールを集約（3階層フォーマット）
   const aggregatedTools: AggregatedTool[] = [];
-  for (const server of activeChildServers) {
-    for (const instance of server.templateInstances) {
-      for (const tool of instance.allowedTools) {
-        aggregatedTools.push({
-          name: formatUnifiedToolName(server.id, instance.normalizedName, tool.name),
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-          mcpServerId: server.id,
-          instanceName: instance.normalizedName,
-        });
-      }
+  for (const instance of unifiedServer.templateInstances) {
+    for (const tool of instance.mcpServerTemplate.mcpTools) {
+      aggregatedTools.push({
+        name: formatUnifiedToolName(
+          unifiedMcpServerId,
+          instance.normalizedName,
+          tool.name,
+        ),
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        mcpServerId: unifiedMcpServerId,
+        instanceName: instance.normalizedName,
+      });
     }
   }
 
-  // 6. キャッシュに保存
+  // 5. キャッシュに保存
   await setUnifiedToolsCache(unifiedMcpServerId, aggregatedTools);
 
   return aggregatedTools;
@@ -332,7 +342,7 @@ export const aggregateTools = async (
 
 ### 接続時判断
 
-`tools/call` 時に子サーバーの状態をチェックし、子サーバーのPII/TOON設定を動的に適用する。
+`tools/call` 時にテンプレートインスタンスのPII/TOON設定を動的に適用する。
 
 ```typescript
 // apps/mcp-proxy/src/services/unifiedMcp/toolExecutor.ts
@@ -363,7 +373,7 @@ export const executeUnifiedTool = async (
     },
   });
 
-  // 3. 実行コンテキストに子サーバーのPII/TOON設定を適用
+  // 3. 実行コンテキストにPII/TOON設定を適用
   updateExecutionContext({
     method: "tools/call",
     piiMaskingMode: templateInstance.mcpServer.piiMaskingMode,
@@ -430,7 +440,7 @@ export const setUnifiedToolsCache = async (
 };
 
 export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<void> => {
-  // 子サーバー構成変更時にキャッシュを無効化
+  // テンプレート構成変更時にキャッシュを無効化
   await redis.del(`${CACHE_KEY_PREFIX}${unifiedId}`);
 };
 ```
@@ -442,11 +452,15 @@ export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<vo
 | ファイル | 内容 |
 |----------|------|
 | `middleware/auth/index.ts` | `detectServerType()`, 統合認証ロジック |
+| `middleware/auth/unifiedCrudJwt.ts` | CRUD API用JWT認証・所有権検証 |
 | `handlers/mcpHandler.ts` | 統合サーバー処理分岐 |
 | `routes/mcp.ts` | 条件付きミドルウェア、ルート定義 |
-| `services/unifiedMcp/toolsAggregator.ts` | ツール集約、Fail-fast |
+| `routes/unifiedCrud.ts` | CRUD API（作成・一覧・詳細・更新・削除） |
+| `services/unifiedMcp/toolsAggregator.ts` | ツール集約 |
 | `services/unifiedMcp/toolNameParser.ts` | 3階層フォーマット処理 |
 | `services/unifiedMcp/toolExecutor.ts` | ツール実行、PII/TOON動的適用 |
+| `services/unifiedMcp/validators.ts` | テンプレート・OAuthトークン検証 |
+| `services/unifiedMcp/responseMapper.ts` | レスポンスマッピング |
 | `services/unifiedMcp/types.ts` | 型定義 |
 | `libs/cache/unifiedToolsCache.ts` | Redis キャッシング |
 
@@ -458,19 +472,19 @@ export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<vo
 
 - [ ] `detectServerType()` で `serverType` に基づきサーバー種類を正しく判定しているか
 - [ ] 統合サーバーは組織メンバーのみアクセス可能か
+- [ ] CRUD APIは Owner/Admin のみ変更可能か（GET以外）
 - [ ] 論理削除されたサーバーを適切に拒否しているか
 
 ### ツール集約 (tools/list)
 
-- [ ] Fail-fast: STOPPED/ERRORサーバーでエラーを返しているか
+- [ ] 有効な（isEnabled=true）テンプレートインスタンスのみ集約しているか
 - [ ] 3階層フォーマットでツール名を生成しているか
 - [ ] Redisキャッシュを活用しているか（TTL 5分）
-- [ ] 論理削除された子サーバーを除外しているか
 
 ### ツール実行 (tools/call)
 
 - [ ] 3階層ツール名を正しくパースしているか
-- [ ] 子サーバーのPII/TOON設定を動的に適用しているか
+- [ ] テンプレートインスタンスのPII/TOON設定を動的に適用しているか
 - [ ] 組織IDの検証を行っているか
 - [ ] 実行コンテキストに `actualMcpServerId` を記録しているか
 
@@ -499,10 +513,10 @@ export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<vo
 1. ユーザーが統合サーバーの組織のメンバーではない
 2. 対処: JWTのユーザーIDと組織メンバーシップを確認
 
-### 「Cannot aggregate tools: some child servers are not running」
+### 「Unified MCP server not found」エラー
 
-1. 子サーバーがSTOPPEDまたはERROR状態
-2. 対処: 子サーバーの状態を確認し、起動または削除
+1. 指定されたIDの統合サーバー（serverType=UNIFIED）が存在しない
+2. 対処: IDとserverTypeを確認
 
 ### キャッシュが更新されない
 

@@ -178,32 +178,6 @@ describe("unifiedOwnershipMiddleware", () => {
   });
 
   describe("PUT (更新)", () => {
-    test("作成者であればアクセスできる", async () => {
-      app.use("/:id", async (c, next) => {
-        c.set(
-          "authContext",
-          createMockAuthContext(TEST_CREATOR_ID, TEST_ORG_ID),
-        );
-        c.set("jwtPayload", createMockJwtPayload(["Member"]));
-        await next();
-      });
-      app.put("/:id", unifiedOwnershipMiddleware, (c) =>
-        c.json({ success: true }),
-      );
-
-      mockFindFirst.mockResolvedValue(
-        createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
-      );
-
-      const response = await app.request(`/${TEST_UNIFIED_SERVER_ID}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-
-      expect(response.status).toBe(200);
-    });
-
     test("Admin ロールがあればアクセスできる", async () => {
       app.use("/:id", async (c, next) => {
         c.set(
@@ -256,7 +230,7 @@ describe("unifiedOwnershipMiddleware", () => {
       expect(response.status).toBe(200);
     });
 
-    test("作成者でも Admin でもない場合はアクセス拒否される", async () => {
+    test("Member ロールの場合はアクセス拒否される", async () => {
       app.use("/:id", async (c, next) => {
         c.set(
           "authContext",
@@ -282,36 +256,12 @@ describe("unifiedOwnershipMiddleware", () => {
       expect(response.status).toBe(403);
       const body = (await response.json()) as { error: { message: string } };
       expect(body.error.message).toContain(
-        "Only the creator or organization admins",
+        "Only Owner or Admin can modify unified MCP servers",
       );
     });
   });
 
   describe("DELETE (削除)", () => {
-    test("作成者であればアクセスできる", async () => {
-      app.use("/:id", async (c, next) => {
-        c.set(
-          "authContext",
-          createMockAuthContext(TEST_CREATOR_ID, TEST_ORG_ID),
-        );
-        c.set("jwtPayload", createMockJwtPayload(["Member"]));
-        await next();
-      });
-      app.delete("/:id", unifiedOwnershipMiddleware, (c) =>
-        c.json({ success: true }),
-      );
-
-      mockFindFirst.mockResolvedValue(
-        createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
-      );
-
-      const response = await app.request(`/${TEST_UNIFIED_SERVER_ID}`, {
-        method: "DELETE",
-      });
-
-      expect(response.status).toBe(200);
-    });
-
     test("Admin ロールがあればアクセスできる", async () => {
       app.use("/:id", async (c, next) => {
         c.set(
@@ -336,7 +286,31 @@ describe("unifiedOwnershipMiddleware", () => {
       expect(response.status).toBe(200);
     });
 
-    test("作成者でも Admin でもない場合はアクセス拒否される", async () => {
+    test("Owner ロールがあればアクセスできる", async () => {
+      app.use("/:id", async (c, next) => {
+        c.set(
+          "authContext",
+          createMockAuthContext(TEST_OTHER_USER_ID, TEST_ORG_ID),
+        );
+        c.set("jwtPayload", createMockJwtPayload(["Owner"]));
+        await next();
+      });
+      app.delete("/:id", unifiedOwnershipMiddleware, (c) =>
+        c.json({ success: true }),
+      );
+
+      mockFindFirst.mockResolvedValue(
+        createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
+      );
+
+      const response = await app.request(`/${TEST_UNIFIED_SERVER_ID}`, {
+        method: "DELETE",
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    test("Member ロールの場合はアクセス拒否される", async () => {
       app.use("/:id", async (c, next) => {
         c.set(
           "authContext",

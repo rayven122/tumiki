@@ -269,6 +269,7 @@ export const seedUnifiedMcpTestData = async (
   console.log(`   ✓ サーバーB ID: ${mcpServerB.id}\n`);
 
   // 8. 統合MCPサーバー（serverType=UNIFIED）の作成
+  // UNIFIEDサーバーはtemplateInstancesを直接持ち、子サーバー経由ではなくテンプレートを直接使用
   console.log("🔗 統合MCPサーバー（UNIFIED）を作成中...");
   const unifiedMcpServer = await db.mcpServer.upsert({
     where: { id: TEST_UNIFIED_MCP_SERVER_ID },
@@ -278,7 +279,6 @@ export const seedUnifiedMcpTestData = async (
       name: "E2E Test Unified MCP Server",
       description: "E2Eテスト用統合MCPサーバー",
       organizationId: organization.id,
-      createdBy: user.id,
       serverType: ServerType.UNIFIED,
       serverStatus: ServerStatus.RUNNING,
       authType: AuthType.NONE,
@@ -286,10 +286,27 @@ export const seedUnifiedMcpTestData = async (
       piiInfoTypes: [],
       toonConversionEnabled: false,
       displayOrder: 0,
-      childServers: {
+      // UNIFIEDサーバーはtemplateInstancesを直接持つ
+      templateInstances: {
         create: [
-          { childMcpServerId: mcpServerA.id, displayOrder: 0 },
-          { childMcpServerId: mcpServerB.id, displayOrder: 1 },
+          {
+            mcpServerTemplateId: templateA.id,
+            normalizedName: "server_a",
+            isEnabled: true,
+            displayOrder: 0,
+            allowedTools: {
+              connect: toolsA.map((t) => ({ id: t.id })),
+            },
+          },
+          {
+            mcpServerTemplateId: templateB.id,
+            normalizedName: "server_b",
+            isEnabled: true,
+            displayOrder: 1,
+            allowedTools: {
+              connect: toolsB.map((t) => ({ id: t.id })),
+            },
+          },
         ],
       },
     },
@@ -349,9 +366,10 @@ export const cleanupUnifiedMcpTestData = async (): Promise<void> => {
     },
   });
 
-  await db.mcpServerChild.deleteMany({
+  // UNIFIEDサーバーのテンプレートインスタンスを削除
+  await db.mcpServerTemplateInstance.deleteMany({
     where: {
-      parentMcpServerId: TEST_UNIFIED_MCP_SERVER_ID,
+      mcpServerId: TEST_UNIFIED_MCP_SERVER_ID,
     },
   });
 
