@@ -37,21 +37,21 @@ vi.mock("../../../services/mcpServerService.js", () => ({
 }));
 
 // Prisma DBをモック
-type UnifiedMcpServerSelectResult = {
+type McpServerSelectResult = {
   id: string;
   createdBy: string;
   organizationId: string;
   deletedAt: Date | null;
 };
-const mockFindUnique =
-  vi.fn<(args: unknown) => Promise<UnifiedMcpServerSelectResult | null>>();
+const mockFindFirst =
+  vi.fn<(args: unknown) => Promise<McpServerSelectResult | null>>();
 vi.mock("@tumiki/db/server", async () => {
   const actual = await vi.importActual("@tumiki/db");
   return {
     ...actual,
     db: {
-      unifiedMcpServer: {
-        findUnique: (args: unknown) => mockFindUnique(args),
+      mcpServer: {
+        findFirst: (args: unknown) => mockFindFirst(args),
       },
     },
   };
@@ -139,7 +139,7 @@ describe("unifiedOwnershipMiddleware", () => {
       );
 
       // 統合サーバーは別のユーザーが作成
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -163,7 +163,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -191,7 +191,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -217,7 +217,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -243,7 +243,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -269,7 +269,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -301,7 +301,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -325,7 +325,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -349,7 +349,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(
+      mockFindFirst.mockResolvedValue(
         createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
       );
 
@@ -372,7 +372,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue(null);
+      mockFindFirst.mockResolvedValue(null);
 
       const response = await app.request(`/${TEST_UNIFIED_SERVER_ID}`, {
         method: "GET",
@@ -391,7 +391,7 @@ describe("unifiedOwnershipMiddleware", () => {
         c.json({ success: true }),
       );
 
-      mockFindUnique.mockResolvedValue({
+      mockFindFirst.mockResolvedValue({
         ...createMockUnifiedServer(TEST_CREATOR_ID, TEST_ORG_ID),
         deletedAt: new Date(),
       });

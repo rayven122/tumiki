@@ -46,7 +46,7 @@ vi.mock("@tumiki/db/server", async (importOriginal) => {
   return {
     ...mod,
     db: {
-      unifiedMcpServer: {
+      mcpServer: {
         findUnique: vi.fn(),
       },
     },
@@ -161,7 +161,7 @@ describe("mcpHandler", () => {
       });
       const mockContext = createMockContext(authContext, "unified-server-123");
 
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue({
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue({
         id: "unified-server-123",
         name: "Test Unified Server",
       } as never);
@@ -169,7 +169,7 @@ describe("mcpHandler", () => {
       await mcpHandler(mockContext);
 
       // 統合MCPサーバーの名前を取得するためにDB呼び出しが行われることを検証
-      expect(db.unifiedMcpServer.findUnique).toHaveBeenCalledWith({
+      expect(db.mcpServer.findUnique).toHaveBeenCalledWith({
         where: { id: "unified-server-123" },
         select: { name: true },
       });
@@ -182,13 +182,13 @@ describe("mcpHandler", () => {
       });
       const mockContext = createMockContext(authContext, "non-existent-server");
 
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(null);
+      vi.mocked(db.mcpServer.findUnique).mockResolvedValue(null);
 
       // エラーがスローされずに処理が完了することを検証（デフォルト名が使用される）
       await expect(mcpHandler(mockContext)).resolves.not.toThrow();
 
       // DB検索が呼ばれたことを検証
-      expect(db.unifiedMcpServer.findUnique).toHaveBeenCalledWith({
+      expect(db.mcpServer.findUnique).toHaveBeenCalledWith({
         where: { id: "non-existent-server" },
         select: { name: true },
       });
@@ -206,7 +206,7 @@ describe("mcpHandler", () => {
       await mcpHandler(mockContext);
 
       // 統合MCPサーバーのDBクエリが呼ばれないことを検証
-      expect(db.unifiedMcpServer.findUnique).not.toHaveBeenCalled();
+      expect(db.mcpServer.findUnique).not.toHaveBeenCalled();
     });
 
     test("isUnifiedEndpointが未設定の場合は通常MCPハンドラーが使用される", async () => {
@@ -216,7 +216,7 @@ describe("mcpHandler", () => {
       await mcpHandler(mockContext);
 
       // 統合MCPサーバーのDBクエリが呼ばれないことを検証
-      expect(db.unifiedMcpServer.findUnique).not.toHaveBeenCalled();
+      expect(db.mcpServer.findUnique).not.toHaveBeenCalled();
     });
   });
 
@@ -229,7 +229,7 @@ describe("mcpHandler", () => {
       const mockContext = createMockContext(authContext, "error-server");
 
       // findUniqueがエラーをスローするように設定
-      vi.mocked(db.unifiedMcpServer.findUnique).mockRejectedValue(
+      vi.mocked(db.mcpServer.findUnique).mockRejectedValue(
         new Error("DB connection failed"),
       );
 
@@ -297,7 +297,7 @@ describe("mcpHandler - ツール一覧取得", () => {
     });
     const mockContext = createMockContext(authContext, "unified-server-123");
 
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue({
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue({
       id: "unified-server-123",
       name: "Test Unified Server",
     } as never);
@@ -306,7 +306,7 @@ describe("mcpHandler - ツール一覧取得", () => {
     await expect(mcpHandler(mockContext)).resolves.not.toThrow();
 
     // 統合MCPサーバーの名前取得が呼ばれたことを検証
-    expect(db.unifiedMcpServer.findUnique).toHaveBeenCalledWith({
+    expect(db.mcpServer.findUnique).toHaveBeenCalledWith({
       where: { id: "unified-server-123" },
       select: { name: true },
     });
@@ -330,7 +330,7 @@ describe("mcpHandler - ツール実行", () => {
     });
     const mockContext = createMockContext(authContext, "unified-server-123");
 
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue({
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue({
       id: "unified-server-123",
       name: "Test Unified Server",
     } as never);
@@ -339,7 +339,7 @@ describe("mcpHandler - ツール実行", () => {
     await expect(mcpHandler(mockContext)).resolves.not.toThrow();
 
     // 統合MCPサーバーの名前取得が呼ばれたことを検証
-    expect(db.unifiedMcpServer.findUnique).toHaveBeenCalledWith({
+    expect(db.mcpServer.findUnique).toHaveBeenCalledWith({
       where: { id: "unified-server-123" },
       select: { name: true },
     });

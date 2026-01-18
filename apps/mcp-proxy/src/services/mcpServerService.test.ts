@@ -76,9 +76,12 @@ describe("mcpServerService", () => {
     test("存在するMcpServerのorganizationIdを返す", async () => {
       const mockMcpServer = {
         id: "test-server-id",
+        name: "Test Server",
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        serverType: "CUSTOM" as const,
+        createdBy: null,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
         toonConversionEnabled: false,
@@ -94,9 +97,12 @@ describe("mcpServerService", () => {
         where: { id: "test-server-id" },
         select: {
           id: true,
+          name: true,
           organizationId: true,
           deletedAt: true,
           authType: true,
+          serverType: true,
+          createdBy: true,
           piiMaskingMode: true,
           piiInfoTypes: true,
           toonConversionEnabled: true,
@@ -117,9 +123,12 @@ describe("mcpServerService", () => {
       const deletedAt = new Date("2024-01-01");
       const mockMcpServer = {
         id: "deleted-server-id",
+        name: "Deleted Server",
         organizationId: "test-org-id",
         deletedAt,
         authType: "API_KEY" as const,
+        serverType: "CUSTOM" as const,
+        createdBy: null,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
         toonConversionEnabled: false,
@@ -137,9 +146,12 @@ describe("mcpServerService", () => {
     test("Redisキャッシュからデータを取得する", async () => {
       const cachedData = {
         id: "cached-server-id",
+        name: "Cached Server",
         organizationId: "cached-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        serverType: "CUSTOM" as const,
+        createdBy: null,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
         toonConversionEnabled: false,
@@ -164,9 +176,12 @@ describe("mcpServerService", () => {
     test("キャッシュミス時はDBからフェッチしてキャッシュする", async () => {
       const mockMcpServer = {
         id: "test-server-id",
+        name: "Test Server",
         organizationId: "test-org-id",
         deletedAt: null,
         authType: "OAUTH" as const,
+        serverType: "CUSTOM" as const,
+        createdBy: null,
         piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [] as string[],
         toonConversionEnabled: false,
@@ -189,9 +204,12 @@ describe("mcpServerService", () => {
         300,
         JSON.stringify({
           id: "test-server-id",
+          name: "Test Server",
           organizationId: "test-org-id",
           deletedAt: null,
           authType: "OAUTH",
+          serverType: "CUSTOM",
+          createdBy: null,
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
           toonConversionEnabled: false,

@@ -54,11 +54,11 @@ const ensureOfficialUserAndOrganization = async () => {
 };
 
 /**
- * UnifiedMcpServer と関連データを登録する
+ * 統合MCPサーバー（serverType=UNIFIED）と関連データを登録する
  * @param validServerNames 有効なサーバー名のリスト（環境変数が設定されているサーバー）
  */
 export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
-  console.log("🔗 UnifiedMcpServer の登録を開始します...\n");
+  console.log("🔗 統合MCPサーバー（UNIFIED）の登録を開始します...\n");
 
   // 公式ユーザーと組織を確保
   await ensureOfficialUserAndOrganization();
@@ -84,7 +84,7 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
 
   if (skippedDefinitions.length > 0) {
     console.log(
-      "📝 以下のUnifiedMcpServerは子サーバーが利用不可のためスキップされました:",
+      "📝 以下の統合MCPサーバーは子サーバーが利用不可のためスキップされました:",
     );
     skippedDefinitions.forEach((def) => {
       console.log(`  - ${def.name}`);
@@ -126,17 +126,18 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
       );
     }
 
-    // 既存のUnifiedMcpServerを確認（名前と組織IDで一意）
-    const existingUnifiedServer = await db.unifiedMcpServer.findFirst({
+    // 既存の統合MCPサーバー（serverType=UNIFIED）を確認（名前と組織IDで一意）
+    const existingUnifiedServer = await db.mcpServer.findFirst({
       where: {
         name: definition.name,
         organizationId: OFFICIAL_ORGANIZATION_ID,
+        serverType: ServerType.UNIFIED,
         deletedAt: null,
       },
       include: {
         childServers: {
           include: {
-            mcpServer: true,
+            childMcpServer: true,
           },
         },
       },
@@ -200,8 +201,8 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
       }
 
       if (existingUnifiedServer) {
-        // 既存のUnifiedMcpServerを更新
-        await tx.unifiedMcpServer.update({
+        // 既存の統合MCPサーバーを更新
+        await tx.mcpServer.update({
           where: { id: existingUnifiedServer.id },
           data: {
             description: definition.description,
@@ -210,37 +211,44 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
         });
 
         // 既存の子サーバー関連を削除して再作成
-        await tx.unifiedMcpServerChild.deleteMany({
-          where: { unifiedMcpServerId: existingUnifiedServer.id },
+        await tx.mcpServerChild.deleteMany({
+          where: { parentMcpServerId: existingUnifiedServer.id },
         });
 
-        await tx.unifiedMcpServerChild.createMany({
+        await tx.mcpServerChild.createMany({
           data: childMcpServers.map((child) => ({
-            unifiedMcpServerId: existingUnifiedServer.id,
-            mcpServerId: child.id,
+            parentMcpServerId: existingUnifiedServer.id,
+            childMcpServerId: child.id,
             displayOrder: child.displayOrder,
           })),
         });
 
-        console.log(`  ✓ UnifiedMcpServer 更新: ${definition.name}`);
+        console.log(`  ✓ 統合MCPサーバー 更新: ${definition.name}`);
       } else {
-        // 新規作成
-        await tx.unifiedMcpServer.create({
+        // 新規作成（serverType=UNIFIED として McpServer を作成）
+        await tx.mcpServer.create({
           data: {
             name: definition.name,
             description: definition.description,
             organizationId: OFFICIAL_ORGANIZATION_ID,
             createdBy: OFFICIAL_USER_ID,
+            serverType: ServerType.UNIFIED,
+            serverStatus: ServerStatus.RUNNING,
+            authType: AuthType.NONE,
+            piiMaskingMode: PiiMaskingMode.DISABLED,
+            piiInfoTypes: [],
+            toonConversionEnabled: false,
+            displayOrder: 0,
             childServers: {
               create: childMcpServers.map((child) => ({
-                mcpServerId: child.id,
+                childMcpServerId: child.id,
                 displayOrder: child.displayOrder,
               })),
             },
           },
         });
 
-        console.log(`  ✓ UnifiedMcpServer 作成: ${definition.name}`);
+        console.log(`  ✓ 統合MCPサーバー 作成: ${definition.name}`);
       }
     });
 
@@ -248,9 +256,9 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
   }
 
   console.log("");
-  console.log("✅ UnifiedMcpServer が正常に登録されました:");
-  console.log(`  登録された UnifiedMcpServer 数: ${upsertedServers.length}`);
+  console.log("✅ 統合MCPサーバーが正常に登録されました:");
+  console.log(`  登録された統合MCPサーバー数: ${upsertedServers.length}`);
   if (upsertedServers.length > 0) {
-    console.log(`  登録された UnifiedMcpServer: ${upsertedServers.join(", ")}`);
+    console.log(`  登録された統合MCPサーバー: ${upsertedServers.join(", ")}`);
   }
 };

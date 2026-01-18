@@ -7,7 +7,6 @@
 - [Notification](#notification)
 - [Organization](#organization)
 - [RequestLog](#requestlog)
-- [UnifiedMcpServer](#unifiedmcpserver)
 - [UserMcpServer](#usermcpserver)
 - [Chat](#chat)
 - [default](#default)
@@ -515,57 +514,6 @@ MCPサーバーインスタンスへのリクエストログ
   - `createdAt`: 
 
 
-## UnifiedMcpServer
-```mermaid
-erDiagram
-"UnifiedMcpServer" {
-  String id PK
-  String name
-  String description "nullable"
-  String organizationId FK
-  String createdBy FK
-  DateTime deletedAt "nullable"
-  DateTime createdAt
-  DateTime updatedAt
-}
-"UnifiedMcpServerChild" {
-  String id PK
-  String unifiedMcpServerId FK
-  String mcpServerId FK
-  Int displayOrder
-  DateTime createdAt
-  DateTime updatedAt
-}
-"UnifiedMcpServerChild" }o--|| "UnifiedMcpServer" : unifiedMcpServer
-```
-
-### `UnifiedMcpServer`
-統合MCPサーバー設定
-ユーザーが複数のMCPサーバーを1つのエンドポイントで利用するための設定
-
-**Properties**
-  - `id`: レコードID（cuid: 25文字）
-  - `name`: 統合サーバー名（表示名、重複許可）
-  - `description`: 統合サーバーの説明（オプショナル）
-  - `organizationId`: 所属組織のID
-  - `createdBy`: 作成者のユーザーID（このユーザーのみがアクセス可能）
-  - `deletedAt`: 論理削除用のタイムスタンプ
-  - `createdAt`: 
-  - `updatedAt`: 
-
-### `UnifiedMcpServerChild`
-統合MCPサーバーの子サーバー（中間テーブル）
-UnifiedMcpServerとMcpServerの明示的多対多リレーション
-
-**Properties**
-  - `id`: レコードID（cuid: 25文字）
-  - `unifiedMcpServerId`: 親の統合MCPサーバーID
-  - `mcpServerId`: 子のMCPサーバーID
-  - `displayOrder`: 表示順序（ツール一覧での並び順）
-  - `createdAt`: 
-  - `updatedAt`: 
-
-
 ## UserMcpServer
 ```mermaid
 erDiagram
@@ -581,7 +529,7 @@ erDiagram
 "McpServer" {
   String id PK
   String name
-  String description
+  String description "nullable"
   String iconPath "nullable"
   ServerStatus serverStatus
   ServerType serverType
@@ -591,9 +539,18 @@ erDiagram
   PiiMaskingMode piiMaskingMode
   String piiInfoTypes
   Boolean toonConversionEnabled
+  String createdBy FK "nullable"
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
+}
+"McpServerChild" {
+  String id PK
+  String parentMcpServerId FK
+  String childMcpServerId FK
+  Int displayOrder
+  DateTime createdAt
+  DateTime updatedAt
 }
 "McpApiKey" {
   String id PK
@@ -673,6 +630,8 @@ erDiagram
   DateTime updatedAt
 }
 "McpConfig" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
+"McpServerChild" }o--|| "McpServer" : parentMcpServer
+"McpServerChild" }o--|| "McpServer" : childMcpServer
 "McpApiKey" }o--|| "McpServer" : mcpServer
 "McpOAuthClient" }o--o| "McpServerTemplate" : mcpServerTemplate
 "McpOAuthToken" }o--|| "McpOAuthClient" : oauthClient
@@ -698,6 +657,7 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
 ### `McpServer`
 実際に稼働するMCPサーバー
 1つまたは複数のMcpServerTemplateから作成
+serverType = UNIFIED の場合は複数のMCPサーバーを統合したエンドポイント
 
 **Properties**
   - `id`: 
@@ -720,11 +680,26 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
     > 空配列の場合は全InfoTypeを使用
   - `toonConversionEnabled`
     > TOON変換を有効にするかどうか（AIへのトークン削減用）
-    > true: レスポンスをTOON形式に変換し���からAIに返す
+    > true: レスポンスをTOON形式に変換してからAIに返す
     > false: JSONのままAIに返す（デフォルト）
+  - `createdBy`
+    > UNIFIED用: 作成者のユーザーID（このユーザーのみがアクセス可能）
+    > UNIFIED以外のserverTypeでもオプションで設定可能
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ
+
+### `McpServerChild`
+統合MCPサーバーの子サーバー（中間テーブル）
+McpServer間の明示的多対多リレーション（serverType=UNIFIED のサーバーとその子サーバー）
+
+**Properties**
+  - `id`: レコードID（cuid: 25文字）
+  - `parentMcpServerId`: 親の統合MCPサーバーID（serverType=UNIFIED のサーバー）
+  - `childMcpServerId`: 子のMCPサーバーID
+  - `displayOrder`: 表示順序（ツール一覧での並び順）
+  - `createdAt`: 
+  - `updatedAt`: 
 
 ### `McpApiKey`
 APIキー管理テーブル

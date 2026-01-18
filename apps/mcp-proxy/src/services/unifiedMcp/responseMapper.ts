@@ -9,17 +9,19 @@ import type { UnifiedMcpServerResponse } from "./types.js";
 
 /**
  * Prisma から取得した統合MCPサーバーデータの型
+ *
+ * serverType = UNIFIED の McpServer と McpServerChild を組み合わせた形式
  */
 export type UnifiedServerWithChildren = {
   id: string;
   name: string;
   description: string | null;
   organizationId: string;
-  createdBy: string;
+  createdBy: string; // UNIFIED では必須
   createdAt: Date;
   updatedAt: Date;
   childServers: Array<{
-    mcpServer: {
+    childMcpServer: {
       id: string;
       name: string;
       serverStatus: ServerStatus;
@@ -47,7 +49,9 @@ export const mapToUnifiedMcpServerResponse = (
   const { excludeDeletedChildren = true } = options;
 
   const childServers = excludeDeletedChildren
-    ? server.childServers.filter((child) => child.mcpServer.deletedAt === null)
+    ? server.childServers.filter(
+        (child) => child.childMcpServer.deletedAt === null,
+      )
     : server.childServers;
 
   return {
@@ -57,9 +61,9 @@ export const mapToUnifiedMcpServerResponse = (
     organizationId: server.organizationId,
     createdBy: server.createdBy,
     mcpServers: childServers.map((child) => ({
-      id: child.mcpServer.id,
-      name: child.mcpServer.name,
-      serverStatus: child.mcpServer.serverStatus,
+      id: child.childMcpServer.id,
+      name: child.childMcpServer.name,
+      serverStatus: child.childMcpServer.serverStatus,
     })),
     createdAt: server.createdAt.toISOString(),
     updatedAt: server.updatedAt.toISOString(),

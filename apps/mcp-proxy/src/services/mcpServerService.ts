@@ -5,7 +5,7 @@
  * Redis キャッシュで高速化（TTL: 5分）
  */
 
-import { db, type PiiMaskingMode } from "@tumiki/db/server";
+import { db, type PiiMaskingMode, type ServerType } from "@tumiki/db/server";
 import { getRedisClient } from "../libs/cache/redis.js";
 import { logDebug, logError, logWarn } from "../libs/logger/index.js";
 
@@ -19,9 +19,14 @@ export type AuthType = "NONE" | "API_KEY" | "OAUTH";
  */
 export type McpServerLookupResult = {
   id: string;
+  name: string;
   organizationId: string;
   deletedAt: Date | null;
   authType: AuthType;
+  /** サーバーの種類（CUSTOM/OFFICIAL/UNIFIED） */
+  serverType: ServerType;
+  /** 作成者ID（UNIFIEDで必須） */
+  createdBy: string | null;
   /** PIIマスキングモード（GCP DLPによるマスキング） */
   piiMaskingMode: PiiMaskingMode;
   /** 使用するInfoType一覧（空配列 = 全InfoType使用） */
@@ -35,9 +40,12 @@ export type McpServerLookupResult = {
  */
 type CachedMcpServerResult = {
   id: string;
+  name: string;
   organizationId: string;
   deletedAt: string | null;
   authType: AuthType;
+  serverType: ServerType;
+  createdBy: string | null;
   piiMaskingMode: PiiMaskingMode;
   piiInfoTypes: string[];
   toonConversionEnabled: boolean;
@@ -83,9 +91,12 @@ export const getMcpServerOrganization = async (
           const parsed = JSON.parse(cached) as CachedMcpServerResult;
           return {
             id: parsed.id,
+            name: parsed.name,
             organizationId: parsed.organizationId,
             deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
             authType: parsed.authType,
+            serverType: parsed.serverType,
+            createdBy: parsed.createdBy,
             piiMaskingMode: parsed.piiMaskingMode,
             piiInfoTypes: parsed.piiInfoTypes,
             toonConversionEnabled: parsed.toonConversionEnabled,
@@ -113,9 +124,12 @@ export const getMcpServerOrganization = async (
       } else {
         const cacheValue: CachedMcpServerResult = {
           id: result.id,
+          name: result.name,
           organizationId: result.organizationId,
           deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
           authType: result.authType,
+          serverType: result.serverType,
+          createdBy: result.createdBy,
           piiMaskingMode: result.piiMaskingMode,
           piiInfoTypes: result.piiInfoTypes,
           toonConversionEnabled: result.toonConversionEnabled,
@@ -145,9 +159,12 @@ const getMcpServerFromDB = async (
       where: { id: mcpServerId },
       select: {
         id: true,
+        name: true,
         organizationId: true,
         deletedAt: true,
         authType: true,
+        serverType: true,
+        createdBy: true,
         piiMaskingMode: true,
         piiInfoTypes: true,
         toonConversionEnabled: true,

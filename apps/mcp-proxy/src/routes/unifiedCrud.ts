@@ -3,12 +3,12 @@
  *
  * URL: /unified
  *
- * 統合MCPサーバーの作成・一覧・詳細・更新・削除を行うAPI。
+ * 統合MCPサーバー（serverType=UNIFIED）の作成・一覧・詳細・更新・削除を行うAPI。
  * JWT認証のみをサポート。
  */
 
 import { Hono } from "hono";
-import { db } from "@tumiki/db/server";
+import { AuthType, db, ServerStatus, ServerType } from "@tumiki/db/server";
 import type { HonoEnv } from "../types/index.js";
 import {
   unifiedCrudJwtAuthMiddleware,
@@ -119,17 +119,20 @@ unifiedCrudRoute.post("/", async (c) => {
       );
     }
 
-    // 統合MCPサーバーを作成
-    const unifiedServer = await db.unifiedMcpServer.create({
+    // 統合MCPサーバーを作成（serverType=UNIFIED の McpServer）
+    const unifiedServer = await db.mcpServer.create({
       data: {
         name: body.name.trim(),
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: body.description?.trim() || null,
         organizationId,
         createdBy: userId,
+        serverType: ServerType.UNIFIED,
+        serverStatus: ServerStatus.RUNNING, // UNIFIEDは常にRUNNING
+        authType: AuthType.NONE, // UNIFIEDはauthTypeを継承しない
         childServers: {
-          create: body.mcpServerIds.map((mcpServerId, index) => ({
-            mcpServerId,
+          create: body.mcpServerIds.map((childMcpServerId, index) => ({
+            childMcpServerId,
             displayOrder: index,
           })),
         },
@@ -138,7 +141,7 @@ unifiedCrudRoute.post("/", async (c) => {
         childServers: {
           orderBy: { displayOrder: "asc" },
           include: {
-            mcpServer: {
+            childMcpServer: {
               select: {
                 id: true,
                 name: true,
@@ -158,9 +161,16 @@ unifiedCrudRoute.post("/", async (c) => {
     });
 
     // 新規作成時は子サーバーは削除されていないため、フィルタリング不要
-    const response = mapToUnifiedMcpServerResponse(unifiedServer, {
-      excludeDeletedChildren: false,
-    });
+    // createdBy は UNIFIEDでは必須なので非nullアサーション
+    const response = mapToUnifiedMcpServerResponse(
+      {
+        ...unifiedServer,
+        createdBy: unifiedServer.createdBy!,
+      },
+      {
+        excludeDeletedChildren: false,
+      },
+    );
 
     return c.json(response, 201);
   } catch (error) {
@@ -188,9 +198,10 @@ unifiedCrudRoute.get("/", async (c) => {
   const { organizationId } = authContext;
 
   try {
-    const unifiedServers = await db.unifiedMcpServer.findMany({
+    const unifiedServers = await db.mcpServer.findMany({
       where: {
         organizationId: organizationId,
+        serverType: ServerType.UNIFIED,
         deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
@@ -198,7 +209,7 @@ unifiedCrudRoute.get("/", async (c) => {
         childServers: {
           orderBy: { displayOrder: "asc" },
           include: {
-            mcpServer: {
+            childMcpServer: {
               select: {
                 id: true,
                 name: true,
@@ -211,8 +222,14 @@ unifiedCrudRoute.get("/", async (c) => {
       },
     });
 
+    // createdBy は UNIFIEDでは必須なので非nullアサーション
     const response: UnifiedMcpServerListResponse = {
-      items: mapToUnifiedMcpServerListResponse(unifiedServers),
+      items: mapToUnifiedMcpServerListResponse(
+        unifiedServers.map((s) => ({
+          ...s,
+          createdBy: s.createdBy!,
+        })),
+      ),
     };
 
     return c.json(response);
@@ -236,13 +253,16 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
   const unifiedId = c.req.param("id");
 
   try {
-    const unifiedServer = await db.unifiedMcpServer.findUnique({
-      where: { id: unifiedId },
+    const unifiedServer = await db.mcpServer.findUnique({
+      where: {
+        id: unifiedId,
+        serverType: ServerType.UNIFIED,
+      },
       include: {
         childServers: {
           orderBy: { displayOrder: "asc" },
           include: {
-            mcpServer: {
+            childMcpServer: {
               select: {
                 id: true,
                 name: true,
@@ -262,7 +282,11 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
       );
     }
 
-    const response = mapToUnifiedMcpServerResponse(unifiedServer);
+    // createdBy は UNIFIEDでは必須なので非nullアサーション
+    const response = mapToUnifiedMcpServerResponse({
+      ...unifiedServer,
+      createdBy: unifiedServer.createdBy!,
+    });
 
     return c.json(response);
   } catch (error) {
@@ -359,29 +383,32 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
       // mcpServerIdsが指定された場合は子サーバーを完全置換
       if (body.mcpServerIds !== undefined) {
         // 既存の関連を削除
-        await tx.unifiedMcpServerChild.deleteMany({
-          where: { unifiedMcpServerId: unifiedId },
+        await tx.mcpServerChild.deleteMany({
+          where: { parentMcpServerId: unifiedId },
         });
 
         // 新しい関連を作成
-        await tx.unifiedMcpServerChild.createMany({
-          data: body.mcpServerIds.map((mcpServerId, index) => ({
-            unifiedMcpServerId: unifiedId,
-            mcpServerId,
+        await tx.mcpServerChild.createMany({
+          data: body.mcpServerIds.map((childMcpServerId, index) => ({
+            parentMcpServerId: unifiedId,
+            childMcpServerId,
             displayOrder: index,
           })),
         });
       }
 
       // 更新
-      return tx.unifiedMcpServer.update({
-        where: { id: unifiedId },
+      return tx.mcpServer.update({
+        where: {
+          id: unifiedId,
+          serverType: ServerType.UNIFIED,
+        },
         data: updateData,
         include: {
           childServers: {
             orderBy: { displayOrder: "asc" },
             include: {
-              mcpServer: {
+              childMcpServer: {
                 select: {
                   id: true,
                   name: true,
@@ -401,9 +428,16 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
     });
 
     // 更新時も新規作成と同様、子サーバーは削除されていないはず
-    const response = mapToUnifiedMcpServerResponse(unifiedServer, {
-      excludeDeletedChildren: false,
-    });
+    // createdBy は UNIFIEDでは必須なので非nullアサーション
+    const response = mapToUnifiedMcpServerResponse(
+      {
+        ...unifiedServer,
+        createdBy: unifiedServer.createdBy!,
+      },
+      {
+        excludeDeletedChildren: false,
+      },
+    );
 
     return c.json(response);
   } catch (error) {
@@ -427,8 +461,11 @@ unifiedCrudRoute.delete("/:id", unifiedOwnershipMiddleware, async (c) => {
 
   try {
     // 論理削除
-    await db.unifiedMcpServer.update({
-      where: { id: unifiedId },
+    await db.mcpServer.update({
+      where: {
+        id: unifiedId,
+        serverType: ServerType.UNIFIED,
+      },
       data: { deletedAt: new Date() },
     });
 

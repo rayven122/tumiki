@@ -268,9 +268,9 @@ export const seedUnifiedMcpTestData = async (
   });
   console.log(`   ✓ サーバーB ID: ${mcpServerB.id}\n`);
 
-  // 8. UnifiedMcpServer の作成
-  console.log("🔗 UnifiedMcpServerを作成中...");
-  const unifiedMcpServer = await db.unifiedMcpServer.upsert({
+  // 8. 統合MCPサーバー（serverType=UNIFIED）の作成
+  console.log("🔗 統合MCPサーバー（UNIFIED）を作成中...");
+  const unifiedMcpServer = await db.mcpServer.upsert({
     where: { id: TEST_UNIFIED_MCP_SERVER_ID },
     update: {},
     create: {
@@ -279,10 +279,17 @@ export const seedUnifiedMcpTestData = async (
       description: "E2Eテスト用統合MCPサーバー",
       organizationId: organization.id,
       createdBy: user.id,
+      serverType: ServerType.UNIFIED,
+      serverStatus: ServerStatus.RUNNING,
+      authType: AuthType.NONE,
+      piiMaskingMode: PiiMaskingMode.DISABLED,
+      piiInfoTypes: [],
+      toonConversionEnabled: false,
+      displayOrder: 0,
       childServers: {
         create: [
-          { mcpServerId: mcpServerA.id, displayOrder: 0 },
-          { mcpServerId: mcpServerB.id, displayOrder: 1 },
+          { childMcpServerId: mcpServerA.id, displayOrder: 0 },
+          { childMcpServerId: mcpServerB.id, displayOrder: 1 },
         ],
       },
     },
@@ -342,15 +349,16 @@ export const cleanupUnifiedMcpTestData = async (): Promise<void> => {
     },
   });
 
-  await db.unifiedMcpServerChild.deleteMany({
+  await db.mcpServerChild.deleteMany({
     where: {
-      unifiedMcpServerId: TEST_UNIFIED_MCP_SERVER_ID,
+      parentMcpServerId: TEST_UNIFIED_MCP_SERVER_ID,
     },
   });
 
-  await db.unifiedMcpServer.deleteMany({
+  await db.mcpServer.deleteMany({
     where: {
       id: TEST_UNIFIED_MCP_SERVER_ID,
+      serverType: ServerType.UNIFIED,
     },
   });
 

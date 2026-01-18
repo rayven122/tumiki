@@ -6,7 +6,7 @@
  */
 
 import type { Context, Next } from "hono";
-import { AuthType, PiiMaskingMode, db } from "@tumiki/db/server";
+import { AuthType, PiiMaskingMode, ServerType, db } from "@tumiki/db/server";
 import type { HonoEnv } from "../../types/index.js";
 import {
   createUnauthorizedError,
@@ -142,9 +142,12 @@ export const unifiedOwnershipMiddleware = async (
     return;
   }
 
-  // 統合MCPサーバーを取得
-  const unifiedServer = await db.unifiedMcpServer.findUnique({
-    where: { id: unifiedId },
+  // 統合MCPサーバー（serverType=UNIFIED）を取得
+  const unifiedServer = await db.mcpServer.findFirst({
+    where: {
+      id: unifiedId,
+      serverType: ServerType.UNIFIED,
+    },
     select: {
       id: true,
       createdBy: true,

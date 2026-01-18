@@ -4,7 +4,7 @@
  * 複数のMCPサーバーからツールを収集し、3階層フォーマットで統合
  */
 
-import { db, ServerStatus } from "@tumiki/db/server";
+import { db, ServerStatus, ServerType } from "@tumiki/db/server";
 import type { AggregatedTool } from "./types.js";
 import { formatUnifiedToolName } from "./toolNameParser.js";
 import {
@@ -41,14 +41,17 @@ export const aggregateTools = async (
     return cached;
   }
 
-  // 2. DBから統合MCPサーバーと子サーバーを取得
-  const unifiedServer = await db.unifiedMcpServer.findUnique({
-    where: { id: unifiedMcpServerId },
+  // 2. DBから統合MCPサーバー（serverType=UNIFIED）と子サーバーを取得
+  const unifiedServer = await db.mcpServer.findUnique({
+    where: {
+      id: unifiedMcpServerId,
+      serverType: ServerType.UNIFIED,
+    },
     include: {
       childServers: {
         orderBy: { displayOrder: "asc" },
         include: {
-          mcpServer: {
+          childMcpServer: {
             select: {
               id: true,
               name: true,
@@ -80,7 +83,7 @@ export const aggregateTools = async (
 
   // 3. 論理削除された子サーバーを除外
   const activeChildServers = unifiedServer.childServers
-    .map((child) => child.mcpServer)
+    .map((child) => child.childMcpServer)
     .filter((server) => server.deletedAt === null);
 
   // 全ての子サーバーが除外された場合は空のツール一覧を返す
@@ -164,13 +167,16 @@ export const getChildServers = async (
     serverStatus: ServerStatus;
   }>
 > => {
-  const unifiedServer = await db.unifiedMcpServer.findUnique({
-    where: { id: unifiedMcpServerId },
+  const unifiedServer = await db.mcpServer.findUnique({
+    where: {
+      id: unifiedMcpServerId,
+      serverType: ServerType.UNIFIED,
+    },
     include: {
       childServers: {
         orderBy: { displayOrder: "asc" },
         include: {
-          mcpServer: {
+          childMcpServer: {
             select: {
               id: true,
               name: true,
@@ -189,10 +195,10 @@ export const getChildServers = async (
 
   // 論理削除されていないサーバーのみ返す
   return unifiedServer.childServers
-    .filter((child) => child.mcpServer.deletedAt === null)
+    .filter((child) => child.childMcpServer.deletedAt === null)
     .map((child) => ({
-      id: child.mcpServer.id,
-      name: child.mcpServer.name,
-      serverStatus: child.mcpServer.serverStatus,
+      id: child.childMcpServer.id,
+      name: child.childMcpServer.name,
+      serverStatus: child.childMcpServer.serverStatus,
     }));
 };

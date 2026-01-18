@@ -7,26 +7,11 @@
  * - 作成者チェック（統合サーバーの場合）
  */
 
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { AuthType, PiiMaskingMode } from "@tumiki/db";
+import { AuthType, PiiMaskingMode, ServerType } from "@tumiki/db";
 import type { HonoEnv, AuthContext } from "../../types/index.js";
 import type { McpServerLookupResult } from "../../services/mcpServerService.js";
-
-// DBをモック
-vi.mock("@tumiki/db/server", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@tumiki/db/server")>();
-  return {
-    ...mod,
-    db: {
-      unifiedMcpServer: {
-        findUnique: vi.fn(),
-      },
-    },
-  };
-});
 
 // JWT検証をモック
 vi.mock("../../libs/auth/jwt-verifier.js", () => ({
@@ -55,7 +40,6 @@ vi.mock("./apiKey.js", () => ({
   ),
 }));
 
-import { db } from "@tumiki/db/server";
 import { verifyKeycloakJWT } from "../../libs/auth/jwt-verifier.js";
 import {
   getMcpServerOrganization,
@@ -81,19 +65,28 @@ describe("authMiddleware", () => {
 
   const mockMcpServer: McpServerLookupResult = {
     id: mockServerId,
+    name: "Test MCP Server",
     organizationId: mockOrganizationId,
     authType: "OAUTH",
+    serverType: "CUSTOM",
+    createdBy: null,
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
     toonConversionEnabled: false,
     deletedAt: null,
   };
 
-  const mockUnifiedServer = {
+  // 統合MCPサーバー用モック（serverType=UNIFIED）
+  const mockUnifiedServer: McpServerLookupResult = {
     id: mockServerId,
     name: "Test Unified Server",
     organizationId: mockOrganizationId,
+    authType: "OAUTH",
+    serverType: ServerType.UNIFIED,
     createdBy: mockUserId,
+    piiMaskingMode: PiiMaskingMode.DISABLED,
+    piiInfoTypes: [],
+    toonConversionEnabled: false,
     deletedAt: null,
   };
 
@@ -255,7 +248,6 @@ describe("authMiddleware", () => {
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(mockUserId);
       vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(null);
 
       const app = createTestApp();
       const res = await app.request(`/mcp/${mockServerId}`, {
@@ -320,10 +312,8 @@ describe("authMiddleware", () => {
     test("作成者による正常な認証フローが成功する", async () => {
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(mockUserId);
-      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-        mockUnifiedServer as never,
-      );
+      // 統合サーバーはMcpServerテーブルにserverType=UNIFIEDで格納されている
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
       vi.mocked(checkOrganizationMembership).mockResolvedValue(true);
 
       const app = createTestApp();
@@ -352,10 +342,7 @@ describe("authMiddleware", () => {
 
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(differentUserId);
-      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-        mockUnifiedServer as never,
-      );
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
       vi.mocked(checkOrganizationMembership).mockResolvedValue(true);
 
       const app = createTestApp();
@@ -381,10 +368,7 @@ describe("authMiddleware", () => {
 
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(outsideUserId);
-      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-        mockUnifiedServer as never,
-      );
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
       vi.mocked(checkOrganizationMembership).mockResolvedValue(false);
 
       const app = createTestApp();
@@ -403,17 +387,14 @@ describe("authMiddleware", () => {
     });
 
     test("削除された統合MCPサーバーの場合は404エラーを返す", async () => {
-      const deletedServer = {
+      const deletedServer: McpServerLookupResult = {
         ...mockUnifiedServer,
         deletedAt: new Date("2024-01-01"),
       };
 
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(mockUserId);
-      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-        deletedServer as never,
-      );
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(deletedServer);
 
       const app = createTestApp();
       const res = await app.request(`/mcp/${mockServerId}`, {
@@ -433,10 +414,7 @@ describe("authMiddleware", () => {
     test("統合サーバー認証時にPII/TOON設定がデフォルト値に設定される", async () => {
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(mockUserId);
-      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-        mockUnifiedServer as never,
-      );
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
       vi.mocked(checkOrganizationMembership).mockResolvedValue(true);
 
       const app = createTestApp();
@@ -461,10 +439,7 @@ describe("authMiddleware", () => {
     test("組織メンバーでないユーザーの場合は403エラーを返す", async () => {
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(mockUserId);
-      vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-      vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-        mockUnifiedServer as never,
-      );
+      vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
       vi.mocked(checkOrganizationMembership).mockResolvedValue(false);
 
       const app = createTestApp();
@@ -491,11 +466,14 @@ describe("detectServerType", () => {
     vi.clearAllMocks();
   });
 
-  test("McpServerが見つかった場合はmcpタイプを返す", async () => {
+  test("McpServer (serverType=CUSTOM) が見つかった場合はmcpタイプを返す", async () => {
     const mockMcpServer: McpServerLookupResult = {
       id: mockServerId,
+      name: "Test MCP Server",
       organizationId: "org-123",
       authType: "OAUTH",
+      serverType: "CUSTOM",
+      createdBy: null,
       piiMaskingMode: PiiMaskingMode.DISABLED,
       piiInfoTypes: [],
       toonConversionEnabled: false,
@@ -509,33 +487,40 @@ describe("detectServerType", () => {
       type: "mcp",
       server: mockMcpServer,
     });
-    expect(db.unifiedMcpServer.findUnique).not.toHaveBeenCalled();
   });
 
-  test("UnifiedMcpServerが見つかった場合はunifiedタイプを返す", async () => {
-    const mockUnifiedServer = {
+  test("McpServer (serverType=UNIFIED) が見つかった場合はunifiedタイプを返す", async () => {
+    const mockUnifiedServer: McpServerLookupResult = {
       id: mockServerId,
       name: "Test Unified",
       organizationId: "org-123",
+      authType: "OAUTH",
+      serverType: ServerType.UNIFIED,
       createdBy: "user-123",
+      piiMaskingMode: PiiMaskingMode.DISABLED,
+      piiInfoTypes: [],
+      toonConversionEnabled: false,
       deletedAt: null,
     };
-    vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
-      mockUnifiedServer as never,
-    );
+    vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
 
     const result = await detectServerType(mockServerId);
 
+    // unified タイプの場合は必要なフィールドのみ返す
     expect(result).toStrictEqual({
       type: "unified",
-      server: mockUnifiedServer,
+      server: {
+        id: mockServerId,
+        name: "Test Unified",
+        organizationId: "org-123",
+        createdBy: "user-123",
+        deletedAt: null,
+      },
     });
   });
 
-  test("どちらも見つからない場合はnullを返す", async () => {
+  test("サーバーが見つからない場合はnullを返す", async () => {
     vi.mocked(getMcpServerOrganization).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(null);
 
     const result = await detectServerType(mockServerId);
 

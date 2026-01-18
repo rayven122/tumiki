@@ -59,9 +59,12 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:mcpServerId", () => {
   // テスト用のモック McpServer データ（authType: OAUTH）
   const mockMcpServer: McpServerLookupResult = {
     id: "test-mcp-server-id",
+    name: "Test MCP Server",
     organizationId: "test-org-id",
     deletedAt: null,
     authType: "OAUTH",
+    serverType: "CUSTOM",
+    createdBy: null,
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
     toonConversionEnabled: false,
@@ -304,9 +307,12 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
   // テスト用のモック McpServer データ（authType: OAUTH）
   const mockMcpServer: McpServerLookupResult = {
     id: "test-mcp-server-id",
+    name: "Test MCP Server",
     organizationId: "test-org-id",
     deletedAt: null,
     authType: "OAUTH",
+    serverType: "CUSTOM",
+    createdBy: null,
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
     toonConversionEnabled: false,

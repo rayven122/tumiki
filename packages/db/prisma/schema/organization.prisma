@@ -50,9 +50,6 @@ model Organization {
   /// 通知関連
   notifications Notification[]
 
-  /// 統合MCPサーバー
-  unifiedMcpServers UnifiedMcpServer[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 // vi.hoistedを使用してモックを先に定義
@@ -13,18 +14,14 @@ const mockDb = vi.hoisted(() => ({
   mcpServerTemplate: {
     findMany: vi.fn(),
   },
-  unifiedMcpServer: {
+  mcpServer: {
     findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
   },
-  unifiedMcpServerChild: {
+  mcpServerChild: {
     deleteMany: vi.fn(),
     createMany: vi.fn(),
-  },
-  mcpServer: {
-    findFirst: vi.fn(),
-    create: vi.fn(),
   },
   $transaction: vi.fn(),
 }));
@@ -34,7 +31,7 @@ vi.mock("@tumiki/db/server", () => ({
   OFFICIAL_ORGANIZATION_ID: "00000000-0000-0000-0000-000000000000",
   OFFICIAL_USER_ID: "00000000-0000-0000-0000-000000000001",
   ServerStatus: { RUNNING: "RUNNING" },
-  ServerType: { OFFICIAL: "OFFICIAL" },
+  ServerType: { OFFICIAL: "OFFICIAL", UNIFIED: "UNIFIED" },
   AuthType: { NONE: "NONE" },
   PiiMaskingMode: { DISABLED: "DISABLED" },
 }));
@@ -74,7 +71,7 @@ describe("upsertUnifiedMcpServers", () => {
       expect(mockDb.mcpServerTemplate.findMany).not.toHaveBeenCalled();
     });
 
-    test("子サーバーテンプレートが存在する場合はUnifiedMcpServerを作成する", async () => {
+    test("子サーバーテンプレートが存在する場合はMcpServer(UNIFIED)を作成する", async () => {
       const mockTemplates = [
         {
           id: "template-add",
@@ -93,21 +90,21 @@ describe("upsertUnifiedMcpServers", () => {
       ];
 
       mockDb.mcpServerTemplate.findMany.mockResolvedValue(mockTemplates);
-      mockDb.unifiedMcpServer.findFirst.mockResolvedValue(null);
+      // 既存の統合MCPサーバー（serverType=UNIFIED）がない場合
+      mockDb.mcpServer.findFirst.mockResolvedValue(null);
 
       // トランザクション内の処理をモック
-      mockDb.$transaction.mockImplementation(async (callback) => {
-        const txMock = {
-          mcpServer: {
-            findFirst: vi.fn().mockResolvedValue(null),
-            create: vi.fn().mockResolvedValue({ id: "mcp-server-1" }),
-          },
-          unifiedMcpServer: {
-            create: vi.fn().mockResolvedValue({ id: "unified-1" }),
-          },
-        };
-        return callback(txMock);
-      });
+      mockDb.$transaction.mockImplementation(
+        (callback: (tx: unknown) => Promise<unknown>) => {
+          const txMock = {
+            mcpServer: {
+              findFirst: vi.fn().mockResolvedValue(null),
+              create: vi.fn().mockResolvedValue({ id: "mcp-server-1" }),
+            },
+          };
+          return callback(txMock);
+        },
+      );
 
       await upsertUnifiedMcpServers([
         "Add MCP",
@@ -120,7 +117,7 @@ describe("upsertUnifiedMcpServers", () => {
       expect(mockDb.$transaction).toHaveBeenCalled();
     });
 
-    test("既存のUnifiedMcpServerがある場合は更新する", async () => {
+    test("既存のMcpServer(UNIFIED)がある場合は更新する", async () => {
       const mockTemplates = [
         {
           id: "template-add",
@@ -134,38 +131,41 @@ describe("upsertUnifiedMcpServers", () => {
       const existingUnifiedServer = {
         id: "existing-unified-1",
         name: "Calculator MCP",
+        serverType: "UNIFIED",
         childServers: [
           {
-            mcpServer: { id: "existing-mcp-1" },
+            childMcpServer: { id: "existing-mcp-1" },
           },
         ],
       };
 
       mockDb.mcpServerTemplate.findMany.mockResolvedValue(mockTemplates);
-      mockDb.unifiedMcpServer.findFirst.mockResolvedValue(
-        existingUnifiedServer,
-      );
+      // 既存の統合MCPサーバー（serverType=UNIFIED）がある場合
+      mockDb.mcpServer.findFirst.mockResolvedValue(existingUnifiedServer);
 
-      mockDb.$transaction.mockImplementation(async (callback) => {
-        const txMock = {
-          mcpServer: {
-            findFirst: vi.fn().mockResolvedValue({ id: "existing-mcp-1" }),
-            create: vi.fn(),
-          },
-          unifiedMcpServer: {
-            update: vi.fn().mockResolvedValue({ id: existingUnifiedServer.id }),
-          },
-          unifiedMcpServerChild: {
-            deleteMany: vi.fn(),
-            createMany: vi.fn(),
-          },
-        };
-        return callback(txMock);
-      });
+      mockDb.$transaction.mockImplementation(
+        (callback: (tx: unknown) => Promise<unknown>) => {
+          const txMock = {
+            mcpServer: {
+              findFirst: vi.fn().mockResolvedValue({ id: "existing-mcp-1" }),
+              create: vi.fn(),
+              update: vi
+                .fn()
+                .mockResolvedValue({ id: existingUnifiedServer.id }),
+            },
+            mcpServerChild: {
+              deleteMany: vi.fn(),
+              createMany: vi.fn(),
+            },
+          };
+          return callback(txMock);
+        },
+      );
 
       await upsertUnifiedMcpServers(["Add MCP"]);
 
-      expect(mockDb.unifiedMcpServer.findFirst).toHaveBeenCalled();
+      // mcpServer.findFirst が呼ばれていることを確認（serverType=UNIFIED の検索）
+      expect(mockDb.mcpServer.findFirst).toHaveBeenCalled();
     });
   });
 
@@ -218,19 +218,18 @@ describe("upsertUnifiedMcpServers", () => {
       ];
 
       mockDb.mcpServerTemplate.findMany.mockResolvedValue(mockTemplates);
-      mockDb.unifiedMcpServer.findFirst.mockResolvedValue(null);
-      mockDb.$transaction.mockImplementation(async (callback) => {
-        const txMock = {
-          mcpServer: {
-            findFirst: vi.fn().mockResolvedValue(null),
-            create: vi.fn().mockResolvedValue({ id: "mcp-server-1" }),
-          },
-          unifiedMcpServer: {
-            create: vi.fn().mockResolvedValue({ id: "unified-1" }),
-          },
-        };
-        return callback(txMock);
-      });
+      mockDb.mcpServer.findFirst.mockResolvedValue(null);
+      mockDb.$transaction.mockImplementation(
+        (callback: (tx: unknown) => Promise<unknown>) => {
+          const txMock = {
+            mcpServer: {
+              findFirst: vi.fn().mockResolvedValue(null),
+              create: vi.fn().mockResolvedValue({ id: "mcp-server-1" }),
+            },
+          };
+          return callback(txMock);
+        },
+      );
 
       // validServerNames未指定
       await upsertUnifiedMcpServers();

@@ -13,7 +13,7 @@ vi.mock("@tumiki/db/server", async (importOriginal) => {
   return {
     ...mod,
     db: {
-      unifiedMcpServer: {
+      mcpServer: {
         findUnique: vi.fn(),
       },
     },
@@ -86,8 +86,8 @@ describe("aggregateTools", () => {
     id: unifiedMcpServerId,
     name: "Unified Server",
     childServers: [
-      { displayOrder: 0, mcpServer: mockChildServer1 },
-      { displayOrder: 1, mcpServer: mockChildServer2 },
+      { displayOrder: 0, childMcpServer: mockChildServer1 },
+      { displayOrder: 1, childMcpServer: mockChildServer2 },
     ],
   };
 
@@ -116,12 +116,12 @@ describe("aggregateTools", () => {
 
     expect(result).toStrictEqual(cachedTools);
     expect(getUnifiedToolsFromCache).toHaveBeenCalledWith(unifiedMcpServerId);
-    expect(db.unifiedMcpServer.findUnique).not.toHaveBeenCalled();
+    expect(db.mcpServer.findUnique).not.toHaveBeenCalled();
   });
 
   test("キャッシュがない場合はDBから取得してキャッシュに保存する", async () => {
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       mockUnifiedServer as never,
     );
     vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
@@ -152,7 +152,7 @@ describe("aggregateTools", () => {
 
   test("統合MCPサーバーが見つからない場合はエラーをスローする", async () => {
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(null);
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(null);
 
     await expect(aggregateTools(unifiedMcpServerId)).rejects.toThrow(
       `Unified MCP server not found: ${unifiedMcpServerId}`,
@@ -167,11 +167,11 @@ describe("aggregateTools", () => {
 
     const unifiedServerWithStopped = {
       ...mockUnifiedServer,
-      childServers: [{ displayOrder: 0, mcpServer: stoppedServer }],
+      childServers: [{ displayOrder: 0, childMcpServer: stoppedServer }],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithStopped as never,
     );
 
@@ -188,11 +188,11 @@ describe("aggregateTools", () => {
 
     const unifiedServerWithError = {
       ...mockUnifiedServer,
-      childServers: [{ displayOrder: 0, mcpServer: errorServer }],
+      childServers: [{ displayOrder: 0, childMcpServer: errorServer }],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithError as never,
     );
 
@@ -215,13 +215,13 @@ describe("aggregateTools", () => {
     const unifiedServerWithProblems = {
       ...mockUnifiedServer,
       childServers: [
-        { displayOrder: 0, mcpServer: stoppedServer },
-        { displayOrder: 1, mcpServer: errorServer },
+        { displayOrder: 0, childMcpServer: stoppedServer },
+        { displayOrder: 1, childMcpServer: errorServer },
       ],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithProblems as never,
     );
 
@@ -239,13 +239,13 @@ describe("aggregateTools", () => {
     const unifiedServerWithDeleted = {
       ...mockUnifiedServer,
       childServers: [
-        { displayOrder: 0, mcpServer: mockChildServer1 },
-        { displayOrder: 1, mcpServer: deletedServer },
+        { displayOrder: 0, childMcpServer: mockChildServer1 },
+        { displayOrder: 1, childMcpServer: deletedServer },
       ],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithDeleted as never,
     );
     vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
@@ -271,13 +271,13 @@ describe("aggregateTools", () => {
     const unifiedServerWithAllDeleted = {
       ...mockUnifiedServer,
       childServers: [
-        { displayOrder: 0, mcpServer: deletedServer1 },
-        { displayOrder: 1, mcpServer: deletedServer2 },
+        { displayOrder: 0, childMcpServer: deletedServer1 },
+        { displayOrder: 1, childMcpServer: deletedServer2 },
       ],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithAllDeleted as never,
     );
     vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
@@ -297,12 +297,12 @@ describe("aggregateTools", () => {
     const unifiedServerWithMultipleInstances = {
       ...mockUnifiedServer,
       childServers: [
-        { displayOrder: 0, mcpServer: serverWithMultipleInstances },
+        { displayOrder: 0, childMcpServer: serverWithMultipleInstances },
       ],
     };
 
     vi.mocked(getUnifiedToolsFromCache).mockResolvedValue(null);
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithMultipleInstances as never,
     );
     vi.mocked(setUnifiedToolsCache).mockResolvedValue(undefined);
@@ -336,8 +336,8 @@ describe("getChildServers", () => {
     id: unifiedMcpServerId,
     name: "Unified Server",
     childServers: [
-      { displayOrder: 0, mcpServer: mockChildServer1 },
-      { displayOrder: 1, mcpServer: mockChildServer2 },
+      { displayOrder: 0, childMcpServer: mockChildServer1 },
+      { displayOrder: 1, childMcpServer: mockChildServer2 },
     ],
   };
 
@@ -350,7 +350,7 @@ describe("getChildServers", () => {
   });
 
   test("子サーバー一覧を取得できる", async () => {
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       mockUnifiedServer as never,
     );
 
@@ -364,7 +364,7 @@ describe("getChildServers", () => {
   });
 
   test("統合MCPサーバーが見つからない場合はエラーをスローする", async () => {
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(null);
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(null);
 
     await expect(getChildServers(unifiedMcpServerId)).rejects.toThrow(
       `Unified MCP server not found: ${unifiedMcpServerId}`,
@@ -380,12 +380,12 @@ describe("getChildServers", () => {
     const unifiedServerWithDeleted = {
       ...mockUnifiedServer,
       childServers: [
-        { displayOrder: 0, mcpServer: mockChildServer1 },
-        { displayOrder: 1, mcpServer: deletedServer },
+        { displayOrder: 0, childMcpServer: mockChildServer1 },
+        { displayOrder: 1, childMcpServer: deletedServer },
       ],
     };
 
-    vi.mocked(db.unifiedMcpServer.findUnique).mockResolvedValue(
+    vi.mocked(db.mcpServer.findUnique).mockResolvedValue(
       unifiedServerWithDeleted as never,
     );
 

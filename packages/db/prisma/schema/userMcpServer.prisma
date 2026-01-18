@@ -50,6 +50,8 @@ enum ServerType {
   CUSTOM
   /// 公式MCPサーバー
   OFFICIAL
+  /// 統合MCPサーバー（複数のMCPサーバーを単一エンドポイントで公開）
+  UNIFIED
 }
 
 /// PIIマスキングモード
@@ -67,6 +69,7 @@ enum PiiMaskingMode {
 
 /// 実際に稼働するMCPサーバー
 /// 1つまたは複数のMcpServerTemplateから作成
+/// serverType = UNIFIED の場合は複数のMCPサーバーを統合したエンドポイント
 /// @namespace UserMcpServer
 model McpServer {
   id           String       @id @default(cuid())
@@ -74,7 +77,7 @@ model McpServer {
   /// @zod.string.min(1)
   name         String
   /// サーバーの説明
-  description  String
+  description  String?
   /// アイコンパス
   iconPath     String?
   /// サーバーの状態
@@ -114,8 +117,17 @@ model McpServer {
   /// 権限設定（サーバー削除時に自動削除）
   mcpPermissions McpPermission[]
 
-  /// 統合MCPサーバーの子サーバーとしての参照
-  unifiedMcpServerChildren UnifiedMcpServerChild[]
+  /// UNIFIED用: 作成者のユーザーID（このユーザーのみがアクセス可能）
+  /// UNIFIED以外のserverTypeでもオプションで設定可能
+  createdBy String?
+  /// 作成者への参照
+  creator   User?   @relation(fields: [createdBy], references: [id])
+
+  /// 自己参照リレーション（UNIFIED時のみ使用）
+  /// このサーバーが統合サーバーとして含む子サーバー一覧
+  childServers  McpServerChild[] @relation("ParentServer")
+  /// このサーバーを子として含む統合サーバー一覧
+  parentServers McpServerChild[] @relation("ChildServer")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -123,6 +135,35 @@ model McpServer {
   deletedAt DateTime?
 
   @@index([deletedAt])
+  @@index([createdBy])
+}
+
+/// 統合MCPサーバーの子サーバー（中間テーブル）
+/// McpServer間の明示的多対多リレーション（serverType=UNIFIED のサーバーとその子サーバー）
+/// @namespace UserMcpServer
+model McpServerChild {
+  /// レコードID（cuid: 25文字）
+  id              String    @id @default(cuid())
+
+  /// 親の統合MCPサーバーID（serverType=UNIFIED のサーバー）
+  parentMcpServerId String
+  /// 親の統合MCPサーバーへの参照（親削除時にカスケード削除）
+  parentMcpServer   McpServer @relation("ParentServer", fields: [parentMcpServerId], references: [id], onDelete: Cascade)
+
+  /// 子のMCPサーバーID
+  childMcpServerId  String
+  /// 子のMCPサーバーへの参照（サーバー削除時にカスケード削除）
+  childMcpServer    McpServer @relation("ChildServer", fields: [childMcpServerId], references: [id], onDelete: Cascade)
+
+  /// 表示順序（ツール一覧での並び順）
+  displayOrder      Int @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  /// 同一統合サーバー内で同じMCPサーバーは1回のみ
+  @@unique([parentMcpServerId, childMcpServerId])
+  @@index([childMcpServerId])
 }
 
 /// APIキー管理テーブル

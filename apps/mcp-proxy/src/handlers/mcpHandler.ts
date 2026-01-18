@@ -114,8 +114,8 @@ const handleUnifiedMcpRequest = async (
   userId: string,
 ) => {
   try {
-    // UnifiedMcpServer の名前を取得
-    const unifiedServer = await db.unifiedMcpServer.findUnique({
+    // 統合MCPサーバー（serverType=UNIFIED）の名前を取得
+    const unifiedServer = await db.mcpServer.findUnique({
       where: { id: unifiedMcpServerId },
       select: { name: true },
     });

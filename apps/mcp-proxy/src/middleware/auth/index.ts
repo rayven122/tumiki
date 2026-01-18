@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { AuthType, PiiMaskingMode, db } from "@tumiki/db/server";
+import { AuthType, PiiMaskingMode, ServerType } from "@tumiki/db/server";
 import type { HonoEnv } from "../../types/index.js";
 import { logInfo, logError } from "../../libs/logger/index.js";
 import { AUTH_CONFIG } from "../../constants/config.js";
@@ -45,7 +45,7 @@ export type ServerTypeResult =
 /**
  * サーバー種類を判定
  *
- * serverIdがMcpServerかUnifiedMcpServerかをDB検索で自動判定
+ * serverIdがMcpServer（通常 or UNIFIED）かをDB検索で自動判定
  *
  * @param serverId - サーバーID
  * @returns サーバー種類と情報、または見つからない場合はnull
@@ -53,31 +53,25 @@ export type ServerTypeResult =
 export const detectServerType = async (
   serverId: string,
 ): Promise<ServerTypeResult> => {
-  // まずMcpServerを検索
+  // まずMcpServerを検索（通常サーバー、CUSTOM/OFFICIAL）
   const mcpServer = await getMcpServerOrganization(serverId);
   if (mcpServer) {
+    // serverType=UNIFIEDの場合は統合サーバーとして扱う
+    if (mcpServer.serverType === ServerType.UNIFIED) {
+      return {
+        type: "unified",
+        server: {
+          id: mcpServer.id,
+          name: mcpServer.name,
+          organizationId: mcpServer.organizationId,
+          createdBy: mcpServer.createdBy ?? "", // UNIFIEDでは必須
+          deletedAt: mcpServer.deletedAt,
+        },
+      };
+    }
     return {
       type: "mcp",
       server: mcpServer,
-    };
-  }
-
-  // 見つからなければUnifiedMcpServerを検索
-  const unifiedServer = await db.unifiedMcpServer.findUnique({
-    where: { id: serverId },
-    select: {
-      id: true,
-      name: true,
-      organizationId: true,
-      createdBy: true,
-      deletedAt: true,
-    },
-  });
-
-  if (unifiedServer) {
-    return {
-      type: "unified",
-      server: unifiedServer,
     };
   }
 

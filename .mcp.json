@@ -46,7 +46,7 @@
         "--access-mode=unrestricted"
       ],
       "env": {
-        "DATABASE_URI": "postgresql://root:password@localhost:5434/tumiki"
+        "DATABASE_URI": "${DATABASE_URL}"
       }
     }
   }

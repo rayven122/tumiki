@@ -6,7 +6,7 @@ description: 統合MCPエンドポイント機能の実装・管理ガイド。�
 
 **このスキルを使用する場面：**
 - 統合MCPエンドポイント機能を実装・変更する場合
-- サーバー種類判定ロジック（McpServer / UnifiedMcpServer）の理解が必要な場合
+- サーバー種類判定ロジック（McpServer の serverType による判定）の理解が必要な場合
 - 3階層ツール名フォーマットの処理が必要な場合
 - JWT認証フローの設計・デバッグ時
 - Redis キャッシング戦略の検討時
@@ -28,19 +28,19 @@ POST /mcp/:serverId
 │  (detectServerType で種類判定)      │
 └─────────────────────────────────────┘
       ↓
-  type = "mcp" ?
-      ├── YES → 通常MCPサーバー処理
+  serverType = UNIFIED ?
+      ├── NO → 通常MCPサーバー処理
       │         - 組織メンバーシップチェック
       │         - PII/TOONミドルウェア適用
       │
-      └── NO (type = "unified") → 統合MCPサーバー処理
-                - 作成者チェック
+      └── YES → 統合MCPサーバー処理
+                - 組織メンバーシップチェック
                 - PII/TOONは子サーバーごとに適用
 ```
 
 ### サーバー種類の自動判定
 
-`detectServerType()` 関数がDBを検索して `serverId` の種類を判定する。
+`detectServerType()` 関数が `McpServer` テーブルを検索し、`serverType` フィールドで種類を判定する。
 
 ```typescript
 // apps/mcp-proxy/src/middleware/auth/index.ts
@@ -52,20 +52,23 @@ export type ServerTypeResult =
 export const detectServerType = async (
   serverId: string,
 ): Promise<ServerTypeResult> => {
-  // まずMcpServerを検索
+  // McpServerを検索（通常サーバー、CUSTOM/OFFICIAL/UNIFIED）
   const mcpServer = await getMcpServerOrganization(serverId);
   if (mcpServer) {
+    // serverType=UNIFIEDの場合は統合サーバーとして扱う
+    if (mcpServer.serverType === ServerType.UNIFIED) {
+      return {
+        type: "unified",
+        server: {
+          id: mcpServer.id,
+          name: mcpServer.name,
+          organizationId: mcpServer.organizationId,
+          createdBy: mcpServer.createdBy ?? "",
+          deletedAt: mcpServer.deletedAt,
+        },
+      };
+    }
     return { type: "mcp", server: mcpServer };
-  }
-
-  // 見つからなければUnifiedMcpServerを検索
-  const unifiedServer = await db.unifiedMcpServer.findUnique({
-    where: { id: serverId },
-    select: { id: true, name: true, organizationId: true, createdBy: true, deletedAt: true },
-  });
-
-  if (unifiedServer) {
-    return { type: "unified", server: unifiedServer };
   }
 
   return null;
@@ -76,9 +79,9 @@ export const detectServerType = async (
 
 ## データモデル
 
-### UnifiedMcpServer
+### McpServer (serverType=UNIFIED)
 
-統合MCPサーバーの親エンティティ。
+統合MCPサーバーは `McpServer` テーブルに `serverType: UNIFIED` として保存される。
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|
@@ -86,19 +89,31 @@ export const detectServerType = async (
 | name | String | 統合サーバー名 |
 | description | String? | 説明 |
 | organizationId | String | 所属組織 |
-| createdBy | String | 作成者ID |
+| serverType | ServerType | `UNIFIED` |
+| createdBy | String? | 作成者ID（UNIFIEDでは必須） |
 | deletedAt | DateTime? | 論理削除 |
+| childServers | McpServerChild[] | 子サーバー関連 |
 
-### UnifiedMcpServerChild
+### McpServerChild
 
-子MCPサーバーとの関連。
+子MCPサーバーとの関連（自己参照リレーション）。
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|
 | id | String | CUID |
-| unifiedMcpServerId | String | 親ID |
-| mcpServerId | String | 子MCPサーバーID |
+| parentMcpServerId | String | 親（UNIFIED）サーバーID |
+| childMcpServerId | String | 子MCPサーバーID |
 | displayOrder | Int | 表示順 |
+
+### ServerType enum
+
+```prisma
+enum ServerType {
+  CUSTOM    // ユーザー作成
+  OFFICIAL  // 公式
+  UNIFIED   // 統合エンドポイント
+}
+```
 
 ### AuthContext 拡張
 
@@ -124,6 +139,8 @@ type AuthContext = {
 
 ### 統合サーバーの認可ロジック
 
+統合サーバーへのアクセスは **組織メンバーシップのみ** でチェックされる（作成者チェックなし）。
+
 ```typescript
 // apps/mcp-proxy/src/middleware/auth/index.ts
 const handleUnifiedServerAuth = async (...) => {
@@ -132,24 +149,24 @@ const handleUnifiedServerAuth = async (...) => {
     return c.json(createNotFoundError(...), 404);
   }
 
-  // 2. 作成者チェック（createdBy == userId）
-  if (server.createdBy !== userId) {
+  // 2. 組織メンバーシップチェック
+  const membershipResult = await validateOrganizationMembership(
+    server.organizationId,
+    userId,
+  );
+
+  if (!membershipResult.isMember) {
     return c.json(createPermissionDeniedError(
-      "Only the creator can access this unified MCP server"
+      "User is not a member of this organization"
     ), 403);
   }
 
-  // 3. 組織メンバーシップチェック（追加の安全チェック）
-  const isMember = await checkOrganizationMembership(server.organizationId, userId);
-  if (!isMember) {
-    return c.json(createPermissionDeniedError(...), 403);
-  }
-
-  // 4. AuthContextに統合エンドポイントフラグを設定
+  // 3. AuthContextに統合エンドポイントフラグを設定
   c.set("authContext", {
     ...baseContext,
     isUnifiedEndpoint: true,
     unifiedMcpServerId: server.id,
+    mcpServerId: "",  // 統合エンドポイントではtools/call時に動的に設定
     piiMaskingMode: PiiMaskingMode.DISABLED,  // 子サーバーごとに適用
     toonConversionEnabled: false,
   });
@@ -251,12 +268,26 @@ export const aggregateTools = async (
   const cached = await getUnifiedToolsFromCache(unifiedMcpServerId);
   if (cached !== null) return cached;
 
-  // 2. DBから子サーバーを取得
-  const unifiedServer = await db.unifiedMcpServer.findUnique({...});
+  // 2. DBから子サーバーを取得（McpServerの自己参照リレーション）
+  const unifiedServer = await db.mcpServer.findUnique({
+    where: { id: unifiedMcpServerId },
+    include: {
+      childServers: {
+        include: {
+          childMcpServer: {
+            include: {
+              templateInstances: { include: { allowedTools: true } },
+            },
+          },
+        },
+        orderBy: { displayOrder: "asc" },
+      },
+    },
+  });
 
   // 3. 論理削除された子サーバーを除外
   const activeChildServers = unifiedServer.childServers
-    .map((child) => child.mcpServer)
+    .map((child) => child.childMcpServer)
     .filter((server) => server.deletedAt === null);
 
   // 4. Fail-fast: STOPPED/ERRORのサーバーがあればエラー
@@ -425,9 +456,8 @@ export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<vo
 
 ### 認証・認可
 
-- [ ] `detectServerType()` でサーバー種類を正しく判定しているか
-- [ ] 統合サーバーは作成者のみアクセス可能か
-- [ ] 組織メンバーシップチェックを実施しているか
+- [ ] `detectServerType()` で `serverType` に基づきサーバー種類を正しく判定しているか
+- [ ] 統合サーバーは組織メンバーのみアクセス可能か
 - [ ] 論理削除されたサーバーを適切に拒否しているか
 
 ### ツール集約 (tools/list)
@@ -461,13 +491,13 @@ export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<vo
 
 ### 「Server not found」エラー
 
-1. `serverId` がMcpServerとUnifiedMcpServerのどちらにも存在しない
+1. `serverId` が McpServer に存在しない
 2. 対処: DBでIDの存在を確認
 
-### 「Only the creator can access」エラー
+### 「User is not a member of this organization」エラー
 
-1. 統合サーバーに作成者以外がアクセスしている
-2. 対処: JWTのユーザーIDと `createdBy` を比較
+1. ユーザーが統合サーバーの組織のメンバーではない
+2. 対処: JWTのユーザーIDと組織メンバーシップを確認
 
 ### 「Cannot aggregate tools: some child servers are not running」
 
