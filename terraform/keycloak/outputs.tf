@@ -46,22 +46,22 @@ output "test_user_email" {
 # ロール情報
 output "role_owner_id" {
   description = "Owner ロールID"
-  value       = keycloak_role.owner.id
+  value       = keycloak_role.org_roles["owner"].id
 }
 
 output "role_admin_id" {
   description = "Admin ロールID"
-  value       = keycloak_role.admin.id
+  value       = keycloak_role.org_roles["admin"].id
 }
 
 output "role_member_id" {
   description = "Member ロールID"
-  value       = keycloak_role.member.id
+  value       = keycloak_role.org_roles["member"].id
 }
 
 output "role_viewer_id" {
   description = "Viewer ロールID"
-  value       = keycloak_role.viewer.id
+  value       = keycloak_role.org_roles["viewer"].id
 }
 
 # Client Scope情報
