@@ -54,17 +54,17 @@ const ensureOfficialUserAndOrganization = async () => {
 };
 
 /**
- * 統合MCPサーバー（serverType=CUSTOM）と関連データを登録する
+ * 統合MCPサーバー（serverType=UNIFIED）と関連データを登録する
  *
  * 新アーキテクチャ:
- * - CUSTOM サーバーは templateInstances を直接持つ
+ * - UNIFIED サーバーは templateInstances を直接持つ
  * - 中間の McpServer は作成しない
  * - 各テンプレートは normalizedName で識別される
  *
  * @param validServerNames 有効なサーバー名のリスト（環境変数が設定されているサーバー）
  */
 export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
-  console.log("🔗 統合MCPサーバー（CUSTOM）の登録を開始します...\n");
+  console.log("🔗 統合MCPサーバー（UNIFIED）の登録を開始します...\n");
 
   // 公式ユーザーと組織を確保
   await ensureOfficialUserAndOrganization();
@@ -132,12 +132,12 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
       );
     }
 
-    // 既存の統合MCPサーバー（serverType=CUSTOM）を確認（名前と組織IDで一意）
+    // 既存の統合MCPサーバー（serverType=UNIFIED）を確認（名前と組織IDで一意）
     const existingUnifiedServer = await db.mcpServer.findFirst({
       where: {
         name: definition.name,
         organizationId: OFFICIAL_ORGANIZATION_ID,
-        serverType: ServerType.CUSTOM,
+        serverType: ServerType.UNIFIED,
         deletedAt: null,
       },
       include: {
@@ -180,14 +180,14 @@ export const upsertUnifiedMcpServers = async (validServerNames?: string[]) => {
           );
         });
       } else {
-        // 新規作成（serverType=CUSTOM として McpServer を作成）
+        // 新規作成（serverType=UNIFIED として McpServer を作成）
         // templateInstances を直接作成
         await tx.mcpServer.create({
           data: {
             name: definition.name,
             description: definition.description,
             organizationId: OFFICIAL_ORGANIZATION_ID,
-            serverType: ServerType.CUSTOM,
+            serverType: ServerType.UNIFIED,
             serverStatus: ServerStatus.RUNNING,
             authType: AuthType.NONE,
             piiMaskingMode: PiiMaskingMode.DISABLED,

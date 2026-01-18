@@ -646,7 +646,7 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
 ### `McpServer`
 実際に稼働するMCPサーバー
 1つまたは複数のMcpServerTemplateから作成
-serverType = CUSTOM でも複数のtemplateInstancesを持つことで統合エンドポイントとして機能可能
+serverType = UNIFIED の場合は複数のMCPサーバーを統合したエンドポイント
 
 **Properties**
   - `id`: 

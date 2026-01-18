@@ -68,20 +68,20 @@ describe("authMiddleware", () => {
     name: "Test MCP Server",
     organizationId: mockOrganizationId,
     authType: "OAUTH",
-    serverType: "OFFICIAL",
+    serverType: "CUSTOM",
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
     toonConversionEnabled: false,
     deletedAt: null,
   };
 
-  // 統合MCPサーバー用モック（serverType=CUSTOM）
+  // 統合MCPサーバー用モック（serverType=UNIFIED）
   const mockUnifiedServer: McpServerLookupResult = {
     id: mockServerId,
     name: "Test Unified Server",
     organizationId: mockOrganizationId,
     authType: "OAUTH",
-    serverType: ServerType.CUSTOM,
+    serverType: ServerType.UNIFIED,
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
     toonConversionEnabled: false,
@@ -310,7 +310,7 @@ describe("authMiddleware", () => {
     test("作成者による正常な認証フローが成功する", async () => {
       vi.mocked(verifyKeycloakJWT).mockResolvedValue(mockJwtPayload);
       vi.mocked(getUserIdFromKeycloakId).mockResolvedValue(mockUserId);
-      // 統合サーバーはMcpServerテーブルにserverType=CUSTOMで格納されている
+      // 統合サーバーはMcpServerテーブルにserverType=UNIFIEDで格納されている
       vi.mocked(getMcpServerOrganization).mockResolvedValue(mockUnifiedServer);
       vi.mocked(checkOrganizationMembership).mockResolvedValue(true);
 
@@ -464,13 +464,13 @@ describe("detectServerType", () => {
     vi.clearAllMocks();
   });
 
-  test("McpServer (serverType=OFFICIAL) が見つかった場合はmcpタイプを返す", async () => {
+  test("McpServer (serverType=CUSTOM) が見つかった場合はmcpタイプを返す", async () => {
     const mockMcpServer: McpServerLookupResult = {
       id: mockServerId,
       name: "Test MCP Server",
       organizationId: "org-123",
       authType: "OAUTH",
-      serverType: "OFFICIAL",
+      serverType: "CUSTOM",
       piiMaskingMode: PiiMaskingMode.DISABLED,
       piiInfoTypes: [],
       toonConversionEnabled: false,
@@ -486,13 +486,13 @@ describe("detectServerType", () => {
     });
   });
 
-  test("McpServer (serverType=CUSTOM) が見つかった場合はunifiedタイプを返す", async () => {
+  test("McpServer (serverType=UNIFIED) が見つかった場合はunifiedタイプを返す", async () => {
     const mockUnifiedServer: McpServerLookupResult = {
       id: mockServerId,
       name: "Test Unified",
       organizationId: "org-123",
       authType: "OAUTH",
-      serverType: ServerType.CUSTOM,
+      serverType: ServerType.UNIFIED,
       piiMaskingMode: PiiMaskingMode.DISABLED,
       piiInfoTypes: [],
       toonConversionEnabled: false,

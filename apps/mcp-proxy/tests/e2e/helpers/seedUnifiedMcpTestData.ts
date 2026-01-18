@@ -211,7 +211,7 @@ export const seedUnifiedMcpTestData = async (
       description: "E2Eテスト用サーバーAインスタンス",
       iconPath: null,
       serverStatus: ServerStatus.RUNNING,
-      serverType: ServerType.OFFICIAL,
+      serverType: ServerType.CUSTOM,
       authType: AuthType.NONE,
       piiMaskingMode: PiiMaskingMode.DISABLED,
       piiInfoTypes: [],
@@ -245,7 +245,7 @@ export const seedUnifiedMcpTestData = async (
       description: "E2Eテスト用サーバーBインスタンス",
       iconPath: null,
       serverStatus: ServerStatus.RUNNING,
-      serverType: ServerType.OFFICIAL,
+      serverType: ServerType.CUSTOM,
       authType: AuthType.NONE,
       piiMaskingMode: PiiMaskingMode.DISABLED,
       piiInfoTypes: [],
@@ -268,9 +268,9 @@ export const seedUnifiedMcpTestData = async (
   });
   console.log(`   ✓ サーバーB ID: ${mcpServerB.id}\n`);
 
-  // 8. 統合MCPサーバー（serverType=CUSTOM）の作成
-  // CUSTOMサーバーはtemplateInstancesを直接持ち、子サーバー経由ではなくテンプレートを直接使用
-  console.log("🔗 統合MCPサーバー（CUSTOM）を作成中...");
+  // 8. 統合MCPサーバー（serverType=UNIFIED）の作成
+  // UNIFIEDサーバーはtemplateInstancesを直接持ち、子サーバー経由ではなくテンプレートを直接使用
+  console.log("🔗 統合MCPサーバー（UNIFIED）を作成中...");
   const unifiedMcpServer = await db.mcpServer.upsert({
     where: { id: TEST_UNIFIED_MCP_SERVER_ID },
     update: {},
@@ -279,14 +279,14 @@ export const seedUnifiedMcpTestData = async (
       name: "E2E Test Unified MCP Server",
       description: "E2Eテスト用統合MCPサーバー",
       organizationId: organization.id,
-      serverType: ServerType.CUSTOM,
+      serverType: ServerType.UNIFIED,
       serverStatus: ServerStatus.RUNNING,
       authType: AuthType.NONE,
       piiMaskingMode: PiiMaskingMode.DISABLED,
       piiInfoTypes: [],
       toonConversionEnabled: false,
       displayOrder: 0,
-      // CUSTOMサーバー（統合）はtemplateInstancesを直接持つ
+      // UNIFIEDサーバーはtemplateInstancesを直接持つ
       templateInstances: {
         create: [
           {
@@ -366,7 +366,7 @@ export const cleanupUnifiedMcpTestData = async (): Promise<void> => {
     },
   });
 
-  // CUSTOMサーバー（統合）のテンプレートインスタンスを削除
+  // UNIFIEDサーバーのテンプレートインスタンスを削除
   await db.mcpServerTemplateInstance.deleteMany({
     where: {
       mcpServerId: TEST_UNIFIED_MCP_SERVER_ID,
@@ -376,7 +376,7 @@ export const cleanupUnifiedMcpTestData = async (): Promise<void> => {
   await db.mcpServer.deleteMany({
     where: {
       id: TEST_UNIFIED_MCP_SERVER_ID,
-      serverType: ServerType.CUSTOM,
+      serverType: ServerType.UNIFIED,
     },
   });
 

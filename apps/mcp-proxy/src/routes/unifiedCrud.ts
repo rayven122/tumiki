@@ -3,7 +3,7 @@
  *
  * URL: /unified
  *
- * 統合MCPサーバー（serverType=CUSTOM）の作成・一覧・詳細・更新・削除を行うAPI。
+ * 統合MCPサーバー（serverType=UNIFIED）の作成・一覧・詳細・更新・削除を行うAPI。
  * JWT認証のみをサポート。
  */
 
@@ -151,7 +151,7 @@ unifiedCrudRoute.post("/", async (c) => {
         name: body.name.trim(),
         description: body.description.trim(),
         organizationId,
-        serverType: ServerType.CUSTOM,
+        serverType: ServerType.UNIFIED,
         serverStatus: ServerStatus.RUNNING,
         authType: AuthType.NONE,
         templateInstances: {
@@ -196,7 +196,7 @@ unifiedCrudRoute.get("/", async (c) => {
     const unifiedServers = await db.mcpServer.findMany({
       where: {
         organizationId: authContext.organizationId,
-        serverType: ServerType.CUSTOM,
+        serverType: ServerType.UNIFIED,
         deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
@@ -228,7 +228,7 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
     const unifiedServer = await db.mcpServer.findUnique({
       where: {
         id: unifiedId,
-        serverType: ServerType.CUSTOM,
+        serverType: ServerType.UNIFIED,
       },
       include: TEMPLATE_INSTANCES_INCLUDE,
     });
@@ -320,7 +320,7 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
       return tx.mcpServer.update({
         where: {
           id: unifiedId,
-          serverType: ServerType.CUSTOM,
+          serverType: ServerType.UNIFIED,
         },
         data: updateData,
         include: TEMPLATE_INSTANCES_INCLUDE,
@@ -353,7 +353,7 @@ unifiedCrudRoute.delete("/:id", unifiedOwnershipMiddleware, async (c) => {
     await db.mcpServer.update({
       where: {
         id: unifiedId,
-        serverType: ServerType.CUSTOM,
+        serverType: ServerType.UNIFIED,
       },
       data: { deletedAt: new Date() },
     });

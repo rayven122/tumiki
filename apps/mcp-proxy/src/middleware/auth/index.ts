@@ -51,8 +51,8 @@ export const detectServerType = async (
     return null;
   }
 
-  // serverType=CUSTOMの場合は統合サーバーとして扱う
-  if (mcpServer.serverType === ServerType.CUSTOM) {
+  // serverType=UNIFIEDの場合は統合サーバーとして扱う
+  if (mcpServer.serverType === ServerType.UNIFIED) {
     return {
       type: "unified",
       server: {
