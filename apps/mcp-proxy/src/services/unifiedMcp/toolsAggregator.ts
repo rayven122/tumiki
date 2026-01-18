@@ -72,11 +72,11 @@ export const aggregateTools = async (
     return cached;
   }
 
-  // DBから統合MCPサーバー（serverType=UNIFIED）とテンプレートインスタンスを取得
+  // DBから統合MCPサーバー（serverType=CUSTOM）とテンプレートインスタンスを取得
   const unifiedServer = await db.mcpServer.findUnique({
     where: {
       id: unifiedMcpServerId,
-      serverType: ServerType.UNIFIED,
+      serverType: ServerType.CUSTOM,
     },
     include: {
       templateInstances: {

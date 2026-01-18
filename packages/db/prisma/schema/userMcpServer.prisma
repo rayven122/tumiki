@@ -46,12 +46,10 @@ enum ServerStatus {
 /// サーバーの種類
 /// @namespace UserMcpServer
 enum ServerType {
-  /// カスタムMCPサーバー
+  /// カスタムMCPサーバー（統合MCPサーバーも含む）
   CUSTOM
   /// 公式MCPサーバー
   OFFICIAL
-  /// 統合MCPサーバー（複数のMCPサーバーを単一エンドポイントで公開）
-  UNIFIED
 }
 
 /// PIIマスキングモード
@@ -69,7 +67,7 @@ enum PiiMaskingMode {
 
 /// 実際に稼働するMCPサーバー
 /// 1つまたは複数のMcpServerTemplateから作成
-/// serverType = UNIFIED の場合は複数のMCPサーバーを統合したエンドポイント
+/// serverType = CUSTOM でも複数のtemplateInstancesを持つことで統合エンドポイントとして機能可能
 /// @namespace UserMcpServer
 model McpServer {
   id           String       @id @default(cuid())
