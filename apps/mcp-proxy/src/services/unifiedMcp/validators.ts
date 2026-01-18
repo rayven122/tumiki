@@ -7,41 +7,54 @@
 import { db } from "@tumiki/db/server";
 import type { CreateTemplateInstanceRequest } from "./types.js";
 
-/**
- * テンプレート存在検証の結果
- */
+/** テンプレート情報 */
+type TemplateInfo = {
+  id: string;
+  name: string;
+  authType: string;
+};
+
+/** テンプレート存在検証の結果 */
 export type TemplateValidationResult =
-  | {
-      valid: true;
-      templates: Array<{
-        id: string;
-        name: string;
-        authType: string;
-      }>;
-    }
-  | {
-      valid: false;
-      missingIds: string[];
-    };
+  | { valid: true; templates: TemplateInfo[] }
+  | { valid: false; missingIds: string[] };
+
+/** OAuthトークン検証の結果 */
+export type OAuthTokenValidationResult =
+  | { valid: true }
+  | { valid: false; missingTemplateNames: string[] };
 
 /**
- * OAuthトークン検証の結果
+ * 欠損IDを抽出
  */
-export type OAuthTokenValidationResult =
-  | {
-      valid: true;
-    }
-  | {
-      valid: false;
-      missingTemplateNames: string[];
-    };
+const findMissingIds = (
+  requestedIds: string[],
+  foundIds: Set<string>,
+): string[] => requestedIds.filter((id) => !foundIds.has(id));
+
+/**
+ * OAuth認証が必要でトークンがないテンプレートを抽出
+ */
+const findTemplatesMissingOAuthTokens = (
+  templates: Array<{
+    name: string;
+    authType: string;
+    oauthClients: Array<{ oauthTokens: Array<{ id: string }> }>;
+  }>,
+): string[] =>
+  templates
+    .filter(
+      (template) =>
+        template.authType === "OAUTH" &&
+        (template.oauthClients.length === 0 ||
+          template.oauthClients.every(
+            (client) => client.oauthTokens.length === 0,
+          )),
+    )
+    .map((t) => t.name);
 
 /**
  * 指定されたテンプレートが同一組織内に存在するか検証
- *
- * @param templates - 検証対象のテンプレート配列
- * @param organizationId - 組織ID
- * @returns 検証結果（成功時はテンプレート情報、失敗時は欠損ID一覧）
  */
 export const validateTemplatesInOrganization = async (
   templates: CreateTemplateInstanceRequest[],
@@ -63,7 +76,7 @@ export const validateTemplatesInOrganization = async (
 
   if (foundTemplates.length !== templateIds.length) {
     const foundIds = new Set(foundTemplates.map((t) => t.id));
-    const missingIds = templateIds.filter((id) => !foundIds.has(id));
+    const missingIds = findMissingIds(templateIds, foundIds);
     return { valid: false, missingIds };
   }
 
@@ -73,13 +86,7 @@ export const validateTemplatesInOrganization = async (
 /**
  * ユーザーがOAuthトークンを持っているか検証
  *
- * OAuth認証が必要なテンプレートで、
- * ユーザーのトークンが存在することを確認
- *
- * @param templates - 検証対象のテンプレート配列
- * @param userId - ユーザーID
- * @param organizationId - 組織ID
- * @returns 検証結果（失敗時はトークンが不足しているテンプレート名一覧）
+ * OAuth認証が必要なテンプレートで、ユーザーのトークンが存在することを確認
  */
 export const validateOAuthTokensExist = async (
   templates: CreateTemplateInstanceRequest[],
@@ -90,44 +97,27 @@ export const validateOAuthTokensExist = async (
 
   // テンプレート情報とOAuthクライアント・トークンを取得
   const templateData = await db.mcpServerTemplate.findMany({
-    where: {
-      id: { in: templateIds },
-    },
+    where: { id: { in: templateIds } },
     select: {
       id: true,
       name: true,
       authType: true,
       oauthClients: {
-        where: {
-          organizationId,
-        },
+        where: { organizationId },
         select: {
           id: true,
           oauthTokens: {
-            where: {
-              userId,
-            },
-            select: {
-              id: true,
-            },
+            where: { userId },
+            select: { id: true },
           },
         },
       },
     },
   });
 
-  // OAuth認証が必要なテンプレートでトークンがないものをチェック
-  const missingOAuthTemplates = templateData.filter(
-    (template) =>
-      template.authType === "OAUTH" &&
-      (template.oauthClients.length === 0 ||
-        template.oauthClients.every(
-          (client) => client.oauthTokens.length === 0,
-        )),
-  );
+  const missingTemplateNames = findTemplatesMissingOAuthTokens(templateData);
 
-  if (missingOAuthTemplates.length > 0) {
-    const missingTemplateNames = missingOAuthTemplates.map((t) => t.name);
+  if (missingTemplateNames.length > 0) {
     return { valid: false, missingTemplateNames };
   }
 

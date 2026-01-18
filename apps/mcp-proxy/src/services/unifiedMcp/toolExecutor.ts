@@ -14,21 +14,58 @@ import {
   getErrorCodeName,
 } from "../../libs/error/index.js";
 
+/** PII/TOON設定の型 */
+type ServerSettings = {
+  piiMaskingMode: PiiMaskingMode;
+  piiInfoTypes: string[];
+  toonConversionEnabled: boolean;
+};
+
+/**
+ * 実行コンテキストにエラー情報を記録
+ */
+const recordError = (error: unknown, fullToolName: string): never => {
+  const errorInfo = extractMcpErrorInfo(error);
+
+  updateExecutionContext({
+    httpStatus: errorInfo.httpStatus,
+    errorCode: errorInfo.errorCode,
+    errorMessage: errorInfo.errorMessage,
+    errorDetails: error,
+  });
+
+  throw new Error(
+    `Failed to execute unified tool ${fullToolName}: ${errorInfo.errorMessage}`,
+  );
+};
+
+/**
+ * エラーログを出力
+ */
+const logExecutionError = (
+  error: unknown,
+  unifiedMcpServerId: string,
+  fullToolName: string,
+): void => {
+  const errorInfo = extractMcpErrorInfo(error);
+
+  logError("Failed to execute unified tool", error as Error, {
+    unifiedMcpServerId,
+    fullToolName,
+    errorCode: errorInfo.errorCode,
+    errorCodeName: getErrorCodeName(errorInfo.errorCode),
+    httpStatus: errorInfo.httpStatus,
+  });
+};
+
 /**
  * 統合エンドポイント経由でツールを実行
  *
+ * 処理フロー:
  * 1. 3階層ツール名をパース
- * 2. 子サーバーのMcpConfigを取得
- * 3. 既存のconnectToMcpServer()で接続
- * 4. ツールを実行
- * 5. 結果を返却
- *
- * @param unifiedMcpServerId - 統合MCPサーバーID
- * @param organizationId - 組織ID
- * @param fullToolName - 3階層フォーマットのツール名
- * @param args - ツールの引数
- * @param userId - ユーザーID
- * @returns ツール実行結果
+ * 2. テンプレートインスタンスを取得・検証
+ * 3. MCPサーバーに接続してツールを実行
+ * 4. 結果を返却
  */
 export const executeUnifiedTool = async (
   unifiedMcpServerId: string,
@@ -38,7 +75,7 @@ export const executeUnifiedTool = async (
   userId: string,
 ): Promise<unknown> => {
   try {
-    // 1. 3階層ツール名をパース
+    // 3階層ツール名をパース
     const { mcpServerId, instanceName, toolName } =
       parseUnifiedToolName(fullToolName);
 
@@ -49,7 +86,7 @@ export const executeUnifiedTool = async (
       toolName,
     });
 
-    // 2. テンプレートインスタンスを取得（複合ユニークキーで直接取得）
+    // テンプレートインスタンスを取得（複合ユニークキーで直接取得）
     const templateInstance =
       await db.mcpServerTemplateInstance.findUniqueOrThrow({
         where: {
@@ -76,7 +113,7 @@ export const executeUnifiedTool = async (
         },
       });
 
-    // 3. 組織IDの検証
+    // 組織IDの検証
     if (templateInstance.mcpServer.organizationId !== organizationId) {
       throw new Error(
         `Organization ID mismatch: expected ${organizationId}, got ${templateInstance.mcpServer.organizationId}`,
@@ -90,16 +127,14 @@ export const executeUnifiedTool = async (
 
     const template = templateInstance.mcpServerTemplate;
 
-    // 4. transportType と実際のmcpServerIdを実行コンテキストに追加
+    // 実行コンテキストを更新
     updateExecutionContext({
       method: "tools/call",
       transportType: template.transportType,
       toolName: fullToolName,
-      // 子サーバーのPII/TOON設定を適用
       piiMaskingMode: templateInstance.mcpServer.piiMaskingMode,
       piiInfoTypes: templateInstance.mcpServer.piiInfoTypes,
       toonConversionEnabled: templateInstance.mcpServer.toonConversionEnabled,
-      // 統合エンドポイント用: 実際に使用されたMCPサーバーID
       actualMcpServerId: mcpServerId,
     });
 
@@ -109,7 +144,7 @@ export const executeUnifiedTool = async (
       throw new Error(`Tool not found: ${fullToolName}`);
     }
 
-    // 5. McpConfig（環境変数設定）を取得
+    // McpConfig（環境変数設定）を取得
     const mcpConfig = await db.mcpConfig.findUnique({
       where: {
         mcpServerTemplateInstanceId_userId_organizationId: {
@@ -129,7 +164,7 @@ export const executeUnifiedTool = async (
       },
     });
 
-    // 6. MCP サーバーに接続
+    // MCPサーバーに接続
     const client = await connectToMcpServer(
       template,
       userId,
@@ -137,7 +172,7 @@ export const executeUnifiedTool = async (
       mcpConfig,
     );
 
-    // 7. ツールを実行
+    // ツールを実行
     logInfo("Calling tool on MCP server via unified endpoint", {
       unifiedMcpServerId,
       mcpServerId,
@@ -150,7 +185,7 @@ export const executeUnifiedTool = async (
       arguments: args,
     });
 
-    // 8. 接続をクローズ
+    // 接続をクローズ
     await client.close();
 
     logInfo("Unified tool executed successfully", {
@@ -162,28 +197,8 @@ export const executeUnifiedTool = async (
 
     return result;
   } catch (error) {
-    // MCPエラー情報を抽出
-    const errorInfo = extractMcpErrorInfo(error);
-
-    logError("Failed to execute unified tool", error as Error, {
-      unifiedMcpServerId,
-      fullToolName,
-      errorCode: errorInfo.errorCode,
-      errorCodeName: getErrorCodeName(errorInfo.errorCode),
-      httpStatus: errorInfo.httpStatus,
-    });
-
-    // 実行コンテキストにエラー情報を記録
-    updateExecutionContext({
-      httpStatus: errorInfo.httpStatus,
-      errorCode: errorInfo.errorCode,
-      errorMessage: errorInfo.errorMessage,
-      errorDetails: error,
-    });
-
-    throw new Error(
-      `Failed to execute unified tool ${fullToolName}: ${errorInfo.errorMessage}`,
-    );
+    logExecutionError(error, unifiedMcpServerId, fullToolName);
+    recordError(error, fullToolName);
   }
 };
 
@@ -191,17 +206,10 @@ export const executeUnifiedTool = async (
  * 統合エンドポイント用の子サーバー設定を取得
  *
  * tools/call実行時に対象ツールが属するMCPサーバーのPII/TOON設定を取得
- *
- * @param mcpServerId - MCPサーバーID
- * @returns PII/TOON設定
  */
 export const getChildServerSettings = async (
   mcpServerId: string,
-): Promise<{
-  piiMaskingMode: PiiMaskingMode;
-  piiInfoTypes: string[];
-  toonConversionEnabled: boolean;
-}> => {
+): Promise<ServerSettings> => {
   const server = await db.mcpServer.findUniqueOrThrow({
     where: { id: mcpServerId },
     select: {

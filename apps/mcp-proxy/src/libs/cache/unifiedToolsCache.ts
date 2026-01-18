@@ -13,25 +13,19 @@ import type {
 } from "../../services/unifiedMcp/types.js";
 
 /** キャッシュのTTL（秒） */
-const CACHE_TTL_SECONDS = 300; // 5分
+const CACHE_TTL_SECONDS = 300;
 
 /** キャッシュキーのプレフィックス */
 const CACHE_KEY_PREFIX = "unified:tools:";
 
 /**
  * キャッシュキーを生成
- *
- * @param unifiedId - 統合MCPサーバーID
- * @returns キャッシュキー
  */
 const getCacheKey = (unifiedId: string): string =>
   `${CACHE_KEY_PREFIX}${unifiedId}`;
 
 /**
  * 統合ツール一覧をキャッシュから取得
- *
- * @param unifiedId - 統合MCPサーバーID
- * @returns キャッシュされたツール一覧（キャッシュミスまたはエラー時はnull）
  */
 export const getUnifiedToolsFromCache = async (
   unifiedId: string,
@@ -64,9 +58,6 @@ export const getUnifiedToolsFromCache = async (
 
 /**
  * 統合ツール一覧をキャッシュに保存
- *
- * @param unifiedId - 統合MCPサーバーID
- * @param tools - 保存するツール一覧
  */
 export const setUnifiedToolsCache = async (
   unifiedId: string,
@@ -102,8 +93,6 @@ export const setUnifiedToolsCache = async (
 
 /**
  * 統合ツールキャッシュを無効化
- *
- * @param unifiedId - 統合MCPサーバーID
  */
 export const invalidateUnifiedToolsCache = async (
   unifiedId: string,

@@ -65,43 +65,43 @@ describe("parseUnifiedToolName", () => {
 
   test("区切り文字が1つだけの場合はエラーをスローする", () => {
     expect(() => parseUnifiedToolName("server__tool")).toThrow(
-      'Invalid unified tool name format: "server__tool". Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
+      'Invalid unified tool name format: "server__tool". Got 2 parts instead of 3. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 
   test("区切り文字がない場合はエラーをスローする", () => {
     expect(() => parseUnifiedToolName("simpleToolName")).toThrow(
-      'Invalid unified tool name format: "simpleToolName". Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
+      'Invalid unified tool name format: "simpleToolName". Got 1 parts instead of 3. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 
   test("空文字列の場合はエラーをスローする", () => {
     expect(() => parseUnifiedToolName("")).toThrow(
-      'Invalid unified tool name format: "". Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
+      'Invalid unified tool name format: "". Got 1 parts instead of 3. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 
   test("mcpServerIdが空の場合はエラーをスローする", () => {
     expect(() => parseUnifiedToolName("__instanceA__toolName")).toThrow(
-      'Invalid unified tool name format: "__instanceA__toolName". All parts (mcpServerId, instanceName, toolName) must be non-empty.',
+      'Invalid unified tool name format: "__instanceA__toolName". All parts must be non-empty. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 
   test("instanceNameが空の場合はエラーをスローする", () => {
     expect(() => parseUnifiedToolName("server____toolName")).toThrow(
-      'Invalid unified tool name format: "server____toolName". All parts (mcpServerId, instanceName, toolName) must be non-empty.',
+      'Invalid unified tool name format: "server____toolName". All parts must be non-empty. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 
   test("toolNameが空の場合はエラーをスローする", () => {
     expect(() => parseUnifiedToolName("server__instance__")).toThrow(
-      'Invalid unified tool name format: "server__instance__". All parts (mcpServerId, instanceName, toolName) must be non-empty.',
+      'Invalid unified tool name format: "server__instance__". All parts must be non-empty. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 
   test("4つ以上の部分がある場合はエラーをスローする（厳密に3パーツ必須）", () => {
     expect(() => parseUnifiedToolName("server__instance__tool__extra")).toThrow(
-      'Invalid unified tool name format: "server__instance__tool__extra". Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
+      'Invalid unified tool name format: "server__instance__tool__extra". Got 4 parts instead of 3. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 });

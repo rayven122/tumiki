@@ -7,17 +7,41 @@
 import type { ParsedToolName } from "./types.js";
 
 /** ツール名の区切り文字 */
-const TOOL_NAME_SEPARATOR = "__";
+const SEPARATOR = "__";
 
-/** 期待される区切り数（3階層: mcpServerId, instanceName, toolName） */
+/** 期待される階層数 */
 const EXPECTED_PARTS = 3;
 
 /**
+ * ツール名パーツが有効かどうかを検証
+ */
+const isValidParts = (parts: string[]): parts is [string, string, string] =>
+  parts.length === EXPECTED_PARTS && parts.every((part) => part.length > 0);
+
+/**
+ * パースエラーメッセージを生成
+ */
+const createParseError = (fullToolName: string, reason: string): Error =>
+  new Error(
+    `Invalid unified tool name format: "${fullToolName}". ${reason} ` +
+      `Expected format: "{mcpServerId}${SEPARATOR}{instanceName}${SEPARATOR}{toolName}"`,
+  );
+
+/**
+ * フォーマットエラーメッセージを生成
+ */
+const createFormatError = (
+  mcpServerId: string,
+  instanceName: string,
+  toolName: string,
+): Error =>
+  new Error(
+    `All parts must be non-empty: mcpServerId="${mcpServerId}", ` +
+      `instanceName="${instanceName}", toolName="${toolName}"`,
+  );
+
+/**
  * 3階層ツール名をパースして各要素を抽出
- *
- * @param fullToolName - 3階層フォーマットのツール名
- * @returns パース結果（mcpServerId, instanceName, toolName）
- * @throws ツール名フォーマットが不正な場合
  *
  * @example
  * ```typescript
@@ -26,39 +50,23 @@ const EXPECTED_PARTS = 3;
  * ```
  */
 export const parseUnifiedToolName = (fullToolName: string): ParsedToolName => {
-  const parts = fullToolName.split(TOOL_NAME_SEPARATOR);
+  const parts = fullToolName.split(SEPARATOR);
 
-  if (parts.length !== EXPECTED_PARTS) {
-    throw new Error(
-      `Invalid unified tool name format: "${fullToolName}". ` +
-        `Expected format: "{mcpServerId}${TOOL_NAME_SEPARATOR}{instanceName}${TOOL_NAME_SEPARATOR}{toolName}"`,
-    );
+  if (!isValidParts(parts)) {
+    const reason =
+      parts.length !== EXPECTED_PARTS
+        ? `Got ${parts.length} parts instead of ${EXPECTED_PARTS}.`
+        : "All parts must be non-empty.";
+    throw createParseError(fullToolName, reason);
   }
 
   const [mcpServerId, instanceName, toolName] = parts;
 
-  // 各パーツが空でないことを確認
-  if (!mcpServerId || !instanceName || !toolName) {
-    throw new Error(
-      `Invalid unified tool name format: "${fullToolName}". ` +
-        `All parts (mcpServerId, instanceName, toolName) must be non-empty.`,
-    );
-  }
-
-  return {
-    mcpServerId,
-    instanceName,
-    toolName,
-  };
+  return { mcpServerId, instanceName, toolName };
 };
 
 /**
  * 3階層ツール名をフォーマットして生成
- *
- * @param mcpServerId - MCPサーバーID
- * @param instanceName - テンプレートインスタンスの正規化名
- * @param toolName - ツール名（MCPツールの元の名前）
- * @returns 3階層フォーマットのツール名
  *
  * @example
  * ```typescript
@@ -72,11 +80,8 @@ export const formatUnifiedToolName = (
   toolName: string,
 ): string => {
   if (!mcpServerId || !instanceName || !toolName) {
-    throw new Error(
-      `All parts must be non-empty: mcpServerId="${mcpServerId}", ` +
-        `instanceName="${instanceName}", toolName="${toolName}"`,
-    );
+    throw createFormatError(mcpServerId, instanceName, toolName);
   }
 
-  return `${mcpServerId}${TOOL_NAME_SEPARATOR}${instanceName}${TOOL_NAME_SEPARATOR}${toolName}`;
+  return [mcpServerId, instanceName, toolName].join(SEPARATOR);
 };

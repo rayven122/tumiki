@@ -30,6 +30,7 @@ import {
 import type {
   CreateUnifiedMcpServerRequest,
   UpdateUnifiedMcpServerRequest,
+  CreateTemplateInstanceRequest,
   UnifiedMcpServerListResponse,
 } from "../services/unifiedMcp/types.js";
 
@@ -38,20 +39,59 @@ export const unifiedCrudRoute = new Hono<HonoEnv>();
 // 全エンドポイントにJWT認証を適用
 unifiedCrudRoute.use("/*", unifiedCrudJwtAuthMiddleware);
 
+/** テンプレートインスタンス取得用のinclude設定 */
+const TEMPLATE_INSTANCES_INCLUDE = {
+  templateInstances: {
+    orderBy: { displayOrder: "asc" as const },
+    include: {
+      mcpServerTemplate: {
+        select: { id: true, name: true },
+      },
+    },
+  },
+};
+
+/**
+ * テンプレート配列のバリデーション
+ */
+const validateTemplates = async (
+  templates: CreateTemplateInstanceRequest[],
+  organizationId: string,
+  userId: string,
+): Promise<{ valid: true } | { valid: false; error: string }> => {
+  // テンプレートが同一組織内に存在するか確認
+  const templateValidation = await validateTemplatesInOrganization(
+    templates,
+    organizationId,
+  );
+
+  if (!templateValidation.valid) {
+    return {
+      valid: false,
+      error: `Some templates not found or not in organization: ${templateValidation.missingIds.join(", ")}`,
+    };
+  }
+
+  // OAuthトークンの存在確認
+  const oauthValidation = await validateOAuthTokensExist(
+    templates,
+    userId,
+    organizationId,
+  );
+
+  if (!oauthValidation.valid) {
+    return {
+      valid: false,
+      error: `OAuth tokens not found for some templates: ${oauthValidation.missingTemplateNames.join(", ")}. Please authenticate first.`,
+    };
+  }
+
+  return { valid: true };
+};
+
 /**
  * 統合MCPサーバー作成
- *
  * POST /unified
- *
- * リクエスト:
- * - name: string (必須) - 統合サーバー名
- * - description: string (必須) - 統合サーバーの説明
- * - templates: CreateTemplateInstanceRequest[] (必須、最低1件) - テンプレートインスタンス配列
- *
- * バリデーション:
- * - templatesが空配列の場合はエラー
- * - 指定されたtemplateIdが同一組織内に存在しない場合はエラー
- * - ユーザーがOAuthトークンを持っていないテンプレートが含まれる場合はエラー
  */
 unifiedCrudRoute.post("/", async (c) => {
   const authContext = c.get("authContext");
@@ -61,7 +101,7 @@ unifiedCrudRoute.post("/", async (c) => {
 
   const { organizationId, userId } = authContext;
 
-  // 管理者権限チェック（Owner/Adminのみ作成可能）
+  // 管理者権限チェック
   const jwtPayload = c.get("jwtPayload");
   const roles = jwtPayload?.realm_access?.roles ?? [];
   if (!isAdmin(roles)) {
@@ -76,18 +116,16 @@ unifiedCrudRoute.post("/", async (c) => {
   try {
     const body = await c.req.json<CreateUnifiedMcpServerRequest>();
 
-    // バリデーション: 名前は必須
-    if (!body.name || body.name.trim() === "") {
+    // 必須フィールドのバリデーション
+    if (!body.name?.trim()) {
       return c.json(createInvalidRequestError("name is required"), 400);
     }
 
-    // バリデーション: 説明は必須
-    if (!body.description || body.description.trim() === "") {
+    if (!body.description?.trim()) {
       return c.json(createInvalidRequestError("description is required"), 400);
     }
 
-    // バリデーション: templatesは最低1件必須
-    if (!body.templates || body.templates.length === 0) {
+    if (!body.templates?.length) {
       return c.json(
         createInvalidRequestError(
           "templates must contain at least one template",
@@ -96,46 +134,26 @@ unifiedCrudRoute.post("/", async (c) => {
       );
     }
 
-    // 指定されたテンプレートが同一組織内に存在するか確認
-    const templateValidation = await validateTemplatesInOrganization(
+    // テンプレートのバリデーション
+    const validationResult = await validateTemplates(
       body.templates,
       organizationId,
-    );
-
-    if (!templateValidation.valid) {
-      return c.json(
-        createInvalidRequestError(
-          `Some templates not found or not in organization: ${templateValidation.missingIds.join(", ")}`,
-        ),
-        400,
-      );
-    }
-
-    // OAuthトークンの存在確認
-    const oauthValidation = await validateOAuthTokensExist(
-      body.templates,
       userId,
-      organizationId,
     );
 
-    if (!oauthValidation.valid) {
-      return c.json(
-        createInvalidRequestError(
-          `OAuth tokens not found for some templates: ${oauthValidation.missingTemplateNames.join(", ")}. Please authenticate first.`,
-        ),
-        400,
-      );
+    if (!validationResult.valid) {
+      return c.json(createInvalidRequestError(validationResult.error), 400);
     }
 
-    // 統合MCPサーバーを作成（serverType=UNIFIED の McpServer）
+    // 統合MCPサーバーを作成
     const unifiedServer = await db.mcpServer.create({
       data: {
         name: body.name.trim(),
         description: body.description.trim(),
         organizationId,
         serverType: ServerType.UNIFIED,
-        serverStatus: ServerStatus.RUNNING, // UNIFIEDは常にRUNNING
-        authType: AuthType.NONE, // UNIFIEDはauthTypeを継承しない
+        serverStatus: ServerStatus.RUNNING,
+        authType: AuthType.NONE,
         templateInstances: {
           create: body.templates.map((template, index) => ({
             mcpServerTemplateId: template.templateId,
@@ -145,19 +163,7 @@ unifiedCrudRoute.post("/", async (c) => {
           })),
         },
       },
-      include: {
-        templateInstances: {
-          orderBy: { displayOrder: "asc" },
-          include: {
-            mcpServerTemplate: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
+      include: TEMPLATE_INSTANCES_INCLUDE,
     });
 
     logInfo("Unified MCP server created", {
@@ -166,9 +172,7 @@ unifiedCrudRoute.post("/", async (c) => {
       templateInstanceCount: unifiedServer.templateInstances.length,
     });
 
-    const response = mapToUnifiedMcpServerResponse(unifiedServer);
-
-    return c.json(response, 201);
+    return c.json(mapToUnifiedMcpServerResponse(unifiedServer), 201);
   } catch (error) {
     logError("Failed to create unified MCP server", error as Error);
     return c.json(
@@ -180,10 +184,7 @@ unifiedCrudRoute.post("/", async (c) => {
 
 /**
  * 統合MCPサーバー一覧取得
- *
  * GET /unified
- *
- * 同一組織内の統合サーバーをすべて返却（組織メンバー全員がアクセス可能）
  */
 unifiedCrudRoute.get("/", async (c) => {
   const authContext = c.get("authContext");
@@ -191,29 +192,15 @@ unifiedCrudRoute.get("/", async (c) => {
     return c.json(createInvalidRequestError("Authentication required"), 401);
   }
 
-  const { organizationId } = authContext;
-
   try {
     const unifiedServers = await db.mcpServer.findMany({
       where: {
-        organizationId: organizationId,
+        organizationId: authContext.organizationId,
         serverType: ServerType.UNIFIED,
         deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
-      include: {
-        templateInstances: {
-          orderBy: { displayOrder: "asc" },
-          include: {
-            mcpServerTemplate: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
+      include: TEMPLATE_INSTANCES_INCLUDE,
     });
 
     const response: UnifiedMcpServerListResponse = {
@@ -232,10 +219,7 @@ unifiedCrudRoute.get("/", async (c) => {
 
 /**
  * 統合MCPサーバー詳細取得
- *
  * GET /unified/:id
- *
- * 組織メンバー全員がアクセス可能
  */
 unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
   const unifiedId = c.req.param("id");
@@ -246,19 +230,7 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
         id: unifiedId,
         serverType: ServerType.UNIFIED,
       },
-      include: {
-        templateInstances: {
-          orderBy: { displayOrder: "asc" },
-          include: {
-            mcpServerTemplate: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
+      include: TEMPLATE_INSTANCES_INCLUDE,
     });
 
     if (!unifiedServer) {
@@ -268,9 +240,7 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
       );
     }
 
-    const response = mapToUnifiedMcpServerResponse(unifiedServer);
-
-    return c.json(response);
+    return c.json(mapToUnifiedMcpServerResponse(unifiedServer));
   } catch (error) {
     logError("Failed to get unified MCP server", error as Error);
     return c.json(
@@ -282,15 +252,7 @@ unifiedCrudRoute.get("/:id", unifiedOwnershipMiddleware, async (c) => {
 
 /**
  * 統合MCPサーバー更新
- *
  * PUT /unified/:id
- *
- * Owner/Admin のみアクセス可能
- *
- * リクエスト:
- * - name?: string - 統合サーバー名
- * - description?: string - 統合サーバーの説明
- * - templates?: CreateTemplateInstanceRequest[] - テンプレートインスタンス配列（完全置換、最低1件必須）
  */
 unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
   const authContext = c.get("authContext");
@@ -315,45 +277,20 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
         );
       }
 
-      // 指定されたテンプレートが同一組織内に存在するか確認
-      const templateValidation = await validateTemplatesInOrganization(
+      const validationResult = await validateTemplates(
         body.templates,
         organizationId,
-      );
-
-      if (!templateValidation.valid) {
-        return c.json(
-          createInvalidRequestError(
-            `Some templates not found or not in organization: ${templateValidation.missingIds.join(", ")}`,
-          ),
-          400,
-        );
-      }
-
-      // OAuthトークンの存在確認
-      const oauthValidation = await validateOAuthTokensExist(
-        body.templates,
         userId,
-        organizationId,
       );
 
-      if (!oauthValidation.valid) {
-        return c.json(
-          createInvalidRequestError(
-            `OAuth tokens not found for some templates: ${oauthValidation.missingTemplateNames.join(", ")}. Please authenticate first.`,
-          ),
-          400,
-        );
+      if (!validationResult.valid) {
+        return c.json(createInvalidRequestError(validationResult.error), 400);
       }
     }
 
     // トランザクションで更新
     const unifiedServer = await db.$transaction(async (tx) => {
-      // 基本情報を更新
-      const updateData: {
-        name?: string;
-        description?: string;
-      } = {};
+      const updateData: { name?: string; description?: string } = {};
 
       if (body.name !== undefined) {
         updateData.name = body.name.trim();
@@ -365,12 +302,10 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
 
       // templatesが指定された場合はテンプレートインスタンスを完全置換
       if (body.templates !== undefined) {
-        // 既存のインスタンスを削除
         await tx.mcpServerTemplateInstance.deleteMany({
           where: { mcpServerId: unifiedId },
         });
 
-        // 新しいインスタンスを作成
         await tx.mcpServerTemplateInstance.createMany({
           data: body.templates.map((template, index) => ({
             mcpServerId: unifiedId,
@@ -382,26 +317,13 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
         });
       }
 
-      // 更新
       return tx.mcpServer.update({
         where: {
           id: unifiedId,
           serverType: ServerType.UNIFIED,
         },
         data: updateData,
-        include: {
-          templateInstances: {
-            orderBy: { displayOrder: "asc" },
-            include: {
-              mcpServerTemplate: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
+        include: TEMPLATE_INSTANCES_INCLUDE,
       });
     });
 
@@ -410,9 +332,7 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
       name: unifiedServer.name,
     });
 
-    const response = mapToUnifiedMcpServerResponse(unifiedServer);
-
-    return c.json(response);
+    return c.json(mapToUnifiedMcpServerResponse(unifiedServer));
   } catch (error) {
     logError("Failed to update unified MCP server", error as Error);
     return c.json(
@@ -424,16 +344,12 @@ unifiedCrudRoute.put("/:id", unifiedOwnershipMiddleware, async (c) => {
 
 /**
  * 統合MCPサーバー削除（論理削除）
- *
  * DELETE /unified/:id
- *
- * Owner/Admin のみアクセス可能
  */
 unifiedCrudRoute.delete("/:id", unifiedOwnershipMiddleware, async (c) => {
   const unifiedId = c.req.param("id");
 
   try {
-    // 論理削除
     await db.mcpServer.update({
       where: {
         id: unifiedId,

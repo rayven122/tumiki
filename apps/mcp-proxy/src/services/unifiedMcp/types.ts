@@ -1,186 +1,138 @@
 /**
  * 統合MCPエンドポイント用の型定義
- *
- * @namespace UnifiedMcp
  */
 
 import type { ServerStatus } from "@tumiki/db";
 import type { JsonValue } from "@prisma/client/runtime/library";
 
+// ============================================================================
+// ツール関連の型定義
+// ============================================================================
+
 /**
  * 3階層ツール名のパース結果
- *
  * フォーマット: `{mcpServerId}__{instanceName}__{toolName}`
  */
 export type ParsedToolName = {
-  /** MCPサーバーID */
   mcpServerId: string;
-  /** テンプレートインスタンスの正規化名 */
   instanceName: string;
-  /** ツール名（MCPツールの元の名前） */
   toolName: string;
 };
 
 /**
  * 集約されたツール情報
- *
  * 複数のMCPサーバーからのツールを3階層フォーマットで統合した形式
  */
 export type AggregatedTool = {
-  /** 3階層フォーマットのツール名 */
   name: string;
-  /** ツールの説明 */
   description: string | null;
-  /** ツールの入力スキーマ（JSON Schema形式） */
   inputSchema: Record<string, unknown>;
-  /** 元のMCPサーバーID（ログ記録用） */
   mcpServerId: string;
-  /** テンプレートインスタンス名（デバッグ用） */
   instanceName: string;
 };
 
 /**
- * 子MCPサーバー情報（tools/list用）
- */
-export type ChildServerInfo = {
-  /** MCPサーバーID */
-  id: string;
-  /** MCPサーバー名 */
-  name: string;
-  /** サーバー状態 */
-  serverStatus: ServerStatus;
-  /** 論理削除タイムスタンプ */
-  deletedAt: null; // 論理削除されていないサーバーのみを表す
-  /** テンプレートインスタンス一覧 */
-  templateInstances: Array<{
-    /** インスタンスID */
-    id: string;
-    /** 正規化名 */
-    normalizedName: string;
-    /** 有効化されたツール一覧 */
-    allowedTools: Array<{
-      /** ツール名 */
-      name: string;
-      /** ツールの説明 */
-      description: string;
-      /** 入力スキーマ（Prisma JsonValue型） */
-      inputSchema: JsonValue;
-    }>;
-  }>;
-};
-
-/**
- * キャッシュ用の集約ツール情報
- *
- * Redisに保存する際のシリアライズ形式
+ * キャッシュ用の集約ツール情報（Redisシリアライズ形式）
  */
 export type CachedUnifiedTools = {
-  /** 集約されたツール一覧 */
   tools: AggregatedTool[];
-  /** キャッシュ作成時刻（ISO8601形式） */
   cachedAt: string;
 };
 
-/**
- * テンプレートインスタンス作成リクエスト
- */
-export type CreateTemplateInstanceRequest = {
-  /** テンプレートID */
-  templateId: string;
-  /** 正規化名（ユニーク識別子） */
+// ============================================================================
+// サーバー関連の型定義
+// ============================================================================
+
+/** テンプレートインスタンスのツール情報 */
+type TemplateInstanceTool = {
+  name: string;
+  description: string;
+  inputSchema: JsonValue;
+};
+
+/** テンプレートインスタンス情報 */
+type TemplateInstance = {
+  id: string;
   normalizedName: string;
-  /** 有効化状態（デフォルト: true） */
+  allowedTools: TemplateInstanceTool[];
+};
+
+/**
+ * 子MCPサーバー情報（tools/list用）
+ * deletedAt: null は論理削除されていないサーバーのみを表す
+ */
+export type ChildServerInfo = {
+  id: string;
+  name: string;
+  serverStatus: ServerStatus;
+  deletedAt: null;
+  templateInstances: TemplateInstance[];
+};
+
+// ============================================================================
+// リクエスト/レスポンス型定義
+// ============================================================================
+
+/** テンプレートインスタンス作成リクエスト */
+export type CreateTemplateInstanceRequest = {
+  templateId: string;
+  normalizedName: string;
   isEnabled?: boolean;
 };
 
-/**
- * 統合MCPサーバー作成リクエスト
- */
+/** 統合MCPサーバー作成リクエスト */
 export type CreateUnifiedMcpServerRequest = {
-  /** 統合サーバー名（必須） */
   name: string;
-  /** 統合サーバーの説明（必須） */
   description: string;
-  /** テンプレートインスタンス配列（最低1件必須） */
   templates: CreateTemplateInstanceRequest[];
 };
 
-/**
- * 統合MCPサーバー更新リクエスト
- */
+/** 統合MCPサーバー更新リクエスト */
 export type UpdateUnifiedMcpServerRequest = {
-  /** 統合サーバー名（オプショナル） */
   name?: string;
-  /** 統合サーバーの説明（オプショナル） */
   description?: string;
-  /** テンプレートインスタンス配列（指定した場合は完全置換、最低1件必須） */
   templates?: CreateTemplateInstanceRequest[];
 };
 
-/**
- * 子MCPサーバーのレスポンス形式
- */
+/** 子MCPサーバーのレスポンス形式 */
 export type ChildServerResponse = {
-  /** MCPサーバーID */
   id: string;
-  /** MCPサーバー名 */
   name: string;
-  /** サーバー状態 */
   serverStatus: ServerStatus;
 };
 
-/**
- * テンプレートインスタンスのレスポンス形式（UNIFIED用）
- */
+/** テンプレートインスタンスのレスポンス形式（UNIFIED用） */
 export type TemplateInstanceResponse = {
-  /** インスタンスID */
   id: string;
-  /** 正規化名 */
   normalizedName: string;
-  /** テンプレート名 */
   templateName: string;
-  /** テンプレートID */
   templateId: string;
-  /** 表示順序 */
   displayOrder: number;
-  /** 有効化状態 */
   isEnabled: boolean;
 };
 
-/**
- * 統合MCPサーバーレスポンス
- */
+/** 統合MCPサーバーレスポンス */
 export type UnifiedMcpServerResponse = {
-  /** 統合サーバーID */
   id: string;
-  /** 統合サーバー名 */
   name: string;
-  /** 統合サーバーの説明（必須） */
   description: string;
-  /** 組織ID */
   organizationId: string;
-  /** テンプレートインスタンス一覧 */
   templateInstances: TemplateInstanceResponse[];
-  /** 作成日時（ISO8601形式） */
   createdAt: string;
-  /** 更新日時（ISO8601形式） */
   updatedAt: string;
 };
 
-/**
- * 統合MCPサーバー一覧レスポンス
- */
+/** 統合MCPサーバー一覧レスポンス */
 export type UnifiedMcpServerListResponse = {
-  /** 統合サーバー一覧 */
   items: UnifiedMcpServerResponse[];
 };
 
-/**
- * 統合エンドポイント用の認証コンテキスト拡張フィールド
- */
+// ============================================================================
+// 認証関連の型定義
+// ============================================================================
+
+/** 統合エンドポイント用の認証コンテキスト拡張フィールド */
 export type UnifiedAuthContextExtension = {
-  /** 統合エンドポイントからのリクエストかどうか */
   isUnifiedEndpoint: boolean;
-  /** 統合MCPサーバーID（統合エンドポイントの場合のみ設定） */
   unifiedMcpServerId: string;
 };

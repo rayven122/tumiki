@@ -15,6 +15,7 @@ import {
 } from "../../libs/error/index.js";
 import {
   authenticateWithJwt,
+  getJwtErrorMessage,
   validateOrganizationMembership,
 } from "../../libs/auth/index.js";
 import { isAdmin } from "../../services/roleService.js";
@@ -26,45 +27,19 @@ import { isAdmin } from "../../services/roleService.js";
  * 1. JWT認証（トークン抽出、検証、ユーザーID解決）
  * 2. JWTクレームから組織IDを取得
  * 3. 組織メンバーシップをチェック
- *
- * 認可ロジック:
- * - JWTのsub → userId
- * - JWTのtumiki.org_id → organizationId
  */
 export const unifiedCrudJwtAuthMiddleware = async (
   c: Context<HonoEnv>,
   next: Next,
 ): Promise<Response | void> => {
-  // Step 1: JWT認証（トークン抽出、検証、ユーザーID解決）
+  // JWT認証（トークン抽出、検証、ユーザーID解決）
   const authResult = await authenticateWithJwt(c);
 
   if (!authResult.success) {
-    // エラータイプに応じたレスポンスを返す
-    switch (authResult.error) {
-      case "no_bearer_token":
-        return c.json(
-          createUnauthorizedError(
-            "Bearer token required in Authorization header",
-          ),
-          401,
-        );
-      case "token_expired":
-        return c.json(createUnauthorizedError("Token has expired"), 401);
-      case "invalid_signature":
-        return c.json(createUnauthorizedError("Invalid token signature"), 401);
-      case "invalid_token":
-        return c.json(createUnauthorizedError("Invalid access token"), 401);
-      case "user_not_found":
-        return c.json(
-          createUnauthorizedError("User not found for Keycloak ID"),
-          401,
-        );
-      case "resolution_failed":
-        return c.json(
-          createUnauthorizedError("Failed to verify user identity"),
-          401,
-        );
-    }
+    return c.json(
+      createUnauthorizedError(getJwtErrorMessage(authResult.error)),
+      401,
+    );
   }
 
   const { payload: jwtPayload, userId } = authResult;
@@ -72,7 +47,7 @@ export const unifiedCrudJwtAuthMiddleware = async (
   // JWT ペイロードをコンテキストに設定
   c.set("jwtPayload", jwtPayload);
 
-  // Step 2: JWTクレームから組織IDを取得
+  // JWTクレームから組織IDを取得
   const organizationId = jwtPayload.tumiki?.org_id;
 
   if (!organizationId) {
@@ -82,31 +57,26 @@ export const unifiedCrudJwtAuthMiddleware = async (
     );
   }
 
-  // Step 3: 組織メンバーシップをチェック
+  // 組織メンバーシップをチェック
   const membershipResult = await validateOrganizationMembership(
     organizationId,
     userId,
   );
 
   if (!membershipResult.isMember) {
-    if (membershipResult.error === "check_failed") {
-      return c.json(
-        createPermissionDeniedError("Membership check failed"),
-        403,
-      );
-    }
-    return c.json(
-      createPermissionDeniedError("User is not a member of this organization"),
-      403,
-    );
+    const message =
+      membershipResult.error === "check_failed"
+        ? "Membership check failed"
+        : "User is not a member of this organization";
+    return c.json(createPermissionDeniedError(message), 403);
   }
 
   // 認証成功: コンテキストに認証情報を設定
   c.set("authMethod", AuthType.OAUTH);
   c.set("authContext", {
     authMethod: AuthType.OAUTH,
-    organizationId: organizationId,
-    userId: userId,
+    organizationId,
+    userId,
     mcpServerId: "", // CRUD APIでは不要
     piiMaskingMode: PiiMaskingMode.DISABLED,
     piiInfoTypes: [],
@@ -174,12 +144,8 @@ export const unifiedOwnershipMiddleware = async (
     return c.json(createPermissionDeniedError("Organization mismatch"), 403);
   }
 
-  // HTTPメソッドに応じた権限チェック
-  const method = c.req.method;
-
-  if (method === "GET") {
-    // GET (詳細取得): 組織メンバーであれば誰でもアクセス可能
-    // (組織メンバーシップは unifiedCrudJwtAuthMiddleware で既にチェック済み)
+  // GETは組織メンバーであれば誰でもアクセス可能
+  if (c.req.method === "GET") {
     await next();
     return;
   }
@@ -187,9 +153,8 @@ export const unifiedOwnershipMiddleware = async (
   // PUT/DELETE: Owner/Admin のみアクセス可能
   const jwtPayload = c.get("jwtPayload");
   const roles = jwtPayload?.realm_access?.roles ?? [];
-  const hasAdminRole = isAdmin(roles);
 
-  if (!hasAdminRole) {
+  if (!isAdmin(roles)) {
     return c.json(
       createPermissionDeniedError(
         "Only Owner or Admin can modify unified MCP servers",

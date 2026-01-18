@@ -6,6 +6,18 @@
 
 import type { UnifiedMcpServerResponse } from "./types.js";
 
+/** テンプレートインスタンスのDB結果型 */
+type TemplateInstanceData = {
+  id: string;
+  normalizedName: string;
+  displayOrder: number;
+  isEnabled: boolean;
+  mcpServerTemplate: {
+    id: string;
+    name: string;
+  };
+};
+
 /**
  * Prisma から取得した統合MCPサーバーデータの型
  *
@@ -18,52 +30,39 @@ export type UnifiedServerWithTemplateInstances = {
   organizationId: string;
   createdAt: Date;
   updatedAt: Date;
-  templateInstances: Array<{
-    id: string;
-    normalizedName: string;
-    displayOrder: number;
-    isEnabled: boolean;
-    mcpServerTemplate: {
-      id: string;
-      name: string;
-    };
-  }>;
+  templateInstances: TemplateInstanceData[];
 };
+
+/**
+ * テンプレートインスタンスをレスポンス形式にマッピング
+ */
+const mapTemplateInstance = (instance: TemplateInstanceData) => ({
+  id: instance.id,
+  normalizedName: instance.normalizedName,
+  templateName: instance.mcpServerTemplate.name,
+  templateId: instance.mcpServerTemplate.id,
+  displayOrder: instance.displayOrder,
+  isEnabled: instance.isEnabled,
+});
 
 /**
  * 統合MCPサーバーをAPIレスポンス形式にマッピング
- *
- * @param server - Prismaから取得した統合サーバーデータ
- * @returns APIレスポンス形式の統合サーバーデータ
  */
 export const mapToUnifiedMcpServerResponse = (
   server: UnifiedServerWithTemplateInstances,
-): UnifiedMcpServerResponse => {
-  return {
-    id: server.id,
-    name: server.name,
-    description: server.description,
-    organizationId: server.organizationId,
-    templateInstances: server.templateInstances.map((instance) => ({
-      id: instance.id,
-      normalizedName: instance.normalizedName,
-      templateName: instance.mcpServerTemplate.name,
-      templateId: instance.mcpServerTemplate.id,
-      displayOrder: instance.displayOrder,
-      isEnabled: instance.isEnabled,
-    })),
-    createdAt: server.createdAt.toISOString(),
-    updatedAt: server.updatedAt.toISOString(),
-  };
-};
+): UnifiedMcpServerResponse => ({
+  id: server.id,
+  name: server.name,
+  description: server.description,
+  organizationId: server.organizationId,
+  templateInstances: server.templateInstances.map(mapTemplateInstance),
+  createdAt: server.createdAt.toISOString(),
+  updatedAt: server.updatedAt.toISOString(),
+});
 
 /**
  * 統合MCPサーバー一覧をAPIレスポンス形式にマッピング
- *
- * @param servers - Prismaから取得した統合サーバー一覧
- * @returns APIレスポンス形式の統合サーバー一覧
  */
 export const mapToUnifiedMcpServerListResponse = (
   servers: UnifiedServerWithTemplateInstances[],
-): UnifiedMcpServerResponse[] =>
-  servers.map((server) => mapToUnifiedMcpServerResponse(server));
+): UnifiedMcpServerResponse[] => servers.map(mapToUnifiedMcpServerResponse);

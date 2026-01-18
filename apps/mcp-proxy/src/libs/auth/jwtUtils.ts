@@ -132,14 +132,11 @@ export type JwtAuthenticationResult =
 
 /**
  * JWT認証の完全なフローを実行
- *
- * @param c - Honoコンテキスト
- * @returns 認証結果
  */
 export const authenticateWithJwt = async (
   c: Context<HonoEnv>,
 ): Promise<JwtAuthenticationResult> => {
-  // Step 1: Bearer トークンを抽出
+  // Bearer トークンを抽出
   const authorization = c.req.header("Authorization");
   const token = extractBearerToken(authorization);
 
@@ -147,13 +144,13 @@ export const authenticateWithJwt = async (
     return { success: false, error: "no_bearer_token" };
   }
 
-  // Step 2: JWT を検証
+  // JWT を検証
   const verifyResult = await verifyJwtToken(token);
   if (!verifyResult.success) {
     return verifyResult;
   }
 
-  // Step 3: ユーザー ID を解決
+  // ユーザー ID を解決
   const userResult = await resolveUserIdFromKeycloak(verifyResult.payload.sub);
   if (!userResult.success) {
     return userResult;
@@ -165,3 +162,25 @@ export const authenticateWithJwt = async (
     userId: userResult.userId,
   };
 };
+
+/** JWT認証エラータイプ */
+export type JwtAuthError = Exclude<
+  JwtAuthenticationResult,
+  { success: true }
+>["error"];
+
+/** JWT認証エラーに対応するエラーメッセージのマッピング */
+const JWT_ERROR_MESSAGES: Record<JwtAuthError, string> = {
+  no_bearer_token: "Bearer token required in Authorization header",
+  token_expired: "Token has expired",
+  invalid_signature: "Invalid token signature",
+  invalid_token: "Invalid access token",
+  user_not_found: "User not found for Keycloak ID",
+  resolution_failed: "Failed to verify user identity",
+};
+
+/**
+ * JWT認証エラーに対応するエラーメッセージを取得
+ */
+export const getJwtErrorMessage = (error: JwtAuthError): string =>
+  JWT_ERROR_MESSAGES[error];

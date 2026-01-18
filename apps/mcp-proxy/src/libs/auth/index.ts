@@ -15,9 +15,11 @@ export {
   verifyJwtToken,
   resolveUserIdFromKeycloak,
   authenticateWithJwt,
+  getJwtErrorMessage,
   type JwtVerificationResult,
   type UserIdResolutionResult,
   type JwtAuthenticationResult,
+  type JwtAuthError,
 } from "./jwtUtils.js";
 export {
   validateOrganizationMembership,

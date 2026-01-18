@@ -329,7 +329,7 @@ describe("executeUnifiedTool", () => {
         userId,
       ),
     ).rejects.toThrow(
-      'Invalid unified tool name format: "invalid_tool_name". Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
+      'Invalid unified tool name format: "invalid_tool_name". Got 1 parts instead of 3. Expected format: "{mcpServerId}__{instanceName}__{toolName}"',
     );
   });
 

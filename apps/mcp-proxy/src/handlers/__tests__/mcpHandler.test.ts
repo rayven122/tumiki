@@ -13,11 +13,13 @@ import { AuthType, PiiMaskingMode } from "@tumiki/db/server";
 import type { HonoEnv, AuthContext } from "../../types/index.js";
 
 // MCP SDKをモック
+const mockServerInstance = {
+  setRequestHandler: vi.fn(),
+  connect: vi.fn().mockResolvedValue(undefined),
+};
+
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
-  Server: vi.fn().mockImplementation(() => ({
-    setRequestHandler: vi.fn(),
-    connect: vi.fn(),
-  })),
+  Server: vi.fn(() => mockServerInstance),
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/streamableHttp.js", () => ({
@@ -77,7 +79,6 @@ vi.mock("../../middleware/requestLogging/context.js", () => ({
 
 import { db } from "@tumiki/db/server";
 import { mcpHandler } from "../mcpHandler.js";
-import { handleError } from "../../libs/error/handler.js";
 
 /**
  * テスト用モックHonoコンテキストを作成
@@ -221,7 +222,7 @@ describe("mcpHandler", () => {
   });
 
   describe("エラーハンドリング", () => {
-    test("処理中にエラーが発生した場合はhandleErrorが呼ばれる", async () => {
+    test("サーバー名取得時のDBエラーはデフォルト名にフォールバックする", async () => {
       const authContext = createDefaultAuthContext({
         isUnifiedEndpoint: true,
         unifiedMcpServerId: "error-server",
@@ -233,20 +234,14 @@ describe("mcpHandler", () => {
         new Error("DB connection failed"),
       );
 
-      await mcpHandler(mockContext);
+      // DBエラー時もデフォルト名で処理が継続されることを検証
+      await expect(mcpHandler(mockContext)).resolves.not.toThrow();
 
-      // handleErrorが呼ばれることを検証
-      expect(handleError).toHaveBeenCalledWith(
-        mockContext,
-        expect.any(Error),
-        expect.objectContaining({
-          requestId: null,
-          errorCode: -32603,
-          errorMessage: "Internal error",
-          organizationId: "org-123",
-          instanceId: "error-server",
-        }),
-      );
+      // DB呼び出しは行われたことを検証
+      expect(db.mcpServer.findUnique).toHaveBeenCalledWith({
+        where: { id: "error-server" },
+        select: { name: true },
+      });
     });
   });
 

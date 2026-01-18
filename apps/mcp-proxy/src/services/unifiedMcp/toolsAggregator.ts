@@ -14,24 +14,55 @@ import {
 } from "../../libs/cache/unifiedToolsCache.js";
 import { logInfo } from "../../libs/logger/index.js";
 
+/** テンプレートインスタンスのDBクエリ結果の型 */
+type TemplateInstanceWithTools = {
+  normalizedName: string;
+  mcpServerTemplate: {
+    id: string;
+    name: string;
+    mcpTools: Array<{
+      name: string;
+      description: string | null;
+      inputSchema: unknown;
+    }>;
+  };
+};
+
+/**
+ * テンプレートインスタンスからツールを抽出して集約形式に変換
+ */
+const extractToolsFromInstance = (
+  unifiedMcpServerId: string,
+  instance: TemplateInstanceWithTools,
+): AggregatedTool[] =>
+  instance.mcpServerTemplate.mcpTools.map((tool) => ({
+    name: formatUnifiedToolName(
+      unifiedMcpServerId,
+      instance.normalizedName,
+      tool.name,
+    ),
+    description: tool.description,
+    inputSchema: tool.inputSchema as Record<string, unknown>,
+    mcpServerId: unifiedMcpServerId,
+    instanceName: instance.normalizedName,
+  }));
+
 /**
  * 統合MCPサーバーのツール一覧を集約して取得
  *
+ * 処理フロー:
  * 1. Redisキャッシュをチェック
  * 2. キャッシュミス時はDBからテンプレートインスタンスを取得
  * 3. 有効なテンプレートのみからツールを収集
  * 4. 3階層フォーマットでツール名を生成
  * 5. キャッシュに保存
- *
- * @param unifiedMcpServerId - 統合MCPサーバーID
- * @returns 集約されたツール一覧
  */
 export const aggregateTools = async (
   unifiedMcpServerId: string,
 ): Promise<AggregatedTool[]> => {
   logInfo("Aggregating tools for unified MCP server", { unifiedMcpServerId });
 
-  // 1. キャッシュをチェック
+  // キャッシュをチェック
   const cached = await getUnifiedToolsFromCache(unifiedMcpServerId);
   if (cached !== null) {
     logInfo("Using cached unified tools", {
@@ -41,7 +72,7 @@ export const aggregateTools = async (
     return cached;
   }
 
-  // 2. DBから統合MCPサーバー（serverType=UNIFIED）とテンプレートインスタンスを取得
+  // DBから統合MCPサーバー（serverType=UNIFIED）とテンプレートインスタンスを取得
   const unifiedServer = await db.mcpServer.findUnique({
     where: {
       id: unifiedMcpServerId,
@@ -50,9 +81,7 @@ export const aggregateTools = async (
     include: {
       templateInstances: {
         orderBy: { displayOrder: "asc" },
-        where: {
-          isEnabled: true, // 有効なインスタンスのみ
-        },
+        where: { isEnabled: true },
         include: {
           mcpServerTemplate: {
             select: {
@@ -76,7 +105,7 @@ export const aggregateTools = async (
     throw new Error(`Unified MCP server not found: ${unifiedMcpServerId}`);
   }
 
-  // 3. テンプレートインスタンスがない場合は空のツール一覧を返す
+  // テンプレートインスタンスがない場合は空のツール一覧を返す
   if (unifiedServer.templateInstances.length === 0) {
     logInfo("No enabled template instances, returning empty tool list", {
       unifiedMcpServerId,
@@ -85,28 +114,10 @@ export const aggregateTools = async (
     return [];
   }
 
-  // 4. ツールを集約（3階層フォーマット: unifiedMcpServerId__normalizedName__toolName）
-  const aggregatedTools: AggregatedTool[] = [];
-
-  for (const instance of unifiedServer.templateInstances) {
-    const template = instance.mcpServerTemplate;
-
-    for (const tool of template.mcpTools) {
-      aggregatedTools.push({
-        // ツール名フォーマット: 統合サーバーID__インスタンス名__ツール名
-        name: formatUnifiedToolName(
-          unifiedMcpServerId,
-          instance.normalizedName,
-          tool.name,
-        ),
-        description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown>,
-        // 実行時に使用されるMCPサーバーID（統合サーバーID）
-        mcpServerId: unifiedMcpServerId,
-        instanceName: instance.normalizedName,
-      });
-    }
-  }
+  // flatMapを使用してツールを集約（3階層フォーマット）
+  const aggregatedTools = unifiedServer.templateInstances.flatMap((instance) =>
+    extractToolsFromInstance(unifiedMcpServerId, instance),
+  );
 
   logInfo("Tools aggregated successfully", {
     unifiedMcpServerId,
@@ -114,7 +125,7 @@ export const aggregateTools = async (
     templateInstanceCount: unifiedServer.templateInstances.length,
   });
 
-  // 5. キャッシュに保存
+  // キャッシュに保存
   await setUnifiedToolsCache(unifiedMcpServerId, aggregatedTools);
 
   return aggregatedTools;
