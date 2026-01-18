@@ -24,6 +24,6 @@ resource "keycloak_user_roles" "admin_test_roles" {
   user_id  = keycloak_user.admin_test.id
 
   role_ids = [
-    keycloak_role.owner.id
+    keycloak_role.org_roles["owner"].id
   ]
 }

@@ -1,60 +1,107 @@
 # Keycloak Protocol Mappers設定
 
 # =============================================================================
+# ローカル変数定義
+# =============================================================================
+
+locals {
+  # tumiki-claims スコープのユーザー属性マッパー
+  tumiki_claim_mappers = {
+    org_id = {
+      user_attribute   = "tumiki_org_id"
+      claim_name       = "tumiki.org_id"
+      claim_value_type = "String"
+    }
+    is_org_admin = {
+      user_attribute   = "tumiki_is_org_admin"
+      claim_name       = "tumiki.is_org_admin"
+      claim_value_type = "boolean"
+    }
+    tumiki_user_id = {
+      user_attribute   = "tumiki_user_id"
+      claim_name       = "tumiki.tumiki_user_id"
+      claim_value_type = "String"
+    }
+    default_organization_id = {
+      user_attribute   = "default_organization_id"
+      claim_name       = "tumiki.default_organization_id"
+      claim_value_type = "String"
+    }
+  }
+
+  # profile スコープのユーザープロパティマッパー
+  profile_property_mappers = {
+    username = {
+      user_property    = "username"
+      claim_name       = "preferred_username"
+      claim_value_type = "String"
+    }
+    family_name = {
+      name             = "family name"
+      user_property    = "lastName"
+      claim_name       = "family_name"
+      claim_value_type = "String"
+    }
+    given_name = {
+      name             = "given name"
+      user_property    = "firstName"
+      claim_name       = "given_name"
+      claim_value_type = "String"
+    }
+  }
+
+  # email スコープのユーザープロパティマッパー
+  email_property_mappers = {
+    email = {
+      user_property    = "email"
+      claim_name       = "email"
+      claim_value_type = "String"
+    }
+    email_verified = {
+      name             = "email verified"
+      user_property    = "emailVerified"
+      claim_name       = "email_verified"
+      claim_value_type = "boolean"
+    }
+  }
+
+  # Proxy クライアントのセッションノートマッパー
+  proxy_session_note_mappers = {
+    client_host = {
+      name             = "Client Host"
+      claim_name       = "clientHost"
+      session_note     = "clientHost"
+      claim_value_type = "String"
+    }
+    client_id = {
+      name             = "Client ID"
+      claim_name       = "client_id"
+      session_note     = "client_id"
+      claim_value_type = "String"
+    }
+    client_address = {
+      name             = "Client IP Address"
+      claim_name       = "clientAddress"
+      session_note     = "clientAddress"
+      claim_value_type = "String"
+    }
+  }
+}
+
+# =============================================================================
 # tumiki-claims スコープのプロトコルマッパー
 # =============================================================================
 
-# org_id マッパー
-resource "keycloak_openid_user_attribute_protocol_mapper" "org_id" {
+resource "keycloak_openid_user_attribute_protocol_mapper" "tumiki_claims" {
+  for_each = local.tumiki_claim_mappers
+
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.tumiki_claims.id
-  name            = "org_id"
+  name            = each.key
 
-  user_attribute      = "tumiki_org_id"
-  claim_name          = "tumiki.org_id"
-  claim_value_type    = "String"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# is_org_admin マッパー
-resource "keycloak_openid_user_attribute_protocol_mapper" "is_org_admin" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.tumiki_claims.id
-  name            = "is_org_admin"
-
-  user_attribute      = "tumiki_is_org_admin"
-  claim_name          = "tumiki.is_org_admin"
-  claim_value_type    = "boolean"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# tumiki_user_id マッパー
-resource "keycloak_openid_user_attribute_protocol_mapper" "tumiki_user_id" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.tumiki_claims.id
-  name            = "tumiki_user_id"
-
-  user_attribute      = "tumiki_user_id"
-  claim_name          = "tumiki.tumiki_user_id"
-  claim_value_type    = "String"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# default_organization_id マッパー
-resource "keycloak_openid_user_attribute_protocol_mapper" "default_organization_id" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.tumiki_claims.id
-  name            = "default_organization_id"
-
-  user_attribute      = "default_organization_id"
-  claim_name          = "tumiki.default_organization_id"
-  claim_value_type    = "String"
+  user_attribute      = each.value.user_attribute
+  claim_name          = each.value.claim_name
+  claim_value_type    = each.value.claim_value_type
   add_to_id_token     = true
   add_to_access_token = true
   add_to_userinfo     = true
@@ -64,21 +111,23 @@ resource "keycloak_openid_user_attribute_protocol_mapper" "default_organization_
 # profile スコープのプロトコルマッパー
 # =============================================================================
 
-# username マッパー
-resource "keycloak_openid_user_property_protocol_mapper" "username" {
+# ユーザープロパティマッパー
+resource "keycloak_openid_user_property_protocol_mapper" "profile_properties" {
+  for_each = local.profile_property_mappers
+
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.profile.id
-  name            = "username"
+  name            = lookup(each.value, "name", each.key)
 
-  user_property       = "username"
-  claim_name          = "preferred_username"
-  claim_value_type    = "String"
+  user_property       = each.value.user_property
+  claim_name          = each.value.claim_name
+  claim_value_type    = each.value.claim_value_type
   add_to_id_token     = true
   add_to_access_token = true
   add_to_userinfo     = true
 }
 
-# full name マッパー
+# full name マッパー（特殊なタイプのため個別定義）
 resource "keycloak_openid_full_name_protocol_mapper" "full_name" {
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.profile.id
@@ -89,35 +138,7 @@ resource "keycloak_openid_full_name_protocol_mapper" "full_name" {
   add_to_userinfo     = true
 }
 
-# family name マッパー
-resource "keycloak_openid_user_property_protocol_mapper" "family_name" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.profile.id
-  name            = "family name"
-
-  user_property       = "lastName"
-  claim_name          = "family_name"
-  claim_value_type    = "String"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# given name マッパー
-resource "keycloak_openid_user_property_protocol_mapper" "given_name" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.profile.id
-  name            = "given name"
-
-  user_property       = "firstName"
-  claim_name          = "given_name"
-  claim_value_type    = "String"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# picture マッパー
+# picture マッパー（ユーザー属性マッパーのため個別定義）
 resource "keycloak_openid_user_attribute_protocol_mapper" "picture" {
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.profile.id
@@ -135,29 +156,16 @@ resource "keycloak_openid_user_attribute_protocol_mapper" "picture" {
 # email スコープのプロトコルマッパー
 # =============================================================================
 
-# email マッパー
-resource "keycloak_openid_user_property_protocol_mapper" "email" {
+resource "keycloak_openid_user_property_protocol_mapper" "email_properties" {
+  for_each = local.email_property_mappers
+
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.email.id
-  name            = "email"
+  name            = lookup(each.value, "name", each.key)
 
-  user_property       = "email"
-  claim_name          = "email"
-  claim_value_type    = "String"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# email verified マッパー
-resource "keycloak_openid_user_property_protocol_mapper" "email_verified" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.email.id
-  name            = "email verified"
-
-  user_property       = "emailVerified"
-  claim_name          = "email_verified"
-  claim_value_type    = "boolean"
+  user_property       = each.value.user_property
+  claim_name          = each.value.claim_name
+  claim_value_type    = each.value.claim_value_type
   add_to_id_token     = true
   add_to_access_token = true
   add_to_userinfo     = true
@@ -199,7 +207,6 @@ resource "keycloak_openid_user_client_role_protocol_mapper" "client_roles" {
 # web-origins スコープのプロトコルマッパー
 # =============================================================================
 
-# allowed web origins マッパー
 resource "keycloak_generic_protocol_mapper" "allowed_web_origins" {
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.web_origins.id
@@ -213,7 +220,6 @@ resource "keycloak_generic_protocol_mapper" "allowed_web_origins" {
 # acr スコープのプロトコルマッパー
 # =============================================================================
 
-# acr loa level マッパー
 resource "keycloak_generic_protocol_mapper" "acr_loa_level" {
   realm_id        = keycloak_realm.tumiki.id
   client_scope_id = keycloak_openid_client_scope.acr.id
@@ -258,41 +264,16 @@ resource "keycloak_openid_group_membership_protocol_mapper" "manager_group_roles
 # Proxy クライアント固有のプロトコルマッパー
 # =============================================================================
 
-# Client Host マッパー
-resource "keycloak_openid_user_session_note_protocol_mapper" "proxy_client_host" {
+resource "keycloak_openid_user_session_note_protocol_mapper" "proxy_session_notes" {
+  for_each = local.proxy_session_note_mappers
+
   realm_id  = keycloak_realm.tumiki.id
   client_id = keycloak_openid_client.proxy.id
-  name      = "Client Host"
+  name      = each.value.name
 
-  claim_name          = "clientHost"
-  claim_value_type    = "String"
-  session_note        = "clientHost"
-  add_to_id_token     = true
-  add_to_access_token = true
-}
-
-# Client ID マッパー
-resource "keycloak_openid_user_session_note_protocol_mapper" "proxy_client_id" {
-  realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.proxy.id
-  name      = "Client ID"
-
-  claim_name          = "client_id"
-  claim_value_type    = "String"
-  session_note        = "client_id"
-  add_to_id_token     = true
-  add_to_access_token = true
-}
-
-# Client IP Address マッパー
-resource "keycloak_openid_user_session_note_protocol_mapper" "proxy_client_address" {
-  realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.proxy.id
-  name      = "Client IP Address"
-
-  claim_name          = "clientAddress"
-  claim_value_type    = "String"
-  session_note        = "clientAddress"
+  claim_name          = each.value.claim_name
+  claim_value_type    = each.value.claim_value_type
+  session_note        = each.value.session_note
   add_to_id_token     = true
   add_to_access_token = true
 }

@@ -1,30 +1,21 @@
 # Keycloak Realm Roles設定
 # 組織管理用のRealm Roles
 
-# Owner ロール - 全権限
-resource "keycloak_role" "owner" {
-  realm_id    = keycloak_realm.tumiki.id
-  name        = "Owner"
-  description = "Organization Owner - Full permissions"
+# ロール定義
+locals {
+  realm_roles = {
+    owner  = { description = "Organization Owner - Full permissions" }
+    admin  = { description = "Organization Admin - Can manage members" }
+    member = { description = "Organization Member - Basic usage" }
+    viewer = { description = "Organization Viewer - Read-only access" }
+  }
 }
 
-# Admin ロール - メンバー管理可能
-resource "keycloak_role" "admin" {
-  realm_id    = keycloak_realm.tumiki.id
-  name        = "Admin"
-  description = "Organization Admin - Can manage members"
-}
+# 組織ロール（for_eachで一括定義）
+resource "keycloak_role" "org_roles" {
+  for_each = local.realm_roles
 
-# Member ロール - 基本利用
-resource "keycloak_role" "member" {
   realm_id    = keycloak_realm.tumiki.id
-  name        = "Member"
-  description = "Organization Member - Basic usage"
-}
-
-# Viewer ロール - 読み取り専用
-resource "keycloak_role" "viewer" {
-  realm_id    = keycloak_realm.tumiki.id
-  name        = "Viewer"
-  description = "Organization Viewer - Read-only access"
+  name        = title(each.key)
+  description = each.value.description
 }

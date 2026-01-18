@@ -1,10 +1,52 @@
 # Keycloak Identity Providers設定
 # Google IdP（オプション - 環境変数が設定されている場合のみ）
 
+# =============================================================================
+# ローカル変数定義
+# =============================================================================
+
+locals {
+  # Google IdP が有効かどうか
+  google_idp_enabled = var.google_client_id != ""
+
+  # Google IdP 属性マッパー定義
+  google_attribute_mappers = {
+    email = {
+      name           = "google-email"
+      claim          = "email"
+      user_attribute = "email"
+    }
+    first_name = {
+      name           = "google-first-name"
+      claim          = "given_name"
+      user_attribute = "firstName"
+    }
+    last_name = {
+      name           = "google-last-name"
+      claim          = "family_name"
+      user_attribute = "lastName"
+    }
+    email_verified = {
+      name           = "google-email-verified"
+      claim          = "email_verified"
+      user_attribute = "emailVerified"
+    }
+    picture = {
+      name           = "google-picture"
+      claim          = "picture"
+      user_attribute = "picture"
+    }
+  }
+}
+
+# =============================================================================
+# Google Identity Provider
+# =============================================================================
+
 # Google IdP（条件付き）
 # keycloak_oidc_google_identity_provider を使用すると authorization_url, token_url が自動設定される
 resource "keycloak_oidc_google_identity_provider" "google" {
-  count = var.google_client_id != "" ? 1 : 0
+  count = local.google_idp_enabled ? 1 : 0
 
   realm         = keycloak_realm.tumiki.id
   client_id     = var.google_client_id
@@ -23,9 +65,13 @@ resource "keycloak_oidc_google_identity_provider" "google" {
   # デフォルトを使用する
 }
 
-# Google IdP マッパー: username
+# =============================================================================
+# Google IdP マッパー
+# =============================================================================
+
+# username マッパー（特殊なタイプのため個別定義）
 resource "keycloak_custom_identity_provider_mapper" "google_username" {
-  count = var.google_client_id != "" ? 1 : 0
+  count = local.google_idp_enabled ? 1 : 0
 
   realm                    = keycloak_realm.tumiki.id
   name                     = "google-username"
@@ -38,82 +84,18 @@ resource "keycloak_custom_identity_provider_mapper" "google_username" {
   }
 }
 
-# Google IdP マッパー: email
-resource "keycloak_custom_identity_provider_mapper" "google_email" {
-  count = var.google_client_id != "" ? 1 : 0
+# 属性マッパー（for_eachで一括定義）
+resource "keycloak_custom_identity_provider_mapper" "google_attributes" {
+  for_each = local.google_idp_enabled ? local.google_attribute_mappers : {}
 
   realm                    = keycloak_realm.tumiki.id
-  name                     = "google-email"
+  name                     = each.value.name
   identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
   identity_provider_mapper = "oidc-user-attribute-idp-mapper"
 
   extra_config = {
     syncMode         = "INHERIT"
-    claim            = "email"
-    "user.attribute" = "email"
-  }
-}
-
-# Google IdP マッパー: first name
-resource "keycloak_custom_identity_provider_mapper" "google_first_name" {
-  count = var.google_client_id != "" ? 1 : 0
-
-  realm                    = keycloak_realm.tumiki.id
-  name                     = "google-first-name"
-  identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
-  identity_provider_mapper = "oidc-user-attribute-idp-mapper"
-
-  extra_config = {
-    syncMode         = "INHERIT"
-    claim            = "given_name"
-    "user.attribute" = "firstName"
-  }
-}
-
-# Google IdP マッパー: last name
-resource "keycloak_custom_identity_provider_mapper" "google_last_name" {
-  count = var.google_client_id != "" ? 1 : 0
-
-  realm                    = keycloak_realm.tumiki.id
-  name                     = "google-last-name"
-  identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
-  identity_provider_mapper = "oidc-user-attribute-idp-mapper"
-
-  extra_config = {
-    syncMode         = "INHERIT"
-    claim            = "family_name"
-    "user.attribute" = "lastName"
-  }
-}
-
-# Google IdP マッパー: email verified
-resource "keycloak_custom_identity_provider_mapper" "google_email_verified" {
-  count = var.google_client_id != "" ? 1 : 0
-
-  realm                    = keycloak_realm.tumiki.id
-  name                     = "google-email-verified"
-  identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
-  identity_provider_mapper = "oidc-user-attribute-idp-mapper"
-
-  extra_config = {
-    syncMode         = "INHERIT"
-    claim            = "email_verified"
-    "user.attribute" = "emailVerified"
-  }
-}
-
-# Google IdP マッパー: picture
-resource "keycloak_custom_identity_provider_mapper" "google_picture" {
-  count = var.google_client_id != "" ? 1 : 0
-
-  realm                    = keycloak_realm.tumiki.id
-  name                     = "google-picture"
-  identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
-  identity_provider_mapper = "oidc-user-attribute-idp-mapper"
-
-  extra_config = {
-    syncMode         = "INHERIT"
-    claim            = "picture"
-    "user.attribute" = "picture"
+    claim            = each.value.claim
+    "user.attribute" = each.value.user_attribute
   }
 }
