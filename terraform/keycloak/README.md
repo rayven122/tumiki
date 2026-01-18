@@ -1,8 +1,8 @@
-# Keycloak Docker環境
+# Keycloak Terraform設定
 
 TumikiプラットフォームのOAuth認証基盤（ローカル開発用）
 
-## セットアップ（Terraform管理）
+## セットアップ
 
 Keycloakの設定はTerraformで管理されています。初回セットアップは以下のコマンドで行います：
 
@@ -72,9 +72,7 @@ pnpm keycloak:apply
 pnpm keycloak:destroy
 ```
 
-## Terraform設定ファイル
-
-設定ファイルは `terraform/keycloak/` に配置されています：
+## ファイル構成
 
 ```
 terraform/keycloak/
@@ -95,7 +93,7 @@ terraform/keycloak/
 
 ### 変数の上書き
 
-`terraform/keycloak/terraform.tfvars` を編集するか、環境変数で上書きできます：
+`terraform.tfvars` を編集するか、環境変数で上書きできます：
 
 ```bash
 # 環境変数で上書きする例
