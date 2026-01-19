@@ -28,14 +28,14 @@ POST /mcp/:serverId
 │  (detectServerType で種類判定)      │
 └─────────────────────────────────────┘
       ↓
-  serverType = UNIFIED ?
-      ├── NO → 通常MCPサーバー処理
+  serverType = CUSTOM ?
+      ├── YES → 統合MCPサーバー処理
       │         - 組織メンバーシップチェック
-      │         - PII/TOONミドルウェア適用
+      │         - PII/TOONはテンプレートインスタンスごとに適用
       │
-      └── YES → 統合MCPサーバー処理
+      └── NO → 通常MCPサーバー処理（serverType = OFFICIAL）
                 - 組織メンバーシップチェック
-                - PII/TOONはテンプレートインスタンスごとに適用
+                - PII/TOONミドルウェア適用
 ```
 
 ### サーバー種類の自動判定
@@ -52,11 +52,11 @@ export type ServerTypeResult =
 export const detectServerType = async (
   serverId: string,
 ): Promise<ServerTypeResult> => {
-  // McpServerを検索（通常サーバー、CUSTOM/OFFICIAL/UNIFIED）
+  // McpServerを検索（CUSTOM/OFFICIAL）
   const mcpServer = await getMcpServerOrganization(serverId);
   if (mcpServer) {
-    // serverType=UNIFIEDの場合は統合サーバーとして扱う
-    if (mcpServer.serverType === ServerType.UNIFIED) {
+    // serverType=CUSTOMの場合は統合サーバーとして扱う
+    if (mcpServer.serverType === ServerType.CUSTOM) {
       return {
         type: "unified",
         server: {
@@ -78,9 +78,9 @@ export const detectServerType = async (
 
 ## データモデル
 
-### McpServer (serverType=UNIFIED)
+### McpServer (serverType=CUSTOM)
 
-統合MCPサーバーは `McpServer` テーブルに `serverType: UNIFIED` として保存される。
+統合MCPサーバーは `McpServer` テーブルに `serverType: CUSTOM` として保存される。
 テンプレートインスタンスを直接持ち、複数のテンプレートを束ねる。
 
 | フィールド | 型 | 説明 |
@@ -89,14 +89,14 @@ export const detectServerType = async (
 | name | String | 統合サーバー名 |
 | description | String | 説明（必須） |
 | organizationId | String | 所属組織 |
-| serverType | ServerType | `UNIFIED` |
+| serverType | ServerType | `CUSTOM`（統合MCPサーバー） |
 | deletedAt | DateTime? | 論理削除 |
 | templateInstances | McpServerTemplateInstance[] | テンプレートインスタンス |
 
 ### データ構造
 
 ```
-McpServer (serverType=UNIFIED)
+McpServer (serverType=CUSTOM)
     ↓ templateInstances[] （直接リレーション）
 McpServerTemplateInstance
     ↓ mcpServerTemplate
@@ -109,11 +109,14 @@ McpTool[]
 
 ```prisma
 enum ServerType {
-  CUSTOM    // ユーザー作成
-  OFFICIAL  // 公式
-  UNIFIED   // 統合エンドポイント
+  /// カスタムMCPサーバー（統合MCPサーバーも含む）
+  CUSTOM
+  /// 公式MCPサーバー
+  OFFICIAL
 }
 ```
+
+> **Note:** 統合MCPサーバーは `CUSTOM` タイプで識別される。`templateInstances` の有無で通常CUSTOMサーバーと統合サーバーを区別する。
 
 ### AuthContext 拡張
 
@@ -281,7 +284,7 @@ export const aggregateTools = async (
   const unifiedServer = await db.mcpServer.findUnique({
     where: {
       id: unifiedMcpServerId,
-      serverType: ServerType.UNIFIED,
+      serverType: ServerType.CUSTOM,
     },
     include: {
       templateInstances: {
@@ -515,7 +518,7 @@ export const invalidateUnifiedToolsCache = async (unifiedId: string): Promise<vo
 
 ### 「Unified MCP server not found」エラー
 
-1. 指定されたIDの統合サーバー（serverType=UNIFIED）が存在しない
+1. 指定されたIDの統合サーバー（serverType=CUSTOM）が存在しない
 2. 対処: IDとserverTypeを確認
 
 ### キャッシュが更新されない
