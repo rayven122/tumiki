@@ -69,6 +69,214 @@ const getStreamContext = () => {
   return globalStreamContext;
 };
 
+/**
+ * UIMessage parts用の型定義（DB保存用）
+ * MCPツールを含む動的なツール名に対応
+ */
+type UIMessagePart =
+  | { type: "text"; text: string }
+  | {
+      type: string; // "tool-{toolName}" 形式（MCPツールの場合は動的なツール名）
+      toolCallId: string;
+      state: "call" | "partial-call" | "result" | "error";
+      input?: unknown;
+      output?: unknown;
+    };
+
+/**
+ * AI SDK 6 のレスポンスメッセージcontent要素の型
+ * - ツール呼び出し: { type: "tool-call", toolCallId, toolName, input }
+ * - ツール結果: { type: "tool-result", toolCallId, toolName, output, isError? }
+ * - output は { type: "json", value: {...} } 形式でラップされている
+ */
+type ContentPart = {
+  type: string;
+  text?: string;
+  toolCallId?: string;
+  toolName?: string;
+  // AI SDK 6: args → input に変更
+  input?: unknown;
+  // AI SDK 6: result → output に変更、{ type: "json", value: {...} } 形式
+  output?: { type: string; value: unknown };
+  // ツールエラーフラグ（AI SDK 6）
+  isError?: boolean;
+};
+
+/**
+ * ツール結果の情報を保持する型
+ */
+type ToolResultInfo = {
+  output: unknown;
+  isError: boolean;
+};
+
+/**
+ * AI SDK 6 のレスポンスメッセージ型
+ */
+type ResponseMessage = {
+  role: string;
+  content: string | ContentPart[];
+};
+
+/**
+ * ResponseMessage配列からUIMessage用のpartsを構築
+ * ツール呼び出しとその結果をマージして、正しい形式で保存する
+ *
+ * 注: onFinishが呼ばれる時点ではすべてのツール呼び出しは完了しているため、
+ * ツール結果を収集してマッピングする
+ */
+const convertResponseMessagesToUIParts = (
+  messages: unknown[],
+): UIMessagePart[] => {
+  const parts: UIMessagePart[] = [];
+
+  // unknown[] を ResponseMessage[] として扱う
+  const typedMessages = messages as ResponseMessage[];
+
+  // ツール呼び出しIDと結果のマッピング（エラー情報含む）
+  const toolResultMap = new Map<string, ToolResultInfo>();
+
+  /**
+   * outputから値を抽出し、エラー状態を判定する
+   * AI SDK 6: output は以下の形式がある:
+   * - { type: "json", value: {...} }
+   * - { type: "error", value: ... }
+   * - { content: [...], isError: true } (MCPエラーの場合)
+   */
+  const extractToolResult = (
+    rawOutput: unknown,
+    isErrorFlag?: boolean,
+  ): ToolResultInfo => {
+    let extractedOutput = rawOutput;
+    let isError = isErrorFlag ?? false;
+
+    if (rawOutput && typeof rawOutput === "object") {
+      const outputObj = rawOutput as {
+        type?: string;
+        value?: unknown;
+        isError?: boolean;
+      };
+
+      // エラータイプの出力をチェック
+      if (outputObj.type === "error") {
+        isError = true;
+      }
+
+      // 値を抽出
+      if ("value" in outputObj) {
+        extractedOutput = outputObj.value;
+
+        // 抽出した値にも isError がある場合（MCPエラー形式）
+        if (
+          extractedOutput &&
+          typeof extractedOutput === "object" &&
+          "isError" in extractedOutput &&
+          (extractedOutput as { isError?: boolean }).isError === true
+        ) {
+          isError = true;
+        }
+      }
+
+      // ラッパーなしで直接 isError がある場合
+      if (outputObj.isError === true) {
+        isError = true;
+      }
+    }
+
+    return { output: extractedOutput, isError };
+  };
+
+  // ツール結果を収集
+  // AI SDK 6では、ツール結果は role: "tool" のメッセージに含まれる
+  // 構造: { type: "tool-result", toolCallId, toolName, output: { type: "json", value: {...} }, isError? }
+  for (const msg of typedMessages) {
+    if (msg.role === "tool") {
+      // contentが配列の場合
+      if (Array.isArray(msg.content)) {
+        for (const content of msg.content) {
+          if (content.type === "tool-result" && content.toolCallId) {
+            const resultInfo = extractToolResult(
+              content.output,
+              content.isError,
+            );
+            toolResultMap.set(content.toolCallId, resultInfo);
+          }
+        }
+      }
+      // contentが単一のオブジェクトの場合
+      else if (
+        typeof msg.content === "object" &&
+        msg.content !== null &&
+        "toolCallId" in msg.content
+      ) {
+        const content = msg.content as ContentPart;
+        if (content.toolCallId && content.output !== undefined) {
+          const resultInfo = extractToolResult(content.output, content.isError);
+          toolResultMap.set(content.toolCallId, resultInfo);
+        }
+      }
+    }
+  }
+
+  // アシスタントメッセージ内のtool-resultも収集（念のため）
+  for (const msg of typedMessages) {
+    if (msg.role === "assistant" && Array.isArray(msg.content)) {
+      for (const content of msg.content) {
+        if (content.type === "tool-result" && content.toolCallId) {
+          const resultInfo = extractToolResult(content.output, content.isError);
+          toolResultMap.set(content.toolCallId, resultInfo);
+        }
+      }
+    }
+  }
+
+  // アシスタントメッセージからpartsを構築
+  for (const msg of typedMessages) {
+    if (msg.role === "assistant") {
+      // contentが文字列の場合（テキストのみの応答）
+      if (typeof msg.content === "string") {
+        if (msg.content.trim()) {
+          parts.push({ type: "text", text: msg.content });
+        }
+        continue;
+      }
+
+      // contentが配列の場合
+      for (const content of msg.content) {
+        if (content.type === "text" && content.text) {
+          if (content.text.trim()) {
+            parts.push({ type: "text", text: content.text });
+          }
+        } else if (
+          content.type === "tool-call" &&
+          content.toolCallId &&
+          content.toolName
+        ) {
+          // UIMessage形式: { type: "tool-{toolName}", toolCallId, state, input, output }
+          const toolResultInfo = toolResultMap.get(content.toolCallId);
+
+          // 状態を判定: エラー > 結果あり > 呼び出し中
+          let state: "call" | "partial-call" | "result" | "error" = "call";
+          if (toolResultInfo !== undefined) {
+            state = toolResultInfo.isError ? "error" : "result";
+          }
+
+          parts.push({
+            type: `tool-${content.toolName}`,
+            toolCallId: content.toolCallId,
+            state,
+            // AI SDK 6: args → input に変更
+            input: content.input,
+            output: toolResultInfo?.output,
+          });
+        }
+      }
+    }
+  }
+
+  return parts;
+};
+
 export const POST = async (request: Request) => {
   let requestBody: PostRequestBody;
 
@@ -302,16 +510,20 @@ export const POST = async (request: Request) => {
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: allTools,
           abortSignal: request.signal,
-          onFinish: async ({ response }) => {
+          onFinish: async (finishEvent) => {
+            const { response } = finishEvent;
+
             if (session.user?.id) {
               try {
-                // AI SDK 6: response.messagesにはidが含まれないため、新しいIDを生成
-                const assistantMessage = response.messages.find(
-                  (msg) => msg.role === "assistant",
+                // AI SDK 6: response.messagesからUIMessage形式のpartsを構築
+                // ツール呼び出しと結果を含めて正しく保存する
+                const parts = convertResponseMessagesToUIParts(
+                  response.messages,
                 );
 
-                if (!assistantMessage) {
-                  throw new Error("No assistant message found!");
+                if (parts.length === 0) {
+                  console.warn("No parts found in response messages");
+                  return;
                 }
 
                 // 新しいメッセージIDを生成
@@ -323,7 +535,7 @@ export const POST = async (request: Request) => {
                       id: assistantId,
                       chatId: id,
                       role: "assistant",
-                      parts: assistantMessage.content as unknown as Array<{
+                      parts: parts as unknown as Array<{
                         text: string;
                         type: string;
                       }>,
@@ -332,8 +544,8 @@ export const POST = async (request: Request) => {
                     },
                   ],
                 });
-              } catch {
-                console.error("Failed to save chat");
+              } catch (error) {
+                console.error("Failed to save chat:", error);
               }
             }
 
