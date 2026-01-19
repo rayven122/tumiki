@@ -49,7 +49,6 @@ import { BarChart3, Activity, Cable, Workflow } from "lucide-react";
 const SERVER_TYPE_LABELS = {
   [ServerType.OFFICIAL]: "公式",
   [ServerType.CUSTOM]: "カスタム",
-  [ServerType.UNIFIED]: "統合",
 } as const;
 
 type ServerDetailPageClientProps = {

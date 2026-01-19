@@ -31,7 +31,7 @@ vi.mock("@tumiki/db/server", () => ({
   OFFICIAL_ORGANIZATION_ID: "00000000-0000-0000-0000-000000000000",
   OFFICIAL_USER_ID: "00000000-0000-0000-0000-000000000001",
   ServerStatus: { RUNNING: "RUNNING" },
-  ServerType: { OFFICIAL: "OFFICIAL", UNIFIED: "UNIFIED" },
+  ServerType: { OFFICIAL: "OFFICIAL", CUSTOM: "CUSTOM" },
   AuthType: { NONE: "NONE" },
   PiiMaskingMode: { DISABLED: "DISABLED" },
 }));
@@ -71,7 +71,7 @@ describe("upsertUnifiedMcpServers", () => {
       expect(mockDb.mcpServerTemplate.findMany).not.toHaveBeenCalled();
     });
 
-    test("子サーバーテンプレートが存在する場合はMcpServer(UNIFIED)を作成する", async () => {
+    test("子サーバーテンプレートが存在する場合はMcpServer(CUSTOM)を作成する", async () => {
       const mockTemplates = [
         {
           id: "template-add",
@@ -90,7 +90,7 @@ describe("upsertUnifiedMcpServers", () => {
       ];
 
       mockDb.mcpServerTemplate.findMany.mockResolvedValue(mockTemplates);
-      // 既存の統合MCPサーバー（serverType=UNIFIED）がない場合
+      // 既存の統合MCPサーバー（serverType=CUSTOM）がない場合
       mockDb.mcpServer.findFirst.mockResolvedValue(null);
 
       // トランザクション内の処理をモック
@@ -117,7 +117,7 @@ describe("upsertUnifiedMcpServers", () => {
       expect(mockDb.$transaction).toHaveBeenCalled();
     });
 
-    test("既存のMcpServer(UNIFIED)がある場合は更新する", async () => {
+    test("既存のMcpServer(CUSTOM)がある場合は更新する", async () => {
       const mockTemplates = [
         {
           id: "template-add",
@@ -131,7 +131,7 @@ describe("upsertUnifiedMcpServers", () => {
       const existingUnifiedServer = {
         id: "existing-unified-1",
         name: "Calculator MCP",
-        serverType: "UNIFIED",
+        serverType: "CUSTOM",
         templateInstances: [
           {
             id: "instance-1",
@@ -142,7 +142,7 @@ describe("upsertUnifiedMcpServers", () => {
       };
 
       mockDb.mcpServerTemplate.findMany.mockResolvedValue(mockTemplates);
-      // 既存の統合MCPサーバー（serverType=UNIFIED）がある場合
+      // 既存の統合MCPサーバー（serverType=CUSTOM）がある場合
       mockDb.mcpServer.findFirst.mockResolvedValue(existingUnifiedServer);
 
       mockDb.$transaction.mockImplementation(
@@ -165,7 +165,7 @@ describe("upsertUnifiedMcpServers", () => {
 
       await upsertUnifiedMcpServers(["Add MCP"]);
 
-      // mcpServer.findFirst が呼ばれていることを確認（serverType=UNIFIED の検索）
+      // mcpServer.findFirst が呼ばれていることを確認（serverType=CUSTOM の検索）
       expect(mockDb.mcpServer.findFirst).toHaveBeenCalled();
     });
   });

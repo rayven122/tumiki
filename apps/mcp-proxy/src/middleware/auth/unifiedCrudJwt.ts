@@ -112,11 +112,11 @@ export const unifiedOwnershipMiddleware = async (
     return;
   }
 
-  // 統合MCPサーバー（serverType=UNIFIED）を取得
+  // 統合MCPサーバー（serverType=CUSTOM）を取得
   const unifiedServer = await db.mcpServer.findFirst({
     where: {
       id: unifiedId,
-      serverType: ServerType.UNIFIED,
+      serverType: ServerType.CUSTOM,
     },
     select: {
       id: true,
