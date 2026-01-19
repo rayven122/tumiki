@@ -293,6 +293,47 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）が`docker/compose.yaml`で管理
 - **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
+## Dynamic Search 機能
+
+### 概要
+
+Dynamic Searchは、MCPサーバーのツール発見を最適化するAI検索システム。`dynamicSearch=true`設定時、全ツールではなく3つのメタツール（`search_tools`, `describe_tools`, `execute_tool`）のみを公開し、必要なツールを動的に検索・実行する。
+
+### 実装場所
+
+- `apps/mcp-proxy/src/services/dynamicSearch/` - コア実装
+- `apps/mcp-proxy/src/handlers/mcpHandler.ts` - メタツール処理
+- `apps/mcp-proxy/src/services/toolExecutor.ts` - ツール取得・実行
+
+### スキルの使用方法
+
+Dynamic Search機能の実装・拡張・デバッグ時は、`tumiki-dynamic-search-feature`スキルを参照してください。このスキルには以下が含まれます：
+
+- アーキテクチャ概要と使用フロー
+- 型定義とメタツール定義のパターン
+- AI検索実装の詳細
+- 新しいメタツール追加手順
+- 実装チェックリストとトラブルシューティング
+
+### 機能変更時のスキル更新ルール
+
+**重要**: Dynamic Search機能に変更を加えた場合、必ず`.claude/skills/tumiki-dynamic-search-feature/SKILL.md`も更新してください。
+
+以下の変更時にスキルの更新が必要：
+
+- 新しいメタツールの追加
+- 型定義の変更（`types.ts`）
+- AI検索ロジックの変更（`searchTools.ts`）
+- メタツール定義の変更（`metaToolDefinitions.ts`）
+- ファイル構成の変更
+
+スキル更新の手順：
+
+1. 変更した実装コードを確認
+2. スキルの該当セクションを更新
+3. コード例が最新の実装と一致していることを確認
+4. チェックリストに必要な項目を追加
+
 ## 実装後の必須アクション
 
 **重要**: 実装が完了したら、必ず以下のコマンドを実行してください：
