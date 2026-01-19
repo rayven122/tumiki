@@ -1,9 +1,21 @@
 /**
  * Dynamic Search 機能の型定義
+ *
+ * MCP SDK の Tool 型と CallToolRequestParams 型を re-export し、
+ * Dynamic Search 固有の型を定義
  */
+
+import type {
+  Tool,
+  CallToolRequestParams,
+} from "@modelcontextprotocol/sdk/types.js";
+
+// MCP SDK の型を re-export
+export type { Tool, CallToolRequestParams };
 
 /**
  * search_tools の引数
+ * Dynamic Search 固有の機能（MCP 標準にはツール検索機能がない）
  */
 export type SearchToolsArgs = {
   /** 検索クエリ（自然言語でツールを検索） */
@@ -14,6 +26,7 @@ export type SearchToolsArgs = {
 
 /**
  * describe_tools の引数
+ * Dynamic Search 固有の機能（MCP 標準では tools/list で全ツール取得）
  */
 export type DescribeToolsArgs = {
   /** スキーマを取得するツール名の配列 */
@@ -21,35 +34,25 @@ export type DescribeToolsArgs = {
 };
 
 /**
- * execute_tool の引数
- */
-export type ExecuteToolArgs = {
-  /** 実行するツール名 */
-  toolName: string;
-  /** ツールに渡す引数 */
-  arguments: Record<string, unknown>;
-};
-
-/**
- * ツール情報（内部用）
- */
-export type ToolInfo = {
-  /** ツール名（"{インスタンス名}__{ツール名}" 形式） */
-  name: string;
-  /** ツールの説明 */
-  description: string | null;
-  /** ツールの入力スキーマ（JSON Schema形式） */
-  inputSchema: Record<string, unknown>;
-};
-
-/**
  * 検索結果
+ * Dynamic Search 固有の機能（AI検索による関連度スコアを含む）
  */
 export type SearchResult = {
   /** ツール名 */
   toolName: string;
   /** ツールの説明 */
-  description: string | null;
+  description: string | undefined;
   /** 関連度スコア（0-1） */
   relevanceScore: number;
 };
+
+// 後方互換性のための型エイリアス（非推奨）
+/**
+ * @deprecated MCP SDK の Tool 型を使用してください
+ */
+export type ToolInfo = Tool;
+
+/**
+ * @deprecated MCP SDK の CallToolRequestParams 型を使用してください
+ */
+export type ExecuteToolArgs = CallToolRequestParams;

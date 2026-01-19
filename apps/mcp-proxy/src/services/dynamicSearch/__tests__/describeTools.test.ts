@@ -13,10 +13,10 @@ vi.mock("../../../libs/logger/index.js", () => ({
 
 // モック設定後にインポート
 import { describeTools } from "../describeTools.js";
-import type { ToolInfo } from "../types.js";
+import type { Tool } from "../types.js";
 
 describe("describeTools", () => {
-  const mockTools: ToolInfo[] = [
+  const mockTools: Tool[] = [
     {
       name: "github__create_issue",
       description: "GitHubにissueを作成します",
@@ -95,7 +95,7 @@ describe("describeTools", () => {
     expect(results).toHaveLength(1);
     expect(results[0]).toStrictEqual({
       toolName: "non_existent_tool",
-      description: null,
+      description: undefined,
       inputSchema: {},
       found: false,
     });
@@ -130,24 +130,24 @@ describe("describeTools", () => {
     expect(results[0].found).toBe(false);
   });
 
-  test("説明がnullのツールでも正常に動作する", async () => {
-    const toolsWithNullDescription: ToolInfo[] = [
+  test("説明がundefinedのツールでも正常に動作する", async () => {
+    const toolsWithUndefinedDescription: Tool[] = [
       {
         name: "tool_without_desc",
-        description: null,
+        description: undefined,
         inputSchema: { type: "object" },
       },
     ];
 
     const results = await describeTools(
       { toolNames: ["tool_without_desc"] },
-      toolsWithNullDescription,
+      toolsWithUndefinedDescription,
     );
 
     expect(results).toHaveLength(1);
     expect(results[0]).toStrictEqual({
       toolName: "tool_without_desc",
-      description: null,
+      description: undefined,
       inputSchema: { type: "object" },
       found: true,
     });

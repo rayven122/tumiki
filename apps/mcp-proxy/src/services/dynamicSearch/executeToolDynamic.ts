@@ -2,28 +2,29 @@
  * execute_tool メタツール実装
  *
  * 既存の toolExecutor.executeTool() を呼び出してツールを実行する
+ * MCP SDK の CallToolRequestParams 型を使用
  */
 
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { executeTool } from "../toolExecutor.js";
-import type { ExecuteToolArgs } from "./types.js";
+import type { CallToolRequestParams } from "./types.js";
 
 /**
  * execute_tool を実行
  *
- * @param args - 実行引数
+ * @param args - 実行引数（MCP SDK の CallToolRequestParams 形式）
  * @param mcpServerId - McpServer ID
  * @param organizationId - 組織ID
  * @param userId - ユーザーID
  * @returns ツール実行結果
  */
 export const executeToolDynamic = async (
-  args: ExecuteToolArgs,
+  args: CallToolRequestParams,
   mcpServerId: string,
   organizationId: string,
   userId: string,
 ): Promise<unknown> => {
-  const { toolName, arguments: toolArgs } = args;
+  const { name: toolName, arguments: toolArgs = {} } = args;
 
   logInfo("Executing execute_tool (dynamic)", {
     toolName,

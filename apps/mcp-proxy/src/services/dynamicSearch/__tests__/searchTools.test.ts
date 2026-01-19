@@ -27,10 +27,10 @@ vi.mock("../../../libs/logger/index.js", () => ({
 
 // モック設定後にインポート
 import { searchTools } from "../searchTools.js";
-import type { ToolInfo } from "../types.js";
+import type { Tool } from "../types.js";
 
 describe("searchTools", () => {
-  const mockTools: ToolInfo[] = [
+  const mockTools: Tool[] = [
     {
       name: "github__create_issue",
       description: "GitHubにissueを作成します",
@@ -132,7 +132,7 @@ describe("searchTools", () => {
     expect(mockGenerateObject).not.toHaveBeenCalled();
   });
 
-  test("LLMが存在しないツール名を返した場合はdescriptionがnullになる", async () => {
+  test("LLMが存在しないツール名を返した場合はdescriptionがundefinedになる", async () => {
     mockGenerateObject.mockResolvedValue({
       object: {
         results: [{ toolName: "non_existent_tool", relevanceScore: 0.8 }],
@@ -144,7 +144,7 @@ describe("searchTools", () => {
     expect(results).toHaveLength(1);
     expect(results[0]).toStrictEqual({
       toolName: "non_existent_tool",
-      description: null,
+      description: undefined,
       relevanceScore: 0.8,
     });
   });
@@ -157,12 +157,12 @@ describe("searchTools", () => {
     );
   });
 
-  test("ツール説明がnullのツールを含むリストでも正常に動作する", async () => {
-    const toolsWithNullDescription: ToolInfo[] = [
+  test("ツール説明がundefinedのツールを含むリストでも正常に動作する", async () => {
+    const toolsWithUndefinedDescription: Tool[] = [
       {
         name: "tool_without_desc",
-        description: null,
-        inputSchema: {},
+        description: undefined,
+        inputSchema: { type: "object" },
       },
     ];
 
@@ -174,10 +174,10 @@ describe("searchTools", () => {
 
     const results = await searchTools(
       { query: "test" },
-      toolsWithNullDescription,
+      toolsWithUndefinedDescription,
     );
 
     expect(results).toHaveLength(1);
-    expect(results[0].description).toBeNull();
+    expect(results[0].description).toBeUndefined();
   });
 });

@@ -2,22 +2,16 @@
  * Dynamic Search 用のメタツール定義
  *
  * dynamicSearch が有効な場合、これら3つのツールのみが公開される
+ * MCP SDK の Tool 型を使用して標準仕様に準拠
  */
 
-/**
- * メタツールの定義
- */
-export type MetaToolDefinition = {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-};
+import type { Tool } from "./types.js";
 
 /**
  * search_tools メタツール定義
  * クエリに関連するツールをセマンティック検索する
  */
-export const SEARCH_TOOLS_DEFINITION: MetaToolDefinition = {
+export const SEARCH_TOOLS_DEFINITION: Tool = {
   name: "search_tools",
   description:
     "利用可能なツールをクエリで検索します。自然言語でツールの機能を説明すると、関連するツールを返します。",
@@ -43,7 +37,7 @@ export const SEARCH_TOOLS_DEFINITION: MetaToolDefinition = {
  * describe_tools メタツール定義
  * 指定されたツールの詳細スキーマを取得する
  */
-export const DESCRIBE_TOOLS_DEFINITION: MetaToolDefinition = {
+export const DESCRIBE_TOOLS_DEFINITION: Tool = {
   name: "describe_tools",
   description:
     "指定されたツールの詳細な入力スキーマを取得します。search_toolsで見つけたツールの詳細を確認するために使用します。",
@@ -66,14 +60,14 @@ export const DESCRIBE_TOOLS_DEFINITION: MetaToolDefinition = {
  * execute_tool メタツール定義
  * 指定されたツールを実行する
  */
-export const EXECUTE_TOOL_DEFINITION: MetaToolDefinition = {
+export const EXECUTE_TOOL_DEFINITION: Tool = {
   name: "execute_tool",
   description:
     "指定されたツールを実行します。事前にdescribe_toolsでスキーマを確認し、適切な引数を渡してください。",
   inputSchema: {
     type: "object",
     properties: {
-      toolName: {
+      name: {
         type: "string",
         description: "実行するツール名",
       },
@@ -83,14 +77,14 @@ export const EXECUTE_TOOL_DEFINITION: MetaToolDefinition = {
         additionalProperties: true,
       },
     },
-    required: ["toolName", "arguments"],
+    required: ["name"],
   },
 };
 
 /**
  * 全メタツール定義の配列
  */
-export const DYNAMIC_SEARCH_META_TOOLS: MetaToolDefinition[] = [
+export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [
   SEARCH_TOOLS_DEFINITION,
   DESCRIBE_TOOLS_DEFINITION,
   EXECUTE_TOOL_DEFINITION,
@@ -109,3 +103,9 @@ export const META_TOOL_NAMES = new Set(
 export const isMetaTool = (toolName: string): boolean => {
   return META_TOOL_NAMES.has(toolName);
 };
+
+// 後方互換性のための型エイリアス（非推奨）
+/**
+ * @deprecated MCP SDK の Tool 型を使用してください
+ */
+export type MetaToolDefinition = Tool;

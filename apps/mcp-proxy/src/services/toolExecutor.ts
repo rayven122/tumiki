@@ -3,10 +3,22 @@ import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 import { updateExecutionContext } from "../middleware/requestLogging/context.js";
 import { extractMcpErrorInfo, getErrorCodeName } from "../libs/error/index.js";
-import {
-  DYNAMIC_SEARCH_META_TOOLS,
-  type ToolInfo,
-} from "./dynamicSearch/index.js";
+import { DYNAMIC_SEARCH_META_TOOLS, type Tool } from "./dynamicSearch/index.js";
+
+/**
+ * データベースの inputSchema を MCP SDK の Tool["inputSchema"] 形式に変換
+ *
+ * MCP SDK では inputSchema.type が "object" リテラルであることが必須
+ */
+const toToolInputSchema = (inputSchema: unknown): Tool["inputSchema"] => {
+  const schema = inputSchema as Record<string, unknown>;
+  return {
+    type: "object",
+    properties: schema.properties as Record<string, object> | undefined,
+    required: schema.required as string[] | undefined,
+    ...schema,
+  };
+};
 
 /**
  * テンプレートインスタンスからツール情報を変換
@@ -23,12 +35,13 @@ const transformTemplateInstancesToTools = (
       inputSchema: unknown;
     }>;
   }>,
-): ToolInfo[] => {
+): Tool[] => {
   return templateInstances.flatMap((instance) =>
     instance.allowedTools.map((tool) => ({
       name: `${instance.normalizedName}__${tool.name}`,
-      description: tool.description,
-      inputSchema: tool.inputSchema as Record<string, unknown>,
+      // MCP SDK では description は undefined（null ではない）
+      description: tool.description ?? undefined,
+      inputSchema: toToolInputSchema(tool.inputSchema),
     })),
   );
 };
@@ -202,8 +215,8 @@ export const executeTool = async (
  * getAllowedTools の戻り値の型
  */
 export type GetAllowedToolsResult = {
-  /** 公開するツールリスト */
-  tools: ToolInfo[];
+  /** 公開するツールリスト（MCP SDK Tool 型） */
+  tools: Tool[];
   /** Dynamic Search が有効かどうか */
   dynamicSearch: boolean;
 };
@@ -294,11 +307,11 @@ export const getAllowedTools = async (
  * dynamicSearch が有効でも全ツールを取得する（search_tools 等で使用）
  *
  * @param mcpServerId - McpServer ID
- * @returns 全ツールリスト
+ * @returns 全ツールリスト（MCP SDK Tool 型）
  */
 export const getInternalToolsForDynamicSearch = async (
   mcpServerId: string,
-): Promise<ToolInfo[]> => {
+): Promise<Tool[]> => {
   logInfo("Getting internal tools for dynamic search", {
     mcpServerId,
   });

@@ -2,6 +2,7 @@
  * metaToolDefinitions.ts のテスト
  *
  * メタツール定義の単体テストを実施
+ * MCP SDK の Tool 型を使用
  */
 
 import { describe, test, expect } from "vitest";
@@ -53,10 +54,10 @@ describe("metaToolDefinitions", () => {
 
     test("説明が定義されている", () => {
       expect(SEARCH_TOOLS_DEFINITION.description).toBeDefined();
-      expect(SEARCH_TOOLS_DEFINITION.description.length).toBeGreaterThan(0);
+      expect(SEARCH_TOOLS_DEFINITION.description?.length).toBeGreaterThan(0);
     });
 
-    test("inputSchemaがquery必須フィールドを持つ", () => {
+    test("inputSchemaがtype:objectとquery必須フィールドを持つ", () => {
       expect(SEARCH_TOOLS_DEFINITION.inputSchema.type).toBe("object");
       expect(SEARCH_TOOLS_DEFINITION.inputSchema.required).toContain("query");
     });
@@ -67,7 +68,7 @@ describe("metaToolDefinitions", () => {
       expect(DESCRIBE_TOOLS_DEFINITION.name).toBe("describe_tools");
     });
 
-    test("inputSchemaがtoolNames必須フィールドを持つ", () => {
+    test("inputSchemaがtype:objectとtoolNames必須フィールドを持つ", () => {
       expect(DESCRIBE_TOOLS_DEFINITION.inputSchema.type).toBe("object");
       expect(DESCRIBE_TOOLS_DEFINITION.inputSchema.required).toContain(
         "toolNames",
@@ -80,14 +81,10 @@ describe("metaToolDefinitions", () => {
       expect(EXECUTE_TOOL_DEFINITION.name).toBe("execute_tool");
     });
 
-    test("inputSchemaがtoolNameとarguments必須フィールドを持つ", () => {
+    test("inputSchemaがtype:objectとname必須フィールドを持つ（MCP SDK形式）", () => {
       expect(EXECUTE_TOOL_DEFINITION.inputSchema.type).toBe("object");
-      expect(EXECUTE_TOOL_DEFINITION.inputSchema.required).toContain(
-        "toolName",
-      );
-      expect(EXECUTE_TOOL_DEFINITION.inputSchema.required).toContain(
-        "arguments",
-      );
+      // MCP SDK の CallToolRequestParams に準拠: name フィールドが必須
+      expect(EXECUTE_TOOL_DEFINITION.inputSchema.required).toContain("name");
     });
   });
 

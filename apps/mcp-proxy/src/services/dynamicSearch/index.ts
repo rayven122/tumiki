@@ -3,15 +3,21 @@
  *
  * dynamicSearch が有効な McpServer で使用される
  * search_tools, describe_tools, execute_tool の3つのメタツールを提供
+ *
+ * MCP SDK の Tool 型と CallToolRequestParams 型を使用
  */
 
-// 型定義
+// MCP SDK 型を re-export（推奨）
+export type { Tool, CallToolRequestParams } from "./types.js";
+
+// Dynamic Search 固有の型定義
 export type {
   SearchToolsArgs,
   DescribeToolsArgs,
-  ExecuteToolArgs,
-  ToolInfo,
   SearchResult,
+  // 後方互換性のための非推奨エイリアス
+  ToolInfo,
+  ExecuteToolArgs,
 } from "./types.js";
 
 // メタツール定義
@@ -22,6 +28,7 @@ export {
   EXECUTE_TOOL_DEFINITION,
   META_TOOL_NAMES,
   isMetaTool,
+  // 後方互換性のための非推奨エイリアス
   type MetaToolDefinition,
 } from "./metaToolDefinitions.js";
 
