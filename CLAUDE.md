@@ -293,6 +293,49 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）が`docker/compose.yaml`で管理
 - **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
+## 統合MCPサーバー（CUSTOM）機能
+
+### 概要
+
+統合MCPサーバーは、複数のMCPサーバーテンプレートを1つのサーバーとして束ねる機能。OFFICIAL（単一テンプレート）と異なり、2つ以上のテンプレートを統合し、常にOAuth認証を使用する。
+
+### 実装場所
+
+- `packages/db/prisma/schema/userMcpServer.prisma` - スキーマ定義（ServerType enum等）
+- `apps/manager/src/server/api/routers/v2/userMcpServer/createIntegratedMcpServer.ts` - 作成ロジック
+- `apps/manager/src/server/api/routers/v2/userMcpServer/index.ts` - tRPCルーター定義
+- `apps/manager/src/app/[orgSlug]/mcps/create-integrated/` - フロントエンド（4ステップウィザード）
+- `apps/manager/src/atoms/integratedFlowAtoms.ts` - Jotai状態管理
+
+### スキルの使用方法
+
+統合MCP機能の実装・拡張・デバッグ時は、`tumiki-custom-mcp-server-feature`スキルを参照してください。このスキルには以下が含まれます：
+
+- アーキテクチャ概要とServerType/AuthTypeの違い
+- 主要な概念（McpServerTemplate, McpServerTemplateInstance, McpServer）
+- 4ステップウィザードの詳細
+- 作成ロジックの実装詳細
+- 実装チェックリストとトラブルシューティング
+
+### 機能変更時のスキル更新ルール
+
+**重要**: 統合MCP機能に変更を加えた場合、必ず`.claude/skills/tumiki-custom-mcp-server-feature/SKILL.md`も更新してください。
+
+以下の変更時にスキルの更新が必要：
+
+- スキーマ定義の変更（ServerType, AuthType等）
+- 作成ロジックの変更（`createIntegratedMcpServer.ts`）
+- 入力スキーマの変更（`CreateIntegratedMcpServerInputV2`）
+- フロー状態型の変更（`IntegratedFlowState`）
+- ウィザードUIの構造変更
+
+スキル更新の手順：
+
+1. 変更した実装コードを確認
+2. スキルの該当セクションを更新
+3. コード例が最新の実装と一致していることを確認
+4. チェックリストに必要な項目を追加
+
 ## Dynamic Search 機能
 
 ### 概要
