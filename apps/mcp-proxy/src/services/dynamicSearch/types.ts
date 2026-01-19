@@ -45,14 +45,3 @@ export type SearchResult = {
   /** 関連度スコア（0-1） */
   relevanceScore: number;
 };
-
-// 後方互換性のための型エイリアス（非推奨）
-/**
- * @deprecated MCP SDK の Tool 型を使用してください
- */
-export type ToolInfo = Tool;
-
-/**
- * @deprecated MCP SDK の CallToolRequestParams 型を使用してください
- */
-export type ExecuteToolArgs = CallToolRequestParams;
