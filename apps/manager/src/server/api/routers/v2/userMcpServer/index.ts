@@ -29,7 +29,6 @@ import { updateToonConversion } from "./updateToonConversion";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
-import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import {
   McpServerSchema,
   McpApiKeySchema,
@@ -202,8 +201,10 @@ export const userMcpServerRouter = createTRPCRouter({
     .input(CreateIntegratedMcpServerInputV2)
     .output(CreateIntegratedMcpServerOutputV2)
     .mutation(async ({ ctx, input }) => {
-      // 管理者権限チェック（Owner/Adminのみ作成可能）
-      validateOrganizationAccess(ctx.currentOrg, { requireAdmin: true });
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
 
       const result = await ctx.db.$transaction(async (tx) => {
         return await createIntegratedMcpServer(
