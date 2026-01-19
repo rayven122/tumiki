@@ -4,6 +4,7 @@
  * 3階層ツール名をパースし、対象のMCPサーバーでツールを実行
  */
 
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { db, type PiiMaskingMode } from "@tumiki/db/server";
 import { parseUnifiedToolName } from "./toolNameParser.js";
 import { connectToMcpServer } from "../mcpConnection.js";
@@ -73,7 +74,7 @@ export const executeUnifiedTool = async (
   fullToolName: string,
   args: Record<string, unknown>,
   userId: string,
-): Promise<unknown> => {
+): Promise<CallToolResult> => {
   try {
     // 3階層ツール名をパース
     const { mcpServerId, instanceName, toolName } =
@@ -153,15 +154,6 @@ export const executeUnifiedTool = async (
           userId,
         },
       },
-      select: {
-        id: true,
-        envVars: true,
-        mcpServerTemplateInstanceId: true,
-        organizationId: true,
-        userId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
 
     // MCPサーバーに接続
@@ -195,10 +187,11 @@ export const executeUnifiedTool = async (
       instanceName,
     });
 
-    return result;
+    return result as CallToolResult;
   } catch (error) {
     logExecutionError(error, unifiedMcpServerId, fullToolName);
-    recordError(error, fullToolName);
+    // recordError は never を返す（常に throw する）ため、return で明示
+    return recordError(error, fullToolName);
   }
 };
 

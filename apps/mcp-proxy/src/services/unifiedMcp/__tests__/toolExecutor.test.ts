@@ -216,15 +216,6 @@ describe("executeUnifiedTool", () => {
           userId,
         },
       },
-      select: {
-        id: true,
-        envVars: true,
-        mcpServerTemplateInstanceId: true,
-        organizationId: true,
-        userId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
 
     // connectToMcpServerにMcpConfigが渡されることを検証

@@ -1,3 +1,4 @@
+import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { db } from "@tumiki/db/server";
 import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
@@ -43,7 +44,7 @@ export const executeTool = async (
   fullToolName: string,
   args: Record<string, unknown>,
   userId: string,
-): Promise<unknown> => {
+): Promise<CallToolResult> => {
   try {
     // 1. ツール名をパース
     const { instanceName, toolName } = parseToolName(fullToolName);
@@ -93,7 +94,8 @@ export const executeTool = async (
     }
 
     // 5. McpConfig（環境変数設定）を取得
-    // ユーザー個別設定
+    // TODO: ユーザ個別設定がない場合は、組織共通設定を利用する
+    // ユーザー個別設定 > 組織共通設定 の優先順位で取得
     const mcpConfig = await db.mcpConfig.findUnique({
       where: {
         mcpServerTemplateInstanceId_userId_organizationId: {
@@ -102,18 +104,7 @@ export const executeTool = async (
           userId,
         },
       },
-      select: {
-        id: true,
-        envVars: true,
-        mcpServerTemplateInstanceId: true,
-        organizationId: true,
-        userId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
-    // TODO: ユーザ個別設定がない場合は、組織共通設定を利用する
-    // ユーザー個別設定 > 組織共通設定 の優先順位で取得
 
     // 7. MCP サーバーに接続
     const client = await connectToMcpServer(
@@ -142,7 +133,7 @@ export const executeTool = async (
       instanceName,
     });
 
-    return result;
+    return result as CallToolResult;
   } catch (error) {
     // MCPエラー情報を抽出
     const errorInfo = extractMcpErrorInfo(error);
@@ -175,15 +166,7 @@ export const executeTool = async (
  * @param mcpServerId - McpServer ID
  * @returns ツールリスト（"{インスタンス名}__{ツール名}" 形式）
  */
-export const getAllowedTools = async (
-  mcpServerId: string,
-): Promise<
-  Array<{
-    name: string;
-    description: string | null;
-    inputSchema: Record<string, unknown>;
-  }>
-> => {
+export const getAllowedTools = async (mcpServerId: string): Promise<Tool[]> => {
   logInfo("Getting allowed tools", {
     mcpServerId,
   });
@@ -215,11 +198,14 @@ export const getAllowedTools = async (
     // 全テンプレートインスタンスからallowedToolsを集約
     // "{normalizedName}__{ツール名}" 形式でツールリストを返す
     // instance.normalizedNameを使用（インスタンスごとの識別子）
-    const tools = mcpServer.templateInstances.flatMap((instance) =>
+    const tools: Tool[] = mcpServer.templateInstances.flatMap((instance) =>
       instance.allowedTools.map((tool) => ({
         name: `${instance.normalizedName}__${tool.name}`,
-        description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown>,
+        // SDK型では description は string | undefined だが、DBスキーマでは string | null
+        description: tool.description ?? undefined,
+        // SDK型では inputSchema.type: "object" が必須だが、DB値は Record<string, unknown>
+        // MCPサーバーからの同期時に正しいスキーマが保存されているため as で型アサーション
+        inputSchema: tool.inputSchema as Tool["inputSchema"],
       })),
     );
 

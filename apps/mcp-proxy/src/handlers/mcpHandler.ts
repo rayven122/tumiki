@@ -11,6 +11,8 @@ import {
   InitializeRequestSchema,
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  type Tool,
+  type CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { toFetchResponse, toReqRes } from "fetch-to-node";
 import type { Context } from "hono";
@@ -20,6 +22,7 @@ import { getAllowedTools, executeTool } from "../services/toolExecutor.js";
 import {
   aggregateTools,
   executeUnifiedTool,
+  type AggregatedTool,
 } from "../services/unifiedMcp/index.js";
 import { handleError } from "../libs/error/handler.js";
 import {
@@ -35,23 +38,24 @@ type ServerInfo = {
 
 /** ツール取得・実行関数 */
 type ToolHandlers = {
-  listTools: () => Promise<
-    Array<{
-      name: string;
-      description: string | null;
-      inputSchema: Record<string, unknown>;
-    }>
-  >;
+  listTools: () => Promise<Tool[]>;
   callTool: (
     fullToolName: string,
     args: Record<string, unknown>,
-  ) => Promise<unknown>;
+  ) => Promise<CallToolResult>;
 };
 
-/** ツール呼び出し結果の型 */
-type ToolCallResult = {
-  content: Array<{ type: string; text?: string; [key: string]: unknown }>;
-};
+/**
+ * AggregatedTool を MCP SDK の Tool 型に変換
+ *
+ * AggregatedTool は mcpServerId, instanceName を持つが、SDK Tool には不要なため省略。
+ * description は null → undefined に、inputSchema は型アサーションで変換。
+ */
+const toSdkTool = (tool: AggregatedTool): Tool => ({
+  name: tool.name,
+  description: tool.description ?? undefined,
+  inputSchema: tool.inputSchema as Tool["inputSchema"],
+});
 
 /**
  * ステートレスHTTPトランスポートを作成
@@ -98,7 +102,7 @@ const createMcpServer = (
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name: fullToolName, arguments: args } = request.params;
     const result = await toolHandlers.callTool(fullToolName, args ?? {});
-    return result as ToolCallResult;
+    return result;
   });
 
   return server;
@@ -195,18 +199,24 @@ const handleNormalMcpRequest = async (
   );
 };
 
+const DEFAULT_UNIFIED_SERVER_NAME = "Tumiki Unified MCP";
+
 /**
  * 統合MCPサーバー名を取得（エラー時はデフォルト名を返す）
  */
 const getUnifiedServerName = async (
   unifiedMcpServerId: string,
 ): Promise<string> => {
-  const unifiedServer = await db.mcpServer.findUnique({
-    where: { id: unifiedMcpServerId },
-    select: { name: true },
-  });
+  try {
+    const unifiedServer = await db.mcpServer.findUnique({
+      where: { id: unifiedMcpServerId },
+      select: { name: true },
+    });
 
-  return unifiedServer?.name ?? "Tumiki Unified MCP";
+    return unifiedServer?.name ?? DEFAULT_UNIFIED_SERVER_NAME;
+  } catch {
+    return DEFAULT_UNIFIED_SERVER_NAME;
+  }
 };
 
 /**
@@ -218,18 +228,16 @@ const handleUnifiedMcpRequest = async (
   organizationId: string,
   userId: string,
 ): Promise<Response> => {
-  // 統合MCPサーバー名を取得（エラー発生時はデフォルト名を使用）
-  let serverName: string;
-  try {
-    serverName = await getUnifiedServerName(unifiedMcpServerId);
-  } catch {
-    serverName = "Tumiki Unified MCP";
-  }
+  // 統合MCPサーバー名を取得（getUnifiedServerName内でエラー時はデフォルト名を返す）
+  const serverName = await getUnifiedServerName(unifiedMcpServerId);
 
   const server = createMcpServer(
     { name: serverName, version: "1.0.0" },
     {
-      listTools: () => aggregateTools(unifiedMcpServerId),
+      listTools: async (): Promise<Tool[]> => {
+        const aggregatedTools = await aggregateTools(unifiedMcpServerId);
+        return aggregatedTools.map(toSdkTool);
+      },
       callTool: (fullToolName, args) =>
         executeUnifiedTool(
           unifiedMcpServerId,
