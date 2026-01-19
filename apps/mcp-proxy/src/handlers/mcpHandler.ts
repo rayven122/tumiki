@@ -25,7 +25,7 @@ import {
   executeToolDynamic,
   type SearchToolsArgs,
   type DescribeToolsArgs,
-  type ExecuteToolArgs,
+  type CallToolRequestParams,
 } from "../services/dynamicSearch/index.js";
 
 /**
@@ -82,7 +82,7 @@ const handleMetaTool = async (
 
     case "execute_tool": {
       return (await executeToolDynamic(
-        args as ExecuteToolArgs,
+        args as CallToolRequestParams,
         mcpServerId,
         organizationId,
         userId,

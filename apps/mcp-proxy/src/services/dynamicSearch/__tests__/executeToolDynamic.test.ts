@@ -2,6 +2,7 @@
  * executeToolDynamic.ts のテスト
  *
  * execute_tool メタツールの単体テストを実施
+ * MCP SDK の CallToolRequestParams 形式を使用
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
@@ -40,7 +41,7 @@ describe("executeToolDynamic", () => {
 
     const result = await executeToolDynamic(
       {
-        toolName: "github__create_issue",
+        name: "github__create_issue",
         arguments: { title: "Test Issue", body: "Test body" },
       },
       "mcp-server-id",
@@ -69,7 +70,7 @@ describe("executeToolDynamic", () => {
 
     const result = await executeToolDynamic(
       {
-        toolName: "slack__send_message",
+        name: "slack__send_message",
         arguments: { channel: "#general", text: "Hello" },
       },
       "mcp-server-id",
@@ -80,7 +81,7 @@ describe("executeToolDynamic", () => {
     expect(result).toStrictEqual(mockResult);
   });
 
-  test("空の引数でもexecuteToolを呼び出す", async () => {
+  test("引数なしでもexecuteToolを呼び出す（arguments省略時）", async () => {
     const mockResult = {
       content: [{ type: "text", text: "Done" }],
     };
@@ -88,8 +89,7 @@ describe("executeToolDynamic", () => {
 
     await executeToolDynamic(
       {
-        toolName: "tool_without_args",
-        arguments: {},
+        name: "tool_without_args",
       },
       "mcp-server-id",
       "org-id",
@@ -105,14 +105,38 @@ describe("executeToolDynamic", () => {
     );
   });
 
+  test("空の引数でもexecuteToolを呼び出す", async () => {
+    const mockResult = {
+      content: [{ type: "text", text: "Done" }],
+    };
+    mockExecuteTool.mockResolvedValue(mockResult);
+
+    await executeToolDynamic(
+      {
+        name: "tool_with_empty_args",
+        arguments: {},
+      },
+      "mcp-server-id",
+      "org-id",
+      "user-id",
+    );
+
+    expect(mockExecuteTool).toHaveBeenCalledWith(
+      "mcp-server-id",
+      "org-id",
+      "tool_with_empty_args",
+      {},
+      "user-id",
+    );
+  });
+
   test("executeTool がエラーを返した場合は例外をスロー", async () => {
     mockExecuteTool.mockRejectedValue(new Error("Tool execution failed"));
 
     await expect(
       executeToolDynamic(
         {
-          toolName: "failing_tool",
-          arguments: {},
+          name: "failing_tool",
         },
         "mcp-server-id",
         "org-id",
@@ -137,7 +161,7 @@ describe("executeToolDynamic", () => {
 
     await executeToolDynamic(
       {
-        toolName: "complex_tool",
+        name: "complex_tool",
         arguments: complexArgs,
       },
       "mcp-server-id",

@@ -10,7 +10,7 @@ import { z } from "zod";
 
 import { gateway, DYNAMIC_SEARCH_MODEL } from "../../libs/ai/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
-import type { SearchToolsArgs, SearchResult, ToolInfo } from "./types.js";
+import type { SearchToolsArgs, SearchResult, Tool } from "./types.js";
 
 /**
  * 検索結果のスキーマ
@@ -24,8 +24,6 @@ const searchResultSchema = z.object({
   ),
 });
 
-type SearchResultSchemaType = z.infer<typeof searchResultSchema>;
-
 /**
  * search_tools を実行
  *
@@ -35,7 +33,7 @@ type SearchResultSchemaType = z.infer<typeof searchResultSchema>;
  */
 export const searchTools = async (
   args: SearchToolsArgs,
-  internalTools: ToolInfo[],
+  internalTools: Tool[],
 ): Promise<SearchResult[]> => {
   const { query, limit = 10 } = args;
 
@@ -75,13 +73,12 @@ ${toolDescriptions}
 - ツール名は完全に一致させてください（変更しないでください）`,
     });
 
-    // 関連度スコアとともに結果を返す
-    const typedObject = object as SearchResultSchemaType;
-    const results: SearchResult[] = typedObject.results.map((result) => {
+    // 関連度スコアとともに結果を返す（AI SDK v6は型を自動推論）
+    const results: SearchResult[] = object.results.map((result) => {
       const tool = internalTools.find((t) => t.name === result.toolName);
       return {
         toolName: result.toolName,
-        description: tool?.description ?? null,
+        description: tool?.description,
         relevanceScore: result.relevanceScore,
       };
     });

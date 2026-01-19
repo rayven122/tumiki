@@ -5,7 +5,7 @@
  */
 
 import { logInfo, logWarn } from "../../libs/logger/index.js";
-import type { DescribeToolsArgs, ToolInfo } from "./types.js";
+import type { DescribeToolsArgs, Tool } from "./types.js";
 
 /**
  * describe_tools の結果
@@ -14,9 +14,9 @@ export type DescribeToolsResult = {
   /** ツール名 */
   toolName: string;
   /** ツールの説明 */
-  description: string | null;
+  description: string | undefined;
   /** ツールの入力スキーマ（JSON Schema形式） */
-  inputSchema: Record<string, unknown>;
+  inputSchema: Tool["inputSchema"] | Record<string, never>;
   /** ツールが見つかったかどうか */
   found: boolean;
 };
@@ -30,7 +30,7 @@ export type DescribeToolsResult = {
  */
 export const describeTools = async (
   args: DescribeToolsArgs,
-  internalTools: ToolInfo[],
+  internalTools: Tool[],
 ): Promise<DescribeToolsResult[]> => {
   const { toolNames } = args;
 
@@ -47,7 +47,7 @@ export const describeTools = async (
       logWarn("Tool not found in describe_tools", { toolName });
       return {
         toolName,
-        description: null,
+        description: undefined,
         inputSchema: {},
         found: false,
       };
