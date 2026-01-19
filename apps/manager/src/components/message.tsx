@@ -14,6 +14,7 @@ import { PreviewAttachment } from "./preview-attachment";
 import { Weather, type WeatherAtLocation } from "./weather";
 import equal from "fast-deep-equal";
 import { cn, sanitizeText } from "@/lib/utils";
+import { McpToolCall } from "./mcp-tool-call";
 import { Button } from "./ui/chat/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
 import { MessageEditor } from "./message-editor";
@@ -184,8 +185,46 @@ const PurePreviewMessage = ({
                 }
               }
 
+              // AI SDK 6: dynamic-tool タイプ（MCP動的ツール）の処理
+              if (type === "dynamic-tool") {
+                const dynamicToolPart = part as unknown as {
+                  type: "dynamic-tool";
+                  toolName: string;
+                  toolCallId: string;
+                  state: string; // "pending" | "output-available" | "error" など
+                  input?: unknown;
+                  output?: unknown;
+                };
+
+                // stateをMcpToolCallコンポーネント用にマッピング
+                // AI SDK 6の状態: "pending", "output-available", "error"
+                const mapDynamicToolState = (
+                  state: string,
+                ): "call" | "partial-call" | "result" | "error" => {
+                  switch (state) {
+                    case "output-available":
+                      return "result";
+                    case "error":
+                      return "error";
+                    case "pending":
+                    default:
+                      return "call";
+                  }
+                };
+
+                return (
+                  <McpToolCall
+                    key={dynamicToolPart.toolCallId}
+                    toolName={dynamicToolPart.toolName}
+                    state={mapDynamicToolState(dynamicToolPart.state)}
+                    input={dynamicToolPart.input}
+                    output={dynamicToolPart.output}
+                  />
+                );
+              }
+
               // AI SDK 6: tool-invocation は tool-${toolName} 形式に変更
-              // ツールパーツの処理
+              // 基本ツールパーツの処理
               if (type.startsWith("tool-")) {
                 // AI SDK 6のツールパーツ構造
                 // 型アサーションには unknown を経由する必要がある
@@ -199,6 +238,22 @@ const PurePreviewMessage = ({
                 const { toolCallId, state } = toolPart;
                 // ツール名を抽出 (tool-getWeather → getWeather)
                 const toolName = type.replace("tool-", "");
+
+                // MCPツールかどうか判定（"__" を含む）
+                const isMcpTool = toolName.includes("__");
+
+                if (isMcpTool) {
+                  // MCPツール用コンポーネント
+                  return (
+                    <McpToolCall
+                      key={toolCallId}
+                      toolName={toolName}
+                      state={state}
+                      input={toolPart.input}
+                      output={toolPart.output}
+                    />
+                  );
+                }
 
                 if (state === "call" || state === "partial-call") {
                   // args を適切な型にキャスト（デフォルト値を設定）

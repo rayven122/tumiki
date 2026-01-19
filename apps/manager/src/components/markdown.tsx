@@ -8,6 +8,26 @@ const components: Partial<Components> = {
   // @ts-expect-error
   code: CodeBlock,
   pre: ({ children }) => <>{children}</>,
+  // p タグの中にブロック要素（コードブロック）が含まれる場合はフラグメントを返す
+  // これによりハイドレーションエラーを回避
+  p: ({ node, children, ...props }) => {
+    // node.children をチェックして、コードブロック（言語指定あり）があるか確認
+    const hasCodeBlock = node?.children?.some(
+      (child) =>
+        child.type === "element" &&
+        child.tagName === "code" &&
+        Array.isArray(child.properties?.className) &&
+        child.properties.className.some((c) =>
+          String(c).startsWith("language-"),
+        ),
+    );
+
+    if (hasCodeBlock) {
+      return <>{children}</>;
+    }
+
+    return <p {...props}>{children}</p>;
+  },
   ol: ({ node, children, ...props }) => {
     return (
       <ol className="ml-4 list-outside list-decimal" {...props}>

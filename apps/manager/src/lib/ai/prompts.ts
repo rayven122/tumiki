@@ -96,6 +96,13 @@ ${serverSections}
 **How to use:**
 - Call the tool directly with the required parameters
 - The tool name must include the server ID prefix (e.g., \`linear__list_teams\`)
+
+**Chaining tool calls:**
+- You can make multiple tool calls in sequence within a single conversation turn
+- Use the results from one tool call to inform subsequent tool calls
+- For example: First call \`resolve-library-id\` to get an ID, then use that ID to call \`get-library-docs\`
+- When the user asks to perform a multi-step operation, automatically chain the necessary tool calls without asking for confirmation
+- Up to 5 sequential tool calls are allowed per turn
 `;
 };
 

@@ -8,6 +8,9 @@ import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { makeHttpProxyServerUrl } from "~/utils/url";
 import type { Tool } from "ai";
 
+/** MCPツール実行のデフォルトタイムアウト（ミリ秒） */
+const MCP_TOOL_TIMEOUT_MS = 30000; // 30秒
+
 /**
  * MCPサーバーエラー情報
  */
@@ -52,6 +55,96 @@ const classifyError = (error: unknown): McpServerError["errorType"] => {
 };
 
 /**
+ * タイムアウト付きでPromiseを実行
+ */
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string,
+): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs),
+    ),
+  ]);
+};
+
+/**
+ * MCP Tool の型（@ai-sdk/mcp が返す形式）
+ */
+type McpTool = Tool & {
+  inputSchema?: unknown;
+  execute?: (args: unknown) => Promise<unknown>;
+};
+
+/**
+ * MCPツールをタイムアウトとエラーハンドリング付きでラップ
+ *
+ * @param tools - オリジナルのMCPツール
+ * @param timeoutMs - タイムアウト時間（ミリ秒）
+ * @returns ラップされたツール
+ */
+const wrapToolsWithErrorHandling = (
+  tools: Record<string, Tool>,
+  timeoutMs: number = MCP_TOOL_TIMEOUT_MS,
+): Record<string, Tool> => {
+  const wrappedTools: Record<string, Tool> = {};
+
+  for (const [toolName, originalTool] of Object.entries(tools)) {
+    const mcpTool = originalTool as McpTool;
+
+    if (mcpTool.execute) {
+      const originalExecute = mcpTool.execute.bind(mcpTool);
+
+      // 新しいツールオブジェクトを作成（元のプロパティを保持）
+      const wrappedTool: McpTool = {
+        ...mcpTool,
+        execute: async (args: unknown) => {
+          try {
+            const result = await withTimeout(
+              originalExecute(args),
+              timeoutMs,
+              `MCP tool '${toolName}' timed out after ${timeoutMs}ms`,
+            );
+            return result;
+          } catch (error) {
+            // エラーをキャッチして、適切な形式で返す
+            const errorType = classifyError(error);
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+
+            console.error(
+              `[MCP Tool Error] ${toolName}:`,
+              JSON.stringify({ errorType, errorMessage }, null, 2),
+            );
+
+            // エラーを含むレスポンスを返す（isError: true で UI にエラー表示される）
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `MCP error: ${errorMessage}`,
+                },
+              ],
+              isError: true,
+              errorType,
+            };
+          }
+        },
+      };
+
+      wrappedTools[toolName] = wrappedTool;
+    } else {
+      // execute がないツールはそのまま
+      wrappedTools[toolName] = originalTool;
+    }
+  }
+
+  return wrappedTools;
+};
+
+/**
  * MCPサーバーからツールとクライアントを取得
  *
  * 重要: ストリーミング時はツール実行のためクライアントを開いたままにする必要があります。
@@ -81,7 +174,10 @@ export const getMcpToolsFromServer = async (
 
     // AI SDK Tool 形式で直接取得
     // @ai-sdk/mcp は FlexibleSchema<unknown> を使用するため、Tool 型にキャスト
-    const tools = (await client.tools()) as Record<string, Tool>;
+    const rawTools = (await client.tools()) as Record<string, Tool>;
+
+    // タイムアウトとエラーハンドリングをラップ
+    const tools = wrapToolsWithErrorHandling(rawTools);
 
     // クライアントも返す（ストリーミング終了時に閉じるため）
     return { success: true, tools, client };
