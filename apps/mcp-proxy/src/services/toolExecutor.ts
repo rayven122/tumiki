@@ -9,6 +9,31 @@ import {
 } from "./dynamicSearch/index.js";
 
 /**
+ * テンプレートインスタンスからツール情報を変換
+ *
+ * @param templateInstances - テンプレートインスタンス配列
+ * @returns ツール情報配列（"{normalizedName}__{ツール名}" 形式）
+ */
+const transformTemplateInstancesToTools = (
+  templateInstances: Array<{
+    normalizedName: string;
+    allowedTools: Array<{
+      name: string;
+      description: string | null;
+      inputSchema: unknown;
+    }>;
+  }>,
+): ToolInfo[] => {
+  return templateInstances.flatMap((instance) =>
+    instance.allowedTools.map((tool) => ({
+      name: `${instance.normalizedName}__${tool.name}`,
+      description: tool.description,
+      inputSchema: tool.inputSchema as Record<string, unknown>,
+    })),
+  );
+};
+
+/**
  * ツール名をパースして、インスタンス名とツール名を抽出
  *
  * @param fullToolName - "{インスタンス名}__{ツール名}" 形式のツール名
@@ -239,13 +264,8 @@ export const getAllowedTools = async (
 
     // 全テンプレートインスタンスからallowedToolsを集約
     // "{normalizedName}__{ツール名}" 形式でツールリストを返す
-    // instance.normalizedNameを使用（インスタンスごとの識別子）
-    const tools = mcpServer.templateInstances.flatMap((instance) =>
-      instance.allowedTools.map((tool) => ({
-        name: `${instance.normalizedName}__${tool.name}`,
-        description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown>,
-      })),
+    const tools = transformTemplateInstancesToTools(
+      mcpServer.templateInstances,
     );
 
     logInfo("Retrieved allowed tools", {
@@ -306,12 +326,8 @@ export const getInternalToolsForDynamicSearch = async (
       throw new Error(`McpServer not found: ${mcpServerId}`);
     }
 
-    const tools = mcpServer.templateInstances.flatMap((instance) =>
-      instance.allowedTools.map((tool) => ({
-        name: `${instance.normalizedName}__${tool.name}`,
-        description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown>,
-      })),
+    const tools = transformTemplateInstancesToTools(
+      mcpServer.templateInstances,
     );
 
     logInfo("Retrieved internal tools for dynamic search", {
