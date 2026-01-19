@@ -302,6 +302,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 3. `pnpm typecheck` - 型チェック
 4. `pnpm build` - ビルド確認
 5. `pnpm test` - テスト実行
+6. **tumiki-code-simplifier の実行**（推奨） - Task ツールで `tumiki-code-simplifier` エージェントを起動し、最近変更されたコードを自動的にリファクタリングします。コードの明確性、一貫性、保守性を向上させつつ、機能を完全に保持します。
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 
