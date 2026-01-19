@@ -15,9 +15,6 @@ export type {
   SearchToolsArgs,
   DescribeToolsArgs,
   SearchResult,
-  // 後方互換性のための非推奨エイリアス
-  ToolInfo,
-  ExecuteToolArgs,
 } from "./types.js";
 
 // メタツール定義
@@ -28,8 +25,6 @@ export {
   EXECUTE_TOOL_DEFINITION,
   META_TOOL_NAMES,
   isMetaTool,
-  // 後方互換性のための非推奨エイリアス
-  type MetaToolDefinition,
 } from "./metaToolDefinitions.js";
 
 // メタツール実装

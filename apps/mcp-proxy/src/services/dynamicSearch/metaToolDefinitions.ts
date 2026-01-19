@@ -103,9 +103,3 @@ export const META_TOOL_NAMES = new Set(
 export const isMetaTool = (toolName: string): boolean => {
   return META_TOOL_NAMES.has(toolName);
 };
-
-// 後方互換性のための型エイリアス（非推奨）
-/**
- * @deprecated MCP SDK の Tool 型を使用してください
- */
-export type MetaToolDefinition = Tool;
