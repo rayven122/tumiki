@@ -29,6 +29,72 @@ import {
 } from "../services/dynamicSearch/index.js";
 
 /**
+ * ツール実行結果の型
+ */
+type ToolCallResult = {
+  content: Array<{ type: string; text?: string; [key: string]: unknown }>;
+};
+
+/**
+ * メタツールの実行を処理
+ *
+ * @param toolName - メタツール名 (search_tools, describe_tools, execute_tool)
+ * @param args - ツールの引数
+ * @param mcpServerId - MCPサーバーID
+ * @param organizationId - 組織ID
+ * @param userId - ユーザーID
+ * @returns ツール実行結果
+ */
+const handleMetaTool = async (
+  toolName: string,
+  args: unknown,
+  mcpServerId: string,
+  organizationId: string,
+  userId: string,
+): Promise<ToolCallResult> => {
+  // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
+  const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
+
+  switch (toolName) {
+    case "search_tools": {
+      const searchResult = await searchTools(
+        args as SearchToolsArgs,
+        internalTools,
+      );
+      return {
+        content: [
+          { type: "text", text: JSON.stringify(searchResult, null, 2) },
+        ],
+      };
+    }
+
+    case "describe_tools": {
+      const describeResult = await describeTools(
+        args as DescribeToolsArgs,
+        internalTools,
+      );
+      return {
+        content: [
+          { type: "text", text: JSON.stringify(describeResult, null, 2) },
+        ],
+      };
+    }
+
+    case "execute_tool": {
+      return (await executeToolDynamic(
+        args as ExecuteToolArgs,
+        mcpServerId,
+        organizationId,
+        userId,
+      )) as ToolCallResult;
+    }
+
+    default:
+      throw new Error(`Unknown meta tool: ${toolName}`);
+  }
+};
+
+/**
  * MCPメインハンドラー
  * Low-Level Server APIを使用してJSON-RPC 2.0リクエストを自動処理
  */
@@ -144,59 +210,13 @@ const createMcpServer = (
 
     // メタツールの処理
     if (isMetaTool(fullToolName)) {
-      // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
-      const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
-
-      switch (fullToolName) {
-        case "search_tools": {
-          const searchResult = await searchTools(
-            args as SearchToolsArgs,
-            internalTools,
-          );
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(searchResult, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "describe_tools": {
-          const describeResult = await describeTools(
-            args as DescribeToolsArgs,
-            internalTools,
-          );
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(describeResult, null, 2),
-              },
-            ],
-          };
-        }
-
-        case "execute_tool": {
-          const executeResult = await executeToolDynamic(
-            args as ExecuteToolArgs,
-            mcpServerId,
-            organizationId,
-            userId,
-          );
-          return executeResult as {
-            content: Array<{
-              type: string;
-              text?: string;
-              [key: string]: unknown;
-            }>;
-          };
-        }
-
-        default:
-          throw new Error(`Unknown meta tool: ${fullToolName}`);
-      }
+      return handleMetaTool(
+        fullToolName,
+        args,
+        mcpServerId,
+        organizationId,
+        userId,
+      );
     }
 
     // 通常のツール実行
@@ -208,9 +228,7 @@ const createMcpServer = (
       userId,
     );
 
-    return result as {
-      content: Array<{ type: string; text?: string; [key: string]: unknown }>;
-    };
+    return result as ToolCallResult;
   });
 
   return server;
