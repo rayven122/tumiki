@@ -1,0 +1,57 @@
+/**
+ * @namespace McpSecurity
+ * MCPサーバーのツールバージョン管理・セキュリティスキャン関連テーブル
+ */
+
+/// スキャンタイプ
+/// @namespace McpSecurity
+enum McpScanType {
+  /// 初回スキャン（ベースライン作成）
+  INITIAL
+  /// 定期スケジュールスキャン
+  SCHEDULED
+  /// 手動スキャン
+  MANUAL
+}
+
+/// MCPツールバージョン履歴
+/// ツール定義に変更があった場合のみレコードを作成（Git のコミット履歴のような役割）
+/// @namespace McpSecurity
+model McpToolVersion {
+  id String @id @default(cuid())
+
+  /// スキャン対象のMCPサーバーテンプレートID
+  mcpServerTemplateId String
+  mcpServerTemplate   McpServerTemplate @relation(fields: [mcpServerTemplateId], references: [id], onDelete: Cascade)
+
+  /// バージョン番号（1から始まる連番）
+  version Int
+
+  /// 前バージョンからの変更差分
+  /// v1: 空配列からの差分（全て added）
+  /// v2+: 前バージョンからの差分
+  /// {
+  ///   hasChanges: boolean,
+  ///   added: [{ name, description }],
+  ///   removed: [{ name, description }],
+  ///   modified: [{ name, field, before, after }]
+  /// }
+  changes Json
+
+  /// スキャンタイプ
+  scanType McpScanType
+
+  /// 検出された脆弱性の詳細（JSON）
+  /// 空配列 = CLEAN、要素あり = VULNERABLE
+  /// [{ type: string, toolName: string, description: string, severity: string }]
+  vulnerabilities Json @default("[]")
+
+  /// スキャン実行時間（ミリ秒）
+  executionTimeMs Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  /// サーバーテンプレート + バージョン番号で一意
+  @@unique([mcpServerTemplateId, version])
+  @@index([mcpServerTemplateId])
+}

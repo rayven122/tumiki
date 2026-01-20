@@ -93,6 +93,16 @@ model McpServerTemplate {
   /// OAuth Client リレーション（1:多）
   oauthClients McpOAuthClient[]
 
+  /// 現在 McpTool に反映されているバージョン（null = 未スキャン、管理者承認済み）
+  /// CLEAN なバージョンのみがここに設定される（Git の HEAD 相当）
+  currentToolVersion Int?
+
+  /// 最終スキャン日時（変更有無に関わらずスキャン実行時に更新）
+  lastScannedAt DateTime?
+
+  /// ツールバージョン履歴
+  toolVersions McpToolVersion[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
