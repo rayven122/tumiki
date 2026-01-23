@@ -9,6 +9,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 
 import { gateway, DYNAMIC_SEARCH_MODEL } from "../../libs/ai/index.js";
+import { toError } from "../../libs/error/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import type { SearchToolsArgs, SearchResult, Tool } from "./types.js";
 
@@ -90,7 +91,7 @@ ${toolDescriptions}
 
     return results;
   } catch (error) {
-    logError("Failed to execute search_tools", error as Error, {
+    logError("Failed to execute search_tools", toError(error), {
       query,
       limit,
     });

@@ -9,9 +9,33 @@ import type {
   Tool,
   CallToolRequestParams,
 } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
 // MCP SDK の型を re-export
 export type { Tool, CallToolRequestParams };
+
+/**
+ * search_tools 引数のバリデーションスキーマ
+ */
+export const SearchToolsArgsSchema = z.object({
+  query: z.string(),
+  limit: z.number().optional(),
+});
+
+/**
+ * describe_tools 引数のバリデーションスキーマ
+ */
+export const DescribeToolsArgsSchema = z.object({
+  toolNames: z.array(z.string()),
+});
+
+/**
+ * execute_tool (CallToolRequestParams) 引数のバリデーションスキーマ
+ */
+export const CallToolRequestParamsSchema = z.object({
+  name: z.string(),
+  arguments: z.record(z.string(), z.unknown()).optional(),
+});
 
 /**
  * search_tools の引数

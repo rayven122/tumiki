@@ -17,6 +17,13 @@ export type {
   SearchResult,
 } from "./types.js";
 
+// バリデーションスキーマ
+export {
+  SearchToolsArgsSchema,
+  DescribeToolsArgsSchema,
+  CallToolRequestParamsSchema,
+} from "./types.js";
+
 // メタツール定義
 export {
   DYNAMIC_SEARCH_META_TOOLS,
