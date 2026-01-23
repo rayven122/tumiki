@@ -293,6 +293,90 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **Docker構成**: PostgreSQL（ポート5434/5435）、Redis（ポート6379）が`docker/compose.yaml`で管理
 - **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
+## 統合MCPサーバー（CUSTOM）機能
+
+### 概要
+
+統合MCPサーバーは、複数のMCPサーバーテンプレートを1つのサーバーとして束ねる機能。OFFICIAL（単一テンプレート）と異なり、2つ以上のテンプレートを統合し、常にOAuth認証を使用する。
+
+### 実装場所
+
+- `packages/db/prisma/schema/userMcpServer.prisma` - スキーマ定義（ServerType enum等）
+- `apps/manager/src/server/api/routers/v2/userMcpServer/createIntegratedMcpServer.ts` - 作成ロジック
+- `apps/manager/src/server/api/routers/v2/userMcpServer/index.ts` - tRPCルーター定義
+- `apps/manager/src/app/[orgSlug]/mcps/create-integrated/` - フロントエンド（4ステップウィザード）
+- `apps/manager/src/atoms/integratedFlowAtoms.ts` - Jotai状態管理
+
+### スキルの使用方法
+
+統合MCP機能の実装・拡張・デバッグ時は、`tumiki-custom-mcp-server-feature`スキルを参照してください。このスキルには以下が含まれます：
+
+- アーキテクチャ概要とServerType/AuthTypeの違い
+- 主要な概念（McpServerTemplate, McpServerTemplateInstance, McpServer）
+- 4ステップウィザードの詳細
+- 作成ロジックの実装詳細
+- 実装チェックリストとトラブルシューティング
+
+### 機能変更時のスキル更新ルール
+
+**重要**: 統合MCP機能に変更を加えた場合、必ず`.claude/skills/tumiki-custom-mcp-server-feature/SKILL.md`も更新してください。
+
+以下の変更時にスキルの更新が必要：
+
+- スキーマ定義の変更（ServerType, AuthType等）
+- 作成ロジックの変更（`createIntegratedMcpServer.ts`）
+- 入力スキーマの変更（`CreateIntegratedMcpServerInputV2`）
+- フロー状態型の変更（`IntegratedFlowState`）
+- ウィザードUIの構造変更
+
+スキル更新の手順：
+
+1. 変更した実装コードを確認
+2. スキルの該当セクションを更新
+3. コード例が最新の実装と一致していることを確認
+4. チェックリストに必要な項目を追加
+
+## Dynamic Search 機能
+
+### 概要
+
+Dynamic Searchは、MCPサーバーのツール発見を最適化するAI検索システム。`dynamicSearch=true`設定時、全ツールではなく3つのメタツール（`search_tools`, `describe_tools`, `execute_tool`）のみを公開し、必要なツールを動的に検索・実行する。
+
+### 実装場所
+
+- `apps/mcp-proxy/src/services/dynamicSearch/` - コア実装
+- `apps/mcp-proxy/src/handlers/mcpHandler.ts` - メタツール処理
+- `apps/mcp-proxy/src/services/toolExecutor.ts` - ツール取得・実行
+
+### スキルの使用方法
+
+Dynamic Search機能の実装・拡張・デバッグ時は、`tumiki-dynamic-search-feature`スキルを参照してください。このスキルには以下が含まれます：
+
+- アーキテクチャ概要と使用フロー
+- 型定義とメタツール定義のパターン
+- AI検索実装の詳細
+- 新しいメタツール追加手順
+- 実装チェックリストとトラブルシューティング
+
+### 機能変更時のスキル更新ルール
+
+**重要**: Dynamic Search機能に変更を加えた場合、必ず`.claude/skills/tumiki-dynamic-search-feature/SKILL.md`も更新してください。
+
+以下の変更時にスキルの更新が必要：
+
+- 新しいメタツールの追加
+- 型定義の変更（`types.ts`）
+- AI検索ロジックの変更（`searchTools.ts`）
+- メタツール定義の変更（`metaToolDefinitions.ts`）
+- ファイル構成の変更
+
+スキル更新の手順：
+
+1. 変更した実装コードを確認
+2. スキルの該当セクションを更新
+3. コード例が最新の実装と一致していることを確認
+4. チェックリストに必要な項目を追加
+
 ## 実装後の必須アクション
 
 **重要**: 実装が完了したら、必ず以下のコマンドを実行してください：
@@ -302,6 +386,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 3. `pnpm typecheck` - 型チェック
 4. `pnpm build` - ビルド確認
 5. `pnpm test` - テスト実行
+6. **tumiki-code-simplifier の実行**（推奨） - Task ツールで `tumiki-code-simplifier` エージェントを起動し、最近変更されたコードを自動的にリファクタリングします。コードの明確性、一貫性、保守性を向上させつつ、機能を完全に保持します。
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 
