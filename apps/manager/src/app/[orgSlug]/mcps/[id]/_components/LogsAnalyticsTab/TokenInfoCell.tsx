@@ -42,10 +42,8 @@ export const TokenInfoCell = ({
       {showReduction && reductionRate > 0 && (
         <span className="text-xs text-green-600">(-{reductionRate}%)</span>
       )}
-      {showReduction && reductionRate < 0 && (
-        <span className="text-xs text-orange-600">
-          (+{Math.abs(reductionRate)}%)
-        </span>
+      {showReduction && reductionRate <= 0 && (
+        <span className="text-xs text-gray-500">(0%)</span>
       )}
     </div>
   );

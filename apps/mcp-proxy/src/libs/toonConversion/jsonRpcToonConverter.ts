@@ -88,7 +88,37 @@ const noConversion = (data: string): ToonConversionResult => {
 };
 
 /**
+ * 圧縮効率が良い場合のみ変換結果を返し、そうでなければ元データを返す
+ */
+const pickSmallerOutput = (
+  originalData: string,
+  convertedData: string,
+  inputTokens: number,
+): ToonConversionResult => {
+  const outputTokens = countTokens(convertedData);
+
+  // 圧縮効率が良くない場合（変換後のトークン数が変換前以上）は変換しない
+  if (outputTokens >= inputTokens) {
+    return {
+      convertedData: originalData,
+      wasConverted: false,
+      inputTokens,
+      outputTokens: inputTokens,
+    };
+  }
+
+  return {
+    convertedData,
+    wasConverted: true,
+    inputTokens,
+    outputTokens,
+  };
+};
+
+/**
  * MCPレスポンス（JSON-RPC 2.0形式）をTOON形式に変換する
+ *
+ * 圧縮効率が良くない場合（変換後のトークン数が変換前以上）は変換せずに元データを返す。
  *
  * @param responseText - レスポンスJSON文字列
  * @returns TOON変換結果（メトリクス付き）
@@ -115,12 +145,7 @@ export const convertMcpResponseToToon = (
       id: parsed.id,
       result: convertedResult,
     });
-    return {
-      convertedData: converted,
-      wasConverted: true,
-      inputTokens,
-      outputTokens: countTokens(converted),
-    };
+    return pickSmallerOutput(responseText, converted, inputTokens);
   }
 
   // エラーレスポンスの場合（data がある場合のみ変換）
@@ -134,22 +159,12 @@ export const convertMcpResponseToToon = (
         data: encode(parsed.error.data),
       },
     });
-    return {
-      convertedData: converted,
-      wasConverted: true,
-      inputTokens,
-      outputTokens: countTokens(converted),
-    };
+    return pickSmallerOutput(responseText, converted, inputTokens);
   }
 
   // JSON-RPC形式でない場合、またはエラーレスポンス（dataなし）の場合は全体をTOON変換
   const converted = encode(parsed);
-  return {
-    convertedData: converted,
-    wasConverted: true,
-    inputTokens,
-    outputTokens: countTokens(converted),
-  };
+  return pickSmallerOutput(responseText, converted, inputTokens);
 };
 
 /**
