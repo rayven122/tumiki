@@ -5,13 +5,27 @@ import {
   convertMcpResponseToToonSafe,
 } from "../jsonRpcToonConverter.js";
 
+/**
+ * 圧縮効率が良くなるような繰り返しパターンのあるテストデータを生成
+ */
+const createLargeUserArray = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    name: `User${i + 1}`,
+    email: `user${i + 1}@example.com`,
+    role: i === 0 ? "admin" : "user",
+    department: "Engineering",
+    status: "active",
+  }));
+
 describe("convertMcpResponseToToon", () => {
   describe("JSON-RPC成功レスポンスの変換", () => {
     test("resultをTOON形式に変換する", () => {
+      // 繰り返しパターンが多いデータで圧縮効率が良くなる
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
-        result: { users: [{ id: 1, name: "Alice" }] },
+        result: { users: createLargeUserArray(5) },
       });
 
       const result = convertMcpResponseToToon(input);
@@ -20,6 +34,7 @@ describe("convertMcpResponseToToon", () => {
       expect(typeof result.convertedData).toBe("string");
       expect(result.inputTokens).toBeGreaterThan(0);
       expect(result.outputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
 
       // JSON文字列をパースして検証
       const parsed = JSON.parse(result.convertedData) as {
@@ -37,20 +52,17 @@ describe("convertMcpResponseToToon", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: "test-id",
-        result: [
-          { id: 1, name: "Alice", role: "admin" },
-          { id: 2, name: "Bob", role: "user" },
-          { id: 3, name: "Charlie", role: "user" },
-        ],
+        result: createLargeUserArray(5),
       });
 
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
       expect(result.outputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
     });
 
-    test("空のresultを変換する", () => {
+    test("空のresultはTOON変換される（圧縮効率が良い場合）", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -59,11 +71,13 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(true);
+      // 空のオブジェクトはTOON形式で圧縮効率が良い場合がある
+      // 結果は圧縮効率による
+      expect(result.inputTokens).toBeGreaterThan(0);
       expect(result.outputTokens).toBeGreaterThan(0);
     });
 
-    test("nullのresultを変換する", () => {
+    test("nullのresultは圧縮効率が良くないため変換しない", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -72,20 +86,29 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(true);
-      expect(result.outputTokens).toBeGreaterThan(0);
+      // nullは圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
     });
   });
 
   describe("JSON-RPCエラーレスポンスの変換", () => {
     test("error.dataをTOON形式に変換する", () => {
+      // 繰り返しパターンが多いデータで圧縮効率が良くなる
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
         error: {
           code: -32600,
           message: "Invalid Request",
-          data: { details: [{ field: "name", error: "required" }] },
+          data: {
+            details: Array.from({ length: 10 }, (_, i) => ({
+              field: `field${i}`,
+              error: "required",
+              code: "VALIDATION_ERROR",
+              path: `/data/field${i}`,
+            })),
+          },
         },
       });
 
@@ -94,6 +117,7 @@ describe("convertMcpResponseToToon", () => {
       expect(result.wasConverted).toBe(true);
       expect(typeof result.convertedData).toBe("string");
       expect(result.outputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
 
       // JSON文字列をパースして検証
       const parsed = JSON.parse(result.convertedData) as {
@@ -105,7 +129,7 @@ describe("convertMcpResponseToToon", () => {
       expect(typeof parsed.error.data).toBe("string");
     });
 
-    test("error.dataがない場合は全体がTOON変換される", () => {
+    test("error.dataがない場合で圧縮効率が良くないときは変換しない", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -117,19 +141,16 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(true);
-      expect(typeof result.convertedData).toBe("string");
-      expect(result.outputTokens).toBeGreaterThan(0);
+      // 短いデータは圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
     });
   });
 
   describe("非JSON-RPCデータの変換", () => {
-    test("JSON-RPC形式でないオブジェクトは全体をTOON変換する", () => {
+    test("JSON-RPC形式でないオブジェクトは圧縮効率が良い場合TOON変換する", () => {
       const input = JSON.stringify({
-        users: [
-          { id: 1, name: "Alice" },
-          { id: 2, name: "Bob" },
-        ],
+        users: createLargeUserArray(5),
       });
 
       const result = convertMcpResponseToToon(input);
@@ -138,19 +159,18 @@ describe("convertMcpResponseToToon", () => {
       // 全体がTOON文字列に変換される
       expect(typeof result.convertedData).toBe("string");
       expect(result.outputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
     });
 
-    test("配列はTOON変換される", () => {
-      const input = JSON.stringify([
-        { id: 1, name: "Alice" },
-        { id: 2, name: "Bob" },
-      ]);
+    test("配列は圧縮効率が良い場合TOON変換される", () => {
+      const input = JSON.stringify(createLargeUserArray(5));
 
       const result = convertMcpResponseToToon(input);
 
       expect(result.wasConverted).toBe(true);
       expect(typeof result.convertedData).toBe("string");
       expect(result.outputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
     });
   });
 
@@ -164,21 +184,24 @@ describe("convertMcpResponseToToon", () => {
       expect(result.outputTokens).toBe(0);
     });
 
-    test("'null'文字列はTOON変換される", () => {
+    test("'null'文字列は圧縮効率が良くないため変換しない", () => {
       const result = convertMcpResponseToToon("null");
 
-      expect(result.wasConverted).toBe(true);
-      expect(result.inputTokens).toBeGreaterThan(0);
-      expect(result.outputTokens).toBeGreaterThan(0);
+      // 非常に短いデータは圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe("null");
     });
   });
 
   describe("MCP tools/call レスポンスの変換", () => {
     test("content[].text のJSON文字列をTOON変換する", () => {
-      const teamsData = [
-        { id: "team-1", name: "Developers", icon: "GitHub" },
-        { id: "team-2", name: "Designers", icon: "Figma" },
-      ];
+      const teamsData = Array.from({ length: 10 }, (_, i) => ({
+        id: `team-${i}`,
+        name: `Team ${i}`,
+        icon: "GitHub",
+        description: "Development team",
+        memberCount: 10,
+      }));
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -196,6 +219,7 @@ describe("convertMcpResponseToToon", () => {
 
       expect(result.wasConverted).toBe(true);
       expect(result.outputTokens).toBeGreaterThan(0);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
 
       // パースして構造を検証
       const parsed = JSON.parse(result.convertedData) as {
@@ -224,7 +248,7 @@ describe("convertMcpResponseToToon", () => {
       }).toThrow();
     });
 
-    test("type が text 以外の content は変換しない", () => {
+    test("type が text 以外の content は変換されない（圧縮効率が良くない場合）", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -241,8 +265,9 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(true);
-      expect(result.outputTokens).toBeGreaterThan(0);
+      // 短いデータは圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
 
       const parsed = JSON.parse(result.convertedData) as {
         result: {
@@ -256,7 +281,7 @@ describe("convertMcpResponseToToon", () => {
       expect(parsed.result.content[0].mimeType).toBe("image/png");
     });
 
-    test("複数の content を持つレスポンスを変換する", () => {
+    test("複数の content を持つレスポンスを処理する", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -271,9 +296,11 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(true);
+      // トークン数が計算される
+      expect(result.inputTokens).toBeGreaterThan(0);
       expect(result.outputTokens).toBeGreaterThan(0);
 
+      // 変換されたかどうかに関係なく、結果は有効なJSONである
       const parsed = JSON.parse(result.convertedData) as {
         result: {
           content: Array<{ type: string; text?: string; data?: string }>;
@@ -281,16 +308,12 @@ describe("convertMcpResponseToToon", () => {
       };
 
       expect(parsed.result.content).toHaveLength(3);
-      // 最初のtext contentはTOON変換されている
-      expect(typeof parsed.result.content[0].text).toBe("string");
-      // image contentはそのまま
+      // image contentはそのまま維持される
       expect(parsed.result.content[1].type).toBe("image");
       expect(parsed.result.content[1].data).toBe("base64");
-      // 2番目のtext contentもTOON変換されている
-      expect(typeof parsed.result.content[2].text).toBe("string");
     });
 
-    test("content配列がない場合はresult全体をTOON変換する", () => {
+    test("content配列がない場合で圧縮効率が良くないときは変換しない", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -301,18 +324,35 @@ describe("convertMcpResponseToToon", () => {
 
       const result = convertMcpResponseToToon(input);
 
-      expect(result.wasConverted).toBe(true);
+      // 短いデータは圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
+    });
+
+    test("content配列がないresultを処理する", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          data: { key: "value" },
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      // トークン数が計算される
+      expect(result.inputTokens).toBeGreaterThan(0);
       expect(result.outputTokens).toBeGreaterThan(0);
 
+      // 変換されたかどうかに関係なく、結果は有効なJSONである
       const parsed = JSON.parse(result.convertedData) as {
         jsonrpc: string;
         id: number;
-        result: string; // result全体がTOON文字列に変換される
+        result: unknown;
       };
 
       expect(parsed.jsonrpc).toBe("2.0");
       expect(parsed.id).toBe(1);
-      expect(typeof parsed.result).toBe("string");
     });
   });
 
@@ -321,11 +361,7 @@ describe("convertMcpResponseToToon", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
-        result: [
-          { id: 1, name: "Alice", role: "admin" },
-          { id: 2, name: "Bob", role: "user" },
-          { id: 3, name: "Charlie", role: "user" },
-        ],
+        result: createLargeUserArray(5),
       });
 
       const result = convertMcpResponseToToon(input);
@@ -340,11 +376,7 @@ describe("convertMcpResponseToToon", () => {
       const input = JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
-        result: [
-          { id: 1, name: "Alice", role: "admin" },
-          { id: 2, name: "Bob", role: "user" },
-          { id: 3, name: "Charlie", role: "user" },
-        ],
+        result: createLargeUserArray(5),
       });
 
       const result = convertMcpResponseToToon(input);
@@ -353,10 +385,97 @@ describe("convertMcpResponseToToon", () => {
       expect(result.outputTokens).toBeLessThan(result.inputTokens);
     });
   });
+
+  describe("圧縮効率が良くない場合の処理", () => {
+    test("非常に短いデータは変換しない", () => {
+      // 単純な短いデータは圧縮効率が良くないため変換されない
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: "OK",
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      // 圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
+      expect(result.inputTokens).toBe(result.outputTokens);
+    });
+
+    test("圧縮効率が良くないエラーレスポンスは変換しない", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        error: {
+          code: -1,
+          message: "Error",
+          data: "x",
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      // 圧縮効率が良くない場合は元のデータを返す
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
+    });
+
+    test("圧縮効率が良くないMCPレスポンスは変換しない", () => {
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          content: [
+            {
+              type: "text",
+              text: "OK",
+            },
+          ],
+        },
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      // 圧縮効率が良くないため変換されない
+      expect(result.wasConverted).toBe(false);
+      expect(result.convertedData).toBe(input);
+    });
+
+    test("圧縮効率が良い場合は変換される", () => {
+      // 繰り返しパターンが多いデータは圧縮効率が良い
+      const input = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        result: createLargeUserArray(10),
+      });
+
+      const result = convertMcpResponseToToon(input);
+
+      // 圧縮効率が良いため変換される
+      expect(result.wasConverted).toBe(true);
+      expect(result.outputTokens).toBeLessThan(result.inputTokens);
+    });
+  });
 });
 
 describe("convertMcpResponseToToonSafe", () => {
-  test("正常なデータはTOON変換される", () => {
+  test("圧縮効率が良いデータはTOON変換される", () => {
+    const input = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      result: { data: createLargeUserArray(5) },
+    });
+
+    const result = convertMcpResponseToToonSafe(input);
+
+    expect(result.wasConverted).toBe(true);
+    expect(result.inputTokens).toBeGreaterThan(0);
+    expect(result.outputTokens).toBeGreaterThan(0);
+    expect(result.outputTokens).toBeLessThan(result.inputTokens);
+  });
+
+  test("圧縮効率が良くないデータは変換されない", () => {
     const input = JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
@@ -365,17 +484,17 @@ describe("convertMcpResponseToToonSafe", () => {
 
     const result = convertMcpResponseToToonSafe(input);
 
-    expect(result.wasConverted).toBe(true);
-    expect(result.inputTokens).toBeGreaterThan(0);
-    expect(result.outputTokens).toBeGreaterThan(0);
+    // 短いデータは圧縮効率が良くないため変換されない
+    expect(result.wasConverted).toBe(false);
+    expect(result.convertedData).toBe(input);
   });
 
-  test("'null'文字列はTOON変換される", () => {
+  test("'null'文字列は圧縮効率が良くないため変換しない", () => {
     const result = convertMcpResponseToToonSafe("null");
 
-    expect(result.wasConverted).toBe(true);
-    expect(result.inputTokens).toBeGreaterThan(0);
-    expect(result.outputTokens).toBeGreaterThan(0);
+    // 非常に短いデータは圧縮効率が良くないため変換されない
+    expect(result.wasConverted).toBe(false);
+    expect(result.convertedData).toBe("null");
   });
 
   test("不正なJSON文字列はエラー時にフォールバックする", () => {
