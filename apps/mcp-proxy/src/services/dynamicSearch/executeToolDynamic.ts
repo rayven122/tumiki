@@ -5,6 +5,7 @@
  * MCP SDK の CallToolRequestParams 型を使用
  */
 
+import { toError } from "../../libs/error/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { executeTool } from "../toolExecutor.js";
 import type { CallToolRequestParams } from "./types.js";
@@ -48,7 +49,7 @@ export const executeToolDynamic = async (
 
     return result;
   } catch (error) {
-    logError("Failed to execute execute_tool", error as Error, {
+    logError("Failed to execute execute_tool", toError(error), {
       toolName,
       mcpServerId,
     });

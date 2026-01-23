@@ -13,7 +13,7 @@ import {
   executeTool,
   getInternalToolsForDynamicSearch,
 } from "../services/toolExecutor.js";
-import { handleError } from "../libs/error/handler.js";
+import { handleError, toError } from "../libs/error/index.js";
 import {
   getExecutionContext,
   updateExecutionContext,
@@ -23,9 +23,9 @@ import {
   searchTools,
   describeTools,
   executeToolDynamic,
-  type SearchToolsArgs,
-  type DescribeToolsArgs,
-  type CallToolRequestParams,
+  SearchToolsArgsSchema,
+  DescribeToolsArgsSchema,
+  CallToolRequestParamsSchema,
 } from "../services/dynamicSearch/index.js";
 
 /**
@@ -57,10 +57,8 @@ const handleMetaTool = async (
 
   switch (toolName) {
     case "search_tools": {
-      const searchResult = await searchTools(
-        args as SearchToolsArgs,
-        internalTools,
-      );
+      const validatedArgs = SearchToolsArgsSchema.parse(args);
+      const searchResult = await searchTools(validatedArgs, internalTools);
       return {
         content: [
           { type: "text", text: JSON.stringify(searchResult, null, 2) },
@@ -69,10 +67,8 @@ const handleMetaTool = async (
     }
 
     case "describe_tools": {
-      const describeResult = await describeTools(
-        args as DescribeToolsArgs,
-        internalTools,
-      );
+      const validatedArgs = DescribeToolsArgsSchema.parse(args);
+      const describeResult = await describeTools(validatedArgs, internalTools);
       return {
         content: [
           { type: "text", text: JSON.stringify(describeResult, null, 2) },
@@ -81,12 +77,14 @@ const handleMetaTool = async (
     }
 
     case "execute_tool": {
-      return (await executeToolDynamic(
-        args as CallToolRequestParams,
+      const validatedArgs = CallToolRequestParamsSchema.parse(args);
+      const result = await executeToolDynamic(
+        validatedArgs,
         mcpServerId,
         organizationId,
         userId,
-      )) as ToolCallResult;
+      );
+      return result as ToolCallResult;
     }
 
     default:
@@ -137,7 +135,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
     // Node.jsレスポンスをFetch APIレスポンスに変換して返却
     return toFetchResponse(res);
   } catch (error) {
-    return handleError(c, error as Error, {
+    return handleError(c, toError(error), {
       requestId: null,
       errorCode: -32603,
       errorMessage: "Internal error",
