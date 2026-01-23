@@ -28,6 +28,7 @@
     "@toon-format/toon": "^2.1.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
+    "ai": "6.0.41",
     "bcryptjs": "^3.0.3",
     "fetch-to-node": "^2.1.0",
     "google-auth-library": "^10.5.0",

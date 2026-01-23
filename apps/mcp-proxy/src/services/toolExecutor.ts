@@ -3,6 +3,48 @@ import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 import { updateExecutionContext } from "../middleware/requestLogging/context.js";
 import { extractMcpErrorInfo, getErrorCodeName } from "../libs/error/index.js";
+import { DYNAMIC_SEARCH_META_TOOLS, type Tool } from "./dynamicSearch/index.js";
+
+/**
+ * データベースの inputSchema を MCP SDK の Tool["inputSchema"] 形式に変換
+ *
+ * MCP SDK では inputSchema.type が "object" リテラルであることが必須
+ */
+const toToolInputSchema = (inputSchema: unknown): Tool["inputSchema"] => {
+  const schema = inputSchema as Record<string, unknown>;
+  return {
+    type: "object",
+    properties: schema.properties as Record<string, object> | undefined,
+    required: schema.required as string[] | undefined,
+    ...schema,
+  };
+};
+
+/**
+ * テンプレートインスタンスからツール情報を変換
+ *
+ * @param templateInstances - テンプレートインスタンス配列
+ * @returns ツール情報配列（"{normalizedName}__{ツール名}" 形式）
+ */
+const transformTemplateInstancesToTools = (
+  templateInstances: Array<{
+    normalizedName: string;
+    allowedTools: Array<{
+      name: string;
+      description: string | null;
+      inputSchema: unknown;
+    }>;
+  }>,
+): Tool[] => {
+  return templateInstances.flatMap((instance) =>
+    instance.allowedTools.map((tool) => ({
+      name: `${instance.normalizedName}__${tool.name}`,
+      // MCP SDK では description は undefined（null ではない）
+      description: tool.description ?? undefined,
+      inputSchema: toToolInputSchema(tool.inputSchema),
+    })),
+  );
+};
 
 /**
  * ツール名をパースして、インスタンス名とツール名を抽出
@@ -170,26 +212,111 @@ export const executeTool = async (
 };
 
 /**
+ * getAllowedTools の戻り値の型
+ */
+export type GetAllowedToolsResult = {
+  /** 公開するツールリスト（MCP SDK Tool 型） */
+  tools: Tool[];
+  /** Dynamic Search が有効かどうか */
+  dynamicSearch: boolean;
+};
+
+/**
  * McpServer の allowedTools を取得
  *
+ * dynamicSearch が有効な場合は search_tools/describe_tools/execute_tool のみを返す
+ * 無効な場合は従来通り全ツールを返す
+ *
  * @param mcpServerId - McpServer ID
- * @returns ツールリスト（"{インスタンス名}__{ツール名}" 形式）
+ * @returns ツールリスト（"{インスタンス名}__{ツール名}" 形式）と dynamicSearch フラグ
  */
 export const getAllowedTools = async (
   mcpServerId: string,
-): Promise<
-  Array<{
-    name: string;
-    description: string | null;
-    inputSchema: Record<string, unknown>;
-  }>
-> => {
+): Promise<GetAllowedToolsResult> => {
   logInfo("Getting allowed tools", {
     mcpServerId,
   });
 
   try {
-    // McpServer の templateInstances と allowedTools を取得
+    // McpServer の templateInstances, allowedTools, dynamicSearch を取得
+    const mcpServer = await db.mcpServer.findUnique({
+      where: { id: mcpServerId },
+      select: {
+        dynamicSearch: true,
+        templateInstances: {
+          select: {
+            normalizedName: true,
+            allowedTools: {
+              select: {
+                name: true,
+                description: true,
+                inputSchema: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!mcpServer) {
+      throw new Error(`McpServer not found: ${mcpServerId}`);
+    }
+
+    // Dynamic Search が有効な場合はメタツールのみを返す
+    if (mcpServer.dynamicSearch) {
+      logInfo("Dynamic Search enabled, returning meta tools", {
+        mcpServerId,
+        metaToolCount: DYNAMIC_SEARCH_META_TOOLS.length,
+      });
+
+      return {
+        tools: DYNAMIC_SEARCH_META_TOOLS,
+        dynamicSearch: true,
+      };
+    }
+
+    // 全テンプレートインスタンスからallowedToolsを集約
+    // "{normalizedName}__{ツール名}" 形式でツールリストを返す
+    const tools = transformTemplateInstancesToTools(
+      mcpServer.templateInstances,
+    );
+
+    logInfo("Retrieved allowed tools", {
+      mcpServerId,
+      toolCount: tools.length,
+    });
+
+    return {
+      tools,
+      dynamicSearch: false,
+    };
+  } catch (error) {
+    logError("Failed to get allowed tools", error as Error, {
+      mcpServerId,
+    });
+
+    throw new Error(
+      `Failed to get allowed tools for server ${mcpServerId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
+};
+
+/**
+ * Dynamic Search 用の内部ツール一覧を取得
+ *
+ * dynamicSearch が有効でも全ツールを取得する（search_tools 等で使用）
+ *
+ * @param mcpServerId - McpServer ID
+ * @returns 全ツールリスト（MCP SDK Tool 型）
+ */
+export const getInternalToolsForDynamicSearch = async (
+  mcpServerId: string,
+): Promise<Tool[]> => {
+  logInfo("Getting internal tools for dynamic search", {
+    mcpServerId,
+  });
+
+  try {
     const mcpServer = await db.mcpServer.findUnique({
       where: { id: mcpServerId },
       select: {
@@ -212,30 +339,27 @@ export const getAllowedTools = async (
       throw new Error(`McpServer not found: ${mcpServerId}`);
     }
 
-    // 全テンプレートインスタンスからallowedToolsを集約
-    // "{normalizedName}__{ツール名}" 形式でツールリストを返す
-    // instance.normalizedNameを使用（インスタンスごとの識別子）
-    const tools = mcpServer.templateInstances.flatMap((instance) =>
-      instance.allowedTools.map((tool) => ({
-        name: `${instance.normalizedName}__${tool.name}`,
-        description: tool.description,
-        inputSchema: tool.inputSchema as Record<string, unknown>,
-      })),
+    const tools = transformTemplateInstancesToTools(
+      mcpServer.templateInstances,
     );
 
-    logInfo("Retrieved allowed tools", {
+    logInfo("Retrieved internal tools for dynamic search", {
       mcpServerId,
       toolCount: tools.length,
     });
 
     return tools;
   } catch (error) {
-    logError("Failed to get allowed tools", error as Error, {
-      mcpServerId,
-    });
+    logError(
+      "Failed to get internal tools for dynamic search",
+      error as Error,
+      {
+        mcpServerId,
+      },
+    );
 
     throw new Error(
-      `Failed to get allowed tools for server ${mcpServerId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      `Failed to get internal tools for server ${mcpServerId}: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 };

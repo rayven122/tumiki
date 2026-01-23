@@ -8,12 +8,89 @@ import {
 import { toFetchResponse, toReqRes } from "fetch-to-node";
 import type { Context } from "hono";
 import type { HonoEnv } from "../types/index.js";
-import { getAllowedTools, executeTool } from "../services/toolExecutor.js";
-import { handleError } from "../libs/error/handler.js";
+import {
+  getAllowedTools,
+  executeTool,
+  getInternalToolsForDynamicSearch,
+} from "../services/toolExecutor.js";
+import { handleError, toError } from "../libs/error/index.js";
 import {
   getExecutionContext,
   updateExecutionContext,
 } from "../middleware/requestLogging/context.js";
+import {
+  isMetaTool,
+  searchTools,
+  describeTools,
+  executeToolDynamic,
+  SearchToolsArgsSchema,
+  DescribeToolsArgsSchema,
+  CallToolRequestParamsSchema,
+} from "../services/dynamicSearch/index.js";
+
+/**
+ * ツール実行結果の型
+ */
+type ToolCallResult = {
+  content: Array<{ type: string; text?: string; [key: string]: unknown }>;
+};
+
+/**
+ * メタツールの実行を処理
+ *
+ * @param toolName - メタツール名 (search_tools, describe_tools, execute_tool)
+ * @param args - ツールの引数
+ * @param mcpServerId - MCPサーバーID
+ * @param organizationId - 組織ID
+ * @param userId - ユーザーID
+ * @returns ツール実行結果
+ */
+const handleMetaTool = async (
+  toolName: string,
+  args: unknown,
+  mcpServerId: string,
+  organizationId: string,
+  userId: string,
+): Promise<ToolCallResult> => {
+  // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
+  const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
+
+  switch (toolName) {
+    case "search_tools": {
+      const validatedArgs = SearchToolsArgsSchema.parse(args);
+      const searchResult = await searchTools(validatedArgs, internalTools);
+      return {
+        content: [
+          { type: "text", text: JSON.stringify(searchResult, null, 2) },
+        ],
+      };
+    }
+
+    case "describe_tools": {
+      const validatedArgs = DescribeToolsArgsSchema.parse(args);
+      const describeResult = await describeTools(validatedArgs, internalTools);
+      return {
+        content: [
+          { type: "text", text: JSON.stringify(describeResult, null, 2) },
+        ],
+      };
+    }
+
+    case "execute_tool": {
+      const validatedArgs = CallToolRequestParamsSchema.parse(args);
+      const result = await executeToolDynamic(
+        validatedArgs,
+        mcpServerId,
+        organizationId,
+        userId,
+      );
+      return result as ToolCallResult;
+    }
+
+    default:
+      throw new Error(`Unknown meta tool: ${toolName}`);
+  }
+};
 
 /**
  * MCPメインハンドラー
@@ -58,7 +135,7 @@ export const mcpHandler = async (c: Context<HonoEnv>) => {
     // Node.jsレスポンスをFetch APIレスポンスに変換して返却
     return toFetchResponse(res);
   } catch (error) {
-    return handleError(c, error as Error, {
+    return handleError(c, toError(error), {
       requestId: null,
       errorCode: -32603,
       errorMessage: "Internal error",
@@ -103,7 +180,8 @@ const createMcpServer = (
   });
 
   // Tools list handler - SDKが自動的にバリデーションとJSON-RPC形式化
-  // "{template名}__{ツール名}" 形式でツールリストを返す
+  // dynamicSearch=true の場合: メタツール (search_tools, describe_tools, execute_tool) のみ返す
+  // dynamicSearch=false の場合: "{template名}__{ツール名}" 形式でツールリストを返す
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     // ログ記録用にコンテキストを更新
     updateExecutionContext({
@@ -111,7 +189,7 @@ const createMcpServer = (
       method: "tools/list",
     });
 
-    const tools = await getAllowedTools(mcpServerId);
+    const { tools } = await getAllowedTools(mcpServerId);
 
     return {
       tools: tools.map((tool) => ({
@@ -123,10 +201,23 @@ const createMcpServer = (
   });
 
   // Tools call handler - SDKが自動的にバリデーションとJSON-RPC形式化
-  // "{template名}__{ツール名}" 形式のツール名を受け取り、実行する
+  // dynamicSearch=true の場合: メタツール (search_tools, describe_tools, execute_tool) を処理
+  // dynamicSearch=false または非メタツールの場合: "{template名}__{ツール名}" 形式のツール名を受け取り、実行する
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name: fullToolName, arguments: args } = request.params;
 
+    // メタツールの処理
+    if (isMetaTool(fullToolName)) {
+      return handleMetaTool(
+        fullToolName,
+        args,
+        mcpServerId,
+        organizationId,
+        userId,
+      );
+    }
+
+    // 通常のツール実行
     const result = await executeTool(
       mcpServerId,
       organizationId,
@@ -135,9 +226,7 @@ const createMcpServer = (
       userId,
     );
 
-    return result as {
-      content: Array<{ type: string; text?: string; [key: string]: unknown }>;
-    };
+    return result as ToolCallResult;
   });
 
   return server;
