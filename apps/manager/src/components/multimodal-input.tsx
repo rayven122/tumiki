@@ -43,6 +43,8 @@ function PureMultimodalInput({
   sendMessage,
   className,
   selectedVisibilityType,
+  isSpeaking = false,
+  stopSpeaking,
 }: {
   chatId: string;
   orgSlug: string;
@@ -57,6 +59,10 @@ function PureMultimodalInput({
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   className?: string;
   selectedVisibilityType: VisibilityType;
+  /** TTS 再生中かどうか */
+  isSpeaking?: boolean;
+  /** TTS 再生を停止する関数 */
+  stopSpeaking?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -316,8 +322,13 @@ function PureMultimodalInput({
       */}
 
       <div className="absolute right-0 bottom-0 flex w-fit flex-row justify-end p-2">
-        {status === "submitted" ? (
-          <StopButton stop={stop} setMessages={setMessages} />
+        {status === "submitted" || isSpeaking ? (
+          <StopButton
+            stop={stop}
+            setMessages={setMessages}
+            stopSpeaking={stopSpeaking}
+            isGenerating={status === "submitted"}
+          />
         ) : (
           <SendButton
             input={input}
@@ -338,6 +349,7 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
+    if (prevProps.isSpeaking !== nextProps.isSpeaking) return false;
 
     return true;
   },
@@ -371,9 +383,13 @@ const AttachmentsButton = memo(PureAttachmentsButton);
 function PureStopButton({
   stop,
   setMessages,
+  stopSpeaking,
+  isGenerating,
 }: {
   stop: () => void;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  stopSpeaking?: () => void;
+  isGenerating: boolean;
 }) {
   return (
     <Button
@@ -381,8 +397,13 @@ function PureStopButton({
       className="h-fit rounded-full border p-1.5 dark:border-zinc-600"
       onClick={(event) => {
         event.preventDefault();
-        stop();
-        setMessages((messages: ChatMessage[]) => messages);
+        // テキスト生成中の場合は生成を停止
+        if (isGenerating) {
+          stop();
+          setMessages((messages: ChatMessage[]) => messages);
+        }
+        // TTS 再生を停止（常に呼び出す）
+        stopSpeaking?.();
       }}
     >
       <StopIcon size={14} />
