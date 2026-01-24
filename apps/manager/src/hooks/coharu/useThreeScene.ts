@@ -113,7 +113,25 @@ export const useThreeScene = (
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      setupResult.renderer?.dispose();
+
+      // Three.js リソースの適切なクリーンアップ
+      if (setupResult.scene) {
+        setupResult.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry?.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat) => mat.dispose());
+            } else {
+              child.material?.dispose();
+            }
+          }
+        });
+      }
+
+      if (setupResult.renderer) {
+        setupResult.renderer.dispose();
+        setupResult.renderer.forceContextLoss();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 初回のみ実行
