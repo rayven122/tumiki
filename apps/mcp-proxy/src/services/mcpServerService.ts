@@ -367,6 +367,84 @@ export const getUserIdFromKeycloakId = async (
 };
 
 /**
+ * emailからTumiki User IDを解決
+ *
+ * JWT の sub クレームが存在しない場合のフォールバック用。
+ * User テーブルで email を検索し、対応する userId を返す。
+ *
+ * @param email - ユーザーのメールアドレス
+ * @returns User ID（見つからない場合はnull）
+ */
+export const getUserIdByEmail = async (
+  email: string,
+): Promise<string | null> => {
+  const cacheKey = `email:user:${email}`;
+
+  // キャッシュ確認
+  try {
+    const redis = await getRedisClient();
+    if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached !== null) {
+        logDebug("Email user cache hit", { cacheKey });
+        if (cached === "null") {
+          if (!ENABLE_NEGATIVE_CACHE) {
+            logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
+            await redis.del(cacheKey);
+          } else {
+            return null;
+          }
+        } else {
+          return cached;
+        }
+      }
+    }
+  } catch (error) {
+    logError("Redis cache error for email user", error as Error);
+  }
+
+  // DBから取得: User.email で検索
+  let userId: string | null = null;
+  try {
+    const user = await db.user.findFirst({
+      where: {
+        email: email,
+      },
+      select: { id: true },
+    });
+
+    userId = user?.id ?? null;
+
+    if (!userId) {
+      logWarn("User not found for email", { email });
+    }
+  } catch (error) {
+    logError("Failed to get user from email", error as Error, {
+      email,
+    });
+    throw error;
+  }
+
+  // キャッシュに保存（5分）
+  try {
+    const redis = await getRedisClient();
+    if (redis) {
+      if (userId === null) {
+        if (ENABLE_NEGATIVE_CACHE) {
+          await redis.setEx(cacheKey, CACHE_TTL_SECONDS, "null");
+        }
+      } else {
+        await redis.setEx(cacheKey, CACHE_TTL_SECONDS, userId);
+      }
+    }
+  } catch (error) {
+    logError("Redis cache save error for email user", error as Error);
+  }
+
+  return userId;
+};
+
+/**
  * Keycloakユーザーキャッシュを無効化
  *
  * Account 追加・削除時に呼び出す。

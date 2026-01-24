@@ -58,15 +58,19 @@ export const handleOAuthCallback = async (
       mcpServer.templateUrl, // 元のサーバーURLを渡す
     );
 
-    // 4. OAuth Tokenを保存
-    // 注意: 同じOAuthクライアントでも、ユーザーは複数の異なるアカウントを
-    // 接続したい場合があるため、常に新しいトークンを作成する
+    // 4. OAuth Tokenを保存（upsertで新規作成または再認証時の更新に対応）
     const expiresAt = tokenData.expires_in
       ? new Date(Date.now() + tokenData.expires_in * 1000)
       : null;
 
-    await tx.mcpOAuthToken.create({
-      data: {
+    await tx.mcpOAuthToken.upsert({
+      where: {
+        userId_mcpServerTemplateInstanceId: {
+          userId,
+          mcpServerTemplateInstanceId: statePayload.mcpServerTemplateInstanceId,
+        },
+      },
+      create: {
         userId,
         organizationId: statePayload.organizationId,
         oauthClientId: oauthClient.id,
@@ -75,6 +79,11 @@ export const handleOAuthCallback = async (
         refreshToken: tokenData.refresh_token ?? null,
         expiresAt,
         tokenPurpose: "BACKEND_MCP",
+      },
+      update: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token ?? null,
+        expiresAt,
       },
     });
 

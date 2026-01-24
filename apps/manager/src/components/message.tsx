@@ -8,7 +8,7 @@ import type { Vote } from "@tumiki/db/prisma";
 import type { ArtifactKind } from "./artifact";
 import { DocumentToolCall, DocumentToolResult } from "./document";
 import { PencilEditIcon, SparklesIcon } from "./icons";
-import { Markdown } from "./markdown";
+import { Response } from "./response";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather, type WeatherAtLocation } from "./weather";
@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
 import { MessageEditor } from "./message-editor";
 import { DocumentPreview } from "./document-preview";
 import { MessageReasoning } from "./message-reasoning";
+import { TypingIndicator } from "./typing-indicator";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { ChatMessage } from "@/lib/types";
 
@@ -154,15 +155,13 @@ const PurePreviewMessage = ({
                             message.role === "user",
                         })}
                       >
-                        <span className="inline">
-                          <Markdown>{sanitizeText(part.text)}</Markdown>
-                          {showCursor && (
-                            <span
-                              className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-[blink_1s_step-end_infinite] bg-current align-middle"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </span>
+                        <Response>{sanitizeText(part.text)}</Response>
+                        {showCursor && (
+                          <span
+                            className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-[blink_0.5s_step-end_infinite] bg-current align-middle"
+                            aria-hidden="true"
+                          />
+                        )}
                       </div>
                     </div>
                   );
@@ -196,19 +195,23 @@ const PurePreviewMessage = ({
                   output?: unknown;
                 };
 
-                // stateをMcpToolCallコンポーネント用にマッピング
-                // AI SDK 6の状態: "pending", "output-available", "error"
+                // AI SDK 6の状態形式にマッピング
+                // dynamic-tool の状態: "pending", "output-available", "error"
                 const mapDynamicToolState = (
                   state: string,
-                ): "call" | "partial-call" | "result" | "error" => {
+                ):
+                  | "input-streaming"
+                  | "input-available"
+                  | "output-available"
+                  | "output-error" => {
                   switch (state) {
                     case "output-available":
-                      return "result";
+                      return "output-available";
                     case "error":
-                      return "error";
+                      return "output-error";
                     case "pending":
                     default:
-                      return "call";
+                      return "input-available";
                   }
                 };
 
@@ -223,15 +226,46 @@ const PurePreviewMessage = ({
                 );
               }
 
-              // AI SDK 6: tool-invocation は tool-${toolName} 形式に変更
-              // 基本ツールパーツの処理
+              // AI SDK 6: tool-${toolName} 形式のツールパーツを処理
+              // 状態: input-streaming, input-available, output-available, output-error
+              if (type === "tool-getWeather") {
+                const toolPart = part as unknown as {
+                  type: "tool-getWeather";
+                  toolCallId: string;
+                  state: string;
+                  input?: unknown;
+                  output?: WeatherAtLocation;
+                };
+                const { toolCallId, state } = toolPart;
+
+                // 結果が利用可能な場合
+                if (state === "output-available") {
+                  return (
+                    <div key={toolCallId} className="w-[min(100%,450px)]">
+                      <Weather weatherAtLocation={toolPart.output} />
+                    </div>
+                  );
+                }
+
+                // 入力中または実行中の場合はスケルトン表示
+                return (
+                  <div
+                    key={toolCallId}
+                    className="skeleton w-[min(100%,450px)]"
+                  >
+                    <Weather />
+                  </div>
+                );
+              }
+
+              // その他のツールパーツの処理
               if (type.startsWith("tool-")) {
                 // AI SDK 6のツールパーツ構造
                 // 型アサーションには unknown を経由する必要がある
                 const toolPart = part as unknown as {
                   type: `tool-${string}`;
                   toolCallId: string;
-                  state: "call" | "partial-call" | "result" | "error";
+                  state: string;
                   input?: unknown;
                   output?: unknown;
                 };
@@ -243,34 +277,37 @@ const PurePreviewMessage = ({
                 const isMcpTool = toolName.includes("__");
 
                 if (isMcpTool) {
-                  // MCPツール用コンポーネント
+                  // MCPツール用コンポーネント（AI SDK 6 の状態形式を直接渡す）
                   return (
                     <McpToolCall
                       key={toolCallId}
                       toolName={toolName}
-                      state={state}
+                      state={
+                        state as
+                          | "input-streaming"
+                          | "input-available"
+                          | "output-available"
+                          | "output-error"
+                      }
                       input={toolPart.input}
                       output={toolPart.output}
                     />
                   );
                 }
 
-                if (state === "call" || state === "partial-call") {
+                // 入力中または実行中の状態
+                if (
+                  state === "input-streaming" ||
+                  state === "input-available"
+                ) {
                   // args を適切な型にキャスト（デフォルト値を設定）
                   const args = (toolPart.input as
                     | { title: string }
                     | undefined) ?? { title: "" };
 
                   return (
-                    <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ["getWeather"].includes(toolName),
-                      })}
-                    >
-                      {toolName === "getWeather" ? (
-                        <Weather />
-                      ) : toolName === "createDocument" ? (
+                    <div key={toolCallId}>
+                      {toolName === "createDocument" ? (
                         <DocumentPreview isReadonly={isReadonly} args={args} />
                       ) : toolName === "updateDocument" ? (
                         <DocumentToolCall
@@ -289,21 +326,16 @@ const PurePreviewMessage = ({
                   );
                 }
 
-                if (state === "result") {
-                  // AI SDK 6: result → output
+                // 結果が利用可能な状態
+                if (state === "output-available") {
                   // result を適切な型にキャスト
                   const result = toolPart.output as
-                    | WeatherAtLocation
                     | { id: string; title: string; kind: ArtifactKind }
                     | undefined;
 
                   return (
                     <div key={toolCallId}>
-                      {toolName === "getWeather" ? (
-                        <Weather
-                          weatherAtLocation={result as WeatherAtLocation}
-                        />
-                      ) : toolName === "createDocument" ? (
+                      {toolName === "createDocument" ? (
                         <DocumentPreview
                           isReadonly={isReadonly}
                           result={
@@ -341,6 +373,18 @@ const PurePreviewMessage = ({
                       ) : (
                         <pre>{JSON.stringify(result, null, 2)}</pre>
                       )}
+                    </div>
+                  );
+                }
+
+                // エラー状態
+                if (state === "output-error") {
+                  return (
+                    <div
+                      key={toolCallId}
+                      className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+                    >
+                      Error: {String(toolPart.output)}
                     </div>
                   );
                 }
@@ -390,7 +434,7 @@ export const ThinkingMessage = () => {
       data-testid="message-assistant-loading"
       className="group/message mx-auto min-h-96 w-full max-w-3xl px-4"
       initial={{ y: 5, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
+      animate={{ y: 0, opacity: 1 }}
       data-role={role}
     >
       <div
@@ -401,14 +445,12 @@ export const ThinkingMessage = () => {
           },
         )}
       >
-        <div className="ring-border flex size-8 shrink-0 items-center justify-center rounded-full ring-1">
+        <div className="ring-border bg-background flex size-8 shrink-0 items-center justify-center rounded-full ring-1">
           <SparklesIcon size={14} />
         </div>
 
-        <div className="flex w-full flex-col gap-2">
-          <div className="text-muted-foreground flex flex-col gap-4">
-            Hmm...
-          </div>
+        <div className="flex w-full flex-col gap-2 pt-2">
+          <TypingIndicator className="text-muted-foreground" />
         </div>
       </div>
     </motion.div>

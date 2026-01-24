@@ -5,6 +5,7 @@ import { Chat } from "@/components/chat";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateCUID } from "@/lib/utils";
 import { DataStreamHandler } from "@/components/data-stream-handler";
+import { DataStreamProvider } from "@/components/data-stream-provider";
 import { auth } from "~/auth";
 import { getMcpServerIdsFromCookie } from "./actions";
 import { api } from "@/trpc/server";
@@ -39,7 +40,7 @@ export default async function Page(props: PageProps) {
   const mcpServerIds = await getMcpServerIdsFromCookie();
 
   return (
-    <>
+    <DataStreamProvider>
       <Script
         src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
         strategy="beforeInteractive"
@@ -59,7 +60,7 @@ export default async function Page(props: PageProps) {
         isPersonalOrg={organization.isPersonal}
         isNewChat={true}
       />
-      <DataStreamHandler id={id} />
-    </>
+      <DataStreamHandler />
+    </DataStreamProvider>
   );
 }

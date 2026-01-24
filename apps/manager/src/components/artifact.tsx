@@ -284,7 +284,7 @@ function PureArtifact({
 
           {!isMobile && (
             <motion.div
-              className="bg-muted dark:bg-background relative h-dvh w-[400px] shrink-0"
+              className="bg-muted relative h-dvh w-[400px] shrink-0"
               initial={{ opacity: 0, x: 10, scale: 1 }}
               animate={{
                 opacity: 1,
@@ -339,7 +339,7 @@ function PureArtifact({
                     attachments={attachments}
                     setAttachments={setAttachments}
                     messages={messages}
-                    className="bg-background dark:bg-muted"
+                    className="bg-background"
                     setMessages={setMessages}
                     selectedVisibilityType={selectedVisibilityType}
                   />
@@ -349,7 +349,7 @@ function PureArtifact({
           )}
 
           <motion.div
-            className="dark:bg-muted bg-background fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 md:border-l dark:border-zinc-700"
+            className="bg-background fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 md:border-l"
             initial={
               isMobile
                 ? {
@@ -453,7 +453,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="dark:bg-muted bg-background h-full max-w-full! items-center overflow-y-scroll">
+            <div className="bg-background h-full max-w-full! items-center overflow-y-scroll">
               <artifactDefinition.content
                 title={artifact.title}
                 content={

@@ -2,7 +2,6 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   convertToModelMessages,
-  smoothStream,
   streamText,
   stepCountIs,
   JsonToSseTransformStream,
@@ -22,7 +21,7 @@ import {
   saveMessages,
   updateChatMcpServers,
 } from "@/lib/db/queries";
-import { generateCUID, generateMessageId } from "@/lib/utils";
+import { generateCUID } from "@/lib/utils";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -34,10 +33,7 @@ import { getLanguageModel } from "@/lib/ai/providers";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { postRequestBodySchema, type PostRequestBody } from "./schema";
 import { geolocation } from "@vercel/functions";
-import {
-  createResumableStreamContext,
-  type ResumableStreamContext,
-} from "resumable-stream";
+import { createResumableStreamContext } from "resumable-stream";
 import { after } from "next/server";
 import type { Chat } from "@tumiki/db/prisma";
 import { differenceInSeconds } from "date-fns";
@@ -47,234 +43,220 @@ import { checkChatAccess } from "@/lib/auth/chat-permissions";
 
 export const maxDuration = 60;
 
-let globalStreamContext: ResumableStreamContext | null = null;
-
+/**
+ * Resumable Stream Contextを取得
+ * vercel/ai-chatbot と同じパターンでシンプルに実装
+ * REDIS_URL が設定されていない場合は null を返す
+ */
 const getStreamContext = () => {
-  if (!globalStreamContext) {
-    try {
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
-    } catch (error: unknown) {
-      if (error instanceof Error && error.message.includes("REDIS_URL")) {
-        console.log(
-          " > Resumable streams are disabled due to missing REDIS_URL",
-        );
-      } else {
-        console.error(error);
-      }
-    }
+  try {
+    return createResumableStreamContext({ waitUntil: after });
+  } catch {
+    return null;
   }
-
-  return globalStreamContext;
 };
 
 /**
- * UIMessage parts用の型定義（DB保存用）
- * MCPツールを含む動的なツール名に対応
+ * AI SDK 6 の UIMessage ツール状態
+ * @see https://sdk.vercel.ai/docs/ai-sdk-ui/chatbot#tool-invocations
  */
-type UIMessagePart =
-  | { type: "text"; text: string }
-  | {
-      type: string; // "tool-{toolName}" 形式（MCPツールの場合は動的なツール名）
-      toolCallId: string;
-      state: "call" | "partial-call" | "result" | "error";
-      input?: unknown;
-      output?: unknown;
-    };
+type ToolState =
+  | "input-streaming"
+  | "input-available"
+  | "output-available"
+  | "output-error";
 
 /**
- * AI SDK 6 のレスポンスメッセージcontent要素の型
- * - ツール呼び出し: { type: "tool-call", toolCallId, toolName, input }
- * - ツール結果: { type: "tool-result", toolCallId, toolName, output, isError? }
- * - output は { type: "json", value: {...} } 形式でラップされている
+ * 古い形式のツール状態
+ * 後方互換性のために定義
  */
-type ContentPart = {
+type LegacyToolState = "call" | "partial-call" | "result" | "error";
+
+/**
+ * DBに保存されているツール状態を AI SDK 6 形式に変換
+ * 古い形式からの後方互換性をサポート
+ */
+const convertToolState = (state: string): ToolState => {
+  // 新しい形式の場合はそのまま返す
+  if (
+    state === "input-streaming" ||
+    state === "input-available" ||
+    state === "output-available" ||
+    state === "output-error"
+  ) {
+    return state as ToolState;
+  }
+
+  // 古い形式からの変換（後方互換性）
+  switch (state) {
+    case "call":
+      return "input-available";
+    case "partial-call":
+      return "input-streaming";
+    case "result":
+      return "output-available";
+    case "error":
+      return "output-error";
+    default:
+      return "input-available";
+  }
+};
+
+/**
+ * DBに保存されているツールパーツの型
+ * 古い形式と新しい形式の両方をサポート
+ */
+type DBToolPart = {
   type: string;
-  text?: string;
-  toolCallId?: string;
-  toolName?: string;
-  // AI SDK 6: args → input に変更
+  toolCallId: string;
+  state: ToolState | LegacyToolState;
   input?: unknown;
-  // AI SDK 6: result → output に変更、{ type: "json", value: {...} } 形式
-  output?: { type: string; value: unknown };
-  // ツールエラーフラグ（AI SDK 6）
-  isError?: boolean;
+  output?: unknown;
 };
 
 /**
- * ツール結果の情報を保持する型
- */
-type ToolResultInfo = {
-  output: unknown;
-  isError: boolean;
-};
-
-/**
- * AI SDK 6 のレスポンスメッセージ型
- */
-type ResponseMessage = {
-  role: string;
-  content: string | ContentPart[];
-};
-
-/**
- * ResponseMessage配列からUIMessage用のpartsを構築
- * ツール呼び出しとその結果をマージして、正しい形式で保存する
+ * DBから取得したメッセージを AI SDK 6 UIMessage 形式に変換
  *
- * 注: onFinishが呼ばれる時点ではすべてのツール呼び出しは完了しているため、
- * ツール結果を収集してマッピングする
+ * UIMessage形式では、roleは 'system' | 'user' | 'assistant' のみ。
+ * ツール呼び出しとその結果は、アシスタントメッセージの parts 内に
+ * 適切な state で含まれる必要がある:
+ * - input-streaming: ストリーミング中
+ * - input-available: 入力完了
+ * - output-available: 結果あり
+ * - output-error: エラー
+ *
+ * 重要: Anthropic API は tool_use ブロックの後にテキストコンテンツを許可しない。
+ * tool_use の後にはすぐに tool_result が必要で、continuation text は
+ * 新しいアシスタントメッセージとして分離する必要がある。
+ *
+ * convertToModelMessages が UIMessage を Anthropic API 形式に変換する際、
+ * 内部で tool_use と tool_result の適切な分離を行う
  */
-const convertResponseMessagesToUIParts = (
-  messages: unknown[],
-): UIMessagePart[] => {
-  const parts: UIMessagePart[] = [];
+const convertDBMessagesToAISDK6Format = (
+  messages: Array<{
+    id: string;
+    role: string;
+    parts: unknown[];
+  }>,
+): Array<{
+  id: string;
+  role: "user" | "assistant" | "system";
+  parts: Array<{ type: string; [key: string]: unknown }>;
+}> => {
+  const result: Array<{
+    id: string;
+    role: "user" | "assistant" | "system";
+    parts: Array<{ type: string; [key: string]: unknown }>;
+  }> = [];
 
-  // unknown[] を ResponseMessage[] として扱う
-  const typedMessages = messages as ResponseMessage[];
+  for (const msg of messages) {
+    const role = msg.role as "user" | "assistant" | "system";
 
-  // ツール呼び出しIDと結果のマッピング（エラー情報含む）
-  const toolResultMap = new Map<string, ToolResultInfo>();
+    // アシスタントメッセージの場合、ツールパーツの状態を変換し、
+    // 必要に応じてメッセージを分割する
+    if (role === "assistant") {
+      const convertedParts: Array<{ type: string; [key: string]: unknown }> =
+        [];
 
-  /**
-   * outputから値を抽出し、エラー状態を判定する
-   * AI SDK 6: output は以下の形式がある:
-   * - { type: "json", value: {...} }
-   * - { type: "error", value: ... }
-   * - { content: [...], isError: true } (MCPエラーの場合)
-   */
-  const extractToolResult = (
-    rawOutput: unknown,
-    isErrorFlag?: boolean,
-  ): ToolResultInfo => {
-    let extractedOutput = rawOutput;
-    let isError = isErrorFlag ?? false;
+      // 最後の完了済みツールパーツのインデックスを追跡
+      let lastCompletedToolIndex = -1;
 
-    if (rawOutput && typeof rawOutput === "object") {
-      const outputObj = rawOutput as {
-        type?: string;
-        value?: unknown;
-        isError?: boolean;
-      };
+      // まずすべてのパーツを変換
+      for (const part of msg.parts) {
+        const typedPart = part as { type: string; [key: string]: unknown };
 
-      // エラータイプの出力をチェック
-      if (outputObj.type === "error") {
-        isError = true;
-      }
+        // ツール呼び出しパーツの場合、状態を AI SDK 6 形式に変換
+        if (typedPart.type.startsWith("tool-")) {
+          const toolPart = typedPart as DBToolPart;
 
-      // 値を抽出
-      if ("value" in outputObj) {
-        extractedOutput = outputObj.value;
+          // DB状態を AI SDK 6 状態に変換
+          const aiSdk6State = convertToolState(toolPart.state);
 
-        // 抽出した値にも isError がある場合（MCPエラー形式）
-        if (
-          extractedOutput &&
-          typeof extractedOutput === "object" &&
-          "isError" in extractedOutput &&
-          (extractedOutput as { isError?: boolean }).isError === true
-        ) {
-          isError = true;
-        }
-      }
-
-      // ラッパーなしで直接 isError がある場合
-      if (outputObj.isError === true) {
-        isError = true;
-      }
-    }
-
-    return { output: extractedOutput, isError };
-  };
-
-  // ツール結果を収集
-  // AI SDK 6では、ツール結果は role: "tool" のメッセージに含まれる
-  // 構造: { type: "tool-result", toolCallId, toolName, output: { type: "json", value: {...} }, isError? }
-  for (const msg of typedMessages) {
-    if (msg.role === "tool") {
-      // contentが配列の場合
-      if (Array.isArray(msg.content)) {
-        for (const content of msg.content) {
-          if (content.type === "tool-result" && content.toolCallId) {
-            const resultInfo = extractToolResult(
-              content.output,
-              content.isError,
-            );
-            toolResultMap.set(content.toolCallId, resultInfo);
-          }
-        }
-      }
-      // contentが単一のオブジェクトの場合
-      else if (
-        typeof msg.content === "object" &&
-        msg.content !== null &&
-        "toolCallId" in msg.content
-      ) {
-        const content = msg.content as ContentPart;
-        if (content.toolCallId && content.output !== undefined) {
-          const resultInfo = extractToolResult(content.output, content.isError);
-          toolResultMap.set(content.toolCallId, resultInfo);
-        }
-      }
-    }
-  }
-
-  // アシスタントメッセージ内のtool-resultも収集（念のため）
-  for (const msg of typedMessages) {
-    if (msg.role === "assistant" && Array.isArray(msg.content)) {
-      for (const content of msg.content) {
-        if (content.type === "tool-result" && content.toolCallId) {
-          const resultInfo = extractToolResult(content.output, content.isError);
-          toolResultMap.set(content.toolCallId, resultInfo);
-        }
-      }
-    }
-  }
-
-  // アシスタントメッセージからpartsを構築
-  for (const msg of typedMessages) {
-    if (msg.role === "assistant") {
-      // contentが文字列の場合（テキストのみの応答）
-      if (typeof msg.content === "string") {
-        if (msg.content.trim()) {
-          parts.push({ type: "text", text: msg.content });
-        }
-        continue;
-      }
-
-      // contentが配列の場合
-      for (const content of msg.content) {
-        if (content.type === "text" && content.text) {
-          if (content.text.trim()) {
-            parts.push({ type: "text", text: content.text });
-          }
-        } else if (
-          content.type === "tool-call" &&
-          content.toolCallId &&
-          content.toolName
-        ) {
-          // UIMessage形式: { type: "tool-{toolName}", toolCallId, state, input, output }
-          const toolResultInfo = toolResultMap.get(content.toolCallId);
-
-          // 状態を判定: エラー > 結果あり > 呼び出し中
-          let state: "call" | "partial-call" | "result" | "error" = "call";
-          if (toolResultInfo !== undefined) {
-            state = toolResultInfo.isError ? "error" : "result";
-          }
-
-          parts.push({
-            type: `tool-${content.toolName}`,
-            toolCallId: content.toolCallId,
-            state,
-            // AI SDK 6: args → input に変更
-            input: content.input,
-            output: toolResultInfo?.output,
+          convertedParts.push({
+            type: toolPart.type,
+            toolCallId: toolPart.toolCallId,
+            state: aiSdk6State,
+            input: toolPart.input,
+            // output-available または output-error の場合のみ output を含む
+            ...(aiSdk6State === "output-available" ||
+            aiSdk6State === "output-error"
+              ? { output: toolPart.output }
+              : {}),
           });
+
+          // 完了済みツールパーツの場合、インデックスを更新
+          if (
+            aiSdk6State === "output-available" ||
+            aiSdk6State === "output-error"
+          ) {
+            lastCompletedToolIndex = convertedParts.length - 1;
+          }
+        } else {
+          // テキストパーツなどはそのまま
+          convertedParts.push(typedPart);
         }
       }
+
+      // ツール呼び出しの後にテキストがある場合はメッセージを分割
+      // Anthropic API: tool_use ブロックの後にテキストコンテンツは許可されない
+      if (
+        lastCompletedToolIndex >= 0 &&
+        lastCompletedToolIndex < convertedParts.length - 1
+      ) {
+        // ツールパーツの後にコンテンツがある場合
+        const hasTextAfterTool = convertedParts
+          .slice(lastCompletedToolIndex + 1)
+          .some((p) => p.type === "text" && (p.text as string)?.trim());
+
+        if (hasTextAfterTool) {
+          // 最初のメッセージ: ツールパーツまで（ツールパーツを含む）
+          const firstParts = convertedParts.slice(
+            0,
+            lastCompletedToolIndex + 1,
+          );
+          // 2番目のメッセージ: ツールパーツの後のコンテンツ
+          const secondParts = convertedParts.slice(lastCompletedToolIndex + 1);
+
+          // 空でないパーツがある場合のみ追加
+          if (firstParts.length > 0) {
+            result.push({
+              id: msg.id,
+              role: "assistant",
+              parts: firstParts,
+            });
+          }
+
+          // 2番目のメッセージ用に新しいIDを生成
+          // continuation text を別のアシスタントメッセージとして追加
+          if (secondParts.length > 0) {
+            result.push({
+              id: `${msg.id}_cont`,
+              role: "assistant",
+              parts: secondParts,
+            });
+          }
+
+          continue; // この msg の処理は完了
+        }
+      }
+
+      // 分割不要の場合はそのまま追加
+      result.push({
+        id: msg.id,
+        role: "assistant",
+        parts: convertedParts,
+      });
+    } else {
+      // ユーザーメッセージやシステムメッセージはそのまま追加
+      result.push({
+        id: msg.id,
+        role,
+        parts: msg.parts as Array<{ type: string; [key: string]: unknown }>,
+      });
     }
   }
 
-  return parts;
+  return result;
 };
 
 export const POST = async (request: Request) => {
@@ -283,7 +265,7 @@ export const POST = async (request: Request) => {
   try {
     const json: unknown = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+  } catch {
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
@@ -357,17 +339,26 @@ export const POST = async (request: Request) => {
       ],
     });
 
-    // 前のメッセージとユーザーメッセージを結合してUIMessage形式に変換
+    // 前のメッセージとユーザーメッセージを結合
+    // DBに保存されているツール呼び出しを AI SDK 6 / Anthropic API 形式に変換
+    // ツール結果を別のメッセージとして分離することで、
+    // tool_use → tool_result の順序を正しく構築する
+    const dbMessages = previousMessages.map((msg) => ({
+      id: msg.id,
+      role: msg.role,
+      parts: msg.parts as unknown[],
+    }));
+
+    // DBメッセージを変換（ツール呼び出しとツール結果を分離）
+    const convertedMessages = convertDBMessagesToAISDK6Format(dbMessages);
+
+    // 新しいユーザーメッセージを追加
     const allMessages = [
-      ...previousMessages.map((msg) => ({
-        id: msg.id,
-        role: msg.role as "user" | "assistant" | "system",
-        parts: msg.parts as Array<{ type: "text"; text: string }>,
-      })),
+      ...convertedMessages,
       {
         id: message.id,
         role: "user" as const,
-        parts: message.parts,
+        parts: message.parts as Array<{ type: string; [key: string]: unknown }>,
       },
     ];
 
@@ -385,70 +376,33 @@ export const POST = async (request: Request) => {
       country,
     };
 
-    const streamId = generateCUID();
-    await createStreamId({ streamId, chatId: id });
-
     // MCPサーバーからツールを取得
     // クライアントはストリーミング終了時に閉じる必要あり
     // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
     let mcpTools: Record<string, Tool> = {};
     let mcpToolNames: string[] = [];
     const mcpClients: MCPClient[] = [];
-    const mcpDebugInfo = {
-      selectedMcpServerIds,
-      hasAccessToken: !!session.accessToken,
-      toolCount: 0,
-      toolNames: [] as string[],
-      successfulServers: [] as string[],
-      errors: [] as Array<{ mcpServerId: string; message: string }>,
-    };
-
-    // デバッグログ: MCPツール取得の条件を確認
-    console.log("[MCP Debug] selectedMcpServerIds:", selectedMcpServerIds);
-    console.log(
-      "[MCP Debug] session.accessToken exists:",
-      !!session.accessToken,
-    );
 
     if (selectedMcpServerIds.length > 0 && session.accessToken) {
-      console.log("[MCP Debug] Fetching MCP tools...");
       const mcpResult = await getMcpToolsFromServers(
         selectedMcpServerIds,
         session.accessToken,
       );
       mcpTools = mcpResult.tools;
       mcpToolNames = mcpResult.toolNames;
-      // クライアントを保持（onFinish/onError で閉じるため）
       mcpClients.push(...mcpResult.clients);
 
-      // デバッグ情報を更新
-      mcpDebugInfo.toolCount = mcpToolNames.length;
-      mcpDebugInfo.toolNames = mcpToolNames;
-      mcpDebugInfo.successfulServers = mcpResult.successfulServers;
-      mcpDebugInfo.errors = mcpResult.errors.map((e) => ({
-        mcpServerId: e.mcpServerId,
-        message: e.message,
-      }));
-
-      // デバッグログ: 取得結果を出力
-      console.log("[MCP Debug] MCP tools fetched:", {
-        toolCount: mcpToolNames.length,
-        toolNames: mcpToolNames,
-        successfulServers: mcpResult.successfulServers,
-        errors: mcpResult.errors,
-      });
-
-      // MCPサーバーをチャットに紐づけ
       await updateChatMcpServers(id, selectedMcpServerIds);
-    } else {
-      console.log(
-        "[MCP Debug] Skipping MCP tools fetch - no servers selected or no access token",
-      );
-    }
 
-    // 開発環境でのみデバッグ情報をログ出力
-    if (!isProductionEnvironment) {
-      console.log("[MCP Debug] Full debug info:", JSON.stringify(mcpDebugInfo));
+      // 開発環境でのみデバッグ情報をログ出力
+      if (!isProductionEnvironment) {
+        console.log("[MCP Debug]", {
+          toolCount: mcpToolNames.length,
+          toolNames: mcpToolNames,
+          successfulServers: mcpResult.successfulServers,
+          errors: mcpResult.errors,
+        });
+      }
     }
 
     // 基本ツール名（型安全のため as const を使用）
@@ -471,14 +425,10 @@ export const POST = async (request: Request) => {
       selectedChatModel.endsWith("-thinking");
 
     // AI SDK 6: UIMessage形式のメッセージを作成
-    const uiMessages = allMessages.map((msg) => ({
-      id: msg.id,
-      role: msg.role,
-      parts: msg.parts,
-    }));
-
+    // vercel/ai-chatbot と同じパターン: 通常のフローでは originalMessages は undefined
+    // ツール承認フローの場合のみ originalMessages を設定する
+    // tumiki ではツール承認フローがないため、常に undefined
     const stream = createUIMessageStream({
-      originalMessages: uiMessages,
       generateId: generateCUID,
       execute: async ({ writer }: { writer: UIMessageStreamWriter }) => {
         // 基本ツールとMCPツールをマージ
@@ -506,57 +456,15 @@ export const POST = async (request: Request) => {
           }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
-          activeTools: isReasoningModel ? [] : allActiveToolNames,
-          experimental_transform: smoothStream({ chunking: "word" }),
-          tools: allTools,
-          abortSignal: request.signal,
-          onFinish: async (finishEvent) => {
-            const { response } = finishEvent;
-
-            if (session.user?.id) {
-              try {
-                // AI SDK 6: response.messagesからUIMessage形式のpartsを構築
-                // ツール呼び出しと結果を含めて正しく保存する
-                const parts = convertResponseMessagesToUIParts(
-                  response.messages,
-                );
-
-                if (parts.length === 0) {
-                  console.warn("No parts found in response messages");
-                  return;
-                }
-
-                // 新しいメッセージIDを生成
-                const assistantId = generateMessageId();
-
-                await saveMessages({
-                  messages: [
-                    {
-                      id: assistantId,
-                      chatId: id,
-                      role: "assistant",
-                      parts: parts as unknown as Array<{
-                        text: string;
-                        type: string;
-                      }>,
-                      attachments: [],
-                      createdAt: new Date(),
-                    },
-                  ],
-                });
-              } catch (error) {
-                console.error("Failed to save chat:", error);
+          experimental_activeTools: isReasoningModel ? [] : allActiveToolNames,
+          providerOptions: isReasoningModel
+            ? {
+                anthropic: {
+                  thinking: { type: "enabled", budgetTokens: 10_000 },
+                },
               }
-            }
-
-            // MCPクライアントを閉じる（after で非同期実行）
-            // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
-            if (mcpClients.length > 0) {
-              after(async () => {
-                await closeMcpClients(mcpClients);
-              });
-            }
-          },
+            : undefined,
+          tools: allTools,
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
@@ -564,11 +472,55 @@ export const POST = async (request: Request) => {
         });
 
         // streamTextの結果をUIMessageStreamにマージ
-        writer.merge(
-          result.toUIMessageStream({
-            sendReasoning: true,
-          }),
-        );
+        const uiMessageStream = result.toUIMessageStream({
+          sendReasoning: true,
+        });
+
+        writer.merge(uiMessageStream);
+      },
+      // vercel/ai-chatbot と同じパターン: createUIMessageStream の onFinish を使用
+      // finishedMessages は既に UIMessage 形式になっている
+      onFinish: async ({ messages: finishedMessages }) => {
+        if (session.user?.id) {
+          try {
+            // 元のメッセージIDをセットに保存してフィルタリングを高速化
+            const originalMessageIds = new Set(allMessages.map((m) => m.id));
+
+            // 新しいアシスタントメッセージのみを保存
+            // finishedMessages には元のメッセージも含まれるため、
+            // 新しく追加されたアシスタントメッセージのみをフィルタリング
+            const newAssistantMessages = finishedMessages.filter(
+              (msg) =>
+                msg.role === "assistant" && !originalMessageIds.has(msg.id),
+            );
+
+            if (newAssistantMessages.length > 0) {
+              await saveMessages({
+                messages: newAssistantMessages.map((msg) => ({
+                  id: msg.id,
+                  chatId: id,
+                  role: "assistant" as const,
+                  parts: msg.parts as unknown as Array<{
+                    text: string;
+                    type: string;
+                  }>,
+                  attachments: [],
+                  createdAt: new Date(),
+                })),
+              });
+            }
+          } catch (error) {
+            console.error("Failed to save chat:", error);
+          }
+        }
+
+        // MCPクライアントを閉じる（after で非同期実行）
+        // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
+        if (mcpClients.length > 0) {
+          after(async () => {
+            await closeMcpClients(mcpClients);
+          });
+        }
       },
       onError: (error) => {
         console.error("UIMessageStream error:", error);
@@ -585,34 +537,42 @@ export const POST = async (request: Request) => {
       },
     });
 
-    const streamContext = getStreamContext();
-
-    if (streamContext) {
-      // resumableStreamの場合はSSEヘッダーを手動で設定
-      const resumableStream = await streamContext.resumableStream(
-        streamId,
-        () => stream.pipeThrough(new JsonToSseTransformStream()),
-      );
-      return new Response(resumableStream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      });
-    } else {
-      // createUIMessageStreamResponseを使用して適切なヘッダーを設定
-      return createUIMessageStreamResponse({ stream });
-    }
+    // vercel/ai-chatbot と同じパターンで resumable stream を処理
+    // createUIMessageStreamResponse の consumeSseStream コールバックを使用
+    return createUIMessageStreamResponse({
+      stream,
+      async consumeSseStream({ stream: sseStream }) {
+        // Redis が設定されていない場合はスキップ（vercel/ai-chatbot と同じ）
+        if (!process.env.REDIS_URL) {
+          return;
+        }
+        try {
+          const streamContext = getStreamContext();
+          if (streamContext) {
+            const streamId = generateCUID();
+            await createStreamId({ streamId, chatId: id });
+            await streamContext.createNewResumableStream(
+              streamId,
+              () => sseStream,
+            );
+          }
+        } catch {
+          // Redis エラーは無視（vercel/ai-chatbot と同じ）
+        }
+      },
+    });
   } catch (error) {
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
     // エラーログを出力してデバッグ
     console.error("Chat API error:", error);
+    // クライアント側のChatSDKErrorが期待するcode形式でレスポンスを返す
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
+        code: "bad_request:api",
+        message: "An error occurred while processing your message.",
+        cause: error instanceof Error ? error.message : "Unknown error",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );

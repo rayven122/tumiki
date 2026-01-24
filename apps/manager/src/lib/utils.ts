@@ -1,4 +1,3 @@
-import type { UIMessage } from "ai";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Document } from "@tumiki/db/prisma";
@@ -30,11 +29,27 @@ export const fetchWithErrorHandlers = async function (
     const response = await fetch(input, init);
 
     if (!response.ok) {
-      const { code, cause } = (await response.json()) as {
-        code: ErrorCode;
-        cause: string;
-      };
-      throw new ChatSDKError(code, cause);
+      // JSONパースを試みる
+      let errorData: { code?: ErrorCode; cause?: string; error?: string } = {};
+      try {
+        errorData = (await response.json()) as {
+          code?: ErrorCode;
+          cause?: string;
+          error?: string;
+        };
+      } catch {
+        // JSONパースに失敗した場合はデフォルトエラー
+      }
+
+      // codeがある場合はChatSDKErrorを使用、ない場合はフォールバック
+      if (errorData.code) {
+        throw new ChatSDKError(errorData.code, errorData.cause);
+      }
+
+      // 500エラーなどでcodeがない場合のフォールバック
+      const errorMessage =
+        errorData.error ?? `Request failed with status ${response.status}`;
+      throw new ChatSDKError("bad_request:api", errorMessage);
     }
 
     return response;
@@ -57,15 +72,6 @@ export function generateMessageId(): string {
   return "msg_" + createId();
 }
 
-// AI SDK 6では CoreAssistantMessage/CoreToolMessage が削除されたため
-// シンプルな型定義に変更
-type ResponseMessage = { id: string; role: string };
-
-export function getMostRecentUserMessage(messages: Array<UIMessage>) {
-  const userMessages = messages.filter((message) => message.role === "user");
-  return userMessages.at(-1);
-}
-
 export function getDocumentTimestampByIndex(
   documents: Array<Document>,
   index: number,
@@ -74,18 +80,6 @@ export function getDocumentTimestampByIndex(
   if (index > documents.length) return new Date();
 
   return documents[index]?.createdAt;
-}
-
-export function getTrailingMessageId({
-  messages,
-}: {
-  messages: Array<ResponseMessage>;
-}): string | null {
-  const trailingMessage = messages.at(-1);
-
-  if (!trailingMessage) return null;
-
-  return trailingMessage.id;
 }
 
 export function sanitizeText(text: string) {

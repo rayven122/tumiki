@@ -14,14 +14,16 @@ interface CreateDocumentProps {
 
 // UIMessageStreamWriterにデータを書き込むヘルパー関数
 // AI SDK 6では `data-${string}` パターンを使用
+// vercel/ai-chatbot に合わせて transient: true を追加
 const writeArtifactData = (
   writer: UIMessageStreamWriter,
   dataType: string,
   content: unknown,
 ) => {
   writer.write({
-    type: `data-artifact-${dataType}` as `data-${string}`,
+    type: `data-${dataType}` as `data-${string}`,
     data: content,
+    transient: true,
   });
 };
 

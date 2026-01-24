@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useOptimistic, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
@@ -11,8 +11,12 @@ import {
 } from "@/components/ui/chat/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
-import { saveMcpServerIdsAsCookie } from "@/app/[orgSlug]/chat/actions";
 import { api, type RouterOutputs } from "~/trpc/react";
+
+// クライアントサイドでCookieを保存（Server Actionを使わずに即時反映）
+const saveMcpServerIdsToCookie = (mcpServerIds: string[]) => {
+  document.cookie = `chat-mcp-servers=${encodeURIComponent(JSON.stringify(mcpServerIds))}; path=/; max-age=${60 * 60 * 24 * 365}`;
+};
 
 type OfficialServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -21,6 +25,8 @@ type McpServerSelectorProps = {
   selectedMcpServerIds: string[];
   onSelectionChange?: (ids: string[]) => void;
   className?: string;
+  /** 無効化フラグ（既存チャットでは途中変更不可） */
+  disabled?: boolean;
 };
 
 /**
@@ -39,10 +45,16 @@ export const McpServerSelector = ({
   selectedMcpServerIds: initialSelectedIds,
   onSelectionChange,
   className,
+  disabled = false,
 }: McpServerSelectorProps) => {
   const [open, setOpen] = useState(false);
-  const [optimisticSelectedIds, setOptimisticSelectedIds] =
-    useOptimistic(initialSelectedIds);
+
+  // 無効化時はドロップダウンを開かない
+  const handleOpenChange = (newOpen: boolean) => {
+    if (disabled) return;
+    setOpen(newOpen);
+  };
+  const [selectedIds, setSelectedIds] = useState(initialSelectedIds);
 
   // 組織内MCPサーバー一覧を取得
   const { data: mcpServers, isLoading } =
@@ -54,11 +66,11 @@ export const McpServerSelector = ({
       (server): server is OfficialServer => server.serverStatus === "RUNNING",
     ) ?? [];
 
-  const selectedCount = optimisticSelectedIds.length;
+  const selectedCount = selectedIds.length;
 
   // 選択されたサーバーの有効ツール総数を計算
   const totalToolsCount = availableServers
-    .filter((server) => optimisticSelectedIds.includes(server.id))
+    .filter((server) => selectedIds.includes(server.id))
     .reduce(
       (total, server) =>
         total +
@@ -71,15 +83,14 @@ export const McpServerSelector = ({
     );
 
   const handleToggleServer = (serverId: string) => {
-    const isSelected = optimisticSelectedIds.includes(serverId);
+    const isSelected = selectedIds.includes(serverId);
     const newSelectedIds = isSelected
-      ? optimisticSelectedIds.filter((id) => id !== serverId)
-      : [...optimisticSelectedIds, serverId];
+      ? selectedIds.filter((id) => id !== serverId)
+      : [...selectedIds, serverId];
 
-    startTransition(() => {
-      setOptimisticSelectedIds(newSelectedIds);
-      saveMcpServerIdsAsCookie(newSelectedIds);
-    });
+    // クライアントサイドで即時更新（Server Actionを使わない）
+    setSelectedIds(newSelectedIds);
+    saveMcpServerIdsToCookie(newSelectedIds);
 
     // 親コンポーネントに選択変更を通知
     onSelectionChange?.(newSelectedIds);
@@ -87,39 +98,42 @@ export const McpServerSelector = ({
 
   const handleSelectAll = () => {
     const allIds = availableServers.map((server) => server.id);
-    startTransition(() => {
-      setOptimisticSelectedIds(allIds);
-      saveMcpServerIdsAsCookie(allIds);
-    });
+    // クライアントサイドで即時更新
+    setSelectedIds(allIds);
+    saveMcpServerIdsToCookie(allIds);
     // 親コンポーネントに選択変更を通知
     onSelectionChange?.(allIds);
     // ユーザー歓喜: 全選択後もドロップダウンを開いたままにして確認感を与える
   };
 
   const handleClearAll = () => {
-    startTransition(() => {
-      setOptimisticSelectedIds([]);
-      saveMcpServerIdsAsCookie([]);
-    });
+    // クライアントサイドで即時更新
+    setSelectedIds([]);
+    saveMcpServerIdsToCookie([]);
     // 親コンポーネントに選択変更を通知
     onSelectionChange?.([]);
     // 誘導抵抗: 強制感を与えないよう、いつでも解除可能
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
         asChild
         className={cn(
           "data-[state=open]:bg-accent data-[state=open]:text-accent-foreground w-fit",
           className,
         )}
+        disabled={disabled}
       >
         {/* タップターゲット: 最小44x44px以上を確保 */}
         <Button
           data-testid="mcp-server-selector"
           variant="outline"
-          className="min-h-[44px] gap-1.5 md:h-[34px] md:min-h-0 md:px-2"
+          className={cn(
+            "min-h-[44px] gap-1.5 md:h-[34px] md:min-h-0 md:px-2",
+            disabled && "cursor-not-allowed",
+          )}
+          disabled={disabled}
         >
           <RouteIcon />
           <span className="hidden sm:inline">MCP</span>
@@ -189,7 +203,7 @@ export const McpServerSelector = ({
             {/* サーバー一覧: 認知負荷を軽減するため情報を整理 */}
             <div className="max-h-[280px] overflow-y-auto">
               {availableServers.map((server) => {
-                const isSelected = optimisticSelectedIds.includes(server.id);
+                const isSelected = selectedIds.includes(server.id);
                 // 有効なツール数を計算（段階的開示: 詳細は必要時のみ）
                 const enabledToolsCount = server.templateInstances.reduce(
                   (count, instance) =>

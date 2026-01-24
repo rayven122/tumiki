@@ -3,10 +3,18 @@
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
+import { TypingIndicator } from "./typing-indicator";
+
+// AI SDK 6 のツール状態
+type ToolState =
+  | "input-streaming"
+  | "input-available"
+  | "output-available"
+  | "output-error";
 
 type McpToolCallProps = {
   toolName: string; // "linear__list_teams" or "cmjiutji900014xhu829keknh__context7__resolve-library-id"
-  state: "call" | "partial-call" | "result" | "error";
+  state: ToolState;
   input?: unknown;
   output?: unknown;
 };
@@ -40,20 +48,14 @@ const parseToolName = (
 /**
  * 状態に応じたアイコンを返す
  */
-const StateIcon = ({
-  state,
-}: {
-  state: "call" | "partial-call" | "result" | "error";
-}) => {
+const StateIcon = ({ state }: { state: ToolState }) => {
   switch (state) {
-    case "call":
-    case "partial-call":
-      return (
-        <span className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-      );
-    case "result":
+    case "input-streaming":
+    case "input-available":
+      return <TypingIndicator size="sm" className="text-muted-foreground" />;
+    case "output-available":
       return <span className="text-green-600">✓</span>;
-    case "error":
+    case "output-error":
       return <span className="text-red-600">✗</span>;
   }
 };
@@ -145,13 +147,14 @@ export const McpToolCall = ({
   output,
 }: McpToolCallProps) => {
   const { serverName, displayToolName } = parseToolName(toolName);
-  const isLoading = state === "call" || state === "partial-call";
+  const isLoading = state === "input-streaming" || state === "input-available";
 
-  // stateが"result"でも、outputにisError:trueがあればエラーとして扱う
+  // stateが"output-available"でも、outputにisError:trueがあればエラーとして扱う
   const outputHasError = detectErrorFromOutput(output);
 
   // 実際に表示する状態（outputのisErrorでオーバーライド）
-  const displayState = state === "result" && outputHasError ? "error" : state;
+  const displayState: ToolState =
+    state === "output-available" && outputHasError ? "output-error" : state;
 
   return (
     <div
@@ -177,21 +180,22 @@ export const McpToolCall = ({
         <JsonPreview data={input} label="パラメータ" defaultExpanded={true} />
       )}
 
-      {/* 結果（出力） */}
-      {state === "result" && output !== undefined && output !== null && (
-        <JsonPreview data={output} label="結果" defaultExpanded={false} />
-      )}
+      {/* 結果（出力）- エラーでない場合のみ表示 */}
+      {displayState === "output-available" &&
+        output !== undefined &&
+        output !== null && (
+          <JsonPreview data={output} label="結果" defaultExpanded={false} />
+        )}
 
-      {/* エラー */}
-      {state === "error" && output !== undefined && (
-        <div className="mt-2 text-sm text-red-600">
-          エラー: {String(output)}
+      {/* エラー - displayState で判定（outputHasError を含む） */}
+      {displayState === "output-error" && output !== undefined && (
+        <div>
+          {typeof output === "object" ? (
+            <JsonPreview data={output} label="エラー" defaultExpanded={true} />
+          ) : (
+            <div className="mt-2 text-sm">エラー: {String(output)}</div>
+          )}
         </div>
-      )}
-
-      {/* ローディング表示 */}
-      {isLoading && (
-        <div className="text-muted-foreground mt-2 text-xs">実行中...</div>
       )}
     </div>
   );

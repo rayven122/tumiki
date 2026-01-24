@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+/* include utility classes in streamdown */
+@source "../../../node_modules/streamdown/dist/index.js";
 
 @theme {
   --font-sans:
@@ -135,4 +139,23 @@
   50% {
     opacity: 0;
   }
+}
+
+/* ProseMirrorエディタのスタイル */
+.ProseMirror {
+  outline: none;
+}
+
+/* サジェスションハイライト */
+.suggestion-highlight {
+  @apply bg-blue-100;
+}
+
+.suggestion-highlight:hover {
+  @apply bg-blue-200;
+}
+
+/* CodeMirrorエディタのスタイル - oneDarkテーマの背景を維持 */
+.cm-editor .cm-activeLine {
+  @apply rounded-none bg-transparent;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
@@ -92,18 +92,21 @@ const getChatHistoryPaginationKey =
   };
 
 type ChatHistoryDropdownProps = {
+  chatId: string;
   orgSlug: string;
   organizationId: string;
   currentUserId: string;
+  isNewChat?: boolean;
 };
 
 export const ChatHistoryDropdown = ({
+  chatId,
   orgSlug,
   organizationId,
   currentUserId,
+  isNewChat = false,
 }: ChatHistoryDropdownProps) => {
   const router = useRouter();
-  const { id } = useParams();
   const [isOpen, setIsOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -148,7 +151,7 @@ export const ChatHistoryDropdown = ({
 
     setShowDeleteDialog(false);
 
-    if (deleteId === id) {
+    if (deleteId === chatId) {
       router.push(`/${orgSlug}/chat`);
     }
   };
@@ -181,7 +184,7 @@ export const ChatHistoryDropdown = ({
               key={chat.id}
               className={cn(
                 "group hover:bg-accent flex items-center justify-between rounded-md px-2 py-1.5",
-                chat.id === id && "bg-accent",
+                chat.id === chatId && "bg-accent",
               )}
             >
               <Link
@@ -238,7 +241,7 @@ export const ChatHistoryDropdown = ({
     <>
       <div className="flex items-center gap-1">
         {/* 新規チャットボタン（既存チャット画面のみ表示） */}
-        {id && (
+        {chatId && !isNewChat && (
           <Button variant="ghost" size="sm" onClick={handleNewChat}>
             <Plus className="mr-1 h-4 w-4" />
             新規チャット

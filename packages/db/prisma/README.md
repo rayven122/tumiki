@@ -537,6 +537,7 @@ erDiagram
   PiiMaskingMode piiMaskingMode
   String piiInfoTypes
   Boolean toonConversionEnabled
+  Boolean dynamicSearch
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -673,6 +674,10 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
     > TOON変換を有効にするかどうか（AIへのトークン削減用）
     > true: レスポンスをTOON形式に変換してからAIに返す
     > false: JSONのままAIに返す（デフォルト）
+  - `dynamicSearch`
+    > Dynamic Search を有効にするかどうか
+    > true: 元のツールを公開せず、search_tools/describe_tools/execute_tool のみ公開
+    > false: 従来通り全ツールを公開（デフォルト）
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ

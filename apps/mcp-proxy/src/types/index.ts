@@ -29,7 +29,7 @@ export type AuthContext = {
  * Keycloakのカスタムクレームは `tumiki` ネームスペース内に格納される
  */
 export type JWTPayload = {
-  sub: string; // ユーザーID（Keycloak Subject）
+  sub?: string; // ユーザーID（Keycloak Subject）- 一部のKeycloak設定では未定義の場合あり
   tumiki?: {
     org_id?: string; // 組織ID（Organization.id）
   };

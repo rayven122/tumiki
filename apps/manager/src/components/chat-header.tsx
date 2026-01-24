@@ -82,13 +82,24 @@ function PureChatHeader({
         />
       )}
 
-      {/* MCPサーバー選択 */}
+      {/* MCPサーバー選択（既存チャットでは変更不可） */}
       {!isReadonly && (
-        <McpServerSelector
-          selectedMcpServerIds={selectedMcpServerIds}
-          onSelectionChange={onMcpServerSelectionChange}
-          className="order-2"
-        />
+        <Tooltip>
+          <TooltipTrigger asChild className="order-2">
+            <div>
+              <McpServerSelector
+                selectedMcpServerIds={selectedMcpServerIds}
+                onSelectionChange={onMcpServerSelectionChange}
+                disabled={!isNewChat}
+              />
+            </div>
+          </TooltipTrigger>
+          {!isNewChat && (
+            <TooltipContent side="bottom">
+              MCPサーバーは新規チャット作成時のみ変更できます
+            </TooltipContent>
+          )}
+        </Tooltip>
       )}
 
       {/* 公開設定（新規チャットの場合は非表示） */}
@@ -123,9 +134,11 @@ function PureChatHeader({
       {/* 新規チャット・履歴 */}
       <div className="order-5 ml-auto">
         <ChatHistoryDropdown
+          chatId={chatId}
           orgSlug={orgSlug}
           organizationId={organizationId}
           currentUserId={session.user?.id ?? ""}
+          isNewChat={isNewChat}
         />
       </div>
     </header>
@@ -133,8 +146,10 @@ function PureChatHeader({
 }
 
 export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
-  // selectedModelId と selectedMcpServerIds の両方を比較
+  // chatId、selectedModelId、selectedMcpServerIds、isNewChat を比較
   return (
+    prevProps.chatId === nextProps.chatId &&
+    prevProps.isNewChat === nextProps.isNewChat &&
     prevProps.selectedModelId === nextProps.selectedModelId &&
     prevProps.selectedMcpServerIds.length ===
       nextProps.selectedMcpServerIds.length &&
