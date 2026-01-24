@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Script from "next/script";
 
 import { Chat } from "@/components/chat";
@@ -7,7 +6,6 @@ import { generateCUID } from "@/lib/utils";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DataStreamProvider } from "@/components/data-stream-provider";
 import { auth } from "~/auth";
-import { getMcpServerIdsFromCookie } from "./actions";
 import { api } from "@/trpc/server";
 
 type PageProps = {
@@ -31,13 +29,10 @@ export default async function Page(props: PageProps) {
 
   const id = generateCUID();
 
-  const cookieStore = await cookies();
-  const modelIdFromCookie = cookieStore.get("chat-model");
-
-  const chatModel = modelIdFromCookie?.value ?? DEFAULT_CHAT_MODEL;
-
-  // CookieからMCPサーバー選択を取得
-  const mcpServerIds = await getMcpServerIdsFromCookie();
+  // 新規チャットではデフォルト値を渡す
+  // クライアントサイドでhydration後にLocalStorageから読み込む
+  const chatModel = DEFAULT_CHAT_MODEL;
+  const mcpServerIds: string[] = [];
 
   return (
     <DataStreamProvider>
