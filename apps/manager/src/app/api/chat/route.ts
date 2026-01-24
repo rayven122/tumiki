@@ -277,6 +277,7 @@ export const POST = async (request: Request) => {
       selectedChatModel,
       selectedVisibilityType,
       selectedMcpServerIds,
+      isCoharuEnabled,
     } = requestBody;
 
     const session = await auth();
@@ -453,6 +454,7 @@ export const POST = async (request: Request) => {
             selectedChatModel,
             requestHints,
             mcpToolNames,
+            isCoharuEnabled,
           }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
