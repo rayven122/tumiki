@@ -1,7 +1,6 @@
 "use server";
 
 import { generateText, type UIMessage } from "ai";
-import { cookies } from "next/headers";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
@@ -9,24 +8,6 @@ import {
 } from "@/lib/db/queries";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { getTitleModel } from "@/lib/ai/providers";
-
-export const saveChatModelAsCookie = async (model: string) => {
-  const cookieStore = await cookies();
-  cookieStore.set("chat-model", model);
-};
-
-export const getMcpServerIdsFromCookie = async (): Promise<string[]> => {
-  const cookieStore = await cookies();
-  const mcpServersCookie = cookieStore.get("chat-mcp-servers");
-  if (!mcpServersCookie?.value) {
-    return [];
-  }
-  try {
-    return JSON.parse(mcpServersCookie.value) as string[];
-  } catch {
-    return [];
-  }
-};
 
 export const generateTitleFromUserMessage = async ({
   message,

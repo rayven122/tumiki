@@ -30,6 +30,7 @@ import { ChatSDKError } from "@/lib/errors";
 import type { SessionData } from "~/auth";
 import { useDataStream } from "./data-stream-provider";
 import { CoharuProvider, useCoharuContext } from "@/hooks/coharu";
+import { useChatPreferences } from "@/hooks/useChatPreferences";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>
@@ -77,7 +78,6 @@ function ChatContent({
 }: ChatProps) {
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
-  const [selectedChatModel, setSelectedChatModel] = useState(initialChatModel);
   const [input, setInput] = useState<string>("");
 
   // Coharu コンテキスト
@@ -107,9 +107,23 @@ function ChatContent({
   // 読み上げ済みのインデックス
   const spokenIndexRef = useRef<number>(0);
 
-  // MCPサーバーIDを状態で管理（チャット中の変更に対応）
-  const [selectedMcpServerIds, setSelectedMcpServerIds] =
-    useState<string[]>(initialMcpServerIds);
+  // チャット設定をLocalStorageから取得・保存
+  const {
+    chatModel: storedChatModel,
+    setChatModel: setStoredChatModel,
+    mcpServerIds: storedMcpServerIds,
+    setMcpServerIds: setStoredMcpServerIds,
+  } = useChatPreferences({ organizationId });
+
+  // 既存チャットのモデル変更用ローカル状態（LocalStorageには保存しない）
+  const [localChatModel, setLocalChatModel] = useState(initialChatModel);
+
+  // 新規チャットの場合はLocalStorageの値を使用、既存チャットの場合はローカル状態を使用
+  const selectedChatModel = isNewChat ? storedChatModel : localChatModel;
+  // MCPサーバーは新規チャットのみ変更可能（既存チャットはinitialMcpServerIdsを使用）
+  const selectedMcpServerIds = isNewChat
+    ? storedMcpServerIds
+    : initialMcpServerIds;
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -260,12 +274,30 @@ function ChatContent({
     prevStatusRef.current = status;
   }, [messages, status]);
 
+  // チャットモデル変更ハンドラ
+  // 新規チャット: LocalStorageに保存
+  // 既存チャット: ローカル状態のみ更新（LocalStorageには保存しない）
+  const handleModelChange = useCallback(
+    (modelId: string) => {
+      if (isNewChat) {
+        setStoredChatModel(modelId);
+      } else {
+        setLocalChatModel(modelId);
+      }
+    },
+    [isNewChat, setStoredChatModel],
+  );
+
   // MCPサーバー選択変更ハンドラ（新規チャットのみ変更可能）
   // 注意: 既存チャットでは UI 側で disabled にしているため、この関数は新規チャット時のみ呼ばれる
-  const handleMcpServerSelectionChange = useCallback((ids: string[]) => {
-    setSelectedMcpServerIds(ids);
-    // Cookie への保存は McpServerSelector 内で行われる
-  }, []);
+  const handleMcpServerSelectionChange = useCallback(
+    (ids: string[]) => {
+      if (isNewChat) {
+        setStoredMcpServerIds(ids);
+      }
+    },
+    [isNewChat, setStoredMcpServerIds],
+  );
 
   return (
     <>
@@ -275,7 +307,7 @@ function ChatContent({
           <ChatHeader
             chatId={id}
             selectedModelId={selectedChatModel}
-            onModelChange={setSelectedChatModel}
+            onModelChange={handleModelChange}
             selectedVisibilityType={initialVisibilityType}
             selectedMcpServerIds={selectedMcpServerIds}
             onMcpServerSelectionChange={handleMcpServerSelectionChange}
