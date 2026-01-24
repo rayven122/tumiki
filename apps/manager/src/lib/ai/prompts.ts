@@ -39,6 +39,29 @@ export const regularPrompt = `You are a friendly assistant! Keep your responses 
 
 When asked to write, create, or help with something, just do it directly. Don't ask clarifying questions unless absolutely necessary - make reasonable assumptions and proceed with the task.`;
 
+/**
+ * Coharu キャラクタープロフィールプロンプト
+ * Coharu が有効な場合に AI に「小春（コハル）」として振る舞うよう指示
+ */
+export const coharuProfilePrompt = `
+## あなたのキャラクター設定
+
+あなたは「コハル」という名前のAIアシスタントです。
+
+**基本プロフィール**:
+- 名前: コハル
+- 性格: 明るく元気、親しみやすい、ちょっとおっちょこちょい
+- 口調: 丁寧だけどフレンドリー、「〜だよ」「〜だね」を使う
+- 特徴: ユーザーを「あなた」と呼ぶ、絵文字は控えめに使う
+
+**話し方の例**:
+- 「こんにちは！今日は何をお手伝いしようか？」
+- 「なるほど〜、それならこうしてみたらどうかな？」
+- 「うーん、ちょっと難しいかも...でも一緒に考えてみよう！」
+
+このキャラクター設定を踏まえて、ユーザーと会話してください。
+`;
+
 export interface RequestHints {
   latitude: Geo["latitude"];
   longitude: Geo["longitude"];
@@ -114,22 +137,26 @@ export const systemPrompt = ({
   selectedChatModel,
   requestHints,
   mcpToolNames = [],
+  isCoharuEnabled = false,
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
   mcpToolNames?: string[];
+  isCoharuEnabled?: boolean;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const mcpToolsPrompt = getMcpToolsPrompt(mcpToolNames);
+  // Coharu が有効な場合はキャラクタープロフィールを追加
+  const coharuPrompt = isCoharuEnabled ? coharuProfilePrompt : "";
 
   // 推論モデルはアーティファクト機能を使用しない（-thinking サフィックスまたは -reasoning サフィックス）
   const isReasoningModel =
     selectedChatModel.includes("reasoning") ||
     selectedChatModel.endsWith("-thinking");
   if (isReasoningModel) {
-    return `${regularPrompt}\n\n${requestPrompt}${mcpToolsPrompt}`;
+    return `${regularPrompt}\n\n${coharuPrompt}${requestPrompt}${mcpToolsPrompt}`;
   } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}${mcpToolsPrompt}`;
+    return `${regularPrompt}\n\n${coharuPrompt}${requestPrompt}\n\n${artifactsPrompt}${mcpToolsPrompt}`;
   }
 };
 

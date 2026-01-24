@@ -50,6 +50,8 @@ export const postRequestBodySchema = z.object({
   selectedVisibilityType: z.enum(["PRIVATE", "ORGANIZATION", "PUBLIC"]),
   /// 選択されたMCPサーバーIDの配列
   selectedMcpServerIds: z.array(z.string()).optional().default([]),
+  /// Coharu が有効かどうか
+  isCoharuEnabled: z.boolean().optional().default(false),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;
