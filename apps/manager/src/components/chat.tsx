@@ -3,7 +3,7 @@
 import { DefaultChatTransport } from "ai";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { ChatHeader } from "@/components/chat-header";
 import type { Vote } from "@tumiki/db/prisma";
@@ -59,12 +59,6 @@ export function Chat({
   const [selectedMcpServerIds, setSelectedMcpServerIds] =
     useState<string[]>(initialMcpServerIds);
 
-  // useRef で最新値を保持（prepareSendMessagesRequest のクロージャ問題を回避）
-  const mcpServerIdsRef = useRef(selectedMcpServerIds);
-  useEffect(() => {
-    mcpServerIdsRef.current = selectedMcpServerIds;
-  }, [selectedMcpServerIds]);
-
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
@@ -97,8 +91,7 @@ export function Chat({
             message: lastMessage,
             selectedChatModel,
             selectedVisibilityType: visibilityType,
-            // useRef経由で最新のMCPサーバーIDを参照
-            selectedMcpServerIds: mcpServerIdsRef.current,
+            selectedMcpServerIds,
             ...request.body,
           },
         };
