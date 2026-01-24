@@ -12,6 +12,7 @@ import {
   getMcpServerOrganization,
   checkOrganizationMembership,
   getUserIdFromKeycloakId,
+  getUserIdByEmail,
 } from "../../services/mcpServerService.js";
 
 /**
@@ -117,20 +118,32 @@ export const jwtAuthMiddleware = async (
     );
   }
 
-  // Step 5: Keycloak ID から Tumiki User ID を解決
+  // Step 5: Keycloak ID または email から Tumiki User ID を解決
   let userId: string;
   try {
-    const resolvedUserId = await getUserIdFromKeycloakId(jwtPayload.sub);
+    let resolvedUserId: string | null = null;
+
+    // sub が存在する場合は Keycloak ID で検索
+    if (jwtPayload.sub) {
+      resolvedUserId = await getUserIdFromKeycloakId(jwtPayload.sub);
+    }
+
+    // sub が undefined または見つからない場合は email でフォールバック
+    if (!resolvedUserId && jwtPayload.email) {
+      resolvedUserId = await getUserIdByEmail(jwtPayload.email);
+    }
+
     if (!resolvedUserId) {
       return c.json(
-        createUnauthorizedError("User not found for Keycloak ID"),
+        createUnauthorizedError("User not found for Keycloak ID or email"),
         401,
       );
     }
     userId = resolvedUserId;
   } catch (error) {
-    logError("Failed to resolve user ID from Keycloak ID", error as Error, {
+    logError("Failed to resolve user ID", error as Error, {
       keycloakId: jwtPayload.sub,
+      email: jwtPayload.email,
     });
     return c.json(
       createUnauthorizedError("Failed to verify user identity"),

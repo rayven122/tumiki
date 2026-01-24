@@ -2,22 +2,25 @@
  * @namespace Chat
  * AIチャット関連のテーブル
  */
-enum Visibility {
-  private
-  public
-}
 
 model Chat {
-  id         String     @id @default(cuid())
+  id         String              @id @default(cuid())
   createdAt  DateTime
   title      String
   userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  visibility Visibility @default(private)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// チャットの可視性（McpServerVisibility を共通利用）
+  visibility McpServerVisibility @default(PRIVATE)
 
-  messages Message[]
-  votes    Vote[]
-  streams  Stream[]
+  /// 組織ID（組織レベルでのチャット管理）
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  messages   Message[]
+  votes      Vote[]
+  streams    Stream[]
+  /// チャットに紐づくMCPサーバー（暗黙的多対多）
+  mcpServers McpServer[]
 }
 
 model Message {

@@ -15,7 +15,8 @@ export const MainContent = ({ children }: MainContentProps) => {
   return (
     <main
       className={cn(
-        "flex-1 overflow-auto pt-14 transition-all duration-300",
+        "h-[calc(100dvh-56px)] overflow-auto transition-all duration-300",
+        "mt-14", // SimpleHeaderの高さ分のマージン
         isOpen ? "md:ml-64" : "md:ml-16",
       )}
     >

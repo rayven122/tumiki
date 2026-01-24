@@ -1,16 +1,29 @@
-import { myProvider } from "@/lib/ai/providers";
+import { getArtifactModel } from "@/lib/ai/providers";
 import { sheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
 import { createDocumentHandler } from "@/lib/artifacts/server";
-import { streamObject } from "ai";
+import { type UIMessageStreamWriter, streamObject } from "ai";
 import { z } from "zod";
+
+// UIMessageStreamWriterにデータを書き込むヘルパー関数
+// AI SDK 6では `data-${string}` パターンを使用
+const writeArtifactData = (
+  writer: UIMessageStreamWriter,
+  dataType: string,
+  content: unknown,
+) => {
+  writer.write({
+    type: `data-artifact-${dataType}` as `data-${string}`,
+    data: content,
+  });
+};
 
 export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   kind: "sheet",
-  onCreateDocument: async ({ title, dataStream }) => {
+  onCreateDocument: async ({ title, writer }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel("artifact-model"),
+      model: getArtifactModel(),
       system: sheetPrompt,
       prompt: title,
       schema: z.object({
@@ -29,10 +42,7 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
           const { csv } = object as { csv: string };
 
           if (csv) {
-            dataStream.writeData({
-              type: "sheet-delta",
-              content: csv,
-            });
+            writeArtifactData(writer, "sheet-delta", csv);
 
             draftContent = csv;
           }
@@ -40,18 +50,15 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
       }
     }
 
-    dataStream.writeData({
-      type: "sheet-delta",
-      content: draftContent,
-    });
+    writeArtifactData(writer, "sheet-delta", draftContent);
 
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream }) => {
+  onUpdateDocument: async ({ document, description, writer }) => {
     let draftContent = "";
 
     const { fullStream } = streamObject({
-      model: myProvider.languageModel("artifact-model"),
+      model: getArtifactModel(),
       system: updateDocumentPrompt(document.content, "sheet"),
       prompt: description,
       schema: z.object({
@@ -70,10 +77,7 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
           const { csv } = object as { csv: string };
 
           if (csv) {
-            dataStream.writeData({
-              type: "sheet-delta",
-              content: csv,
-            });
+            writeArtifactData(writer, "sheet-delta", csv);
 
             draftContent = csv;
           }

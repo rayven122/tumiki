@@ -1,15 +1,28 @@
-import { smoothStream, streamText } from "ai";
-import { myProvider } from "@/lib/ai/providers";
+import { type UIMessageStreamWriter, smoothStream, streamText } from "ai";
+import { getArtifactModel } from "@/lib/ai/providers";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 import { updateDocumentPrompt } from "@/lib/ai/prompts";
 
+// UIMessageStreamWriterにデータを書き込むヘルパー関数
+// AI SDK 6では `data-${string}` パターンを使用
+const writeArtifactData = (
+  writer: UIMessageStreamWriter,
+  dataType: string,
+  content: unknown,
+) => {
+  writer.write({
+    type: `data-artifact-${dataType}` as `data-${string}`,
+    data: content,
+  });
+};
+
 export const textDocumentHandler = createDocumentHandler<"text">({
   kind: "text",
-  onCreateDocument: async ({ title, dataStream }) => {
+  onCreateDocument: async ({ title, writer }) => {
     let draftContent = "";
 
     const { fullStream } = streamText({
-      model: myProvider.languageModel("artifact-model"),
+      model: getArtifactModel(),
       system:
         "Write about the given topic. Markdown is supported. Use headings wherever appropriate.",
       experimental_transform: smoothStream({ chunking: "word" }),
@@ -20,48 +33,34 @@ export const textDocumentHandler = createDocumentHandler<"text">({
       const { type } = delta;
 
       if (type === "text-delta") {
-        const { textDelta } = delta;
+        const { text: textDelta } = delta;
 
         draftContent += textDelta;
 
-        dataStream.writeData({
-          type: "text-delta",
-          content: textDelta,
-        });
+        writeArtifactData(writer, "text-delta", textDelta);
       }
     }
 
     return draftContent;
   },
-  onUpdateDocument: async ({ document, description, dataStream }) => {
+  onUpdateDocument: async ({ document, description, writer }) => {
     let draftContent = "";
 
     const { fullStream } = streamText({
-      model: myProvider.languageModel("artifact-model"),
+      model: getArtifactModel(),
       system: updateDocumentPrompt(document.content, "text"),
       experimental_transform: smoothStream({ chunking: "word" }),
       prompt: description,
-      experimental_providerMetadata: {
-        openai: {
-          prediction: {
-            type: "content",
-            content: document.content,
-          },
-        },
-      },
     });
 
     for await (const delta of fullStream) {
       const { type } = delta;
 
       if (type === "text-delta") {
-        const { textDelta } = delta;
+        const { text: textDelta } = delta;
 
         draftContent += textDelta;
-        dataStream.writeData({
-          type: "text-delta",
-          content: textDelta,
-        });
+        writeArtifactData(writer, "text-delta", textDelta);
       }
     }
 

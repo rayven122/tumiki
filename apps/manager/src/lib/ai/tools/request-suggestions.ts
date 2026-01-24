@@ -1,27 +1,42 @@
 import { z } from "zod";
-import { type DataStreamWriter, streamObject, tool } from "ai";
+import { type UIMessageStreamWriter, streamObject, tool } from "ai";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@tumiki/db/prisma";
 import { generateCUID } from "@/lib/utils";
-import { myProvider } from "../providers";
+import { getArtifactModel } from "../providers";
 import type { SessionData } from "~/auth";
 
 interface RequestSuggestionsProps {
   session: SessionData;
-  dataStream: DataStreamWriter;
+  writer: UIMessageStreamWriter;
 }
+
+// UIMessageStreamWriterにデータを書き込むヘルパー関数
+// AI SDK 6では `data-${string}` パターンを使用
+// vercel/ai-chatbot に合わせて transient: true を追加
+const writeArtifactData = (
+  writer: UIMessageStreamWriter,
+  dataType: string,
+  content: unknown,
+) => {
+  writer.write({
+    type: `data-${dataType}` as `data-${string}`,
+    data: content,
+    transient: true,
+  });
+};
+
+const requestSuggestionsInputSchema = z.object({
+  documentId: z.string().describe("The ID of the document to request edits"),
+});
 
 export const requestSuggestions = ({
   session,
-  dataStream,
+  writer,
 }: RequestSuggestionsProps) =>
   tool({
     description: "Request suggestions for a document",
-    parameters: z.object({
-      documentId: z
-        .string()
-        .describe("The ID of the document to request edits"),
-    }),
+    inputSchema: requestSuggestionsInputSchema,
     execute: async ({ documentId }) => {
       const document = await getDocumentById({ id: documentId });
 
@@ -36,7 +51,7 @@ export const requestSuggestions = ({
       > = [];
 
       const { elementStream } = streamObject({
-        model: myProvider.languageModel("artifact-model"),
+        model: getArtifactModel(),
         system:
           "You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.",
         prompt: document.content,
@@ -72,10 +87,7 @@ export const requestSuggestions = ({
             isResolved: false,
           };
 
-          dataStream.writeData({
-            type: "suggestion",
-            content: suggestion,
-          });
+          writeArtifactData(writer, "suggestion", suggestion);
 
           suggestions.push(suggestion);
         }

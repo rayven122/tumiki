@@ -5,20 +5,24 @@ import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useState } from "react";
 import type { Vote } from "@tumiki/db/prisma";
+import type { ArtifactKind } from "./artifact";
 import { DocumentToolCall, DocumentToolResult } from "./document";
 import { PencilEditIcon, SparklesIcon } from "./icons";
-import { Markdown } from "./markdown";
+import { Response } from "./response";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
-import { Weather } from "./weather";
+import { Weather, type WeatherAtLocation } from "./weather";
 import equal from "fast-deep-equal";
 import { cn, sanitizeText } from "@/lib/utils";
+import { McpToolCall } from "./mcp-tool-call";
 import { Button } from "./ui/chat/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
 import { MessageEditor } from "./message-editor";
 import { DocumentPreview } from "./document-preview";
 import { MessageReasoning } from "./message-reasoning";
+import { TypingIndicator } from "./typing-indicator";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import type { ChatMessage } from "@/lib/types";
 
 const PurePreviewMessage = ({
   chatId,
@@ -26,7 +30,7 @@ const PurePreviewMessage = ({
   vote,
   isLoading,
   setMessages,
-  reload,
+  regenerate,
   isReadonly,
   requiresScrollPadding,
 }: {
@@ -34,12 +38,24 @@ const PurePreviewMessage = ({
   message: UIMessage;
   vote: Vote | undefined;
   isLoading: boolean;
-  setMessages: UseChatHelpers["setMessages"];
-  reload: UseChatHelpers["reload"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   requiresScrollPadding: boolean;
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
+
+  // AI SDK 6: experimental_attachments は削除され、parts内のfileタイプに変更
+  const fileAttachments = message.parts
+    ?.filter(
+      (part): part is { type: "file"; url: string; mediaType: string } =>
+        part.type === "file" && "url" in part,
+    )
+    .map((part) => ({
+      url: part.url,
+      name: part.url.split("/").pop() ?? "file",
+      contentType: part.mediaType,
+    }));
 
   return (
     <AnimatePresence>
@@ -72,36 +88,45 @@ const PurePreviewMessage = ({
               "min-h-96": message.role === "assistant" && requiresScrollPadding,
             })}
           >
-            {message.experimental_attachments &&
-              message.experimental_attachments.length > 0 && (
-                <div
-                  data-testid={`message-attachments`}
-                  className="flex flex-row justify-end gap-2"
-                >
-                  {message.experimental_attachments.map((attachment) => (
-                    <PreviewAttachment
-                      key={attachment.url}
-                      attachment={attachment}
-                    />
-                  ))}
-                </div>
-              )}
+            {fileAttachments && fileAttachments.length > 0 && (
+              <div
+                data-testid={`message-attachments`}
+                className="flex flex-row justify-end gap-2"
+              >
+                {fileAttachments.map((attachment) => (
+                  <PreviewAttachment
+                    key={attachment.url}
+                    attachment={attachment}
+                  />
+                ))}
+              </div>
+            )}
 
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
 
               if (type === "reasoning") {
+                // AI SDK 6: reasoning プロパティは text に変更
                 return (
                   <MessageReasoning
                     key={key}
                     isLoading={isLoading}
-                    reasoning={part.reasoning}
+                    reasoning={part.text}
                   />
                 );
               }
 
               if (type === "text") {
+                // 最後のテキストパーツかどうかを判定（タイプライターカーソル表示用）
+                const textParts = message.parts?.filter(
+                  (p) => p.type === "text",
+                );
+                const isLastTextPart =
+                  textParts && textParts[textParts.length - 1] === part;
+                const showCursor =
+                  isLoading && message.role === "assistant" && isLastTextPart;
+
                 if (mode === "view") {
                   return (
                     <div key={key} className="flex flex-row items-start gap-2">
@@ -130,7 +155,13 @@ const PurePreviewMessage = ({
                             message.role === "user",
                         })}
                       >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                        <Response>{sanitizeText(part.text)}</Response>
+                        {showCursor && (
+                          <span
+                            className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-[blink_0.5s_step-end_infinite] bg-current align-middle"
+                            aria-hidden="true"
+                          />
+                        )}
                       </div>
                     </div>
                   );
@@ -146,30 +177,137 @@ const PurePreviewMessage = ({
                         message={message}
                         setMode={setMode}
                         setMessages={setMessages}
-                        reload={reload}
+                        regenerate={regenerate}
                       />
                     </div>
                   );
                 }
               }
 
-              if (type === "tool-invocation") {
-                const { toolInvocation } = part;
-                const { toolName, toolCallId, state } = toolInvocation;
+              // AI SDK 6: dynamic-tool タイプ（MCP動的ツール）の処理
+              if (type === "dynamic-tool") {
+                const dynamicToolPart = part as unknown as {
+                  type: "dynamic-tool";
+                  toolName: string;
+                  toolCallId: string;
+                  state: string; // "pending" | "output-available" | "error" など
+                  input?: unknown;
+                  output?: unknown;
+                };
 
-                if (state === "call") {
-                  const { args } = toolInvocation;
+                // AI SDK 6の状態形式にマッピング
+                // dynamic-tool の状態: "pending", "output-available", "error"
+                const mapDynamicToolState = (
+                  state: string,
+                ):
+                  | "input-streaming"
+                  | "input-available"
+                  | "output-available"
+                  | "output-error" => {
+                  switch (state) {
+                    case "output-available":
+                      return "output-available";
+                    case "error":
+                      return "output-error";
+                    case "pending":
+                    default:
+                      return "input-available";
+                  }
+                };
+
+                return (
+                  <McpToolCall
+                    key={dynamicToolPart.toolCallId}
+                    toolName={dynamicToolPart.toolName}
+                    state={mapDynamicToolState(dynamicToolPart.state)}
+                    input={dynamicToolPart.input}
+                    output={dynamicToolPart.output}
+                  />
+                );
+              }
+
+              // AI SDK 6: tool-${toolName} 形式のツールパーツを処理
+              // 状態: input-streaming, input-available, output-available, output-error
+              if (type === "tool-getWeather") {
+                const toolPart = part as unknown as {
+                  type: "tool-getWeather";
+                  toolCallId: string;
+                  state: string;
+                  input?: unknown;
+                  output?: WeatherAtLocation;
+                };
+                const { toolCallId, state } = toolPart;
+
+                // 結果が利用可能な場合
+                if (state === "output-available") {
+                  return (
+                    <div key={toolCallId} className="w-[min(100%,450px)]">
+                      <Weather weatherAtLocation={toolPart.output} />
+                    </div>
+                  );
+                }
+
+                // 入力中または実行中の場合はスケルトン表示
+                return (
+                  <div
+                    key={toolCallId}
+                    className="skeleton w-[min(100%,450px)]"
+                  >
+                    <Weather />
+                  </div>
+                );
+              }
+
+              // その他のツールパーツの処理
+              if (type.startsWith("tool-")) {
+                // AI SDK 6のツールパーツ構造
+                // 型アサーションには unknown を経由する必要がある
+                const toolPart = part as unknown as {
+                  type: `tool-${string}`;
+                  toolCallId: string;
+                  state: string;
+                  input?: unknown;
+                  output?: unknown;
+                };
+                const { toolCallId, state } = toolPart;
+                // ツール名を抽出 (tool-getWeather → getWeather)
+                const toolName = type.replace("tool-", "");
+
+                // MCPツールかどうか判定（"__" を含む）
+                const isMcpTool = toolName.includes("__");
+
+                if (isMcpTool) {
+                  // MCPツール用コンポーネント（AI SDK 6 の状態形式を直接渡す）
+                  return (
+                    <McpToolCall
+                      key={toolCallId}
+                      toolName={toolName}
+                      state={
+                        state as
+                          | "input-streaming"
+                          | "input-available"
+                          | "output-available"
+                          | "output-error"
+                      }
+                      input={toolPart.input}
+                      output={toolPart.output}
+                    />
+                  );
+                }
+
+                // 入力中または実行中の状態
+                if (
+                  state === "input-streaming" ||
+                  state === "input-available"
+                ) {
+                  // args を適切な型にキャスト（デフォルト値を設定）
+                  const args = (toolPart.input as
+                    | { title: string }
+                    | undefined) ?? { title: "" };
 
                   return (
-                    <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ["getWeather"].includes(toolName),
-                      })}
-                    >
-                      {toolName === "getWeather" ? (
-                        <Weather />
-                      ) : toolName === "createDocument" ? (
+                    <div key={toolCallId}>
+                      {toolName === "createDocument" ? (
                         <DocumentPreview isReadonly={isReadonly} args={args} />
                       ) : toolName === "updateDocument" ? (
                         <DocumentToolCall
@@ -188,28 +326,48 @@ const PurePreviewMessage = ({
                   );
                 }
 
-                if (state === "result") {
-                  const { result } = toolInvocation;
+                // 結果が利用可能な状態
+                if (state === "output-available") {
+                  // result を適切な型にキャスト
+                  const result = toolPart.output as
+                    | { id: string; title: string; kind: ArtifactKind }
+                    | undefined;
 
                   return (
                     <div key={toolCallId}>
-                      {toolName === "getWeather" ? (
-                        <Weather weatherAtLocation={result} />
-                      ) : toolName === "createDocument" ? (
+                      {toolName === "createDocument" ? (
                         <DocumentPreview
                           isReadonly={isReadonly}
-                          result={result}
+                          result={
+                            result as {
+                              id: string;
+                              title: string;
+                              kind: ArtifactKind;
+                            }
+                          }
                         />
                       ) : toolName === "updateDocument" ? (
                         <DocumentToolResult
                           type="update"
-                          result={result}
+                          result={
+                            result as {
+                              id: string;
+                              title: string;
+                              kind: ArtifactKind;
+                            }
+                          }
                           isReadonly={isReadonly}
                         />
                       ) : toolName === "requestSuggestions" ? (
                         <DocumentToolResult
                           type="request-suggestions"
-                          result={result}
+                          result={
+                            result as {
+                              id: string;
+                              title: string;
+                              kind: ArtifactKind;
+                            }
+                          }
                           isReadonly={isReadonly}
                         />
                       ) : (
@@ -218,7 +376,21 @@ const PurePreviewMessage = ({
                     </div>
                   );
                 }
+
+                // エラー状態
+                if (state === "output-error") {
+                  return (
+                    <div
+                      key={toolCallId}
+                      className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
+                    >
+                      Error: {String(toolPart.output)}
+                    </div>
+                  );
+                }
               }
+
+              return null;
             })}
 
             {!isReadonly && (
@@ -240,6 +412,9 @@ const PurePreviewMessage = ({
 export const PreviewMessage = memo(
   PurePreviewMessage,
   (prevProps, nextProps) => {
+    // ストリーミング中（isLoading=true）は常に再レンダーして、リアルタイム表示を保証
+    if (nextProps.isLoading) return false;
+
     if (prevProps.isLoading !== nextProps.isLoading) return false;
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
@@ -259,7 +434,7 @@ export const ThinkingMessage = () => {
       data-testid="message-assistant-loading"
       className="group/message mx-auto min-h-96 w-full max-w-3xl px-4"
       initial={{ y: 5, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
+      animate={{ y: 0, opacity: 1 }}
       data-role={role}
     >
       <div
@@ -270,14 +445,12 @@ export const ThinkingMessage = () => {
           },
         )}
       >
-        <div className="ring-border flex size-8 shrink-0 items-center justify-center rounded-full ring-1">
+        <div className="ring-border bg-background flex size-8 shrink-0 items-center justify-center rounded-full ring-1">
           <SparklesIcon size={14} />
         </div>
 
-        <div className="flex w-full flex-col gap-2">
-          <div className="text-muted-foreground flex flex-col gap-4">
-            Hmm...
-          </div>
+        <div className="flex w-full flex-col gap-2 pt-2">
+          <TypingIndicator className="text-muted-foreground" />
         </div>
       </div>
     </motion.div>

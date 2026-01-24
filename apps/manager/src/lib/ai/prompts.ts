@@ -4,20 +4,23 @@ import type { Geo } from "@vercel/functions";
 export const artifactsPrompt = `
 Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
 
-When asked to write code, always use artifacts. When writing code, specify the language in the backticks, e.g. \`\`\`python\`code here\`\`\`. The default language is Python. Other languages are not yet supported, so let the user know if they request a different language.
+**CRITICAL: When asked to write code, you MUST use the \`createDocument\` tool with \`kind: "code"\`.**
+- Do NOT output code directly in the chat message using Markdown code blocks (\`\`\`)
+- Instead, call the \`createDocument\` tool to render the code in the artifact panel
+- The default language is Python. Other languages are not yet supported, so let the user know if they request a different language.
 
 DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
 
 This is a guide for using artifacts tools: \`createDocument\` and \`updateDocument\`, which render content on a artifacts beside the conversation.
 
 **When to use \`createDocument\`:**
-- For substantial content (>10 lines) or code
+- For ANY code (even short snippets) - ALWAYS use \`createDocument\` with \`kind: "code"\`
+- For substantial content (>10 lines)
 - For content users will likely save/reuse (emails, code, essays, etc.)
 - When explicitly requested to create a document
-- For when content contains a single code snippet
 
 **When NOT to use \`createDocument\`:**
-- For informational/explanatory content
+- For purely informational/explanatory content without code
 - For conversational responses
 - When asked to keep it in chat
 
@@ -32,8 +35,9 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 Do not update document right after creating it. Wait for user feedback or request to update it.
 `;
 
-export const regularPrompt =
-  "You are a friendly assistant! Keep your responses concise and helpful.";
+export const regularPrompt = `You are a friendly assistant! Keep your responses concise and helpful.
+
+When asked to write, create, or help with something, just do it directly. Don't ask clarifying questions unless absolutely necessary - make reasonable assumptions and proceed with the task.`;
 
 export interface RequestHints {
   latitude: Geo["latitude"];
@@ -50,19 +54,82 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
+/**
+ * MCPツールに関するプロンプトを生成
+ * ツール名のフォーマット: {serverId}__{toolName}
+ */
+export const getMcpToolsPrompt = (mcpToolNames: string[]) => {
+  if (mcpToolNames.length === 0) {
+    return "";
+  }
+
+  // サーバーIDごとにツールをグループ化
+  const toolsByServer: Record<string, string[]> = {};
+  for (const toolName of mcpToolNames) {
+    const [serverId, ...rest] = toolName.split("__");
+    const originalToolName = rest.join("__");
+    if (serverId && originalToolName) {
+      if (!toolsByServer[serverId]) {
+        toolsByServer[serverId] = [];
+      }
+      toolsByServer[serverId].push(originalToolName);
+    }
+  }
+
+  const serverSections = Object.entries(toolsByServer)
+    .map(([serverId, tools]) => {
+      return `- **${serverId}**: ${tools.join(", ")}`;
+    })
+    .join("\n");
+
+  return `
+## Available MCP Tools
+
+You have access to external MCP (Model Context Protocol) tools. These tools allow you to interact with external services.
+
+**Important:** When you need to use an MCP tool, call it with the full tool name format: \`{serverId}__{toolName}\`
+
+Available tools by server:
+${serverSections}
+
+**When to use MCP tools:**
+- When the user asks for information from external services (e.g., Linear issues, teams, projects)
+- When you need to perform actions in external systems
+- Always prefer using these tools over asking the user to check manually
+
+**How to use:**
+- Call the tool directly with the required parameters
+- The tool name must include the server ID prefix (e.g., \`linear__list_teams\`)
+
+**Chaining tool calls:**
+- You can make multiple tool calls in sequence within a single conversation turn
+- Use the results from one tool call to inform subsequent tool calls
+- For example: First call \`resolve-library-id\` to get an ID, then use that ID to call \`get-library-docs\`
+- When the user asks to perform a multi-step operation, automatically chain the necessary tool calls without asking for confirmation
+- Up to 5 sequential tool calls are allowed per turn
+`;
+};
+
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
+  mcpToolNames = [],
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
+  mcpToolNames?: string[];
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
+  const mcpToolsPrompt = getMcpToolsPrompt(mcpToolNames);
 
-  if (selectedChatModel === "chat-model-reasoning") {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+  // 推論モデルはアーティファクト機能を使用しない（-thinking サフィックスまたは -reasoning サフィックス）
+  const isReasoningModel =
+    selectedChatModel.includes("reasoning") ||
+    selectedChatModel.endsWith("-thinking");
+  if (isReasoningModel) {
+    return `${regularPrompt}\n\n${requestPrompt}${mcpToolsPrompt}`;
   } else {
-    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}${mcpToolsPrompt}`;
   }
 };
 

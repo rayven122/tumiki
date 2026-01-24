@@ -2,15 +2,21 @@
 
 import { startTransition, useMemo, useOptimistic, useState } from "react";
 
-import { saveChatModelAsCookie } from "@/app/(chat)/chat/actions";
+import { saveChatModelAsCookie } from "@/app/[orgSlug]/chat/actions";
 import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/chat/dropdown-menu";
-import { chatModels } from "@/lib/ai/models";
+import {
+  chatModels,
+  DEFAULT_CHAT_MODEL,
+  getModelsGroupedByProvider,
+} from "@/lib/ai/models";
 import { cn } from "@/lib/utils";
 
 import { CheckCircleFillIcon, ChevronDownIcon } from "./icons";
@@ -20,10 +26,12 @@ import type { SessionData } from "~/auth";
 export function ModelSelector({
   session: _,
   selectedModelId,
+  onModelChange,
   className,
 }: {
   session: SessionData;
   selectedModelId: string;
+  onModelChange?: (modelId: string) => void;
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
   const [optimisticModelId, setOptimisticModelId] =
@@ -31,17 +39,31 @@ export function ModelSelector({
 
   const { availableChatModelIds } = entitlementsByUserType.regular;
 
-  const availableChatModels = chatModels.filter((chatModel) =>
-    availableChatModelIds.includes(chatModel.id),
-  );
+  // プロバイダー別にグループ化されたモデル（利用可能なものだけフィルタ）
+  const groupedModels = useMemo(() => {
+    const groups = getModelsGroupedByProvider();
+    return groups
+      .map((group) => ({
+        ...group,
+        models: group.models.filter((model) =>
+          availableChatModelIds.includes(model.id),
+        ),
+      }))
+      .filter((group) => group.models.length > 0);
+  }, [availableChatModelIds]);
 
-  const selectedChatModel = useMemo(
-    () =>
-      availableChatModels.find(
-        (chatModel) => chatModel.id === optimisticModelId,
-      ),
-    [optimisticModelId, availableChatModels],
-  );
+  // 選択されたモデルを取得、見つからない場合はデフォルトモデルにフォールバック
+  const selectedChatModel = useMemo(() => {
+    const found = chatModels.find(
+      (chatModel) =>
+        chatModel.id === optimisticModelId &&
+        availableChatModelIds.includes(chatModel.id),
+    );
+    if (found) return found;
+
+    // フォールバック: デフォルトモデルを返す
+    return chatModels.find((chatModel) => chatModel.id === DEFAULT_CHAT_MODEL);
+  }, [optimisticModelId, availableChatModelIds]);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -62,42 +84,54 @@ export function ModelSelector({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[300px]">
-        {availableChatModels.map((chatModel) => {
-          const { id } = chatModel;
+        {groupedModels.map((group, groupIndex) => (
+          <DropdownMenuGroup key={group.provider}>
+            <DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
+              {group.label}
+            </DropdownMenuLabel>
+            {group.models.map((chatModel) => {
+              const { id } = chatModel;
 
-          return (
-            <DropdownMenuItem
-              data-testid={`model-selector-item-${id}`}
-              key={id}
-              onSelect={() => {
-                setOpen(false);
+              return (
+                <DropdownMenuItem
+                  data-testid={`model-selector-item-${id}`}
+                  key={id}
+                  onSelect={() => {
+                    setOpen(false);
 
-                startTransition(() => {
-                  setOptimisticModelId(id);
-                  saveChatModelAsCookie(id);
-                });
-              }}
-              data-active={id === optimisticModelId}
-              asChild
-            >
-              <button
-                type="button"
-                className="group/item flex w-full flex-row items-center justify-between gap-4"
-              >
-                <div className="flex flex-col items-start gap-1">
-                  <div>{chatModel.name}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {chatModel.description}
-                  </div>
-                </div>
+                    startTransition(() => {
+                      setOptimisticModelId(id);
+                      saveChatModelAsCookie(id);
+                      onModelChange?.(id);
+                    });
+                  }}
+                  data-active={id === optimisticModelId}
+                  asChild
+                >
+                  <button
+                    type="button"
+                    className="group/item flex w-full flex-row items-center justify-between gap-4"
+                  >
+                    <div className="flex flex-col items-start gap-1">
+                      <div>{chatModel.name}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {chatModel.description}
+                      </div>
+                    </div>
 
-                <div className="text-foreground dark:text-foreground opacity-0 group-data-[active=true]/item:opacity-100">
-                  <CheckCircleFillIcon />
-                </div>
-              </button>
-            </DropdownMenuItem>
-          );
-        })}
+                    <div className="text-foreground dark:text-foreground opacity-0 group-data-[active=true]/item:opacity-100">
+                      <CheckCircleFillIcon />
+                    </div>
+                  </button>
+                </DropdownMenuItem>
+              );
+            })}
+            {/* 最後のグループ以外にはセパレーターを表示 */}
+            {groupIndex < groupedModels.length - 1 && (
+              <div className="bg-border my-1 h-px" />
+            )}
+          </DropdownMenuGroup>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
