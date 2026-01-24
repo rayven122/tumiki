@@ -6,6 +6,7 @@ import { auth } from "~/auth";
 import { Chat } from "@/components/chat";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { DataStreamHandler } from "@/components/data-stream-handler";
+import { DataStreamProvider } from "@/components/data-stream-provider";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import type { Message } from "@tumiki/db/prisma";
 import type { ChatMessage } from "@/lib/types";
@@ -86,7 +87,7 @@ export default async function Page(props: PageProps) {
   const isEditable = canEditChat(accessResult);
 
   return (
-    <>
+    <DataStreamProvider>
       <Script
         src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
         strategy="beforeInteractive"
@@ -104,7 +105,7 @@ export default async function Page(props: PageProps) {
         autoResume={true}
         isPersonalOrg={organization.isPersonal}
       />
-      <DataStreamHandler id={id} />
-    </>
+      <DataStreamHandler />
+    </DataStreamProvider>
   );
 }

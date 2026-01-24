@@ -67,7 +67,8 @@ function PureMessages({
         />
       ))}
 
-      {status === "submitted" &&
+      {/* ユーザーメッセージ送信後、AIの応答が始まるまでThinkingMessageを表示 */}
+      {status !== "ready" &&
         messages.length > 0 &&
         messages[messages.length - 1]!.role === "user" && <ThinkingMessage />}
 

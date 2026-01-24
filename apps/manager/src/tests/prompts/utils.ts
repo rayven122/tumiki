@@ -1,5 +1,6 @@
 import type { ModelMessage } from "ai";
 import type {
+  LanguageModelV3FinishReason,
   LanguageModelV3StreamPart,
   LanguageModelV3Usage,
 } from "@ai-sdk/provider";
@@ -10,6 +11,14 @@ const mockUsage: LanguageModelV3Usage = {
   inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
   outputTokens: { total: 20, text: 20, reasoning: 0 },
 };
+
+// v3用のfinishReason生成ヘルパー
+const createFinishReason = (
+  unified: LanguageModelV3FinishReason["unified"],
+): LanguageModelV3FinishReason => ({
+  unified,
+  raw: undefined,
+});
 
 export function compareMessages(
   firstMessage: ModelMessage,
@@ -81,10 +90,10 @@ const reasoningToDeltas = (text: string): LanguageModelV3StreamPart[] => {
 
 // v3形式のfinishパートを生成
 const createFinishPart = (
-  finishReason: "stop" | "tool-calls" = "stop",
+  finishReason: LanguageModelV3FinishReason["unified"] = "stop",
 ): LanguageModelV3StreamPart => ({
   type: "finish",
-  finishReason,
+  finishReason: createFinishReason(finishReason),
   usage: mockUsage,
 });
 

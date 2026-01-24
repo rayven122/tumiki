@@ -1,6 +1,7 @@
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import type {
+  LanguageModelV3FinishReason,
   LanguageModelV3StreamPart,
   LanguageModelV3Usage,
 } from "@ai-sdk/provider";
@@ -12,10 +13,16 @@ const mockUsage: LanguageModelV3Usage = {
   outputTokens: { total: 20, text: 20, reasoning: 0 },
 };
 
+// v3用のfinishReason
+const finishReasonStop: LanguageModelV3FinishReason = {
+  unified: "stop",
+  raw: undefined,
+};
+
 export const chatModel = new MockLanguageModelV3({
   doGenerate: async () => ({
     content: [{ type: "text", text: "Hello, world!" }],
-    finishReason: "stop",
+    finishReason: finishReasonStop,
     usage: mockUsage,
     warnings: [],
   }),
@@ -31,7 +38,7 @@ export const chatModel = new MockLanguageModelV3({
 export const reasoningModel = new MockLanguageModelV3({
   doGenerate: async () => ({
     content: [{ type: "text", text: "Hello, world!" }],
-    finishReason: "stop",
+    finishReason: finishReasonStop,
     usage: mockUsage,
     warnings: [],
   }),
@@ -47,7 +54,7 @@ export const reasoningModel = new MockLanguageModelV3({
 export const titleModel = new MockLanguageModelV3({
   doGenerate: async () => ({
     content: [{ type: "text", text: "This is a test title" }],
-    finishReason: "stop",
+    finishReason: finishReasonStop,
     usage: mockUsage,
     warnings: [],
   }),
@@ -61,7 +68,7 @@ export const titleModel = new MockLanguageModelV3({
         { type: "text-end", id: "text-1" },
         {
           type: "finish",
-          finishReason: "stop",
+          finishReason: finishReasonStop,
           usage: mockUsage,
         },
       ] satisfies LanguageModelV3StreamPart[],
@@ -72,7 +79,7 @@ export const titleModel = new MockLanguageModelV3({
 export const artifactModel = new MockLanguageModelV3({
   doGenerate: async () => ({
     content: [{ type: "text", text: "Hello, world!" }],
-    finishReason: "stop",
+    finishReason: finishReasonStop,
     usage: mockUsage,
     warnings: [],
   }),

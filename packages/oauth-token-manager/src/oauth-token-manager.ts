@@ -66,22 +66,22 @@ export const getValidToken = async (
     );
   }
 
-  // 3. 有効期限チェック
-  if (isTokenExpired(token)) {
-    logger.info("Token has expired", { tokenId: token.id });
-    throw new ReAuthRequiredError(
-      "OAuth token has expired. User needs to re-authenticate.",
-      token.id,
-      userId,
-      mcpServerTemplateInstanceId,
+  // 3. 期限切れまたは期限切れ間近の場合、自動リフレッシュを試行
+  if (isTokenExpired(token) || isExpiringSoon(token)) {
+    const isExpired = isTokenExpired(token);
+    logger.info(
+      isExpired
+        ? "Token has expired, attempting refresh"
+        : "Token expiring soon, attempting refresh",
+      {
+        tokenId: token.id,
+      },
     );
-  }
 
-  // 4. 期限切れ間近の場合、自動リフレッシュ
-  if (isExpiringSoon(token)) {
     try {
       const refreshedToken = await refreshToken(token.id);
       await cacheToken(cacheKey, refreshedToken);
+      logger.info("Token refreshed successfully", { tokenId: token.id });
       return refreshedToken;
     } catch (error) {
       logger.error("Failed to refresh token", {
@@ -90,7 +90,9 @@ export const getValidToken = async (
       });
       // リフレッシュ失敗時は再認証が必要
       throw new ReAuthRequiredError(
-        "Failed to refresh token. User needs to re-authenticate.",
+        isExpired
+          ? "OAuth token has expired and refresh failed. User needs to re-authenticate."
+          : "Failed to refresh token. User needs to re-authenticate.",
         token.id,
         userId,
         mcpServerTemplateInstanceId,

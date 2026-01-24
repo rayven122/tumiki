@@ -1,7 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { Markdown } from "@/components/markdown";
+import { Response } from "@/components/response";
 import { cn, sanitizeText } from "@/lib/utils";
 import { SparklesIcon } from "@/components/icons";
 import { PreviewAttachment } from "@/components/preview-attachment";
@@ -101,7 +101,7 @@ const SharedMessage = ({ message }: { message: UIMessage }) => {
                       message.role === "user",
                   })}
                 >
-                  <Markdown>{sanitizeText(part.text)}</Markdown>
+                  <Response>{sanitizeText(part.text)}</Response>
                 </div>
               );
             }

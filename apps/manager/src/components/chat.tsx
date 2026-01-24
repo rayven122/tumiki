@@ -3,7 +3,7 @@
 import { DefaultChatTransport } from "ai";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { ChatHeader } from "@/components/chat-header";
 import type { Vote } from "@tumiki/db/prisma";
@@ -21,6 +21,7 @@ import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { ChatSDKError } from "@/lib/errors";
 import type { SessionData } from "~/auth";
+import { useDataStream } from "./data-stream-provider";
 
 export function Chat({
   id,
@@ -50,6 +51,7 @@ export function Chat({
   isNewChat?: boolean;
 }) {
   const { mutate } = useSWRConfig();
+  const { setDataStream } = useDataStream();
   const [selectedChatModel, setSelectedChatModel] = useState(initialChatModel);
   const [input, setInput] = useState<string>("");
 
@@ -102,6 +104,9 @@ export function Chat({
         };
       },
     }),
+    onData: (dataPart) => {
+      setDataStream((ds) => (ds ? [...ds, dataPart] : []));
+    },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey(organizationId)));
     },
@@ -130,7 +135,7 @@ export function Chat({
       setHasAppendedQuery(true);
       window.history.replaceState({}, "", `/${orgSlug}/chat/${id}`);
     }
-  }, [query, sendMessage, hasAppendedQuery, id]);
+  }, [query, sendMessage, hasAppendedQuery, id, orgSlug]);
 
   const { data: votes } = useSWR<Array<Vote>>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
@@ -147,6 +152,13 @@ export function Chat({
     setMessages,
   });
 
+  // MCPサーバー選択変更ハンドラ（新規チャットのみ変更可能）
+  // 注意: 既存チャットでは UI 側で disabled にしているため、この関数は新規チャット時のみ呼ばれる
+  const handleMcpServerSelectionChange = useCallback((ids: string[]) => {
+    setSelectedMcpServerIds(ids);
+    // Cookie への保存は McpServerSelector 内で行われる
+  }, []);
+
   return (
     <>
       <div className="bg-background flex h-full min-w-0 flex-col">
@@ -156,12 +168,12 @@ export function Chat({
           onModelChange={setSelectedChatModel}
           selectedVisibilityType={initialVisibilityType}
           selectedMcpServerIds={selectedMcpServerIds}
-          onMcpServerSelectionChange={setSelectedMcpServerIds}
+          onMcpServerSelectionChange={handleMcpServerSelectionChange}
           isReadonly={isReadonly}
           session={session}
           organizationId={organizationId}
           isPersonalOrg={isPersonalOrg}
-          isNewChat={isNewChat}
+          isNewChat={isNewChat && messages.length === 0}
         />
 
         <Messages

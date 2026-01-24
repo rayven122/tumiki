@@ -1,11 +1,10 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { artifactDefinitions, type ArtifactKind } from "./artifact";
 import type { Suggestion } from "@tumiki/db/prisma";
 import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
-import type { ChatMessage, CustomUIDataTypes } from "@/lib/types";
+import { useDataStream } from "./data-stream-provider";
 
 export type DataStreamDelta = {
   type:
@@ -23,133 +22,125 @@ export type DataStreamDelta = {
 };
 
 /**
- * AI SDK 6ではdataプロパティが削除され、カスタムデータは
- * メッセージのparts内のdata-*タイプとして送信されます。
- * このコンポーネントはmessagesからdata partsを抽出して処理します。
+ * AI SDK 6ではuseChat の onData コールバックからデータを受信し、
+ * DataStreamProvider経由でデータを処理します。
  */
-export function DataStreamHandler({ id }: { id: string }) {
-  const { messages } = useChat<ChatMessage>({ id });
+export const DataStreamHandler = () => {
+  const { dataStream, setDataStream } = useDataStream();
   const { artifact, setArtifact, setMetadata } = useArtifact();
-  const processedDataPartsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!messages?.length) return;
+    if (!dataStream?.length) {
+      return;
+    }
 
-    // メッセージからdata partsを抽出して処理
-    messages.forEach((message) => {
-      message.parts?.forEach((part, partIndex) => {
-        // data-* タイプのパーツを処理
-        if (part.type.startsWith("data-")) {
-          const partKey = `${message.id}-${partIndex}`;
+    // 新しいデルタを取り出してストリームをクリア
+    const newDeltas = dataStream.slice();
+    setDataStream([]);
 
-          // 既に処理済みのパーツはスキップ
-          if (processedDataPartsRef.current.has(partKey)) {
-            return;
-          }
-          processedDataPartsRef.current.add(partKey);
+    for (const delta of newDeltas) {
+      // チャットタイトルの更新はchat.tsxのonFinishで処理されるためスキップ
+      if (delta.type === "data-chat-title") {
+        continue;
+      }
 
-          // data-* から実際のタイプ名を抽出
-          const dataType = part.type.replace(
-            "data-",
-            "",
-          ) as keyof CustomUIDataTypes;
-          const dataPart = part as {
-            type: `data-${string}`;
-            id?: string;
-            data: unknown;
-          };
+      // kindが変更される場合は、新しいkindに基づいてartifactDefinitionを検索
+      const currentKind =
+        delta.type === "data-kind"
+          ? (delta.data as ArtifactKind)
+          : artifact.kind;
 
-          // DataStreamDeltaに変換
-          const delta: DataStreamDelta = {
-            type: convertDataTypeToDeltaType(dataType),
-            content: dataPart.data as string | Suggestion,
-          };
+      // artifactDefinitionのonStreamPartを呼び出し
+      const artifactDefinition = artifactDefinitions.find(
+        (currentArtifactDefinition) =>
+          currentArtifactDefinition.kind === currentKind,
+      );
 
-          // artifactDefinitionのonStreamPartを呼び出し
-          const artifactDefinition = artifactDefinitions.find(
-            (def) => def.kind === artifact.kind,
-          );
+      // DataStreamDeltaに変換
+      const streamPart: DataStreamDelta = {
+        type: convertDeltaTypeToDeltaType(delta.type),
+        content: delta.data as string | Suggestion,
+      };
 
-          if (artifactDefinition?.onStreamPart) {
-            artifactDefinition.onStreamPart({
-              streamPart: delta,
-              setArtifact,
-              setMetadata,
-            });
-          }
+      if (artifactDefinition?.onStreamPart) {
+        artifactDefinition.onStreamPart({
+          streamPart,
+          setArtifact,
+          setMetadata,
+        });
+      }
 
-          // artifactの状態を更新
-          setArtifact((draftArtifact) => {
-            if (!draftArtifact) {
-              return { ...initialArtifactData, status: "streaming" };
-            }
+      // artifactの状態を更新
+      setArtifact((draftArtifact) => {
+        if (!draftArtifact) {
+          return { ...initialArtifactData, status: "streaming" };
+        }
 
-            switch (delta.type) {
-              case "id":
-                return {
-                  ...draftArtifact,
-                  documentId: delta.content as string,
-                  status: "streaming",
-                };
+        switch (delta.type) {
+          case "data-id":
+            return {
+              ...draftArtifact,
+              documentId: delta.data as string,
+              status: "streaming",
+            };
 
-              case "title":
-                return {
-                  ...draftArtifact,
-                  title: delta.content as string,
-                  status: "streaming",
-                };
+          case "data-title":
+            return {
+              ...draftArtifact,
+              title: delta.data as string,
+              status: "streaming",
+            };
 
-              case "kind":
-                return {
-                  ...draftArtifact,
-                  kind: delta.content as ArtifactKind,
-                  status: "streaming",
-                };
+          case "data-kind":
+            return {
+              ...draftArtifact,
+              kind: delta.data as ArtifactKind,
+              status: "streaming",
+            };
 
-              case "clear":
-                return {
-                  ...draftArtifact,
-                  content: "",
-                  status: "streaming",
-                };
+          case "data-clear":
+            return {
+              ...draftArtifact,
+              content: "",
+              status: "streaming",
+            };
 
-              case "finish":
-                return {
-                  ...draftArtifact,
-                  status: "idle",
-                };
+          case "data-finish":
+            return {
+              ...draftArtifact,
+              status: "idle",
+            };
 
-              default:
-                return draftArtifact;
-            }
-          });
+          default:
+            return draftArtifact;
         }
       });
-    });
-  }, [messages, setArtifact, setMetadata, artifact]);
+    }
+  }, [dataStream, setArtifact, setMetadata, artifact, setDataStream]);
 
   return null;
-}
+};
 
 /**
- * CustomUIDataTypesのキーをDataStreamDelta.typeに変換
+ * data-* 形式のタイプをDataStreamDelta.typeに変換
+ * サーバー側のartifactハンドラーは `data-artifact-*-delta` 形式で送信
  */
-const convertDataTypeToDeltaType = (
-  dataType: keyof CustomUIDataTypes,
+const convertDeltaTypeToDeltaType = (
+  deltaType: string,
 ): DataStreamDelta["type"] => {
-  const mapping: Record<keyof CustomUIDataTypes, DataStreamDelta["type"]> = {
-    textDelta: "text-delta",
-    imageDelta: "image-delta",
-    sheetDelta: "sheet-delta",
-    codeDelta: "code-delta",
-    suggestion: "suggestion",
-    appendMessage: "text-delta", // appendMessageはtext-deltaとして扱う
-    id: "id",
-    title: "title",
-    kind: "kind",
-    clear: "clear",
-    finish: "finish",
-    "chat-title": "title", // chat-titleはtitleとして扱う
+  const mapping: Record<string, DataStreamDelta["type"]> = {
+    // アーティファクトコンテンツのデルタ
+    "data-artifact-text-delta": "text-delta",
+    "data-artifact-image-delta": "image-delta",
+    "data-artifact-sheet-delta": "sheet-delta",
+    "data-artifact-code-delta": "code-delta",
+    // メタデータイベント
+    "data-suggestion": "suggestion",
+    "data-id": "id",
+    "data-title": "title",
+    "data-kind": "kind",
+    "data-clear": "clear",
+    "data-finish": "finish",
   };
-  return mapping[dataType] || "text-delta";
+  return mapping[deltaType] || "text-delta";
 };
