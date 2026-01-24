@@ -26,6 +26,7 @@ import {
 import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { updatePiiMasking } from "./updatePiiMasking";
 import { updateToonConversion } from "./updateToonConversion";
+import { updateDynamicSearch } from "./updateDynamicSearch";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
@@ -154,6 +155,17 @@ export const UpdateToonConversionInputV2 = z.object({
 
 // TOON変換設定更新の出力スキーマ
 export const UpdateToonConversionOutputV2 = z.object({
+  id: z.string(),
+});
+
+// Dynamic Search設定更新の入力スキーマ
+export const UpdateDynamicSearchInputV2 = z.object({
+  id: McpServerIdSchema,
+  dynamicSearchEnabled: z.boolean(),
+});
+
+// Dynamic Search設定更新の出力スキーマ
+export const UpdateDynamicSearchOutputV2 = z.object({
   id: z.string(),
 });
 
@@ -438,6 +450,24 @@ export const userMcpServerRouter = createTRPCRouter({
       return await updateToonConversion(ctx.db, {
         id: input.id,
         toonConversionEnabled: input.toonConversionEnabled,
+        organizationId: ctx.currentOrg.id,
+      });
+    }),
+
+  // Dynamic Search設定更新
+  updateDynamicSearch: protectedProcedure
+    .input(UpdateDynamicSearchInputV2)
+    .output(UpdateDynamicSearchOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
+      return await updateDynamicSearch(ctx.db, {
+        id: input.id,
+        dynamicSearchEnabled: input.dynamicSearchEnabled,
         organizationId: ctx.currentOrg.id,
       });
     }),

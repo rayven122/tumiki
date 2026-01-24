@@ -48,6 +48,7 @@ export const findById = async (
   return {
     ...server,
     piiMaskingEnabled,
+    dynamicSearch: server.dynamicSearch,
     templateInstances: server.templateInstances.map((instance) => {
       const allowedToolIds = new Set(
         instance.allowedTools.map((tool) => tool.id),
