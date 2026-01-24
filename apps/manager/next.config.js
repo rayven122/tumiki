@@ -8,6 +8,21 @@ const config = {
   experimental: {
     mcpServer: true,
   },
+  // Coharu VRM/VRMA ファイルの長期キャッシュ設定
+  async headers() {
+    return [
+      {
+        source: "/coharu/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            // 1週間はキャッシュを使用、その後はバックグラウンドで再検証しながらキャッシュを提供
+            value: "public, max-age=604800, stale-while-revalidate=31536000",
+          },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
