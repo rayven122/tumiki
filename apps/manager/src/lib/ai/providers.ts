@@ -17,10 +17,15 @@ export const myProvider = isTestEnvironment
       return customProvider({
         languageModels: {
           // テスト環境用モック - Gateway形式のIDを使用
-          // Anthropic
+          // Anthropic - Claude 4.5 シリーズ
+          "anthropic/claude-opus-4.5": chatModel,
+          "anthropic/claude-sonnet-4.5": chatModel,
+          "anthropic/claude-haiku-4.5": chatModel,
+          // Anthropic - Claude 4 シリーズ
           "anthropic/claude-sonnet-4": chatModel,
-          "anthropic/claude-3-5-sonnet-latest": chatModel,
-          "anthropic/claude-3-5-haiku-latest": chatModel,
+          // Anthropic - Claude 3.5 シリーズ
+          "anthropic/claude-3.5-sonnet": chatModel,
+          "anthropic/claude-3.5-haiku": chatModel,
           // OpenAI
           "openai/gpt-4o": chatModel,
           "openai/gpt-4o-mini": chatModel,
@@ -31,6 +36,7 @@ export const myProvider = isTestEnvironment
           // xAI
           "xai/grok-4.1-fast-non-reasoning": chatModel,
           // Reasoning models
+          "anthropic/claude-sonnet-4.5-thinking": reasoningModel,
           "anthropic/claude-sonnet-4-thinking": reasoningModel,
           // 内部用
           "title-model": titleModel,
@@ -77,7 +83,7 @@ export function getTitleModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("title-model");
   }
-  return gateway.languageModel("anthropic/claude-3-5-haiku-latest");
+  return gateway.languageModel("anthropic/claude-3.5-haiku");
 }
 
 /**
@@ -87,5 +93,5 @@ export function getArtifactModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("artifact-model");
   }
-  return gateway.languageModel("anthropic/claude-3-5-haiku-latest");
+  return gateway.languageModel("anthropic/claude-3.5-haiku");
 }
