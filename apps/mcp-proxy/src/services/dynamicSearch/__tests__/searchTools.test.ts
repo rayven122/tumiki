@@ -17,7 +17,7 @@ vi.mock("ai", () => ({
 
 vi.mock("../../../libs/ai/index.js", () => ({
   gateway: vi.fn(() => "mock-model"),
-  DYNAMIC_SEARCH_MODEL: "anthropic/claude-3-5-haiku-latest",
+  DYNAMIC_SEARCH_MODEL: "anthropic/claude-3.5-haiku",
 }));
 
 vi.mock("../../../libs/logger/index.js", () => ({
