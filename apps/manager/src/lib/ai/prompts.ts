@@ -79,57 +79,20 @@ About the origin of user's request:
 
 /**
  * MCPツールに関するプロンプトを生成
- * ツール名のフォーマット: {serverId}__{toolName}
+ * AIはツールのdescriptionとinputSchemaを見て使い方を理解するため、
+ * シンプルにツール名をリストするだけで十分
  */
 export const getMcpToolsPrompt = (mcpToolNames: string[]) => {
   if (mcpToolNames.length === 0) {
     return "";
   }
 
-  // サーバーIDごとにツールをグループ化
-  const toolsByServer: Record<string, string[]> = {};
-  for (const toolName of mcpToolNames) {
-    const [serverId, ...rest] = toolName.split("__");
-    const originalToolName = rest.join("__");
-    if (serverId && originalToolName) {
-      if (!toolsByServer[serverId]) {
-        toolsByServer[serverId] = [];
-      }
-      toolsByServer[serverId].push(originalToolName);
-    }
-  }
-
-  const serverSections = Object.entries(toolsByServer)
-    .map(([serverId, tools]) => {
-      return `- **${serverId}**: ${tools.join(", ")}`;
-    })
-    .join("\n");
-
   return `
 ## Available MCP Tools
 
-You have access to external MCP (Model Context Protocol) tools. These tools allow you to interact with external services.
+You have access to MCP tools: ${mcpToolNames.join(", ")}
 
-**Important:** When you need to use an MCP tool, call it with the full tool name format: \`{serverId}__{toolName}\`
-
-Available tools by server:
-${serverSections}
-
-**When to use MCP tools:**
-- When the user asks for information from external services (e.g., Linear issues, teams, projects)
-- When you need to perform actions in external systems
-- Always prefer using these tools over asking the user to check manually
-
-**How to use:**
-- Call the tool directly with the required parameters
-- The tool name must include the server ID prefix (e.g., \`linear__list_teams\`)
-
-**Chaining tool calls:**
-- You can make multiple tool calls in sequence within a single conversation turn
-- Use the results from one tool call to inform subsequent tool calls
-- For example: First call \`resolve-library-id\` to get an ID, then use that ID to call \`get-library-docs\`
-- When the user asks to perform a multi-step operation, automatically chain the necessary tool calls without asking for confirmation
-- Up to 5 sequential tool calls are allowed per turn
+Use these tools when appropriate. You can chain multiple tool calls in sequence.
 `;
 };
 
