@@ -77,13 +77,13 @@ const createMockTokenData = (): OAuthTokenData => ({
 
 // Prismaトランザクションクライアントのモック
 const createMockPrismaClient = () => {
-  const mockCreate = vi.fn();
+  const mockUpsert = vi.fn();
   const mockUpdate = vi.fn();
   const mockFindUnique = vi.fn();
 
   return {
     mcpOAuthToken: {
-      create: mockCreate,
+      upsert: mockUpsert,
     },
     mcpServer: {
       update: mockUpdate,
@@ -151,9 +151,9 @@ describe("handleOAuthCallback", () => {
       );
 
       // OAuthトークンが保存されたことを確認
-      const createCall = vi.mocked(mockTx.mcpOAuthToken.create).mock.calls[0];
+      const createCall = vi.mocked(mockTx.mcpOAuthToken.upsert).mock.calls[0];
       expect(createCall).toBeDefined();
-      const createData = createCall?.[0]?.data;
+      const createData = createCall?.[0]?.create;
       expect(createData).toBeDefined();
       expect(createData?.userId).toBe(mockUserId);
       expect(createData?.organizationId).toBe(mockOrganizationId);
@@ -199,9 +199,9 @@ describe("handleOAuthCallback", () => {
       expect(result.success).toBe(true);
 
       // リフレッシュトークンがnullで保存されることを確認
-      const createCall = vi.mocked(mockTx.mcpOAuthToken.create).mock.calls[0];
+      const createCall = vi.mocked(mockTx.mcpOAuthToken.upsert).mock.calls[0];
       expect(createCall).toBeDefined();
-      const createData = createCall?.[0]?.data;
+      const createData = createCall?.[0]?.create;
       expect(createData).toBeDefined();
       expect(createData?.refreshToken).toBeNull();
     });
@@ -229,9 +229,9 @@ describe("handleOAuthCallback", () => {
 
       await handleOAuthCallback(mockTx, input);
 
-      const createCall = vi.mocked(mockTx.mcpOAuthToken.create).mock.calls[0];
+      const createCall = vi.mocked(mockTx.mcpOAuthToken.upsert).mock.calls[0];
       expect(createCall).toBeDefined();
-      const createData = createCall?.[0]?.data;
+      const createData = createCall?.[0]?.create;
       expect(createData).toBeDefined();
       expect(createData?.expiresAt).toBeNull();
     });
@@ -392,7 +392,7 @@ describe("handleOAuthCallback", () => {
       });
 
       // トークンは保存されるが、セットアップでエラーが発生
-      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalled();
+      expect(mockTx.mcpOAuthToken.upsert).toHaveBeenCalled();
     });
 
     test("一般的なエラーを適切にハンドリングする", async () => {
@@ -451,8 +451,8 @@ describe("handleOAuthCallback", () => {
 
       await handleOAuthCallback(mockTx, input);
 
-      const createCall = vi.mocked(mockTx.mcpOAuthToken.create).mock.calls[0];
-      const createData = createCall?.[0]?.data;
+      const createCall = vi.mocked(mockTx.mcpOAuthToken.upsert).mock.calls[0];
+      const createData = createCall?.[0]?.create;
 
       expect(createData).toBeDefined();
       expect(createData?.userId).toBe(mockUserId);
@@ -494,7 +494,7 @@ describe("handleOAuthCallback", () => {
       await handleOAuthCallback(mockTx, input);
 
       // createが呼ばれることを確認（upsertではない）
-      expect(mockTx.mcpOAuthToken.create).toHaveBeenCalledTimes(1);
+      expect(mockTx.mcpOAuthToken.upsert).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -520,8 +520,8 @@ describe("handleOAuthCallback", () => {
 
       await handleOAuthCallback(mockTx, input);
 
-      const createCall = vi.mocked(mockTx.mcpOAuthToken.create).mock.calls[0];
-      const expiresAt = createCall?.[0]?.data.expiresAt as Date | null;
+      const createCall = vi.mocked(mockTx.mcpOAuthToken.upsert).mock.calls[0];
+      const expiresAt = createCall?.[0]?.create.expiresAt as Date | null;
 
       // expires_in が0の場合、expiresAt は現在時刻に近い値になる
       if (expiresAt) {
@@ -555,9 +555,9 @@ describe("handleOAuthCallback", () => {
       const result = await handleOAuthCallback(mockTx, input);
 
       expect(result.success).toBe(true);
-      const createCall = vi.mocked(mockTx.mcpOAuthToken.create).mock.calls[0];
+      const createCall = vi.mocked(mockTx.mcpOAuthToken.upsert).mock.calls[0];
       expect(createCall).toBeDefined();
-      const createData = createCall?.[0]?.data;
+      const createData = createCall?.[0]?.create;
       expect(createData).toBeDefined();
       expect(createData?.accessToken).toBe(longTokenData.access_token);
       expect(createData?.refreshToken).toBe(longTokenData.refresh_token);

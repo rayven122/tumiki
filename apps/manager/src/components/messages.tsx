@@ -7,17 +7,18 @@ import equal from "fast-deep-equal";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import { useMessages } from "@/hooks/use-messages";
+import type { ChatMessage } from "@/lib/types";
 
-interface MessagesProps {
+export type MessagesProps = {
   chatId: string;
-  status: UseChatHelpers["status"];
+  status: UseChatHelpers<ChatMessage>["status"];
   votes: Array<Vote> | undefined;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers["setMessages"];
-  reload: UseChatHelpers["reload"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   isArtifactVisible: boolean;
-}
+};
 
 function PureMessages({
   chatId,
@@ -25,7 +26,7 @@ function PureMessages({
   votes,
   messages,
   setMessages,
-  reload,
+  regenerate,
   isReadonly,
 }: MessagesProps) {
   const {
@@ -58,7 +59,7 @@ function PureMessages({
               : undefined
           }
           setMessages={setMessages}
-          reload={reload}
+          regenerate={regenerate}
           isReadonly={isReadonly}
           requiresScrollPadding={
             hasSentMessage && index === messages.length - 1
@@ -66,7 +67,8 @@ function PureMessages({
         />
       ))}
 
-      {status === "submitted" &&
+      {/* ユーザーメッセージ送信後、AIの応答が始まるまでThinkingMessageを表示 */}
+      {status !== "ready" &&
         messages.length > 0 &&
         messages[messages.length - 1]!.role === "user" && <ThinkingMessage />}
 
@@ -81,10 +83,13 @@ function PureMessages({
 }
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {
+  // ストリーミング中は常に再レンダーして、リアルタイム表示を保証
+  if (nextProps.status === "streaming") return false;
+
+  // アーティファクト表示中は再レンダーを最小化
   if (prevProps.isArtifactVisible && nextProps.isArtifactVisible) return true;
 
   if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.status && nextProps.status) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
   if (!equal(prevProps.messages, nextProps.messages)) return false;
   if (!equal(prevProps.votes, nextProps.votes)) return false;

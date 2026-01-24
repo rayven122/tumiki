@@ -23,7 +23,7 @@ export const SimpleHeader = () => {
     : undefined;
 
   return (
-    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 fixed top-0 z-50 w-full border-b backdrop-blur">
       <div className="flex h-14 w-full items-center justify-between px-4">
         {/* 左側: モバイルメニューボタン、ロゴと組織スイッチャー */}
         <div className="flex items-center gap-4">

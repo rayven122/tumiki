@@ -1,4 +1,4 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
 
@@ -23,7 +23,7 @@ export function PureMessageActions({
   isLoading,
 }: {
   chatId: string;
-  message: Message;
+  message: UIMessage;
   vote: Vote | undefined;
   isLoading: boolean;
 }) {
@@ -43,7 +43,10 @@ export function PureMessageActions({
               variant="outline"
               onClick={async () => {
                 const textFromParts = message.parts
-                  ?.filter((part) => part.type === "text")
+                  ?.filter(
+                    (part): part is { type: "text"; text: string } =>
+                      part.type === "text",
+                  )
                   .map((part) => part.text)
                   .join("\n")
                   .trim();
