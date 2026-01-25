@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/chat/tooltip";
+import { CoharuToggle } from "./coharu/CoharuToggle";
 
 function PureChatHeader({
   chatId,
@@ -130,6 +131,9 @@ function PureChatHeader({
           <TooltipContent side="bottom">公開リンクをコピー</TooltipContent>
         </Tooltip>
       )}
+
+      {/* Coharu トグル（デスクトップのみ） */}
+      {!isReadonly && <CoharuToggle className="order-4.5 hidden md:flex" />}
 
       {/* 新規チャット・履歴 */}
       <div className="order-5 ml-auto">
