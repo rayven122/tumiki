@@ -171,13 +171,59 @@ mcp-proxy は DCR リクエストを Keycloak にプロキシします。追加�
 
 詳細は [DCR 設定ガイド](../../docs/auth/keycloak-dcr-setup.md) を参照してください。
 
+## 本番環境デプロイ
+
+本番環境（さくらのクラウド）へのデプロイ手順。
+
+### 前提条件
+
+- さくらのクラウドVMへのSSHアクセス（`~/.ssh/config`設定済み）
+- Cloudflare Tunnel設定済み（auth.tumiki.cloud → 192.168.0.90:8080）
+- PostgreSQL (192.168.0.100) 準備済み
+
+### 環境変数ファイル
+
+- `terraform.tfvars` - ローカル開発環境用
+- `terraform.tfvars.production` - 本番環境用
+
+### デプロイ手順
+
+```bash
+# 1. 環境変数設定
+cd docker/prod
+cp .env.example .env
+# .envファイルを編集
+
+# 2. インフラセットアップ
+pnpm keycloak:prod:setup-db   # DB接続確認
+pnpm keycloak:prod:setup      # Dockerインストール
+
+# 3. Keycloakデプロイ
+pnpm keycloak:prod:deploy     # コンテナ起動
+
+# 4. Terraform設定適用
+pnpm keycloak:prod:apply      # 本番設定適用
+```
+
+### 本番用コマンド
+
+| コマンド | 説明 |
+|---------|------|
+| `pnpm keycloak:prod:plan` | 変更プレビュー |
+| `pnpm keycloak:prod:apply` | 設定適用 |
+| `pnpm keycloak:prod:status` | ステータス確認 |
+| `pnpm keycloak:prod:logs` | ログ表示 |
+| `pnpm keycloak:prod:restart` | 再起動 |
+
+詳細は [docker/prod/README.md](../../docker/prod/README.md) を参照。
+
 ## トラブルシューティング
 
 ### Keycloakが起動しない場合
 
 ```bash
 # ログを確認
-docker compose -f docker/compose.yaml logs keycloak
+docker compose -f docker/local/compose.yaml logs keycloak
 
 # コンテナを再起動
 pnpm docker:down
