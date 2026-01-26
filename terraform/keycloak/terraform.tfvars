@@ -28,7 +28,7 @@ manager_web_origins = [
 
 # MCP Proxyクライアント設定
 # proxy_client_secretは環境変数TF_VAR_proxy_client_secretで設定
-proxy_client_id     = "tumiki-proxy"
+proxy_client_id = "tumiki-proxy"
 proxy_redirect_uris = [
   "http://localhost:6277/*",
   "http://localhost:6274/*"

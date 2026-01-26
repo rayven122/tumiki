@@ -9,6 +9,9 @@ locals {
   # Google IdP が有効かどうか
   google_idp_enabled = var.google_client_id != ""
 
+  # Google IdP alias（マッパーで参照）
+  google_idp_alias = local.google_idp_enabled ? keycloak_oidc_google_identity_provider.google[0].alias : ""
+
   # Google IdP 属性マッパー定義
   google_attribute_mappers = {
     email = {
@@ -75,7 +78,7 @@ resource "keycloak_custom_identity_provider_mapper" "google_username" {
 
   realm                    = keycloak_realm.tumiki.id
   name                     = "google-username"
-  identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
+  identity_provider_alias  = local.google_idp_alias
   identity_provider_mapper = "oidc-username-idp-mapper"
 
   extra_config = {
@@ -90,7 +93,7 @@ resource "keycloak_custom_identity_provider_mapper" "google_attributes" {
 
   realm                    = keycloak_realm.tumiki.id
   name                     = each.value.name
-  identity_provider_alias  = keycloak_oidc_google_identity_provider.google[0].alias
+  identity_provider_alias  = local.google_idp_alias
   identity_provider_mapper = "oidc-user-attribute-idp-mapper"
 
   extra_config = {
