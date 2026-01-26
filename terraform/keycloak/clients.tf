@@ -105,6 +105,7 @@ resource "keycloak_openid_client_default_scopes" "proxy_default_scopes" {
 }
 
 # Proxy クライアントのオプショナルスコープ設定
+# 注: profile, email はデフォルトスコープとして設定されるため除外
 resource "keycloak_openid_client_optional_scopes" "proxy_optional_scopes" {
   realm_id  = keycloak_realm.tumiki.id
   client_id = keycloak_openid_client.proxy.id
@@ -113,9 +114,6 @@ resource "keycloak_openid_client_optional_scopes" "proxy_optional_scopes" {
     "address",
     "phone",
     "offline_access",
-    "profile",
     "microprofile-jwt",
-    "basic",
-    "email",
   ]
 }
