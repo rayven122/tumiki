@@ -3,7 +3,7 @@
 # 本番環境では別のtfvarsファイルを使用してください
 
 # Keycloak接続設定
-keycloak_url            = "http://localhost:8443"
+keycloak_url            = "http://localhost:8888"
 keycloak_admin_username = "admin"
 keycloak_admin_password = "admin123"
 
