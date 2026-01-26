@@ -17,6 +17,8 @@ export_tf_vars() {
   export TF_VAR_keycloak_admin_password="${KEYCLOAK_ADMIN_PASSWORD}"
   export TF_VAR_manager_client_id="${KEYCLOAK_CLIENT_ID}"
   export TF_VAR_manager_client_secret="${KEYCLOAK_CLIENT_SECRET}"
+  export TF_VAR_proxy_client_secret="${KEYCLOAK_PROXY_CLIENT_SECRET}"
+  export TF_VAR_test_user_password="${KEYCLOAK_TEST_USER_PASSWORD}"
   # 任意: 空でもOK
   export TF_VAR_google_client_id="${GOOGLE_CLIENT_ID:-}"
   export TF_VAR_google_client_secret="${GOOGLE_CLIENT_SECRET:-}"
