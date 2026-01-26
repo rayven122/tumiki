@@ -14,10 +14,9 @@ variable "keycloak_admin_username" {
 }
 
 variable "keycloak_admin_password" {
-  description = "Keycloak 管理者パスワード"
+  description = "Keycloak 管理者パスワード（環境変数 TF_VAR_keycloak_admin_password で設定）"
   type        = string
   sensitive   = true
-  default     = "admin123"
 }
 
 # Realm設定
@@ -41,10 +40,9 @@ variable "manager_client_id" {
 }
 
 variable "manager_client_secret" {
-  description = "Manager App クライアントシークレット"
+  description = "Manager App クライアントシークレット（環境変数 TF_VAR_manager_client_secret で設定）"
   type        = string
   sensitive   = true
-  default     = "tumiki-manager-secret-change-in-production"
 }
 
 variable "proxy_client_id" {
@@ -54,10 +52,9 @@ variable "proxy_client_id" {
 }
 
 variable "proxy_client_secret" {
-  description = "MCP Proxy クライアントシークレット"
+  description = "MCP Proxy クライアントシークレット（環境変数 TF_VAR_proxy_client_secret で設定）"
   type        = string
   sensitive   = true
-  default     = "tumiki-proxy-secret-change-in-production"
 }
 
 # 許可されるリダイレクトURI
@@ -98,10 +95,9 @@ variable "test_user_email" {
 }
 
 variable "test_user_password" {
-  description = "テストユーザーのパスワード"
+  description = "テストユーザーのパスワード（環境変数 TF_VAR_test_user_password で設定）"
   type        = string
   sensitive   = true
-  default     = "admin123"
 }
 
 variable "test_user_first_name" {

@@ -27,15 +27,15 @@ manager_web_origins = [
 ]
 
 # MCP Proxyクライアント設定
+# proxy_client_secretは環境変数TF_VAR_proxy_client_secretで設定
 proxy_client_id     = "tumiki-proxy"
-proxy_client_secret = "tumiki-proxy-secret-change-in-production"
 proxy_redirect_uris = [
   "http://localhost:6277/*",
   "http://localhost:6274/*"
 ]
 
 # テストユーザー設定
+# test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
 test_user_email      = "admin@tumiki.local"
-test_user_password   = "admin123"
 test_user_first_name = "Admin"
 test_user_last_name  = "User"

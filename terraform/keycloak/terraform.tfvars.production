@@ -38,7 +38,7 @@ proxy_redirect_uris = [
 
 # テストユーザー設定（本番環境では無効化推奨）
 # 本番では別途管理者ユーザーを作成することを推奨
+# test_user_passwordは環境変数TF_VAR_test_user_passwordで設定（本番では空文字列を設定）
 test_user_email      = "admin@tumiki.cloud"
-test_user_password   = ""  # 本番では空にして無効化
 test_user_first_name = "Admin"
 test_user_last_name  = "User"
