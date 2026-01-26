@@ -2,9 +2,36 @@
 
 TumikiプラットフォームのOAuth認証基盤（ローカル開発用）
 
+## 前提条件
+
+- Docker Desktop が起動していること
+- Terraform CLI がインストールされていること
+- Node.js >= 22.14.0
+- direnv がインストールされていること（`.env` の自動読み込みに使用）
+
 ## セットアップ
 
-Keycloakの設定はTerraformで管理されています。初回セットアップは以下のコマンドで行います：
+Keycloakの設定はTerraformで管理されています。
+
+### 1. 環境変数の設定
+
+`.env` ファイルに以下の変数を設定します（`.env.example` を参照）：
+
+```bash
+# 必須: Keycloak管理者認証情報
+KEYCLOAK_ADMIN_USERNAME=admin
+KEYCLOAK_ADMIN_PASSWORD=admin123
+
+# 必須: Manager Appクライアント設定
+KEYCLOAK_CLIENT_ID=tumiki-manager
+KEYCLOAK_CLIENT_SECRET=tumiki-manager-secret-change-in-production
+
+# 任意: Google OAuth設定（空の場合はGoogle IdPを設定しない）
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+### 2. 初回セットアップ
 
 ```bash
 # 一括セットアップ（推奨）
@@ -13,6 +40,7 @@ pnpm setup:dev
 # または個別に実行
 pnpm docker:up          # Dockerコンテナ起動
 pnpm keycloak:wait      # Keycloak起動完了を待機
+pnpm keycloak:dev-init  # masterレルムの開発用設定
 pnpm keycloak:init      # Terraform初期化
 pnpm keycloak:apply     # Keycloak設定を適用
 ```
@@ -39,18 +67,20 @@ Terraformにより以下が自動セットアップされます：
 
 ## 認証情報
 
+認証情報は `.env` ファイルから読み込まれます。以下はデフォルト値です。
+
 ### 管理コンソール
-- URL: http://localhost:8443/admin/
-- ユーザー名: `admin`
-- パスワード: `admin123`
+- URL: http://localhost:8888/admin/
+- ユーザー名: `.env` の `KEYCLOAK_ADMIN_USERNAME`（デフォルト: `admin`）
+- パスワード: `.env` の `KEYCLOAK_ADMIN_PASSWORD`（デフォルト: `admin123`）
 
 ### Manager App用クライアント
-- Client ID: `tumiki-manager`
-- Client Secret: `tumiki-manager-secret-change-in-production`
+- Client ID: `.env` の `KEYCLOAK_CLIENT_ID`（デフォルト: `tumiki-manager`）
+- Client Secret: `.env` の `KEYCLOAK_CLIENT_SECRET`
 
 ### MCP Proxy用クライアント
-- Client ID: `tumiki-proxy`
-- Client Secret: `tumiki-proxy-secret-change-in-production`
+- Client ID: `tumiki-proxy`（terraform.tfvars で設定）
+- Client Secret: `tumiki-proxy-secret-change-in-production`（terraform.tfvars で設定）
 
 ### テストユーザー
 - Email: `admin@tumiki.local`
@@ -93,22 +123,29 @@ terraform/keycloak/
 
 ### 変数の上書き
 
-`terraform.tfvars` を編集するか、環境変数で上書きできます：
+認証情報は `.env` ファイルで管理され、`scripts/keycloak.sh` により `TF_VAR_*` 形式に変換されます。
 
-```bash
-# 環境変数で上書きする例
-TF_VAR_keycloak_admin_password="new-password" pnpm keycloak:apply
-```
+| .env 変数 | Terraform変数 | 必須 |
+|-----------|---------------|------|
+| `KEYCLOAK_ADMIN_USERNAME` | `keycloak_admin_username` | ✅ |
+| `KEYCLOAK_ADMIN_PASSWORD` | `keycloak_admin_password` | ✅ |
+| `KEYCLOAK_CLIENT_ID` | `manager_client_id` | ✅ |
+| `KEYCLOAK_CLIENT_SECRET` | `manager_client_secret` | ✅ |
+| `GOOGLE_CLIENT_ID` | `google_client_id` | - |
+| `GOOGLE_CLIENT_SECRET` | `google_client_secret` | - |
+
+その他の設定は `terraform.tfvars` で編集できます。
 
 ### Google IdPの設定
 
-Google OAuth認証を有効にするには、環境変数を設定します：
+Google OAuth認証を有効にするには、`.env` に設定を追加します：
 
 ```bash
-TF_VAR_google_client_id="your-client-id" \
-TF_VAR_google_client_secret="your-client-secret" \
-pnpm keycloak:apply
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
 ```
+
+その後、`pnpm keycloak:apply` を実行します。
 
 ## Manager App環境変数
 
@@ -165,9 +202,3 @@ pnpm docker:down
 docker volume rm docker_db_vol  # 必要に応じてDBも削除
 pnpm setup:dev
 ```
-
-## 前提条件
-
-- Docker Desktop が起動していること
-- Terraform CLI がインストールされていること
-- Node.js >= 22.14.0
