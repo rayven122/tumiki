@@ -55,13 +55,13 @@ services:
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak123
       KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
       # ホスト名設定（CORS プロキシ経由でアクセスするため）
-      # 注: Keycloak 26+では完全なURLを指定する
       KC_HOSTNAME: http://localhost:8888
-      KC_HOSTNAME_STRICT: "false"
+      # プロキシヘッダーを信頼（nginx から X-Forwarded-* を受け取る）
       KC_PROXY_HEADERS: xforwarded
     # 標準のstart-devコマンドを使用（Terraformで設定を適用するため）
-    command: ["start-dev", "--http-enabled=true", "--hostname-strict=false", "--health-enabled=true"]
+    command: ["start-dev"]
     ports:
       - "8443:8080"
     healthcheck:
