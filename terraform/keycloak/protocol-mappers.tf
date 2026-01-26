@@ -1,4 +1,7 @@
 # Keycloak Protocol Mappers設定
+# 注: profile, email, roles, web-origins, acr スコープは
+#     Keycloakがデフォルトでプロトコルマッパーを含むため、
+#     ここではカスタムスコープのマッパーのみを定義
 
 # =============================================================================
 # ローカル変数定義
@@ -26,42 +29,6 @@ locals {
       user_attribute   = "default_organization_id"
       claim_name       = "tumiki.default_organization_id"
       claim_value_type = "String"
-    }
-  }
-
-  # profile スコープのユーザープロパティマッパー
-  profile_property_mappers = {
-    username = {
-      user_property    = "username"
-      claim_name       = "preferred_username"
-      claim_value_type = "String"
-    }
-    family_name = {
-      name             = "family name"
-      user_property    = "lastName"
-      claim_name       = "family_name"
-      claim_value_type = "String"
-    }
-    given_name = {
-      name             = "given name"
-      user_property    = "firstName"
-      claim_name       = "given_name"
-      claim_value_type = "String"
-    }
-  }
-
-  # email スコープのユーザープロパティマッパー
-  email_property_mappers = {
-    email = {
-      user_property    = "email"
-      claim_name       = "email"
-      claim_value_type = "String"
-    }
-    email_verified = {
-      name             = "email verified"
-      user_property    = "emailVerified"
-      claim_name       = "email_verified"
-      claim_value_type = "boolean"
     }
   }
 
@@ -105,128 +72,6 @@ resource "keycloak_openid_user_attribute_protocol_mapper" "tumiki_claims" {
   add_to_id_token     = true
   add_to_access_token = true
   add_to_userinfo     = true
-}
-
-# =============================================================================
-# profile スコープのプロトコルマッパー
-# =============================================================================
-
-# ユーザープロパティマッパー
-resource "keycloak_openid_user_property_protocol_mapper" "profile_properties" {
-  for_each = local.profile_property_mappers
-
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.profile.id
-  name            = lookup(each.value, "name", each.key)
-
-  user_property       = each.value.user_property
-  claim_name          = each.value.claim_name
-  claim_value_type    = each.value.claim_value_type
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# full name マッパー（特殊なタイプのため個別定義）
-resource "keycloak_openid_full_name_protocol_mapper" "full_name" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.profile.id
-  name            = "full name"
-
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# picture マッパー（ユーザー属性マッパーのため個別定義）
-resource "keycloak_openid_user_attribute_protocol_mapper" "picture" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.profile.id
-  name            = "picture"
-
-  user_attribute      = "picture"
-  claim_name          = "picture"
-  claim_value_type    = "String"
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# =============================================================================
-# email スコープのプロトコルマッパー
-# =============================================================================
-
-resource "keycloak_openid_user_property_protocol_mapper" "email_properties" {
-  for_each = local.email_property_mappers
-
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.email.id
-  name            = lookup(each.value, "name", each.key)
-
-  user_property       = each.value.user_property
-  claim_name          = each.value.claim_name
-  claim_value_type    = each.value.claim_value_type
-  add_to_id_token     = true
-  add_to_access_token = true
-  add_to_userinfo     = true
-}
-
-# =============================================================================
-# roles スコープのプロトコルマッパー
-# =============================================================================
-
-# realm roles マッパー
-resource "keycloak_openid_user_realm_role_protocol_mapper" "realm_roles" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.roles.id
-  name            = "realm roles"
-
-  claim_name          = "realm_access.roles"
-  claim_value_type    = "String"
-  multivalued         = true
-  add_to_id_token     = false
-  add_to_access_token = true
-  add_to_userinfo     = false
-}
-
-# client roles マッパー
-resource "keycloak_openid_user_client_role_protocol_mapper" "client_roles" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.roles.id
-  name            = "client roles"
-
-  claim_name          = "resource_access.$${client_id}.roles"
-  claim_value_type    = "String"
-  multivalued         = true
-  add_to_id_token     = false
-  add_to_access_token = true
-  add_to_userinfo     = false
-}
-
-# =============================================================================
-# web-origins スコープのプロトコルマッパー
-# =============================================================================
-
-resource "keycloak_generic_protocol_mapper" "allowed_web_origins" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.web_origins.id
-  name            = "allowed web origins"
-  protocol        = "openid-connect"
-  protocol_mapper = "oidc-allowed-origins-mapper"
-  config          = {}
-}
-
-# =============================================================================
-# acr スコープのプロトコルマッパー
-# =============================================================================
-
-resource "keycloak_generic_protocol_mapper" "acr_loa_level" {
-  realm_id        = keycloak_realm.tumiki.id
-  client_scope_id = keycloak_openid_client_scope.acr.id
-  name            = "acr loa level"
-  protocol        = "openid-connect"
-  protocol_mapper = "oidc-acr-mapper"
-  config          = {}
 }
 
 # =============================================================================

@@ -27,30 +27,8 @@ resource "keycloak_realm" "tumiki" {
   }
 }
 
-# Master RealmのSSL要件を無効化（開発環境用）
-# 注: Keycloak Provider 5.0以降ではdata sourceを使用
+# Master Realmへの参照（data source）
+# Keycloakの起動時に自動作成されるため、作成ではなく参照のみ
 data "keycloak_realm" "master" {
   realm = "master"
-}
-
-resource "keycloak_realm" "master_ssl_update" {
-  realm        = "master"
-  enabled      = data.keycloak_realm.master.enabled
-  ssl_required = "none"
-
-  lifecycle {
-    ignore_changes = [
-      display_name,
-      display_name_html,
-      registration_allowed,
-      registration_email_as_username,
-      reset_password_allowed,
-      remember_me,
-      login_with_email_allowed,
-      duplicate_emails_allowed,
-      verify_email,
-      edit_username_allowed,
-      attributes,
-    ]
-  }
 }
