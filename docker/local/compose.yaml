@@ -46,7 +46,7 @@ services:
     image: quay.io/keycloak/keycloak:26.4
     container_name: tumiki-keycloak
     env_file:
-      - ../.env
+      - ../../.env
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}

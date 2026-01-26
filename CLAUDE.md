@@ -33,12 +33,24 @@ pnpm docker:ps         # コンテナ状態確認
 pnpm docker:logs       # コンテナログ表示
 
 # Keycloak操作（Terraform管理）
+## ローカル開発環境
 pnpm setup:dev         # 開発環境一括セットアップ（Docker起動 + Keycloak設定）
 pnpm keycloak:init     # Terraform初期化
 pnpm keycloak:plan     # 設定変更のプレビュー
 pnpm keycloak:apply    # Keycloak設定を適用
 pnpm keycloak:wait     # Keycloak起動完了を待機
 pnpm keycloak:destroy  # Keycloak設定を削除
+
+## 本番環境（さくらのクラウド）
+pnpm keycloak:prod:setup-db   # PostgreSQL接続確認
+pnpm keycloak:prod:setup      # DockerインストールKeycloak VM）
+pnpm keycloak:prod:deploy     # Keycloakコンテナ起動
+pnpm keycloak:prod:plan       # 本番Terraform変更プレビュー
+pnpm keycloak:prod:apply      # 本番Keycloak設定を適用
+pnpm keycloak:prod:status     # ステータス確認
+pnpm keycloak:prod:logs       # ログ表示
+pnpm keycloak:prod:restart    # サービス再起動
+pnpm keycloak:prod:shell      # Keycloak VMにSSH接続
 
 # データベース操作（packages/db内で実行）
 cd packages/db

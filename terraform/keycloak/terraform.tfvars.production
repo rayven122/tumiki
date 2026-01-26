@@ -1,0 +1,44 @@
+# Keycloak Terraform本番環境設定
+# このファイルは本番環境（さくらのクラウド）用の設定です
+#
+# 使用方法:
+#   pnpm keycloak:prod:plan   # 変更プレビュー
+#   pnpm keycloak:prod:apply  # 設定適用
+#
+# 認証情報は.envファイルから環境変数で取得:
+# - KEYCLOAK_ADMIN_USERNAME / KEYCLOAK_ADMIN_PASSWORD
+# - KEYCLOAK_CLIENT_ID / KEYCLOAK_CLIENT_SECRET
+# - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET (任意)
+
+# Keycloak接続設定（Cloudflare Tunnel経由）
+keycloak_url = "https://auth.tumiki.cloud"
+
+# Realm設定
+realm_name         = "tumiki"
+realm_display_name = "Tumiki Platform"
+
+# Manager Appクライアント設定
+# 本番環境のリダイレクトURI
+manager_redirect_uris = [
+  "https://manager.tumiki.cloud/*",
+  "https://tumiki-*.vercel.app/*"
+]
+manager_web_origins = [
+  "https://manager.tumiki.cloud",
+  "https://tumiki-*.vercel.app"
+]
+
+# MCP Proxyクライアント設定
+# 本番環境ではCloud Runにデプロイされたプロキシを使用
+proxy_client_id = "tumiki-proxy"
+# proxy_client_secretは環境変数TF_VAR_proxy_client_secretで設定
+proxy_redirect_uris = [
+  "https://mcp-proxy.tumiki.cloud/*"
+]
+
+# テストユーザー設定（本番環境では無効化推奨）
+# 本番では別途管理者ユーザーを作成することを推奨
+test_user_email      = "admin@tumiki.cloud"
+test_user_password   = ""  # 本番では空にして無効化
+test_user_first_name = "Admin"
+test_user_last_name  = "User"

@@ -1,0 +1,54 @@
+# 本番環境用 Keycloak Docker Compose
+# Cloudflare Tunnel経由でアクセス: auth.tumiki.cloud
+#
+# 使用方法:
+#   1. .envファイルを設定（.env.exampleを参照）
+#   2. pnpm keycloak:prod:deploy でコンテナ起動
+#   3. pnpm keycloak:prod:apply でTerraform設定適用
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: tumiki-nginx
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    container_name: tumiki-keycloak
+    restart: always
+    environment:
+      # 管理者認証情報（.envから読み込み）
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # PostgreSQL接続設定
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${KC_DB_HOST}:5432/${KC_DB_NAME}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      # Keycloak設定
+      KC_HOSTNAME: https://auth.tumiki.cloud
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+    command: ["start"]
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
