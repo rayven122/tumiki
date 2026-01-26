@@ -1,6 +1,43 @@
 # Keycloak Clients設定
 
+# =============================================================================
+# ローカル変数定義
+# =============================================================================
+
+locals {
+  # 共通のベーススコープ（両クライアントで使用）
+  base_scopes = [
+    "web-origins",
+    "acr",
+    "roles",
+  ]
+
+  # Manager クライアント用デフォルトスコープ
+  manager_default_scopes = concat(local.base_scopes, [
+    "profile",
+    "email",
+    keycloak_openid_client_scope.tumiki_claims.name,
+  ])
+
+  # Proxy クライアント用デフォルトスコープ
+  proxy_default_scopes = concat(local.base_scopes, [
+    keycloak_openid_client_scope.mcp_access.name,
+    keycloak_openid_client_scope.tumiki_claims.name,
+  ])
+
+  # Proxy クライアント用オプショナルスコープ
+  proxy_optional_scopes = [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt",
+  ]
+}
+
+# =============================================================================
 # tumiki-manager クライアント
+# =============================================================================
+
 # Next.js Manager Application用のOIDCクライアント
 resource "keycloak_openid_client" "manager" {
   realm_id    = keycloak_realm.tumiki.id
@@ -29,7 +66,17 @@ resource "keycloak_openid_client" "manager" {
   login_theme = ""
 }
 
+# Manager クライアントのデフォルトスコープ設定
+resource "keycloak_openid_client_default_scopes" "manager_default_scopes" {
+  realm_id       = keycloak_realm.tumiki.id
+  client_id      = keycloak_openid_client.manager.id
+  default_scopes = local.manager_default_scopes
+}
+
+# =============================================================================
 # tumiki-proxy クライアント
+# =============================================================================
+
 # MCP Proxy Server用のOIDCクライアント
 resource "keycloak_openid_client" "proxy" {
   realm_id    = keycloak_realm.tumiki.id
@@ -75,45 +122,17 @@ resource "keycloak_openid_client" "proxy" {
   }
 }
 
-# Manager クライアントのデフォルトスコープ設定
-resource "keycloak_openid_client_default_scopes" "manager_default_scopes" {
-  realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.manager.id
-
-  default_scopes = [
-    "web-origins",
-    "acr",
-    "roles",
-    "profile",
-    "email",
-    keycloak_openid_client_scope.tumiki_claims.name,
-  ]
-}
-
 # Proxy クライアントのデフォルトスコープ設定
 resource "keycloak_openid_client_default_scopes" "proxy_default_scopes" {
-  realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.proxy.id
-
-  default_scopes = [
-    "web-origins",
-    "acr",
-    "roles",
-    keycloak_openid_client_scope.mcp_access.name,
-    keycloak_openid_client_scope.tumiki_claims.name,
-  ]
+  realm_id       = keycloak_realm.tumiki.id
+  client_id      = keycloak_openid_client.proxy.id
+  default_scopes = local.proxy_default_scopes
 }
 
 # Proxy クライアントのオプショナルスコープ設定
 # 注: profile, email はデフォルトスコープとして設定されるため除外
 resource "keycloak_openid_client_optional_scopes" "proxy_optional_scopes" {
-  realm_id  = keycloak_realm.tumiki.id
-  client_id = keycloak_openid_client.proxy.id
-
-  optional_scopes = [
-    "address",
-    "phone",
-    "offline_access",
-    "microprofile-jwt",
-  ]
+  realm_id        = keycloak_realm.tumiki.id
+  client_id       = keycloak_openid_client.proxy.id
+  optional_scopes = local.proxy_optional_scopes
 }

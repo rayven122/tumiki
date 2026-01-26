@@ -9,6 +9,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# 共通ログ関数を読み込み
+source "$PROJECT_ROOT/scripts/lib/log.sh"
+
 # SSH接続設定（~/.ssh/configで設定済みのホスト名）
 KEYCLOAK_HOST="${KEYCLOAK_SSH_HOST:-tumiki-keycloak}"
 DB_HOST="${DB_SSH_HOST:-tumiki-prod-db}"
@@ -16,46 +19,23 @@ DB_HOST="${DB_SSH_HOST:-tumiki-prod-db}"
 # リモートパス
 REMOTE_DIR="/home/tumiki/keycloak"
 
-# 色付き出力
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-
 # ===================================
 # 環境変数チェック
 # ===================================
+REQUIRED_PROD_VARS=(
+    "KEYCLOAK_ADMIN_USERNAME"
+    "KEYCLOAK_ADMIN_PASSWORD"
+    "KC_DB_HOST"
+    "KC_DB_NAME"
+    "KC_DB_USERNAME"
+    "KC_DB_PASSWORD"
+)
+
 check_env() {
-    local missing=()
-
-    # 必須環境変数
-    local required_vars=(
-        "KEYCLOAK_ADMIN_USERNAME"
-        "KEYCLOAK_ADMIN_PASSWORD"
-        "KC_DB_HOST"
-        "KC_DB_NAME"
-        "KC_DB_USERNAME"
-        "KC_DB_PASSWORD"
-    )
-
-    for var in "${required_vars[@]}"; do
-        if [[ -z "${!var:-}" ]]; then
-            missing+=("$var")
-        fi
-    done
-
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "Missing required environment variables:"
-        for var in "${missing[@]}"; do
-            echo "  - $var"
-        done
+    if ! check_required_vars "${REQUIRED_PROD_VARS[@]}"; then
         echo ""
-        echo "Please set these in docker/prod/.env or export them."
-        echo "See docker/prod/.env.example for reference."
+        echo "docker/prod/.env に設定するか、環境変数をエクスポートしてください。"
+        echo ".env.example を参照してください。"
         exit 1
     fi
 }
@@ -173,9 +153,9 @@ status() {
 
     log_info "Health check..."
     if ssh "$KEYCLOAK_HOST" "curl -sf http://localhost:8080/health/ready > /dev/null 2>&1"; then
-        echo -e "${GREEN}Keycloak is healthy${NC}"
+        echo -e "${LOG_GREEN}Keycloak is healthy${LOG_NC}"
     else
-        echo -e "${RED}Keycloak is not healthy${NC}"
+        echo -e "${LOG_RED}Keycloak is not healthy${LOG_NC}"
     fi
 }
 
