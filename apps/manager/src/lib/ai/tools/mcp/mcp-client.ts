@@ -189,6 +189,8 @@ const callToolViaProxy = async (
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      // MCP SDK StreamableHTTPServerTransportは両方のContent-Typeを受け入れる必要がある
+      Accept: "application/json, text/event-stream",
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({

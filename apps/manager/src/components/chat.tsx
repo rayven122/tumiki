@@ -101,6 +101,9 @@ function ChatContent({
     speakRef.current = speak;
   }, [speak]);
 
+  // MCPサーバーIDsを ref で保持（useChat のコールバック内で最新値を参照するため）
+  const selectedMcpServerIdsRef = useRef<string[]>([]);
+
   // ストリーミング中のTTS用状態
   // 蓄積中のテキスト
   const streamingTextRef = useRef<string>("");
@@ -124,6 +127,11 @@ function ChatContent({
   const selectedMcpServerIds = isNewChat
     ? storedMcpServerIds
     : initialMcpServerIds;
+
+  // ref を最新の値で更新（useChat のコールバック内で最新値を参照するため）
+  useEffect(() => {
+    selectedMcpServerIdsRef.current = selectedMcpServerIds;
+  }, [selectedMcpServerIds]);
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -157,8 +165,8 @@ function ChatContent({
             message: lastMessage,
             selectedChatModel,
             selectedVisibilityType: visibilityType,
-            selectedMcpServerIds,
-            isCoharuEnabled,
+            selectedMcpServerIds: selectedMcpServerIdsRef.current,
+            isCoharuEnabled: isCoharuEnabledRef.current,
             ...request.body,
           },
         };
