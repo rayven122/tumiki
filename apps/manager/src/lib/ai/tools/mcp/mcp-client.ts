@@ -82,12 +82,13 @@ const withTimeout = <T>(
 // ============================================================
 
 /**
- * ツール定義の型
+ * ツール定義の型（インスタンス情報付き）
  */
 type ToolDefinition = {
   name: string;
   description: string;
   inputSchema: unknown;
+  instanceNormalizedName: string;
 };
 
 /**
@@ -122,7 +123,8 @@ const getToolDefinitionsFromDb = async (
       dynamicSearch: true,
       templateInstances: {
         where: { isEnabled: true },
-        include: {
+        select: {
+          normalizedName: true,
           allowedTools: {
             select: {
               name: true,
@@ -137,8 +139,12 @@ const getToolDefinitionsFromDb = async (
 
   const result = new Map<string, ServerToolDefinitions>();
   for (const server of servers) {
-    const tools = server.templateInstances.flatMap(
-      (instance) => instance.allowedTools,
+    // 各ツールにインスタンスのnormalizedNameを付与
+    const tools = server.templateInstances.flatMap((instance) =>
+      instance.allowedTools.map((tool) => ({
+        ...tool,
+        instanceNormalizedName: instance.normalizedName,
+      })),
     );
     result.set(server.id, {
       serverId: server.id,
@@ -255,11 +261,22 @@ const createLazyExecute = (
 // ============================================================
 
 /**
+ * ツールとサーバーのマッピング情報
+ */
+export type ToolServerInfo = {
+  serverId: string;
+  serverName: string;
+  originalToolName: string;
+};
+
+/**
  * 複数MCPサーバーからツールを取得した結果
  */
 export type GetMcpToolsFromServersResult = {
   tools: Record<string, Tool>;
   toolNames: string[];
+  /** ツール名からサーバー情報へのマッピング（UI表示用） */
+  toolServerMap: Record<string, ToolServerInfo>;
   /** 成功したサーバーのID */
   successfulServers: string[];
   /** 失敗したサーバーのエラー情報 */
@@ -272,8 +289,16 @@ export type GetMcpToolsFromServersResult = {
  * パフォーマンス最適化: DBからツール定義を取得し、ツール実行時のみmcp-proxyに接続。
  * 従来の方式と比較して、チャットAPI初期レスポンスを200-300ms削減。
  *
- * ツール名形式: `{serverName}__{originalToolName}`
- * これにより、UIでサーバー名を表示でき、異なるMCPサーバーの同名ツールを区別
+ * ツール名形式（AI SDKキー）:
+ * - dynamicSearch=true: `{mcpServerId}__{metaToolName}` (例: "cm123abc__search_tools")
+ * - dynamicSearch=false: `{mcpServerId}__{instanceNormalizedName}__{toolName}`
+ *   (例: "cm123abc__github__create_issue")
+ *
+ * mcpServerIdを含めることで、複数サーバーでの衝突を防ぐ。
+ * mcp-proxy呼び出し時:
+ * - dynamicSearch=true: `{metaToolName}` (例: "search_tools")
+ * - dynamicSearch=false: `{instanceNormalizedName}__{toolName}` (例: "github__create_issue")
+ * toolServerMapでオリジナルのサーバー名とツール名を保持。
  *
  * @example
  * ```typescript
@@ -283,6 +308,10 @@ export type GetMcpToolsFromServersResult = {
  * const result = streamText({
  *   tools: mcpResult.tools,
  * });
+ *
+ * // UI表示時はtoolServerMapからサーバー名を取得
+ * const serverInfo = mcpResult.toolServerMap[toolName];
+ * console.log(serverInfo.serverName); // "Linear MCP" など
  * ```
  */
 export const getMcpToolsFromServers = async (
@@ -291,6 +320,7 @@ export const getMcpToolsFromServers = async (
 ): Promise<GetMcpToolsFromServersResult> => {
   const allTools: Record<string, Tool> = {};
   const toolNames: string[] = [];
+  const toolServerMap: Record<string, ToolServerInfo> = {};
   const successfulServers: string[] = [];
   const errors: McpServerError[] = [];
 
@@ -312,25 +342,54 @@ export const getMcpToolsFromServers = async (
     successfulServers.push(mcpServerId);
 
     // dynamicSearch有効時はメタツールを使用
-    const toolDefs = serverDef.dynamicSearch
-      ? DYNAMIC_SEARCH_META_TOOLS.map((meta) => ({
-          name: meta.name,
+    // mcp-proxyはメタツールをプレフィックスなしで返す・受け付ける
+    if (serverDef.dynamicSearch) {
+      for (const meta of DYNAMIC_SEARCH_META_TOOLS) {
+        // mcp-proxyに渡すツール名（プロキシはプレフィックスなしを期待）
+        const proxyToolName = meta.name;
+        // AI SDK用の一意キー（複数サーバーでの衝突を防ぐ）
+        const uniqueName = `${mcpServerId}__${proxyToolName}`;
+
+        allTools[uniqueName] = {
           description: meta.description,
-          inputSchema: meta.inputSchema as unknown,
-        }))
-      : serverDef.tools;
+          inputSchema: jsonSchema(meta.inputSchema as Record<string, unknown>),
+          execute: createLazyExecute(mcpServerId, proxyToolName, accessToken),
+        };
 
-    for (const toolDef of toolDefs) {
-      const uniqueName = `${serverDef.serverName}__${toolDef.name}`;
+        toolServerMap[uniqueName] = {
+          serverId: mcpServerId,
+          serverName: serverDef.serverName,
+          originalToolName: meta.name,
+        };
 
-      // jsonSchema() でJSON SchemaをAI SDK形式に変換
-      allTools[uniqueName] = {
-        description: toolDef.description,
-        inputSchema: jsonSchema(toolDef.inputSchema as Record<string, unknown>),
-        execute: createLazyExecute(mcpServerId, toolDef.name, accessToken),
-      };
+        toolNames.push(uniqueName);
+      }
+    } else {
+      // 通常モード: 各ツールのインスタンスnormalizedNameを使用
+      for (const toolDef of serverDef.tools) {
+        // mcp-proxyに渡すツール名（プロキシはこの形式を期待）
+        const proxyToolName = `${toolDef.instanceNormalizedName}__${toolDef.name}`;
+        // AI SDK用の一意キー（複数サーバーで同じnormalizedNameの衝突を防ぐ）
+        const uniqueName = `${mcpServerId}__${proxyToolName}`;
 
-      toolNames.push(uniqueName);
+        // jsonSchema() でJSON SchemaをAI SDK形式に変換
+        allTools[uniqueName] = {
+          description: toolDef.description,
+          inputSchema: jsonSchema(
+            toolDef.inputSchema as Record<string, unknown>,
+          ),
+          execute: createLazyExecute(mcpServerId, proxyToolName, accessToken),
+        };
+
+        // サーバー情報をマッピング（UI表示用）
+        toolServerMap[uniqueName] = {
+          serverId: mcpServerId,
+          serverName: serverDef.serverName,
+          originalToolName: toolDef.name,
+        };
+
+        toolNames.push(uniqueName);
+      }
     }
   }
 
@@ -345,6 +404,7 @@ export const getMcpToolsFromServers = async (
   return {
     tools: allTools,
     toolNames,
+    toolServerMap,
     successfulServers,
     errors,
   };
