@@ -78,15 +78,57 @@ About the origin of user's request:
 `;
 
 /**
+ * dynamicSearchモードのメタツール名を検出
+ * メタツールは `{mcpServerId}__search_tools` のような形式
+ */
+const isDynamicSearchMetaTool = (toolName: string): boolean => {
+  return (
+    toolName.endsWith("__search_tools") ||
+    toolName.endsWith("__describe_tools") ||
+    toolName.endsWith("__execute_tool")
+  );
+};
+
+/**
  * MCPツールに関するプロンプトを生成
- * AIはツールのdescriptionとinputSchemaを見て使い方を理解するため、
- * シンプルにツール名をリストするだけで十分
+ * dynamicSearchモードの場合は、メタツールの使い方を詳しく説明
  */
 export const getMcpToolsPrompt = (mcpToolNames: string[]) => {
   if (mcpToolNames.length === 0) {
     return "";
   }
 
+  // dynamicSearchモードかどうかを検出（メタツールのみの場合）
+  const hasDynamicSearchTools = mcpToolNames.some(isDynamicSearchMetaTool);
+  const hasOnlyMetaTools = mcpToolNames.every(isDynamicSearchMetaTool);
+
+  // dynamicSearchモード（メタツールのみ）の場合は詳しい説明を追加
+  if (hasDynamicSearchTools && hasOnlyMetaTools) {
+    return `
+## Available MCP Tools (Dynamic Search Mode)
+
+You have access to a dynamic tool discovery system. Use the following workflow to find and execute tools:
+
+1. **search_tools**: First, search for relevant tools using a natural language query.
+   - Example: To find Linear-related tools, call search_tools with query "Linear team information" or "get Linear teams"
+   - This will return a list of available tools matching your query
+
+2. **describe_tools**: Get the detailed input schema for specific tools.
+   - Use this after search_tools to understand what parameters a tool needs
+
+3. **execute_tool**: Execute a tool with the required arguments.
+   - Use this to run the actual tool after you know its name and required parameters
+
+**Important**: When a user asks for something (e.g., "get my Linear team info"), you MUST:
+1. First call search_tools to find relevant tools
+2. Then call describe_tools to understand the tool's parameters
+3. Finally call execute_tool to perform the action
+
+Available tools: ${mcpToolNames.join(", ")}
+`;
+  }
+
+  // 通常モードの場合
   return `
 ## Available MCP Tools
 
