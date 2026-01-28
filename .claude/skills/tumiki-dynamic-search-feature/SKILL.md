@@ -253,7 +253,7 @@ ${toolDescriptions}
 
 ```typescript
 // libs/ai/provider.ts
-export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3-5-haiku-latest";
+export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3.5-haiku";
 ```
 
 ## 新しいメタツール追加手順
