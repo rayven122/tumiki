@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 
@@ -10,7 +9,6 @@ import { DataStreamProvider } from "@/components/data-stream-provider";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import type { Message } from "@tumiki/db/prisma";
 import type { ChatMessage } from "@/lib/types";
-import { getMcpServerIdsFromCookie } from "../actions";
 import { api } from "@/trpc/server";
 import { checkChatAccess, canEditChat } from "@/lib/auth/chat-permissions";
 
@@ -71,17 +69,11 @@ export default async function Page(props: PageProps) {
     }));
   };
 
-  const cookieStore = await cookies();
-  const chatModelFromCookie = cookieStore.get("chat-model");
+  // 既存チャットではDBの値を使用（Cookie/LocalStorageは参照しない）
+  const chatModel = DEFAULT_CHAT_MODEL;
 
-  const chatModel = chatModelFromCookie?.value ?? DEFAULT_CHAT_MODEL;
-
-  // DBからMCPサーバーIDを取得、なければCookieからフォールバック
-  const mcpServerIdsFromDb = chat.mcpServers.map((server) => server.id);
-  const mcpServerIds =
-    mcpServerIdsFromDb.length > 0
-      ? mcpServerIdsFromDb
-      : await getMcpServerIdsFromCookie();
+  // DBからMCPサーバーIDを取得
+  const mcpServerIds = chat.mcpServers.map((server) => server.id);
 
   // 編集可能かどうか（共通関数を使用）
   const isEditable = canEditChat(accessResult);

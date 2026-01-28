@@ -78,58 +78,63 @@ About the origin of user's request:
 `;
 
 /**
+ * dynamicSearchモードのメタツール名を検出
+ * メタツールは `{mcpServerId}__search_tools` のような形式
+ */
+const isDynamicSearchMetaTool = (toolName: string): boolean => {
+  return (
+    toolName.endsWith("__search_tools") ||
+    toolName.endsWith("__describe_tools") ||
+    toolName.endsWith("__execute_tool")
+  );
+};
+
+/**
  * MCPツールに関するプロンプトを生成
- * ツール名のフォーマット: {serverId}__{toolName}
+ * dynamicSearchモードの場合は、メタツールの使い方を詳しく説明
  */
 export const getMcpToolsPrompt = (mcpToolNames: string[]) => {
   if (mcpToolNames.length === 0) {
     return "";
   }
 
-  // サーバーIDごとにツールをグループ化
-  const toolsByServer: Record<string, string[]> = {};
-  for (const toolName of mcpToolNames) {
-    const [serverId, ...rest] = toolName.split("__");
-    const originalToolName = rest.join("__");
-    if (serverId && originalToolName) {
-      if (!toolsByServer[serverId]) {
-        toolsByServer[serverId] = [];
-      }
-      toolsByServer[serverId].push(originalToolName);
-    }
+  // dynamicSearchモードかどうかを検出（メタツールのみの場合）
+  const hasDynamicSearchTools = mcpToolNames.some(isDynamicSearchMetaTool);
+  const hasOnlyMetaTools = mcpToolNames.every(isDynamicSearchMetaTool);
+
+  // dynamicSearchモード（メタツールのみ）の場合は詳しい説明を追加
+  if (hasDynamicSearchTools && hasOnlyMetaTools) {
+    return `
+## Available MCP Tools (Dynamic Search Mode)
+
+You have access to a dynamic tool discovery system. Use the following workflow to find and execute tools:
+
+1. **search_tools**: First, search for relevant tools using a natural language query.
+   - Example: To find Linear-related tools, call search_tools with query "Linear team information" or "get Linear teams"
+   - This will return a list of available tools matching your query
+
+2. **describe_tools**: Get the detailed input schema for specific tools.
+   - Use this after search_tools to understand what parameters a tool needs
+
+3. **execute_tool**: Execute a tool with the required arguments.
+   - Use this to run the actual tool after you know its name and required parameters
+
+**Important**: When a user asks for something (e.g., "get my Linear team info"), you MUST:
+1. First call search_tools to find relevant tools
+2. Then call describe_tools to understand the tool's parameters
+3. Finally call execute_tool to perform the action
+
+Available tools: ${mcpToolNames.join(", ")}
+`;
   }
 
-  const serverSections = Object.entries(toolsByServer)
-    .map(([serverId, tools]) => {
-      return `- **${serverId}**: ${tools.join(", ")}`;
-    })
-    .join("\n");
-
+  // 通常モードの場合
   return `
 ## Available MCP Tools
 
-You have access to external MCP (Model Context Protocol) tools. These tools allow you to interact with external services.
+You have access to MCP tools: ${mcpToolNames.join(", ")}
 
-**Important:** When you need to use an MCP tool, call it with the full tool name format: \`{serverId}__{toolName}\`
-
-Available tools by server:
-${serverSections}
-
-**When to use MCP tools:**
-- When the user asks for information from external services (e.g., Linear issues, teams, projects)
-- When you need to perform actions in external systems
-- Always prefer using these tools over asking the user to check manually
-
-**How to use:**
-- Call the tool directly with the required parameters
-- The tool name must include the server ID prefix (e.g., \`linear__list_teams\`)
-
-**Chaining tool calls:**
-- You can make multiple tool calls in sequence within a single conversation turn
-- Use the results from one tool call to inform subsequent tool calls
-- For example: First call \`resolve-library-id\` to get an ID, then use that ID to call \`get-library-docs\`
-- When the user asks to perform a multi-step operation, automatically chain the necessary tool calls without asking for confirmation
-- Up to 5 sequential tool calls are allowed per turn
+Use these tools when appropriate. You can chain multiple tool calls in sequence.
 `;
 };
 

@@ -2,7 +2,6 @@
 
 import { startTransition, useMemo, useOptimistic, useState } from "react";
 
-import { saveChatModelAsCookie } from "@/app/[orgSlug]/chat/actions";
 import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
@@ -101,7 +100,7 @@ export function ModelSelector({
 
                     startTransition(() => {
                       setOptimisticModelId(id);
-                      saveChatModelAsCookie(id);
+                      // LocalStorage保存はonModelChange経由で親コンポーネントが行う
                       onModelChange?.(id);
                     });
                   }}
