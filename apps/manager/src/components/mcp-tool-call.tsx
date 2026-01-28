@@ -13,36 +13,48 @@ type ToolState =
   | "output-error";
 
 type McpToolCallProps = {
-  toolName: string; // "linear__list_teams" or "cmjiutji900014xhu829keknh__context7__resolve-library-id"
+  toolName: string; // "Linear MCP__linear__list_teams" or "Linear MCP__search_tools"
   state: ToolState;
   input?: unknown;
   output?: unknown;
 };
 
 /**
- * ツール名からサーバー名とツール名を分離
- * "linear__list_teams" → { serverName: "linear", displayToolName: "list_teams" }
- * "cmjiutji900014xhu829keknh__context7__resolve-library-id" → { serverName: "context7", displayToolName: "resolve-library-id" }
+ * ツール名からMCPサーバー名と表示用ツール名を抽出
+ *
+ * 形式: "{mcpServerName}__{normalizedName}__{toolName}" または "{mcpServerName}__{metaToolName}"
+ *
+ * @example
+ * "Linear MCP__linear__list_teams" → { serverName: "Linear MCP", displayToolName: "list_teams" }
+ * "Linear MCP__search_tools" → { serverName: "Linear MCP", displayToolName: "search_tools" }
  */
 const parseToolName = (
   fullToolName: string,
 ): { serverName: string; displayToolName: string } => {
   const parts = fullToolName.split("__");
+
   if (parts.length >= 3) {
-    // mcpServerId__serverName__toolName 形式
+    // {mcpServerName}__{normalizedName}__{toolName} 形式
+    // 最初がサーバー名、残りの最後がツール名
     return {
-      serverName: parts[1] ?? "unknown",
+      serverName: parts[0] ?? "",
       displayToolName: parts.slice(2).join("__"),
     };
   }
+
   if (parts.length === 2) {
-    // serverName__toolName 形式
+    // {mcpServerName}__{metaToolName} 形式（Dynamic Search メタツール）
     return {
-      serverName: parts[0] ?? "unknown",
-      displayToolName: parts[1] ?? "unknown",
+      serverName: parts[0] ?? "",
+      displayToolName: parts[1] ?? "",
     };
   }
-  return { serverName: "unknown", displayToolName: fullToolName };
+
+  // フォールバック: パースできない場合はそのまま表示
+  return {
+    serverName: "",
+    displayToolName: fullToolName,
+  };
 };
 
 /**
@@ -166,10 +178,14 @@ export const McpToolCall = ({
       {/* ヘッダー: サーバー名 > ツール名 */}
       <div className="flex items-center gap-2">
         <StateIcon state={displayState} />
-        <span className="text-muted-foreground text-sm font-medium">
-          {serverName}
-        </span>
-        <span className="text-muted-foreground/50">&gt;</span>
+        {serverName && (
+          <>
+            <span className="text-muted-foreground text-sm font-medium">
+              {serverName}
+            </span>
+            <span className="text-muted-foreground/50">&gt;</span>
+          </>
+        )}
         <span className="text-foreground text-sm font-semibold">
           {displayToolName}
         </span>

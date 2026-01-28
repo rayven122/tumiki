@@ -26,8 +26,7 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { getWeather } from "@/lib/ai/tools/get-weather";
-import { getMcpToolsFromServers, closeMcpClients } from "@/lib/ai/tools/mcp";
-import type { MCPClient } from "@ai-sdk/mcp";
+import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
 import { isProductionEnvironment } from "@/lib/constants";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
@@ -378,11 +377,9 @@ export const POST = async (request: Request) => {
     };
 
     // MCPサーバーからツールを取得
-    // クライアントはストリーミング終了時に閉じる必要あり
-    // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
+    // 遅延接続方式: DBからツール定義を取得し、ツール実行時のみmcp-proxyに接続
     let mcpTools: Record<string, Tool> = {};
     let mcpToolNames: string[] = [];
-    const mcpClients: MCPClient[] = [];
 
     if (selectedMcpServerIds.length > 0 && session.accessToken) {
       const mcpResult = await getMcpToolsFromServers(
@@ -391,7 +388,6 @@ export const POST = async (request: Request) => {
       );
       mcpTools = mcpResult.tools;
       mcpToolNames = mcpResult.toolNames;
-      mcpClients.push(...mcpResult.clients);
 
       await updateChatMcpServers(id, selectedMcpServerIds);
 
@@ -515,26 +511,9 @@ export const POST = async (request: Request) => {
             console.error("Failed to save chat:", error);
           }
         }
-
-        // MCPクライアントを閉じる（after で非同期実行）
-        // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
-        if (mcpClients.length > 0) {
-          after(async () => {
-            await closeMcpClients(mcpClients);
-          });
-        }
       },
       onError: (error) => {
         console.error("UIMessageStream error:", error);
-
-        // エラー時もMCPクライアントを閉じる
-        // @see https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools#client-lifecycle
-        if (mcpClients.length > 0) {
-          after(async () => {
-            await closeMcpClients(mcpClients);
-          });
-        }
-
         return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
       },
     });

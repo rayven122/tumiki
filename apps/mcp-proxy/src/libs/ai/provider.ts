@@ -4,4 +4,4 @@ import { gateway } from "ai";
 export { gateway };
 
 // Dynamic Search 用モデル
-export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3-5-haiku-latest";
+export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3.5-haiku";

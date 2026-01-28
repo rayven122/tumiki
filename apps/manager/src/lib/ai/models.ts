@@ -1,6 +1,6 @@
 // Vercel AI Gateway で利用可能なモデル一覧
 // デフォルトはコスト効率の良い Claude 3.5 Haiku
-export const DEFAULT_CHAT_MODEL = "anthropic/claude-3-5-haiku-latest";
+export const DEFAULT_CHAT_MODEL = "anthropic/claude-3.5-haiku";
 
 export type ChatModelProvider =
   | "anthropic"
@@ -39,22 +39,46 @@ export const providerOrder: ChatModelProvider[] = [
 // @see https://ai-sdk.dev/providers/ai-sdk-providers/ai-gateway
 export const chatModels: ChatModel[] = [
   // ========== Anthropic (Claude) ==========
+  // Claude 4.5 シリーズ（最新）
+  {
+    id: "anthropic/claude-opus-4.5",
+    name: "Claude Opus 4.5",
+    description: "最高性能、複雑な推論・創造的タスク向け",
+    provider: "anthropic",
+    features: ["tool-calling", "reasoning", "premium"],
+  },
+  {
+    id: "anthropic/claude-sonnet-4.5",
+    name: "Claude Sonnet 4.5",
+    description: "高性能・コスト効率のベストバランス",
+    provider: "anthropic",
+    features: ["tool-calling", "reasoning", "recommended"],
+  },
+  {
+    id: "anthropic/claude-haiku-4.5",
+    name: "Claude Haiku 4.5",
+    description: "高速・低コスト、日常タスク向け",
+    provider: "anthropic",
+    features: ["fast", "tool-calling", "lightweight"],
+  },
+  // Claude 4 シリーズ
   {
     id: "anthropic/claude-sonnet-4",
     name: "Claude Sonnet 4",
     description: "バランスの取れた高性能モデル",
     provider: "anthropic",
-    features: ["tool-calling", "reasoning", "recommended"],
+    features: ["tool-calling", "reasoning"],
   },
+  // Claude 3.5 シリーズ
   {
-    id: "anthropic/claude-3-5-sonnet-latest",
+    id: "anthropic/claude-3.5-sonnet",
     name: "Claude 3.5 Sonnet",
     description: "高性能・コスト効率に優れたモデル",
     provider: "anthropic",
     features: ["tool-calling", "reasoning"],
   },
   {
-    id: "anthropic/claude-3-5-haiku-latest",
+    id: "anthropic/claude-3.5-haiku",
     name: "Claude 3.5 Haiku",
     description: "高速・低コスト、軽量タスク向け",
     provider: "anthropic",
@@ -110,6 +134,13 @@ export const chatModels: ChatModel[] = [
   },
 
   // ========== Reasoning Models (拡張思考) ==========
+  {
+    id: "anthropic/claude-sonnet-4.5-thinking",
+    name: "Claude Sonnet 4.5 (推論)",
+    description: "最新の拡張思考、複雑な問題向け",
+    provider: "reasoning",
+    features: ["reasoning", "extended-thinking", "recommended"],
+  },
   {
     id: "anthropic/claude-sonnet-4-thinking",
     name: "Claude Sonnet 4 (推論)",
