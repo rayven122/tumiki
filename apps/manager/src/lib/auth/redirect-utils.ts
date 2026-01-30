@@ -7,7 +7,7 @@ const DISALLOWED_CALLBACK_PATHS = ["/signin", "/signup", "/api/auth/"];
  * アプリケーションのベースURLを取得
  * 環境変数が未設定の場合はエラーをスロー（開発環境のみフォールバック許可）
  */
-const getBaseUrl = (): string => {
+export const getBaseUrl = (): string => {
   const baseUrl = process.env.NEXTAUTH_URL;
   if (!baseUrl) {
     // 開発環境のみフォールバック許可
