@@ -11,7 +11,7 @@ type GoogleSignInButtonProps = {
 
 export const GoogleSignInButton = ({
   callbackUrl = "/mcp/servers",
-  label = "Googleでログイン",
+  label = "ログイン",
 }: GoogleSignInButtonProps) => {
   const handleSignIn = async () => {
     await signIn("keycloak", { callbackUrl });
