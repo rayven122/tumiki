@@ -28,17 +28,17 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   // Keycloakの新規登録URLを構築
   const keycloakEnv = getKeycloakEnv();
   const baseUrl = getBaseUrl();
-  const callbackUrlEncoded = encodeURIComponent(
-    `${baseUrl}/api/auth/callback/keycloak`,
-  );
+  const callbackUri = `${baseUrl}/api/auth/callback/keycloak`;
 
   // Keycloak新規登録URLを構築
+  // 注: URL.searchParams.set() は自動的にエンコードするため、
+  // encodeURIComponent() は不要（二重エンコード防止）
   const registrationUrl = new URL(
     `${keycloakEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/registrations`,
   );
   registrationUrl.searchParams.set("client_id", keycloakEnv.KEYCLOAK_CLIENT_ID);
   registrationUrl.searchParams.set("response_type", "code");
-  registrationUrl.searchParams.set("redirect_uri", callbackUrlEncoded);
+  registrationUrl.searchParams.set("redirect_uri", callbackUri);
   registrationUrl.searchParams.set("scope", "openid");
 
   redirect(registrationUrl.toString());
