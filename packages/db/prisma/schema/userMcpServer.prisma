@@ -111,8 +111,15 @@ model McpServer {
   /// false: JSONのままAIに返す（デフォルト）
   toonConversionEnabled Boolean @default(false)
 
+  /// Dynamic Search を有効にするかどうか
+  /// true: 元のツールを公開せず、search_tools/describe_tools/execute_tool のみ公開
+  /// false: 従来通り全ツールを公開（デフォルト）
+  dynamicSearch Boolean @default(false)
+
   /// 権限設定（サーバー削除時に自動削除）
   mcpPermissions McpPermission[]
+  /// チャットで利用される mcp server
+  chats Chat[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

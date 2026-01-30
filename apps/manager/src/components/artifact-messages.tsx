@@ -7,17 +7,18 @@ import type { UIArtifact } from "./artifact";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import { useMessages } from "@/hooks/use-messages";
+import type { ChatMessage } from "@/lib/types";
 
-interface ArtifactMessagesProps {
+export type ArtifactMessagesProps = {
   chatId: string;
-  status: UseChatHelpers["status"];
+  status: UseChatHelpers<ChatMessage>["status"];
   votes: Array<Vote> | undefined;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers["setMessages"];
-  reload: UseChatHelpers["reload"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   artifactStatus: UIArtifact["status"];
-}
+};
 
 function PureArtifactMessages({
   chatId,
@@ -25,7 +26,7 @@ function PureArtifactMessages({
   votes,
   messages,
   setMessages,
-  reload,
+  regenerate,
   isReadonly,
 }: ArtifactMessagesProps) {
   const {
@@ -56,7 +57,7 @@ function PureArtifactMessages({
               : undefined
           }
           setMessages={setMessages}
-          reload={reload}
+          regenerate={regenerate}
           isReadonly={isReadonly}
           requiresScrollPadding={
             hasSentMessage && index === messages.length - 1
@@ -82,6 +83,10 @@ function areEqual(
   prevProps: ArtifactMessagesProps,
   nextProps: ArtifactMessagesProps,
 ) {
+  // メッセージのストリーミング中は常に再レンダーして、リアルタイム表示を保証
+  if (nextProps.status === "streaming") return false;
+
+  // アーティファクトがストリーミング中は再レンダーを最小化
   if (
     prevProps.artifactStatus === "streaming" &&
     nextProps.artifactStatus === "streaming"
@@ -89,8 +94,8 @@ function areEqual(
     return true;
 
   if (prevProps.status !== nextProps.status) return false;
-  if (prevProps.status && nextProps.status) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
+  if (!equal(prevProps.messages, nextProps.messages)) return false;
   if (!equal(prevProps.votes, nextProps.votes)) return false;
 
   return true;

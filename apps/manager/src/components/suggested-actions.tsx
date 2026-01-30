@@ -5,38 +5,41 @@ import { Button } from "./ui/chat/button";
 import { memo } from "react";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { VisibilityType } from "./visibility-selector";
+import type { ChatMessage } from "@/lib/types";
 
-interface SuggestedActionsProps {
+type SuggestedActionsProps = {
   chatId: string;
-  append: UseChatHelpers["append"];
+  orgSlug: string;
+  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   selectedVisibilityType: VisibilityType;
-}
+};
 
 function PureSuggestedActions({
   chatId,
-  append,
+  orgSlug,
+  sendMessage,
   selectedVisibilityType,
 }: SuggestedActionsProps) {
   const suggestedActions = [
     {
-      title: "What are the advantages",
-      label: "of using Next.js?",
-      action: "What are the advantages of using Next.js?",
+      title: "Next.jsを使う",
+      label: "メリットを教えてください",
+      action: "Next.jsを使うメリットを教えてください",
     },
     {
-      title: "Write code to",
-      label: `demonstrate djikstra's algorithm`,
-      action: `Write code to demonstrate djikstra's algorithm`,
+      title: "ダイクストラ法の",
+      label: "コードを書いてください",
+      action: "ダイクストラ法のアルゴリズムをコードで示してください",
     },
     {
-      title: "Help me write an essay",
-      label: `about silicon valley`,
-      action: `Help me write an essay about silicon valley`,
+      title: "AIの未来について",
+      label: "レポートを書いてください",
+      action: "AIの未来についてレポートを書いてください",
     },
     {
-      title: "What is the weather",
-      label: "in San Francisco?",
-      action: "What is the weather in San Francisco?",
+      title: "今日の東京の",
+      label: "天気を教えてください",
+      action: "今日の東京の天気を教えてください",
     },
   ];
 
@@ -57,11 +60,11 @@ function PureSuggestedActions({
           <Button
             variant="ghost"
             onClick={async () => {
-              window.history.replaceState({}, "", `/chat/${chatId}`);
+              window.history.replaceState({}, "", `/${orgSlug}/chat/${chatId}`);
 
-              append({
+              sendMessage({
                 role: "user",
-                content: suggestedAction.action,
+                parts: [{ type: "text", text: suggestedAction.action }],
               });
             }}
             className="h-auto w-full flex-1 items-start justify-start gap-1 rounded-xl border px-4 py-3.5 text-left text-sm sm:flex-col"

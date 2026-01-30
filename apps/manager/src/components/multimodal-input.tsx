@@ -1,6 +1,7 @@
 "use client";
 
-import type { Attachment, UIMessage } from "ai";
+import type { UIMessage } from "ai";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import cx from "classnames";
 import type React from "react";
 import {
@@ -30,6 +31,7 @@ import type { VisibilityType } from "./visibility-selector";
 
 function PureMultimodalInput({
   chatId,
+  orgSlug,
   input,
   setInput,
   status,
@@ -38,24 +40,29 @@ function PureMultimodalInput({
   setAttachments,
   messages,
   setMessages,
-  append,
-  handleSubmit,
+  sendMessage,
   className,
   selectedVisibilityType,
+  isSpeaking = false,
+  stopSpeaking,
 }: {
   chatId: string;
-  input: UseChatHelpers["input"];
-  setInput: UseChatHelpers["setInput"];
-  status: UseChatHelpers["status"];
+  orgSlug: string;
+  input: string;
+  setInput: Dispatch<SetStateAction<string>>;
+  status: UseChatHelpers<ChatMessage>["status"];
   stop: () => void;
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers["setMessages"];
-  append: UseChatHelpers["append"];
-  handleSubmit: UseChatHelpers["handleSubmit"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   className?: string;
   selectedVisibilityType: VisibilityType;
+  /** TTS 再生中かどうか */
+  isSpeaking?: boolean;
+  /** TTS 再生を停止する関数 */
+  stopSpeaking?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -108,26 +115,42 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    window.history.replaceState({}, "", `/chat/${chatId}`);
+    window.history.replaceState({}, "", `/${orgSlug}/chat/${chatId}`);
 
-    handleSubmit(undefined, {
-      experimental_attachments: attachments,
+    sendMessage({
+      role: "user",
+      parts: [
+        ...attachments.map((attachment) => ({
+          type: "file" as const,
+          url: attachment.url,
+          name: attachment.name,
+          mediaType: attachment.contentType,
+        })),
+        {
+          type: "text" as const,
+          text: input,
+        },
+      ],
     });
 
     setAttachments([]);
     setLocalStorageInput("");
     resetHeight();
+    setInput("");
 
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
   }, [
+    input,
+    setInput,
     attachments,
-    handleSubmit,
+    sendMessage,
     setAttachments,
     setLocalStorageInput,
     width,
     chatId,
+    orgSlug,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -153,7 +176,9 @@ function PureMultimodalInput({
       const { error } = await response.json();
       toast.error(error);
     } catch (error) {
-      toast.error("Failed to upload file, please try again!");
+      toast.error(
+        "ファイルのアップロードに失敗しました。もう一度お試しください。",
+      );
     }
   };
 
@@ -222,8 +247,9 @@ function PureMultimodalInput({
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
           <SuggestedActions
-            append={append}
+            sendMessage={sendMessage}
             chatId={chatId}
+            orgSlug={orgSlug}
             selectedVisibilityType={selectedVisibilityType}
           />
         )}
@@ -263,7 +289,7 @@ function PureMultimodalInput({
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
-        placeholder="Send a message..."
+        placeholder="メッセージを入力..."
         value={input}
         onChange={handleInput}
         className={cx(
@@ -281,7 +307,7 @@ function PureMultimodalInput({
             event.preventDefault();
 
             if (status !== "ready") {
-              toast.error("Please wait for the model to finish its response!");
+              toast.error("モデルの応答が完了するまでお待ちください");
             } else {
               submitForm();
             }
@@ -289,13 +315,20 @@ function PureMultimodalInput({
         }}
       />
 
+      {/* 画像アップロード機能は一時的に無効化（さくらVM対応後に復活予定）
       <div className="absolute bottom-0 flex w-fit flex-row justify-start p-2">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
       </div>
+      */}
 
       <div className="absolute right-0 bottom-0 flex w-fit flex-row justify-end p-2">
-        {status === "submitted" ? (
-          <StopButton stop={stop} setMessages={setMessages} />
+        {status === "submitted" || isSpeaking ? (
+          <StopButton
+            stop={stop}
+            setMessages={setMessages}
+            stopSpeaking={stopSpeaking}
+            isGenerating={status === "submitted"}
+          />
         ) : (
           <SendButton
             input={input}
@@ -316,6 +349,7 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
+    if (prevProps.isSpeaking !== nextProps.isSpeaking) return false;
 
     return true;
   },
@@ -326,7 +360,7 @@ function PureAttachmentsButton({
   status,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
-  status: UseChatHelpers["status"];
+  status: UseChatHelpers<ChatMessage>["status"];
 }) {
   return (
     <Button
@@ -349,9 +383,13 @@ const AttachmentsButton = memo(PureAttachmentsButton);
 function PureStopButton({
   stop,
   setMessages,
+  stopSpeaking,
+  isGenerating,
 }: {
   stop: () => void;
-  setMessages: UseChatHelpers["setMessages"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
+  stopSpeaking?: () => void;
+  isGenerating: boolean;
 }) {
   return (
     <Button
@@ -359,8 +397,13 @@ function PureStopButton({
       className="h-fit rounded-full border p-1.5 dark:border-zinc-600"
       onClick={(event) => {
         event.preventDefault();
-        stop();
-        setMessages((messages) => messages);
+        // テキスト生成中の場合は生成を停止
+        if (isGenerating) {
+          stop();
+          setMessages((messages: ChatMessage[]) => messages);
+        }
+        // TTS 再生を停止（常に呼び出す）
+        stopSpeaking?.();
       }}
     >
       <StopIcon size={14} />

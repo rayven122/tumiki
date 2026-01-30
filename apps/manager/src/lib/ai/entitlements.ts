@@ -1,4 +1,4 @@
-import type { ChatModel } from "./models";
+import { chatModels, type ChatModel } from "./models";
 
 interface Entitlements {
   maxMessagesPerDay: number;
@@ -19,7 +19,8 @@ export const entitlementsByUserType: Record<"regular", Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ["chat-model", "chat-model-reasoning"],
+    // chatModels から全てのモデルIDを取得
+    availableChatModelIds: chatModels.map((model) => model.id),
   },
 
   /*

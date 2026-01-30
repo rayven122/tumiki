@@ -537,6 +537,7 @@ erDiagram
   PiiMaskingMode piiMaskingMode
   String piiInfoTypes
   Boolean toonConversionEnabled
+  Boolean dynamicSearch
   DateTime createdAt
   DateTime updatedAt
   DateTime deletedAt "nullable"
@@ -592,6 +593,10 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"_ChatToMcpServer" {
+  String A FK
+  String B FK
+}
 "_McpServerTemplateInstanceToMcpTool" {
   String A FK
   String B FK
@@ -625,6 +630,7 @@ erDiagram
 "McpOAuthToken" }o--|| "McpServerTemplateInstance" : mcpServerTemplateInstance
 "McpServerTemplateInstance" }o--|| "McpServer" : mcpServer
 "McpServerTemplateInstance" }o--|| "McpServerTemplate" : mcpServerTemplate
+"_ChatToMcpServer" }o--|| "McpServer" : McpServer
 "_McpServerTemplateInstanceToMcpTool" }o--|| "McpServerTemplateInstance" : McpServerTemplateInstance
 ```
 
@@ -668,6 +674,10 @@ userId = null で組織共通設定、userId 設定済みでユーザー個別�
     > TOON変換を有効にするかどうか（AIへのトークン削減用）
     > true: レスポンスをTOON形式に変換してからAIに返す
     > false: JSONのままAIに返す（デフォルト）
+  - `dynamicSearch`
+    > Dynamic Search を有効にするかどうか
+    > true: 元のツールを公開せず、search_tools/describe_tools/execute_tool のみ公開
+    > false: 従来通り全ツールを公開（デフォルト）
   - `createdAt`: 
   - `updatedAt`: 
   - `deletedAt`: 論理削除用のタイムスタンプ
@@ -737,6 +747,13 @@ MCPサーバーとテンプレートの関連（同じテンプレートを複�
   - `displayOrder`: 統合サーバー内での表示順序
   - `createdAt`: 
   - `updatedAt`: 
+
+### `_ChatToMcpServer`
+Pair relationship table between [Chat](#Chat) and [McpServer](#McpServer)
+
+**Properties**
+  - `A`: 
+  - `B`: 
 
 ### `_McpServerTemplateInstanceToMcpTool`
 Pair relationship table between [McpServerTemplateInstance](#McpServerTemplateInstance) and [McpTool](#McpTool)
@@ -830,7 +847,8 @@ erDiagram
   DateTime createdAt
   String title
   String userId FK
-  Visibility visibility
+  McpServerVisibility visibility
+  String organizationId FK
 }
 "Message" {
   String id PK
@@ -891,7 +909,8 @@ erDiagram
   - `createdAt`: 
   - `title`: 
   - `userId`: 
-  - `visibility`: 
+  - `visibility`: チャットの可視性（McpServerVisibility を共通利用）
+  - `organizationId`: 組織ID（組織レベルでのチャット管理）
 
 ### `Message`
 

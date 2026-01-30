@@ -31,7 +31,7 @@ import { api } from "@/trpc/react";
 import { ServerStatus, AuthType, ServerType } from "@tumiki/db/prisma";
 import type { McpServerId } from "@/schema/ids";
 import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
-import { ShieldCheck, Info, Shrink } from "lucide-react";
+import { ShieldCheck, Info, Shrink, Search } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -185,6 +185,29 @@ export const ServerDetailPageClient = ({
     updateToonConversion({
       id: serverId as McpServerId,
       toonConversionEnabled: checked,
+    });
+  };
+
+  // ツール動的取得設定更新
+  const { mutate: updateDynamicSearch } =
+    api.v2.userMcpServer.updateDynamicSearch.useMutation({
+      onSuccess: () => {
+        toast.success("ツール動的取得設定を更新しました");
+      },
+      onError: (error) => {
+        toast.error(`エラーが発生しました: ${error.message}`);
+      },
+      onSettled: async () => {
+        await utils.v2.userMcpServer.findById.invalidate({
+          id: serverId as McpServerId,
+        });
+      },
+    });
+
+  const handleDynamicSearchToggle = (checked: boolean) => {
+    updateDynamicSearch({
+      id: serverId as McpServerId,
+      dynamicSearchEnabled: checked,
     });
   };
 
@@ -436,16 +459,16 @@ export const ServerDetailPageClient = ({
                         </>
                       )}
 
-                      {/* マスキング */}
+                      {/* ツール動的取得 */}
                       <div className="flex items-center gap-1.5">
-                        <ShieldCheck className="h-3 w-3" />
-                        <span>マスキング:</span>
+                        <Search className="h-3 w-3" />
+                        <span>動的取得:</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
                               type="button"
                               className="inline-flex cursor-help text-gray-400 hover:text-gray-600"
-                              aria-label="マスキングについて"
+                              aria-label="ツール動的取得について"
                             >
                               <Info className="h-3 w-3" />
                             </button>
@@ -454,17 +477,17 @@ export const ServerDetailPageClient = ({
                             side="top"
                             className="max-w-xs text-left"
                           >
-                            リクエスト・レスポンスに含まれる個人情報（メールアドレス、電話番号など）を自動マスキングし、AIやMCPサーバーに意図せず個人情報が渡ることを防ぎます
+                            全ツール定義の代わりに3つのメタツールのみをAIに公開。コンテキスト量を大幅に削減し、AIの応答速度とコストを改善します
                           </TooltipContent>
                         </Tooltip>
                         <Switch
-                          checked={server.piiMaskingEnabled}
-                          onCheckedChange={handlePiiMaskingToggle}
+                          checked={server.dynamicSearch ?? false}
+                          onCheckedChange={handleDynamicSearchToggle}
                           className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
                           aria-label={
-                            server.piiMaskingEnabled
-                              ? "マスキングを無効にする"
-                              : "マスキングを有効にする"
+                            server.dynamicSearch
+                              ? "ツール動的取得を無効にする"
+                              : "ツール動的取得を有効にする"
                           }
                         />
                       </div>
@@ -498,6 +521,39 @@ export const ServerDetailPageClient = ({
                             server.toonConversionEnabled
                               ? "データ圧縮を無効にする"
                               : "データ圧縮を有効にする"
+                          }
+                        />
+                      </div>
+
+                      {/* マスキング */}
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="h-3 w-3" />
+                        <span>マスキング:</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex cursor-help text-gray-400 hover:text-gray-600"
+                              aria-label="マスキングについて"
+                            >
+                              <Info className="h-3 w-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className="max-w-xs text-left"
+                          >
+                            リクエスト・レスポンスに含まれる個人情報（メールアドレス、電話番号など）を自動マスキングし、AIやMCPサーバーに意図せず個人情報が渡ることを防ぎます
+                          </TooltipContent>
+                        </Tooltip>
+                        <Switch
+                          checked={server.piiMaskingEnabled}
+                          onCheckedChange={handlePiiMaskingToggle}
+                          className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
+                          aria-label={
+                            server.piiMaskingEnabled
+                              ? "マスキングを無効にする"
+                              : "マスキングを有効にする"
                           }
                         />
                       </div>
