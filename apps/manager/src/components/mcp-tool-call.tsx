@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 import { TypingIndicator } from "./typing-indicator";
+import { useAtomValue } from "jotai";
+import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
 
 // AI SDK 6 のツール状態
 type ToolState =
@@ -20,39 +22,39 @@ type McpToolCallProps = {
 };
 
 /**
- * ツール名からMCPサーバー名と表示用ツール名を抽出
+ * ツール名からMCPサーバーIDと表示用ツール名を抽出
  *
- * 形式: "{mcpServerName}__{normalizedName}__{toolName}" または "{mcpServerName}__{metaToolName}"
+ * 形式: "{mcpServerId}__{normalizedName}__{toolName}" または "{mcpServerId}__{metaToolName}"
  *
  * @example
- * "Linear MCP__linear__list_teams" → { serverName: "Linear MCP", displayToolName: "list_teams" }
- * "Linear MCP__search_tools" → { serverName: "Linear MCP", displayToolName: "search_tools" }
+ * "cm7qwxyz123__linear__list_teams" → { serverId: "cm7qwxyz123", displayToolName: "list_teams" }
+ * "cm7qwxyz123__search_tools" → { serverId: "cm7qwxyz123", displayToolName: "search_tools" }
  */
 const parseToolName = (
   fullToolName: string,
-): { serverName: string; displayToolName: string } => {
+): { serverId: string; displayToolName: string } => {
   const parts = fullToolName.split("__");
 
   if (parts.length >= 3) {
-    // {mcpServerName}__{normalizedName}__{toolName} 形式
-    // 最初がサーバー名、残りの最後がツール名
+    // {mcpServerId}__{normalizedName}__{toolName} 形式
+    // 最初がサーバーID、残りの最後がツール名
     return {
-      serverName: parts[0] ?? "",
+      serverId: parts[0] ?? "",
       displayToolName: parts.slice(2).join("__"),
     };
   }
 
   if (parts.length === 2) {
-    // {mcpServerName}__{metaToolName} 形式（Dynamic Search メタツール）
+    // {mcpServerId}__{metaToolName} 形式（Dynamic Search メタツール）
     return {
-      serverName: parts[0] ?? "",
+      serverId: parts[0] ?? "",
       displayToolName: parts[1] ?? "",
     };
   }
 
   // フォールバック: パースできない場合はそのまま表示
   return {
-    serverName: "",
+    serverId: "",
     displayToolName: fullToolName,
   };
 };
@@ -158,7 +160,9 @@ export const McpToolCall = ({
   input,
   output,
 }: McpToolCallProps) => {
-  const { serverName, displayToolName } = parseToolName(toolName);
+  const mcpServerMap = useAtomValue(mcpServerMapAtom);
+  const { serverId, displayToolName } = parseToolName(toolName);
+  const serverName = resolveServerName(mcpServerMap, serverId);
   const isLoading = state === "input-streaming" || state === "input-available";
 
   // stateが"output-available"でも、outputにisError:trueがあればエラーとして扱う
