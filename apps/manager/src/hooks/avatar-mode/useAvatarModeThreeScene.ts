@@ -133,14 +133,38 @@ export const useAvatarModeThreeScene = (
       if (setupResult.scene) {
         setupResult.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
+            // ジオメトリのクリーンアップ
             child.geometry?.dispose();
-            if (Array.isArray(child.material)) {
-              child.material.forEach((mat) => mat.dispose());
-            } else {
-              child.material?.dispose();
+
+            // マテリアルのクリーンアップ
+            const materials = Array.isArray(child.material)
+              ? child.material
+              : [child.material];
+            materials.forEach((mat) => {
+              if (mat) {
+                // テクスチャのクリーンアップ
+                Object.values(mat).forEach((value) => {
+                  if (value instanceof THREE.Texture) {
+                    value.dispose();
+                  }
+                });
+                mat.dispose();
+              }
+            });
+          }
+
+          // VRM固有のリソースクリーンアップ
+          if ("userData" in child && child.userData?.vrm) {
+            try {
+              child.userData.vrm.dispose?.();
+            } catch {
+              // VRM dispose エラーは無視
             }
           }
         });
+
+        // シーンのクリア
+        setupResult.scene.clear();
       }
 
       if (setupResult.renderer) {

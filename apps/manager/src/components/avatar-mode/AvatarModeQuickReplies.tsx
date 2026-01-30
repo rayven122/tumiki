@@ -15,14 +15,14 @@ type QuickReply = {
   message: string;
 };
 
-// デフォルトのクイックリプライ
+// デフォルトのクイックリプライ（MCP活用を促す内容を含む）
 const DEFAULT_QUICK_REPLIES: QuickReply[] = [
-  { label: "こんにちは", message: "こんにちは！" },
-  { label: "自己紹介してください", message: "自己紹介してください" },
-  { label: "先端技術の展望は？", message: "先端技術の展望は？" },
-  { label: "おすすめの回り方は？", message: "おすすめの回り方は？" },
-  { label: "今日の予定を教えて", message: "今日の予定を教えて" },
-  { label: "面白い話を聞かせて", message: "面白い話を聞かせて" },
+  { label: "今日の天気", message: "今日の天気を教えて" },
+  { label: "最新ニュース", message: "今日の最新ニュースを教えて" },
+  { label: "タスク確認", message: "今日のタスクを確認して" },
+  { label: "ドキュメント検索", message: "関連するドキュメントを検索して" },
+  { label: "スケジュール", message: "今週のスケジュールを確認して" },
+  { label: "ツール一覧", message: "使えるツールの一覧を教えて" },
 ];
 
 type AvatarModeQuickRepliesProps = {

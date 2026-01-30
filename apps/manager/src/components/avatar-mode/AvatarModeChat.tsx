@@ -17,6 +17,7 @@ import { toast } from "@/components/toast";
 import { ChatSDKError } from "@/lib/errors";
 import { CoharuProvider, useCoharuContext } from "@/hooks/coharu";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
+import { useTTSHandler } from "@/hooks/avatar-mode/useTTSHandler";
 import { AvatarModeBackground } from "./AvatarModeBackground";
 import { AvatarModeChatPanel } from "./AvatarModeChatPanel";
 import { AvatarModeQuickReplies } from "./AvatarModeQuickReplies";
@@ -73,18 +74,8 @@ const AvatarModeChatContent = ({
     setIsEnabled(true);
   }, [setIsEnabled]);
 
-  // Coharu の speak を ref で保持
-  const speakRef = useRef(speak);
-  useEffect(() => {
-    speakRef.current = speak;
-  }, [speak]);
-
   // MCPサーバーIDsを ref で保持
   const selectedMcpServerIdsRef = useRef<string[]>([]);
-
-  // ストリーミング中のTTS用状態
-  const streamingTextRef = useRef<string>("");
-  const spokenIndexRef = useRef<number>(0);
 
   // チャット設定をLocalStorageから取得
   const {
@@ -147,9 +138,6 @@ const AvatarModeChatContent = ({
     },
   });
 
-  // ストリーミング中の status を追跡
-  const prevStatusRef = useRef(status);
-
   // メッセージが追加されたら isNewChat を false に更新
   useEffect(() => {
     if (messages.length > 0 && isNewChat) {
@@ -157,58 +145,8 @@ const AvatarModeChatContent = ({
     }
   }, [messages.length, isNewChat]);
 
-  // TTS: messages を監視してストリーミング中のテキストを読み上げ
-  useEffect(() => {
-    const lastMessage = messages.at(-1);
-    if (lastMessage?.role !== "assistant") {
-      return;
-    }
-
-    // メッセージからテキストを抽出
-    const currentText = lastMessage.parts
-      .filter(
-        (part): part is { type: "text"; text: string } => part.type === "text",
-      )
-      .map((part) => part.text)
-      .join("");
-
-    // ストリーミング中の場合、文単位で読み上げ
-    if (status === "streaming") {
-      streamingTextRef.current = currentText;
-
-      // 文の区切り文字で分割して読み上げ
-      const sentenceEndRegex = /[。！？!?]/g;
-      let lastIndex = spokenIndexRef.current;
-      let match: RegExpExecArray | null;
-
-      while ((match = sentenceEndRegex.exec(currentText)) !== null) {
-        if (match.index >= spokenIndexRef.current) {
-          const sentence = currentText.slice(lastIndex, match.index + 1).trim();
-          if (sentence) {
-            void speakRef.current(sentence);
-          }
-          lastIndex = match.index + 1;
-          spokenIndexRef.current = lastIndex;
-        }
-      }
-    }
-
-    // ストリーミング完了時、残りのテキストを読み上げ
-    if (prevStatusRef.current === "streaming" && status === "ready") {
-      const remainingText = streamingTextRef.current
-        .slice(spokenIndexRef.current)
-        .trim();
-      if (remainingText) {
-        void speakRef.current(remainingText);
-      }
-
-      // ref をリセット
-      streamingTextRef.current = "";
-      spokenIndexRef.current = 0;
-    }
-
-    prevStatusRef.current = status;
-  }, [messages, status]);
+  // TTS処理（カスタムフックに分離）
+  useTTSHandler({ messages, status, speak });
 
   const isLoading = status === "streaming" || status === "submitted";
 
