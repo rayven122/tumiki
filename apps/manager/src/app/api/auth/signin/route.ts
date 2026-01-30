@@ -1,6 +1,7 @@
 import { auth, signIn } from "@/auth";
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";
+import { determineRedirectUrl } from "~/lib/auth/redirect-utils";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 /**
@@ -12,29 +13,8 @@ export const GET = async (request: NextRequest) => {
   const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
   const orgSlug = getSessionInfo(session).organizationSlug;
 
-  // callbackUrlのバリデーション（サインインループを防ぐ）
-  const disallowedCallbackPaths = ["/signin", "/signup", "/api/auth/"];
-  const validatedCallbackUrl =
-    callbackUrl &&
-    !disallowedCallbackPaths.some((path) => callbackUrl.startsWith(path))
-      ? callbackUrl
-      : null;
-
-  // リダイレクト先の優先順位:
-  // 1. 招待リンク（最優先）
-  // 2. デフォルト組織ページ
-  // 3. その他の callbackUrl
-  // 4. 初回ユーザー（org_slug なし）
-  let redirectUrl: string;
-  if (validatedCallbackUrl?.startsWith("/invite/")) {
-    redirectUrl = validatedCallbackUrl;
-  } else if (orgSlug) {
-    redirectUrl = `/${orgSlug}/mcps`;
-  } else if (validatedCallbackUrl) {
-    redirectUrl = validatedCallbackUrl;
-  } else {
-    redirectUrl = "/onboarding";
-  }
+  // リダイレクト先を決定
+  const redirectUrl = determineRedirectUrl(callbackUrl, orgSlug, false);
 
   // 既にログイン済みの場合は、リダイレクト先へ
   if (session?.user) {
