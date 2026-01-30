@@ -40,7 +40,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   } else if (validatedCallbackUrl) {
     redirectUrl = validatedCallbackUrl;
   } else {
-    redirectUrl = "/onboarding?first=true";
+    // 新規登録（signup）ではないため、?first=true は付けない
+    redirectUrl = "/onboarding";
   }
 
   // 既にログイン済みの場合は、リダイレクト先へ
