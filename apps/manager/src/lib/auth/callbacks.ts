@@ -5,6 +5,56 @@ import type { AdapterUser } from "@auth/core/adapters";
 import type { KeycloakJWTPayload } from "./types";
 import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "~/server/api/routers/v2/user/getTumikiClaims";
+import { getKeycloakEnv } from "~/utils/env";
+
+/**
+ * Keycloak からアクセストークンをリフレッシュ
+ * リフレッシュ失敗時は null を返し、セッションを無効化する
+ */
+const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
+  const keycloakEnv = getKeycloakEnv();
+  const tokenEndpoint = `${keycloakEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
+
+  try {
+    const response = await fetch(tokenEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: keycloakEnv.KEYCLOAK_CLIENT_ID,
+        client_secret: keycloakEnv.KEYCLOAK_CLIENT_SECRET,
+        refresh_token: token.refreshToken ?? "",
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `[refreshAccessToken] Failed to refresh token: ${response.status} ${response.statusText}`,
+      );
+      return null;
+    }
+
+    const refreshedTokens = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+      refresh_token?: string;
+    };
+
+    console.log("[refreshAccessToken] Token refreshed successfully");
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      expiresAt: Math.floor(Date.now() / 1000) + refreshedTokens.expires_in,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+    };
+  } catch (error) {
+    console.error("[refreshAccessToken] Error refreshing token:", error);
+    return null;
+  }
+};
 
 /**
  * JWTコールバック
@@ -60,6 +110,23 @@ export const jwtCallback = async ({
     return token;
   }
 
+  // アクセストークンの有効期限をチェック（60秒のバッファを持たせる）
+  const shouldRefresh = token.expiresAt
+    ? Date.now() >= (token.expiresAt - 60) * 1000
+    : false;
+
+  if (shouldRefresh && token.refreshToken) {
+    const refreshedToken = await refreshAccessToken(token);
+
+    if (!refreshedToken) {
+      // リフレッシュ失敗 → セッション無効化（サインインページへリダイレクト）
+      console.error("[jwtCallback] Token refresh failed, invalidating session");
+      return null;
+    }
+
+    token = refreshedToken;
+  }
+
   if (!account && token.sub && token.tumiki) {
     // DBから最新のtumikiクレームを取得（rolesは既存の値を保持）
     const updatedTumiki = await getTumikiClaims(
@@ -107,5 +174,7 @@ export const sessionCallback = async ({
       tumiki: token.tumiki ?? null, // Keycloakカスタムクレーム（組織情報を含む）
     });
   }
+  // MCP Proxy認証用にaccessTokenを公開
+  session.accessToken = token.accessToken;
   return session;
 };

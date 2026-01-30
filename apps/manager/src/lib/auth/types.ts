@@ -54,6 +54,8 @@ declare module "next-auth" {
       tumiki: TumikiClaims | null; // Keycloakカスタムクレーム（組織情報はここに含まれる）
     };
     expires: string;
+    /// MCP Proxy認証用のKeycloakアクセストークン
+    accessToken?: string;
   }
 
   interface User {

@@ -24,7 +24,7 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
-    "lint:ws": "pnpm dlx sherif@latest",
+    "lint:ws": "pnpm dlx sherif@latest -i ai",
     "postinstall": "pnpm lint:ws",
     "test": "vitest run",
     "test:watch": "vitest",

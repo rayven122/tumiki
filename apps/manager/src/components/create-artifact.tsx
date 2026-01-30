@@ -3,6 +3,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
 import type { DataStreamDelta } from "./data-stream-handler";
 import type { UIArtifact } from "./artifact";
+import type { ChatMessage } from "@/lib/types";
 
 export type ArtifactActionContext<M = any> = {
   content: string;
@@ -23,7 +24,8 @@ type ArtifactAction<M = any> = {
 };
 
 export type ArtifactToolbarContext = {
-  appendMessage: UseChatHelpers["append"];
+  // AI SDK 6: append → sendMessage
+  appendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
 };
 
 export type ArtifactToolbarItem = {

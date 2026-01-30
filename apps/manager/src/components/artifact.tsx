@@ -1,4 +1,5 @@
-import type { Attachment, UIMessage } from "ai";
+import type { UIMessage } from "ai";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import { formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -11,6 +12,7 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
+import { useAtomValue } from "jotai";
 import type { Document, Vote } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { MultimodalInput } from "./multimodal-input";
@@ -19,7 +21,7 @@ import { VersionFooter } from "./version-footer";
 import { ArtifactActions } from "./artifact-actions";
 import { ArtifactCloseButton } from "./artifact-close-button";
 import { ArtifactMessages } from "./artifact-messages";
-import { useSidebar } from "./ui/chat/sidebar";
+import { sidebarOpenAtom } from "@/store/sidebar";
 import { useArtifact } from "@/hooks/use-artifact";
 import { imageArtifact } from "@/artifacts/image/client";
 import { codeArtifact } from "@/artifacts/code/client";
@@ -37,7 +39,7 @@ export const artifactDefinitions = [
 ];
 export type ArtifactKind = (typeof artifactDefinitions)[number]["kind"];
 
-export interface UIArtifact {
+export type UIArtifact = {
   title: string;
   documentId: string;
   kind: ArtifactKind;
@@ -50,38 +52,38 @@ export interface UIArtifact {
     width: number;
     height: number;
   };
-}
+};
 
 function PureArtifact({
   chatId,
+  orgSlug,
   input,
   setInput,
-  handleSubmit,
+  sendMessage,
   status,
   stop,
   attachments,
   setAttachments,
-  append,
   messages,
   setMessages,
-  reload,
+  regenerate,
   votes,
   isReadonly,
   selectedVisibilityType,
 }: {
   chatId: string;
+  orgSlug: string;
   input: string;
-  setInput: UseChatHelpers["setInput"];
-  status: UseChatHelpers["status"];
-  stop: UseChatHelpers["stop"];
+  setInput: Dispatch<SetStateAction<string>>;
+  status: UseChatHelpers<ChatMessage>["status"];
+  stop: UseChatHelpers<ChatMessage>["stop"];
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
-  setMessages: UseChatHelpers["setMessages"];
+  setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   votes: Array<Vote> | undefined;
-  append: UseChatHelpers["append"];
-  handleSubmit: UseChatHelpers["handleSubmit"];
-  reload: UseChatHelpers["reload"];
+  sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
+  regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   selectedVisibilityType: VisibilityType;
 }) {
@@ -102,7 +104,8 @@ function PureArtifact({
   const [document, setDocument] = useState<Document | null>(null);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1);
 
-  const { open: isSidebarOpen } = useSidebar();
+  // OrgSidebarの開閉状態を取得
+  const isSidebarOpen = useAtomValue(sidebarOpenAtom);
 
   useEffect(() => {
     if (documents && documents.length > 0) {
@@ -281,7 +284,7 @@ function PureArtifact({
 
           {!isMobile && (
             <motion.div
-              className="bg-muted dark:bg-background relative h-dvh w-[400px] shrink-0"
+              className="bg-muted relative h-dvh w-[400px] shrink-0"
               initial={{ opacity: 0, x: 10, scale: 1 }}
               animate={{
                 opacity: 1,
@@ -319,7 +322,7 @@ function PureArtifact({
                   votes={votes}
                   messages={messages}
                   setMessages={setMessages}
-                  reload={reload}
+                  regenerate={regenerate}
                   isReadonly={isReadonly}
                   artifactStatus={artifact.status}
                 />
@@ -327,16 +330,16 @@ function PureArtifact({
                 <form className="relative flex w-full flex-row items-end gap-2 px-4 pb-4">
                   <MultimodalInput
                     chatId={chatId}
+                    orgSlug={orgSlug}
                     input={input}
                     setInput={setInput}
-                    handleSubmit={handleSubmit}
+                    sendMessage={sendMessage}
                     status={status}
                     stop={stop}
                     attachments={attachments}
                     setAttachments={setAttachments}
                     messages={messages}
-                    append={append}
-                    className="bg-background dark:bg-muted"
+                    className="bg-background"
                     setMessages={setMessages}
                     selectedVisibilityType={selectedVisibilityType}
                   />
@@ -346,7 +349,7 @@ function PureArtifact({
           )}
 
           <motion.div
-            className="dark:bg-muted bg-background fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 md:border-l dark:border-zinc-700"
+            className="bg-background fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 md:border-l"
             initial={
               isMobile
                 ? {
@@ -450,7 +453,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="dark:bg-muted bg-background h-full max-w-full! items-center overflow-y-scroll">
+            <div className="bg-background h-full max-w-full! items-center overflow-y-scroll">
               <artifactDefinition.content
                 title={artifact.title}
                 content={
@@ -476,7 +479,7 @@ function PureArtifact({
                   <Toolbar
                     isToolbarVisible={isToolbarVisible}
                     setIsToolbarVisible={setIsToolbarVisible}
-                    append={append}
+                    sendMessage={sendMessage}
                     status={status}
                     stop={stop}
                     setMessages={setMessages}

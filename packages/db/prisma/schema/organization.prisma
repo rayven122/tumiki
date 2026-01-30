@@ -50,6 +50,9 @@ model Organization {
   /// 通知関連
   notifications Notification[]
 
+  /// チャット関連
+  chats Chat[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
