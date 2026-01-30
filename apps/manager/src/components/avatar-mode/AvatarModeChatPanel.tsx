@@ -30,6 +30,8 @@ type AvatarModeChatPanelProps = {
   selectedMcpServerIds: string[];
   onMcpServerSelectionChange?: (ids: string[]) => void;
   isNewChat?: boolean;
+  chatId: string;
+  orgSlug: string;
 };
 
 export const AvatarModeChatPanel = ({
@@ -43,6 +45,8 @@ export const AvatarModeChatPanel = ({
   selectedMcpServerIds,
   onMcpServerSelectionChange,
   isNewChat = false,
+  chatId,
+  orgSlug,
 }: AvatarModeChatPanelProps) => {
   const isLoading = status === "streaming" || status === "submitted";
 
@@ -91,6 +95,8 @@ export const AvatarModeChatPanel = ({
         sendMessage={sendMessage}
         status={status}
         stop={stop}
+        chatId={chatId}
+        orgSlug={orgSlug}
       />
     </div>
   );
