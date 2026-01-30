@@ -1,5 +1,5 @@
 import { generateCUID } from "@/lib/utils";
-import { type DataStreamWriter, tool } from "ai";
+import { type UIMessageStreamWriter, tool } from "ai";
 import { z } from "zod";
 import {
   artifactKinds,
@@ -9,39 +9,41 @@ import type { SessionData } from "~/auth";
 
 interface CreateDocumentProps {
   session: SessionData;
-  dataStream: DataStreamWriter;
+  writer: UIMessageStreamWriter;
 }
 
-export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
+// UIMessageStreamWriterにデータを書き込むヘルパー関数
+// AI SDK 6では `data-${string}` パターンを使用
+// vercel/ai-chatbot に合わせて transient: true を追加
+const writeArtifactData = (
+  writer: UIMessageStreamWriter,
+  dataType: string,
+  content: unknown,
+) => {
+  writer.write({
+    type: `data-${dataType}` as `data-${string}`,
+    data: content,
+    transient: true,
+  });
+};
+
+const createDocumentInputSchema = z.object({
+  title: z.string(),
+  kind: z.enum(artifactKinds),
+});
+
+export const createDocument = ({ session, writer }: CreateDocumentProps) =>
   tool({
     description:
       "Create a document for a writing or content creation activities. This tool will call other functions that will generate the contents of the document based on the title and kind.",
-    parameters: z.object({
-      title: z.string(),
-      kind: z.enum(artifactKinds),
-    }),
+    inputSchema: createDocumentInputSchema,
     execute: async ({ title, kind }) => {
       const id = generateCUID();
 
-      dataStream.writeData({
-        type: "kind",
-        content: kind,
-      });
-
-      dataStream.writeData({
-        type: "id",
-        content: id,
-      });
-
-      dataStream.writeData({
-        type: "title",
-        content: title,
-      });
-
-      dataStream.writeData({
-        type: "clear",
-        content: "",
-      });
+      writeArtifactData(writer, "kind", kind);
+      writeArtifactData(writer, "id", id);
+      writeArtifactData(writer, "title", title);
+      writeArtifactData(writer, "clear", "");
 
       const documentHandler = documentHandlersByArtifactKind.find(
         (documentHandlerByArtifactKind) =>
@@ -55,11 +57,11 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
       await documentHandler.onCreateDocument({
         id,
         title,
-        dataStream,
+        writer,
         session,
       });
 
-      dataStream.writeData({ type: "finish", content: "" });
+      writeArtifactData(writer, "finish", "");
 
       return {
         id,

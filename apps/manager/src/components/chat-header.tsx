@@ -1,92 +1,164 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useWindowSize } from "usehooks-ts";
+import { useParams } from "next/navigation";
 
 import { ModelSelector } from "@/components/model-selector";
-import { SidebarToggle } from "@/components/sidebar-toggle";
-import { Button } from "@/components/ui/chat/button";
-import { PlusIcon, VercelIcon } from "./icons";
-import { useSidebar } from "./ui/chat/sidebar";
-import { memo } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
+import { ChatHistoryDropdown } from "@/app/[orgSlug]/_components/ChatHistoryDropdown";
+import { memo, useCallback } from "react";
 import { type VisibilityType, VisibilitySelector } from "./visibility-selector";
+import { McpServerSelector } from "./mcp-server-selector";
 import type { SessionData } from "~/auth";
+import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { Button } from "./ui/chat/button";
+import { CopyIcon } from "./icons";
+import { toast } from "./toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/chat/tooltip";
+import { CoharuToggle } from "./coharu/CoharuToggle";
 
 function PureChatHeader({
   chatId,
   selectedModelId,
+  onModelChange,
   selectedVisibilityType,
+  selectedMcpServerIds,
+  onMcpServerSelectionChange,
   isReadonly,
   session,
+  organizationId,
+  isPersonalOrg,
+  isNewChat = false,
 }: {
   chatId: string;
   selectedModelId: string;
+  onModelChange?: (modelId: string) => void;
   selectedVisibilityType: VisibilityType;
+  selectedMcpServerIds: string[];
+  onMcpServerSelectionChange?: (ids: string[]) => void;
   isReadonly: boolean;
   session: SessionData;
+  organizationId: string;
+  isPersonalOrg: boolean;
+  isNewChat?: boolean;
 }) {
-  const router = useRouter();
-  const { open } = useSidebar();
+  const params = useParams();
+  const orgSlug = params.orgSlug as string;
 
-  const { width: windowWidth } = useWindowSize();
+  // 現在の公開設定を取得
+  const { visibilityType } = useChatVisibility({
+    chatId,
+    initialVisibilityType: selectedVisibilityType,
+    organizationId,
+  });
+
+  // 公開リンクをコピー
+  const handleCopyShareLink = useCallback(async () => {
+    const shareUrl = `${window.location.origin}/share/${chatId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        type: "success",
+        description: "公開リンクをコピーしました",
+      });
+    } catch {
+      toast({
+        type: "error",
+        description: "リンクのコピーに失敗しました",
+      });
+    }
+  }, [chatId]);
 
   return (
     <header className="bg-background sticky top-0 flex items-center gap-2 px-2 py-1.5 md:px-2">
-      <SidebarToggle />
-
-      {(!open || windowWidth < 768) && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              className="order-2 ml-auto px-2 md:order-1 md:ml-0 md:h-fit md:px-2"
-              onClick={() => {
-                router.push("/chat");
-                router.refresh();
-              }}
-            >
-              <PlusIcon />
-              <span className="md:sr-only">New Chat</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>New Chat</TooltipContent>
-        </Tooltip>
-      )}
-
+      {/* モデル選択 */}
       {!isReadonly && (
         <ModelSelector
           session={session}
           selectedModelId={selectedModelId}
-          className="order-1 md:order-2"
+          onModelChange={onModelChange}
+          className="order-1"
         />
       )}
 
+      {/* MCPサーバー選択（既存チャットでは変更不可） */}
       {!isReadonly && (
+        <Tooltip>
+          <TooltipTrigger asChild className="order-2">
+            <div>
+              <McpServerSelector
+                selectedMcpServerIds={selectedMcpServerIds}
+                onSelectionChange={onMcpServerSelectionChange}
+                disabled={!isNewChat}
+              />
+            </div>
+          </TooltipTrigger>
+          {!isNewChat && (
+            <TooltipContent side="bottom">
+              MCPサーバーは新規チャット作成時のみ変更できます
+            </TooltipContent>
+          )}
+        </Tooltip>
+      )}
+
+      {/* 公開設定（新規チャットの場合は非表示） */}
+      {!isReadonly && !isNewChat && (
         <VisibilitySelector
           chatId={chatId}
           selectedVisibilityType={selectedVisibilityType}
-          className="order-1 md:order-3"
+          organizationId={organizationId}
+          isPersonalOrg={isPersonalOrg}
+          className="order-3"
         />
       )}
 
-      <Button
-        className="order-4 hidden h-fit bg-zinc-900 px-2 py-1.5 text-zinc-50 hover:bg-zinc-800 md:ml-auto md:flex md:h-[34px] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        asChild
-      >
-        <Link
-          href={`https://vercel.com/new/clone?repository-url=https://github.com/vercel/ai-chatbot&env=AUTH_SECRET&envDescription=Learn more about how to get the API Keys for the application&envLink=https://github.com/vercel/ai-chatbot/blob/main/.env.example&demo-title=AI Chatbot&demo-description=An Open-Source AI Chatbot Template Built With Next.js and the AI SDK by Vercel.&demo-url=https://chat.vercel.ai&products=[{"type":"integration","protocol":"ai","productSlug":"grok","integrationSlug":"xai"},{"type":"integration","protocol":"storage","productSlug":"neon","integrationSlug":"neon"},{"type":"integration","protocol":"storage","productSlug":"upstash-kv","integrationSlug":"upstash"},{"type":"blob"}]`}
-          target="_noblank"
-        >
-          <VercelIcon size={16} />
-          Deploy with Vercel
-        </Link>
-      </Button>
+      {/* 公開リンクコピーボタン（公開設定の場合のみ表示） */}
+      {!isReadonly && !isNewChat && visibilityType === "PUBLIC" && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-testid="copy-share-link"
+              variant="outline"
+              size="icon"
+              onClick={handleCopyShareLink}
+              className="order-4 hidden h-[34px] w-[34px] md:flex"
+            >
+              <CopyIcon size={16} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">公開リンクをコピー</TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Coharu トグル（デスクトップのみ） */}
+      {!isReadonly && <CoharuToggle className="order-4.5 hidden md:flex" />}
+
+      {/* 新規チャット・履歴 */}
+      <div className="order-5 ml-auto">
+        <ChatHistoryDropdown
+          chatId={chatId}
+          orgSlug={orgSlug}
+          organizationId={organizationId}
+          currentUserId={session.user?.id ?? ""}
+          isNewChat={isNewChat}
+        />
+      </div>
     </header>
   );
 }
 
 export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
-  return prevProps.selectedModelId === nextProps.selectedModelId;
+  // chatId、selectedModelId、selectedMcpServerIds、isNewChat を比較
+  return (
+    prevProps.chatId === nextProps.chatId &&
+    prevProps.isNewChat === nextProps.isNewChat &&
+    prevProps.selectedModelId === nextProps.selectedModelId &&
+    prevProps.selectedMcpServerIds.length ===
+      nextProps.selectedMcpServerIds.length &&
+    prevProps.selectedMcpServerIds.every(
+      (id, index) => id === nextProps.selectedMcpServerIds[index],
+    )
+  );
 });

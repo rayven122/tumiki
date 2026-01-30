@@ -1,14 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
-interface HeroSectionProps {
-  setShowModal: (show: boolean) => void;
+type HeroSectionProps = {
   isVisible: boolean;
-}
+};
 
-export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
+export const HeroSection = ({ isVisible }: HeroSectionProps) => {
   return (
     <section
       id="hero"
@@ -231,15 +231,18 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
             animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            <button
-              onClick={() => setShowModal(true)}
+            <Link
+              href="/signup"
               className="border-3 border-black bg-black px-10 py-4 text-lg font-bold text-white shadow-[4px_4px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_#6366f1]"
             >
-              Register for Early Access
-            </button>
-            <button className="flex items-center gap-2 border-b-2 border-transparent font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black">
+              Get Started Free
+            </Link>
+            <Link
+              href="/#about"
+              className="flex items-center gap-2 border-b-2 border-transparent font-semibold text-black transition-all duration-300 hover:gap-3 hover:border-black"
+            >
               See How It Works <ArrowRight className="h-4 w-4" />
-            </button>
+            </Link>
           </motion.div>
 
           {/* Interactive Block Visual */}
@@ -257,4 +260,4 @@ export function HeroSection({ setShowModal, isVisible }: HeroSectionProps) {
       </div>
     </section>
   );
-}
+};

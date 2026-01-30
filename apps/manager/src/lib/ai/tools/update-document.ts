@@ -1,4 +1,4 @@
-import { type DataStreamWriter, tool } from "ai";
+import { type UIMessageStreamWriter, tool } from "ai";
 import { z } from "zod";
 import { getDocumentById } from "@/lib/db/queries";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
@@ -6,18 +6,35 @@ import type { SessionData } from "~/auth";
 
 interface UpdateDocumentProps {
   session: SessionData;
-  dataStream: DataStreamWriter;
+  writer: UIMessageStreamWriter;
 }
 
-export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
+// UIMessageStreamWriterにデータを書き込むヘルパー関数
+// AI SDK 6では `data-${string}` パターンを使用
+// vercel/ai-chatbot に合わせて transient: true を追加
+const writeArtifactData = (
+  writer: UIMessageStreamWriter,
+  dataType: string,
+  content: unknown,
+) => {
+  writer.write({
+    type: `data-${dataType}` as `data-${string}`,
+    data: content,
+    transient: true,
+  });
+};
+
+const updateDocumentInputSchema = z.object({
+  id: z.string().describe("The ID of the document to update"),
+  description: z
+    .string()
+    .describe("The description of changes that need to be made"),
+});
+
+export const updateDocument = ({ session, writer }: UpdateDocumentProps) =>
   tool({
     description: "Update a document with the given description.",
-    parameters: z.object({
-      id: z.string().describe("The ID of the document to update"),
-      description: z
-        .string()
-        .describe("The description of changes that need to be made"),
-    }),
+    inputSchema: updateDocumentInputSchema,
     execute: async ({ id, description }) => {
       const document = await getDocumentById({ id });
 
@@ -27,10 +44,7 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
         };
       }
 
-      dataStream.writeData({
-        type: "clear",
-        content: document.title,
-      });
+      writeArtifactData(writer, "clear", document.title);
 
       const documentHandler = documentHandlersByArtifactKind.find(
         (documentHandlerByArtifactKind) =>
@@ -44,11 +58,11 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
       await documentHandler.onUpdateDocument({
         document,
         description,
-        dataStream,
+        writer,
         session,
       });
 
-      dataStream.writeData({ type: "finish", content: "" });
+      writeArtifactData(writer, "finish", "");
 
       return {
         id,
