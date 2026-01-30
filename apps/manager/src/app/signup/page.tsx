@@ -1,10 +1,27 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { determineRedirectUrl } from "~/lib/auth/redirect-utils";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 import { getKeycloakEnv } from "~/utils/env";
 
 type SignUpPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;
+};
+
+/**
+ * アプリケーションのベースURLを取得
+ * 環境変数が未設定の場合はエラーをスロー（開発環境のみフォールバック許可）
+ */
+const getBaseUrl = (): string => {
+  const baseUrl = process.env.NEXTAUTH_URL;
+  if (!baseUrl) {
+    // 開発環境のみフォールバック許可
+    if (process.env.NODE_ENV === "development") {
+      return "http://localhost:3000";
+    }
+    throw new Error("NEXTAUTH_URL environment variable is required");
+  }
+  return baseUrl;
 };
 
 /**
@@ -16,25 +33,8 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const { callbackUrl } = await searchParams;
   const orgSlug = getSessionInfo(session).organizationSlug;
 
-  // callbackUrlのバリデーション
-  const disallowedCallbackPaths = ["/signin", "/signup", "/api/auth/"];
-  const validatedCallbackUrl =
-    callbackUrl &&
-    !disallowedCallbackPaths.some((path) => callbackUrl.startsWith(path))
-      ? callbackUrl
-      : null;
-
-  // リダイレクト先の決定
-  let redirectUrl: string;
-  if (validatedCallbackUrl?.startsWith("/invite/")) {
-    redirectUrl = validatedCallbackUrl;
-  } else if (orgSlug) {
-    redirectUrl = `/${orgSlug}/mcps`;
-  } else if (validatedCallbackUrl) {
-    redirectUrl = validatedCallbackUrl;
-  } else {
-    redirectUrl = "/onboarding?first=true";
-  }
+  // リダイレクト先を決定（新規ユーザーフラグをtrue）
+  const redirectUrl = determineRedirectUrl(callbackUrl, orgSlug, true);
 
   // 既にログイン済みの場合は、リダイレクト先へ
   if (session?.user) {
@@ -43,12 +43,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   // Keycloakの新規登録URLを構築
   const keycloakEnv = getKeycloakEnv();
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const baseUrl = getBaseUrl();
   const callbackUrlEncoded = encodeURIComponent(
     `${baseUrl}/api/auth/callback/keycloak`,
   );
 
-  // state パラメータにリダイレクト先を含める
+  // Keycloak新規登録URLを構築
   const registrationUrl = new URL(
     `${keycloakEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/registrations`,
   );
