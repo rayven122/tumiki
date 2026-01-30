@@ -21,6 +21,15 @@ resource "keycloak_realm" "tumiki" {
   verify_email             = true
   edit_username_allowed    = false
 
+  # トークン設定
+  access_token_lifespan       = "30m"  # 30分
+  client_session_idle_timeout = "168h" # 7日
+  client_session_max_lifespan = "720h" # 30日
+
+  # セッション設定
+  sso_session_idle_timeout = "168h" # 7日
+  sso_session_max_lifespan = "720h" # 30日
+
   # User Profile設定（firstName/lastName任意化）
   attributes = {
     userProfileEnabled = "true"
