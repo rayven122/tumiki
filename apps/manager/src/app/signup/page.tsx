@@ -1,88 +1,45 @@
-import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
-import Link from "next/link";
-import {
-  PageContainer,
-  NeoBrutalismCard,
-  LogoWithGlow,
-  GradientTitle,
-} from "@/components/ui/neo-brutalism";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { determineRedirectUrl, getBaseUrl } from "~/lib/auth/redirect-utils";
+import { getSessionInfo } from "~/lib/auth/session-utils";
+import { getKeycloakEnv } from "~/utils/env";
 
 type SignUpPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;
 };
 
+/**
+ * 新規登録ページ
+ * 直接Keycloakの新規登録画面にリダイレクト
+ */
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
+  const session = await auth();
   const { callbackUrl } = await searchParams;
+  const orgSlug = getSessionInfo(session).organizationSlug;
 
-  // callbackUrlのバリデーション
-  const disallowedCallbackPaths = ["/signin", "/signup", "/api/auth/"];
-  const redirectUrl =
-    callbackUrl &&
-    !disallowedCallbackPaths.some((path) => callbackUrl.startsWith(path))
-      ? callbackUrl
-      : "/onboarding?first=true";
+  // リダイレクト先を決定（新規ユーザーフラグをtrue）
+  const redirectUrl = determineRedirectUrl(callbackUrl, orgSlug, true);
 
-  return (
-    <PageContainer>
-      <div className="w-full max-w-md">
-        <NeoBrutalismCard className="p-8 sm:p-10">
-          {/* ヘッダー */}
-          <div className="mb-10 text-center">
-            {/* アイコン */}
-            <LogoWithGlow className="mb-8" />
+  // 既にログイン済みの場合は、リダイレクト先へ
+  if (session?.user) {
+    redirect(redirectUrl);
+  }
 
-            {/* タイトル */}
-            <GradientTitle className="mb-3 text-3xl">
-              Tumiki へようこそ
-            </GradientTitle>
-            <p className="text-sm font-medium text-gray-600">
-              MCPサーバー統合管理プラットフォーム
-              <br />
-              <span className="text-indigo-600">
-                Googleアカウントで始めましょう
-              </span>
-            </p>
-          </div>
-
-          {/* Googleボタン */}
-          <div className="space-y-4">
-            <GoogleSignInButton
-              callbackUrl={redirectUrl}
-              label="Googleで続行"
-            />
-          </div>
-
-          {/* フッター */}
-          <div className="mt-10 border-t-2 border-gray-200 pt-6 text-center">
-            <p className="text-sm text-gray-600">
-              すでにアカウントをお持ちの方は{" "}
-              <Link
-                href="/signin"
-                className="font-bold text-indigo-600 underline decoration-2 underline-offset-2 transition-all hover:text-indigo-700 hover:decoration-indigo-700"
-              >
-                ログイン
-              </Link>
-            </p>
-            <div className="mt-6 text-xs text-gray-500">
-              続行することで、
-              <Link
-                href="/terms"
-                className="underline decoration-gray-400 underline-offset-2 transition-colors hover:text-gray-700 hover:decoration-gray-700"
-              >
-                利用規約
-              </Link>
-              および
-              <Link
-                href="/privacy"
-                className="underline decoration-gray-400 underline-offset-2 transition-colors hover:text-gray-700 hover:decoration-gray-700"
-              >
-                プライバシーポリシー
-              </Link>
-              に同意したものとみなされます。
-            </div>
-          </div>
-        </NeoBrutalismCard>
-      </div>
-    </PageContainer>
+  // Keycloakの新規登録URLを構築
+  const keycloakEnv = getKeycloakEnv();
+  const baseUrl = getBaseUrl();
+  const callbackUrlEncoded = encodeURIComponent(
+    `${baseUrl}/api/auth/callback/keycloak`,
   );
+
+  // Keycloak新規登録URLを構築
+  const registrationUrl = new URL(
+    `${keycloakEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/registrations`,
+  );
+  registrationUrl.searchParams.set("client_id", keycloakEnv.KEYCLOAK_CLIENT_ID);
+  registrationUrl.searchParams.set("response_type", "code");
+  registrationUrl.searchParams.set("redirect_uri", callbackUrlEncoded);
+  registrationUrl.searchParams.set("scope", "openid");
+
+  redirect(registrationUrl.toString());
 }
