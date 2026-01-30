@@ -38,9 +38,8 @@ export const {
       issuer: keycloakEnv.KEYCLOAK_ISSUER,
       authorization: {
         params: {
-          // Keycloakのログイン画面をスキップして直接Googleにリダイレクト
-          kc_idp_hint: "google",
-          // Googleのアカウント選択画面を常に表示
+          // Keycloakのログイン画面でログイン方法を選択
+          // （Google IdPはKeycloakで設定済み）
           prompt: "select_account",
           max_age: "0",
         },
@@ -56,9 +55,7 @@ export const {
       }),
     }),
   ],
-  pages: {
-    signIn: "/signin",
-  },
+  // カスタムサインインページは使用せず、直接Keycloakにリダイレクト
   adapter: createCustomAdapter(),
   session: {
     strategy: "jwt",
