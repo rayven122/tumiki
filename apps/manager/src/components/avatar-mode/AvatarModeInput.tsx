@@ -22,6 +22,8 @@ type AvatarModeInputProps = {
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   status: UseChatHelpers<ChatMessage>["status"];
   stop: UseChatHelpers<ChatMessage>["stop"];
+  chatId: string;
+  orgSlug: string;
 };
 
 export const AvatarModeInput = ({
@@ -30,6 +32,8 @@ export const AvatarModeInput = ({
   sendMessage,
   status,
   stop,
+  chatId,
+  orgSlug,
 }: AvatarModeInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,6 +41,9 @@ export const AvatarModeInput = ({
 
   const handleSubmit = useCallback(() => {
     if (!input.trim() || isLoading) return;
+
+    // URLを更新（新規チャット時にIDを付与）
+    window.history.replaceState({}, "", `/${orgSlug}/avatar/${chatId}`);
 
     void sendMessage({
       role: "user",
@@ -46,7 +53,7 @@ export const AvatarModeInput = ({
 
     // テキストエリアにフォーカスを戻す
     textareaRef.current?.focus();
-  }, [input, isLoading, sendMessage, setInput]);
+  }, [input, isLoading, sendMessage, setInput, orgSlug, chatId]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
