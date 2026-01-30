@@ -1,27 +1,11 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { determineRedirectUrl } from "~/lib/auth/redirect-utils";
+import { determineRedirectUrl, getBaseUrl } from "~/lib/auth/redirect-utils";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 import { getKeycloakEnv } from "~/utils/env";
 
 type SignUpPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;
-};
-
-/**
- * アプリケーションのベースURLを取得
- * 環境変数が未設定の場合はエラーをスロー（開発環境のみフォールバック許可）
- */
-const getBaseUrl = (): string => {
-  const baseUrl = process.env.NEXTAUTH_URL;
-  if (!baseUrl) {
-    // 開発環境のみフォールバック許可
-    if (process.env.NODE_ENV === "development") {
-      return "http://localhost:3000";
-    }
-    throw new Error("NEXTAUTH_URL environment variable is required");
-  }
-  return baseUrl;
 };
 
 /**
