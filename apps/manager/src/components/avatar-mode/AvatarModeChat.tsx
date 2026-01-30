@@ -232,6 +232,8 @@ const AvatarModeChatContent = ({
         selectedMcpServerIds={selectedMcpServerIds}
         onMcpServerSelectionChange={isNewChat ? setMcpServerIds : undefined}
         isNewChat={isNewChat}
+        chatId={id}
+        orgSlug={orgSlug}
       />
 
       {/* z-20: クイックリプライ */}
@@ -239,6 +241,8 @@ const AvatarModeChatContent = ({
         sendMessage={sendMessage}
         setInput={setInput}
         disabled={isLoading}
+        chatId={id}
+        orgSlug={orgSlug}
       />
 
       {/* z-20: ナビゲーション */}

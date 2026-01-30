@@ -30,6 +30,8 @@ type AvatarModeQuickRepliesProps = {
   setInput: (value: string) => void;
   disabled?: boolean;
   quickReplies?: QuickReply[];
+  chatId: string;
+  orgSlug: string;
 };
 
 const PureAvatarModeQuickReplies = ({
@@ -37,9 +39,14 @@ const PureAvatarModeQuickReplies = ({
   setInput,
   disabled = false,
   quickReplies = DEFAULT_QUICK_REPLIES,
+  chatId,
+  orgSlug,
 }: AvatarModeQuickRepliesProps) => {
   const handleQuickReply = (message: string) => {
     if (disabled) return;
+
+    // URLを更新（新規チャット時にIDを付与）
+    window.history.replaceState({}, "", `/${orgSlug}/avatar/${chatId}`);
 
     void sendMessage({
       role: "user",
