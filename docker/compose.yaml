@@ -72,6 +72,7 @@ services:
       - ./keycloak/init-scripts:/opt/keycloak/init-scripts:ro
       - ./keycloak/setup-keycloak.sh:/opt/keycloak/setup-keycloak.sh:ro
       - ./keycloak/entrypoint.sh:/opt/keycloak/entrypoint.sh:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
     depends_on:
       db:
         condition: service_healthy

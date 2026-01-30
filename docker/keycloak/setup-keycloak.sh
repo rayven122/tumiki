@@ -265,4 +265,19 @@ echo "masterレルムのSSL要件を無効化中..."
 $KCADM update realms/master -r master --config /tmp/kcadm.config \
   -s sslRequired=NONE 2>/dev/null || true
 
+# Tumikiカスタムテーマを適用
+echo "Tumikiカスタムテーマを適用中..."
+$KCADM update realms/"$REALM" --config /tmp/kcadm.config \
+  -s loginTheme=tumiki \
+  -s accountTheme=tumiki 2>/dev/null || true
+echo "✓ Tumikiテーマを適用しました"
+
+# 国際化設定（日本語・英語）
+echo "国際化設定を有効化中..."
+$KCADM update realms/"$REALM" --config /tmp/kcadm.config \
+  -s internationalizationEnabled=true \
+  -s 'supportedLocales=["ja","en"]' \
+  -s defaultLocale=ja 2>/dev/null || true
+echo "✓ 国際化設定を有効化しました（日本語・英語）"
+
 echo "セットアップ完了"
