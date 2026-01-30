@@ -12,6 +12,7 @@ import {
   coharuEnabledAtom,
   coharuVrmAtom,
   coharuSpeakingAtom,
+  coharuSpeechQueueAtom,
 } from "@/store/coharu";
 import { SpeechQueue } from "@/lib/coharu/speechQueue";
 
@@ -23,39 +24,57 @@ export const useCoharuContext = () => {
   const [vrm, setVrm] = useAtom(coharuVrmAtom);
   const isSpeaking = useAtomValue(coharuSpeakingAtom);
   const setIsSpeaking = useSetAtom(coharuSpeakingAtom);
+  const [speechQueue, setSpeechQueue] = useAtom(coharuSpeechQueueAtom);
 
-  // SpeechQueue をuseRefで管理（メモリリーク防止）
-  const speechQueueRef = useRef<SpeechQueue | null>(null);
+  // isSpeaking を ref で保持（stale closure 防止）
+  const isSpeakingRef = useRef(isSpeaking);
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
+
+  // 口パクアニメーション用のタイムスタンプ
+  const lipSyncTimeRef = useRef(0);
 
   // SpeechQueue の初期化（遅延）
   const getSpeechQueue = useCallback(() => {
-    if (!speechQueueRef.current) {
-      speechQueueRef.current = new SpeechQueue({
+    if (!speechQueue) {
+      const newQueue = new SpeechQueue({
         onPlayStart: () => setIsSpeaking(true),
         onPlayEnd: () => setIsSpeaking(false),
       });
+      setSpeechQueue(newQueue);
+      return newQueue;
     }
-    return speechQueueRef.current;
-  }, [setIsSpeaking]);
+    return speechQueue;
+  }, [speechQueue, setSpeechQueue, setIsSpeaking]);
 
   // クリーンアップ
   useEffect(() => {
     return () => {
-      speechQueueRef.current?.clear();
-      speechQueueRef.current = null;
+      speechQueue?.clear();
     };
-  }, []);
+  }, [speechQueue]);
 
-  // リップシンク更新（話している時は固定値で口を開ける）
+  // リップシンク更新（話している時は口パクアニメーション）
   const updateLipSync = useCallback(() => {
     if (!vrm) return;
 
     const expressionManager = vrm.expressionManager;
-    if (expressionManager) {
-      // 話している時は口を開ける（固定値 0.5）、話していない時は閉じる
-      expressionManager.setValue("aa", isSpeaking ? 0.5 : 0);
+    if (!expressionManager) return;
+
+    if (isSpeakingRef.current) {
+      // 話している時は口パクアニメーション
+      // sin波を使って口を開閉（約3Hz = 秒間3回の開閉、自然な会話速度）
+      lipSyncTimeRef.current += 0.05;
+      const mouthValue =
+        (Math.sin(lipSyncTimeRef.current * Math.PI * 2) + 1) * 0.3 + 0.1;
+      expressionManager.setValue("aa", mouthValue);
+    } else {
+      // 話していない時は口を閉じる
+      expressionManager.setValue("aa", 0);
+      lipSyncTimeRef.current = 0;
     }
-  }, [vrm, isSpeaking]);
+  }, [vrm]);
 
   // テキストを音声で読み上げ
   const speak = useCallback(
@@ -68,8 +87,8 @@ export const useCoharuContext = () => {
 
   // 音声再生を停止
   const stopSpeaking = useCallback(() => {
-    speechQueueRef.current?.clear();
-  }, []);
+    speechQueue?.clear();
+  }, [speechQueue]);
 
   return {
     vrm,
