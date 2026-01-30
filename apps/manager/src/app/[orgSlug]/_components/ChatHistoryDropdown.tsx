@@ -97,6 +97,8 @@ type ChatHistoryDropdownProps = {
   organizationId: string;
   currentUserId: string;
   isNewChat?: boolean;
+  /** アバターモード用。trueの場合、リンクは /avatar/[id] になる */
+  avatarMode?: boolean;
 };
 
 export const ChatHistoryDropdown = ({
@@ -105,6 +107,7 @@ export const ChatHistoryDropdown = ({
   organizationId,
   currentUserId,
   isNewChat = false,
+  avatarMode = false,
 }: ChatHistoryDropdownProps) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -158,7 +161,8 @@ export const ChatHistoryDropdown = ({
 
   const handleNewChat = () => {
     setIsOpen(false);
-    router.push(`/${orgSlug}/chat`);
+    const basePath = avatarMode ? `/${orgSlug}/avatar` : `/${orgSlug}/chat`;
+    router.push(basePath);
     router.refresh();
   };
 
@@ -188,7 +192,11 @@ export const ChatHistoryDropdown = ({
               )}
             >
               <Link
-                href={`/${orgSlug}/chat/${chat.id}`}
+                href={
+                  avatarMode
+                    ? `/${orgSlug}/avatar/${chat.id}`
+                    : `/${orgSlug}/chat/${chat.id}`
+                }
                 className="min-w-0 flex-1"
                 onClick={() => setIsOpen(false)}
               >
