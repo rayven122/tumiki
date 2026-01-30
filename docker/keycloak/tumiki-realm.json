@@ -10,6 +10,9 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "verifyEmail": true,
+  "loginTheme": "tumiki",
+  "accountTheme": "tumiki",
+  "emailTheme": "keycloak",
   "clientScopes": [
     {
       "name": "mcp:access",
