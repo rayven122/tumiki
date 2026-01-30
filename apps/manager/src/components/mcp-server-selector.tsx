@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { useSetAtom } from "jotai";
+import { mcpServerMapAtom, type McpServerInfo } from "@/atoms/mcpServerMapAtom";
 
 type OfficialServer =
   RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
@@ -31,6 +33,7 @@ export const McpServerSelector = ({
   disabled = false,
 }: McpServerSelectorProps) => {
   const [open, setOpen] = useState(false);
+  const setMcpServerMap = useSetAtom(mcpServerMapAtom);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (disabled) return;
@@ -39,6 +42,20 @@ export const McpServerSelector = ({
 
   const { data: mcpServers, isLoading } =
     api.v2.userMcpServer.findOfficialServers.useQuery();
+
+  // MCPサーバー情報をatomに反映（mcp-tool-call.tsxでサーバー名解決に使用）
+  useEffect(() => {
+    if (mcpServers) {
+      const map: Record<string, McpServerInfo> = {};
+      for (const server of mcpServers) {
+        map[server.id] = {
+          name: server.name,
+          iconPath: server.iconPath ?? undefined,
+        };
+      }
+      setMcpServerMap(map);
+    }
+  }, [mcpServers, setMcpServerMap]);
 
   const availableServers: OfficialServer[] =
     mcpServers?.filter(
