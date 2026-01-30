@@ -56,11 +56,14 @@ const AvatarModeChatContent = ({
   initialMessages,
   initialChatModel,
   initialMcpServerIds,
-  isNewChat = false,
+  isNewChat: initialIsNewChat = false,
   currentUserId,
 }: AvatarModeChatProps) => {
   const { mutate } = useSWRConfig();
   const [input, setInput] = useState<string>("");
+
+  // isNewChat をローカル状態で管理（メッセージ送信後に false に更新）
+  const [isNewChat, setIsNewChat] = useState(initialIsNewChat);
 
   // Coharu コンテキスト
   const { speak, setIsEnabled } = useCoharuContext();
@@ -146,6 +149,13 @@ const AvatarModeChatContent = ({
 
   // ストリーミング中の status を追跡
   const prevStatusRef = useRef(status);
+
+  // メッセージが追加されたら isNewChat を false に更新
+  useEffect(() => {
+    if (messages.length > 0 && isNewChat) {
+      setIsNewChat(false);
+    }
+  }, [messages.length, isNewChat]);
 
   // TTS: messages を監視してストリーミング中のテキストを読み上げ
   useEffect(() => {
