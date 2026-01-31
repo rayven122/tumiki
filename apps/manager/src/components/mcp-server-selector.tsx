@@ -16,7 +16,7 @@ import { useSetAtom } from "jotai";
 import { mcpServerMapAtom, type McpServerInfo } from "@/atoms/mcpServerMapAtom";
 
 type OfficialServer =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
+  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
 
 type McpServerSelectorProps = {
   selectedMcpServerIds: string[];
@@ -41,7 +41,7 @@ export const McpServerSelector = ({
   };
 
   const { data: mcpServers, isLoading } =
-    api.v2.userMcpServer.findOfficialServers.useQuery();
+    api.v2.userMcpServer.findMcpServers.useQuery();
 
   // MCPサーバー情報をatomに反映（mcp-tool-call.tsxでサーバー名解決に使用）
   useEffect(() => {
