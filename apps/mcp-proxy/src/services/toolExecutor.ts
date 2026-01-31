@@ -1,4 +1,5 @@
 import { db } from "@tumiki/db/server";
+import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 import { connectToMcpServer } from "./mcpConnection.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 import { updateExecutionContext } from "../middleware/requestLogging/context.js";
@@ -186,6 +187,11 @@ export const executeTool = async (
 
     return result;
   } catch (error) {
+    // ReAuthRequiredError はそのまま伝播させる（401 レスポンス生成のため）
+    if (error instanceof ReAuthRequiredError) {
+      throw error;
+    }
+
     // MCPエラー情報を抽出
     const errorInfo = extractMcpErrorInfo(error);
 
