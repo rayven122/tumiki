@@ -92,7 +92,7 @@ export const ChatHistoryList = ({
     getChatHistoryPaginationKey(organizationId),
     fetcher,
     {
-      fallbackData: [],
+      fallbackData: [] as ChatHistory[],
     },
   );
 

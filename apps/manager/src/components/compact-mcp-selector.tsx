@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/chat/button";
 import {
   Popover,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/chat/tooltip";
 
 type OfficialServer =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
+  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
 
 type CompactMcpSelectorProps = {
   selectedMcpServerIds: string[];
@@ -43,7 +43,7 @@ export const CompactMcpSelector = ({
   };
 
   const { data: mcpServers, isLoading } =
-    api.v2.userMcpServer.findOfficialServers.useQuery();
+    api.v2.userMcpServer.findMcpServers.useQuery();
 
   // MCPサーバー情報をatomに反映
   // 注: setMcpServerMapはJotaiのセッターで安定した参照を持つため依存配列から除外
@@ -72,18 +72,21 @@ export const CompactMcpSelector = ({
   );
   const selectedCount = validSelectedIds.length;
 
-  const totalToolsCount = availableServers
-    .filter((server) => selectedMcpServerIds.includes(server.id))
-    .reduce(
-      (total, server) =>
-        total +
-        server.templateInstances.reduce(
-          (count, instance) =>
-            count + instance.tools.filter((tool) => tool.isEnabled).length,
-          0,
-        ),
-      0,
-    );
+  // 選択されたサーバーのツール数を計算（メモ化で不要な再計算を防止）
+  const totalToolsCount = useMemo(() => {
+    return availableServers
+      .filter((server) => selectedMcpServerIds.includes(server.id))
+      .reduce(
+        (total, server) =>
+          total +
+          server.templateInstances.reduce(
+            (count, instance) =>
+              count + instance.tools.filter((tool) => tool.isEnabled).length,
+            0,
+          ),
+        0,
+      );
+  }, [availableServers, selectedMcpServerIds]);
 
   const handleToggleServer = (serverId: string) => {
     const isSelected = selectedMcpServerIds.includes(serverId);
