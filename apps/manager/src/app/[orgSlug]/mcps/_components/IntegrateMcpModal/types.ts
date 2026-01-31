@@ -15,5 +15,5 @@ export type SelectableMcp = {
 };
 
 // ドラッグ&ドロップ用のコンテナID
-export const DROPPABLE_AVAILABLE = "available";
-export const DROPPABLE_SELECTED = "selected";
+export const DROPPABLE_AVAILABLE = "droppable-available";
+export const DROPPABLE_SELECTED = "droppable-selected";

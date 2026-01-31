@@ -78,7 +78,9 @@ export const IntegrateMcpModal = ({
         handleClose();
       },
       onError: (error) => {
-        toast.error(`作成に失敗しました: ${error.message}`);
+        console.error("MCP統合作成エラー:", error);
+        const message = error.message || "不明なエラーが発生しました";
+        toast.error(`作成に失敗しました: ${message}`);
       },
     });
 
