@@ -58,7 +58,7 @@ export const CreateIntegratedPageClient = ({
 
   // データ取得（設定済み接続設定のみ必要）
   const { data: officialServers, isLoading: isLoadingOfficialServers } =
-    api.v2.userMcpServer.findOfficialServers.useQuery();
+    api.v2.userMcpServer.findMcpServers.useQuery();
 
   const isLoading = isLoadingOfficialServers;
 
