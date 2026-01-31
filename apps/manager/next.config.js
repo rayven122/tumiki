@@ -55,6 +55,13 @@ const config = {
         hostname: "images.microcms-assets.io",
         pathname: "/**",
       },
+      // Cloudflare R2 (デフォルトドメイン)
+      {
+        protocol: "https",
+        hostname: "*.r2.dev",
+        pathname: "/**",
+      },
+      // Cloudflare R2 (カスタムドメインを使用する場合は追加設定が必要)
     ],
   },
 };
