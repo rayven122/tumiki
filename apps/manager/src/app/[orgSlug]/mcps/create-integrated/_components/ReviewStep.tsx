@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { RouterOutputs } from "@/trpc/react";
 import { useConnectionConfigs } from "../_hooks/useConnectionConfigs";
 
-type OfficialServers =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+type OfficialServers = RouterOutputs["v2"]["userMcpServer"]["findMcpServers"];
 
 type ReviewStepProps = {
   serverName: string;
