@@ -18,6 +18,8 @@ export type GenerateAuthorizationUrlParams = {
   mcpServerTemplateInstanceId: string;
   userId: string;
   organizationId: string;
+  /** 認証完了後のリダイレクト先（例: /org-slug/chat/chat-id） */
+  redirectTo?: string;
 };
 
 /**
@@ -44,6 +46,7 @@ export const generateAuthorizationUrl = async ({
   mcpServerTemplateInstanceId,
   userId,
   organizationId,
+  redirectTo,
 }: GenerateAuthorizationUrlParams): Promise<string> => {
   // Vercel環境では自動的にVERCEL_URLを使用してリダイレクトURIを構築
   const redirectUri = getOAuthRedirectUri();
@@ -64,6 +67,7 @@ export const generateAuthorizationUrl = async ({
     redirectUri,
     requestedScopes: scopes,
     expiresAt: Date.now() + 10 * 60 * 1000, // 10分
+    redirectTo, // 認証完了後のリダイレクト先
   });
 
   // OAuth AuthorizationServerオブジェクトを構築
