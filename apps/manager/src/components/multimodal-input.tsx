@@ -21,31 +21,18 @@ import { ArrowUpIcon, PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import { Button } from "./ui/chat/button";
 import { Textarea } from "./ui/chat/textarea";
-import { SuggestedActions } from "./suggested-actions";
 import equal from "fast-deep-equal";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown } from "lucide-react";
 import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
 import type { VisibilityType } from "./visibility-selector";
+import type { SessionData } from "~/auth";
+import { CompactModelSelector } from "./compact-model-selector";
+import { CompactMcpSelector } from "./compact-mcp-selector";
+import { ChatOptionsMenu } from "./chat-options-menu";
 
-function PureMultimodalInput({
-  chatId,
-  orgSlug,
-  input,
-  setInput,
-  status,
-  stop,
-  attachments,
-  setAttachments,
-  messages,
-  setMessages,
-  sendMessage,
-  className,
-  selectedVisibilityType,
-  isSpeaking = false,
-  stopSpeaking,
-}: {
+type MultimodalInputProps = {
   chatId: string;
   orgSlug: string;
   input: string;
@@ -63,7 +50,40 @@ function PureMultimodalInput({
   isSpeaking?: boolean;
   /** TTS 再生を停止する関数 */
   stopSpeaking?: () => void;
-}) {
+  /** モデル選択関連（オプショナル - 指定しない場合はモデル/MCP選択UIを非表示） */
+  session?: SessionData;
+  selectedModelId?: string;
+  onModelChange?: (modelId: string) => void;
+  /** MCPサーバー選択関連（オプショナル） */
+  selectedMcpServerIds?: string[];
+  onMcpServerSelectionChange?: (ids: string[]) => void;
+  /** 新規チャットかどうか */
+  isNewChat?: boolean;
+};
+
+function PureMultimodalInput({
+  chatId,
+  orgSlug,
+  input,
+  setInput,
+  status,
+  stop,
+  attachments,
+  setAttachments,
+  messages,
+  setMessages,
+  sendMessage,
+  className,
+  selectedVisibilityType,
+  isSpeaking = false,
+  stopSpeaking,
+  session,
+  selectedModelId,
+  onModelChange,
+  selectedMcpServerIds,
+  onMcpServerSelectionChange,
+  isNewChat = false,
+}: MultimodalInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
 
@@ -219,7 +239,7 @@ function PureMultimodalInput({
   return (
     <div className="relative flex w-full flex-col gap-4">
       <AnimatePresence>
-        {!isAtBottom && (
+        {!isAtBottom && messages.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -242,17 +262,6 @@ function PureMultimodalInput({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {messages.length === 0 &&
-        attachments.length === 0 &&
-        uploadQueue.length === 0 && (
-          <SuggestedActions
-            sendMessage={sendMessage}
-            chatId={chatId}
-            orgSlug={orgSlug}
-            selectedVisibilityType={selectedVisibilityType}
-          />
-        )}
 
       <input
         type="file"
@@ -286,56 +295,81 @@ function PureMultimodalInput({
         </div>
       )}
 
-      <Textarea
-        data-testid="multimodal-input"
-        ref={textareaRef}
-        placeholder="メッセージを入力..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          "bg-muted max-h-[calc(75dvh)] min-h-[24px] resize-none overflow-hidden rounded-2xl pb-10 text-base! dark:border-zinc-700",
-          className,
-        )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (
-            event.key === "Enter" &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
+      {/* 入力フォームコンテナ */}
+      <div className="bg-muted relative rounded-2xl dark:border-zinc-700">
+        <Textarea
+          data-testid="multimodal-input"
+          ref={textareaRef}
+          placeholder="メッセージを入力..."
+          value={input}
+          onChange={handleInput}
+          className={cx(
+            "max-h-[calc(75dvh)] min-h-[24px] resize-none overflow-hidden rounded-2xl border-none bg-transparent pb-14 text-base! focus-visible:ring-0",
+            className,
+          )}
+          rows={2}
+          autoFocus
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
 
-            if (status !== "ready") {
-              toast.error("モデルの応答が完了するまでお待ちください");
-            } else {
-              submitForm();
+              if (status !== "ready") {
+                toast.error("モデルの応答が完了するまでお待ちください");
+              } else {
+                submitForm();
+              }
             }
-          }
-        }}
-      />
+          }}
+        />
 
-      {/* 画像アップロード機能は一時的に無効化（さくらVM対応後に復活予定）
-      <div className="absolute bottom-0 flex w-fit flex-row justify-start p-2">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-      </div>
-      */}
+        {/* ツールバー */}
+        <div className="absolute right-0 bottom-0 left-0 flex items-center justify-between p-2">
+          {/* 左側: MCPサーバー選択 + オプションメニュー */}
+          <div className="flex items-center gap-1">
+            {session && selectedMcpServerIds && (
+              <CompactMcpSelector
+                selectedMcpServerIds={selectedMcpServerIds}
+                onSelectionChange={onMcpServerSelectionChange}
+                disabled={!isNewChat}
+              />
+            )}
+            <ChatOptionsMenu
+              chatId={chatId}
+              orgSlug={orgSlug}
+              isNewChat={isNewChat}
+            />
+          </div>
 
-      <div className="absolute right-0 bottom-0 flex w-fit flex-row justify-end p-2">
-        {status === "submitted" || isSpeaking ? (
-          <StopButton
-            stop={stop}
-            setMessages={setMessages}
-            stopSpeaking={stopSpeaking}
-            isGenerating={status === "submitted"}
-          />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-            uploadQueue={uploadQueue}
-          />
-        )}
+          {/* 右側: モデル選択 + 送信/停止ボタン */}
+          <div className="flex items-center gap-2">
+            {session && selectedModelId && (
+              <CompactModelSelector
+                session={session}
+                selectedModelId={selectedModelId}
+                onModelChange={onModelChange}
+              />
+            )}
+
+            {status === "submitted" || isSpeaking ? (
+              <StopButton
+                stop={stop}
+                setMessages={setMessages}
+                stopSpeaking={stopSpeaking}
+                isGenerating={status === "submitted"}
+              />
+            ) : (
+              <SendButton
+                input={input}
+                submitForm={submitForm}
+                uploadQueue={uploadQueue}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -350,6 +384,10 @@ export const MultimodalInput = memo(
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
     if (prevProps.isSpeaking !== nextProps.isSpeaking) return false;
+    if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
+    if (!equal(prevProps.selectedMcpServerIds, nextProps.selectedMcpServerIds))
+      return false;
+    if (prevProps.isNewChat !== nextProps.isNewChat) return false;
 
     return true;
   },
