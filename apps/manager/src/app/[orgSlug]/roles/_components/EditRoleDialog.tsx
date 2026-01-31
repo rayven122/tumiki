@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import {
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { PermissionSelector, type McpPermission } from "./PermissionSelector";
+import { mapDbToUiAccess, mapUiPermissionToDb } from "./permissionMapping";
 import type { ListRolesOutput } from "@/server/api/routers/v2/role/list";
 import { Tag, Pencil } from "lucide-react";
 
@@ -59,21 +60,24 @@ export const EditRoleDialog = ({
   open,
   onOpenChange,
 }: EditRoleDialogProps) => {
-  // DB用の read/write/execute をUI用の access/manage に変換
-  const mapMcpPermissions = (
-    mcpPermissions: typeof role.mcpPermissions,
-  ): EditRoleFormData["mcpPermissions"] => {
-    return (mcpPermissions ?? []).map((p) => ({
-      mcpServerId: p.mcpServerId,
-      access: p.read || p.execute, // read OR execute をアクセスとして表示
-      manage: p.write,
-    }));
-  };
+  // DB用の read/write/execute をUI用の access/manage に変換（useCallbackでメモ化）
+  const mapMcpPermissions = useCallback(
+    (
+      mcpPermissions: typeof role.mcpPermissions,
+    ): EditRoleFormData["mcpPermissions"] => {
+      return (mcpPermissions ?? []).map((p) => ({
+        mcpServerId: p.mcpServerId,
+        access: mapDbToUiAccess(p.read, p.execute),
+        manage: p.write,
+      }));
+    },
+    [],
+  );
 
   // DB用のデフォルト権限をUI用に変換
-  const getDefaultAccess = (): boolean => {
-    return role.defaultRead || role.defaultExecute;
-  };
+  const getDefaultAccess = useCallback((): boolean => {
+    return mapDbToUiAccess(role.defaultRead, role.defaultExecute);
+  }, [role.defaultRead, role.defaultExecute]);
 
   const {
     register,
@@ -100,11 +104,11 @@ export const EditRoleDialog = ({
       name: role.name,
       description: role.description ?? "",
       isDefault: role.isDefault,
-      defaultAccess: role.defaultRead || role.defaultExecute,
+      defaultAccess: mapDbToUiAccess(role.defaultRead, role.defaultExecute),
       defaultManage: role.defaultWrite,
       mcpPermissions: mapMcpPermissions(role.mcpPermissions),
     });
-  }, [role, reset]);
+  }, [role, reset, mapMcpPermissions]);
 
   const utils = api.useUtils();
 
@@ -119,7 +123,8 @@ export const EditRoleDialog = ({
     return (mcpServers ?? []).map((server) => ({
       id: server.id,
       name: server.name,
-      iconPath: server.templateInstances[0]?.mcpServerTemplate.iconPath ?? null,
+      iconPath:
+        server.templateInstances?.[0]?.mcpServerTemplate?.iconPath ?? null,
     }));
   }, [mcpServers]);
 
@@ -142,22 +147,17 @@ export const EditRoleDialog = ({
 
   const onSubmit = (data: EditRoleFormData) => {
     // UI用の access/manage をDB用の read/write/execute に変換
-    // access = read AND execute（同時に設定）
-    // manage = write
+    // 統一されたマッピングロジックを使用
+    const defaultAccess = data.defaultAccess ?? false;
     updateMutation.mutate({
       slug: role.slug,
       name: data.name,
       description: data.description,
       isDefault: data.isDefault,
-      defaultRead: data.defaultAccess ?? false,
+      defaultRead: defaultAccess,
       defaultWrite: data.defaultManage ?? false,
-      defaultExecute: data.defaultAccess ?? false, // access と同じ値
-      mcpPermissions: data.mcpPermissions.map((p) => ({
-        mcpServerId: p.mcpServerId,
-        read: p.access,
-        write: p.manage,
-        execute: p.access, // access と同じ値
-      })),
+      defaultExecute: defaultAccess,
+      mcpPermissions: data.mcpPermissions.map(mapUiPermissionToDb),
     });
   };
 
