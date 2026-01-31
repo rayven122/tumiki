@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
+import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 import { injectAuthHeaders } from "../libs/auth/oauth-header-injector.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 
@@ -101,6 +102,10 @@ export const connectToMcpServer = async (
 
     return client;
   } catch (error) {
+    // ReAuthRequiredError はそのまま伝播させる（401 レスポンス生成のため）
+    if (error instanceof ReAuthRequiredError) {
+      throw error;
+    }
     logError("Failed to connect to MCP server", error as Error, {
       templateName: name,
       transportType,
