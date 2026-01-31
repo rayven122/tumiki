@@ -223,7 +223,7 @@ const ReauthBanner = ({
         onClick={() => startReauthentication(mcpServerId)}
         disabled={isPending}
         className={cn(
-          "mt-3 flex min-h-[44px] w-full items-center justify-center gap-2",
+          "mt-3 flex min-h-11 w-full items-center justify-center gap-2",
           "rounded-lg px-4 py-2 font-medium",
           "bg-amber-600 text-white",
           "hover:bg-amber-700 active:bg-amber-800",
