@@ -88,23 +88,24 @@ export const IntegrateMcpModal = ({
     [userServers],
   );
 
-  // 選択済みMCPと未選択MCPを分離
+  // 選択済みMCPと未選択MCPを分離（Setで検索をO(1)に最適化）
   const { availableMcps, selectedMcps } = useMemo(() => {
-    const selected: SelectableMcp[] = [];
+    const selectedSet = new Set(selectedMcpIds);
+    const selectedMap = new Map<string, SelectableMcp>();
     const available: SelectableMcp[] = [];
 
     for (const mcp of allMcps) {
-      if (selectedMcpIds.includes(mcp.id)) {
-        selected.push(mcp);
+      if (selectedSet.has(mcp.id)) {
+        selectedMap.set(mcp.id, mcp);
       } else {
         available.push(mcp);
       }
     }
 
-    // 選択順序を維持
-    selected.sort(
-      (a, b) => selectedMcpIds.indexOf(a.id) - selectedMcpIds.indexOf(b.id),
-    );
+    // 選択順序を維持（selectedMcpIdsの順序でMapから取得）
+    const selected = selectedMcpIds
+      .map((id) => selectedMap.get(id))
+      .filter((mcp): mcp is SelectableMcp => mcp !== undefined);
 
     return { availableMcps: available, selectedMcps: selected };
   }, [allMcps, selectedMcpIds]);
