@@ -1,5 +1,5 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { ServerType } from "@tumiki/db/prisma";
+import { ServerStatus, ServerType } from "@tumiki/db/prisma";
 
 type FindOfficialServersInput = {
   organizationId: string;
@@ -16,6 +16,10 @@ export const findOfficialServers = async (
       serverType: ServerType.OFFICIAL,
       organizationId,
       deletedAt: null,
+      // 検証中（PENDING）のサーバーは除外（OAuth認証が中断された場合など）
+      serverStatus: {
+        not: ServerStatus.PENDING,
+      },
     },
     orderBy: {
       displayOrder: "asc",
