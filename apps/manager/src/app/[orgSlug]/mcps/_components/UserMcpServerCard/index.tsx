@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -10,12 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import {
   Trash2Icon,
-  ImageIcon,
   MoreHorizontal,
   ExternalLink,
   Wrench,
   Edit2,
   RefreshCw,
+  Palette,
 } from "lucide-react";
 import { ToolsModal } from "../ServerCard/ToolsModal";
 import {
@@ -26,11 +25,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
+import { IconEditModal } from "./IconEditModal";
 import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
 import { cn } from "@/lib/utils";
 
 import { type RouterOutputs } from "@/trpc/react";
-import { FaviconImage } from "@/components/ui/FaviconImage";
+import { McpServerIcon } from "../McpServerIcon";
 import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
@@ -59,6 +59,7 @@ export const UserMcpServerCard = ({
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
+  const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
 
   // 最初のテンプレートインスタンスを使用
   const firstInstance = userMcpServer.templateInstances[0];
@@ -171,6 +172,15 @@ export const UserMcpServerCard = ({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
+                    setIconEditModalOpen(true);
+                  }}
+                >
+                  <Palette className="mr-2 h-4 w-4" />
+                  アイコンを変更
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setDeleteModalOpen(true);
                   }}
                 >
@@ -184,29 +194,12 @@ export const UserMcpServerCard = ({
 
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
           <div className="mr-2 rounded-md p-2">
-            {userMcpServer.iconPath || mcpServer?.iconPath ? (
-              <Image
-                src={
-                  userMcpServer.iconPath ??
-                  mcpServer?.iconPath ??
-                  "/placeholder.svg"
-                }
-                alt={userMcpServer.name}
-                width={32}
-                height={32}
-              />
-            ) : (
-              <FaviconImage
-                url={mcpServerUrl}
-                alt={userMcpServer.name}
-                size={32}
-                fallback={
-                  <div className="flex size-8 items-center justify-center rounded-md bg-gray-200">
-                    <ImageIcon className="size-4 text-gray-500" />
-                  </div>
-                }
-              />
-            )}
+            <McpServerIcon
+              iconPath={userMcpServer.iconPath ?? mcpServer?.iconPath}
+              fallbackUrl={mcpServerUrl}
+              alt={userMcpServer.name}
+              size={32}
+            />
           </div>
           <div className="min-w-0 flex-1 pr-24">
             <CardTitle className="truncate">{userMcpServer.name}</CardTitle>
@@ -292,6 +285,20 @@ export const UserMcpServerCard = ({
             setNameEditModalOpen(false);
           }}
           onOpenChange={setNameEditModalOpen}
+        />
+      )}
+
+      {/* アイコン編集モーダル */}
+      {iconEditModalOpen && (
+        <IconEditModal
+          serverInstanceId={userMcpServer.id as McpServerId}
+          initialIconPath={userMcpServer.iconPath}
+          fallbackUrl={mcpServerUrl}
+          onSuccess={async () => {
+            await revalidate?.();
+            setIconEditModalOpen(false);
+          }}
+          onOpenChange={setIconEditModalOpen}
         />
       )}
     </>
