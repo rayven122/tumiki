@@ -3,6 +3,7 @@
  * MCPサーバーを作成し、DCRを実行してOAuth認証フローを開始する
  */
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { ServerStatus } from "@tumiki/db/prisma";
 import { type ConnectOAuthMcpServerInputV2 } from "./index";
 import type { z } from "zod";
 import { getOrCreateTemplateInfo } from "../userMcpServer/helpers/server-template";
@@ -45,7 +46,21 @@ export const connectOAuthMcpServer = async (
     organizationId,
   });
 
-  // 2. 公式MCPサーバーを作成
+  // 2. 同じテンプレートの既存PENDINGサーバーをクリーンアップ
+  // OAuth認証が途中で中断された場合の残骸を削除
+  await tx.mcpServer.deleteMany({
+    where: {
+      organizationId,
+      serverStatus: ServerStatus.PENDING,
+      templateInstances: {
+        some: {
+          mcpServerTemplateId: templateId,
+        },
+      },
+    },
+  });
+
+  // 3. 公式MCPサーバーを作成
   const mcpServer = await createOfficialMcpServer({
     tx,
     serverName,
@@ -55,7 +70,7 @@ export const connectOAuthMcpServer = async (
     normalizedName: normalizeServerName(serverName),
   });
 
-  // 3. OAuthクライアント情報を取得または作成
+  // 4. OAuthクライアント情報を取得または作成
   const oauthClient = await getOrCreateOAuthClient({
     tx,
     templateId,
@@ -66,7 +81,7 @@ export const connectOAuthMcpServer = async (
     clientSecret: input.clientSecret,
   });
 
-  // 4. Authorization URLを生成
+  // 5. Authorization URLを生成
   const authorizationUrl = await generateAuthorizationUrl({
     clientId: oauthClient.clientId,
     clientSecret: oauthClient.clientSecret,
