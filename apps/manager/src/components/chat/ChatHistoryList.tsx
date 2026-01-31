@@ -28,8 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn, fetcher } from "@/lib/utils";
 import type { ChatWithUser, ChatHistory, GroupedChats } from "@/lib/types/chat";
-
-const PAGE_SIZE = 20;
+import { getChatHistoryPaginationKey } from "@/components/sidebar-history";
 
 const groupChatsByDate = (chats: ChatWithUser[]): GroupedChats => {
   const now = new Date();
@@ -63,26 +62,6 @@ const groupChatsByDate = (chats: ChatWithUser[]): GroupedChats => {
     } as GroupedChats,
   );
 };
-
-/**
- * チャット履歴のページネーションキーを生成
- */
-const getChatHistoryPaginationKey =
-  (organizationId: string) =>
-  (pageIndex: number, previousPageData: ChatHistory | null) => {
-    if (previousPageData?.hasMore === false) {
-      return null;
-    }
-
-    if (pageIndex === 0)
-      return `/api/history?limit=${PAGE_SIZE}&organization_id=${organizationId}`;
-
-    const firstChatFromPage = previousPageData?.chats.at(-1);
-
-    if (!firstChatFromPage) return null;
-
-    return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}&organization_id=${organizationId}`;
-  };
 
 type ChatHistoryListProps = {
   chatId?: string;
