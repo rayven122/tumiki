@@ -14,7 +14,11 @@ import {
 import { Layers, Package } from "lucide-react";
 import { useState } from "react";
 import { McpCard } from "./McpCard";
-import type { SelectableMcp } from "./types";
+import {
+  type SelectableMcp,
+  DROPPABLE_AVAILABLE,
+  DROPPABLE_SELECTED,
+} from "./types";
 import { cn } from "@/lib/utils";
 
 type DragDropContainerProps = {
@@ -23,10 +27,6 @@ type DragDropContainerProps = {
   onSelect: (mcpId: string) => void;
   onRemove: (mcpId: string) => void;
 };
-
-// ドロップ可能なエリア
-const DROPPABLE_AVAILABLE = "droppable-available";
-const DROPPABLE_SELECTED = "droppable-selected";
 
 // ドロップゾーンコンポーネント
 const DroppableZone = ({
@@ -57,8 +57,18 @@ const DroppableZone = ({
           isOver && "border-purple-400 bg-purple-100",
         );
 
+  const ariaLabel =
+    variant === "available"
+      ? "利用可能なMCPリスト。ドラッグして統合リストに追加できます"
+      : "統合するMCPリスト。2つ以上のMCPを追加してください";
+
   return (
-    <div ref={setNodeRef} className={cn(baseStyles, variantStyles)}>
+    <div
+      ref={setNodeRef}
+      role="listbox"
+      aria-label={ariaLabel}
+      className={cn(baseStyles, variantStyles)}
+    >
       {isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-gray-400">
           {variant === "available" ? (

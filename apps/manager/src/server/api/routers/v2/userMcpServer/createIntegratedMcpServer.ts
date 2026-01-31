@@ -131,7 +131,7 @@ export const createIntegratedMcpServer = async (
                       userId,
                       envVars: tmpl.envVars
                         ? JSON.stringify(tmpl.envVars)
-                        : existingEnvVars!,
+                        : (existingEnvVars ?? "{}"),
                     },
                   },
                 }
