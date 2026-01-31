@@ -47,4 +47,7 @@ export const MCP_ENV_MOCK_KEYS: Record<string, string> = {
 
   // Slack MCP
   "X-Slack-MCP-XOXP-Token": "xoxp-mock-slack-bot-token-for-testing",
+
+  // YouTube MCP
+  "X-YouTube-API-Key": "mock-youtube-api-key-for-testing",
 };
