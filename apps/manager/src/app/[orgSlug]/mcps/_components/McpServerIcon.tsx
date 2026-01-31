@@ -1,10 +1,9 @@
 "use client";
 
-import type { ComponentType, CSSProperties } from "react";
-import * as LucideIcons from "lucide-react";
 import Image from "next/image";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ImageIcon } from "lucide-react";
+import { getIconComponent } from "./McpIconPicker";
 
 type McpServerIconProps = {
   iconPath: string | null | undefined;
@@ -35,12 +34,7 @@ export const McpServerIcon = ({
   // lucide:* 形式 → lucide-reactアイコンを表示
   if (iconPath?.startsWith("lucide:")) {
     const iconName = iconPath.replace("lucide:", "");
-    const IconComponent = LucideIcons[
-      iconName as keyof typeof LucideIcons
-    ] as ComponentType<{
-      className?: string;
-      style?: CSSProperties;
-    }>;
+    const IconComponent = getIconComponent(iconName);
 
     // アイコンが見つかった場合のみ表示
     // 見つからない場合はフォールバック（下のFaviconImageへ）

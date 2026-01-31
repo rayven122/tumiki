@@ -9,6 +9,10 @@ type UploadResult = {
   url: string;
 };
 
+type UploadErrorResponse = {
+  error?: string;
+};
+
 // サポートする画像形式
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -18,8 +22,18 @@ const ALLOWED_IMAGE_TYPES = [
   "image/gif",
 ] as const;
 
+type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
+
 // 最大ファイルサイズ: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// エラーメッセージ定義（統一）
+const ERROR_MESSAGES = {
+  INVALID_TYPE: "JPEG、PNG、WebP、SVG、GIF形式の画像のみアップロードできます",
+  FILE_TOO_LARGE: "ファイルサイズは5MB以下にしてください",
+  UPLOAD_FAILED: "アップロードに失敗しました",
+  NETWORK_ERROR: "ネットワークエラーが発生しました",
+} as const;
 
 /**
  * 画像アップロード用カスタムフック
@@ -37,14 +51,10 @@ export const useImageUpload = () => {
   const uploadImage = useCallback(
     async (file: File): Promise<UploadResult | null> => {
       // ファイルタイプのバリデーション
-      if (
-        !ALLOWED_IMAGE_TYPES.includes(
-          file.type as (typeof ALLOWED_IMAGE_TYPES)[number],
-        )
-      ) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType)) {
         setState({
           isUploading: false,
-          error: "JPEG、PNG、WebP、SVG、GIF形式の画像のみアップロードできます",
+          error: ERROR_MESSAGES.INVALID_TYPE,
         });
         return null;
       }
@@ -53,7 +63,7 @@ export const useImageUpload = () => {
       if (file.size > MAX_FILE_SIZE) {
         setState({
           isUploading: false,
-          error: "ファイルサイズは5MB以下にしてください",
+          error: ERROR_MESSAGES.FILE_TOO_LARGE,
         });
         return null;
       }
@@ -70,16 +80,16 @@ export const useImageUpload = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error ?? "アップロードに失敗しました");
+          const errorData: UploadErrorResponse = await response.json();
+          throw new Error(errorData.error ?? ERROR_MESSAGES.UPLOAD_FAILED);
         }
 
-        const data = await response.json();
+        const data: UploadResult = await response.json();
         setState({ isUploading: false, error: null });
         return { url: data.url };
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : "アップロードに失敗しました";
+          error instanceof Error ? error.message : ERROR_MESSAGES.UPLOAD_FAILED;
         setState({ isUploading: false, error: errorMessage });
         return null;
       }
