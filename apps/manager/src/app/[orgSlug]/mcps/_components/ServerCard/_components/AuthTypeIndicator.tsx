@@ -45,8 +45,8 @@ export const AuthTypeIndicator = ({
   // Tooltip内容を生成
   const tooltipContent =
     authType === "API_KEY" && apiKeyCount !== undefined
-      ? `${config.label}（${apiKeyCount}件発行済み）`
-      : config.label;
+      ? `接続方法: ${config.label}（${apiKeyCount}件発行済み）`
+      : `接続方法: ${config.label}`;
 
   return (
     <TooltipProvider>
