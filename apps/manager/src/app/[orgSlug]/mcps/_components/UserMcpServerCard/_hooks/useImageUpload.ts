@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { z } from "zod";
 
 type UploadState = {
   isUploading: boolean;
@@ -9,9 +10,14 @@ type UploadResult = {
   url: string;
 };
 
-type UploadErrorResponse = {
-  error?: string;
-};
+// APIレスポンススキーマ
+const UploadSuccessResponseSchema = z.object({
+  url: z.string(),
+});
+
+const UploadErrorResponseSchema = z.object({
+  error: z.string().optional(),
+});
 
 // サポートする画像形式
 const ALLOWED_IMAGE_TYPES = [
@@ -80,13 +86,24 @@ export const useImageUpload = () => {
         });
 
         if (!response.ok) {
-          const errorData: UploadErrorResponse = await response.json();
-          throw new Error(errorData.error ?? ERROR_MESSAGES.UPLOAD_FAILED);
+          const rawErrorData: unknown = await response.json();
+          const validatedError =
+            UploadErrorResponseSchema.safeParse(rawErrorData);
+          const errorMessage = validatedError.success
+            ? (validatedError.data.error ?? ERROR_MESSAGES.UPLOAD_FAILED)
+            : ERROR_MESSAGES.UPLOAD_FAILED;
+          throw new Error(errorMessage);
         }
 
-        const data: UploadResult = await response.json();
+        const rawData: unknown = await response.json();
+        const validatedData = UploadSuccessResponseSchema.safeParse(rawData);
+
+        if (!validatedData.success) {
+          throw new Error(ERROR_MESSAGES.UPLOAD_FAILED);
+        }
+
         setState({ isUploading: false, error: null });
-        return { url: data.url };
+        return { url: validatedData.data.url };
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : ERROR_MESSAGES.UPLOAD_FAILED;
