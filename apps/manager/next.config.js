@@ -42,17 +42,13 @@ const config = {
       },
       {
         protocol: "https",
-        hostname: "avatars.githubusercontent.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "avatar.vercel.sh",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
         hostname: "images.microcms-assets.io",
+        pathname: "/**",
+      },
+      // Cloudflare R2 (カスタムドメイン)
+      {
+        protocol: "https",
+        hostname: "assets.tumiki.cloud",
         pathname: "/**",
       },
     ],
