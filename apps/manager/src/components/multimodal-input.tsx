@@ -186,22 +186,28 @@ function PureMultimodalInput({
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const { url, pathname, contentType } = data;
-
-        return {
-          url,
-          name: pathname,
-          contentType: contentType,
-        };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage =
+          errorData.error || `アップロードに失敗しました: ${response.status}`;
+        toast.error(errorMessage);
+        return undefined;
       }
-      const { error } = await response.json();
-      toast.error(error);
+
+      const data = await response.json();
+      const { url, pathname, contentType } = data;
+
+      return {
+        url,
+        name: pathname,
+        contentType: contentType,
+      };
     } catch (error) {
+      console.error("ファイルアップロードエラー:", error);
       toast.error(
         "ファイルのアップロードに失敗しました。もう一度お試しください。",
       );
+      return undefined;
     }
   };
 

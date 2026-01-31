@@ -30,7 +30,7 @@ type CompactModelSelectorProps = {
 };
 
 export const CompactModelSelector = ({
-  session: _,
+  session: _session, // 将来の権限ベースモデル制御用に保持
   selectedModelId,
   onModelChange,
   className,
