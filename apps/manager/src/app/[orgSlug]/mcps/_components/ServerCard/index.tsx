@@ -160,13 +160,16 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
           size="sm"
           className="flex w-full items-center justify-between"
           onClick={() => setToolsModalOpen(true)}
+          disabled={mcpServer.tools.length === 0}
         >
           <span className="flex items-center">
             <Wrench className="mr-2 size-4" />
             利用可能なツール
           </span>
           <Badge variant="secondary" className="ml-2">
-            {mcpServer.tools.length}
+            {mcpServer.tools.length > 0
+              ? mcpServer.tools.length
+              : "認証後に表示"}
           </Badge>
         </Button>
 

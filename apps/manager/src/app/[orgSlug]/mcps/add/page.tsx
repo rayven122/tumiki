@@ -1,4 +1,4 @@
-import { AddServerPageClient } from "./_components/AddServerPageClient";
+import { redirect } from "next/navigation";
 
 type AddServerPageProps = {
   params: Promise<{
@@ -6,8 +6,13 @@ type AddServerPageProps = {
   }>;
 };
 
+/**
+ * MCPサーバー追加ページ（リダイレクト）
+ * 旧URL: /[orgSlug]/mcps/add → 新URL: /[orgSlug]/mcps
+ */
 export default async function AddServerPage({ params }: AddServerPageProps) {
   const { orgSlug } = await params;
 
-  return <AddServerPageClient orgSlug={orgSlug} />;
+  // /mcps ページへリダイレクト
+  redirect(`/${orgSlug}/mcps`);
 }
