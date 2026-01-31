@@ -1,31 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import {
-  Plus,
-  Trash2,
-  Server,
-  Globe,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Server, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+import { DefaultPermissionsSection } from "./DefaultPermissionsSection";
+import { ServerPermissionCard } from "./ServerPermissionCard";
+import { AddServerPermissionForm } from "./AddServerPermissionForm";
 
 // MCPサーバー固有の追加権限（UI用の簡素化された型）
 export type McpPermission = {
@@ -67,53 +52,17 @@ export const PermissionSelector = ({
   const [isServerPermissionsOpen, setIsServerPermissionsOpen] = useState(
     mcpPermissions.length > 0,
   );
-  const [newPermission, setNewPermission] = useState<{
-    mcpServerId: string;
-    access: boolean;
-    manage: boolean;
-  }>({
-    mcpServerId: "",
-    access: false,
-    manage: false,
-  });
 
-  const handleAdd = () => {
-    if (!newPermission.mcpServerId) {
-      return;
-    }
-
-    // デフォルトでONでない権限のうち、少なくとも1つが有効かチェック
-    const hasNewPermission =
-      (newPermission.access && !defaultAccess) ||
-      (newPermission.manage && !defaultManage);
-
-    if (!hasNewPermission) {
-      return;
-    }
-
+  const handleAdd = (permission: McpPermission) => {
     const exists = mcpPermissions.some(
-      (p) => p.mcpServerId === newPermission.mcpServerId,
+      (p) => p.mcpServerId === permission.mcpServerId,
     );
 
     if (exists) {
       return;
     }
 
-    onMcpPermissionsChange([
-      ...mcpPermissions,
-      {
-        mcpServerId: newPermission.mcpServerId,
-        // デフォルトでONの権限はfalseにする（重複を避ける）
-        access: newPermission.access && !defaultAccess,
-        manage: newPermission.manage && !defaultManage,
-      },
-    ]);
-
-    setNewPermission({
-      mcpServerId: "",
-      access: false,
-      manage: false,
-    });
+    onMcpPermissionsChange([...mcpPermissions, permission]);
   };
 
   const handleRemove = (index: number) => {
@@ -125,11 +74,6 @@ export const PermissionSelector = ({
       mcpPermissions.map((p, i) => (i === index ? { ...p, ...updates } : p)),
     );
   };
-
-  const canAdd =
-    newPermission.mcpServerId &&
-    ((newPermission.access && !defaultAccess) ||
-      (newPermission.manage && !defaultManage));
 
   // 既に追加されたmcpServerIdを除外した選択可能なオプション
   const availableOptions = mcpServers.filter(
@@ -147,134 +91,16 @@ export const PermissionSelector = ({
     };
   };
 
-  // サーバーアイコンをレンダリングするヘルパー
-  const renderServerIcon = (
-    iconPath?: string | null,
-    fallbackColor = "blue",
-  ) => {
-    if (iconPath) {
-      return (
-        <div className="relative h-8 w-8 overflow-hidden rounded-md border">
-          <Image
-            src={iconPath}
-            alt="Server icon"
-            fill
-            className="object-cover"
-            sizes="32px"
-          />
-        </div>
-      );
-    }
-    return (
-      <div
-        className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-md border",
-          fallbackColor === "blue" &&
-            "border-blue-200 bg-blue-500/10 text-blue-600",
-          fallbackColor === "purple" &&
-            "border-purple-200 bg-purple-500/10 text-purple-600",
-        )}
-      >
-        <Server className="h-4 w-4" />
-      </div>
-    );
-  };
-
-  // トグルスイッチ行のレンダリング
-  const renderToggleRow = ({
-    label,
-    description,
-    checked,
-    disabled,
-    onCheckedChange,
-    colorClass,
-  }: {
-    label: string;
-    description: string;
-    checked: boolean;
-    disabled: boolean;
-    onCheckedChange: (checked: boolean) => void;
-    colorClass: string;
-  }) => (
-    <div className="flex items-center justify-between py-2">
-      <div className="flex items-center gap-3">
-        <div
-          className={cn(
-            "h-2 w-2 rounded-full",
-            checked ? colorClass : "bg-muted-foreground/30",
-          )}
-        />
-        <div>
-          <span className="text-sm font-medium">{label}</span>
-          <p className="text-muted-foreground text-xs">{description}</p>
-        </div>
-      </div>
-      <Switch
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-      />
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       {/* デフォルト権限（すべてのMCPサーバー）- 折りたたみ可能 */}
-      <Collapsible
-        open={isDefaultPermissionsOpen}
+      <DefaultPermissionsSection
+        isOpen={isDefaultPermissionsOpen}
         onOpenChange={setIsDefaultPermissionsOpen}
-      >
-        <div className="bg-card rounded-lg border">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="hover:bg-muted/50 flex w-full items-center justify-between p-4 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-purple-200 bg-purple-500/10 text-purple-600">
-                  <Globe className="h-4 w-4" />
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-medium">
-                    すべてのMCPサーバー
-                  </span>
-                  <p className="text-muted-foreground text-xs">
-                    デフォルトで適用される権限
-                  </p>
-                </div>
-              </div>
-              {isDefaultPermissionsOpen ? (
-                <ChevronUp className="text-muted-foreground h-4 w-4" />
-              ) : (
-                <ChevronDown className="text-muted-foreground h-4 w-4" />
-              )}
-            </button>
-          </CollapsibleTrigger>
-
-          <CollapsibleContent>
-            <div className="divide-y border-t px-4">
-              {renderToggleRow({
-                label: "アクセス",
-                description: "MCPサーバーの閲覧と実行ができます",
-                checked: defaultAccess,
-                disabled: false,
-                onCheckedChange: (checked) =>
-                  onDefaultChange("access", checked),
-                colorClass: "bg-blue-500",
-              })}
-              {renderToggleRow({
-                label: "管理",
-                description: "設定の変更や削除ができます",
-                checked: defaultManage,
-                disabled: false,
-                onCheckedChange: (checked) =>
-                  onDefaultChange("manage", checked),
-                colorClass: "bg-green-500",
-              })}
-            </div>
-          </CollapsibleContent>
-        </div>
-      </Collapsible>
+        defaultAccess={defaultAccess}
+        defaultManage={defaultManage}
+        onDefaultChange={onDefaultChange}
+      />
 
       {/* サーバー固有権限（折りたたみ式） */}
       {availableOptions.length > 0 && (
@@ -312,178 +138,27 @@ export const PermissionSelector = ({
             {mcpPermissions.map((perm, index) => {
               const serverInfo = getServerInfo(perm.mcpServerId);
               return (
-                <div
+                <ServerPermissionCard
                   key={perm.mcpServerId}
-                  className="bg-card rounded-lg border p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {renderServerIcon(serverInfo.iconPath, "blue")}
-                      <span className="text-sm font-medium">
-                        {serverInfo.name}
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemove(index)}
-                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="divide-y">
-                    {renderToggleRow({
-                      label: "アクセス",
-                      description: defaultAccess
-                        ? "デフォルトで有効"
-                        : "MCPサーバーの閲覧と実行",
-                      checked: perm.access || defaultAccess,
-                      disabled: defaultAccess,
-                      onCheckedChange: (checked) =>
-                        handleUpdate(index, { access: checked }),
-                      colorClass: "bg-blue-500",
-                    })}
-                    {renderToggleRow({
-                      label: "管理",
-                      description: defaultManage
-                        ? "デフォルトで有効"
-                        : "設定の変更や削除",
-                      checked: perm.manage || defaultManage,
-                      disabled: defaultManage,
-                      onCheckedChange: (checked) =>
-                        handleUpdate(index, { manage: checked }),
-                      colorClass: "bg-green-500",
-                    })}
-                  </div>
-                </div>
+                  permission={perm}
+                  serverName={serverInfo.name}
+                  serverIconPath={serverInfo.iconPath}
+                  defaultAccess={defaultAccess}
+                  defaultManage={defaultManage}
+                  onUpdate={(updates) => handleUpdate(index, updates)}
+                  onRemove={() => handleRemove(index)}
+                />
               );
             })}
 
             {/* 新規追加セクション */}
-            <div className="rounded-lg border border-dashed p-4">
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground text-xs">
-                  サーバーを追加
-                </Label>
-                <Select
-                  value={newPermission.mcpServerId}
-                  onValueChange={(val) =>
-                    setNewPermission({ ...newPermission, mcpServerId: val })
-                  }
-                  disabled={isLoading}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue
-                      placeholder={
-                        isLoading ? "読み込み中..." : "サーバーを選択"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        <div className="flex items-center gap-2">
-                          {option.iconPath ? (
-                            <div className="relative h-4 w-4 overflow-hidden rounded-sm">
-                              <Image
-                                src={option.iconPath}
-                                alt={option.name}
-                                fill
-                                className="object-cover"
-                                sizes="16px"
-                              />
-                            </div>
-                          ) : (
-                            <Server className="h-4 w-4 text-blue-500" />
-                          )}
-                          {option.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {newPermission.mcpServerId && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "h-2 w-2 rounded-full",
-                          newPermission.access || defaultAccess
-                            ? "bg-blue-500"
-                            : "bg-muted-foreground/30",
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "text-sm",
-                          defaultAccess && "text-muted-foreground",
-                        )}
-                      >
-                        アクセス
-                        {defaultAccess && (
-                          <span className="ml-1 text-xs">(デフォルト)</span>
-                        )}
-                      </span>
-                    </div>
-                    <Switch
-                      checked={newPermission.access || defaultAccess}
-                      disabled={defaultAccess}
-                      onCheckedChange={(checked) =>
-                        setNewPermission({ ...newPermission, access: checked })
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "h-2 w-2 rounded-full",
-                          newPermission.manage || defaultManage
-                            ? "bg-green-500"
-                            : "bg-muted-foreground/30",
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "text-sm",
-                          defaultManage && "text-muted-foreground",
-                        )}
-                      >
-                        管理
-                        {defaultManage && (
-                          <span className="ml-1 text-xs">(デフォルト)</span>
-                        )}
-                      </span>
-                    </div>
-                    <Switch
-                      checked={newPermission.manage || defaultManage}
-                      disabled={defaultManage}
-                      onCheckedChange={(checked) =>
-                        setNewPermission({ ...newPermission, manage: checked })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 flex justify-end">
-                <Button
-                  type="button"
-                  onClick={handleAdd}
-                  disabled={!canAdd}
-                  size="sm"
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  追加
-                </Button>
-              </div>
-            </div>
+            <AddServerPermissionForm
+              availableServers={availableOptions}
+              defaultAccess={defaultAccess}
+              defaultManage={defaultManage}
+              isLoading={isLoading}
+              onAdd={handleAdd}
+            />
           </CollapsibleContent>
         </Collapsible>
       )}
