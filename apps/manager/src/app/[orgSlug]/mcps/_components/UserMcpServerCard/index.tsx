@@ -15,6 +15,7 @@ import {
   Edit2,
   RefreshCw,
   Palette,
+  Layers,
 } from "lucide-react";
 import { ToolsModal } from "../ServerCard/ToolsModal";
 import {
@@ -26,8 +27,14 @@ import {
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { NameEditModal } from "./NameEditModal";
 import { IconEditModal } from "./IconEditModal";
-import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
+import { AuthTypeIndicator } from "../ServerCard/_components/AuthTypeIndicator";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { type RouterOutputs } from "@/trpc/react";
 import { McpServerIcon } from "../McpServerIcon";
@@ -123,10 +130,15 @@ export const UserMcpServerCard = ({
         {/* 右上のバッジとメニュー */}
         {!isSortMode && (
           <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-            {/* Backend認証タイプバッジ（テンプレートのauthType） */}
-            {mcpServer?.authType && (
-              <AuthTypeBadge authType={mcpServer.authType} />
-            )}
+            {/* 認証タイプインジケーター */}
+            <AuthTypeIndicator
+              authType={userMcpServer.authType}
+              apiKeyCount={
+                userMcpServer.authType === "API_KEY"
+                  ? userMcpServer.apiKeys.length
+                  : undefined
+              }
+            />
             {/* メニューボタン */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -202,7 +214,21 @@ export const UserMcpServerCard = ({
             />
           </div>
           <div className="min-w-0 flex-1 pr-24">
-            <CardTitle className="truncate">{userMcpServer.name}</CardTitle>
+            <div className="flex items-center gap-1">
+              {userMcpServer.serverType === "CUSTOM" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Layers className="size-4 shrink-0 text-gray-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>統合MCP</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              <CardTitle className="truncate">{userMcpServer.name}</CardTitle>
+            </div>
             <div className="mt-1 flex items-center gap-2">
               <ServerStatusBadge serverStatus={userMcpServer.serverStatus} />
             </div>
