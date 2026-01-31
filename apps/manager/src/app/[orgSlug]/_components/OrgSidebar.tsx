@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   MessageSquare,
   List,
-  Plus,
   Network,
   Bot,
 } from "lucide-react";
@@ -24,16 +23,33 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ChatHistoryList } from "@/components/chat/ChatHistoryList";
 
 type OrgSidebarProps = {
   orgSlug: string;
   isPersonal: boolean;
+  organizationId: string;
+  currentUserId: string;
 };
 
-export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
+export const OrgSidebar = ({
+  orgSlug,
+  isPersonal,
+  organizationId,
+  currentUserId,
+}: OrgSidebarProps) => {
   const pathname = usePathname();
+  const params = useParams();
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
   const [isMobile, setIsMobile] = useState(false);
+
+  // チャット画面かどうかを判定
+  const isChatPage =
+    pathname.startsWith(`/${orgSlug}/chat`) ||
+    pathname.startsWith(`/${orgSlug}/avatar`);
+
+  // 現在のチャットIDを取得（/chat/[id] または /avatar/[id] の場合）
+  const chatId = params.id as string | undefined;
 
   // モバイル判定とリサイズイベントリスナーの管理
   useEffect(() => {
@@ -54,6 +70,13 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
     };
   }, []);
 
+  // モバイルでサイドバーを閉じる
+  const handleSidebarClose = () => {
+    if (isMobile) {
+      setIsOpen(false);
+    }
+  };
+
   const navigation = [
     {
       name: "ダッシュボード",
@@ -72,16 +95,9 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       beta: true,
     },
     {
-      name: "登録済みサーバー",
+      name: "MCP",
       href: `/${orgSlug}/mcps`,
       icon: List,
-      show: true, // 全組織で表示
-      disabled: false,
-    },
-    {
-      name: "MCPサーバーを作成",
-      href: `/${orgSlug}/mcps/create`,
-      icon: Plus,
       show: true, // 全組織で表示
       disabled: false,
     },
@@ -167,86 +183,108 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto py-6">
-          <TooltipProvider delayDuration={300}>
-            <nav className="grid gap-1 px-4">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                const isDisabled = item.disabled;
-                const isBeta = "beta" in item && item.beta;
-                const tooltipText = item.comingSoon ? "近日公開" : item.name;
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* ナビゲーション */}
+          <div className="py-6">
+            <TooltipProvider delayDuration={300}>
+              <nav className="grid gap-1 px-4">
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  const isDisabled = item.disabled;
+                  const isBeta = "beta" in item && item.beta;
+                  const tooltipText = item.comingSoon ? "近日公開" : item.name;
 
-                const linkContent = (
-                  <>
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className={cn("md:inline", !isOpen && "md:hidden")}>
-                      {item.name}
-                    </span>
-                    {isBeta && isOpen && (
-                      <span className="bg-primary/10 text-primary ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium">
-                        Beta
+                  const linkContent = (
+                    <>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className={cn("md:inline", !isOpen && "md:hidden")}>
+                        {item.name}
                       </span>
-                    )}
-                  </>
-                );
-
-                if (isDisabled) {
-                  return (
-                    <Tooltip key={item.href}>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "text-muted-foreground/40 flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-                          )}
-                        >
-                          {linkContent}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>{tooltipText}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                      {isBeta && isOpen && (
+                        <span className="bg-primary/10 text-primary ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium">
+                          Beta
+                        </span>
+                      )}
+                    </>
                   );
-                }
 
-                const linkElement = (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground",
-                    )}
-                    onClick={() => {
-                      // モバイルではリンククリック時にサイドバーを閉じる
-                      if (isMobile) {
-                        setIsOpen(false);
-                      }
-                    }}
-                  >
-                    {linkContent}
-                  </Link>
-                );
+                  if (isDisabled) {
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "text-muted-foreground/40 flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+                            )}
+                          >
+                            {linkContent}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{tooltipText}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
 
-                // サイドバーが閉じている時はツールチップを表示
-                if (!isOpen) {
-                  return (
-                    <Tooltip key={item.href}>
-                      <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>{tooltipText}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                  const linkElement = (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "hover:bg-accent hover:text-accent-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground",
+                      )}
+                      onClick={() => {
+                        // モバイルではリンククリック時にサイドバーを閉じる
+                        if (isMobile) {
+                          setIsOpen(false);
+                        }
+                      }}
+                    >
+                      {linkContent}
+                    </Link>
                   );
-                }
 
-                return linkElement;
-              })}
-            </nav>
-          </TooltipProvider>
+                  // サイドバーが閉じている時はツールチップを表示
+                  if (!isOpen) {
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{tooltipText}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return linkElement;
+                })}
+              </nav>
+            </TooltipProvider>
+          </div>
+
+          {/* チャット履歴セクション（チャット画面時のみ表示） */}
+          {isChatPage && (
+            <div className="flex flex-1 flex-col overflow-hidden border-t">
+              {isOpen && (
+                <div className="text-muted-foreground px-4 pt-4 pb-2 text-xs font-medium">
+                  チャット履歴
+                </div>
+              )}
+              <ChatHistoryList
+                chatId={chatId}
+                orgSlug={orgSlug}
+                organizationId={organizationId}
+                currentUserId={currentUserId}
+                isSidebarOpen={isOpen}
+                onSidebarClose={handleSidebarClose}
+              />
+            </div>
+          )}
         </div>
       </aside>
 
