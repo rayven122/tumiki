@@ -11,8 +11,7 @@ import {
   getConnectionConfigDisplayName,
 } from "../_hooks/useConnectionConfigs";
 
-type OfficialServers =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+type OfficialServers = RouterOutputs["v2"]["userMcpServer"]["findMcpServers"];
 
 type TemplateSelectorProps = {
   officialServers: OfficialServers | undefined;

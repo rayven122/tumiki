@@ -1,37 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/chat/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/chat/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
+import { CheckCircleFillIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useSetAtom } from "jotai";
 import { mcpServerMapAtom, type McpServerInfo } from "@/atoms/mcpServerMapAtom";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/chat/tooltip";
 
 type OfficialServer =
   RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
 
-type McpServerSelectorProps = {
+type CompactMcpSelectorProps = {
   selectedMcpServerIds: string[];
   onSelectionChange?: (ids: string[]) => void;
   className?: string;
   disabled?: boolean;
 };
 
-// MCPサーバー複数選択コンポーネント（Controlled Component）
-export const McpServerSelector = ({
+export const CompactMcpSelector = ({
   selectedMcpServerIds,
   onSelectionChange,
   className,
   disabled = false,
-}: McpServerSelectorProps) => {
+}: CompactMcpSelectorProps) => {
   const [open, setOpen] = useState(false);
   const setMcpServerMap = useSetAtom(mcpServerMapAtom);
 
@@ -43,7 +45,8 @@ export const McpServerSelector = ({
   const { data: mcpServers, isLoading } =
     api.v2.userMcpServer.findMcpServers.useQuery();
 
-  // MCPサーバー情報をatomに反映（mcp-tool-call.tsxでサーバー名解決に使用）
+  // MCPサーバー情報をatomに反映
+  // 注: setMcpServerMapはJotaiのセッターで安定した参照を持つため依存配列から除外
   useEffect(() => {
     if (mcpServers) {
       const map: Record<string, McpServerInfo> = {};
@@ -55,7 +58,8 @@ export const McpServerSelector = ({
       }
       setMcpServerMap(map);
     }
-  }, [mcpServers, setMcpServerMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcpServers]);
 
   const availableServers: OfficialServer[] =
     mcpServers?.filter(
@@ -68,18 +72,21 @@ export const McpServerSelector = ({
   );
   const selectedCount = validSelectedIds.length;
 
-  const totalToolsCount = availableServers
-    .filter((server) => selectedMcpServerIds.includes(server.id))
-    .reduce(
-      (total, server) =>
-        total +
-        server.templateInstances.reduce(
-          (count, instance) =>
-            count + instance.tools.filter((tool) => tool.isEnabled).length,
-          0,
-        ),
-      0,
-    );
+  // 選択されたサーバーのツール数を計算（メモ化で不要な再計算を防止）
+  const totalToolsCount = useMemo(() => {
+    return availableServers
+      .filter((server) => selectedMcpServerIds.includes(server.id))
+      .reduce(
+        (total, server) =>
+          total +
+          server.templateInstances.reduce(
+            (count, instance) =>
+              count + instance.tools.filter((tool) => tool.isEnabled).length,
+            0,
+          ),
+        0,
+      );
+  }, [availableServers, selectedMcpServerIds]);
 
   const handleToggleServer = (serverId: string) => {
     const isSelected = selectedMcpServerIds.includes(serverId);
@@ -98,45 +105,49 @@ export const McpServerSelector = ({
     onSelectionChange?.([]);
   };
 
-  return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger
-        asChild
-        className={cn(
-          "data-[state=open]:bg-accent data-[state=open]:text-accent-foreground w-fit",
-          className,
-        )}
-        disabled={disabled}
-      >
-        <Button
-          data-testid="mcp-server-selector"
-          variant="outline"
-          className={cn(
-            "min-h-[44px] gap-1.5 md:h-[34px] md:min-h-0 md:px-2",
-            disabled && "cursor-not-allowed",
-          )}
-          disabled={disabled}
-        >
-          <RouteIcon />
-          <span className="hidden sm:inline">MCP</span>
-          {selectedCount > 0 && (
-            <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 text-xs font-medium">
-              {selectedCount}
-            </span>
-          )}
-          {totalToolsCount > 0 && (
-            <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs">
-              {totalToolsCount}ツール
-            </span>
-          )}
-          <ChevronDownIcon />
-        </Button>
-      </DropdownMenuTrigger>
+  const buttonContent = (
+    <Button
+      data-testid="compact-mcp-selector"
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "h-8 gap-1 px-2 text-xs",
+        disabled && "cursor-not-allowed opacity-50",
+        className,
+      )}
+      disabled={disabled}
+    >
+      <RouteIcon />
+      <span className="hidden sm:inline">MCP</span>
+      {selectedCount > 0 && (
+        <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+          {selectedCount}
+        </span>
+      )}
+      {totalToolsCount > 0 && (
+        <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px]">
+          {totalToolsCount}
+        </span>
+      )}
+    </Button>
+  );
 
-      <DropdownMenuContent
-        align="start"
-        className="max-w-[320px] min-w-[280px]"
-      >
+  if (disabled) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+        <TooltipContent side="top">
+          MCPサーバーは新規チャット作成時のみ変更できます
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>{buttonContent}</PopoverTrigger>
+
+      <PopoverContent align="start" className="max-w-[320px] min-w-[280px] p-0">
         {isLoading ? (
           <div className="flex flex-col gap-2 p-3">
             <div className="bg-muted h-4 w-24 animate-pulse rounded" />
@@ -154,8 +165,11 @@ export const McpServerSelector = ({
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-muted-foreground text-xs font-medium">
+            <div className="flex items-center justify-between border-b px-3 py-2">
+              <span
+                id="mcp-server-label"
+                className="text-muted-foreground text-xs font-medium"
+              >
                 MCPサーバー ({availableServers.length})
               </span>
               <div className="flex gap-2">
@@ -175,9 +189,13 @@ export const McpServerSelector = ({
                 </button>
               </div>
             </div>
-            <DropdownMenuSeparator />
 
-            <div className="max-h-[280px] overflow-y-auto">
+            <div
+              role="listbox"
+              aria-labelledby="mcp-server-label"
+              aria-multiselectable="true"
+              className="max-h-[280px] overflow-y-auto p-1"
+            >
               {availableServers.map((server) => {
                 const isSelected = selectedMcpServerIds.includes(server.id);
                 const enabledToolsCount = server.templateInstances.reduce(
@@ -191,18 +209,17 @@ export const McpServerSelector = ({
                   server.templateInstances[0]?.mcpServerTemplate?.iconPath;
 
                 return (
-                  <DropdownMenuItem
-                    data-testid={`mcp-server-selector-item-${server.id}`}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    data-testid={`compact-mcp-selector-item-${server.id}`}
                     key={server.id}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      handleToggleServer(server.id);
-                    }}
+                    onClick={() => handleToggleServer(server.id)}
                     className={cn(
-                      "group/item flex min-h-[48px] cursor-pointer flex-row items-center justify-between gap-3 px-3 py-2",
+                      "hover:bg-accent focus:bg-accent flex min-h-[48px] w-full cursor-pointer flex-row items-center justify-between gap-3 rounded-md px-3 py-2 focus:outline-none",
                       isSelected && "bg-accent/50",
                     )}
-                    data-active={isSelected}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       <div className="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded">
@@ -216,7 +233,7 @@ export const McpServerSelector = ({
                           <RouteIcon size={16} />
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 text-left">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-sm font-medium">
                             {server.name}
@@ -242,22 +259,19 @@ export const McpServerSelector = ({
                     >
                       <CheckCircleFillIcon />
                     </div>
-                  </DropdownMenuItem>
+                  </button>
                 );
               })}
             </div>
 
             {selectedCount > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <div className="text-muted-foreground px-3 py-2 text-xs">
-                  {selectedCount}個のサーバーを選択中
-                </div>
-              </>
+              <div className="text-muted-foreground border-t px-3 py-2 text-xs">
+                {selectedCount}個のサーバーを選択中
+              </div>
             )}
           </>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 };
