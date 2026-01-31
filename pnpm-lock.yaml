@@ -237,6 +237,9 @@ importers:
       '@tumiki/keycloak':
         specifier: workspace:*
         version: link:../../packages/keycloak
+      '@tumiki/mailer':
+        specifier: workspace:*
+        version: link:../../packages/mailer
       '@tumiki/oauth-token-manager':
         specifier: workspace:*
         version: link:../../packages/oauth-token-manager
