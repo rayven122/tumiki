@@ -15,6 +15,17 @@ export const updateRoleInputSchema = z.object({
   defaultRead: z.boolean().optional(),
   defaultWrite: z.boolean().optional(),
   defaultExecute: z.boolean().optional(),
+  // 特定MCPサーバーへの追加権限（指定された場合は既存を全て置換）
+  mcpPermissions: z
+    .array(
+      z.object({
+        mcpServerId: z.string(),
+        read: z.boolean(),
+        write: z.boolean(),
+        execute: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 export type UpdateRoleInput = z.infer<typeof updateRoleInputSchema>;
@@ -67,25 +78,63 @@ export const updateRole = async ({
   });
 
   try {
-    // ロール基本情報とデフォルト権限を更新
-    const role = await ctx.db.organizationRole.update({
-      where: {
-        organizationSlug_slug: {
-          organizationSlug: ctx.currentOrg.slug,
-          slug: input.slug,
+    // トランザクションでロール更新とMCP権限の置換を実行
+    const role = await ctx.db.$transaction(async (tx) => {
+      // ロール基本情報とデフォルト権限を更新
+      await tx.organizationRole.update({
+        where: {
+          organizationSlug_slug: {
+            organizationSlug: ctx.currentOrg.slug,
+            slug: input.slug,
+          },
         },
-      },
-      data: {
-        name: input.name,
-        description: input.description,
-        isDefault: input.isDefault,
-        defaultRead: input.defaultRead,
-        defaultWrite: input.defaultWrite,
-        defaultExecute: input.defaultExecute,
-      },
-      include: {
-        mcpPermissions: true,
-      },
+        data: {
+          name: input.name,
+          description: input.description,
+          isDefault: input.isDefault,
+          defaultRead: input.defaultRead,
+          defaultWrite: input.defaultWrite,
+          defaultExecute: input.defaultExecute,
+        },
+      });
+
+      // MCP権限が指定されている場合は既存を削除して新規作成
+      if (input.mcpPermissions !== undefined) {
+        // 既存のMCP権限を全て削除
+        await tx.mcpPermission.deleteMany({
+          where: {
+            organizationSlug: ctx.currentOrg.slug,
+            roleSlug: input.slug,
+          },
+        });
+
+        // 新しいMCP権限を作成
+        if (input.mcpPermissions.length > 0) {
+          await tx.mcpPermission.createMany({
+            data: input.mcpPermissions.map((p) => ({
+              organizationSlug: ctx.currentOrg.slug,
+              roleSlug: input.slug,
+              mcpServerId: p.mcpServerId,
+              read: p.read,
+              write: p.write,
+              execute: p.execute,
+            })),
+          });
+        }
+      }
+
+      // 最終的なロールをMCP権限付きで取得
+      return tx.organizationRole.findUniqueOrThrow({
+        where: {
+          organizationSlug_slug: {
+            organizationSlug: ctx.currentOrg.slug,
+            slug: input.slug,
+          },
+        },
+        include: {
+          mcpPermissions: true,
+        },
+      });
     });
 
     return role;
