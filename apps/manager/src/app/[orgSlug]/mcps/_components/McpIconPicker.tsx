@@ -1,8 +1,77 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
-import * as LucideIcons from "lucide-react";
+import { useState, type ComponentType, type CSSProperties } from "react";
+import {
+  Bot,
+  Brain,
+  Sparkles,
+  Code,
+  Terminal,
+  Server,
+  Database,
+  Globe,
+  Github,
+  Cpu,
+  MessageSquare,
+  Mail,
+  Bell,
+  FileText,
+  FolderOpen,
+  Cloud,
+  HardDrive,
+  Search,
+  Calendar,
+  Image,
+  Video,
+  Music,
+  Wrench,
+  Puzzle,
+  Zap,
+  Shield,
+  Lock,
+  BarChart3,
+  TrendingUp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// アイコンコンポーネントの型
+type IconComponentType = ComponentType<{
+  className?: string;
+  style?: CSSProperties;
+}>;
+
+// 事前定義されたアイコンマップ（バンドルサイズ最適化）
+const ICON_MAP: Record<string, IconComponentType> = {
+  Bot,
+  Brain,
+  Sparkles,
+  Code,
+  Terminal,
+  Server,
+  Database,
+  Globe,
+  Github,
+  Cpu,
+  MessageSquare,
+  Mail,
+  Bell,
+  FileText,
+  FolderOpen,
+  Cloud,
+  HardDrive,
+  Search,
+  Calendar,
+  Image,
+  Video,
+  Music,
+  Wrench,
+  Puzzle,
+  Zap,
+  Shield,
+  Lock,
+  BarChart3,
+  TrendingUp,
+};
 
 /**
  * MCPサーバー用のアイコン候補
@@ -47,6 +116,13 @@ export const MCP_SERVER_ICONS = [
 
 export type McpServerIconName = (typeof MCP_SERVER_ICONS)[number]["name"];
 
+/**
+ * アイコン名からコンポーネントを取得
+ */
+export const getIconComponent = (name: string): IconComponentType | null => {
+  return ICON_MAP[name] ?? null;
+};
+
 type McpIconPickerProps = {
   selectedIcon: string | null;
   onIconSelect: (iconName: string) => void;
@@ -66,11 +142,10 @@ export const McpIconPicker = ({
       <div className="text-sm font-medium">プリセットアイコン</div>
       <div className="grid grid-cols-6 gap-2">
         {MCP_SERVER_ICONS.map(({ name, label }) => {
-          const IconComponent = LucideIcons[
-            name as keyof typeof LucideIcons
-          ] as ComponentType<{ className?: string }>;
+          const IconComponent = ICON_MAP[name];
           const isSelected = selectedIcon === `lucide:${name}`;
-          const isHovered = hoveredIcon === name;
+
+          if (!IconComponent) return null;
 
           return (
             <button
