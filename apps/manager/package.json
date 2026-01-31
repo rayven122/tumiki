@@ -92,7 +92,6 @@
     "geist": "^1.5.1",
     "google-auth-library": "^10.5.0",
     "immer": "^11.0.1",
-    "isomorphic-dompurify": "^2.35.0",
     "jotai": "^2.15.2",
     "lucide-react": "^0.486.0",
     "microcms-js-sdk": "^3.2.0",
