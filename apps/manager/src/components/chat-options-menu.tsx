@@ -103,10 +103,17 @@ export const ChatOptionsMenu = ({
       </PopoverTrigger>
 
       <PopoverContent align="start" className="w-56 p-1">
-        <div className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
+        <div
+          id="display-mode-label"
+          className="text-muted-foreground px-2 py-1.5 text-xs font-medium"
+        >
           表示モード
         </div>
-        <div className="space-y-0.5">
+        <div
+          role="listbox"
+          aria-labelledby="display-mode-label"
+          className="space-y-0.5"
+        >
           {(Object.entries(MODE_CONFIG) as [DisplayMode, ModeConfig][]).map(
             ([mode, config]) => {
               const Icon = config.icon;
@@ -117,13 +124,15 @@ export const ChatOptionsMenu = ({
                 <button
                   key={mode}
                   type="button"
+                  role="option"
+                  aria-selected={isSelected && !isAvatarMode}
                   onClick={() => handleModeSelect(mode)}
                   className={cn(
-                    "hover:bg-accent flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors",
+                    "hover:bg-accent focus:bg-accent flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors focus:outline-none",
                     isSelected && !isAvatarMode && "bg-accent",
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium">{config.label}</div>
                     <div className="text-muted-foreground truncate text-xs">
@@ -131,7 +140,10 @@ export const ChatOptionsMenu = ({
                     </div>
                   </div>
                   {isSelected && !isAvatarMode && (
-                    <Check className="text-primary h-4 w-4 shrink-0" />
+                    <Check
+                      className="text-primary h-4 w-4 shrink-0"
+                      aria-hidden="true"
+                    />
                   )}
                 </button>
               );

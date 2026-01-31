@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
-import { useEffect, useState } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { useSidebarActions } from "@/hooks/useSidebarActions";
 import {
   Tooltip,
   TooltipContent,
@@ -41,7 +42,10 @@ export const OrgSidebar = ({
   const pathname = usePathname();
   const params = useParams();
   const [isOpen, setIsOpen] = useAtom(sidebarOpenAtom);
-  const [isMobile, setIsMobile] = useState(false);
+
+  // カスタムフックでモバイル判定とサイドバー操作を管理
+  const isMobile = useIsMobile();
+  const { closeSidebar } = useSidebarActions(isMobile, setIsOpen);
 
   // チャット画面かどうかを判定
   const isChatPage =
@@ -49,33 +53,11 @@ export const OrgSidebar = ({
     pathname.startsWith(`/${orgSlug}/avatar`);
 
   // 現在のチャットIDを取得（/chat/[id] または /avatar/[id] の場合）
-  const chatId = params.id as string | undefined;
-
-  // モバイル判定とリサイズイベントリスナーの管理
-  useEffect(() => {
-    // 初期状態の設定
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    // 初回実行
-    checkMobile();
-
-    // リサイズイベントリスナーを登録
-    window.addEventListener("resize", checkMobile);
-
-    // クリーンアップ関数でリスナーを削除
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  }, []);
-
-  // モバイルでサイドバーを閉じる
-  const handleSidebarClose = () => {
-    if (isMobile) {
-      setIsOpen(false);
-    }
-  };
+  // 型ガードで安全に取得
+  const chatId =
+    typeof params.id === "string" && params.id.length > 0
+      ? params.id
+      : undefined;
 
   const navigation = [
     {
@@ -281,7 +263,7 @@ export const OrgSidebar = ({
                 organizationId={organizationId}
                 currentUserId={currentUserId}
                 isSidebarOpen={isOpen}
-                onSidebarClose={handleSidebarClose}
+                onSidebarClose={closeSidebar}
               />
             </div>
           )}
