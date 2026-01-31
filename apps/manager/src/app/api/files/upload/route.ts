@@ -6,6 +6,10 @@ import DOMPurify from "isomorphic-dompurify";
 
 import { auth } from "~/auth";
 
+// R2設定（固定値）
+const R2_BUCKET_NAME = "tumiki";
+const R2_PUBLIC_URL = "https://assets.tumiki.cloud";
+
 // サポートする画像形式
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -197,16 +201,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const bucketName = process.env.R2_BUCKET_NAME;
-    const publicUrl = process.env.R2_PUBLIC_URL;
-
-    if (!bucketName || !publicUrl) {
-      return NextResponse.json(
-        { error: "ストレージの設定が不完全です" },
-        { status: 500 },
-      );
-    }
-
     const r2Client = getR2Client();
     const extension = getFileExtension(file.type);
     const key = `uploads/${nanoid()}.${extension}`;
@@ -231,7 +225,7 @@ export async function POST(request: Request) {
     try {
       await r2Client.send(
         new PutObjectCommand({
-          Bucket: bucketName,
+          Bucket: R2_BUCKET_NAME,
           Key: key,
           Body: uploadBody,
           ContentType: file.type,
@@ -239,7 +233,7 @@ export async function POST(request: Request) {
       );
 
       // 公開URLを構築
-      const url = `${publicUrl.replace(/\/$/, "")}/${key}`;
+      const url = `${R2_PUBLIC_URL}/${key}`;
 
       return NextResponse.json({ url });
     } catch (uploadError) {
