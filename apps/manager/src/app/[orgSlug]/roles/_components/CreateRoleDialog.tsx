@@ -18,6 +18,7 @@ import {
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { PermissionSelector, type McpPermission } from "./PermissionSelector";
+import { mapUiPermissionToDb } from "./permissionMapping";
 import { Tag, Shield } from "lucide-react";
 
 /**
@@ -117,7 +118,8 @@ export const CreateRoleDialog = ({
     return (mcpServers ?? []).map((server) => ({
       id: server.id,
       name: server.name,
-      iconPath: server.templateInstances[0]?.mcpServerTemplate.iconPath ?? null,
+      iconPath:
+        server.templateInstances?.[0]?.mcpServerTemplate?.iconPath ?? null,
     }));
   }, [mcpServers]);
 
@@ -148,22 +150,17 @@ export const CreateRoleDialog = ({
     }
 
     // UI用の access/manage をDB用の read/write/execute に変換
-    // access = read AND execute（同時に設定）
-    // manage = write
+    // 統一されたマッピングロジックを使用
+    const defaultAccess = data.defaultAccess ?? false;
     createMutation.mutate({
       slug: generatedSlug,
       name: data.name,
       description: data.description,
       isDefault: data.isDefault,
-      defaultRead: data.defaultAccess ?? false,
+      defaultRead: defaultAccess,
       defaultWrite: data.defaultManage ?? false,
-      defaultExecute: data.defaultAccess ?? false, // access と同じ値
-      mcpPermissions: data.mcpPermissions.map((p) => ({
-        mcpServerId: p.mcpServerId,
-        read: p.access,
-        write: p.manage,
-        execute: p.access, // access と同じ値
-      })),
+      defaultExecute: defaultAccess,
+      mcpPermissions: data.mcpPermissions.map(mapUiPermissionToDb),
     });
   };
 

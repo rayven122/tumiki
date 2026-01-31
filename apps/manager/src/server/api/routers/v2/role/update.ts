@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { Prisma } from "@tumiki/db/prisma";
 import { z } from "zod";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import type { ProtectedContext } from "@/server/api/trpc";
@@ -140,9 +141,41 @@ export const updateRole = async ({
     return role;
   } catch (error) {
     console.error("ロール更新エラー:", error);
+
+    // Prismaエラーの種類に応じた適切なエラーコードを返す
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2025: レコードが見つからない
+      if (error.code === "P2025") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "指定されたロールが見つかりません",
+        });
+      }
+      // P2002: ユニーク制約違反
+      if (error.code === "P2002") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "権限設定が重複しています",
+        });
+      }
+      // P2003: 外部キー制約違反
+      if (error.code === "P2003") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "指定されたMCPサーバーが存在しません",
+        });
+      }
+    }
+
+    // TRPCErrorはそのまま再スロー
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+
+    // その他のエラー
     throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "指定されたロールが見つかりません",
+      code: "INTERNAL_SERVER_ERROR",
+      message: "ロールの更新中にエラーが発生しました",
     });
   }
 };
