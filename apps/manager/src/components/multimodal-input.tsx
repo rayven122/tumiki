@@ -112,6 +112,9 @@ function PureMultimodalInput({
     "",
   );
 
+  // 初回マウント時のみlocalStorageから値を復元
+  // 依存配列を空にすることで、無限ループを防ぎ、ハイドレーション後の1回のみ実行
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (textareaRef.current) {
       const domValue = textareaRef.current.value;
