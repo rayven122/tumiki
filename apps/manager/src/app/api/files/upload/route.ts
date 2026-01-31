@@ -2,6 +2,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
+import DOMPurify from "isomorphic-dompurify";
 
 import { auth } from "~/auth";
 
@@ -28,7 +29,30 @@ const FILE_SIGNATURES: Record<AllowedImageType, number[][]> = {
     [0x47, 0x49, 0x46, 0x38, 0x37, 0x61], // GIF87a
     [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], // GIF89a
   ],
-  "image/svg+xml": [], // SVGはテキストベースのため別途検証
+  "image/svg+xml": [], // SVGはテキストベースのためDOMPurifyで検証
+};
+
+/**
+ * SVGファイルをサニタイズ
+ * DOMPurifyを使用してXSS攻撃を防止
+ * @see https://github.com/cure53/DOMPurify
+ */
+const sanitizeSvg = (svgContent: string): string | null => {
+  // DOMPurifyでSVGをサニタイズ（スクリプト、イベントハンドラを除去）
+  const sanitized = DOMPurify.sanitize(svgContent, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    // 危険な要素を明示的に禁止
+    FORBID_TAGS: ["script", "foreignObject", "iframe", "object", "embed"],
+    // 危険な属性を明示的に禁止
+    FORBID_ATTR: ["onload", "onclick", "onerror", "onmouseover", "onfocus"],
+  });
+
+  // サニタイズ後にSVGタグが存在するか確認
+  if (!sanitized.includes("<svg") || !sanitized.includes("</svg>")) {
+    return null;
+  }
+
+  return sanitized;
 };
 
 /**
@@ -40,17 +64,16 @@ const validateFileSignature = async (
   file: Blob,
   mimeType: string,
 ): Promise<boolean> => {
-  // SVGはテキストベースのためシグネチャ検証をスキップ
-  // 代わりにXML構造を簡易チェック
+  // SVGはテキストベースのためDOMPurifyで検証
   if (mimeType === "image/svg+xml") {
-    const text = await file.slice(0, 1000).text();
+    const text = await file.text();
     const trimmed = text.trim();
-    // SVGはXML宣言または<svg>タグで始まる
-    return (
-      trimmed.startsWith("<?xml") ||
-      trimmed.startsWith("<svg") ||
-      trimmed.includes("<svg")
-    );
+    // 基本的なSVG構造チェック
+    const hasValidStructure =
+      (trimmed.startsWith("<?xml") || trimmed.startsWith("<svg")) &&
+      trimmed.includes("<svg") &&
+      trimmed.includes("</svg>");
+    return hasValidStructure;
   }
 
   const signatures = FILE_SIGNATURES[mimeType as AllowedImageType];
@@ -185,16 +208,32 @@ export async function POST(request: Request) {
     }
 
     const r2Client = getR2Client();
-    const fileBuffer = await file.arrayBuffer();
     const extension = getFileExtension(file.type);
     const key = `uploads/${nanoid()}.${extension}`;
+
+    // SVGの場合はサニタイズ
+    let uploadBody: Buffer;
+    if (file.type === "image/svg+xml") {
+      const svgContent = await file.text();
+      const sanitizedSvg = sanitizeSvg(svgContent);
+      if (!sanitizedSvg) {
+        return NextResponse.json(
+          { error: "SVGファイルの形式が不正です" },
+          { status: 400 },
+        );
+      }
+      uploadBody = Buffer.from(sanitizedSvg, "utf-8");
+    } else {
+      const fileBuffer = await file.arrayBuffer();
+      uploadBody = Buffer.from(fileBuffer);
+    }
 
     try {
       await r2Client.send(
         new PutObjectCommand({
           Bucket: bucketName,
           Key: key,
-          Body: Buffer.from(fileBuffer),
+          Body: uploadBody,
           ContentType: file.type,
         }),
       );
