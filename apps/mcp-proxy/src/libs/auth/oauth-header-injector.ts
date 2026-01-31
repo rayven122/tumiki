@@ -5,7 +5,10 @@
  * リモートMCPサーバーへのリクエストに認証ヘッダーを注入
  */
 
-import { getValidToken } from "@tumiki/oauth-token-manager";
+import {
+  getValidToken,
+  ReAuthRequiredError,
+} from "@tumiki/oauth-token-manager";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 import { getCloudRunIdToken } from "./cloudRunAuth.js";
 import { logError } from "../logger/index.js";
@@ -92,6 +95,10 @@ const injectOAuthHeaders = async (
 
     return headers;
   } catch (error) {
+    // ReAuthRequiredError はそのまま伝播させる（401 レスポンス生成のため）
+    if (error instanceof ReAuthRequiredError) {
+      throw error;
+    }
     logError("Failed to inject OAuth headers", error as Error);
     throw new Error(
       `Failed to inject OAuth headers: ${error instanceof Error ? error.message : "Unknown error"}`,
