@@ -9,13 +9,11 @@ import {
   Users,
   Shield,
   ChevronLeft,
-  Activity,
   MessageSquare,
   List,
   Plus,
   Network,
   Bot,
-  Sparkles,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -69,14 +67,6 @@ export const OrgSidebar = ({ orgSlug, isPersonal }: OrgSidebarProps) => {
       name: "AIチャット",
       href: `/${orgSlug}/chat`,
       icon: Bot,
-      show: true, // 全組織で表示
-      disabled: false,
-      beta: true,
-    },
-    {
-      name: "アバターモード",
-      href: `/${orgSlug}/avatar`,
-      icon: Sparkles,
       show: true, // 全組織で表示
       disabled: false,
       beta: true,
