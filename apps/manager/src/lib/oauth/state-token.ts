@@ -21,6 +21,8 @@ export const OAuthStatePayloadSchema = z.object({
   redirectUri: z.string(),
   requestedScopes: z.array(z.string()),
   expiresAt: z.number(),
+  // 認証完了後のリダイレクト先（チャット画面等）
+  redirectTo: z.string().optional(),
   // JWTの標準クレームも許容（jwtVerifyが追加するため）
   iat: z.number().optional(),
   exp: z.number().optional(),

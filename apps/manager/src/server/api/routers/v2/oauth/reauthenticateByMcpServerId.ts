@@ -1,77 +1,82 @@
 /**
- * OAuth再認証 procedure
- * 既存のMCPサーバーに対してOAuth認証のみを再実行する
+ * mcpServerId ベースの OAuth 再認証
+ * チャット画面で401エラーが発生した場合に使用
  */
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAuthorizationUrl";
 import { discoverOAuthMetadata } from "@/lib/oauth/dcr";
 import type { z } from "zod";
-import type { ReauthenticateOAuthMcpServerInputV2 } from "./index";
+import type { ReauthenticateByMcpServerIdInputV2 } from "./index";
 
-type ReauthenticateOAuthMcpServerInput = z.infer<
-  typeof ReauthenticateOAuthMcpServerInputV2
+type ReauthenticateByMcpServerIdInput = z.infer<
+  typeof ReauthenticateByMcpServerIdInputV2
 >;
 
-type ReauthenticateOAuthMcpServerOutput = {
+type ReauthenticateByMcpServerIdOutput = {
   authorizationUrl: string;
 };
 
 /**
- * OAuth再認証を実行
- * 既存のMCPサーバーに対してOAuth認証のみを再実行する
+ * mcpServerId ベースで OAuth 再認証を実行
  *
- * @param tx トランザクションクライアント
- * @param input 入力データ
- * @param organizationId 組織ID
- * @param userId ユーザーID
- * @returns Authorization URL
+ * MCPサーバーに紐づく最初のOAuth認証が必要なテンプレートインスタンスを取得し、
+ * 再認証URLを生成する
  */
-export const reauthenticateOAuthMcpServer = async (
+export const reauthenticateByMcpServerId = async (
   tx: PrismaTransactionClient,
-  input: ReauthenticateOAuthMcpServerInput,
+  input: ReauthenticateByMcpServerIdInput,
   organizationId: string,
   userId: string,
-): Promise<ReauthenticateOAuthMcpServerOutput> => {
-  // 1. MCPサーバーテンプレートインスタンスを取得（権限チェック含む）
-  const templateInstance = await tx.mcpServerTemplateInstance.findUnique({
-    where: { id: input.mcpServerTemplateInstanceId },
-    include: {
-      mcpServer: {
+): Promise<ReauthenticateByMcpServerIdOutput> => {
+  // 1. MCPサーバーを取得（権限チェック含む）
+  const mcpServer = await tx.mcpServer.findUnique({
+    where: {
+      id: input.mcpServerId,
+      organizationId,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      templateInstances: {
+        where: {
+          isEnabled: true,
+          mcpServerTemplate: {
+            authType: "OAUTH",
+          },
+        },
         select: {
           id: true,
-          organizationId: true,
+          mcpServerTemplate: {
+            select: {
+              id: true,
+              url: true,
+              authType: true,
+            },
+          },
         },
-      },
-      mcpServerTemplate: {
-        select: {
-          id: true,
-          url: true,
-          authType: true,
-        },
+        take: 1, // 最初のOAuth認証が必要なインスタンスのみ
       },
     },
   });
 
-  if (
-    !templateInstance ||
-    templateInstance.mcpServer.organizationId !== organizationId
-  ) {
+  if (!mcpServer) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "MCPサーバーが見つかりません",
     });
   }
 
-  const template = templateInstance.mcpServerTemplate;
-  if (!template?.authType || template.authType !== "OAUTH") {
+  const templateInstance = mcpServer.templateInstances[0];
+  if (!templateInstance) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "このサーバーはOAuth認証に対応していません",
+      message: "このサーバーにはOAuth認証が必要なテンプレートがありません",
     });
   }
 
-  if (!template.url) {
+  const template = templateInstance.mcpServerTemplate;
+  if (!template?.url) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "MCPサーバーテンプレートのURLが見つかりません",
@@ -121,7 +126,7 @@ export const reauthenticateOAuthMcpServer = async (
     authorizationEndpoint: metadata.authorization_endpoint,
     tokenEndpoint: metadata.token_endpoint,
     scopes: metadata.scopes_supported ?? [],
-    mcpServerId: templateInstance.mcpServer.id,
+    mcpServerId: mcpServer.id,
     mcpServerTemplateInstanceId: templateInstance.id,
     userId,
     organizationId,

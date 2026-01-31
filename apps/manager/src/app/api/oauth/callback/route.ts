@@ -74,6 +74,16 @@ export const GET = async (request: NextRequest) => {
 
     // 結果に応じてリダイレクト
     if (result.success) {
+      // redirectTo が指定されている場合はそちらにリダイレクト（チャット画面等）
+      if (result.redirectTo) {
+        const redirectUrl = new URL(result.redirectTo, baseUrl);
+        redirectUrl.searchParams.set(
+          "success",
+          "OAuth+authentication+completed",
+        );
+        return NextResponse.redirect(redirectUrl);
+      }
+      // デフォルトはMCPサーバー一覧ページ
       return NextResponse.redirect(
         new URL(
           `/${result.organizationSlug}/mcps?success=OAuth+authentication+completed`,
@@ -81,6 +91,15 @@ export const GET = async (request: NextRequest) => {
         ),
       );
     } else {
+      // redirectTo が指定されている場合はそちらにエラーを付けてリダイレクト
+      if (result.redirectTo) {
+        const redirectUrl = new URL(result.redirectTo, baseUrl);
+        redirectUrl.searchParams.set(
+          "error",
+          encodeURIComponent(result.error ?? "Unknown error"),
+        );
+        return NextResponse.redirect(redirectUrl);
+      }
       const redirectUrl = `/${result.organizationSlug}/mcps?error=${encodeURIComponent(result.error ?? "Unknown error")}`;
       return NextResponse.redirect(new URL(redirectUrl, baseUrl));
     }
