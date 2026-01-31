@@ -1,63 +1,22 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { nanoid } from "nanoid";
-import DOMPurify from "isomorphic-dompurify";
 
 import { auth } from "~/auth";
+import {
+  ALLOWED_IMAGE_TYPES,
+  FILE_SIGNATURES,
+  MAX_FILE_SIZE,
+  MIME_TO_EXTENSION,
+  UPLOAD_ERROR_MESSAGES,
+  WEBP_BYTE_POSITIONS,
+  WEBP_MAGIC_BYTES,
+  type AllowedImageType,
+} from "~/lib/upload";
 
 // R2設定（固定値）
 const R2_BUCKET_NAME = "tumiki";
 const R2_PUBLIC_URL = "https://assets.tumiki.cloud";
-
-// サポートする画像形式
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/svg+xml",
-  "image/gif",
-] as const;
-
-type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
-
-// 最大ファイルサイズ: 5MB
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-// ファイルシグネチャ（マジックバイト）定義
-const FILE_SIGNATURES: Record<AllowedImageType, number[][]> = {
-  "image/jpeg": [[0xff, 0xd8, 0xff]],
-  "image/png": [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
-  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // RIFF header（WEBP確認は別途）
-  "image/gif": [
-    [0x47, 0x49, 0x46, 0x38, 0x37, 0x61], // GIF87a
-    [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], // GIF89a
-  ],
-  "image/svg+xml": [], // SVGはテキストベースのためDOMPurifyで検証
-};
-
-/**
- * SVGファイルをサニタイズ
- * DOMPurifyを使用してXSS攻撃を防止
- * @see https://github.com/cure53/DOMPurify
- */
-const sanitizeSvg = (svgContent: string): string | null => {
-  // DOMPurifyでSVGをサニタイズ（スクリプト、イベントハンドラを除去）
-  const sanitized = DOMPurify.sanitize(svgContent, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    // 危険な要素を明示的に禁止
-    FORBID_TAGS: ["script", "foreignObject", "iframe", "object", "embed"],
-    // 危険な属性を明示的に禁止
-    FORBID_ATTR: ["onload", "onclick", "onerror", "onmouseover", "onfocus"],
-  });
-
-  // サニタイズ後にSVGタグが存在するか確認
-  if (!sanitized.includes("<svg") || !sanitized.includes("</svg>")) {
-    return null;
-  }
-
-  return sanitized;
-};
 
 /**
  * ファイルシグネチャを検証
@@ -68,41 +27,28 @@ const validateFileSignature = async (
   file: Blob,
   mimeType: string,
 ): Promise<boolean> => {
-  // SVGはテキストベースのためDOMPurifyで検証
-  if (mimeType === "image/svg+xml") {
-    const text = await file.text();
-    const trimmed = text.trim();
-    // 基本的なSVG構造チェック
-    const hasValidStructure =
-      (trimmed.startsWith("<?xml") || trimmed.startsWith("<svg")) &&
-      trimmed.includes("<svg") &&
-      trimmed.includes("</svg>");
-    return hasValidStructure;
-  }
-
   const signatures = FILE_SIGNATURES[mimeType as AllowedImageType];
   if (!signatures || signatures.length === 0) {
     return false;
   }
 
   // 最長のシグネチャに合わせてバイトを読み取り
-  const maxLength = Math.max(...signatures.map((s) => s.length));
-  const buffer = new Uint8Array(
-    await file.slice(0, maxLength + 8).arrayBuffer(),
+  // WebPは12バイト必要（RIFF + size + WEBP）
+  const maxLength = Math.max(
+    ...signatures.map((s) => s.length),
+    WEBP_BYTE_POSITIONS.WEBP_MARKER_END,
   );
+  const buffer = new Uint8Array(await file.slice(0, maxLength).arrayBuffer());
 
   // WebPは特殊: RIFF + size(4bytes) + WEBP
   if (mimeType === "image/webp") {
-    const riffMatch =
-      buffer[0] === 0x52 &&
-      buffer[1] === 0x49 &&
-      buffer[2] === 0x46 &&
-      buffer[3] === 0x46;
-    const webpMatch =
-      buffer[8] === 0x57 &&
-      buffer[9] === 0x45 &&
-      buffer[10] === 0x42 &&
-      buffer[11] === 0x50;
+    const riffMatch = WEBP_MAGIC_BYTES.RIFF.every(
+      (byte, index) => buffer[index] === byte,
+    );
+    const webpMatch = WEBP_MAGIC_BYTES.WEBP.every(
+      (byte, index) =>
+        buffer[WEBP_BYTE_POSITIONS.WEBP_MARKER_START + index] === byte,
+    );
     return riffMatch && webpMatch;
   }
 
@@ -117,14 +63,18 @@ const FileSchema = z.object({
   file: z
     .instanceof(Blob)
     .refine((file) => file.size <= MAX_FILE_SIZE, {
-      message: "ファイルサイズは5MB以下にしてください",
+      message: UPLOAD_ERROR_MESSAGES.FILE_TOO_LARGE,
     })
     .refine(
       (file) => ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType),
       {
-        message: "JPEG、PNG、WebP、SVG、GIF形式の画像のみアップロードできます",
+        message: UPLOAD_ERROR_MESSAGES.INVALID_TYPE,
       },
     ),
+  // オルグスラッグ - R2内でディレクトリ分けに使用
+  orgSlug: z.string(),
+  // MCPサーバーID - ファイル名に使用（同じサーバーなら上書き）
+  mcpServerId: z.string(),
 });
 
 // R2クライアントの初期化
@@ -149,37 +99,49 @@ const getR2Client = () => {
 
 // ファイル拡張子を取得
 const getFileExtension = (mimeType: string): string => {
-  const extensionMap: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/svg+xml": "svg",
-    "image/gif": "gif",
-  };
-  return extensionMap[mimeType] ?? "bin";
+  return MIME_TO_EXTENSION[mimeType as AllowedImageType] ?? "bin";
 };
 
 export async function POST(request: Request) {
   const session = await auth();
 
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: UPLOAD_ERROR_MESSAGES.UNAUTHORIZED },
+      { status: 401 },
+    );
   }
 
   if (request.body === null) {
-    return new Response("Request body is empty", { status: 400 });
+    return new Response(UPLOAD_ERROR_MESSAGES.NO_FILE, { status: 400 });
   }
 
   try {
     const formData = await request.formData();
     const file = formData.get("file") as Blob;
+    const orgSlug = formData.get("orgSlug") as string | null;
+    const mcpServerId = formData.get("mcpServerId") as string | null;
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      return NextResponse.json(
+        { error: UPLOAD_ERROR_MESSAGES.NO_FILE },
+        { status: 400 },
+      );
+    }
+
+    if (!orgSlug || !mcpServerId) {
+      return NextResponse.json(
+        { error: UPLOAD_ERROR_MESSAGES.MISSING_PARAMS },
+        { status: 400 },
+      );
     }
 
     // MIMEタイプとサイズの検証
-    const validatedFile = FileSchema.safeParse({ file });
+    const validatedFile = FileSchema.safeParse({
+      file,
+      orgSlug,
+      mcpServerId,
+    });
 
     if (!validatedFile.success) {
       const errorMessage = validatedFile.error.issues
@@ -193,34 +155,17 @@ export async function POST(request: Request) {
     const isValidSignature = await validateFileSignature(file, file.type);
     if (!isValidSignature) {
       return NextResponse.json(
-        {
-          error:
-            "ファイル形式が不正です。正しい画像ファイルをアップロードしてください",
-        },
+        { error: UPLOAD_ERROR_MESSAGES.INVALID_SIGNATURE },
         { status: 400 },
       );
     }
 
     const r2Client = getR2Client();
-    const extension = getFileExtension(file.type);
-    const key = `uploads/${nanoid()}.${extension}`;
+    // orgSlugとmcpServerIdでパスを構成（同じサーバーなら上書き、拡張子なし）
+    const key = `uploads/${orgSlug}/${mcpServerId}`;
 
-    // SVGの場合はサニタイズ
-    let uploadBody: Buffer;
-    if (file.type === "image/svg+xml") {
-      const svgContent = await file.text();
-      const sanitizedSvg = sanitizeSvg(svgContent);
-      if (!sanitizedSvg) {
-        return NextResponse.json(
-          { error: "SVGファイルの形式が不正です" },
-          { status: 400 },
-        );
-      }
-      uploadBody = Buffer.from(sanitizedSvg, "utf-8");
-    } else {
-      const fileBuffer = await file.arrayBuffer();
-      uploadBody = Buffer.from(fileBuffer);
-    }
+    const fileBuffer = await file.arrayBuffer();
+    const uploadBody = Buffer.from(fileBuffer);
 
     try {
       await r2Client.send(
@@ -242,7 +187,7 @@ export async function POST(request: Request) {
         console.error("R2 upload failed:", uploadError);
       }
       return NextResponse.json(
-        { error: "ファイルのアップロードに失敗しました" },
+        { error: UPLOAD_ERROR_MESSAGES.UPLOAD_FAILED },
         { status: 500 },
       );
     }
@@ -251,7 +196,7 @@ export async function POST(request: Request) {
       console.error("Request processing failed:", error);
     }
     return NextResponse.json(
-      { error: "リクエストの処理に失敗しました" },
+      { error: UPLOAD_ERROR_MESSAGES.UPLOAD_FAILED },
       { status: 500 },
     );
   }

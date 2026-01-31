@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import Image from "next/image";
@@ -26,6 +32,7 @@ type IconEditModalProps = {
   serverInstanceId: McpServerId;
   initialIconPath: string | null;
   fallbackUrl?: string | null;
+  orgSlug: string;
   onSuccess?: () => Promise<void> | void;
   onOpenChange: (open: boolean) => void;
 };
@@ -34,6 +41,7 @@ export const IconEditModal = ({
   serverInstanceId,
   initialIconPath,
   fallbackUrl,
+  orgSlug,
   onSuccess,
   onOpenChange,
 }: IconEditModalProps) => {
@@ -44,7 +52,28 @@ export const IconEditModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { uploadImage, isUploading, error: uploadError } = useImageUpload();
+  // アップロード待ちのファイル（保存時にアップロード）
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // プレビュー用のローカルURL（Blob URL）
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  const {
+    uploadImage,
+    validateFile,
+    isUploading,
+    error: uploadError,
+    setError,
+    clearError,
+  } = useImageUpload({ orgSlug, mcpServerId: serverInstanceId });
+
+  // コンポーネントアンマウント時にBlob URLを解放
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+    };
+  }, [localPreviewUrl]);
 
   const { mutate: updateIconPath, isPending } =
     api.v2.userMcpServer.updateIconPath.useMutation({
@@ -59,28 +88,61 @@ export const IconEditModal = ({
       },
     });
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    let finalIconPath = selectedIconPath;
+
+    // pendingFileがある場合は保存時にアップロード
+    if (pendingFile) {
+      const result = await uploadImage(pendingFile);
+      if (!result) {
+        // アップロード失敗（エラーはuseImageUpload内でセット済み）
+        return;
+      }
+      finalIconPath = result.url;
+    }
+
     updateIconPath({
       id: serverInstanceId,
-      iconPath: selectedIconPath,
+      iconPath: finalIconPath,
     });
   };
 
   const handleResetToDefault = () => {
     setSelectedIconPath(null);
+    // pendingFileとプレビューURLもクリア
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+    setPendingFile(null);
+    setLocalPreviewUrl(null);
+    clearError();
   };
 
-  const handleFileSelect = async (file: File) => {
-    const result = await uploadImage(file);
-    if (result) {
-      setSelectedIconPath(result.url);
+  const handleFileSelect = (file: File) => {
+    // バリデーションのみ実行（アップロードは保存時）
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
     }
+
+    // 古いプレビューURLを解放
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+
+    // プレビュー用のローカルURLを生成
+    const previewUrl = URL.createObjectURL(file);
+    setLocalPreviewUrl(previewUrl);
+    setPendingFile(file);
+    setSelectedIconPath(null); // lucide:*形式を解除
+    clearError();
   };
 
   const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      void handleFileSelect(file);
+      handleFileSelect(file);
     }
   };
 
@@ -99,12 +161,14 @@ export const IconEditModal = ({
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) {
-      void handleFileSelect(file);
+      handleFileSelect(file);
     }
   };
 
   const isButtonDisabled = isPending || isUploading;
-  const hasChanges = selectedIconPath !== initialIconPath;
+  // プリセット選択またはアップロード待ちファイルがある場合に変更ありと判定
+  const hasChanges =
+    selectedIconPath !== initialIconPath || pendingFile !== null;
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -120,11 +184,22 @@ export const IconEditModal = ({
         <div className="flex flex-col items-center gap-2 py-4">
           <div className="text-muted-foreground text-sm">プレビュー</div>
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed">
-            <McpServerIcon
-              iconPath={selectedIconPath}
-              fallbackUrl={fallbackUrl}
-              size={48}
-            />
+            {/* アップロード待ちファイルがある場合はローカルプレビュー */}
+            {localPreviewUrl ? (
+              <Image
+                src={localPreviewUrl}
+                alt="プレビュー"
+                width={48}
+                height={48}
+                className="rounded-md object-cover"
+              />
+            ) : (
+              <McpServerIcon
+                iconPath={selectedIconPath}
+                fallbackUrl={fallbackUrl}
+                size={48}
+              />
+            )}
           </div>
         </div>
 
@@ -163,7 +238,7 @@ export const IconEditModal = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={handleFileInputChange}
                   className="hidden"
                   disabled={isUploading}
@@ -174,9 +249,7 @@ export const IconEditModal = ({
                     ? "アップロード中..."
                     : "クリックまたはドラッグ&ドロップ"}
                 </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  JPEG/PNG/WebP/SVG/GIF形式、5MB以下
-                </p>
+                <p className="text-muted-foreground mt-1 text-xs">5MB以下</p>
               </div>
 
               {/* 注意事項 */}
@@ -192,32 +265,68 @@ export const IconEditModal = ({
                 </div>
               )}
 
-              {/* アップロード済み画像のプレビュー */}
-              {selectedIconPath && !selectedIconPath.startsWith("lucide:") && (
+              {/* 選択済み画像のプレビュー（アップロード待ち） */}
+              {pendingFile && localPreviewUrl && (
                 <div className="flex items-center gap-3 rounded-md border p-3">
                   <Image
-                    src={selectedIconPath}
-                    alt="アップロード画像"
+                    src={localPreviewUrl}
+                    alt="選択画像"
                     width={40}
                     height={40}
                     className="rounded-md object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">カスタム画像</p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {selectedIconPath}
+                    <p className="truncate text-sm font-medium">
+                      {pendingFile.name}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      保存時にアップロードされます
                     </p>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setSelectedIconPath(null)}
+                    onClick={() => {
+                      if (localPreviewUrl) {
+                        URL.revokeObjectURL(localPreviewUrl);
+                      }
+                      setPendingFile(null);
+                      setLocalPreviewUrl(null);
+                    }}
                     className="h-8 w-8 shrink-0"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               )}
+
+              {/* 既存のカスタム画像表示（アップロード済み） */}
+              {!pendingFile &&
+                selectedIconPath &&
+                !selectedIconPath.startsWith("lucide:") && (
+                  <div className="flex items-center gap-3 rounded-md border p-3">
+                    <Image
+                      src={selectedIconPath}
+                      alt="現在の画像"
+                      width={40}
+                      height={40}
+                      className="rounded-md object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        カスタム画像（設定済み）
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedIconPath(null)}
+                      className="h-8 w-8 shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
             </div>
           </TabsContent>
         </Tabs>
@@ -240,10 +349,14 @@ export const IconEditModal = ({
               キャンセル
             </Button>
             <Button
-              onClick={handleSave}
+              onClick={() => void handleSave()}
               disabled={isButtonDisabled || !hasChanges}
             >
-              {isPending ? "保存中..." : "保存"}
+              {isUploading
+                ? "アップロード中..."
+                : isPending
+                  ? "保存中..."
+                  : "保存"}
             </Button>
           </div>
         </DialogFooter>

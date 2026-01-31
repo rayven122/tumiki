@@ -1,6 +1,13 @@
 import { useState, useCallback } from "react";
 import { z } from "zod";
 
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_FILE_SIZE,
+  UPLOAD_ERROR_MESSAGES,
+  type AllowedImageType,
+} from "~/lib/upload";
+
 type UploadState = {
   isUploading: boolean;
   error: string | null;
@@ -19,36 +26,20 @@ const UploadErrorResponseSchema = z.object({
   error: z.string().optional(),
 });
 
-// サポートする画像形式
-const ALLOWED_IMAGE_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/svg+xml",
-  "image/gif",
-] as const;
-
-type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
-
-// 最大ファイルサイズ: 5MB
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-// エラーメッセージ定義（統一）
-const ERROR_MESSAGES = {
-  INVALID_TYPE: "JPEG、PNG、WebP、SVG、GIF形式の画像のみアップロードできます",
-  FILE_TOO_LARGE: "ファイルサイズは5MB以下にしてください",
-  UPLOAD_FAILED: "アップロードに失敗しました",
-  NETWORK_ERROR: "ネットワークエラーが発生しました",
-} as const;
+type UseImageUploadOptions = {
+  orgSlug: string;
+  mcpServerId: string;
+};
 
 /**
  * 画像アップロード用カスタムフック
  *
  * /api/files/upload エンドポイントを使用して画像をアップロード
- * - 5MB以下のJPEG/PNG/WebP/SVG/GIFに対応
+ * - 5MB以下のJPEG/PNG/WebP/GIFに対応
  * - Cloudflare R2にアップロード
+ * - orgSlugとmcpServerIdでパスを構成（同じサーバーなら上書き）
  */
-export const useImageUpload = () => {
+export const useImageUpload = (options: UseImageUploadOptions) => {
   const [state, setState] = useState<UploadState>({
     isUploading: false,
     error: null,
@@ -60,16 +51,16 @@ export const useImageUpload = () => {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType)) {
         setState({
           isUploading: false,
-          error: ERROR_MESSAGES.INVALID_TYPE,
+          error: UPLOAD_ERROR_MESSAGES.INVALID_TYPE,
         });
         return null;
       }
 
-      // ファイルサイズのバリデーション（5MB）
+      // ファイルサイズのバリデーション
       if (file.size > MAX_FILE_SIZE) {
         setState({
           isUploading: false,
-          error: ERROR_MESSAGES.FILE_TOO_LARGE,
+          error: UPLOAD_ERROR_MESSAGES.FILE_TOO_LARGE,
         });
         return null;
       }
@@ -79,6 +70,8 @@ export const useImageUpload = () => {
       try {
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("orgSlug", options.orgSlug);
+        formData.append("mcpServerId", options.mcpServerId);
 
         const response = await fetch("/api/files/upload", {
           method: "POST",
@@ -90,8 +83,8 @@ export const useImageUpload = () => {
           const validatedError =
             UploadErrorResponseSchema.safeParse(rawErrorData);
           const errorMessage = validatedError.success
-            ? (validatedError.data.error ?? ERROR_MESSAGES.UPLOAD_FAILED)
-            : ERROR_MESSAGES.UPLOAD_FAILED;
+            ? (validatedError.data.error ?? UPLOAD_ERROR_MESSAGES.UPLOAD_FAILED)
+            : UPLOAD_ERROR_MESSAGES.UPLOAD_FAILED;
           throw new Error(errorMessage);
         }
 
@@ -99,29 +92,55 @@ export const useImageUpload = () => {
         const validatedData = UploadSuccessResponseSchema.safeParse(rawData);
 
         if (!validatedData.success) {
-          throw new Error(ERROR_MESSAGES.UPLOAD_FAILED);
+          throw new Error(UPLOAD_ERROR_MESSAGES.UPLOAD_FAILED);
         }
 
         setState({ isUploading: false, error: null });
         return { url: validatedData.data.url };
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : ERROR_MESSAGES.UPLOAD_FAILED;
+          error instanceof Error
+            ? error.message
+            : UPLOAD_ERROR_MESSAGES.UPLOAD_FAILED;
         setState({ isUploading: false, error: errorMessage });
         return null;
       }
     },
-    [],
+    [options.orgSlug, options.mcpServerId],
   );
+
+  /**
+   * ファイルのバリデーションのみ実行（アップロードはしない）
+   * プレビュー表示前のチェック用
+   */
+  const validateFile = useCallback((file: File): string | null => {
+    // ファイルタイプのバリデーション
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType)) {
+      return UPLOAD_ERROR_MESSAGES.INVALID_TYPE;
+    }
+
+    // ファイルサイズのバリデーション
+    if (file.size > MAX_FILE_SIZE) {
+      return UPLOAD_ERROR_MESSAGES.FILE_TOO_LARGE;
+    }
+
+    return null;
+  }, []);
 
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }));
   }, []);
 
+  const setError = useCallback((error: string) => {
+    setState((prev) => ({ ...prev, error }));
+  }, []);
+
   return {
     uploadImage,
+    validateFile,
     isUploading: state.isUploading,
     error: state.error,
     clearError,
+    setError,
   };
 };

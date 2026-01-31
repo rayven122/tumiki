@@ -294,6 +294,7 @@ export const UserMcpServerCard = ({
           serverInstanceId={userMcpServer.id as McpServerId}
           initialIconPath={userMcpServer.iconPath}
           fallbackUrl={mcpServerUrl}
+          orgSlug={orgSlug}
           onSuccess={async () => {
             await revalidate?.();
             setIconEditModalOpen(false);
