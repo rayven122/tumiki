@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { PermissionSelector } from "./PermissionSelector";
+import { PermissionSelector, type McpPermission } from "./PermissionSelector";
+import { mapUiPermissionToDb } from "./permissionMapping";
 import { Tag, Shield } from "lucide-react";
 
 /**
@@ -45,6 +46,7 @@ const generateSlugFromName = (name: string): string => {
     .replace(/^-|-$/g, ""); // 先頭・末尾のハイフンを削除
 };
 
+// フォームで使用するスキーマ（UI用の access/manage 形式）
 const createRoleSchema = z.object({
   name: z
     .string()
@@ -55,17 +57,15 @@ const createRoleSchema = z.object({
     .max(500, "説明は500文字以内で入力してください")
     .optional(),
   isDefault: z.boolean(),
-  // デフォルト権限（全MCPサーバーに適用）
-  defaultRead: z.boolean().optional(),
-  defaultWrite: z.boolean().optional(),
-  defaultExecute: z.boolean().optional(),
-  // 特定MCPサーバーへの追加権限
+  // デフォルト権限（UI用: access/manage）
+  defaultAccess: z.boolean().optional(),
+  defaultManage: z.boolean().optional(),
+  // 特定MCPサーバーへの追加権限（UI用: access/manage）
   mcpPermissions: z.array(
     z.object({
       mcpServerId: z.string(),
-      read: z.boolean(),
-      write: z.boolean(),
-      execute: z.boolean(),
+      access: z.boolean(),
+      manage: z.boolean(),
     }),
   ),
 });
@@ -94,9 +94,8 @@ export const CreateRoleDialog = ({
       name: "",
       description: "",
       isDefault: false,
-      defaultRead: false,
-      defaultWrite: false,
-      defaultExecute: false,
+      defaultAccess: false,
+      defaultManage: false,
       mcpPermissions: [],
     },
   });
@@ -110,15 +109,17 @@ export const CreateRoleDialog = ({
 
   // 組織内のMCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findOfficialServers.useQuery(undefined, {
+    api.v2.userMcpServer.findMcpServers.useQuery(undefined, {
       enabled: open,
     });
 
-  // MCPサーバーのオプション形式に変換
+  // MCPサーバーのオプション形式に変換（iconPathを含む）
   const mcpServerOptions = useMemo(() => {
     return (mcpServers ?? []).map((server) => ({
       id: server.id,
       name: server.name,
+      iconPath:
+        server.templateInstances?.[0]?.mcpServerTemplate?.iconPath ?? null,
     }));
   }, [mcpServers]);
 
@@ -148,9 +149,18 @@ export const CreateRoleDialog = ({
       return;
     }
 
+    // UI用の access/manage をDB用の read/write/execute に変換
+    // 統一されたマッピングロジックを使用
+    const defaultAccess = data.defaultAccess ?? false;
     createMutation.mutate({
       slug: generatedSlug,
-      ...data,
+      name: data.name,
+      description: data.description,
+      isDefault: data.isDefault,
+      defaultRead: defaultAccess,
+      defaultWrite: data.defaultManage ?? false,
+      defaultExecute: defaultAccess,
+      mcpPermissions: data.mcpPermissions.map(mapUiPermissionToDb),
     });
   };
 
@@ -226,12 +236,17 @@ export const CreateRoleDialog = ({
               </p>
             </div>
             <PermissionSelector
-              defaultRead={watch("defaultRead") ?? false}
-              defaultWrite={watch("defaultWrite") ?? false}
-              defaultExecute={watch("defaultExecute") ?? false}
-              onDefaultChange={(key, value) => setValue(key, value)}
+              defaultAccess={watch("defaultAccess") ?? false}
+              defaultManage={watch("defaultManage") ?? false}
+              onDefaultChange={(key, value) => {
+                if (key === "access") {
+                  setValue("defaultAccess", value);
+                } else {
+                  setValue("defaultManage", value);
+                }
+              }}
               mcpPermissions={mcpPermissions}
-              onMcpPermissionsChange={(newPermissions) =>
+              onMcpPermissionsChange={(newPermissions: McpPermission[]) =>
                 setValue("mcpPermissions", newPermissions)
               }
               mcpServers={mcpServerOptions}

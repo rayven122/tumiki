@@ -31,6 +31,17 @@ export const createRoleInputSchema = z
     defaultRead: z.boolean().default(false),
     defaultWrite: z.boolean().default(false),
     defaultExecute: z.boolean().default(false),
+    // 特定MCPサーバーへの追加権限
+    mcpPermissions: z
+      .array(
+        z.object({
+          mcpServerId: z.string(),
+          read: z.boolean(),
+          write: z.boolean(),
+          execute: z.boolean(),
+        }),
+      )
+      .optional(),
   })
   .refine((data) => !RESERVED_ROLE_SLUGS.includes(data.slug), {
     message:
@@ -142,6 +153,18 @@ export const createRole = async ({
             defaultRead: input.defaultRead,
             defaultWrite: input.defaultWrite,
             defaultExecute: input.defaultExecute,
+            // 特定MCPサーバーへの追加権限がある場合は同時に作成
+            mcpPermissions:
+              input.mcpPermissions && input.mcpPermissions.length > 0
+                ? {
+                    create: input.mcpPermissions.map((p) => ({
+                      mcpServerId: p.mcpServerId,
+                      read: p.read,
+                      write: p.write,
+                      execute: p.execute,
+                    })),
+                  }
+                : undefined,
           },
           include: {
             mcpPermissions: true,

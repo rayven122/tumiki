@@ -35,8 +35,8 @@ const AsyncServerCardList = forwardRef<
   { isSortMode, searchQuery, selectedTags },
   ref,
 ) {
-  const [userOfficialServers] =
-    api.v2.userMcpServer.findOfficialServers.useSuspenseQuery();
+  const [userMcpServers] =
+    api.v2.userMcpServer.findMcpServers.useSuspenseQuery();
   const utils = api.useUtils();
   const updateDisplayOrderMutation =
     api.v2.userMcpServer.updateDisplayOrder.useMutation();
@@ -48,10 +48,9 @@ const AsyncServerCardList = forwardRef<
     handleCancelChanges,
     hasChanges,
   } = useSortableServers({
-    originalServers: userOfficialServers,
+    originalServers: userMcpServers,
     updateMutation: updateDisplayOrderMutation,
-    invalidateQuery: () =>
-      utils.v2.userMcpServer.findOfficialServers.invalidate(),
+    invalidateQuery: () => utils.v2.userMcpServer.findMcpServers.invalidate(),
     isSortMode,
   });
 
@@ -102,7 +101,7 @@ const AsyncServerCardList = forwardRef<
                   userMcpServer={server}
                   isSortMode={isSortMode}
                   revalidate={async () =>
-                    await utils.v2.userMcpServer.findOfficialServers.invalidate()
+                    await utils.v2.userMcpServer.findMcpServers.invalidate()
                   }
                 />
               </div>
@@ -153,7 +152,7 @@ const AsyncServerCardList = forwardRef<
             userMcpServer={server}
             isSortMode={isSortMode}
             revalidate={async () =>
-              await utils.v2.userMcpServer.findOfficialServers.invalidate()
+              await utils.v2.userMcpServer.findMcpServers.invalidate()
             }
           />
         </div>
