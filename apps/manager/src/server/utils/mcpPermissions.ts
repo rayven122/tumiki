@@ -199,15 +199,16 @@ const hasSpecificPermission = (
 
 /**
  * 権限タイプのラベルを取得
+ * UI上は「アクセス」(read/execute)と「管理」(write)の2つに簡素化
  */
 const getPermissionLabel = (permission: McpPermissionType): string => {
   switch (permission) {
     case "read":
-      return "閲覧";
+      return "アクセス"; // read と execute はUI上「アクセス」として統合
     case "write":
-      return "編集";
+      return "管理";
     case "execute":
-      return "実行";
+      return "アクセス"; // read と execute はUI上「アクセス」として統合
     default:
       return "操作";
   }
