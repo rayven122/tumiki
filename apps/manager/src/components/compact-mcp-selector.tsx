@@ -46,6 +46,7 @@ export const CompactMcpSelector = ({
     api.v2.userMcpServer.findOfficialServers.useQuery();
 
   // MCPサーバー情報をatomに反映
+  // 注: setMcpServerMapはJotaiのセッターで安定した参照を持つため依存配列から除外
   useEffect(() => {
     if (mcpServers) {
       const map: Record<string, McpServerInfo> = {};
@@ -57,7 +58,8 @@ export const CompactMcpSelector = ({
       }
       setMcpServerMap(map);
     }
-  }, [mcpServers, setMcpServerMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcpServers]);
 
   const availableServers: OfficialServer[] =
     mcpServers?.filter(

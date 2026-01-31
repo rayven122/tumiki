@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Monitor, Star, Sparkles, ChevronDown, Check } from "lucide-react";
@@ -14,6 +15,12 @@ import { useCoharuContext } from "@/hooks/coharu/useCoharuContext";
 
 type DisplayMode = "normal" | "coharu" | "avatar";
 
+type ModeConfig = {
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
 type ChatOptionsMenuProps = {
   chatId: string;
   orgSlug: string;
@@ -21,7 +28,7 @@ type ChatOptionsMenuProps = {
   className?: string;
 };
 
-const MODE_CONFIG = {
+const MODE_CONFIG: Record<DisplayMode, ModeConfig> = {
   normal: {
     label: "通常モード",
     description: "テキストのみで会話",
@@ -37,7 +44,7 @@ const MODE_CONFIG = {
     description: "全画面でアバター表示",
     icon: Sparkles,
   },
-} as const;
+};
 
 export const ChatOptionsMenu = ({
   chatId,
@@ -100,39 +107,36 @@ export const ChatOptionsMenu = ({
           表示モード
         </div>
         <div className="space-y-0.5">
-          {(
-            Object.entries(MODE_CONFIG) as [
-              DisplayMode,
-              typeof MODE_CONFIG.normal,
-            ][]
-          ).map(([mode, config]) => {
-            const Icon = config.icon;
-            const isSelected = mode === currentMode;
-            const isAvatarMode = mode === "avatar";
+          {(Object.entries(MODE_CONFIG) as [DisplayMode, ModeConfig][]).map(
+            ([mode, config]) => {
+              const Icon = config.icon;
+              const isSelected = mode === currentMode;
+              const isAvatarMode = mode === "avatar";
 
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => handleModeSelect(mode)}
-                className={cn(
-                  "hover:bg-accent flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors",
-                  isSelected && !isAvatarMode && "bg-accent",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{config.label}</div>
-                  <div className="text-muted-foreground truncate text-xs">
-                    {config.description}
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => handleModeSelect(mode)}
+                  className={cn(
+                    "hover:bg-accent flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors",
+                    isSelected && !isAvatarMode && "bg-accent",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium">{config.label}</div>
+                    <div className="text-muted-foreground truncate text-xs">
+                      {config.description}
+                    </div>
                   </div>
-                </div>
-                {isSelected && !isAvatarMode && (
-                  <Check className="text-primary h-4 w-4 shrink-0" />
-                )}
-              </button>
-            );
-          })}
+                  {isSelected && !isAvatarMode && (
+                    <Check className="text-primary h-4 w-4 shrink-0" />
+                  )}
+                </button>
+              );
+            },
+          )}
         </div>
       </PopoverContent>
     </Popover>
