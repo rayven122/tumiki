@@ -64,6 +64,16 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
   const { data: userServers } = api.v2.userMcpServer.findMcpServers.useQuery();
   const serverCount = userServers?.length ?? 0;
 
+  // 統合対象のOFFICIALサーバーをフィルタリング
+  const officialServers = useMemo(
+    () =>
+      userServers?.filter(
+        (server) => server.serverType === ServerType.OFFICIAL,
+      ) ?? [],
+    [userServers],
+  );
+  const officialServerCount = officialServers.length;
+
   // テンプレート一覧の展開状態（サーバー0件時は展開、1件以上は折りたたみ）
   const [isTemplateListOpen, setIsTemplateListOpen] = useState(
     serverCount === 0,
@@ -244,8 +254,8 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
             </Collapsible>
           </section>
 
-          {/* MCPを統合セクション - 2件以上時のみ表示 */}
-          {serverCount >= 2 && userServers && (
+          {/* MCPを統合セクション - OFFICIALサーバーが2件以上時のみ表示 */}
+          {officialServerCount >= 2 && (
             <section>
               <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
                 <Layers className="h-5 w-5 text-purple-600" />
@@ -254,7 +264,7 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
                 </h2>
               </div>
               <p className="mb-4 text-sm text-gray-600">
-                登録済みの{serverCount}つのMCPを1つにまとめて管理
+                登録済みの{officialServerCount}つのMCPを1つにまとめて管理
               </p>
               <button
                 type="button"
@@ -278,9 +288,7 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
               <IntegrateMcpModal
                 open={isIntegrateModalOpen}
                 onOpenChange={setIsIntegrateModalOpen}
-                userServers={userServers.filter(
-                  (server) => server.serverType === ServerType.OFFICIAL,
-                )}
+                userServers={officialServers}
               />
             </section>
           )}
