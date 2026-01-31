@@ -94,17 +94,16 @@ const AsyncServerCardList = forwardRef<
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={servers} strategy={rectSortingStrategy}>
-          <div className="flex flex-wrap gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
             {servers.map((server) => (
-              <div key={server.id} className="flex w-full sm:w-[300px]">
-                <SortableServerCard
-                  userMcpServer={server}
-                  isSortMode={isSortMode}
-                  revalidate={async () =>
-                    await utils.v2.userMcpServer.findMcpServers.invalidate()
-                  }
-                />
-              </div>
+              <SortableServerCard
+                key={server.id}
+                userMcpServer={server}
+                isSortMode={isSortMode}
+                revalidate={async () =>
+                  await utils.v2.userMcpServer.findMcpServers.invalidate()
+                }
+              />
             ))}
           </div>
         </SortableContext>
@@ -114,16 +113,16 @@ const AsyncServerCardList = forwardRef<
 
   // 通常モード（フィルタリング適用）
 
-  // サーバーが1つも接続されていない場合
+  // MCPが1つも接続されていない場合
   if (servers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12">
         <div className="mb-4 text-6xl">📦</div>
         <h3 className="mb-2 text-lg font-semibold text-gray-900">
-          接続済みMCPサーバーがありません
+          接続済みMCPがありません
         </h3>
         <p className="mb-4 text-center text-sm text-gray-600">
-          下の「MCPサーバーを追加」セクションからサーバーを接続してください
+          下の「MCPを追加」セクションからMCPを接続してください
         </p>
       </div>
     );
@@ -135,7 +134,7 @@ const AsyncServerCardList = forwardRef<
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-12">
         <div className="mb-4 text-6xl">🔍</div>
         <h3 className="mb-2 text-lg font-semibold text-gray-900">
-          該当するMCPサーバーが見つかりません
+          該当するMCPが見つかりません
         </h3>
         <p className="mb-4 text-center text-sm text-gray-600">
           検索条件やカテゴリーを変更してみてください
@@ -145,17 +144,16 @@ const AsyncServerCardList = forwardRef<
   }
 
   return (
-    <div className="flex flex-wrap gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
       {filteredServers.map((server) => (
-        <div key={server.id} className="flex w-full sm:w-[300px]">
-          <SortableServerCard
-            userMcpServer={server}
-            isSortMode={isSortMode}
-            revalidate={async () =>
-              await utils.v2.userMcpServer.findMcpServers.invalidate()
-            }
-          />
-        </div>
+        <SortableServerCard
+          key={server.id}
+          userMcpServer={server}
+          isSortMode={isSortMode}
+          revalidate={async () =>
+            await utils.v2.userMcpServer.findMcpServers.invalidate()
+          }
+        />
       ))}
     </div>
   );
@@ -163,12 +161,9 @@ const AsyncServerCardList = forwardRef<
 
 function ServerCardListSkeleton() {
   return (
-    <div className="flex flex-wrap gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-64 w-full animate-pulse rounded-lg bg-gray-200 sm:w-[300px]"
-        />
+        <div key={i} className="h-64 animate-pulse rounded-lg bg-gray-200" />
       ))}
     </div>
   );

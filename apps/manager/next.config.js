@@ -55,6 +55,12 @@ const config = {
         hostname: "images.microcms-assets.io",
         pathname: "/**",
       },
+      // Cloudflare R2 (カスタムドメイン - 本番環境用)
+      {
+        protocol: "https",
+        hostname: "assets.tumiki.cloud",
+        pathname: "/**",
+      },
     ],
   },
 };

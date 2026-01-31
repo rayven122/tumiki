@@ -58,6 +58,7 @@ export const CreateApiKeyMcpServerOutputV2 = z.object({
 });
 
 // 統合MCPサーバー作成用の入力スキーマ
+// toolIdsはオプショナル - 省略時は全ツール選択
 export const CreateIntegratedMcpServerInputV2 = z.object({
   name: nameValidationSchema,
   description: z.string().optional(),
@@ -66,7 +67,7 @@ export const CreateIntegratedMcpServerInputV2 = z.object({
       z.object({
         mcpServerTemplateId: z.string(),
         normalizedName: z.string(),
-        toolIds: z.array(ToolIdSchema),
+        toolIds: z.array(ToolIdSchema).optional(),
         envVars: z.record(z.string(), z.string()).optional(),
       }),
     )

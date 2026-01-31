@@ -42,17 +42,19 @@ export const createIntegratedMcpServer = async (
         });
       }
 
-      // ツールIDの存在確認
+      // ツールIDの存在確認（toolIdsが指定されている場合のみ）
       const templateToolIds = template.mcpTools.map((tool) => tool.id);
-      const invalidToolIds = tmpl.toolIds.filter(
-        (toolId) => !templateToolIds.includes(toolId),
-      );
+      if (tmpl.toolIds) {
+        const invalidToolIds = tmpl.toolIds.filter(
+          (toolId) => !templateToolIds.includes(toolId),
+        );
 
-      if (invalidToolIds.length > 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `無効なツールIDが含まれています: ${invalidToolIds.join(", ")}`,
-        });
+        if (invalidToolIds.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `無効なツールIDが含まれています: ${invalidToolIds.join(", ")}`,
+          });
+        }
       }
 
       // 環境変数のバリデーション
@@ -92,7 +94,10 @@ export const createIntegratedMcpServer = async (
         existingEnvVars = existingInstance?.mcpConfigs[0]?.envVars;
       }
 
-      return { template, tmpl, existingEnvVars };
+      // toolIdsが未指定の場合は全ツールを選択
+      const resolvedToolIds = tmpl.toolIds ?? templateToolIds;
+
+      return { template, tmpl, existingEnvVars, resolvedToolIds };
     }),
   );
 
@@ -108,29 +113,31 @@ export const createIntegratedMcpServer = async (
       organizationId,
       displayOrder: 0,
       templateInstances: {
-        create: templates.map(({ template, tmpl, existingEnvVars }, index) => ({
-          mcpServerTemplateId: template.id,
-          normalizedName: tmpl.normalizedName,
-          isEnabled: true,
-          displayOrder: index,
-          allowedTools: {
-            connect: tmpl.toolIds.map((id) => ({ id })),
-          },
-          // McpConfigの作成（新規または既存のenvVarsを使用）
-          ...(tmpl.envVars || existingEnvVars
-            ? {
-                mcpConfigs: {
-                  create: {
-                    organizationId,
-                    userId,
-                    envVars: tmpl.envVars
-                      ? JSON.stringify(tmpl.envVars)
-                      : existingEnvVars!,
+        create: templates.map(
+          ({ template, tmpl, existingEnvVars, resolvedToolIds }, index) => ({
+            mcpServerTemplateId: template.id,
+            normalizedName: tmpl.normalizedName,
+            isEnabled: true,
+            displayOrder: index,
+            allowedTools: {
+              connect: resolvedToolIds.map((id) => ({ id })),
+            },
+            // McpConfigの作成（新規または既存のenvVarsを使用）
+            ...(tmpl.envVars || existingEnvVars
+              ? {
+                  mcpConfigs: {
+                    create: {
+                      organizationId,
+                      userId,
+                      envVars: tmpl.envVars
+                        ? JSON.stringify(tmpl.envVars)
+                        : existingEnvVars!,
+                    },
                   },
-                },
-              }
-            : {}),
-        })),
+                }
+              : {}),
+          }),
+        ),
       },
     },
   });
