@@ -17,6 +17,7 @@ import {
   updateDisplayOrderOutputSchema,
 } from "./updateDisplayOrder";
 import { updateName } from "./updateName";
+import { updateIconPath } from "./updateIconPath";
 import { findById } from "./findById";
 import { getToolStats, getToolStatsOutputSchema } from "./getToolStats";
 import {
@@ -110,6 +111,17 @@ export const UpdateNameInputV2 = z.object({
 });
 
 export const UpdateNameOutputV2 = z.object({
+  id: z.string(),
+});
+
+// アイコンパス更新の入力スキーマ
+export const UpdateIconPathInputV2 = z.object({
+  id: McpServerIdSchema,
+  iconPath: z.string().nullable(), // lucide:* 形式またはURL、nullで削除
+});
+
+// アイコンパス更新の出力スキーマ
+export const UpdateIconPathOutputV2 = z.object({
   id: z.string(),
 });
 
@@ -332,6 +344,22 @@ export const userMcpServerRouter = createTRPCRouter({
 
       return await ctx.db.$transaction(async (tx) => {
         return await updateName(tx, input, ctx.currentOrg.id);
+      });
+    }),
+
+  // アイコンパス更新
+  updateIconPath: protectedProcedure
+    .input(UpdateIconPathInputV2)
+    .output(UpdateIconPathOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateIconPath(tx, input, ctx.currentOrg.id);
       });
     }),
 
