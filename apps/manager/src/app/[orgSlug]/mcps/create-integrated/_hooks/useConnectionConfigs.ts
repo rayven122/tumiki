@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import type { RouterOutputs } from "@/trpc/react";
 
-type OfficialServers =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+type OfficialServers = RouterOutputs["v2"]["userMcpServer"]["findMcpServers"];
 
 export type ConnectionConfigInstance =
   NonNullable<OfficialServers>[number]["templateInstances"][number];

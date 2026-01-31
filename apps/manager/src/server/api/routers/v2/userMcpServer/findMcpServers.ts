@@ -1,4 +1,5 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { ServerStatus } from "@tumiki/db/prisma";
 
 type FindMcpServersInput = {
   organizationId: string;
@@ -14,6 +15,10 @@ export const findMcpServers = async (
     where: {
       organizationId,
       deletedAt: null,
+      // 検証中（PENDING）のサーバーは除外（OAuth認証が中断された場合など）
+      serverStatus: {
+        not: ServerStatus.PENDING,
+      },
     },
     orderBy: {
       displayOrder: "asc",

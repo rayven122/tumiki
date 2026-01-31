@@ -21,7 +21,7 @@ const PAGE_SIZE = 20;
  * - 「すべて既読にする」ボタン
  */
 export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>("unread");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const utils = api.useUtils();
 
@@ -69,9 +69,9 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
   const notifications = data?.pages.flatMap((page) => page.notifications) ?? [];
 
   return (
-    <div className="flex h-full max-h-[600px] w-full flex-col">
+    <div className="flex max-h-[500px] w-full flex-col">
       {/* ヘッダー */}
-      <div className="border-b px-4 py-3">
+      <div className="shrink-0 border-b px-4 py-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">通知</h2>
           {notifications.some((n) => !n.isRead) && (
@@ -93,8 +93,8 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
           className="mt-3"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="all">すべて</TabsTrigger>
             <TabsTrigger value="unread">未読</TabsTrigger>
+            <TabsTrigger value="all">すべて</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -102,7 +102,7 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
       {/* 通知リスト */}
       <ScrollArea
         ref={scrollAreaRef}
-        className="flex-1"
+        className="min-h-0 flex-1"
         onScroll={handleScroll}
       >
         {isLoading ? (

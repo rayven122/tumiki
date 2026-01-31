@@ -47,11 +47,12 @@ export const RoleList = () => {
   const formatPermissions = (role: ListRolesOutput[number]) => {
     const parts: string[] = [];
 
-    // デフォルト権限（全MCPサーバーに適用）
+    // デフォルト権限（全MCPサーバーに適用）- UI上は「アクセス/管理」で表示
     const defaultFlags: string[] = [];
-    if (role.defaultRead) defaultFlags.push("閲覧");
-    if (role.defaultWrite) defaultFlags.push("編集");
-    if (role.defaultExecute) defaultFlags.push("実行");
+    // アクセス権限 = read OR execute
+    if (role.defaultRead || role.defaultExecute) defaultFlags.push("アクセス");
+    // 管理権限 = write
+    if (role.defaultWrite) defaultFlags.push("管理");
     if (defaultFlags.length > 0) {
       parts.push(`全サーバー: ${defaultFlags.join("/")}`);
     }
