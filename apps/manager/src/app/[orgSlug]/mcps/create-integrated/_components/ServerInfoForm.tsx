@@ -9,8 +9,7 @@ import { Server } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 import { useConnectionConfigs } from "../_hooks/useConnectionConfigs";
 
-type OfficialServers =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"];
+type OfficialServers = RouterOutputs["v2"]["userMcpServer"]["findMcpServers"];
 
 type ServerInfoFormProps = {
   serverName: string;

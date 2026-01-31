@@ -31,7 +31,7 @@ export const useCreateServerForm = ({
     api.v2.userMcpServer.createApiKeyMcpServer.useMutation({
       onSuccess: async (_, variables) => {
         toast.success(`${variables.name}が正常に追加されました。`);
-        await utils.v2.userMcpServer.findOfficialServers.invalidate();
+        await utils.v2.userMcpServer.findMcpServers.invalidate();
         onSuccess();
       },
       onError: (error) => {

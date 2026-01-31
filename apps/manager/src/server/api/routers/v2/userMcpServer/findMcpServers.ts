@@ -1,19 +1,18 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { ServerStatus, ServerType } from "@tumiki/db/prisma";
+import { ServerStatus } from "@tumiki/db/prisma";
 
-type FindOfficialServersInput = {
+type FindMcpServersInput = {
   organizationId: string;
 };
 
-export const findOfficialServers = async (
+export const findMcpServers = async (
   tx: PrismaTransactionClient,
-  input: FindOfficialServersInput,
+  input: FindMcpServersInput,
 ) => {
   const { organizationId } = input;
 
-  const officialServers = await tx.mcpServer.findMany({
+  const servers = await tx.mcpServer.findMany({
     where: {
-      serverType: ServerType.OFFICIAL,
       organizationId,
       deletedAt: null,
       // 検証中（PENDING）のサーバーは除外（OAuth認証が中断された場合など）
@@ -49,7 +48,7 @@ export const findOfficialServers = async (
     },
   });
 
-  return officialServers.map((server) => {
+  return servers.map((server) => {
     // 各テンプレートインスタンスの情報を構築
     const templateInstances = server.templateInstances.map((instance) => {
       // ツールにisEnabledを追加
