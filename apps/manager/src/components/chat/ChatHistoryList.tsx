@@ -101,31 +101,39 @@ export const ChatHistoryList = ({
     : false;
 
   const handleDelete = async () => {
-    const deletePromise = fetch(`/api/chat?id=${deleteId}`, {
-      method: "DELETE",
-    });
-
-    toast.promise(deletePromise, {
-      loading: "チャットを削除中...",
-      success: () => {
-        void mutate((chatHistories) => {
-          if (chatHistories) {
-            return chatHistories.map((chatHistory) => ({
-              ...chatHistory,
-              chats: chatHistory.chats.filter((chat) => chat.id !== deleteId),
-            }));
-          }
-        });
-
-        return "チャットを削除しました";
-      },
-      error: "チャットの削除に失敗しました",
-    });
+    if (!deleteId) return;
 
     setShowDeleteDialog(false);
 
-    if (deleteId === chatId) {
-      router.push(`/${orgSlug}/chat`);
+    try {
+      const response = await fetch(`/api/chat?id=${deleteId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`削除に失敗しました: ${response.status}`);
+      }
+
+      // キャッシュを更新
+      await mutate((chatHistories) => {
+        if (chatHistories) {
+          return chatHistories.map((chatHistory) => ({
+            ...chatHistory,
+            chats: chatHistory.chats.filter((chat) => chat.id !== deleteId),
+          }));
+        }
+        return chatHistories;
+      });
+
+      toast.success("チャットを削除しました");
+
+      // 削除したチャットを表示中だった場合は新規チャット画面へ遷移
+      if (deleteId === chatId) {
+        router.push(`/${orgSlug}/chat`);
+      }
+    } catch (error) {
+      console.error("チャット削除エラー:", error);
+      toast.error("チャットの削除に失敗しました");
     }
   };
 

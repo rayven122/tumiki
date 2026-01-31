@@ -166,7 +166,10 @@ export const CompactMcpSelector = ({
         ) : (
           <>
             <div className="flex items-center justify-between border-b px-3 py-2">
-              <span className="text-muted-foreground text-xs font-medium">
+              <span
+                id="mcp-server-label"
+                className="text-muted-foreground text-xs font-medium"
+              >
                 MCPサーバー ({availableServers.length})
               </span>
               <div className="flex gap-2">
@@ -187,7 +190,12 @@ export const CompactMcpSelector = ({
               </div>
             </div>
 
-            <div className="max-h-[280px] overflow-y-auto p-1">
+            <div
+              role="listbox"
+              aria-labelledby="mcp-server-label"
+              aria-multiselectable="true"
+              className="max-h-[280px] overflow-y-auto p-1"
+            >
               {availableServers.map((server) => {
                 const isSelected = selectedMcpServerIds.includes(server.id);
                 const enabledToolsCount = server.templateInstances.reduce(
@@ -203,11 +211,13 @@ export const CompactMcpSelector = ({
                 return (
                   <button
                     type="button"
+                    role="option"
+                    aria-selected={isSelected}
                     data-testid={`compact-mcp-selector-item-${server.id}`}
                     key={server.id}
                     onClick={() => handleToggleServer(server.id)}
                     className={cn(
-                      "hover:bg-accent flex min-h-[48px] w-full cursor-pointer flex-row items-center justify-between gap-3 rounded-md px-3 py-2",
+                      "hover:bg-accent focus:bg-accent flex min-h-[48px] w-full cursor-pointer flex-row items-center justify-between gap-3 rounded-md px-3 py-2 focus:outline-none",
                       isSelected && "bg-accent/50",
                     )}
                   >
