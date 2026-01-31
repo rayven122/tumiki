@@ -5,7 +5,7 @@ import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
 import { createIntegratedMcpServer } from "./createIntegratedMcpServer";
 import { updateOfficialServer } from "./update";
-import { findOfficialServers } from "./findOfficialServers";
+import { findMcpServers } from "./findMcpServers";
 import {
   deleteMcpServer,
   deleteMcpServerInputSchema,
@@ -83,8 +83,8 @@ export const UpdateOfficialServerInputV2 = z.object({
   envVars: z.record(z.string(), z.string()),
 });
 
-// 公式MCPサーバー一覧取得用の出力スキーマ
-export const FindOfficialServersOutputV2 = z.array(
+// MCPサーバー一覧取得用の出力スキーマ
+export const FindMcpServersOutputV2 = z.array(
   McpServerSchema.extend({
     apiKeys: z.array(McpApiKeySchema),
     templateInstances: z.array(
@@ -273,16 +273,16 @@ export const userMcpServerRouter = createTRPCRouter({
       });
     }),
 
-  // 公式MCPサーバー一覧取得
-  findOfficialServers: protectedProcedure
-    .output(FindOfficialServersOutputV2)
+  // MCPサーバー一覧取得
+  findMcpServers: protectedProcedure
+    .output(FindMcpServersOutputV2)
     .query(async ({ ctx }) => {
       // MCP読み取り権限チェック
       await validateMcpPermission(ctx.db, ctx.currentOrg, {
         permission: "read",
       });
 
-      return await findOfficialServers(ctx.db, {
+      return await findMcpServers(ctx.db, {
         organizationId: ctx.currentOrg.id,
       });
     }),

@@ -48,6 +48,8 @@ export default async function OrgSlugLayout({
         <OrgSidebar
           orgSlug={decodedSlug}
           isPersonal={organization.isPersonal}
+          organizationId={organization.id}
+          currentUserId={session.user.id}
         />
 
         {/* ページコンテンツ */}

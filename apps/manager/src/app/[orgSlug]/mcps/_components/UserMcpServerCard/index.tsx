@@ -39,7 +39,7 @@ import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 import type { McpServerId } from "@/schema/ids";
 
 type UserMcpServer =
-  RouterOutputs["v2"]["userMcpServer"]["findOfficialServers"][number];
+  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
 
 type UserMcpServerCardProps = {
   userMcpServer: UserMcpServer;

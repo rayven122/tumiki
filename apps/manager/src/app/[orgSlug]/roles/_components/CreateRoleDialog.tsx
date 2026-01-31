@@ -109,7 +109,7 @@ export const CreateRoleDialog = ({
 
   // 組織内のMCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findOfficialServers.useQuery(undefined, {
+    api.v2.userMcpServer.findMcpServers.useQuery(undefined, {
       enabled: open,
     });
 

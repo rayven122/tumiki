@@ -12,8 +12,9 @@ import {
   Suspense,
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import { ChatHeader } from "@/components/chat-header";
 import type { Vote } from "@tumiki/db/prisma";
+import { ChatQuickActions } from "./chat/ChatQuickActions";
+import { SuggestedActions } from "./suggested-actions";
 import { fetcher, fetchWithErrorHandlers, generateCUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { MultimodalInput } from "./multimodal-input";
@@ -307,56 +308,134 @@ function ChatContent({
     [isNewChat, setStoredMcpServerIds],
   );
 
+  // 初回チャット（メッセージがない状態）かどうか
+  const isEmptyChat = messages.length === 0;
+
   return (
     <>
       <div className="relative flex h-full w-full">
         {/* チャットエリア */}
         <div className="bg-background flex min-w-0 flex-1 flex-col">
-          <ChatHeader
-            chatId={id}
-            selectedModelId={selectedChatModel}
-            onModelChange={handleModelChange}
-            selectedVisibilityType={initialVisibilityType}
-            selectedMcpServerIds={selectedMcpServerIds}
-            onMcpServerSelectionChange={handleMcpServerSelectionChange}
-            isReadonly={isReadonly}
-            session={session}
-            organizationId={organizationId}
-            isPersonalOrg={isPersonalOrg}
-            isNewChat={isNewChat && messages.length === 0}
-          />
+          {/* 初回チャット時は中央配置、メッセージがある場合は通常表示 */}
+          {isEmptyChat ? (
+            <div className="flex flex-1 flex-col items-center justify-center px-4">
+              {/* 挨拶メッセージ */}
+              <div className="mb-8 text-center">
+                <h1 className="text-2xl font-medium md:text-3xl">
+                  <span className="mr-2">👋</span>
+                  こんにちは
+                </h1>
+              </div>
 
-          <Messages
-            chatId={id}
-            status={status}
-            votes={votes}
-            messages={messages}
-            setMessages={setMessages}
-            regenerate={regenerate}
-            isReadonly={isReadonly}
-            isArtifactVisible={isArtifactVisible}
-          />
+              {/* 入力フォーム（中央配置） */}
+              <div className="w-full max-w-3xl">
+                {!isReadonly && (
+                  <>
+                    <MultimodalInput
+                      chatId={id}
+                      orgSlug={orgSlug}
+                      input={input}
+                      setInput={setInput}
+                      sendMessage={sendMessage}
+                      status={status}
+                      stop={stop}
+                      attachments={attachments}
+                      setAttachments={setAttachments}
+                      messages={messages}
+                      setMessages={setMessages}
+                      selectedVisibilityType={visibilityType}
+                      isSpeaking={isSpeaking}
+                      stopSpeaking={stopSpeaking}
+                      session={session}
+                      selectedModelId={selectedChatModel}
+                      onModelChange={handleModelChange}
+                      selectedMcpServerIds={selectedMcpServerIds}
+                      onMcpServerSelectionChange={
+                        handleMcpServerSelectionChange
+                      }
+                      isNewChat={isNewChat}
+                    />
 
-          <form className="bg-background mx-auto flex w-full gap-2 px-4 pb-4 md:max-w-3xl md:pb-6">
-            {!isReadonly && (
-              <MultimodalInput
+                    {/* クイックアクション */}
+                    <div className="mt-4">
+                      <ChatQuickActions
+                        chatId={id}
+                        organizationId={organizationId}
+                        isPersonalOrg={isPersonalOrg}
+                        selectedVisibilityType={initialVisibilityType}
+                        isNewChat={isNewChat}
+                        isReadonly={isReadonly}
+                      />
+                    </div>
+
+                    {/* サジェスト */}
+                    <div className="mt-6">
+                      <SuggestedActions
+                        chatId={id}
+                        orgSlug={orgSlug}
+                        sendMessage={sendMessage}
+                        selectedVisibilityType={visibilityType}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <Messages
                 chatId={id}
-                orgSlug={orgSlug}
-                input={input}
-                setInput={setInput}
-                sendMessage={sendMessage}
                 status={status}
-                stop={stop}
-                attachments={attachments}
-                setAttachments={setAttachments}
+                votes={votes}
                 messages={messages}
                 setMessages={setMessages}
-                selectedVisibilityType={visibilityType}
-                isSpeaking={isSpeaking}
-                stopSpeaking={stopSpeaking}
+                regenerate={regenerate}
+                isReadonly={isReadonly}
+                isArtifactVisible={isArtifactVisible}
               />
-            )}
-          </form>
+
+              <form className="bg-background mx-auto flex w-full flex-col gap-2 px-4 pb-4 md:max-w-3xl md:pb-6">
+                {!isReadonly && (
+                  <>
+                    <MultimodalInput
+                      chatId={id}
+                      orgSlug={orgSlug}
+                      input={input}
+                      setInput={setInput}
+                      sendMessage={sendMessage}
+                      status={status}
+                      stop={stop}
+                      attachments={attachments}
+                      setAttachments={setAttachments}
+                      messages={messages}
+                      setMessages={setMessages}
+                      selectedVisibilityType={visibilityType}
+                      isSpeaking={isSpeaking}
+                      stopSpeaking={stopSpeaking}
+                      session={session}
+                      selectedModelId={selectedChatModel}
+                      onModelChange={handleModelChange}
+                      selectedMcpServerIds={selectedMcpServerIds}
+                      onMcpServerSelectionChange={
+                        handleMcpServerSelectionChange
+                      }
+                      isNewChat={false}
+                    />
+
+                    {/* クイックアクション */}
+                    <ChatQuickActions
+                      chatId={id}
+                      organizationId={organizationId}
+                      isPersonalOrg={isPersonalOrg}
+                      selectedVisibilityType={initialVisibilityType}
+                      isNewChat={false}
+                      isReadonly={isReadonly}
+                    />
+                  </>
+                )}
+              </form>
+            </>
+          )}
         </div>
 
         {/* Coharu VRM エリア - 右下に固定配置 */}

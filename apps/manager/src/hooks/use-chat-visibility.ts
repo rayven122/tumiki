@@ -11,6 +11,11 @@ import {
 } from "@/components/sidebar-history";
 import type { VisibilityType } from "@/components/visibility-selector";
 
+type UseChatVisibilityReturn = {
+  visibilityType: VisibilityType;
+  setVisibilityType: (updatedVisibilityType: VisibilityType) => void;
+};
+
 export const useChatVisibility = ({
   chatId,
   initialVisibilityType,
@@ -19,7 +24,7 @@ export const useChatVisibility = ({
   chatId: string;
   initialVisibilityType: VisibilityType;
   organizationId: string;
-}) => {
+}): UseChatVisibilityReturn => {
   const { mutate, cache } = useSWRConfig();
   const history: ChatHistory = cache.get("/api/history")?.data;
 
@@ -31,11 +36,11 @@ export const useChatVisibility = ({
     },
   );
 
-  const visibilityType = useMemo(() => {
-    if (!history) return localVisibility;
+  const visibilityType = useMemo((): VisibilityType => {
+    if (!history) return localVisibility as VisibilityType;
     const chat = history.chats.find((chat) => chat.id === chatId);
     if (!chat) return "PRIVATE";
-    return chat.visibility;
+    return chat.visibility as VisibilityType;
   }, [history, chatId, localVisibility]);
 
   const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
