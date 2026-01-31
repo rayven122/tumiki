@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 
 import { ModelSelector } from "@/components/model-selector";
 import { ChatHistoryDropdown } from "@/app/[orgSlug]/_components/ChatHistoryDropdown";
@@ -45,6 +46,7 @@ function PureChatHeader({
   isNewChat?: boolean;
 }) {
   const params = useParams();
+  const router = useRouter();
   const orgSlug = params.orgSlug as string;
 
   // 現在の公開設定を取得
@@ -134,6 +136,30 @@ function PureChatHeader({
 
       {/* Coharu トグル（デスクトップのみ） */}
       {!isReadonly && <CoharuToggle className="order-4.5 hidden md:flex" />}
+
+      {/* アバターモード切り替え（デスクトップのみ） */}
+      {!isReadonly && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-testid="avatar-mode-button"
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                if (isNewChat) {
+                  router.push(`/${orgSlug}/avatar`);
+                } else {
+                  router.push(`/${orgSlug}/avatar/${chatId}`);
+                }
+              }}
+              className="order-4.6 hidden h-[34px] w-[34px] md:flex"
+            >
+              <Sparkles size={16} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">アバターモードで表示</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* 新規チャット・履歴 */}
       <div className="order-5 ml-auto">
