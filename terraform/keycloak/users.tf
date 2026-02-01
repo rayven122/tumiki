@@ -1,5 +1,4 @@
 # Keycloak Users設定
-# 開発環境用テストユーザー
 
 # 管理者テストユーザー
 resource "keycloak_user" "admin_test" {
