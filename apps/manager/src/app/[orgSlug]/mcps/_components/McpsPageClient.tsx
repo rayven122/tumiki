@@ -203,7 +203,7 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
 
         {/* サーバー0件時は空状態を表示、1件以上は一覧を表示 */}
         {serverCount === 0 ? (
-          <EmptyState />
+          <EmptyState isAdmin={isAdmin} />
         ) : (
           <ServerCardList
             isSortMode={isSortMode}
