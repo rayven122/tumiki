@@ -11,11 +11,6 @@ import {
 } from "./getById";
 import { getUsageStats, getUsageStatsOutputSchema } from "./getUsageStats";
 import {
-  inviteMember,
-  inviteMemberInputSchema,
-  inviteMemberOutputSchema,
-} from "./inviteMember";
-import {
   inviteMembers,
   inviteMembersInputSchema,
   inviteMembersOutputSchema,
@@ -110,13 +105,7 @@ export const organizationRouter = createTRPCRouter({
     .output(getUsageStatsOutputSchema)
     .query(getUsageStats),
 
-  // メンバー招待
-  inviteMember: protectedProcedure
-    .input(inviteMemberInputSchema)
-    .output(inviteMemberOutputSchema)
-    .mutation(inviteMember),
-
-  // 複数メンバー招待
+  // メンバー招待（単一・複数対応）
   inviteMembers: protectedProcedure
     .input(inviteMembersInputSchema)
     .output(inviteMembersOutputSchema)
