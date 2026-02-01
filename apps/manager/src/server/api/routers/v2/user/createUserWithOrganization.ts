@@ -1,8 +1,7 @@
+import { randomUUID } from "crypto";
 import { Role, type PrismaTransactionClient } from "@tumiki/db";
 import { generateUniqueSlug } from "@tumiki/db/utils/slug";
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
-import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 
 /**
  * ユーザー作成の入力スキーマ
@@ -35,14 +34,19 @@ export type CreateUserWithOrganizationOutput = z.infer<
   typeof createUserWithOrganizationOutputSchema
 >;
 
+/** 個人組織の最大メンバー数（自分のみ） */
+const PERSONAL_ORG_MAX_MEMBERS = 1;
+
 /**
  * ユーザーと個人組織を同時に作成
  *
+ * 個人組織はKeycloakグループを作成しない（メンバーは自分のみのため不要）
+ * 組織IDには独自のUUIDを生成（認証基盤から独立させるため）
+ *
  * トランザクション内で以下を実行：
  * 1. ユーザーを作成
- * 2. Keycloakに個人組織グループを作成（slugをグループ名として使用）
- * 3. DBに個人組織と OrganizationMember を同時作成
- * 4. ユーザーのdefaultOrganizationSlugを個人組織に設定
+ * 2. DBに個人組織と OrganizationMember を同時作成（独自UUID）
+ * 3. ユーザーのdefaultOrganizationSlugを個人組織に設定
  */
 export const createUserWithOrganization = async (
   tx: PrismaTransactionClient,
@@ -63,31 +67,17 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 2. Keycloakに個人組織グループを作成
-  // slugをKeycloakグループ名として使用
-  const provider = KeycloakOrganizationProvider.fromEnv();
-  const result = await provider.createOrganization({
-    name: `${baseName}'s Workspace`,
-    groupName: slug,
-    ownerId: input.id, // User.id = Keycloak subを使用
-  });
-
-  if (!result.success) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: `Keycloakグループの作成に失敗しました: ${result.error}`,
-    });
-  }
-
-  // 3. DBに個人組織と OrganizationMember を同時作成
+  // 2. DBに個人組織と OrganizationMember を同時作成
+  // 個人組織は独自UUIDを生成（認証基盤から独立）
+  const personalOrgId = randomUUID();
   await tx.organization.create({
     data: {
-      id: result.externalId, // Keycloak Group IDを使用
+      id: personalOrgId,
       name: `${baseName}'s Workspace`,
       slug,
       description: "Personal workspace",
       isPersonal: true,
-      maxMembers: 1,
+      maxMembers: PERSONAL_ORG_MAX_MEMBERS,
       createdBy: input.id,
       members: {
         create: {
@@ -97,7 +87,7 @@ export const createUserWithOrganization = async (
     },
   });
 
-  // 4. ユーザーのdefaultOrganizationSlugを個人組織に設定
+  // 3. ユーザーのdefaultOrganizationSlugを個人組織に設定
   await tx.user.update({
     where: { id: input.id },
     data: { defaultOrganizationSlug: slug },
@@ -106,7 +96,7 @@ export const createUserWithOrganization = async (
   // データベースからのemailを検証
   if (!createdUser.email) {
     throw new Error(
-      "User was created but email is null in database. This should not happen.",
+      "ユーザーは作成されましたが、データベースのメールアドレスがnullです。これは発生してはいけません。",
     );
   }
 
