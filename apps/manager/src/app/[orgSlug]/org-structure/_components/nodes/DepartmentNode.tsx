@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
-import { Users, UserCircle2, X, Shield } from "lucide-react";
+import { Users, UserCircle2, X, Shield, ArrowUpDown } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +27,7 @@ export type DepartmentNodeData = {
   roles?: Role[]; // 割り当てられたロール一覧
   isRoot?: boolean;
   onDelete?: (nodeId: string) => void; // 削除ボタンクリック時のコールバック
+  onChangeParent?: (nodeId: string) => void; // 親部署変更ボタンクリック時のコールバック
 };
 
 /**
@@ -56,8 +57,18 @@ export const DepartmentNode = memo(
       data.onDelete?.(id);
     };
 
+    // 親部署変更ボタンのクリックハンドラー
+    const handleChangeParentClick = (e: React.MouseEvent) => {
+      e.stopPropagation(); // ノード選択イベントを止める
+      data.onChangeParent?.(id);
+    };
+
     // 削除ボタンを表示するか（選択中かつルートでない場合）
     const showDeleteButton = selected && !data.isRoot && data.onDelete;
+
+    // 親部署変更ボタンを表示するか（選択中かつルートでない場合）
+    const showChangeParentButton =
+      selected && !data.isRoot && data.onChangeParent;
 
     // メンバーアイコン表示：最大4人まで、残りは "+N" で省略
     const maxVisibleMembers = 4;
@@ -83,16 +94,32 @@ export const DepartmentNode = memo(
             : "border-gray-200/80 shadow-lg hover:border-gray-300 hover:shadow-xl",
         )}
       >
-        {/* 削除ボタン（選択時のみ表示） */}
-        {showDeleteButton && (
-          <button
-            type="button"
-            onClick={handleDeleteClick}
-            className="absolute -top-2 -right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600"
-            title="部署を削除"
-          >
-            <X className="h-4 w-4" strokeWidth={2.5} />
-          </button>
+        {/* 編集モード時のアクションボタン（選択時のみ表示） */}
+        {(Boolean(showDeleteButton) || Boolean(showChangeParentButton)) && (
+          <div className="absolute -top-2 -right-2 z-10 flex gap-1">
+            {/* 親部署変更ボタン */}
+            {showChangeParentButton && (
+              <button
+                type="button"
+                onClick={handleChangeParentClick}
+                className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-blue-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-blue-600"
+                title="親部署を変更"
+              >
+                <ArrowUpDown className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            )}
+            {/* 削除ボタン */}
+            {showDeleteButton && (
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-red-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-red-600"
+                title="部署を削除"
+              >
+                <X className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
         )}
 
         {/* トップハンドル（クリック範囲拡大） */}
