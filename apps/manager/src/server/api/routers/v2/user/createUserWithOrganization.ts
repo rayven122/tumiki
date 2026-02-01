@@ -34,6 +34,9 @@ export type CreateUserWithOrganizationOutput = z.infer<
   typeof createUserWithOrganizationOutputSchema
 >;
 
+/** 個人組織の最大メンバー数（自分のみ） */
+const PERSONAL_ORG_MAX_MEMBERS = 1;
+
 /**
  * ユーザーと個人組織を同時に作成
  *
@@ -74,7 +77,7 @@ export const createUserWithOrganization = async (
       slug,
       description: "Personal workspace",
       isPersonal: true,
-      maxMembers: 1,
+      maxMembers: PERSONAL_ORG_MAX_MEMBERS,
       createdBy: input.id,
       members: {
         create: {
@@ -93,7 +96,7 @@ export const createUserWithOrganization = async (
   // データベースからのemailを検証
   if (!createdUser.email) {
     throw new Error(
-      "User was created but email is null in database. This should not happen.",
+      "ユーザーは作成されましたが、データベースのメールアドレスがnullです。これは発生してはいけません。",
     );
   }
 
