@@ -17,13 +17,95 @@
       </h1>
       <p style="font-size: 0.875rem; font-weight: 500; color: #4b5563;">
         ${msg("platformDescription")}
-        <br />
-        <span style="color: #4f46e5;">${msg("loginWithGooglePrompt")}</span>
       </p>
     </div>
     <#-- ソーシャルログインボタン -->
     <#if realm.password && social.providers??>
       <@identityProvider.kw providers=social.providers />
+    </#if>
+    <#-- 区切り線（または） -->
+    <div style="display: flex; align-items: center; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+      <div style="flex: 1; height: 2px; background: linear-gradient(to right, transparent, #e0e7ff);"></div>
+      <span style="padding: 0 1rem; font-size: 0.875rem; font-weight: 500; color: #6b7280;">${msg("orDivider")}</span>
+      <div style="flex: 1; height: 2px; background: linear-gradient(to left, transparent, #e0e7ff);"></div>
+    </div>
+    <#-- Email/Passwordフォーム -->
+    <#if realm.password>
+      <form action="${url.loginAction}" method="post" onsubmit="login.disabled = true; return true;">
+        <input
+          name="credentialId"
+          type="hidden"
+          value="<#if auth.selectedCredential?has_content>${auth.selectedCredential}</#if>"
+        >
+        <#-- Emailフィールド -->
+        <div style="margin-bottom: 1rem;">
+          <label for="username" style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+            ${msg("emailLabel")}
+          </label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autocomplete="${realm.loginWithEmailAllowed?string('email', 'username')}"
+            autofocus
+            <#if usernameEditDisabled??>disabled</#if>
+            value="${(login.username)!''}"
+            style="width: 100%; padding: 0.75rem 1rem; border: 2px solid <#if messagesPerField.existsError('username', 'password')>#ef4444<#else>#000000</#if>; box-shadow: 4px 4px 0px 0px <#if messagesPerField.existsError('username', 'password')>#ef4444<#else>#000000</#if>; font-size: 1rem; outline: none; box-sizing: border-box;"
+          />
+        </div>
+        <#-- Passwordフィールド -->
+        <div style="margin-bottom: 1rem;">
+          <label for="password" style="display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+            ${msg("passwordLabel")}
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            style="width: 100%; padding: 0.75rem 1rem; border: 2px solid <#if messagesPerField.existsError('username', 'password')>#ef4444<#else>#000000</#if>; box-shadow: 4px 4px 0px 0px <#if messagesPerField.existsError('username', 'password')>#ef4444<#else>#000000</#if>; font-size: 1rem; outline: none; box-sizing: border-box;"
+          />
+        </div>
+        <#-- エラーメッセージ -->
+        <#if messagesPerField.existsError("username", "password")>
+          <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fef2f2; border: 2px solid #ef4444; color: #dc2626; font-size: 0.875rem;">
+            ${kcSanitize(messagesPerField.getFirstError("username", "password"))?no_esc}
+          </div>
+        </#if>
+        <#-- ログイン状態を保持 & パスワードを忘れた方 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <#if realm.rememberMe && !usernameEditDisabled??>
+            <label style="display: flex; align-items: center; cursor: pointer;">
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                <#if login.rememberMe??>checked</#if>
+                style="width: 1.25rem; height: 1.25rem; border: 2px solid #000000; margin-right: 0.5rem; cursor: pointer;"
+              />
+              <span style="font-size: 0.875rem; color: #374151;">${msg("rememberMe")}</span>
+            </label>
+          <#else>
+            <div></div>
+          </#if>
+          <#if realm.resetPasswordAllowed>
+            <a href="${url.loginResetCredentialsUrl}" style="font-size: 0.875rem; color: #4f46e5; text-decoration: underline;">
+              ${msg("forgotPassword")}
+            </a>
+          </#if>
+        </div>
+        <#-- ログインボタン -->
+        <button
+          id="login"
+          name="login"
+          type="submit"
+          style="width: 100%; padding: 0.875rem 1.5rem; background: linear-gradient(to right, #4f46e5, #9333ea); border: 2px solid #000000; box-shadow: 4px 4px 0px 0px #000000; font-size: 1rem; font-weight: 700; color: #ffffff; cursor: pointer; transition: all 0.2s;"
+          onmouseover="this.style.transform='translate(2px, 2px)'; this.style.boxShadow='2px 2px 0px 0px #000000';"
+          onmouseout="this.style.transform='translate(0, 0)'; this.style.boxShadow='4px 4px 0px 0px #000000';"
+        >
+          ${msg("doLogIn")}
+        </button>
+      </form>
     </#if>
     <#-- グラデーション区切り線 -->
     <div style="margin-top: 1.5rem; margin-bottom: 1.5rem; height: 2px; background: linear-gradient(to right, #e0e7ff, #f3e8ff, #e0e7ff);"></div>
