@@ -25,6 +25,8 @@ export type HandleOAuthCallbackOutput = {
   mcpServerName: string;
   success: boolean;
   error?: string;
+  /** 認証完了後のリダイレクト先（チャット画面等） */
+  redirectTo?: string;
 };
 
 /**
@@ -102,6 +104,7 @@ export const handleOAuthCallback = async (
       mcpServerId: mcpServer.id,
       mcpServerName: mcpServer.name,
       success: true,
+      redirectTo: statePayload.redirectTo,
     };
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
