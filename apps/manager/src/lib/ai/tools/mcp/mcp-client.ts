@@ -25,6 +25,35 @@ export type McpServerError = {
 };
 
 /**
+ * MCPツール実行時のエラーレスポンス型
+ */
+type McpToolErrorResponse = {
+  content: Array<{ type: "text"; text: string }>;
+  isError: true;
+  errorType: McpServerError["errorType"];
+  requiresReauth?: boolean;
+  mcpServerId?: string;
+};
+
+/**
+ * MCPツール実行時のエラーレスポンスを生成
+ */
+const createMcpToolErrorResponse = (
+  errorMessage: string,
+  errorType: McpServerError["errorType"],
+  mcpServerId: string,
+  requiresReauth: boolean,
+): McpToolErrorResponse => ({
+  content: [{ type: "text", text: errorMessage }],
+  isError: true,
+  errorType,
+  ...(requiresReauth && {
+    requiresReauth: true,
+    mcpServerId,
+  }),
+});
+
+/**
  * エラーの種類を分類する
  */
 const classifyError = (error: unknown): McpServerError["errorType"] => {
@@ -273,23 +302,17 @@ const createLazyExecute = (
 
       // 再認証が必要なエラーの場合、requiresReauth フラグを追加
       const requiresReauth = error instanceof ReAuthRequiredError;
+      const displayMessage = requiresReauth
+        ? "認証の有効期限が切れました"
+        : `MCP error: ${errorMessage}`;
 
       // エラーを含むレスポンスを返す（isError: true で UI にエラー表示される）
-      return {
-        content: [
-          {
-            type: "text",
-            text: requiresReauth
-              ? "認証の有効期限が切れました"
-              : `MCP error: ${errorMessage}`,
-          },
-        ],
-        isError: true,
+      return createMcpToolErrorResponse(
+        displayMessage,
         errorType,
-        // 再認証用の追加情報
+        mcpServerId,
         requiresReauth,
-        mcpServerId: requiresReauth ? mcpServerId : undefined,
-      };
+      );
     }
   };
 };

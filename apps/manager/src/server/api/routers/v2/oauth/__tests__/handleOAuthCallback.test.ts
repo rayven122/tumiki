@@ -130,6 +130,7 @@ describe("handleOAuthCallback", () => {
         mcpServerId: mockMcpServerId,
         mcpServerName: "Test MCP Server",
         success: true,
+        redirectTo: undefined, // statePayloadにredirectToがない場合はundefined
       });
 
       // 各ステップが正しく呼ばれたことを確認
