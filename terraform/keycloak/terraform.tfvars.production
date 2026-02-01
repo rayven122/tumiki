@@ -20,11 +20,11 @@ realm_display_name = "Tumiki Platform"
 # Manager Appクライアント設定
 # 本番環境のリダイレクトURI
 manager_redirect_uris = [
-  "https://manager.tumiki.cloud/*",
+  "https://www.tumiki.cloud/*",
   "https://tumiki-*.vercel.app/*"
 ]
 manager_web_origins = [
-  "https://manager.tumiki.cloud",
+  "https://www.tumiki.cloud",
   "https://tumiki-*.vercel.app"
 ]
 
@@ -33,12 +33,14 @@ manager_web_origins = [
 proxy_client_id = "tumiki-proxy"
 # proxy_client_secretは環境変数TF_VAR_proxy_client_secretで設定
 proxy_redirect_uris = [
-  "https://mcp-proxy.tumiki.cloud/*"
+  "https://mcp.tumiki.cloud/*"
 ]
 
-# テストユーザー設定（本番環境では無効化推奨）
-# 本番では別途管理者ユーザーを作成することを推奨
-# test_user_passwordは環境変数TF_VAR_test_user_passwordで設定（本番では空文字列を設定）
+# セキュリティ設定
+ssl_required = "external"
+
+# テストユーザー設定
+# test_user_passwordは環境変数TF_VAR_test_user_passwordで設定
 test_user_email      = "admin@tumiki.cloud"
 test_user_first_name = "Admin"
 test_user_last_name  = "User"
