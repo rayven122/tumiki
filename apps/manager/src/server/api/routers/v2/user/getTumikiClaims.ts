@@ -7,9 +7,13 @@ import type { TumikiClaims } from "~/lib/auth/types";
  * JWT callback で使用するために、DBから組織メンバーシップ情報を取得して
  * tumikiクレーム構造を生成する
  *
+ * ロール決定ロジック:
+ * - 個人組織（isPersonal=true）: DBのフラグを見て Owner ロールを自動付与
+ * - チーム組織: Keycloakから渡されたロールをそのまま使用
+ *
  * @param db Prismaクライアント
  * @param userId ユーザーID（Keycloak sub）
- * @param roles Keycloakのroles（ロール配列）- 将来的に使用する可能性あり
+ * @param roles Keycloakのroles（ロール配列）- チーム組織で使用
  * @returns tumikiクレームまたはnull
  */
 export const getTumikiClaims = async (
@@ -79,10 +83,20 @@ export const getTumikiClaims = async (
     });
   }
 
+  // デフォルト組織が個人組織かどうかを判定
+  const isDefaultOrgPersonal =
+    user.members.find((m) => m.organization.id === defaultOrg.id)?.organization
+      .isPersonal ?? false;
+
+  // ロール決定:
+  // - 個人組織: Owner ロールのみ（Keycloakグループを作成しないため）
+  // - チーム組織: Keycloakから渡されたロールをそのまま使用
+  const userRoles = isDefaultOrgPersonal ? ["Owner"] : (roles ?? []);
+
   return {
     org_slugs: orgSlugs,
     org_id: defaultOrg.id,
     org_slug: defaultOrg.slug,
-    roles,
+    roles: userRoles,
   };
 };
