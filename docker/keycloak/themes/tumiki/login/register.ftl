@@ -47,7 +47,7 @@
             style="width: 100%; padding: 0.75rem 1rem; border: 2px solid <#if messagesPerField.existsError('email')>#ef4444<#else>#000000</#if>; box-shadow: 4px 4px 0px 0px <#if messagesPerField.existsError('email')>#ef4444<#else>#000000</#if>; font-size: 1rem; outline: none; box-sizing: border-box;"
           />
           <#if messagesPerField.existsError("email")>
-            <p style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444;">${kcSanitize(messagesPerField.get("email"))?no_esc}</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444;">${kcSanitize(messagesPerField.get("email"))}</p>
           </#if>
         </div>
         <#-- Passwordフィールド -->
@@ -63,7 +63,7 @@
             style="width: 100%; padding: 0.75rem 1rem; border: 2px solid <#if messagesPerField.existsError('password')>#ef4444<#else>#000000</#if>; box-shadow: 4px 4px 0px 0px <#if messagesPerField.existsError('password')>#ef4444<#else>#000000</#if>; font-size: 1rem; outline: none; box-sizing: border-box;"
           />
           <#if messagesPerField.existsError("password")>
-            <p style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444;">${kcSanitize(messagesPerField.get("password"))?no_esc}</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444;">${kcSanitize(messagesPerField.get("password"))}</p>
           </#if>
         </div>
         <#-- Password確認フィールド -->
@@ -79,15 +79,13 @@
             style="width: 100%; padding: 0.75rem 1rem; border: 2px solid <#if messagesPerField.existsError('password-confirm')>#ef4444<#else>#000000</#if>; box-shadow: 4px 4px 0px 0px <#if messagesPerField.existsError('password-confirm')>#ef4444<#else>#000000</#if>; font-size: 1rem; outline: none; box-sizing: border-box;"
           />
           <#if messagesPerField.existsError("password-confirm")>
-            <p style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444;">${kcSanitize(messagesPerField.get("password-confirm"))?no_esc}</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444;">${kcSanitize(messagesPerField.get("password-confirm"))}</p>
           </#if>
         </div>
         <#-- 登録ボタン -->
         <button
           type="submit"
-          style="width: 100%; padding: 0.875rem 1.5rem; background: linear-gradient(to right, #4f46e5, #9333ea); border: 2px solid #000000; box-shadow: 4px 4px 0px 0px #000000; font-size: 1rem; font-weight: 700; color: #ffffff; cursor: pointer; transition: all 0.2s;"
-          onmouseover="this.style.transform='translate(2px, 2px)'; this.style.boxShadow='2px 2px 0px 0px #000000';"
-          onmouseout="this.style.transform='translate(0, 0)'; this.style.boxShadow='4px 4px 0px 0px #000000';"
+          class="neo-button"
         >
           ${msg("doRegister")}
         </button>

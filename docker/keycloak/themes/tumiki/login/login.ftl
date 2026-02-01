@@ -45,7 +45,7 @@
           <input
             id="username"
             name="username"
-            type="text"
+            type="email"
             autocomplete="${realm.loginWithEmailAllowed?string('email', 'username')}"
             autofocus
             <#if usernameEditDisabled??>disabled</#if>
@@ -69,7 +69,7 @@
         <#-- エラーメッセージ -->
         <#if messagesPerField.existsError("username", "password")>
           <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fef2f2; border: 2px solid #ef4444; color: #dc2626; font-size: 0.875rem;">
-            ${kcSanitize(messagesPerField.getFirstError("username", "password"))?no_esc}
+            ${kcSanitize(messagesPerField.getFirstError("username", "password"))}
           </div>
         </#if>
         <#-- ログイン状態を保持 & パスワードを忘れた方 -->
@@ -99,9 +99,7 @@
           id="login"
           name="login"
           type="submit"
-          style="width: 100%; padding: 0.875rem 1.5rem; background: linear-gradient(to right, #4f46e5, #9333ea); border: 2px solid #000000; box-shadow: 4px 4px 0px 0px #000000; font-size: 1rem; font-weight: 700; color: #ffffff; cursor: pointer; transition: all 0.2s;"
-          onmouseover="this.style.transform='translate(2px, 2px)'; this.style.boxShadow='2px 2px 0px 0px #000000';"
-          onmouseout="this.style.transform='translate(0, 0)'; this.style.boxShadow='4px 4px 0px 0px #000000';"
+          class="neo-button"
         >
           ${msg("doLogIn")}
         </button>
