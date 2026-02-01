@@ -54,14 +54,21 @@ export const MemberManagementSection = () => {
 
   const utils = api.useUtils();
 
-  const inviteMutation = api.organization.inviteMember.useMutation({
-    onSuccess: () => {
+  const inviteMutation = api.organization.inviteMembers.useMutation({
+    onSuccess: (data) => {
       setInviteEmail("");
       setIsInviteDialogOpen(false);
-      setShowSuccessAnimation(true);
       setErrorMessage(null);
       void utils.organization.getById.invalidate();
       void utils.organization.getInvitations.invalidate();
+
+      // 結果に応じて通知
+      if (data.succeeded.length > 0 && data.failed.length === 0) {
+        setShowSuccessAnimation(true);
+      } else if (data.failed.length > 0) {
+        const failedReason = data.failed[0]?.reason ?? "不明なエラー";
+        setErrorMessage(failedReason);
+      }
     },
     onError: (error) => {
       setErrorMessage(
@@ -98,7 +105,7 @@ export const MemberManagementSection = () => {
   const handleInvite = () => {
     if (inviteEmail.trim()) {
       inviteMutation.mutate({
-        email: inviteEmail.trim(),
+        emails: [inviteEmail.trim()],
         roles: ["Member"],
       });
     }

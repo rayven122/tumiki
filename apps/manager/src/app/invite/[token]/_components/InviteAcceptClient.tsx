@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,12 +22,19 @@ export const InviteAcceptClient = ({
   invitedByName,
   isAdmin,
 }: InviteAcceptClientProps) => {
-  const router = useRouter();
   const [isAccepting, setIsAccepting] = useState(false);
+  const { update: updateSession } = useSession();
+  const router = useRouter();
+  const utils = api.useUtils();
 
   const acceptMutation = api.organization.acceptInvitation.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(`${organizationName}への参加が完了しました！`);
+      // tRPCキャッシュを無効化
+      await utils.invalidate();
+      // Auth.jsセッションを更新
+      await updateSession({});
+      // 新しい組織のページへ遷移
       router.push(`/${data.organizationSlug}/mcps`);
     },
     onError: (error) => {
