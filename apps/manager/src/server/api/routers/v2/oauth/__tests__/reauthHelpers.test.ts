@@ -87,6 +87,7 @@ describe("reauthHelpers", () => {
   describe("fetchAndValidateOAuthMetadata", () => {
     test("有効なメタデータの場合、検証済みメタデータを返す", async () => {
       mockDiscoverOAuthMetadata.mockResolvedValue({
+        issuer: "https://auth.example.com",
         authorization_endpoint: "https://auth.example.com/authorize",
         token_endpoint: "https://auth.example.com/token",
         scopes_supported: ["read", "write"],
@@ -105,6 +106,7 @@ describe("reauthHelpers", () => {
 
     test("authorization_endpointがない場合、INTERNAL_SERVER_ERRORをスローする", async () => {
       mockDiscoverOAuthMetadata.mockResolvedValue({
+        issuer: "https://auth.example.com",
         authorization_endpoint: undefined,
         token_endpoint: "https://auth.example.com/token",
       });
@@ -122,6 +124,7 @@ describe("reauthHelpers", () => {
 
     test("token_endpointがない場合、INTERNAL_SERVER_ERRORをスローする", async () => {
       mockDiscoverOAuthMetadata.mockResolvedValue({
+        issuer: "https://auth.example.com",
         authorization_endpoint: "https://auth.example.com/authorize",
         token_endpoint: undefined,
       });
@@ -141,6 +144,7 @@ describe("reauthHelpers", () => {
   describe("generateReauthenticationUrl", () => {
     test("正常なパラメータでAuthorization URLを生成する", async () => {
       mockDiscoverOAuthMetadata.mockResolvedValue({
+        issuer: "https://auth.example.com",
         authorization_endpoint: "https://auth.example.com/authorize",
         token_endpoint: "https://auth.example.com/token",
         scopes_supported: ["read", "write"],
@@ -184,6 +188,7 @@ describe("reauthHelpers", () => {
 
     test("clientSecretがnullの場合、空文字列を使用する", async () => {
       mockDiscoverOAuthMetadata.mockResolvedValue({
+        issuer: "https://auth.example.com",
         authorization_endpoint: "https://auth.example.com/authorize",
         token_endpoint: "https://auth.example.com/token",
         scopes_supported: [],
