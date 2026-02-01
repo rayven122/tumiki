@@ -9,6 +9,11 @@
 services:
   keycloak-base:
     image: quay.io/keycloak/keycloak:26.4
+    volumes:
+      # カスタムテーマをマウント（再起動時にも自動的にテーマが利用可能）
+      # extendsで参照される場合、パスは参照元（compose.yaml）のディレクトリから解決される
+      - ../keycloak/themes/tumiki:/opt/keycloak/themes/tumiki:ro
+      - ../keycloak/themes/keywind:/opt/keycloak/themes/keywind:ro
     healthcheck:
       # curl がインストールされていないため、bash の TCP リダイレクトを使用
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
