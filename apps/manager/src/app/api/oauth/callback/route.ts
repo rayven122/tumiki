@@ -10,7 +10,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { api } from "@/trpc/server";
 import { getAppBaseUrl } from "@/lib/url";
-import { verifyStateToken } from "@/lib/oauth/state-token";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 /**
@@ -60,10 +59,8 @@ export const GET = async (request: NextRequest) => {
     }
     const { state } = paramsResult;
 
-    // State tokenを検証
-    await verifyStateToken(state);
-
     // tRPC APIを呼び出してOAuthコールバックを処理
+    // Note: State tokenの検証はhandleCallback内部で実行される（verifyOAuthState）
     // currentUrlはトークン交換時に使用するため、環境変数ベースのURLを使用
     const callbackUrl = new URL("/api/oauth/callback", baseUrl);
     callbackUrl.search = request.nextUrl.search;
