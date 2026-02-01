@@ -22,7 +22,7 @@ export const WaitingListConfirmation = ({
       {/* Simplified Hero Header */}
       <Section style={heroHeader}>
         <Img
-          src="https://tumiki.cloud/favicon/logo.svg"
+          src="https://tumiki.cloud/favicon/android-chrome-192x192.png"
           alt="Tumiki Logo"
           width="60"
           height="60"
@@ -115,8 +115,8 @@ const greeting = {
 };
 
 const highlightText = {
-  backgroundColor: "#000000",
-  color: "#ffffff",
+  backgroundColor: "#e5e7eb",
+  color: "#111827",
   padding: "2px 6px",
   fontWeight: "700",
 };
