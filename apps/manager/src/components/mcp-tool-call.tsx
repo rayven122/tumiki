@@ -1,11 +1,13 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, KeyIcon } from "lucide-react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { TypingIndicator } from "./typing-indicator";
 import { useAtomValue } from "jotai";
 import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
+import { useReauthenticateFromChat } from "@/hooks/useReauthenticateFromChat";
 
 // AI SDK 6 のツール状態
 type ToolState =
@@ -118,6 +120,46 @@ const JsonPreview = ({
 };
 
 /**
+ * 認証エラー情報の型
+ */
+type AuthErrorInfo = {
+  requiresReauth: boolean;
+  mcpServerId: string;
+};
+
+/**
+ * 出力から認証エラー情報を抽出する
+ * 再認証が必要な場合はmcpServerIdを含むオブジェクトを返す
+ *
+ * requiresReauth: true が設定されている場合は errorType に関係なく
+ * 認証エラーとして扱う（401エラーやReAuthRequiredエラーに対応）
+ */
+const extractAuthError = (output: unknown): AuthErrorInfo | null => {
+  if (!output || typeof output !== "object") return null;
+
+  const obj = output as {
+    isError?: boolean;
+    errorType?: string;
+    requiresReauth?: boolean;
+    mcpServerId?: string;
+  };
+
+  // requiresReauth: true があれば認証エラーとして扱う
+  if (
+    obj.isError === true &&
+    obj.requiresReauth === true &&
+    typeof obj.mcpServerId === "string"
+  ) {
+    return {
+      requiresReauth: true,
+      mcpServerId: obj.mcpServerId,
+    };
+  }
+
+  return null;
+};
+
+/**
  * 出力からエラー状態を検出する
  * MCPエラーは以下の形式で返される:
  * - { content: [...], isError: true }
@@ -152,6 +194,60 @@ const detectErrorFromOutput = (output: unknown): boolean => {
 };
 
 /**
+ * 再認証バナーコンポーネント
+ * UX原則: 視覚的階層、認知負荷の軽減、ポジティブなフレーミング
+ */
+const ReauthBanner = ({
+  mcpServerId,
+  redirectTo,
+}: {
+  mcpServerId: string;
+  redirectTo: string;
+}) => {
+  const { startReauthentication, isPending } = useReauthenticateFromChat({
+    redirectTo,
+  });
+
+  return (
+    <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-800/50 dark:bg-amber-950/20">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-amber-600 dark:text-amber-400">⚠️</span>
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          認証の有効期限が切れました
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => startReauthentication(mcpServerId)}
+        disabled={isPending}
+        className={cn(
+          "flex shrink-0 items-center gap-1.5",
+          "rounded-md border border-amber-300 px-2.5 py-1 text-xs font-medium",
+          "bg-white text-amber-700",
+          "hover:bg-amber-50 active:bg-amber-100",
+          "dark:border-amber-700 dark:bg-transparent dark:text-amber-300",
+          "dark:hover:bg-amber-900/30 dark:active:bg-amber-900/50",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          "transition-colors duration-150",
+        )}
+      >
+        {isPending ? (
+          <>
+            <span className="animate-spin text-xs">⏳</span>
+            準備中...
+          </>
+        ) : (
+          <>
+            <KeyIcon className="size-3" />
+            再認証
+          </>
+        )}
+      </button>
+    </div>
+  );
+};
+
+/**
  * MCPツール呼び出し表示コンポーネント
  */
 export const McpToolCall = ({
@@ -161,6 +257,7 @@ export const McpToolCall = ({
   output,
 }: McpToolCallProps) => {
   const mcpServerMap = useAtomValue(mcpServerMapAtom);
+  const pathname = usePathname();
   const { serverId, displayToolName } = parseToolName(toolName);
   const serverName = resolveServerName(mcpServerMap, serverId);
   const isLoading = state === "input-streaming" || state === "input-available";
@@ -168,9 +265,18 @@ export const McpToolCall = ({
   // stateが"output-available"でも、outputにisError:trueがあればエラーとして扱う
   const outputHasError = detectErrorFromOutput(output);
 
+  // 認証エラー情報を抽出（再認証ボタン表示用）
+  const authError = extractAuthError(output);
+
   // 実際に表示する状態（outputのisErrorでオーバーライド）
   const displayState: ToolState =
     state === "output-available" && outputHasError ? "output-error" : state;
+
+  // 再認証後に戻るURL（チャット画面）
+  // パスから orgSlug と chatId を抽出: /[orgSlug]/chat/[chatId]
+  const redirectTo = pathname?.match(/^\/([^/]+)\/chat\/([^/]+)/)
+    ? pathname
+    : null;
 
   return (
     <div
@@ -207,15 +313,34 @@ export const McpToolCall = ({
           <JsonPreview data={output} label="結果" defaultExpanded={false} />
         )}
 
+      {/* 認証エラー時の再認証バナー */}
+      {displayState === "output-error" && authError && redirectTo && (
+        <ReauthBanner
+          mcpServerId={authError.mcpServerId}
+          redirectTo={redirectTo}
+        />
+      )}
+
       {/* エラー - displayState で判定（outputHasError を含む） */}
-      {displayState === "output-error" && output !== undefined && (
-        <div>
-          {typeof output === "object" ? (
-            <JsonPreview data={output} label="エラー" defaultExpanded={true} />
-          ) : (
-            <div className="mt-2 text-sm">エラー: {String(output)}</div>
-          )}
-        </div>
+      {displayState === "output-error" &&
+        output !== undefined &&
+        !authError && (
+          <div>
+            {typeof output === "object" ? (
+              <JsonPreview
+                data={output}
+                label="エラー"
+                defaultExpanded={true}
+              />
+            ) : (
+              <div className="mt-2 text-sm">エラー: {String(output)}</div>
+            )}
+          </div>
+        )}
+
+      {/* 認証エラーの場合はエラー詳細を折りたたみで表示 */}
+      {displayState === "output-error" && authError && output !== undefined && (
+        <JsonPreview data={output} label="エラー詳細" defaultExpanded={false} />
       )}
     </div>
   );

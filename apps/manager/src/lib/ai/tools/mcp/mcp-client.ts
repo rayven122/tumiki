@@ -25,6 +25,35 @@ export type McpServerError = {
 };
 
 /**
+ * MCPツール実行時のエラーレスポンス型
+ */
+type McpToolErrorResponse = {
+  content: Array<{ type: "text"; text: string }>;
+  isError: true;
+  errorType: McpServerError["errorType"];
+  requiresReauth?: boolean;
+  mcpServerId?: string;
+};
+
+/**
+ * MCPツール実行時のエラーレスポンスを生成
+ */
+const createMcpToolErrorResponse = (
+  errorMessage: string,
+  errorType: McpServerError["errorType"],
+  mcpServerId: string,
+  requiresReauth: boolean,
+): McpToolErrorResponse => ({
+  content: [{ type: "text", text: errorMessage }],
+  isError: true,
+  errorType,
+  ...(requiresReauth && {
+    requiresReauth: true,
+    mcpServerId,
+  }),
+});
+
+/**
  * エラーの種類を分類する
  */
 const classifyError = (error: unknown): McpServerError["errorType"] => {
@@ -170,9 +199,22 @@ type JsonRpcResponse = {
   error?: {
     code: number;
     message: string;
-    data?: unknown;
+    data?: {
+      type?: string;
+      resource_metadata?: string;
+    };
   };
 };
+
+/**
+ * 再認証が必要なエラーを示すカスタムエラー
+ */
+class ReAuthRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReAuthRequiredError";
+  }
+}
 
 /**
  * mcp-proxyにJSON-RPC 2.0でツール呼び出しを送信
@@ -204,12 +246,27 @@ const callToolViaProxy = async (
     }),
   });
 
+  // 401エラーの場合は再認証が必要
+  if (response.status === 401) {
+    throw new ReAuthRequiredError(
+      "認証の有効期限が切れました。再認証が必要です。",
+    );
+  }
+
   if (!response.ok) {
     throw new Error(`MCP proxy error: ${response.status}`);
   }
 
   const result = (await response.json()) as JsonRpcResponse;
+
+  // JSON-RPCエラーでReAuthRequiredを検出（PR #729の形式）
   if (result.error) {
+    if (result.error.data?.type === "ReAuthRequired") {
+      throw new ReAuthRequiredError(
+        result.error.message ||
+          "認証の有効期限が切れました。再認証が必要です。",
+      );
+    }
     throw new Error(result.error.message || "Unknown MCP error");
   }
 
@@ -243,17 +300,19 @@ const createLazyExecute = (
         JSON.stringify({ errorType, errorMessage }, null, 2),
       );
 
+      // 再認証が必要なエラーの場合、requiresReauth フラグを追加
+      const requiresReauth = error instanceof ReAuthRequiredError;
+      const displayMessage = requiresReauth
+        ? "認証の有効期限が切れました"
+        : `MCP error: ${errorMessage}`;
+
       // エラーを含むレスポンスを返す（isError: true で UI にエラー表示される）
-      return {
-        content: [
-          {
-            type: "text",
-            text: `MCP error: ${errorMessage}`,
-          },
-        ],
-        isError: true,
+      return createMcpToolErrorResponse(
+        displayMessage,
         errorType,
-      };
+        mcpServerId,
+        requiresReauth,
+      );
     }
   };
 };

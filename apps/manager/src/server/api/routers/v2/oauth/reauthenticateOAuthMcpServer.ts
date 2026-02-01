@@ -4,10 +4,12 @@
  */
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
-import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAuthorizationUrl";
-import { discoverOAuthMetadata } from "@/lib/oauth/dcr";
 import type { z } from "zod";
 import type { ReauthenticateOAuthMcpServerInputV2 } from "./index";
+import {
+  fetchOAuthTokenWithClient,
+  generateReauthenticationUrl,
+} from "./reauthHelpers";
 
 type ReauthenticateOAuthMcpServerInput = z.infer<
   typeof ReauthenticateOAuthMcpServerInputV2
@@ -79,52 +81,21 @@ export const reauthenticateOAuthMcpServer = async (
   }
 
   // 2. 既存のOAuthトークン情報を取得（OAuthクライアント情報も含む）
-  const oauthToken = await tx.mcpOAuthToken.findUnique({
-    where: {
-      userId_mcpServerTemplateInstanceId: {
-        userId,
-        mcpServerTemplateInstanceId: templateInstance.id,
-      },
-    },
-    include: {
-      oauthClient: {
-        select: {
-          clientId: true,
-          clientSecret: true,
-        },
-      },
-    },
-  });
+  const oauthToken = await fetchOAuthTokenWithClient(
+    tx,
+    userId,
+    templateInstance.id,
+  );
 
-  if (!oauthToken) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "OAuth設定が見つかりません。サーバーを再度追加してください。",
-    });
-  }
-
-  // 3. OAuth メタデータを取得してエンドポイント情報を取得
-  const metadata = await discoverOAuthMetadata(template.url);
-
-  if (!metadata.authorization_endpoint || !metadata.token_endpoint) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        "OAuthメタデータの取得に失敗しました。Authorization EndpointまたはToken Endpointが見つかりません。",
-    });
-  }
-
-  // 4. Authorization URLを生成
-  const authorizationUrl = await generateAuthorizationUrl({
-    clientId: oauthToken.oauthClient.clientId,
-    clientSecret: oauthToken.oauthClient.clientSecret ?? "",
-    authorizationEndpoint: metadata.authorization_endpoint,
-    tokenEndpoint: metadata.token_endpoint,
-    scopes: metadata.scopes_supported ?? [],
+  // 3. Authorization URLを生成
+  const authorizationUrl = await generateReauthenticationUrl({
+    templateUrl: template.url,
+    oauthToken,
     mcpServerId: templateInstance.mcpServer.id,
     mcpServerTemplateInstanceId: templateInstance.id,
     userId,
     organizationId,
+    redirectTo: input.redirectTo,
   });
 
   return {

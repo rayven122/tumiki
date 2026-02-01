@@ -2,10 +2,14 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
-import { McpServerTemplateInstanceIdSchema } from "@/schema/ids";
+import {
+  McpServerIdSchema,
+  McpServerTemplateInstanceIdSchema,
+} from "@/schema/ids";
 import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { handleOAuthCallback } from "./handleOAuthCallback";
 import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
+import { reauthenticateByMcpServerId } from "./reauthenticateByMcpServerId";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 
 // OAuth認証MCPサーバー接続用の入力スキーマ
@@ -39,14 +43,29 @@ export const HandleOAuthCallbackOutputV2 = z.object({
   organizationSlug: z.string(),
   success: z.boolean(),
   error: z.string().optional(),
+  /** 認証完了後のリダイレクト先（チャット画面等） */
+  redirectTo: z.string().optional(),
 });
 
 // OAuth 再認証の入力スキーマ
 export const ReauthenticateOAuthMcpServerInputV2 = z.object({
   mcpServerTemplateInstanceId: McpServerTemplateInstanceIdSchema,
+  /** 認証完了後のリダイレクト先（例: /org-slug/chat/chat-id） */
+  redirectTo: z.string().optional(),
 });
 
 export const ReauthenticateOAuthMcpServerOutputV2 = z.object({
+  authorizationUrl: z.string(),
+});
+
+// mcpServerId ベースの再認証（チャット画面からの再認証用）
+export const ReauthenticateByMcpServerIdInputV2 = z.object({
+  mcpServerId: McpServerIdSchema,
+  /** 認証完了後のリダイレクト先（例: /org-slug/chat/chat-id） */
+  redirectTo: z.string().optional(),
+});
+
+export const ReauthenticateByMcpServerIdOutputV2 = z.object({
   authorizationUrl: z.string(),
 });
 
@@ -101,6 +120,7 @@ export const oauthRouter = createTRPCRouter({
         organizationSlug: result.organizationSlug,
         success: result.success,
         error: result.error,
+        redirectTo: result.redirectTo,
       };
     }),
 
@@ -111,6 +131,21 @@ export const oauthRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
         return await reauthenticateOAuthMcpServer(
+          tx,
+          input,
+          ctx.currentOrg.id,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // mcpServerId ベースの再認証（チャット画面からの再認証用）
+  reauthenticateByMcpServerId: protectedProcedure
+    .input(ReauthenticateByMcpServerIdInputV2)
+    .output(ReauthenticateByMcpServerIdOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await reauthenticateByMcpServerId(
           tx,
           input,
           ctx.currentOrg.id,
