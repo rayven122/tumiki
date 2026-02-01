@@ -9,9 +9,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR/.."
 
 # 共通ログ関数を読み込み
 source "$SCRIPT_DIR/lib/log.sh"
+
+# .envファイルから環境変数を読み込み
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  set -a
+  source "$PROJECT_ROOT/.env"
+  set +a
+  log_info ".envファイルを読み込みました"
+fi
 
 cd "$SCRIPT_DIR/../terraform/keycloak"
 
@@ -23,6 +32,10 @@ REQUIRED_VARS=(
   "KEYCLOAK_CLIENT_SECRET"
   "KEYCLOAK_PROXY_CLIENT_SECRET"
   "KEYCLOAK_TEST_USER_PASSWORD"
+  "SMTP_HOST"
+  "SMTP_USER"
+  "SMTP_PASS"
+  "FROM_EMAIL"
 )
 
 # .env変数をTF_VAR_*に変換してエクスポート（plan, apply, destroyで必要）
@@ -40,6 +53,13 @@ export_tf_vars() {
   export TF_VAR_manager_client_secret="${KEYCLOAK_CLIENT_SECRET}"
   export TF_VAR_proxy_client_secret="${KEYCLOAK_PROXY_CLIENT_SECRET}"
   export TF_VAR_test_user_password="${KEYCLOAK_TEST_USER_PASSWORD}"
+  # SMTP設定
+  export TF_VAR_smtp_host="${SMTP_HOST}"
+  export TF_VAR_smtp_port="${SMTP_PORT:-587}"
+  export TF_VAR_smtp_user="${SMTP_USER}"
+  export TF_VAR_smtp_password="${SMTP_PASS}"
+  export TF_VAR_smtp_from="${FROM_EMAIL}"
+  export TF_VAR_smtp_from_display_name="${FROM_NAME:-Tumiki}"
   # 任意: 空でもOK
   export TF_VAR_google_client_id="${GOOGLE_CLIENT_ID:-}"
   export TF_VAR_google_client_secret="${GOOGLE_CLIENT_SECRET:-}"
