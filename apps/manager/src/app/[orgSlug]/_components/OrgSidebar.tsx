@@ -31,6 +31,7 @@ type OrgSidebarProps = {
   isPersonal: boolean;
   organizationId: string;
   currentUserId: string;
+  isAdmin: boolean;
 };
 
 export const OrgSidebar = ({
@@ -38,6 +39,7 @@ export const OrgSidebar = ({
   isPersonal,
   organizationId,
   currentUserId,
+  isAdmin,
 }: OrgSidebarProps) => {
   const pathname = usePathname();
   const params = useParams();
@@ -95,14 +97,14 @@ export const OrgSidebar = ({
       name: "メンバー管理",
       href: `/${orgSlug}/members`,
       icon: Users,
-      show: !isPersonal, // 個人組織では非表示
+      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
       disabled: false,
     },
     {
       name: "組織構造",
       href: `/${orgSlug}/org-structure`,
       icon: Network,
-      show: !isPersonal, // 個人組織では非表示
+      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
       disabled: false,
       beta: true,
     },
@@ -110,7 +112,7 @@ export const OrgSidebar = ({
       name: "ロール・権限",
       href: `/${orgSlug}/roles`,
       icon: Shield,
-      show: !isPersonal, // 個人組織では非表示
+      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
       disabled: false,
       beta: true,
     },
