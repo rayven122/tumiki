@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "@/utils/client/toast";
 import { api } from "@/trpc/react";
 import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
 import { sanitizeErrorMessage } from "./errorUtils";
+import { McpServerIcon } from "../../../_components/McpServerIcon";
+import { cn } from "@/lib/utils";
 import type { UserMcpServerDetail, RequestStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
 
@@ -22,6 +24,9 @@ export const OverviewTab = ({
   serverId,
 }: OverviewTabProps) => {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
+    null,
+  );
   const utils = api.useUtils();
 
   const { mutate: toggleTool } = api.v2.userMcpServer.toggleTool.useMutation({
@@ -110,14 +115,33 @@ export const OverviewTab = ({
   // OFFICIALサーバーかどうかを判定
   const isOfficialServer = server.serverType === "OFFICIAL";
 
-  // すべてのテンプレートインスタンスからツールを集約（OFFICIALサーバー用）
-  const allTools = server.templateInstances.flatMap(
-    (instance) => instance.tools,
-  );
+  // CUSTOMサーバー: 全ツールをフラット化（インスタンス情報を保持）
+  const allToolsWithInstance = useMemo(() => {
+    return server.templateInstances.flatMap((instance) =>
+      instance.tools.map((tool) => ({
+        ...tool,
+        templateInstanceId: instance.id,
+        mcpServerTemplate: instance.mcpServerTemplate,
+      })),
+    );
+  }, [server.templateInstances]);
 
-  // 有効化されているツールの数（OFFICIALサーバー用）
-  const enabledToolCount = allTools.filter((tool) => tool.isEnabled).length;
-  const totalToolCount = allTools.length;
+  // フィルタリングされたツール
+  const filteredTools = useMemo(() => {
+    if (!selectedInstanceId) return allToolsWithInstance;
+    return allToolsWithInstance.filter(
+      (tool) => tool.templateInstanceId === selectedInstanceId,
+    );
+  }, [allToolsWithInstance, selectedInstanceId]);
+
+  // 有効化されているツールの数
+  const enabledToolCount = filteredTools.filter(
+    (tool) => tool.isEnabled,
+  ).length;
+  const totalToolCount = filteredTools.length;
+
+  // テンプレートインスタンスが複数あるか（フィルターボタン表示用）
+  const hasMultipleInstances = server.templateInstances.length > 1;
 
   return (
     <div className="space-y-6">
@@ -160,42 +184,71 @@ export const OverviewTab = ({
               </div>
             );
           })()
-        : // CUSTOMサーバー: 各テンプレートインスタンスごとに表示
-          server.templateInstances.map((instance) => {
-            const instanceEnabledCount = instance.tools.filter(
-              (tool) => tool.isEnabled,
-            ).length;
-            const instanceTotalCount = instance.tools.length;
+        : // CUSTOMサーバー: フィルターボタン形式で表示
+          allToolsWithInstance.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">
+                利用可能なツール ({enabledToolCount}/{totalToolCount})
+              </h3>
 
-            return (
-              <div key={instance.id} className="space-y-4">
-                <h3 className="text-lg font-semibold">
-                  {instance.mcpServerTemplate.name} ({instanceEnabledCount}/
-                  {instanceTotalCount})
-                </h3>
-                {instance.tools.length > 0 && (
-                  <div className="space-y-4">
-                    {instance.tools.map((tool) => (
-                      <ToolCard
-                        key={tool.id}
-                        tool={tool}
-                        isExpanded={expandedTools.has(tool.id)}
-                        onToggleExpansion={toggleToolExpansion}
-                        isEnabled={tool.isEnabled}
-                        onToggleEnabled={(enabled) =>
-                          handleToolToggle(
-                            instance.id,
-                            tool.id as ToolId,
-                            enabled,
-                          )
-                        }
+              {/* サーバーフィルターボタン（複数インスタンスがある場合のみ表示） */}
+              {hasMultipleInstances && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedInstanceId(null)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      selectedInstanceId === null
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80",
+                    )}
+                  >
+                    ALL
+                  </button>
+                  {server.templateInstances.map((instance) => (
+                    <button
+                      key={instance.id}
+                      onClick={() => setSelectedInstanceId(instance.id)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        selectedInstanceId === instance.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/80",
+                      )}
+                    >
+                      <McpServerIcon
+                        iconPath={instance.mcpServerTemplate.iconPath}
+                        fallbackUrl={instance.mcpServerTemplate.url}
+                        alt={instance.mcpServerTemplate.name}
+                        size={16}
                       />
-                    ))}
-                  </div>
-                )}
+                      <span>{instance.mcpServerTemplate.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* ツール一覧 */}
+              <div className="space-y-4">
+                {filteredTools.map((tool) => (
+                  <ToolCard
+                    key={`${tool.templateInstanceId}-${tool.id}`}
+                    tool={tool}
+                    isExpanded={expandedTools.has(tool.id)}
+                    onToggleExpansion={toggleToolExpansion}
+                    isEnabled={tool.isEnabled}
+                    onToggleEnabled={(enabled) =>
+                      handleToolToggle(
+                        tool.templateInstanceId,
+                        tool.id as ToolId,
+                        enabled,
+                      )
+                    }
+                  />
+                ))}
               </div>
-            );
-          })}
+            </div>
+          )}
     </div>
   );
 };

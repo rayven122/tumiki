@@ -5,6 +5,7 @@ import { SimpleHeader } from "./_components/SimpleHeader";
 import { OrgSidebar } from "./_components/OrgSidebar";
 import { MainContent } from "./_components/MainContent";
 import { auth } from "~/auth";
+import { getSessionInfo } from "~/lib/auth/session-utils";
 
 type OrgSlugLayoutProps = {
   children: ReactNode;
@@ -39,6 +40,9 @@ export default async function OrgSlugLayout({
       throw new Error("defaultOrgSlug mismatch");
     }
 
+    // セッションからisAdminを取得
+    const { isAdmin } = getSessionInfo(session);
+
     return (
       <div className="flex min-h-screen flex-col">
         {/* ヘッダー */}
@@ -50,6 +54,7 @@ export default async function OrgSlugLayout({
           isPersonal={organization.isPersonal}
           organizationId={organization.id}
           currentUserId={session.user.id}
+          isAdmin={isAdmin}
         />
 
         {/* ページコンテンツ */}
