@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { sendInvitationEmail } from "@/server/lib/mail";
 import { generateInviteUrl } from "@/lib/url";
+import { createManyNotifications } from "../v2/notification/createNotification";
 
 // 入力スキーマ
 export const inviteMembersInputSchema = z.object({
@@ -133,6 +134,39 @@ export const inviteMembers = async ({
               expires,
             },
           });
+
+          // 招待されたユーザーが既存ユーザーの場合、本人に通知を送信
+          const invitedUserResult: {
+            id: string;
+            members: { organizationId: string }[];
+          } | null = await tx.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              // 個人組織を取得（OrganizationMemberを通じて）
+              members: {
+                where: { organization: { isPersonal: true } },
+                select: { organizationId: true },
+                take: 1,
+              },
+            },
+          });
+
+          if (invitedUserResult) {
+            const firstOrg = invitedUserResult.members[0];
+            if (firstOrg) {
+              const inviteUrl = generateInviteUrl(token);
+              await createManyNotifications(tx, [invitedUserResult.id], {
+                type: "ORGANIZATION_INVITATION_RECEIVED",
+                priority: "HIGH",
+                title: `${organization.name}への招待`,
+                message: `${ctx.session.user.email ?? "管理者"}から${organization.name}への参加招待が届きました。`,
+                linkUrl: inviteUrl,
+                organizationId: firstOrg.organizationId,
+                triggeredById: ctx.session.user.id,
+              });
+            }
+          }
 
           succeeded.push({
             email,
