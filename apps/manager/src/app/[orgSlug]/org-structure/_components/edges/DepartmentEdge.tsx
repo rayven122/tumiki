@@ -6,7 +6,7 @@ import {
   EdgeLabelRenderer,
   type Edge,
   type EdgeProps,
-  getBezierPath,
+  getSmoothStepPath,
 } from "@xyflow/react";
 import { X } from "lucide-react";
 
@@ -42,13 +42,14 @@ export const DepartmentEdge = memo(
     targetPosition,
     data,
   }: EdgeProps<DepartmentEdgeType>) => {
-    const [edgePath, labelX, labelY] = getBezierPath({
+    const [edgePath, labelX, labelY] = getSmoothStepPath({
       sourceX,
       sourceY,
       sourcePosition,
       targetX,
       targetY,
       targetPosition,
+      borderRadius: 0, // 完全な直角線
     });
 
     const isRelatedToSelected = data?.isRelatedToSelected ?? false;
