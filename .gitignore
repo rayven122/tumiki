@@ -162,5 +162,5 @@ scripts/setup-keycloak.sh
 # Playwright MCP outputs
 .playwright-mcp/
 
-# Keycloak themes (third-party)
+# Keycloak themes (third-party) - pnpm install時に自動ダウンロード
 docker/keycloak/themes/keywind/
