@@ -114,6 +114,12 @@ export const acceptInvitation = async ({
         },
       });
 
+      // 7-1.5. ユーザーのdefaultOrganizationを新しい組織に更新
+      await tx.user.update({
+        where: { id: ctx.session.user.id },
+        data: { defaultOrganizationSlug: invitation.organization.slug },
+      });
+
       // 7-2. Keycloak Group にメンバー追加（招待時に指定されたロール）
       const provider = KeycloakOrganizationProvider.fromEnv();
 
