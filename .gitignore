@@ -162,5 +162,4 @@ scripts/setup-keycloak.sh
 # Playwright MCP outputs
 .playwright-mcp/
 
-# Keycloak themes (third-party)
-docker/keycloak/themes/keywind/
+# Keycloak themes (third-party) - keywindはtumikiテーマの親テーマとして必要
