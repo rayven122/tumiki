@@ -25,14 +25,14 @@ export type CheckMcpPermissionOptions = {
 /**
  * 固定ロールのMCP権限マッピング
  *
- * Owner/Admin: 全権限
- * Member: read/write
+ * Owner/Admin: 全権限（MCP追加・統合・削除など）
+ * Member: read/execute のみ（閲覧とツール実行、MCP追加・統合は不可）
  * Viewer: read のみ
  */
 const FIXED_ROLE_MCP_PERMISSIONS: Record<string, McpPermissionType[]> = {
   Owner: ["read", "write", "execute"],
   Admin: ["read", "write", "execute"],
-  Member: ["read", "write"],
+  Member: ["read", "execute"],
   Viewer: ["read"],
 };
 
