@@ -10,7 +10,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { api } from "@/trpc/server";
 import { getAppBaseUrl } from "@/lib/url";
-import { verifyStateToken } from "@/lib/oauth/state-token";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 /**
@@ -60,10 +59,8 @@ export const GET = async (request: NextRequest) => {
     }
     const { state } = paramsResult;
 
-    // State tokenを検証
-    await verifyStateToken(state);
-
     // tRPC APIを呼び出してOAuthコールバックを処理
+    // Note: State tokenの検証はhandleCallback内部で実行される（verifyOAuthState）
     // currentUrlはトークン交換時に使用するため、環境変数ベースのURLを使用
     const callbackUrl = new URL("/api/oauth/callback", baseUrl);
     callbackUrl.search = request.nextUrl.search;
@@ -74,6 +71,16 @@ export const GET = async (request: NextRequest) => {
 
     // 結果に応じてリダイレクト
     if (result.success) {
+      // redirectTo が指定されている場合はそちらにリダイレクト（チャット画面等）
+      if (result.redirectTo) {
+        const redirectUrl = new URL(result.redirectTo, baseUrl);
+        redirectUrl.searchParams.set(
+          "success",
+          "OAuth+authentication+completed",
+        );
+        return NextResponse.redirect(redirectUrl);
+      }
+      // デフォルトはMCPサーバー一覧ページ
       return NextResponse.redirect(
         new URL(
           `/${result.organizationSlug}/mcps?success=OAuth+authentication+completed`,
@@ -81,6 +88,15 @@ export const GET = async (request: NextRequest) => {
         ),
       );
     } else {
+      // redirectTo が指定されている場合はそちらにエラーを付けてリダイレクト
+      if (result.redirectTo) {
+        const redirectUrl = new URL(result.redirectTo, baseUrl);
+        redirectUrl.searchParams.set(
+          "error",
+          encodeURIComponent(result.error ?? "Unknown error"),
+        );
+        return NextResponse.redirect(redirectUrl);
+      }
       const redirectUrl = `/${result.organizationSlug}/mcps?error=${encodeURIComponent(result.error ?? "Unknown error")}`;
       return NextResponse.redirect(new URL(redirectUrl, baseUrl));
     }
