@@ -11,17 +11,6 @@ export type SessionInfo = {
 };
 
 /**
- * group_rolesから個人組織のslugを取得
- * 個人組織のslugは@で始まる
- *
- * @param groupRoles - Keycloakのgroup_roles配列
- * @returns 個人組織のslug、見つからない場合はnull
- */
-export const getPersonalOrgSlug = (groupRoles: string[]): string | null => {
-  return groupRoles.find((slug) => slug.startsWith("@")) ?? null;
-};
-
-/**
  * セッションから組織関連情報を取得する統合関数
  * Auth.jsのJWTコールバックで変換されたtumiki claimsから必要な情報を抽出
  *
@@ -36,6 +25,10 @@ export const getSessionInfo = (session: Session | null): SessionInfo => {
   const organizationId = session?.user?.tumiki?.org_id ?? null;
 
   const roles = session?.user?.tumiki?.roles ?? [];
+
+  // ロール情報から管理者権限を判定
+  // - 個人組織: getTumikiClaimsでOwnerロールが自動付与される
+  // - チーム組織: Keycloakから渡されたロールを使用
   const isAdmin = roles.some((role) => role === "Owner" || role === "Admin");
 
   return {
