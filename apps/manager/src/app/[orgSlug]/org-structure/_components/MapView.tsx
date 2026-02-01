@@ -27,6 +27,7 @@ import { Save, ArrowDownUp, Pencil, X } from "lucide-react";
 import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
 import { DeleteDepartmentConfirmDialog } from "./DeleteDepartmentConfirmDialog";
 import { MoveConfirmDialog, type MoveOperation } from "./MoveConfirmDialog";
+import { ChangeParentDialog } from "./ChangeParentDialog";
 import type { Department } from "./mock/mockOrgData";
 import {
   DepartmentNode,
@@ -90,6 +91,10 @@ export const MapView = ({
     useState<Department | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // 親部署変更ダイアログ用の状態
+  const [departmentToChangeParent, setDepartmentToChangeParent] =
+    useState<Department | null>(null);
+
   // 編集モードの変更を親に通知
   useEffect(() => {
     onEditModeChange?.(isEditMode);
@@ -149,7 +154,13 @@ export const MapView = ({
     const layoutedNodes = getLayoutedElements(rawNodes, rawEdges);
     setNodes(layoutedNodes);
     setEdges(rawEdges);
-  }, [orgData, setNodes, setEdges]);
+
+    // 編集モード中にorgDataが更新された場合、initialEdgesRefも更新
+    // これにより、新しく作成された部署の親変更も検出可能になる
+    if (isEditMode) {
+      initialEdgesRef.current = rawEdges;
+    }
+  }, [orgData, setNodes, setEdges, isEditMode]);
 
   // ノードとエッジの変更を親に通知
   useEffect(() => {
@@ -386,21 +397,63 @@ export const MapView = ({
     [orgData.departments],
   );
 
-  // ノードに削除コールバックを追加（編集モード時のみ）
-  const nodesWithDeleteHandler = useMemo(() => {
+  /**
+   * 親部署変更ボタンクリック時のハンドラー
+   */
+  const handleChangeParentClick = useCallback(
+    (nodeId: string) => {
+      const department = orgData.departments.find((d) => d.id === nodeId);
+      if (department && !department.isRoot) {
+        setDepartmentToChangeParent(department);
+      }
+    },
+    [orgData.departments],
+  );
+
+  /**
+   * 親部署変更実行時のハンドラー
+   * エッジを更新する（古いエッジを削除して新しいエッジを作成）
+   */
+  const handleChangeParent = useCallback(
+    (targetId: string, newParentId: string) => {
+      setEdges((currentEdges) => {
+        // 対象ノードへの既存のエッジを削除
+        const filteredEdges = currentEdges.filter(
+          (edge) => edge.target !== targetId,
+        );
+
+        // 新しいエッジを作成
+        const newEdge: DepartmentEdgeType = {
+          id: `${newParentId}-${targetId}`,
+          source: newParentId,
+          target: targetId,
+          type: "department",
+        };
+
+        return [...filteredEdges, newEdge];
+      });
+
+      toast.success("親部署を変更しました");
+    },
+    [setEdges],
+  );
+
+  // ノードに削除・親部署変更コールバックを追加（編集モード時のみ）
+  const nodesWithHandlers = useMemo(() => {
     return nodes.map((node) => ({
       ...node,
       data: {
         ...node.data,
         onDelete: isEditMode ? handleNodeDeleteClick : undefined,
+        onChangeParent: isEditMode ? handleChangeParentClick : undefined,
       },
     }));
-  }, [nodes, handleNodeDeleteClick, isEditMode]);
+  }, [nodes, handleNodeDeleteClick, handleChangeParentClick, isEditMode]);
 
   return (
     <div className="h-full w-full">
       <ReactFlow
-        nodes={nodesWithDeleteHandler}
+        nodes={nodesWithHandlers}
         edges={edgesWithSelection}
         onNodesChange={onNodesChangeInternal}
         onEdgesChange={onEdgesChangeInternal}
@@ -505,6 +558,16 @@ export const MapView = ({
         isLoading={moveMutation.isPending}
         onConfirm={handleConfirmSave}
         onCancel={handleCancelSave}
+      />
+
+      {/* 親部署変更ダイアログ */}
+      <ChangeParentDialog
+        isOpen={departmentToChangeParent !== null}
+        onClose={() => setDepartmentToChangeParent(null)}
+        targetDepartment={departmentToChangeParent}
+        departments={orgData.departments}
+        edges={edges}
+        onChangeParent={handleChangeParent}
       />
     </div>
   );

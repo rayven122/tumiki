@@ -102,11 +102,10 @@ delete_anonymous_policy "Consent Required"
 # Max Clients Limit ポリシー
 delete_anonymous_policy "Max Clients Limit"
 
-# Tumikiカスタムテーマを適用
+# Tumikiカスタムテーマを適用（ログイン画面のみ）
 echo "Tumikiカスタムテーマを適用中..."
 $KCADM update realms/"$REALM" \
-  -s loginTheme=tumiki \
-  -s accountTheme=tumiki 2>/dev/null || true
+  -s loginTheme=tumiki 2>/dev/null || true
 echo "✓ Tumikiテーマを適用しました"
 
 # 国際化設定（日本語・英語）

@@ -25,7 +25,7 @@
     "lint": "turbo run lint --continue -- --cache --cache-location .cache/.eslintcache",
     "lint:fix": "turbo run lint --continue -- --fix --cache --cache-location .cache/.eslintcache",
     "lint:ws": "pnpm dlx sherif@latest -i ai",
-    "postinstall": "pnpm lint:ws",
+    "postinstall": "pnpm lint:ws && (command -v bash >/dev/null 2>&1 && bash docker/keycloak/install-themes.sh || echo 'Skipping theme install (bash not available)')",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
