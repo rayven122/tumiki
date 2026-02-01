@@ -1,0 +1,109 @@
+tumiki
+Copyright (c) 2024-2026 Reyven Inc.
+
+This product includes software developed by Reyven Inc.
+
+================================================================================
+
+DUAL LICENSE NOTICE
+
+This repository contains two types of software components:
+
+1. OPEN SOURCE COMPONENTS (MIT License)
+   - All files unless otherwise specified
+   - See LICENSE file for the full MIT License text
+
+2. ENTERPRISE EDITION COMPONENTS (Elastic License 2.0)
+   - Files with ".ee.ts" or ".ee.tsx" extension
+   - Files in directories named "ee/" or "_ee/"
+   - Files with "SPDX-License-Identifier: Elastic-2.0" header
+   - See LICENSE.EE file for the full Elastic License 2.0 text
+
+================================================================================
+
+ENTERPRISE EDITION FEATURES
+
+The following features are licensed under Elastic License 2.0:
+
+- PII Masking: Automatic detection and masking of personally identifiable
+  information in MCP communications
+- Dynamic Search: AI-powered tool discovery and search optimization
+- Group Management: Organization group creation and management
+- Role Management: Fine-grained role-based access control
+- Usage Statistics: Detailed analytics and usage reporting
+- Invitation Management: Team member invitation workflows
+
+================================================================================
+
+THIRD-PARTY NOTICES
+
+This software includes the following third-party open source components:
+
+### Next.js
+- License: MIT
+- Copyright (c) 2024 Vercel, Inc.
+- https://github.com/vercel/next.js
+
+### React
+- License: MIT
+- Copyright (c) Meta Platforms, Inc. and affiliates.
+- https://github.com/facebook/react
+
+### Prisma
+- License: Apache-2.0
+- Copyright (c) 2020-2024 Prisma Data, Inc.
+- https://github.com/prisma/prisma
+
+### tRPC
+- License: MIT
+- Copyright (c) 2021-2024 tRPC
+- https://github.com/trpc/trpc
+
+### Hono
+- License: MIT
+- Copyright (c) 2022-2024 Yusuke Wada
+- https://github.com/honojs/hono
+
+### Tailwind CSS
+- License: MIT
+- Copyright (c) Tailwind Labs, Inc.
+- https://github.com/tailwindlabs/tailwindcss
+
+### Zod
+- License: MIT
+- Copyright (c) 2020-2024 Colin McDonnell
+- https://github.com/colinhacks/zod
+
+### Jose (JWT)
+- License: MIT
+- Copyright (c) 2018-2024 Filip Skokan
+- https://github.com/panva/jose
+
+### Jotai
+- License: MIT
+- Copyright (c) 2020-2024 Daishi Kato
+- https://github.com/pmndrs/jotai
+
+### Radix UI
+- License: MIT
+- Copyright (c) 2022 WorkOS
+- https://github.com/radix-ui/primitives
+
+### Lucide Icons
+- License: ISC
+- Copyright (c) 2020-2024 Lucide Contributors
+- https://github.com/lucide-icons/lucide
+
+For a complete list of dependencies and their licenses, please refer to the
+package.json files in this repository and use standard npm/pnpm commands to
+generate a full dependency license report.
+
+================================================================================
+
+CONTACT
+
+For licensing inquiries, please contact:
+- Website: https://tumiki.io
+- Email: support@reyven.io
+
+================================================================================
