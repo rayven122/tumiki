@@ -14,7 +14,9 @@ import {
   extractAllGroupIds,
 } from "./utils/keycloakToOrgDataConverter";
 import type { OrgData } from "./mock/mockOrgData";
-import { Loader2, Network } from "lucide-react";
+import { Loader2, Network, LayoutGrid, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ListView } from "./ListView";
 
 /**
  * 空の組織データ（ローディング中に使用）
@@ -41,6 +43,11 @@ const LoadingOverlay = () => (
   </div>
 );
 
+/**
+ * 表示形式の型
+ */
+type ViewMode = "node-tree" | "list-tree";
+
 type OrgStructureClientProps = {
   organizationId: string;
 };
@@ -61,6 +68,7 @@ export const OrgStructureClient = ({
   const [edges, setEdges] = useState<DepartmentEdgeType[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("node-tree");
   const isOpen = useAtomValue(sidebarOpenAtom);
 
   // レイアウト調整関数のref
@@ -180,18 +188,48 @@ export const OrgStructureClient = ({
         isOpen ? "md:left-64" : "md:left-16",
       )}
     >
-      <MapView
-        orgData={orgData ?? emptyOrgData}
-        organizationId={organizationId}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={setNodes}
-        onEdgesChange={setEdges}
-        onArrangeNodesRef={arrangeNodesRef}
-        onArrangeNodes={handleArrangeNodes}
-        onNodeSelect={handleNodeSelect}
-        onEditModeChange={handleEditModeChange}
-      />
+      {/* 表示形式切り替えボタン */}
+      <div className="absolute top-4 left-4 z-10 flex gap-2 rounded-lg border bg-white p-1 shadow-md">
+        <Button
+          variant={viewMode === "node-tree" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("node-tree")}
+          className="gap-2"
+        >
+          <LayoutGrid className="h-4 w-4" />
+          ノードツリー
+        </Button>
+        <Button
+          variant={viewMode === "list-tree" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("list-tree")}
+          className="gap-2"
+        >
+          <List className="h-4 w-4" />
+          リストツリー
+        </Button>
+      </div>
+
+      {/* 表示形式に応じてビューを切り替え */}
+      {viewMode === "node-tree" ? (
+        <MapView
+          orgData={orgData ?? emptyOrgData}
+          organizationId={organizationId}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={setNodes}
+          onEdgesChange={setEdges}
+          onArrangeNodesRef={arrangeNodesRef}
+          onArrangeNodes={handleArrangeNodes}
+          onNodeSelect={handleNodeSelect}
+          onEditModeChange={handleEditModeChange}
+        />
+      ) : (
+        <ListView
+          orgData={orgData ?? emptyOrgData}
+          onNodeSelect={handleNodeSelect}
+        />
+      )}
 
       {/* グループ詳細サイドバー（編集モード中は非表示） */}
       {!isEditMode && (
