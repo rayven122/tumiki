@@ -6,8 +6,8 @@ resource "keycloak_realm" "tumiki" {
   display_name = var.realm_display_name
   enabled      = true
 
-  # 開発環境向けSSL設定
-  ssl_required = "none"
+  # SSL設定（本番環境: external、開発環境: none）
+  ssl_required = var.ssl_required
 
   # ユーザー登録設定
   registration_allowed           = true
@@ -34,18 +34,95 @@ resource "keycloak_realm" "tumiki" {
   login_theme = "tumiki"
 
   # 国際化設定（日本語・英語サポート）
-  internationalization_enabled = true
-  supported_locales            = ["ja", "en"]
-  default_locale               = "ja"
+  internationalization {
+    supported_locales = ["ja", "en"]
+    default_locale    = "ja"
+  }
 
-  # User Profile設定（firstName/lastName任意化）
+  # SMTP設定（メール送信用）
+  smtp_server {
+    host              = var.smtp_host
+    port              = var.smtp_port
+    from              = var.smtp_from
+    from_display_name = var.smtp_from_display_name
+    starttls          = true
+
+    auth {
+      username = var.smtp_user
+      password = var.smtp_password
+    }
+  }
+
+  # User Profile有効化
   attributes = {
     userProfileEnabled = "true"
   }
 }
 
 # Master Realmへの参照（data source）
-# Keycloakの起動時に自動作成されるため、作成ではなく参照のみ
 data "keycloak_realm" "master" {
   realm = "master"
+}
+
+# User Profile設定（firstName/lastNameをオプショナルに）
+resource "keycloak_realm_user_profile" "tumiki" {
+  realm_id = keycloak_realm.tumiki.id
+
+  attribute {
+    name         = "username"
+    display_name = "$${username}"
+    permissions {
+      view = ["admin", "user"]
+      edit = ["admin"]
+    }
+    validator {
+      name   = "length"
+      config = { min = "3", max = "255" }
+    }
+    validator { name = "username-prohibited-characters" }
+    validator { name = "up-username-not-idn-homograph" }
+  }
+
+  attribute {
+    name               = "email"
+    display_name       = "$${email}"
+    required_for_roles = ["user"]
+    permissions {
+      view = ["admin", "user"]
+      edit = ["admin", "user"]
+    }
+    validator { name = "email" }
+    validator {
+      name   = "length"
+      config = { max = "255" }
+    }
+  }
+
+  attribute {
+    name         = "firstName"
+    display_name = "$${firstName}"
+    permissions {
+      view = ["admin", "user"]
+      edit = ["admin", "user"]
+    }
+    validator {
+      name   = "length"
+      config = { max = "255" }
+    }
+    validator { name = "person-name-prohibited-characters" }
+  }
+
+  attribute {
+    name         = "lastName"
+    display_name = "$${lastName}"
+    permissions {
+      view = ["admin", "user"]
+      edit = ["admin", "user"]
+    }
+    validator {
+      name   = "length"
+      config = { max = "255" }
+    }
+    validator { name = "person-name-prohibited-characters" }
+  }
 }
