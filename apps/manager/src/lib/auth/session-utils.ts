@@ -11,17 +11,6 @@ export type SessionInfo = {
 };
 
 /**
- * group_rolesから個人組織のslugを取得
- * 個人組織のslugは@で始まる
- *
- * @param groupRoles - Keycloakのgroup_roles配列
- * @returns 個人組織のslug、見つからない場合はnull
- */
-export const getPersonalOrgSlug = (groupRoles: string[]): string | null => {
-  return groupRoles.find((slug) => slug.startsWith("@")) ?? null;
-};
-
-/**
  * セッションから組織関連情報を取得する統合関数
  * Auth.jsのJWTコールバックで変換されたtumiki claimsから必要な情報を抽出
  *
