@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, ChevronRightIcon, KeyIcon } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { TypingIndicator } from "./typing-indicator";
 import { useAtomValue } from "jotai";
 import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
@@ -130,6 +130,9 @@ type AuthErrorInfo = {
 /**
  * 出力から認証エラー情報を抽出する
  * 再認証が必要な場合はmcpServerIdを含むオブジェクトを返す
+ *
+ * requiresReauth: true が設定されている場合は errorType に関係なく
+ * 認証エラーとして扱う（401エラーやReAuthRequiredエラーに対応）
  */
 const extractAuthError = (output: unknown): AuthErrorInfo | null => {
   if (!output || typeof output !== "object") return null;
@@ -141,9 +144,9 @@ const extractAuthError = (output: unknown): AuthErrorInfo | null => {
     mcpServerId?: string;
   };
 
+  // requiresReauth: true があれば認証エラーとして扱う
   if (
     obj.isError === true &&
-    obj.errorType === "authentication" &&
     obj.requiresReauth === true &&
     typeof obj.mcpServerId === "string"
   ) {
@@ -206,40 +209,37 @@ const ReauthBanner = ({
   });
 
   return (
-    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-      <div className="flex items-start gap-2">
-        <span className="text-lg text-amber-600 dark:text-amber-400">⚠️</span>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-            認証の有効期限が切れました
-          </p>
-          <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-            再認証するとツールを使用できるようになります
-          </p>
-        </div>
+    <div className="mt-2 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-800/50 dark:bg-amber-950/20">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-amber-600 dark:text-amber-400">⚠️</span>
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          認証の有効期限が切れました
+        </p>
       </div>
       <button
         type="button"
         onClick={() => startReauthentication(mcpServerId)}
         disabled={isPending}
         className={cn(
-          "mt-3 flex min-h-11 w-full items-center justify-center gap-2",
-          "rounded-lg px-4 py-2 font-medium",
-          "bg-amber-600 text-white",
-          "hover:bg-amber-700 active:bg-amber-800",
+          "flex shrink-0 items-center gap-1.5",
+          "rounded-md border border-amber-300 px-2.5 py-1 text-xs font-medium",
+          "bg-white text-amber-700",
+          "hover:bg-amber-50 active:bg-amber-100",
+          "dark:border-amber-700 dark:bg-transparent dark:text-amber-300",
+          "dark:hover:bg-amber-900/30 dark:active:bg-amber-900/50",
           "disabled:cursor-not-allowed disabled:opacity-50",
           "transition-colors duration-150",
         )}
       >
         {isPending ? (
           <>
-            <span className="animate-spin">⏳</span>
-            認証画面を準備中...
+            <span className="animate-spin text-xs">⏳</span>
+            準備中...
           </>
         ) : (
           <>
-            <KeyIcon className="size-4" />
-            再認証する
+            <KeyIcon className="size-3" />
+            再認証
           </>
         )}
       </button>
@@ -257,7 +257,7 @@ export const McpToolCall = ({
   output,
 }: McpToolCallProps) => {
   const mcpServerMap = useAtomValue(mcpServerMapAtom);
-  const params = useParams<{ orgSlug: string; id: string }>();
+  const pathname = usePathname();
   const { serverId, displayToolName } = parseToolName(toolName);
   const serverName = resolveServerName(mcpServerMap, serverId);
   const isLoading = state === "input-streaming" || state === "input-available";
@@ -273,8 +273,10 @@ export const McpToolCall = ({
     state === "output-available" && outputHasError ? "output-error" : state;
 
   // 再認証後に戻るURL（チャット画面）
-  const redirectTo =
-    params.orgSlug && params.id ? `/${params.orgSlug}/chat/${params.id}` : null;
+  // パスから orgSlug と chatId を抽出: /[orgSlug]/chat/[chatId]
+  const redirectTo = pathname?.match(/^\/([^/]+)\/chat\/([^/]+)/)
+    ? pathname
+    : null;
 
   return (
     <div
