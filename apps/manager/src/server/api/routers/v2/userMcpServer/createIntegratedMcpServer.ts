@@ -3,6 +3,7 @@ import type { CreateIntegratedMcpServerInputV2 } from ".";
 import { ServerStatus, ServerType, AuthType } from "@tumiki/db/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
+import { copyOAuthTokensForNewInstances } from "./helpers/copyOAuthTokens";
 
 export type CreateIntegratedMcpServerInput = z.infer<
   typeof CreateIntegratedMcpServerInputV2
@@ -140,7 +141,22 @@ export const createIntegratedMcpServer = async (
         ),
       },
     },
+    include: {
+      templateInstances: {
+        include: {
+          mcpServerTemplate: true,
+        },
+      },
+    },
   });
+
+  // 3. OAuthトークンのコピー（同じテンプレートの既存トークンを新インスタンスにコピー）
+  await copyOAuthTokensForNewInstances(
+    prisma,
+    mcpServer.templateInstances,
+    userId,
+    organizationId,
+  );
 
   return {
     id: mcpServer.id,

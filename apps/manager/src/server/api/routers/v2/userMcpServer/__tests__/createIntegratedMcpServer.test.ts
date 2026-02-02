@@ -2,13 +2,14 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { createIntegratedMcpServer } from "../createIntegratedMcpServer";
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { AuthType } from "@tumiki/db/server";
 import type { McpServerTemplate, McpTool } from "@tumiki/db/server";
 import type { ToolId } from "@/schema/ids";
 
 // テスト用のモック型定義
 type MockMcpServerTemplate = Pick<
   McpServerTemplate,
-  "id" | "name" | "envVarKeys"
+  "id" | "name" | "envVarKeys" | "authType"
 > & {
   mcpTools: Array<Pick<McpTool, "id">>;
 };
@@ -30,6 +31,10 @@ describe("createIntegratedMcpServer", () => {
       mcpServer: {
         create: vi.fn(),
       },
+      mcpOAuthToken: {
+        findFirst: vi.fn(),
+        create: vi.fn(),
+      },
       organizationMember: {
         findMany: vi.fn(),
       },
@@ -45,6 +50,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-1",
       name: "GitHub",
       envVarKeys: [],
+      authType: AuthType.NONE, // OAuthトークンコピー対象外
       mcpTools: [{ id: "tool-1" }, { id: "tool-2" }],
     } as MockMcpServerTemplate;
 
@@ -52,6 +58,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-2",
       name: "Slack",
       envVarKeys: [],
+      authType: AuthType.NONE, // OAuthトークンコピー対象外
       mcpTools: [{ id: "tool-3" }, { id: "tool-4" }],
     } as MockMcpServerTemplate;
 
@@ -65,6 +72,18 @@ describe("createIntegratedMcpServer", () => {
       authType: "OAUTH",
       organizationId: testOrganizationId,
       displayOrder: 0,
+      templateInstances: [
+        {
+          id: "instance-1",
+          mcpServerTemplateId: "template-1",
+          mcpServerTemplate: mockTemplate1,
+        },
+        {
+          id: "instance-2",
+          mcpServerTemplateId: "template-2",
+          mcpServerTemplate: mockTemplate2,
+        },
+      ],
     };
 
     vi.mocked(mockTx.mcpServerTemplate.findUnique)
@@ -156,6 +175,13 @@ describe("createIntegratedMcpServer", () => {
           ],
         },
       },
+      include: {
+        templateInstances: {
+          include: {
+            mcpServerTemplate: true,
+          },
+        },
+      },
     });
   });
 
@@ -165,6 +191,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-1",
       name: "GitHub",
       envVarKeys: [],
+      authType: AuthType.NONE,
       mcpTools: [{ id: "tool-1" }, { id: "tool-2" }, { id: "tool-3" }],
     } as MockMcpServerTemplate;
 
@@ -172,11 +199,24 @@ describe("createIntegratedMcpServer", () => {
       id: "template-2",
       name: "Slack",
       envVarKeys: [],
+      authType: AuthType.NONE,
       mcpTools: [{ id: "tool-4" }, { id: "tool-5" }],
     } as MockMcpServerTemplate;
 
     const mockCreatedServer = {
       id: "integrated-server-123",
+      templateInstances: [
+        {
+          id: "instance-1",
+          mcpServerTemplateId: "template-1",
+          mcpServerTemplate: mockTemplate,
+        },
+        {
+          id: "instance-2",
+          mcpServerTemplateId: "template-2",
+          mcpServerTemplate: mockTemplate2,
+        },
+      ],
     };
 
     vi.mocked(mockTx.mcpServerTemplate.findUnique)
@@ -257,6 +297,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-1",
       name: "GitHub",
       envVarKeys: ["GITHUB_TOKEN"],
+      authType: AuthType.API_KEY,
       mcpTools: [{ id: "tool-1" }],
     } as MockMcpServerTemplate;
 
@@ -264,11 +305,24 @@ describe("createIntegratedMcpServer", () => {
       id: "template-2",
       name: "Slack",
       envVarKeys: ["SLACK_TOKEN"],
+      authType: AuthType.API_KEY,
       mcpTools: [{ id: "tool-2" }],
     } as MockMcpServerTemplate;
 
     const mockCreatedServer = {
       id: "integrated-server-123",
+      templateInstances: [
+        {
+          id: "instance-1",
+          mcpServerTemplateId: "template-1",
+          mcpServerTemplate: mockTemplate,
+        },
+        {
+          id: "instance-2",
+          mcpServerTemplateId: "template-2",
+          mcpServerTemplate: mockTemplate2,
+        },
+      ],
     };
 
     vi.mocked(mockTx.mcpServerTemplate.findUnique)
@@ -390,6 +444,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-1",
       name: "GitHub",
       envVarKeys: [],
+      authType: AuthType.NONE,
       mcpTools: [{ id: "tool-1" }, { id: "tool-2" }],
     } as MockMcpServerTemplate;
 
@@ -397,6 +452,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-2",
       name: "Slack",
       envVarKeys: [],
+      authType: AuthType.NONE,
       mcpTools: [{ id: "tool-3" }],
     } as MockMcpServerTemplate;
 
@@ -446,6 +502,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-1",
       name: "GitHub",
       envVarKeys: ["GITHUB_TOKEN"],
+      authType: AuthType.API_KEY,
       mcpTools: [{ id: "tool-1" }],
     } as MockMcpServerTemplate;
 
@@ -453,6 +510,7 @@ describe("createIntegratedMcpServer", () => {
       id: "template-2",
       name: "Slack",
       envVarKeys: [],
+      authType: AuthType.NONE,
       mcpTools: [{ id: "tool-2" }],
     } as MockMcpServerTemplate;
 
