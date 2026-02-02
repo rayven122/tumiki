@@ -309,6 +309,7 @@ describe("copyOAuthTokensForNewInstances", () => {
     // createManyも1回だけ呼ばれる（バッチ処理）
     expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledTimes(1);
     expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledWith({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data: expect.arrayContaining([
         expect.objectContaining({
           mcpServerTemplateInstanceId: oauthInstance1.id,
