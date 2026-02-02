@@ -21,8 +21,7 @@ jobs:
   # 環境判定
   setup:
     name: 🔧 環境設定
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       stage: ${{ steps.env.outputs.stage }}
@@ -38,8 +37,7 @@ jobs:
     name: 🗄️ データベースマイグレーション
     needs: setup
     if: needs.setup.outputs.environment != 'preview'
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
       migration_applied: ${{ steps.migrate.outputs.migration_applied }}
@@ -95,8 +93,7 @@ jobs:
       always() &&
       needs.setup.result == 'success' &&
       (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped' || needs.setup.outputs.environment == 'preview')
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     outputs:
       vercel_url: ${{ steps.deploy.outputs.url }}
@@ -150,8 +147,7 @@ jobs:
       always() &&
       needs.setup.result == 'success' &&
       (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     # Preview環境ではstagingのシークレットを使用するため、environmentをstagingに設定
     environment: ${{ needs.setup.outputs.environment == 'production' && 'production' || 'staging' }}
     outputs:
@@ -202,8 +198,7 @@ jobs:
       always() &&
       github.event_name == 'pull_request' &&
       (needs.deploy.result == 'success' || needs.deploy-cloudrun.result == 'success')
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -223,8 +218,7 @@ jobs:
       always() &&
       (needs.setup.outputs.is_pr != 'true' ||
        contains(github.event.pull_request.labels.*.name, 'test-slack'))
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

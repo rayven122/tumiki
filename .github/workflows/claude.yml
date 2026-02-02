@@ -18,8 +18,7 @@ jobs:
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     permissions:
       contents: write # Allow Claude to push commits and create branches
       pull-requests: write # Allow Claude to create and update PRs, add comments
@@ -40,13 +39,6 @@ jobs:
 
       - name: ⚙️ Setup
         uses: ./.github/actions/setup
-
-      - name: 🛠️ Install GitHub CLI
-        run: |
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install gh -y
 
       - name: 🤖 Run Claude Code
         id: claude
