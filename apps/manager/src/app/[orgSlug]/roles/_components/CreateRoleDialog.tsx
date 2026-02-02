@@ -114,12 +114,15 @@ export const CreateRoleDialog = ({
     });
 
   // MCPサーバーのオプション形式に変換（iconPathを含む）
+  // McpServer自体のiconPathを優先し、なければテンプレートのiconPathをフォールバック
   const mcpServerOptions = useMemo(() => {
     return (mcpServers ?? []).map((server) => ({
       id: server.id,
       name: server.name,
       iconPath:
-        server.templateInstances?.[0]?.mcpServerTemplate?.iconPath ?? null,
+        server.iconPath ??
+        server.templateInstances?.[0]?.mcpServerTemplate?.iconPath ??
+        null,
     }));
   }, [mcpServers]);
 

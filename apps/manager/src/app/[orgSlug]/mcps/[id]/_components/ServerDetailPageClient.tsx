@@ -15,8 +15,7 @@ import {
   Wrench,
   Shield,
 } from "lucide-react";
-import Image from "next/image";
-import { FaviconImage } from "@/components/ui/FaviconImage";
+import { McpServerIcon } from "../../_components/McpServerIcon";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "@/utils/client/toast";
@@ -338,40 +337,17 @@ export const ServerDetailPageClient = ({
                 <div className="flex min-w-0 flex-1 items-start gap-4">
                   {/* アイコン */}
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-gray-50">
-                    {server.iconPath ? (
-                      <Image
-                        src={server.iconPath}
-                        alt={server.name}
-                        width={48}
-                        height={48}
-                        className="rounded-lg"
-                      />
-                    ) : server.templateInstances[0]?.mcpServerTemplate
-                        ?.iconPath ? (
-                      <Image
-                        src={
-                          server.templateInstances[0].mcpServerTemplate.iconPath
-                        }
-                        alt={server.name}
-                        width={48}
-                        height={48}
-                        className="rounded-lg"
-                      />
-                    ) : (
-                      <FaviconImage
-                        url={
-                          server.templateInstances[0]?.mcpServerTemplate?.url ??
-                          null
-                        }
-                        alt={server.name}
-                        size={48}
-                        fallback={
-                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-linear-to-br from-blue-50 to-blue-100">
-                            <Server className="h-8 w-8 text-blue-600" />
-                          </div>
-                        }
-                      />
-                    )}
+                    <McpServerIcon
+                      iconPath={
+                        server.iconPath ??
+                        server.templateInstances[0]?.mcpServerTemplate?.iconPath
+                      }
+                      fallbackUrl={
+                        server.templateInstances[0]?.mcpServerTemplate?.url
+                      }
+                      alt={server.name}
+                      size={48}
+                    />
                   </div>
 
                   {/* サーバー情報 */}

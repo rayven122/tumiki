@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { Plus, Server } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { McpPermission, McpServerOption } from "./PermissionSelector";
+import { ServerIcon } from "./ServerIcon";
 
 type AddServerPermissionFormProps = {
   availableServers: McpServerOption[];
@@ -98,19 +98,7 @@ export const AddServerPermissionForm = ({
             {availableServers.map((option) => (
               <SelectItem key={option.id} value={option.id}>
                 <div className="flex items-center gap-2">
-                  {option.iconPath ? (
-                    <div className="relative h-4 w-4 overflow-hidden rounded-sm">
-                      <Image
-                        src={option.iconPath}
-                        alt={option.name}
-                        fill
-                        className="object-cover"
-                        sizes="16px"
-                      />
-                    </div>
-                  ) : (
-                    <Server className="h-4 w-4 text-blue-500" />
-                  )}
+                  <ServerIcon iconPath={option.iconPath} size="sm" />
                   {option.name}
                 </div>
               </SelectItem>

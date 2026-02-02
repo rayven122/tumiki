@@ -67,6 +67,7 @@ const ROLE_PERMISSIONS: Record<OrganizationRole, Permission[]> = {
     "member:role:update",
     "group:read",
     "group:manage",
+    "role:manage",
     "mcp:create",
     "mcp:delete",
     "mcp:use",
