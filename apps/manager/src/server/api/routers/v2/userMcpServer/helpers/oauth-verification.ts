@@ -152,6 +152,8 @@ export const getMcpServerAndOAuthClient = async (
       templateUrl: template.url,
       transportType: template.transportType,
     },
+    mcpServerTemplateId: template.id,
+    mcpServerTemplateInstanceId: templateInstance.id,
     oauthClient,
     organization,
   };

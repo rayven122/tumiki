@@ -7,14 +7,19 @@ import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAutho
 import { discoverOAuthMetadata } from "@/lib/oauth/dcr";
 
 /**
+ * OAuthクライアント情報
+ */
+type OAuthClientInfo = {
+  clientId: string;
+  clientSecret: string | null;
+};
+
+/**
  * OAuthトークンとクライアント情報
  */
 type OAuthTokenWithClient = {
   id: string;
-  oauthClient: {
-    clientId: string;
-    clientSecret: string | null;
-  };
+  oauthClient: OAuthClientInfo;
 };
 
 /**
@@ -38,7 +43,7 @@ type ValidatedOAuthMetadata = {
  */
 type GenerateReauthUrlParams = {
   templateUrl: string;
-  oauthToken: OAuthTokenWithClient;
+  oauthClient: OAuthClientInfo;
   mcpServerId: string;
   mcpServerTemplateInstanceId: string;
   userId: string;
@@ -53,7 +58,7 @@ export const fetchOAuthTokenWithClient = async (
   tx: PrismaTransactionClient,
   userId: string,
   mcpServerTemplateInstanceId: string,
-): Promise<OAuthTokenWithClient> => {
+): Promise<OAuthTokenWithClient | null> => {
   const oauthToken = await tx.mcpOAuthToken.findUnique({
     where: {
       userId_mcpServerTemplateInstanceId: {
@@ -72,13 +77,44 @@ export const fetchOAuthTokenWithClient = async (
   });
 
   if (!oauthToken) {
+    // トークンが見つからない場合はnullを返す（新規認証が必要）
+    return null;
+  }
+
+  return {
+    id: oauthToken.id,
+    oauthClient: oauthToken.oauthClient,
+  };
+};
+
+/**
+ * 組織のOAuthクライアントを取得
+ * トークンがない招待ユーザーが認証する際に使用
+ */
+export const fetchOAuthClientForTemplate = async (
+  tx: PrismaTransactionClient,
+  mcpServerTemplateId: string,
+  organizationId: string,
+): Promise<OAuthClientInfo> => {
+  const oauthClient = await tx.mcpOAuthClient.findFirst({
+    where: {
+      mcpServerTemplateId,
+      organizationId,
+    },
+    select: {
+      clientId: true,
+      clientSecret: true,
+    },
+  });
+
+  if (!oauthClient) {
     throw new TRPCError({
       code: "NOT_FOUND",
-      message: "OAuth設定が見つかりません。サーバーを再度追加してください。",
+      message: "この組織にはOAuth設定がありません。管理者に連絡してください。",
     });
   }
 
-  return oauthToken;
+  return oauthClient;
 };
 
 /**
@@ -112,7 +148,7 @@ export const generateReauthenticationUrl = async (
 ): Promise<string> => {
   const {
     templateUrl,
-    oauthToken,
+    oauthClient,
     mcpServerId,
     mcpServerTemplateInstanceId,
     userId,
@@ -125,8 +161,8 @@ export const generateReauthenticationUrl = async (
 
   // Authorization URLを生成
   return generateAuthorizationUrl({
-    clientId: oauthToken.oauthClient.clientId,
-    clientSecret: oauthToken.oauthClient.clientSecret ?? "",
+    clientId: oauthClient.clientId,
+    clientSecret: oauthClient.clientSecret ?? "",
     authorizationEndpoint: metadata.authorization_endpoint,
     tokenEndpoint: metadata.token_endpoint,
     scopes: metadata.scopes_supported ?? [],

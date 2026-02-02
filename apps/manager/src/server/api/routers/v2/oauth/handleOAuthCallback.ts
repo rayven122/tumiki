@@ -43,12 +43,16 @@ export const handleOAuthCallback = async (
     const statePayload = await verifyOAuthState(state, userId);
 
     // 2. MCPサーバーとOAuthクライアント情報を取得
-    const { mcpServer, oauthClient, organization } =
-      await getMcpServerAndOAuthClient(
-        tx,
-        statePayload.mcpServerTemplateInstanceId,
-        statePayload.organizationId,
-      );
+    const {
+      mcpServer,
+      mcpServerTemplateInstanceId,
+      oauthClient,
+      organization,
+    } = await getMcpServerAndOAuthClient(
+      tx,
+      statePayload.mcpServerTemplateInstanceId,
+      statePayload.organizationId,
+    );
 
     // 3. 認可コードをアクセストークンに交換
     // 元のサーバーURL（MCPサーバーテンプレートのURL）を使用してメタデータを取得
@@ -69,14 +73,14 @@ export const handleOAuthCallback = async (
       where: {
         userId_mcpServerTemplateInstanceId: {
           userId,
-          mcpServerTemplateInstanceId: statePayload.mcpServerTemplateInstanceId,
+          mcpServerTemplateInstanceId,
         },
       },
       create: {
         userId,
         organizationId: statePayload.organizationId,
         oauthClientId: oauthClient.id,
-        mcpServerTemplateInstanceId: statePayload.mcpServerTemplateInstanceId,
+        mcpServerTemplateInstanceId,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token ?? null,
         expiresAt,

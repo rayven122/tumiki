@@ -68,15 +68,39 @@ export const UserMcpServerCard = ({
   const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
   const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
 
-  // 最初のテンプレートインスタンスを使用
+  // 最初のテンプレートインスタンスを使用（ツール表示用）
   const firstInstance = userMcpServer.templateInstances[0];
   const tools = firstInstance?.tools ?? [];
   const mcpServer = firstInstance?.mcpServerTemplate ?? null;
 
+  // OAuth未認証のインスタンス一覧を取得（UIで表示用）
+  // カスタムMCPサーバーの場合、どのMCPが認証を必要としているか表示する
+  const unauthenticatedOAuthInstances = userMcpServer.templateInstances.filter(
+    (instance) => instance.isOAuthAuthenticated === false,
+  );
+
+  // OAuth未認証のインスタンスを探す（認証が必要なものを優先）
+  // カスタムMCPサーバーの場合、最初のインスタンスがOAuth非対応（例: Context7 = NONE）でも
+  // 2番目以降にOAuth対応インスタンス（例: Linear MCP）がある場合、そちらを使用する
+  const firstUnauthenticatedOAuthInstance = unauthenticatedOAuthInstances[0];
+
+  // OAuth再認証用のターゲットインスタンス
+  // 未認証OAuthインスタンスがあればそれを使用、なければ最初のインスタンス
+  const targetInstanceForReauth =
+    firstUnauthenticatedOAuthInstance ?? firstInstance;
+
+  // AuthTypeIndicator用の未認証インスタンス情報を生成
+  const unauthenticatedInstancesForDisplay = unauthenticatedOAuthInstances.map(
+    (instance) => ({
+      templateName: instance.mcpServerTemplate.name,
+      iconPath: instance.mcpServerTemplate.iconPath,
+    }),
+  );
+
   // OAuth再認証フック
   const { handleReauthenticate, isPending: isReauthenticating } =
     useReauthenticateOAuth({
-      mcpServerTemplateInstanceId: firstInstance?.id ?? "",
+      mcpServerTemplateInstanceId: targetInstanceForReauth?.id ?? "",
     });
 
   // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
@@ -138,6 +162,10 @@ export const UserMcpServerCard = ({
                   ? userMcpServer.apiKeys.length
                   : undefined
               }
+              isOAuthAuthenticated={userMcpServer.allOAuthAuthenticated}
+              onReauthenticate={handleReauthenticate}
+              isReauthenticating={isReauthenticating}
+              unauthenticatedInstances={unauthenticatedInstancesForDisplay}
             />
             {/* メニューボタン */}
             <DropdownMenu>

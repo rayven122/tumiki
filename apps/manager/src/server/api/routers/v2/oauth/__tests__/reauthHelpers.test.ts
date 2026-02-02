@@ -155,12 +155,9 @@ describe("reauthHelpers", () => {
 
       const result = await generateReauthenticationUrl({
         templateUrl: "https://example.com/mcp",
-        oauthToken: {
-          id: "token-123",
-          oauthClient: {
-            clientId: "client-123",
-            clientSecret: "secret-abc",
-          },
+        oauthClient: {
+          clientId: "client-123",
+          clientSecret: "secret-abc",
         },
         mcpServerId: "server-123",
         mcpServerTemplateInstanceId: "instance-456",
@@ -199,12 +196,9 @@ describe("reauthHelpers", () => {
 
       await generateReauthenticationUrl({
         templateUrl: "https://example.com/mcp",
-        oauthToken: {
-          id: "token-123",
-          oauthClient: {
-            clientId: "client-123",
-            clientSecret: null,
-          },
+        oauthClient: {
+          clientId: "client-123",
+          clientSecret: null,
         },
         mcpServerId: "server-123",
         mcpServerTemplateInstanceId: "instance-456",
