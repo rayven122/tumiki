@@ -13,8 +13,8 @@ const mockOAuthClientId = "oauth_client_789";
 const createMockPrismaClient = () => {
   return {
     mcpOAuthToken: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
+      findMany: vi.fn(),
+      createMany: vi.fn(),
     },
   } as unknown as PrismaTransactionClient;
 };
@@ -57,8 +57,11 @@ const createMockInstance = (
   },
 });
 
-// テスト用トークンデータ作成
-const createMockToken = (instanceId: string) => ({
+// テスト用トークンデータ作成（findMany用にmcpServerTemplateInstanceを含む）
+const createMockTokenWithInstance = (
+  instanceId: string,
+  templateId: string,
+) => ({
   id: "token_xyz",
   oauthClientId: mockOAuthClientId,
   mcpServerTemplateInstanceId: instanceId,
@@ -70,6 +73,9 @@ const createMockToken = (instanceId: string) => ({
   tokenPurpose: TokenPurpose.BACKEND_MCP,
   createdAt: new Date(),
   updatedAt: new Date(),
+  mcpServerTemplateInstance: {
+    mcpServerTemplateId: templateId,
+  },
 });
 
 describe("copyOAuthTokensForNewInstances", () => {
@@ -86,18 +92,17 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockTemplateId,
       AuthType.OAUTH,
     );
-    const existingToken = createMockToken("existing_instance_1");
+    const existingToken = createMockTokenWithInstance(
+      "existing_instance_1",
+      mockTemplateId,
+    );
 
     (
-      mockPrisma.mcpOAuthToken.findFirst as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(existingToken);
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([existingToken]);
     (
-      mockPrisma.mcpOAuthToken.create as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      ...existingToken,
-      id: "new_token_id",
-      mcpServerTemplateInstanceId: newInstance.id,
-    });
+      mockPrisma.mcpOAuthToken.createMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ count: 1 });
 
     await copyOAuthTokensForNewInstances(
       mockPrisma,
@@ -106,33 +111,40 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    // findFirstが正しいパラメータで呼ばれることを確認
-    expect(mockPrisma.mcpOAuthToken.findFirst).toHaveBeenCalledWith({
+    // findManyが正しいパラメータで呼ばれることを確認
+    expect(mockPrisma.mcpOAuthToken.findMany).toHaveBeenCalledWith({
       where: {
         userId: mockUserId,
         mcpServerTemplateInstance: {
-          mcpServerTemplateId: mockTemplateId,
-          id: { not: newInstance.id },
+          mcpServerTemplateId: { in: [mockTemplateId] },
+          id: { notIn: [newInstance.id] },
+        },
+      },
+      include: {
+        mcpServerTemplateInstance: {
+          select: { mcpServerTemplateId: true },
         },
       },
     });
 
-    // createが正しいパラメータで呼ばれることを確認
-    expect(mockPrisma.mcpOAuthToken.create).toHaveBeenCalledWith({
-      data: {
-        oauthClientId: existingToken.oauthClientId,
-        mcpServerTemplateInstanceId: newInstance.id,
-        userId: mockUserId,
-        organizationId: mockOrganizationId,
-        accessToken: existingToken.accessToken,
-        refreshToken: existingToken.refreshToken,
-        expiresAt: existingToken.expiresAt,
-        tokenPurpose: existingToken.tokenPurpose,
-      },
+    // createManyが正しいパラメータで呼ばれることを確認
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          oauthClientId: existingToken.oauthClientId,
+          mcpServerTemplateInstanceId: newInstance.id,
+          userId: mockUserId,
+          organizationId: mockOrganizationId,
+          accessToken: existingToken.accessToken,
+          refreshToken: existingToken.refreshToken,
+          expiresAt: existingToken.expiresAt,
+          tokenPurpose: existingToken.tokenPurpose,
+        },
+      ],
     });
   });
 
-  test("OAuthタイプのテンプレートで既存トークンがない場合、何もしない", async () => {
+  test("OAuthタイプのテンプレートで既存トークンがない場合、createManyは呼ばれない", async () => {
     const newInstance = createMockInstance(
       "new_instance_1",
       mockTemplateId,
@@ -140,8 +152,8 @@ describe("copyOAuthTokensForNewInstances", () => {
     );
 
     (
-      mockPrisma.mcpOAuthToken.findFirst as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(null);
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([]);
 
     await copyOAuthTokensForNewInstances(
       mockPrisma,
@@ -150,8 +162,8 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.findFirst).toHaveBeenCalled();
-    expect(mockPrisma.mcpOAuthToken.create).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.findMany).toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.createMany).not.toHaveBeenCalled();
   });
 
   test("API_KEYタイプのテンプレートの場合、トークンコピーをスキップする", async () => {
@@ -168,8 +180,8 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.findFirst).not.toHaveBeenCalled();
-    expect(mockPrisma.mcpOAuthToken.create).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.createMany).not.toHaveBeenCalled();
   });
 
   test("NONEタイプのテンプレートの場合、トークンコピーをスキップする", async () => {
@@ -186,8 +198,8 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.findFirst).not.toHaveBeenCalled();
-    expect(mockPrisma.mcpOAuthToken.create).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.createMany).not.toHaveBeenCalled();
   });
 
   test("複数のインスタンスがある場合、OAuthタイプのみ処理する", async () => {
@@ -206,17 +218,17 @@ describe("copyOAuthTokensForNewInstances", () => {
       "template_none",
       AuthType.NONE,
     );
-    const existingToken = createMockToken("existing_instance");
+    const existingToken = createMockTokenWithInstance(
+      "existing_instance",
+      "template_oauth",
+    );
 
     (
-      mockPrisma.mcpOAuthToken.findFirst as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(existingToken);
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([existingToken]);
     (
-      mockPrisma.mcpOAuthToken.create as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      ...existingToken,
-      id: "new_token_id",
-    });
+      mockPrisma.mcpOAuthToken.createMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ count: 1 });
 
     await copyOAuthTokensForNewInstances(
       mockPrisma,
@@ -225,12 +237,26 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    // findFirstは1回だけ呼ばれる（OAuthタイプのみ）
-    expect(mockPrisma.mcpOAuthToken.findFirst).toHaveBeenCalledTimes(1);
-    expect(mockPrisma.mcpOAuthToken.create).toHaveBeenCalledTimes(1);
+    // findManyは1回だけ呼ばれる（OAuthタイプのみ）
+    expect(mockPrisma.mcpOAuthToken.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.mcpOAuthToken.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: mockUserId,
+        mcpServerTemplateInstance: {
+          mcpServerTemplateId: { in: ["template_oauth"] },
+          id: { notIn: [oauthInstance.id] },
+        },
+      },
+      include: {
+        mcpServerTemplateInstance: {
+          select: { mcpServerTemplateId: true },
+        },
+      },
+    });
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledTimes(1);
   });
 
-  test("複数のOAuthインスタンスがある場合、それぞれのトークンをコピーする", async () => {
+  test("複数のOAuthインスタンスがある場合、バッチでトークンをコピーする", async () => {
     const oauthInstance1 = createMockInstance(
       "new_instance_1",
       "template_oauth_1",
@@ -241,15 +267,21 @@ describe("copyOAuthTokensForNewInstances", () => {
       "template_oauth_2",
       AuthType.OAUTH,
     );
-    const existingToken1 = createMockToken("existing_1");
-    const existingToken2 = createMockToken("existing_2");
+    const existingToken1 = createMockTokenWithInstance(
+      "existing_1",
+      "template_oauth_1",
+    );
+    const existingToken2 = createMockTokenWithInstance(
+      "existing_2",
+      "template_oauth_2",
+    );
 
-    (mockPrisma.mcpOAuthToken.findFirst as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(existingToken1)
-      .mockResolvedValueOnce(existingToken2);
     (
-      mockPrisma.mcpOAuthToken.create as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({});
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([existingToken1, existingToken2]);
+    (
+      mockPrisma.mcpOAuthToken.createMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ count: 2 });
 
     await copyOAuthTokensForNewInstances(
       mockPrisma,
@@ -258,8 +290,34 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.findFirst).toHaveBeenCalledTimes(2);
-    expect(mockPrisma.mcpOAuthToken.create).toHaveBeenCalledTimes(2);
+    // findManyは1回だけ呼ばれる（バッチ処理）
+    expect(mockPrisma.mcpOAuthToken.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.mcpOAuthToken.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: mockUserId,
+        mcpServerTemplateInstance: {
+          mcpServerTemplateId: { in: ["template_oauth_1", "template_oauth_2"] },
+          id: { notIn: [oauthInstance1.id, oauthInstance2.id] },
+        },
+      },
+      include: {
+        mcpServerTemplateInstance: {
+          select: { mcpServerTemplateId: true },
+        },
+      },
+    });
+    // createManyも1回だけ呼ばれる（バッチ処理）
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({
+          mcpServerTemplateInstanceId: oauthInstance1.id,
+        }),
+        expect.objectContaining({
+          mcpServerTemplateInstanceId: oauthInstance2.id,
+        }),
+      ]),
+    });
   });
 
   test("空のインスタンス配列の場合、何も処理しない", async () => {
@@ -270,8 +328,8 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.findFirst).not.toHaveBeenCalled();
-    expect(mockPrisma.mcpOAuthToken.create).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.mcpOAuthToken.createMany).not.toHaveBeenCalled();
   });
 
   test("refreshTokenがnullの場合も正しくコピーする", async () => {
@@ -281,16 +339,16 @@ describe("copyOAuthTokensForNewInstances", () => {
       AuthType.OAUTH,
     );
     const existingToken = {
-      ...createMockToken("existing_instance_1"),
+      ...createMockTokenWithInstance("existing_instance_1", mockTemplateId),
       refreshToken: null,
     };
 
     (
-      mockPrisma.mcpOAuthToken.findFirst as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(existingToken);
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([existingToken]);
     (
-      mockPrisma.mcpOAuthToken.create as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({});
+      mockPrisma.mcpOAuthToken.createMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ count: 1 });
 
     await copyOAuthTokensForNewInstances(
       mockPrisma,
@@ -299,17 +357,19 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.create).toHaveBeenCalledWith({
-      data: {
-        oauthClientId: existingToken.oauthClientId,
-        mcpServerTemplateInstanceId: newInstance.id,
-        userId: mockUserId,
-        organizationId: mockOrganizationId,
-        accessToken: existingToken.accessToken,
-        refreshToken: null,
-        expiresAt: existingToken.expiresAt,
-        tokenPurpose: existingToken.tokenPurpose,
-      },
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          oauthClientId: existingToken.oauthClientId,
+          mcpServerTemplateInstanceId: newInstance.id,
+          userId: mockUserId,
+          organizationId: mockOrganizationId,
+          accessToken: existingToken.accessToken,
+          refreshToken: null,
+          expiresAt: existingToken.expiresAt,
+          tokenPurpose: existingToken.tokenPurpose,
+        },
+      ],
     });
   });
 
@@ -320,16 +380,16 @@ describe("copyOAuthTokensForNewInstances", () => {
       AuthType.OAUTH,
     );
     const existingToken = {
-      ...createMockToken("existing_instance_1"),
+      ...createMockTokenWithInstance("existing_instance_1", mockTemplateId),
       expiresAt: null,
     };
 
     (
-      mockPrisma.mcpOAuthToken.findFirst as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(existingToken);
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([existingToken]);
     (
-      mockPrisma.mcpOAuthToken.create as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({});
+      mockPrisma.mcpOAuthToken.createMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ count: 1 });
 
     await copyOAuthTokensForNewInstances(
       mockPrisma,
@@ -338,17 +398,60 @@ describe("copyOAuthTokensForNewInstances", () => {
       mockOrganizationId,
     );
 
-    expect(mockPrisma.mcpOAuthToken.create).toHaveBeenCalledWith({
-      data: {
-        oauthClientId: existingToken.oauthClientId,
-        mcpServerTemplateInstanceId: newInstance.id,
-        userId: mockUserId,
-        organizationId: mockOrganizationId,
-        accessToken: existingToken.accessToken,
-        refreshToken: existingToken.refreshToken,
-        expiresAt: null,
-        tokenPurpose: existingToken.tokenPurpose,
-      },
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          oauthClientId: existingToken.oauthClientId,
+          mcpServerTemplateInstanceId: newInstance.id,
+          userId: mockUserId,
+          organizationId: mockOrganizationId,
+          accessToken: existingToken.accessToken,
+          refreshToken: existingToken.refreshToken,
+          expiresAt: null,
+          tokenPurpose: existingToken.tokenPurpose,
+        },
+      ],
+    });
+  });
+
+  test("一部のテンプレートにのみ既存トークンがある場合、存在するものだけコピーする", async () => {
+    const oauthInstance1 = createMockInstance(
+      "new_instance_1",
+      "template_oauth_1",
+      AuthType.OAUTH,
+    );
+    const oauthInstance2 = createMockInstance(
+      "new_instance_2",
+      "template_oauth_2",
+      AuthType.OAUTH,
+    );
+    // template_oauth_1のトークンのみ存在
+    const existingToken1 = createMockTokenWithInstance(
+      "existing_1",
+      "template_oauth_1",
+    );
+
+    (
+      mockPrisma.mcpOAuthToken.findMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([existingToken1]);
+    (
+      mockPrisma.mcpOAuthToken.createMany as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ count: 1 });
+
+    await copyOAuthTokensForNewInstances(
+      mockPrisma,
+      [oauthInstance1, oauthInstance2],
+      mockUserId,
+      mockOrganizationId,
+    );
+
+    // template_oauth_1のトークンのみコピーされる
+    expect(mockPrisma.mcpOAuthToken.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          mcpServerTemplateInstanceId: oauthInstance1.id,
+        }),
+      ],
     });
   });
 });

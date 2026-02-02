@@ -25,38 +25,70 @@ export const copyOAuthTokensForNewInstances = async (
   userId: string,
   organizationId: string,
 ): Promise<void> => {
-  for (const instance of newInstances) {
-    // OAuthタイプのテンプレートのみ対象
-    if (instance.mcpServerTemplate.authType !== AuthType.OAUTH) {
-      continue;
-    }
+  // OAuthタイプのインスタンスのみをフィルタリング
+  const oauthInstances = newInstances.filter(
+    (instance) => instance.mcpServerTemplate.authType === AuthType.OAUTH,
+  );
 
-    // 同じテンプレートを使用する既存インスタンスからトークンを探す
-    // 現在作成中のインスタンスは除外
-    const existingToken = await prisma.mcpOAuthToken.findFirst({
-      where: {
-        userId,
-        mcpServerTemplateInstance: {
-          mcpServerTemplateId: instance.mcpServerTemplateId,
-          id: { not: instance.id },
-        },
+  // OAuthインスタンスがない場合は早期リターン
+  if (oauthInstances.length === 0) {
+    return;
+  }
+
+  // バッチでトークンを取得（N+1クエリを回避）
+  const templateIds = oauthInstances.map(
+    (instance) => instance.mcpServerTemplateId,
+  );
+  const newInstanceIds = oauthInstances.map((instance) => instance.id);
+
+  const existingTokens = await prisma.mcpOAuthToken.findMany({
+    where: {
+      userId,
+      mcpServerTemplateInstance: {
+        mcpServerTemplateId: { in: templateIds },
+        id: { notIn: newInstanceIds },
       },
-    });
+    },
+    include: {
+      mcpServerTemplateInstance: {
+        select: { mcpServerTemplateId: true },
+      },
+    },
+  });
 
-    if (existingToken) {
-      // トークンをコピー（新しいインスタンス用に作成）
-      await prisma.mcpOAuthToken.create({
-        data: {
-          oauthClientId: existingToken.oauthClientId,
-          mcpServerTemplateInstanceId: instance.id,
-          userId,
-          organizationId,
-          accessToken: existingToken.accessToken,
-          refreshToken: existingToken.refreshToken,
-          expiresAt: existingToken.expiresAt,
-          tokenPurpose: existingToken.tokenPurpose,
-        },
-      });
-    }
+  // テンプレートIDをキーにしたマップを作成
+  const tokenMap = new Map(
+    existingTokens.map((token) => [
+      token.mcpServerTemplateInstance.mcpServerTemplateId,
+      token,
+    ]),
+  );
+
+  // コピーするトークンデータを収集
+  const tokensToCreate = oauthInstances
+    .map((instance) => {
+      const existingToken = tokenMap.get(instance.mcpServerTemplateId);
+      if (!existingToken) {
+        return null;
+      }
+
+      return {
+        oauthClientId: existingToken.oauthClientId,
+        mcpServerTemplateInstanceId: instance.id,
+        userId,
+        organizationId,
+        accessToken: existingToken.accessToken,
+        refreshToken: existingToken.refreshToken,
+        expiresAt: existingToken.expiresAt,
+        tokenPurpose: existingToken.tokenPurpose,
+      };
+    })
+    .filter((token) => token !== null);
+
+  // バッチでトークンを作成
+  if (tokensToCreate.length > 0) {
+    await prisma.mcpOAuthToken.createMany({
+      data: tokensToCreate,
+    });
   }
 };
