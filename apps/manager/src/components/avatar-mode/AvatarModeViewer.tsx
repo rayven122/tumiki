@@ -12,6 +12,27 @@ import { useVRMLoader } from "@/hooks/coharu/useVRMLoader";
 import { useAnimationManager } from "@/hooks/coharu/useAnimationManager";
 import { useCoharuContext } from "@/hooks/coharu/useCoharuContext";
 
+/**
+ * VRM未存在時のフォールバック表示（フルスクリーン用）
+ */
+const VrmNotFoundFallback = () => {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center rounded-2xl bg-gray-100/90 p-8 shadow-lg dark:bg-gray-800/90">
+        <div className="mb-4 text-6xl">🎭</div>
+        <p className="text-center text-lg font-medium text-gray-700 dark:text-gray-300">
+          VRMファイルが見つかりません
+        </p>
+        <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
+          docs/coharu-setup.md を参照して
+          <br />
+          VRMファイルを配置してください
+        </p>
+      </div>
+    </div>
+  );
+};
+
 export const AvatarModeViewer = () => {
   const mountRef = useRef<HTMLDivElement>(null);
   const clockRef = useRef<THREE.Clock>(new THREE.Clock());
@@ -23,7 +44,7 @@ export const AvatarModeViewer = () => {
   const { scene, camera, renderer } = useAvatarModeThreeScene(mountRef);
 
   // VRM ローダー
-  const { vrm, loadDefaultVRM } = useVRMLoader(scene);
+  const { vrm, isVrmAvailable, loadDefaultVRM } = useVRMLoader(scene);
 
   // アニメーション管理
   const { update: updateAnimation } = useAnimationManager(vrm);
@@ -39,10 +60,10 @@ export const AvatarModeViewer = () => {
 
   // 初期 VRM モデルの読み込み
   useEffect(() => {
-    if (scene && !vrm) {
+    if (scene && !vrm && isVrmAvailable) {
       void loadDefaultVRM();
     }
-  }, [scene, vrm, loadDefaultVRM]);
+  }, [scene, vrm, isVrmAvailable, loadDefaultVRM]);
 
   // アニメーションループ
   useEffect(() => {
@@ -77,6 +98,11 @@ export const AvatarModeViewer = () => {
       }
     };
   }, [vrm, camera, renderer, scene, updateAnimation, updateLipSync]);
+
+  // VRMが利用不可の場合はフォールバックを表示
+  if (isVrmAvailable === false) {
+    return <VrmNotFoundFallback />;
+  }
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex items-end justify-center">

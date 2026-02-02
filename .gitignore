@@ -164,3 +164,10 @@ scripts/setup-keycloak.sh
 
 # Keycloak themes (third-party) - pnpm install時に自動ダウンロード
 docker/keycloak/themes/keywind/
+
+# VRM assets (licensed content - download separately)
+# See docs/coharu-setup.md for setup instructions
+apps/manager/public/coharu/vrm/*.vrm
+apps/manager/public/coharu/vrma/*.vrma
+!apps/manager/public/coharu/vrm/.gitkeep
+!apps/manager/public/coharu/vrma/.gitkeep
