@@ -11,17 +11,7 @@ import {
   VRMAnimationLoaderPlugin,
   createVRMAnimationClip,
 } from "@pixiv/three-vrm-animation";
-
-// VRMA アニメーションファイルのパス
-const ANIMATION_PATHS = [
-  "/coharu/vrma/VRMA_01.vrma",
-  "/coharu/vrma/VRMA_02.vrma",
-  "/coharu/vrma/VRMA_03.vrma",
-  "/coharu/vrma/VRMA_04.vrma",
-  "/coharu/vrma/VRMA_05.vrma",
-  "/coharu/vrma/VRMA_06.vrma",
-  "/coharu/vrma/VRMA_07.vrma",
-];
+import { VRMA_PATHS } from "@/utils/coharu";
 
 export class VRMAAnimationManager {
   private vrm: VRM;
@@ -31,11 +21,17 @@ export class VRMAAnimationManager {
   private loader: GLTFLoader;
   private clock: THREE.Clock;
   private isRunning = false;
+  private animationPaths: readonly string[];
 
-  constructor(vrm: VRM) {
+  /**
+   * @param vrm VRMインスタンス
+   * @param animationPaths アニメーションファイルのパス配列（省略時はデフォルトパスを使用）
+   */
+  constructor(vrm: VRM, animationPaths?: readonly string[]) {
     this.vrm = vrm;
     this.mixer = new THREE.AnimationMixer(vrm.scene);
     this.clock = new THREE.Clock();
+    this.animationPaths = animationPaths ?? VRMA_PATHS;
 
     this.loader = new GLTFLoader();
     this.loader.register((parser) => new VRMAnimationLoaderPlugin(parser));
@@ -45,7 +41,12 @@ export class VRMAAnimationManager {
    * 全アニメーションを読み込み
    */
   private async loadAllAnimations(): Promise<void> {
-    const loadPromises = ANIMATION_PATHS.map(async (path) => {
+    if (this.animationPaths.length === 0) {
+      console.warn("No animation paths provided");
+      return;
+    }
+
+    const loadPromises = this.animationPaths.map(async (path) => {
       try {
         const gltf = await this.loader.loadAsync(path);
         const vrmAnimations = gltf.userData?.vrmAnimations as
@@ -100,6 +101,12 @@ export class VRMAAnimationManager {
 
     this.isRunning = true;
     await this.loadAllAnimations();
+
+    // アニメーションがロードできなかった場合は何もしない
+    if (this.clips.length === 0) {
+      console.warn("No animations loaded, skipping animation playback");
+      return;
+    }
 
     const playNext = () => {
       if (!this.isRunning) return;
