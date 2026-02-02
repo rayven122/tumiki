@@ -1,6 +1,5 @@
 "use client";
 
-import { useDraggable } from "@dnd-kit/core";
 import { Wrench, X, Plus, Server } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -10,45 +9,33 @@ type McpCardProps = {
   mcp: SelectableMcp;
   isSelected: boolean;
   onToggle: () => void;
-  isDragDisabled?: boolean;
+  isDragging?: boolean;
+  onDragStart?: (event: React.PointerEvent) => void;
 };
 
 export const McpCard = ({
   mcp,
   isSelected,
   onToggle,
-  isDragDisabled = false,
+  isDragging = false,
+  onDragStart,
 }: McpCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: mcp.id,
-      disabled: isDragDisabled,
-    });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: 9999,
-      }
-    : undefined;
+  const handlePointerDown = (event: React.PointerEvent) => {
+    if ((event.target as HTMLElement).closest("button")) return;
+    onDragStart?.(event);
+  };
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
+      onPointerDown={handlePointerDown}
       className={cn(
-        "group relative flex cursor-grab touch-none items-center gap-3 rounded-lg border bg-white p-3 transition-shadow active:cursor-grabbing",
+        "group relative flex cursor-grab touch-none items-center gap-3 rounded-lg border bg-white p-3 transition-shadow select-none active:cursor-grabbing",
         isSelected
           ? "border-purple-300 bg-purple-50"
           : "border-gray-200 hover:border-gray-300 hover:bg-gray-50",
-        isDragDisabled && "cursor-default",
-        // ドラッグ中はシャドウを追加
-        isDragging && "shadow-xl ring-2 ring-purple-400",
+        isDragging && "opacity-40",
       )}
     >
-      {/* MCP アイコン */}
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
         {mcp.iconPath ? (
           <Image
@@ -63,7 +50,6 @@ export const McpCard = ({
         )}
       </div>
 
-      {/* MCP 情報 */}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-gray-900">{mcp.name}</p>
         <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -72,14 +58,12 @@ export const McpCard = ({
         </div>
       </div>
 
-      {/* アクションボタン - ドラッグイベントを伝播させない */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
-        onPointerDown={(e) => e.stopPropagation()}
         className={cn(
           "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors",
           isSelected
