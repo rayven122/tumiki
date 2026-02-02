@@ -83,6 +83,30 @@ export const MCP_SERVERS: McpServer[] = [
     visibility: "PUBLIC" as const,
     oauthProvider: "notion",
   },
+  {
+    name: "Neon MCP",
+    description:
+      "Neon PostgreSQL データベースサービス - データベース管理とAI統合",
+    tags: ["データベース", "PostgreSQL", "ツール"],
+    iconPath: "/logos/neon.svg",
+    url: "https://mcp.neon.tech/mcp",
+    transportType: "STREAMABLE_HTTPS" as const,
+    authType: "OAUTH" as const,
+    visibility: "PUBLIC" as const,
+    oauthProvider: "neon",
+  },
+  {
+    name: "Supabase MCP",
+    description:
+      "Supabase プロジェクト管理 - データベース、認証、ストレージへのアクセス",
+    tags: ["データベース", "BaaS", "ツール"],
+    iconPath: "/logos/supabase.svg",
+    url: "https://mcp.supabase.com/mcp",
+    transportType: "STREAMABLE_HTTPS" as const,
+    authType: "OAUTH" as const,
+    visibility: "PUBLIC" as const,
+    oauthProvider: "supabase",
+  },
   // GitHub MCP - Copilotライセンスが必要なため一時的に無効化
   // 公式ドキュメント: https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server
   // 要件: Copilot Free/Pro/Pro+/Business/Enterprise のいずれかが必要
@@ -114,6 +138,21 @@ export const MCP_SERVERS: McpServer[] = [
   //   visibility: "PUBLIC" as const,
   //   oauthProvider: "atlassian",
   // },
+  // ========================================
+  // API Key Remote MCP Servers (外部サービス)
+  // ========================================
+  {
+    name: "Limitless MCP",
+    description:
+      "Limitless AI Lifelog統合 - 会話履歴の検索とパーソナルメモリへのアクセス",
+    tags: ["AI", "メモリ", "ライフログ", "ツール"],
+    iconPath: "/logos/limitless.svg",
+    url: "https://api.limitless.ai/mcp",
+    transportType: "STREAMABLE_HTTPS" as const,
+    envVarKeys: ["X-API-Key"],
+    authType: "API_KEY" as const,
+    visibility: "PUBLIC" as const,
+  },
   // ========================================
   // Cloud Run Remote MCP Servers
   // ========================================
