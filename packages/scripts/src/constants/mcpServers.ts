@@ -83,6 +83,10 @@ export const MCP_SERVERS: McpServer[] = [
     visibility: "PUBLIC" as const,
     oauthProvider: "notion",
   },
+  // GitHub MCP - Copilotライセンスが必要なため一時的に無効化
+  // 公式ドキュメント: https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server
+  // 要件: Copilot Free/Pro/Pro+/Business/Enterprise のいずれかが必要
+  // 組織ポリシー: Copilot Business/Enterpriseの場合、管理者が「MCP servers in Copilot」を有効にする必要あり
   // {
   //   name: "GitHub MCP",
   //   description:
@@ -95,17 +99,21 @@ export const MCP_SERVERS: McpServer[] = [
   //   oauthProvider: "github",
   //   visibility: "PUBLIC" as const,
   // },
-  {
-    name: "Atlassian MCP",
-    description: "Atlassian 公式MCPサーバー - Jira、Confluenceとの統合アクセス",
-    tags: ["プロジェクト管理", "ドキュメント", "コラボレーション", "ツール"],
-    iconPath: "/logos/atlassian.svg",
-    url: "https://mcp.atlassian.com/v1/sse",
-    transportType: "SSE" as const,
-    authType: "OAUTH" as const,
-    visibility: "PUBLIC" as const,
-    oauthProvider: "atlassian",
-  },
+  // Atlassian MCP - issuer不一致エラーのため一時的に無効化
+  // エラー: expected https://mcp.atlassian.com, got https://cf.mcp.atlassian.com
+  // AtlassianはCloudflareインフラを使用しており、OAuthメタデータのissuerが不一致
+  // サービス側での修正が必要（直接の報告なし、Atlassian/Cloudflare側の設定問題と推測）
+  // {
+  //   name: "Atlassian MCP",
+  //   description: "Atlassian 公式MCPサーバー - Jira、Confluenceとの統合アクセス",
+  //   tags: ["プロジェクト管理", "ドキュメント", "コラボレーション", "ツール"],
+  //   iconPath: "/logos/atlassian.svg",
+  //   url: "https://mcp.atlassian.com/v1/sse",
+  //   transportType: "SSE" as const,
+  //   authType: "OAUTH" as const,
+  //   visibility: "PUBLIC" as const,
+  //   oauthProvider: "atlassian",
+  // },
   // ========================================
   // Cloud Run Remote MCP Servers
   // ========================================
