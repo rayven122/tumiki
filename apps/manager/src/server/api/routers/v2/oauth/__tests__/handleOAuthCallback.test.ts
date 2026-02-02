@@ -28,6 +28,7 @@ const mockSetupMcpServerTools = vi.mocked(mcpServerSetup.setupMcpServerTools);
 const mockUserId = "user_123";
 const mockOrganizationId = "org_456";
 const mockMcpServerId = "mcp_789";
+const mockMcpServerTemplateId = "template_xyz";
 const mockMcpServerTemplateInstanceId = "instance_abc";
 const mockOAuthClientId = "oauth_client_123";
 const mockStateToken = "valid-state-token";
@@ -57,6 +58,8 @@ const createMockMcpServerData = () => ({
     templateUrl: "https://example.com/mcp",
     transportType: TransportType.STREAMABLE_HTTPS,
   },
+  mcpServerTemplateId: mockMcpServerTemplateId,
+  mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,
   oauthClient: {
     id: mockOAuthClientId,
     clientId: "client-123",

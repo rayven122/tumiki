@@ -96,8 +96,12 @@ export const FindMcpServersOutputV2 = z.array(
             isEnabled: z.boolean(),
           }),
         ),
+        // 現在のユーザーのOAuth認証状態（null: OAuthが不要、true: 認証済み、false: 未認証）
+        isOAuthAuthenticated: z.boolean().nullable(),
       }),
     ),
+    // サーバー全体のOAuth認証状態（null: OAuthが不要、true: 全て認証済み、false: 一部未認証）
+    allOAuthAuthenticated: z.boolean().nullable(),
   }),
 );
 
@@ -285,6 +289,7 @@ export const userMcpServerRouter = createTRPCRouter({
 
       return await findMcpServers(ctx.db, {
         organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
       });
     }),
 

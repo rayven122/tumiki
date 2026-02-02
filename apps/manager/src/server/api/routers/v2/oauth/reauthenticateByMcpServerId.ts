@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import type { z } from "zod";
 import type { ReauthenticateByMcpServerIdInputV2 } from "./index";
 import {
+  fetchOAuthClientForTemplate,
   fetchOAuthTokenWithClient,
   generateReauthenticationUrl,
   validateTemplateUrl,
@@ -88,10 +89,21 @@ export const reauthenticateByMcpServerId = async (
     templateInstance.id,
   );
 
+  // OAuthクライアント情報を取得
+  // トークンがある場合はそのクライアント情報を使用
+  // トークンがない場合（招待ユーザーなど）は組織のOAuthClientを取得
+  const oauthClient =
+    oauthToken?.oauthClient ??
+    (await fetchOAuthClientForTemplate(
+      tx,
+      templateInstance.mcpServerTemplate.id,
+      organizationId,
+    ));
+
   // 4. Authorization URLを生成
   const authorizationUrl = await generateReauthenticationUrl({
     templateUrl,
-    oauthToken,
+    oauthClient,
     mcpServerId: mcpServer.id,
     mcpServerTemplateInstanceId: templateInstance.id,
     userId,
