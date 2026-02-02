@@ -7,8 +7,7 @@ on:
 jobs:
   cleanup:
     name: 🧹 Cloud Run クリーンアップ
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
