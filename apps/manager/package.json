@@ -31,7 +31,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
-    "@modelcontextprotocol/sdk": "^1.24.0",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@modelcontextprotocol/server-github": "^2025.4.8",
     "@next/third-parties": "^16.0.7",
     "@pixiv/three-vrm": "^3.4.2",
