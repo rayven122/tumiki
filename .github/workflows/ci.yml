@@ -10,8 +10,7 @@ on:
 jobs:
   ci:
     name: 🚀 CI
-    runs-on:
-      group: self-arc
+    runs-on: ubuntu-latest
 
     env:
       NODE_OPTIONS: --max-old-space-size=4096
