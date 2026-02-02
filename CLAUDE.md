@@ -2,9 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+For general project information, see [README.md](README.md).
+日本語版は [README.ja.md](README.ja.md) を参照してください。
+
 ## プロジェクト概要
 
-プロジェクトの詳細については [README.md](./README.md) を参照してください。
+開発者向けの詳細情報は以下のセクションを参照してください。
 
 ### 主要な開発コマンド
 

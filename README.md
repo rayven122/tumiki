@@ -1,155 +1,113 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/logo.svg">
+  <img alt="Tumiki Logo" src="docs/images/logo.svg" width="80">
+</picture>
+
 # Tumiki
 
-複数のMCPサーバーを一元管理し、効率的なAPI管理を実現するためのWebアプリケーションです。
+**An AI integration platform that connects your AI agents with business tools**
 
-## 🚀 クイックスタート
+[日本語版はこちら](README.ja.md)
 
-初回セットアップの詳細な手順については、[docs/SETUP.md](./docs/SETUP.md) を参照してください。
+---
 
-### Docker開発環境
+<p align="center">
+  <img src="docs/images/screenshot.png" alt="Tumiki Dashboard" width="800">
+</p>
 
-開発に必要なDockerコンテナ（PostgreSQL、Redis、Keycloak）を管理：
+## Overview
+
+Tumiki is an AI integration platform that uses MCP (Model Context Protocol) to connect AI with your business tools, transforming it into a digital employee that understands your company's unique context and workflows.
+
+Manage multiple SaaS tools and AI agents in one place, improving team productivity. Centralized MCP server management dramatically simplifies complex configuration work.
+
+## What is MCP?
+
+**MCP (Model Context Protocol)** is an open standard that allows AI assistants to securely connect with your business tools.
+
+Think of it like this: Just as USB connects your devices to your computer, MCP connects AI to your apps like Notion, Slack, and Google Calendar.
+
+## Key Features
+
+| Feature                            | Description                                                          |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| **Connect AI with Business Tools** | Seamlessly integrate your AI with various business tools             |
+| **Control Roles and Permissions**  | Manage access control with fine-grained role and permission settings |
+| **Centralized Tool Integration**   | Manage all your tool integrations from a single, unified dashboard   |
+| **Visualize Activity Logs**        | Track and analyze all activities with comprehensive logging          |
+| **Secure Operation**               | Enterprise-level security for safe management of confidential data   |
+| **Fast Setup**                     | Build your AI agent team environment in minutes with no expertise    |
+
+## Getting Started
+
+### For Users (SaaS)
+
+Contact us for SaaS access.
+
+### For Developers
+
+#### Prerequisites
+
+- Node.js >= 22.14.0
+- pnpm 10.11.0
+- Docker
+
+#### Quick Start
 
 ```bash
-# すべてのコンテナを起動（初回は2-3分かかります）
+# Clone the repository
+git clone https://github.com/rayven122/tumiki.git
+cd tumiki
+
+# Install dependencies
+pnpm install
+
+# Start Docker containers (PostgreSQL, Redis, Keycloak)
 pnpm docker:up
 
-# コンテナを停止
-pnpm docker:stop
+# Set up development environment (first time only)
+pnpm setup:dev
 
-# コンテナを削除
-pnpm docker:down
+# Start development servers
+pnpm dev
 ```
 
-## 主な機能
+For detailed setup instructions, see [docs/SETUP.md](./docs/SETUP.md).
 
-- 複数のMCPサーバーの一元管理
-- サーバーの状態監視と制御
-- APIキーの安全な管理
-- 統合URLの生成と管理
-- ツールの選択的な公開
-- プロキシサーバーによる単一エンドポイントでのMCPサーバー統合
+## Tech Stack
 
-## プロジェクト構造
-
-このプロジェクトはTurboを使用したモノレポ構造になっています。
-
-```
-tumiki/
-├── apps/
-│   ├── desktop/          # Electronデスクトップアプリケーション
-│   ├── manager/          # Next.js 15 + React 19 Webアプリケーション
-│   └── mcp-proxy/        # MCPサーバープロキシ（Hono + Cloud Run）
-├── packages/             # 共有パッケージ
-│   ├── auth/            # Keycloak 認証パッケージ
-│   ├── db/              # Prisma データベースパッケージ
-│   ├── mailer/          # メール送信機能
-│   ├── oauth-token-manager/ # OAuth トークン管理
-│   ├── scripts/         # データベーススクリプト
-│   └── utils/           # 共通ユーティリティ
-├── tooling/              # 開発ツール設定
-│   ├── eslint/          # ESLint設定
-│   ├── prettier/        # Prettier設定
-│   ├── tailwind/        # Tailwind CSS設定
-│   ├── typescript/      # TypeScript設定
-│   └── vitest/          # Vitest設定
-└── docker/              # Docker Compose設定
-```
-
-## 技術スタック
-
-### Manager（Webアプリケーション）
+### Frontend
 
 - [Next.js 15](https://nextjs.org) - React 19 + App Router
-- [tRPC](https://trpc.io) - 型安全API
-- [Tailwind CSS](https://tailwindcss.com) - CSSフレームワーク
-- [Radix UI](https://www.radix-ui.com/) - UIコンポーネントライブラリ
-- [Keycloak](https://www.keycloak.org) - 認証・認可
-- [Vercel AI SDK](https://sdk.vercel.ai) - AI統合
+- [tRPC](https://trpc.io) - Type-safe API
+- [Tailwind CSS](https://tailwindcss.com) - CSS Framework
+- [Radix UI](https://www.radix-ui.com/) - UI Component Library
 
-### ProxyServer（MCPプロキシ）
+### Backend
 
-- [Hono](https://hono.dev) - Webフレームワーク
+- [Hono](https://hono.dev) - Web Framework
 - [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) - MCP SDK
-- HTTP/Streamable transport - リアルタイム通信
+- [Keycloak](https://www.keycloak.org) - Authentication & Authorization
 
-### データベース・認証
+### Database & Infrastructure
 
-- [PostgreSQL](https://postgresql.org) - メインデータベース
-- [Prisma](https://prisma.io) - ORM + フィールド暗号化
-- [Neon](https://neon.tech) - PostgreSQL ホスティング
-- [Redis](https://redis.io) - キャッシュ・セッション管理
+- [PostgreSQL](https://postgresql.org) - Primary Database
+- [Prisma](https://prisma.io) - ORM + Field Encryption
+- [Redis](https://redis.io) - Cache & Session Management
+- [Turbo](https://turbo.build/repo) - Monorepo Build System
 
-### 開発・運用
+## Documentation
 
-- [Turbo](https://turbo.build/repo) - モノレポビルドシステム
-- [TypeScript](https://www.typescriptlang.org) - 型安全性
-- [ESLint](https://eslint.org) - コード品質
-- [Prettier](https://prettier.io) - コードフォーマット
-- [Docker](https://docker.com) - コンテナ化
-- [GitHub Actions](https://github.com/features/actions) - CI/CD
+- [Setup Guide](./docs/SETUP.md) - Detailed setup instructions
+- [Environment Variables](./docs/environment-variables.md) - Configuration reference
 
-## アプリケーション
+## License
 
-### Manager（Webアプリケーション）
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-MCPサーバーの管理画面を提供するNext.js 15 + React 19アプリケーション。
+Some files are licensed under the Elastic License v2.0 (ELv2). See [LICENSE.EE](LICENSE.EE) for details.
 
-- **開発URL**: <http://localhost:3000>
-- **機能**: MCPサーバー設定・監視、APIキー管理、ChatGPT風チャット、Keycloak認証、多言語対応
+## Support
 
-### ProxyServer（MCPプロキシ）
-
-複数のMCPサーバーを単一エンドポイントで統合するプロキシサーバー。
-
-- **開発URL**: <http://localhost:8080>
-- **エンドポイント**:
-  - `POST /mcp/:mcpServerId` - MCP JSON-RPC 2.0
-  - `GET /health` - ヘルスチェック
-
-## Dockerサービス構成
-
-すべてのサービスは `docker/compose.yaml` で管理されています。
-
-- **PostgreSQL**: ポート 5434（本番）/ 5435（テスト）
-- **Redis**: ポート 6379
-- **Keycloak**: ポート 8443
-
-## 開発コマンド
-
-### 基本操作
-
-```bash
-pnpm install  # 依存関係インストール
-pnpm dev      # 開発サーバー起動
-pnpm build    # ビルド
-pnpm start    # 本番サーバー起動
-```
-
-### コード品質
-
-```bash
-pnpm check        # 全品質チェック（lint + format + typecheck）
-pnpm lint:fix     # Lint自動修正
-pnpm format:fix   # フォーマット自動修正
-pnpm typecheck    # 型チェック
-pnpm test         # テスト実行
-```
-
-### データベース操作
-
-```bash
-cd packages/db
-pnpm db:migrate   # マイグレーション実行
-pnpm db:deploy    # 本番環境にデプロイ
-pnpm db:studio    # Prisma Studio起動
-```
-
-### Docker操作
-
-```bash
-pnpm docker:up    # コンテナ起動
-pnpm docker:stop  # コンテナ停止
-pnpm docker:down  # コンテナ削除
-```
-
+- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - Bug reports and feature requests
