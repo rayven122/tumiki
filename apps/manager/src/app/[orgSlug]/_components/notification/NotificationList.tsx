@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/trpc/react";
 import { NotificationItem } from "./NotificationItem";
 import { Loader2 } from "lucide-react";
@@ -69,7 +68,7 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
   const notifications = data?.pages.flatMap((page) => page.notifications) ?? [];
 
   return (
-    <div className="flex max-h-[500px] w-full flex-col">
+    <div className="flex max-h-[500px] w-full flex-col overflow-hidden">
       {/* ヘッダー */}
       <div className="shrink-0 border-b px-4 py-3">
         <div className="flex items-center justify-between">
@@ -100,9 +99,9 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
       </div>
 
       {/* 通知リスト */}
-      <ScrollArea
+      <div
         ref={scrollAreaRef}
-        className="min-h-0 flex-1"
+        className="min-h-0 flex-1 overflow-y-auto"
         onScroll={handleScroll}
       >
         {isLoading ? (
@@ -140,7 +139,7 @@ export const NotificationList = ({ onClose }: { onClose?: () => void }) => {
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 };
