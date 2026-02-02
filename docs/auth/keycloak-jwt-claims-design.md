@@ -36,7 +36,7 @@
   "preferred_username": "yamada.taro",
 
   // 発行者（Keycloak Realm）
-  "iss": "https://keycloak.tumiki.cloud/realms/tumiki",
+  "iss": "https://keycloak.example.com/realms/tumiki",
 
   // 対象者（クライアントID）
   "aud": "tumiki-app",
@@ -519,7 +519,7 @@ JWTには必要最小限の情報のみを含める：
 // 推奨: RS256（非対称鍵）
 {
   "algorithm": "RS256",
-  "jwksUri": "https://keycloak.tumiki.cloud/realms/tumiki/protocol/openid-connect/certs"
+  "jwksUri": "https://keycloak.example.com/realms/tumiki/protocol/openid-connect/certs"
 }
 ```
 

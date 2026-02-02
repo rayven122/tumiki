@@ -52,7 +52,7 @@ KEYCLOAK_ADMIN_USERNAME="admin"
 KEYCLOAK_ADMIN_PASSWORD="admin123"
 
 # Google OAuth設定（Keycloak起動時に必要）
-# Google Client情報は以下のURLを参照: https://rayven122.getoutline.com/doc/tumiki-KPIZN5UAXL
+# Google Cloud Consoleで OAuth 2.0 クライアントIDを作成して取得
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
