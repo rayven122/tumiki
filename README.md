@@ -57,8 +57,8 @@ Contact us for SaaS access.
 
 ```bash
 # Clone the repository
-git clone https://github.com/rayven122/tumiki-v2.git
-cd tumiki-v2
+git clone https://github.com/rayven122/tumiki.git
+cd tumiki
 
 # Install dependencies
 pnpm install
@@ -110,4 +110,4 @@ Some files are licensed under the Elastic License v2.0 (ELv2). See [LICENSE.EE](
 
 ## Support
 
-- [GitHub Issues](https://github.com/rayven122/tumiki-v2/issues) - Bug reports and feature requests
+- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - Bug reports and feature requests

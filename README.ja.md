@@ -57,8 +57,8 @@ SaaSアクセスについてはお問い合わせください。
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/rayven122/tumiki-v2.git
-cd tumiki-v2
+git clone https://github.com/rayven122/tumiki.git
+cd tumiki
 
 # 依存関係をインストール
 pnpm install
@@ -110,4 +110,4 @@ pnpm dev
 
 ## サポート
 
-- [GitHub Issues](https://github.com/rayven122/tumiki-v2/issues) - バグ報告と機能リクエスト
+- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - バグ報告と機能リクエスト
