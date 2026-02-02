@@ -87,6 +87,13 @@ variable "proxy_redirect_uris" {
   ]
 }
 
+# セキュリティ設定
+variable "ssl_required" {
+  description = "SSL要求レベル（none/external/all）"
+  type        = string
+  default     = "none"
+}
+
 # テストユーザー設定
 variable "test_user_email" {
   description = "テストユーザーのメールアドレス"
@@ -110,6 +117,40 @@ variable "test_user_last_name" {
   description = "テストユーザーの姓"
   type        = string
   default     = "User"
+}
+
+# SMTP設定（メール送信用）
+variable "smtp_host" {
+  description = "SMTPサーバーホスト"
+  type        = string
+}
+
+variable "smtp_port" {
+  description = "SMTPサーバーポート"
+  type        = string
+  default     = "587"
+}
+
+variable "smtp_user" {
+  description = "SMTP認証ユーザー名"
+  type        = string
+}
+
+variable "smtp_password" {
+  description = "SMTP認証パスワード（環境変数 TF_VAR_smtp_password で設定）"
+  type        = string
+  sensitive   = true
+}
+
+variable "smtp_from" {
+  description = "送信元メールアドレス"
+  type        = string
+}
+
+variable "smtp_from_display_name" {
+  description = "送信者表示名"
+  type        = string
+  default     = "Tumiki"
 }
 
 # Google IdP設定（オプション）
