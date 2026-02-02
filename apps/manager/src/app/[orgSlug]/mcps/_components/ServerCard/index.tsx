@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import { useState } from "react";
 import { CreateServerModal } from "./CreateServerModal";
 import {
@@ -175,8 +176,8 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
 
         {/* MCPサーバーの概要 */}
         <div>
-          <p className="text-sm leading-relaxed text-gray-600">
-            {mcpServer.description}
+          <p className="text-sm leading-relaxed whitespace-pre-line text-gray-600">
+            <LinkifiedText text={mcpServer.description ?? ""} />
           </p>
         </div>
 
