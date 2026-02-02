@@ -5,35 +5,47 @@
  * VRM アバターのアニメーション再生を管理
  */
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import type { VRM } from "@pixiv/three-vrm";
 import { VRMAAnimationManager } from "@/lib/coharu/VRMAAnimationManager";
+import { getAvailableVrmaPaths } from "@/utils/coharu";
 
 type AnimationManagerResult = {
   update: (deltaTime: number) => void;
+  hasAnimations: boolean;
 };
 
 export const useAnimationManager = (
   vrm: VRM | null,
 ): AnimationManagerResult => {
   const managerRef = useRef<VRMAAnimationManager | null>(null);
+  const [hasAnimations, setHasAnimations] = useState(false);
 
   // アニメーションマネージャーの初期化と連続ランダムアニメーション開始
   useEffect(() => {
     if (!vrm) {
       managerRef.current?.dispose();
       managerRef.current = null;
+      setHasAnimations(false);
       return;
     }
 
-    const manager = new VRMAAnimationManager(vrm);
-    managerRef.current = manager;
+    // 利用可能なアニメーションパスを取得してから初期化
+    const initManager = async () => {
+      const availablePaths = await getAvailableVrmaPaths();
+      setHasAnimations(availablePaths.length > 0);
 
-    // 連続ランダムアニメーション開始
-    void manager.startContinuousRandomAnimations();
+      const manager = new VRMAAnimationManager(vrm, availablePaths);
+      managerRef.current = manager;
+
+      // 連続ランダムアニメーション開始
+      await manager.startContinuousRandomAnimations();
+    };
+
+    void initManager();
 
     return () => {
-      manager.dispose();
+      managerRef.current?.dispose();
     };
   }, [vrm]);
 
@@ -41,5 +53,5 @@ export const useAnimationManager = (
     managerRef.current?.update();
   }, []);
 
-  return { update };
+  return { update, hasAnimations };
 };

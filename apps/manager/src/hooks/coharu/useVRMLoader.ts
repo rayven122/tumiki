@@ -5,25 +5,41 @@
  * VRM モデルのロードと管理
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { type VRM, VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
+import { VRM_PATH, checkVrmExists } from "@/utils/coharu";
 
 type VRMLoaderResult = {
   vrm: VRM | null;
   isLoading: boolean;
   error: string | null;
+  isVrmAvailable: boolean | null;
   loadVRM: (url: string) => Promise<VRM | null>;
   unloadVRM: () => void;
   loadDefaultVRM: () => Promise<void>;
+  checkAvailability: () => Promise<boolean>;
 };
 
 export const useVRMLoader = (scene: THREE.Scene | null): VRMLoaderResult => {
   const [vrm, setVrm] = useState<VRM | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isVrmAvailable, setIsVrmAvailable] = useState<boolean | null>(null);
   const loaderRef = useRef<GLTFLoader | null>(null);
+
+  // VRM ファイルの存在確認
+  const checkAvailability = useCallback(async (): Promise<boolean> => {
+    const exists = await checkVrmExists();
+    setIsVrmAvailable(exists);
+    return exists;
+  }, []);
+
+  // 初期化時に存在確認を実行
+  useEffect(() => {
+    void checkAvailability();
+  }, [checkAvailability]);
 
   const loadVRM = useCallback(
     async (url: string): Promise<VRM | null> => {
@@ -73,7 +89,19 @@ export const useVRMLoader = (scene: THREE.Scene | null): VRMLoaderResult => {
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to load VRM";
-        setError(errorMessage);
+
+        // ファイルが見つからない場合の明確なエラーメッセージ
+        if (
+          errorMessage.includes("404") ||
+          errorMessage.includes("Not Found")
+        ) {
+          setError(
+            "VRMファイルが見つかりません。docs/coharu-setup.md を参照してファイルを配置してください。",
+          );
+        } else {
+          setError(errorMessage);
+        }
+
         setIsLoading(false);
         console.error("Failed to load VRM:", err);
         return null;
@@ -91,15 +119,25 @@ export const useVRMLoader = (scene: THREE.Scene | null): VRMLoaderResult => {
   }, [vrm, scene]);
 
   const loadDefaultVRM = useCallback(async () => {
-    await loadVRM("/coharu/vrm/coharu.vrm");
-  }, [loadVRM]);
+    // 存在確認してからロード
+    const exists = await checkAvailability();
+    if (!exists) {
+      setError(
+        "VRMファイルが見つかりません。docs/coharu-setup.md を参照してファイルを配置してください。",
+      );
+      return;
+    }
+    await loadVRM(VRM_PATH);
+  }, [loadVRM, checkAvailability]);
 
   return {
     vrm,
     isLoading,
     error,
+    isVrmAvailable,
     loadVRM,
     unloadVRM,
     loadDefaultVRM,
+    checkAvailability,
   };
 };
