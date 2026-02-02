@@ -292,7 +292,7 @@ export const MCP_SERVERS: McpServer[] = [
       "YouTube Data API統合 - 動画検索、チャンネル情報、再生リストへのアクセス",
     tags: ["動画", "メディア", "ツール"],
     iconPath: "/logos/youtube.svg",
-    url: "https://youtube-mcp-67726874216.asia-northeast1.run.app/mcp",
+    url: "https://youtube-mcp-wsolw3wnva-an.a.run.app/mcp",
     transportType: "STREAMABLE_HTTPS" as const,
     envVarKeys: ["X-YouTube-API-Key"],
     authType: "API_KEY" as const,
