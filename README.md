@@ -153,18 +153,3 @@ pnpm docker:stop  # コンテナ停止
 pnpm docker:down  # コンテナ削除
 ```
 
-## デプロイメント
-
-GitHub Actionsによる自動デプロイ（`main`ブランチ → Production、PRブランチ → Preview）
-
-### 環境URL
-
-**Manager (Vercel)**:
-
-- Production: <https://www.tumiki.cloud>
-- Staging: <https://stg.tumiki.cloud>
-
-**ProxyServer (Cloud Run)**:
-
-- Production: <https://mcp.tumiki.cloud>
-- Staging: <https://stg-mcp.tumiki.cloud>
