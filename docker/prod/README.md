@@ -24,7 +24,7 @@ Cloudflare Tunnel
 └───────────┼───────────┘
             │
     ┌───────▼───────┐
-    │  PostgreSQL   │ 192.168.0.100:5432
+    │  PostgreSQL   │ <db-server-ip>:5432
     │ (tumiki-prod-db) │
     └───────────────┘
 ```
@@ -48,10 +48,10 @@ Cloudflare Tunnel
    ```
 
 2. **Cloudflare Tunnel設定済み**
-   - `auth.tumiki.cloud` → `192.168.0.90:8080`
+   - `auth.tumiki.cloud` → `<keycloak-vm-ip>:8080`
 
 3. **PostgreSQL準備済み**
-   - ホスト: `192.168.0.100`
+   - ホスト: `<db-server-ip>`
    - Keycloak用データベース作成
 
 ## デプロイ手順

@@ -178,8 +178,8 @@ mcp-proxy は DCR リクエストを Keycloak にプロキシします。追加�
 ### 前提条件
 
 - さくらのクラウドVMへのSSHアクセス（`~/.ssh/config`設定済み）
-- Cloudflare Tunnel設定済み（auth.tumiki.cloud → 192.168.0.90:8080）
-- PostgreSQL (192.168.0.100) 準備済み
+- Cloudflare Tunnel設定済み（auth.tumiki.cloud → `<keycloak-vm-ip>:8080`）
+- PostgreSQL (`<db-server-ip>`) 準備済み
 
 ### 環境変数ファイル
 
