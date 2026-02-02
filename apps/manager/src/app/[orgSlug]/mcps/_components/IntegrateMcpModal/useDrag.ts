@@ -49,25 +49,26 @@ export const useDrag = (options: UseDragOptions = {}) => {
     return null;
   }, []);
 
-  const handlePointerMove = useCallback(
-    (event: PointerEvent) => {
-      if (!dragState.isDragging) return;
-      setDragState((prev) => ({
+  const handlePointerMove = useCallback((event: PointerEvent) => {
+    setDragState((prev) => {
+      if (!prev.isDragging) return prev;
+      return {
         ...prev,
         position: { x: event.clientX, y: event.clientY },
-      }));
-    },
-    [dragState.isDragging],
-  );
+      };
+    });
+  }, []);
 
   const handlePointerUp = useCallback(
     (event: PointerEvent) => {
-      if (!dragState.isDragging || !dragState.itemId) return;
-      const dropZone = detectDropZone(event.clientX, event.clientY);
-      options.onDragEnd?.(dragState.itemId, dropZone);
-      setDragState({ isDragging: false, itemId: null, position: null });
+      setDragState((prev) => {
+        if (!prev.isDragging || !prev.itemId) return prev;
+        const dropZone = detectDropZone(event.clientX, event.clientY);
+        options.onDragEnd?.(prev.itemId, dropZone);
+        return { isDragging: false, itemId: null, position: null };
+      });
     },
-    [dragState.isDragging, dragState.itemId, options, detectDropZone],
+    [options, detectDropZone],
   );
 
   const registerDropZone = useCallback(
@@ -90,11 +91,13 @@ export const useDrag = (options: UseDragOptions = {}) => {
     if (dragState.isDragging) {
       document.addEventListener("pointermove", handlePointerMove);
       document.addEventListener("pointerup", handlePointerUp);
-      return () => {
-        document.removeEventListener("pointermove", handlePointerMove);
-        document.removeEventListener("pointerup", handlePointerUp);
-      };
     }
+
+    // 常にクリーンアップ関数を返す
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+    };
   }, [dragState.isDragging, handlePointerMove, handlePointerUp]);
 
   return { dragState, startDrag, registerDropZone, getHoveredDropZone };
