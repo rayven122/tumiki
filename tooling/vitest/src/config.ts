@@ -1,5 +1,5 @@
 import { resolve } from "path";
-import type { UserConfig } from "vitest/config";
+import type { UserConfig } from "vite";
 
 export const createVitestConfig = (dirname: string): UserConfig => ({
   resolve: {
