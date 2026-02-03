@@ -10,7 +10,9 @@
   "packageManager": "pnpm@10.11.0",
   "pnpm": {
     "overrides": {
-      "jsdom": "27.3.0"
+      "tar": ">=7.5.7",
+      "undici": ">=6.23.0",
+      "fast-xml-parser": ">=5.3.4"
     }
   },
   "scripts": {
@@ -66,14 +68,14 @@
     "inspector:mcp-proxy": "mcp-inspector --transport http http://localhost:8080/mcp"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "^0.17.2",
+    "@modelcontextprotocol/inspector": "^0.19.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^9.2.1",
     "turbo": "^2.6.1",
     "typescript": "catalog:",
-    "vercel": "^39.2.11",
+    "vercel": "^50.9.6",
     "vitest": "catalog:"
   }
 }
