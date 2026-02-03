@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { McpServerIcon } from "@/app/[orgSlug]/mcps/_components/McpServerIcon";
 import { useSetAtom } from "jotai";
 import { mcpServerMapAtom, type McpServerInfo } from "@/atoms/mcpServerMapAtom";
 import {
@@ -204,9 +205,11 @@ export const CompactMcpSelector = ({
                     instance.tools.filter((tool) => tool.isEnabled).length,
                   0,
                 );
-                const iconPath =
-                  server.iconPath ||
-                  server.templateInstances[0]?.mcpServerTemplate?.iconPath;
+                // アイコンパスとフォールバックURLを取得
+                const firstTemplate =
+                  server.templateInstances[0]?.mcpServerTemplate;
+                const iconPath = server.iconPath ?? firstTemplate?.iconPath;
+                const fallbackUrl = firstTemplate?.url;
 
                 return (
                   <button
@@ -223,15 +226,12 @@ export const CompactMcpSelector = ({
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       <div className="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded">
-                        {iconPath ? (
-                          <img
-                            src={iconPath}
-                            alt=""
-                            className="h-5 w-5 object-contain"
-                          />
-                        ) : (
-                          <RouteIcon size={16} />
-                        )}
+                        <McpServerIcon
+                          iconPath={iconPath}
+                          fallbackUrl={fallbackUrl}
+                          alt={server.name}
+                          size={20}
+                        />
                       </div>
                       <div className="min-w-0 flex-1 text-left">
                         <div className="flex items-center gap-1.5">
