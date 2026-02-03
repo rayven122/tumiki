@@ -25,16 +25,42 @@ export class AivisCloudTTSClient implements TTSClient {
     this.config = {
       apiKey: config.apiKey,
       modelUuid: config.modelUuid,
-      outputFormat: config.outputFormat ?? "wav",
+      // デフォルトを mp3 に変更（MediaSource API 互換）
+      outputFormat: config.outputFormat ?? "mp3",
       baseUrl: config.baseUrl ?? "https://api.aivis-project.com/v1",
     };
   }
 
+  /**
+   * 音声合成（ArrayBuffer を返す）
+   */
   async synthesize(
     text: string,
     _speakerId: string,
     options?: TTSOptions,
   ): Promise<ArrayBuffer> {
+    const response = await this.fetchSynthesize(text, options);
+    return response.arrayBuffer();
+  }
+
+  /**
+   * 音声合成（ストリーミングレスポンスを返す）
+   * レート制限対策として、複数の文を連結して1リクエストで送信可能
+   */
+  async synthesizeStream(
+    text: string,
+    options?: TTSOptions,
+  ): Promise<Response> {
+    return this.fetchSynthesize(text, options);
+  }
+
+  /**
+   * Aivis Cloud API への音声合成リクエスト
+   */
+  private async fetchSynthesize(
+    text: string,
+    options?: TTSOptions,
+  ): Promise<Response> {
     const requestBody: Record<string, unknown> = {
       model_uuid: this.config.modelUuid,
       text: text,
@@ -73,6 +99,27 @@ export class AivisCloudTTSClient implements TTSClient {
       );
     }
 
-    return response.arrayBuffer();
+    return response;
+  }
+
+  /**
+   * 出力形式を取得
+   */
+  getOutputFormat(): string {
+    return this.config.outputFormat;
+  }
+
+  /**
+   * Content-Type を取得
+   */
+  getContentType(): string {
+    const formatMap: Record<string, string> = {
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+      flac: "audio/flac",
+      aac: "audio/aac",
+      opus: "audio/opus",
+    };
+    return formatMap[this.config.outputFormat] ?? "audio/mpeg";
   }
 }

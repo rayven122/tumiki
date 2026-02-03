@@ -1,6 +1,6 @@
 /**
  * TTS 合成 API エンドポイント
- * Aivis Cloud API へのプロキシ（API キー隠蔽）
+ * Aivis Cloud API へのストリーミングプロキシ（API キー隠蔽）
  */
 
 import { NextResponse } from "next/server";
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as TTSRequestBody;
-    const { text, speakerId = "1", options } = body;
+    const { text, options } = body;
 
     if (!text) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
@@ -53,12 +53,23 @@ export async function POST(request: Request) {
       modelUuid,
     });
 
-    const audioBuffer = await client.synthesize(text, speakerId, options);
+    // ストリーミングレスポンスを取得
+    const response = await client.synthesizeStream(text, options);
 
-    return new Response(audioBuffer, {
+    // レスポンスボディがない場合はエラー
+    if (!response.body) {
+      return NextResponse.json(
+        { error: "Failed to get audio stream" },
+        { status: 500 },
+      );
+    }
+
+    // ストリーミングレスポンスをそのまま転送
+    return new Response(response.body, {
       headers: {
-        "Content-Type": "audio/wav",
-        "Content-Length": audioBuffer.byteLength.toString(),
+        "Content-Type": client.getContentType(),
+        "Transfer-Encoding": "chunked",
+        "Cache-Control": "no-cache",
       },
     });
   } catch (error) {

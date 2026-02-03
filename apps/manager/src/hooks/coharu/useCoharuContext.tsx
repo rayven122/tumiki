@@ -12,9 +12,9 @@ import {
   coharuEnabledAtom,
   coharuVrmAtom,
   coharuSpeakingAtom,
-  coharuSpeechQueueAtom,
+  coharuTTSPlayerAtom,
 } from "@/store/coharu";
-import { SpeechQueue } from "@/lib/coharu/speechQueue";
+import { StreamingTTSPlayer } from "@/lib/coharu/StreamingTTSPlayer";
 
 /**
  * Coharu の状態と操作を提供するフック
@@ -24,7 +24,7 @@ export const useCoharuContext = () => {
   const [vrm, setVrm] = useAtom(coharuVrmAtom);
   const isSpeaking = useAtomValue(coharuSpeakingAtom);
   const setIsSpeaking = useSetAtom(coharuSpeakingAtom);
-  const [speechQueue, setSpeechQueue] = useAtom(coharuSpeechQueueAtom);
+  const [ttsPlayer, setTTSPlayer] = useAtom(coharuTTSPlayerAtom);
 
   // isSpeaking を ref で保持（stale closure 防止）
   const isSpeakingRef = useRef(isSpeaking);
@@ -35,25 +35,25 @@ export const useCoharuContext = () => {
   // 口パクアニメーション用のタイムスタンプ
   const lipSyncTimeRef = useRef(0);
 
-  // SpeechQueue の初期化（遅延）
-  const getSpeechQueue = useCallback(() => {
-    if (!speechQueue) {
-      const newQueue = new SpeechQueue({
+  // StreamingTTSPlayer の初期化（遅延）
+  const getTTSPlayer = useCallback(() => {
+    if (!ttsPlayer) {
+      const newPlayer = new StreamingTTSPlayer({
         onPlayStart: () => setIsSpeaking(true),
         onPlayEnd: () => setIsSpeaking(false),
       });
-      setSpeechQueue(newQueue);
-      return newQueue;
+      setTTSPlayer(newPlayer);
+      return newPlayer;
     }
-    return speechQueue;
-  }, [speechQueue, setSpeechQueue, setIsSpeaking]);
+    return ttsPlayer;
+  }, [ttsPlayer, setTTSPlayer, setIsSpeaking]);
 
   // クリーンアップ
   useEffect(() => {
     return () => {
-      speechQueue?.clear();
+      ttsPlayer?.stop();
     };
-  }, [speechQueue]);
+  }, [ttsPlayer]);
 
   // リップシンク更新（話している時は口パクアニメーション）
   const updateLipSync = useCallback(() => {
@@ -76,19 +76,19 @@ export const useCoharuContext = () => {
     }
   }, [vrm]);
 
-  // テキストを音声で読み上げ
+  // テキストを音声でストリーミング再生
   const speak = useCallback(
     async (text: string) => {
-      const queue = getSpeechQueue();
-      await queue.enqueue(text);
+      const player = getTTSPlayer();
+      await player.play(text);
     },
-    [getSpeechQueue],
+    [getTTSPlayer],
   );
 
   // 音声再生を停止
   const stopSpeaking = useCallback(() => {
-    speechQueue?.clear();
-  }, [speechQueue]);
+    ttsPlayer?.stop();
+  }, [ttsPlayer]);
 
   return {
     vrm,
