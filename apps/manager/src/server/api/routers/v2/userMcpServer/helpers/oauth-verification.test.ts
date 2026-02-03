@@ -168,6 +168,8 @@ describe("getMcpServerAndOAuthClient", () => {
         templateUrl: "https://example.com/mcp",
         transportType: TransportType.STREAMABLE_HTTPS,
       },
+      mcpServerTemplateId: "template_123",
+      mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,
       oauthClient: mockOAuthClient,
       organization: mockOrganization,
     });

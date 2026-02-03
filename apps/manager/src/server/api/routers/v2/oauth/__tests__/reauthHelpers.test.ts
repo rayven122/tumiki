@@ -65,22 +65,20 @@ describe("reauthHelpers", () => {
       });
     });
 
-    test("OAuthトークンが存在しない場合、NOT_FOUNDエラーをスローする", async () => {
+    test("OAuthトークンが存在しない場合、nullを返す", async () => {
       const mockTx = {
         mcpOAuthToken: {
           findUnique: vi.fn().mockResolvedValue(null),
         },
       } as unknown as PrismaTransactionClient;
 
-      await expect(
-        fetchOAuthTokenWithClient(mockTx, "user-123", "instance-456"),
-      ).rejects.toThrow(
-        new TRPCError({
-          code: "NOT_FOUND",
-          message:
-            "OAuth設定が見つかりません。サーバーを再度追加してください。",
-        }),
+      const result = await fetchOAuthTokenWithClient(
+        mockTx,
+        "user-123",
+        "instance-456",
       );
+
+      expect(result).toBeNull();
     });
   });
 

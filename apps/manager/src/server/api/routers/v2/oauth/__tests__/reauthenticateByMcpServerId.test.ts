@@ -37,6 +37,9 @@ describe("reauthenticateByMcpServerId", () => {
       mcpOAuthToken: {
         findUnique: vi.fn(),
       },
+      mcpOAuthClient: {
+        findFirst: vi.fn(),
+      },
     } as unknown as PrismaTransactionClient;
   });
 
@@ -210,7 +213,7 @@ describe("reauthenticateByMcpServerId", () => {
     );
   });
 
-  test("OAuthトークン情報が存在しない場合はNOT_FOUNDエラーを投げる", async () => {
+  test("OAuthトークンもOAuthクライアントも存在しない場合はNOT_FOUNDエラーを投げる", async () => {
     const mockMcpServer = {
       id: testMcpServerId,
       templateInstances: [
@@ -230,7 +233,9 @@ describe("reauthenticateByMcpServerId", () => {
         ReturnType<typeof mockTx.mcpServer.findUnique>
       >,
     );
+    // トークンがない場合、組織のOAuthClientを取得しようとする
     vi.mocked(mockTx.mcpOAuthToken.findUnique).mockResolvedValue(null);
+    vi.mocked(mockTx.mcpOAuthClient.findFirst).mockResolvedValue(null);
 
     await expect(
       reauthenticateByMcpServerId(
@@ -242,7 +247,8 @@ describe("reauthenticateByMcpServerId", () => {
     ).rejects.toThrow(
       new TRPCError({
         code: "NOT_FOUND",
-        message: "OAuth設定が見つかりません。サーバーを再度追加してください。",
+        message:
+          "この組織にはOAuth設定がありません。管理者に連絡してください。",
       }),
     );
   });
