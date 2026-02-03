@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { Header } from "../_components/site/en/Header";
 import { HeroSection } from "../_components/site/en/HeroSection";
 import { AboutSection } from "../_components/site/en/AboutSection";
+import { ChallengesSection } from "../_components/site/en/ChallengesSection";
+import { SolutionSection } from "../_components/site/en/SolutionSection";
+import { TeamExamplesSection } from "../_components/site/en/TeamExamplesSection";
 import { CommunitySection } from "../_components/site/en/CommunitySection";
-import { FooterCTASection } from "../_components/site/en/FooterCTASection";
+import { CTASection } from "../_components/site/en/CTASection";
 import { FooterSection } from "../_components/site/en/FooterSection";
 
 export default function HomePage() {
@@ -22,8 +25,11 @@ export default function HomePage() {
         <HeroSection isVisible={isVisible} />
       </div>
       <AboutSection />
+      <ChallengesSection />
+      <SolutionSection />
+      <TeamExamplesSection />
       <CommunitySection />
-      <FooterCTASection />
+      <CTASection />
       <FooterSection />
     </div>
   );
