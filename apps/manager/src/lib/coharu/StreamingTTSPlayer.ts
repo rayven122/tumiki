@@ -48,20 +48,7 @@ export class StreamingTTSPlayer {
     this.abortController = new AbortController();
 
     try {
-      // TTS API を呼び出し
-      const response = await fetch("/api/coharu/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-        signal: this.abortController.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`TTS API error: ${response.status}`);
-      }
-
+      const response = await this.fetchTTS(text, this.abortController.signal);
       const body = response.body;
       if (!body) {
         throw new Error("Response body is null");
@@ -81,6 +68,29 @@ export class StreamingTTSPlayer {
   }
 
   /**
+   * TTS API を呼び出し
+   */
+  private async fetchTTS(
+    text: string,
+    signal?: AbortSignal,
+  ): Promise<Response> {
+    const response = await fetch("/api/coharu/tts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`TTS API error: ${response.status}`);
+    }
+
+    return response;
+  }
+
+  /**
    * MediaSource API がサポートされているかチェック
    */
   private isMediaSourceSupported(): boolean {
@@ -93,7 +103,7 @@ export class StreamingTTSPlayer {
   /**
    * ストリーミング音声を再生
    */
-  private async streamAudio(body: ReadableStream<Uint8Array>): Promise<void> {
+  private streamAudio(body: ReadableStream<Uint8Array>): Promise<void> {
     return new Promise((resolve, reject) => {
       this.mediaSource = new MediaSource();
       this.audio = new Audio();
@@ -102,7 +112,7 @@ export class StreamingTTSPlayer {
       this.pendingChunks = [];
       this.isSourceBufferUpdating = false;
 
-      this.mediaSource.addEventListener("sourceopen", async () => {
+      const handleSourceOpen = () => {
         try {
           // SourceBuffer を作成
           this.sourceBuffer = this.mediaSource!.addSourceBuffer("audio/mpeg");
@@ -111,61 +121,24 @@ export class StreamingTTSPlayer {
           this.sourceBuffer.addEventListener("updateend", () => {
             this.isSourceBufferUpdating = false;
             this.appendNextChunk();
-
-            // ストリームが終了し、すべてのチャンクが追加された場合
-            if (
-              this.streamEnded &&
-              this.pendingChunks.length === 0 &&
-              this.mediaSource?.readyState === "open"
-            ) {
-              this.mediaSource.endOfStream();
-            }
+            this.tryEndOfStream();
           });
 
           // ストリームを読み取る
-          const reader = body.getReader();
-
-          const readChunk = async () => {
-            try {
-              const { done, value } = await reader.read();
-
-              if (done) {
-                this.streamEnded = true;
-                // 最後のチャンクを処理
-                if (
-                  this.pendingChunks.length === 0 &&
-                  !this.isSourceBufferUpdating &&
-                  this.mediaSource?.readyState === "open"
-                ) {
-                  this.mediaSource.endOfStream();
-                }
-                return;
-              }
-
-              // チャンクをキューに追加
-              this.pendingChunks.push(value);
-              this.appendNextChunk();
-
-              // 次のチャンクを読む
-              await readChunk();
-            } catch (error) {
-              if (error instanceof Error && error.message.includes("aborted")) {
-                return;
-              }
-              reject(error);
-            }
-          };
-
-          // 読み取り開始
-          void readChunk();
+          this.readStream(body).catch((error: unknown) => {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+            reject(err);
+          });
 
           // 再生開始
-          if (!this.isPlaying) {
-            this.isPlaying = true;
-            this.onPlayStart?.();
-          }
+          this.startPlayback();
 
-          this.audio!.play().catch(reject);
+          this.audio!.play().catch((error: unknown) => {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+            reject(err);
+          });
 
           // 再生終了を監視
           this.audio!.onended = () => {
@@ -174,20 +147,81 @@ export class StreamingTTSPlayer {
             resolve();
           };
 
-          this.audio!.onerror = (e) => {
+          this.audio!.onerror = () => {
             this.isPlaying = false;
             this.onPlayEnd?.();
-            reject(new Error(`Audio playback error: ${e}`));
+            reject(new Error("Audio playback error"));
           };
         } catch (error) {
-          reject(error);
+          const err = error instanceof Error ? error : new Error(String(error));
+          reject(err);
         }
-      });
+      };
 
-      this.mediaSource.addEventListener("error", (e) => {
-        reject(new Error(`MediaSource error: ${e}`));
+      this.mediaSource.addEventListener("sourceopen", handleSourceOpen);
+
+      this.mediaSource.addEventListener("error", () => {
+        reject(new Error("MediaSource error"));
       });
     });
+  }
+
+  /**
+   * ストリームを読み取る
+   */
+  private async readStream(body: ReadableStream<Uint8Array>): Promise<void> {
+    const reader = body.getReader();
+
+    const readChunk = async (): Promise<void> => {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        this.streamEnded = true;
+        this.tryEndOfStream();
+        return;
+      }
+
+      // チャンクをキューに追加
+      this.pendingChunks.push(value);
+      this.appendNextChunk();
+
+      // 次のチャンクを読む
+      await readChunk();
+    };
+
+    try {
+      await readChunk();
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("aborted")) {
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * endOfStream を安全に呼び出す
+   */
+  private tryEndOfStream(): void {
+    if (
+      this.streamEnded &&
+      this.pendingChunks.length === 0 &&
+      this.mediaSource?.readyState === "open" &&
+      this.sourceBuffer &&
+      !this.sourceBuffer.updating
+    ) {
+      this.mediaSource.endOfStream();
+    }
+  }
+
+  /**
+   * 再生を開始
+   */
+  private startPlayback(): void {
+    if (!this.isPlaying) {
+      this.isPlaying = true;
+      this.onPlayStart?.();
+    }
   }
 
   /**
@@ -197,7 +231,8 @@ export class StreamingTTSPlayer {
     if (
       this.isSourceBufferUpdating ||
       this.pendingChunks.length === 0 ||
-      !this.sourceBuffer
+      !this.sourceBuffer ||
+      this.sourceBuffer.updating
     ) {
       return;
     }
@@ -222,27 +257,12 @@ export class StreamingTTSPlayer {
    */
   private async playWithFallback(text: string): Promise<void> {
     try {
-      const response = await fetch("/api/coharu/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`TTS API error: ${response.status}`);
-      }
-
+      const response = await this.fetchTTS(text);
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
 
       this.audio = new Audio(audioUrl);
-
-      if (!this.isPlaying) {
-        this.isPlaying = true;
-        this.onPlayStart?.();
-      }
+      this.startPlayback();
 
       return new Promise((resolve, reject) => {
         if (!this.audio) {
@@ -257,14 +277,17 @@ export class StreamingTTSPlayer {
           resolve();
         };
 
-        this.audio.onerror = (e) => {
+        this.audio.onerror = () => {
           this.isPlaying = false;
           this.onPlayEnd?.();
           URL.revokeObjectURL(audioUrl);
-          reject(new Error(`Audio playback error: ${e}`));
+          reject(new Error("Audio playback error"));
         };
 
-        this.audio.play().catch(reject);
+        this.audio.play().catch((error: unknown) => {
+          const err = error instanceof Error ? error : new Error(String(error));
+          reject(err);
+        });
       });
     } catch (error) {
       console.error("Fallback TTS error:", error);
@@ -287,11 +310,11 @@ export class StreamingTTSPlayer {
    * 内部リソースをクリーンアップ
    */
   private cleanup(): void {
-    // リクエストをキャンセル
-    if (this.abortController) {
+    // リクエストをキャンセル（既に中断されている場合は無視）
+    if (this.abortController && !this.abortController.signal.aborted) {
       this.abortController.abort();
-      this.abortController = null;
     }
+    this.abortController = null;
 
     // Audio を停止
     if (this.audio) {
@@ -303,7 +326,11 @@ export class StreamingTTSPlayer {
     }
 
     // MediaSource をクリーンアップ
-    if (this.mediaSource?.readyState === "open" && this.sourceBuffer) {
+    if (
+      this.mediaSource?.readyState === "open" &&
+      this.sourceBuffer &&
+      !this.sourceBuffer.updating
+    ) {
       try {
         this.mediaSource.removeSourceBuffer(this.sourceBuffer);
       } catch {
