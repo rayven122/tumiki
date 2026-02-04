@@ -7,10 +7,9 @@ import { db } from "@tumiki/db/server";
 import type { HonoEnv } from "./types/index.js";
 import { DEFAULT_PORT } from "./constants/server.js";
 import { TIMEOUT_CONFIG } from "./constants/config.js";
+// CE機能（常にロード）
 import { healthRoute } from "./routes/health.js";
 import { mcpRoute } from "./routes/mcp.js";
-import { wellKnownRoute } from "./routes/wellKnown.js";
-import { oauthRoute } from "./routes/oauthRoute.js";
 
 // Hono アプリケーションの作成
 const app = new Hono<HonoEnv>();
@@ -18,11 +17,24 @@ const app = new Hono<HonoEnv>();
 // CORS設定
 app.use("/*", cors());
 
-// ルートをマウント
+// CE機能（常にロード）
 app.route("/", healthRoute);
 app.route("/", mcpRoute);
-app.route("/.well-known", wellKnownRoute);
-app.route("/oauth", oauthRoute);
+
+// EE機能（条件付きロード）
+const loadEERoutes = async (honoApp: Hono<HonoEnv>): Promise<void> => {
+  try {
+    const { wellKnownRoute } = await import("./routes/wellKnown.ee.js");
+    const { oauthRoute } = await import("./routes/oauthRoute.ee.js");
+    honoApp.route("/.well-known", wellKnownRoute);
+    honoApp.route("/oauth", oauthRoute);
+    logInfo("Enterprise Edition routes loaded");
+  } catch {
+    logInfo("Running Community Edition");
+  }
+};
+
+await loadEERoutes(app);
 
 // サーバー起動
 const port = Number(process.env.PORT) || DEFAULT_PORT;

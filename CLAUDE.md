@@ -233,9 +233,38 @@ afterEach(() => {
 ##### テストファイルの構成
 
 - ユニットテスト: `src/**/__tests__/*.test.ts(x)`
+- EEユニットテスト: `src/**/__tests__/*.ee.test.ts`（EE_BUILD=true時のみ実行）
 - E2Eテスト: `tests/e2e/*.test.ts`
 - テストセットアップ: `tests/setup.ts`
 - E2Eテストファイルをユニットテストディレクトリと混在させない
+
+##### Enterprise Edition (EE) テスト
+
+EE機能のテストファイルは `.ee.test.ts` 拡張子を使用：
+
+```typescript
+// ファイル名: feature.ee.test.ts
+// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// Copyright (c) 2024-2025 Reyven Inc.
+
+import { describe, test, expect } from "vitest";
+
+describe("EE機能", () => {
+  test("EE固有の動作を検証", () => {
+    // テストコード
+  });
+});
+```
+
+EEテストの実行：
+
+```bash
+# CE版テスト（EEテストはスキップ）
+pnpm test
+
+# EE版テスト（全テスト実行）
+EE_BUILD=true pnpm test
+```
 
 #### データベーステスト環境
 
@@ -360,15 +389,20 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 3. コード例が最新の実装と一致していることを確認
 4. チェックリストに必要な項目を追加
 
-## Dynamic Search 機能
+## Dynamic Search 機能（Enterprise Edition）
 
 ### 概要
 
 Dynamic Searchは、MCPサーバーのツール発見を最適化するAI検索システム。`dynamicSearch=true`設定時、全ツールではなく3つのメタツール（`search_tools`, `describe_tools`, `execute_tool`）のみを公開し、必要なツールを動的に検索・実行する。
 
+**注意**: この機能はEnterprise Edition（EE）機能です。CE版では無効化されます。
+
 ### 実装場所
 
-- `apps/mcp-proxy/src/services/dynamicSearch/` - コア実装
+- `apps/mcp-proxy/src/services/dynamicSearch/` - コア実装（EE機能）
+  - `index.ts` - CE Facade（スタブ）
+  - `index.ee.ts` - EEエントリーポイント
+  - `*.ee.ts` - Enterprise Edition 実装ファイル
 - `apps/mcp-proxy/src/handlers/mcpHandler.ts` - メタツール処理
 - `apps/mcp-proxy/src/services/toolExecutor.ts` - ツール取得・実行
 
@@ -380,6 +414,7 @@ Dynamic Search機能の実装・拡張・デバッグ時は、`tumiki-dynamic-se
 - 型定義とメタツール定義のパターン
 - AI検索実装の詳細
 - 新しいメタツール追加手順
+- EE/CE分離アーキテクチャ
 - 実装チェックリストとトラブルシューティング
 
 ### 機能変更時のスキル更新ルール
@@ -389,10 +424,10 @@ Dynamic Search機能の実装・拡張・デバッグ時は、`tumiki-dynamic-se
 以下の変更時にスキルの更新が必要：
 
 - 新しいメタツールの追加
-- 型定義の変更（`types.ts`）
-- AI検索ロジックの変更（`searchTools.ts`）
-- メタツール定義の変更（`metaToolDefinitions.ts`）
-- ファイル構成の変更
+- 型定義の変更（`types.ee.ts`）
+- AI検索ロジックの変更（`searchTools.ee.ts`）
+- メタツール定義の変更（`metaToolDefinitions.ee.ts`）
+- ファイル構成の変更（EE/CE分離パターン含む）
 
 スキル更新の手順：
 
@@ -400,6 +435,102 @@ Dynamic Search機能の実装・拡張・デバッグ時は、`tumiki-dynamic-se
 2. スキルの該当セクションを更新
 3. コード例が最新の実装と一致していることを確認
 4. チェックリストに必要な項目を追加
+
+## Enterprise Edition (EE) アーキテクチャ
+
+### 概要
+
+Tumikiは、オープンソースのCommunity Edition（CE）と商用のEnterprise Edition（EE）に分離されています。EE機能は専用の命名規則とライセンスで管理されます。
+
+### ファイル命名規則
+
+| パターン       | 説明                                    |
+| -------------- | --------------------------------------- |
+| `*.ee.ts`      | EE機能の実装ファイル                    |
+| `*.ee.test.ts` | EE機能のテストファイル                  |
+| `index.ts`     | CE Facade（スタブまたは動的インポート） |
+| `index.ee.ts`  | EEエントリーポイント                    |
+
+### SPDXライセンスヘッダー
+
+全てのEEファイル（`.ee.ts`, `.ee.test.ts`）には以下のヘッダーを追加：
+
+```typescript
+// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// Copyright (c) 2024-2025 Reyven Inc.
+```
+
+### EE機能一覧（mcp-proxy）
+
+| 機能            | ディレクトリ                                 | 説明                            |
+| --------------- | -------------------------------------------- | ------------------------------- |
+| Dynamic Search  | `services/dynamicSearch/`                    | AIによるツール検索              |
+| JWT認証         | `libs/auth/`, `middleware/auth/`             | Keycloak JWT検証                |
+| OAuth           | `routes/oauth*.ts`, `routes/wellKnown.ts`    | OAuth 2.0フロー                 |
+| PII Masking     | `libs/piiMasking/`, `middleware/piiMasking/` | GCP DLPによる個人情報マスキング |
+| Pub/Sub Logging | `libs/pubsub/`                               | GCP Pub/Subへのログ送信         |
+| Request Logging | `middleware/requestLogging/`                 | リクエストロギング              |
+| Toon Conversion | `middleware/toonConversion/`                 | トゥーン変換                    |
+| Encryption      | `libs/crypto/`                               | フィールドレベル暗号化          |
+
+### Facadeパターン
+
+CE版では、EE機能への参照がある箇所でFacadeパターンを使用：
+
+```typescript
+// index.ts（CE Facade）
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+
+// CE版ではDynamic Searchは利用不可
+export const DYNAMIC_SEARCH_AVAILABLE = false;
+
+// CE版ではメタツールは空配列
+export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [];
+
+// CE版では常に false を返す
+export const isMetaTool = (_name: string): boolean => false;
+
+// 型のみエクスポート（型互換性のため）
+export type SearchResult = { /* ... */ };
+export type DescribeToolsResult = { /* ... */ };
+```
+
+### 条件付き動的インポート
+
+ミドルウェアでは、EE版でのみ機能を有効化：
+
+```typescript
+// middleware/piiMasking/index.ts
+import { createMiddleware } from "hono/factory";
+
+// CE版: 何もしないミドルウェアをエクスポート
+export const piiMaskingMiddleware = createMiddleware(async (_c, next) => {
+  await next();
+});
+```
+
+### テスト実行
+
+EEテスト（`.ee.test.ts`）は `EE_BUILD=true` 環境変数が設定された場合のみ実行：
+
+```bash
+# CE版テスト（EEテストはスキップ）
+pnpm test
+
+# EE版テスト（全テスト実行）
+EE_BUILD=true pnpm test
+```
+
+### ビルド設定
+
+CE版ビルドでは `tsconfig.ce.json` を使用してEEファイルを除外：
+
+```json
+{
+  "extends": "./tsconfig.build.json",
+  "exclude": ["src/**/*.ee.ts", "src/**/*.ee.test.ts"]
+}
+```
 
 ## 実装後の必須アクション
 
@@ -410,7 +541,7 @@ Dynamic Search機能の実装・拡張・デバッグ時は、`tumiki-dynamic-se
 3. `pnpm typecheck` - 型チェック
 4. `pnpm build` - ビルド確認
 5. `pnpm test` - テスト実行
-6. **tumiki-code-simplifier の実行**（推奨） - Task ツールで `tumiki-code-simplifier` エージェントを起動し、最近変更されたコードを自動的にリファクタリングします。コードの明確性、一貫性、保守性を向上させつつ、機能を完全に保持します。
+6. **tumiki-code-simplifier の実行**（必須） - Task ツールで `tumiki-code-simplifier` エージェントを起動し、最近変更されたコードを自動的にリファクタリングします。コードの明確性、一貫性、保守性を向上させつつ、機能を完全に保持します。
 
 これらのコマンドは実装完了後に必ず実行し、全てが成功することを確認してください。
 

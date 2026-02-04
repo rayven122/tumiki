@@ -3,7 +3,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
-import { injectAuthHeaders } from "../libs/auth/oauth-header-injector.js";
+import { injectAuthHeaders } from "../libs/auth/oauth-header-injector.ee.js";
 import { logError, logInfo } from "../libs/logger/index.js";
 
 /**
