@@ -1,7 +1,5 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
 
 /**
  * Dynamic Search サービス

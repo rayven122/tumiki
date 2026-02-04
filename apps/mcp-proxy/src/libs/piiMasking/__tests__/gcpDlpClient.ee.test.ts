@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // モック関数を定義

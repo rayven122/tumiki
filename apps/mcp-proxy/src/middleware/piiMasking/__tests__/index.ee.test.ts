@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import type { Context } from "hono";
 import { PiiMaskingMode } from "@tumiki/db/server";

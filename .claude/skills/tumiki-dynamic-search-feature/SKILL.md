@@ -269,7 +269,7 @@ export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3.5-haiku";
 ### 1. 型定義追加（types.ee.ts）
 
 ```typescript
-// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 
 export type NewToolArgs = {
@@ -300,7 +300,7 @@ export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [
 ### 3. 実装ファイル作成（newTool.ee.ts）
 
 ```typescript
-// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 
 export const newTool = async (
@@ -375,7 +375,7 @@ export type DescribeToolsResult = {
 全てのEEファイルに必須：
 
 ```typescript
-// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 ```
 

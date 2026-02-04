@@ -1,7 +1,5 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
 
 /**
  * GCP DLP APIクライアント
@@ -152,11 +150,9 @@ export const maskText = async (
       detectedPiiList,
       processingTimeMs: Date.now() - startTime,
     };
-  } catch (error) {
-    logError(
-      "GCP DLPでのマスキングに失敗しました",
-      error instanceof Error ? error : new Error(String(error)),
-    );
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    logError("GCP DLPでのマスキングに失敗しました", error);
 
     // エラー時は元のテキストをそのまま返す（フェイルオープン）
     return {
@@ -207,10 +203,10 @@ export const maskJson = async <T>(
       detectedPiiList: result.detectedPiiList,
       processingTimeMs: Date.now() - startTime,
     };
-  } catch (error) {
+  } catch (err) {
     // パースに失敗した場合は元のデータを返す（フェイルオープン）
-
-    logError("マスキング結果のJSONパースに失敗しました", error as Error, {
+    const error = err instanceof Error ? err : new Error(String(err));
+    logError("マスキング結果のJSONパースに失敗しました", error, {
       originalDataType: typeof data,
       originalTextLength: jsonText.length,
       maskedTextLength: result.maskedText.length,

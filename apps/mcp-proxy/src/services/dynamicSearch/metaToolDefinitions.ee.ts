@@ -1,7 +1,5 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
 
 /**
  * Dynamic Search 用のメタツール定義
@@ -105,6 +103,5 @@ export const META_TOOL_NAMES = new Set(
 /**
  * 指定された名前がメタツールかどうかを判定
  */
-export const isMetaTool = (toolName: string): boolean => {
-  return META_TOOL_NAMES.has(toolName);
-};
+export const isMetaTool = (toolName: string): boolean =>
+  META_TOOL_NAMES.has(toolName);

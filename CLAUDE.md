@@ -244,7 +244,7 @@ EE機能のテストファイルは `.ee.test.ts` 拡張子を使用：
 
 ```typescript
 // ファイル名: feature.ee.test.ts
-// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 
 import { describe, test, expect } from "vitest";
@@ -456,7 +456,7 @@ Tumikiは、オープンソースのCommunity Edition（CE）と商用のEnterpr
 全てのEEファイル（`.ee.ts`, `.ee.test.ts`）には以下のヘッダーを追加：
 
 ```typescript
-// SPDX-License-Identifier: LicenseRef-Tumiki-EE
+// SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2024-2025 Reyven Inc.
 ```
 
