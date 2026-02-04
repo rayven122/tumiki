@@ -1,25 +1,17 @@
-/**
- * MCP実行コンテキスト (CE stub)
- *
- * Community Edition では最小限のコンテキスト管理のみ提供。
- * Enterprise Edition では context.ee.ts の完全な実装が使用される。
- */
+import { AsyncLocalStorage } from "node:async_hooks";
+import type { PiiMaskingMode, TransportType } from "@tumiki/db/server";
 
-import type { TransportType, PiiMaskingMode } from "@tumiki/db/server";
-
-/**
- * 検出されたPII情報の型（CE版では使用されないがインターフェース互換性のため定義）
- */
-export type DetectedPii = {
-  infoType: string;
-  count: number;
-};
+import type { DetectedPii } from "../../libs/piiMasking/index.js";
 
 /**
  * MCP実行コンテキスト
  *
  * リクエスト受信からレスポンス返却までの全ライフサイクルを管理。
  * middlewareとtoolExecutorで共有する情報を格納。
+ *
+ * - ログ記録（BigQuery送信）
+ * - PIIマスキング済みボディの受け渡し
+ * - エラー情報の伝播
  */
 export type McpExecutionContext = {
   // 初回実行時に設定する情報
@@ -33,51 +25,65 @@ export type McpExecutionContext = {
   httpStatus?: number;
   errorCode?: number;
   errorMessage?: string;
-  errorDetails?: unknown;
+  errorDetails?: unknown; // エラーオブジェクト全体
 
   // リクエストボディ（piiMaskingMode が DISABLED 以外の時、PIIマスキング済み）
   requestBody?: unknown;
 
   // PII検出情報
+  /** PIIマスキングモード */
   piiMaskingMode?: PiiMaskingMode;
+  /** 使用したInfoType一覧 */
   piiInfoTypes?: string[];
+  /** リクエストで検出されたPII情報 */
   piiDetectedRequest?: DetectedPii[];
+  /** レスポンスで検出されたPII情報 */
   piiDetectedResponse?: DetectedPii[];
 
   // TOON変換メトリクス
+  /** TOON変換が有効だったかどうか */
   toonConversionEnabled?: boolean;
+  /** TOON変換前のトークン数（元データのトークン数） */
   inputTokens?: number;
+  /** AIに渡される最終的な出力トークン数 */
   outputTokens?: number;
 };
 
+const executionStorage = new AsyncLocalStorage<McpExecutionContext>();
+
 /**
- * 現在の実行コンテキストを取得 (CE stub)
+ * 現在の実行コンテキストを取得
  *
- * CE版では常にundefinedを返す
+ * @returns 現在のコンテキスト、未設定の場合はundefined
  */
 export const getExecutionContext = (): McpExecutionContext | undefined => {
-  return undefined;
+  return executionStorage.getStore();
 };
 
 /**
- * 現在の実行コンテキストを部分的に更新 (CE stub)
+ * 現在の実行コンテキストを部分的に更新
  *
- * CE版では何もしない
+ * @param updates - 更新する値
  */
 export const updateExecutionContext = (
-  _updates: Partial<McpExecutionContext>,
+  updates: Partial<McpExecutionContext>,
 ): void => {
-  // CE版では何もしない
+  const current = executionStorage.getStore();
+  if (current) {
+    Object.assign(current, updates);
+  }
 };
 
 /**
- * 新しい実行コンテキストでコールバックを実行 (CE stub)
+ * 新しい実行コンテキストでコールバックを実行
  *
- * CE版ではコンテキストなしでそのままコールバックを実行
+ * @param context - 初期コンテキスト
+ * @param callback - 実行するコールバック関数
+ * @returns コールバックの実行結果
  */
 export const runWithExecutionContext = async <T>(
-  _context: McpExecutionContext,
+  context: McpExecutionContext,
   callback: () => Promise<T>,
 ): Promise<T> => {
-  return callback();
+  return executionStorage.run(context, callback);
 };

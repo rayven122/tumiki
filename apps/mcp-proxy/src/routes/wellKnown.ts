@@ -1,11 +1,6 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
 import { Hono } from "hono";
 import type { HonoEnv } from "../types/index.js";
-import { getKeycloakIssuer } from "../libs/auth/keycloak.ee.js";
+import { getKeycloakIssuer } from "../libs/auth/keycloak.js";
 import { getMcpServerOrganization } from "../services/mcpServerService.js";
 
 export const wellKnownRoute = new Hono<HonoEnv>();

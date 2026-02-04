@@ -1,9 +1,4 @@
 /**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
-/**
  * 統一 JWT 検証関数
  *
  * Keycloak 発行の JWT トークンを検証するための共通関数。
@@ -11,7 +6,7 @@
  */
 
 import { jwtVerify } from "jose";
-import { getKeycloakServerMetadata, getJWKS } from "./keycloak.ee.js";
+import { getKeycloakServerMetadata, getJWKS } from "./keycloak.js";
 import type { JWTPayload } from "../../types/index.js";
 
 /**

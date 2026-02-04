@@ -1,9 +1,4 @@
 /**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
-/**
  * @fileoverview Cloud Run IAM認証ユーティリティ
  *
  * Google Cloud Run へのリクエストに必要な OAuth2.0 IDトークンを取得します。

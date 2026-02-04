@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import type { HonoEnv } from "../../types/index.js";
-import { dcrHandler } from "../oauth.ee.js";
-import { clearKeycloakCache } from "../../libs/auth/keycloak.ee.js";
+import { dcrHandler } from "../oauth.js";
+import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
 
 // vi.hoisted でモック関数とクラスを定義（ホイスティング問題を回避）
 const { mockDiscovery, mockDynamicClientRegistration, MockResponseBodyError } =

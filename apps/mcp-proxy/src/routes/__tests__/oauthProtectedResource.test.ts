@@ -2,8 +2,8 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { PiiMaskingMode } from "@tumiki/db/server";
 import type { HonoEnv } from "../../types/index.js";
-import { wellKnownRoute } from "../wellKnown.ee.js";
-import { clearKeycloakCache } from "../../libs/auth/keycloak.ee.js";
+import { wellKnownRoute } from "../wellKnown.js";
+import { clearKeycloakCache } from "../../libs/auth/keycloak.js";
 import type { McpServerLookupResult } from "../../services/mcpServerService.js";
 
 // vi.hoisted でモック関数を定義（ホイスティング問題を回避）

@@ -20,7 +20,7 @@ describe("getMcpLogsTopic", () => {
   test("PUBSUB_MCP_LOGS_TOPICが未設定の場合はnullを返す", async () => {
     vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "");
 
-    const { getMcpLogsTopic } = await import("../index.ee.js");
+    const { getMcpLogsTopic } = await import("../index.js");
 
     expect(getMcpLogsTopic()).toBeNull();
   });
@@ -38,7 +38,7 @@ describe("isBigQueryLoggingEnabled", () => {
   test("PUBSUB_MCP_LOGS_TOPICが設定されている場合はtrueを返す", async () => {
     vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "mcp-request-logs-dev");
 
-    const { isBigQueryLoggingEnabled } = await import("../index.ee.js");
+    const { isBigQueryLoggingEnabled } = await import("../index.js");
 
     expect(isBigQueryLoggingEnabled()).toBe(true);
   });
@@ -46,7 +46,7 @@ describe("isBigQueryLoggingEnabled", () => {
   test("PUBSUB_MCP_LOGS_TOPICが未設定の場合はfalseを返す", async () => {
     vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "");
 
-    const { isBigQueryLoggingEnabled } = await import("../index.ee.js");
+    const { isBigQueryLoggingEnabled } = await import("../index.js");
 
     expect(isBigQueryLoggingEnabled()).toBe(false);
   });

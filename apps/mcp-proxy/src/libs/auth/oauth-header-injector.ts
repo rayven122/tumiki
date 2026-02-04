@@ -1,9 +1,4 @@
 /**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
-/**
  * OAuth認証ヘッダー注入ミドルウェア
  *
  * @tumiki/oauth-token-manager を使用してトークンを取得し、
@@ -15,7 +10,7 @@ import {
   ReAuthRequiredError,
 } from "@tumiki/oauth-token-manager";
 import type { McpConfig, McpServerTemplate } from "@tumiki/db/prisma";
-import { getCloudRunIdToken } from "./cloudRunAuth.ee.js";
+import { getCloudRunIdToken } from "./cloudRunAuth.js";
 import { logError } from "../logger/index.js";
 import { z } from "zod";
 

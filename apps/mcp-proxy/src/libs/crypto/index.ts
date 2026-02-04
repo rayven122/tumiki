@@ -1,1 +1,1 @@
-export { encrypt, decrypt, generateEncryptionKey } from "./encryption.ee.js";
+export { encrypt, decrypt, generateEncryptionKey } from "./encryption.js";

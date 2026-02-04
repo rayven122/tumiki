@@ -1,8 +1,3 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 /**

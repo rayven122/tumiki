@@ -1,9 +1,4 @@
 /**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
-/**
  * MCP ログ送信
  *
  * Pub/Sub経由でBigQueryにMCPリクエストログを送信する
@@ -11,7 +6,7 @@
 
 import type { TransportType, PiiMaskingMode } from "@tumiki/db/server";
 import { logError } from "../logger/index.js";
-import { getMcpLogsTopic, isBigQueryLoggingEnabled } from "./index.ee.js";
+import { getMcpLogsTopic, isBigQueryLoggingEnabled } from "./index.js";
 
 /**
  * MCPログエントリの型定義

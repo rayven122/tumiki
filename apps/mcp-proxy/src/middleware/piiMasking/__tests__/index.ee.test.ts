@@ -25,7 +25,7 @@ vi.mock("../../../libs/logger/index.js", () => ({
 // 実行コンテキストをモック
 const mockUpdateExecutionContext = vi.fn();
 
-vi.mock("../../requestLogging/context.ee.js", () => ({
+vi.mock("../../requestLogging/context.js", () => ({
   updateExecutionContext: (updates: unknown): void => {
     mockUpdateExecutionContext(updates);
   },

@@ -462,16 +462,10 @@ Tumikiは、オープンソースのCommunity Edition（CE）と商用のEnterpr
 
 ### EE機能一覧（mcp-proxy）
 
-| 機能            | ディレクトリ                                 | 説明                            |
-| --------------- | -------------------------------------------- | ------------------------------- |
-| Dynamic Search  | `services/dynamicSearch/`                    | AIによるツール検索              |
-| JWT認証         | `libs/auth/`, `middleware/auth/`             | Keycloak JWT検証                |
-| OAuth           | `routes/oauth*.ts`, `routes/wellKnown.ts`    | OAuth 2.0フロー                 |
-| PII Masking     | `libs/piiMasking/`, `middleware/piiMasking/` | GCP DLPによる個人情報マスキング |
-| Pub/Sub Logging | `libs/pubsub/`                               | GCP Pub/Subへのログ送信         |
-| Request Logging | `middleware/requestLogging/`                 | リクエストロギング              |
-| Toon Conversion | `middleware/toonConversion/`                 | トゥーン変換                    |
-| Encryption      | `libs/crypto/`                               | フィールドレベル暗号化          |
+| 機能           | ディレクトリ                                 | 説明                            |
+| -------------- | -------------------------------------------- | ------------------------------- |
+| Dynamic Search | `services/dynamicSearch/`                    | AIによるツール検索              |
+| PII Masking    | `libs/piiMasking/`, `middleware/piiMasking/` | GCP DLPによる個人情報マスキング |
 
 ### Facadeパターン
 

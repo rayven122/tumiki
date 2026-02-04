@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { decrypt, encrypt, generateEncryptionKey } from "./encryption.ee.js";
+import { decrypt, encrypt, generateEncryptionKey } from "./encryption.js";
 
 // テスト用の暗号化キーを環境変数に設定
 beforeEach(() => {

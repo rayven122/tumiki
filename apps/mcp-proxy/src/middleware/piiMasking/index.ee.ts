@@ -31,7 +31,7 @@ import {
   maskText,
   type PiiMaskingOptions,
 } from "../../libs/piiMasking/index.js";
-import { updateExecutionContext } from "../requestLogging/context.ee.js";
+import { updateExecutionContext } from "../requestLogging/context.js";
 
 /**
  * PII マスキングミドルウェア

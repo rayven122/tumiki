@@ -1,11 +1,6 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
 import { Hono } from "hono";
 import type { HonoEnv } from "../types/index.js";
-import { oauthTokenHandler, dcrHandler } from "./oauth.ee.js";
+import { oauthTokenHandler, dcrHandler } from "./oauth.js";
 
 /**
  * OAuth 2.1 エンドポイント

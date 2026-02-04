@@ -1,8 +1,3 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
 import type { Context, Next } from "hono";
 import { AuthType, type PiiMaskingMode } from "@tumiki/db";
 import type { HonoEnv } from "../../types/index.js";
@@ -12,7 +7,7 @@ import {
   createPermissionDeniedError,
   createNotFoundError,
 } from "../../libs/error/index.js";
-import { verifyKeycloakJWT } from "../../libs/auth/jwt-verifier.ee.js";
+import { verifyKeycloakJWT } from "../../libs/auth/jwt-verifier.js";
 import {
   getMcpServerOrganization,
   checkOrganizationMembership,

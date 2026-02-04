@@ -1,9 +1,4 @@
 /**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
-/**
  * Pub/Sub クライアント
  *
  * BigQueryへのログストリーミング用にPub/Subトピックを提供

@@ -1,8 +1,3 @@
-/**
- * SPDX-License-Identifier: Elastic-2.0
- * This file is part of Tumiki Enterprise Edition.
- */
-
 import type { Context } from "hono";
 import type {
   OAuthErrorResponse,
@@ -21,7 +16,7 @@ import {
 import {
   createKeycloakConfiguration,
   isLocalhostUrl,
-} from "../libs/auth/keycloak.ee.js";
+} from "../libs/auth/keycloak.js";
 
 /**
  * リクエストボディのバリデーション

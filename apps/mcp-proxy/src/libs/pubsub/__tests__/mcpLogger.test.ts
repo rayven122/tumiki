@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { publishMcpLog, type McpLogEntry } from "../mcpLogger.ee.js";
+import { publishMcpLog, type McpLogEntry } from "../mcpLogger.js";
 
 // Pub/Subモジュールをモック
-vi.mock("../index.ee.js", () => ({
+vi.mock("../index.js", () => ({
   getMcpLogsTopic: vi.fn(),
   isBigQueryLoggingEnabled: vi.fn(),
 }));
@@ -12,7 +12,7 @@ vi.mock("../../logger/index.js", () => ({
   logError: vi.fn(),
 }));
 
-import { getMcpLogsTopic, isBigQueryLoggingEnabled } from "../index.ee.js";
+import { getMcpLogsTopic, isBigQueryLoggingEnabled } from "../index.js";
 import { logError } from "../../logger/index.js";
 
 describe("publishMcpLog", () => {
