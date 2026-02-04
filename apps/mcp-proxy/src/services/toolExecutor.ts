@@ -1,7 +1,7 @@
 import { db } from "@tumiki/db/server";
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 import { connectToMcpServer } from "./mcpConnection.js";
-import { logError, logInfo } from "../libs/logger/index.js";
+import { logError, logInfo, logWarn } from "../libs/logger/index.js";
 import { updateExecutionContext } from "../middleware/requestLogging/context.js";
 import { extractMcpErrorInfo, getErrorCodeName } from "../libs/error/index.js";
 import { DYNAMIC_SEARCH_META_TOOLS, type Tool } from "./dynamicSearch/index.js";
@@ -270,15 +270,24 @@ export const getAllowedTools = async (
 
     // Dynamic Search が有効な場合はメタツールのみを返す
     if (mcpServer.dynamicSearch) {
-      logInfo("Dynamic Search enabled, returning meta tools", {
-        mcpServerId,
-        metaToolCount: DYNAMIC_SEARCH_META_TOOLS.length,
-      });
+      // CE版ではメタツールが利用不可能な場合がある
+      if (DYNAMIC_SEARCH_META_TOOLS.length === 0) {
+        logWarn(
+          "Dynamic Search enabled but meta tools not available (CE version). Falling back to normal tools.",
+          { mcpServerId },
+        );
+        // フォールバック: 通常のツールリストを返す（下の処理に進む）
+      } else {
+        logInfo("Dynamic Search enabled, returning meta tools", {
+          mcpServerId,
+          metaToolCount: DYNAMIC_SEARCH_META_TOOLS.length,
+        });
 
-      return {
-        tools: DYNAMIC_SEARCH_META_TOOLS,
-        dynamicSearch: true,
-      };
+        return {
+          tools: DYNAMIC_SEARCH_META_TOOLS,
+          dynamicSearch: true,
+        };
+      }
     }
 
     // 全テンプレートインスタンスからallowedToolsを集約

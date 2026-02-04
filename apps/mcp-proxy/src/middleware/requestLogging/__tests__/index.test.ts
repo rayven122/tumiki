@@ -56,6 +56,7 @@ import { publishMcpLog } from "../../../libs/pubsub/mcpLogger.js";
 // モック関数を取得
 const mockRunWithExecutionContext = vi.mocked(runWithExecutionContext);
 const mockGetExecutionContext = vi.mocked(getExecutionContext);
+// eslint-disable-next-line @typescript-eslint/unbound-method
 const mockCreate = vi.mocked(db.mcpServerRequestLog.create);
 const mockPublishMcpLog = vi.mocked(publishMcpLog);
 
@@ -124,6 +125,7 @@ describe("mcpRequestLoggingMiddleware", () => {
       expect(mockRunWithExecutionContext).toHaveBeenCalledTimes(1);
       expect(mockRunWithExecutionContext).toHaveBeenCalledWith(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           requestStartTime: expect.any(Number),
           inputBytes: 0,
         }),

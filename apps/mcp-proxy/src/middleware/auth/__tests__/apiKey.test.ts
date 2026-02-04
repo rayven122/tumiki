@@ -41,6 +41,7 @@ import { apiKeyAuthMiddleware } from "../apiKey.js";
 import { db, AuthType } from "@tumiki/db/server";
 
 // モック関数を取得
+// eslint-disable-next-line @typescript-eslint/unbound-method
 const mockFindUnique = vi.mocked(db.mcpApiKey.findUnique);
 
 describe("apiKeyAuthMiddleware", () => {
@@ -131,6 +132,7 @@ describe("apiKeyAuthMiddleware", () => {
       expect(res.status).toBe(200);
       expect(mockFindUnique).toHaveBeenCalledWith({
         where: { apiKey: "tumiki_bearer_key" },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         include: expect.any(Object),
       });
     });
@@ -161,6 +163,7 @@ describe("apiKeyAuthMiddleware", () => {
       expect(res.status).toBe(200);
       expect(mockFindUnique).toHaveBeenCalledWith({
         where: { apiKey: "tumiki_priority_key" },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         include: expect.any(Object),
       });
     });
