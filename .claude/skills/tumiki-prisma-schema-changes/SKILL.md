@@ -1,5 +1,7 @@
 ---
 description: Prismaスキーマ変更の安全な手順ガイド。データベーススキーマの追加・変更・マイグレーション実行時に使用。
+sourcePatterns:
+  - packages/db/prisma/schema/*.prisma
 ---
 
 # Prismaスキーマ変更ガイド

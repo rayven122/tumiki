@@ -1,5 +1,10 @@
 ---
 description: Tumiki統合MCPサーバー（Type: CUSTOM）の実装・拡張・デバッグのための包括的なガイドライン。複数のMCPサーバーテンプレートを1つのサーバーに統合する機能の開発に使用。
+sourcePatterns:
+  - packages/db/prisma/schema/userMcpServer.prisma
+  - apps/manager/src/server/api/routers/v2/userMcpServer/**
+  - apps/manager/src/atoms/integratedFlowAtoms.ts
+  - apps/manager/src/app/**/mcps/create-integrated/**
 ---
 
 # 統合MCPサーバー（CUSTOM）機能 - 開発リファレンス
