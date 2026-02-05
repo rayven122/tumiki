@@ -1,6 +1,4 @@
 /**
- * Unit tests for libs/error/handler.ts
- *
  * 共通エラーハンドラーのテスト
  */
 
@@ -10,7 +8,6 @@ import type { HonoEnv } from "../../../types/index.js";
 import { handleError } from "../handler.js";
 import * as loggerModule from "../../logger/index.js";
 
-// JSON-RPC エラーレスポンスの型定義
 type JsonRpcErrorResponse = {
   jsonrpc: "2.0";
   id: string | number | null;
@@ -23,7 +20,6 @@ type JsonRpcErrorResponse = {
   };
 };
 
-// logError をモック
 vi.mock("../../logger/index.js", async (importOriginal) => {
   const original =
     await importOriginal<typeof import("../../logger/index.js")>();

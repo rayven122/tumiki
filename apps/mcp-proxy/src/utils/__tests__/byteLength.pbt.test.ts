@@ -1,7 +1,5 @@
 /**
- * Property-Based Testing for utils/byteLength.ts
- *
- * UTF-8バイト長計算のPBTテスト
+ * UTF-8バイト長計算のProperty-Based Testing
  */
 
 import { describe, test, expect } from "vitest";
@@ -38,7 +36,6 @@ describe("byteLength", () => {
   });
 
   test("ASCII文字列は文字数と等しい", () => {
-    // ASCII文字のみを生成（0-127の範囲）
     const asciiArbitrary = fc
       .array(fc.integer({ min: 0, max: 127 }))
       .map((codes) => String.fromCharCode(...codes));
@@ -47,7 +44,6 @@ describe("byteLength", () => {
       fc.property(asciiArbitrary, (text) => {
         const result = byteLength(text);
 
-        // ASCIIのみ（0-127）の場合、文字数とバイト数は等しい
         expect(result).toBe(text.length);
       }),
       { numRuns: 1000 },
@@ -55,11 +51,9 @@ describe("byteLength", () => {
   });
 
   test("マルチバイト文字は文字数より大きいバイト数を返す", () => {
-    // 日本語（ひらがな、カタカナ、漢字）
     const japaneseChars = "あいうえお漢字カタカナ";
     const result = byteLength(japaneseChars);
 
-    // UTF-8では日本語は3バイト
     expect(result).toBeGreaterThan(japaneseChars.length);
   });
 
@@ -88,18 +82,11 @@ describe("byteLength", () => {
   });
 
   test("既知の値に対する期待値", () => {
-    // ASCII
     expect(byteLength("hello")).toBe(5);
-
-    // 日本語（UTF-8では3バイト/文字）
     expect(byteLength("あ")).toBe(3);
     expect(byteLength("あいう")).toBe(9);
-
-    // 絵文字（UTF-8では4バイト）
     expect(byteLength("😀")).toBe(4);
-
-    // 混合
-    expect(byteLength("Hello世界")).toBe(5 + 6); // 5 ASCII + 2漢字×3バイト
+    expect(byteLength("Hello世界")).toBe(11);
   });
 
   test("文字列の結合: byteLength(a + b) === byteLength(a) + byteLength(b)", () => {

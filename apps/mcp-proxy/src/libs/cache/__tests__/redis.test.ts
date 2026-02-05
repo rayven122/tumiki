@@ -1,13 +1,13 @@
 /**
- * Unit tests for libs/cache/redis.ts
- *
  * Redisクライアントのシングルトン管理テスト
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 
-// redisモジュールのモック型
+// モック関数型
 type MockFn = ReturnType<typeof vi.fn>;
+
+// モックRedisクライアント型
 type MockRedisClient = {
   isOpen: boolean;
   connect: MockFn;
@@ -15,7 +15,6 @@ type MockRedisClient = {
   on: MockFn;
 };
 
-// redis モジュールのモック
 const mockClient: MockRedisClient = {
   isOpen: false,
   connect: vi.fn(),
@@ -27,7 +26,6 @@ vi.mock("redis", () => ({
   createClient: vi.fn(() => mockClient),
 }));
 
-// logger モジュールのモック
 vi.mock("../../logger/index.js", () => ({
   logError: vi.fn(),
   logInfo: vi.fn(),
@@ -38,13 +36,11 @@ describe("redis", () => {
     vi.clearAllMocks();
     vi.resetModules();
 
-    // mockClientの状態をリセット
     mockClient.isOpen = false;
     mockClient.connect.mockReset().mockResolvedValue(undefined);
     mockClient.quit.mockReset().mockResolvedValue(undefined);
     mockClient.on.mockReset().mockReturnThis();
 
-    // 環境変数をクリア
     vi.stubEnv("REDIS_URL", "");
     vi.stubEnv("REDIS_CONNECT_TIMEOUT", "");
   });
@@ -97,14 +93,10 @@ describe("redis", () => {
 
       const { getRedisClient } = await import("../redis.js");
 
-      // 最初の接続
       const result1 = await getRedisClient();
-
-      // 2回目の呼び出し
       const result2 = await getRedisClient();
 
       expect(result1).toBe(result2);
-      // connectは1回だけ呼ばれる
       expect(mockClient.connect).toHaveBeenCalledTimes(1);
     });
 
@@ -184,16 +176,13 @@ describe("redis", () => {
 
       const { getRedisClient, closeRedisClient } = await import("../redis.js");
 
-      // 接続
       await getRedisClient();
 
-      // クローズ前にisOpenをtrueに保証
       mockClient.isOpen = true;
       mockClient.quit.mockImplementation(async () => {
         mockClient.isOpen = false;
       });
 
-      // クローズ
       await closeRedisClient();
 
       expect(mockClient.quit).toHaveBeenCalled();
@@ -204,7 +193,6 @@ describe("redis", () => {
 
       const { closeRedisClient } = await import("../redis.js");
 
-      // 接続せずにクローズ
       await closeRedisClient();
 
       expect(mockClient.quit).not.toHaveBeenCalled();
@@ -219,13 +207,11 @@ describe("redis", () => {
 
       const { getRedisClient, closeRedisClient } = await import("../redis.js");
 
-      // 接続
       await getRedisClient();
 
       mockClient.isOpen = true;
       mockClient.quit.mockRejectedValue(new Error("Quit failed"));
 
-      // エラーがスローされないことを確認
       await expect(closeRedisClient()).resolves.toBeUndefined();
     });
   });
@@ -242,21 +228,19 @@ describe("redis", () => {
       const { getRedisClient } = await import("../redis.js");
       await getRedisClient();
 
-      // createClientの引数を取得
       const createClientMock = createClient as MockFn;
       const options = createClientMock.mock.calls[0]?.[0];
       const reconnectStrategy = options?.socket?.reconnectStrategy;
 
       expect(reconnectStrategy).toBeDefined();
 
-      // 5回目までは再接続を試みる（線形バックオフ: retries * 100）
+      // 線形バックオフ: retries * 100
       expect(reconnectStrategy(1)).toBe(100);
       expect(reconnectStrategy(2)).toBe(200);
       expect(reconnectStrategy(3)).toBe(300);
       expect(reconnectStrategy(4)).toBe(400);
       expect(reconnectStrategy(5)).toBe(500);
 
-      // 6回目以降はエラーを返す
       const result = reconnectStrategy(6);
       expect(result).toBeInstanceOf(Error);
       expect((result as Error).message).toBe(
@@ -279,9 +263,6 @@ describe("redis", () => {
       const options = createClientMock.mock.calls[0]?.[0];
       const reconnectStrategy = options?.socket?.reconnectStrategy;
 
-      // 大きなretry回数でも3000msを超えない
-      // 計算: Math.min(100 * 100, 3000) = 3000
-      // ただし、100回を超えるとErrorを返すのでチェック
       const result = reconnectStrategy(30);
       expect(typeof result === "number" ? result : 0).toBeLessThanOrEqual(3000);
     });

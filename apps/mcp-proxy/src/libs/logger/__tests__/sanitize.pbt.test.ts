@@ -1,7 +1,5 @@
 /**
- * Property-Based Testing for logger/sanitize.ts
- *
- * 機密情報のハッシュ化関数をPBTでテスト
+ * 機密情報のハッシュ化関数のProperty-Based Testing
  */
 
 import { describe, test, expect } from "vitest";
@@ -44,19 +42,17 @@ describe("sanitizeIdForLog", () => {
     );
   });
 
-  test("異なる入力は（高確率で）異なる出力を返す", () => {
+  test("異なる入力は高確率で異なる出力を返す", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }),
         fc.string({ minLength: 1 }),
         (input1, input2) => {
-          // 同じ入力の場合はスキップ
           fc.pre(input1 !== input2);
 
           const result1 = sanitizeIdForLog(input1);
           const result2 = sanitizeIdForLog(input2);
 
-          // SHA-256の先頭8文字なので衝突は稀（2^32に1回程度）
           expect(result1).not.toBe(result2);
         },
       ),
@@ -95,13 +91,8 @@ describe("sanitizeIdForLog", () => {
     );
   });
 
-  test("特定の既知の値に対する期待値（スナップショット的検証）", () => {
-    // 空文字列のSHA-256の先頭8文字
-    // SHA256("") = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  test("既知の値に対する期待値を検証する", () => {
     expect(sanitizeIdForLog("")).toBe("e3b0c442");
-
-    // "test"のSHA-256の先頭8文字
-    // SHA256("test") = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
     expect(sanitizeIdForLog("test")).toBe("9f86d081");
   });
 });

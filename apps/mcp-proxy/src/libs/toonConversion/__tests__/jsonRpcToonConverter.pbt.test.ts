@@ -1,11 +1,5 @@
 /**
- * JSON-RPC TOON変換の Property-Based Testing
- *
- * テストするプロパティ:
- * - JSON-RPC構造（jsonrpc, id）が保持される
- * - 変換結果は常に有効なJSON
- * - wasConverted フラグの正確性
- * - 安全な変換（エラー時フォールバック）
+ * JSON-RPC TOON変換のProperty-Based Testing
  */
 
 import { describe, test, expect } from "vitest";
@@ -21,7 +15,6 @@ import {
   jsonRpcIdArbitrary,
 } from "../../../test-utils/arbitraries.js";
 
-// JSON-RPC レスポンスの型定義
 type JsonRpcSuccessResponseParsed = {
   jsonrpc: string;
   id: string | number | null;
@@ -52,8 +45,6 @@ describe("jsonRpcToonConverter", () => {
         fc.property(jsonRpcSuccessResponseArbitrary, (response) => {
           const jsonStr = JSON.stringify(response);
           const result = convertMcpResponseToToon(jsonStr);
-
-          // パースして構造を確認
           const parsed = JSON.parse(
             result.convertedData,
           ) as JsonRpcSuccessResponseParsed;
@@ -75,7 +66,6 @@ describe("jsonRpcToonConverter", () => {
           ) as JsonRpcErrorResponseParsed;
           expect(parsed.jsonrpc).toStrictEqual("2.0");
           expect(parsed.id).toStrictEqual(response.id);
-          // error 構造があれば検証
           if (parsed.error) {
             expect(parsed.error.code).toStrictEqual(response.error.code);
             expect(parsed.error.message).toStrictEqual(response.error.message);
@@ -96,7 +86,6 @@ describe("jsonRpcToonConverter", () => {
             const jsonStr = JSON.stringify(response);
             const result = convertMcpResponseToToon(jsonStr);
 
-            // JSON.parse が成功することを確認（結果は使用しない）
             JSON.parse(result.convertedData);
           },
         ),
@@ -121,7 +110,6 @@ describe("jsonRpcToonConverter", () => {
             const parsed = JSON.parse(result.convertedData) as McpResultParsed;
             expect(parsed.result).toBeDefined();
             expect(parsed.result.content).toBeInstanceOf(Array);
-            // content 配列の長さが保持されることを確認
             expect(parsed.result.content.length).toStrictEqual(
               mcpResult.content.length,
             );
@@ -245,7 +233,6 @@ describe("jsonRpcToonConverter", () => {
 
   describe("境界条件", () => {
     test("中程度のJSONデータを処理できる", () => {
-      // TOON変換はトークンカウントに時間がかかるため、適度なサイズに制限
       const mediumContent = Array.from({ length: 10 }, (_, i) => ({
         type: "text" as const,
         text: `Item ${i}: ${"a".repeat(100)}`,
@@ -262,12 +249,10 @@ describe("jsonRpcToonConverter", () => {
       const jsonStr = JSON.stringify(response);
       const result = convertMcpResponseToToon(jsonStr);
 
-      // 処理が完了することを確認（結果は使用しない）
       JSON.parse(result.convertedData);
     });
 
     test("ネストが深いJSONを処理できる", () => {
-      // 深くネストしたオブジェクトを作成
       type NestedObject = { nested: NestedObject | string };
       let nested: NestedObject = { nested: "bottom" };
       for (let i = 0; i < 20; i++) {
@@ -283,7 +268,6 @@ describe("jsonRpcToonConverter", () => {
       const jsonStr = JSON.stringify(response);
       const result = convertMcpResponseToToon(jsonStr);
 
-      // 処理が完了することを確認（結果は使用しない）
       JSON.parse(result.convertedData);
     });
 
@@ -332,7 +316,6 @@ describe("jsonRpcToonConverter", () => {
         const jsonStr = JSON.stringify(response);
         const result = convertMcpResponseToToon(jsonStr);
 
-        // 処理が完了することを確認（結果は使用しない）
         JSON.parse(result.convertedData);
       }
     });

@@ -1,6 +1,4 @@
 /**
- * Unit tests for libs/error/mcpErrorHandler.ts
- *
  * MCPエラー処理とHTTPステータスマッピングのテスト
  */
 

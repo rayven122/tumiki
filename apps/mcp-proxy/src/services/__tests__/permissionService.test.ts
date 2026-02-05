@@ -1,6 +1,4 @@
 /**
- * Unit tests for services/permissionService.ts
- *
  * 権限チェックサービスのテスト
  */
 
@@ -186,8 +184,7 @@ describe("checkPermission", () => {
       );
     });
 
-    test("対称性: checkPermission(a, b) === checkPermission(b, a) は成り立たない（反射的）", async () => {
-      // 現在の実装では userOrgId === targetOrgId の厳密な等価比較
+    test("異なる組織ID間の比較は対称的にfalseを返す", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.string({ minLength: 1 }),
@@ -208,7 +205,6 @@ describe("checkPermission", () => {
               "READ",
             );
 
-            // 両方ともfalseになる（異なる組織なので）
             expect(result1).toBe(false);
             expect(result2).toBe(false);
           },

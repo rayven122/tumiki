@@ -1,21 +1,17 @@
 /**
- * Property-Based Testing for config/transformer.ts
- *
- * DB型からクライアント型への変換関数をPBTでテスト
+ * DB型からクライアント型への変換関数のProperty-Based Testing
  */
 
 import { describe, test, expect } from "vitest";
 import * as fc from "fast-check";
 import { mapTransportType, mapAuthType } from "../transformer.js";
 
-// DB TransportType の Arbitrary
 const dbTransportTypeArbitrary = fc.constantFrom(
   "SSE" as const,
   "STREAMABLE_HTTPS" as const,
   "STDIO" as const,
 );
 
-// DB AuthType の Arbitrary
 const dbAuthTypeArbitrary = fc.constantFrom(
   "NONE" as const,
   "API_KEY" as const,
@@ -61,14 +57,12 @@ describe("mapTransportType", () => {
   });
 
   test("不明なトランスポートタイプでエラーをスローする", () => {
-    // 実際のEnum値以外の文字列を渡す（型エラーを回避するためにany使用）
-    const invalidTypes = ["UNKNOWN", "HTTP", "TCP", "WEBSOCKET", ""];
+    const invalidTypes = ["UNKNOWN", "HTTP", "TCP", "WEBSOCKET", ""] as const;
 
     for (const invalidType of invalidTypes) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => mapTransportType(invalidType as any)).toThrow(
-        /Unknown transport type/,
-      );
+      expect(() =>
+        mapTransportType(invalidType as "SSE" | "STREAMABLE_HTTPS" | "STDIO"),
+      ).toThrow(/Unknown transport type/);
     }
   });
 });
@@ -112,14 +106,12 @@ describe("mapAuthType", () => {
   });
 
   test("不明な認証タイプでエラーをスローする", () => {
-    // 実際のEnum値以外の文字列を渡す
-    const invalidTypes = ["UNKNOWN", "BASIC", "JWT", "TOKEN", ""];
+    const invalidTypes = ["UNKNOWN", "BASIC", "JWT", "TOKEN", ""] as const;
 
     for (const invalidType of invalidTypes) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => mapAuthType(invalidType as any)).toThrow(
-        /Unknown auth type/,
-      );
+      expect(() =>
+        mapAuthType(invalidType as "NONE" | "API_KEY" | "OAUTH"),
+      ).toThrow(/Unknown auth type/);
     }
   });
 });

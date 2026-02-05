@@ -1,18 +1,14 @@
 /**
- * Property-Based Testing for libs/jwt/index.ts
- *
- * JWT発行者抽出関数のPBTテスト
+ * JWT発行者抽出関数のProperty-Based Testing
  */
 
 import { describe, test, expect } from "vitest";
 import * as fc from "fast-check";
 import { getIssuerFromToken } from "../index.js";
 
-// Base64URL エンコード用ヘルパー
 const base64UrlEncode = (data: string): string =>
   Buffer.from(data).toString("base64url");
 
-// JWT ペイロード Arbitrary（issuer付き）
 const jwtPayloadWithIssuerArbitrary = fc.record({
   iss: fc.string({ minLength: 1 }),
   sub: fc.option(fc.string(), { nil: undefined }),
@@ -21,7 +17,6 @@ const jwtPayloadWithIssuerArbitrary = fc.record({
   iat: fc.option(fc.integer({ min: 0 }), { nil: undefined }),
 });
 
-// JWT ペイロード Arbitrary（issuerなし）
 const jwtPayloadWithoutIssuerArbitrary = fc.record({
   sub: fc.option(fc.string(), { nil: undefined }),
   aud: fc.option(fc.string(), { nil: undefined }),
@@ -29,7 +24,6 @@ const jwtPayloadWithoutIssuerArbitrary = fc.record({
   iat: fc.option(fc.integer({ min: 0 }), { nil: undefined }),
 });
 
-// 有効なJWT Arbitrary
 const validJwtWithIssuerArbitrary = jwtPayloadWithIssuerArbitrary.map(
   (payload) => {
     const header = base64UrlEncode(
@@ -44,7 +38,6 @@ const validJwtWithIssuerArbitrary = jwtPayloadWithIssuerArbitrary.map(
   },
 );
 
-// issuerなしJWT Arbitrary
 const validJwtWithoutIssuerArbitrary = jwtPayloadWithoutIssuerArbitrary.map(
   (payload) => {
     const header = base64UrlEncode(
@@ -56,19 +49,13 @@ const validJwtWithoutIssuerArbitrary = jwtPayloadWithoutIssuerArbitrary.map(
   },
 );
 
-// 無効なJWT Arbitrary
 const invalidJwtArbitrary = fc.oneof(
-  // 空文字列
   fc.constant(""),
-  // ドットが足りない
   fc.string().filter((s) => s.split(".").length !== 3),
-  // 2部構成
   fc.tuple(fc.string(), fc.string()).map(([a, b]) => `${a}.${b}`),
-  // 4部構成以上
   fc
     .array(fc.string(), { minLength: 4, maxLength: 10 })
     .map((parts) => parts.join(".")),
-  // Base64URLとして無効
   fc.constantFrom("not-base64.invalid.token", "!!!.@@@.###"),
 );
 
@@ -114,7 +101,6 @@ describe("getIssuerFromToken", () => {
     });
 
     test("無効なBase64はnullを返す", () => {
-      // 無効なBase64URL文字を含む
       expect(getIssuerFromToken("!@#.$%^.&*(")).toBeNull();
     });
 
