@@ -1,5 +1,13 @@
 ---
-description: Tumiki Dynamic Search機能の実装・拡張・デバッグのための包括的なガイドライン。MCPサーバーのツール検索・実行機能の理解と開発に使用。
+name: tumiki-dynamic-search-feature
+description: |
+  Tumiki Dynamic Search機能の実装・拡張・デバッグのための包括的なガイドライン。
+  MCPサーバーのツール検索・実行機能の理解と開発に使用。
+  「Dynamic Search」「メタツール」「search_tools」などのリクエスト時にトリガー。
+sourcePatterns:
+  - apps/mcp-proxy/src/services/dynamicSearch/**
+  - apps/mcp-proxy/src/handlers/mcpHandler.ts
+  - apps/mcp-proxy/src/services/toolExecutor.ts
 ---
 
 # Dynamic Search 機能 - 開発リファレンス
