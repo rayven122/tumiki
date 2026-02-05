@@ -159,17 +159,26 @@ unset PRISMA_FIELD_DECRYPTION_KEYS
 
 ### メール送信設定（SMTP）
 
-| 変数名       | 分類 | デフォルト値 | 説明                                                                |
-| ------------ | ---- | ------------ | ------------------------------------------------------------------- |
-| `SMTP_HOST`  | 🟢   | -            | SMTPサーバーのホスト名<br>例: `smtp.gmail.com`                      |
-| `SMTP_PORT`  | 🟢   | -            | SMTPサーバーのポート番号<br>`587` (STARTTLS) または `465` (SSL/TLS) |
-| `SMTP_USER`  | 🟢   | -            | SMTP認証用のユーザー名                                              |
-| `SMTP_PASS`  | 🟢   | -            | SMTP認証用のパスワード<br>Gmail: アプリパスワードを使用             |
-| `FROM_EMAIL` | 🟢   | -            | 送信元メールアドレス<br>例: `info@tumiki.cloud`                     |
+| 変数名       | 分類 | デフォルト値 | 説明                                                                                                          |
+| ------------ | ---- | ------------ | ------------------------------------------------------------------------------------------------------------- |
+| `SMTP_HOST`  | 🟢   | -            | SMTPサーバーのホスト名<br>例: `smtp.gmail.com`                                                                |
+| `SMTP_PORT`  | 🟢   | `587`        | SMTPサーバーのポート番号<br>`587` (STARTTLS) または `465` (SSL/TLS)                                           |
+| `SMTP_USER`  | 🟢   | -            | SMTP認証用のユーザー名                                                                                        |
+| `SMTP_PASS`  | 🟢   | -            | SMTP認証用のパスワード<br>Gmail: アプリパスワードを使用                                                       |
+| `FROM_EMAIL` | 🟢   | -            | 送信元メールアドレス<br>例: `noreply@example.com`                                                             |
+| `FROM_NAME`  | 🟢   | -            | 送信者の表示名<br>メール受信者に表示される名前<br>例: `My App Team`<br>RFC 5322形式で自動的にフォーマットされる |
 
 **使用箇所:**
 
 - メール送信機能（招待メール等）
+
+**表示名のフォーマット:**
+
+送信者表示名（`FROM_NAME`）は、RFC 5322形式で自動的にフォーマットされます：
+
+- 表示名なし: `noreply@example.com`
+- 通常の表示名: `MyTeam <noreply@example.com>`
+- 特殊文字を含む場合: `"My Team" <noreply@example.com>`
 
 ---
 
