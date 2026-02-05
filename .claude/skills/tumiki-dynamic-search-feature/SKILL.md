@@ -12,6 +12,18 @@ sourcePatterns:
 
 # Dynamic Search 機能 - 開発リファレンス
 
+> **注意**: Dynamic SearchはEnterprise Edition（EE）機能です。CE版では無効化されます。
+> 全てのEE実装ファイルには `.ee.ts` 拡張子と SPDXライセンスヘッダーが必要です。
+
+**このスキルを使用する場面：**
+
+- Dynamic Search機能の新規実装・拡張時
+- メタツール（search_tools, describe_tools, execute_tool）の追加時
+- AI検索機能のカスタマイズ・精度改善時
+- Dynamic Search関連のバグ修正・デバッグ時
+- MCPサーバーへのDynamic Search有効化設定時
+- EE/CE分離アーキテクチャの理解が必要な時
+
 ## アーキテクチャ概要
 
 Dynamic Searchは、MCPサーバーのツール発見を最適化するためのインテリジェント検索システム。
@@ -36,13 +48,15 @@ Dynamic Searchは、MCPサーバーのツール発見を最適化するための
 
 ```
 apps/mcp-proxy/src/services/dynamicSearch/
-├── index.ts                # エントリーポイント
-├── types.ts                # 型定義
-├── metaToolDefinitions.ts  # メタツール定義
-├── searchTools.ts          # AI検索実装
-├── describeTools.ts        # スキーマ取得
-├── executeToolDynamic.ts   # 実行ラッパー
-└── __tests__/              # テスト
+├── index.ts                    # CE Facade（スタブ）
+├── index.ee.ts                 # EEエントリーポイント
+├── types.ee.ts                 # 型定義（EE）
+├── metaToolDefinitions.ee.ts   # メタツール定義（EE）
+├── searchTools.ee.ts           # AI検索実装（EE）
+├── describeTools.ee.ts         # スキーマ取得（EE）
+├── executeToolDynamic.ee.ts    # 実行ラッパー（EE）
+└── __tests__/                  # テスト
+    ├── *.ee.test.ts            # EE機能テスト
 ```
 
 ## 型定義
@@ -50,6 +64,7 @@ apps/mcp-proxy/src/services/dynamicSearch/
 ### MCP SDK型（re-export）
 
 ```typescript
+// types.ee.ts
 import type {
   Tool,
   CallToolRequestParams,
@@ -188,12 +203,13 @@ export const isMetaTool = (toolName: string): boolean => {
 ### searchTools関数
 
 ```typescript
+// searchTools.ee.ts
 import { generateObject } from "ai";
 import { z } from "zod";
 
 import { gateway, DYNAMIC_SEARCH_MODEL } from "../../libs/ai/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
-import type { SearchToolsArgs, SearchResult, Tool } from "./types.js";
+import type { SearchToolsArgs, SearchResult, Tool } from "./types.ee.js";
 
 const searchResultSchema = z.object({
   results: z.array(
@@ -258,15 +274,18 @@ export const DYNAMIC_SEARCH_MODEL = "anthropic/claude-3.5-haiku";
 
 ## 新しいメタツール追加手順
 
-### 1. 型定義追加（types.ts）
+### 1. 型定義追加（types.ee.ts）
 
 ```typescript
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 export type NewToolArgs = {
   // 引数の定義
 };
 ```
 
-### 2. ツール定義追加（metaToolDefinitions.ts）
+### 2. ツール定義追加（metaToolDefinitions.ee.ts）
 
 ```typescript
 export const NEW_TOOL_DEFINITION: Tool = {
@@ -286,9 +305,12 @@ export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [
 ];
 ```
 
-### 3. 実装ファイル作成（newTool.ts）
+### 3. 実装ファイル作成（newTool.ee.ts）
 
 ```typescript
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 export const newTool = async (
   args: NewToolArgs,
   internalTools: Tool[],
@@ -297,10 +319,10 @@ export const newTool = async (
 };
 ```
 
-### 4. index.tsにエクスポート追加
+### 4. index.ee.tsにエクスポート追加
 
 ```typescript
-export { newTool } from "./newTool.js";
+export { newTool } from "./newTool.ee.js";
 ```
 
 ### 5. mcpHandler.tsに処理追加
@@ -313,18 +335,73 @@ case "new_tool":
 
 ---
 
+## EE/CE分離アーキテクチャ
+
+Dynamic SearchはEnterprise Edition（EE）機能であり、CE版では無効化されます。
+
+### ファイル構成
+
+| ファイル       | 役割                      |
+| -------------- | ------------------------- |
+| `index.ts`     | CE Facade（スタブを返す） |
+| `index.ee.ts`  | EE実装エントリーポイント  |
+| `*.ee.ts`      | EE機能の実装              |
+| `*.ee.test.ts` | EE機能のテスト            |
+
+### CE版Facade（index.ts）
+
+```typescript
+// CE版: 型のみエクスポート、機能は無効化
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+
+// CE版ではDynamic Searchは利用不可
+export const DYNAMIC_SEARCH_AVAILABLE = false;
+
+// CE版ではメタツールは空配列
+export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [];
+
+// CE版では常に false を返す
+export const isMetaTool = (_name: string): boolean => false;
+
+// CE版でも型互換性のため型定義をエクスポート
+export type SearchResult = {
+  toolName: string;
+  description: string | undefined;
+  relevanceScore: number;
+};
+
+export type DescribeToolsResult = {
+  toolName: string;
+  description: string | undefined;
+  inputSchema: Tool["inputSchema"] | Record<string, never>;
+  found: boolean;
+};
+```
+
+### SPDXライセンスヘッダー
+
+全てのEEファイルに必須：
+
+```typescript
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+```
+
+---
+
 ## 実装チェックリスト
 
 ### 新機能追加時
 
-- [ ] `types.ts`に型定義を追加
-- [ ] `metaToolDefinitions.ts`にツール定義を追加
-- [ ] 実装ファイルを作成
-- [ ] `index.ts`にエクスポートを追加
+- [ ] `types.ee.ts`に型定義を追加
+- [ ] `metaToolDefinitions.ee.ts`にツール定義を追加
+- [ ] 実装ファイル（`*.ee.ts`）を作成
+- [ ] SPDXライセンスヘッダーを追加
+- [ ] `index.ee.ts`にエクスポートを追加
 - [ ] `mcpHandler.ts`に処理を追加
-- [ ] 単体テストを作成（100%カバレッジ）
+- [ ] 単体テスト（`*.ee.test.ts`）を作成（100%カバレッジ）
 - [ ] `pnpm typecheck`で型エラーなし
-- [ ] `pnpm test`でテスト成功
+- [ ] `EE_BUILD=true pnpm test`でテスト成功
 
 ### Dynamic Search有効化設定時
 
@@ -362,7 +439,7 @@ case "new_tool":
 ### 型エラーが発生する
 
 1. MCP SDK型を使用しているか確認
-2. `types.ts`の定義と実装が一致しているか確認
+2. `types.ee.ts`の定義と実装が一致しているか確認
 3. re-exportが正しいか確認
 
 ### describe_toolsでツールが見つからない

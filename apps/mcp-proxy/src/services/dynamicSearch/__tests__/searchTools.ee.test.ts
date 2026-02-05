@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * searchTools.ts のテスト
  *
@@ -26,8 +29,8 @@ vi.mock("../../../libs/logger/index.js", () => ({
 }));
 
 // モック設定後にインポート
-import { searchTools } from "../searchTools.js";
-import type { Tool } from "../types.js";
+import { searchTools } from "../searchTools.ee.js";
+import type { Tool } from "../types.ee.js";
 
 describe("searchTools", () => {
   const mockTools: Tool[] = [

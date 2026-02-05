@@ -8,7 +8,7 @@ export {
   maskJson,
   maskText,
   resetProjectIdCache,
-} from "./gcpDlpClient.js";
+} from "./gcpDlpClient.ee.js";
 export {
   DEFAULT_INFO_TYPES,
   type DetectedPii,

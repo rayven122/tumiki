@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * execute_tool メタツール実装
  *
@@ -8,7 +11,7 @@
 import { toError } from "../../libs/error/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
 import { executeTool } from "../toolExecutor.js";
-import type { CallToolRequestParams } from "./types.js";
+import type { CallToolRequestParams } from "./types.ee.js";
 
 /**
  * execute_tool を実行

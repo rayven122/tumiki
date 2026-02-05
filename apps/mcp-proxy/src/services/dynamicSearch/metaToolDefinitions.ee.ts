@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * Dynamic Search 用のメタツール定義
  *
@@ -5,7 +8,7 @@
  * MCP SDK の Tool 型を使用して標準仕様に準拠
  */
 
-import type { Tool } from "./types.js";
+import type { Tool } from "./types.ee.js";
 
 /**
  * search_tools メタツール定義
@@ -100,6 +103,5 @@ export const META_TOOL_NAMES = new Set(
 /**
  * 指定された名前がメタツールかどうかを判定
  */
-export const isMetaTool = (toolName: string): boolean => {
-  return META_TOOL_NAMES.has(toolName);
-};
+export const isMetaTool = (toolName: string): boolean =>
+  META_TOOL_NAMES.has(toolName);

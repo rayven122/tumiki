@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * search_tools メタツール実装
  *
@@ -11,7 +14,7 @@ import { z } from "zod";
 import { gateway, DYNAMIC_SEARCH_MODEL } from "../../libs/ai/index.js";
 import { toError } from "../../libs/error/index.js";
 import { logError, logInfo } from "../../libs/logger/index.js";
-import type { SearchToolsArgs, SearchResult, Tool } from "./types.js";
+import type { SearchToolsArgs, SearchResult, Tool } from "./types.ee.js";
 
 /**
  * 検索結果のスキーマ

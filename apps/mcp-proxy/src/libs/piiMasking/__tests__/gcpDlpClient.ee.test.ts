@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // モック関数を定義
@@ -37,7 +40,7 @@ describe("maskText", () => {
   });
 
   test("空文字列の場合はそのまま返す", async () => {
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskText("");
 
@@ -49,7 +52,7 @@ describe("maskText", () => {
   test("プロジェクトIDが取得できない場合はそのまま返す", async () => {
     mockGetProjectId.mockRejectedValue(new Error("No credentials"));
 
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskText("test@example.com");
 
@@ -71,7 +74,7 @@ describe("maskText", () => {
       },
     ]);
 
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskText("test@example.com");
 
@@ -98,7 +101,7 @@ describe("maskText", () => {
       },
     ]);
 
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     await maskText("test@example.com", { infoTypes: ["EMAIL_ADDRESS"] });
 
@@ -135,7 +138,7 @@ describe("maskText", () => {
       },
     ]);
 
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskText("test@example.com, 090-1234-5678");
 
@@ -150,7 +153,7 @@ describe("maskText", () => {
     mockGetProjectId.mockResolvedValue("test-project");
     mockDeidentifyContent.mockRejectedValue(new Error("DLP API error"));
 
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskText("test@example.com");
 
@@ -167,7 +170,7 @@ describe("maskText", () => {
       },
     ]);
 
-    const { maskText } = await import("../gcpDlpClient.js");
+    const { maskText } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskText("test@example.com");
 
@@ -182,7 +185,7 @@ describe("maskJson", () => {
   });
 
   test("nullの場合はそのまま返す", async () => {
-    const { maskJson } = await import("../gcpDlpClient.js");
+    const { maskJson } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskJson(null);
 
@@ -192,7 +195,7 @@ describe("maskJson", () => {
   });
 
   test("undefinedの場合はそのまま返す", async () => {
-    const { maskJson } = await import("../gcpDlpClient.js");
+    const { maskJson } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskJson(undefined);
 
@@ -214,7 +217,7 @@ describe("maskJson", () => {
       },
     ]);
 
-    const { maskJson } = await import("../gcpDlpClient.js");
+    const { maskJson } = await import("../gcpDlpClient.ee.js");
 
     const result = await maskJson({ email: "test@example.com" });
 
@@ -228,7 +231,7 @@ describe("maskJson", () => {
   test("プロジェクトIDが取得できない場合は元のデータを返す", async () => {
     mockGetProjectId.mockRejectedValue(new Error("No credentials"));
 
-    const { maskJson } = await import("../gcpDlpClient.js");
+    const { maskJson } = await import("../gcpDlpClient.ee.js");
     const originalData = { email: "test@example.com" };
 
     const result = await maskJson(originalData);
@@ -248,7 +251,7 @@ describe("maskJson", () => {
       },
     ]);
 
-    const { maskJson } = await import("../gcpDlpClient.js");
+    const { maskJson } = await import("../gcpDlpClient.ee.js");
     const originalData = { email: "test@example.com" };
 
     const result = await maskJson(originalData);
@@ -275,7 +278,7 @@ describe("closeDlpClient", () => {
       },
     ]);
 
-    const { maskText, closeDlpClient } = await import("../gcpDlpClient.js");
+    const { maskText, closeDlpClient } = await import("../gcpDlpClient.ee.js");
 
     // まずマスキングを実行してクライアントを初期化
     await maskText("test");
@@ -293,7 +296,7 @@ describe("closeDlpClient", () => {
   });
 
   test("クライアントが初期化されていない場合は何もしない", async () => {
-    const { closeDlpClient } = await import("../gcpDlpClient.js");
+    const { closeDlpClient } = await import("../gcpDlpClient.ee.js");
 
     // クライアントを初期化せずにクローズ
     await closeDlpClient();

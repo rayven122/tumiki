@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * metaToolDefinitions.ts のテスト
  *
@@ -14,7 +17,7 @@ import {
   EXECUTE_TOOL_DEFINITION,
   META_TOOL_NAMES,
   isMetaTool,
-} from "../metaToolDefinitions.js";
+} from "../metaToolDefinitions.ee.js";
 
 describe("metaToolDefinitions", () => {
   describe("DYNAMIC_SEARCH_META_TOOLS", () => {

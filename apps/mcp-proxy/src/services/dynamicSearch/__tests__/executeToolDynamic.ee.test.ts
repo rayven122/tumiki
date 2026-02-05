@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * executeToolDynamic.ts のテスト
  *
@@ -22,7 +25,7 @@ vi.mock("../../../libs/logger/index.js", () => ({
 }));
 
 // モック設定後にインポート
-import { executeToolDynamic } from "../executeToolDynamic.js";
+import { executeToolDynamic } from "../executeToolDynamic.ee.js";
 
 describe("executeToolDynamic", () => {
   beforeEach(() => {

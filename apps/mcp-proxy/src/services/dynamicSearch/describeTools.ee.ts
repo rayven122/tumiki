@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * describe_tools メタツール実装
  *
@@ -5,7 +8,7 @@
  */
 
 import { logInfo, logWarn } from "../../libs/logger/index.js";
-import type { DescribeToolsArgs, Tool } from "./types.js";
+import type { DescribeToolsArgs, Tool } from "./types.ee.js";
 
 /**
  * describe_tools の結果
