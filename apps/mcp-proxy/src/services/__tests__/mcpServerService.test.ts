@@ -59,21 +59,22 @@ import {
   invalidateTemplateInstanceCache,
 } from "../mcpServerService.js";
 
-// Redisモックの生成ヘルパー
-type MockRedisOverrides = {
-  get?: ReturnType<typeof vi.fn>;
-  setEx?: ReturnType<typeof vi.fn>;
-  del?: ReturnType<typeof vi.fn>;
+// テストデータ生成ヘルパー
+type RedisClient = {
+  get: ReturnType<typeof vi.fn>;
+  setEx: ReturnType<typeof vi.fn>;
+  del: ReturnType<typeof vi.fn>;
 };
 
-const createMockRedis = (overrides: MockRedisOverrides = {}) => ({
+const createMockRedis = (
+  overrides: Partial<RedisClient> = {},
+): RedisClient => ({
   get: vi.fn().mockResolvedValue(null),
   setEx: vi.fn(),
   del: vi.fn(),
   ...overrides,
 });
 
-// McpServerデータの生成ヘルパー
 const createMcpServerData = (overrides: Record<string, unknown> = {}) => ({
   id: "test-server-id",
   organizationId: "test-org-id",

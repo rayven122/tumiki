@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { decrypt, encrypt, generateEncryptionKey } from "../encryption.js";
 
-// テスト用の暗号化キーを環境変数に設定
 beforeEach(() => {
   vi.stubEnv("REDIS_ENCRYPTION_KEY", generateEncryptionKey());
 });
 
-// テスト後に環境変数をクリーンアップ
 afterEach(() => {
   vi.unstubAllEnvs();
 });
@@ -193,14 +191,11 @@ describe("encrypt and decrypt integration", () => {
 
 describe("decrypt non-Error throw handling", () => {
   test("非Errorオブジェクトがスローされた場合はUnknown errorメッセージを返す", async () => {
-    // 有効な暗号データを生成
     const encrypted = encrypt("test data");
 
-    // モジュールをリセットして、node:cryptoをモック
     vi.resetModules();
 
     const actualCrypto =
-      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       await vi.importActual<typeof import("node:crypto")>("node:crypto");
 
     vi.doMock("node:crypto", () => ({
@@ -210,9 +205,8 @@ describe("decrypt non-Error throw handling", () => {
       ) => {
         const decipher = actualCrypto.createDecipheriv(...args);
         const originalUpdate = decipher.update.bind(decipher);
-        // 最初のupdate呼び出しで文字列をスロー
         decipher.update = (() => {
-          // eslint-disable-next-line @typescript-eslint/only-throw-error -- 非Errorスロー時のテスト
+          // eslint-disable-next-line @typescript-eslint/only-throw-error
           throw "non-error-string-thrown";
         }) as typeof decipher.update;
         void originalUpdate;
@@ -220,17 +214,14 @@ describe("decrypt non-Error throw handling", () => {
       },
     }));
 
-    // 環境変数を再設定（resetModulesで消えるため）
     vi.stubEnv("REDIS_ENCRYPTION_KEY", process.env.REDIS_ENCRYPTION_KEY);
 
-    // モック済みcryptoで動作するdecryptを再インポート
     const { decrypt: decryptMocked } = await import("../encryption.js");
 
     expect(() => decryptMocked(encrypted)).toThrow(
       "Decryption failed: Unknown error",
     );
 
-    // クリーンアップ
     vi.resetModules();
   });
 });

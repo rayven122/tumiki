@@ -14,51 +14,47 @@ import { AuthType } from "@tumiki/db";
 type HandlerCallback = (...args: unknown[]) => unknown;
 const capturedHandlers = new Map<string, HandlerCallback>();
 
-const {
-  mockGetAllowedTools,
-  mockExecuteTool,
-  mockIsMetaTool,
-  mockIsReAuthRequiredError,
-  mockServerConstructor,
-  mockStreamableHTTPServerTransport,
-  mockCreateReAuthResponse,
-  mockGetExecutionContext,
-  mockSearchTools,
-  mockDescribeTools,
-  mockExecuteToolDynamic,
-  mockSearchToolsArgsParse,
-  mockDescribeToolsArgsParse,
-  mockCallToolRequestParamsParse,
-  mockGetInternalToolsForDynamicSearch,
-  mockToReqRes,
-  mockToFetchResponse,
-  mockHandleError,
-  mockToError,
-} = vi.hoisted(() => ({
-  mockGetAllowedTools: vi.fn(),
-  mockExecuteTool: vi.fn(),
-  mockIsMetaTool: vi.fn(),
-  mockIsReAuthRequiredError: vi.fn(),
-  mockServerConstructor: vi.fn(),
-  mockStreamableHTTPServerTransport: vi.fn(),
-  mockCreateReAuthResponse: vi.fn(),
-  mockGetExecutionContext: vi.fn(),
-  mockSearchTools: vi.fn(),
-  mockDescribeTools: vi.fn(),
-  mockExecuteToolDynamic: vi.fn(),
-  mockSearchToolsArgsParse: vi.fn(),
-  mockDescribeToolsArgsParse: vi.fn(),
-  mockCallToolRequestParamsParse: vi.fn(),
-  mockGetInternalToolsForDynamicSearch: vi.fn(),
-  mockToReqRes: vi.fn(),
-  mockToFetchResponse: vi.fn(),
-  mockHandleError: vi.fn(),
-  mockToError: vi.fn(),
+// モック変数を論理グループに整理
+const mocks = vi.hoisted(() => ({
+  // ツール実行系
+  toolExecutor: {
+    getAllowedTools: vi.fn(),
+    executeTool: vi.fn(),
+    getInternalToolsForDynamicSearch: vi.fn(),
+  },
+  // Dynamic Search系
+  dynamicSearch: {
+    isMetaTool: vi.fn(),
+    searchTools: vi.fn(),
+    describeTools: vi.fn(),
+    executeToolDynamic: vi.fn(),
+    searchToolsArgsParse: vi.fn(),
+    describeToolsArgsParse: vi.fn(),
+    callToolRequestParamsParse: vi.fn(),
+  },
+  // MCP SDK系
+  sdk: {
+    serverConstructor: vi.fn(),
+    streamableHTTPServerTransport: vi.fn(),
+  },
+  // エラーハンドリング系
+  error: {
+    isReAuthRequiredError: vi.fn(),
+    createReAuthResponse: vi.fn(),
+    handleError: vi.fn(),
+    toError: vi.fn(),
+  },
+  // ユーティリティ系
+  utils: {
+    getExecutionContext: vi.fn(),
+    toReqRes: vi.fn(),
+    toFetchResponse: vi.fn(),
+  },
 }));
 
 // 外部依存をモック
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
-  Server: mockServerConstructor,
+  Server: mocks.sdk.serverConstructor,
 }));
 
 vi.mock("@modelcontextprotocol/sdk/types.js", () => ({
@@ -68,44 +64,49 @@ vi.mock("@modelcontextprotocol/sdk/types.js", () => ({
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/streamableHttp.js", () => ({
-  StreamableHTTPServerTransport: mockStreamableHTTPServerTransport,
+  StreamableHTTPServerTransport: mocks.sdk.streamableHTTPServerTransport,
 }));
 
 vi.mock("fetch-to-node", () => ({
-  toReqRes: mockToReqRes,
-  toFetchResponse: mockToFetchResponse,
+  toReqRes: mocks.utils.toReqRes,
+  toFetchResponse: mocks.utils.toFetchResponse,
 }));
 
 vi.mock("../../services/toolExecutor.js", () => ({
-  getAllowedTools: mockGetAllowedTools,
-  executeTool: mockExecuteTool,
-  getInternalToolsForDynamicSearch: mockGetInternalToolsForDynamicSearch,
+  getAllowedTools: mocks.toolExecutor.getAllowedTools,
+  executeTool: mocks.toolExecutor.executeTool,
+  getInternalToolsForDynamicSearch:
+    mocks.toolExecutor.getInternalToolsForDynamicSearch,
 }));
 
 // EEモジュールのモック（handleMetaTool内のdynamic importをインターセプト）
 vi.mock("../../services/dynamicSearch/index.ee.js", () => ({
-  searchTools: mockSearchTools,
-  describeTools: mockDescribeTools,
-  executeToolDynamic: mockExecuteToolDynamic,
-  SearchToolsArgsSchema: { parse: mockSearchToolsArgsParse },
-  DescribeToolsArgsSchema: { parse: mockDescribeToolsArgsParse },
-  CallToolRequestParamsSchema: { parse: mockCallToolRequestParamsParse },
+  searchTools: mocks.dynamicSearch.searchTools,
+  describeTools: mocks.dynamicSearch.describeTools,
+  executeToolDynamic: mocks.dynamicSearch.executeToolDynamic,
+  SearchToolsArgsSchema: { parse: mocks.dynamicSearch.searchToolsArgsParse },
+  DescribeToolsArgsSchema: {
+    parse: mocks.dynamicSearch.describeToolsArgsParse,
+  },
+  CallToolRequestParamsSchema: {
+    parse: mocks.dynamicSearch.callToolRequestParamsParse,
+  },
 }));
 
 vi.mock("../../libs/error/index.js", () => ({
-  handleError: mockHandleError,
-  toError: mockToError,
-  isReAuthRequiredError: mockIsReAuthRequiredError,
-  createReAuthResponse: mockCreateReAuthResponse,
+  handleError: mocks.error.handleError,
+  toError: mocks.error.toError,
+  isReAuthRequiredError: mocks.error.isReAuthRequiredError,
+  createReAuthResponse: mocks.error.createReAuthResponse,
 }));
 
 vi.mock("../../middleware/requestLogging/context.js", () => ({
-  getExecutionContext: mockGetExecutionContext,
+  getExecutionContext: mocks.utils.getExecutionContext,
   updateExecutionContext: vi.fn(),
 }));
 
 vi.mock("../../services/dynamicSearch/index.js", () => ({
-  isMetaTool: mockIsMetaTool,
+  isMetaTool: mocks.dynamicSearch.isMetaTool,
 }));
 
 vi.mock("../../libs/logger/index.js", () => ({
@@ -120,11 +121,10 @@ import { mcpHandler } from "../mcpHandler.js";
 describe("mcpHandler", () => {
   let app: Hono<HonoEnv>;
 
-  beforeEach(() => {
-    capturedHandlers.clear();
-
-    // Server モックを毎回再設定（clearAllMocksで消えるため）
-    mockServerConstructor.mockImplementation(() => ({
+  // デフォルトのモック値を設定するヘルパー
+  const setupDefaultMocks = () => {
+    // MCP SDK系
+    mocks.sdk.serverConstructor.mockImplementation(() => ({
       connect: vi.fn().mockResolvedValue(undefined),
       setRequestHandler: (
         schema: { method: string },
@@ -133,14 +133,12 @@ describe("mcpHandler", () => {
         capturedHandlers.set(schema.method, handler);
       },
     }));
-
-    // StreamableHTTPServerTransport のデフォルト実装を再設定
-    mockStreamableHTTPServerTransport.mockImplementation(() => ({
+    mocks.sdk.streamableHTTPServerTransport.mockImplementation(() => ({
       handleRequest: vi.fn().mockResolvedValue(undefined),
     }));
 
-    // fetch-to-node モックのデフォルト値を再設定
-    mockToReqRes.mockReturnValue({
+    // ユーティリティ系
+    mocks.utils.toReqRes.mockReturnValue({
       req: {},
       res: {
         statusCode: 200,
@@ -148,16 +146,18 @@ describe("mcpHandler", () => {
         end: vi.fn(),
       },
     });
-    mockToFetchResponse.mockImplementation((res: { statusCode?: number }) =>
-      Promise.resolve(
-        new Response(JSON.stringify({ result: "success" }), {
-          status: res.statusCode ?? 200,
-        }),
-      ),
+    mocks.utils.toFetchResponse.mockImplementation(
+      (res: { statusCode?: number }) =>
+        Promise.resolve(
+          new Response(JSON.stringify({ result: "success" }), {
+            status: res.statusCode ?? 200,
+          }),
+        ),
     );
+    mocks.utils.getExecutionContext.mockReturnValue(null);
 
-    // hoisted モックのデフォルト値を再設定
-    mockGetAllowedTools.mockResolvedValue({
+    // ツール実行系
+    mocks.toolExecutor.getAllowedTools.mockResolvedValue({
       tools: [
         {
           name: "test__tool",
@@ -167,14 +167,17 @@ describe("mcpHandler", () => {
       ],
       dynamicSearch: false,
     });
-    mockExecuteTool.mockResolvedValue({
+    mocks.toolExecutor.executeTool.mockResolvedValue({
       content: [{ type: "text", text: "result" }],
     });
-    mockIsMetaTool.mockReturnValue(false);
-    mockIsReAuthRequiredError.mockReturnValue(false);
-    mockGetExecutionContext.mockReturnValue(null);
-    mockGetInternalToolsForDynamicSearch.mockResolvedValue([]);
-    mockCreateReAuthResponse.mockReturnValue({
+    mocks.toolExecutor.getInternalToolsForDynamicSearch.mockResolvedValue([]);
+
+    // Dynamic Search系
+    mocks.dynamicSearch.isMetaTool.mockReturnValue(false);
+
+    // エラーハンドリング系
+    mocks.error.isReAuthRequiredError.mockReturnValue(false);
+    mocks.error.createReAuthResponse.mockReturnValue({
       jsonRpcError: {
         error: {
           code: -32001,
@@ -187,7 +190,7 @@ describe("mcpHandler", () => {
       },
       headers: { "WWW-Authenticate": "Bearer" },
     });
-    mockHandleError.mockImplementation(
+    mocks.error.handleError.mockImplementation(
       (
         c: { json: (body: unknown, status: number) => Response },
         error: Error,
@@ -201,9 +204,14 @@ describe("mcpHandler", () => {
           500,
         ),
     );
-    mockToError.mockImplementation((e: unknown) =>
+    mocks.error.toError.mockImplementation((e: unknown) =>
       e instanceof Error ? e : new Error(String(e)),
     );
+  };
+
+  beforeEach(() => {
+    capturedHandlers.clear();
+    setupDefaultMocks();
 
     app = new Hono<HonoEnv>();
 
@@ -318,7 +326,7 @@ describe("mcpHandler", () => {
         params: { name: "test__tool", arguments: { key: "value" } },
       }) as Promise<unknown>);
 
-      expect(mockExecuteTool).toHaveBeenCalledWith(
+      expect(mocks.toolExecutor.executeTool).toHaveBeenCalledWith(
         "server-123",
         "org-123",
         "test__tool",
@@ -331,10 +339,12 @@ describe("mcpHandler", () => {
     });
 
     test("CallToolハンドラーがメタツール呼び出しを処理する", async () => {
-      mockIsMetaTool.mockReturnValue(true);
+      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
       const mockSearchResult = { tools: ["tool1"] };
-      mockSearchToolsArgsParse.mockReturnValue({ query: "test" });
-      mockSearchTools.mockResolvedValue(mockSearchResult);
+      mocks.dynamicSearch.searchToolsArgsParse.mockReturnValue({
+        query: "test",
+      });
+      mocks.dynamicSearch.searchTools.mockResolvedValue(mockSearchResult);
 
       await triggerRequest();
 
@@ -350,10 +360,10 @@ describe("mcpHandler", () => {
     });
 
     test("CallToolハンドラーでReAuthRequiredErrorがコンテナに保存される", async () => {
-      mockIsReAuthRequiredError.mockReturnValue(true);
+      mocks.error.isReAuthRequiredError.mockReturnValue(true);
       const reAuthError = new Error("Re-auth needed");
       reAuthError.name = "ReAuthRequiredError";
-      mockExecuteTool.mockRejectedValue(reAuthError);
+      mocks.toolExecutor.executeTool.mockRejectedValue(reAuthError);
 
       await triggerRequest();
 
@@ -377,7 +387,7 @@ describe("mcpHandler", () => {
         params: { name: "test__tool", arguments: undefined },
       }) as Promise<unknown>);
 
-      expect(mockExecuteTool).toHaveBeenCalledWith(
+      expect(mocks.toolExecutor.executeTool).toHaveBeenCalledWith(
         "server-123",
         "org-123",
         "test__tool",
@@ -391,7 +401,7 @@ describe("mcpHandler", () => {
     test("Serverが正しいパラメータで作成される", async () => {
       await triggerRequest();
 
-      expect(mockServerConstructor).toHaveBeenCalledWith(
+      expect(mocks.sdk.serverConstructor).toHaveBeenCalledWith(
         { name: "Tumiki MCP Proxy", version: "0.1.0" },
         { capabilities: { tools: {} } },
       );
@@ -426,8 +436,8 @@ describe("mcpHandler", () => {
     });
 
     test("外部でReAuthRequiredError発生時はcreateReAuthResponseが呼ばれる", async () => {
-      mockIsReAuthRequiredError.mockReturnValue(true);
-      mockToFetchResponse.mockImplementation(() => {
+      mocks.error.isReAuthRequiredError.mockReturnValue(true);
+      mocks.utils.toFetchResponse.mockImplementation(() => {
         throw new Error("Re-auth required");
       });
 
@@ -441,7 +451,7 @@ describe("mcpHandler", () => {
         }),
       });
 
-      expect(mockCreateReAuthResponse).toHaveBeenCalledWith(
+      expect(mocks.error.createReAuthResponse).toHaveBeenCalledWith(
         expect.any(Error),
         "server-123",
         null,
@@ -451,12 +461,12 @@ describe("mcpHandler", () => {
 
     test("非ReAuth例外発生時はhandleErrorが呼ばれる", async () => {
       // handleRequest内で通常エラーをスロー
-      mockGetExecutionContext.mockReturnValue({
+      mocks.utils.getExecutionContext.mockReturnValue({
         requestStartTime: Date.now(),
         inputBytes: 0,
         requestBody: { jsonrpc: "2.0", method: "tools/list", id: 1 },
       });
-      mockStreamableHTTPServerTransport.mockImplementation(() => ({
+      mocks.sdk.streamableHTTPServerTransport.mockImplementation(() => ({
         handleRequest: vi.fn().mockRejectedValue(new Error("Transport error")),
       }));
       // isReAuthRequiredError は false（デフォルト）
@@ -472,7 +482,7 @@ describe("mcpHandler", () => {
       });
 
       expect(res.status).toStrictEqual(500);
-      expect(mockHandleError).toHaveBeenCalledWith(
+      expect(mocks.error.handleError).toHaveBeenCalledWith(
         expect.anything(),
         expect.any(Error),
         expect.objectContaining({
@@ -487,10 +497,12 @@ describe("mcpHandler", () => {
 
   describe("handleMetaTool", () => {
     test("search_toolsケースが正しく動作する", async () => {
-      mockIsMetaTool.mockReturnValue(true);
+      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
       const mockSearchResult = { tools: ["tool1"] };
-      mockSearchToolsArgsParse.mockReturnValue({ query: "test" });
-      mockSearchTools.mockResolvedValue(mockSearchResult);
+      mocks.dynamicSearch.searchToolsArgsParse.mockReturnValue({
+        query: "test",
+      });
+      mocks.dynamicSearch.searchTools.mockResolvedValue(mockSearchResult);
 
       await triggerRequest();
 
@@ -506,10 +518,12 @@ describe("mcpHandler", () => {
     });
 
     test("describe_toolsケースが正しく動作する", async () => {
-      mockIsMetaTool.mockReturnValue(true);
+      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
       const mockDescribeResult = { descriptions: ["desc1"] };
-      mockDescribeToolsArgsParse.mockReturnValue({ tools: ["tool1"] });
-      mockDescribeTools.mockResolvedValue(mockDescribeResult);
+      mocks.dynamicSearch.describeToolsArgsParse.mockReturnValue({
+        tools: ["tool1"],
+      });
+      mocks.dynamicSearch.describeTools.mockResolvedValue(mockDescribeResult);
 
       await triggerRequest();
 
@@ -525,15 +539,17 @@ describe("mcpHandler", () => {
     });
 
     test("execute_toolケースが正しく動作する", async () => {
-      mockIsMetaTool.mockReturnValue(true);
+      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
       const mockExecuteResult = {
         content: [{ type: "text", text: "execute result" }],
       };
-      mockCallToolRequestParamsParse.mockReturnValue({
+      mocks.dynamicSearch.callToolRequestParamsParse.mockReturnValue({
         name: "instance__tool",
         arguments: { key: "value" },
       });
-      mockExecuteToolDynamic.mockResolvedValue(mockExecuteResult);
+      mocks.dynamicSearch.executeToolDynamic.mockResolvedValue(
+        mockExecuteResult,
+      );
 
       await triggerRequest();
 
@@ -550,7 +566,7 @@ describe("mcpHandler", () => {
     });
 
     test("未知のメタツール名はエラーを投げる", async () => {
-      mockIsMetaTool.mockReturnValue(true);
+      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
 
       await triggerRequest();
 
@@ -571,7 +587,7 @@ describe("mcpHandler", () => {
       reAuthError.name = "ReAuthRequiredError";
 
       // requestBodyを設定してc.req.json()をバイパス
-      mockGetExecutionContext.mockReturnValue({
+      mocks.utils.getExecutionContext.mockReturnValue({
         requestStartTime: Date.now(),
         inputBytes: 0,
         requestBody: {
@@ -583,7 +599,7 @@ describe("mcpHandler", () => {
       });
 
       // handleRequest内でcallHandlerを呼び出し、reAuthErrorContainerにエラーを保存
-      mockStreamableHTTPServerTransport.mockImplementation(() => ({
+      mocks.sdk.streamableHTTPServerTransport.mockImplementation(() => ({
         handleRequest: vi.fn().mockImplementation(async () => {
           const callHandler = capturedHandlers.get("tools/call");
           if (callHandler) {
@@ -598,8 +614,8 @@ describe("mcpHandler", () => {
         }),
       }));
 
-      mockExecuteTool.mockRejectedValue(reAuthError);
-      mockIsReAuthRequiredError.mockReturnValue(true);
+      mocks.toolExecutor.executeTool.mockRejectedValue(reAuthError);
+      mocks.error.isReAuthRequiredError.mockReturnValue(true);
 
       const res = await app.request("/mcp/server-123", {
         method: "POST",
@@ -613,15 +629,15 @@ describe("mcpHandler", () => {
       });
 
       expect(res.status).toStrictEqual(401);
-      expect(mockCreateReAuthResponse).toHaveBeenCalled();
+      expect(mocks.error.createReAuthResponse).toHaveBeenCalled();
     });
 
     test("外側のcatchでReAuthRequiredErrorをキャッチした場合は401を返す", async () => {
       const reAuthError = new Error("Re-auth needed");
       reAuthError.name = "ReAuthRequiredError";
-      mockIsReAuthRequiredError.mockReturnValue(true);
+      mocks.error.isReAuthRequiredError.mockReturnValue(true);
 
-      mockGetExecutionContext.mockReturnValue({
+      mocks.utils.getExecutionContext.mockReturnValue({
         requestStartTime: Date.now(),
         inputBytes: 0,
         requestBody: {
@@ -632,7 +648,7 @@ describe("mcpHandler", () => {
         },
       });
 
-      mockStreamableHTTPServerTransport.mockImplementation(() => ({
+      mocks.sdk.streamableHTTPServerTransport.mockImplementation(() => ({
         handleRequest: vi.fn().mockRejectedValue(reAuthError),
       }));
 
@@ -663,7 +679,7 @@ describe("mcpHandler", () => {
 
       // 他のモックを再設定
       vi.doMock("@modelcontextprotocol/sdk/server/index.js", () => ({
-        Server: mockServerConstructor,
+        Server: mocks.sdk.serverConstructor,
       }));
       vi.doMock("@modelcontextprotocol/sdk/types.js", () => ({
         InitializeRequestSchema: { method: "initialize" },
@@ -671,29 +687,30 @@ describe("mcpHandler", () => {
         CallToolRequestSchema: { method: "tools/call" },
       }));
       vi.doMock("@modelcontextprotocol/sdk/server/streamableHttp.js", () => ({
-        StreamableHTTPServerTransport: mockStreamableHTTPServerTransport,
+        StreamableHTTPServerTransport: mocks.sdk.streamableHTTPServerTransport,
       }));
       vi.doMock("fetch-to-node", () => ({
-        toReqRes: mockToReqRes,
-        toFetchResponse: mockToFetchResponse,
+        toReqRes: mocks.utils.toReqRes,
+        toFetchResponse: mocks.utils.toFetchResponse,
       }));
       vi.doMock("../../services/toolExecutor.js", () => ({
-        getAllowedTools: mockGetAllowedTools,
-        executeTool: mockExecuteTool,
-        getInternalToolsForDynamicSearch: mockGetInternalToolsForDynamicSearch,
+        getAllowedTools: mocks.toolExecutor.getAllowedTools,
+        executeTool: mocks.toolExecutor.executeTool,
+        getInternalToolsForDynamicSearch:
+          mocks.toolExecutor.getInternalToolsForDynamicSearch,
       }));
       vi.doMock("../../libs/error/index.js", () => ({
-        handleError: mockHandleError,
-        toError: mockToError,
-        isReAuthRequiredError: mockIsReAuthRequiredError,
-        createReAuthResponse: mockCreateReAuthResponse,
+        handleError: mocks.error.handleError,
+        toError: mocks.error.toError,
+        isReAuthRequiredError: mocks.error.isReAuthRequiredError,
+        createReAuthResponse: mocks.error.createReAuthResponse,
       }));
       vi.doMock("../../middleware/requestLogging/context.js", () => ({
-        getExecutionContext: mockGetExecutionContext,
+        getExecutionContext: mocks.utils.getExecutionContext,
         updateExecutionContext: vi.fn(),
       }));
       vi.doMock("../../services/dynamicSearch/index.js", () => ({
-        isMetaTool: mockIsMetaTool,
+        isMetaTool: mocks.dynamicSearch.isMetaTool,
       }));
       vi.doMock("../../libs/logger/index.js", () => ({
         logInfo: vi.fn(),
@@ -705,10 +722,10 @@ describe("mcpHandler", () => {
       const { mcpHandler: mcpHandlerCE } = await import("../mcpHandler.js");
 
       // メタツールとして認識させる
-      mockIsMetaTool.mockReturnValue(true);
+      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
 
       const capturedHandlersCE = new Map<string, HandlerCallback>();
-      mockServerConstructor.mockImplementation(() => ({
+      mocks.sdk.serverConstructor.mockImplementation(() => ({
         connect: vi.fn().mockResolvedValue(undefined),
         setRequestHandler: (
           schema: { method: string },
@@ -763,7 +780,7 @@ describe("mcpHandler", () => {
   describe("正常系フロー", () => {
     test("transport.handleRequest成功後にtoFetchResponseでレスポンスを返す", async () => {
       // requestBodyを設定してc.req.json()をバイパス
-      mockGetExecutionContext.mockReturnValue({
+      mocks.utils.getExecutionContext.mockReturnValue({
         requestStartTime: Date.now(),
         inputBytes: 0,
         requestBody: {
@@ -784,11 +801,11 @@ describe("mcpHandler", () => {
       });
 
       expect(res.status).toStrictEqual(200);
-      expect(mockToFetchResponse).toHaveBeenCalled();
+      expect(mocks.utils.toFetchResponse).toHaveBeenCalled();
     });
 
     test("executionContextがnullの場合はc.req.json()からボディを取得する", async () => {
-      mockGetExecutionContext.mockReturnValue(null);
+      mocks.utils.getExecutionContext.mockReturnValue(null);
 
       const res = await app.request("/mcp/server-123", {
         method: "POST",
@@ -801,7 +818,7 @@ describe("mcpHandler", () => {
       });
 
       expect(res.status).toStrictEqual(200);
-      expect(mockToFetchResponse).toHaveBeenCalled();
+      expect(mocks.utils.toFetchResponse).toHaveBeenCalled();
     });
   });
 });
