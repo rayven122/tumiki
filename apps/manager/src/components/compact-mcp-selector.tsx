@@ -62,6 +62,27 @@ export const CompactMcpSelector = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mcpServers]);
 
+  // 存在しないサーバーIDをクリーンアップ
+  // localStorageに保存された古いIDが残っている場合、利用可能なサーバーが読み込まれた後に削除
+  useEffect(() => {
+    if (!mcpServers || mcpServers.length === 0) return;
+
+    const availableIds = new Set(
+      mcpServers
+        .filter((server) => server.serverStatus === "RUNNING")
+        .map((server) => server.id),
+    );
+
+    const validIds = selectedMcpServerIds.filter((id) => availableIds.has(id));
+
+    // 無効なIDが含まれている場合のみ更新（無限ループ防止）
+    if (validIds.length !== selectedMcpServerIds.length) {
+      onSelectionChange?.(validIds);
+    }
+    // 依存配列: mcpServersの変更時のみ実行（選択変更時は実行しない）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcpServers]);
+
   const availableServers: OfficialServer[] =
     mcpServers?.filter(
       (server): server is OfficialServer => server.serverStatus === "RUNNING",
