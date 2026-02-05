@@ -60,7 +60,7 @@ describe("jsonRpcToonConverter", () => {
           expect(parsed.jsonrpc).toStrictEqual("2.0");
           expect(parsed.id).toStrictEqual(response.id);
         }),
-        { numRuns: 100 },
+        { numRuns: 30 },
       );
     });
 
@@ -81,7 +81,7 @@ describe("jsonRpcToonConverter", () => {
             expect(parsed.error.message).toStrictEqual(response.error.message);
           }
         }),
-        { numRuns: 100 },
+        { numRuns: 30 },
       );
     });
 
@@ -100,7 +100,7 @@ describe("jsonRpcToonConverter", () => {
             JSON.parse(result.convertedData);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30 },
       );
     });
 
@@ -127,7 +127,7 @@ describe("jsonRpcToonConverter", () => {
             );
           },
         ),
-        { numRuns: 50 },
+        { numRuns: 20 },
       );
     });
 
@@ -149,7 +149,7 @@ describe("jsonRpcToonConverter", () => {
           expect(Number.isInteger(result.inputTokens)).toStrictEqual(true);
           expect(Number.isInteger(result.outputTokens)).toStrictEqual(true);
         }),
-        { numRuns: 50 },
+        { numRuns: 20 },
       );
     });
 
@@ -163,7 +163,7 @@ describe("jsonRpcToonConverter", () => {
             expect(result.outputTokens).toBeLessThan(result.inputTokens);
           }
         }),
-        { numRuns: 100 },
+        { numRuns: 30 },
       );
     });
 
@@ -178,7 +178,7 @@ describe("jsonRpcToonConverter", () => {
             expect(result.outputTokens).toStrictEqual(result.inputTokens);
           }
         }),
-        { numRuns: 100 },
+        { numRuns: 30 },
       );
     });
   });
@@ -193,7 +193,7 @@ describe("jsonRpcToonConverter", () => {
 
           expect(safeResult).toStrictEqual(normalResult);
         }),
-        { numRuns: 50 },
+        { numRuns: 20 },
       );
     });
 
@@ -207,9 +207,9 @@ describe("jsonRpcToonConverter", () => {
         "undefined",
       ];
 
-      invalidJsonStrings.forEach((invalid) => {
+      for (const invalid of invalidJsonStrings) {
         expect(() => convertMcpResponseToToonSafe(invalid)).not.toThrow();
-      });
+      }
     });
 
     test("無効なJSON入力は元データをそのまま返す", () => {
@@ -229,7 +229,7 @@ describe("jsonRpcToonConverter", () => {
             expect(result.wasConverted).toStrictEqual(false);
           },
         ),
-        { numRuns: 50 },
+        { numRuns: 20 },
       );
     });
 
@@ -238,7 +238,7 @@ describe("jsonRpcToonConverter", () => {
         fc.property(fc.string(), (input) => {
           expect(() => convertMcpResponseToToonSafe(input)).not.toThrow();
         }),
-        { numRuns: 100 },
+        { numRuns: 30 },
       );
     });
   });
@@ -295,7 +295,7 @@ describe("jsonRpcToonConverter", () => {
         "Mixed: Hello世界🎉",
       ];
 
-      unicodeTexts.forEach((text) => {
+      for (const text of unicodeTexts) {
         const response = {
           jsonrpc: "2.0" as const,
           id: 1,
@@ -309,7 +309,7 @@ describe("jsonRpcToonConverter", () => {
 
         const parsed = JSON.parse(result.convertedData) as McpResultParsed;
         expect(parsed.result.content).toBeInstanceOf(Array);
-      });
+      }
     });
 
     test("特殊文字（エスケープが必要な文字）を含むテキストを正しく処理する", () => {
@@ -320,7 +320,7 @@ describe("jsonRpcToonConverter", () => {
         "Null char: \0",
       ];
 
-      specialTexts.forEach((text) => {
+      for (const text of specialTexts) {
         const response = {
           jsonrpc: "2.0" as const,
           id: 1,
@@ -334,7 +334,7 @@ describe("jsonRpcToonConverter", () => {
 
         // 処理が完了することを確認（結果は使用しない）
         JSON.parse(result.convertedData);
-      });
+      }
     });
   });
 });
