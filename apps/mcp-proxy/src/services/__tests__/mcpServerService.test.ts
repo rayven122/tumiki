@@ -37,11 +37,11 @@ vi.mock("@tumiki/db/server", async (importOriginal) => {
   };
 });
 
-vi.mock("../libs/cache/redis.js", () => ({
+vi.mock("../../libs/cache/redis.js", () => ({
   getRedisClient: mockGetRedisClient,
 }));
 
-vi.mock("../libs/logger/index.js", () => ({
+vi.mock("../../libs/logger/index.js", () => ({
   logDebug: vi.fn(),
   logError: vi.fn(),
   logWarn: vi.fn(),
@@ -57,7 +57,7 @@ import {
   getUserIdByEmail,
   getTemplateInstanceById,
   invalidateTemplateInstanceCache,
-} from "./mcpServerService.js";
+} from "../mcpServerService.js";
 
 // Redisモックの生成ヘルパー
 type MockRedisOverrides = {
@@ -285,7 +285,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis setEx失敗時も正常な結果を返す（正のキャッシュ）", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockMcpServer = createMcpServerData();
       const mockRedis = createMockRedis({
         setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
@@ -304,7 +304,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis setEx失敗時も正常にnullを返す（ネガティブキャッシュ）", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
       });
@@ -346,7 +346,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis del失敗時もエラーをスローしない", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
       });
@@ -490,7 +490,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis setEx失敗時も正常な結果を返す", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
       });
@@ -538,7 +538,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis del失敗時もエラーをスローしない", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
       });
@@ -668,7 +668,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis setEx失敗時も正常な結果を返す", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
       });
@@ -710,7 +710,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis del失敗時もエラーをスローしない", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
       });
@@ -837,7 +837,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis setEx失敗時も正常な結果を返す", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
       });
@@ -989,7 +989,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis setEx失敗時も正常な結果を返す", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockInstance = {
         id: "test-instance-id",
         mcpServerId: "test-server-id",
@@ -1035,7 +1035,7 @@ describe("mcpServerService", () => {
     });
 
     test("Redis del失敗時もエラーをスローしない", async () => {
-      const { logError } = await import("../libs/logger/index.js");
+      const { logError } = await import("../../libs/logger/index.js");
       const mockRedis = createMockRedis({
         del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
       });
@@ -1082,7 +1082,7 @@ describe("mcpServerService（ネガティブキャッシュ無効時）", () => 
     mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
 
     const { getMcpServerOrganization: getMcpServerOrganizationReloaded } =
-      await import("./mcpServerService.js");
+      await import("../mcpServerService.js");
 
     const result = await getMcpServerOrganizationReloaded("test-server-id");
 
@@ -1103,7 +1103,7 @@ describe("mcpServerService（ネガティブキャッシュ無効時）", () => 
     mockAccountFindFirst.mockResolvedValue({ userId: "resolved-user-id" });
 
     const { getUserIdFromKeycloakId: getUserIdFromKeycloakIdReloaded } =
-      await import("./mcpServerService.js");
+      await import("../mcpServerService.js");
 
     const result = await getUserIdFromKeycloakIdReloaded("keycloak-sub-123");
 
@@ -1126,7 +1126,7 @@ describe("mcpServerService（ネガティブキャッシュ無効時）", () => 
     mockUserFindFirst.mockResolvedValue({ id: "resolved-user-id" });
 
     const { getUserIdByEmail: getUserIdByEmailReloaded } = await import(
-      "./mcpServerService.js"
+      "../mcpServerService.js"
     );
 
     const result = await getUserIdByEmailReloaded("test@example.com");
@@ -1152,7 +1152,7 @@ describe("mcpServerService（ネガティブキャッシュ無効時）", () => 
     mockTemplateInstanceFindUnique.mockResolvedValue(mockInstance);
 
     const { getTemplateInstanceById: getTemplateInstanceByIdReloaded } =
-      await import("./mcpServerService.js");
+      await import("../mcpServerService.js");
 
     const result = await getTemplateInstanceByIdReloaded("test-instance-id");
 

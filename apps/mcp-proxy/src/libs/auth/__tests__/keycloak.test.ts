@@ -7,7 +7,7 @@ import {
   getKeycloakCacheStatus,
   isLocalhostUrl,
   createKeycloakConfiguration,
-} from "./keycloak.js";
+} from "../keycloak.js";
 
 // vi.hoisted を使用してモック関数を先に定義（ホイスティング問題を回避）
 const {

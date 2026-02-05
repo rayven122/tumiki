@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { decrypt, encrypt, generateEncryptionKey } from "./encryption.js";
+import { decrypt, encrypt, generateEncryptionKey } from "../encryption.js";
 
 // テスト用の暗号化キーを環境変数に設定
 beforeEach(() => {
@@ -224,7 +224,7 @@ describe("decrypt non-Error throw handling", () => {
     vi.stubEnv("REDIS_ENCRYPTION_KEY", process.env.REDIS_ENCRYPTION_KEY);
 
     // モック済みcryptoで動作するdecryptを再インポート
-    const { decrypt: decryptMocked } = await import("./encryption.js");
+    const { decrypt: decryptMocked } = await import("../encryption.js");
 
     expect(() => decryptMocked(encrypted)).toThrow(
       "Decryption failed: Unknown error",
