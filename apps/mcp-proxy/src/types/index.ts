@@ -1,3 +1,4 @@
+/* v8 ignore start -- 型定義のみ */
 import type { AuthType, PiiMaskingMode } from "@tumiki/db";
 
 export type { AuthType, PiiMaskingMode };
@@ -62,14 +63,6 @@ export type RemoteMcpServerConfig = {
   envVars?: Record<string, string>;
 };
 
-/**
- * Hono 環境型定義
- *
- * コンテキストの型安全性を提供
- *
- * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
- * - API Key認証時: authContext のみ設定、authMethod = "apikey"
- */
 /**
  * OAuth 認証情報
  */
@@ -154,6 +147,14 @@ export type DCRErrorResponse = {
   error_description?: string;
 };
 
+/**
+ * Hono 環境型定義
+ *
+ * コンテキストの型安全性を提供
+ *
+ * - JWT認証時: jwtPayload のみ設定、authMethod = "jwt"
+ * - API Key認証時: authContext のみ設定、authMethod = "apikey"
+ */
 export type HonoEnv = {
   Variables: {
     authMethod?: AuthType; // 使用された認証方式
@@ -162,3 +163,4 @@ export type HonoEnv = {
     oauthAuthInfo?: OAuthAuthInfo; // OAuth認証時のみ
   };
 };
+/* v8 ignore stop */

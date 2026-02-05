@@ -56,6 +56,52 @@ describe("getMcpLogsTopic", () => {
     const topic2 = getMcpLogsTopic();
     expect(topic1).toBe(topic2);
   });
+
+  test("2回目の呼び出しでPubSubコンストラクタは1回のみ呼ばれる", async () => {
+    vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "mcp-logs-pubsub-cache");
+
+    const MockPubSub = vi.fn().mockImplementation(() => ({
+      topic: vi.fn().mockReturnValue({ name: "mcp-logs-pubsub-cache" }),
+    }));
+
+    vi.doMock("@google-cloud/pubsub", () => ({
+      PubSub: MockPubSub,
+    }));
+
+    const { getMcpLogsTopic } = await import("../index.js");
+
+    getMcpLogsTopic();
+    getMcpLogsTopic();
+
+    // PubSub コンストラクタは1回のみ呼ばれる（キャッシュが使用される）
+    expect(MockPubSub).toHaveBeenCalledTimes(1);
+  });
+
+  test("topicがfalsyを返す場合でもPubSubクライアントはキャッシュされる", async () => {
+    vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "mcp-logs-falsy-topic");
+
+    const mockTopic = vi.fn().mockReturnValue(null);
+    const MockPubSub = vi.fn().mockImplementation(() => ({
+      topic: mockTopic,
+    }));
+
+    vi.doMock("@google-cloud/pubsub", () => ({
+      PubSub: MockPubSub,
+    }));
+
+    const { getMcpLogsTopic } = await import("../index.js");
+
+    // 1回目: pubsubClient未作成 → 新規作成、topicがnullを返す → mcpLogsTopicInstanceはnull
+    getMcpLogsTopic();
+    // 2回目: mcpLogsTopicInstanceがnull（falsy）→ getPubSubClient()が呼ばれる
+    //        → pubsubClientがキャッシュされているのでそのまま返す（lines 18-20）
+    getMcpLogsTopic();
+
+    // PubSubコンストラクタは1回のみ（pubsubClientキャッシュヒット）
+    expect(MockPubSub).toHaveBeenCalledTimes(1);
+    // topicは2回呼ばれる（mcpLogsTopicInstanceがfalsyなので毎回呼ばれる）
+    expect(mockTopic).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("isBigQueryLoggingEnabled", () => {

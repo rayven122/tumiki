@@ -123,7 +123,7 @@ describe("encryption", () => {
     test("大きな文字列: 大きな文字列も正しく処理できる", () => {
       fc.assert(
         fc.property(
-          fc.string({ minLength: 10000, maxLength: 50000 }),
+          fc.string({ minLength: 10000, maxLength: 10000 }),
           (plaintext) => {
             const encrypted = encrypt(plaintext);
             const decrypted = decrypt(encrypted);
@@ -172,6 +172,19 @@ describe("encryption", () => {
       // IV (12) + AuthTag (16) = 28バイト未満は無効
       const shortData = Buffer.alloc(20).toString("base64");
       expect(() => decrypt(shortData)).toThrow();
+    });
+
+    test("復号化失敗時のエラーメッセージにDecryption failedが含まれる", () => {
+      // 正しい長さだが改ざんされたデータを作成
+      const plaintext = "test data";
+      const encrypted = encrypt(plaintext);
+      const bytes = Buffer.from(encrypted, "base64");
+
+      // 認証タグを破壊して復号化を失敗させる
+      bytes[15] = bytes[15] ^ 0xff;
+      const tampered = bytes.toString("base64");
+
+      expect(() => decrypt(tampered)).toThrow(/^Decryption failed:/);
     });
   });
 

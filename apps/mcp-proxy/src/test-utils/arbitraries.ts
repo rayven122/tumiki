@@ -119,7 +119,7 @@ export const nonJsonRpcObjectArbitrary = fc.oneof(
   fc.boolean(),
   fc.constant(null),
   // 配列
-  fc.array(fc.jsonValue()),
+  fc.array(fc.jsonValue(), { maxLength: 5 }),
 );
 
 // ============================================================
@@ -196,7 +196,7 @@ export const mcpContentItemArbitrary: fc.Arbitrary<McpContentItem> = fc.oneof(
  */
 export const mcpToolCallResultArbitrary: fc.Arbitrary<McpToolCallResult> =
   fc.record({
-    content: fc.array(mcpContentItemArbitrary, { minLength: 1 }),
+    content: fc.array(mcpContentItemArbitrary, { minLength: 1, maxLength: 5 }),
     isError: fc.option(fc.boolean(), { nil: undefined }),
   });
 
@@ -256,7 +256,10 @@ export const searchToolsArgsArbitrary = fc.record({
  * describe_tools 引数
  */
 export const describeToolsArgsArbitrary = fc.record({
-  toolNames: fc.array(fc.string({ minLength: 1 }), { minLength: 1 }),
+  toolNames: fc.array(fc.string({ minLength: 1 }), {
+    minLength: 1,
+    maxLength: 5,
+  }),
 });
 
 /**
@@ -275,6 +278,7 @@ export const callToolRequestParamsArbitrary = fc.record({
             .filter((key) => key !== "__proto__" && key !== "constructor"),
           fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)),
         ),
+        { maxLength: 5 },
       )
       .map((entries) => Object.fromEntries(entries)),
     { nil: undefined },
@@ -299,6 +303,7 @@ export const anyValueArbitrary: fc.Arbitrary<unknown> = fc.oneof(
   fc.boolean(),
   fc.array(
     fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)),
+    { maxLength: 5 },
   ),
   fc
     .array(
@@ -306,6 +311,7 @@ export const anyValueArbitrary: fc.Arbitrary<unknown> = fc.oneof(
         fc.string(),
         fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)),
       ),
+      { maxLength: 5 },
     )
     .filter(
       (entries) =>

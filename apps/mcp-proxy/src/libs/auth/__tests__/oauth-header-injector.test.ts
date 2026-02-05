@@ -236,6 +236,15 @@ describe("injectAuthHeaders", () => {
         expect.any(Error),
       );
     });
+
+    test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージで伝播する", async () => {
+      const template = createMockTemplate({ authType: "OAUTH" });
+      mockGetValidToken.mockRejectedValue("string error");
+
+      await expect(
+        injectAuthHeaders(template, userId, instanceId, null),
+      ).rejects.toThrow("Failed to inject OAuth headers: Unknown error");
+    });
   });
 
   describe("AuthType.API_KEY", () => {
@@ -367,6 +376,19 @@ describe("injectAuthHeaders", () => {
         "Failed to inject API key headers",
         expect.any(Error),
       );
+    });
+
+    test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージで伝播する", async () => {
+      const template = createMockTemplate({
+        authType: "API_KEY",
+        useCloudRunIam: true,
+        url: "https://cloudrun.example.com",
+      });
+      mockGetCloudRunIdToken.mockRejectedValue("non-error value");
+
+      await expect(
+        injectAuthHeaders(template, userId, instanceId, null),
+      ).rejects.toThrow("Failed to inject API key headers: Unknown error");
     });
   });
 

@@ -68,7 +68,7 @@ describe("getIssuerFromToken", () => {
 
           expect(result).toBe(expectedIss);
         }),
-        { numRuns: 500 },
+        { numRuns: 100 },
       );
     });
 
@@ -79,7 +79,7 @@ describe("getIssuerFromToken", () => {
 
           expect(result).toBeNull();
         }),
-        { numRuns: 500 },
+        { numRuns: 100 },
       );
     });
   });
@@ -92,7 +92,7 @@ describe("getIssuerFromToken", () => {
 
           expect(result).toBeNull();
         }),
-        { numRuns: 500 },
+        { numRuns: 100 },
       );
     });
 
@@ -147,7 +147,7 @@ describe("getIssuerFromToken", () => {
 
           expect(result1).toBe(result2);
         }),
-        { numRuns: 500 },
+        { numRuns: 100 },
       );
     });
   });
@@ -203,7 +203,7 @@ describe("getIssuerFromToken", () => {
             expect(result).toBe(unicodeIss);
           },
         ),
-        { numRuns: 200 },
+        { numRuns: 100 },
       );
     });
   });

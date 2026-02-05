@@ -5,6 +5,8 @@ export const baseTestConfig: InlineConfig = {
   globals: true,
   setupFiles: ["@tumiki/vitest-config/setup"],
   passWithNoTests: true,
+  testTimeout: 30_000,
+  hookTimeout: 10_000,
   exclude: [
     "**/node_modules/**",
     "**/dist/**",

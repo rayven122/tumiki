@@ -190,6 +190,45 @@ describe("mcpServerService", () => {
       );
     });
 
+    test("キャッシュからdeletedAt付きデータを復元する", async () => {
+      const deletedAtStr = "2024-01-01T00:00:00.000Z";
+      const cachedData = {
+        ...createMcpServerData({ id: "deleted-cached-id" }),
+        deletedAt: deletedAtStr,
+      };
+      const mockRedis = createMockRedis({
+        get: vi.fn().mockResolvedValue(JSON.stringify(cachedData)),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      const result = await getMcpServerOrganization("deleted-cached-id");
+
+      expect(result?.deletedAt).toStrictEqual(new Date(deletedAtStr));
+      expect(mockMcpServerFindUnique).not.toHaveBeenCalled();
+    });
+
+    test("削除されたMcpServerをDBから取得してキャッシュする", async () => {
+      const deletedAt = new Date("2024-06-15");
+      const mockMcpServer = createMcpServerData({
+        id: "deleted-server-id",
+        deletedAt,
+      });
+      const mockRedis = createMockRedis();
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+      const result = await getMcpServerOrganization("deleted-server-id");
+
+      expect(result?.deletedAt).toStrictEqual(deletedAt);
+      expect(mockRedis.setEx).toHaveBeenCalledWith(
+        "mcpserver:org:deleted-server-id",
+        300,
+        expect.stringContaining('"deletedAt":"2024-06-15T00:00:00.000Z"'),
+      );
+    });
+
     test("ネガティブキャッシュ: 存在しないMcpServerもキャッシュされる", async () => {
       const mockRedis = createMockRedis();
 
@@ -244,6 +283,43 @@ describe("mcpServerService", () => {
       expect(result).toStrictEqual(mockMcpServer);
       expect(mockMcpServerFindUnique).toHaveBeenCalled();
     });
+
+    test("Redis setEx失敗時も正常な結果を返す（正のキャッシュ）", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockMcpServer = createMcpServerData();
+      const mockRedis = createMockRedis({
+        setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+      const result = await getMcpServerOrganization("test-server-id");
+
+      expect(result).toStrictEqual(mockMcpServer);
+      expect(logError).toHaveBeenCalledWith(
+        "Redis cache save error",
+        expect.any(Error),
+      );
+    });
+
+    test("Redis setEx失敗時も正常にnullを返す（ネガティブキャッシュ）", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockMcpServerFindUnique.mockResolvedValue(null);
+
+      const result = await getMcpServerOrganization("non-existent-id");
+
+      expect(result).toBeNull();
+      expect(logError).toHaveBeenCalledWith(
+        "Redis cache save error",
+        expect.any(Error),
+      );
+    });
   });
 
   describe("invalidateMcpServerCache", () => {
@@ -267,6 +343,24 @@ describe("mcpServerService", () => {
       await expect(
         invalidateMcpServerCache("test-server-id"),
       ).resolves.not.toThrow();
+    });
+
+    test("Redis del失敗時もエラーをスローしない", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      await expect(
+        invalidateMcpServerCache("test-server-id"),
+      ).resolves.not.toThrow();
+      expect(logError).toHaveBeenCalledWith(
+        "Failed to invalidate McpServer cache",
+        expect.any(Error),
+        { mcpServerId: "test-server-id" },
+      );
     });
   });
 
@@ -394,6 +488,27 @@ describe("mcpServerService", () => {
       expect(result).toBe(true);
       expect(mockOrganizationMemberFindUnique).toHaveBeenCalled();
     });
+
+    test("Redis setEx失敗時も正常な結果を返す", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockOrganizationMemberFindUnique.mockResolvedValue({ id: "member-id" });
+
+      const result = await checkOrganizationMembership(
+        "test-org-id",
+        "test-user-id",
+      );
+
+      expect(result).toBe(true);
+      expect(logError).toHaveBeenCalledWith(
+        "Redis cache save error for membership",
+        expect.any(Error),
+      );
+    });
   });
 
   describe("invalidateOrganizationMembershipCache", () => {
@@ -420,6 +535,24 @@ describe("mcpServerService", () => {
       await expect(
         invalidateOrganizationMembershipCache("test-org-id", "test-user-id"),
       ).resolves.not.toThrow();
+    });
+
+    test("Redis del失敗時もエラーをスローしない", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      await expect(
+        invalidateOrganizationMembershipCache("test-org-id", "test-user-id"),
+      ).resolves.not.toThrow();
+      expect(logError).toHaveBeenCalledWith(
+        "Failed to invalidate organization membership cache",
+        expect.any(Error),
+        { organizationId: "test-org-id", userId: "test-user-id" },
+      );
     });
   });
 
@@ -533,6 +666,24 @@ describe("mcpServerService", () => {
       expect(result).toBe("tumiki-user-id");
       expect(mockAccountFindFirst).toHaveBeenCalled();
     });
+
+    test("Redis setEx失敗時も正常な結果を返す", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockAccountFindFirst.mockResolvedValue({ userId: "tumiki-user-id" });
+
+      const result = await getUserIdFromKeycloakId("keycloak-sub-123");
+
+      expect(result).toBe("tumiki-user-id");
+      expect(logError).toHaveBeenCalledWith(
+        "Redis cache save error for keycloak user",
+        expect.any(Error),
+      );
+    });
   });
 
   describe("invalidateKeycloakUserCache", () => {
@@ -556,6 +707,24 @@ describe("mcpServerService", () => {
       await expect(
         invalidateKeycloakUserCache("keycloak-sub-123"),
       ).resolves.not.toThrow();
+    });
+
+    test("Redis del失敗時もエラーをスローしない", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      await expect(
+        invalidateKeycloakUserCache("keycloak-sub-123"),
+      ).resolves.not.toThrow();
+      expect(logError).toHaveBeenCalledWith(
+        "Failed to invalidate keycloak user cache",
+        expect.any(Error),
+        { keycloakId: "keycloak-sub-123" },
+      );
     });
   });
 
@@ -665,6 +834,24 @@ describe("mcpServerService", () => {
 
       expect(result).toBe("tumiki-user-id");
       expect(mockUserFindFirst).toHaveBeenCalled();
+    });
+
+    test("Redis setEx失敗時も正常な結果を返す", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockUserFindFirst.mockResolvedValue({ id: "tumiki-user-id" });
+
+      const result = await getUserIdByEmail("test@example.com");
+
+      expect(result).toBe("tumiki-user-id");
+      expect(logError).toHaveBeenCalledWith(
+        "Redis cache save error for email user",
+        expect.any(Error),
+      );
     });
   });
 
@@ -800,6 +987,28 @@ describe("mcpServerService", () => {
       expect(result).toStrictEqual(mockInstance);
       expect(mockTemplateInstanceFindUnique).toHaveBeenCalled();
     });
+
+    test("Redis setEx失敗時も正常な結果を返す", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockInstance = {
+        id: "test-instance-id",
+        mcpServerId: "test-server-id",
+      };
+      const mockRedis = createMockRedis({
+        setEx: vi.fn().mockRejectedValue(new Error("Redis setEx failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockTemplateInstanceFindUnique.mockResolvedValue(mockInstance);
+
+      const result = await getTemplateInstanceById("test-instance-id");
+
+      expect(result).toStrictEqual(mockInstance);
+      expect(logError).toHaveBeenCalledWith(
+        "Redis cache save error for template instance",
+        expect.any(Error),
+      );
+    });
   });
 
   describe("invalidateTemplateInstanceCache", () => {
@@ -824,5 +1033,136 @@ describe("mcpServerService", () => {
         invalidateTemplateInstanceCache("test-instance-id"),
       ).resolves.not.toThrow();
     });
+
+    test("Redis del失敗時もエラーをスローしない", async () => {
+      const { logError } = await import("../libs/logger/index.js");
+      const mockRedis = createMockRedis({
+        del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      await expect(
+        invalidateTemplateInstanceCache("test-instance-id"),
+      ).resolves.not.toThrow();
+      expect(logError).toHaveBeenCalledWith(
+        "Failed to invalidate template instance cache",
+        expect.any(Error),
+        { instanceId: "test-instance-id" },
+      );
+    });
+  });
+});
+
+/**
+ * DISABLE_NEGATIVE_CACHE=true のテスト
+ *
+ * ENABLE_NEGATIVE_CACHE はモジュール読み込み時に計算されるため、
+ * vi.resetModules() でモジュールを再読み込みして環境変数を反映させる。
+ */
+describe("mcpServerService（ネガティブキャッシュ無効時）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("DISABLE_NEGATIVE_CACHE", "true");
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetAllMocks();
+  });
+
+  test("getMcpServerOrganization: ネガティブキャッシュ無効時はキャッシュを削除してDBから再取得する", async () => {
+    const mockMcpServer = createMcpServerData();
+    const mockRedis = createMockRedis({
+      get: vi.fn().mockResolvedValue("null"),
+      del: vi.fn().mockResolvedValue(1),
+    });
+    mockGetRedisClient.mockResolvedValue(mockRedis);
+    mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+    const { getMcpServerOrganization: getMcpServerOrganizationReloaded } =
+      await import("./mcpServerService.js");
+
+    const result = await getMcpServerOrganizationReloaded("test-server-id");
+
+    // ネガティブキャッシュが無視されてDBから再取得される
+    expect(result).toStrictEqual(mockMcpServer);
+    // キャッシュが削除される
+    expect(mockRedis.del).toHaveBeenCalledWith("mcpserver:org:test-server-id");
+    // DBから取得される
+    expect(mockMcpServerFindUnique).toHaveBeenCalled();
+  });
+
+  test("getUserIdFromKeycloakId: ネガティブキャッシュ無効時はキャッシュを削除してDBから再取得する", async () => {
+    const mockRedis = createMockRedis({
+      get: vi.fn().mockResolvedValue("null"),
+      del: vi.fn().mockResolvedValue(1),
+    });
+    mockGetRedisClient.mockResolvedValue(mockRedis);
+    mockAccountFindFirst.mockResolvedValue({ userId: "resolved-user-id" });
+
+    const { getUserIdFromKeycloakId: getUserIdFromKeycloakIdReloaded } =
+      await import("./mcpServerService.js");
+
+    const result = await getUserIdFromKeycloakIdReloaded("keycloak-sub-123");
+
+    // ネガティブキャッシュが無視されてDBから再取得される
+    expect(result).toBe("resolved-user-id");
+    // キャッシュが削除される
+    expect(mockRedis.del).toHaveBeenCalledWith(
+      "keycloak:user:keycloak-sub-123",
+    );
+    // DBから取得される
+    expect(mockAccountFindFirst).toHaveBeenCalled();
+  });
+
+  test("getUserIdByEmail: ネガティブキャッシュ無効時はキャッシュを削除してDBから再取得する", async () => {
+    const mockRedis = createMockRedis({
+      get: vi.fn().mockResolvedValue("null"),
+      del: vi.fn().mockResolvedValue(1),
+    });
+    mockGetRedisClient.mockResolvedValue(mockRedis);
+    mockUserFindFirst.mockResolvedValue({ id: "resolved-user-id" });
+
+    const { getUserIdByEmail: getUserIdByEmailReloaded } = await import(
+      "./mcpServerService.js"
+    );
+
+    const result = await getUserIdByEmailReloaded("test@example.com");
+
+    // ネガティブキャッシュが無視されてDBから再取得される
+    expect(result).toBe("resolved-user-id");
+    // キャッシュが削除される
+    expect(mockRedis.del).toHaveBeenCalledWith("email:user:test@example.com");
+    // DBから取得される
+    expect(mockUserFindFirst).toHaveBeenCalled();
+  });
+
+  test("getTemplateInstanceById: ネガティブキャッシュ無効時はキャッシュを削除してDBから再取得する", async () => {
+    const mockInstance = {
+      id: "test-instance-id",
+      mcpServerId: "test-server-id",
+    };
+    const mockRedis = createMockRedis({
+      get: vi.fn().mockResolvedValue("null"),
+      del: vi.fn().mockResolvedValue(1),
+    });
+    mockGetRedisClient.mockResolvedValue(mockRedis);
+    mockTemplateInstanceFindUnique.mockResolvedValue(mockInstance);
+
+    const { getTemplateInstanceById: getTemplateInstanceByIdReloaded } =
+      await import("./mcpServerService.js");
+
+    const result = await getTemplateInstanceByIdReloaded("test-instance-id");
+
+    // ネガティブキャッシュが無視されてDBから再取得される
+    expect(result).toStrictEqual(mockInstance);
+    // キャッシュが削除される
+    expect(mockRedis.del).toHaveBeenCalledWith(
+      "template:instance:test-instance-id",
+    );
+    // DBから取得される
+    expect(mockTemplateInstanceFindUnique).toHaveBeenCalled();
   });
 });

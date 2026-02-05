@@ -37,12 +37,14 @@ logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
 });
 
 // Node.js環境用のHTTPサーバー起動
+/* v8 ignore start */
 if (process.env.NODE_ENV !== "test") {
   const { serve } = await import("@hono/node-server");
   serve({ fetch: app.fetch, port }, (info) => {
     logInfo(`Server is running on http://localhost:${info.port}`);
   });
 }
+/* v8 ignore stop */
 
 // Graceful shutdown handlers
 const gracefulShutdown = async (): Promise<void> => {

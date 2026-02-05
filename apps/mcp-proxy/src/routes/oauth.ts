@@ -27,6 +27,8 @@ import {
 const validateTokenRequest = (
   body: unknown,
 ): { valid: boolean; error?: OAuthErrorResponse } => {
+  // Honoの parseBody() は常にオブジェクトを返すため、このブランチは到達不可
+  /* v8 ignore start */
   if (typeof body !== "object" || body === null) {
     return {
       valid: false,
@@ -36,6 +38,7 @@ const validateTokenRequest = (
       },
     };
   }
+  /* v8 ignore stop */
 
   const req = body as Record<string, unknown>;
 
@@ -269,14 +272,15 @@ export const oauthTokenHandler = async (c: Context): Promise<Response> => {
       };
 
       return c.json(response, 200);
-    }
+    } /* v8 ignore next */
 
-    // ここに到達することはないはず（validateTokenRequestでチェック済み）
+    /* v8 ignore start -- ここに到達することはない（validateTokenRequestでチェック済み） */
     const errorResponse: OAuthErrorResponse = {
       error: "unsupported_grant_type",
       error_description: "Unsupported grant type",
     };
     return c.json(errorResponse, 400);
+    /* v8 ignore stop */
   } catch (error) {
     logError("OAuth token endpoint error", error as Error);
 

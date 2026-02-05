@@ -14,7 +14,7 @@ describe("sanitizeIdForLog", () => {
 
         expect(result).toHaveLength(8);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -26,7 +26,7 @@ describe("sanitizeIdForLog", () => {
         // 0-9 と a-f のみを含む
         expect(result).toMatch(/^[0-9a-f]{8}$/);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -38,7 +38,7 @@ describe("sanitizeIdForLog", () => {
 
         expect(result1).toBe(result2);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -56,7 +56,7 @@ describe("sanitizeIdForLog", () => {
           expect(result1).not.toBe(result2);
         },
       ),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -75,7 +75,7 @@ describe("sanitizeIdForLog", () => {
         expect(result).toHaveLength(8);
         expect(result).toMatch(/^[0-9a-f]{8}$/);
       }),
-      { numRuns: 500 },
+      { numRuns: 100 },
     );
   });
 

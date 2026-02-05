@@ -296,6 +296,14 @@ describe("getAllowedTools", () => {
 
     expect(result.tools[0].description).toBeUndefined();
   });
+
+  test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージを含む", async () => {
+    mockFindUnique.mockRejectedValue("string error");
+
+    await expect(getAllowedTools(mcpServerId)).rejects.toThrow(
+      `Failed to get allowed tools for server ${mcpServerId}: Unknown error`,
+    );
+  });
 });
 
 describe("executeTool", () => {
@@ -481,6 +489,14 @@ describe("getInternalToolsForDynamicSearch", () => {
 
     await expect(getInternalToolsForDynamicSearch(mcpServerId)).rejects.toThrow(
       "Failed to get internal tools",
+    );
+  });
+
+  test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージを含む", async () => {
+    mockFindUnique.mockRejectedValue("string error");
+
+    await expect(getInternalToolsForDynamicSearch(mcpServerId)).rejects.toThrow(
+      `Failed to get internal tools for server ${mcpServerId}: Unknown error`,
     );
   });
 });

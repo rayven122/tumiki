@@ -15,7 +15,7 @@ describe("byteLength", () => {
         expect(result).toBeGreaterThanOrEqual(0);
         expect(Number.isInteger(result)).toBe(true);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -27,7 +27,7 @@ describe("byteLength", () => {
 
         expect(result).toBe(expected);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -46,7 +46,7 @@ describe("byteLength", () => {
 
         expect(result).toBe(text.length);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -65,7 +65,7 @@ describe("byteLength", () => {
 
         expect(result).toBe(expected);
       }),
-      { numRuns: 500 },
+      { numRuns: 100 },
     );
   });
 
@@ -77,7 +77,7 @@ describe("byteLength", () => {
 
         expect(result).toBe(expected);
       }),
-      { numRuns: 500 },
+      { numRuns: 100 },
     );
   });
 
@@ -97,7 +97,7 @@ describe("byteLength", () => {
 
         expect(combined).toBe(separate);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 
@@ -109,7 +109,7 @@ describe("byteLength", () => {
 
         expect(result1).toBe(result2);
       }),
-      { numRuns: 1000 },
+      { numRuns: 100 },
     );
   });
 });

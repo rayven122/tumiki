@@ -115,6 +115,7 @@ describe("redis", () => {
       expect(createClient).toHaveBeenCalledWith(
         expect.objectContaining({
           url: "redis://localhost:6379",
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           socket: expect.objectContaining({
             connectTimeout: 10000,
           }),
@@ -136,6 +137,7 @@ describe("redis", () => {
 
       expect(createClient).toHaveBeenCalledWith(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           socket: expect.objectContaining({
             connectTimeout: 5000,
           }),
@@ -163,6 +165,80 @@ describe("redis", () => {
         "reconnecting",
         expect.any(Function),
       );
+    });
+
+    test("イベントハンドラーのコールバックが正しく動作する", async () => {
+      vi.stubEnv("REDIS_URL", "redis://localhost:6379");
+
+      mockClient.connect.mockImplementation(async () => {
+        mockClient.isOpen = true;
+      });
+
+      const { logError, logInfo } = await import("../../logger/index.js");
+      const { getRedisClient } = await import("../redis.js");
+      await getRedisClient();
+
+      // on() の呼び出しからコールバックを抽出して実行
+      const onCalls = mockClient.on.mock.calls as [
+        string,
+        (...args: unknown[]) => void,
+      ][];
+
+      // error ハンドラーのコールバックを実行
+      const errorHandler = onCalls.find(([event]) => event === "error")?.[1];
+      const testError = new Error("test error");
+      errorHandler?.(testError);
+      expect(logError).toHaveBeenCalledWith("Redis client error", testError);
+
+      // connect ハンドラーのコールバックを実行
+      const connectHandler = onCalls.find(
+        ([event]) => event === "connect",
+      )?.[1];
+      connectHandler?.();
+      expect(logInfo).toHaveBeenCalledWith("Redis client connected");
+
+      // ready ハンドラーのコールバックを実行
+      const readyHandler = onCalls.find(([event]) => event === "ready")?.[1];
+      readyHandler?.();
+      expect(logInfo).toHaveBeenCalledWith("Redis client ready");
+
+      // reconnecting ハンドラーのコールバックを実行
+      const reconnectingHandler = onCalls.find(
+        ([event]) => event === "reconnecting",
+      )?.[1];
+      reconnectingHandler?.();
+      expect(logInfo).toHaveBeenCalledWith("Redis client reconnecting");
+    });
+
+    test("並行呼び出し時にconnectは1回のみ実行される", async () => {
+      vi.stubEnv("REDIS_URL", "redis://localhost:6379");
+
+      let resolveConnect: (() => void) | null = null;
+
+      // connect を手動で解決できるようにする
+      mockClient.connect.mockImplementation(() => {
+        return new Promise<void>((resolve) => {
+          resolveConnect = () => {
+            mockClient.isOpen = true;
+            resolve();
+          };
+        });
+      });
+
+      const { getRedisClient } = await import("../redis.js");
+
+      // 並行で2回呼び出し
+      const promise1 = getRedisClient();
+      const promise2 = getRedisClient();
+
+      // connect() は1回だけ呼ばれる
+      expect(mockClient.connect).toHaveBeenCalledTimes(1);
+
+      // Promise を解決
+      resolveConnect!();
+
+      const [result1, result2] = await Promise.all([promise1, promise2]);
+      expect(result1).toBe(result2);
     });
   });
 
@@ -217,7 +293,10 @@ describe("redis", () => {
   });
 
   describe("再接続ストラテジー", () => {
-    test("再接続は最大5回まで試行される", async () => {
+    /** createClient に渡された reconnectStrategy を取得するヘルパー */
+    const getReconnectStrategy = async (): Promise<
+      (retries: number) => number | Error
+    > => {
       vi.stubEnv("REDIS_URL", "redis://localhost:6379");
 
       mockClient.connect.mockImplementation(async () => {
@@ -229,8 +308,17 @@ describe("redis", () => {
       await getRedisClient();
 
       const createClientMock = createClient as MockFn;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const options = createClientMock.mock.calls[0]?.[0];
-      const reconnectStrategy = options?.socket?.reconnectStrategy;
+      // prettier-ignore
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const strategy: (retries: number) => number | Error = options?.socket?.reconnectStrategy;
+
+      return strategy;
+    };
+
+    test("再接続は最大5回まで試行される", async () => {
+      const reconnectStrategy = await getReconnectStrategy();
 
       expect(reconnectStrategy).toBeDefined();
 
@@ -249,19 +337,7 @@ describe("redis", () => {
     });
 
     test("再接続の遅延は最大3000msに制限される", async () => {
-      vi.stubEnv("REDIS_URL", "redis://localhost:6379");
-
-      mockClient.connect.mockImplementation(async () => {
-        mockClient.isOpen = true;
-      });
-
-      const { createClient } = await import("redis");
-      const { getRedisClient } = await import("../redis.js");
-      await getRedisClient();
-
-      const createClientMock = createClient as MockFn;
-      const options = createClientMock.mock.calls[0]?.[0];
-      const reconnectStrategy = options?.socket?.reconnectStrategy;
+      const reconnectStrategy = await getReconnectStrategy();
 
       const result = reconnectStrategy(30);
       expect(typeof result === "number" ? result : 0).toBeLessThanOrEqual(3000);

@@ -2,7 +2,7 @@
  * 共通エラーハンドラーのテスト
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import type { HonoEnv } from "../../../types/index.js";
 import { handleError } from "../handler.js";
@@ -22,6 +22,7 @@ type JsonRpcErrorResponse = {
 
 vi.mock("../../logger/index.js", async (importOriginal) => {
   const original =
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     await importOriginal<typeof import("../../logger/index.js")>();
   return {
     ...original,
@@ -34,10 +35,6 @@ describe("handleError", () => {
   const mockLogError = loggerModule.logError as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
     vi.clearAllMocks();
   });
 
@@ -156,8 +153,11 @@ describe("handleError", () => {
     expect(mockLogError).toHaveBeenCalledWith(
       "Error occurred in test",
       testError,
+
       expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         organizationId: expect.any(String), // ハッシュ化されている
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         instanceId: expect.any(String), // ハッシュ化されている
       }),
     );

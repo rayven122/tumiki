@@ -5,20 +5,30 @@ import {
   getJWKS,
   clearKeycloakCache,
   getKeycloakCacheStatus,
+  isLocalhostUrl,
+  createKeycloakConfiguration,
 } from "./keycloak.js";
 
 // vi.hoisted を使用してモック関数を先に定義（ホイスティング問題を回避）
-const { mockDiscovery, mockCreateRemoteJWKSet } = vi.hoisted(() => ({
+const {
+  mockDiscovery,
+  mockCreateRemoteJWKSet,
+  mockAllowInsecureRequests,
+  MockConfiguration,
+} = vi.hoisted(() => ({
   mockDiscovery: vi.fn(),
   mockCreateRemoteJWKSet: vi.fn(() => "mocked-jwks"),
+  mockAllowInsecureRequests: vi.fn(),
+  MockConfiguration: vi.fn(),
 }));
 
 // openid-client v6 をモック
 vi.mock("openid-client", () => ({
   discovery: mockDiscovery,
-  Configuration: vi.fn(),
+  Configuration: MockConfiguration,
   ClientSecretPost: vi.fn(() => "client_secret_post"),
   None: vi.fn(() => "none"),
+  allowInsecureRequests: mockAllowInsecureRequests,
 }));
 
 // jose の createRemoteJWKSet をモック
@@ -329,5 +339,118 @@ describe("競合状態テスト", () => {
     // 成功後はキャッシュあり
     const statusAfterSuccess = getKeycloakCacheStatus();
     expect(statusAfterSuccess.hasMetadataCache).toBe(true);
+  });
+});
+
+describe("isLocalhostUrl", () => {
+  test("localhost URLの場合はtrueを返す", () => {
+    expect(isLocalhostUrl("http://localhost:8080/realms/test")).toBe(true);
+  });
+
+  test("127.0.0.1 URLの場合はtrueを返す", () => {
+    expect(isLocalhostUrl("http://127.0.0.1:8080/realms/test")).toBe(true);
+  });
+
+  test("外部URLの場合はfalseを返す", () => {
+    expect(isLocalhostUrl("https://keycloak.example.com/realms/test")).toBe(
+      false,
+    );
+  });
+
+  test("無効なURLの場合はfalseを返す", () => {
+    expect(isLocalhostUrl("not-a-url")).toBe(false);
+  });
+});
+
+describe("discoverMetadata（localhost）", () => {
+  test("localhost URLの場合はallowInsecureRequestsオプションが渡される", async () => {
+    process.env.KEYCLOAK_ISSUER = "http://localhost:8080/realms/test";
+
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
+
+    await getKeycloakServerMetadata();
+
+    // localhost の場合は execute オプションに allowInsecureRequests が含まれる
+    expect(mockDiscovery).toHaveBeenCalledWith(
+      new URL("http://localhost:8080/realms/test"),
+      "__metadata_only__",
+      undefined,
+      undefined,
+      { execute: [mockAllowInsecureRequests] },
+    );
+  });
+});
+
+describe("createKeycloakConfiguration", () => {
+  test("localhost URLの場合はallowInsecureRequestsが呼ばれる", async () => {
+    process.env.KEYCLOAK_ISSUER = "http://localhost:8080/realms/test";
+
+    // Discovery のモック
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
+
+    // Configuration コンストラクタのモック
+    const mockConfigInstance = {};
+    MockConfiguration.mockReturnValueOnce(mockConfigInstance);
+
+    const result = await createKeycloakConfiguration("test-client", "secret");
+
+    expect(result).toBe(mockConfigInstance);
+    // localhost の場合は allowInsecureRequests が config に対して呼ばれる
+    expect(mockAllowInsecureRequests).toHaveBeenCalledWith(mockConfigInstance);
+  });
+
+  test("HTTPS URLの場合はallowInsecureRequestsが呼ばれない", async () => {
+    process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
+
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
+
+    const mockConfigInstance = {};
+    MockConfiguration.mockReturnValueOnce(mockConfigInstance);
+
+    await createKeycloakConfiguration("test-client", "secret");
+
+    expect(mockAllowInsecureRequests).not.toHaveBeenCalled();
+  });
+
+  test("KEYCLOAK_ISSUERが未設定の場合はallowInsecureRequestsが呼ばれない", async () => {
+    // KEYCLOAK_ISSUER を削除して ?? "" のフォールバックブランチをテスト
+    delete process.env.KEYCLOAK_ISSUER;
+
+    // getKeycloakServerMetadata が先にキャッシュからメタデータを返すように、
+    // 事前にキャッシュを設定しておく
+    // まず KEYCLOAK_ISSUER を設定して discovery を成功させる
+    process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
+    await getKeycloakServerMetadata();
+
+    // KEYCLOAK_ISSUER を削除（createKeycloakConfiguration 内で ?? "" が使われる）
+    delete process.env.KEYCLOAK_ISSUER;
+
+    const mockConfigInstance = {};
+    MockConfiguration.mockReturnValueOnce(mockConfigInstance);
+
+    await createKeycloakConfiguration("test-client", "secret");
+
+    // isLocalhostUrl("") は false を返すため、allowInsecureRequests は呼ばれない
+    expect(mockAllowInsecureRequests).not.toHaveBeenCalled();
+  });
+
+  test("clientSecretなしの場合はNone()が使用される（Public Client）", async () => {
+    process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/test";
+
+    mockDiscovery.mockResolvedValueOnce(createMockConfiguration());
+
+    const mockConfigInstance = {};
+    MockConfiguration.mockReturnValueOnce(mockConfigInstance);
+
+    await createKeycloakConfiguration("public-client");
+
+    // clientSecret が undefined の場合は None() が使われる
+    expect(MockConfiguration).toHaveBeenCalledWith(
+      mockServerMetadata,
+      "public-client",
+      undefined,
+      "none", // None() の戻り値
+    );
   });
 });

@@ -20,9 +20,9 @@
 export const checkPermission = async (
   userOrganizationId: string,
   targetOrganizationId: string,
-  resourceType: string,
-  action: string,
-  resourceId?: string,
+  _resourceType: string,
+  _action: string,
+  _resourceId?: string,
 ): Promise<boolean> => {
   // 現在は同じ組織のみアクセス許可
   // Week 3で実装予定：

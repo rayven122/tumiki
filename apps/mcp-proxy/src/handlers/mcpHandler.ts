@@ -27,8 +27,9 @@ import {
 import { isMetaTool } from "../services/dynamicSearch/index.js";
 
 // EE機能: Dynamic Search（条件付きロード）
-type DynamicSearchModule =
-  typeof import("../services/dynamicSearch/index.ee.js");
+// prettier-ignore
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+type DynamicSearchModule = typeof import("../services/dynamicSearch/index.ee.js");
 let dynamicSearchModuleCache: DynamicSearchModule | null = null;
 
 const loadDynamicSearchModule =
@@ -46,9 +47,7 @@ const loadDynamicSearchModule =
     }
   };
 
-/**
- * ツール実行結果の型
- */
+/** ツール実行結果の型 */
 type ToolCallResult = {
   content: Array<{ type: string; text?: string; [key: string]: unknown }>;
 };
