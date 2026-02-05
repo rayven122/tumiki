@@ -7,6 +7,7 @@ import { db } from "@tumiki/db/server";
 import type { HonoEnv } from "./types/index.js";
 import { DEFAULT_PORT } from "./constants/server.js";
 import { TIMEOUT_CONFIG } from "./constants/config.js";
+// CE機能
 import { healthRoute } from "./routes/health.js";
 import { mcpRoute } from "./routes/mcp.js";
 import { wellKnownRoute } from "./routes/wellKnown.js";
@@ -18,7 +19,7 @@ const app = new Hono<HonoEnv>();
 // CORS設定
 app.use("/*", cors());
 
-// ルートをマウント
+// ルート設定
 app.route("/", healthRoute);
 app.route("/", mcpRoute);
 app.route("/.well-known", wellKnownRoute);

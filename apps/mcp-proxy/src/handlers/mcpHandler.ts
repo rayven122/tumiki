@@ -24,15 +24,27 @@ import {
   getExecutionContext,
   updateExecutionContext,
 } from "../middleware/requestLogging/context.js";
-import {
-  isMetaTool,
-  searchTools,
-  describeTools,
-  executeToolDynamic,
-  SearchToolsArgsSchema,
-  DescribeToolsArgsSchema,
-  CallToolRequestParamsSchema,
-} from "../services/dynamicSearch/index.js";
+import { isMetaTool } from "../services/dynamicSearch/index.js";
+
+// EE機能: Dynamic Search（条件付きロード）
+type DynamicSearchModule =
+  typeof import("../services/dynamicSearch/index.ee.js");
+let dynamicSearchModuleCache: DynamicSearchModule | null = null;
+
+const loadDynamicSearchModule =
+  async (): Promise<DynamicSearchModule | null> => {
+    if (dynamicSearchModuleCache) {
+      return dynamicSearchModuleCache;
+    }
+    try {
+      dynamicSearchModuleCache = await import(
+        "../services/dynamicSearch/index.ee.js"
+      );
+      return dynamicSearchModuleCache;
+    } catch {
+      return null; // CE版では利用不可
+    }
+  };
 
 /**
  * ツール実行結果の型
@@ -71,6 +83,21 @@ const handleMetaTool = async (
   organizationId: string,
   userId: string,
 ): Promise<ToolCallResult> => {
+  // EE版Dynamic Searchモジュールをロード
+  const dynamicSearch = await loadDynamicSearchModule();
+  if (!dynamicSearch) {
+    throw new Error("Dynamic Search is not available in Community Edition");
+  }
+
+  const {
+    searchTools,
+    describeTools,
+    executeToolDynamic,
+    SearchToolsArgsSchema,
+    DescribeToolsArgsSchema,
+    CallToolRequestParamsSchema,
+  } = dynamicSearch;
+
   // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
   const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
 

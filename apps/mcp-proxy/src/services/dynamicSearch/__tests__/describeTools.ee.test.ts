@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
 /**
  * describeTools.ts のテスト
  *
@@ -12,8 +15,8 @@ vi.mock("../../../libs/logger/index.js", () => ({
 }));
 
 // モック設定後にインポート
-import { describeTools } from "../describeTools.js";
-import type { Tool } from "../types.js";
+import { describeTools } from "../describeTools.ee.js";
+import type { Tool } from "../types.ee.js";
 
 describe("describeTools", () => {
   const mockTools: Tool[] = [

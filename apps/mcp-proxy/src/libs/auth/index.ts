@@ -8,5 +8,8 @@ export {
   getJWKS,
   clearKeycloakCache,
   getKeycloakCacheStatus,
+  createKeycloakConfiguration,
+  getKeycloakServerMetadata,
 } from "./keycloak.js";
 export { verifyKeycloakJWT } from "./jwt-verifier.js";
+export { getCloudRunIdToken, createCloudRunHeaders } from "./cloudRunAuth.js";

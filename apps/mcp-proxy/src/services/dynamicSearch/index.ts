@@ -1,40 +1,54 @@
 /**
- * Dynamic Search サービス
+ * Dynamic Search サービス (CE Facade)
  *
- * dynamicSearch が有効な McpServer で使用される
- * search_tools, describe_tools, execute_tool の3つのメタツールを提供
- *
- * MCP SDK の Tool 型と CallToolRequestParams 型を使用
+ * Community Edition ではDynamic Search機能が無効。
+ * CE版でも型安全性を維持するため、型のみエクスポートする。
  */
 
-// MCP SDK 型を re-export（推奨）
-export type { Tool, CallToolRequestParams } from "./types.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-// Dynamic Search 固有の型定義
-export type {
-  SearchToolsArgs,
-  DescribeToolsArgs,
-  SearchResult,
-} from "./types.js";
+// CE版ではDynamic Searchは利用不可
+export const DYNAMIC_SEARCH_AVAILABLE = false;
 
-// バリデーションスキーマ
-export {
-  SearchToolsArgsSchema,
-  DescribeToolsArgsSchema,
-  CallToolRequestParamsSchema,
-} from "./types.js";
+// CE版ではメタツールは空配列
+export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [];
 
-// メタツール定義
-export {
-  DYNAMIC_SEARCH_META_TOOLS,
-  SEARCH_TOOLS_DEFINITION,
-  DESCRIBE_TOOLS_DEFINITION,
-  EXECUTE_TOOL_DEFINITION,
-  META_TOOL_NAMES,
-  isMetaTool,
-} from "./metaToolDefinitions.js";
+/**
+ * 指定された名前がメタツールかどうかを判定 (CE stub)
+ * CE版では常に false を返す
+ */
+export const isMetaTool = (_name: string): boolean => false;
 
-// メタツール実装
-export { searchTools } from "./searchTools.js";
-export { describeTools, type DescribeToolsResult } from "./describeTools.js";
-export { executeToolDynamic } from "./executeToolDynamic.js";
+/**
+ * CE版では型のみエクスポート
+ * MCP SDK の型を re-export
+ */
+export type { Tool };
+
+// Dynamic Search 固有の型定義（CE版でも型互換性のため定義）
+export type CallToolRequestParams = {
+  name: string;
+  arguments?: Record<string, unknown>;
+};
+
+export type SearchToolsArgs = {
+  query: string;
+  limit?: number;
+};
+
+export type DescribeToolsArgs = {
+  toolNames: string[];
+};
+
+export type SearchResult = {
+  toolName: string;
+  description: string | undefined;
+  relevanceScore: number;
+};
+
+export type DescribeToolsResult = {
+  toolName: string;
+  description: string | undefined;
+  inputSchema: Tool["inputSchema"] | Record<string, never>;
+  found: boolean;
+};
