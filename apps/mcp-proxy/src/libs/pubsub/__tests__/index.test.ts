@@ -24,6 +24,38 @@ describe("getMcpLogsTopic", () => {
 
     expect(getMcpLogsTopic()).toBeNull();
   });
+
+  test("PUBSUB_MCP_LOGS_TOPIC設定時にtopicオブジェクトを返す", async () => {
+    vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "mcp-request-logs-test");
+
+    // PubSubのモックを設定
+    vi.doMock("@google-cloud/pubsub", () => ({
+      PubSub: vi.fn().mockImplementation(() => ({
+        topic: vi.fn().mockReturnValue({ name: "mcp-request-logs-test" }),
+      })),
+    }));
+
+    const { getMcpLogsTopic } = await import("../index.js");
+
+    const topic = getMcpLogsTopic();
+    expect(topic).not.toBeNull();
+  });
+
+  test("2回目の呼び出しでキャッシュされたtopicを返す", async () => {
+    vi.stubEnv("PUBSUB_MCP_LOGS_TOPIC", "mcp-logs-cached");
+
+    vi.doMock("@google-cloud/pubsub", () => ({
+      PubSub: vi.fn().mockImplementation(() => ({
+        topic: vi.fn().mockReturnValue({ name: "mcp-logs-cached" }),
+      })),
+    }));
+
+    const { getMcpLogsTopic } = await import("../index.js");
+
+    const topic1 = getMcpLogsTopic();
+    const topic2 = getMcpLogsTopic();
+    expect(topic1).toBe(topic2);
+  });
 });
 
 describe("isBigQueryLoggingEnabled", () => {

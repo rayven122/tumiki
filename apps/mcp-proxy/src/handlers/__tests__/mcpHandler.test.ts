@@ -10,12 +10,44 @@ import { Hono } from "hono";
 import type { HonoEnv, AuthContext } from "../../types/index.js";
 import { AuthType } from "@tumiki/db";
 
+// setRequestHandler に渡されたコールバックをキャプチャ
+type HandlerCallback = (...args: unknown[]) => unknown;
+const capturedHandlers = new Map<string, HandlerCallback>();
+
+const {
+  mockGetAllowedTools,
+  mockExecuteTool,
+  mockIsMetaTool,
+  mockIsReAuthRequiredError,
+  mockServerConstructor,
+} = vi.hoisted(() => ({
+  mockGetAllowedTools: vi.fn().mockResolvedValue({
+    tools: [
+      {
+        name: "test__tool",
+        description: "Test tool",
+        inputSchema: { type: "object" },
+      },
+    ],
+    dynamicSearch: false,
+  }),
+  mockExecuteTool: vi.fn().mockResolvedValue({
+    content: [{ type: "text", text: "result" }],
+  }),
+  mockIsMetaTool: vi.fn().mockReturnValue(false),
+  mockIsReAuthRequiredError: vi.fn().mockReturnValue(false),
+  mockServerConstructor: vi.fn(),
+}));
+
 // 外部依存をモック
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
-  Server: vi.fn().mockImplementation(() => ({
-    connect: vi.fn().mockResolvedValue(undefined),
-    setRequestHandler: vi.fn(),
-  })),
+  Server: mockServerConstructor,
+}));
+
+vi.mock("@modelcontextprotocol/sdk/types.js", () => ({
+  InitializeRequestSchema: { method: "initialize" },
+  ListToolsRequestSchema: { method: "tools/list" },
+  CallToolRequestSchema: { method: "tools/call" },
 }));
 
 vi.mock("@modelcontextprotocol/sdk/server/streamableHttp.js", () => ({
@@ -33,28 +65,18 @@ vi.mock("fetch-to-node", () => ({
       end: vi.fn(),
     },
   }),
-  toFetchResponse: vi.fn().mockImplementation(
-    (res: { statusCode?: number }) =>
+  toFetchResponse: vi.fn().mockImplementation((res: { statusCode?: number }) =>
+    Promise.resolve(
       new Response(JSON.stringify({ result: "success" }), {
         status: res.statusCode ?? 200,
       }),
+    ),
   ),
 }));
 
 vi.mock("../../services/toolExecutor.js", () => ({
-  getAllowedTools: vi.fn().mockResolvedValue({
-    tools: [
-      {
-        name: "test__tool",
-        description: "Test tool",
-        inputSchema: { type: "object" },
-      },
-    ],
-    dynamicSearch: false,
-  }),
-  executeTool: vi.fn().mockResolvedValue({
-    content: [{ type: "text", text: "result" }],
-  }),
+  getAllowedTools: mockGetAllowedTools,
+  executeTool: mockExecuteTool,
   getInternalToolsForDynamicSearch: vi.fn().mockResolvedValue([]),
 }));
 
@@ -80,10 +102,19 @@ vi.mock("../../libs/error/index.js", () => ({
     .mockImplementation((e: unknown) =>
       e instanceof Error ? e : new Error(String(e)),
     ),
-  isReAuthRequiredError: vi.fn().mockReturnValue(false),
+  isReAuthRequiredError: mockIsReAuthRequiredError,
   createReAuthResponse: vi.fn().mockReturnValue({
-    jsonRpcError: { error: { code: -32001, message: "Re-auth required" } },
-    headers: {},
+    jsonRpcError: {
+      error: {
+        code: -32001,
+        message: "Re-auth required",
+        data: {
+          type: "ReAuthRequired" as const,
+          resource_metadata: "http://localhost:8080/test",
+        },
+      },
+    },
+    headers: { "WWW-Authenticate": "Bearer" },
   }),
 }));
 
@@ -93,7 +124,7 @@ vi.mock("../../middleware/requestLogging/context.js", () => ({
 }));
 
 vi.mock("../../services/dynamicSearch/index.js", () => ({
-  isMetaTool: vi.fn().mockReturnValue(false),
+  isMetaTool: mockIsMetaTool,
 }));
 
 vi.mock("../../libs/logger/index.js", () => ({
@@ -109,7 +140,35 @@ describe("mcpHandler", () => {
   let app: Hono<HonoEnv>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    capturedHandlers.clear();
+
+    // Server モックを毎回再設定（clearAllMocksで消えるため）
+    mockServerConstructor.mockImplementation(() => ({
+      connect: vi.fn().mockResolvedValue(undefined),
+      setRequestHandler: (
+        schema: { method: string },
+        handler: HandlerCallback,
+      ) => {
+        capturedHandlers.set(schema.method, handler);
+      },
+    }));
+
+    // hoisted モックのデフォルト値を再設定
+    mockGetAllowedTools.mockResolvedValue({
+      tools: [
+        {
+          name: "test__tool",
+          description: "Test tool",
+          inputSchema: { type: "object" },
+        },
+      ],
+      dynamicSearch: false,
+    });
+    mockExecuteTool.mockResolvedValue({
+      content: [{ type: "text", text: "result" }],
+    });
+    mockIsMetaTool.mockReturnValue(false);
+    mockIsReAuthRequiredError.mockReturnValue(false);
 
     app = new Hono<HonoEnv>();
 
@@ -135,17 +194,23 @@ describe("mcpHandler", () => {
     vi.clearAllMocks();
   });
 
+  // ハンドラーコールバックをキャプチャするためにリクエストを送信
+  const triggerRequest = async () => {
+    await app.request("/mcp/server-123", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 }),
+    });
+  };
+
   describe("認証コンテキストの検証", () => {
     test("認証コンテキストがない場合はエラーハンドリングされる", async () => {
-      // 認証コンテキストなしのアプリ
       const appWithoutAuth = new Hono<HonoEnv>();
       appWithoutAuth.post("/mcp/:mcpServerId", mcpHandler);
 
       const res = await appWithoutAuth.request("/mcp/server-123", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "tools/list",
@@ -153,20 +218,13 @@ describe("mcpHandler", () => {
         }),
       });
 
-      // handleErrorが呼ばれてエラーレスポンスが返される
       expect(res.status).toStrictEqual(500);
-      // レスポンスが返されることを確認（形式はモックの設定に依存）
-      expect(res).toBeDefined();
     });
 
     test("リクエストが処理される（認証コンテキストあり）", async () => {
-      // mcpHandlerは内部でMCP SDKを使用しており、モックが複雑
-      // ここでは例外がスローされずにハンドラーが呼ばれることを確認
       const res = await app.request("/mcp/server-123", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "tools/list",
@@ -174,88 +232,152 @@ describe("mcpHandler", () => {
         }),
       });
 
-      // レスポンスが返される（エラーまたは成功）
       expect(res).toBeDefined();
-      // ステータスコードがいずれかであることを確認（モックの設定に依存）
       expect([200, 500]).toContain(res.status);
     });
   });
 
-  describe("JSON-RPCリクエストの形式検証", () => {
-    test("POSTリクエストでmcpHandlerが呼び出される", async () => {
-      const res = await app.request("/mcp/server-123", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "tools/list",
-          id: 1,
-        }),
-      });
+  describe("createMcpServer コールバック", () => {
+    test("Initializeハンドラーがプロトコルバージョンとサーバー情報を返す", async () => {
+      await triggerRequest();
 
-      // ハンドラーが呼び出されてレスポンスが返される
-      expect(res).toBeDefined();
+      const initHandler = capturedHandlers.get("initialize");
+      expect(initHandler).toBeDefined();
+
+      const result = initHandler!();
+      expect(result).toStrictEqual({
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: {} },
+        serverInfo: {
+          name: "Tumiki MCP Proxy",
+          version: "0.1.0",
+        },
+      });
     });
 
-    test("Content-Type: application/jsonでリクエストを受け付ける", async () => {
-      const res = await app.request("/mcp/server-123", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "initialize",
-          params: {
-            protocolVersion: "2024-11-05",
-            capabilities: {},
-            clientInfo: { name: "test", version: "1.0" },
-          },
-          id: 1,
-        }),
-      });
+    test("ListToolsハンドラーがツールリストを返す", async () => {
+      await triggerRequest();
 
-      expect(res).toBeDefined();
+      const listHandler = capturedHandlers.get("tools/list");
+      expect(listHandler).toBeDefined();
+
+      const result = await (listHandler!() as Promise<unknown>);
+      expect(result).toStrictEqual({
+        tools: [
+          {
+            name: "test__tool",
+            description: "Test tool",
+            inputSchema: { type: "object" },
+          },
+        ],
+      });
+    });
+
+    test("CallToolハンドラーが通常ツールを実行する", async () => {
+      await triggerRequest();
+
+      const callHandler = capturedHandlers.get("tools/call");
+      expect(callHandler).toBeDefined();
+
+      const result = await (callHandler!({
+        params: { name: "test__tool", arguments: { key: "value" } },
+      }) as Promise<unknown>);
+
+      expect(mockExecuteTool).toHaveBeenCalledWith(
+        "server-123",
+        "org-123",
+        "test__tool",
+        { key: "value" },
+        "user-456",
+      );
+      expect(result).toStrictEqual({
+        content: [{ type: "text", text: "result" }],
+      });
+    });
+
+    test("CallToolハンドラーがメタツール呼び出しを処理する", async () => {
+      mockIsMetaTool.mockReturnValue(true);
+
+      await triggerRequest();
+
+      const callHandler = capturedHandlers.get("tools/call");
+      expect(callHandler).toBeDefined();
+
+      // メタツールのハンドラーはEEモジュールのインポートを試みるが、
+      // テスト環境では失敗するのでエラーが発生する
+      await expect(
+        callHandler!({
+          params: { name: "search_tools", arguments: { query: "test" } },
+        }) as Promise<unknown>,
+      ).rejects.toThrow();
+    });
+
+    test("CallToolハンドラーでReAuthRequiredErrorがコンテナに保存される", async () => {
+      mockIsReAuthRequiredError.mockReturnValue(true);
+      const reAuthError = new Error("Re-auth needed");
+      reAuthError.name = "ReAuthRequiredError";
+      mockExecuteTool.mockRejectedValue(reAuthError);
+
+      await triggerRequest();
+
+      const callHandler = capturedHandlers.get("tools/call");
+      expect(callHandler).toBeDefined();
+
+      await expect(
+        callHandler!({
+          params: { name: "test__tool", arguments: {} },
+        }) as Promise<unknown>,
+      ).rejects.toThrow("Re-auth needed");
+    });
+
+    test("CallToolハンドラーでargsがnullの場合は空オブジェクトを使用する", async () => {
+      await triggerRequest();
+
+      const callHandler = capturedHandlers.get("tools/call");
+      expect(callHandler).toBeDefined();
+
+      await (callHandler!({
+        params: { name: "test__tool", arguments: undefined },
+      }) as Promise<unknown>);
+
+      expect(mockExecuteTool).toHaveBeenCalledWith(
+        "server-123",
+        "org-123",
+        "test__tool",
+        {},
+        "user-456",
+      );
     });
   });
 
-  describe("mcpServerIdパラメータ", () => {
-    test("パスパラメータからmcpServerIdを取得できる", async () => {
-      const { getAllowedTools } = await import(
-        "../../services/toolExecutor.js"
+  describe("Serverインスタンス作成", () => {
+    test("Serverが正しいパラメータで作成される", async () => {
+      await triggerRequest();
+
+      expect(mockServerConstructor).toHaveBeenCalledWith(
+        { name: "Tumiki MCP Proxy", version: "0.1.0" },
+        { capabilities: { tools: {} } },
       );
+    });
 
-      await app.request("/mcp/test-server-id", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "tools/list",
-          id: 1,
-        }),
-      });
+    test("3つのリクエストハンドラーが登録される", async () => {
+      await triggerRequest();
 
-      // getAllowedToolsが正しいサーバーIDで呼ばれることを確認
-      // 注: モックの設定により実際には呼ばれないが、パスパラメータの取得は確認できる
-      expect(getAllowedTools).toBeDefined();
+      expect(capturedHandlers.size).toBe(3);
+      expect(capturedHandlers.has("initialize")).toBe(true);
+      expect(capturedHandlers.has("tools/list")).toBe(true);
+      expect(capturedHandlers.has("tools/call")).toBe(true);
     });
   });
 
   describe("エラーハンドリング", () => {
     test("例外発生時はhandleErrorが呼ばれる", async () => {
-      // 認証コンテキストなしでエラーを発生させる
       const appWithError = new Hono<HonoEnv>();
       appWithError.post("/mcp/:mcpServerId", mcpHandler);
 
       const res = await appWithError.request("/mcp/server-123", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "tools/list",
@@ -264,6 +386,34 @@ describe("mcpHandler", () => {
       });
 
       expect(res.status).toStrictEqual(500);
+    });
+
+    test("外部でReAuthRequiredError発生時はcreateReAuthResponseが呼ばれる", async () => {
+      const { toFetchResponse } = await import("fetch-to-node");
+      const { createReAuthResponse } = await import(
+        "../../libs/error/index.js"
+      );
+      mockIsReAuthRequiredError.mockReturnValue(true);
+      vi.mocked(toFetchResponse).mockImplementation(() => {
+        throw new Error("Re-auth required");
+      });
+
+      await app.request("/mcp/server-123", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "tools/list",
+          id: 1,
+        }),
+      });
+
+      expect(createReAuthResponse).toHaveBeenCalledWith(
+        expect.any(Error),
+        "server-123",
+        null,
+        expect.any(String),
+      );
     });
   });
 });
