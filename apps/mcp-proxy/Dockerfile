@@ -9,8 +9,10 @@
 # ========================================
 FROM node:22-alpine AS base
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+# Install pnpm using corepack (pnpm version from package.json packageManager field)
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
 # Set working directory
 WORKDIR /app
@@ -71,8 +73,10 @@ RUN pnpm build
 # ========================================
 FROM node:22-alpine AS production
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+# Install pnpm using corepack (pnpm version from package.json packageManager field)
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
 # Install dumb-init and wget for proper signal handling and health checks
 RUN apk add --no-cache dumb-init wget

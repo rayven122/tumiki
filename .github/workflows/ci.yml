@@ -8,12 +8,13 @@ on:
     branches: [main]
 
 jobs:
-  ci:
-    name: 🚀 CI
+  build:
+    name: 🔧 Build
     runs-on: ubuntu-latest
-
     env:
       NODE_OPTIONS: --max-old-space-size=4096
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v4
@@ -24,21 +25,79 @@ jobs:
       - name: 📝 Create .env file for CI
         run: cp .env.example .env
 
-      - name: 💾 Cache Turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
-
       - name: 🔧 Build packages
         run: pnpm turbo build
-        # Turboを使用して依存関係を考慮した並列ビルド
 
-      - name: ✅ Run lint, format and typecheck
-        run: pnpm check
+  lint:
+    name: 🔍 Lint
+    runs-on: ubuntu-latest
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
+
+      - name: 🔍 Run lint
+        run: pnpm turbo lint
+
+  format:
+    name: 💅 Format
+    runs-on: ubuntu-latest
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
+
+      - name: 💅 Check format
+        run: pnpm turbo format
+
+  typecheck:
+    name: 🔬 Typecheck
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
+
+      - name: 🔬 Run typecheck
+        run: pnpm turbo typecheck
+
+  test:
+    name: 🧪 Test
+    runs-on: ubuntu-latest
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup
+        uses: ./.github/actions/setup
+
+      - name: 📝 Create .env file for CI
+        run: cp .env.example .env
 
       - name: 🧪 Run tests
-        run: pnpm test
-        # packages/dbのテストは除外（PostgreSQLコンテナが必要なため）
+        run: pnpm turbo test
