@@ -18,7 +18,8 @@ sourcePatterns:
 | スキル名 | 対応パターン |
 |----------|-------------|
 | tumiki-custom-mcp-server-feature | `packages/db/prisma/schema/userMcpServer.prisma`, `apps/manager/src/server/api/routers/v2/userMcpServer/**`, `apps/manager/src/atoms/integratedFlowAtoms.ts`, `apps/manager/src/app/**/mcps/create-integrated/**` |
-| tumiki-dynamic-search-feature | `apps/mcp-proxy/src/services/dynamicSearch/**`, `apps/mcp-proxy/src/handlers/mcpHandler.ts`, `apps/mcp-proxy/src/services/toolExecutor.ts` |
+| tumiki-dynamic-search-feature | `apps/mcp-proxy/src/features/dynamicSearch/**`, `apps/mcp-proxy/src/features/mcp/mcpRequestHandler.ts`, `apps/mcp-proxy/src/features/mcp/commands/callTool/callToolCommand.ts` |
+| tumiki-mcp-proxy-architecture | `apps/mcp-proxy/src/domain/**`, `apps/mcp-proxy/src/features/**`, `apps/mcp-proxy/src/infrastructure/**`, `apps/mcp-proxy/src/shared/**` |
 | tumiki-prisma-schema-changes | `packages/db/prisma/schema/*.prisma` |
 
 ## 変更検出の手順
@@ -193,7 +194,7 @@ sourcePatterns:
   - packages/db/prisma/schema/userMcpServer.prisma
 
   # ディレクトリ内の全ファイル
-  - apps/mcp-proxy/src/services/dynamicSearch/**
+  - apps/mcp-proxy/src/features/dynamicSearch/**
 
   # 特定の拡張子
   - packages/db/prisma/schema/*.prisma

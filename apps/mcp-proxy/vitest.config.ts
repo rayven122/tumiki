@@ -22,16 +22,23 @@ export default defineConfig({
       : ["src/**/*.test.ts"],
     exclude: isEEBuild ? [] : ["src/**/*.ee.test.ts"],
     coverage: {
+      thresholds: {
+        statements: 95,
+        branches: 95,
+        functions: 95,
+        lines: 95,
+      },
       exclude: [
-        // 型定義のみのファイル（実行可能コードなし）
-        "**/src/types/index.ts",
-        // re-export のみのファイル（ロジックなし）
-        "**/src/libs/crypto/index.ts",
-        "**/src/libs/auth/index.ts",
-        "**/src/libs/ai/index.ts",
-        "**/src/libs/toonConversion/index.ts",
-        "**/src/libs/piiMasking/index.ts",
-        "**/src/services/dynamicSearch/index.ee.ts",
+        // 型定義のみのファイル
+        "**/src/domain/types/**",
+        "**/src/shared/types/**",
+        // re-export のみのバレルファイル
+        "**/src/domain/**/index.ts",
+        "**/src/shared/**/index.ts",
+        "**/src/infrastructure/**/index.ts",
+        "**/src/features/**/index.ts",
+        // EE エントリーポイント
+        "**/index.ee.ts",
       ],
     },
   },
@@ -40,6 +47,10 @@ export default defineConfig({
       "@": resolve(__dirname, "./src"),
       "~": resolve(__dirname, "./"),
       "@tumiki/db": resolve(__dirname, "../../packages/db/src"),
+      "@domain": resolve(__dirname, "./src/domain"),
+      "@infrastructure": resolve(__dirname, "./src/infrastructure"),
+      "@shared": resolve(__dirname, "./src/shared"),
+      "@features": resolve(__dirname, "./src/features"),
     },
   },
 });

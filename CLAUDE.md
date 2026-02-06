@@ -311,8 +311,10 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
   - `userMcpServerInstance.ts` - 実行中のMCPサーバーインスタンス管理
   - `post.ts` - 汎用投稿機能
 - **MCP プロキシサーバー**: `apps/mcp-proxy/src/index.ts`
+  - DDD + CQRS + Vertical Slice Architecture（詳細は `tumiki-mcp-proxy-architecture` スキル参照）
   - `/mcp` - HTTP/JSON-RPC 2.0 エンドポイント
   - Cloud Run対応のステートレス設計
+  - レイヤー構成: `domain/` → `shared/` → `infrastructure/` → `features/`
 - **型安全性**: 自動 API 生成によるフルスタック型安全性、@tumiki/db から型 import
 
 ### 認証アーキテクチャ
@@ -469,12 +471,12 @@ Dynamic Searchは、MCPサーバーのツール発見を最適化するAI検索�
 
 ### 実装場所
 
-- `apps/mcp-proxy/src/services/dynamicSearch/` - コア実装（EE機能）
+- `apps/mcp-proxy/src/features/dynamicSearch/` - コア実装（EE機能）
   - `index.ts` - CE Facade（スタブ）
   - `index.ee.ts` - EEエントリーポイント
   - `*.ee.ts` - Enterprise Edition 実装ファイル
-- `apps/mcp-proxy/src/handlers/mcpHandler.ts` - メタツール処理
-- `apps/mcp-proxy/src/services/toolExecutor.ts` - ツール取得・実行
+- `apps/mcp-proxy/src/features/mcp/commands/callTool/handleMetaTool.ts` - メタツール処理
+- `apps/mcp-proxy/src/features/mcp/commands/callTool/callToolCommand.ts` - ツール実行
 
 ### スキルの使用方法
 
@@ -534,8 +536,8 @@ Tumikiは、オープンソースのCommunity Edition（CE）と商用のEnterpr
 
 | 機能           | ディレクトリ                                 | 説明                            |
 | -------------- | -------------------------------------------- | ------------------------------- |
-| Dynamic Search | `services/dynamicSearch/`                    | AIによるツール検索              |
-| PII Masking    | `libs/piiMasking/`, `middleware/piiMasking/` | GCP DLPによる個人情報マスキング |
+| Dynamic Search | `features/dynamicSearch/`                    | AIによるツール検索              |
+| PII Masking    | `infrastructure/piiMasking/`, `features/mcp/middleware/piiMasking/` | GCP DLPによる個人情報マスキング |
 
 ### Facadeパターン
 
@@ -564,7 +566,7 @@ export type DescribeToolsResult = { /* ... */ };
 ミドルウェアでは、EE版でのみ機能を有効化：
 
 ```typescript
-// middleware/piiMasking/index.ts
+// features/mcp/middleware/piiMasking/index.ts
 import { createMiddleware } from "hono/factory";
 
 // CE版: 何もしないミドルウェアをエクスポート

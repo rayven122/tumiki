@@ -9,51 +9,39 @@ import {
   type Mock,
 } from "vitest";
 
-// モック関数を定義
 const mockCloseRedisClient = vi.fn();
 const mockDbDisconnect = vi.fn();
 const mockLogInfo = vi.fn();
 const mockLogError = vi.fn();
 
-// ルートモジュールをモック
-vi.mock("../routes/health.js", () => ({
-  healthRoute: new Hono(),
-}));
-vi.mock("../routes/mcp.js", () => ({
-  mcpRoute: new Hono(),
-}));
-vi.mock("../routes/wellKnown.js", () => ({
-  wellKnownRoute: new Hono(),
-}));
-vi.mock("../routes/oauthRoute.js", () => ({
-  oauthRoute: new Hono(),
+vi.mock("../app.js", () => ({
+  default: new Hono(),
 }));
 
-// loggerをモック
-vi.mock("../libs/logger/index.js", () => ({
+vi.mock("../shared/logger/index.js", () => ({
   logInfo: (...args: unknown[]) => mockLogInfo(...args) as unknown,
   logError: (...args: unknown[]) => mockLogError(...args) as unknown,
 }));
 
-// Redisをモック
-vi.mock("../libs/cache/redis.js", () => ({
+vi.mock("../infrastructure/cache/redis.js", () => ({
   closeRedisClient: (...args: unknown[]) =>
     mockCloseRedisClient(...args) as unknown,
 }));
 
-// DBをモック
 vi.mock("@tumiki/db/server", () => ({
   db: {
     $disconnect: (...args: unknown[]) => mockDbDisconnect(...args) as unknown,
   },
 }));
 
-// corsをモック
-vi.mock("hono/cors", () => ({
-  cors: () =>
-    vi.fn(async (_c: unknown, next: () => Promise<void>) => {
-      await next();
-    }),
+vi.mock("../shared/constants/server.js", () => ({
+  DEFAULT_PORT: 3000,
+}));
+
+vi.mock("../shared/constants/config.js", () => ({
+  TIMEOUT_CONFIG: {
+    GRACEFUL_SHUTDOWN_MS: 9000,
+  },
 }));
 
 describe("index.ts", () => {
@@ -148,9 +136,6 @@ describe("gracefulShutdown", () => {
     process.removeAllListeners("SIGINT");
   });
 
-  /**
-   * シグナルハンドラーを取得するヘルパー
-   */
   const getSignalHandler = async (
     signal: "SIGTERM" | "SIGINT",
   ): Promise<() => void> => {
@@ -171,8 +156,7 @@ describe("gracefulShutdown", () => {
 
     handler();
 
-    // gracefulShutdownとPromise.allが解決するのを待つ
-    // タイムアウトPromiseも解決させる
+    // タイムアウトPromise含め全てを解決させる
     await vi.advanceTimersByTimeAsync(10000);
 
     expect(mockLogInfo).toHaveBeenCalledWith("SIGTERM received");
@@ -183,12 +167,10 @@ describe("gracefulShutdown", () => {
     expect(mockLogInfo).toHaveBeenCalledWith(
       "Graceful shutdown completed successfully",
     );
-    // .then(() => process.exit(0)) が呼ばれる
     expect(processExitSpy).toHaveBeenCalledWith(0);
   });
 
   test("シャットダウンタイムアウトのログを記録する", async () => {
-    // closeRedisClientを遅延させてタイムアウトを発生させる
     mockCloseRedisClient.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -219,8 +201,6 @@ describe("gracefulShutdown", () => {
     const handler = await getSignalHandler("SIGTERM");
 
     handler();
-
-    // Promiseが解決するまで待機
     await vi.advanceTimersByTimeAsync(10000);
 
     expect(mockLogError).toHaveBeenCalledWith(
