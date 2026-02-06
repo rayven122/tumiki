@@ -2,10 +2,11 @@ import type { Session, User, Account, Profile } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { Role } from "@tumiki/db/server";
 import type { AdapterUser } from "@auth/core/adapters";
-import type { KeycloakJWTPayload } from "./types";
+import type { KeycloakJWTPayload, KeycloakTumikiClaims } from "./types";
 import { db } from "@tumiki/db/server";
 import { getTumikiClaims } from "~/server/api/routers/v2/user/getTumikiClaims";
 import { getKeycloakEnv } from "~/utils/env";
+import { decodeJwt } from "jose";
 
 /**
  * Keycloak からアクセストークンをリフレッシュ
@@ -42,6 +43,21 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       refresh_token?: string;
     };
 
+    // 新しいアクセストークンからKeycloakロールを抽出
+    let keycloakRoles: string[] | undefined;
+    try {
+      const decodedToken = decodeJwt(refreshedTokens.access_token);
+      const tumikiClaims = decodedToken.tumiki as
+        | KeycloakTumikiClaims
+        | undefined;
+      keycloakRoles = tumikiClaims?.roles;
+    } catch (decodeError) {
+      console.warn(
+        "[refreshAccessToken] Failed to decode access token for roles:",
+        decodeError,
+      );
+    }
+
     console.log("[refreshAccessToken] Token refreshed successfully");
 
     return {
@@ -49,6 +65,7 @@ const refreshAccessToken = async (token: JWT): Promise<JWT | null> => {
       accessToken: refreshedTokens.access_token,
       expiresAt: Math.floor(Date.now() / 1000) + refreshedTokens.expires_in,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      keycloakRoles,
     };
   } catch (error) {
     console.error("[refreshAccessToken] Error refreshing token:", error);
@@ -128,12 +145,11 @@ export const jwtCallback = async ({
   }
 
   if (!account && token.sub && token.tumiki) {
-    // DBから最新のtumikiクレームを取得（rolesは既存の値を保持）
-    const updatedTumiki = await getTumikiClaims(
-      db,
-      token.sub,
-      token.tumiki.roles,
-    );
+    // トークンリフレッシュ時に取得した最新ロールを優先、なければ既存値を使用
+    const roles = token.keycloakRoles ?? token.tumiki.roles;
+
+    // DBから最新のtumikiクレームを取得
+    const updatedTumiki = await getTumikiClaims(db, token.sub, roles);
 
     if (!updatedTumiki) {
       // 組織メンバーシップが見つからない場合はセッションを無効化
