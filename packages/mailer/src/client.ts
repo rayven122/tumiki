@@ -4,28 +4,31 @@ import nodemailer from "nodemailer";
 
 import type { MailConfig, MailResult, SendMailOptions } from "./types/index.js";
 import { mailConfigSchema } from "./types/index.js";
+import { formatFromAddress } from "./utils/formatter.js";
 
 /**
  * 環境変数からデフォルトのSMTP設定を取得
  *
  * 使用する環境変数:
- * - SMTP_HOST: SMTPサーバーのホスト名（デフォルト: smtp.gmail.com）
+ * - SMTP_HOST: SMTPサーバーのホスト名（必須）
  * - SMTP_PORT: SMTPサーバーのポート番号（デフォルト: 587）
- * - SMTP_USER: SMTP認証ユーザー名
- * - SMTP_PASS: SMTP認証パスワード
- * - FROM_EMAIL: 送信元メールアドレス（デフォルト: info@tumiki.cloud）
+ * - SMTP_USER: SMTP認証ユーザー名（必須）
+ * - SMTP_PASS: SMTP認証パスワード（必須）
+ * - FROM_EMAIL: 送信元メールアドレス（必須）
+ * - FROM_NAME: 送信者表示名（任意）
  */
 export const getDefaultMailConfig = (): MailConfig => {
   const port = Number(process.env.SMTP_PORT ?? "587");
   return {
-    host: process.env.SMTP_HOST ?? "smtp.gmail.com",
+    host: process.env.SMTP_HOST ?? "",
     port,
     secure: port === 465,
     auth: {
       user: process.env.SMTP_USER ?? "",
       pass: process.env.SMTP_PASS ?? "",
     },
-    from: process.env.FROM_EMAIL ?? "info@tumiki.cloud",
+    from: process.env.FROM_EMAIL ?? "",
+    fromName: process.env.FROM_NAME,
   };
 };
 
@@ -70,7 +73,7 @@ export class MailClient {
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const info: SentMessageInfo = await this.transporter.sendMail({
-        from: this.config.from,
+        from: formatFromAddress(this.config.from, this.config.fromName),
         to: options.to,
         cc: options.cc,
         bcc: options.bcc,

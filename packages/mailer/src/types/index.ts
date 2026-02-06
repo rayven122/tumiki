@@ -9,6 +9,7 @@ export const mailConfigSchema = z.object({
     pass: z.string(),
   }),
   from: z.string().email(),
+  fromName: z.string().optional(),
 });
 
 export type MailConfig = z.infer<typeof mailConfigSchema>;
