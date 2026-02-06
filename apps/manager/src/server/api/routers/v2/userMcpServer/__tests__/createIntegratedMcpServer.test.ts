@@ -441,6 +441,101 @@ describe("createIntegratedMcpServer", () => {
     ).rejects.toThrow(TRPCError);
   });
 
+  test("toolIds省略時はテンプレートの全ツールが自動選択される", async () => {
+    // モックデータのセットアップ（3つのツールを持つテンプレート）
+    const mockTemplate1 = {
+      id: "template-1",
+      name: "GitHub",
+      envVarKeys: [],
+      mcpTools: [{ id: "tool-1" }, { id: "tool-2" }, { id: "tool-3" }],
+    } as MockMcpServerTemplate;
+
+    const mockTemplate2 = {
+      id: "template-2",
+      name: "Slack",
+      envVarKeys: [],
+      mcpTools: [{ id: "tool-4" }, { id: "tool-5" }],
+    } as MockMcpServerTemplate;
+
+    const mockCreatedServer = {
+      id: "integrated-server-123",
+    };
+
+    vi.mocked(mockTx.mcpServerTemplate.findUnique)
+      .mockResolvedValueOnce(
+        mockTemplate1 as unknown as Awaited<
+          ReturnType<typeof mockTx.mcpServerTemplate.findUnique>
+        >,
+      )
+      .mockResolvedValueOnce(
+        mockTemplate2 as unknown as Awaited<
+          ReturnType<typeof mockTx.mcpServerTemplate.findUnique>
+        >,
+      );
+
+    vi.mocked(mockTx.mcpServerTemplateInstance.findFirst).mockResolvedValue(
+      null,
+    );
+
+    vi.mocked(mockTx.mcpServer.create).mockResolvedValue(
+      mockCreatedServer as unknown as Awaited<
+        ReturnType<typeof mockTx.mcpServer.create>
+      >,
+    );
+
+    vi.mocked(mockTx.organizationMember.findMany).mockResolvedValue([]);
+    vi.mocked(mockTx.notification.createMany).mockResolvedValue({ count: 0 });
+
+    // 実行（toolIdsを省略）
+    await createIntegratedMcpServer(
+      mockTx,
+      {
+        name: "統合サーバー",
+        templates: [
+          {
+            mcpServerTemplateId: "template-1",
+            normalizedName: "github-work",
+            // toolIds省略 - 全ツールが自動選択されるべき
+          },
+          {
+            mcpServerTemplateId: "template-2",
+            normalizedName: "slack-team",
+            // toolIds省略 - 全ツールが自動選択されるべき
+          },
+        ],
+      },
+      testOrganizationId,
+      testUserId,
+    );
+
+    // 検証: allowedToolsにテンプレートの全ツールが含まれる
+    expect(mockTx.mcpServer.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        data: expect.objectContaining({
+          templateInstances: {
+            create: [
+              expect.objectContaining({
+                allowedTools: {
+                  connect: [
+                    { id: "tool-1" },
+                    { id: "tool-2" },
+                    { id: "tool-3" },
+                  ],
+                },
+              }),
+              expect.objectContaining({
+                allowedTools: {
+                  connect: [{ id: "tool-4" }, { id: "tool-5" }],
+                },
+              }),
+            ],
+          },
+        }),
+      }),
+    );
+  });
+
   test("環境変数が一致しない場合はエラー", async () => {
     const mockTemplate = {
       id: "template-1",
