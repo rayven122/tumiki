@@ -1,6 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { PiiMaskingMode } from "@tumiki/db/server";
 import type { HonoEnv } from "../../../../../shared/types/honoEnv.js";
 import { wellKnownRoute } from "../route.js";
 import { clearKeycloakCache } from "../../../../../infrastructure/keycloak/keycloakConfig.js";
@@ -65,7 +64,7 @@ describe("GET /.well-known/oauth-authorization-server/mcp/:mcpServerId", () => {
     organizationId: "test-org-id",
     deletedAt: null,
     authType: "OAUTH",
-    piiMaskingMode: PiiMaskingMode.DISABLED,
+    piiMaskingMode: "DISABLED",
     piiInfoTypes: [],
     toonConversionEnabled: false,
   };
@@ -310,7 +309,7 @@ describe("GET /.well-known/oauth-protected-resource/mcp/:mcpServerId", () => {
     organizationId: "test-org-id",
     deletedAt: null,
     authType: "OAUTH",
-    piiMaskingMode: PiiMaskingMode.DISABLED,
+    piiMaskingMode: "DISABLED",
     piiInfoTypes: [],
     toonConversionEnabled: false,
   };

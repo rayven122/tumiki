@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import type nodeCrypto from "node:crypto";
 import { decrypt, encrypt, generateEncryptionKey } from "../encryption.js";
 
 beforeEach(() => {
@@ -196,7 +197,7 @@ describe("decrypt non-Error throw handling", () => {
     vi.resetModules();
 
     const actualCrypto =
-      await vi.importActual<typeof import("node:crypto")>("node:crypto");
+      await vi.importActual<typeof nodeCrypto>("node:crypto");
 
     vi.doMock("node:crypto", () => ({
       ...actualCrypto,

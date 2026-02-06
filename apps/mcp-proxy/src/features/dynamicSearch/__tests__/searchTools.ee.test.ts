@@ -18,12 +18,12 @@ vi.mock("ai", () => ({
   generateObject: mockGenerateObject,
 }));
 
-vi.mock("../../../libs/ai/index.js", () => ({
+vi.mock("../../../infrastructure/ai/index.js", () => ({
   gateway: vi.fn(() => "mock-model"),
   DYNAMIC_SEARCH_MODEL: "anthropic/claude-3.5-haiku",
 }));
 
-vi.mock("../../../libs/logger/index.js", () => ({
+vi.mock("../../../shared/logger/index.js", () => ({
   logError: vi.fn(),
   logInfo: vi.fn(),
 }));

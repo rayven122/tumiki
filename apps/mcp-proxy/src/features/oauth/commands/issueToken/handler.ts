@@ -5,11 +5,7 @@ import type {
 } from "../../../../shared/types/honoEnv.js";
 import { logError } from "../../../../shared/logger/index.js";
 import * as openidClient from "openid-client";
-import {
-  ResponseBodyError,
-  allowInsecureRequests,
-  skipStateCheck,
-} from "openid-client";
+import { ResponseBodyError, skipStateCheck } from "openid-client";
 import { createKeycloakConfiguration } from "../../../../infrastructure/keycloak/keycloakConfig.js";
 
 /**

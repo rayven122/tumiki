@@ -7,6 +7,7 @@
 import { getInternalToolsForDynamicSearch } from "../../queries/listTools/listToolsQuery.js";
 
 // EE機能: Dynamic Search（条件付き動的ロード）
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 type DynamicSearchModule = typeof import("../../../dynamicSearch/index.ee.js");
 let dynamicSearchModuleCache: DynamicSearchModule | null = null;
 

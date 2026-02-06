@@ -29,6 +29,12 @@ export default defineConfig({
         lines: 95,
       },
       exclude: [
+        // ビルド成果物・設定ファイル
+        "dist/**",
+        "test/**",
+        "**/*.d.ts",
+        "eslint.config.js",
+        "vitest.config.ts",
         // 型定義のみのファイル
         "**/src/domain/types/**",
         "**/src/shared/types/**",

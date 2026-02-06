@@ -11,15 +11,15 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 
 // vi.hoisted を使用してホイスティング問題を解決
-const { mockExecuteTool } = vi.hoisted(() => ({
-  mockExecuteTool: vi.fn(),
+const { mockCallToolCommand } = vi.hoisted(() => ({
+  mockCallToolCommand: vi.fn(),
 }));
 
 vi.mock("../../mcp/commands/callTool/callToolCommand.js", () => ({
-  executeTool: mockExecuteTool,
+  callToolCommand: mockCallToolCommand,
 }));
 
-vi.mock("../../../libs/logger/index.js", () => ({
+vi.mock("../../../shared/logger/index.js", () => ({
   logError: vi.fn(),
   logInfo: vi.fn(),
 }));
@@ -40,7 +40,7 @@ describe("executeToolDynamic", () => {
     const mockResult = {
       content: [{ type: "text", text: "Success" }],
     };
-    mockExecuteTool.mockResolvedValue(mockResult);
+    mockCallToolCommand.mockResolvedValue(mockResult);
 
     const result = await executeToolDynamic(
       {
@@ -52,13 +52,13 @@ describe("executeToolDynamic", () => {
       "user-id",
     );
 
-    expect(mockExecuteTool).toHaveBeenCalledWith(
-      "mcp-server-id",
-      "org-id",
-      "github__create_issue",
-      { title: "Test Issue", body: "Test body" },
-      "user-id",
-    );
+    expect(mockCallToolCommand).toHaveBeenCalledWith({
+      mcpServerId: "mcp-server-id",
+      organizationId: "org-id",
+      fullToolName: "github__create_issue",
+      args: { title: "Test Issue", body: "Test body" },
+      userId: "user-id",
+    });
     expect(result).toStrictEqual(mockResult);
   });
 
@@ -69,7 +69,7 @@ describe("executeToolDynamic", () => {
         { type: "text", text: "Line 2" },
       ],
     };
-    mockExecuteTool.mockResolvedValue(mockResult);
+    mockCallToolCommand.mockResolvedValue(mockResult);
 
     const result = await executeToolDynamic(
       {
@@ -88,7 +88,7 @@ describe("executeToolDynamic", () => {
     const mockResult = {
       content: [{ type: "text", text: "Done" }],
     };
-    mockExecuteTool.mockResolvedValue(mockResult);
+    mockCallToolCommand.mockResolvedValue(mockResult);
 
     await executeToolDynamic(
       {
@@ -99,20 +99,20 @@ describe("executeToolDynamic", () => {
       "user-id",
     );
 
-    expect(mockExecuteTool).toHaveBeenCalledWith(
-      "mcp-server-id",
-      "org-id",
-      "tool_without_args",
-      {},
-      "user-id",
-    );
+    expect(mockCallToolCommand).toHaveBeenCalledWith({
+      mcpServerId: "mcp-server-id",
+      organizationId: "org-id",
+      fullToolName: "tool_without_args",
+      args: {},
+      userId: "user-id",
+    });
   });
 
   test("空の引数でもexecuteToolを呼び出す", async () => {
     const mockResult = {
       content: [{ type: "text", text: "Done" }],
     };
-    mockExecuteTool.mockResolvedValue(mockResult);
+    mockCallToolCommand.mockResolvedValue(mockResult);
 
     await executeToolDynamic(
       {
@@ -124,17 +124,17 @@ describe("executeToolDynamic", () => {
       "user-id",
     );
 
-    expect(mockExecuteTool).toHaveBeenCalledWith(
-      "mcp-server-id",
-      "org-id",
-      "tool_with_empty_args",
-      {},
-      "user-id",
-    );
+    expect(mockCallToolCommand).toHaveBeenCalledWith({
+      mcpServerId: "mcp-server-id",
+      organizationId: "org-id",
+      fullToolName: "tool_with_empty_args",
+      args: {},
+      userId: "user-id",
+    });
   });
 
   test("executeTool がエラーを返した場合は例外をスロー", async () => {
-    mockExecuteTool.mockRejectedValue(new Error("Tool execution failed"));
+    mockCallToolCommand.mockRejectedValue(new Error("Tool execution failed"));
 
     await expect(
       executeToolDynamic(
@@ -158,7 +158,7 @@ describe("executeToolDynamic", () => {
       nullValue: null,
     };
 
-    mockExecuteTool.mockResolvedValue({
+    mockCallToolCommand.mockResolvedValue({
       content: [{ type: "text", text: "OK" }],
     });
 
@@ -172,12 +172,12 @@ describe("executeToolDynamic", () => {
       "user-id",
     );
 
-    expect(mockExecuteTool).toHaveBeenCalledWith(
-      "mcp-server-id",
-      "org-id",
-      "complex_tool",
-      complexArgs,
-      "user-id",
-    );
+    expect(mockCallToolCommand).toHaveBeenCalledWith({
+      mcpServerId: "mcp-server-id",
+      organizationId: "org-id",
+      fullToolName: "complex_tool",
+      args: complexArgs,
+      userId: "user-id",
+    });
   });
 });
