@@ -99,8 +99,8 @@ jobs:
       - name: 📝 Create .env file for CI
         run: cp .env.example .env
 
-      - name: 🔧 Build test dependencies
-        run: pnpm turbo build --filter=@tumiki/vitest-config...
+      - name: 🔧 Build packages
+        run: pnpm turbo build
 
       - name: 🧪 Run tests
         run: pnpm test
