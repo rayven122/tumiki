@@ -104,3 +104,21 @@ jobs:
 
       - name: 🧪 Run tests
         run: pnpm test
+
+  # すべてのジョブが成功したことを確認するための最終ジョブ
+  # Branch Protectionで「CI」が必須チェックとして設定されているため必要
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [build, lint, format, typecheck, test]
+    if: always()
+    steps:
+      - name: ✅ All checks passed
+        if: ${{ !(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+        run: echo "All CI checks passed!"
+
+      - name: ❌ Some checks failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "Some CI checks failed or were cancelled"
+          exit 1
