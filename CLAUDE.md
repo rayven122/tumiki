@@ -80,15 +80,6 @@ pnpm --filter @tumiki/db <command>     # 特定パッケージでコマンド実
 turbo run build --filter=manager       # 特定アプリのみビルド
 ```
 
-## Python MCP サーバーのサポート
-
-Tumiki は Python ベースの MCP サーバーをサポートしています：
-
-- **自動インストール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
-- **設定方法**: `mcpServers.ts` で `command: "uvx"` と `args: ["package-name"]` を指定
-- **環境変数**: Node.js サーバーと同様に `envVars` で指定
-- **追加方法**: `python-mcp-requirements.txt` に追記して `pnpm install` を実行
-
 ## Cloud Run MCP サーバー連携
 
 Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポートしています：
@@ -168,9 +159,18 @@ function process(data: unknown): string {
 
 ### テストコーディング規約
 
-- **フレームワーク**: Vitest v4 (jsdom環境) 使用
-- **テスト記法**: **`test` 使用必須（`it` ではない）**、**テスト名は日本語で記載必須**
-- **構造**: 関数ごとに `describe` ブロックを記載、古典派単体テスト
+テスト作成の詳細なガイドラインは `tumiki-testing-patterns` スキルを参照してください。このスキルには以下が含まれます：
+
+- テスト記法と命名規則（`test`必須、日本語テスト名必須）
+- Vitestモックパターン（環境変数、タイマー、関数）
+- データベーステスト環境の設定
+- tRPCルーターテストパターン
+- Reactコンポーネントテストパターン
+
+**基本ルール（要約）**:
+
+- **フレームワーク**: Vitest v4 (jsdom環境)
+- **テスト記法**: `test()` 使用必須（`it()` ではない）、テスト名は日本語
 - **アサーション**: `toStrictEqual` 使用（`toEqual` ではない）
 - **実行**: `pnpm test`（`vitest run`）でテスト実行、`pnpm test:watch`（`vitest`）でウォッチモード
 - **カバレッジ**: `pnpm test:coverage` でカバレッジ測定、実装ロジックのカバレッジ100%を目標
