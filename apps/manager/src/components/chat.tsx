@@ -105,12 +105,6 @@ function ChatContent({
   // MCPサーバーIDsを ref で保持（useChat のコールバック内で最新値を参照するため）
   const selectedMcpServerIdsRef = useRef<string[]>([]);
 
-  // ストリーミング中のTTS用状態
-  // 蓄積中のテキスト
-  const streamingTextRef = useRef<string>("");
-  // 読み上げ済みのインデックス
-  const spokenIndexRef = useRef<number>(0);
-
   // チャット設定をLocalStorageから取得・保存
   const {
     chatModel: storedChatModel,
@@ -221,63 +215,37 @@ function ChatContent({
     setMessages,
   });
 
-  // Coharu TTS: messages を監視してストリーミング中のテキストを読み上げ
-  // 前回の status を追跡して、ストリーミング完了を検出
+  // Coharu TTS: ストリーミング完了時にテキスト全体を読み上げ
+  // レート制限対策: 複数の文を連結して1リクエストで送信（1分間10リクエスト制限）
   const prevStatusRef = useRef(status);
 
   useEffect(() => {
     // Coharu が無効な場合は何もしない
     if (!isCoharuEnabledRef.current) {
+      prevStatusRef.current = status;
       return;
     }
 
-    // 最後のアシスタントメッセージを取得
-    const lastMessage = messages.at(-1);
-    if (!lastMessage || lastMessage.role !== "assistant") {
-      return;
-    }
+    // ストリーミングが完了した場合（streaming → ready）にテキスト全体を読み上げ
+    if (prevStatusRef.current === "streaming" && status === "ready") {
+      // 最後のアシスタントメッセージを取得
+      const lastMessage = messages.at(-1);
+      if (lastMessage && lastMessage.role === "assistant") {
+        // メッセージからテキストを抽出
+        const fullText = lastMessage.parts
+          .filter(
+            (part): part is { type: "text"; text: string } =>
+              part.type === "text",
+          )
+          .map((part) => part.text)
+          .join("")
+          .trim();
 
-    // メッセージからテキストを抽出
-    const currentText = lastMessage.parts
-      .filter(
-        (part): part is { type: "text"; text: string } => part.type === "text",
-      )
-      .map((part) => part.text)
-      .join("");
-
-    // ストリーミング中の場合、文単位で読み上げ
-    if (status === "streaming") {
-      streamingTextRef.current = currentText;
-
-      // 文の区切り文字（。！？）で分割して読み上げ
-      const sentenceEndRegex = /[。！？!?]/g;
-      let lastIndex = spokenIndexRef.current;
-      let match: RegExpExecArray | null;
-
-      while ((match = sentenceEndRegex.exec(currentText)) !== null) {
-        if (match.index >= spokenIndexRef.current) {
-          const sentence = currentText.slice(lastIndex, match.index + 1).trim();
-          if (sentence) {
-            void speakRef.current(sentence);
-          }
-          lastIndex = match.index + 1;
-          spokenIndexRef.current = lastIndex;
+        // テキストがあれば読み上げ（全体を1リクエストで送信）
+        if (fullText) {
+          void speakRef.current(fullText);
         }
       }
-    }
-
-    // ストリーミングが完了した場合（streaming → ready）、残りのテキストを読み上げ
-    if (prevStatusRef.current === "streaming" && status === "ready") {
-      const remainingText = streamingTextRef.current
-        .slice(spokenIndexRef.current)
-        .trim();
-      if (remainingText) {
-        void speakRef.current(remainingText);
-      }
-
-      // ref をリセット
-      streamingTextRef.current = "";
-      spokenIndexRef.current = 0;
     }
 
     prevStatusRef.current = status;

@@ -5,5 +5,8 @@
 
 export * from "./tts";
 export { AudioPlayer } from "./AudioPlayer";
-export { SpeechQueue, type SpeechQueueOptions } from "./speechQueue";
+export {
+  StreamingTTSPlayer,
+  type StreamingTTSPlayerOptions,
+} from "./StreamingTTSPlayer";
 export { VRMAAnimationManager } from "./VRMAAnimationManager";
