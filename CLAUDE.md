@@ -234,7 +234,7 @@ afterEach(() => {
 ##### テストファイルの構成
 
 - ユニットテスト: `src/**/__tests__/*.test.ts(x)`
-- EEユニットテスト: `src/**/__tests__/*.ee.test.ts`（EE_BUILD=true時のみ実行）
+- EEユニットテスト: `src/**/__tests__/*.ee.test.ts`
 - E2Eテスト: `tests/e2e/*.test.ts`
 - テストセットアップ: `tests/setup.ts`
 - E2Eテストファイルをユニットテストディレクトリと混在させない
@@ -260,11 +260,8 @@ describe("EE機能", () => {
 EEテストの実行：
 
 ```bash
-# CE版テスト（EEテストはスキップ）
+# 全テスト実行（EEテスト含む）
 pnpm test
-
-# EE版テスト（全テスト実行）
-EE_BUILD=true pnpm test
 ```
 
 #### データベーステスト環境
@@ -577,14 +574,11 @@ export const piiMaskingMiddleware = createMiddleware(async (_c, next) => {
 
 ### テスト実行
 
-EEテスト（`.ee.test.ts`）は `EE_BUILD=true` 環境変数が設定された場合のみ実行：
+EEテスト（`.ee.test.ts`）は通常のテストと同様に `pnpm test` で実行される：
 
 ```bash
-# CE版テスト（EEテストはスキップ）
+# 全テスト実行（EEテスト含む）
 pnpm test
-
-# EE版テスト（全テスト実行）
-EE_BUILD=true pnpm test
 ```
 
 ### ビルド設定

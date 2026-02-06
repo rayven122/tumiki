@@ -402,7 +402,7 @@ export type DescribeToolsResult = {
 - [ ] `mcpHandler.ts`に処理を追加
 - [ ] 単体テスト（`*.ee.test.ts`）を作成（100%カバレッジ）
 - [ ] `pnpm typecheck`で型エラーなし
-- [ ] `EE_BUILD=true pnpm test`でテスト成功
+- [ ] `pnpm test`でテスト成功
 
 ### Dynamic Search有効化設定時
 

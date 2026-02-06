@@ -2,9 +2,6 @@ import { resolve } from "path";
 import { defineConfig } from "vitest/config";
 import { nodeTestConfig } from "@tumiki/vitest-config/configs";
 
-// EEビルドの場合は.ee.test.tsも含む、CEビルドの場合は除外
-const isEEBuild = process.env.EE_BUILD === "true";
-
 export default defineConfig({
   test: {
     ...nodeTestConfig,
@@ -17,10 +14,7 @@ export default defineConfig({
         maxThreads: 3,
       },
     },
-    include: isEEBuild
-      ? ["src/**/*.test.ts", "src/**/*.ee.test.ts"]
-      : ["src/**/*.test.ts"],
-    exclude: isEEBuild ? [] : ["src/**/*.ee.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.ee.test.ts"],
     coverage: {
       thresholds: {
         statements: 95,
