@@ -1,23 +1,6 @@
 ---
 name: commit-and-pr
-description: コミット・プッシュ・PR作成を一括実行するエージェント。ステージされた変更を分析し、適切なコミットメッセージを生成、プッシュ、PR作成/更新までを実行します。/cppコマンドや/exec-issueから呼び出されます。例：
-
-<example>
-Context: 実装完了後にPRを作成したい場合
-user: "実装が完了したのでPRを作成して"
-assistant: "commit-and-prエージェントを使用して、変更をコミットしPRを作成します"
-<commentary>
-実装完了後のPR作成要求のため、commit-and-prエージェントを使用します。
-</commentary>
-</example>
-
-<example>
-Context: /cppコマンドからの呼び出し
-assistant: "commit-and-prエージェントを起動してコミット・プッシュ・PR作成を実行します"
-<commentary>
-/cppコマンドがPR作成フェーズに到達したため、commit-and-prエージェントに委譲します。
-</commentary>
-</example>
+description: コミット・プッシュ・PR作成を一括実行するエージェント。ステージされた変更を分析し、適切なコミットメッセージを生成、プッシュ、PR作成/更新までを実行します。
 color: blue
 ---
 

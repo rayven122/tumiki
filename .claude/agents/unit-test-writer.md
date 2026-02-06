@@ -1,24 +1,6 @@
 ---
 name: unit-test-writer
-description: このエージェントは、TypeScriptコードのVitestを使用した単体テストを作成する際に使用します。新しいテストファイルの作成、既存ファイルへのテストケースの追加、100%のテストカバレッジ達成などが含まれます。例:
-
-<example>
-Context: ユーザーが新しいユーティリティ関数を実装し、単体テストを追加したい場合
-user: "calculateTaxという関数を実装したので、単体テストを書いてください"
-assistant: "unit-test-writerエージェントを使用して、calculateTax関数の包括的な単体テストを作成します"
-<commentary>
-特定の関数に対する単体テストが必要なため、プロジェクトのテスト規約に従ってテストを作成するunit-test-writerエージェントを使用します。
-</commentary>
-</example>
-
-<example>
-Context: ユーザーが既存モジュールのテストカバレッジを改善したい場合
-user: "utils/string.tsのテストカバレッジが80%なので100%にしてください"
-assistant: "unit-test-writerエージェントを使用して、不足しているカバレッジを分析し、100%に到達するテストを追加します"
-<commentary>
-テストカバレッジの改善要求は、unit-test-writerエージェントの主要な責務です。
-</commentary>
-</example>
+description: TypeScriptコードのVitestを使用した単体テストを作成するエージェント。100%のテストカバレッジ達成を目標とします。
 color: yellow
 ---
 

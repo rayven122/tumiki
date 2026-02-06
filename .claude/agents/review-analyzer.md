@@ -1,15 +1,6 @@
 ---
 name: review-analyzer
-description: PRレビューコメントを分析し、修正計画を作成するエージェント。コメントをカテゴリ分類し、各コメントへの対応方針を提示します。例：
-
-<example>
-Context: /fix-reviewコマンドからの呼び出し
-user: "PR #123のレビューコメントを分析して"
-assistant: "review-analyzerエージェントを使用して、レビューコメントを分析し修正計画を作成します"
-<commentary>
-レビュー分析フェーズのため、review-analyzerエージェントがコメント分析を担当します。
-</commentary>
-</example>
+description: PRレビューコメントを分析し、修正計画を作成するエージェント。コメントをカテゴリ分類し、各コメントへの対応方針を提示します。
 color: yellow
 ---
 
