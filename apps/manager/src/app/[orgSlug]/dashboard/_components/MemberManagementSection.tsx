@@ -44,7 +44,7 @@ import {
   Eye,
 } from "lucide-react";
 import { api } from "@/trpc/react";
-import { getSessionInfo } from "~/lib/auth/session-utils";
+import { getSessionInfo, isAdminRole } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -343,10 +343,7 @@ export const MemberManagementSection = () => {
                         {member.user.email}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
-                        {member.roles.some(
-                          (role) =>
-                            role.name === "Owner" || role.name === "Admin",
-                        ) ? (
+                        {member.roles.some((role) => isAdminRole(role.name)) ? (
                           <Badge variant="default" className="text-xs">
                             <Crown className="mr-1 h-3 w-3" />
                             管理者

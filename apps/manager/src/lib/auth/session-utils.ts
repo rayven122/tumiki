@@ -1,6 +1,23 @@
 import type { Session } from "next-auth";
 
 /**
+ * 管理者権限を持つロール名
+ */
+export const ADMIN_ROLES = ["Owner", "Admin"] as const;
+
+/**
+ * 指定されたロール名が管理者権限を持つかどうかを判定
+ */
+export const isAdminRole = (roleName: string): boolean =>
+  ADMIN_ROLES.includes(roleName as (typeof ADMIN_ROLES)[number]);
+
+/**
+ * ロール配列に管理者権限を持つロールが含まれているかを判定
+ */
+export const hasAdminRole = (roles: readonly string[]): boolean =>
+  roles.some(isAdminRole);
+
+/**
  * セッション情報の型定義
  */
 export type SessionInfo = {
@@ -29,7 +46,7 @@ export const getSessionInfo = (session: Session | null): SessionInfo => {
   // ロール情報から管理者権限を判定
   // - 個人組織: getTumikiClaimsでOwnerロールが自動付与される
   // - チーム組織: Keycloakから渡されたロールを使用
-  const isAdmin = roles.some((role) => role === "Owner" || role === "Admin");
+  const isAdmin = hasAdminRole(roles);
 
   return {
     organizationSlug,
