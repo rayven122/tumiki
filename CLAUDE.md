@@ -346,6 +346,75 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **Keycloak設定**: Terraform（`terraform/keycloak/`）で管理。初回は`pnpm setup:dev`で一括セットアップ
 - **Pythonツール**: `pnpm install` 時に `python-mcp-requirements.txt` のパッケージが自動インストール
 
+## トラブルシューティング
+
+### よくある問題と解決方法
+
+#### `@tumiki/` パッケージのimportエラー
+
+**症状**: `@tumiki/db` や `@tumiki/auth` などのインポートでエラーが発生
+
+```bash
+# 該当パッケージをビルド
+cd packages/db && pnpm build
+# または全パッケージをビルド
+pnpm build
+```
+
+#### Keycloak接続エラー
+
+**症状**: 認証が失敗、ログインページが表示されない
+
+```bash
+# Keycloakコンテナの起動確認
+pnpm docker:ps
+# Keycloak起動待機
+pnpm keycloak:wait
+# 設定の再適用（初回または設定変更後）
+pnpm keycloak:apply
+```
+
+#### テスト環境のデータベースエラー
+
+**症状**: テスト実行時にDB接続エラー
+
+```bash
+# テスト用DBの起動
+docker compose -f ./docker/compose.yaml up -d db-test
+# スキーマの適用
+cd packages/db && pnpm db:push:test
+```
+
+#### 開発サーバーが起動しない
+
+**症状**: `pnpm dev` でエラーが発生
+
+```bash
+# 依存関係の再インストール
+pnpm install
+# 環境変数の確認
+cat .env | head -20
+# Dockerコンテナの状態確認
+pnpm docker:ps
+```
+
+#### Prisma関連のエラー
+
+**症状**: Prismaクライアントのエラー、型が見つからない
+
+```bash
+cd packages/db
+pnpm db:generate  # クライアント再生成
+pnpm build        # パッケージビルド
+```
+
+#### 型チェックでCI環境変数エラー
+
+**症状**: `typecheck`で環境変数の型エラー
+
+- 開発時は無視可能（本番CIでは環境変数が設定される）
+- 必要に応じて `.env` に該当変数を追加
+
 ## 統合MCPサーバー（CUSTOM）機能
 
 ### 概要
@@ -536,6 +605,7 @@ CE版ビルドでは `tsconfig.ce.json` を使用してEEファイルを除外�
 4. `pnpm build` - ビルド確認
 5. `pnpm test` - テスト実行
 6. **tumiki-code-simplifier の実行**（必須・最重要） - Task ツールで `tumiki-code-simplifier` エージェントを起動し、最近変更されたコードを自動的にリファクタリングします。コードの明確性、一貫性、保守性を向上させつつ、機能を完全に保持します。
+7. **ドキュメント更新の確認**（推奨） - `tumiki-docs-update-guide` スキルを参照し、変更したファイルに対応するスキルやCLAUDE.mdの更新が必要か確認します。各スキルの `sourcePatterns` と変更ファイルを照合し、コード例が最新の実装と一致していることを確認してください。
 
 **注意**: tumiki-code-simplifier は**コード修正後に必ず実行**してください。これはコード品質を保つための必須ステップです。スキップしないでください。
 
