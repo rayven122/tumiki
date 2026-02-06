@@ -36,11 +36,6 @@ export function htmlToPlainText(html: string): string {
  * @param email - メールアドレス
  * @param name - 表示名（省略可能）
  * @returns RFC 5322形式のアドレス文字列
- *
- * @example
- * formatFromAddress("info@tumiki.cloud") // "info@tumiki.cloud"
- * formatFromAddress("info@tumiki.cloud", "Tumiki Team") // "Tumiki Team <info@tumiki.cloud>"
- * formatFromAddress("info@tumiki.cloud", "Tumiki, Inc.") // '"Tumiki, Inc." <info@tumiki.cloud>'
  */
 export const formatFromAddress = (email: string, name?: string): string => {
   if (!name || name.trim() === "") {
