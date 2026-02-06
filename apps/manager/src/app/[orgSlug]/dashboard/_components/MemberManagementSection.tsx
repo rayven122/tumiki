@@ -27,12 +27,55 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Crown, User, AlertCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  UserPlus,
+  Trash2,
+  Crown,
+  User,
+  AlertCircle,
+  Shield,
+  Eye,
+} from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import type { OrganizationRole } from "@/server/utils/organizationPermissions";
+
+// ロールの説明
+const ROLE_DESCRIPTIONS: Record<
+  OrganizationRole,
+  { label: string; description: string; icon: typeof Crown }
+> = {
+  Owner: {
+    label: "オーナー",
+    description: "全権限（組織削除含む）",
+    icon: Crown,
+  },
+  Admin: {
+    label: "管理者",
+    description: "組織削除以外の全機能",
+    icon: Shield,
+  },
+  Member: {
+    label: "メンバー",
+    description: "MCP作成・メンバー閲覧",
+    icon: User,
+  },
+  Viewer: {
+    label: "閲覧者",
+    description: "読み取り専用",
+    icon: Eye,
+  },
+};
 
 export const MemberManagementSection = () => {
   const { data: session, update } = useSession();
@@ -41,6 +84,7 @@ export const MemberManagementSection = () => {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<OrganizationRole>("Member");
 
   const { data: organization } = api.organization.getById.useQuery();
 
@@ -106,7 +150,7 @@ export const MemberManagementSection = () => {
     if (inviteEmail.trim()) {
       inviteMutation.mutate({
         emails: [inviteEmail.trim()],
-        roles: ["Member"],
+        roles: [selectedRole],
       });
     }
   };
@@ -182,7 +226,7 @@ export const MemberManagementSection = () => {
                   <DialogTitle>メンバーを招待</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="email">メールアドレス</Label>
                     <Input
                       id="email"
@@ -191,6 +235,59 @@ export const MemberManagementSection = () => {
                       onChange={(e) => setInviteEmail(e.target.value)}
                       placeholder="user@example.com"
                     />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="role">ロール</Label>
+                      <Select
+                        value={selectedRole}
+                        onValueChange={(value) =>
+                          setSelectedRole(value as OrganizationRole)
+                        }
+                      >
+                        <SelectTrigger id="role">
+                          <SelectValue placeholder="ロールを選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(["Admin", "Member", "Viewer"] as const).map(
+                            (role) => {
+                              const roleInfo = ROLE_DESCRIPTIONS[role];
+                              const Icon = roleInfo.icon;
+                              return (
+                                <SelectItem key={role} value={role}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <span>{roleInfo.label}</span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            },
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* 選択されたロールの説明を表示 */}
+                    <div className="bg-muted/40 rounded-md border p-3">
+                      <div className="flex items-start gap-2">
+                        {(() => {
+                          const roleInfo = ROLE_DESCRIPTIONS[selectedRole];
+                          const Icon = roleInfo.icon;
+                          return (
+                            <>
+                              <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">
+                                  {roleInfo.label}
+                                </p>
+                                <p className="text-muted-foreground text-xs">
+                                  {roleInfo.description}
+                                </p>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button
