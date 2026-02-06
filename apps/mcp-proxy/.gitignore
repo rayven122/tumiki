@@ -36,3 +36,5 @@ Thumbs.db
 benchmark/results/*
 !benchmark/results/.gitkeep
 benchmark/**/*.bin
+
+.issues/

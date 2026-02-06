@@ -293,6 +293,17 @@ describe("connectToMcpServer", () => {
         connectToMcpServer(template, userId, instanceId, null),
       ).rejects.toThrow("Failed to connect to MCP server");
     });
+
+    test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージで伝播する", async () => {
+      const template = createMockTemplate();
+      mockInjectAuthHeaders.mockRejectedValue("string error");
+
+      await expect(
+        connectToMcpServer(template, userId, instanceId, null),
+      ).rejects.toThrow(
+        "Failed to connect to MCP server Test MCP Server: Unknown error",
+      );
+    });
   });
 
   describe("クライアント設定", () => {
@@ -312,6 +323,18 @@ describe("connectToMcpServer", () => {
           capabilities: {},
         },
       );
+    });
+  });
+
+  describe("未知のトランスポートタイプ", () => {
+    test("未知のトランスポートタイプの場合はエラーをスローする", async () => {
+      const template = createMockTemplate({
+        transportType: "INVALID" as never,
+      });
+
+      await expect(
+        connectToMcpServer(template, userId, instanceId, null),
+      ).rejects.toThrow("Unknown transport type: INVALID");
     });
   });
 });

@@ -311,6 +311,30 @@ describe("jwtAuthMiddleware", () => {
     });
   });
 
+  describe("mcpServerIdが欠落", () => {
+    test("mcpServerIdがパスにない場合は403を返す", async () => {
+      // mcpServerId パラメータなしのルートを作成
+      const appWithoutParam = new Hono<HonoEnv>();
+      appWithoutParam.use("/test/*", jwtAuthMiddleware);
+      appWithoutParam.get("/test/endpoint", (c) => {
+        return c.json({ success: true });
+      });
+
+      mockVerifyKeycloakJWT.mockResolvedValue({
+        sub: "keycloak-user-123",
+        email: "user@example.com",
+      });
+
+      const res = await appWithoutParam.request("/test/endpoint", {
+        headers: { Authorization: "Bearer valid-token" },
+      });
+
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error.message).toContain("mcpServerId is required in path");
+    });
+  });
+
   describe("認証成功", () => {
     beforeEach(() => {
       mockVerifyKeycloakJWT.mockResolvedValue({

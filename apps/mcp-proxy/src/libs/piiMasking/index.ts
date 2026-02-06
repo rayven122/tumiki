@@ -1,8 +1,4 @@
-/**
- * PIIマスキングモジュール
- * GCP DLPを使用したPII（個人情報）のマスキング機能を提供
- */
-
+/* v8 ignore start -- re-exportのみ */
 export {
   closeDlpClient,
   maskJson,
@@ -17,3 +13,4 @@ export {
   type TextMaskingResult,
   type PiiMaskingOptions,
 } from "./types.js";
+/* v8 ignore stop */

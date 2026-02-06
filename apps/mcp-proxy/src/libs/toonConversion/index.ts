@@ -1,9 +1,6 @@
-/**
- * TOON変換モジュール
- * JSON-RPC 2.0レスポンスをTOON形式に変換し、AIへのトークン量を削減する
- */
-
+/* v8 ignore start -- re-exportのみ */
 export {
   convertMcpResponseToToon,
   convertMcpResponseToToonSafe,
 } from "./jsonRpcToonConverter.js";
+/* v8 ignore stop */

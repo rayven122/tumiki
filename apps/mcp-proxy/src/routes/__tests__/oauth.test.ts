@@ -279,6 +279,39 @@ describe("oauthTokenHandler", () => {
       );
     });
 
+    test("access_tokenとexpires_inがundefinedの場合、デフォルト値にフォールバックする", async () => {
+      const mockTokenResponse = {
+        access_token: undefined,
+        token_type: "Bearer",
+        expires_in: undefined,
+        refresh_token: undefined,
+        scope: undefined,
+      };
+
+      mockClientCredentialsGrant.mockResolvedValueOnce(mockTokenResponse);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "client_credentials");
+      formData.append("client_id", "test-client");
+      formData.append("client_secret", "test-secret");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        access_token: "",
+        token_type: "Bearer",
+        expires_in: 0,
+      });
+    });
+
     test("Keycloakがエラーを返した場合、エラーレスポンスを返す", async () => {
       // openid-client v6 ResponseBodyError をスロー
       mockClientCredentialsGrant.mockRejectedValueOnce(
@@ -352,6 +385,40 @@ describe("oauthTokenHandler", () => {
         expect.anything(), // Configuration
         "old_refresh_token",
       );
+    });
+
+    test("access_tokenとexpires_inがundefinedの場合、デフォルト値にフォールバックする", async () => {
+      const mockTokenResponse = {
+        access_token: undefined,
+        token_type: "Bearer",
+        expires_in: undefined,
+        refresh_token: undefined,
+        scope: undefined,
+      };
+
+      mockRefreshTokenGrant.mockResolvedValueOnce(mockTokenResponse);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "refresh_token");
+      formData.append("client_id", "test-client");
+      formData.append("client_secret", "test-secret");
+      formData.append("refresh_token", "old_token");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        access_token: "",
+        token_type: "Bearer",
+        expires_in: 0,
+      });
     });
 
     test("無効なrefresh_tokenの場合、エラーレスポンスを返す", async () => {
@@ -553,6 +620,99 @@ describe("oauthTokenHandler", () => {
       expect(body.access_token).toBe("eyJhbGc_public_client...");
     });
 
+    test("stateが提供された場合、URLに含めてexpectedStateで検証する", async () => {
+      const mockTokenResponse = {
+        access_token: "eyJhbGc_with_state...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "eyJhbGc_refresh_state...",
+        scope: "openid profile",
+      };
+
+      mockAuthorizationCodeGrant.mockResolvedValueOnce(mockTokenResponse);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("code", "test-authorization-code");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+      formData.append("code_verifier", "test-code-verifier-12345");
+      formData.append("state", "my-csrf-state-token");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        access_token: "eyJhbGc_with_state...",
+        token_type: "Bearer",
+        expires_in: 300,
+        refresh_token: "eyJhbGc_refresh_state...",
+        scope: "openid profile",
+      });
+
+      // state が提供された場合は expectedState に state 値が渡される（skipStateCheck ではない）
+      expect(mockAuthorizationCodeGrant).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(URL),
+        {
+          pkceCodeVerifier: "test-code-verifier-12345",
+          expectedState: "my-csrf-state-token",
+        },
+      );
+
+      // URL に state パラメータが含まれていることを確認
+      const calledUrl = mockAuthorizationCodeGrant.mock.calls[0][1] as URL;
+      expect(calledUrl.searchParams.get("state")).toBe("my-csrf-state-token");
+      expect(calledUrl.searchParams.get("code")).toBe(
+        "test-authorization-code",
+      );
+      expect(calledUrl.searchParams.get("iss")).toBe(
+        "https://keycloak.example.com/realms/tumiki",
+      );
+    });
+
+    test("access_tokenとexpires_inがundefinedの場合、デフォルト値にフォールバックする", async () => {
+      const mockTokenResponse = {
+        access_token: undefined,
+        token_type: "Bearer",
+        expires_in: undefined,
+        refresh_token: undefined,
+        scope: undefined,
+      };
+
+      mockAuthorizationCodeGrant.mockResolvedValueOnce(mockTokenResponse);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "authorization_code");
+      formData.append("client_id", "test-client");
+      formData.append("code", "test-code");
+      formData.append("redirect_uri", "http://localhost:3000/callback");
+      formData.append("code_verifier", "test-verifier");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        access_token: "",
+        token_type: "Bearer",
+        expires_in: 0,
+      });
+    });
+
     test("無効なcodeの場合、エラーレスポンスを返す", async () => {
       // openid-client v6 ResponseBodyError をスロー
       mockAuthorizationCodeGrant.mockRejectedValueOnce(
@@ -637,6 +797,114 @@ describe("oauthTokenHandler", () => {
       expect(body).toStrictEqual({
         error: "server_error",
         error_description: "Network error",
+      });
+    });
+
+    test("ClientError（name=ClientError）が発生した場合、400エラーを返す", async () => {
+      // ClientError をシミュレート（Error の name を "ClientError" に設定）
+      const clientError = new Error("Validation failed: invalid parameter");
+      clientError.name = "ClientError";
+      mockClientCredentialsGrant.mockRejectedValueOnce(clientError);
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "client_credentials");
+      formData.append("client_id", "test-client");
+      formData.append("client_secret", "test-secret");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_request",
+        error_description: "Validation failed: invalid parameter",
+      });
+    });
+
+    test("Error以外のオブジェクトがスローされた場合、500エラーとInternal server errorを返す", async () => {
+      // Error ではないオブジェクトをスロー
+      mockClientCredentialsGrant.mockRejectedValueOnce("string error");
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "client_credentials");
+      formData.append("client_id", "test-client");
+      formData.append("client_secret", "test-secret");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "server_error",
+        error_description: "Internal server error",
+      });
+    });
+
+    test("ResponseBodyErrorでerror_descriptionがundefinedの場合、error.messageにフォールバックする", async () => {
+      mockClientCredentialsGrant.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 401 }), {
+          error: "invalid_client",
+        }),
+      );
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "client_credentials");
+      formData.append("client_id", "test-client");
+      formData.append("client_secret", "test-secret");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(401);
+      const body = (await res.json()) as { error_description: string };
+      // error_description が undefined → error.message にフォールバック
+      expect(body.error_description).toBe("invalid_client");
+    });
+
+    test("ResponseBodyErrorで未知のエラーコードの場合、server_errorにマッピングされる", async () => {
+      // 未知のエラーコードを持つ ResponseBodyError をスロー
+      mockClientCredentialsGrant.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 400 }), {
+          error: "custom_unknown_error",
+          error_description: "Some custom error",
+        }),
+      );
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "client_credentials");
+      formData.append("client_id", "test-client");
+      formData.append("client_secret", "test-secret");
+
+      const res = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "server_error",
+        error_description: "Some custom error",
       });
     });
   });

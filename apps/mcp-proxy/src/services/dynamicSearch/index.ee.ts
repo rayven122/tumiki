@@ -10,7 +10,9 @@
  * MCP SDK の Tool 型と CallToolRequestParams 型を使用
  */
 
-// MCP SDK 型を re-export（推奨）
+/* v8 ignore start -- re-exportのみ */
+
+// MCP SDK 型を re-export
 export type { Tool, CallToolRequestParams } from "./types.ee.js";
 
 // Dynamic Search 固有の型定義
@@ -41,3 +43,4 @@ export {
 export { searchTools } from "./searchTools.ee.js";
 export { describeTools, type DescribeToolsResult } from "./describeTools.ee.js";
 export { executeToolDynamic } from "./executeToolDynamic.ee.js";
+/* v8 ignore stop */

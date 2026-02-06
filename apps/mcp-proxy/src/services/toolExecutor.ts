@@ -53,7 +53,7 @@ const transformTemplateInstancesToTools = (
  * @param fullToolName - "{インスタンス名}__{ツール名}" 形式のツール名
  * @returns { instanceName, toolName }
  */
-const parseToolName = (
+export const parseToolName = (
   fullToolName: string,
 ): { instanceName: string; toolName: string } => {
   const parts = fullToolName.split("__");

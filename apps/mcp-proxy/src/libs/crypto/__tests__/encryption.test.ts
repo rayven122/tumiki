@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { decrypt, encrypt, generateEncryptionKey } from "./encryption.js";
+import { decrypt, encrypt, generateEncryptionKey } from "../encryption.js";
 
-// テスト用の暗号化キーを環境変数に設定
 beforeEach(() => {
   vi.stubEnv("REDIS_ENCRYPTION_KEY", generateEncryptionKey());
 });
 
-// テスト後に環境変数をクリーンアップ
 afterEach(() => {
   vi.unstubAllEnvs();
 });
@@ -30,7 +28,7 @@ describe("encrypt", () => {
     const plaintext = "Hello, World!";
     const encrypted = encrypt(plaintext);
 
-    expect(typeof encrypted).toStrictEqual("string");
+    expect(typeof encrypted).toBe("string");
     expect(encrypted).not.toStrictEqual(plaintext);
     // Base64文字列であることを確認
     expect(encrypted).toMatch(/^[A-Za-z0-9+/]+=*$/);
@@ -46,20 +44,20 @@ describe("encrypt", () => {
 
   test("空文字列を暗号化できる", () => {
     const encrypted = encrypt("");
-    expect(typeof encrypted).toStrictEqual("string");
+    expect(typeof encrypted).toBe("string");
     expect(encrypted.length).toBeGreaterThan(0);
   });
 
   test("日本語文字列を暗号化できる", () => {
     const plaintext = "こんにちは、世界！";
     const encrypted = encrypt(plaintext);
-    expect(typeof encrypted).toStrictEqual("string");
+    expect(typeof encrypted).toBe("string");
   });
 
   test("長い文字列を暗号化できる", () => {
     const plaintext = "a".repeat(10000);
     const encrypted = encrypt(plaintext);
-    expect(typeof encrypted).toStrictEqual("string");
+    expect(typeof encrypted).toBe("string");
   });
 
   test("JSON文字列を暗号化できる", () => {
@@ -70,7 +68,7 @@ describe("encrypt", () => {
     };
     const plaintext = JSON.stringify(data);
     const encrypted = encrypt(plaintext);
-    expect(typeof encrypted).toStrictEqual("string");
+    expect(typeof encrypted).toBe("string");
   });
 });
 
@@ -191,6 +189,43 @@ describe("encrypt and decrypt integration", () => {
   });
 });
 
+describe("decrypt non-Error throw handling", () => {
+  test("非Errorオブジェクトがスローされた場合はUnknown errorメッセージを返す", async () => {
+    const encrypted = encrypt("test data");
+
+    vi.resetModules();
+
+    const actualCrypto =
+      await vi.importActual<typeof import("node:crypto")>("node:crypto");
+
+    vi.doMock("node:crypto", () => ({
+      ...actualCrypto,
+      createDecipheriv: (
+        ...args: Parameters<typeof actualCrypto.createDecipheriv>
+      ) => {
+        const decipher = actualCrypto.createDecipheriv(...args);
+        const originalUpdate = decipher.update.bind(decipher);
+        decipher.update = (() => {
+          // eslint-disable-next-line @typescript-eslint/only-throw-error
+          throw "non-error-string-thrown";
+        }) as typeof decipher.update;
+        void originalUpdate;
+        return decipher;
+      },
+    }));
+
+    vi.stubEnv("REDIS_ENCRYPTION_KEY", process.env.REDIS_ENCRYPTION_KEY);
+
+    const { decrypt: decryptMocked } = await import("../encryption.js");
+
+    expect(() => decryptMocked(encrypted)).toThrow(
+      "Decryption failed: Unknown error",
+    );
+
+    vi.resetModules();
+  });
+});
+
 describe("getEncryptionKey error handling", () => {
   test("環境変数が未設定の場合にエラーをスローする", () => {
     vi.unstubAllEnvs();
@@ -218,6 +253,14 @@ describe("getEncryptionKey error handling", () => {
 
     expect(() => encrypt("test")).toThrow(
       "REDIS_ENCRYPTION_KEY must be 32 bytes (64 hex characters)",
+    );
+  });
+
+  test("全てゼロのキーの場合にエラーをスローする", () => {
+    vi.stubEnv("REDIS_ENCRYPTION_KEY", "0".repeat(64));
+
+    expect(() => encrypt("test")).toThrow(
+      "REDIS_ENCRYPTION_KEY cannot be all zeros",
     );
   });
 });

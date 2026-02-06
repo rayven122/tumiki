@@ -369,6 +369,23 @@ describe("apiKeyAuthMiddleware", () => {
     });
   });
 
+  describe("mcpServerIdパラメータの検証", () => {
+    test("mcpServerIdがパスに存在しない場合は403を返す", async () => {
+      // mcpServerIdパラメータがないルートを作成
+      const appNoParam = new Hono<HonoEnv>();
+      appNoParam.use("/*", apiKeyAuthMiddleware);
+      appNoParam.get("/test", (c) => c.json({ success: true }));
+
+      const res = await appNoParam.request("/test", {
+        headers: { "Tumiki-API-Key": "tumiki_test_key" },
+      });
+
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error.message).toContain("mcpServerId is required in path");
+    });
+  });
+
   describe("データベースエラー", () => {
     test("データベースエラー時はAPIキーが無効として扱われる", async () => {
       mockFindUnique.mockRejectedValue(new Error("Database connection failed"));
@@ -380,6 +397,21 @@ describe("apiKeyAuthMiddleware", () => {
       expect(res.status).toBe(401);
       const body = (await res.json()) as ErrorResponse;
       expect(body.error.message).toContain("Invalid or inactive API key");
+    });
+
+    test("データベースエラー時にlogErrorが呼ばれる", async () => {
+      const { logError } = await import("../../../libs/logger/index.js");
+      const dbError = new Error("Database connection failed");
+      mockFindUnique.mockRejectedValue(dbError);
+
+      await app.request("/server-123/test", {
+        headers: { "Tumiki-API-Key": "tumiki_test_key" },
+      });
+
+      expect(logError).toHaveBeenCalledWith(
+        "Failed to fetch API key from database",
+        dbError,
+      );
     });
   });
 });

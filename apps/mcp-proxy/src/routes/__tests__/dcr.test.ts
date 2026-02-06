@@ -50,6 +50,8 @@ vi.mock("openid-client", () => ({
   ClientSecretPost: vi.fn(() => "client_secret_post"),
   None: vi.fn(() => "none"),
   ResponseBodyError: MockResponseBodyError,
+  allowInsecureRequests: vi.fn(),
+  skipStateCheck: Symbol("skipStateCheck"),
 }));
 
 // テスト用の ServerMetadata
@@ -144,6 +146,57 @@ describe("dcrHandler", () => {
       expect(body).toStrictEqual({
         error: "invalid_client_metadata",
         error_description: "Invalid JSON body",
+      });
+    });
+
+    test("ボディがnullの場合、invalid_client_metadataエラーを返す", async () => {
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: "null",
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_client_metadata",
+        error_description: "Request body must be an object",
+      });
+    });
+
+    test("ボディが文字列の場合、invalid_client_metadataエラーを返す", async () => {
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify("just a string"),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_client_metadata",
+        error_description: "Request body must be an object",
+      });
+    });
+
+    test("ボディが数値の場合、invalid_client_metadataエラーを返す", async () => {
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: "42",
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_client_metadata",
+        error_description: "Request body must be an object",
       });
     });
 
@@ -501,6 +554,166 @@ describe("dcrHandler", () => {
       expect(body).toMatchObject({
         error: "invalid_client_metadata",
       });
+    });
+
+    test("ResponseBodyErrorでerror.errorがfalsyの場合、invalid_client_metadataにフォールバックする", async () => {
+      // error.error が空文字（falsy）の ResponseBodyError をスロー
+      // → || "invalid_client_metadata" のフォールバックが使用される
+      mockDynamicClientRegistration.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 400 }), {
+          error: "",
+          error_description: "Some error without error code",
+        }),
+      );
+
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_client_metadata",
+        error_description: "Some error without error code",
+      });
+    });
+  });
+
+  describe("redirect_uriバリデーション", () => {
+    test("redirect_urisに文字列以外の要素が含まれる場合、400エラーを返す", async () => {
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: [123],
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_redirect_uri",
+        error_description: "Each redirect_uri must be a string",
+      });
+    });
+  });
+
+  describe("ブランチカバレッジ", () => {
+    test("redirect_urisがundefinedの場合、空配列にフォールバックする", async () => {
+      // clientMetadata で redirect_uris が undefined のレスポンス
+      mockDynamicClientRegistration.mockResolvedValueOnce({
+        clientMetadata: () => ({
+          client_id: "generated-client-id",
+          redirect_uris: undefined,
+          client_name: "Test",
+        }),
+      });
+
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { redirect_uris: string[] };
+      expect(body.redirect_uris).toStrictEqual([]);
+    });
+
+    test("ResponseBodyErrorでerror_descriptionがundefinedの場合、error.messageにフォールバックする", async () => {
+      mockDynamicClientRegistration.mockRejectedValueOnce(
+        new MockResponseBodyError(new Response(null, { status: 400 }), {
+          error: "invalid_client_metadata",
+        }),
+      );
+
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error_description: string };
+      // error_description が undefined → error.message にフォールバック
+      expect(body.error_description).toBe("invalid_client_metadata");
+    });
+
+    test("Error以外のオブジェクトがスローされた場合、Internal server errorを返す", async () => {
+      mockDynamicClientRegistration.mockRejectedValueOnce("string error");
+
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      });
+
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body).toStrictEqual({
+        error: "invalid_client_metadata",
+        error_description: "Internal server error",
+      });
+    });
+  });
+
+  describe("localhost KEYCLOAK_ISSUER", () => {
+    test("KEYCLOAK_ISSUERがlocalhostの場合、allowInsecureRequestsを含む", async () => {
+      // localhost の KEYCLOAK_ISSUER を設定
+      process.env.KEYCLOAK_ISSUER = "http://localhost:8080/realms/test";
+      clearKeycloakCache();
+
+      // discoveryモックを再設定（localhost URL用）
+      mockDiscovery.mockResolvedValue(createMockConfiguration());
+
+      mockDynamicClientRegistration.mockResolvedValueOnce(
+        createMockRegistrationResponse({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      );
+
+      const res = await app.request("/oauth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          redirect_uris: ["https://example.com/callback"],
+        }),
+      });
+
+      expect(res.status).toBe(201);
+
+      // dynamicClientRegistration の options に execute が含まれることを確認
+      expect(mockDynamicClientRegistration).toHaveBeenCalledWith(
+        expect.any(URL),
+        { redirect_uris: ["https://example.com/callback"] },
+        undefined,
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          execute: expect.any(Array),
+        }),
+      );
     });
   });
 });
