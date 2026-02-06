@@ -61,11 +61,9 @@ export default async function OrgSlugLayout({
         <MainContent>{children}</MainContent>
       </div>
     );
-  } catch (error) {
-    console.error(
-      `[OrgSlugLayout] Error fetching organization ${decodedSlug}:`,
-      error,
-    );
+  } catch {
+    // 組織が見つからない場合は想定される動作（新規ユーザー、無効なスラグ等）
+    // リカバリー処理で個人組織またはオンボーディングにリダイレクトする
 
     // アクセスエラーの場合、個人組織をdefaultに設定してリダイレクト
     try {
