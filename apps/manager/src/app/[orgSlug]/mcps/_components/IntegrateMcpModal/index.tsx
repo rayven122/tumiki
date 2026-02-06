@@ -139,13 +139,12 @@ export const IntegrateMcpModal = ({
     const serverName = name.trim() || generateDefaultName(selectedMcps);
 
     // 選択したMCPのtemplateInstancesから作成データを構築
-    // 全ツールを自動選択
+    // toolIdsを省略することで、バックエンドがテンプレートの全ツールを自動選択
     const templates = selectedMcps.flatMap((mcp) =>
       mcp.templateInstances.map((instance) => ({
         mcpServerTemplateId: instance.mcpServerTemplate.id,
         normalizedName:
           instance.normalizedName || instance.mcpServerTemplate.name,
-        toolIds: instance.tools.map((tool) => tool.id),
         // envVarsは既存のものを自動使用（省略）
       })),
     );
