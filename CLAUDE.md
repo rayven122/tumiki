@@ -107,6 +107,7 @@ Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポ�
 - TypeScript strict mode 使用（tsconfig.json で既に有効化済み）
 - 可能な限り型推論を優先するが、関数の引数と戻り値は明示的に型付けする
 - 型が本当に不明な場合は`any`ではなく`unknown`を使用する
+- **TSDocで`@example`は使用禁止** - 使用例はテストコードで表現すること
 
 #### TypeScript 設定ファイル構成
 

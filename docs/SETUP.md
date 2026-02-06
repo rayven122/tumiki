@@ -75,11 +75,12 @@ PRISMA_FIELD_ENCRYPTION_HASH_SALT="生成したキー"  # openssl rand -base64 3
 CACHE_TTL="300"  # キャッシュの有効期限（秒）
 
 # メール送信設定（SMTP）
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT="587"
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
-FROM_EMAIL="info@tumiki.cloud"
+SMTP_HOST=""             # SMTPサーバーのホスト名（例: smtp.gmail.com）
+SMTP_PORT="587"          # SMTPサーバーのポート番号（587 or 465）
+SMTP_USER=""             # SMTP認証用のユーザー名
+SMTP_PASS=""             # SMTP認証用のパスワード
+FROM_EMAIL=""            # 送信元メールアドレス
+FROM_NAME=""             # メール送信者の表示名（任意）
 
 # MicroCMS設定
 MICROCMS_TUMIKI_BLOG_API_KEY="your-api-key"
