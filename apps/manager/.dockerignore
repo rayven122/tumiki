@@ -1,5 +1,5 @@
 # ========================================
-# Docker Ignore File for MCP Proxy
+# Docker Ignore File for Manager
 # ========================================
 
 # Dependencies
@@ -75,3 +75,10 @@ docker-compose.*.yml
 .eslintignore
 eslint.config.js
 .editorconfig
+
+# Unnecessary apps and directories
+apps/mcp-proxy
+apps/desktop
+terraform
+scripts
+docker/

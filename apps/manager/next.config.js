@@ -1,5 +1,7 @@
 /** @type {import("next").NextConfig} */
 const config = {
+  // Docker / Cloud Run 用にスタンドアロンモードで出力
+  output: "standalone",
   // React Strict Mode を無効化
   reactStrictMode: false,
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
