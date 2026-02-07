@@ -99,6 +99,10 @@ RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/place
 # Python MCP インストールをスキップ
 ENV CI=true
 
+# node-linker=hoisted でフラットな node_modules を作成
+# （pnpm のシンボリックリンク構造を排除し、Prisma Client の COPY を正しく動作させる）
+RUN echo "node-linker=hoisted" >> .npmrc
+
 # 本番依存関係のみインストール（postinstall スクリプトをスキップ）
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 

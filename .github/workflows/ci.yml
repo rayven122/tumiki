@@ -124,8 +124,12 @@ jobs:
             -e KEYCLOAK_CLIENT_ID=test \
             -e KEYCLOAK_CLIENT_SECRET=test \
             -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki \
+            -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
             tumiki-manager
           docker run -d --name mcp-proxy -p 8081:8080 \
+            -e DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+            -e PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s= \
             tumiki-mcp-proxy
 
       - name: ✅ Wait and verify health endpoints
