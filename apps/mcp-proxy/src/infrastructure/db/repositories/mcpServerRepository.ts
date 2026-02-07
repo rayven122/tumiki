@@ -152,7 +152,7 @@ export const checkOrganizationMembership = async (
   const cacheKey = `orgmember:${organizationId}:${userId}`;
   const redis = await getRedisClient();
 
-  return withCache<boolean>({
+  const cached = await withCache<boolean>({
     redis,
     cacheKey,
     ttlSeconds: CACHE_TTL_SECONDS,
@@ -181,6 +181,8 @@ export const checkOrganizationMembership = async (
       logError("Redis cache save error for membership", error);
     },
   });
+
+  return cached ?? false;
 };
 
 /**

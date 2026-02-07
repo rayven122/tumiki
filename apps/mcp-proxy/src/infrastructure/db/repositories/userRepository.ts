@@ -8,6 +8,7 @@
 
 import { db } from "@tumiki/db/server";
 import { getRedisClient } from "../../cache/redis.js";
+import { withCache } from "../../cache/withCache.js";
 import { logDebug, logError, logWarn } from "../../../shared/logger/index.js";
 
 // キャッシュのTTL（秒）
@@ -30,73 +31,54 @@ export const getUserIdFromKeycloakId = async (
   keycloakId: string,
 ): Promise<string | null> => {
   const cacheKey = `keycloak:user:${keycloakId}`;
+  const redis = await getRedisClient();
 
-  // キャッシュ確認
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached !== null) {
-        logDebug("Keycloak user cache hit", { cacheKey });
-        // ネガティブキャッシュのチェック
-        if (cached === "null") {
-          if (!ENABLE_NEGATIVE_CACHE) {
-            logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
-            await redis.del(cacheKey);
-            // フォールスルーしてDBから取得
-          } else {
-            return null;
-          }
-        } else {
-          return cached;
+  return withCache<string>({
+    redis,
+    cacheKey,
+    ttlSeconds: CACHE_TTL_SECONDS,
+    fetch: async () => {
+      try {
+        const account = await db.account.findFirst({
+          where: {
+            provider: "keycloak",
+            providerAccountId: keycloakId,
+          },
+          select: { userId: true },
+        });
+
+        const userId = account?.userId ?? null;
+
+        if (!userId) {
+          logWarn("User not found for Keycloak ID", { keycloakId });
         }
-      }
-    }
-  } catch (error) {
-    logError("Redis cache error for keycloak user", error as Error);
-    // キャッシュエラー時はフォールスルー（DB直接アクセス）
-  }
 
-  // DBから取得: Account.providerAccountId = keycloakId で検索
-  let userId: string | null = null;
-  try {
-    const account = await db.account.findFirst({
-      where: {
-        provider: "keycloak",
-        providerAccountId: keycloakId,
+        return userId;
+      } catch (error) {
+        logError("Failed to get user from Keycloak ID", error as Error, {
+          keycloakId,
+        });
+        throw error;
+      }
+    },
+    serialize: (userId) => userId,
+    deserialize: (cached) => cached,
+    negativeCache: {
+      enabled: ENABLE_NEGATIVE_CACHE,
+      onBypass: () => {
+        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
       },
-      select: { userId: true },
-    });
-
-    userId = account?.userId ?? null;
-
-    if (!userId) {
-      logWarn("User not found for Keycloak ID", { keycloakId });
-    }
-  } catch (error) {
-    logError("Failed to get user from Keycloak ID", error as Error, {
-      keycloakId,
-    });
-    throw error;
-  }
-
-  // キャッシュに保存（5分）
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      if (userId === null) {
-        if (ENABLE_NEGATIVE_CACHE) {
-          await redis.setEx(cacheKey, CACHE_TTL_SECONDS, "null");
-        }
-      } else {
-        await redis.setEx(cacheKey, CACHE_TTL_SECONDS, userId);
-      }
-    }
-  } catch (error) {
-    logError("Redis cache save error for keycloak user", error as Error);
-  }
-
-  return userId;
+    },
+    onHit: () => {
+      logDebug("Keycloak user cache hit", { cacheKey });
+    },
+    onReadError: (error) => {
+      logError("Redis cache error for keycloak user", error);
+    },
+    onWriteError: (error) => {
+      logError("Redis cache save error for keycloak user", error);
+    },
+  });
 };
 
 /**
@@ -112,69 +94,53 @@ export const getUserIdByEmail = async (
   email: string,
 ): Promise<string | null> => {
   const cacheKey = `email:user:${email}`;
+  const redis = await getRedisClient();
 
-  // キャッシュ確認
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached !== null) {
-        logDebug("Email user cache hit", { cacheKey });
-        if (cached === "null") {
-          if (!ENABLE_NEGATIVE_CACHE) {
-            logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
-            await redis.del(cacheKey);
-          } else {
-            return null;
-          }
-        } else {
-          return cached;
+  return withCache<string>({
+    redis,
+    cacheKey,
+    ttlSeconds: CACHE_TTL_SECONDS,
+    fetch: async () => {
+      try {
+        const user = await db.user.findFirst({
+          where: {
+            email: email,
+          },
+          select: { id: true },
+        });
+
+        const userId = user?.id ?? null;
+
+        if (!userId) {
+          logWarn("User not found for email", { email });
         }
-      }
-    }
-  } catch (error) {
-    logError("Redis cache error for email user", error as Error);
-  }
 
-  // DBから取得: User.email で検索
-  let userId: string | null = null;
-  try {
-    const user = await db.user.findFirst({
-      where: {
-        email: email,
+        return userId;
+      } catch (error) {
+        logError("Failed to get user from email", error as Error, {
+          email,
+        });
+        throw error;
+      }
+    },
+    serialize: (userId) => userId,
+    deserialize: (cached) => cached,
+    negativeCache: {
+      enabled: ENABLE_NEGATIVE_CACHE,
+      onBypass: () => {
+        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
       },
-      select: { id: true },
-    });
-
-    userId = user?.id ?? null;
-
-    if (!userId) {
-      logWarn("User not found for email", { email });
-    }
-  } catch (error) {
-    logError("Failed to get user from email", error as Error, {
-      email,
-    });
-    throw error;
-  }
-
-  // キャッシュに保存（5分）
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      if (userId === null) {
-        if (ENABLE_NEGATIVE_CACHE) {
-          await redis.setEx(cacheKey, CACHE_TTL_SECONDS, "null");
-        }
-      } else {
-        await redis.setEx(cacheKey, CACHE_TTL_SECONDS, userId);
-      }
-    }
-  } catch (error) {
-    logError("Redis cache save error for email user", error as Error);
-  }
-
-  return userId;
+    },
+    onHit: () => {
+      logDebug("Email user cache hit", { cacheKey });
+    },
+    onReadError: (error) => {
+      logError("Redis cache error for email user", error);
+    },
+    onWriteError: (error) => {
+      logError("Redis cache save error for email user", error);
+    },
+  });
 };
 
 /**
