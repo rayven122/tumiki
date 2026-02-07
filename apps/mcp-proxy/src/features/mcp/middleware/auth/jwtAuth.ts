@@ -11,9 +11,11 @@ import { verifyKeycloakJWT } from "../../../../infrastructure/keycloak/jwtVerifi
 import {
   getMcpServerOrganization,
   checkOrganizationMembership,
+} from "../../../../infrastructure/db/repositories/mcpServerRepository.js";
+import {
   getUserIdFromKeycloakId,
   getUserIdByEmail,
-} from "../../../../infrastructure/db/repositories/mcpServerRepository.js";
+} from "../../../../infrastructure/db/repositories/userRepository.js";
 
 /**
  * JWT 認証ミドルウェア

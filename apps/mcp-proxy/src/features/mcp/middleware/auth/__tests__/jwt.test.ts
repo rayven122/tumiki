@@ -32,6 +32,12 @@ vi.mock(
   () => ({
     getMcpServerOrganization: vi.fn(),
     checkOrganizationMembership: vi.fn(),
+  }),
+);
+
+vi.mock(
+  "../../../../../infrastructure/db/repositories/userRepository.js",
+  () => ({
     getUserIdFromKeycloakId: vi.fn(),
     getUserIdByEmail: vi.fn(),
   }),
@@ -48,9 +54,11 @@ import { verifyKeycloakJWT } from "../../../../../infrastructure/keycloak/jwtVer
 import {
   getMcpServerOrganization,
   checkOrganizationMembership,
+} from "../../../../../infrastructure/db/repositories/mcpServerRepository.js";
+import {
   getUserIdFromKeycloakId,
   getUserIdByEmail,
-} from "../../../../../infrastructure/db/repositories/mcpServerRepository.js";
+} from "../../../../../infrastructure/db/repositories/userRepository.js";
 
 // モック関数を取得
 const mockVerifyKeycloakJWT = vi.mocked(verifyKeycloakJWT);

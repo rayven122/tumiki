@@ -52,12 +52,14 @@ import {
   invalidateMcpServerCache,
   checkOrganizationMembership,
   invalidateOrganizationMembershipCache,
-  getUserIdFromKeycloakId,
-  invalidateKeycloakUserCache,
-  getUserIdByEmail,
   getTemplateInstanceById,
   invalidateTemplateInstanceCache,
 } from "../mcpServerRepository.js";
+import {
+  getUserIdFromKeycloakId,
+  invalidateKeycloakUserCache,
+  getUserIdByEmail,
+} from "../userRepository.js";
 
 // テストデータ生成ヘルパー
 type RedisClient = {
@@ -1104,7 +1106,7 @@ describe("mcpServerService（ネガティブキャッシュ無効時）", () => 
     mockAccountFindFirst.mockResolvedValue({ userId: "resolved-user-id" });
 
     const { getUserIdFromKeycloakId: getUserIdFromKeycloakIdReloaded } =
-      await import("../mcpServerRepository.js");
+      await import("../userRepository.js");
 
     const result = await getUserIdFromKeycloakIdReloaded("keycloak-sub-123");
 
@@ -1127,7 +1129,7 @@ describe("mcpServerService（ネガティブキャッシュ無効時）", () => 
     mockUserFindFirst.mockResolvedValue({ id: "resolved-user-id" });
 
     const { getUserIdByEmail: getUserIdByEmailReloaded } = await import(
-      "../mcpServerRepository.js"
+      "../userRepository.js"
     );
 
     const result = await getUserIdByEmailReloaded("test@example.com");

@@ -8,6 +8,7 @@
 
 import { db, type PiiMaskingMode, type AuthType } from "@tumiki/db/server";
 import { getRedisClient } from "../../cache/redis.js";
+import { withCache } from "../../cache/withCache.js";
 import { logDebug, logError, logWarn } from "../../../shared/logger/index.js";
 
 /**
@@ -55,79 +56,52 @@ const ENABLE_NEGATIVE_CACHE = process.env.DISABLE_NEGATIVE_CACHE !== "true";
 export const getMcpServerOrganization = async (
   mcpServerId: string,
 ): Promise<McpServerLookupResult | null> => {
-  // キャッシュキー
   const cacheKey = `mcpserver:org:${mcpServerId}`;
+  const redis = await getRedisClient();
 
-  // キャッシュ確認
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached !== null) {
-        logDebug("McpServer cache hit", { cacheKey });
-        // ネガティブキャッシュのチェック
-        if (cached === "null") {
-          // DISABLE_NEGATIVE_CACHE=true の場合はキャッシュを無視してDBから再取得
-          if (!ENABLE_NEGATIVE_CACHE) {
-            logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
-            await redis.del(cacheKey);
-            // フォールスルーしてDBから取得
-          } else {
-            return null;
-          }
-        } else {
-          const parsed = JSON.parse(cached) as CachedMcpServerResult;
-          return {
-            id: parsed.id,
-            organizationId: parsed.organizationId,
-            deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
-            authType: parsed.authType,
-            piiMaskingMode: parsed.piiMaskingMode,
-            piiInfoTypes: parsed.piiInfoTypes,
-            toonConversionEnabled: parsed.toonConversionEnabled,
-          };
-        }
-      }
-    }
-  } catch (error) {
-    logError("Redis cache error", error as Error);
-    // キャッシュエラー時はフォールスルー（DB直接アクセス）
-  }
-
-  // DBから取得
-  const result = await getMcpServerFromDB(mcpServerId);
-
-  // キャッシュに保存（5分）
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      // ネガティブキャッシュが有効な場合のみnullをキャッシュ
-      if (result === null) {
-        if (ENABLE_NEGATIVE_CACHE) {
-          await redis.setEx(cacheKey, CACHE_TTL_SECONDS, "null");
-        }
-      } else {
-        const cacheValue: CachedMcpServerResult = {
-          id: result.id,
-          organizationId: result.organizationId,
-          deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
-          authType: result.authType,
-          piiMaskingMode: result.piiMaskingMode,
-          piiInfoTypes: result.piiInfoTypes,
-          toonConversionEnabled: result.toonConversionEnabled,
-        };
-        await redis.setEx(
-          cacheKey,
-          CACHE_TTL_SECONDS,
-          JSON.stringify(cacheValue),
-        );
-      }
-    }
-  } catch (error) {
-    logError("Redis cache save error", error as Error);
-  }
-
-  return result;
+  return withCache<McpServerLookupResult>({
+    redis,
+    cacheKey,
+    ttlSeconds: CACHE_TTL_SECONDS,
+    fetch: () => getMcpServerFromDB(mcpServerId),
+    serialize: (result) =>
+      JSON.stringify({
+        id: result.id,
+        organizationId: result.organizationId,
+        deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
+        authType: result.authType,
+        piiMaskingMode: result.piiMaskingMode,
+        piiInfoTypes: result.piiInfoTypes,
+        toonConversionEnabled: result.toonConversionEnabled,
+      } satisfies CachedMcpServerResult),
+    deserialize: (cached) => {
+      const parsed = JSON.parse(cached) as CachedMcpServerResult;
+      return {
+        id: parsed.id,
+        organizationId: parsed.organizationId,
+        deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
+        authType: parsed.authType,
+        piiMaskingMode: parsed.piiMaskingMode,
+        piiInfoTypes: parsed.piiInfoTypes,
+        toonConversionEnabled: parsed.toonConversionEnabled,
+      };
+    },
+    negativeCache: {
+      enabled: ENABLE_NEGATIVE_CACHE,
+      onBypass: () => {
+        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
+      },
+    },
+    onHit: () => {
+      logDebug("McpServer cache hit", { cacheKey });
+    },
+    onReadError: (error) => {
+      logError("Redis cache error", error);
+    },
+    onWriteError: (error) => {
+      logError("Redis cache save error", error);
+    },
+  });
 };
 
 /**
@@ -176,50 +150,37 @@ export const checkOrganizationMembership = async (
   userId: string,
 ): Promise<boolean> => {
   const cacheKey = `orgmember:${organizationId}:${userId}`;
+  const redis = await getRedisClient();
 
-  // キャッシュ確認
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached !== null) {
-        logDebug("Organization membership cache hit", { cacheKey });
-        return cached === "true";
-      }
-    }
-  } catch (error) {
-    logError("Redis cache error for membership check", error as Error);
-    // キャッシュエラー時はフォールスルー（DB直接アクセス）
-  }
+  return withCache<boolean>({
+    redis,
+    cacheKey,
+    ttlSeconds: CACHE_TTL_SECONDS,
+    fetch: async () => {
+      const member = await db.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId,
+          },
+        },
+        select: { id: true },
+      });
 
-  // DBから確認
-  const member = await db.organizationMember.findUnique({
-    where: {
-      organizationId_userId: {
-        organizationId,
-        userId,
-      },
+      return member !== null;
     },
-    select: { id: true },
+    serialize: (isMember) => (isMember ? "true" : "false"),
+    deserialize: (cached) => cached === "true",
+    onHit: () => {
+      logDebug("Organization membership cache hit", { cacheKey });
+    },
+    onReadError: (error) => {
+      logError("Redis cache error for membership check", error);
+    },
+    onWriteError: (error) => {
+      logError("Redis cache save error for membership", error);
+    },
   });
-
-  const isMember = member !== null;
-
-  // キャッシュに保存（5分）
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      await redis.setEx(
-        cacheKey,
-        CACHE_TTL_SECONDS,
-        isMember ? "true" : "false",
-      );
-    }
-  } catch (error) {
-    logError("Redis cache save error for membership", error as Error);
-  }
-
-  return isMember;
 };
 
 /**
@@ -280,13 +241,6 @@ export const invalidateMcpServerCache = async (
   }
 };
 
-// ユーザー関連の関数は userRepository.ts に移動済み（後方互換性のためリエクスポート）
-export {
-  getUserIdFromKeycloakId,
-  getUserIdByEmail,
-  invalidateKeycloakUserCache,
-} from "./userRepository.js";
-
 /**
  * McpServerTemplateInstance 検索結果の型
  */
@@ -307,55 +261,32 @@ export type TemplateInstanceLookupResult = {
 export const getTemplateInstanceById = async (
   instanceId: string,
 ): Promise<TemplateInstanceLookupResult | null> => {
-  // キャッシュキー
   const cacheKey = `template:instance:${instanceId}`;
+  const redis = await getRedisClient();
 
-  // キャッシュ確認
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      const cached = await redis.get(cacheKey);
-      if (cached !== null) {
-        logDebug("Template instance cache hit", { cacheKey });
-        // ネガティブキャッシュのチェック
-        if (cached === "null") {
-          if (!ENABLE_NEGATIVE_CACHE) {
-            logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
-            await redis.del(cacheKey);
-            // フォールスルーしてDBから取得
-          } else {
-            return null;
-          }
-        } else {
-          return JSON.parse(cached) as TemplateInstanceLookupResult;
-        }
-      }
-    }
-  } catch (error) {
-    logError("Redis cache error for template instance", error as Error);
-    // キャッシュエラー時はフォールスルー（DB直接アクセス）
-  }
-
-  // DBから取得
-  const result = await getTemplateInstanceFromDB(instanceId);
-
-  // キャッシュに保存（5分）
-  try {
-    const redis = await getRedisClient();
-    if (redis) {
-      if (result === null) {
-        if (ENABLE_NEGATIVE_CACHE) {
-          await redis.setEx(cacheKey, CACHE_TTL_SECONDS, "null");
-        }
-      } else {
-        await redis.setEx(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(result));
-      }
-    }
-  } catch (error) {
-    logError("Redis cache save error for template instance", error as Error);
-  }
-
-  return result;
+  return withCache<TemplateInstanceLookupResult>({
+    redis,
+    cacheKey,
+    ttlSeconds: CACHE_TTL_SECONDS,
+    fetch: () => getTemplateInstanceFromDB(instanceId),
+    serialize: (result) => JSON.stringify(result),
+    deserialize: (cached) => JSON.parse(cached) as TemplateInstanceLookupResult,
+    negativeCache: {
+      enabled: ENABLE_NEGATIVE_CACHE,
+      onBypass: () => {
+        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
+      },
+    },
+    onHit: () => {
+      logDebug("Template instance cache hit", { cacheKey });
+    },
+    onReadError: (error) => {
+      logError("Redis cache error for template instance", error);
+    },
+    onWriteError: (error) => {
+      logError("Redis cache save error for template instance", error);
+    },
+  });
 };
 
 /**
