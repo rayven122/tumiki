@@ -22,9 +22,9 @@ MCP Proxyは、複数のリモートMCPサーバーを統合し、単一のHTTP�
 ### 主要な設計原則
 
 - **完全ステートレス**: 接続プールなし、水平スケーリング対応
-- **マルチトランスポート**: HTTP (Streamable), SSE, Stdio
+- **マルチトランスポート**: Streamable HTTP, SSE（STDIOは未サポート）
 - **名前空間ルーティング**: 複数MCPサーバーの統合管理
-- **暗号化キャッシュ**: Redis + AES-256-GCM
+- **設定取得**: キャッシュ無効化中のためDBから直接取得
 - **APIキー認証**: データベースベースの認証・認可
 
 ---
@@ -56,14 +56,12 @@ graph TB
     end
 
     subgraph DataLayer["Data Layer"]
-        Redis[(Upstash Redis<br/>Config Cache + Encryption)]
         DB[(PostgreSQL<br/>Users, API Keys, Configs)]
     end
 
     subgraph RemoteMCP["Remote MCP Servers"]
         MCP1[Context7 MCP<br/>Streamable HTTP]
         MCP2[GitHub MCP<br/>SSE]
-        MCP3[Custom MCP<br/>Stdio]
     end
 
     Client -->|HTTPS JSON-RPC| LB
@@ -78,24 +76,20 @@ graph TB
     Hono --> Auth
     Auth -->|Validate| DB
     Auth --> Router
-    Router -->|Cache Lookup| Redis
-    Router -->|Cache Miss| DB
+    Router -->|Fetch Config| DB
     Router --> MCPClient
 
-    MCPClient -->|HTTP/SSE/Stdio| MCP1
-    MCPClient -->|HTTP/SSE/Stdio| MCP2
-    MCPClient -->|HTTP/SSE/Stdio| MCP3
+    MCPClient -->|HTTP/SSE| MCP1
+    MCPClient -->|HTTP/SSE| MCP2
 
     style Client fill:#e1f5ff
     style LB fill:#fff4e6
     style Instance1 fill:#f3e5f5
     style Instance2 fill:#f3e5f5
     style InstanceN fill:#f3e5f5
-    style Redis fill:#ffebee
     style DB fill:#ffebee
     style MCP1 fill:#e8f5e9
     style MCP2 fill:#e8f5e9
-    style MCP3 fill:#e8f5e9
 ```
 
 ### アーキテクチャの特性
@@ -105,7 +99,7 @@ graph TB
 | **ステートレス**     | リクエストごとに接続作成・破棄              |
 | **自動スケーリング** | Cloud Runによる水平スケール、スケールtoゼロ |
 | **高可用性**         | マルチリージョン配置可能                    |
-| **低レイテンシ**     | Redisキャッシュで設定取得を高速化           |
+| **挙動の単純性**     | 設定は毎回DBから取得し、整合性を優先         |
 
 ---
 
@@ -150,9 +144,9 @@ graph TB
 | ------------------- | ------------------ | ------------------------ |
 | **Streamable HTTP** | リモートMCP (推奨) | 低レイテンシ、双方向通信 |
 | **SSE**             | レガシー対応       | 広い互換性               |
-| **Stdio**           | ローカルプロセス   | 最低レイテンシ           |
+| **Stdio**           | 現在未サポート     | 設定時はエラー           |
 
-**フォールバック**: HTTP接続失敗時、自動的にSSEにフォールバック
+**接続方式**: 設定された `transportType` をそのまま使用（HTTP→SSE自動フォールバックは未実装）
 
 ### 5. 設定マネージャー
 
@@ -174,7 +168,6 @@ sequenceDiagram
     participant H as Hono Server
     participant A as Auth Middleware
     participant R as Tool Router
-    participant Cache as Redis Cache
     participant DB as PostgreSQL
     participant MCP as Remote MCP Server
 
@@ -187,15 +180,8 @@ sequenceDiagram
 
     alt tools/list
         H->>R: getAllTools()
-        R->>Cache: Get Cached Config
-        alt Cache Hit
-            Cache-->>R: Config Data (Encrypted)
-            R->>R: Decrypt Config
-        else Cache Miss
-            R->>DB: Fetch Config
-            DB-->>R: Config Data
-            R->>Cache: Store Encrypted Config (TTL: 5min)
-        end
+        R->>DB: Fetch Config
+        DB-->>R: Config Data
 
         par Parallel Tool Fetching
             R->>MCP: tools/list (Server 1)
@@ -210,7 +196,7 @@ sequenceDiagram
     else tools/call
         H->>R: callTool(name, args)
         R->>R: Parse Namespace
-        R->>Cache: Get Server Config
+        R->>DB: Get Server Config
         R->>MCP: tools/call (Original Name)
         MCP-->>R: Tool Result
         R-->>H: Result
@@ -287,39 +273,22 @@ type AuthInfo = {
 
 ## キャッシュ戦略
 
-### キャッシュフロー
+現在、設定キャッシュは無効化されています。  
+`getCachedConfig()` は常に DB から設定を取得し、`invalidateConfigCache()` は no-op（ログ出力のみ）です。
 
-Cache Lookup → Hit: 復号化 → 返却 / Miss: DB取得 → 暗号化 → Redis保存(TTL: 5分) → 返却
-
-### キャッシュ仕様
-
-**ファイル**: `apps/mcp-proxy/src/libs/cache/configCache.ts`
-
-| 項目         | 値                                 |
-| ------------ | ---------------------------------- |
-| **ストア**   | Upstash Redis (サーバーレス最適化) |
-| **TTL**      | 300秒 (5分、`CACHE_TTL`で変更可能) |
-| **暗号化**   | AES-256-GCM                        |
-| **キー形式** | `mcp:config:{mcpServerId}`         |
-
-**暗号化の理由**:
-
-- APIキー、環境変数などの機密情報保護
-- Redisサーバー侵害時のデータ保護
-- コンプライアンス要件対応
-
-### キャッシュ無効化
+### 現在の実装
 
 ```typescript
-// 設定変更時に呼び出し
-await invalidateConfigCache(mcpServerId);
+// apps/mcp-proxy/src/infrastructure/cache/configCache.ts
+const data = await getCachedConfig(mcpServerId, fetchFromDb); // 常にDB取得
+await invalidateConfigCache(mcpServerId); // 現在は実処理なし
 ```
 
-**トリガー**:
+### 将来再導入時のメモ
 
-- ユーザーがMCPサーバー設定を変更
-- ToolGroupの変更
-- API管理画面からの手動無効化
+- Redis接続の信頼性（Cloud Run環境での再接続/障害時フォールバック）
+- 暗号化/復号化コスト
+- キャッシュ無効化タイミングと整合性
 
 ---
 
@@ -338,8 +307,6 @@ await invalidateConfigCache(mcpServerId);
 ### 主要環境変数
 
 - `DATABASE_URL` - PostgreSQL接続文字列
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - Redisキャッシュ
-- `REDIS_ENCRYPTION_KEY` - AES-256-GCM暗号化キー
 
 ---
 
@@ -349,7 +316,7 @@ await invalidateConfigCache(mcpServerId);
 
 **Layer 1 (Network)**: Cloud Armor DDoS保護、Rate Limiting
 **Layer 2 (認証)**: API Key検証、DB認可
-**Layer 3 (データ)**: AES-256-GCM暗号化、TLS 1.3
+**Layer 3 (データ)**: TLS 1.3
 **Layer 4 (アプリ)**: 入力検証、JSON-RPC検証
 
 ### セキュリティ実装
@@ -361,8 +328,7 @@ await invalidateConfigCache(mcpServerId);
 
 2. **データ暗号化**
    - **転送中**: TLS 1.3
-   - **保存時**: AES-256-GCM (Redis Cache)
-   - **DB**: Prisma Field-level Encryption
+   - **保存時**: DBのセキュリティ機構に依存（Redis暗号化キャッシュは現在未使用）
 
 3. **入力検証**
    - JSON-RPC 2.0スキーマ検証
@@ -385,7 +351,7 @@ await invalidateConfigCache(mcpServerId);
 | 領域               | 実装                     | 効果                  |
 | ------------------ | ------------------------ | --------------------- |
 | **DBクエリ**       | 5階層→2階層クエリ        | 50-66%高速化          |
-| **キャッシュ**     | Redis + 暗号化           | DB負荷削減90%         |
+| **設定取得**       | 毎回DBから直接取得       | 実装単純化・整合性優先 |
 | **並列処理**       | Promise.all()            | ツールリスト取得3倍速 |
 | **トランスポート** | HTTP Streamable優先      | レイテンシ削減        |
 | **接続管理**       | リクエストごと作成・破棄 | メモリ使用量削減      |
@@ -404,7 +370,7 @@ await invalidateConfigCache(mcpServerId);
 
 **リクエスト**: Request Count, Response Time (p50, p95, p99), Error Rate
 **リソース**: CPU/メモリ使用率、インスタンス数
-**外部依存**: DB/Redis接続数、Remote MCPレスポンスタイム
+**外部依存**: DB接続数、Remote MCPレスポンスタイム
 **ビジネス**: API Key使用状況、ツール実行回数、Namespace別分布
 
 ---
@@ -416,7 +382,7 @@ MCP Proxyは、Cloud Runのサーバーレス環境に最適化された、ス�
 ### 主要な設計原則
 
 1. **ステートレス**: インスタンス間で状態共有なし
-2. **高速**: Redisキャッシュとクエリ最適化
+2. **単純性**: 設定をDBから直接取得し、整合性を優先
 3. **セキュア**: 多層防御とデータ暗号化
 4. **スケーラブル**: 水平スケーリングとオートスケール
 5. **監視可能**: 構造化ログとメトリクス
