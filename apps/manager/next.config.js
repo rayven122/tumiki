@@ -4,6 +4,10 @@ const config = {
   output: "standalone",
   // React Strict Mode を無効化
   reactStrictMode: false,
+  // Docker ビルド時にテスト関連ファイルを除外した tsconfig.build.json を使用
+  typescript: {
+    tsconfigPath: "./tsconfig.build.json",
+  },
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
   compress: true,
   // MCP サーバーを有効化（Next.js DevTools用）

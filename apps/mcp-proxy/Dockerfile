@@ -62,6 +62,12 @@ RUN pnpm build
 WORKDIR /app/apps/mcp-proxy
 RUN pnpm build
 
+# pnpm シンボリックリンクを解決して Prisma クライアントをステージング
+WORKDIR /app
+RUN mkdir -p /prisma-staging/@prisma && \
+    cp -rL node_modules/@prisma/client /prisma-staging/@prisma/client && \
+    (cp -rL node_modules/.prisma /prisma-staging/.prisma 2>/dev/null || true)
+
 # ========================================
 # Stage 4: Production
 # ========================================
@@ -96,9 +102,9 @@ ENV CI=true
 # 本番依存関係のみインストール（postinstall スクリプトをスキップ）
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# ビルド済み Prisma Client をコピー（ネットワーク依存の再生成を回避）
-COPY --from=build --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build --chown=nodejs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# ビルド済み Prisma Client をコピー（シンボリックリンク解決済み）
+COPY --from=build --chown=nodejs:nodejs /prisma-staging/.prisma ./node_modules/.prisma
+COPY --from=build --chown=nodejs:nodejs /prisma-staging/@prisma/client ./node_modules/@prisma/client
 
 # ビルド成果物
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
