@@ -64,9 +64,9 @@ RUN pnpm build
 
 # pnpm シンボリックリンクを解決して Prisma クライアントをステージング
 WORKDIR /app
-RUN mkdir -p /prisma-staging/@prisma && \
+RUN mkdir -p /prisma-staging/@prisma /prisma-staging/.prisma && \
     cp -rL node_modules/@prisma/client /prisma-staging/@prisma/client && \
-    (cp -rL node_modules/.prisma /prisma-staging/.prisma 2>/dev/null || true)
+    (cp -rL node_modules/.prisma/* /prisma-staging/.prisma/ 2>/dev/null || true)
 
 # ========================================
 # Stage 4: Production

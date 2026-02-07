@@ -41,8 +41,11 @@ COPY apps/manager/package.json ./apps/manager/
 COPY packages/db/prisma.config.ts ./packages/db/
 COPY packages/db/prisma ./packages/db/prisma
 
-# Prisma postinstall 用のダミー DATABASE_URL（実際の接続には使用されない）
-RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
+# Prisma postinstall と next build 用のダミー環境変数（実際の接続には使用されない）
+RUN printf '%s\n' \
+  "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" \
+  "PRISMA_FIELD_ENCRYPTION_KEY=k1.aesgcm256.FkhfY-sKgaYBJYteXBGudV6g_oBOW1TjU74hbowUl8s=" \
+  > .env
 
 # Python MCP インストールをスキップ
 ENV CI=true
