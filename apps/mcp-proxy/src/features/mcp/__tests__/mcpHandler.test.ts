@@ -554,7 +554,10 @@ describe("mcpRequestHandler", () => {
         callHandler!({
           params: { name: "unknown_meta_tool", arguments: {} },
         }) as Promise<unknown>,
-      ).rejects.toThrow("Unknown meta tool: unknown_meta_tool");
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        code: "MCP_ERROR",
+      });
     });
   });
 
@@ -742,7 +745,10 @@ describe("mcpRequestHandler", () => {
         callHandler!({
           params: { name: "search_tools", arguments: { query: "test" } },
         }) as Promise<unknown>,
-      ).rejects.toThrow("Dynamic Search is not available in Community Edition");
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        code: "MCP_ERROR",
+      });
 
       vi.resetModules();
     });

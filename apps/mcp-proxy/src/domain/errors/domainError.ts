@@ -6,7 +6,9 @@ type DomainErrorCode =
   | "TOOL_NOT_FOUND"
   | "MCP_SERVER_NOT_FOUND"
   | "AUTH_CONTEXT_MISSING"
-  | "ORGANIZATION_MISMATCH";
+  | "ORGANIZATION_MISMATCH"
+  | "MCP_ERROR"
+  | "UNKNOWN_ERROR";
 
 /**
  * ドメインエラー基底クラス

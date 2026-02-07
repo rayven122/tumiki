@@ -9,6 +9,7 @@ import {
   getToolsWithDynamicSearchFlag,
   getTemplateInstanceTools,
 } from "../../../../infrastructure/db/repositories/toolRepository.js";
+import { wrapMcpError } from "../../../../shared/errors/wrapMcpError.js";
 import { logError, logInfo, logWarn } from "../../../../shared/logger/index.js";
 import {
   DYNAMIC_SEARCH_META_TOOLS,
@@ -99,8 +100,9 @@ export const listToolsQuery = async (
       mcpServerId,
     });
 
-    throw new Error(
-      `Failed to get allowed tools for server ${mcpServerId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+    throw wrapMcpError(
+      error,
+      `Failed to get allowed tools for server ${mcpServerId}`,
     );
   }
 };
@@ -146,8 +148,9 @@ export const getInternalToolsForDynamicSearch = async (
       },
     );
 
-    throw new Error(
-      `Failed to get internal tools for server ${mcpServerId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+    throw wrapMcpError(
+      error,
+      `Failed to get internal tools for server ${mcpServerId}`,
     );
   }
 };

@@ -5,6 +5,7 @@
  */
 
 import { getInternalToolsForDynamicSearch } from "../../queries/listTools/listToolsQuery.js";
+import { wrapMcpError } from "../../../../shared/errors/wrapMcpError.js";
 
 // EE機能: Dynamic Search（条件付き動的ロード）
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -50,57 +51,61 @@ export const handleMetaTool = async (
   organizationId: string,
   userId: string,
 ): Promise<ToolCallResult> => {
-  // EE版Dynamic Searchモジュールをロード
-  const dynamicSearch = await loadDynamicSearchModule();
-  if (!dynamicSearch) {
-    throw new Error("Dynamic Search is not available in Community Edition");
-  }
-
-  const {
-    searchTools,
-    describeTools,
-    executeToolDynamic,
-    SearchToolsArgsSchema,
-    DescribeToolsArgsSchema,
-    CallToolRequestParamsSchema,
-  } = dynamicSearch;
-
-  // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
-  const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
-
-  switch (toolName) {
-    case "search_tools": {
-      const validatedArgs = SearchToolsArgsSchema.parse(args);
-      const searchResult = await searchTools(validatedArgs, internalTools);
-      return {
-        content: [
-          { type: "text", text: JSON.stringify(searchResult, null, 2) },
-        ],
-      };
+  try {
+    // EE版Dynamic Searchモジュールをロード
+    const dynamicSearch = await loadDynamicSearchModule();
+    if (!dynamicSearch) {
+      throw new Error("Dynamic Search is not available in Community Edition");
     }
 
-    case "describe_tools": {
-      const validatedArgs = DescribeToolsArgsSchema.parse(args);
-      const describeResult = await describeTools(validatedArgs, internalTools);
-      return {
-        content: [
-          { type: "text", text: JSON.stringify(describeResult, null, 2) },
-        ],
-      };
-    }
+    const {
+      searchTools,
+      describeTools,
+      executeToolDynamic,
+      SearchToolsArgsSchema,
+      DescribeToolsArgsSchema,
+      CallToolRequestParamsSchema,
+    } = dynamicSearch;
 
-    case "execute_tool": {
-      const validatedArgs = CallToolRequestParamsSchema.parse(args);
-      const result = await executeToolDynamic(
-        validatedArgs,
-        mcpServerId,
-        organizationId,
-        userId,
-      );
-      return result as ToolCallResult;
-    }
+    // 内部ツール一覧を取得（dynamicSearch が有効でも全ツールを取得）
+    const internalTools = await getInternalToolsForDynamicSearch(mcpServerId);
 
-    default:
-      throw new Error(`Unknown meta tool: ${toolName}`);
+    switch (toolName) {
+      case "search_tools": {
+        const validatedArgs = SearchToolsArgsSchema.parse(args);
+        const searchResult = await searchTools(validatedArgs, internalTools);
+        return {
+          content: [
+            { type: "text", text: JSON.stringify(searchResult, null, 2) },
+          ],
+        };
+      }
+
+      case "describe_tools": {
+        const validatedArgs = DescribeToolsArgsSchema.parse(args);
+        const describeResult = await describeTools(validatedArgs, internalTools);
+        return {
+          content: [
+            { type: "text", text: JSON.stringify(describeResult, null, 2) },
+          ],
+        };
+      }
+
+      case "execute_tool": {
+        const validatedArgs = CallToolRequestParamsSchema.parse(args);
+        const result = await executeToolDynamic(
+          validatedArgs,
+          mcpServerId,
+          organizationId,
+          userId,
+        );
+        return result as ToolCallResult;
+      }
+
+      default:
+        throw new Error(`Unknown meta tool: ${toolName}`);
+    }
+  } catch (error) {
+    throw wrapMcpError(error, `Failed to handle meta tool ${toolName}`);
   }
 };

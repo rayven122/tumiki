@@ -91,6 +91,7 @@ import {
   getInternalToolsForDynamicSearch,
 } from "../../../queries/listTools/listToolsQuery.js";
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
+import { DomainError } from "../../../../../domain/errors/domainError.js";
 
 describe("listToolsQuery", () => {
   const mcpServerId = "server-123";
@@ -103,9 +104,11 @@ describe("listToolsQuery", () => {
   test("McpServerが見つからない場合はエラーをスローする", async () => {
     mockFindUnique.mockResolvedValue(null);
 
-    await expect(listToolsQuery({ mcpServerId })).rejects.toThrow(
-      `Failed to get allowed tools for server ${mcpServerId}: McpServer not found: ${mcpServerId}`,
-    );
+    await expect(listToolsQuery({ mcpServerId })).rejects.toMatchObject({
+      name: "DomainError",
+      code: "MCP_ERROR",
+      message: `Failed to get allowed tools for server ${mcpServerId}: McpServer not found: ${mcpServerId}`,
+    });
 
     expect(mockLogError).toHaveBeenCalledWith(
       "Failed to get allowed tools",
@@ -294,9 +297,11 @@ describe("listToolsQuery", () => {
   test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージを含む", async () => {
     mockFindUnique.mockRejectedValue("string error");
 
-    await expect(listToolsQuery({ mcpServerId })).rejects.toThrow(
-      `Failed to get allowed tools for server ${mcpServerId}: Unknown error`,
-    );
+    await expect(listToolsQuery({ mcpServerId })).rejects.toMatchObject({
+      name: "DomainError",
+      code: "UNKNOWN_ERROR",
+      message: `Failed to get allowed tools for server ${mcpServerId}: Unknown error`,
+    });
   });
 });
 
@@ -452,7 +457,10 @@ describe("callToolCommand", () => {
         args: {},
         userId,
       }),
-    ).rejects.toThrow("Failed to execute tool");
+    ).rejects.toMatchObject({
+      name: "DomainError",
+      code: "MCP_ERROR",
+    });
 
     expect(mockExtractMcpErrorInfo).toHaveBeenCalled();
     expect(mockUpdateExecutionContext).toHaveBeenCalledWith(
@@ -513,8 +521,12 @@ describe("getInternalToolsForDynamicSearch", () => {
   test("Error以外のオブジェクトがスローされた場合はUnknown errorメッセージを含む", async () => {
     mockFindUnique.mockRejectedValue("string error");
 
-    await expect(getInternalToolsForDynamicSearch(mcpServerId)).rejects.toThrow(
-      `Failed to get internal tools for server ${mcpServerId}: Unknown error`,
-    );
+    await expect(
+      getInternalToolsForDynamicSearch(mcpServerId),
+    ).rejects.toMatchObject({
+      name: "DomainError",
+      code: "UNKNOWN_ERROR",
+      message: `Failed to get internal tools for server ${mcpServerId}: Unknown error`,
+    });
   });
 });

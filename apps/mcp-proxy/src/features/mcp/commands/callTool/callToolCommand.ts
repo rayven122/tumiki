@@ -16,6 +16,7 @@ import {
   extractMcpErrorInfo,
   getErrorCodeName,
 } from "../../../../shared/errors/index.js";
+import { wrapMcpError } from "../../../../shared/errors/wrapMcpError.js";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { updateExecutionContext } from "../../middleware/requestLogging/context.js";
 
@@ -133,8 +134,9 @@ export const callToolCommand = async (
       errorDetails: error,
     });
 
-    throw new Error(
-      `Failed to execute tool ${fullToolName}: ${errorInfo.errorMessage}`,
+    throw wrapMcpError(
+      error,
+      `Failed to execute tool ${fullToolName}`,
     );
   }
 };
