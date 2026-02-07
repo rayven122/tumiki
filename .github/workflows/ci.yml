@@ -104,3 +104,45 @@ jobs:
 
       - name: 🧪 Run tests
         run: pnpm test
+
+  docker-smoke-test:
+    name: 🐳 Docker Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout branch
+        uses: actions/checkout@v4
+
+      - name: 🔨 Build manager image
+        run: docker build -f apps/manager/Dockerfile -t tumiki-manager .
+
+      - name: 🔨 Build mcp-proxy image
+        run: docker build -f apps/mcp-proxy/Dockerfile -t tumiki-mcp-proxy .
+
+      - name: 🚀 Start containers
+        run: |
+          docker run -d --name manager -p 8080:8080 \
+            -e KEYCLOAK_CLIENT_ID=test \
+            -e KEYCLOAK_CLIENT_SECRET=test \
+            -e KEYCLOAK_ISSUER=https://dummy.keycloak.local/realms/tumiki \
+            tumiki-manager
+          docker run -d --name mcp-proxy -p 8081:8080 \
+            tumiki-mcp-proxy
+
+      - name: ✅ Wait and verify health endpoints
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/api/health > /dev/null 2>&1 && \
+               curl -sf http://localhost:8081/health > /dev/null 2>&1; then
+              echo "=== Manager ==="
+              curl -sf http://localhost:8080/api/health | jq .
+              echo "=== MCP Proxy ==="
+              curl -sf http://localhost:8081/health | jq .
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Timeout waiting for containers"
+          docker logs manager
+          docker logs mcp-proxy
+          exit 1
