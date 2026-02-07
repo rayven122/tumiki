@@ -62,11 +62,13 @@ RUN pnpm build
 WORKDIR /app/apps/mcp-proxy
 RUN pnpm build
 
-# pnpm シンボリックリンクを解決して Prisma クライアントをステージング
+# pnpm シンボリックリンクを解決して Prisma Client をステージング
+# @prisma/client（ランタイム）と .prisma/client（生成コード）の両方が必要
 WORKDIR /app
-RUN mkdir -p /prisma-staging/@prisma /prisma-staging/.prisma && \
-    cp -rL node_modules/@prisma/client /prisma-staging/@prisma/client && \
-    (cp -rL node_modules/.prisma/* /prisma-staging/.prisma/ 2>/dev/null || true)
+RUN PNPM_MODULES_DIR=$(dirname $(dirname $(readlink -f packages/db/node_modules/@prisma/client))) && \
+    mkdir -p /prisma-staging/@prisma /prisma-staging/.prisma && \
+    cp -rL packages/db/node_modules/@prisma/client /prisma-staging/@prisma/client && \
+    cp -rL "$PNPM_MODULES_DIR/.prisma/client" /prisma-staging/.prisma/client
 
 # ========================================
 # Stage 4: Production
@@ -99,16 +101,18 @@ RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/place
 # Python MCP インストールをスキップ
 ENV CI=true
 
-# node-linker=hoisted でフラットな node_modules を作成
-# （pnpm のシンボリックリンク構造を排除し、Prisma Client の COPY を正しく動作させる）
-RUN echo "node-linker=hoisted" >> .npmrc
-
 # 本番依存関係のみインストール（postinstall スクリプトをスキップ）
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# ビルド済み Prisma Client をコピー（シンボリックリンク解決済み）
-COPY --from=build --chown=nodejs:nodejs /prisma-staging/.prisma ./node_modules/.prisma
-COPY --from=build --chown=nodejs:nodejs /prisma-staging/@prisma/client ./node_modules/@prisma/client
+# ビルドステージで生成済みの Prisma Client をコピー
+# pnpm store 内の @prisma/client と .prisma/client の両方を配置
+COPY --from=build /prisma-staging /prisma-staging
+RUN PNPM_MODULES_DIR=$(find /app/node_modules/.pnpm -path '*/@prisma+client@*/node_modules' -type d | head -1) && \
+    if [ -z "$PNPM_MODULES_DIR" ]; then echo "Error: @prisma/client not found in pnpm store" && exit 1; fi && \
+    cp -r /prisma-staging/@prisma/client/* "$PNPM_MODULES_DIR/@prisma/client/" && \
+    mkdir -p "$PNPM_MODULES_DIR/.prisma" && \
+    cp -r /prisma-staging/.prisma/client "$PNPM_MODULES_DIR/.prisma/client" && \
+    rm -rf /prisma-staging
 
 # ビルド成果物
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
