@@ -14,7 +14,11 @@ export default defineConfig({
         maxThreads: 3,
       },
     },
-    include: ["src/**/*.test.ts", "src/**/*.ee.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.ee.test.ts",
+      "src/**/*.pbt.test.ts",
+    ],
     coverage: {
       thresholds: {
         statements: 95,

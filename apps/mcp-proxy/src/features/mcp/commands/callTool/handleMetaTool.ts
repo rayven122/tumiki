@@ -83,7 +83,10 @@ export const handleMetaTool = async (
 
       case "describe_tools": {
         const validatedArgs = DescribeToolsArgsSchema.parse(args);
-        const describeResult = await describeTools(validatedArgs, internalTools);
+        const describeResult = await describeTools(
+          validatedArgs,
+          internalTools,
+        );
         return {
           content: [
             { type: "text", text: JSON.stringify(describeResult, null, 2) },

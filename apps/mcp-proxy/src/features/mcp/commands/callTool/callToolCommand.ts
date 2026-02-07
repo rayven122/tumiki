@@ -134,9 +134,6 @@ export const callToolCommand = async (
       errorDetails: error,
     });
 
-    throw wrapMcpError(
-      error,
-      `Failed to execute tool ${fullToolName}`,
-    );
+    throw wrapMcpError(error, `Failed to execute tool ${fullToolName}`);
   }
 };
