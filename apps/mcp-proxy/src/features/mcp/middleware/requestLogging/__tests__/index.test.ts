@@ -99,12 +99,11 @@ describe("mcpRequestLoggingMiddleware", () => {
     app.get("/test", (c) => {
       // authContextをセット（認証後の状態をシミュレート）
       const authContext: AuthContext = {
-        authMethod: AuthType.OAUTH as AuthContext["authMethod"],
+        authMethod: AuthType.OAUTH,
         organizationId: "org-123",
         userId: "user-456",
         mcpServerId: "server-789",
-        piiMaskingMode:
-          PiiMaskingMode.DISABLED as AuthContext["piiMaskingMode"],
+        piiMaskingMode: PiiMaskingMode.DISABLED,
         piiInfoTypes: [],
         toonConversionEnabled: false,
       };
@@ -331,12 +330,11 @@ describe("mcpRequestLoggingMiddleware", () => {
       appText.use("/*", mcpRequestLoggingMiddleware);
       appText.get("/text", (c) => {
         const authContext: AuthContext = {
-          authMethod: AuthType.OAUTH as AuthContext["authMethod"],
+          authMethod: AuthType.OAUTH,
           organizationId: "org-123",
           userId: "user-456",
           mcpServerId: "server-789",
-          piiMaskingMode:
-            PiiMaskingMode.DISABLED as AuthContext["piiMaskingMode"],
+          piiMaskingMode: PiiMaskingMode.DISABLED,
           piiInfoTypes: [],
           toonConversionEnabled: false,
         };
@@ -427,12 +425,11 @@ describe("mcpRequestLoggingMiddleware", () => {
       appPost.use("/*", mcpRequestLoggingMiddleware);
       appPost.post("/test-post", (c) => {
         const authContext: AuthContext = {
-          authMethod: AuthType.OAUTH as AuthContext["authMethod"],
+          authMethod: AuthType.OAUTH,
           organizationId: "org-123",
           userId: "user-456",
           mcpServerId: "server-789",
-          piiMaskingMode:
-            PiiMaskingMode.DISABLED as AuthContext["piiMaskingMode"],
+          piiMaskingMode: PiiMaskingMode.DISABLED,
           piiInfoTypes: [],
           toonConversionEnabled: false,
         };

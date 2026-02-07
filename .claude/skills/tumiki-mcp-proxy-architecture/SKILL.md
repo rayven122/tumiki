@@ -29,7 +29,7 @@ features/        Vertical Slice（全レイヤーに依存可、feature間依存
 
 | レイヤー | 責務 | import ルール |
 |---------|------|-------------|
-| `domain/` | 型定義、値オブジェクト、ドメインエラー、純粋関数 | 外部パッケージ・他レイヤーの import 禁止 |
+| `domain/` | 値オブジェクト、ドメインエラー、純粋関数、ドメイン固有型（ToolDefinition等） | 外部パッケージ・他レイヤーの import 禁止（ESLint 強制） |
 | `shared/` | ロガー、エラーハンドリング、ユーティリティ、定数 | `domain/` のみ import 可 |
 | `infrastructure/` | DB、Redis、MCP Client、Keycloak、Pub/Sub、暗号化、AI | `domain/`, `shared/` のみ import 可 |
 | `features/` | ルート、ミドルウェア、Command/Query ハンドラー | 全レイヤー import 可。**feature 間は import 禁止**（dynamicSearch→mcp のみ例外） |
@@ -44,7 +44,7 @@ apps/mcp-proxy/src/
 ├── app.ts                            # Hono app 作成・ルートマウント
 │
 ├── domain/
-│   ├── types/                        # AuthContext, ToolDefinition 等
+│   ├── types/                        # ToolDefinition 等（ドメイン固有型のみ）
 │   ├── values/                       # NamespacedToolName 値オブジェクト
 │   ├── errors/                       # DomainError 基底 + 具体エラー
 │   └── services/                     # toolNameResolver (純粋関数)
@@ -182,6 +182,26 @@ feature/
 └── __tests__/
     └── someModule.test.ts
 ```
+
+## 型の配置ルール
+
+| カテゴリ | 配置場所 | 例 |
+|---------|---------|-----|
+| **DB enum（共有語彙）** | `@tumiki/db` から直接 import | `AuthType`, `PiiMaskingMode`, `TransportType` |
+| **リクエストコンテキスト型** | `shared/types/` | `AuthContext`, `HonoEnv` |
+| **ドメイン固有型** | `domain/types/` | `ToolDefinition`, `ToolInputSchema` |
+| **値オブジェクト** | `domain/values/` | `NamespacedToolName` |
+| **ドメインエラー** | `domain/errors/` | `DomainError` |
+| **リポジトリ戻り値型** | `infrastructure/db/repositories/` | `McpServerLookupResult` |
+
+### Prisma enum の扱い
+
+Prisma enum（`AuthType`, `PiiMaskingMode`, `TransportType` 等）は
+**プロジェクト全体の共有語彙**として `@tumiki/db` から直接 import する。
+
+- **domain/ では使用禁止**（ESLint `no-restricted-imports` で強制）
+- domain で Prisma enum を参照する型が必要な場合は `shared/types/` に配置する
+- ドメイン層でラップ・再定義してはならない（型の重複を防ぐため）
 
 ## 維持すべきパターン
 

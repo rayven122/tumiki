@@ -189,6 +189,7 @@ const architectureBoundaryConfig = {
 };
 
 // domain/ は外部パッケージに依存してはならない
+// Prisma enum 等の共有語彙を参照する型は shared/types/ に配置すること
 const domainPurityConfig = {
   files: ["src/domain/**/*.ts"],
   rules: {

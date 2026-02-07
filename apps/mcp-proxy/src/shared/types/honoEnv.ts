@@ -1,11 +1,20 @@
-import type {
-  AuthType,
-  PiiMaskingMode,
-  AuthContext,
-} from "../../domain/types/authContext.js";
+import type { AuthType, PiiMaskingMode } from "@tumiki/db";
 
-// 後方互換性のためリエクスポート
-export type { AuthType, PiiMaskingMode, AuthContext };
+/**
+ * 統一認証コンテキスト
+ *
+ * 認証ミドルウェア通過後に必ず設定される共通の認証情報。
+ */
+export type AuthContext = {
+  authMethod: AuthType;
+  organizationId: string;
+  userId: string;
+  mcpServerId: string;
+  mcpApiKeyId?: string;
+  piiMaskingMode: PiiMaskingMode;
+  piiInfoTypes: string[];
+  toonConversionEnabled: boolean;
+};
 
 /**
  * JWT ペイロード（Keycloak OAuth 認証）

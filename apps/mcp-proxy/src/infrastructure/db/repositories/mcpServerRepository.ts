@@ -6,14 +6,9 @@
  * Redis キャッシュで高速化（TTL: 5分）
  */
 
-import { db, type PiiMaskingMode } from "@tumiki/db/server";
+import { db, type PiiMaskingMode, type AuthType } from "@tumiki/db/server";
 import { getRedisClient } from "../../cache/redis.js";
 import { logDebug, logError, logWarn } from "../../../shared/logger/index.js";
-
-/**
- * 認証タイプ（Prisma の AuthType enum と同期）
- */
-export type AuthType = "NONE" | "API_KEY" | "OAUTH";
 
 /**
  * McpServer検索結果の型

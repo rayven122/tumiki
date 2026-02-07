@@ -15,7 +15,6 @@ export {
 } from "./mcpServerRepository.js";
 
 export type {
-  AuthType,
   McpServerLookupResult,
   TemplateInstanceLookupResult,
 } from "./mcpServerRepository.js";
