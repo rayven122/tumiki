@@ -7,7 +7,7 @@
 # ========================================
 # Stage 1: Base
 # ========================================
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 
 # corepack で pnpm を有効化（バージョンは package.json の packageManager フィールドに従う）
 ENV PNPM_HOME="/pnpm"
@@ -65,7 +65,7 @@ RUN pnpm build
 # ========================================
 # Stage 4: Production
 # ========================================
-FROM node:22-alpine AS production
+FROM node:24-alpine AS production
 
 # corepack で pnpm を有効化（本番依存関係のインストールに必要）
 ENV PNPM_HOME="/pnpm"
