@@ -7,6 +7,7 @@ import { createIntegratedMcpServer } from "./createIntegratedMcpServer";
 import { findMcpServers } from "./findMcpServers";
 import { getMcpConfig } from "./getMcpConfig";
 import { updateMcpConfig } from "./updateMcpConfig";
+import { updateOfficialServer } from "./update";
 import {
   deleteMcpServer,
   deleteMcpServerInputSchema,
@@ -108,6 +109,17 @@ export const UpdateMcpConfigInputV2 = z.object({
 export const UpdateMcpConfigOutputV2 = z.object({
   id: z.string(),
   templateInstanceId: z.string(),
+});
+
+// 公式MCPサーバー更新用の入力スキーマ（後方互換性のため維持）
+export const UpdateOfficialServerInputV2 = z.object({
+  id: z.string(),
+  envVars: z.record(z.string(), z.string()),
+});
+
+// 公式MCPサーバー更新用の出力スキーマ（後方互換性のため維持）
+export const UpdateOfficialServerOutputV2 = z.object({
+  id: z.string(),
 });
 
 // MCPサーバー一覧取得用の出力スキーマ
@@ -364,6 +376,26 @@ export const userMcpServerRouter = createTRPCRouter({
           organizationId: ctx.currentOrg.id,
           userId: ctx.session.user.id,
         });
+      });
+    }),
+
+  // 公式MCPサーバー更新（後方互換性のため維持）
+  update: protectedProcedure
+    .input(UpdateOfficialServerInputV2)
+    .output(UpdateOfficialServerOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
+
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateOfficialServer(
+          tx,
+          input,
+          ctx.currentOrg.id,
+          ctx.session.user.id,
+        );
       });
     }),
 
