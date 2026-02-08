@@ -41,7 +41,9 @@ import { McpServerIcon } from "../McpServerIcon";
 import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
+import { OAuthTokenExpirationDisplay } from "./_components/OAuthTokenExpirationDisplay";
 import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
+import { ReuseTokenModal } from "./_components/ReuseTokenModal";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 import type { McpServerId } from "@/schema/ids";
 
@@ -98,10 +100,17 @@ export const UserMcpServerCard = ({
   );
 
   // OAuth再認証フック
-  const { handleReauthenticate, isPending: isReauthenticating } =
-    useReauthenticateOAuth({
-      mcpServerTemplateInstanceId: targetInstanceForReauth?.id ?? "",
-    });
+  const {
+    handleReauthenticate,
+    handleNewAuthentication,
+    isPending: isReauthenticating,
+    showReuseModal,
+    setShowReuseModal,
+    reusableTokens,
+    targetInstanceId,
+  } = useReauthenticateOAuth({
+    mcpServerTemplateInstanceId: targetInstanceForReauth?.id ?? "",
+  });
 
   // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
   const isOAuthServer = userMcpServer.authType === "OAUTH";
@@ -192,7 +201,7 @@ export const UserMcpServerCard = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleReauthenticate();
+                      void handleReauthenticate();
                     }}
                     disabled={isReauthenticating}
                   >
@@ -264,6 +273,13 @@ export const UserMcpServerCard = ({
         </CardHeader>
 
         <CardContent className="flex-1 space-y-3">
+          {/* OAuthトークン有効期限を表示（OAuthサーバーのみ） */}
+          {isOAuthServer && userMcpServer.earliestOAuthExpiration && (
+            <OAuthTokenExpirationDisplay
+              expiresAt={userMcpServer.earliestOAuthExpiration}
+            />
+          )}
+
           {/* OAuth接続URLを表示（OAuthサーバーのみ） */}
           {isOAuthServer && (
             <OAuthEndpointUrl userMcpServerId={userMcpServer.id} />
@@ -288,7 +304,7 @@ export const UserMcpServerCard = ({
             </Badge>
           </Button>
 
-          {/* 有効期限表示 */}
+          {/* APIキー有効期限表示 */}
           <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
 
           {/* カテゴリータグ */}
@@ -354,6 +370,18 @@ export const UserMcpServerCard = ({
             setIconEditModalOpen(false);
           }}
           onOpenChange={setIconEditModalOpen}
+        />
+      )}
+
+      {/* トークン再利用モーダル */}
+      {showReuseModal && (
+        <ReuseTokenModal
+          open={showReuseModal}
+          onOpenChange={setShowReuseModal}
+          reusableTokens={reusableTokens}
+          targetInstanceId={targetInstanceId}
+          onNewAuthentication={handleNewAuthentication}
+          onSuccess={revalidate}
         />
       )}
     </>

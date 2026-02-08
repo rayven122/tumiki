@@ -10,6 +10,8 @@ import { connectOAuthMcpServer } from "./connectOAuthMcpServer";
 import { handleOAuthCallback } from "./handleOAuthCallback";
 import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
 import { reauthenticateByMcpServerId } from "./reauthenticateByMcpServerId";
+import { findReusableOAuthTokens } from "./findReusableOAuthTokens";
+import { reuseOAuthToken } from "./reuseOAuthToken";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 
 // OAuth認証MCPサーバー接続用の入力スキーマ
@@ -67,6 +69,39 @@ export const ReauthenticateByMcpServerIdInputV2 = z.object({
 
 export const ReauthenticateByMcpServerIdOutputV2 = z.object({
   authorizationUrl: z.string(),
+});
+
+// 再利用可能トークン検索の入力スキーマ
+export const FindReusableOAuthTokensInputV2 = z.object({
+  mcpServerTemplateInstanceId: McpServerTemplateInstanceIdSchema,
+});
+
+// 再利用可能トークンの情報
+const ReusableTokenSchema = z.object({
+  tokenId: z.string(),
+  mcpServerName: z.string(),
+  mcpServerId: z.string(),
+  sourceInstanceId: z.string(),
+  iconPath: z.string().nullable(),
+  expiresAt: z.date().nullable(),
+});
+
+export const FindReusableOAuthTokensOutputV2 = z.object({
+  tokens: z.array(ReusableTokenSchema),
+  mcpServerTemplateId: z.string(),
+});
+
+// トークン再利用の入力スキーマ
+export const ReuseOAuthTokenInputV2 = z.object({
+  /** ソースとなるトークンID */
+  sourceTokenId: z.string(),
+  /** ターゲットとなるインスタンスID */
+  targetInstanceId: McpServerTemplateInstanceIdSchema,
+});
+
+export const ReuseOAuthTokenOutputV2 = z.object({
+  success: z.boolean(),
+  tokenId: z.string(),
 });
 
 export const oauthRouter = createTRPCRouter({
@@ -146,6 +181,36 @@ export const oauthRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.$transaction(async (tx) => {
         return await reauthenticateByMcpServerId(
+          tx,
+          input,
+          ctx.currentOrg.id,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // 再利用可能なOAuthトークンを検索
+  findReusableTokens: protectedProcedure
+    .input(FindReusableOAuthTokensInputV2)
+    .output(FindReusableOAuthTokensOutputV2)
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await findReusableOAuthTokens(
+          tx,
+          input,
+          ctx.currentOrg.id,
+          ctx.session.user.id,
+        );
+      });
+    }),
+
+  // 既存のOAuthトークンを再利用
+  reuseToken: protectedProcedure
+    .input(ReuseOAuthTokenInputV2)
+    .output(ReuseOAuthTokenOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.$transaction(async (tx) => {
+        return await reuseOAuthToken(
           tx,
           input,
           ctx.currentOrg.id,

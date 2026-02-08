@@ -16,7 +16,7 @@ export const findMcpServers = async (
   const [userOAuthTokens, servers] = await Promise.all([
     tx.mcpOAuthToken.findMany({
       where: { userId, organizationId },
-      select: { mcpServerTemplateInstanceId: true },
+      select: { mcpServerTemplateInstanceId: true, expiresAt: true },
     }),
     tx.mcpServer.findMany({
       where: {
@@ -56,6 +56,14 @@ export const findMcpServers = async (
     }),
   ]);
 
+  // インスタンスIDごとのトークン情報をMapで管理
+  const tokensByInstanceId = new Map(
+    userOAuthTokens.map((t) => [
+      t.mcpServerTemplateInstanceId,
+      { expiresAt: t.expiresAt },
+    ]),
+  );
+
   const authenticatedInstanceIds = new Set(
     userOAuthTokens.map((t) => t.mcpServerTemplateInstanceId),
   );
@@ -84,6 +92,12 @@ export const findMcpServers = async (
         ? authenticatedInstanceIds.has(instance.id)
         : null;
 
+      // OAuthトークンの有効期限を取得（undefinedはnullに変換）
+      const tokenInfo = tokensByInstanceId.get(instance.id);
+      const oauthTokenExpiresAt = isOAuthRequired
+        ? (tokenInfo?.expiresAt ?? null)
+        : null;
+
       return {
         id: instance.id,
         normalizedName: instance.normalizedName,
@@ -96,6 +110,7 @@ export const findMcpServers = async (
         mcpServerTemplate: instance.mcpServerTemplate,
         tools,
         isOAuthAuthenticated,
+        oauthTokenExpiresAt,
       };
     });
 
@@ -108,10 +123,23 @@ export const findMcpServers = async (
         ? oauthInstances.every((i) => i.isOAuthAuthenticated === true)
         : null;
 
+    // 最も早く期限切れになるOAuthトークンの有効期限を取得
+    const oauthExpirations = templateInstances
+      .filter(
+        (i): i is typeof i & { oauthTokenExpiresAt: Date } =>
+          i.oauthTokenExpiresAt !== null,
+      )
+      .map((i) => i.oauthTokenExpiresAt);
+    const earliestOAuthExpiration =
+      oauthExpirations.length > 0
+        ? new Date(Math.min(...oauthExpirations.map((d) => d.getTime())))
+        : null;
+
     return {
       ...server,
       templateInstances,
       allOAuthAuthenticated,
+      earliestOAuthExpiration,
     };
   });
 };

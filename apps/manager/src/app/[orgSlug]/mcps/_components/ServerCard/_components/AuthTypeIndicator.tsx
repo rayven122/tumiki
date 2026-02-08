@@ -38,7 +38,7 @@ type AuthTypeIndicatorProps = {
   // OAuth認証状態（null: OAuthが不要、true: 認証済み、false: 未認証）
   isOAuthAuthenticated?: boolean | null;
   // 再認証コールバック（OAuth未認証時のみ使用）
-  onReauthenticate?: () => void;
+  onReauthenticate?: () => void | Promise<void>;
   // 再認証中フラグ
   isReauthenticating?: boolean;
   // 未認証のOAuthインスタンス一覧（カスタムMCPで表示用）
@@ -182,7 +182,7 @@ export const AuthTypeIndicator = ({
               <Button
                 size="sm"
                 className="w-full"
-                onClick={onReauthenticate}
+                onClick={() => void onReauthenticate?.()}
                 disabled={isReauthenticating}
               >
                 {isReauthenticating ? (
