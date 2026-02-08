@@ -219,20 +219,20 @@ export const UserMcpServerCard = ({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    setConfigEditModalOpen(true);
-                  }}
-                >
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  設定を編集
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
                     setIconEditModalOpen(true);
                   }}
                 >
                   <Palette className="mr-2 h-4 w-4" />
                   アイコンを変更
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfigEditModalOpen(true);
+                  }}
+                >
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  設定を編集
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

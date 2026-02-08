@@ -614,16 +614,16 @@ export const ServerDetailPageClient = ({
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
-                        onClick={() => setShowMcpConfigModal(true)}
-                      >
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        設定を編集
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
                         onClick={() => setShowIconEditModal(true)}
                       >
                         <Palette className="mr-2 h-4 w-4" />
                         アイコンを変更
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowMcpConfigModal(true)}
+                      >
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        設定を編集
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
