@@ -100,10 +100,14 @@ export const FindMcpServersOutputV2 = z.array(
         ),
         // 現在のユーザーのOAuth認証状態（null: OAuthが不要、true: 認証済み、false: 未認証）
         isOAuthAuthenticated: z.boolean().nullable(),
+        // OAuthトークンの有効期限（null: OAuthが不要または未認証）
+        oauthTokenExpiresAt: z.date().nullable(),
       }),
     ),
     // サーバー全体のOAuth認証状態（null: OAuthが不要、true: 全て認証済み、false: 一部未認証）
     allOAuthAuthenticated: z.boolean().nullable(),
+    // 最も早く期限切れになるOAuthトークンの有効期限（null: OAuthが不要または未認証）
+    earliestOAuthExpiration: z.date().nullable(),
   }),
 );
 

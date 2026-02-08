@@ -41,6 +41,7 @@ import { McpServerIcon } from "../McpServerIcon";
 import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
+import { OAuthTokenExpirationDisplay } from "./_components/OAuthTokenExpirationDisplay";
 import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
 import { ReuseTokenModal } from "./_components/ReuseTokenModal";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
@@ -297,7 +298,14 @@ export const UserMcpServerCard = ({
           </Button>
 
           {/* 有効期限表示 */}
-          <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
+          <div className="space-y-1">
+            <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
+            {isOAuthServer && userMcpServer.earliestOAuthExpiration && (
+              <OAuthTokenExpirationDisplay
+                expiresAt={userMcpServer.earliestOAuthExpiration}
+              />
+            )}
+          </div>
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">
