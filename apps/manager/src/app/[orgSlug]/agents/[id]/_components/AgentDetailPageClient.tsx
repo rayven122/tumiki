@@ -234,12 +234,17 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
 
       {/* スケジュール一覧 */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             スケジュール
             <Badge variant="secondary">{agent.schedules.length}</Badge>
           </CardTitle>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${orgSlug}/agents/${agentId}/schedule`}>
+              スケジュール設定
+            </Link>
+          </Button>
         </CardHeader>
         <CardContent>
           {agent.schedules.length > 0 ? (

@@ -1,7 +1,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { McpServerVisibility } from "@tumiki/db";
 import type { AgentId } from "@/schema/ids";
 import { TRPCError } from "@trpc/server";
+import { buildAgentAccessCondition } from "../utils";
 
 type FindByIdParams = {
   id: AgentId;
@@ -21,20 +21,7 @@ export const findAgentById = async (
   const agent = await db.agent.findFirst({
     where: {
       id,
-      OR: [
-        // 同一組織内で作成者自身
-        {
-          organizationId,
-          createdById: userId,
-        },
-        // 同一組織内で ORGANIZATION 可視性
-        {
-          organizationId,
-          visibility: McpServerVisibility.ORGANIZATION,
-        },
-        // PUBLIC 可視性（将来的に実装）
-        // { visibility: McpServerVisibility.PUBLIC },
-      ],
+      ...buildAgentAccessCondition(organizationId, userId),
     },
     select: {
       id: true,
