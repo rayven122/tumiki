@@ -28,6 +28,8 @@ import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { updatePiiMasking } from "./updatePiiMasking";
 import { updateToonConversion } from "./updateToonConversion";
 import { updateDynamicSearch } from "./updateDynamicSearch";
+import { refreshTools } from "./refreshTools";
+import { sendToolChangeNotifications } from "./sendToolChangeNotifications";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
@@ -184,6 +186,52 @@ export const UpdateDynamicSearchInputV2 = z.object({
 // Dynamic Search設定更新の出力スキーマ
 export const UpdateDynamicSearchOutputV2 = z.object({
   id: z.string(),
+});
+
+// ツール更新の入力スキーマ
+export const RefreshToolsInputV2 = z.object({
+  id: McpServerIdSchema,
+});
+
+// ツール変更の種類
+const ToolChangeTypeSchema = z.enum(["added", "removed", "modified"]);
+
+// 個別のツール変更情報
+const ToolChangeSchema = z.object({
+  type: ToolChangeTypeSchema,
+  name: z.string(),
+  description: z.string().optional(),
+  previousDescription: z.string().optional(),
+  previousInputSchema: z.record(z.string(), z.unknown()).optional(),
+});
+
+// テンプレートインスタンスごとの変更結果
+const TemplateInstanceToolChangesSchema = z.object({
+  templateInstanceId: z.string(),
+  templateName: z.string(),
+  changes: z.array(ToolChangeSchema),
+  hasChanges: z.boolean(),
+  addedCount: z.number(),
+  removedCount: z.number(),
+  modifiedCount: z.number(),
+});
+
+// 影響を受ける組織の情報
+const AffectedOrganizationSchema = z.object({
+  organizationId: z.string(),
+  mcpServerId: z.string(),
+  mcpServerName: z.string(),
+});
+
+// ツール更新の出力スキーマ
+export const RefreshToolsOutputV2 = z.object({
+  success: z.boolean(),
+  templateInstances: z.array(TemplateInstanceToolChangesSchema),
+  totalAddedCount: z.number(),
+  totalRemovedCount: z.number(),
+  totalModifiedCount: z.number(),
+  hasAnyChanges: z.boolean(),
+  affectedOrganizations: z.array(AffectedOrganizationSchema),
 });
 
 export const userMcpServerRouter = createTRPCRouter({
@@ -504,5 +552,41 @@ export const userMcpServerRouter = createTRPCRouter({
         dynamicSearchEnabled: input.dynamicSearchEnabled,
         organizationId: ctx.currentOrg.id,
       });
+    }),
+
+  // ツール更新（再取得・同期）
+  refreshTools: protectedProcedure
+    .input(RefreshToolsInputV2)
+    .output(RefreshToolsOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
+      const result = await ctx.db.$transaction(
+        async (tx) => {
+          return await refreshTools(tx, {
+            mcpServerId: input.id,
+            organizationId: ctx.currentOrg.id,
+            userId: ctx.session.user.id,
+          });
+        },
+        {
+          timeout: 30000, // MCPサーバーからのツール取得に時間がかかる場合があるため30秒に設定
+        },
+      );
+
+      // ツール変更通知を送信（変更がある場合のみ）
+      void sendToolChangeNotifications(ctx.db, {
+        result,
+        mcpServerId: input.id,
+        organizationId: ctx.currentOrg.id,
+        organizationSlug: ctx.currentOrg.slug,
+        triggeredById: ctx.session.user.id,
+      });
+
+      return result;
     }),
 });
