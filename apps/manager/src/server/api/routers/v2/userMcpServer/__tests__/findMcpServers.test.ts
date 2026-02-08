@@ -479,7 +479,7 @@ describe("findMcpServers", () => {
 
     expect(mockTx.mcpOAuthToken.findMany).toHaveBeenCalledWith({
       where: { userId: testUserId, organizationId: testOrganizationId },
-      select: { mcpServerTemplateInstanceId: true },
+      select: { mcpServerTemplateInstanceId: true, expiresAt: true },
     });
   });
 });

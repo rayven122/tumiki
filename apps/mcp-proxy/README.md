@@ -13,7 +13,7 @@
 ## アーキテクチャ特性
 
 - **完全ステートレス**: 接続プールなし、リクエストごとに接続を作成・破棄
-- **キャッシュレス**: インメモリキャッシュなし、シンプルで予測可能な動作
+- **設定キャッシュ無効化中**: 現在は設定キャッシュを使用せず、常にDBから直接取得
 - **Cloud Run最適化**: スケールtoゼロ、水平スケール、マルチインスタンス対応
 
 ## インフラストラクチャ機能
@@ -149,8 +149,8 @@ curl -X POST http://localhost:8080/mcp/dev-instance-id \
 このプロキシサーバーは以下のトランスポートを使用してリモートMCPサーバーに接続します：
 
 - **Streamable HTTP**: 最新のMCPプロトコル（推奨）
-- **SSE (Server-Sent Events)**: レガシーサポート（HTTPからの自動フォールバック）
-- **Stdio**: ローカルプロセス起動
+- **SSE (Server-Sent Events)**: レガシーサポート（明示的にSSEを設定した場合のみ）
+- **Stdio**: 現在未サポート（設定時はエラー）
 
 ## 環境変数
 
@@ -165,36 +165,9 @@ DEV_MODE=false  # true で認証バイパス + Context7固定接続
 # データベース
 DATABASE_URL=postgresql://...
 
-# Redis（キャッシュ）
-UPSTASH_REDIS_REST_URL=https://...
-UPSTASH_REDIS_REST_TOKEN=...
-
-# キャッシュ暗号化
-REDIS_ENCRYPTION_KEY=64文字の16進数文字列  # 32バイト（256ビット）の暗号化キー
-
 # ログ設定
 LOG_LEVEL=info  # info, warn, error, debug
 ```
-
-### キャッシュ暗号化キーの生成
-
-Redis に保存されるキャッシュデータ（MCP サーバー設定、API キー、環境変数等）は AES-256-GCM で暗号化されます。
-
-新しい暗号化キーを生成：
-
-```bash
-# Node.js を使用
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-# または openssl を使用
-openssl rand -hex 32
-```
-
-⚠️ **セキュリティ上の注意:**
-
-- **開発環境と本番環境で異なるキーを使用してください**
-- **キーは厳重に管理し、決してリポジトリにコミットしないでください**
-- **キーを変更すると既存のキャッシュは復号化できなくなりますが、自動的にクリアされます**
 
 ## MCPサーバー設定
 

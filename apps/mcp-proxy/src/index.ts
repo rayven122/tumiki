@@ -1,29 +1,11 @@
 #!/usr/bin/env node
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logInfo, logError } from "./libs/logger/index.js";
-import { closeRedisClient } from "./libs/cache/redis.js";
 import { db } from "@tumiki/db/server";
-import type { HonoEnv } from "./types/index.js";
-import { DEFAULT_PORT } from "./constants/server.js";
-import { TIMEOUT_CONFIG } from "./constants/config.js";
-// CE機能
-import { healthRoute } from "./routes/health.js";
-import { mcpRoute } from "./routes/mcp.js";
-import { wellKnownRoute } from "./routes/wellKnown.js";
-import { oauthRoute } from "./routes/oauthRoute.js";
 
-// Hono アプリケーションの作成
-const app = new Hono<HonoEnv>();
-
-// CORS設定
-app.use("/*", cors());
-
-// ルート設定
-app.route("/", healthRoute);
-app.route("/", mcpRoute);
-app.route("/.well-known", wellKnownRoute);
-app.route("/oauth", oauthRoute);
+import app from "./app.js";
+import { closeRedisClient } from "./infrastructure/cache/redis.js";
+import { DEFAULT_PORT } from "./shared/constants/server.js";
+import { TIMEOUT_CONFIG } from "./shared/constants/config.js";
+import { logInfo, logError } from "./shared/logger/index.js";
 
 // サーバー起動
 const port = Number(process.env.PORT) || DEFAULT_PORT;
