@@ -11,6 +11,7 @@ import { notificationRouter } from "./notification";
 import { groupRouter } from "./group";
 import { roleRouter } from "./role";
 import { systemRouter } from "./system";
+import { agentRouter } from "./agent";
 
 export const v2Router = createTRPCRouter({
   user: userRouter,
@@ -25,4 +26,5 @@ export const v2Router = createTRPCRouter({
   group: groupRouter,
   role: roleRouter,
   system: systemRouter,
+  agent: agentRouter,
 });
