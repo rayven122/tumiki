@@ -83,7 +83,7 @@ describe("OAuthTokenExpirationDisplay", () => {
     expect(screen.getByText("残り5h 30m")).toBeInTheDocument();
   });
 
-  test("Keyアイコンが表示される", () => {
+  test("ShieldCheckアイコンが表示される", () => {
     const futureDate = new Date("2024-01-20T12:00:00.000Z");
 
     render(<OAuthTokenExpirationDisplay expiresAt={futureDate} />);

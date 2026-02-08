@@ -1,4 +1,4 @@
-import { Key } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   calculateExpirationStatus,
@@ -36,7 +36,7 @@ export const OAuthTokenExpirationDisplay = ({
 
   return (
     <div className="flex items-center gap-1.5 text-xs">
-      <Key className="h-3.5 w-3.5 text-gray-500" />
+      <ShieldCheck className="h-3.5 w-3.5 text-gray-500" />
       <span className="font-medium text-gray-700">OAuth</span>
       <span className="text-gray-400">|</span>
       <span

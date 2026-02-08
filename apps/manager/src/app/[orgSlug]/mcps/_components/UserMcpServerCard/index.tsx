@@ -273,6 +273,13 @@ export const UserMcpServerCard = ({
         </CardHeader>
 
         <CardContent className="flex-1 space-y-3">
+          {/* OAuthトークン有効期限を表示（OAuthサーバーのみ） */}
+          {isOAuthServer && userMcpServer.earliestOAuthExpiration && (
+            <OAuthTokenExpirationDisplay
+              expiresAt={userMcpServer.earliestOAuthExpiration}
+            />
+          )}
+
           {/* OAuth接続URLを表示（OAuthサーバーのみ） */}
           {isOAuthServer && (
             <OAuthEndpointUrl userMcpServerId={userMcpServer.id} />
@@ -297,15 +304,8 @@ export const UserMcpServerCard = ({
             </Badge>
           </Button>
 
-          {/* 有効期限表示 */}
-          <div className="space-y-1">
-            <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
-            {isOAuthServer && userMcpServer.earliestOAuthExpiration && (
-              <OAuthTokenExpirationDisplay
-                expiresAt={userMcpServer.earliestOAuthExpiration}
-              />
-            )}
-          </div>
+          {/* APIキー有効期限表示 */}
+          <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">
