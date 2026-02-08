@@ -4,8 +4,10 @@ import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
 import { createIntegratedMcpServer } from "./createIntegratedMcpServer";
-import { updateOfficialServer } from "./update";
 import { findMcpServers } from "./findMcpServers";
+import { getMcpConfig } from "./getMcpConfig";
+import { updateMcpConfig } from "./updateMcpConfig";
+import { updateOfficialServer } from "./update";
 import {
   deleteMcpServer,
   deleteMcpServerInputSchema,
@@ -28,6 +30,8 @@ import { toggleTool, toggleToolOutputSchema } from "./toggleTool";
 import { updatePiiMasking } from "./updatePiiMasking";
 import { updateToonConversion } from "./updateToonConversion";
 import { updateDynamicSearch } from "./updateDynamicSearch";
+import { refreshTools } from "./refreshTools";
+import { sendToolChangeNotifications } from "./sendToolChangeNotifications";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
 import { createBulkNotifications } from "../notification/createBulkNotifications";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
@@ -79,9 +83,43 @@ export const CreateIntegratedMcpServerOutputV2 = z.object({
   id: z.string(),
 });
 
+// MCP設定取得用の入力スキーマ
+export const GetMcpConfigInputV2 = z.object({
+  templateInstanceId: z.string(),
+});
+
+// MCP設定取得用の出力スキーマ
+export const GetMcpConfigOutputV2 = z.object({
+  templateInstanceId: z.string(),
+  templateName: z.string(),
+  templateIconPath: z.string().nullable(),
+  templateUrl: z.string().nullable(),
+  envVarKeys: z.array(z.string()),
+  envVars: z.record(z.string(), z.string()),
+  hasConfig: z.boolean(),
+});
+
+// MCP設定更新用の入力スキーマ
+export const UpdateMcpConfigInputV2 = z.object({
+  templateInstanceId: z.string(),
+  envVars: z.record(z.string(), z.string()),
+});
+
+// MCP設定更新用の出力スキーマ
+export const UpdateMcpConfigOutputV2 = z.object({
+  id: z.string(),
+  templateInstanceId: z.string(),
+});
+
+// 公式MCPサーバー更新用の入力スキーマ（後方互換性のため維持）
 export const UpdateOfficialServerInputV2 = z.object({
   id: z.string(),
   envVars: z.record(z.string(), z.string()),
+});
+
+// 公式MCPサーバー更新用の出力スキーマ（後方互換性のため維持）
+export const UpdateOfficialServerOutputV2 = z.object({
+  id: z.string(),
 });
 
 // MCPサーバー一覧取得用の出力スキーマ
@@ -98,16 +136,16 @@ export const FindMcpServersOutputV2 = z.array(
         ),
         // 現在のユーザーのOAuth認証状態（null: OAuthが不要、true: 認証済み、false: 未認証）
         isOAuthAuthenticated: z.boolean().nullable(),
+        // OAuthトークンの有効期限（null: OAuthが不要または未認証）
+        oauthTokenExpiresAt: z.date().nullable(),
       }),
     ),
     // サーバー全体のOAuth認証状態（null: OAuthが不要、true: 全て認証済み、false: 一部未認証）
     allOAuthAuthenticated: z.boolean().nullable(),
+    // 最も早く期限切れになるOAuthトークンの有効期限（null: OAuthが不要または未認証）
+    earliestOAuthExpiration: z.date().nullable(),
   }),
 );
-
-export const UpdateOfficialServerOutputV2 = z.object({
-  id: z.string(),
-});
 
 export const UpdateNameInputV2 = z.object({
   id: z.string(),
@@ -186,6 +224,52 @@ export const UpdateDynamicSearchOutputV2 = z.object({
   id: z.string(),
 });
 
+// ツール更新の入力スキーマ
+export const RefreshToolsInputV2 = z.object({
+  id: McpServerIdSchema,
+});
+
+// ツール変更の種類
+const ToolChangeTypeSchema = z.enum(["added", "removed", "modified"]);
+
+// 個別のツール変更情報
+const ToolChangeSchema = z.object({
+  type: ToolChangeTypeSchema,
+  name: z.string(),
+  description: z.string().optional(),
+  previousDescription: z.string().optional(),
+  previousInputSchema: z.record(z.string(), z.unknown()).optional(),
+});
+
+// テンプレートインスタンスごとの変更結果
+const TemplateInstanceToolChangesSchema = z.object({
+  templateInstanceId: z.string(),
+  templateName: z.string(),
+  changes: z.array(ToolChangeSchema),
+  hasChanges: z.boolean(),
+  addedCount: z.number(),
+  removedCount: z.number(),
+  modifiedCount: z.number(),
+});
+
+// 影響を受ける組織の情報
+const AffectedOrganizationSchema = z.object({
+  organizationId: z.string(),
+  mcpServerId: z.string(),
+  mcpServerName: z.string(),
+});
+
+// ツール更新の出力スキーマ
+export const RefreshToolsOutputV2 = z.object({
+  success: z.boolean(),
+  templateInstances: z.array(TemplateInstanceToolChangesSchema),
+  totalAddedCount: z.number(),
+  totalRemovedCount: z.number(),
+  totalModifiedCount: z.number(),
+  hasAnyChanges: z.boolean(),
+  affectedOrganizations: z.array(AffectedOrganizationSchema),
+});
+
 export const userMcpServerRouter = createTRPCRouter({
   // APIキー認証MCPサーバー作成
   createApiKeyMcpServer: protectedProcedure
@@ -258,14 +342,51 @@ export const userMcpServerRouter = createTRPCRouter({
       return result;
     }),
 
+  // MCP設定取得（テンプレートインスタンスごとの環境変数）
+  getMcpConfig: protectedProcedure
+    .input(GetMcpConfigInputV2)
+    .output(GetMcpConfigOutputV2)
+    .query(async ({ ctx, input }) => {
+      // MCP読み取り権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "read",
+      });
+
+      return await getMcpConfig(ctx.db, {
+        templateInstanceId: input.templateInstanceId,
+        organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
+      });
+    }),
+
+  // MCP設定更新（テンプレートインスタンスごとの環境変数）
+  updateMcpConfig: protectedProcedure
+    .input(UpdateMcpConfigInputV2)
+    .output(UpdateMcpConfigOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // MCP書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+      });
+
+      return await ctx.db.$transaction(async (tx) => {
+        return await updateMcpConfig(tx, {
+          templateInstanceId: input.templateInstanceId,
+          envVars: input.envVars,
+          organizationId: ctx.currentOrg.id,
+          userId: ctx.session.user.id,
+        });
+      });
+    }),
+
+  // 公式MCPサーバー更新（後方互換性のため維持）
   update: protectedProcedure
     .input(UpdateOfficialServerInputV2)
     .output(UpdateOfficialServerOutputV2)
     .mutation(async ({ ctx, input }) => {
-      // 特定MCPサーバーへの書き込み権限チェック
+      // MCP書き込み権限チェック
       await validateMcpPermission(ctx.db, ctx.currentOrg, {
         permission: "write",
-        mcpServerId: input.id,
       });
 
       return await ctx.db.$transaction(async (tx) => {
@@ -504,5 +625,41 @@ export const userMcpServerRouter = createTRPCRouter({
         dynamicSearchEnabled: input.dynamicSearchEnabled,
         organizationId: ctx.currentOrg.id,
       });
+    }),
+
+  // ツール更新（再取得・同期）
+  refreshTools: protectedProcedure
+    .input(RefreshToolsInputV2)
+    .output(RefreshToolsOutputV2)
+    .mutation(async ({ ctx, input }) => {
+      // 特定MCPサーバーへの書き込み権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "write",
+        mcpServerId: input.id,
+      });
+
+      const result = await ctx.db.$transaction(
+        async (tx) => {
+          return await refreshTools(tx, {
+            mcpServerId: input.id,
+            organizationId: ctx.currentOrg.id,
+            userId: ctx.session.user.id,
+          });
+        },
+        {
+          timeout: 30000, // MCPサーバーからのツール取得に時間がかかる場合があるため30秒に設定
+        },
+      );
+
+      // ツール変更通知を送信（変更がある場合のみ）
+      void sendToolChangeNotifications(ctx.db, {
+        result,
+        mcpServerId: input.id,
+        organizationId: ctx.currentOrg.id,
+        organizationSlug: ctx.currentOrg.slug,
+        triggeredById: ctx.session.user.id,
+      });
+
+      return result;
     }),
 });

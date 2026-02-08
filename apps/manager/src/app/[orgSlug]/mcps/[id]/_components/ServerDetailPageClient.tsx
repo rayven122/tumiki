@@ -6,19 +6,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Activity,
   ArrowLeft,
-  Settings,
-  Server,
-  XCircle,
-  Trash2,
+  BarChart3,
+  Cable,
+  Edit2,
+  Info,
   MoreVertical,
-  Wrench,
+  Palette,
+  RefreshCw,
+  Search,
   Shield,
+  ShieldCheck,
+  Shrink,
+  Trash2,
+  Workflow,
+  Wrench,
+  XCircle,
 } from "lucide-react";
-import { McpServerIcon } from "../../_components/McpServerIcon";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
-import { toast } from "@/utils/client/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,23 +31,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { api } from "@/trpc/react";
-import { ServerStatus, AuthType, ServerType } from "@tumiki/db/prisma";
-import type { McpServerId } from "@/schema/ids";
-import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
-import { ShieldCheck, Info, Shrink, Search } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CustomTabs } from "./CustomTabs";
-import { OverviewTab } from "./OverviewTab";
-import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
+import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
+import { cn } from "@/lib/utils";
+import type { McpServerId } from "@/schema/ids";
+import { api } from "@/trpc/react";
+import { toast } from "@/utils/client/toast";
+import { AuthType, ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { ConnectionTab } from "./ConnectionTab";
-import { EditServerDialog } from "./EditServerDialog";
+import { CustomTabs } from "./CustomTabs";
 import { DeleteServerDialog } from "./DeleteServerDialog";
-import { BarChart3, Activity, Cable, Workflow } from "lucide-react";
+import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
+import { OverviewTab } from "./OverviewTab";
+import { McpServerIcon } from "../../_components/McpServerIcon";
+import { IconEditModal } from "../../_components/UserMcpServerCard/IconEditModal";
+import { useReauthenticateOAuth } from "../../_components/UserMcpServerCard/_hooks/useReauthenticateOAuth";
+import { McpConfigEditModal } from "./McpConfigEditModal";
+import { Switch } from "@/components/ui/switch";
 
 // サーバータイプのラベル
 const SERVER_TYPE_LABELS = {
@@ -60,8 +69,9 @@ export const ServerDetailPageClient = ({
   serverId,
 }: ServerDetailPageClientProps) => {
   const router = useRouter();
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showIconEditModal, setShowIconEditModal] = useState(false);
+  const [showMcpConfigModal, setShowMcpConfigModal] = useState(false);
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(
     null,
   );
@@ -233,6 +243,27 @@ export const ServerDetailPageClient = ({
 
   // 有効なAPIキーの数を計算
   const activeApiKeysCount = apiKeys?.filter((key) => key.isActive).length ?? 0;
+
+  // 最初のテンプレートインスタンスを取得（OAuth再認証用・アイコンフォールバック用）
+  const firstTemplateInstance = server?.templateInstances[0];
+
+  // OAuthテンプレートサーバーかどうかを判定
+  const isOAuthTemplateServer =
+    firstTemplateInstance?.mcpServerTemplate?.authType === "OAUTH";
+
+  // API設定編集可能なインスタンス（envVarKeysがあるもの）を取得
+  const editableInstances =
+    server?.templateInstances.filter(
+      (instance) =>
+        (instance.mcpServerTemplate.envVarKeys?.length ?? 0) > 0 &&
+        instance.mcpServerTemplate.authType !== "OAUTH",
+    ) ?? [];
+
+  // OAuth再認証フック
+  const { handleReauthenticate, isPending: isReauthenticating } =
+    useReauthenticateOAuth({
+      mcpServerTemplateInstanceId: firstTemplateInstance?.id ?? "",
+    });
 
   if (isLoading) {
     return (
@@ -572,8 +603,26 @@ export const ServerDetailPageClient = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                        <Settings className="mr-2 h-4 w-4" />
+                      {/* OAuthサーバーの場合は再認証オプションを表示 */}
+                      {isOAuthTemplateServer && (
+                        <DropdownMenuItem
+                          onClick={() => void handleReauthenticate()}
+                          disabled={isReauthenticating}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          再認証
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={() => setShowIconEditModal(true)}
+                      >
+                        <Palette className="mr-2 h-4 w-4" />
+                        アイコンを変更
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowMcpConfigModal(true)}
+                      >
+                        <Edit2 className="mr-2 h-4 w-4" />
                         設定を編集
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -614,50 +663,73 @@ export const ServerDetailPageClient = ({
           defaultTab="overview"
         >
           {(activeTab) => {
-            if (activeTab === "overview") {
-              return (
-                <OverviewTab
-                  server={server}
-                  requestStats={requestStats}
-                  serverId={serverId as McpServerId}
-                />
-              );
+            switch (activeTab) {
+              case "overview":
+                return (
+                  <OverviewTab
+                    server={server}
+                    requestStats={requestStats}
+                    serverId={serverId as McpServerId}
+                  />
+                );
+              case "connection":
+                return (
+                  <ConnectionTab
+                    server={server}
+                    serverId={serverId as McpServerId}
+                  />
+                );
+              case "logs":
+                return (
+                  <LogsAnalyticsTab
+                    serverId={serverId as McpServerId}
+                    requestStats={requestStats}
+                  />
+                );
+              default:
+                return null;
             }
-            if (activeTab === "connection") {
-              return (
-                <ConnectionTab
-                  server={server}
-                  serverId={serverId as McpServerId}
-                />
-              );
-            }
-            if (activeTab === "logs") {
-              return (
-                <LogsAnalyticsTab
-                  serverId={serverId as McpServerId}
-                  requestStats={requestStats}
-                />
-              );
-            }
-            return null;
           }}
         </CustomTabs>
 
         {/* Dialogs */}
-        {showEditDialog && (
-          <EditServerDialog
-            server={server}
-            onClose={() => setShowEditDialog(false)}
-            onSuccess={async () => {
-              await refetch();
-            }}
-          />
-        )}
         {showDeleteDialog && (
           <DeleteServerDialog
             server={server}
             orgSlug={orgSlug}
             onClose={() => setShowDeleteDialog(false)}
+          />
+        )}
+        {showIconEditModal && (
+          <IconEditModal
+            serverInstanceId={server.id as McpServerId}
+            initialIconPath={server.iconPath}
+            fallbackUrl={firstTemplateInstance?.mcpServerTemplate?.url}
+            orgSlug={orgSlug}
+            onSuccess={async () => {
+              await refetch();
+              setShowIconEditModal(false);
+            }}
+            onOpenChange={setShowIconEditModal}
+          />
+        )}
+        {showMcpConfigModal && (
+          <McpConfigEditModal
+            open={showMcpConfigModal}
+            onOpenChange={setShowMcpConfigModal}
+            serverId={server.id as McpServerId}
+            initialServerName={server.name}
+            templateInstanceId={editableInstances[0]?.id ?? null}
+            templateName={editableInstances[0]?.mcpServerTemplate.name ?? ""}
+            editableInstances={editableInstances.map((instance) => ({
+              id: instance.id,
+              name: instance.mcpServerTemplate.name,
+              iconPath: instance.mcpServerTemplate.iconPath,
+              url: instance.mcpServerTemplate.url,
+            }))}
+            onSuccess={async () => {
+              await refetch();
+            }}
           />
         )}
       </div>

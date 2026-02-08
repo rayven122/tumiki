@@ -25,10 +25,10 @@ export const listGroups = async (
       message: "他の組織のグループにアクセスすることはできません",
     });
   }
-  // データベースで組織の存在を確認
+  // データベースで組織の存在を確認（表示名も取得）
   const organization = await db.organization.findUnique({
     where: { id: input.organizationId },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, name: true },
   });
 
   if (!organization) {
@@ -63,5 +63,11 @@ export const listGroups = async (
   }
 
   // 組織グループをルートノードとして返す（subGroupsはKeycloakが自動的に含めている）
-  return [orgGroupResult.group];
+  // ルートグループの名前はデータベースの組織名（表示名）を使用
+  return [
+    {
+      ...orgGroupResult.group,
+      name: organization.name,
+    },
+  ];
 };
