@@ -95,6 +95,7 @@ describe("Agent CRUD", () => {
         },
       });
       expect(mockTx.agent.create).toHaveBeenCalledWith({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: expectedData,
         select: {
           id: true,
@@ -169,6 +170,7 @@ describe("Agent CRUD", () => {
         where: {
           id: input.id,
         },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: expectedData,
         select: {
           id: true,
@@ -322,6 +324,7 @@ describe("Agent CRUD", () => {
             },
           ],
         },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         select: expectedSelect,
         orderBy: {
           updatedAt: "desc",
