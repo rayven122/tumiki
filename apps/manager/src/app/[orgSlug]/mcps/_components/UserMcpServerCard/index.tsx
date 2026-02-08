@@ -22,10 +22,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
-import { NameEditModal } from "./NameEditModal";
+import { McpConfigEditModal } from "../../[id]/_components/McpConfigEditModal";
 import { IconEditModal } from "./IconEditModal";
 import { AuthTypeIndicator } from "../ServerCard/_components/AuthTypeIndicator";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,7 @@ export const UserMcpServerCard = ({
 
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [nameEditModalOpen, setNameEditModalOpen] = useState(false);
+  const [configEditModalOpen, setConfigEditModalOpen] = useState(false);
   const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
 
   // 最初のテンプレートインスタンスを使用（ツール表示用）
@@ -115,6 +116,12 @@ export const UserMcpServerCard = ({
   // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
   const isOAuthServer = userMcpServer.authType === "OAUTH";
   const isOAuthTemplateServer = mcpServer?.authType === "OAUTH";
+
+  // 編集可能なテンプレートインスタンスを取得（authType !== OAUTH）
+  const editableInstances = userMcpServer.templateInstances.filter(
+    (instance) => instance.mcpServerTemplate.authType !== "OAUTH",
+  );
+  const firstEditableInstance = editableInstances[0];
 
   // MCPサーバーのURLを取得（ファビコン表示用）
   const mcpServerUrl = mcpServer?.url;
@@ -212,15 +219,6 @@ export const UserMcpServerCard = ({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    setNameEditModalOpen(true);
-                  }}
-                >
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  名前を編集
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
                     setIconEditModalOpen(true);
                   }}
                 >
@@ -230,8 +228,19 @@ export const UserMcpServerCard = ({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
+                    setConfigEditModalOpen(true);
+                  }}
+                >
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  設定を編集
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setDeleteModalOpen(true);
                   }}
+                  className="text-red-600 focus:text-red-600"
                 >
                   <Trash2Icon className="mr-2 h-4 w-4" />
                   削除
@@ -345,16 +354,25 @@ export const UserMcpServerCard = ({
         />
       )}
 
-      {/* 名前編集モーダル */}
-      {nameEditModalOpen && (
-        <NameEditModal
-          serverInstanceId={userMcpServer.id as McpServerId}
-          initialName={userMcpServer.name}
+      {/* 設定編集モーダル */}
+      {configEditModalOpen && (
+        <McpConfigEditModal
+          open={configEditModalOpen}
+          onOpenChange={setConfigEditModalOpen}
+          serverId={userMcpServer.id as McpServerId}
+          initialServerName={userMcpServer.name}
+          templateInstanceId={firstEditableInstance?.id ?? null}
+          templateName={firstEditableInstance?.mcpServerTemplate.name ?? ""}
+          editableInstances={editableInstances.map((instance) => ({
+            id: instance.id,
+            name: instance.mcpServerTemplate.name,
+            iconPath: instance.mcpServerTemplate.iconPath,
+            url: instance.mcpServerTemplate.url,
+          }))}
           onSuccess={async () => {
             await revalidate?.();
-            setNameEditModalOpen(false);
+            setConfigEditModalOpen(false);
           }}
-          onOpenChange={setNameEditModalOpen}
         />
       )}
 
