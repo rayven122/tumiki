@@ -13,6 +13,7 @@ import {
   List,
   Network,
   Bot,
+  Sparkles,
 } from "lucide-react";
 import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
@@ -85,6 +86,14 @@ export const OrgSidebar = ({
       icon: List,
       show: true, // 全組織で表示
       disabled: false,
+    },
+    {
+      name: "エージェント",
+      href: `/${orgSlug}/agents`,
+      icon: Sparkles,
+      show: true, // 全組織で表示
+      disabled: false,
+      beta: true,
     },
     // {
     //   name: "アクティビティ",

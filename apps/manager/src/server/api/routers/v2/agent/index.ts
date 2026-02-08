@@ -1,6 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { nameValidationSchema } from "@/schema/validation";
+import { displayNameValidationSchema } from "@/schema/validation";
 import { AgentIdSchema, McpServerIdSchema } from "@/schema/ids";
 import { McpServerVisibilitySchema, AgentSchema } from "@tumiki/db/zod";
 import { createAgent } from "./create";
@@ -11,7 +11,7 @@ import { findAgentById } from "./findById";
 
 // エージェント作成の入力スキーマ
 export const CreateAgentInputSchema = z.object({
-  name: nameValidationSchema,
+  name: displayNameValidationSchema,
   description: z.string().optional(),
   iconPath: z.string().optional(),
   systemPrompt: z.string().min(1, "システムプロンプトは必須です"),
@@ -28,7 +28,7 @@ export const CreateAgentOutputSchema = z.object({
 // エージェント更新の入力スキーマ
 export const UpdateAgentInputSchema = z.object({
   id: AgentIdSchema,
-  name: nameValidationSchema.optional(),
+  name: displayNameValidationSchema.optional(),
   description: z.string().optional(),
   iconPath: z.string().nullable().optional(),
   systemPrompt: z.string().min(1).optional(),
