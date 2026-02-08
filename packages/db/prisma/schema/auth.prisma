@@ -44,6 +44,7 @@ model User {
 
   /// MCP関連
   mcpServerTemplates McpServerTemplate[]
+  mcpServers         McpServer[]         @relation("McpServerCreatedBy")
   mcpConfigs         McpConfig[]
   mcpApiKeys         McpApiKey[]
   mcpOAuthTokens     McpOAuthToken[]
@@ -54,6 +55,9 @@ model User {
   /// 通知関連
   notifications          Notification[]
   triggeredNotifications Notification[] @relation("NotificationTriggeredBy")
+
+  /// エージェント関連（作成者として）
+  createdAgents Agent[] @relation("AgentCreatedBy")
 
   /// Auth.js adapter
   accounts Account[]
