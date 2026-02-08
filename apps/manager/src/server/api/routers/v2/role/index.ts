@@ -3,29 +3,29 @@ import {
   createRole,
   createRoleInputSchema,
   createRoleOutputSchema,
-} from "./create";
+} from "./create.ee";
 import { listRoles, listRolesInputSchema, listRolesOutputSchema } from "./list";
 import { getRole, getRoleInputSchema, getRoleOutputSchema } from "./get";
 import {
   updateRole,
   updateRoleInputSchema,
   updateRoleOutputSchema,
-} from "./update";
+} from "./update.ee";
 import {
   deleteRole,
   deleteRoleInputSchema,
   deleteRoleOutputSchema,
-} from "./delete";
+} from "./delete.ee";
 import {
   addPermission,
   addPermissionInputSchema,
   addPermissionOutputSchema,
-} from "./addPermission";
+} from "./addPermission.ee";
 import {
   removePermission,
   removePermissionInputSchema,
   removePermissionOutputSchema,
-} from "./removePermission";
+} from "./removePermission.ee";
 
 /**
  * v2 Role Router
@@ -33,15 +33,16 @@ import {
  * カスタムロール管理に関する API
  * - list: ロール一覧取得（組織メンバー）
  * - get: ロール詳細取得（組織メンバー）
- * - create: ロール作成（role:manage権限、チーム必須）
- * - update: ロール更新（role:manage権限、チーム必須）
- * - delete: ロール削除（role:manage権限、チーム必須）
- * - addPermission: 権限追加（role:manage権限、チーム必須）
- * - removePermission: 権限削除（role:manage権限、チーム必須）
+ * - create: ロール作成（role:manage権限、チーム必須）【EE機能】
+ * - update: ロール更新（role:manage権限、チーム必須）【EE機能】
+ * - delete: ロール削除（role:manage権限、チーム必須）【EE機能】
+ * - addPermission: 権限追加（role:manage権限、チーム必須）【EE機能】
+ * - removePermission: 権限削除（role:manage権限、チーム必須）【EE機能】
  *
  * 注意:
  * - protectedProcedureで組織所属が保証されているため、ctx.currentOrgは常に存在する
  * - 権限チェックは各関数内で実行される
+ * - 書き込み系API（create/update/delete/addPermission/removePermission）はEE機能
  */
 export const roleRouter = createTRPCRouter({
   list: protectedProcedure

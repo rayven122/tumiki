@@ -10,32 +10,40 @@ import {
   getOrganizationByIdOutputSchema,
 } from "./getById";
 import { getUsageStats, getUsageStatsOutputSchema } from "./getUsageStats";
+// EE機能: メンバー招待
 import {
   inviteMembers,
   inviteMembersInputSchema,
   inviteMembersOutputSchema,
-} from "./inviteMembers";
-import { getInvitations, getInvitationsOutputSchema } from "./getInvitations";
+} from "./inviteMembers.ee";
+// EE機能: 招待一覧取得
+import {
+  getInvitations,
+  getInvitationsOutputSchema,
+} from "./getInvitations.ee";
+// EE機能: 招待再送信
 import {
   resendInvitation,
   resendInvitationInputSchema,
   resendInvitationOutputSchema,
-} from "./resendInvitation";
+} from "./resendInvitation.ee";
+// EE機能: 招待キャンセル
 import {
   cancelInvitation,
   cancelInvitationInputSchema,
   cancelInvitationOutputSchema,
-} from "./cancelInvitation";
+} from "./cancelInvitation.ee";
 import {
   acceptInvitation,
   acceptInvitationInputSchema,
   acceptInvitationOutputSchema,
 } from "./acceptInvitation";
+// EE機能: メンバー削除
 import {
   removeMember,
   removeMemberInputSchema,
   removeMemberOutputSchema,
-} from "./removeMember";
+} from "./removeMember.ee";
 import {
   setDefaultOrganization,
   setDefaultOrganizationInputSchema,
@@ -52,11 +60,12 @@ import {
   deleteOrganizationInputSchema,
   deleteOrganizationOutputSchema,
 } from "./delete";
+// EE機能: メンバーロール変更
 import {
   updateMemberRole,
   updateMemberRoleInputSchema,
   updateMemberRoleOutputSchema,
-} from "./updateMemberRole";
+} from "./updateMemberRole.ee";
 import {
   getMembers,
   getMembersInputSchema,
@@ -105,24 +114,24 @@ export const organizationRouter = createTRPCRouter({
     .output(getUsageStatsOutputSchema)
     .query(getUsageStats),
 
-  // メンバー招待（単一・複数対応）
+  // メンバー招待（単一・複数対応）- EE機能
   inviteMembers: protectedProcedure
     .input(inviteMembersInputSchema)
     .output(inviteMembersOutputSchema)
     .mutation(inviteMembers),
 
-  // 招待一覧取得
+  // 招待一覧取得 - EE機能
   getInvitations: protectedProcedure
     .output(getInvitationsOutputSchema)
     .query(getInvitations),
 
-  // 招待再送信
+  // 招待再送信 - EE機能
   resendInvitation: protectedProcedure
     .input(resendInvitationInputSchema)
     .output(resendInvitationOutputSchema)
     .mutation(resendInvitation),
 
-  // 招待キャンセル
+  // 招待キャンセル - EE機能
   cancelInvitation: protectedProcedure
     .input(cancelInvitationInputSchema)
     .output(cancelInvitationOutputSchema)
@@ -134,7 +143,7 @@ export const organizationRouter = createTRPCRouter({
     .output(acceptInvitationOutputSchema)
     .mutation(acceptInvitation),
 
-  // メンバー削除
+  // メンバー削除 - EE機能
   removeMember: protectedProcedure
     .input(removeMemberInputSchema)
     .output(removeMemberOutputSchema)
@@ -161,7 +170,7 @@ export const organizationRouter = createTRPCRouter({
     .output(deleteOrganizationOutputSchema)
     .mutation(deleteOrganization),
 
-  // メンバーロール変更
+  // メンバーロール変更 - EE機能
   updateMemberRole: protectedProcedure
     .input(updateMemberRoleInputSchema)
     .output(updateMemberRoleOutputSchema)

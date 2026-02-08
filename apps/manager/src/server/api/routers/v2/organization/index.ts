@@ -9,7 +9,7 @@ import {
   createOrganization,
   createOrganizationInputSchema,
   createOrganizationOutputSchema,
-} from "./createOrganization";
+} from "./createOrganization.ee";
 import { z } from "zod";
 import { OrganizationIdSchema } from "@/schema/ids";
 import { getSessionInfo } from "@/lib/auth/session-utils";

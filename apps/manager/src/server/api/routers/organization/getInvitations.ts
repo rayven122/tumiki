@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import type { ProtectedContext } from "@/server/api/trpc";
 import {
   OrganizationInvitationIdSchema,
@@ -6,7 +7,6 @@ import {
   UserIdSchema,
   InvitationTokenSchema,
 } from "@/schema/ids";
-import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 
 export const getInvitationsOutputSchema = z.array(
   z.object({
@@ -30,38 +30,15 @@ export const getInvitationsOutputSchema = z.array(
 
 export type GetInvitationsOutput = z.infer<typeof getInvitationsOutputSchema>;
 
-export const getInvitations = async ({
-  ctx,
-}: {
+/**
+ * 招待一覧取得（CE版スタブ）
+ * CE版では利用不可
+ */
+export const getInvitations = async (_params: {
   ctx: ProtectedContext;
 }): Promise<GetInvitationsOutput> => {
-  // チームメンバーであることを検証（閲覧は一般ユーザーも可能）
-  validateOrganizationAccess(ctx.currentOrg, {
-    requireAdmin: false,
-    requireTeam: true,
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "招待一覧取得機能はEnterprise Editionでのみ利用可能です",
   });
-
-  // 現在の組織IDを取得
-  const organizationId = ctx.currentOrg.id;
-
-  const invitations = await ctx.db.organizationInvitation.findMany({
-    where: {
-      organizationId,
-    },
-    include: {
-      invitedByUser: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  return getInvitationsOutputSchema.parse(invitations);
 };
