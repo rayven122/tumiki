@@ -5,6 +5,10 @@ import Image from "next/image";
 import { Github } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { LanguageToggle } from "../LanguageToggle";
+import {
+  SIGNUP_BUTTON_STYLES,
+  SIGNUP_SKELETON_STYLES,
+} from "../_styles/buttonStyles";
 
 type NavItem = {
   label: string;
@@ -30,24 +34,16 @@ const SignUpButton = ({ variant }: { variant: "desktop" | "mobile" }) => {
 
   // ローディング中はスケルトン表示
   if (status === "loading") {
-    const skeletonClass =
-      variant === "desktop"
-        ? "h-12 w-32 animate-pulse rounded border-2 border-gray-300 bg-gray-200"
-        : "h-9 w-20 animate-pulse rounded border-2 border-gray-300 bg-gray-200";
-    return <div className={skeletonClass} />;
+    return <div className={SIGNUP_SKELETON_STYLES[variant]} />;
   }
+
+  const buttonClass = SIGNUP_BUTTON_STYLES[variant];
 
   // ログイン済みの場合はダッシュボードへのリンク
   if (status === "authenticated") {
     // org_slug（現在選択されている組織）があればダッシュボードへ、なければオンボーディングへ
     const orgSlug = session.user.tumiki?.org_slug;
     const dashboardHref = orgSlug ? `/${orgSlug}/dashboard` : "/onboarding";
-
-    const buttonClass =
-      variant === "desktop"
-        ? "border-2 border-black bg-black px-7 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
-        : "border-2 border-black bg-black px-3 py-2 text-xs font-semibold text-white shadow-[2px_2px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[4px_4px_0_#6366f1]";
-
     const buttonText =
       variant === "desktop" ? "ダッシュボードへ" : "ダッシュボード";
 
@@ -59,10 +55,6 @@ const SignUpButton = ({ variant }: { variant: "desktop" | "mobile" }) => {
   }
 
   // 未ログインの場合はサインアップへのリンク
-  const buttonClass =
-    variant === "desktop"
-      ? "border-2 border-black bg-black px-7 py-3 font-semibold text-white shadow-[3px_3px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_#6366f1]"
-      : "border-2 border-black bg-black px-3 py-2 text-xs font-semibold text-white shadow-[2px_2px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[4px_4px_0_#6366f1]";
 
   return (
     <Link href="/signup" className={buttonClass}>
