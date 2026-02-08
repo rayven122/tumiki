@@ -4,8 +4,9 @@ import { TransportType } from "@tumiki/db/server";
 import { nameValidationSchema } from "@/schema/validation";
 import { createApiKeyMcpServer } from "./createApiKeyMcpServer";
 import { createIntegratedMcpServer } from "./createIntegratedMcpServer";
-import { updateOfficialServer } from "./update";
 import { findMcpServers } from "./findMcpServers";
+import { getMcpConfig } from "./getMcpConfig";
+import { updateMcpConfig } from "./updateMcpConfig";
 import {
   deleteMcpServer,
   deleteMcpServerInputSchema,
@@ -81,9 +82,32 @@ export const CreateIntegratedMcpServerOutputV2 = z.object({
   id: z.string(),
 });
 
-export const UpdateOfficialServerInputV2 = z.object({
-  id: z.string(),
+// MCP設定取得用の入力スキーマ
+export const GetMcpConfigInputV2 = z.object({
+  templateInstanceId: z.string(),
+});
+
+// MCP設定取得用の出力スキーマ
+export const GetMcpConfigOutputV2 = z.object({
+  templateInstanceId: z.string(),
+  templateName: z.string(),
+  templateIconPath: z.string().nullable(),
+  templateUrl: z.string().nullable(),
+  envVarKeys: z.array(z.string()),
   envVars: z.record(z.string(), z.string()),
+  hasConfig: z.boolean(),
+});
+
+// MCP設定更新用の入力スキーマ
+export const UpdateMcpConfigInputV2 = z.object({
+  templateInstanceId: z.string(),
+  envVars: z.record(z.string(), z.string()),
+});
+
+// MCP設定更新用の出力スキーマ
+export const UpdateMcpConfigOutputV2 = z.object({
+  id: z.string(),
+  templateInstanceId: z.string(),
 });
 
 // MCPサーバー一覧取得用の出力スキーマ
@@ -110,10 +134,6 @@ export const FindMcpServersOutputV2 = z.array(
     earliestOAuthExpiration: z.date().nullable(),
   }),
 );
-
-export const UpdateOfficialServerOutputV2 = z.object({
-  id: z.string(),
-});
 
 export const UpdateNameInputV2 = z.object({
   id: z.string(),
@@ -310,23 +330,40 @@ export const userMcpServerRouter = createTRPCRouter({
       return result;
     }),
 
-  update: protectedProcedure
-    .input(UpdateOfficialServerInputV2)
-    .output(UpdateOfficialServerOutputV2)
+  // MCP設定取得（テンプレートインスタンスごとの環境変数）
+  getMcpConfig: protectedProcedure
+    .input(GetMcpConfigInputV2)
+    .output(GetMcpConfigOutputV2)
+    .query(async ({ ctx, input }) => {
+      // MCP読み取り権限チェック
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "read",
+      });
+
+      return await getMcpConfig(ctx.db, {
+        templateInstanceId: input.templateInstanceId,
+        organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
+      });
+    }),
+
+  // MCP設定更新（テンプレートインスタンスごとの環境変数）
+  updateMcpConfig: protectedProcedure
+    .input(UpdateMcpConfigInputV2)
+    .output(UpdateMcpConfigOutputV2)
     .mutation(async ({ ctx, input }) => {
-      // 特定MCPサーバーへの書き込み権限チェック
+      // MCP書き込み権限チェック
       await validateMcpPermission(ctx.db, ctx.currentOrg, {
         permission: "write",
-        mcpServerId: input.id,
       });
 
       return await ctx.db.$transaction(async (tx) => {
-        return await updateOfficialServer(
-          tx,
-          input,
-          ctx.currentOrg.id,
-          ctx.session.user.id,
-        );
+        return await updateMcpConfig(tx, {
+          templateInstanceId: input.templateInstanceId,
+          envVars: input.envVars,
+          organizationId: ctx.currentOrg.id,
+          userId: ctx.session.user.id,
+        });
       });
     }),
 
