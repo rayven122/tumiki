@@ -75,6 +75,7 @@ const TemplateConfigSection = ({
   onEnvVarChange,
   isUpdating,
   isMultiple,
+  resetKey,
 }: {
   instanceId: string;
   instanceName: string;
@@ -86,6 +87,8 @@ const TemplateConfigSection = ({
   onEnvVarChange: (instanceId: string, key: string, value: string) => void;
   isUpdating: boolean;
   isMultiple: boolean;
+  /** モーダルが開くたびにインクリメントされるキー（初期化リセット用） */
+  resetKey: number;
 }) => {
   const { data: config, isLoading } =
     api.v2.userMcpServer.getMcpConfig.useQuery(
@@ -95,6 +98,11 @@ const TemplateConfigSection = ({
 
   // 初期化済みフラグをrefで管理（再レンダリングを防止）
   const initializedRef = useRef(false);
+
+  // resetKeyが変更されたら初期化フラグをリセット
+  useEffect(() => {
+    initializedRef.current = false;
+  }, [resetKey]);
 
   // configが読み込まれたらenvVarsを初期化（一度だけ実行）
   useEffect(() => {
@@ -279,6 +287,8 @@ export const McpConfigEditModal = ({
   >({});
   // 各セクションの開閉状態
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  // 初期化リセット用のキー（モーダルが開くたびにインクリメント）
+  const [resetKey, setResetKey] = useState(0);
 
   // 後方互換性: editableInstancesが渡されない場合は単一インスタンスモード
   const instances: EditableInstance[] = editableInstances ?? [
@@ -293,6 +303,7 @@ export const McpConfigEditModal = ({
     if (open) {
       setServerName(initialServerName);
       setEnvVarsMap({});
+      setResetKey((prev) => prev + 1);
       // 最初のセクションを開く
       const firstInstance = instances[0];
       if (firstInstance) {
@@ -454,6 +465,7 @@ export const McpConfigEditModal = ({
                     onEnvVarChange={handleEnvVarChange}
                     isUpdating={isUpdating}
                     isMultiple={isMultipleInstances}
+                    resetKey={resetKey}
                   />
                 ))}
               </div>

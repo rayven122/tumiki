@@ -88,9 +88,18 @@ export const getMcpConfig = async (
 
   // 環境変数キーのマスク表示を生成
   // 設定済みのキーには "•••••" を表示、未設定は空文字
-  const envVarsFromConfig = mcpConfig
-    ? (JSON.parse(mcpConfig.envVars) as Record<string, string>)
-    : {};
+  let envVarsFromConfig: Record<string, string> = {};
+  if (mcpConfig) {
+    try {
+      envVarsFromConfig = JSON.parse(mcpConfig.envVars) as Record<
+        string,
+        string
+      >;
+    } catch {
+      // JSON解析に失敗した場合は空のオブジェクトを使用
+      envVarsFromConfig = {};
+    }
+  }
 
   // 値が設定されているかどうかでマスク表示を変える
   const maskedEnvVars = Object.fromEntries(
