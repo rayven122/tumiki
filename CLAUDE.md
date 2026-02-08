@@ -80,6 +80,10 @@ pnpm --filter @tumiki/db <command>     # 特定パッケージでコマンド実
 turbo run build --filter=manager       # 特定アプリのみビルド
 ```
 
+## CCManager（並列 Claude Code セッション管理）
+
+複数のLinear Issueを並列で処理する場合、[CCManager](https://github.com/upamune/ccmanager)を使用してGit Worktreeベースのセッション管理を推奨します。`/batch-issues`コマンドで複数Issueの並列処理が可能です。
+
 ## Cloud Run MCP サーバー連携
 
 Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポートしています：
