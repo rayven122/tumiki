@@ -185,10 +185,8 @@ apps/manager/src/
 │   └── create/
 │       └── page.tsx                    // 組織作成
 │
-├── libs/
-│   └── license/
-│       ├── index.ts                    // ライセンス判定ロジック
-│       └── features.ts                 // 機能フラグ定義
+├── hooks/
+│   └── useEEFeature.ts                 // EE機能利用可否フック
 ```
 
 **ファイル命名規則**:
@@ -200,110 +198,184 @@ apps/manager/src/
 - 実行時に `TUMIKI_ENABLE_ORG_CREATION` 環境変数で有効/無効を制御
 - UIでも同じ環境変数を参照して表示/非表示を切り替え
 
-### フェーズ3: ライセンス判定の実装
+### フェーズ3: EE機能の実装パターン（MCP Proxyと同一）
+
+MCP Proxyと同じ **ビルド時分離 + 動的インポート** パターンを採用。
+`packages/license/` のような新規パッケージは作成せず、既存のパターンに統一。
+
+#### Facadeパターン（CE版スタブ）
 
 ```typescript
-// packages/license/src/index.ts (新規パッケージ)
+// apps/manager/src/server/api/routers/organization/memberManagement/index.ts
+// CE Facade - メンバー管理機能のスタブ
 
-export type LicenseEdition = "community" | "enterprise";
+/**
+ * メンバー管理機能 (CE Facade)
+ * Community Edition ではメンバー管理機能が無効。
+ */
 
-export type LicenseInfo = {
-  edition: LicenseEdition;
-  expiresAt: Date | null;
-  features: string[];
-  options: {
-    orgCreation: boolean;  // 組織作成オプション
-  };
+// CE版ではメンバー管理は利用不可
+export const MEMBER_MANAGEMENT_AVAILABLE = false;
+
+// CE版ではスタブ関数を提供
+export const inviteMembers = async (): Promise<never> => {
+  throw new Error("Member management is not available in Community Edition");
 };
 
-// 各エディションの標準機能一覧
-const EDITION_FEATURES: Record<LicenseEdition, string[]> = {
-  community: [
-    "mcp:config",
-    "mcp:execute",
-  ],
-  enterprise: [
-    "mcp:config",
-    "mcp:execute",
-    "mcp:dynamic-search",
-    "mcp:pii-masking",
-    "member:read",
-    "member:invite",
-    "member:remove",
-    "member:role:update",
-    "role:manage",
-    "group:manage",
-    "org:settings",
-  ],
+export const removeMember = async (): Promise<never> => {
+  throw new Error("Member management is not available in Community Edition");
 };
 
-// オプション機能（環境変数で有効化）
-const OPTION_FEATURES = {
-  orgCreation: [
-    "org:create",
-    "org:delete",
-    "org:switch",
-  ],
+// 型のみエクスポート（型互換性のため）
+export type { InviteMembersInput, RemoveMemberInput } from "./types.js";
+```
+
+#### EE版実装
+
+```typescript
+// apps/manager/src/server/api/routers/organization/memberManagement/index.ee.ts
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
+/**
+ * メンバー管理機能 (Enterprise Edition)
+ */
+
+export const MEMBER_MANAGEMENT_AVAILABLE = true;
+
+export { inviteMembers } from "./inviteMembers.ee.js";
+export { removeMember } from "./removeMember.ee.js";
+export { updateMemberRole } from "./updateMemberRole.ee.js";
+
+export type { InviteMembersInput, RemoveMemberInput } from "./types.js";
+```
+
+#### 動的インポートによるEE機能ロード
+
+```typescript
+// apps/manager/src/server/api/routers/organization/index.ts
+
+// EE機能: メンバー管理（条件付きロード）
+type MemberManagementModule = typeof import("./memberManagement/index.ee.js");
+let memberManagementModuleCache: MemberManagementModule | null = null;
+
+const loadMemberManagementModule = async (): Promise<MemberManagementModule | null> => {
+  if (memberManagementModuleCache) {
+    return memberManagementModuleCache;
+  }
+  try {
+    memberManagementModuleCache = await import("./memberManagement/index.ee.js");
+    return memberManagementModuleCache;
+  } catch {
+    return null; // CE版ビルドではファイルが存在しない
+  }
 };
 
-export const getLicenseInfo = (): LicenseInfo => {
-  const edition = (process.env.TUMIKI_LICENSE_EDITION ?? "community") as LicenseEdition;
-  const orgCreationEnabled = process.env.TUMIKI_ENABLE_ORG_CREATION === "true";
+// ルーター内での使用例
+export const organizationRouter = createTRPCRouter({
+  inviteMembers: protectedProcedure
+    .input(InviteMembersInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const memberManagement = await loadMemberManagementModule();
+      if (!memberManagement) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Member management is not available in Community Edition",
+        });
+      }
+      return memberManagement.inviteMembers(ctx, input);
+    }),
+});
+```
 
-  // 基本機能 + オプション機能を結合
-  const baseFeatures = EDITION_FEATURES[edition] ?? EDITION_FEATURES.community;
-  const optionalFeatures = orgCreationEnabled && edition === "enterprise"
-    ? OPTION_FEATURES.orgCreation
-    : [];
+#### オプション機能（組織作成）の制御
 
-  return {
-    edition,
-    expiresAt: null,
-    features: [...baseFeatures, ...optionalFeatures],
-    options: {
-      orgCreation: orgCreationEnabled && edition === "enterprise",
-    },
-  };
+組織作成はEE機能だが、さらに環境変数で有効/無効を制御：
+
+```typescript
+// apps/manager/src/server/api/routers/v2/organization/createOrganization.ee.ts
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
+// オプション機能の有効/無効判定
+const isOrgCreationEnabled = (): boolean => {
+  return process.env.TUMIKI_ENABLE_ORG_CREATION === "true";
 };
 
-export const isFeatureEnabled = (feature: string): boolean => {
-  const license = getLicenseInfo();
-  return license.features.includes(feature);
+export const createOrganization = async (ctx: Context, input: CreateOrgInput) => {
+  // オプション機能が無効な場合はエラー
+  if (!isOrgCreationEnabled()) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Organization creation is disabled. Set TUMIKI_ENABLE_ORG_CREATION=true to enable.",
+    });
+  }
+
+  // 組織作成ロジック...
 };
-
-// エディション判定ヘルパー
-export const isCommunityEdition = (): boolean => getLicenseInfo().edition === "community";
-export const isEnterpriseEdition = (): boolean => getLicenseInfo().edition === "enterprise";
-
-// オプション機能判定ヘルパー
-export const isOrgCreationEnabled = (): boolean => getLicenseInfo().options.orgCreation;
 ```
 
 ### フェーズ4: UI での分岐
 
+UIでもサーバーサイドと同様に、動的インポートまたはAPI経由でEE機能の有無を判定。
+
 ```typescript
-// apps/manager/src/components/feature-gate.tsx
+// apps/manager/src/hooks/useEEFeature.ts
 
-type FeatureGateProps = {
-  feature: string;
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-};
+/**
+ * EE機能の利用可否を判定するフック
+ * サーバー側でEE機能が利用可能かどうかをAPIで確認
+ */
+export const useEEFeature = (featureName: string) => {
+  const { data, isLoading } = trpc.system.checkEEFeature.useQuery({ featureName });
 
-export const FeatureGate = ({ feature, children, fallback }: FeatureGateProps) => {
-  const { data: license } = trpc.license.getInfo.useQuery();
-
-  if (!license?.features.includes(feature)) {
-    return fallback ?? null;
-  }
-
-  return <>{children}</>;
+  return {
+    isAvailable: data?.available ?? false,
+    isLoading,
+  };
 };
 
 // 使用例
-<FeatureGate feature="member:invite" fallback={<UpgradePrompt />}>
-  <InviteMemberButton />
-</FeatureGate>
+const MemberInviteButton = () => {
+  const { isAvailable, isLoading } = useEEFeature("memberManagement");
+
+  if (isLoading) return <Skeleton />;
+  if (!isAvailable) return null;  // CE版では非表示
+
+  return <InviteMemberButton />;
+};
+```
+
+```typescript
+// apps/manager/src/server/api/routers/system.ts
+
+// EE機能チェック用エンドポイント
+export const systemRouter = createTRPCRouter({
+  checkEEFeature: publicProcedure
+    .input(z.object({ featureName: z.string() }))
+    .query(async ({ input }) => {
+      const { featureName } = input;
+
+      // 動的インポートでEE機能の存在を確認
+      const loaders: Record<string, () => Promise<unknown>> = {
+        memberManagement: () => import("./organization/memberManagement/index.ee.js"),
+        roleManagement: () => import("./v2/role/index.ee.js"),
+        groupManagement: () => import("./v2/group/index.ee.js"),
+      };
+
+      const loader = loaders[featureName];
+      if (!loader) {
+        return { available: false };
+      }
+
+      try {
+        await loader();
+        return { available: true };
+      } catch {
+        return { available: false };
+      }
+    }),
+});
 ```
 
 ---
@@ -312,33 +384,32 @@ export const FeatureGate = ({ feature, children, fallback }: FeatureGateProps) =
 
 ### Phase 1: 基盤整備（優先度: 高）
 
-1. **ライセンスパッケージ作成**
-   - `packages/license/` を新規作成
-   - ライセンス判定ロジック（CE / EE）
-   - 環境変数 `TUMIKI_LICENSE_EDITION` のサポート
-   - オプション機能 `TUMIKI_ENABLE_ORG_CREATION` のサポート
-   - 機能判定ヘルパー関数
-
-2. **EE/CE分離パターンの導入**
+1. **EE/CE分離パターンの導入（MCP Proxyと同一）**
    - `apps/manager/tsconfig.ce.json` 作成（EEファイル除外）
-   - `apps/manager/vitest.config.ts` で条件付きテスト実行
+   - `apps/manager/vitest.config.ts` で `EE_BUILD` 環境変数による条件付きテスト実行
    - ESLint ヘッダールール追加（Elastic License 2.0）
+
+2. **EE機能チェック用システムAPI**
+   - `systemRouter.checkEEFeature` エンドポイント追加
+   - 動的インポートでEE機能の存在を確認
 
 ### Phase 2: API分離（優先度: 高）
 
-1. **組織管理API（EE + オプション）**
-   - `v2/organization/create` → `createOrganization.ee.ts`（オプション機能として実装）
-   - 実行時に `isOrgCreationEnabled()` で有効/無効を判定
-   - `organization/getUserOrganizations` → EE版は所属組織、オプションONなら全組織
-
-2. **メンバー管理API（EE化）**
+1. **メンバー管理API（EE化）**
    - `inviteMembers` → `inviteMembers.ee.ts`
    - `removeMember` → `removeMember.ee.ts`
    - `updateMemberRole` → `updateMemberRole.ee.ts`
+   - CE版Facade（スタブ）作成
 
-3. **ロール・グループAPI（EE化）**
+2. **ロール・グループAPI（EE化）**
    - `role/create`, `role/update`, `role/delete` → EE化
    - `group/create`, `group/delete` 等 → EE化
+   - CE版Facade（スタブ）作成
+
+3. **組織作成API（EE + オプション）**
+   - `v2/organization/create` → `createOrganization.ee.ts`
+   - 環境変数 `TUMIKI_ENABLE_ORG_CREATION` で有効/無効を制御
+   - `organization/getUserOrganizations` → オプションONなら組織切り替えUI表示
 
 ### Phase 3: UI分離（優先度: 中）
 
@@ -352,9 +423,9 @@ export const FeatureGate = ({ feature, children, fallback }: FeatureGateProps) =
    - `/org-structure` → CE版はアクセス不可
    - `/organizations` → オプション有効時のみ表示
 
-3. **FeatureGate コンポーネント**
+3. **useEEFeature フック**
+   - EE機能の利用可否をAPIで確認
    - 機能ごとの表示/非表示制御
-   - アップグレード促進UI（CE→EE）
 
 ### Phase 4: ドキュメント・テスト（優先度: 中）
 
@@ -364,7 +435,7 @@ export const FeatureGate = ({ feature, children, fallback }: FeatureGateProps) =
    - オプション機能の設定手順
 
 2. **テスト整備**
-   - EEテスト（`.ee.test.ts`）作成
+   - EEテスト（`.ee.test.ts`）作成（`EE_BUILD=true` で実行）
    - CE版テスト（Facade）作成
    - オプション機能のテスト
    - 各エディションでのE2Eテスト
@@ -463,9 +534,9 @@ export const FeatureGate = ({ feature, children, fallback }: FeatureGateProps) =
 
 | Phase | 期間 | 内容 |
 |-------|------|------|
-| 1 | Week 1-2 | 基盤整備（ライセンスパッケージ、分離パターン導入） |
+| 1 | Week 1-2 | 基盤整備（EE/CE分離パターン導入、MCP Proxyと同一設計） |
 | 2 | Week 3-4 | API分離（メンバー管理→EE、組織作成→EE+オプション） |
-| 3 | Week 5-6 | UI分離（ナビゲーション、ページ、FeatureGate） |
+| 3 | Week 5-6 | UI分離（ナビゲーション、ページ、useEEFeatureフック） |
 | 4 | Week 7-8 | テスト整備、ドキュメント、リリース準備 |
 
 ---
@@ -489,18 +560,16 @@ export const FeatureGate = ({ feature, children, fallback }: FeatureGateProps) =
 
 ### 環境変数
 
+CE/EE の判定はビルド時に決定されるため、ライセンス用の環境変数は不要。
+オプション機能のみ環境変数で制御。
+
 ```bash
-# CE版（デフォルト）- 個人利用
-TUMIKI_LICENSE_EDITION=community
+# テスト実行時（MCP Proxyと同一）
+EE_BUILD=true pnpm test        # EEテストを含む
+pnpm test                       # CEテストのみ
 
-# EE版 - 組織利用（標準）
-TUMIKI_LICENSE_EDITION=enterprise
-TUMIKI_LICENSE_KEY=xxx-xxx-xxx
-
-# EE版 - 組織作成オプション有効（SaaS運用など）
-TUMIKI_LICENSE_EDITION=enterprise
-TUMIKI_LICENSE_KEY=xxx-xxx-xxx
-TUMIKI_ENABLE_ORG_CREATION=true
+# オプション機能（EE版のみ有効）
+TUMIKI_ENABLE_ORG_CREATION=true  # 組織作成機能を有効化
 ```
 
 ### Docker イメージ
@@ -534,17 +603,23 @@ COPY --from=build-${EDITION} /app/dist ./dist
 ### オプション機能の実行時制御
 
 ```typescript
-// API側でのオプション機能制御例
-import { isOrgCreationEnabled, isEnterpriseEdition } from "@tumiki/license";
+// apps/manager/src/server/api/routers/v2/organization/createOrganization.ee.ts
+// SPDX-License-Identifier: Elastic-2.0
+// Copyright (c) 2024-2025 Reyven Inc.
+
+// オプション機能の有効/無効判定（環境変数で制御）
+const isOrgCreationEnabled = (): boolean => {
+  return process.env.TUMIKI_ENABLE_ORG_CREATION === "true";
+};
 
 export const createOrganization = protectedProcedure
   .input(CreateOrganizationInput)
   .mutation(async ({ ctx, input }) => {
-    // EE + オプション有効時のみ実行可能
-    if (!isEnterpriseEdition() || !isOrgCreationEnabled()) {
+    // オプション有効時のみ実行可能
+    if (!isOrgCreationEnabled()) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Organization creation is not enabled",
+        message: "Organization creation is disabled. Set TUMIKI_ENABLE_ORG_CREATION=true to enable.",
       });
     }
 
@@ -553,14 +628,20 @@ export const createOrganization = protectedProcedure
 ```
 
 ```typescript
-// UI側でのオプション機能制御例
-import { useFeatureEnabled } from "@tumiki/license/react";
+// UI側でのオプション機能制御例（useEEFeatureフックと組み合わせ）
+import { useEEFeature } from "@/hooks/useEEFeature";
 
 export const OrganizationSwitcher = () => {
-  const canCreateOrg = useFeatureEnabled("org:create");
+  // EE機能の利用可否を確認（動的インポートベース）
+  const { isAvailable: isOrgManagementAvailable } = useEEFeature("orgManagement");
 
-  if (!canCreateOrg) {
-    return null;  // 組織作成オプションが無効なら非表示
+  // オプション機能の有効/無効を確認（環境変数ベース）
+  const { data: config } = trpc.system.getConfig.useQuery();
+  const isOrgCreationEnabled = config?.orgCreationEnabled ?? false;
+
+  // EE機能が利用不可、またはオプション無効なら非表示
+  if (!isOrgManagementAvailable || !isOrgCreationEnabled) {
+    return null;
   }
 
   return <OrganizationSwitcherUI />;
@@ -572,7 +653,7 @@ export const OrganizationSwitcher = () => {
 ## 次のステップ
 
 1. **設計レビュー**: この設計文書の最終確認・承認
-2. **Phase 1 実装開始**: ライセンスパッケージ作成、分離パターン導入
+2. **Phase 1 実装開始**: EE/CE分離パターン導入（MCP Proxyと同一設計）
 3. **法務確認**: Apache 2.0 / Elastic License 2.0 のライセンス文言確認
 4. **価格設定**: EE版の価格体系決定
 
@@ -585,3 +666,4 @@ export const OrganizationSwitcher = () => {
 | 2026-02-08 | 初版作成 |
 | 2026-02-08 | EE版を単一組織に限定、組織作成をSaaS専用に変更 |
 | 2026-02-08 | SaaS版を廃止、EE + オプション機能（組織作成）の構成に変更 |
+| 2026-02-08 | MCP Proxyと同一設計に統一（ビルド時分離 + 動的インポート）|
