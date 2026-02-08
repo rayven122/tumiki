@@ -53,6 +53,9 @@ model Organization {
   /// チャット関連
   chats Chat[]
 
+  /// エージェント関連
+  agents Agent[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
