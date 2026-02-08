@@ -22,10 +22,10 @@ const defaultNavItems: NavItem[] = [
 ];
 
 /**
- * CTAボタンコンポーネント
+ * サインアップ/ダッシュボードボタンコンポーネント
  * ログイン状態に応じて「ダッシュボードへ」または「無料で試す」を表示
  */
-const CTAButton = ({ variant }: { variant: "desktop" | "mobile" }) => {
+const SignUpButton = ({ variant }: { variant: "desktop" | "mobile" }) => {
   const { data: session, status } = useSession();
 
   // ローディング中はスケルトン表示
@@ -114,7 +114,7 @@ export const Header = ({
             <span>GitHub</span>
           </Link>
           <LanguageToggle />
-          {showCTA && <CTAButton variant="desktop" />}
+          {showCTA && <SignUpButton variant="desktop" />}
         </div>
 
         {/* Mobile Navigation */}
@@ -129,7 +129,7 @@ export const Header = ({
             <Github className="h-5 w-5" />
           </Link>
           <LanguageToggle />
-          {showCTA && <CTAButton variant="mobile" />}
+          {showCTA && <SignUpButton variant="mobile" />}
         </div>
       </nav>
     </header>

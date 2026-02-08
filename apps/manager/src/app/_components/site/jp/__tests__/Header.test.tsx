@@ -77,7 +77,7 @@ describe("Header", () => {
     vi.clearAllMocks();
   });
 
-  describe("CTAButton", () => {
+  describe("SignUpButton", () => {
     test("status === 'loading' の場合、スケルトン表示されること", () => {
       mockUseSession.mockReturnValue({
         data: null,
@@ -96,8 +96,17 @@ describe("Header", () => {
       mockUseSession.mockReturnValue({
         data: {
           user: {
+            id: "user-123",
+            sub: "user-123",
+            email: "test@example.com",
+            name: "Test User",
+            image: null,
+            role: "USER",
             tumiki: {
+              org_slugs: ["test-org"],
+              org_id: "org-123",
               org_slug: "test-org",
+              roles: ["user"],
             },
           },
           expires: "2099-01-01",
@@ -125,8 +134,17 @@ describe("Header", () => {
       mockUseSession.mockReturnValue({
         data: {
           user: {
+            id: "user-123",
+            sub: "user-123",
+            email: "test@example.com",
+            name: "Test User",
+            image: null,
+            role: "USER",
             tumiki: {
-              org_slug: undefined,
+              org_slugs: [],
+              org_id: null,
+              org_slug: null,
+              roles: ["user"],
             },
           },
           expires: "2099-01-01",
@@ -170,7 +188,7 @@ describe("Header", () => {
       expect(signupLinkElements.length).toBe(2);
     });
 
-    test("showCTA === false の場合、CTAボタンが表示されないこと", () => {
+    test("showCTA === false の場合、SignUpボタンが表示されないこと", () => {
       mockUseSession.mockReturnValue({
         data: null,
         status: "unauthenticated",
