@@ -92,6 +92,7 @@ export const findReusableOAuthTokens = async (
   }
 
   // 2. 同じテンプレートを使用している他のインスタンスから、有効なトークンを検索
+  // パフォーマンス最適化: selectで必要なフィールドのみを取得
   const now = new Date();
   const reusableTokens = await tx.mcpOAuthToken.findMany({
     where: {
@@ -108,9 +109,12 @@ export const findReusableOAuthTokens = async (
       // 有効期限チェック（nullの場合は無期限として扱う）
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
-    include: {
+    select: {
+      id: true,
+      mcpServerTemplateInstanceId: true,
+      expiresAt: true,
       mcpServerTemplateInstance: {
-        include: {
+        select: {
           mcpServer: {
             select: {
               id: true,

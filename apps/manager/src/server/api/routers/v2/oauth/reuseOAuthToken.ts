@@ -3,6 +3,7 @@
  * 同じテンプレートで認証済みの他のインスタンスからトークンをコピーする
  */
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { Prisma } from "@tumiki/db/prisma";
 import { TRPCError } from "@trpc/server";
 import type { z } from "zod";
 import type { ReuseOAuthTokenInputV2 } from "./index";
@@ -114,34 +115,50 @@ export const reuseOAuthToken = async (
   }
 
   // 5. ターゲットインスタンス用のトークンをupsert
-  const newToken = await tx.mcpOAuthToken.upsert({
-    where: {
-      userId_mcpServerTemplateInstanceId: {
+  // セキュリティ注記: accessToken, refreshToken はPrismaスキーマで @encrypted 属性により
+  // データベース保存時に自動的に暗号化されるため、コピー時も暗号化状態が維持される
+  try {
+    const newToken = await tx.mcpOAuthToken.upsert({
+      where: {
+        userId_mcpServerTemplateInstanceId: {
+          userId,
+          mcpServerTemplateInstanceId: input.targetInstanceId,
+        },
+      },
+      create: {
         userId,
         mcpServerTemplateInstanceId: input.targetInstanceId,
+        oauthClientId: sourceToken.oauthClientId,
+        organizationId,
+        accessToken: sourceToken.accessToken,
+        refreshToken: sourceToken.refreshToken,
+        expiresAt: sourceToken.expiresAt,
+        tokenPurpose: sourceToken.tokenPurpose,
       },
-    },
-    create: {
-      userId,
-      mcpServerTemplateInstanceId: input.targetInstanceId,
-      oauthClientId: sourceToken.oauthClientId,
-      organizationId,
-      accessToken: sourceToken.accessToken,
-      refreshToken: sourceToken.refreshToken,
-      expiresAt: sourceToken.expiresAt,
-      tokenPurpose: sourceToken.tokenPurpose,
-    },
-    update: {
-      oauthClientId: sourceToken.oauthClientId,
-      accessToken: sourceToken.accessToken,
-      refreshToken: sourceToken.refreshToken,
-      expiresAt: sourceToken.expiresAt,
-      tokenPurpose: sourceToken.tokenPurpose,
-    },
-  });
+      update: {
+        oauthClientId: sourceToken.oauthClientId,
+        accessToken: sourceToken.accessToken,
+        refreshToken: sourceToken.refreshToken,
+        expiresAt: sourceToken.expiresAt,
+        tokenPurpose: sourceToken.tokenPurpose,
+      },
+    });
 
-  return {
-    success: true,
-    tokenId: newToken.id,
-  };
+    return {
+      success: true,
+      tokenId: newToken.id,
+    };
+  } catch (error) {
+    // ユニーク制約違反（P2002）の場合は競合エラーとして処理
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "トークンの保存中に競合が発生しました。再度お試しください。",
+      });
+    }
+    throw error;
+  }
 };

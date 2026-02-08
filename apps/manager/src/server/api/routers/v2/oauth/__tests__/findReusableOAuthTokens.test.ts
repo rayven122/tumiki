@@ -13,6 +13,8 @@ describe("findReusableOAuthTokens", () => {
   const testTemplateId = "template-123";
 
   beforeEach(() => {
+    // Prismaクライアントの部分モック
+    // 必要なメソッドのみをモック化し、PrismaTransactionClient型としてキャスト
     mockTx = {
       mcpServerTemplateInstance: {
         findUnique: vi.fn(),
@@ -119,9 +121,12 @@ describe("findReusableOAuthTokens", () => {
           { expiresAt: { gt: expect.any(Date) as Date } },
         ],
       },
-      include: {
+      select: {
+        id: true,
+        mcpServerTemplateInstanceId: true,
+        expiresAt: true,
         mcpServerTemplateInstance: {
-          include: {
+          select: {
             mcpServer: {
               select: {
                 id: true,

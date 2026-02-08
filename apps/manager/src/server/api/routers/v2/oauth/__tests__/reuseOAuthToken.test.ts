@@ -14,6 +14,8 @@ describe("reuseOAuthToken", () => {
   const testTemplateId = "template-123";
 
   beforeEach(() => {
+    // Prismaクライアントの部分モック
+    // 必要なメソッドのみをモック化し、PrismaTransactionClient型としてキャスト
     mockTx = {
       mcpOAuthToken: {
         findUnique: vi.fn(),
