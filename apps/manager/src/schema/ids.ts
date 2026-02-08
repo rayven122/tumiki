@@ -59,6 +59,19 @@ export const ApiKeyIdSchema = z.string().brand<"ApiKeyId">();
 export const FeedbackIdSchema = z.string().brand<"FeedbackId">();
 export type FeedbackId = z.infer<typeof FeedbackIdSchema>;
 
+/**
+ * Agent関連のID型
+ */
+export const AgentIdSchema = z.string().brand<"AgentId">();
+export const AgentScheduleIdSchema = z.string().brand<"AgentScheduleId">();
+export const AgentExecutionLogIdSchema = z
+  .string()
+  .brand<"AgentExecutionLogId">();
+
+export type AgentId = z.infer<typeof AgentIdSchema>;
+export type AgentScheduleId = z.infer<typeof AgentScheduleIdSchema>;
+export type AgentExecutionLogId = z.infer<typeof AgentExecutionLogIdSchema>;
+
 export const OrganizationIdSchema = z.string().brand<"OrganizationId">();
 export const OrganizationMemberIdSchema = z
   .string()

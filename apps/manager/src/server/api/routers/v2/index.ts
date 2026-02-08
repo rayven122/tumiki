@@ -10,6 +10,7 @@ import { oauthRouter } from "./oauth";
 import { notificationRouter } from "./notification";
 import { groupRouter } from "./group";
 import { roleRouter } from "./role";
+import { agentRouter } from "./agent";
 
 export const v2Router = createTRPCRouter({
   user: userRouter,
@@ -23,4 +24,5 @@ export const v2Router = createTRPCRouter({
   notification: notificationRouter,
   group: groupRouter,
   role: roleRouter,
+  agent: agentRouter,
 });
