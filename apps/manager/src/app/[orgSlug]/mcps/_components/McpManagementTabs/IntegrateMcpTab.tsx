@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +65,6 @@ export const IntegrateMcpTab = () => {
         setSelectedTemplateIds([]);
       },
       onError: (error) => {
-        console.error("MCP統合作成エラー:", error);
         const message = error.message || "不明なエラーが発生しました";
         toast.error(`作成に失敗しました: ${message}`);
       },
@@ -102,16 +101,16 @@ export const IntegrateMcpTab = () => {
     return { availableTemplates: available, selectedTemplates: selected };
   }, [allTemplates, selectedTemplateIds]);
 
-  const handleSelect = useCallback((templateId: string) => {
+  const handleSelect = (templateId: string) => {
     setSelectedTemplateIds((prev) => {
       if (prev.includes(templateId)) return prev;
       return [...prev, templateId];
     });
-  }, []);
+  };
 
-  const handleRemove = useCallback((templateId: string) => {
+  const handleRemove = (templateId: string) => {
     setSelectedTemplateIds((prev) => prev.filter((id) => id !== templateId));
-  }, []);
+  };
 
   const handleCreate = () => {
     if (selectedTemplates.length < 2) {

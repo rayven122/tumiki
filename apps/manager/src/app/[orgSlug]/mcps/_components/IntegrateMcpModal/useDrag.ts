@@ -61,6 +61,12 @@ export const useDrag = (options: UseDragOptions = {}) => {
 
   const handlePointerUp = useCallback(
     (event: PointerEvent) => {
+      // ポインターキャプチャを解放（メモリリーク防止）
+      const target = event.target as HTMLElement;
+      if (target.hasPointerCapture?.(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId);
+      }
+
       setDragState((prev) => {
         if (!prev.isDragging || !prev.itemId) return prev;
         const dropZone = detectDropZone(event.clientX, event.clientY);

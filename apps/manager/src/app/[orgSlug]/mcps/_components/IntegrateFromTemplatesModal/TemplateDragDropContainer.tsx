@@ -162,13 +162,16 @@ export const TemplateDragDropContainer = ({
   const { dragState, startDrag, registerDropZone, getHoveredDropZone } =
     useDrag({ onDragEnd: handleDragEnd });
 
+  // getHoveredDropZoneは内部でdragState.positionを使用するため、
+  // 依存配列から除外しても安全（ESLint警告を抑制）
   useEffect(() => {
     if (dragState.isDragging) {
       setHoveredZone(getHoveredDropZone());
     } else {
       setHoveredZone(null);
     }
-  }, [dragState.isDragging, dragState.position, getHoveredDropZone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragState.isDragging, dragState.position]);
 
   const draggedTemplate =
     dragState.itemId !== null
