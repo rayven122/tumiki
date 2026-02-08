@@ -42,6 +42,7 @@ import { ServerStatusBadge } from "../ServerStatusBadge";
 import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
 import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
 import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
+import { ReuseTokenModal } from "./_components/ReuseTokenModal";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 import type { McpServerId } from "@/schema/ids";
 
@@ -98,10 +99,17 @@ export const UserMcpServerCard = ({
   );
 
   // OAuth再認証フック
-  const { handleReauthenticate, isPending: isReauthenticating } =
-    useReauthenticateOAuth({
-      mcpServerTemplateInstanceId: targetInstanceForReauth?.id ?? "",
-    });
+  const {
+    handleReauthenticate,
+    handleNewAuthentication,
+    isPending: isReauthenticating,
+    showReuseModal,
+    setShowReuseModal,
+    reusableTokens,
+    targetInstanceId,
+  } = useReauthenticateOAuth({
+    mcpServerTemplateInstanceId: targetInstanceForReauth?.id ?? "",
+  });
 
   // OAuth認証タイプの場合は常に再認証ボタンを表示（MCPサーバー自体のauthTypeを参照）
   const isOAuthServer = userMcpServer.authType === "OAUTH";
@@ -192,7 +200,7 @@ export const UserMcpServerCard = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleReauthenticate();
+                      void handleReauthenticate();
                     }}
                     disabled={isReauthenticating}
                   >
@@ -354,6 +362,18 @@ export const UserMcpServerCard = ({
             setIconEditModalOpen(false);
           }}
           onOpenChange={setIconEditModalOpen}
+        />
+      )}
+
+      {/* トークン再利用モーダル */}
+      {showReuseModal && (
+        <ReuseTokenModal
+          open={showReuseModal}
+          onOpenChange={setShowReuseModal}
+          reusableTokens={reusableTokens}
+          targetInstanceId={targetInstanceId}
+          onNewAuthentication={handleNewAuthentication}
+          onSuccess={revalidate}
         />
       )}
     </>
