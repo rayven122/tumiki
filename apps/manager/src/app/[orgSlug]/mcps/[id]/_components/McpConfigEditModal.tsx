@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   Dialog,
@@ -93,16 +93,20 @@ const TemplateConfigSection = ({
       { enabled: true },
     );
 
-  // configが読み込まれたらenvVarsを初期化
+  // 初期化済みフラグをrefで管理（再レンダリングを防止）
+  const initializedRef = useRef(false);
+
+  // configが読み込まれたらenvVarsを初期化（一度だけ実行）
   useEffect(() => {
-    if (config) {
+    if (config && !initializedRef.current) {
+      initializedRef.current = true;
       for (const key of config.envVarKeys) {
-        if (config.envVars[key] && envVars[key] === undefined) {
+        if (config.envVars[key]) {
           onEnvVarChange(instanceId, key, config.envVars[key]);
         }
       }
     }
-  }, [config, instanceId, onEnvVarChange, envVars]);
+  }, [config, instanceId, onEnvVarChange]);
 
   const hasApiConfig = (config?.envVarKeys.length ?? 0) > 0;
   const isConfigured = Object.values(config?.envVars ?? {}).some(
@@ -298,40 +302,42 @@ export const McpConfigEditModal = ({
   }, [open, initialServerName, instances]);
 
   // サーバー名更新ミューテーション
-  const { mutate: updateName, isPending: isUpdatingName } =
+  const { mutateAsync: updateNameAsync, isPending: isUpdatingName } =
     api.v2.userMcpServer.updateName.useMutation();
 
   // API設定更新ミューテーション
-  const { mutate: updateConfig, isPending: isUpdatingConfig } =
+  const { mutateAsync: updateConfigAsync, isPending: isUpdatingConfig } =
     api.v2.userMcpServer.updateMcpConfig.useMutation();
 
   const isUpdating = isUpdatingName || isUpdatingConfig;
 
-  const handleEnvVarChange = (
-    instanceId: string,
-    key: string,
-    value: string,
-  ) => {
-    setEnvVarsMap((prev) => ({
-      ...prev,
-      [instanceId]: {
-        ...(prev[instanceId] ?? {}),
-        [key]: value,
-      },
-    }));
-  };
+  const handleEnvVarChange = useCallback(
+    (instanceId: string, key: string, value: string) => {
+      setEnvVarsMap((prev) => ({
+        ...prev,
+        [instanceId]: {
+          ...(prev[instanceId] ?? {}),
+          [key]: value,
+        },
+      }));
+    },
+    [],
+  );
 
-  const handleSectionOpenChange = (instanceId: string, isOpen: boolean) => {
-    setOpenSections((prev) => {
-      const next = new Set(prev);
-      if (isOpen) {
-        next.add(instanceId);
-      } else {
-        next.delete(instanceId);
-      }
-      return next;
-    });
-  };
+  const handleSectionOpenChange = useCallback(
+    (instanceId: string, isOpen: boolean) => {
+      setOpenSections((prev) => {
+        const next = new Set(prev);
+        if (isOpen) {
+          next.add(instanceId);
+        } else {
+          next.delete(instanceId);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleSubmit = async () => {
     const nameChanged = serverName !== initialServerName;
@@ -345,19 +351,11 @@ export const McpConfigEditModal = ({
       );
     });
 
-    let hasError = false;
+    const promises: Promise<unknown>[] = [];
 
     // サーバー名を更新
     if (nameChanged) {
-      updateName(
-        { id: serverId, name: serverName },
-        {
-          onError: (error) => {
-            hasError = true;
-            toast.error(`名前の更新に失敗しました: ${error.message}`);
-          },
-        },
-      );
+      promises.push(updateNameAsync({ id: serverId, name: serverName }));
     }
 
     // 各インスタンスのAPI設定を更新
@@ -371,26 +369,26 @@ export const McpConfigEditModal = ({
       );
       if (!hasNewValue) continue;
 
-      updateConfig(
-        { templateInstanceId: instance.id, envVars },
-        {
-          onError: (error) => {
-            hasError = true;
-            toast.error(
-              `${instance.name}のAPI設定の更新に失敗しました: ${error.message}`,
-            );
-          },
-        },
+      promises.push(
+        updateConfigAsync({ templateInstanceId: instance.id, envVars }),
       );
     }
 
-    // エラーがなければ閉じる
-    if (!hasError) {
-      if (nameChanged || changedInstances.length > 0) {
-        toast.success("設定を更新しました");
-      }
+    // 変更がない場合は何もしない
+    if (promises.length === 0) {
+      onOpenChange(false);
+      return;
+    }
+
+    try {
+      await Promise.all(promises);
+      toast.success("設定を更新しました");
       onOpenChange(false);
       onSuccess?.();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "不明なエラーが発生しました";
+      toast.error(`更新に失敗しました: ${message}`);
     }
   };
 
