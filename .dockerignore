@@ -1,0 +1,54 @@
+# ========================================
+# Docker Ignore File (Project Root)
+# ========================================
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+build
+.next
+out
+*.tsbuildinfo
+.cache
+.turbo
+
+# Development files
+*.log
+*.log.*
+
+# Testing
+coverage
+__tests__
+**/__tests__
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git
+
+# IDE
+.vscode
+.idea
+.DS_Store
+
+# CI/CD
+.github
+
+# Docker（ローカル開発・本番用の compose/Keycloak 設定）
+docker
+
+# Terraform
+terraform
+
+# ドキュメント・スクリプト
+docs
+scripts
+*.md
+LICENSE
+LICENSE.*
+NOTICE
