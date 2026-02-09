@@ -11,6 +11,7 @@ import { getSessionInfo } from "~/lib/auth/session-utils";
 
 import { AgentCardList } from "./AgentCardList";
 import { EmptyState } from "./EmptyState";
+import { RunningAgentsDashboard } from "./RunningAgentsDashboard";
 
 type AgentsPageClientProps = {
   orgSlug: string;
@@ -76,6 +77,11 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
           </div>
         </div>
       )}
+
+      {/* 稼働中エージェントダッシュボード */}
+      <div className="mb-6">
+        <RunningAgentsDashboard />
+      </div>
 
       {/* エージェント一覧または空状態 */}
       <div>

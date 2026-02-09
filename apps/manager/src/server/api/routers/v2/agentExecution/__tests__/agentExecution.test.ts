@@ -35,6 +35,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-1",
           scheduleId: "schedule-1",
+          chatId: "chat-1",
           schedule: { name: "毎朝9時" },
           modelId: "anthropic/claude-3-5-sonnet",
           success: true,
@@ -44,6 +45,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-2",
           scheduleId: "schedule-1",
+          chatId: null,
           schedule: { name: "毎朝9時" },
           modelId: "anthropic/claude-3-5-haiku",
           success: false,
@@ -68,6 +70,7 @@ describe("AgentExecution", () => {
       expect(result.items[0]).toStrictEqual({
         id: "exec-1",
         scheduleId: "schedule-1",
+        chatId: "chat-1",
         scheduleName: "毎朝9時",
         modelId: "anthropic/claude-3-5-sonnet",
         success: true,
@@ -90,6 +93,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-1",
           scheduleId: null,
+          chatId: null,
           schedule: null,
           modelId: null,
           success: true,
@@ -113,6 +117,7 @@ describe("AgentExecution", () => {
       expect(result.items[0]).toStrictEqual({
         id: "exec-1",
         scheduleId: null,
+        chatId: null,
         scheduleName: null,
         modelId: null,
         success: true,
@@ -134,6 +139,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-1",
           scheduleId: "schedule-1",
+          chatId: "chat-1",
           schedule: { name: "スケジュール1" },
           modelId: "anthropic/claude-3-5-sonnet",
           success: true,
@@ -143,6 +149,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-2",
           scheduleId: "schedule-1",
+          chatId: "chat-2",
           schedule: { name: "スケジュール1" },
           modelId: "anthropic/claude-3-5-sonnet",
           success: true,
@@ -152,6 +159,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-3",
           scheduleId: "schedule-1",
+          chatId: null,
           schedule: { name: "スケジュール1" },
           modelId: "anthropic/claude-3-5-sonnet",
           success: false,
@@ -191,6 +199,7 @@ describe("AgentExecution", () => {
         {
           id: "exec-3",
           scheduleId: "schedule-1",
+          chatId: "chat-3",
           schedule: { name: "スケジュール1" },
           modelId: "anthropic/claude-3-5-sonnet",
           success: true,
@@ -221,6 +230,7 @@ describe("AgentExecution", () => {
         select: {
           id: true,
           scheduleId: true,
+          chatId: true,
           schedule: {
             select: {
               name: true,

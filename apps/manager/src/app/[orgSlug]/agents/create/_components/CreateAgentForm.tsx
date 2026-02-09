@@ -22,15 +22,8 @@ import {
   McpDragDropSelector,
   convertToSelectableMcp,
 } from "@/components/mcp-selector";
+import { MODEL_OPTIONS } from "@/lib/agent";
 import type { McpServerId } from "@/schema/ids";
-
-// モデル選択肢
-const MODEL_OPTIONS = [
-  { value: "default", label: "デフォルト（Claude 3.5 Sonnet）" },
-  { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
-  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku（高速）" },
-  { value: "anthropic/claude-3-opus", label: "Claude 3 Opus（高性能）" },
-];
 
 type CreateAgentFormProps = {
   orgSlug: string;
@@ -235,7 +228,7 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
       <Button
         onClick={handleCreate}
         disabled={!isBasicInfoValid || createAgentMutation.isPending}
-        className="w-full bg-purple-600 py-6 text-lg hover:bg-purple-700"
+        className="w-full bg-gray-900 py-6 text-lg hover:bg-gray-800"
         size="lg"
       >
         {createAgentMutation.isPending ? (

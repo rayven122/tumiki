@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -15,26 +15,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Bot, Save, Loader2, Server } from "lucide-react";
+import { ArrowLeft, Bot, Check, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId, McpServerId } from "@/schema/ids";
-import { McpServerIcon } from "../../../../mcps/_components/McpServerIcon";
+import {
+  McpDragDropSelector,
+  convertToSelectableMcp,
+} from "@/components/mcp-selector";
+import { MODEL_OPTIONS } from "@/lib/agent";
 
 type EditAgentPageClientProps = {
   orgSlug: string;
   agentId: string;
 };
-
-// モデル選択肢
-const MODEL_OPTIONS = [
-  { value: "", label: "デフォルト（Claude 3.5 Sonnet）" },
-  { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
-  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku（高速）" },
-  { value: "anthropic/claude-3-opus", label: "Claude 3 Opus（高性能）" },
-];
 
 // 公開範囲は組織内に固定
 const FIXED_VISIBILITY = McpServerVisibility.ORGANIZATION;
@@ -69,7 +64,8 @@ const EditForm = ({
   });
 
   // MCPサーバー一覧を取得
-  const { data: mcpServers } = api.v2.userMcpServer.findMcpServers.useQuery();
+  const { data: mcpServers, isLoading: isLoadingServers } =
+    api.v2.userMcpServer.findMcpServers.useQuery();
 
   // フォーム状態（公開範囲は組織内に固定）
   const [formState, setFormState] = useState<EditFormState>({
@@ -97,17 +93,47 @@ const EditForm = ({
     setFormState((prev) => ({ ...prev, ...updates }));
   };
 
-  const toggleMcpServer = (serverId: string) => {
-    setFormState((prev) => {
-      const isSelected = prev.selectedMcpServerIds.includes(serverId);
-      return {
-        ...prev,
-        selectedMcpServerIds: isSelected
-          ? prev.selectedMcpServerIds.filter((id) => id !== serverId)
-          : [...prev.selectedMcpServerIds, serverId],
-      };
-    });
-  };
+  // 全MCPをSelectableMcp形式に変換
+  const allMcps = useMemo(
+    () => (mcpServers ?? []).map(convertToSelectableMcp),
+    [mcpServers],
+  );
+
+  // 選択済みMCPと未選択MCPを分離
+  const { availableMcps, selectedMcps } = useMemo(() => {
+    const selectedSet = new Set(formState.selectedMcpServerIds);
+    const selectedMap = new Map(
+      allMcps
+        .filter((mcp) => selectedSet.has(mcp.id))
+        .map((mcp) => [mcp.id, mcp]),
+    );
+    const available = allMcps.filter((mcp) => !selectedSet.has(mcp.id));
+    const selected = formState.selectedMcpServerIds
+      .map((id) => selectedMap.get(id))
+      .filter((mcp) => mcp !== undefined);
+
+    return { availableMcps: available, selectedMcps: selected };
+  }, [allMcps, formState.selectedMcpServerIds]);
+
+  const handleSelect = useCallback(
+    (mcpId: string) => {
+      updateFormState({
+        selectedMcpServerIds: [...formState.selectedMcpServerIds, mcpId],
+      });
+    },
+    [formState.selectedMcpServerIds],
+  );
+
+  const handleRemove = useCallback(
+    (mcpId: string) => {
+      updateFormState({
+        selectedMcpServerIds: formState.selectedMcpServerIds.filter(
+          (id) => id !== mcpId,
+        ),
+      });
+    },
+    [formState.selectedMcpServerIds],
+  );
 
   const handleSubmit = () => {
     updateMutation.mutate({
@@ -133,23 +159,48 @@ const EditForm = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-purple-600" />
+            <Sparkles className="h-5 w-5 text-purple-600" />
             基本情報
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* エージェント名 */}
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              エージェント名 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="name"
-              placeholder="例: 議事録作成アシスタント"
-              value={formState.name}
-              onChange={(e) => updateFormState({ name: e.target.value })}
-              maxLength={50}
-            />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* エージェント名 */}
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                エージェント名 <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder="例: 議事録作成アシスタント"
+                value={formState.name}
+                onChange={(e) => updateFormState({ name: e.target.value })}
+                maxLength={50}
+              />
+              <p className="text-xs text-gray-500">最大50文字</p>
+            </div>
+
+            {/* モデル選択 */}
+            <div className="space-y-2">
+              <Label htmlFor="modelId">AIモデル</Label>
+              <Select
+                value={formState.modelId || "default"}
+                onValueChange={(value) =>
+                  updateFormState({ modelId: value === "default" ? "" : value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="デフォルト（Claude 3.5 Sonnet）" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODEL_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* システムプロンプト */}
@@ -159,7 +210,7 @@ const EditForm = ({
             </Label>
             <Textarea
               id="systemPrompt"
-              placeholder="例: あなたは議事録作成の専門家です。"
+              placeholder="例: あなたは議事録作成の専門家です。会議の内容を整理し、重要なポイントをまとめてください。"
               value={formState.systemPrompt}
               onChange={(e) =>
                 updateFormState({ systemPrompt: e.target.value })
@@ -167,118 +218,68 @@ const EditForm = ({
               rows={6}
               className="font-mono text-sm"
             />
-          </div>
-
-          {/* モデル選択 */}
-          <div className="space-y-2">
-            <Label htmlFor="modelId">AIモデル</Label>
-            <Select
-              value={formState.modelId || "default"}
-              onValueChange={(value) =>
-                updateFormState({ modelId: value === "default" ? "" : value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="デフォルト（Claude 3.5 Sonnet）" />
-              </SelectTrigger>
-              <SelectContent>
-                {MODEL_OPTIONS.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value || "default"}
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 公開範囲（組織内に固定） */}
-          <div className="space-y-2">
-            <Label>公開範囲</Label>
-            <div className="flex items-center gap-2 rounded-md border bg-gray-50 px-3 py-2">
-              <span className="font-medium">組織内</span>
-              <span className="text-sm text-gray-500">
-                組織メンバー全員が使用可能
-              </span>
-            </div>
+            <p className="text-xs text-gray-500">
+              AIの振る舞いを定義するプロンプトを入力してください
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* MCPサーバー選択 */}
+      {/* MCPサーバー選択（ドラッグ&ドロップ） */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Server className="h-5 w-5 text-blue-600" />
-            MCPサーバー
+            <Bot className="h-5 w-5 text-purple-600" />
+            MCPサーバー選択
           </CardTitle>
+          <p className="text-sm text-gray-600">
+            エージェントが使用できるMCPサーバーをドラッグ&ドロップで選択（任意）
+          </p>
         </CardHeader>
         <CardContent>
-          {mcpServers && mcpServers.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {mcpServers.map((server) => {
-                const isSelected = formState.selectedMcpServerIds.includes(
-                  server.id,
-                );
-                const template = server.templateInstances[0]?.mcpServerTemplate;
-                return (
-                  <div
-                    key={server.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                      isSelected
-                        ? "border-purple-500 bg-purple-50"
-                        : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => toggleMcpServer(server.id)}
-                  >
-                    <Checkbox checked={isSelected} />
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                      <McpServerIcon
-                        iconPath={server.iconPath ?? template?.iconPath}
-                        alt={server.name}
-                        size={24}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{server.name}</p>
-                    </div>
-                  </div>
-                );
-              })}
+          {isLoadingServers ? (
+            <div className="flex h-[300px] items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
             </div>
           ) : (
-            <div className="rounded-lg bg-gray-50 p-6 text-center text-gray-500">
-              MCPサーバーがありません
-            </div>
+            <McpDragDropSelector
+              availableMcps={availableMcps}
+              selectedMcps={selectedMcps}
+              onSelect={handleSelect}
+              onRemove={handleRemove}
+              availableLabel="利用可能なMCP"
+              selectedLabel="使用するMCP"
+              emptySelectedMessage={
+                <>
+                  <Bot className="h-8 w-8 text-purple-300" />
+                  <span>ここにドラッグ&ドロップ</span>
+                  <span className="text-xs">MCPなしでも保存可能</span>
+                </>
+              }
+            />
           )}
         </CardContent>
       </Card>
 
       {/* 保存ボタン */}
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" asChild>
-          <Link href={`/${orgSlug}/agents/${agentId}`}>キャンセル</Link>
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={!isValid || updateMutation.isPending}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
-          {updateMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              保存中...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              保存
-            </>
-          )}
-        </Button>
-      </div>
+      <Button
+        onClick={handleSubmit}
+        disabled={!isValid || updateMutation.isPending}
+        className="w-full bg-gray-900 py-6 text-lg hover:bg-gray-800"
+        size="lg"
+      >
+        {updateMutation.isPending ? (
+          <>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            保存中...
+          </>
+        ) : (
+          <>
+            <Check className="mr-2 h-5 w-5" />
+            変更を保存
+          </>
+        )}
+      </Button>
     </div>
   );
 };
@@ -301,7 +302,7 @@ export const EditAgentPageClient = ({
   agentId,
 }: EditAgentPageClientProps) => {
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-6">
+    <div className="container mx-auto px-4 py-6">
       {/* ヘッダー */}
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild className="mb-4">
@@ -314,6 +315,9 @@ export const EditAgentPageClient = ({
           <Bot className="h-6 w-6 text-purple-600" />
           <h1 className="text-2xl font-bold">エージェントを編集</h1>
         </div>
+        <p className="mt-2 text-gray-600">
+          システムプロンプトとMCPサーバーの設定を変更します
+        </p>
       </div>
 
       <Suspense fallback={<EditFormSkeleton />}>

@@ -14,7 +14,6 @@ import type { HonoEnv } from "../../shared/types/honoEnv.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
 import { executeAgent } from "../agentExecutor/index.js";
-import type { ScheduleConfig } from "../agentExecutor/types.js";
 import {
   registerSchedule,
   unregisterSchedule,
@@ -49,11 +48,20 @@ const syncRequestSchema = z.object({
 });
 
 /**
- * 手動実行リクエストのスキーマ
+ * 手動実行リクエストのスキーマ（スケジュール経由）
  */
 const manualRunRequestSchema = z.object({
   scheduleId: z.string().min(1),
   userId: z.string().min(1),
+});
+
+/**
+ * エージェント直接実行リクエストのスキーマ
+ */
+const agentRunRequestSchema = z.object({
+  agentId: z.string().min(1),
+  userId: z.string().min(1),
+  message: z.string().optional(),
 });
 
 /**
@@ -131,6 +139,19 @@ schedulerRoute.post("/internal/scheduler/sync", async (c) => {
 });
 
 /**
+ * エージェント実行結果をレスポンス形式に変換
+ */
+const toExecutionResponse = (
+  result: Awaited<ReturnType<typeof executeAgent>>,
+) => ({
+  success: result.success,
+  executionId: result.executionId,
+  output: result.output,
+  durationMs: result.durationMs,
+  error: result.error,
+});
+
+/**
  * POST /internal/scheduler/run
  *
  * スケジュールの手動実行
@@ -164,15 +185,44 @@ schedulerRoute.post("/internal/scheduler/run", async (c) => {
       message: config.message ?? null,
     });
 
-    return c.json({
-      success: result.success,
-      executionId: result.executionId,
-      output: result.output,
-      durationMs: result.durationMs,
-      error: result.error,
-    });
+    return c.json(toExecutionResponse(result));
   } catch (error) {
     logError("Manual run error", toError(error));
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+/**
+ * POST /internal/agent/run
+ *
+ * エージェントの直接実行（スケジュールなしで実行可能）
+ */
+schedulerRoute.post("/internal/agent/run", async (c) => {
+  try {
+    const body: unknown = await c.req.json();
+    const parsed = agentRunRequestSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return c.json(
+        { error: "Invalid request", details: parsed.error.issues },
+        400,
+      );
+    }
+
+    const { agentId, userId, message } = parsed.data;
+
+    logInfo("Agent direct run request", { agentId, userId });
+
+    // エージェントを直接実行
+    const result = await executeAgent({
+      agentId,
+      trigger: { type: "manual", userId },
+      message: message ?? null,
+    });
+
+    return c.json(toExecutionResponse(result));
+  } catch (error) {
+    logError("Agent direct run error", toError(error));
     return c.json({ error: "Internal server error" }, 500);
   }
 });

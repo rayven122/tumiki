@@ -23,6 +23,7 @@ erDiagram
   String systemPrompt
   String modelId "nullable"
   McpServerVisibility visibility
+  Int estimatedDurationMs
   String organizationId FK
   String createdById FK "nullable"
   DateTime createdAt
@@ -70,6 +71,7 @@ AIエージェント定義
   - `systemPrompt`: カスタムシステムプロンプト
   - `modelId`: 使用するLLMモデルID（例: "anthropic/claude-3.5-haiku"）
   - `visibility`: 可視性（共有設定）
+  - `estimatedDurationMs`: 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
   - `organizationId`: 組織ID
   - `createdById`: 作成者ID（作成者削除時はnullに）
   - `createdAt`: 
@@ -600,7 +602,7 @@ MCPサーバーインスタンスへのリクエストログ
   - `piiDetectedRequestCount`: リクエストPII検出件数
   - `piiDetectedResponseCount`: レスポンスPII検出件数
   - `piiDetectedInfoTypes`
-    > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+    > 検���されたInfoType名の配列（リクエスト+レスポンス、重複なし）
     > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
   - `toonConversionEnabled`
     > TOON変換メトリクス

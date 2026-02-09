@@ -11,6 +11,7 @@ type CreateOfficialMcpServerParams = {
   templateId: string;
   organizationId: string;
   normalizedName: string;
+  iconPath: string | null;
 };
 
 /**
@@ -26,13 +27,14 @@ export const createOfficialMcpServer = async (
     templateId,
     organizationId,
     normalizedName,
+    iconPath,
   } = params;
 
   const mcpServer = await tx.mcpServer.create({
     data: {
       name: serverName,
       description,
-      iconPath: null,
+      iconPath,
       serverStatus: ServerStatus.PENDING,
       serverType: ServerType.OFFICIAL,
       authType: AuthType.OAUTH,

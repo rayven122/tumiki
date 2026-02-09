@@ -13,7 +13,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Play, Pause, Trash2, Edit2, Loader2 } from "lucide-react";
+import {
+  Calendar,
+  Play,
+  Pause,
+  Trash2,
+  Edit2,
+  Loader2,
+  type LucideIcon,
+} from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { AgentId } from "@/schema/ids";
@@ -24,18 +32,18 @@ type ScheduleListProps = {
   agentId: AgentId;
 };
 
-// スケジュールステータス型
+/** スケジュールステータス型 */
 type ScheduleStatus = "ACTIVE" | "PAUSED" | "DISABLED";
 
-// ステータスに応じたバッジスタイル
-const STATUS_STYLES: Record<
-  ScheduleStatus,
-  {
-    variant: "default" | "secondary" | "outline";
-    label: string;
-    icon: typeof Play;
-  }
-> = {
+/** ステータスごとのバッジ情報 */
+type StatusInfo = {
+  variant: "default" | "secondary" | "outline";
+  label: string;
+  icon: LucideIcon;
+};
+
+/** ステータスに応じたバッジスタイル */
+const STATUS_STYLES: Record<ScheduleStatus, StatusInfo> = {
   ACTIVE: { variant: "default", label: "有効", icon: Play },
   PAUSED: { variant: "secondary", label: "一時停止", icon: Pause },
   DISABLED: { variant: "outline", label: "無効", icon: Pause },
@@ -56,6 +64,7 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
     onSuccess: (data) => {
       toast.success(`「${data.name}」を削除しました`);
       void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.v2.agent.findById.invalidate({ id: agentId });
       setDeleteTargetId(null);
     },
     onError: (error) => {
@@ -67,6 +76,7 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
   const toggleMutation = api.v2.agentSchedule.toggle.useMutation({
     onSuccess: () => {
       void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.v2.agent.findById.invalidate({ id: agentId });
     },
     onError: (error) => {
       toast.error(`ステータス変更に失敗しました: ${error.message}`);

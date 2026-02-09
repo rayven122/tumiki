@@ -42,6 +42,8 @@ export type ExecuteAgentResult = {
   output: string;
   /** 実行時間（ミリ秒） */
   durationMs: number;
+  /** チャットID（実行詳細を保存したChat） */
+  chatId?: string;
   /** エラーメッセージ（失敗時のみ） */
   error?: string;
 };

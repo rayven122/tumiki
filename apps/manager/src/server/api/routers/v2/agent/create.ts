@@ -2,6 +2,7 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import type { z } from "zod";
 import type { AgentId } from "@/schema/ids";
 import type { CreateAgentInputSchema } from "./index";
+import { createManyNotifications } from "../notification/createNotification";
 
 type CreateAgentInput = z.infer<typeof CreateAgentInputSchema>;
 
@@ -33,8 +34,32 @@ export const createAgent = async (
     },
     select: {
       id: true,
+      name: true,
     },
   });
+
+  // 組織の全メンバーに通知を作成（作成者自身を除く）
+  const orgMembers = await tx.organizationMember.findMany({
+    where: {
+      organizationId,
+      userId: { not: userId },
+    },
+    select: { userId: true },
+  });
+
+  if (orgMembers.length > 0) {
+    const notificationUserIds = orgMembers.map((member) => member.userId);
+
+    await createManyNotifications(tx, notificationUserIds, {
+      type: "AGENT_CREATED",
+      priority: "NORMAL",
+      title: "新しいエージェントが作成されました",
+      message: `「${agent.name}」が作成されました。`,
+      linkUrl: `/${organizationId}/agents/${agent.id}`,
+      organizationId,
+      triggeredById: userId,
+    });
+  }
 
   return { id: agent.id as AgentId };
 };

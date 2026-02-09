@@ -2,7 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { AgentIdSchema, AgentExecutionLogIdSchema } from "@/schema/ids";
 import { findExecutionsByAgentId } from "./findByAgentId";
-import { getRunningExecutions } from "./getRunning";
+import { getAllRunningExecutions } from "./getAllRunning";
 
 export const FindExecutionByAgentIdInputSchema = z.object({
   agentId: AgentIdSchema,
@@ -10,13 +10,10 @@ export const FindExecutionByAgentIdInputSchema = z.object({
   cursor: z.string().optional(),
 });
 
-const GetRunningInputSchema = z.object({
-  agentId: AgentIdSchema,
-});
-
 const ExecutionLogSchema = z.object({
   id: AgentExecutionLogIdSchema,
   scheduleId: z.string().nullable(),
+  chatId: z.string().nullable(),
   scheduleName: z.string().nullable(),
   modelId: z.string().nullable(),
   success: z.boolean(),
@@ -24,11 +21,16 @@ const ExecutionLogSchema = z.object({
   createdAt: z.date(),
 });
 
-const RunningExecutionSchema = z.object({
+// 全エージェントの稼働中実行スキーマ（進捗計算用データ含む）
+const AllRunningExecutionSchema = z.object({
   id: AgentExecutionLogIdSchema,
+  agentId: AgentIdSchema,
   scheduleId: z.string().nullable(),
   scheduleName: z.string().nullable(),
+  agentName: z.string(),
+  agentIconPath: z.string().nullable(),
   modelId: z.string().nullable(),
+  estimatedDurationMs: z.number(),
   createdAt: z.date(),
 });
 
@@ -51,12 +53,10 @@ export const agentExecutionRouter = createTRPCRouter({
       });
     }),
 
-  getRunning: protectedProcedure
-    .input(GetRunningInputSchema)
-    .output(z.array(RunningExecutionSchema))
-    .query(async ({ ctx, input }) => {
-      return await getRunningExecutions(ctx.db, {
-        agentId: input.agentId,
+  getAllRunning: protectedProcedure
+    .output(z.array(AllRunningExecutionSchema))
+    .query(async ({ ctx }) => {
+      return await getAllRunningExecutions(ctx.db, {
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });

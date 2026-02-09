@@ -31,6 +31,8 @@ model Agent {
   modelId      String?
   /// 可視性（共有設定）
   visibility   McpServerVisibility @default(PRIVATE)
+  /// 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
+  estimatedDurationMs Int @default(30000)
 
   /// 組織ID
   organizationId String

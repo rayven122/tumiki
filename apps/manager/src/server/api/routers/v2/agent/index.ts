@@ -69,6 +69,21 @@ export const FindByIdInputSchema = z.object({
   id: AgentIdSchema,
 });
 
+// 実行メッセージ取得の入力スキーマ
+export const GetExecutionMessagesInputSchema = z.object({
+  chatId: z.string(),
+});
+
+/** 実行メッセージの出力スキーマ（partsはJSON形式で保存されている） */
+export const GetExecutionMessagesOutputSchema = z.array(
+  z.object({
+    id: z.string(),
+    role: z.string(),
+    parts: z.array(z.record(z.string(), z.unknown())),
+    createdAt: z.date(),
+  }),
+);
+
 // createdByの型定義
 const CreatedBySchema = z
   .object({
@@ -83,6 +98,16 @@ const McpServerInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   iconPath: z.string().nullable(),
+  // テンプレートのiconPathをフォールバック用に取得
+  templateInstances: z
+    .array(
+      z.object({
+        mcpServerTemplate: z.object({
+          iconPath: z.string().nullable(),
+        }),
+      }),
+    )
+    .optional(),
 });
 
 // スケジュール情報の型定義
@@ -97,6 +122,7 @@ const ScheduleInfoSchema = z.object({
 export const FindAllAgentsOutputSchema = z.array(
   AgentSchema.pick({
     id: true,
+    organizationId: true,
     name: true,
     description: true,
     iconPath: true,
@@ -200,5 +226,46 @@ export const agentRouter = createTRPCRouter({
 
       // 入力で検証済みのIDをそのまま返す
       return { id: input.id };
+    }),
+
+  // 実行結果のメッセージ取得
+  getExecutionMessages: protectedProcedure
+    .input(GetExecutionMessagesInputSchema)
+    .output(GetExecutionMessagesOutputSchema)
+    .query(async ({ ctx, input }) => {
+      // チャットの存在確認と権限チェック（組織内のチャットのみアクセス可能）
+      const chat = await ctx.db.chat.findFirst({
+        where: {
+          id: input.chatId,
+          organizationId: ctx.currentOrg.id,
+        },
+        select: { id: true },
+      });
+
+      if (!chat) {
+        throw new Error("チャットが見つかりません");
+      }
+
+      // メッセージを取得
+      const messages = await ctx.db.message.findMany({
+        where: { chatId: input.chatId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          role: true,
+          parts: true,
+          createdAt: true,
+        },
+      });
+
+      // partsをパースして返す（JSONからオブジェクト配列にキャスト）
+      return messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        parts: Array.isArray(msg.parts)
+          ? (msg.parts as Record<string, unknown>[])
+          : [],
+        createdAt: msg.createdAt,
+      }));
     }),
 });

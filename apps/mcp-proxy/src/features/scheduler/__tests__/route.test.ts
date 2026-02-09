@@ -54,10 +54,6 @@ describe("scheduler route", () => {
     app.route("/", schedulerRoute);
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("POST /internal/scheduler/sync", () => {
     test("registerアクションでスケジュールを登録する", async () => {
       const response = await app.request("/internal/scheduler/sync", {
@@ -276,6 +272,76 @@ describe("scheduler route", () => {
         timezone: "Asia/Tokyo",
         isEnabled: true,
       });
+    });
+  });
+
+  describe("POST /internal/agent/run", () => {
+    test("エージェントを直接実行する", async () => {
+      const response = await app.request("/internal/agent/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          userId: "user-1",
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const json = (await response.json()) as {
+        success: boolean;
+        executionId: string;
+        output: string;
+        durationMs: number;
+      };
+      expect(json.success).toBe(true);
+      expect(json.executionId).toBe("exec-123");
+      expect(json.output).toBe("実行完了");
+      expect(json.durationMs).toBe(100);
+    });
+
+    test("メッセージ付きでエージェントを実行する", async () => {
+      const response = await app.request("/internal/agent/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          userId: "user-1",
+          message: "テストメッセージ",
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const json = (await response.json()) as {
+        success: boolean;
+        executionId: string;
+      };
+      expect(json.success).toBe(true);
+    });
+
+    test("agentIdが空の場合は400エラー", async () => {
+      const response = await app.request("/internal/agent/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "",
+          userId: "user-1",
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    test("userIdが空の場合は400エラー", async () => {
+      const response = await app.request("/internal/agent/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          userId: "",
+        }),
+      });
+
+      expect(response.status).toBe(400);
     });
   });
 });

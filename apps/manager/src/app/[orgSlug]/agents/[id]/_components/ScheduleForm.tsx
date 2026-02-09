@@ -139,25 +139,35 @@ export const ScheduleForm = ({
   const clientTimezone = useMemo(() => getClientTimezone(), []);
   const utils = api.useUtils();
 
+  // フォームをデフォルト値にリセット
+  const resetToDefaults = () => {
+    setName("");
+    setScheduleType("fixed");
+    setFrequency("daily");
+    setInterval("1hour");
+    setHour("9");
+    setMinute("0");
+  };
+
+  // 編集データからフォームを初期化
+  const initFromEditData = (data: NonNullable<typeof initialData>) => {
+    setName(data.name);
+    const parsed = parseCronExpression(data.cronExpression);
+    setScheduleType(parsed.type);
+    if (parsed.type === "fixed") {
+      setFrequency(parsed.frequency ?? "daily");
+      setHour(parsed.hour);
+      setMinute(parsed.minute);
+    } else {
+      setInterval(parsed.interval ?? "1hour");
+    }
+  };
+
   useEffect(() => {
     if (editMode && initialData) {
-      setName(initialData.name);
-      const parsed = parseCronExpression(initialData.cronExpression);
-      setScheduleType(parsed.type);
-      if (parsed.type === "fixed") {
-        setFrequency(parsed.frequency ?? "daily");
-        setHour(parsed.hour);
-        setMinute(parsed.minute);
-      } else {
-        setInterval(parsed.interval ?? "1hour");
-      }
+      initFromEditData(initialData);
     } else {
-      setName("");
-      setScheduleType("fixed");
-      setFrequency("daily");
-      setInterval("1hour");
-      setHour("9");
-      setMinute("0");
+      resetToDefaults();
     }
   }, [editMode, initialData, isOpen]);
 
@@ -170,6 +180,7 @@ export const ScheduleForm = ({
     onSuccess: () => {
       toast.success("スケジュールを作成しました");
       void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.v2.agent.findById.invalidate({ id: agentId });
       onClose();
     },
     onError: (error) => {
@@ -181,6 +192,7 @@ export const ScheduleForm = ({
     onSuccess: () => {
       toast.success("スケジュールを更新しました");
       void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.v2.agent.findById.invalidate({ id: agentId });
       onClose();
     },
     onError: (error) => {

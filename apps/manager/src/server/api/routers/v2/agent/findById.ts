@@ -47,6 +47,17 @@ export const findAgentById = async (
           description: true,
           iconPath: true,
           serverStatus: true,
+          // テンプレートのiconPathをフォールバックとして取得
+          templateInstances: {
+            select: {
+              mcpServerTemplate: {
+                select: {
+                  iconPath: true,
+                },
+              },
+            },
+            take: 1,
+          },
         },
       },
       schedules: {

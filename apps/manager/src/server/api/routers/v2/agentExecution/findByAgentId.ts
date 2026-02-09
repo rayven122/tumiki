@@ -32,25 +32,21 @@ export const findExecutionsByAgentId = async (
     });
   }
 
+  // 実行履歴を取得（次ページ確認用に1件多く取得）
+  // success が null でないもの（完了済み）のみ取得
   const executions = await db.agentExecutionLog.findMany({
     where: {
       agentId,
       success: { not: null },
     },
     take: limit + 1,
-    // カーソルが指定された場合、そのカーソルの次の要素から取得
-    ...(cursor && {
-      cursor: { id: cursor },
-      skip: 1,
-    }),
+    cursor: cursor ? { id: cursor } : undefined,
+    skip: cursor ? 1 : 0,
     select: {
       id: true,
       scheduleId: true,
-      schedule: {
-        select: {
-          name: true,
-        },
-      },
+      chatId: true,
+      schedule: { select: { name: true } },
       modelId: true,
       success: true,
       durationMs: true,
@@ -67,6 +63,7 @@ export const findExecutionsByAgentId = async (
     items: items.map((execution) => ({
       id: execution.id,
       scheduleId: execution.scheduleId,
+      chatId: execution.chatId,
       scheduleName: execution.schedule?.name ?? null,
       modelId: execution.modelId,
       success: execution.success!,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,52 +11,61 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Eye } from "lucide-react";
 import { api } from "@/trpc/react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import type { AgentId } from "@/schema/ids";
+import { ExecutionHistoryModal } from "./ExecutionHistoryModal";
 
 type ExecutionHistoryProps = {
   agentId: AgentId;
+  /** 組織スラッグ（チャットページ遷移用） */
+  orgSlug: string;
 };
 
+/** 選択された実行履歴の型 */
+type SelectedExecution = {
+  success: boolean;
+  executionId: string;
+  output: string;
+  durationMs: number;
+  chatId?: string;
+  error?: string;
+};
+
+/** 実行時間をフォーマット */
 const formatDuration = (durationMs: number | null): string => {
-  if (durationMs === null) {
-    return "-";
-  }
-  if (durationMs < 1000) {
-    return `${durationMs}ms`;
-  }
+  if (durationMs === null) return "-";
+  if (durationMs < 1000) return `${durationMs}ms`;
   return `${(durationMs / 1000).toFixed(1)}秒`;
 };
 
-type StatusBadgeProps = {
-  success: boolean;
-};
-
-const StatusBadge = ({ success }: StatusBadgeProps) => {
-  if (success) {
-    return (
-      <Badge
-        variant="default"
-        className="bg-green-100 text-green-700 hover:bg-green-100"
-      >
-        <CheckCircle className="mr-1 h-3 w-3" />
-        成功
-      </Badge>
-    );
-  }
-
-  return (
+/** ステータスバッジ */
+const StatusBadge = ({ success }: { success: boolean }) =>
+  success ? (
+    <Badge
+      variant="default"
+      className="bg-green-100 text-green-700 hover:bg-green-100"
+    >
+      <CheckCircle className="mr-1 h-3 w-3" />
+      成功
+    </Badge>
+  ) : (
     <Badge variant="destructive">
       <XCircle className="mr-1 h-3 w-3" />
       失敗
     </Badge>
   );
-};
 
-export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
+export const ExecutionHistory = ({
+  agentId,
+  orgSlug,
+}: ExecutionHistoryProps) => {
+  const [selectedExecution, setSelectedExecution] =
+    useState<SelectedExecution | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     api.v2.agentExecution.findByAgentId.useInfiniteQuery(
       { agentId, limit: 10 },
@@ -63,6 +73,23 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
       },
     );
+
+  const handleViewExecution = (execution: {
+    id: string;
+    chatId: string | null;
+    success: boolean;
+    durationMs: number | null;
+  }) => {
+    setSelectedExecution({
+      success: execution.success,
+      executionId: execution.id,
+      output: "",
+      durationMs: execution.durationMs ?? 0,
+      chatId: execution.chatId ?? undefined,
+      error: execution.success ? undefined : "実行に失敗しました",
+    });
+    setModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -96,6 +123,7 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
             <TableHead>モデル</TableHead>
             <TableHead>ステータス</TableHead>
             <TableHead className="text-right">実行時間</TableHead>
+            <TableHead className="w-[100px] text-center">詳細</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -118,6 +146,21 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
               <TableCell className="text-muted-foreground text-right">
                 {formatDuration(execution.durationMs)}
               </TableCell>
+              <TableCell className="text-center">
+                {execution.chatId ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewExecution(execution)}
+                    className="h-8 px-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span className="sr-only">結果を見る</span>
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground text-xs">-</span>
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -138,6 +181,13 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
           </Button>
         </div>
       )}
+
+      <ExecutionHistoryModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        result={selectedExecution}
+        orgSlug={orgSlug}
+      />
     </div>
   );
 };

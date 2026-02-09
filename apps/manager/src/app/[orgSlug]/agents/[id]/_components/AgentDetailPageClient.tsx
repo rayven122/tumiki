@@ -1,10 +1,24 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useCallback, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
   Bot,
@@ -14,74 +28,155 @@ import {
   Activity,
   Lock,
   Building2,
-  Clock,
   Trash2,
+  Play,
+  Loader2,
+  RefreshCw,
+  MoreHorizontal,
+  ImageIcon,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { McpServerVisibility, ScheduleStatus } from "@tumiki/db/prisma";
+import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId } from "@/schema/ids";
+import { getProxyServerUrl } from "@/utils/url";
+import { generateCUID, fetchWithErrorHandlers } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "../../_components/DeleteAgentModal";
-import { ExecutionHistory } from "../schedule/_components/ExecutionHistory";
-import { RunningExecutions } from "./RunningExecutions";
+import { AgentIconEditModal } from "../../_components/AgentIconEditModal";
+import { ExecutionHistory } from "./ExecutionHistory";
+import { ExecutionResultModal } from "./ExecutionResultModal";
+import { ScheduleForm } from "./ScheduleForm";
+import { ScheduleList } from "./ScheduleList";
 
 type AgentDetailPageClientProps = {
   orgSlug: string;
   agentId: string;
 };
 
-const VISIBILITY_INFO = {
+/** 公開範囲ごとの表示情報 */
+const VISIBILITY_INFO: Record<
+  McpServerVisibility,
+  { icon: LucideIcon; label: string }
+> = {
   [McpServerVisibility.PRIVATE]: {
     icon: Lock,
     label: "自分のみ",
-    color: "text-gray-500",
   },
   [McpServerVisibility.ORGANIZATION]: {
     icon: Building2,
     label: "組織内",
-    color: "text-blue-500",
   },
   [McpServerVisibility.PUBLIC]: {
     icon: Building2,
     label: "公開",
-    color: "text-green-500",
-  },
-};
-
-const SCHEDULE_STATUS_INFO = {
-  [ScheduleStatus.ACTIVE]: {
-    label: "有効",
-    color: "bg-green-100 text-green-700",
-  },
-  [ScheduleStatus.PAUSED]: {
-    label: "一時停止",
-    color: "bg-yellow-100 text-yellow-700",
-  },
-  [ScheduleStatus.DISABLED]: {
-    label: "無効",
-    color: "bg-gray-100 text-gray-700",
   },
 };
 
 const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
   const router = useRouter();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
+  const [resultModalOpen, setResultModalOpen] = useState(false);
+  const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
+  const [executionError, setExecutionError] = useState<string | undefined>();
   const utils = api.useUtils();
+
+  // セッション情報を取得
+  const { data: session } = useSession();
 
   const [agent] = api.v2.agent.findById.useSuspenseQuery({
     id: agentId as AgentId,
   });
 
+  // mcp-proxy の URL を取得
+  const mcpProxyUrl = getProxyServerUrl();
+
+  // ストリーミング用のuseChat
+  const { messages, status, sendMessage, setMessages } = useChat({
+    id: `agent-execution-${agentId}`,
+    generateId: generateCUID,
+    transport: new DefaultChatTransport({
+      api: `${mcpProxyUrl}/agent/run`,
+      fetch: (url, options) => {
+        // mcp-proxy への認証ヘッダーを追加
+        const headers = new Headers(options?.headers);
+        if (session?.accessToken) {
+          headers.set("Authorization", `Bearer ${session.accessToken}`);
+        }
+        return fetchWithErrorHandlers(url, {
+          ...options,
+          headers,
+        });
+      },
+      prepareSendMessagesRequest(request) {
+        const lastMessage = request.messages.at(-1);
+        const userText =
+          lastMessage?.parts?.find((p) => p.type === "text")?.text ??
+          "タスクを実行してください。";
+
+        return {
+          body: {
+            agentId,
+            organizationId: agent.organizationId,
+            message: userText,
+            ...request.body,
+          },
+        };
+      },
+    }),
+    onError: (error) => {
+      setExecutionError(error.message);
+    },
+    onFinish: () => {
+      // 実行完了後にエージェント情報と実行履歴を再取得
+      void utils.v2.agent.findById.invalidate({ id: agentId as AgentId });
+      void utils.v2.agentExecution.findByAgentId.invalidate({
+        agentId: agentId as AgentId,
+      });
+    },
+  });
+
+  const isStreaming = status === "streaming";
+
+  const handleExecute = useCallback(() => {
+    // 前回の結果をクリア
+    setMessages([]);
+    setExecutionError(undefined);
+
+    // モーダルを開く
+    setResultModalOpen(true);
+
+    // ストリーミング実行を開始
+    void sendMessage({
+      role: "user",
+      parts: [{ type: "text", text: "タスクを実行してください。" }],
+    });
+  }, [sendMessage, setMessages]);
+
   const visibilityInfo = VISIBILITY_INFO[agent.visibility];
   const VisibilityIcon = visibilityInfo.icon;
 
-  const handleDeleteSuccess = async () => {
-    await utils.v2.agent.findAll.invalidate();
+  const handleDeleteSuccess = () => {
+    void utils.v2.agent.findAll.invalidate();
     router.push(`/${orgSlug}/agents`);
   };
+
+  // 実行履歴の再取得
+  const [isRefreshingHistory, setIsRefreshingHistory] = useState(false);
+  const handleRefreshHistory = useCallback(async () => {
+    setIsRefreshingHistory(true);
+    try {
+      await utils.v2.agentExecution.findByAgentId.invalidate({
+        agentId: agentId as AgentId,
+      });
+    } finally {
+      setIsRefreshingHistory(false);
+    }
+  }, [utils.v2.agentExecution.findByAgentId, agentId]);
 
   return (
     <div className="space-y-6">
@@ -116,28 +211,58 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
                 </div>
               </div>
             </div>
-            <Button variant="outline" asChild>
-              <Link href={`/${orgSlug}/agents/${agentId}/edit`}>
-                <Edit2 className="mr-2 h-4 w-4" />
-                編集
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                onClick={handleExecute}
+                disabled={isStreaming}
+              >
+                {isStreaming ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    実行中...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    今すぐ実行
+                  </>
+                )}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">メニューを開く</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIconEditModalOpen(true)}>
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    アイコンを変更
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/${orgSlug}/agents/${agentId}/edit`}>
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      編集
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    削除
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-3 pt-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-              <Server className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{agent.mcpServers.length}</p>
-              <p className="text-sm text-gray-500">MCPサーバー</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="flex items-center gap-3 pt-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
@@ -162,8 +287,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </Card>
       </div>
 
-      <RunningExecutions agentId={agent.id as AgentId} />
-
       <Card>
         <CardHeader>
           <CardTitle>システムプロンプト</CardTitle>
@@ -186,29 +309,37 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         <CardContent>
           {agent.mcpServers.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {agent.mcpServers.map((server) => (
-                <Link
-                  key={server.id}
-                  href={`/${orgSlug}/mcps/${server.id}`}
-                  className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                    <McpServerIcon
-                      iconPath={server.iconPath}
-                      alt={server.name}
-                      size={24}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{server.name}</p>
-                    {server.description && (
-                      <p className="line-clamp-1 text-sm text-gray-500">
-                        {server.description}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))}
+              {agent.mcpServers.map((server) => {
+                const firstTemplateInstance = server.templateInstances?.[0];
+                const iconPath =
+                  server.iconPath ??
+                  firstTemplateInstance?.mcpServerTemplate?.iconPath ??
+                  null;
+
+                return (
+                  <Link
+                    key={server.id}
+                    href={`/${orgSlug}/mcps/${server.id}`}
+                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                      <McpServerIcon
+                        iconPath={iconPath}
+                        alt={server.name}
+                        size={24}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{server.name}</p>
+                      {server.description && (
+                        <p className="line-clamp-1 text-sm text-gray-500">
+                          {server.description}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-lg bg-gray-50 p-6 text-center text-gray-500">
@@ -225,78 +356,45 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
             スケジュール
             <Badge variant="secondary">{agent.schedules.length}</Badge>
           </CardTitle>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/${orgSlug}/agents/${agentId}/schedule`}>
-              スケジュール設定
-            </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScheduleFormOpen(true)}
+          >
+            スケジュール追加
           </Button>
         </CardHeader>
         <CardContent>
-          {agent.schedules.length > 0 ? (
-            <div className="space-y-3">
-              {agent.schedules.map((schedule) => {
-                const statusInfo = SCHEDULE_STATUS_INFO[schedule.status];
-                return (
-                  <div
-                    key={schedule.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="font-medium">{schedule.name}</p>
-                        <p className="font-mono text-sm text-gray-500">
-                          {schedule.cronExpression}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className={statusInfo.color}>
-                      {statusInfo.label}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-lg bg-gray-50 p-6 text-center text-gray-500">
-              スケジュールが設定されていません
-            </div>
-          )}
+          <ScheduleList agentId={agent.id as AgentId} />
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             最近の実行履歴
           </CardTitle>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefreshHistory}
+                disabled={isRefreshingHistory}
+                className="h-8 w-8"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshingHistory ? "animate-spin" : ""}`}
+                />
+                <span className="sr-only">更新</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>履歴を更新</TooltipContent>
+          </Tooltip>
         </CardHeader>
         <CardContent>
-          <ExecutionHistory agentId={agent.id as AgentId} />
-        </CardContent>
-      </Card>
-
-      <Card className="border-red-200">
-        <CardHeader>
-          <CardTitle className="text-red-600">危険な操作</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">エージェントを削除</p>
-              <p className="text-sm text-gray-500">
-                関連するスケジュールと実行履歴も削除されます
-              </p>
-            </div>
-            <Button
-              variant="destructive"
-              onClick={() => setDeleteModalOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              削除
-            </Button>
-          </div>
+          <ExecutionHistory agentId={agent.id as AgentId} orgSlug={orgSlug} />
         </CardContent>
       </Card>
 
@@ -309,16 +407,47 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
           onSuccess={handleDeleteSuccess}
         />
       )}
+
+      {iconEditModalOpen && (
+        <AgentIconEditModal
+          agentId={agent.id as AgentId}
+          initialIconPath={agent.iconPath}
+          orgSlug={orgSlug}
+          onOpenChange={setIconEditModalOpen}
+          onSuccess={async () => {
+            await utils.v2.agent.findById.invalidate({
+              id: agentId as AgentId,
+            });
+          }}
+        />
+      )}
+
+      {/* 実行結果モーダル（ストリーミング対応） */}
+      <ExecutionResultModal
+        open={resultModalOpen}
+        onOpenChange={setResultModalOpen}
+        messages={messages}
+        isStreaming={isStreaming}
+        error={executionError}
+      />
+
+      {/* スケジュール作成モーダル */}
+      <ScheduleForm
+        agentId={agent.id as AgentId}
+        isOpen={scheduleFormOpen}
+        onClose={() => setScheduleFormOpen(false)}
+      />
     </div>
   );
 };
 
-const STATS_CARD_COUNT = 3;
+// 統計カードの数（スケジュール、最近の実行）
+const STATS_CARD_COUNT = 2;
 
 const AgentDetailSkeleton = () => (
   <div className="space-y-6">
     <div className="h-32 animate-pulse rounded-lg bg-gray-200" />
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {Array.from({ length: STATS_CARD_COUNT }).map((_, index) => (
         <div
           key={`skeleton-${index}`}

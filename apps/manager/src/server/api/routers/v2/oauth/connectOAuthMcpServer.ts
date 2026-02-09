@@ -35,16 +35,17 @@ export const connectOAuthMcpServer = async (
   userId: string,
 ): Promise<ConnectOAuthMcpServerOutput> => {
   // 1. テンプレート情報を取得または作成
-  const { serverUrl, serverName, templateId } = await getOrCreateTemplateInfo({
-    tx,
-    templateId: input.templateId,
-    customUrl: input.customUrl,
-    name: input.name,
-    description: input.description,
-    transportType: input.transportType,
-    userId,
-    organizationId,
-  });
+  const { serverUrl, serverName, templateId, iconPath } =
+    await getOrCreateTemplateInfo({
+      tx,
+      templateId: input.templateId,
+      customUrl: input.customUrl,
+      name: input.name,
+      description: input.description,
+      transportType: input.transportType,
+      userId,
+      organizationId,
+    });
 
   // 2. 同じテンプレートの既存PENDINGサーバーをクリーンアップ
   // OAuth認証が途中で中断された場合の残骸を削除
@@ -68,6 +69,7 @@ export const connectOAuthMcpServer = async (
     templateId,
     organizationId,
     normalizedName: normalizeServerName(serverName),
+    iconPath,
   });
 
   // 4. OAuthクライアント情報を取得または作成
