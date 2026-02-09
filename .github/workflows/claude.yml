@@ -1,4 +1,4 @@
-name: 🤖 Claude Code
+name: Claude Code
 
 on:
   issue_comment:
@@ -12,7 +12,6 @@ on:
 
 jobs:
   claude:
-    name: 🚀 Claude Code Assistant
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -20,71 +19,32 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Allow Claude to push commits and create branches
-      pull-requests: write # Allow Claude to create and update PRs, add comments
-      issues: write # Allow Claude to create, update, and comment on issues
-      id-token: write # Required for OIDC authentication
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
       actions: read # Required for Claude to read CI results on PRs
-      checks: read # Allow Claude to read check run results
-      statuses: read # Allow Claude to read commit status checks
-      deployments: read # Allow Claude to read deployment information
-      discussions: write # Allow Claude to participate in discussions
-      repository-projects: read # Allow Claude to read project information
-      security-events: read # Allow Claude to read security events
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: ⚙️ Setup
-        uses: ./.github/actions/setup
-
-      - name: 🤖 Run Claude Code
+      - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Additional permissions for Claude to work with repository
+          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
-            checks: read
-            statuses: read
-            deployments: read
-            discussions: write
-            metadata: read
-            repository-projects: read
-            security-events: read
 
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
-          # model: "claude-opus-4-20250514"
+          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
+          # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Customize the trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
+          # Optional: Add claude_args to customize behavior and configuration
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+          # claude_args: '--allowed-tools Bash(gh pr:*)'
 
-          # Optional: Trigger when specific user is assigned to an issue
-          # assignee_trigger: "claude-bot"
-
-          # Optional: Allow Claude to run specific commands
-          allowed_tools: |
-            Bash(pnpm:*)
-            Bash(pnpm *)
-            Bash(git:*)
-            Bash(gh:*)
-            Write
-            Edit
-            MultiEdit
-            Read
-            Glob
-            Grep
-
-          # Optional: Add custom instructions for Claude to customize its behavior for your project
-          custom_instructions: |
-            以下のガイドラインに従ってください：
-            - 全てのコメントと回答を日本語で記述してください
-            - コーディング規約に従ってください
-
-          # Optional: Custom environment variables for Claude
-          # claude_env: |
-          #   NODE_ENV: test
