@@ -12,18 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Loader2, RefreshCw, Server, ChevronDown, Check } from "lucide-react";
+import { Loader2, RefreshCw, ChevronDown, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
-import { McpServerIcon } from "../../../_components/McpServerIcon";
+import { McpServerIcon } from "../../_components/McpServerIcon";
 
 /** マスクされた値を表す定数 */
 const MASK_VALUE = "•••••";

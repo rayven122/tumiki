@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { McpServerVisibility, ServerStatus } from "@tumiki/db/prisma";

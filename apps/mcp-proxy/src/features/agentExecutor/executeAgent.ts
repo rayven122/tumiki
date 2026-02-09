@@ -348,11 +348,13 @@ const consumeStream = async (
     toolCalls: step.toolCalls.map(({ toolCallId, toolName, input }) => ({
       toolCallId,
       toolName,
-      input,
+      // AI SDKのtool inputは動的型のためunknownとして扱う
+      input: input as unknown,
     })),
     toolResults: step.toolResults.map(({ toolCallId, output }) => ({
       toolCallId,
-      output,
+      // AI SDKのtool outputは動的型のためunknownとして扱う
+      output: output as unknown,
     })),
   }));
 

@@ -25,7 +25,7 @@ const DashboardSkeleton = () => (
 
     {/* 統計カード */}
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-      {[...Array(4)].map((_, i) => (
+      {Array.from({ length: 4 }, (_, i) => (
         <Skeleton key={i} className="h-24 rounded-lg" />
       ))}
     </div>

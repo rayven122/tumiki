@@ -14,17 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { LinkifiedText } from "@/components/ui/LinkifiedText";
 import { useState } from "react";
 import { CreateServerModal } from "./CreateServerModal";
-import {
-  Server,
-  Wrench,
-  Building2,
-  Trash2,
-  MoreHorizontal,
-} from "lucide-react";
+import { Wrench, Building2, Trash2, MoreHorizontal } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
 import { AuthTypeBadge } from "./_components/AuthTypeBadge";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 import {
   Dialog,
   DialogContent,

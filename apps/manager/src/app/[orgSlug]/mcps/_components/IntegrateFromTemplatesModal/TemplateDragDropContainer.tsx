@@ -1,6 +1,6 @@
 "use client";
 
-import { Layers, Package, Server, Wrench } from "lucide-react";
+import { Layers, Package, Wrench } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { McpServerIcon } from "../McpServerIcon";
 import { createPortal } from "react-dom";

@@ -19,13 +19,18 @@ const PROGRESS_UPDATE_INTERVAL_MS = 100;
 /** 警告閾値（90%を超えると警告状態） */
 const WARNING_THRESHOLD = 90;
 
-/** 進捗率を計算 */
+/** 想定時間のバッファ（10秒）- 平均時間に余裕を持たせる */
+const ESTIMATED_DURATION_BUFFER_MS = 10 * 1000;
+
+/** 進捗率を計算（想定時間 = 平均時間 + 10秒バッファ） */
 const calculateProgress = (
   createdAt: Date,
   estimatedDurationMs: number,
 ): number => {
   const elapsedMs = Date.now() - createdAt.getTime();
-  return Math.min((elapsedMs / estimatedDurationMs) * 100, 99);
+  // 平均時間に10秒のバッファを追加して、進捗率を緩やかに表示
+  const adjustedDurationMs = estimatedDurationMs + ESTIMATED_DURATION_BUFFER_MS;
+  return Math.min((elapsedMs / adjustedDurationMs) * 100, 99);
 };
 
 /** 開始時刻をフォーマット（絶対時刻） */

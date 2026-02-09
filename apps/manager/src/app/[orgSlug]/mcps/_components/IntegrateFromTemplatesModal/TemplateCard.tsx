@@ -1,8 +1,7 @@
 "use client";
 
-import { Wrench, X, Plus, Server } from "lucide-react";
+import { Wrench, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
 import { McpServerIcon } from "../McpServerIcon";
 import type { SelectableTemplate } from "./types";

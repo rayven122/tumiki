@@ -4,7 +4,7 @@
  * managerのapp/api/chat/route.tsから移植
  */
 
-import { convertToolState, type ToolState, type DBToolPart } from "./schema.js";
+import { convertToolState, type DBToolPart } from "./schema.js";
 
 /**
  * UIMessage形式のメッセージ
