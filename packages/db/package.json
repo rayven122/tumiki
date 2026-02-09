@@ -81,7 +81,7 @@
     "eslint": "catalog:",
     "prettier": "catalog:",
     "prisma": "^6.19.0",
-    "prisma-markdown": "^2.0.0",
+    "prisma-markdown": "^4.0.0",
     "typescript": "catalog:",
     "typescript-eslint": "^8.48.1",
     "vitest": "catalog:",
