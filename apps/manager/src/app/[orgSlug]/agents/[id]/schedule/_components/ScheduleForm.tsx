@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock, Globe } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { AgentId } from "@/schema/ids";
@@ -36,23 +36,103 @@ type ScheduleFormProps = {
   };
 };
 
-// プリセットのCron式
-const CRON_PRESETS = [
-  { label: "毎日 9:00", value: "0 9 * * *" },
-  { label: "毎日 18:00", value: "0 18 * * *" },
-  { label: "平日 9:00", value: "0 9 * * 1-5" },
-  { label: "毎週月曜 9:00", value: "0 9 * * 1" },
-  { label: "毎月1日 9:00", value: "0 9 1 * *" },
-  { label: "カスタム", value: "custom" },
+const FREQUENCY_OPTIONS = [
+  { label: "毎日", value: "daily", cron: "* * *" },
+  { label: "平日（月〜金）", value: "weekdays", cron: "* * 1-5" },
+  { label: "土日", value: "weekends", cron: "* * 0,6" },
+  { label: "毎週月曜", value: "monday", cron: "* * 1" },
+  { label: "毎週金曜", value: "friday", cron: "* * 5" },
+  { label: "毎月1日", value: "monthly", cron: "1 * *" },
+] as const;
+
+type FrequencyValue = (typeof FREQUENCY_OPTIONS)[number]["value"];
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
+  label: `${i.toString().padStart(2, "0")}時`,
+  value: i.toString(),
+}));
+
+const MINUTE_OPTIONS = [
+  { label: "00分", value: "0" },
+  { label: "15分", value: "15" },
+  { label: "30分", value: "30" },
+  { label: "45分", value: "45" },
 ];
 
-// タイムゾーン選択肢
-const TIMEZONE_OPTIONS = [
-  { label: "日本標準時 (JST)", value: "Asia/Tokyo" },
-  { label: "協定世界時 (UTC)", value: "UTC" },
-  { label: "太平洋標準時 (PST)", value: "America/Los_Angeles" },
-  { label: "東部標準時 (EST)", value: "America/New_York" },
-];
+const padTime = (value: string): string => value.padStart(2, "0");
+
+const formatTime = (hour: string, minute: string): string =>
+  `${padTime(hour)}:${padTime(minute)}`;
+
+const getClientTimezone = (): string => {
+  if (typeof window === "undefined") return "Asia/Tokyo";
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "Asia/Tokyo";
+  }
+};
+
+const parseCronExpression = (
+  cron: string,
+): { frequency: FrequencyValue; hour: string; minute: string } => {
+  const parts = cron.split(" ");
+  if (parts.length !== 5) {
+    return { frequency: "daily", hour: "9", minute: "0" };
+  }
+
+  const [minute, hour, day, , dayOfWeek] = parts;
+  const cronSuffix = `${day} * ${dayOfWeek}`;
+
+  const matchedOption = FREQUENCY_OPTIONS.find(
+    (opt) => opt.cron === cronSuffix,
+  );
+  const frequency = matchedOption?.value ?? "daily";
+
+  return {
+    frequency,
+    hour: hour ?? "9",
+    minute: minute ?? "0",
+  };
+};
+
+const buildCronExpression = (
+  frequency: FrequencyValue,
+  hour: string,
+  minute: string,
+): string => {
+  const frequencyOption = FREQUENCY_OPTIONS.find((f) => f.value === frequency);
+  const cronSuffix = frequencyOption?.cron ?? "* * *";
+  return `${minute} ${hour} ${cronSuffix}`;
+};
+
+const getJstPreview = (
+  hour: string,
+  minute: string,
+  clientTimezone: string,
+): string => {
+  const fallback = formatTime(hour, minute);
+  if (clientTimezone === "Asia/Tokyo") {
+    return fallback;
+  }
+
+  try {
+    const now = new Date();
+    now.setHours(Number(hour), Number(minute), 0, 0);
+
+    return now.toLocaleTimeString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return fallback;
+  }
+};
+
+const getFrequencyLabel = (frequency: FrequencyValue): string =>
+  FREQUENCY_OPTIONS.find((f) => f.value === frequency)?.label ?? "毎日";
 
 export const ScheduleForm = ({
   agentId,
@@ -62,38 +142,34 @@ export const ScheduleForm = ({
   initialData,
 }: ScheduleFormProps) => {
   const [name, setName] = useState("");
-  const [cronPreset, setCronPreset] = useState("0 9 * * *");
-  const [customCron, setCustomCron] = useState("");
-  const [timezone, setTimezone] = useState("Asia/Tokyo");
+  const [frequency, setFrequency] = useState<FrequencyValue>("daily");
+  const [hour, setHour] = useState("9");
+  const [minute, setMinute] = useState("0");
+
+  const clientTimezone = useMemo(() => getClientTimezone(), []);
 
   const utils = api.useUtils();
 
-  // 編集モード時の初期値設定
   useEffect(() => {
     if (editMode && initialData) {
       setName(initialData.name);
-      setTimezone(initialData.timezone);
-      // プリセットに一致するか確認
-      const matchingPreset = CRON_PRESETS.find(
-        (p) => p.value === initialData.cronExpression,
-      );
-      if (matchingPreset) {
-        setCronPreset(initialData.cronExpression);
-        setCustomCron("");
-      } else {
-        setCronPreset("custom");
-        setCustomCron(initialData.cronExpression);
-      }
+      const parsed = parseCronExpression(initialData.cronExpression);
+      setFrequency(parsed.frequency);
+      setHour(parsed.hour);
+      setMinute(parsed.minute);
     } else {
-      // 新規作成時はリセット
       setName("");
-      setCronPreset("0 9 * * *");
-      setCustomCron("");
-      setTimezone("Asia/Tokyo");
+      setFrequency("daily");
+      setHour("9");
+      setMinute("0");
     }
   }, [editMode, initialData, isOpen]);
 
-  // 作成ミューテーション
+  const jstPreview = useMemo(
+    () => getJstPreview(hour, minute, clientTimezone),
+    [hour, minute, clientTimezone],
+  );
+
   const createMutation = api.v2.agentSchedule.create.useMutation({
     onSuccess: () => {
       toast.success("スケジュールを作成しました");
@@ -105,7 +181,6 @@ export const ScheduleForm = ({
     },
   });
 
-  // 更新ミューテーション
   const updateMutation = api.v2.agentSchedule.update.useMutation({
     onSuccess: () => {
       toast.success("スケジュールを更新しました");
@@ -118,31 +193,26 @@ export const ScheduleForm = ({
   });
 
   const handleSubmit = () => {
-    const cronExpression = cronPreset === "custom" ? customCron : cronPreset;
-
     if (!name.trim()) {
       toast.error("スケジュール名を入力してください");
       return;
     }
 
-    if (!cronExpression.trim()) {
-      toast.error("Cron式を入力してください");
-      return;
-    }
+    const cronExpression = buildCronExpression(frequency, hour, minute);
 
     if (editMode && initialData) {
       updateMutation.mutate({
         id: initialData.id,
         name,
         cronExpression,
-        timezone,
+        timezone: clientTimezone,
       });
     } else {
       createMutation.mutate({
         agentId,
         name,
         cronExpression,
-        timezone,
+        timezone: clientTimezone,
       });
     }
   };
@@ -159,7 +229,6 @@ export const ScheduleForm = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* スケジュール名 */}
           <div className="space-y-2">
             <Label htmlFor="name">
               スケジュール名 <span className="text-red-500">*</span>
@@ -173,53 +242,72 @@ export const ScheduleForm = ({
             />
           </div>
 
-          {/* 実行タイミング */}
           <div className="space-y-2">
             <Label>
-              実行タイミング <span className="text-red-500">*</span>
+              実行頻度 <span className="text-red-500">*</span>
             </Label>
-            <Select value={cronPreset} onValueChange={setCronPreset}>
+            <Select
+              value={frequency}
+              onValueChange={(v) => setFrequency(v as FrequencyValue)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CRON_PRESETS.map((preset) => (
-                  <SelectItem key={preset.value} value={preset.value}>
-                    {preset.label}
+                {FREQUENCY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-
-            {cronPreset === "custom" && (
-              <div className="space-y-2">
-                <Input
-                  placeholder="0 9 * * *"
-                  value={customCron}
-                  onChange={(e) => setCustomCron(e.target.value)}
-                />
-                <p className="text-xs text-gray-500">
-                  形式: 分 時 日 月 曜日（0=日曜）
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* タイムゾーン */}
           <div className="space-y-2">
-            <Label>タイムゾーン</Label>
-            <Select value={timezone} onValueChange={setTimezone}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEZONE_OPTIONS.map((tz) => (
-                  <SelectItem key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>
+              実行時刻 <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <Select value={hour} onValueChange={setHour}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HOUR_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-muted-foreground">:</span>
+              <Select value={minute} onValueChange={setMinute}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MINUTE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="bg-muted/50 space-y-2 rounded-lg p-3">
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Globe className="h-4 w-4" />
+              <span>タイムゾーン: {clientTimezone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="text-primary h-4 w-4" />
+              <span>
+                日本時間: <strong>{jstPreview}</strong>（
+                {getFrequencyLabel(frequency)}）
+              </span>
+            </div>
           </div>
         </div>
 
