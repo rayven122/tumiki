@@ -20,11 +20,39 @@ type ExecutionHistoryProps = {
   agentId: AgentId;
 };
 
-// 実行時間のフォーマット
 const formatDuration = (durationMs: number | null): string => {
-  if (durationMs === null) return "-";
-  if (durationMs < 1000) return `${durationMs}ms`;
+  if (durationMs === null) {
+    return "-";
+  }
+  if (durationMs < 1000) {
+    return `${durationMs}ms`;
+  }
   return `${(durationMs / 1000).toFixed(1)}秒`;
+};
+
+type StatusBadgeProps = {
+  success: boolean;
+};
+
+const StatusBadge = ({ success }: StatusBadgeProps) => {
+  if (success) {
+    return (
+      <Badge
+        variant="default"
+        className="bg-green-100 text-green-700 hover:bg-green-100"
+      >
+        <CheckCircle className="mr-1 h-3 w-3" />
+        成功
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="destructive">
+      <XCircle className="mr-1 h-3 w-3" />
+      失敗
+    </Badge>
+  );
 };
 
 export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
@@ -81,20 +109,7 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
                 })}
               </TableCell>
               <TableCell>
-                {execution.success ? (
-                  <Badge
-                    variant="default"
-                    className="bg-green-100 text-green-700 hover:bg-green-100"
-                  >
-                    <CheckCircle className="mr-1 h-3 w-3" />
-                    成功
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive">
-                    <XCircle className="mr-1 h-3 w-3" />
-                    失敗
-                  </Badge>
-                )}
+                <StatusBadge success={execution.success} />
               </TableCell>
               <TableCell className="text-muted-foreground text-right">
                 {formatDuration(execution.durationMs)}
