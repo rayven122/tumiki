@@ -1,3 +1,9 @@
+/**
+ * スケジューラ機能のエントリーポイント
+ *
+ * manager側からスケジュールを管理するためのAPI
+ */
+
 export {
   registerSchedule,
   unregisterSchedule,
@@ -7,4 +13,7 @@ export {
   getActiveScheduleCount,
 } from "./cronManager";
 
-export { executeAgent } from "./agentExecutor";
+export {
+  registerScheduleToProxy,
+  unregisterScheduleFromProxy,
+} from "./syncScheduler";

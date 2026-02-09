@@ -1,129 +1,104 @@
-import cron, { type ScheduledTask } from "node-cron";
-import type { AgentSchedule, ScheduleStatus } from "@tumiki/db/prisma";
-import { db } from "@tumiki/db";
-import { executeAgent } from "./agentExecutor";
+/**
+ * Cronスケジュール管理
+ *
+ * スケジュールの登録・解除・更新を管理し、
+ * mcp-proxyへの委譲を行う
+ */
 
-// スケジュールIDとタスクのマップ
-const scheduledTasks = new Map<string, ScheduledTask>();
+import type { AgentSchedule } from "@tumiki/db";
+
+import {
+  registerScheduleToProxy,
+  unregisterScheduleFromProxy,
+} from "./syncScheduler";
+
+/** スケジュール設定の型（必要最小限のフィールド） */
+type ScheduleInput = Pick<
+  AgentSchedule,
+  "id" | "agentId" | "cronExpression" | "timezone" | "status"
+>;
 
 /**
- * スケジュールをNode Cronに登録
+ * スケジュールをmcp-proxyに登録
+ *
+ * @param schedule - スケジュール設定
  */
 export const registerSchedule = async (
-  schedule: Pick<
-    AgentSchedule,
-    "id" | "agentId" | "cronExpression" | "timezone" | "status"
-  >,
+  schedule: ScheduleInput,
 ): Promise<void> => {
-  // 既存のタスクがあれば停止
-  const existingTask = scheduledTasks.get(schedule.id);
-  if (existingTask) {
-    // node-cronのstop()は同期関数
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    existingTask.stop();
-    scheduledTasks.delete(schedule.id);
-  }
-
   // ACTIVEでない場合は登録しない
-  if (schedule.status !== ("ACTIVE" as ScheduleStatus)) {
+  if (schedule.status !== "ACTIVE") {
     return;
   }
 
-  // Cronタスクを作成
-  const task = cron.schedule(
-    schedule.cronExpression,
-    () => {
-      console.log(`[Scheduler] Executing schedule: ${schedule.id}`);
-      executeAgent({
-        agentId: schedule.agentId,
-        scheduleId: schedule.id,
-      }).catch((error: unknown) => {
-        console.error(
-          `[Scheduler] Execution failed for schedule ${schedule.id}:`,
-          error,
-        );
-      });
-    },
-    {
-      timezone: schedule.timezone,
-    },
-  );
-
-  scheduledTasks.set(schedule.id, task);
-  console.log(
-    `[Scheduler] Registered schedule: ${schedule.id} (${schedule.cronExpression})`,
-  );
+  await registerScheduleToProxy({
+    id: schedule.id,
+    agentId: schedule.agentId,
+    cronExpression: schedule.cronExpression,
+    timezone: schedule.timezone,
+    isEnabled: true,
+  });
 };
 
 /**
- * スケジュールをNode Cronから解除
+ * スケジュールをmcp-proxyから解除
+ *
+ * @param scheduleId - スケジュールID
  */
 export const unregisterSchedule = (scheduleId: string): void => {
-  const task = scheduledTasks.get(scheduleId);
-  if (task) {
-    // node-cronのstop()は同期関数
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    task.stop();
-    scheduledTasks.delete(scheduleId);
-    console.log(`[Scheduler] Unregistered schedule: ${scheduleId}`);
-  }
+  // 非同期だがvoidで返す（呼び出し側でawaitしない場合がある）
+  unregisterScheduleFromProxy(scheduleId).catch(console.error);
 };
 
 /**
- * スケジュールを更新（再登録）
- * 注: registerScheduleは内部で既存タスクの解除処理を行うため、
- * unregisterScheduleの明示的な呼び出しは不要だが、意図を明確にするため残している
+ * スケジュールを更新（解除後に再登録）
+ *
+ * @param schedule - スケジュール設定
  */
 export const updateSchedule = async (
-  schedule: Pick<
-    AgentSchedule,
-    "id" | "agentId" | "cronExpression" | "timezone" | "status"
-  >,
+  schedule: ScheduleInput,
 ): Promise<void> => {
+  // 一度解除してから再登録
+  await unregisterScheduleFromProxy(schedule.id);
   await registerSchedule(schedule);
 };
 
 /**
- * アプリ起動時にアクティブなスケジュールを復元
+ * 全スケジュールを復元
+ *
+ * サーバー起動時に呼び出される。
+ * mcp-proxy側で initializeScheduler が実行されるため、
+ * manager側では何もしない。
  */
-export const restoreSchedules = async (): Promise<void> => {
-  console.log("[Scheduler] Restoring active schedules...");
-
-  const activeSchedules = await db.agentSchedule.findMany({
-    where: { status: "ACTIVE" },
-    select: {
-      id: true,
-      agentId: true,
-      cronExpression: true,
-      timezone: true,
-      status: true,
-    },
-  });
-
-  for (const schedule of activeSchedules) {
-    await registerSchedule(schedule);
-  }
-
-  console.log(`[Scheduler] Restored ${activeSchedules.length} schedules`);
+export const restoreSchedules = (): void => {
+  // mcp-proxy側で initializeScheduler が DB から読み込むため
+  // manager側では何もしない
+  console.log("[Scheduler] Schedules are restored by mcp-proxy");
 };
 
 /**
- * 全スケジュールを停止（シャットダウン時）
+ * 全スケジュールを停止
+ *
+ * サーバー終了時に呼び出される。
+ * mcp-proxy側で shutdownScheduler が実行されるため、
+ * manager側では何もしない。
  */
 export const stopAllSchedules = (): void => {
-  console.log("[Scheduler] Stopping all schedules...");
-  for (const [id, task] of scheduledTasks) {
-    // node-cronのstop()は同期関数
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    task.stop();
-    console.log(`[Scheduler] Stopped: ${id}`);
-  }
-  scheduledTasks.clear();
+  // mcp-proxy側で shutdownScheduler が停止するため
+  // manager側では何もしない
+  console.log("[Scheduler] Schedules are stopped by mcp-proxy");
 };
 
 /**
- * 登録中のスケジュール数を取得
+ * アクティブなスケジュール数を取得
+ *
+ * mcp-proxy側のステータスAPIを呼び出して取得する。
+ * ローカルでは取得できないため、0を返す。
+ *
+ * @returns アクティブなスケジュール数
  */
 export const getActiveScheduleCount = (): number => {
-  return scheduledTasks.size;
+  // mcp-proxy側のステータスAPIを呼び出す必要があるが、
+  // 同期的に取得できないため0を返す
+  return 0;
 };

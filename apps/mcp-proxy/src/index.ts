@@ -3,6 +3,10 @@ import { db } from "@tumiki/db/server";
 
 import app from "./app.js";
 import { closeRedisClient } from "./infrastructure/cache/redis.js";
+import {
+  initializeScheduler,
+  shutdownScheduler,
+} from "./features/scheduler/index.js";
 import { DEFAULT_PORT } from "./shared/constants/server.js";
 import { TIMEOUT_CONFIG } from "./shared/constants/config.js";
 import { logInfo, logError } from "./shared/logger/index.js";
@@ -24,6 +28,8 @@ if (process.env.NODE_ENV !== "test") {
   const { serve } = await import("@hono/node-server");
   serve({ fetch: app.fetch, port }, (info) => {
     logInfo(`Server is running on http://localhost:${info.port}`);
+    // スケジューラを初期化（非同期）
+    void initializeScheduler();
   });
 }
 /* v8 ignore stop */
@@ -36,6 +42,10 @@ const gracefulShutdown = async (): Promise<void> => {
 
   const shutdownPromise = (async () => {
     try {
+      // スケジューラを停止
+      logInfo("Stopping scheduler");
+      shutdownScheduler();
+
       // Redis接続をクローズ
       logInfo("Closing Redis connection");
       await closeRedisClient();
