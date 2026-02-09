@@ -27,7 +27,7 @@ const initialState: AgentFlowState = {
   modelId: "",
   iconPath: "",
   selectedMcpServerIds: [],
-  visibility: McpServerVisibility.PRIVATE,
+  visibility: McpServerVisibility.ORGANIZATION,
 };
 
 // エージェント作成フローのatom
