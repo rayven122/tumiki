@@ -24,11 +24,21 @@ type ScheduleListProps = {
   agentId: AgentId;
 };
 
+// スケジュールステータス型
+type ScheduleStatus = "ACTIVE" | "PAUSED" | "DISABLED";
+
 // ステータスに応じたバッジスタイル
-const statusStyles = {
-  ACTIVE: { variant: "default" as const, label: "有効", icon: Play },
-  PAUSED: { variant: "secondary" as const, label: "一時停止", icon: Pause },
-  DISABLED: { variant: "outline" as const, label: "無効", icon: Pause },
+const STATUS_STYLES: Record<
+  ScheduleStatus,
+  {
+    variant: "default" | "secondary" | "outline";
+    label: string;
+    icon: typeof Play;
+  }
+> = {
+  ACTIVE: { variant: "default", label: "有効", icon: Play },
+  PAUSED: { variant: "secondary", label: "一時停止", icon: Pause },
+  DISABLED: { variant: "outline", label: "無効", icon: Pause },
 };
 
 export const ScheduleList = ({ agentId }: ScheduleListProps) => {
@@ -63,10 +73,7 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
     },
   });
 
-  const handleToggle = (
-    id: string,
-    currentStatus: "ACTIVE" | "PAUSED" | "DISABLED",
-  ) => {
+  const handleToggle = (id: string, currentStatus: ScheduleStatus) => {
     const newStatus = currentStatus === "ACTIVE" ? "PAUSED" : "ACTIVE";
     toggleMutation.mutate({ id, status: newStatus });
   };
@@ -106,7 +113,7 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
     <>
       <div className="space-y-3">
         {schedules.map((schedule) => {
-          const statusInfo = statusStyles[schedule.status];
+          const statusInfo = STATUS_STYLES[schedule.status];
           const StatusIcon = statusInfo.icon;
 
           return (

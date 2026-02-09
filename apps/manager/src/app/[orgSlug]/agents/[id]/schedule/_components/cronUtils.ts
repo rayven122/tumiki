@@ -59,11 +59,6 @@ export const getClientTimezone = (): string => {
   }
 };
 
-// Cron式がインターバル形式かどうか判定
-export const isIntervalCron = (cron: string): boolean => {
-  return cron.includes("*/") || /^0 \*\/\d+ \* \* \*$/.test(cron);
-};
-
 // Cron式をパース
 export type ParsedCron = {
   type: ScheduleType;
@@ -133,23 +128,29 @@ export const getFrequencyLabel = (frequency: FrequencyValue): string =>
 export const getIntervalLabel = (interval: IntervalValue): string =>
   INTERVAL_OPTIONS.find((i) => i.value === interval)?.label ?? "15分ごと";
 
+// 曜日パターンと日本語ラベルのマッピング
+const DAY_PATTERN_LABELS: Record<string, string> = {
+  "1-5": "平日",
+  "0,6": "土日",
+  "1": "毎週月曜",
+  "5": "毎週金曜",
+};
+
 // Cron式を日本語の説明に変換
 export const cronToJapanese = (cron: string): string => {
-  // インターバル形式
+  // インターバル形式（定義済みオプション）
   const intervalMatch = INTERVAL_OPTIONS.find((opt) => opt.cron === cron);
   if (intervalMatch) {
     return `${intervalMatch.label}に実行`;
   }
 
-  // インターバル形式（カスタム）
-  if (cron.startsWith("*/")) {
-    const match = /^\*\/(\d+) \* \* \* \*$/.exec(cron);
-    if (match) {
-      return `${match[1]}分ごとに実行`;
-    }
+  // インターバル形式（カスタム分単位）
+  const customMinuteMatch = /^\*\/(\d+) \* \* \* \*$/.exec(cron);
+  if (customMinuteMatch) {
+    return `${customMinuteMatch[1]}分ごとに実行`;
   }
 
-  // 時間ごとのインターバル
+  // インターバル形式（時間単位）
   const hourlyMatch = /^0 \*\/(\d+) \* \* \*$/.exec(cron);
   if (hourlyMatch) {
     return `${hourlyMatch[1]}時間ごとに実行`;
@@ -169,24 +170,20 @@ export const cronToJapanese = (cron: string): string => {
   const [minute, hour, day, , dayOfWeek] = parts;
   const time = formatTime(hour ?? "0", minute ?? "0");
 
-  // 曜日パターンをマッチ
-  if (dayOfWeek === "1-5" && day === "*") {
-    return `平日 ${time} に実行`;
-  }
-  if (dayOfWeek === "0,6" && day === "*") {
-    return `土日 ${time} に実行`;
-  }
-  if (dayOfWeek === "1" && day === "*") {
-    return `毎週月曜 ${time} に実行`;
-  }
-  if (dayOfWeek === "5" && day === "*") {
-    return `毎週金曜 ${time} に実行`;
-  }
+  // 毎月特定日
   if (day === "1" && dayOfWeek === "*") {
     return `毎月1日 ${time} に実行`;
   }
+
+  // 毎日
   if (dayOfWeek === "*" && day === "*") {
     return `毎日 ${time} に実行`;
+  }
+
+  // 曜日パターン
+  const dayLabel = dayOfWeek ? DAY_PATTERN_LABELS[dayOfWeek] : undefined;
+  if (dayLabel && day === "*") {
+    return `${dayLabel} ${time} に実行`;
   }
 
   return cron;
