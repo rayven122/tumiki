@@ -1,8 +1,6 @@
-import Image from "next/image";
-import { Server } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 import type { Prisma } from "@tumiki/db/prisma";
+import { McpServerIcon } from "../../McpServerIcon";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 
@@ -24,23 +22,12 @@ export const ServerInfoSection = ({ mcpServer }: ServerInfoSectionProps) => {
   return (
     <div className="flex items-center">
       <div className="mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border p-2">
-        {mcpServer.iconPath ? (
-          <Image
-            src={mcpServer.iconPath}
-            alt={mcpServer.name}
-            width={24}
-            height={24}
-            className="h-6 w-6"
-          />
-        ) : (
-          <FaviconImage
-            url={mcpServer.url}
-            alt={mcpServer.name}
-            size={24}
-            className="h-6 w-6"
-            fallback={<Server className="h-6 w-6 text-gray-500" />}
-          />
-        )}
+        <McpServerIcon
+          iconPath={mcpServer.iconPath}
+          fallbackUrl={mcpServer.url}
+          alt={mcpServer.name}
+          size={24}
+        />
       </div>
       <div className="min-w-0">
         <h2 className="font-medium">{mcpServer.name}</h2>
