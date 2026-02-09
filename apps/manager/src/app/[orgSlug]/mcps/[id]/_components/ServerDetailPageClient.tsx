@@ -52,6 +52,7 @@ import { IconEditModal } from "../../_components/UserMcpServerCard/IconEditModal
 import { useReauthenticateOAuth } from "../../_components/UserMcpServerCard/_hooks/useReauthenticateOAuth";
 import { McpConfigEditModal } from "./McpConfigEditModal";
 import { Switch } from "@/components/ui/switch";
+import { RefreshToolsModal } from "../../_components/RefreshToolsModal";
 
 // サーバータイプのラベル
 const SERVER_TYPE_LABELS = {
@@ -72,6 +73,7 @@ export const ServerDetailPageClient = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showIconEditModal, setShowIconEditModal] = useState(false);
   const [showMcpConfigModal, setShowMcpConfigModal] = useState(false);
+  const [showRefreshToolsModal, setShowRefreshToolsModal] = useState(false);
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(
     null,
   );
@@ -614,6 +616,12 @@ export const ServerDetailPageClient = ({
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
+                        onClick={() => setShowRefreshToolsModal(true)}
+                      >
+                        <Wrench className="mr-2 h-4 w-4" />
+                        ツールを更新
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         onClick={() => setShowIconEditModal(true)}
                       >
                         <Palette className="mr-2 h-4 w-4" />
@@ -727,6 +735,17 @@ export const ServerDetailPageClient = ({
               iconPath: instance.mcpServerTemplate.iconPath,
               url: instance.mcpServerTemplate.url,
             }))}
+            onSuccess={async () => {
+              await refetch();
+            }}
+          />
+        )}
+        {showRefreshToolsModal && (
+          <RefreshToolsModal
+            open={showRefreshToolsModal}
+            onOpenChange={setShowRefreshToolsModal}
+            serverId={server.id as McpServerId}
+            serverName={server.name}
             onSuccess={async () => {
               await refetch();
             }}

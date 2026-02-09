@@ -227,10 +227,17 @@ export const UpdateDynamicSearchOutputV2 = z.object({
 // ツール更新の入力スキーマ
 export const RefreshToolsInputV2 = z.object({
   id: McpServerIdSchema,
+  /** プレビューモード: trueの場合はDBに反映せず差分のみ返す */
+  dryRun: z.boolean().optional().default(false),
 });
 
 // ツール変更の種類
-const ToolChangeTypeSchema = z.enum(["added", "removed", "modified"]);
+const ToolChangeTypeSchema = z.enum([
+  "added",
+  "removed",
+  "modified",
+  "unchanged",
+]);
 
 // 個別のツール変更情報
 const ToolChangeSchema = z.object({
@@ -250,6 +257,7 @@ const TemplateInstanceToolChangesSchema = z.object({
   addedCount: z.number(),
   removedCount: z.number(),
   modifiedCount: z.number(),
+  unchangedCount: z.number(),
 });
 
 // 影響を受ける組織の情報
@@ -644,6 +652,7 @@ export const userMcpServerRouter = createTRPCRouter({
             mcpServerId: input.id,
             organizationId: ctx.currentOrg.id,
             userId: ctx.session.user.id,
+            dryRun: input.dryRun,
           });
         },
         {
@@ -651,14 +660,16 @@ export const userMcpServerRouter = createTRPCRouter({
         },
       );
 
-      // ツール変更通知を送信（変更がある場合のみ）
-      void sendToolChangeNotifications(ctx.db, {
-        result,
-        mcpServerId: input.id,
-        organizationId: ctx.currentOrg.id,
-        organizationSlug: ctx.currentOrg.slug,
-        triggeredById: ctx.session.user.id,
-      });
+      // dryRunモードでない場合のみツール変更通知を送信
+      if (!input.dryRun) {
+        void sendToolChangeNotifications(ctx.db, {
+          result,
+          mcpServerId: input.id,
+          organizationId: ctx.currentOrg.id,
+          organizationSlug: ctx.currentOrg.slug,
+          triggeredById: ctx.session.user.id,
+        });
+      }
 
       return result;
     }),
