@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { TransportType } from "@tumiki/db/prisma";
+import { TransportType, ServerStatus } from "@tumiki/db/prisma";
 import {
   handleOAuthCallback,
   type HandleOAuthCallbackInput,
@@ -51,12 +51,15 @@ const createMockStatePayload = (): OAuthStatePayload => ({
   exp: Math.floor((Date.now() + 10 * 60 * 1000) / 1000),
 });
 
-const createMockMcpServerData = () => ({
+const createMockMcpServerData = (
+  serverStatus: (typeof ServerStatus)[keyof typeof ServerStatus] = ServerStatus.PENDING,
+) => ({
   mcpServer: {
     id: mockMcpServerId,
     name: "Test MCP Server",
     templateUrl: "https://example.com/mcp",
     transportType: TransportType.STREAMABLE_HTTPS,
+    serverStatus,
   },
   mcpServerTemplateId: mockMcpServerTemplateId,
   mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,
@@ -134,6 +137,7 @@ describe("handleOAuthCallback", () => {
         mcpServerName: "Test MCP Server",
         success: true,
         redirectTo: undefined, // statePayloadにredirectToがない場合はundefined
+        isNewServer: true, // PENDING状態なので新規サーバー
       });
 
       // 各ステップが正しく呼ばれたことを確認
@@ -238,6 +242,81 @@ describe("handleOAuthCallback", () => {
       const createData = createCall?.[0]?.create;
       expect(createData).toBeDefined();
       expect(createData?.expiresAt).toBeNull();
+    });
+
+    test("PENDING状態のサーバーはisNewServer=trueを返す", async () => {
+      const statePayload = createMockStatePayload();
+      // デフォルトはPENDING状態
+      const mcpServerData = createMockMcpServerData(ServerStatus.PENDING);
+      const tokenData = createMockTokenData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(3);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL(
+          "https://example.com/callback?code=auth_code&state=" + mockStateToken,
+        ),
+      };
+
+      const result = await handleOAuthCallback(mockTx, input);
+
+      expect(result.success).toBe(true);
+      expect(result.isNewServer).toBe(true);
+    });
+
+    test("RUNNING状態のサーバーはisNewServer=falseを返す（再認証）", async () => {
+      const statePayload = createMockStatePayload();
+      // RUNNING状態 = 既存サーバーの再認証
+      const mcpServerData = createMockMcpServerData(ServerStatus.RUNNING);
+      const tokenData = createMockTokenData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(3);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL(
+          "https://example.com/callback?code=auth_code&state=" + mockStateToken,
+        ),
+      };
+
+      const result = await handleOAuthCallback(mockTx, input);
+
+      expect(result.success).toBe(true);
+      expect(result.isNewServer).toBe(false);
+    });
+
+    test("ERROR状態のサーバーはisNewServer=falseを返す（再認証）", async () => {
+      const statePayload = createMockStatePayload();
+      // ERROR状態 = エラーからの回復再認証
+      const mcpServerData = createMockMcpServerData(ServerStatus.ERROR);
+      const tokenData = createMockTokenData();
+
+      mockVerifyOAuthState.mockResolvedValue(statePayload);
+      mockGetMcpServerAndOAuthClient.mockResolvedValue(mcpServerData);
+      mockExchangeAuthorizationCode.mockResolvedValue(tokenData);
+      mockSetupMcpServerTools.mockResolvedValue(3);
+
+      const input: HandleOAuthCallbackInput = {
+        state: mockStateToken,
+        userId: mockUserId,
+        currentUrl: new URL(
+          "https://example.com/callback?code=auth_code&state=" + mockStateToken,
+        ),
+      };
+
+      const result = await handleOAuthCallback(mockTx, input);
+
+      expect(result.success).toBe(true);
+      expect(result.isNewServer).toBe(false);
     });
   });
 

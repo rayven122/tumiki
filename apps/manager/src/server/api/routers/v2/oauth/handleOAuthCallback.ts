@@ -27,6 +27,8 @@ export type HandleOAuthCallbackOutput = {
   error?: string;
   /** 認証完了後のリダイレクト先（チャット画面等） */
   redirectTo?: string;
+  /** 新規サーバー追加時はtrue（再認証時はfalse） */
+  isNewServer?: boolean;
 };
 
 /**
@@ -102,6 +104,9 @@ export const handleOAuthCallback = async (
       transportType: mcpServer.transportType,
     });
 
+    // 新規サーバー追加時（PENDING状態）のみ通知フラグをtrueにする
+    const isNewServer = mcpServer.serverStatus === "PENDING";
+
     return {
       organizationSlug: organization.slug,
       organizationId: statePayload.organizationId,
@@ -109,6 +114,7 @@ export const handleOAuthCallback = async (
       mcpServerName: mcpServer.name,
       success: true,
       redirectTo: statePayload.redirectTo,
+      isNewServer,
     };
   } catch (error) {
     console.error("[OAuth Callback Error]", error);
