@@ -36,7 +36,7 @@ const config = {
               nmf.hooks.beforeResolve.tap(
                 "CEBuildPlugin",
                 /** @param {any} resolveData */ (
-                  /** @type {any} */ resolveData
+                  /** @type {any} */ resolveData,
                 ) => {
                   if (
                     resolveData.request &&
@@ -44,9 +44,9 @@ const config = {
                   ) {
                     resolveData.request = eeStubPath;
                   }
-                }
+                },
               );
-            }
+            },
           );
         },
       };
