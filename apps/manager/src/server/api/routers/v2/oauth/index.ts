@@ -104,7 +104,8 @@ export const oauthRouter = createTRPCRouter({
       );
 
       // トランザクション完了後に通知を送信（トランザクション外で実行）
-      if (result.success) {
+      // 新規サーバー追加時のみ通知（再認証時は通知しない）
+      if (result.success && result.isNewServer) {
         void createBulkNotifications(ctx.db, {
           type: "MCP_SERVER_ADDED",
           priority: "LOW",

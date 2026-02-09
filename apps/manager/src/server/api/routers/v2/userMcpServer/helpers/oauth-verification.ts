@@ -78,6 +78,7 @@ export const getMcpServerAndOAuthClient = async (
             id: true,
             name: true,
             organizationId: true,
+            serverStatus: true,
           },
         },
         mcpServerTemplate: {
@@ -151,6 +152,7 @@ export const getMcpServerAndOAuthClient = async (
       name: mcpServer.name,
       templateUrl: template.url,
       transportType: template.transportType,
+      serverStatus: mcpServer.serverStatus,
     },
     mcpServerTemplateId: template.id,
     mcpServerTemplateInstanceId: templateInstance.id,
