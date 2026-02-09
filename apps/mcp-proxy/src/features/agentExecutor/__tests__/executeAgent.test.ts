@@ -8,12 +8,17 @@ import { executeAgent } from "../executeAgent.js";
 import type { ExecuteAgentRequest } from "../types.js";
 
 // DBモック用の関数（vi.hoistedで巻き上げ対応）
-const { mockAgentFindUnique, mockExecutionLogCreate, mockGenerateText } =
-  vi.hoisted(() => ({
-    mockAgentFindUnique: vi.fn(),
-    mockExecutionLogCreate: vi.fn(),
-    mockGenerateText: vi.fn(),
-  }));
+const {
+  mockAgentFindUnique,
+  mockExecutionLogCreate,
+  mockExecutionLogUpdate,
+  mockGenerateText,
+} = vi.hoisted(() => ({
+  mockAgentFindUnique: vi.fn(),
+  mockExecutionLogCreate: vi.fn(),
+  mockExecutionLogUpdate: vi.fn(),
+  mockGenerateText: vi.fn(),
+}));
 
 // @tumiki/db/serverモジュールをモック
 vi.mock("@tumiki/db/server", () => ({
@@ -23,6 +28,7 @@ vi.mock("@tumiki/db/server", () => ({
     },
     agentExecutionLog: {
       create: mockExecutionLogCreate,
+      update: mockExecutionLogUpdate,
     },
   },
 }));
@@ -54,6 +60,14 @@ describe("executeAgent", () => {
       mcpServers: [],
     });
     mockExecutionLogCreate.mockResolvedValue({
+      id: "log-1",
+      agentId: "agent-123",
+      scheduleId: null,
+      success: null,
+      durationMs: null,
+      createdAt: new Date(),
+    });
+    mockExecutionLogUpdate.mockResolvedValue({
       id: "log-1",
       agentId: "agent-123",
       scheduleId: null,
@@ -217,15 +231,22 @@ describe("executeAgent", () => {
 
     await executeAgent(request);
 
-    expect(mockExecutionLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          agentId: "agent-123",
-          scheduleId: "schedule-456",
-          success: true,
-        }) as Record<string, unknown>,
-      }),
-    );
+    expect(mockExecutionLogCreate).toHaveBeenCalledWith({
+      data: {
+        agentId: "agent-123",
+        scheduleId: "schedule-456",
+        modelId: "anthropic/claude-3-5-sonnet",
+        success: null,
+        durationMs: null,
+      },
+    });
+    expect(mockExecutionLogUpdate).toHaveBeenCalledWith({
+      where: { id: "log-1" },
+      data: {
+        success: true,
+        durationMs: expect.any(Number) as number,
+      },
+    });
   });
 
   test("エージェントのカスタムシステムプロンプトが使用される", async () => {

@@ -26,13 +26,13 @@ import type { AgentId } from "@/schema/ids";
 import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "../../_components/DeleteAgentModal";
 import { ExecutionHistory } from "../schedule/_components/ExecutionHistory";
+import { RunningExecutions } from "./RunningExecutions";
 
 type AgentDetailPageClientProps = {
   orgSlug: string;
   agentId: string;
 };
 
-// 可視性情報
 const VISIBILITY_INFO = {
   [McpServerVisibility.PRIVATE]: {
     icon: Lock,
@@ -51,7 +51,6 @@ const VISIBILITY_INFO = {
   },
 };
 
-// スケジュールステータス
 const SCHEDULE_STATUS_INFO = {
   [ScheduleStatus.ACTIVE]: {
     label: "有効",
@@ -67,9 +66,6 @@ const SCHEDULE_STATUS_INFO = {
   },
 };
 
-/**
- * エージェント詳細の非同期コンポーネント
- */
 const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
   const router = useRouter();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -89,7 +85,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
 
   return (
     <div className="space-y-6">
-      {/* ヘッダーカード */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
@@ -131,7 +126,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </CardContent>
       </Card>
 
-      {/* 統計カード */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 pt-6">
@@ -168,7 +162,8 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </Card>
       </div>
 
-      {/* システムプロンプト */}
+      <RunningExecutions agentId={agent.id as AgentId} />
+
       <Card>
         <CardHeader>
           <CardTitle>システムプロンプト</CardTitle>
@@ -180,7 +175,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </CardContent>
       </Card>
 
-      {/* MCPサーバー一覧 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -224,7 +218,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </CardContent>
       </Card>
 
-      {/* スケジュール一覧 */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -272,7 +265,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </CardContent>
       </Card>
 
-      {/* 実行履歴 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -285,7 +277,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </CardContent>
       </Card>
 
-      {/* 危険ゾーン */}
       <Card className="border-red-200">
         <CardHeader>
           <CardTitle className="text-red-600">危険な操作</CardTitle>
@@ -309,7 +300,6 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
         </CardContent>
       </Card>
 
-      {/* 削除モーダル */}
       {deleteModalOpen && (
         <DeleteAgentModal
           open={deleteModalOpen}
@@ -323,13 +313,8 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
   );
 };
 
-// 統計カードの定義から数を自動計算
-const STATS_CARDS = ["mcpServers", "schedules", "executionLogs"] as const;
-const STATS_CARD_COUNT = STATS_CARDS.length;
+const STATS_CARD_COUNT = 3;
 
-/**
- * スケルトンローダー
- */
 const AgentDetailSkeleton = () => (
   <div className="space-y-6">
     <div className="h-32 animate-pulse rounded-lg bg-gray-200" />
@@ -345,16 +330,12 @@ const AgentDetailSkeleton = () => (
   </div>
 );
 
-/**
- * エージェント詳細ページのクライアントコンポーネント
- */
 export const AgentDetailPageClient = ({
   orgSlug,
   agentId,
 }: AgentDetailPageClientProps) => {
   return (
     <div className="container mx-auto px-4 py-6">
-      {/* 戻るリンク */}
       <Button variant="ghost" size="sm" asChild className="mb-4">
         <Link href={`/${orgSlug}/agents`}>
           <ArrowLeft className="mr-2 h-4 w-4" />

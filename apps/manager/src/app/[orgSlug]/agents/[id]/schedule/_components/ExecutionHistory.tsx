@@ -93,6 +93,7 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
           <TableRow>
             <TableHead>実行日時</TableHead>
             <TableHead>スケジュール名</TableHead>
+            <TableHead>モデル</TableHead>
             <TableHead>ステータス</TableHead>
             <TableHead className="text-right">実行時間</TableHead>
           </TableRow>
@@ -107,6 +108,9 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
               </TableCell>
               <TableCell className="font-medium">
                 {execution.scheduleName ?? "手動実行"}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-xs">
+                {execution.modelId ?? "-"}
               </TableCell>
               <TableCell>
                 <StatusBadge success={execution.success} />

@@ -91,8 +91,11 @@ model AgentExecutionLog {
   chatId String? @unique
   chat   Chat?   @relation(fields: [chatId], references: [id], onDelete: SetNull)
 
-  /// 成功したかどうか
-  success Boolean
+  /// 使用したLLMモデルID（例: "anthropic/claude-3.5-haiku"）
+  modelId String?
+
+  /// 成功したかどうか（null = 実行中）
+  success Boolean?
   /// 実行時間（ミリ秒）
   durationMs Int?
 

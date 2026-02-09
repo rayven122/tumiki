@@ -42,7 +42,9 @@ erDiagram
   String id PK
   String agentId FK
   String scheduleId FK "nullable"
-  Boolean success
+  String chatId FK,UK "nullable"
+  String modelId "nullable"
+  Boolean success "nullable"
   Int durationMs "nullable"
   DateTime createdAt
 }
@@ -87,13 +89,15 @@ AIエージェント定義
   - `updatedAt`: 
 
 ### `AgentExecutionLog`
-バッチ実行履歴（メタデータのみ、詳細はBigQueryに保存）
+バッチ実行履歴（メタデータのみ、詳細はChatに保存）
 
 **Properties**
   - `id`: 
   - `agentId`: 
   - `scheduleId`: スケジュールID（スケジュール実行の場合）
-  - `success`: 成功したかどうか
+  - `chatId`: チャットID（実行詳細はChatのMessagesに保存）
+  - `modelId`: 使用したLLMモデルID（例: "anthropic/claude-3.5-haiku"）
+  - `success`: 成功したかどうか（null = 実行中）
   - `durationMs`: 実行時間（ミリ秒）
   - `createdAt`: 
 
@@ -957,6 +961,7 @@ erDiagram
   String userId FK
   McpServerVisibility visibility
   String organizationId FK
+  String agentId FK "nullable"
 }
 "Message" {
   String id PK
@@ -1019,6 +1024,7 @@ erDiagram
   - `userId`: 
   - `visibility`: チャットの可視性（McpServerVisibility を共通利用）
   - `organizationId`: 組織ID（組織レベルでのチャット管理）
+  - `agentId`: エージェントID（エージェント実行の場合に設定、nullならユーザーチャット）
 
 ### `Message`
 

@@ -1,9 +1,3 @@
-/**
- * エージェント実行機能
- *
- * LLMを使用してエージェントを実行し、MCPツールを呼び出す
- */
-
 import { generateText } from "ai";
 import { randomUUID } from "crypto";
 
@@ -18,15 +12,9 @@ import type {
   ExecutionTrigger,
 } from "./types.js";
 
-/** エージェント実行用のデフォルトモデル */
 const DEFAULT_AGENT_MODEL = "anthropic/claude-3-5-sonnet";
+const EXECUTION_TIMEOUT_MS = 120000;
 
-/** 実行タイムアウト（ミリ秒） */
-const EXECUTION_TIMEOUT_MS = 120000; // 2分
-
-/**
- * トリガー情報を文字列に変換
- */
 const triggerToString = (trigger: ExecutionTrigger): string => {
   switch (trigger.type) {
     case "schedule":
@@ -40,10 +28,6 @@ const triggerToString = (trigger: ExecutionTrigger): string => {
   }
 };
 
-/**
- * システムプロンプトを生成
- * エージェントのカスタムシステムプロンプトがある場合はそれを使用
- */
 const buildSystemPrompt = (
   trigger: ExecutionTrigger,
   customSystemPrompt?: string,
@@ -67,45 +51,54 @@ ${executionContext}
 エラーが発生した場合は、エラー内容と対処方法を報告してください。`;
 };
 
-/**
- * 実行ログをDBに保存
- */
-const saveExecutionLog = async (
+const createExecutionLog = async (
   agentId: string,
   scheduleId: string | null,
+  modelId: string | null,
+): Promise<string | null> => {
+  try {
+    const log = await db.agentExecutionLog.create({
+      data: {
+        agentId,
+        scheduleId,
+        modelId,
+        success: null,
+        durationMs: null,
+      },
+    });
+    return log.id;
+  } catch (error) {
+    logError("Failed to create execution log", toError(error), {
+      agentId,
+      scheduleId,
+    });
+    return null;
+  }
+};
+
+const updateExecutionLog = async (
+  logId: string,
   success: boolean,
   durationMs: number,
 ): Promise<void> => {
   try {
-    await db.agentExecutionLog.create({
+    await db.agentExecutionLog.update({
+      where: { id: logId },
       data: {
-        agentId,
-        scheduleId,
         success,
         durationMs,
       },
     });
   } catch (error) {
-    // ログ保存失敗は致命的エラーではないため、警告ログのみ
-    logError("Failed to save execution log", toError(error), {
-      agentId,
-      scheduleId,
+    logError("Failed to update execution log", toError(error), {
+      logId,
     });
   }
 };
 
-/**
- * トリガーからスケジュールIDを取得
- */
 const getScheduleId = (trigger: ExecutionTrigger): string | null =>
   trigger.type === "schedule" ? trigger.scheduleId : null;
 
-/**
- * エージェントを実行
- *
- * @param request - 実行リクエスト
- * @returns 実行結果
- */
 export const executeAgent = async (
   request: ExecuteAgentRequest,
 ): Promise<ExecuteAgentResult> => {
@@ -119,8 +112,9 @@ export const executeAgent = async (
     triggerType: request.trigger.type,
   });
 
+  let logId: string | null = null;
+
   try {
-    // DBからエージェント情報を取得
     const agent = await db.agent.findUnique({
       where: { id: request.agentId },
       select: {
@@ -135,10 +129,11 @@ export const executeAgent = async (
       throw new Error(`Agent not found: ${request.agentId}`);
     }
 
-    // システムプロンプトとモデルを決定
     const systemPrompt = buildSystemPrompt(request.trigger, agent.systemPrompt);
     const modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
     const userMessage = request.message ?? "定期実行タスクを開始してください。";
+
+    logId = await createExecutionLog(request.agentId, scheduleId, modelId);
 
     logInfo("Agent configuration loaded", {
       executionId,
@@ -147,7 +142,6 @@ export const executeAgent = async (
       mcpServerCount: agent.mcpServers.length,
     });
 
-    // タイムアウト付きでLLM呼び出し
     const { text } = await Promise.race([
       generateText({
         model: gateway(modelId),
@@ -174,7 +168,9 @@ export const executeAgent = async (
       outputLength: text.length,
     });
 
-    await saveExecutionLog(request.agentId, scheduleId, true, durationMs);
+    if (logId) {
+      await updateExecutionLog(logId, true, durationMs);
+    }
 
     return {
       executionId,
@@ -192,7 +188,9 @@ export const executeAgent = async (
       durationMs,
     });
 
-    await saveExecutionLog(request.agentId, scheduleId, false, durationMs);
+    if (logId) {
+      await updateExecutionLog(logId, false, durationMs);
+    }
 
     return {
       executionId,

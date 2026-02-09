@@ -44,7 +44,8 @@ CREATE TABLE "AgentExecutionLog" (
     "agentId" TEXT NOT NULL,
     "scheduleId" TEXT,
     "chatId" TEXT,
-    "success" BOOLEAN NOT NULL,
+    "modelId" TEXT,
+    "success" BOOLEAN,
     "durationMs" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

@@ -2,32 +2,42 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { AgentIdSchema, AgentExecutionLogIdSchema } from "@/schema/ids";
 import { findExecutionsByAgentId } from "./findByAgentId";
+import { getRunningExecutions } from "./getRunning";
 
-// 実行履歴取得入力
 export const FindExecutionByAgentIdInputSchema = z.object({
   agentId: AgentIdSchema,
   limit: z.number().min(1).max(100).default(20),
   cursor: z.string().optional(),
 });
 
-// 実行履歴出力
+const GetRunningInputSchema = z.object({
+  agentId: AgentIdSchema,
+});
+
 const ExecutionLogSchema = z.object({
   id: AgentExecutionLogIdSchema,
   scheduleId: z.string().nullable(),
   scheduleName: z.string().nullable(),
+  modelId: z.string().nullable(),
   success: z.boolean(),
   durationMs: z.number().nullable(),
   createdAt: z.date(),
 });
 
-// ページネーション出力
+const RunningExecutionSchema = z.object({
+  id: AgentExecutionLogIdSchema,
+  scheduleId: z.string().nullable(),
+  scheduleName: z.string().nullable(),
+  modelId: z.string().nullable(),
+  createdAt: z.date(),
+});
+
 const PaginatedExecutionLogsSchema = z.object({
   items: z.array(ExecutionLogSchema),
   nextCursor: z.string().optional(),
 });
 
 export const agentExecutionRouter = createTRPCRouter({
-  // 実行履歴取得
   findByAgentId: protectedProcedure
     .input(FindExecutionByAgentIdInputSchema)
     .output(PaginatedExecutionLogsSchema)
@@ -38,6 +48,17 @@ export const agentExecutionRouter = createTRPCRouter({
         userId: ctx.session.user.id,
         limit: input.limit,
         cursor: input.cursor,
+      });
+    }),
+
+  getRunning: protectedProcedure
+    .input(GetRunningInputSchema)
+    .output(z.array(RunningExecutionSchema))
+    .query(async ({ ctx, input }) => {
+      return await getRunningExecutions(ctx.db, {
+        agentId: input.agentId,
+        organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
       });
     }),
 });
