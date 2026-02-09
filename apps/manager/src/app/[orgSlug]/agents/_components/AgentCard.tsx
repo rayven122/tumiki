@@ -46,7 +46,7 @@ import { useCallback, useMemo, useState } from "react";
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
 import { AgentIconEditModal } from "./AgentIconEditModal";
-import { ExecutionResultModal } from "../[id]/_components/ExecutionResultModal";
+import { ExecutionResultModal } from "../[agentSlug]/_components/ExecutionResultModal";
 import type { AgentId } from "@/schema/ids";
 
 type Agent = RouterOutputs["v2"]["agent"]["findAll"][number];
@@ -196,8 +196,8 @@ export const AgentCard = ({
   );
 
   const handleCardClick = useCallback(() => {
-    router.push(`/${orgSlug}/agents/${agent.id}`);
-  }, [router, orgSlug, agent.id]);
+    router.push(`/${orgSlug}/agents/${agent.slug}`);
+  }, [router, orgSlug, agent.slug]);
 
   const visibilityInfo = VISIBILITY_INFO_MAP[agent.visibility];
   const VisibilityIcon = visibilityInfo.icon;
@@ -274,7 +274,7 @@ export const AgentCard = ({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href={`/${orgSlug}/agents/${agent.id}`}>
+                <Link href={`/${orgSlug}/agents/${agent.slug}`}>
                   <ExternalLink className="mr-2 h-4 w-4" />
                   詳細を見る
                 </Link>
@@ -289,7 +289,7 @@ export const AgentCard = ({
                 アイコンを変更
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/${orgSlug}/agents/${agent.id}/edit`}>
+                <Link href={`/${orgSlug}/agents/${agent.slug}/edit`}>
                   <Edit2 className="mr-2 h-4 w-4" />
                   編集
                 </Link>

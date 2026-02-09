@@ -25,12 +25,24 @@ const ExecutionLogSchema = z.object({
 const AllRunningExecutionSchema = z.object({
   id: AgentExecutionLogIdSchema,
   agentId: AgentIdSchema,
+  chatId: z.string().nullable(),
   scheduleId: z.string().nullable(),
   scheduleName: z.string().nullable(),
   agentName: z.string(),
   agentIconPath: z.string().nullable(),
   modelId: z.string().nullable(),
   estimatedDurationMs: z.number(),
+  createdAt: z.date(),
+});
+
+// メッセージパーツスキーマ
+const MessagePartSchema = z.record(z.string(), z.unknown());
+
+// メッセージスキーマ
+const ExecutionMessageSchema = z.object({
+  id: z.string(),
+  role: z.string(),
+  parts: z.array(MessagePartSchema),
   createdAt: z.date(),
 });
 
@@ -60,5 +72,29 @@ export const agentExecutionRouter = createTRPCRouter({
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });
+    }),
+
+  /** chatIdからメッセージを取得（実行中のエージェント用） */
+  getMessages: protectedProcedure
+    .input(z.object({ chatId: z.string() }))
+    .output(z.array(ExecutionMessageSchema))
+    .query(async ({ ctx, input }) => {
+      const messages = await ctx.db.message.findMany({
+        where: { chatId: input.chatId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          role: true,
+          parts: true,
+          createdAt: true,
+        },
+      });
+
+      return messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        parts: (msg.parts ?? []) as Record<string, unknown>[],
+        createdAt: msg.createdAt,
+      }));
     }),
 });

@@ -54,7 +54,8 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
     onSuccess: (data) => {
       toast.success("エージェントを作成しました");
       resetFlowState();
-      router.push(`/${orgSlug}/agents/${data.id}`);
+      // スラグベースのURLにリダイレクト
+      router.push(`/${orgSlug}/agents/${data.slug}`);
     },
     onError: (error) => {
       toast.error(`作成に失敗しました: ${error.message}`);

@@ -3,14 +3,14 @@ import { EditAgentPageClient } from "./_components/EditAgentPageClient";
 type EditAgentPageProps = {
   params: Promise<{
     orgSlug: string;
-    id: string;
+    agentSlug: string;
   }>;
 };
 
 const EditAgentPage = async ({ params }: EditAgentPageProps) => {
-  const { orgSlug, id } = await params;
+  const { orgSlug, agentSlug } = await params;
 
-  return <EditAgentPageClient orgSlug={orgSlug} agentId={id} />;
+  return <EditAgentPageClient orgSlug={orgSlug} agentSlug={agentSlug} />;
 };
 
 export default EditAgentPage;

@@ -7,7 +7,8 @@ import { Eye, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import { ExecutionModalBase } from "../[id]/_components/ExecutionModalBase";
+import { ExecutionModalBase } from "../[agentSlug]/_components/ExecutionModalBase";
+import { ExecutionMessages } from "../[agentSlug]/_components/ExecutionMessages";
 
 /** ポーリング間隔（3秒） */
 const POLLING_INTERVAL_MS = 3000;
@@ -74,6 +75,7 @@ const AgentIcon = ({
 
 type ExecutionData = {
   id: string;
+  chatId: string | null;
   agentName: string;
   agentIconPath: string | null;
   estimatedDurationMs: number;
@@ -164,12 +166,22 @@ type ExecutionDetailsModalProps = {
   onClose: () => void;
 };
 
-/** 実行詳細モーダル（チャットUI風） */
+/** 実行詳細モーダル（チャットUI） */
 const ExecutionDetailsModal = ({
   execution,
   open,
   onClose,
 }: ExecutionDetailsModalProps) => {
+  // メッセージをポーリングで取得
+  const { data: messages, isLoading } =
+    api.v2.agentExecution.getMessages.useQuery(
+      { chatId: execution?.chatId ?? "" },
+      {
+        enabled: open && !!execution?.chatId,
+        refetchInterval: POLLING_INTERVAL_MS,
+      },
+    );
+
   if (!execution) return null;
 
   const titleIcon = <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
@@ -182,6 +194,14 @@ const ExecutionDetailsModal = ({
     </>
   );
 
+  // メッセージをExecutionMessages形式に変換
+  const executionMessages = messages?.map((msg) => ({
+    id: msg.id,
+    role: msg.role,
+    parts: msg.parts as Record<string, unknown>[],
+    createdAt: msg.createdAt,
+  }));
+
   return (
     <ExecutionModalBase
       open={open}
@@ -190,25 +210,32 @@ const ExecutionDetailsModal = ({
       titleText="実行中..."
       metadata={metadata}
     >
-      {/* ローディング状態 */}
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="mb-4 flex items-center gap-3">
-          <AgentIcon
-            iconPath={execution.agentIconPath}
-            name={execution.agentName}
-          />
-          <span className="text-lg font-semibold text-gray-900">
-            {execution.agentName}
-          </span>
+      {execution.chatId ? (
+        <ExecutionMessages
+          messages={executionMessages}
+          isLoading={isLoading}
+          fallbackOutput=""
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="mb-4 flex items-center gap-3">
+            <AgentIcon
+              iconPath={execution.agentIconPath}
+              name={execution.agentName}
+            />
+            <span className="text-lg font-semibold text-gray-900">
+              {execution.agentName}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>エージェントが処理中です...</span>
+          </div>
+          <p className="mt-4 text-sm text-gray-400">
+            実行が完了すると、結果がここに表示されます
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-gray-500">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>エージェントが処理中です...</span>
-        </div>
-        <p className="mt-4 text-sm text-gray-400">
-          実行が完了すると、結果がここに表示されます
-        </p>
-      </div>
+      )}
     </ExecutionModalBase>
   );
 };

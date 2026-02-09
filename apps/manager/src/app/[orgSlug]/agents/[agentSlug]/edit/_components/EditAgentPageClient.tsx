@@ -28,7 +28,7 @@ import { MODEL_OPTIONS } from "@/lib/agent";
 
 type EditAgentPageClientProps = {
   orgSlug: string;
-  agentId: string;
+  agentSlug: string;
 };
 
 // 公開範囲は組織内に固定
@@ -39,6 +39,7 @@ const FIXED_VISIBILITY = McpServerVisibility.ORGANIZATION;
  */
 type EditFormState = {
   name: string;
+  slug: string;
   systemPrompt: string;
   modelId: string;
   visibility: McpServerVisibility;
@@ -50,17 +51,17 @@ type EditFormState = {
  */
 const EditForm = ({
   orgSlug,
-  agentId,
+  agentSlug,
 }: {
   orgSlug: string;
-  agentId: string;
+  agentSlug: string;
 }) => {
   const router = useRouter();
   const utils = api.useUtils();
 
-  // エージェント情報を取得
-  const [agent] = api.v2.agent.findById.useSuspenseQuery({
-    id: agentId as AgentId,
+  // スラグでエージェント情報を取得
+  const [agent] = api.v2.agent.findBySlug.useSuspenseQuery({
+    slug: agentSlug,
   });
 
   // MCPサーバー一覧を取得
@@ -70,6 +71,7 @@ const EditForm = ({
   // フォーム状態（公開範囲は組織内に固定）
   const [formState, setFormState] = useState<EditFormState>({
     name: agent.name,
+    slug: agent.slug,
     systemPrompt: agent.systemPrompt,
     modelId: agent.modelId ?? "",
     visibility: FIXED_VISIBILITY,
@@ -80,9 +82,10 @@ const EditForm = ({
   const updateMutation = api.v2.agent.update.useMutation({
     onSuccess: async () => {
       toast.success("エージェントを更新しました");
-      await utils.v2.agent.findById.invalidate({ id: agentId as AgentId });
+      await utils.v2.agent.findBySlug.invalidate({ slug: formState.slug });
       await utils.v2.agent.findAll.invalidate();
-      router.push(`/${orgSlug}/agents/${agentId}`);
+      // スラグが変更された場合は新しいスラグのURLにリダイレクト
+      router.push(`/${orgSlug}/agents/${formState.slug}`);
     },
     onError: (error) => {
       toast.error(`更新に失敗しました: ${error.message}`);
@@ -137,8 +140,9 @@ const EditForm = ({
 
   const handleSubmit = () => {
     updateMutation.mutate({
-      id: agentId as AgentId,
+      id: agent.id as AgentId,
       name: formState.name,
+      slug: formState.slug,
       systemPrompt: formState.systemPrompt,
       modelId: formState.modelId || undefined,
       visibility: formState.visibility,
@@ -151,6 +155,7 @@ const EditForm = ({
 
   const isValid =
     formState.name.trim().length > 0 &&
+    formState.slug.trim().length > 0 &&
     formState.systemPrompt.trim().length > 0;
 
   return (
@@ -180,6 +185,31 @@ const EditForm = ({
               <p className="text-xs text-gray-500">最大50文字</p>
             </div>
 
+            {/* スラグ */}
+            <div className="space-y-2">
+              <Label htmlFor="slug">
+                スラグ（URL識別子） <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="slug"
+                placeholder="例: meeting-notes-agent"
+                value={formState.slug}
+                onChange={(e) =>
+                  updateFormState({
+                    slug: e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9\-_]/g, ""),
+                  })
+                }
+                maxLength={50}
+              />
+              <p className="text-xs text-gray-500">
+                英小文字、数字、ハイフン、アンダースコアのみ使用可能
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* モデル選択 */}
             <div className="space-y-2">
               <Label htmlFor="modelId">AIモデル</Label>
@@ -299,14 +329,14 @@ const EditFormSkeleton = () => (
  */
 export const EditAgentPageClient = ({
   orgSlug,
-  agentId,
+  agentSlug,
 }: EditAgentPageClientProps) => {
   return (
     <div className="container mx-auto px-4 py-6">
       {/* ヘッダー */}
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link href={`/${orgSlug}/agents/${agentId}`}>
+          <Link href={`/${orgSlug}/agents/${agentSlug}`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             詳細に戻る
           </Link>
@@ -321,7 +351,7 @@ export const EditAgentPageClient = ({
       </div>
 
       <Suspense fallback={<EditFormSkeleton />}>
-        <EditForm orgSlug={orgSlug} agentId={agentId} />
+        <EditForm orgSlug={orgSlug} agentSlug={agentSlug} />
       </Suspense>
     </div>
   );

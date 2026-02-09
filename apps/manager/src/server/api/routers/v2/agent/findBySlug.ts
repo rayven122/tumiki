@@ -1,35 +1,37 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
+import { TRPCError } from "@trpc/server";
 import { buildAgentAccessCondition } from "../utils";
 
-type FindAllAgentsParams = {
+type FindBySlugParams = {
+  slug: string;
   organizationId: string;
   userId: string;
 };
 
 /**
- * エージェント一覧を取得する
- * - PRIVATE: 作成者のみ
- * - ORGANIZATION: 同一組織内
- * - PUBLIC: 全ユーザー（将来的に実装）
+ * スラグを使ってエージェント詳細を取得する
  */
-export const findAllAgents = async (
+export const findAgentBySlug = async (
   db: PrismaTransactionClient,
-  params: FindAllAgentsParams,
+  params: FindBySlugParams,
 ) => {
-  const { organizationId, userId } = params;
+  const { slug, organizationId, userId } = params;
 
-  const agents = await db.agent.findMany({
-    where: buildAgentAccessCondition(organizationId, userId),
+  const agent = await db.agent.findFirst({
+    where: {
+      slug,
+      ...buildAgentAccessCondition(organizationId, userId),
+    },
     select: {
       id: true,
       slug: true,
-      organizationId: true,
       name: true,
       description: true,
       iconPath: true,
       systemPrompt: true,
       modelId: true,
       visibility: true,
+      organizationId: true,
       createdById: true,
       createdBy: {
         select: {
@@ -42,7 +44,9 @@ export const findAllAgents = async (
         select: {
           id: true,
           name: true,
+          description: true,
           iconPath: true,
+          serverStatus: true,
           // テンプレートのiconPathをフォールバックとして取得
           templateInstances: {
             select: {
@@ -61,21 +65,39 @@ export const findAllAgents = async (
           id: true,
           name: true,
           cronExpression: true,
+          timezone: true,
           status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
         },
       },
-      _count: {
+      executionLogs: {
         select: {
-          executionLogs: true,
+          id: true,
+          scheduleId: true,
+          success: true,
+          durationMs: true,
+          createdAt: true,
         },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 10, // 最新10件のみ
       },
       createdAt: true,
       updatedAt: true,
     },
-    orderBy: {
-      updatedAt: "desc",
-    },
   });
 
-  return agents;
+  if (!agent) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "エージェントが見つかりません",
+    });
+  }
+
+  return agent;
 };

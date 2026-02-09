@@ -54,7 +54,7 @@ import { ScheduleList } from "./ScheduleList";
 
 type AgentDetailPageClientProps = {
   orgSlug: string;
-  agentId: string;
+  agentSlug: string;
 };
 
 /** 公開範囲ごとの表示情報 */
@@ -76,7 +76,10 @@ const VISIBILITY_INFO: Record<
   },
 };
 
-const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
+const AsyncAgentDetail = ({
+  orgSlug,
+  agentSlug,
+}: AgentDetailPageClientProps) => {
   const router = useRouter();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
@@ -88,8 +91,9 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
   // セッション情報を取得
   const { data: session } = useSession();
 
-  const [agent] = api.v2.agent.findById.useSuspenseQuery({
-    id: agentId as AgentId,
+  // スラグでエージェント情報を取得
+  const [agent] = api.v2.agent.findBySlug.useSuspenseQuery({
+    slug: agentSlug,
   });
 
   // mcp-proxy の URL を取得
@@ -97,7 +101,7 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
 
   // ストリーミング用のuseChat
   const { messages, status, sendMessage, setMessages } = useChat({
-    id: `agent-execution-${agentId}`,
+    id: `agent-execution-${agent.id}`,
     generateId: generateCUID,
     transport: new DefaultChatTransport({
       api: `${mcpProxyUrl}/agent/run`,
@@ -120,7 +124,7 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
 
         return {
           body: {
-            agentId,
+            agentId: agent.id,
             organizationId: agent.organizationId,
             message: userText,
             ...request.body,
@@ -133,9 +137,9 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
     },
     onFinish: () => {
       // 実行完了後にエージェント情報と実行履歴を再取得
-      void utils.v2.agent.findById.invalidate({ id: agentId as AgentId });
+      void utils.v2.agent.findBySlug.invalidate({ slug: agentSlug });
       void utils.v2.agentExecution.findByAgentId.invalidate({
-        agentId: agentId as AgentId,
+        agentId: agent.id as AgentId,
       });
     },
   });
@@ -171,12 +175,12 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
     setIsRefreshingHistory(true);
     try {
       await utils.v2.agentExecution.findByAgentId.invalidate({
-        agentId: agentId as AgentId,
+        agentId: agent.id as AgentId,
       });
     } finally {
       setIsRefreshingHistory(false);
     }
-  }, [utils.v2.agentExecution.findByAgentId, agentId]);
+  }, [utils.v2.agentExecution.findByAgentId, agent.id]);
 
   return (
     <div className="space-y-6">
@@ -242,7 +246,7 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
                     アイコンを変更
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/${orgSlug}/agents/${agentId}/edit`}>
+                    <Link href={`/${orgSlug}/agents/${agentSlug}/edit`}>
                       <Edit2 className="mr-2 h-4 w-4" />
                       編集
                     </Link>
@@ -415,9 +419,7 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
           orgSlug={orgSlug}
           onOpenChange={setIconEditModalOpen}
           onSuccess={async () => {
-            await utils.v2.agent.findById.invalidate({
-              id: agentId as AgentId,
-            });
+            await utils.v2.agent.findBySlug.invalidate({ slug: agentSlug });
           }}
         />
       )}
@@ -461,7 +463,7 @@ const AgentDetailSkeleton = () => (
 
 export const AgentDetailPageClient = ({
   orgSlug,
-  agentId,
+  agentSlug,
 }: AgentDetailPageClientProps) => {
   return (
     <div className="container mx-auto px-4 py-6">
@@ -473,7 +475,7 @@ export const AgentDetailPageClient = ({
       </Button>
 
       <Suspense fallback={<AgentDetailSkeleton />}>
-        <AsyncAgentDetail orgSlug={orgSlug} agentId={agentId} />
+        <AsyncAgentDetail orgSlug={orgSlug} agentSlug={agentSlug} />
       </Suspense>
     </div>
   );

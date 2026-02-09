@@ -17,6 +17,7 @@
 erDiagram
 "Agent" {
   String id PK
+  String slug
   String name
   String description "nullable"
   String iconPath "nullable"
@@ -65,6 +66,7 @@ AIエージェント定義
 
 **Properties**
   - `id`: 
+  - `slug`: エージェントの組織内スラグ（URL識別子）
   - `name`: エージェント名
   - `description`: エージェントの説明
   - `iconPath`: アイコンパス
@@ -602,7 +604,7 @@ MCPサーバーインスタンスへのリクエストログ
   - `piiDetectedRequestCount`: リクエストPII検出件数
   - `piiDetectedResponseCount`: レスポンスPII検出件数
   - `piiDetectedInfoTypes`
-    > 検���されたInfoType名の配列（リクエスト+レスポンス、重複なし）
+    > 検出されたInfoType名の配列（リクエスト+レスポンス、重複なし）
     > 例: ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER"]
   - `toonConversionEnabled`
     > TOON変換メトリクス

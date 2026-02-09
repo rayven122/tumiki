@@ -1,6 +1,9 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { displayNameValidationSchema } from "@/schema/validation";
+import {
+  displayNameValidationSchema,
+  alphanumericWithHyphenUnderscoreSchema,
+} from "@/schema/validation";
 import { AgentIdSchema, McpServerIdSchema } from "@/schema/ids";
 import { McpServerVisibilitySchema, AgentSchema } from "@tumiki/db/zod";
 import { createAgent } from "./create";
@@ -8,10 +11,17 @@ import { updateAgent } from "./update";
 import { deleteAgent } from "./delete";
 import { findAllAgents } from "./findAll";
 import { findAgentById } from "./findById";
+import { findAgentBySlug } from "./findBySlug";
+
+// エージェントスラグのバリデーションスキーマ
+export const AgentSlugSchema = alphanumericWithHyphenUnderscoreSchema
+  .min(1, "スラグは必須です")
+  .max(50, "スラグは50文字以内で入力してください");
 
 // エージェント作成の入力スキーマ
 export const CreateAgentInputSchema = z.object({
   name: displayNameValidationSchema,
+  slug: AgentSlugSchema.optional(),
   description: z.string().optional(),
   iconPath: z.string().optional(),
   systemPrompt: z.string().min(1, "システムプロンプトは必須です"),
@@ -23,12 +33,14 @@ export const CreateAgentInputSchema = z.object({
 // エージェント作成の出力スキーマ
 export const CreateAgentOutputSchema = z.object({
   id: AgentIdSchema,
+  slug: z.string(),
 });
 
 // エージェント更新の入力スキーマ
 export const UpdateAgentInputSchema = z.object({
   id: AgentIdSchema,
   name: displayNameValidationSchema.optional(),
+  slug: AgentSlugSchema.optional(),
   description: z.string().optional(),
   iconPath: z.string().nullable().optional(),
   systemPrompt: z.string().min(1).optional(),
@@ -64,9 +76,14 @@ export const DeleteAgentOutputSchema = z.object({
   name: z.string(),
 });
 
-// エージェント詳細取得の入力スキーマ
+// エージェント詳細取得の入力スキーマ（ID指定）
 export const FindByIdInputSchema = z.object({
   id: AgentIdSchema,
+});
+
+// エージェント詳細取得の入力スキーマ（スラグ指定）
+export const FindBySlugInputSchema = z.object({
+  slug: AgentSlugSchema,
 });
 
 // 実行メッセージ取得の入力スキーマ
@@ -122,6 +139,7 @@ const ScheduleInfoSchema = z.object({
 export const FindAllAgentsOutputSchema = z.array(
   AgentSchema.pick({
     id: true,
+    slug: true,
     organizationId: true,
     name: true,
     description: true,
@@ -191,12 +209,23 @@ export const agentRouter = createTRPCRouter({
       });
     }),
 
-  // エージェント詳細取得
+  // エージェント詳細取得（ID指定）
   findById: protectedProcedure
     .input(FindByIdInputSchema)
     .query(async ({ ctx, input }) => {
       return await findAgentById(ctx.db, {
         id: input.id,
+        organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
+      });
+    }),
+
+  // エージェント詳細取得（スラグ指定）
+  findBySlug: protectedProcedure
+    .input(FindBySlugInputSchema)
+    .query(async ({ ctx, input }) => {
+      return await findAgentBySlug(ctx.db, {
+        slug: input.slug,
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });

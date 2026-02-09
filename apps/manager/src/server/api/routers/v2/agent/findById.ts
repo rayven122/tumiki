@@ -25,6 +25,7 @@ export const findAgentById = async (
     },
     select: {
       id: true,
+      slug: true,
       name: true,
       description: true,
       iconPath: true,
