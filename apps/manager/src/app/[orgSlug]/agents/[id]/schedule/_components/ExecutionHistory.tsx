@@ -1,0 +1,139 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { api } from "@/trpc/react";
+import { format } from "date-fns";
+import { ja } from "date-fns/locale";
+import type { AgentId } from "@/schema/ids";
+
+type ExecutionHistoryProps = {
+  agentId: AgentId;
+};
+
+const formatDuration = (durationMs: number | null): string => {
+  if (durationMs === null) {
+    return "-";
+  }
+  if (durationMs < 1000) {
+    return `${durationMs}ms`;
+  }
+  return `${(durationMs / 1000).toFixed(1)}秒`;
+};
+
+type StatusBadgeProps = {
+  success: boolean;
+};
+
+const StatusBadge = ({ success }: StatusBadgeProps) => {
+  if (success) {
+    return (
+      <Badge
+        variant="default"
+        className="bg-green-100 text-green-700 hover:bg-green-100"
+      >
+        <CheckCircle className="mr-1 h-3 w-3" />
+        成功
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="destructive">
+      <XCircle className="mr-1 h-3 w-3" />
+      失敗
+    </Badge>
+  );
+};
+
+export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    api.v2.agentExecution.findByAgentId.useInfiniteQuery(
+      { agentId, limit: 10 },
+      {
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      },
+    );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  const allItems = data?.pages.flatMap((page) => page.items) ?? [];
+
+  if (allItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Clock className="mb-4 h-12 w-12 text-gray-300" />
+        <p className="text-gray-500">実行履歴がありません</p>
+        <p className="text-sm text-gray-400">
+          スケジュールが実行されると、ここに履歴が表示されます
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>実行日時</TableHead>
+            <TableHead>スケジュール名</TableHead>
+            <TableHead>ステータス</TableHead>
+            <TableHead className="text-right">実行時間</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {allItems.map((execution) => (
+            <TableRow key={execution.id}>
+              <TableCell className="text-muted-foreground">
+                {format(new Date(execution.createdAt), "yyyy/MM/dd HH:mm:ss", {
+                  locale: ja,
+                })}
+              </TableCell>
+              <TableCell className="font-medium">
+                {execution.scheduleName ?? "手動実行"}
+              </TableCell>
+              <TableCell>
+                <StatusBadge success={execution.success} />
+              </TableCell>
+              <TableCell className="text-muted-foreground text-right">
+                {formatDuration(execution.durationMs)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {hasNextPage && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            もっと見る
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};

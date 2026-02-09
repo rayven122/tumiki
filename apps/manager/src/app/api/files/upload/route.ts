@@ -7,7 +7,6 @@ import {
   ALLOWED_IMAGE_TYPES,
   FILE_SIGNATURES,
   MAX_FILE_SIZE,
-  MIME_TO_EXTENSION,
   UPLOAD_ERROR_MESSAGES,
   WEBP_BYTE_POSITIONS,
   WEBP_MAGIC_BYTES,
@@ -95,11 +94,6 @@ const getR2Client = () => {
       secretAccessKey,
     },
   });
-};
-
-// ファイル拡張子を取得
-const getFileExtension = (mimeType: string): string => {
-  return MIME_TO_EXTENSION[mimeType as AllowedImageType] ?? "bin";
 };
 
 export async function POST(request: Request) {
