@@ -73,6 +73,14 @@ export const OrgSidebar = ({
       comingSoon: true,
     },
     {
+      name: "AIエージェント",
+      href: `/${orgSlug}/agents`,
+      icon: Sparkles,
+      show: true, // 全組織で表示
+      disabled: false,
+      beta: true,
+    },
+    {
       name: "AIチャット",
       href: `/${orgSlug}/chat`,
       icon: Bot,
@@ -86,14 +94,6 @@ export const OrgSidebar = ({
       icon: List,
       show: true, // 全組織で表示
       disabled: false,
-    },
-    {
-      name: "エージェント",
-      href: `/${orgSlug}/agents`,
-      icon: Sparkles,
-      show: true, // 全組織で表示
-      disabled: false,
-      beta: true,
     },
     // {
     //   name: "アクティビティ",

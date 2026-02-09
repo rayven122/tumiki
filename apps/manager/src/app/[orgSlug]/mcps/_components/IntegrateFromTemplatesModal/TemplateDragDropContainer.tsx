@@ -5,13 +5,23 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { useDrag } from "../IntegrateMcpModal/useDrag";
+import { useDrag } from "@/components/mcp-selector";
 import { TemplateCard } from "./TemplateCard";
 import {
   type SelectableTemplate,
   DROPPABLE_AVAILABLE,
   DROPPABLE_SELECTED,
 } from "./types";
+
+// 有効な画像URLかどうかをチェック
+const isValidImageUrl = (path: string | null): path is string => {
+  if (!path) return false;
+  return (
+    path.startsWith("/") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  );
+};
 
 type TemplateDragDropContainerProps = {
   availableTemplates: SelectableTemplate[];
@@ -38,7 +48,7 @@ const DragOverlayCard = ({
       }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-        {template.iconPath ? (
+        {isValidImageUrl(template.iconPath) ? (
           <Image
             src={template.iconPath}
             alt={template.name}

@@ -61,7 +61,6 @@ export const useDrag = (options: UseDragOptions = {}) => {
 
   const handlePointerUp = useCallback(
     (event: PointerEvent) => {
-      // ポインターキャプチャを解放（メモリリーク防止）
       const target = event.target as HTMLElement;
       if (target.hasPointerCapture?.(event.pointerId)) {
         target.releasePointerCapture(event.pointerId);
@@ -99,7 +98,6 @@ export const useDrag = (options: UseDragOptions = {}) => {
       document.addEventListener("pointerup", handlePointerUp);
     }
 
-    // 常にクリーンアップ関数を返す
     return () => {
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", handlePointerUp);

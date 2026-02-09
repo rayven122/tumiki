@@ -13,14 +13,29 @@ import {
   DROPPABLE_SELECTED,
 } from "./types";
 
-type DragDropContainerProps = {
+// 有効な画像URLかどうかをチェック
+const isValidImageUrl = (path: string | null): path is string => {
+  if (!path) return false;
+  return (
+    path.startsWith("/") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  );
+};
+
+type McpDragDropSelectorProps = {
   availableMcps: SelectableMcp[];
   selectedMcps: SelectableMcp[];
   onSelect: (mcpId: string) => void;
   onRemove: (mcpId: string) => void;
+  // カスタマイズ用props
+  availableLabel?: string;
+  selectedLabel?: string;
+  selectedCountLabel?: string;
+  emptySelectedMessage?: React.ReactNode;
 };
 
-// ドラッグオーバーレイ用のカード（ポータルでレンダリング）
+// ドラッグオーバーレイ用のカード
 const DragOverlayCard = ({
   mcp,
   position,
@@ -38,7 +53,7 @@ const DragOverlayCard = ({
       }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-        {mcp.iconPath ? (
+        {isValidImageUrl(mcp.iconPath) ? (
           <Image
             src={mcp.iconPath}
             alt={mcp.name}
@@ -69,6 +84,7 @@ const DroppableZone = ({
   isEmpty,
   isOver,
   variant,
+  emptyMessage,
   onRegister,
 }: {
   id: string;
@@ -76,6 +92,7 @@ const DroppableZone = ({
   isEmpty: boolean;
   isOver: boolean;
   variant: "available" | "selected";
+  emptyMessage?: React.ReactNode;
   onRegister: (id: string, element: HTMLElement | null) => void;
 }) => {
   const handleRef = useCallback(
@@ -103,23 +120,21 @@ const DroppableZone = ({
       ref={handleRef}
       role="listbox"
       aria-label={
-        variant === "available"
-          ? "利用可能なMCPリスト。ドラッグして統合リストに追加できます"
-          : "統合するMCPリスト。2つ以上のMCPを追加してください"
+        variant === "available" ? "利用可能なMCPリスト" : "選択済みのMCPリスト"
       }
       className={cn(baseStyles, variantStyles)}
     >
       {isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-gray-400">
-          {variant === "available" ? (
-            "すべてのMCPが選択されています"
-          ) : (
-            <>
-              <Layers className="h-8 w-8 text-purple-300" />
-              <span>ここにドラッグ&ドロップ</span>
-              <span>またはクリックで追加</span>
-            </>
-          )}
+          {variant === "available"
+            ? "すべてのMCPが選択されています"
+            : (emptyMessage ?? (
+                <>
+                  <Layers className="h-8 w-8 text-purple-300" />
+                  <span>ここにドラッグ&ドロップ</span>
+                  <span>またはクリックで追加</span>
+                </>
+              ))}
         </div>
       ) : (
         children
@@ -128,12 +143,16 @@ const DroppableZone = ({
   );
 };
 
-export const DragDropContainer = ({
+export const McpDragDropSelector = ({
   availableMcps,
   selectedMcps,
   onSelect,
   onRemove,
-}: DragDropContainerProps) => {
+  availableLabel = "利用可能なMCP",
+  selectedLabel = "選択済みのMCP",
+  selectedCountLabel,
+  emptySelectedMessage,
+}: McpDragDropSelectorProps) => {
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -178,7 +197,9 @@ export const DragDropContainer = ({
         <div className="flex flex-col">
           <div className="mb-3 flex items-center gap-2">
             <Package className="h-4 w-4 text-gray-500" />
-            <h3 className="text-sm font-medium text-gray-700">利用可能なMCP</h3>
+            <h3 className="text-sm font-medium text-gray-700">
+              {availableLabel}
+            </h3>
             <span className="text-xs text-gray-400">
               ({availableMcps.length})
             </span>
@@ -206,9 +227,11 @@ export const DragDropContainer = ({
         <div className="flex flex-col">
           <div className="mb-3 flex items-center gap-2">
             <Layers className="h-4 w-4 text-purple-600" />
-            <h3 className="text-sm font-medium text-gray-700">統合するMCP</h3>
+            <h3 className="text-sm font-medium text-gray-700">
+              {selectedLabel}
+            </h3>
             <span className="text-xs text-gray-400">
-              ({selectedMcps.length}/2以上)
+              {selectedCountLabel ?? `(${selectedMcps.length})`}
             </span>
           </div>
           <DroppableZone
@@ -216,6 +239,7 @@ export const DragDropContainer = ({
             isEmpty={selectedMcps.length === 0}
             isOver={hoveredZone === DROPPABLE_SELECTED}
             variant="selected"
+            emptyMessage={emptySelectedMessage}
             onRegister={registerDropZone}
           >
             {selectedMcps.map((mcp) => (

@@ -7,6 +7,16 @@ import { FaviconImage } from "@/components/ui/FaviconImage";
 import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
 import type { SelectableTemplate } from "./types";
 
+// 有効な画像URLかどうかをチェック
+const isValidImageUrl = (path: string | null): path is string => {
+  if (!path) return false;
+  return (
+    path.startsWith("/") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  );
+};
+
 type TemplateCardProps = {
   template: SelectableTemplate;
   isSelected: boolean;
@@ -42,7 +52,7 @@ export const TemplateCard = ({
       )}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-        {template.iconPath ? (
+        {isValidImageUrl(template.iconPath) ? (
           <Image
             src={template.iconPath}
             alt={template.name}
