@@ -19,6 +19,8 @@ enum ScheduleStatus {
 /// @namespace Agent
 model Agent {
   id           String              @id @default(cuid())
+  /// エージェントの組織内スラグ（URL識別子）
+  slug         String
   /// エージェント名
   name         String
   /// エージェントの説明
@@ -53,6 +55,9 @@ model Agent {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// 組織内でスラグはユニーク
+  @@unique([organizationId, slug])
 }
 
 /// スケジュール設定（定期バッチ用）

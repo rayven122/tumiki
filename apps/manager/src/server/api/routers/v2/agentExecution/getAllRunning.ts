@@ -24,6 +24,7 @@ export const getAllRunningExecutions = async (
     select: {
       id: true,
       agentId: true,
+      chatId: true,
       scheduleId: true,
       schedule: { select: { name: true } },
       agent: {

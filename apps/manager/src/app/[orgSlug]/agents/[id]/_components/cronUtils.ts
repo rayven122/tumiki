@@ -1,7 +1,7 @@
-// スケジュールタイプ
+/** スケジュールタイプ: 定時実行 or インターバル実行 */
 export type ScheduleType = "fixed" | "interval";
 
-// 定時実行の頻度オプション
+/** 定時実行の頻度オプション */
 export const FREQUENCY_OPTIONS = [
   { label: "毎日", value: "daily", cron: "* * *" },
   { label: "平日（月〜金）", value: "weekdays", cron: "* * 1-5" },
@@ -13,7 +13,7 @@ export const FREQUENCY_OPTIONS = [
 
 export type FrequencyValue = (typeof FREQUENCY_OPTIONS)[number]["value"];
 
-// インターバル実行のオプション
+/** インターバル実行のオプション */
 export const INTERVAL_OPTIONS = [
   { label: "15分ごと", value: "15min", cron: "*/15 * * * *" },
   { label: "30分ごと", value: "30min", cron: "*/30 * * * *" },
@@ -26,13 +26,13 @@ export const INTERVAL_OPTIONS = [
 
 export type IntervalValue = (typeof INTERVAL_OPTIONS)[number]["value"];
 
-// 時間オプション
+/** 時間オプション（0-23時） */
 export const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
   label: `${i.toString().padStart(2, "0")}時`,
   value: i.toString(),
 }));
 
-// 分オプション
+/** 分オプション（15分刻み） */
 export const MINUTE_OPTIONS = [
   { label: "00分", value: "0" },
   { label: "15分", value: "15" },
@@ -40,16 +40,17 @@ export const MINUTE_OPTIONS = [
   { label: "45分", value: "45" },
 ];
 
-// 時刻フォーマット
+/** 時刻を2桁にパディング */
 export const padTime = (value: string | number): string =>
   String(value).padStart(2, "0");
 
+/** 時刻をHH:mm形式にフォーマット */
 export const formatTime = (
   hour: string | number,
   minute: string | number,
 ): string => `${padTime(hour)}:${padTime(minute)}`;
 
-// クライアントタイムゾーン取得
+/** クライアントのタイムゾーンを取得（SSRではAsia/Tokyo） */
 export const getClientTimezone = (): string => {
   if (typeof window === "undefined") return "Asia/Tokyo";
   try {
@@ -59,7 +60,7 @@ export const getClientTimezone = (): string => {
   }
 };
 
-// Cron式をパース
+/** パースされたCron式の型 */
 export type ParsedCron = {
   type: ScheduleType;
   frequency?: FrequencyValue;
@@ -68,6 +69,7 @@ export type ParsedCron = {
   minute: string;
 };
 
+/** Cron式をパースしてスケジュール情報を取得 */
 export const parseCronExpression = (cron: string): ParsedCron => {
   // インターバル形式をチェック
   const intervalMatch = INTERVAL_OPTIONS.find((opt) => opt.cron === cron);
@@ -101,7 +103,7 @@ export const parseCronExpression = (cron: string): ParsedCron => {
   };
 };
 
-// 定時実行のCron式を生成
+/** 定時実行のCron式を生成 */
 export const buildFixedCronExpression = (
   frequency: FrequencyValue,
   hour: string,
@@ -112,7 +114,7 @@ export const buildFixedCronExpression = (
   return `${minute} ${hour} ${cronSuffix}`;
 };
 
-// インターバル実行のCron式を生成
+/** インターバル実行のCron式を生成 */
 export const buildIntervalCronExpression = (
   interval: IntervalValue,
 ): string => {
@@ -120,15 +122,15 @@ export const buildIntervalCronExpression = (
   return intervalOption?.cron ?? "*/15 * * * *";
 };
 
-// 頻度ラベル取得
+/** 頻度値からラベルを取得 */
 export const getFrequencyLabel = (frequency: FrequencyValue): string =>
   FREQUENCY_OPTIONS.find((f) => f.value === frequency)?.label ?? "毎日";
 
-// インターバルラベル取得
+/** インターバル値からラベルを取得 */
 export const getIntervalLabel = (interval: IntervalValue): string =>
   INTERVAL_OPTIONS.find((i) => i.value === interval)?.label ?? "15分ごと";
 
-// 曜日パターンと日本語ラベルのマッピング
+/** 曜日パターンと日本語ラベルのマッピング */
 const DAY_PATTERN_LABELS: Record<string, string> = {
   "1-5": "平日",
   "0,6": "土日",
@@ -136,7 +138,7 @@ const DAY_PATTERN_LABELS: Record<string, string> = {
   "5": "毎週金曜",
 };
 
-// Cron式を日本語の説明に変換
+/** Cron式を日本語の説明に変換 */
 export const cronToJapanese = (cron: string): string => {
   // インターバル形式（定義済みオプション）
   const intervalMatch = INTERVAL_OPTIONS.find((opt) => opt.cron === cron);
@@ -189,7 +191,7 @@ export const cronToJapanese = (cron: string): string => {
   return cron;
 };
 
-// JSTプレビュー取得
+/** 入力時刻をJST（日本時間）に変換してプレビュー表示用の文字列を取得 */
 export const getJstPreview = (
   hour: string,
   minute: string,

@@ -110,7 +110,10 @@ const AssistantMessage = ({ parts }: { parts: MessagePart[] }) => {
             const state = typeof part.state === "string" ? part.state : "";
 
             // 状態をツール状態にマッピング
-            const mapState = (): "output-available" | "output-error" | "input-available" => {
+            const mapState = ():
+              | "output-available"
+              | "output-error"
+              | "input-available" => {
               if (state === "output-available") return "output-available";
               if (state === "error") return "output-error";
               return "input-available";
