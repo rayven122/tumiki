@@ -141,7 +141,7 @@ export const AgentCard = ({
     id: `agent-card-execution-${agent.id}`,
     generateId: generateCUID,
     transport: new DefaultChatTransport({
-      api: `${mcpProxyUrl}/agent/run`,
+      api: `${mcpProxyUrl}/agent/${agent.id}`,
       fetch: (url, options) => {
         const headers = new Headers(options?.headers);
         if (session?.accessToken) {
@@ -160,7 +160,6 @@ export const AgentCard = ({
 
         return {
           body: {
-            agentId: agent.id,
             organizationId: agent.organizationId,
             message: userText,
             ...request.body,
@@ -187,12 +186,15 @@ export const AgentCard = ({
       setExecutionError(undefined);
       setResultModalOpen(true);
 
+      // 実行開始時にキャッシュをインバリデート（稼働中表示の更新）
+      void utils.v2.agentExecution.getAllRunning.invalidate();
+
       void sendMessage({
         role: "user",
         parts: [{ type: "text", text: "タスクを実行してください。" }],
       });
     },
-    [sendMessage, setMessages],
+    [sendMessage, setMessages, utils],
   );
 
   const handleCardClick = useCallback(() => {

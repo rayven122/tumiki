@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 
 import { AgentCard } from "../AgentCard";
 
@@ -55,6 +55,12 @@ const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
     }
     return map;
   }, [runningExecutions]);
+
+  // 稼働中の実行数が変わったらエージェント一覧を再取得（実行数の更新のため）
+  const runningCount = runningExecutions?.length ?? 0;
+  useEffect(() => {
+    void utils.v2.agent.findAll.invalidate();
+  }, [runningCount, utils]);
 
   const filteredAgents = useMemo(
     () => agents.filter((agent) => matchesSearchQuery(agent, searchQuery)),

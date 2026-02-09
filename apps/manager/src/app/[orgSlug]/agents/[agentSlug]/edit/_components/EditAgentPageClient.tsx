@@ -206,6 +206,15 @@ const EditForm = ({
               <p className="text-xs text-gray-500">
                 英小文字、数字、ハイフン、アンダースコアのみ使用可能
               </p>
+              {/* スラグプレビュー表示 */}
+              {formState.slug && (
+                <div className="mt-2 rounded-md bg-gray-50 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">URL: </span>
+                  <code className="font-mono text-gray-700">
+                    /{decodeURIComponent(orgSlug)}/agents/{formState.slug}
+                  </code>
+                </div>
+              )}
             </div>
           </div>
 

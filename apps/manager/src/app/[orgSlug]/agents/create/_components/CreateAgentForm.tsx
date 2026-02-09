@@ -24,6 +24,16 @@ import {
 } from "@/components/mcp-selector";
 import { MODEL_OPTIONS } from "@/lib/agent";
 import type { McpServerId } from "@/schema/ids";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
+
+/**
+ * エージェント名からスラグプレビューを生成
+ * 空文字列の場合はプレースホルダーを表示
+ */
+const generateSlugPreview = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  return normalized || "agent-xxxxxx";
+};
 
 type CreateAgentFormProps = {
   orgSlug: string;
@@ -142,6 +152,21 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
                 maxLength={50}
               />
               <p className="text-xs text-gray-500">最大50文字</p>
+              {/* スラグプレビュー表示 */}
+              {flowState.name && (
+                <div className="mt-2 rounded-md bg-gray-50 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">URL: </span>
+                  <code className="font-mono text-gray-700">
+                    /{decodeURIComponent(orgSlug)}/agents/
+                    {generateSlugPreview(flowState.name)}
+                  </code>
+                  {generateSlugPreview(flowState.name) === "agent-xxxxxx" && (
+                    <span className="text-muted-foreground ml-2 text-xs">
+                      （日本語名の場合はランダムなIDが生成されます）
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* モデル選択 */}

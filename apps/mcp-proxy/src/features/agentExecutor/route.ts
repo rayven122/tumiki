@@ -2,7 +2,7 @@
  * エージェント実行APIルート（ストリーミング対応）
  *
  * クライアントから直接呼び出されるエンドポイント
- * - POST /agent/run - エージェントのストリーミング実行
+ * - POST /agent/:agentId - エージェントのストリーミング実行
  */
 
 import { Hono } from "hono";
@@ -46,8 +46,6 @@ const generateCUID = (): string => {
  * リクエストボディスキーマ
  */
 const agentRunRequestSchema = z.object({
-  /** エージェントID */
-  agentId: z.string().min(1),
   /** 組織ID */
   organizationId: z.string().min(1),
   /** 実行メッセージ（省略時はデフォルトメッセージ） */
@@ -80,8 +78,11 @@ ${executionContext}
 };
 
 export const agentExecutorRoute = new Hono<HonoEnv>().post(
-  "/agent/run",
+  "/agent/:agentId",
   async (c) => {
+    // パスパラメータからagentIdを取得
+    const agentId = c.req.param("agentId");
+
     // リクエストボディをパース
     let requestBody;
     try {
@@ -95,7 +96,7 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
       );
     }
 
-    const { agentId, organizationId, message } = requestBody;
+    const { organizationId, message } = requestBody;
 
     // JWT認証
     const authResult = await verifyChatAuth(

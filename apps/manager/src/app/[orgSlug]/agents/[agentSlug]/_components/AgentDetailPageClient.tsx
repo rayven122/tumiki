@@ -104,7 +104,7 @@ const AsyncAgentDetail = ({
     id: `agent-execution-${agent.id}`,
     generateId: generateCUID,
     transport: new DefaultChatTransport({
-      api: `${mcpProxyUrl}/agent/run`,
+      api: `${mcpProxyUrl}/agent/${agent.id}`,
       fetch: (url, options) => {
         // mcp-proxy への認証ヘッダーを追加
         const headers = new Headers(options?.headers);
@@ -124,7 +124,6 @@ const AsyncAgentDetail = ({
 
         return {
           body: {
-            agentId: agent.id,
             organizationId: agent.organizationId,
             message: userText,
             ...request.body,
