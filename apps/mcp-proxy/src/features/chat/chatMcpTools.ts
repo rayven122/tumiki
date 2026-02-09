@@ -11,6 +11,7 @@ import { jsonSchema, type Tool } from "ai";
 import { db } from "@tumiki/db/server";
 
 import { callToolCommand } from "../mcp/commands/callTool/callToolCommand.js";
+import { logMcpRequest } from "../mcp/middleware/requestLogging/index.js";
 import {
   DYNAMIC_SEARCH_META_TOOLS,
   isMetaTool,
@@ -159,7 +160,8 @@ export const getChatMcpTools = async (
 /**
  * ツール実行関数を作成
  *
- * callToolCommandをラップし、エラーをLLMに返す形式に変換する。
+ * callToolCommandをラップし、実行時間を計測してログを記録する。
+ * エラーはLLMに返す形式に変換する。
  */
 const createChatToolExecute = (
   params: CreateChatToolExecuteParams,
@@ -167,6 +169,9 @@ const createChatToolExecute = (
   const { mcpServerId, fullToolName, organizationId, userId } = params;
 
   return async (args: unknown): Promise<unknown> => {
+    const startTime = Date.now();
+    const requestBody = { name: fullToolName, arguments: args };
+
     try {
       const result = await callToolCommand({
         mcpServerId,
@@ -175,11 +180,41 @@ const createChatToolExecute = (
         args: args as Record<string, unknown>,
         userId,
       });
+
+      const durationMs = Date.now() - startTime;
+
+      // ログを非同期で記録（レスポンスをブロックしない）
+      void logMcpRequest({
+        mcpServerId,
+        organizationId,
+        userId,
+        toolName: fullToolName,
+        durationMs,
+        requestBody,
+        responseBody: result,
+        httpStatus: 200,
+      });
+
       return result;
     } catch (error) {
-      // エラーをLLMに返す（isError: trueで表示）
+      const durationMs = Date.now() - startTime;
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
+
+      // エラー時もログを記録
+      void logMcpRequest({
+        mcpServerId,
+        organizationId,
+        userId,
+        toolName: fullToolName,
+        durationMs,
+        requestBody,
+        responseBody: { error: errorMessage },
+        httpStatus: 500,
+        errorMessage,
+      });
+
+      // エラーをLLMに返す（isError: trueで表示）
       const errorResponse: McpToolErrorResponse = {
         content: [{ type: "text", text: `Error: ${errorMessage}` }],
         isError: true,
