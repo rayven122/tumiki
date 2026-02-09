@@ -10,12 +10,14 @@ ALTER TABLE "McpServer" ADD COLUMN     "createdById" TEXT;
 -- CreateTable
 CREATE TABLE "Agent" (
     "id" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "iconPath" TEXT,
     "systemPrompt" TEXT NOT NULL,
     "modelId" TEXT,
     "visibility" "McpServerVisibility" NOT NULL DEFAULT 'PRIVATE',
+    "estimatedDurationMs" INTEGER NOT NULL DEFAULT 30000,
     "organizationId" TEXT NOT NULL,
     "createdById" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,6 +61,9 @@ CREATE TABLE "_AgentToMcpServer" (
 
     CONSTRAINT "_AgentToMcpServer_AB_pkey" PRIMARY KEY ("A","B")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Agent_organizationId_slug_key" ON "Agent"("organizationId", "slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AgentExecutionLog_chatId_key" ON "AgentExecutionLog"("chatId");

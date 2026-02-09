@@ -7,6 +7,27 @@ type GetAllRunningParams = {
 };
 
 /**
+ * メッセージパーツからテキストを抽出
+ * textタイプのパーツを優先し、最大50文字に切り詰める
+ */
+const extractTextFromParts = (parts: unknown): string | null => {
+  if (!Array.isArray(parts)) return null;
+
+  for (const part of parts) {
+    if (typeof part === "object" && part !== null) {
+      const p = part as Record<string, unknown>;
+      // textタイプのパーツからテキストを抽出
+      if (p.type === "text" && typeof p.text === "string") {
+        const text = p.text.trim();
+        return text.length > 50 ? text.substring(0, 50) + "..." : text;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
  * 全エージェントの稼働中実行を取得（進捗計算用データ含む）
  * success: null のレコードは実行中を表す
  */
@@ -30,6 +51,7 @@ export const getAllRunningExecutions = async (
       agent: {
         select: {
           name: true,
+          slug: true,
           iconPath: true,
           estimatedDurationMs: true,
         },
@@ -40,11 +62,42 @@ export const getAllRunningExecutions = async (
     orderBy: { createdAt: "desc" },
   });
 
+  // chatIdがある実行のメッセージを一括取得（最新のアシスタントメッセージ）
+  const chatIds = runningExecutions
+    .map((exec) => exec.chatId)
+    .filter((id): id is string => id !== null);
+
+  // 各chatIdごとに最新のアシスタントメッセージを取得
+  const latestMessages =
+    chatIds.length > 0
+      ? await db.message.findMany({
+          where: {
+            chatId: { in: chatIds },
+            role: "assistant",
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            chatId: true,
+            parts: true,
+          },
+        })
+      : [];
+
+  // chatIdごとに最新メッセージをマップ化（最初のものが最新）
+  const messageMap = new Map<string, string | null>();
+  for (const msg of latestMessages) {
+    if (!messageMap.has(msg.chatId)) {
+      messageMap.set(msg.chatId, extractTextFromParts(msg.parts));
+    }
+  }
+
   return runningExecutions.map(({ schedule, agent, ...rest }) => ({
     ...rest,
     scheduleName: schedule?.name ?? null,
     agentName: agent.name,
+    agentSlug: agent.slug,
     agentIconPath: agent.iconPath,
     estimatedDurationMs: agent.estimatedDurationMs,
+    latestMessage: rest.chatId ? (messageMap.get(rest.chatId) ?? null) : null,
   }));
 };

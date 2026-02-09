@@ -29,10 +29,12 @@ const AllRunningExecutionSchema = z.object({
   scheduleId: z.string().nullable(),
   scheduleName: z.string().nullable(),
   agentName: z.string(),
+  agentSlug: z.string(),
   agentIconPath: z.string().nullable(),
   modelId: z.string().nullable(),
   estimatedDurationMs: z.number(),
   createdAt: z.date(),
+  latestMessage: z.string().nullable(),
 });
 
 // メッセージパーツスキーマ
