@@ -174,9 +174,27 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
       const isReasoningModel =
         modelId.includes("reasoning") || modelId.endsWith("-thinking");
 
-      // 実行ログ用のチャットIDを事前生成
+      // 実行ログ用のチャットIDとログIDを事前生成
       const chatId = generateCUID();
+      const executionLogId = generateCUID();
       const startTime = Date.now();
+
+      // 実行開始時にAgentExecutionLogを作成（success: null = 実行中）
+      await db.agentExecutionLog.create({
+        data: {
+          id: executionLogId,
+          agentId,
+          chatId,
+          modelId,
+          success: null, // 実行中を示す
+        },
+      });
+
+      logInfo("Agent execution started", {
+        agentId,
+        executionLogId,
+        chatId,
+      });
 
       // ストリーミングレスポンスを作成
       const stream = createUIMessageStream({
@@ -258,12 +276,10 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
                 });
               }
 
-              // AgentExecutionLogを作成
-              await tx.agentExecutionLog.create({
+              // AgentExecutionLogを更新（実行完了）
+              await tx.agentExecutionLog.update({
+                where: { id: executionLogId },
                 data: {
-                  agentId,
-                  chatId,
-                  modelId,
                   success: true,
                   durationMs,
                 },
@@ -283,8 +299,27 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
             });
           }
         },
-        onError: (error) => {
+        onError: async (error) => {
           logError("Agent execution stream error", toError(error), { agentId });
+
+          // エラー時は実行ログを失敗で更新
+          const durationMs = Date.now() - startTime;
+          try {
+            await db.agentExecutionLog.update({
+              where: { id: executionLogId },
+              data: {
+                success: false,
+                durationMs,
+              },
+            });
+          } catch (updateError) {
+            logError(
+              "Failed to update execution log on error",
+              toError(updateError),
+              { agentId, executionLogId },
+            );
+          }
+
           return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
         },
       });
