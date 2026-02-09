@@ -3,6 +3,7 @@ import type { PrismaClient } from "@tumiki/db";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId } from "@/schema/ids";
 import { findExecutionsByAgentId } from "../findByAgentId";
+import { getRecentExecutions } from "../getRecentExecutions";
 import { TRPCError } from "@trpc/server";
 
 describe("AgentExecution", () => {
@@ -17,6 +18,9 @@ describe("AgentExecution", () => {
         findFirst: vi.fn(),
       },
       agentExecutionLog: {
+        findMany: vi.fn(),
+      },
+      message: {
         findMany: vi.fn(),
       },
     } as unknown as PrismaClient;
@@ -315,6 +319,343 @@ describe("AgentExecution", () => {
         },
         select: { id: true },
       });
+    });
+  });
+
+  describe("getRecentExecutions", () => {
+    test("直近の実行履歴を取得できる（成功/失敗/実行中すべて含む）", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          chatId: "chat-1",
+          success: true,
+          agent: { slug: "test-agent-1" },
+          createdAt: new Date("2024-01-03T09:00:00Z"),
+        },
+        {
+          id: "exec-2",
+          chatId: "chat-2",
+          success: false,
+          agent: { slug: "test-agent-2" },
+          createdAt: new Date("2024-01-02T09:00:00Z"),
+        },
+        {
+          id: "exec-3",
+          chatId: "chat-3",
+          success: null, // 実行中
+          agent: { slug: "test-agent-3" },
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      const mockMessages = [
+        {
+          chatId: "chat-1",
+          parts: [{ type: "text", text: "処理が完了しました" }],
+        },
+        {
+          chatId: "chat-2",
+          parts: [{ type: "text", text: "エラーが発生しました" }],
+        },
+        {
+          chatId: "chat-3",
+          parts: [{ type: "text", text: "処理中です..." }],
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue(
+        mockMessages as unknown as Awaited<
+          ReturnType<typeof mockDb.message.findMany>
+        >,
+      );
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items).toHaveLength(3);
+      expect(result.items[0]).toStrictEqual({
+        id: "exec-1",
+        chatId: "chat-1",
+        success: true,
+        agentSlug: "test-agent-1",
+        latestMessage: "処理が完了しました",
+        createdAt: new Date("2024-01-03T09:00:00Z"),
+      });
+      expect(result.items[1]?.success).toStrictEqual(false);
+      expect(result.items[2]?.success).toStrictEqual(null); // 実行中
+    });
+
+    test("chatIdがない実行履歴はlatestMessageがnullになる", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          chatId: null,
+          success: true,
+          agent: { slug: "test-agent" },
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue([]);
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items[0]?.latestMessage).toStrictEqual(null);
+      expect(result.items[0]?.chatId).toStrictEqual(null);
+    });
+
+    test("長いメッセージは60文字に切り詰められる", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      const longText =
+        "これは非常に長いテキストメッセージです。60文字を超える部分は切り詰められます。この文は60文字を超えています。さらにもっと長くします。";
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          chatId: "chat-1",
+          success: true,
+          agent: { slug: "test-agent" },
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      const mockMessages = [
+        {
+          chatId: "chat-1",
+          parts: [{ type: "text", text: longText }],
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue(
+        mockMessages as unknown as Awaited<
+          ReturnType<typeof mockDb.message.findMany>
+        >,
+      );
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items[0]?.latestMessage).toStrictEqual(
+        longText.substring(0, 60) + "...",
+      );
+    });
+
+    test("ページネーションが正しく動作する（次ページあり）", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 2,
+      };
+
+      // limit + 1 = 3件返す（次ページがあることを示す）
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          chatId: "chat-1",
+          success: true,
+          agent: { slug: "test-agent-1" },
+          createdAt: new Date("2024-01-03T09:00:00Z"),
+        },
+        {
+          id: "exec-2",
+          chatId: "chat-2",
+          success: true,
+          agent: { slug: "test-agent-2" },
+          createdAt: new Date("2024-01-02T09:00:00Z"),
+        },
+        {
+          id: "exec-3",
+          chatId: "chat-3",
+          success: false,
+          agent: { slug: "test-agent-3" },
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue([]);
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items).toHaveLength(2);
+      expect(result.nextCursor).toStrictEqual("exec-2");
+      expect(result.items[0]?.id).toStrictEqual("exec-1");
+      expect(result.items[1]?.id).toStrictEqual("exec-2");
+    });
+
+    test("カーソルを使用してページネーションできる", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+        cursor: "exec-2",
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-3",
+          chatId: "chat-3",
+          success: true,
+          agent: { slug: "test-agent-3" },
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue([]);
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items).toHaveLength(1);
+      expect(result.nextCursor).toBeUndefined();
+
+      // カーソルがwhere句に含まれていることを確認
+      expect(mockDb.agentExecutionLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { lt: "exec-2" },
+          }),
+        }),
+      );
+    });
+
+    test("実行履歴がない場合は空配列を返す", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue([]);
+      vi.mocked(mockDb.message.findMany).mockResolvedValue([]);
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items).toStrictEqual([]);
+      expect(result.nextCursor).toBeUndefined();
+    });
+
+    test("アクセス権限チェックのクエリが正しい", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue([]);
+      vi.mocked(mockDb.message.findMany).mockResolvedValue([]);
+
+      await getRecentExecutions(mockDb, input);
+
+      expect(mockDb.agentExecutionLog.findMany).toHaveBeenCalledWith({
+        where: {
+          agent: {
+            OR: [
+              { organizationId: testOrganizationId, createdById: testUserId },
+              {
+                organizationId: testOrganizationId,
+                visibility: McpServerVisibility.ORGANIZATION,
+              },
+            ],
+          },
+        },
+        select: {
+          id: true,
+          chatId: true,
+          success: true,
+          agent: {
+            select: {
+              slug: true,
+            },
+          },
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 6, // limit + 1 でページネーション判定
+      });
+    });
+
+    test("textタイプ以外のパーツは無視される", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          chatId: "chat-1",
+          success: true,
+          agent: { slug: "test-agent" },
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      const mockMessages = [
+        {
+          chatId: "chat-1",
+          parts: [{ type: "tool-call", toolName: "some-tool" }],
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue(
+        mockMessages as unknown as Awaited<
+          ReturnType<typeof mockDb.message.findMany>
+        >,
+      );
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items[0]?.latestMessage).toStrictEqual(null);
     });
   });
 });

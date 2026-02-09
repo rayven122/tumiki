@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AgentIdSchema, AgentExecutionLogIdSchema } from "@/schema/ids";
 import { findExecutionsByAgentId } from "./findByAgentId";
 import { getAllRunningExecutions } from "./getAllRunning";
+import { getRecentExecutions } from "./getRecentExecutions";
 
 export const FindExecutionByAgentIdInputSchema = z.object({
   agentId: AgentIdSchema,
@@ -53,6 +54,22 @@ const PaginatedExecutionLogsSchema = z.object({
   nextCursor: z.string().optional(),
 });
 
+// 直近の実行履歴スキーマ（成功/失敗/実行中すべて含む）
+const RecentExecutionSchema = z.object({
+  id: AgentExecutionLogIdSchema,
+  chatId: z.string().nullable(),
+  success: z.boolean().nullable(), // null = 実行中, true = 成功, false = 失敗
+  agentSlug: z.string(),
+  latestMessage: z.string().nullable(),
+  createdAt: z.date(),
+});
+
+// ページネーション対応の直近実行履歴スキーマ
+const PaginatedRecentExecutionsSchema = z.object({
+  items: z.array(RecentExecutionSchema),
+  nextCursor: z.string().optional(),
+});
+
 export const agentExecutionRouter = createTRPCRouter({
   findByAgentId: protectedProcedure
     .input(FindExecutionByAgentIdInputSchema)
@@ -98,5 +115,25 @@ export const agentExecutionRouter = createTRPCRouter({
         parts: (msg.parts ?? []) as Record<string, unknown>[],
         createdAt: msg.createdAt,
       }));
+    }),
+
+  /** 直近の実行履歴を取得（カーソルベースページネーション対応） */
+  getRecent: protectedProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().min(1).max(50).default(10),
+          cursor: z.string().optional(),
+        })
+        .optional(),
+    )
+    .output(PaginatedRecentExecutionsSchema)
+    .query(async ({ ctx, input }) => {
+      return await getRecentExecutions(ctx.db, {
+        organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
+        limit: input?.limit ?? 10,
+        cursor: input?.cursor,
+      });
     }),
 });
