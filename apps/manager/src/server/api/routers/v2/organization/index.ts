@@ -5,11 +5,12 @@ import {
   setDefaultOrganizationInputSchema,
   setDefaultOrganizationOutputSchema,
 } from "./setDefaultOrganization";
+// EE機能: 組織作成（CE版はスタブを使用）
 import {
   createOrganization,
   createOrganizationInputSchema,
   createOrganizationOutputSchema,
-} from "./createOrganization.ee";
+} from "./createOrganization";
 import { z } from "zod";
 import { OrganizationIdSchema } from "@/schema/ids";
 import { getSessionInfo } from "@/lib/auth/session-utils";

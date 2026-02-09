@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env next dev --turbopack",
-    "build": "pnpm with-env next build",
+    "build": "pnpm with-env next build --turbopack",
+    "build:ce": "NEXT_PUBLIC_EE_BUILD=false pnpm with-env next build --webpack",
+    "build:ee": "NEXT_PUBLIC_EE_BUILD=true pnpm with-env next build --turbopack",
     "start": "pnpm with-env next start",
     "preview": "next build && next start",
     "clean": "git clean -xdf .cache .next .turbo node_modules",

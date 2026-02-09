@@ -21,18 +21,28 @@ import {
   groupRoleOutputSchema,
 } from "../../../../utils/groupSchemas";
 import { listGroups } from "./list";
-import { createGroup } from "./create.ee";
-import { deleteGroup } from "./delete.ee";
+// EE機能: グループ作成（CE版はスタブを使用）
+import { createGroup } from "./create";
+// EE機能: グループ削除（CE版はスタブを使用）
+import { deleteGroup } from "./delete";
 import { getGroupById } from "./getById";
-import { addMember } from "./addMember.ee";
-import { addMembers } from "./addMembers.ee";
-import { removeMember } from "./removeMember.ee";
+// EE機能: メンバー追加（CE版はスタブを使用）
+import { addMember } from "./addMember";
+// EE機能: 複数メンバー追加（CE版はスタブを使用）
+import { addMembers } from "./addMembers";
+// EE機能: メンバー削除（CE版はスタブを使用）
+import { removeMember } from "./removeMember";
 import { getGroupMembers } from "./getGroupMembers";
-import { moveGroup } from "./move.ee";
-import { updateLeader } from "./updateLeader.ee";
-import { updateGroup } from "./update.ee";
-import { assignRoleToGroup } from "./assignRole.ee";
-import { removeRoleFromGroup } from "./removeRole.ee";
+// EE機能: グループ移動（CE版はスタブを使用）
+import { moveGroup } from "./move";
+// EE機能: リーダー更新（CE版はスタブを使用）
+import { updateLeader } from "./updateLeader";
+// EE機能: グループ更新（CE版はスタブを使用）
+import { updateGroup } from "./update";
+// EE機能: ロール割り当て（CE版はスタブを使用）
+import { assignRoleToGroup } from "./assignRole";
+// EE機能: ロール解除（CE版はスタブを使用）
+import { removeRoleFromGroup } from "./removeRole";
 import { listGroupRoles } from "./listRoles";
 import { listAllGroupRoles } from "./listAllRoles";
 import { z } from "zod";

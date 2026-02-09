@@ -10,40 +10,37 @@ import {
   getOrganizationByIdOutputSchema,
 } from "./getById";
 import { getUsageStats, getUsageStatsOutputSchema } from "./getUsageStats";
-// EE機能: メンバー招待
+// EE機能: メンバー招待（CE版はスタブを使用）
 import {
   inviteMembers,
   inviteMembersInputSchema,
   inviteMembersOutputSchema,
-} from "./inviteMembers.ee";
-// EE機能: 招待一覧取得
-import {
-  getInvitations,
-  getInvitationsOutputSchema,
-} from "./getInvitations.ee";
-// EE機能: 招待再送信
+} from "./inviteMembers";
+// EE機能: 招待一覧取得（CE版はスタブを使用）
+import { getInvitations, getInvitationsOutputSchema } from "./getInvitations";
+// EE機能: 招待再送信（CE版はスタブを使用）
 import {
   resendInvitation,
   resendInvitationInputSchema,
   resendInvitationOutputSchema,
-} from "./resendInvitation.ee";
-// EE機能: 招待キャンセル
+} from "./resendInvitation";
+// EE機能: 招待キャンセル（CE版はスタブを使用）
 import {
   cancelInvitation,
   cancelInvitationInputSchema,
   cancelInvitationOutputSchema,
-} from "./cancelInvitation.ee";
+} from "./cancelInvitation";
 import {
   acceptInvitation,
   acceptInvitationInputSchema,
   acceptInvitationOutputSchema,
 } from "./acceptInvitation";
-// EE機能: メンバー削除
+// EE機能: メンバー削除（CE版はスタブを使用）
 import {
   removeMember,
   removeMemberInputSchema,
   removeMemberOutputSchema,
-} from "./removeMember.ee";
+} from "./removeMember";
 import {
   setDefaultOrganization,
   setDefaultOrganizationInputSchema,
@@ -60,12 +57,12 @@ import {
   deleteOrganizationInputSchema,
   deleteOrganizationOutputSchema,
 } from "./delete";
-// EE機能: メンバーロール変更
+// EE機能: メンバーロール変更（CE版はスタブを使用）
 import {
   updateMemberRole,
   updateMemberRoleInputSchema,
   updateMemberRoleOutputSchema,
-} from "./updateMemberRole.ee";
+} from "./updateMemberRole";
 import {
   getMembers,
   getMembersInputSchema,

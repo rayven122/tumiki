@@ -1,3 +1,11 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const isEEBuild = process.env.NEXT_PUBLIC_EE_BUILD === "true";
+
 /** @type {import("next").NextConfig} */
 const config = {
   // React Strict Mode を無効化
@@ -7,6 +15,44 @@ const config = {
   // MCP サーバーを有効化（Next.js DevTools用）
   experimental: {
     mcpServer: true,
+  },
+  // CE版ビルド時に.ee.tsファイルを空のモジュールに置き換え
+  webpack: (config, { isServer }) => {
+    if (!isEEBuild) {
+      // CE版ビルド: .ee.ts/.ee.tsx ファイルを空のモジュールに置き換え
+      config.resolve.alias = {
+        ...config.resolve.alias,
+      };
+
+      // .ee.ts/.ee.tsx ファイルを空のモジュールに置き換えるプラグイン
+      const eeStubPath = path.resolve(__dirname, "src/lib/ee-stub.js");
+      /** @type {any} */
+      const cePlugin = {
+        /** @param {any} compiler */
+        apply(/** @type {any} */ compiler) {
+          compiler.hooks.normalModuleFactory.tap(
+            "CEBuildPlugin",
+            /** @param {any} nmf */ (/** @type {any} */ nmf) => {
+              nmf.hooks.beforeResolve.tap(
+                "CEBuildPlugin",
+                /** @param {any} resolveData */ (
+                  /** @type {any} */ resolveData
+                ) => {
+                  if (
+                    resolveData.request &&
+                    resolveData.request.includes(".ee")
+                  ) {
+                    resolveData.request = eeStubPath;
+                  }
+                }
+              );
+            }
+          );
+        },
+      };
+      config.plugins.push(cePlugin);
+    }
+    return config;
   },
   // Coharu VRM/VRMA ファイルの長期キャッシュ設定
   async headers() {
