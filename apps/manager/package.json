@@ -62,7 +62,7 @@
     "@trpc/client": "11.8.0",
     "@trpc/react-query": "11.8.0",
     "@trpc/server": "11.8.0",
-    "@trpc/tanstack-react-query": "11.8.0",
+    "@trpc/tanstack-react-query": "11.9.0",
     "@tumiki/db": "workspace:*",
     "@tumiki/keycloak": "workspace:*",
     "@tumiki/mailer": "workspace:*",
