@@ -255,7 +255,7 @@ describe("detectToolChanges", () => {
     expect(result.toDisconnect).toStrictEqual([]);
   });
 
-  test("既存ツールが変更されていない場合はchangesに含まれない", () => {
+  test("既存ツールが変更されていない場合はunchangedとしてchangesに含まれる", () => {
     const existingTools = [
       {
         id: "tool-1",
@@ -274,7 +274,13 @@ describe("detectToolChanges", () => {
 
     const result = detectToolChanges(existingTools, newTools);
 
-    expect(result.changes).toStrictEqual([]);
+    expect(result.changes).toStrictEqual([
+      {
+        type: "unchanged",
+        name: "my-tool",
+        description: "同じ説明",
+      },
+    ]);
     expect(result.toConnect).toStrictEqual(["tool-1"]);
     expect(result.toUpdate).toStrictEqual([]);
     expect(result.toCreate).toStrictEqual([]);
@@ -322,7 +328,13 @@ describe("detectToolChanges", () => {
 
     const result = detectToolChanges(existingTools, newTools);
 
-    expect(result.changes).toHaveLength(3);
+    // unchanged, modified, added, removed の4件
+    expect(result.changes).toHaveLength(4);
+    expect(result.changes).toContainEqual({
+      type: "unchanged",
+      name: "unchanged-tool",
+      description: "変更なし",
+    });
     expect(result.changes).toContainEqual({
       type: "added",
       name: "added-tool",
@@ -480,6 +492,7 @@ describe("buildHeaders", () => {
         OR: [{ userId: testUserId }, { userId: null }],
       },
       orderBy: { userId: "desc" },
+      select: { envVars: true },
     });
   });
 

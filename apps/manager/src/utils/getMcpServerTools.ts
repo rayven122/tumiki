@@ -2,6 +2,24 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { GoogleAuth } from "google-auth-library";
+
+/**
+ * Cloud Run認証用のIDトークンを取得する
+ * @param targetAudience Cloud RunサービスのURL（オーディエンス）
+ * @returns IDトークン
+ */
+const getCloudRunIdToken = async (targetAudience: string): Promise<string> => {
+  const auth = new GoogleAuth();
+  const client = await auth.getIdTokenClient(targetAudience);
+  const idToken = await client.idTokenProvider.fetchIdToken(targetAudience);
+
+  if (!idToken) {
+    throw new Error("Failed to obtain ID token: token is empty");
+  }
+
+  return idToken;
+};
 
 /**
  * MCPサーバーからツール一覧を取得する（SSE版）
@@ -13,32 +31,24 @@ export const getMcpServerToolsSSE = async (
   server: { name: string; url: string },
   envVars: Record<string, string>,
 ): Promise<Tool[]> => {
-  // MCPクライアントの初期化
   const client = new Client({
     name: server.name,
     version: "1.0.0",
   });
 
   try {
-    // SSETransportのみを使用
     const transport = new SSEClientTransport(new URL(server.url ?? ""), {
       requestInit: { headers: envVars },
     });
 
-    // 10秒のタイムアウトを設定
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new Error("MCPサーバーへの接続がタイムアウトしました（10秒）"));
       }, 10000);
     });
 
-    // サーバーに接続（タイムアウト付き）
     await Promise.race([client.connect(transport), timeoutPromise]);
-
-    // ツール一覧を取得
     const listTools = await client.listTools();
-
-    // サーバーの接続を閉じる
     await client.close();
 
     return listTools.tools;
@@ -57,27 +67,54 @@ export const getMcpServerToolsSSE = async (
  * MCPサーバーからツール一覧を取得する（HTTP版）
  * @param server MCPサーバー情報（name と url）
  * @param headers HTTPヘッダー
+ * @param useCloudRunIam Cloud Run IAM認証を使用するか
  * @returns ツール一覧
  */
 export const getMcpServerToolsHTTP = async (
   server: { name: string; url: string },
   headers: Record<string, string>,
+  useCloudRunIam = false,
 ): Promise<Tool[]> => {
-  // MCPクライアントの初期化
   const client = new Client({
     name: server.name,
     version: "1.0.0",
   });
 
   try {
-    const finalHeaders = {
+    const finalHeaders: Record<string, string> = {
       ...headers,
-      // Context7サーバーが要求するヘッダーを明示的に設定
       Accept: "application/json, text/event-stream",
       "Content-Type": "application/json",
     };
 
-    // StreamableHTTPClientTransportを使用（requestInitでヘッダーを設定）
+    // Cloud Run IAM認証が必要な場合、IDトークンを取得
+    if (useCloudRunIam) {
+      const serviceUrl = new URL(server.url ?? "");
+      const targetAudience = `${serviceUrl.protocol}//${serviceUrl.host}`;
+
+      console.log(
+        `[getMcpServerToolsHTTP] Cloud Run IAM認証を開始 (${server.name}):`,
+        { targetAudience },
+      );
+
+      try {
+        const idToken = await getCloudRunIdToken(targetAudience);
+        finalHeaders.Authorization = `Bearer ${idToken}`;
+        console.log(
+          `[getMcpServerToolsHTTP] Cloud Run IAMトークン取得成功 (${server.name})`,
+        );
+      } catch (error) {
+        console.error(
+          `[getMcpServerToolsHTTP] Cloud Run IAMトークン取得エラー (${server.name}):`,
+          error instanceof Error ? error.message : error,
+        );
+        // Cloud Run IAM認証が必要な場合、トークン取得失敗はエラーとして扱う
+        throw new Error(
+          `Cloud Run IAM認証に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
     const transport = new StreamableHTTPClientTransport(
       new URL(server.url ?? ""),
       {
@@ -87,20 +124,14 @@ export const getMcpServerToolsHTTP = async (
       },
     );
 
-    // 10秒のタイムアウトを設定
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new Error("MCPサーバーへの接続がタイムアウトしました（10秒）"));
       }, 10000);
     });
 
-    // サーバーに接続（タイムアウト付き）
     await Promise.race([client.connect(transport), timeoutPromise]);
-
-    // ツール一覧を取得
     const listTools = await client.listTools();
-
-    // サーバーの接続を閉じる
     await client.close();
 
     return listTools.tools;

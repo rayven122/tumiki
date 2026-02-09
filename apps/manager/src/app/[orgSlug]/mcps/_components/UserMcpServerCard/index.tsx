@@ -18,6 +18,7 @@ import {
   Layers,
 } from "lucide-react";
 import { ToolsModal } from "../ServerCard/ToolsModal";
+import { RefreshToolsModal } from "../RefreshToolsModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +71,7 @@ export const UserMcpServerCard = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [configEditModalOpen, setConfigEditModalOpen] = useState(false);
   const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
+  const [refreshToolsModalOpen, setRefreshToolsModalOpen] = useState(false);
 
   // 最初のテンプレートインスタンスを使用（ツール表示用）
   const firstInstance = userMcpServer.templateInstances[0];
@@ -134,21 +136,16 @@ export const UserMcpServerCard = ({
   };
 
   // 最も有効期限が短いAPIキーを取得（バックエンドで既に有効なキーのみ取得済み）
-  const getShortestExpiringApiKey = () => {
-    const apiKeysWithExpiration = userMcpServer.apiKeys.filter(
-      (key) => key.expiresAt,
+  const shortestApiKey = userMcpServer.apiKeys
+    .filter((key) => key.expiresAt !== null)
+    .reduce<(typeof userMcpServer.apiKeys)[number] | null>(
+      (shortest, current) => {
+        if (!shortest) return current;
+        // expiresAt は filter で null が除外されているので安全
+        return current.expiresAt! < shortest.expiresAt! ? current : shortest;
+      },
+      null,
     );
-
-    if (apiKeysWithExpiration.length === 0) return null;
-
-    return apiKeysWithExpiration.reduce((shortest, current) => {
-      if (!shortest.expiresAt) return current;
-      if (!current.expiresAt) return shortest;
-      return current.expiresAt < shortest.expiresAt ? current : shortest;
-    });
-  };
-
-  const shortestApiKey = getShortestExpiringApiKey();
 
   // APIキーの有効期限状態を計算
   const apiKeyStatus = shortestApiKey
@@ -216,6 +213,15 @@ export const UserMcpServerCard = ({
                     再認証
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRefreshToolsModalOpen(true);
+                  }}
+                >
+                  <Wrench className="mr-2 h-4 w-4" />
+                  ツールを更新
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -399,6 +405,17 @@ export const UserMcpServerCard = ({
           reusableTokens={reusableTokens}
           targetInstanceId={targetInstanceId}
           onNewAuthentication={handleNewAuthentication}
+          onSuccess={revalidate}
+        />
+      )}
+
+      {/* ツール更新モーダル */}
+      {refreshToolsModalOpen && (
+        <RefreshToolsModal
+          open={refreshToolsModalOpen}
+          onOpenChange={setRefreshToolsModalOpen}
+          serverId={userMcpServer.id as McpServerId}
+          serverName={userMcpServer.name}
           onSuccess={revalidate}
         />
       )}

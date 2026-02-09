@@ -100,9 +100,10 @@ const AsyncServerCardList = forwardRef<
                 key={server.id}
                 userMcpServer={server}
                 isSortMode={isSortMode}
-                revalidate={async () =>
-                  await utils.v2.userMcpServer.findMcpServers.invalidate()
-                }
+                revalidate={async () => {
+                  await utils.v2.userMcpServer.findMcpServers.invalidate();
+                  await utils.v2.userMcpServer.findMcpServers.refetch();
+                }}
               />
             ))}
           </div>
@@ -150,9 +151,10 @@ const AsyncServerCardList = forwardRef<
           key={server.id}
           userMcpServer={server}
           isSortMode={isSortMode}
-          revalidate={async () =>
-            await utils.v2.userMcpServer.findMcpServers.invalidate()
-          }
+          revalidate={async () => {
+            await utils.v2.userMcpServer.findMcpServers.invalidate();
+            await utils.v2.userMcpServer.findMcpServers.refetch();
+          }}
         />
       ))}
     </div>

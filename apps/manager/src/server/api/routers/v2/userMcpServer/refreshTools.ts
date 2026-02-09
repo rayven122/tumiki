@@ -9,7 +9,7 @@ import {
 import type { McpServerId } from "@/schema/ids";
 
 // ツール変更の種類
-export type ToolChangeType = "added" | "removed" | "modified";
+export type ToolChangeType = "added" | "removed" | "modified" | "unchanged";
 
 // 個別のツール変更情報
 export type ToolChange = {
@@ -30,6 +30,7 @@ export type TemplateInstanceToolChanges = {
   addedCount: number;
   removedCount: number;
   modifiedCount: number;
+  unchangedCount: number;
 };
 
 // refreshTools の入力型
@@ -37,6 +38,8 @@ export type RefreshToolsInput = {
   mcpServerId: McpServerId;
   organizationId: string;
   userId: string;
+  /** プレビューモード: trueの場合はDBに反映せず差分のみ返す */
+  dryRun?: boolean;
 };
 
 // 影響を受ける組織の情報
@@ -115,7 +118,7 @@ export const detectToolChanges = (
   const toUpdate: Array<{ id: string; tool: Tool }> = [];
   const toCreate: Tool[] = [];
 
-  // 新しいツールを確認（追加・変更）
+  // 新しいツールを確認（追加・変更・変更なし）
   for (const newTool of newTools) {
     const existingTool = existingToolMap.get(newTool.name);
 
@@ -146,6 +149,13 @@ export const detectToolChanges = (
         >,
       });
       toUpdate.push({ id: existingTool.id, tool: newTool });
+    } else {
+      // 変更なし
+      changes.push({
+        type: "unchanged",
+        name: newTool.name,
+        description: newTool.description,
+      });
     }
   }
 
@@ -206,6 +216,7 @@ export const buildHeaders = async (
 
   // APIキー認証の場合はMcpConfigから環境変数を取得
   if (authType === AuthType.API_KEY) {
+    // envVarsはomitでデフォルト除外されているため、selectで明示的に指定
     const mcpConfig = await tx.mcpConfig.findFirst({
       where: {
         mcpServerTemplateInstanceId: templateInstanceId,
@@ -214,6 +225,7 @@ export const buildHeaders = async (
         OR: [{ userId }, { userId: null }],
       },
       orderBy: { userId: "desc" }, // ユーザー設定を優先
+      select: { envVars: true },
     });
 
     if (mcpConfig?.envVars) {
@@ -235,7 +247,7 @@ export const refreshTools = async (
   tx: PrismaTransactionClient,
   input: RefreshToolsInput,
 ): Promise<RefreshToolsOutput> => {
-  const { mcpServerId, organizationId, userId } = input;
+  const { mcpServerId, organizationId, userId, dryRun = false } = input;
 
   // MCPサーバーとテンプレートインスタンスを取得
   const mcpServer = await tx.mcpServer.findUnique({
@@ -281,6 +293,7 @@ export const refreshTools = async (
         addedCount: 0,
         removedCount: 0,
         modifiedCount: 0,
+        unchangedCount: 0,
       });
       continue;
     }
@@ -303,6 +316,7 @@ export const refreshTools = async (
         : await getMcpServerToolsHTTP(
             { name: template.name, url: template.url },
             headers,
+            template.useCloudRunIam,
           );
 
     if (newTools.length === 0) {
@@ -316,72 +330,75 @@ export const refreshTools = async (
     const { changes, toConnect, toDisconnect, toUpdate, toCreate } =
       detectToolChanges(template.mcpTools, newTools);
 
-    // 新しいツールをデータベースに作成
-    const createdToolIds: string[] = [];
-    if (toCreate.length > 0) {
-      const createdTools = await tx.mcpTool.createManyAndReturn({
-        data: toCreate.map((tool) => ({
-          name: tool.name,
-          description: tool.description ?? "",
-          inputSchema: tool.inputSchema as object,
-          mcpServerTemplateId: template.id,
-        })),
-        select: { id: true },
-      });
-      createdToolIds.push(...createdTools.map((t) => t.id));
-    }
+    // dryRunモードでない場合のみDB更新を実行
+    if (!dryRun) {
+      // 新しいツールをデータベースに作成
+      const createdToolIds: string[] = [];
+      if (toCreate.length > 0) {
+        const createdTools = await tx.mcpTool.createManyAndReturn({
+          data: toCreate.map((tool) => ({
+            name: tool.name,
+            description: tool.description ?? "",
+            inputSchema: tool.inputSchema as object,
+            mcpServerTemplateId: template.id,
+          })),
+          select: { id: true },
+        });
+        createdToolIds.push(...createdTools.map((t) => t.id));
+      }
 
-    // 既存ツールを更新
-    for (const { id, tool } of toUpdate) {
-      await tx.mcpTool.update({
-        where: { id },
-        data: {
-          description: tool.description ?? "",
-          inputSchema: tool.inputSchema as object,
-        },
-      });
-    }
-
-    // allowedTools を差分更新（set ではなく connect/disconnect を使用）
-    const existingAllowedToolIds = new Set(
-      instance.allowedTools.map((t) => t.id),
-    );
-
-    // 新しく追加するツール（createdToolIds + toConnect で既存allowedToolsにないもの）
-    const allNewToolIds = [...toConnect, ...createdToolIds];
-    const toConnectIds = allNewToolIds.filter(
-      (id) => !existingAllowedToolIds.has(id),
-    );
-    // 削除するツール
-    const toDisconnectIds = toDisconnect.filter((id) =>
-      existingAllowedToolIds.has(id),
-    );
-
-    // 差分更新を実行
-    if (toConnectIds.length > 0 || toDisconnectIds.length > 0) {
-      await tx.mcpServerTemplateInstance.update({
-        where: { id: instance.id },
-        data: {
-          allowedTools: {
-            ...(toConnectIds.length > 0 && {
-              connect: toConnectIds.map((id) => ({ id })),
-            }),
-            ...(toDisconnectIds.length > 0 && {
-              disconnect: toDisconnectIds.map((id) => ({ id })),
-            }),
+      // 既存ツールを更新
+      for (const { id, tool } of toUpdate) {
+        await tx.mcpTool.update({
+          where: { id },
+          data: {
+            description: tool.description ?? "",
+            inputSchema: tool.inputSchema as object,
           },
-        },
-      });
-    }
+        });
+      }
 
-    // どのインスタンスからも参照されなくなったツールを削除
-    if (toDisconnect.length > 0) {
-      await tx.mcpTool.deleteMany({
-        where: {
-          id: { in: toDisconnect },
-          templateInstances: { none: {} },
-        },
-      });
+      // allowedTools を差分更新（set ではなく connect/disconnect を使用）
+      const existingAllowedToolIds = new Set(
+        instance.allowedTools.map((t) => t.id),
+      );
+
+      // 新しく追加するツール（createdToolIds + toConnect で既存allowedToolsにないもの）
+      const allNewToolIds = [...toConnect, ...createdToolIds];
+      const toConnectIds = allNewToolIds.filter(
+        (id) => !existingAllowedToolIds.has(id),
+      );
+      // 削除するツール
+      const toDisconnectIds = toDisconnect.filter((id) =>
+        existingAllowedToolIds.has(id),
+      );
+
+      // 差分更新を実行
+      if (toConnectIds.length > 0 || toDisconnectIds.length > 0) {
+        await tx.mcpServerTemplateInstance.update({
+          where: { id: instance.id },
+          data: {
+            allowedTools: {
+              ...(toConnectIds.length > 0 && {
+                connect: toConnectIds.map((id) => ({ id })),
+              }),
+              ...(toDisconnectIds.length > 0 && {
+                disconnect: toDisconnectIds.map((id) => ({ id })),
+              }),
+            },
+          },
+        });
+      }
+
+      // MCPサーバーが提供しなくなったツールを削除
+      // 同じテンプレートを使用する他のインスタンスからも削除される（正しい動作）
+      if (toDisconnect.length > 0) {
+        await tx.mcpTool.deleteMany({
+          where: {
+            id: { in: toDisconnect },
+          },
+        });
+      }
     }
 
     // 変更カウントを集計
@@ -390,17 +407,22 @@ export const refreshTools = async (
         acc[c.type]++;
         return acc;
       },
-      { added: 0, removed: 0, modified: 0 },
+      { added: 0, removed: 0, modified: 0, unchanged: 0 },
     );
+
+    // hasChanges は追加・削除・変更があった場合のみ true
+    const hasActualChanges =
+      counts.added > 0 || counts.removed > 0 || counts.modified > 0;
 
     templateInstanceResults.push({
       templateInstanceId: instance.id,
       templateName: template.name,
       changes,
-      hasChanges: changes.length > 0,
+      hasChanges: hasActualChanges,
       addedCount: counts.added,
       removedCount: counts.removed,
       modifiedCount: counts.modified,
+      unchangedCount: counts.unchanged,
     });
   }
 
