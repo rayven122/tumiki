@@ -40,6 +40,84 @@ import {
   getJstPreview,
 } from "./cronUtils";
 
+// スケジュール種別ボタンの共通スタイル
+const SCHEDULE_TYPE_BUTTON_BASE =
+  "flex items-center justify-center gap-2 rounded-lg border p-3 text-sm transition-colors";
+const SCHEDULE_TYPE_BUTTON_ACTIVE = "border-primary bg-primary/10 text-primary";
+const SCHEDULE_TYPE_BUTTON_INACTIVE = "border-border hover:bg-muted";
+
+// スケジュール種別ボタンのスタイルを取得
+const getScheduleTypeButtonStyle = (isActive: boolean): string =>
+  `${SCHEDULE_TYPE_BUTTON_BASE} ${isActive ? SCHEDULE_TYPE_BUTTON_ACTIVE : SCHEDULE_TYPE_BUTTON_INACTIVE}`;
+
+// スケジュールプレビューコンポーネント
+type SchedulePreviewProps = {
+  scheduleType: ScheduleType;
+  frequency: FrequencyValue;
+  interval: IntervalValue;
+  hour: string;
+  minute: string;
+  clientTimezone: string;
+  jstPreview: string;
+};
+
+const SchedulePreview = ({
+  scheduleType,
+  frequency,
+  interval,
+  hour,
+  minute,
+  clientTimezone,
+  jstPreview,
+}: SchedulePreviewProps) => {
+  // インターバル実行の場合
+  if (scheduleType === "interval") {
+    return (
+      <div className="bg-muted/50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Clock className="text-primary h-4 w-4" />
+          <span>
+            <strong>{getIntervalLabel(interval)}</strong>に実行
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // 定時実行（日本時間）
+  if (clientTimezone === "Asia/Tokyo") {
+    return (
+      <div className="bg-muted/50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Clock className="text-primary h-4 w-4" />
+          <span>
+            {getFrequencyLabel(frequency)}{" "}
+            <strong>{formatTime(hour, minute)}</strong> に実行
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // 定時実行（日本時間以外 - タイムゾーン変換表示）
+  return (
+    <div className="bg-muted/50 rounded-lg p-3">
+      <div className="flex items-center gap-2 text-sm">
+        <Clock className="text-primary h-4 w-4" />
+        <div className="space-y-1">
+          <div className="text-muted-foreground flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            {clientTimezone}: {formatTime(hour, minute)}
+          </div>
+          <div>
+            日本時間: <strong>{jstPreview}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 type ScheduleFormProps = {
   agentId: AgentId;
   isOpen: boolean;
@@ -178,11 +256,7 @@ export const ScheduleForm = ({
               <button
                 type="button"
                 onClick={() => setScheduleType("fixed")}
-                className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
-                  scheduleType === "fixed"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:bg-muted"
-                }`}
+                className={getScheduleTypeButtonStyle(scheduleType === "fixed")}
               >
                 <CalendarClock className="h-4 w-4" />
                 定時実行
@@ -190,11 +264,9 @@ export const ScheduleForm = ({
               <button
                 type="button"
                 onClick={() => setScheduleType("interval")}
-                className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
-                  scheduleType === "interval"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:bg-muted"
-                }`}
+                className={getScheduleTypeButtonStyle(
+                  scheduleType === "interval",
+                )}
               >
                 <Timer className="h-4 w-4" />
                 インターバル
@@ -281,33 +353,15 @@ export const ScheduleForm = ({
             </div>
           )}
 
-          <div className="bg-muted/50 rounded-lg p-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="text-primary h-4 w-4" />
-              {scheduleType === "fixed" ? (
-                clientTimezone === "Asia/Tokyo" ? (
-                  <span>
-                    {getFrequencyLabel(frequency)}{" "}
-                    <strong>{formatTime(hour, minute)}</strong> に実行
-                  </span>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="text-muted-foreground flex items-center gap-1">
-                      <Globe className="h-3 w-3" />
-                      {clientTimezone}: {formatTime(hour, minute)}
-                    </div>
-                    <div>
-                      日本時間: <strong>{jstPreview}</strong>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <span>
-                  <strong>{getIntervalLabel(interval)}</strong>に実行
-                </span>
-              )}
-            </div>
-          </div>
+          <SchedulePreview
+            scheduleType={scheduleType}
+            frequency={frequency}
+            interval={interval}
+            hour={hour}
+            minute={minute}
+            clientTimezone={clientTimezone}
+            jstPreview={jstPreview}
+          />
         </div>
 
         <DialogFooter>
