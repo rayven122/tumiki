@@ -11,8 +11,10 @@ import { randomUUID } from "crypto";
 import { db, type Prisma } from "@tumiki/db/server";
 
 import { gateway } from "../../infrastructure/ai/index.js";
+import { AGENT_EXECUTION_CONFIG } from "../../shared/constants/config.js";
 import { toError } from "../../shared/errors/toError.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
+import { parseIntWithDefault } from "../../shared/utils/parseIntWithDefault.js";
 import { getChatMcpTools } from "../chat/chatMcpTools.js";
 import type {
   ExecuteAgentRequest,
@@ -38,14 +40,21 @@ type ToolCallPart = {
 /** メッセージパーツの型 */
 type MessagePart = TextPart | ToolCallPart;
 
-/** エージェント実行用のデフォルトモデル */
-const DEFAULT_AGENT_MODEL = "anthropic/claude-3-5-sonnet";
+/** エージェント実行用のデフォルトモデル（環境変数で上書き可能） */
+const DEFAULT_AGENT_MODEL =
+  process.env.AGENT_DEFAULT_MODEL ?? AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
 
-/** 実行タイムアウト（ミリ秒） */
-const EXECUTION_TIMEOUT_MS = 120000; // 2分
+/** 実行タイムアウト（ミリ秒、環境変数で上書き可能） */
+const EXECUTION_TIMEOUT_MS = parseIntWithDefault(
+  process.env.AGENT_EXECUTION_TIMEOUT_MS,
+  AGENT_EXECUTION_CONFIG.EXECUTION_TIMEOUT_MS,
+);
 
-/** エージェントの最大ツール呼び出しステップ数 */
-const MAX_TOOL_STEPS = 10;
+/** エージェントの最大ツール呼び出しステップ数（環境変数で上書き可能） */
+const MAX_TOOL_STEPS = parseIntWithDefault(
+  process.env.AGENT_MAX_TOOL_STEPS,
+  AGENT_EXECUTION_CONFIG.MAX_TOOL_STEPS,
+);
 
 /** デフォルトの実行開始メッセージ */
 const DEFAULT_EXECUTION_MESSAGE = "定期実行タスクを開始してください。";
@@ -404,6 +413,17 @@ const consumeStream = async (
  * @param request - 実行リクエスト
  * @returns 実行結果
  */
+/** エージェント情報（エラーハンドリング用に保持） */
+type AgentInfo = {
+  id: string;
+  name: string;
+  organizationId: string;
+  systemPrompt: string | null;
+  modelId: string | null;
+  createdById: string | null;
+  mcpServers: Array<{ id: string }>;
+};
+
 export const executeAgent = async (
   request: ExecuteAgentRequest,
 ): Promise<ExecuteAgentResult> => {
@@ -414,6 +434,12 @@ export const executeAgent = async (
 
   // pending状態のログID（実行開始後に設定）
   let pendingLogId: string | null = null;
+  // エージェント情報をエラー時に再利用するため保持
+  let agentInfo: AgentInfo | null = null;
+  // 実行パラメータをエラー時に再利用するため保持
+  let modelId: string = DEFAULT_AGENT_MODEL;
+  let userMessage: string = DEFAULT_EXECUTION_MESSAGE;
+  let effectiveUserId: string | null = null;
 
   logInfo("Starting agent execution", {
     executionId,
@@ -439,10 +465,13 @@ export const executeAgent = async (
       throw new Error(`Agent not found: ${request.agentId}`);
     }
 
+    // エラー時に再利用するため保持
+    agentInfo = agent;
+
     const systemPrompt = buildSystemPrompt(request.trigger, agent.systemPrompt);
-    const modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
-    const userMessage = request.message ?? DEFAULT_EXECUTION_MESSAGE;
-    const effectiveUserId = userId ?? agent.createdById;
+    modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
+    userMessage = request.message ?? DEFAULT_EXECUTION_MESSAGE;
+    effectiveUserId = userId ?? agent.createdById;
 
     // 実行開始時にpending状態のログを作成（success: null）
     pendingLogId = await createPendingExecutionLog({
@@ -601,31 +630,16 @@ export const executeAgent = async (
       isTimeout: isAbortError(error),
     });
 
-    // pendingログがある場合は更新、ない場合は新規作成
+    // pendingログがある場合は更新（事前に取得したエージェント情報を再利用）
     if (pendingLogId) {
-      // エージェント情報を取得
-      const errorAgent = await db.agent.findUnique({
-        where: { id: request.agentId },
-        select: {
-          name: true,
-          organizationId: true,
-          createdById: true,
-          modelId: true,
-        },
-      });
-
-      const errorModelId = errorAgent?.modelId ?? DEFAULT_AGENT_MODEL;
-      const errorEffectiveUserId = userId ?? errorAgent?.createdById;
-      const userMessage = request.message ?? DEFAULT_EXECUTION_MESSAGE;
-
-      if (errorEffectiveUserId && errorAgent) {
+      if (effectiveUserId && agentInfo) {
         await updateExecutionLogWithChat({
           executionLogId: pendingLogId,
-          organizationId: errorAgent.organizationId,
-          userId: errorEffectiveUserId,
+          organizationId: agentInfo.organizationId,
+          userId: effectiveUserId,
           agentId: request.agentId,
-          agentName: errorAgent.name,
-          modelId: errorModelId,
+          agentName: agentInfo.name,
+          modelId,
           success: false,
           durationMs,
           userMessage,

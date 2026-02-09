@@ -19,31 +19,22 @@ import {
 import { db, type Prisma } from "@tumiki/db/server";
 
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
+import { AGENT_EXECUTION_CONFIG } from "../../shared/constants/config.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
+import { generateCUID } from "../../shared/utils/cuid.js";
 import { gateway } from "../../infrastructure/ai/index.js";
 import { verifyChatAuth } from "../chat/index.js";
 import { getChatMcpTools } from "../chat/index.js";
 
 /** エージェント実行用のデフォルトモデル */
-const DEFAULT_AGENT_MODEL = "anthropic/claude-3-5-sonnet";
+const DEFAULT_AGENT_MODEL = AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
 
 /** 最大ツール実行ステップ数 */
-const MAX_TOOL_STEPS = 10;
+const MAX_TOOL_STEPS = AGENT_EXECUTION_CONFIG.MAX_TOOL_STEPS;
 
-/** エージェント実行タイムアウト（5分） */
-const EXECUTION_TIMEOUT_MS = 5 * 60 * 1000;
-
-/** CUID生成用 */
-const generateCUID = (): string => {
-  const chars =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "c";
-  for (let i = 0; i < 24; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-};
+/** エージェント実行タイムアウト */
+const EXECUTION_TIMEOUT_MS = AGENT_EXECUTION_CONFIG.EXECUTION_TIMEOUT_MS;
 
 /**
  * リクエストボディスキーマ

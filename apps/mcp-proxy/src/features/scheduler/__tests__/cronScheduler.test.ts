@@ -17,7 +17,10 @@ import {
 
 // node-cronをモック
 vi.mock("node-cron", () => {
-  const mockScheduledTasks = new Map<string, { stop: () => void }>();
+  const mockScheduledTasks = new Map<
+    string,
+    { stop: () => void; destroy: () => void }
+  >();
 
   return {
     schedule: vi.fn(
@@ -25,6 +28,8 @@ vi.mock("node-cron", () => {
         const taskId = options?.name ?? `task-${Date.now()}`;
         const mockTask = {
           stop: vi.fn(() => Promise.resolve()),
+          // destroy()はstop()を内部で呼び出し、タスクを完全に破棄する
+          destroy: vi.fn(() => Promise.resolve()),
         };
         mockScheduledTasks.set(taskId, mockTask);
         return mockTask;

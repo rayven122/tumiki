@@ -113,6 +113,10 @@ export const registerSchedule = (config: ScheduleConfig): boolean => {
 /**
  * スケジュールを解除
  *
+ * node-cronのdestroy()メソッドを使用してタスクを完全に破棄する。
+ * destroy()は内部でstop()を呼び出し、状態をdestroyedに変更してイベントを発行する。
+ * stop()だけではタスクが再開可能な状態で残るため、destroy()を使用する。
+ *
  * @param scheduleId - スケジュールID
  * @returns 解除成功フラグ
  */
@@ -120,9 +124,10 @@ export const unregisterSchedule = (scheduleId: string): boolean => {
   const task = activeTasks.get(scheduleId);
 
   if (task) {
-    void task.stop();
+    // destroy()でタスクを完全に破棄（stop()も内部で呼ばれる）
+    void task.destroy();
     activeTasks.delete(scheduleId);
-    logInfo("Schedule unregistered", { scheduleId });
+    logInfo("Schedule destroyed and unregistered", { scheduleId });
   }
 
   scheduleConfigs.delete(scheduleId);
@@ -162,20 +167,23 @@ export const syncAllSchedules = (
 };
 
 /**
- * 全タスクを停止
+ * 全タスクを停止・破棄
+ *
+ * 全てのアクティブなタスクをdestroy()で完全に破棄する。
  */
 export const stopAllTasks = (): void => {
   const count = activeTasks.size;
 
   for (const [id, task] of activeTasks) {
-    void task.stop();
-    logInfo("Stopped task", { scheduleId: id });
+    // destroy()でタスクを完全に破棄
+    void task.destroy();
+    logInfo("Destroyed task", { scheduleId: id });
   }
 
   activeTasks.clear();
   scheduleConfigs.clear();
 
-  logInfo("All tasks stopped", { count });
+  logInfo("All tasks destroyed", { count });
 };
 
 /**
