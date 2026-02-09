@@ -316,7 +316,7 @@ export const RefreshToolsModal = ({
     refreshTools(
       { id: serverId, dryRun: false },
       {
-        onSuccess: async (data) => {
+        onSuccess: (data) => {
           const summary = [
             data.totalAddedCount > 0 && `追加: ${data.totalAddedCount}`,
             data.totalRemovedCount > 0 && `削除: ${data.totalRemovedCount}`,
@@ -325,7 +325,7 @@ export const RefreshToolsModal = ({
             .filter(Boolean)
             .join("、");
           // 先にデータを再取得してからモーダルを閉じる
-          await onSuccess?.();
+          void onSuccess?.();
           handleClose();
           toast.success(`ツールを更新しました（${summary}）`);
         },
