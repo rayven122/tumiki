@@ -244,6 +244,13 @@ export const dashboardRouter = createTRPCRouter({
           success: true,
           durationMs: true,
           createdAt: true,
+          modelId: true,
+          chatId: true,
+          schedule: {
+            select: {
+              name: true,
+            },
+          },
           agent: {
             select: {
               name: true,
@@ -263,6 +270,9 @@ export const dashboardRouter = createTRPCRouter({
         success: e.success,
         durationMs: e.durationMs,
         createdAt: e.createdAt,
+        modelId: e.modelId,
+        scheduleName: e.schedule?.name ?? null,
+        chatId: e.chatId,
       }));
     }),
 
