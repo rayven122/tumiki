@@ -35,7 +35,7 @@ const colorMap = {
 export const NeoBrutalismButton = ({
   children,
   onClick,
-  variant = "primary",
+  variant: _variant = "primary",
   color = "indigo",
   disabled = false,
   className,

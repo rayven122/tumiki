@@ -91,7 +91,6 @@ import {
   getInternalToolsForDynamicSearch,
 } from "../../../queries/listTools/listToolsQuery.js";
 import { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
-import { DomainError } from "../../../../../domain/errors/domainError.js";
 
 describe("listToolsQuery", () => {
   const mcpServerId = "server-123";

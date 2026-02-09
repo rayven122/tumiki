@@ -15,7 +15,6 @@ import {
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { useAgentFlow } from "@/atoms/agentFlowAtoms";
-import { McpServerVisibility } from "@tumiki/db/prisma";
 import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
 import type { McpServerId } from "@/schema/ids";
 
@@ -25,10 +24,10 @@ type Step3ReviewProps = {
 
 // 可視性ラベル
 const VISIBILITY_LABELS = {
-  [McpServerVisibility.PRIVATE]: { icon: Lock, label: "自分のみ" },
-  [McpServerVisibility.ORGANIZATION]: { icon: Building2, label: "組織内" },
-  [McpServerVisibility.PUBLIC]: { icon: Building2, label: "公開" },
-};
+  PRIVATE: { icon: Lock, label: "自分のみ" },
+  ORGANIZATION: { icon: Building2, label: "組織内" },
+  PUBLIC: { icon: Building2, label: "公開" },
+} as const;
 
 /**
  * ステップ3: 確認・作成

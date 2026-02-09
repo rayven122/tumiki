@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Settings,
-  Server,
   XCircle,
   Trash2,
   MoreVertical,

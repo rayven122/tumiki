@@ -52,6 +52,16 @@ const UploadErrorResponseSchema = z.object({
   error: z.string().optional(),
 });
 
+// 保存ボタンのラベルを取得（ネストした三項演算子を回避）
+const getSaveButtonLabel = (
+  isUploading: boolean,
+  isPending: boolean,
+): string => {
+  if (isUploading) return "アップロード中...";
+  if (isPending) return "保存中...";
+  return "保存";
+};
+
 export const AgentIconEditModal = ({
   agentId,
   initialIconPath,
@@ -413,11 +423,7 @@ export const AgentIconEditModal = ({
               onClick={() => void handleSave()}
               disabled={isButtonDisabled || !hasChanges}
             >
-              {isUploading
-                ? "アップロード中..."
-                : isPending
-                  ? "保存中..."
-                  : "保存"}
+              {getSaveButtonLabel(isUploading, isPending)}
             </Button>
           </div>
         </DialogFooter>
