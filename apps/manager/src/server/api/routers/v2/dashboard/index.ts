@@ -36,6 +36,9 @@ const RecentExecutionSchema = z.object({
   success: z.boolean().nullable(),
   durationMs: z.number().nullable(),
   createdAt: z.date(),
+  modelId: z.string().nullable(),
+  scheduleName: z.string().nullable(),
+  chatId: z.string().nullable(),
 });
 
 // 時間範囲スキーマ
