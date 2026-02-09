@@ -11,16 +11,12 @@ type FindByAgentIdParams = {
   cursor?: string;
 };
 
-/**
- * エージェントの実行履歴を取得する
- */
 export const findExecutionsByAgentId = async (
   db: PrismaClient,
   params: FindByAgentIdParams,
 ) => {
   const { agentId, organizationId, userId, limit, cursor } = params;
 
-  // エージェントの存在確認とアクセス権限チェック
   const agent = await db.agent.findFirst({
     where: {
       id: agentId,
@@ -36,22 +32,22 @@ export const findExecutionsByAgentId = async (
     });
   }
 
-  // 実行履歴を取得
+  // 実行履歴を取得（次ページ確認用に1件多く取得）
+  // success が null でないもの（完了済み）のみ取得
   const executions = await db.agentExecutionLog.findMany({
-    where: { agentId },
-    take: limit + 1, // 次ページがあるかチェック用に1件多く取得
-    ...(cursor && {
-      cursor: { id: cursor },
-      skip: 1, // カーソル自体はスキップ
-    }),
+    where: {
+      agentId,
+      success: { not: null },
+    },
+    take: limit + 1,
+    cursor: cursor ? { id: cursor } : undefined,
+    skip: cursor ? 1 : 0,
     select: {
       id: true,
       scheduleId: true,
-      schedule: {
-        select: {
-          name: true,
-        },
-      },
+      chatId: true,
+      schedule: { select: { name: true } },
+      modelId: true,
       success: true,
       durationMs: true,
       createdAt: true,
@@ -59,7 +55,6 @@ export const findExecutionsByAgentId = async (
     orderBy: { createdAt: "desc" },
   });
 
-  // 次ページがあるかチェック
   const hasNextPage = executions.length > limit;
   const items = hasNextPage ? executions.slice(0, limit) : executions;
   const nextCursor = hasNextPage ? items[items.length - 1]?.id : undefined;
@@ -68,8 +63,10 @@ export const findExecutionsByAgentId = async (
     items: items.map((execution) => ({
       id: execution.id,
       scheduleId: execution.scheduleId,
+      chatId: execution.chatId,
       scheduleName: execution.schedule?.name ?? null,
-      success: execution.success,
+      modelId: execution.modelId,
+      success: execution.success!,
       durationMs: execution.durationMs,
       createdAt: execution.createdAt,
     })),

@@ -22,6 +22,8 @@ export const findAllAgents = async (
     where: buildAgentAccessCondition(organizationId, userId),
     select: {
       id: true,
+      slug: true,
+      organizationId: true,
       name: true,
       description: true,
       iconPath: true,
@@ -41,6 +43,17 @@ export const findAllAgents = async (
           id: true,
           name: true,
           iconPath: true,
+          // テンプレートのiconPathをフォールバックとして取得
+          templateInstances: {
+            select: {
+              mcpServerTemplate: {
+                select: {
+                  iconPath: true,
+                },
+              },
+            },
+            take: 1,
+          },
         },
       },
       schedules: {

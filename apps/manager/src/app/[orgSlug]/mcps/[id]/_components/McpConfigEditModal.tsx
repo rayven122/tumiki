@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -13,17 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Loader2, RefreshCw, Server, ChevronDown, Check } from "lucide-react";
+import { Loader2, RefreshCw, ChevronDown, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
+import { McpServerIcon } from "../../_components/McpServerIcon";
 
 /** マスクされた値を表す定数 */
 const MASK_VALUE = "•••••";
@@ -183,23 +182,12 @@ const TemplateConfigSection = ({
           >
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border bg-white p-1.5">
-                {iconPath ? (
-                  <Image
-                    src={iconPath}
-                    alt={instanceName}
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                ) : (
-                  <FaviconImage
-                    url={url ?? ""}
-                    alt={instanceName}
-                    size={20}
-                    className="h-5 w-5"
-                    fallback={<Server className="h-5 w-5 text-gray-500" />}
-                  />
-                )}
+                <McpServerIcon
+                  iconPath={iconPath}
+                  fallbackUrl={url}
+                  alt={instanceName}
+                  size={20}
+                />
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{instanceName}</span>
@@ -234,23 +222,12 @@ const TemplateConfigSection = ({
     <>
       <div className="flex items-center">
         <div className="mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border p-2">
-          {iconPath ? (
-            <Image
-              src={iconPath}
-              alt={instanceName}
-              width={24}
-              height={24}
-              className="h-6 w-6"
-            />
-          ) : (
-            <FaviconImage
-              url={url ?? ""}
-              alt={instanceName}
-              size={24}
-              className="h-6 w-6"
-              fallback={<Server className="h-6 w-6 text-gray-500" />}
-            />
-          )}
+          <McpServerIcon
+            iconPath={iconPath}
+            fallbackUrl={url}
+            alt={instanceName}
+            size={24}
+          />
         </div>
         <div className="min-w-0">
           <h2 className="font-medium">{instanceName}</h2>

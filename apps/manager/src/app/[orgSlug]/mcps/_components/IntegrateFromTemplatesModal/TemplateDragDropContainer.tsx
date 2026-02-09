@@ -1,11 +1,11 @@
 "use client";
 
-import { Layers, Package, Server, Wrench } from "lucide-react";
-import Image from "next/image";
+import { Layers, Package, Wrench } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { McpServerIcon } from "../McpServerIcon";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { useDrag } from "../IntegrateMcpModal/useDrag";
+import { useDrag } from "@/components/mcp-selector";
 import { TemplateCard } from "./TemplateCard";
 import {
   type SelectableTemplate,
@@ -38,17 +38,11 @@ const DragOverlayCard = ({
       }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-        {template.iconPath ? (
-          <Image
-            src={template.iconPath}
-            alt={template.name}
-            width={32}
-            height={32}
-            className="rounded"
-          />
-        ) : (
-          <Server className="h-5 w-5 text-gray-500" />
-        )}
+        <McpServerIcon
+          iconPath={template.iconPath}
+          alt={template.name}
+          size={32}
+        />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-gray-900">{template.name}</p>

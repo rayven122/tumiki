@@ -15,6 +15,7 @@ type TemplateInfo = {
   serverUrl: string;
   serverName: string;
   templateId: string;
+  iconPath: string | null;
 };
 
 type GetTemplateInfoParams = {
@@ -47,7 +48,6 @@ export const getOrCreateTemplateInfo = async (
     organizationId,
   } = params;
 
-  // テンプレートIDまたはカスタムURLのいずれかが必要
   if (!templateId && !customUrl) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -79,6 +79,7 @@ export const getOrCreateTemplateInfo = async (
       serverUrl: template.url,
       serverName: name ?? template.name,
       templateId,
+      iconPath: template.iconPath,
     };
   }
 
@@ -114,6 +115,7 @@ export const getOrCreateTemplateInfo = async (
       serverUrl: customUrl,
       serverName: name,
       templateId: customTemplate.id,
+      iconPath: null,
     };
   } catch (error) {
     // 名前重複エラー（P2002: Unique constraint failed）の場合

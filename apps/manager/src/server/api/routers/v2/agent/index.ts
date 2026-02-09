@@ -1,6 +1,9 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
-import { displayNameValidationSchema } from "@/schema/validation";
+import {
+  displayNameValidationSchema,
+  alphanumericWithHyphenUnderscoreSchema,
+} from "@/schema/validation";
 import { AgentIdSchema, McpServerIdSchema } from "@/schema/ids";
 import { McpServerVisibilitySchema, AgentSchema } from "@tumiki/db/zod";
 import { createAgent } from "./create";
@@ -8,10 +11,17 @@ import { updateAgent } from "./update";
 import { deleteAgent } from "./delete";
 import { findAllAgents } from "./findAll";
 import { findAgentById } from "./findById";
+import { findAgentBySlug } from "./findBySlug";
+
+// エージェントスラグのバリデーションスキーマ
+export const AgentSlugSchema = alphanumericWithHyphenUnderscoreSchema
+  .min(1, "スラグは必須です")
+  .max(50, "スラグは50文字以内で入力してください");
 
 // エージェント作成の入力スキーマ
 export const CreateAgentInputSchema = z.object({
   name: displayNameValidationSchema,
+  slug: AgentSlugSchema.optional(),
   description: z.string().optional(),
   iconPath: z.string().optional(),
   systemPrompt: z.string().min(1, "システムプロンプトは必須です"),
@@ -23,12 +33,14 @@ export const CreateAgentInputSchema = z.object({
 // エージェント作成の出力スキーマ
 export const CreateAgentOutputSchema = z.object({
   id: AgentIdSchema,
+  slug: z.string(),
 });
 
 // エージェント更新の入力スキーマ
 export const UpdateAgentInputSchema = z.object({
   id: AgentIdSchema,
   name: displayNameValidationSchema.optional(),
+  slug: AgentSlugSchema.optional(),
   description: z.string().optional(),
   iconPath: z.string().nullable().optional(),
   systemPrompt: z.string().min(1).optional(),
@@ -64,10 +76,30 @@ export const DeleteAgentOutputSchema = z.object({
   name: z.string(),
 });
 
-// エージェント詳細取得の入力スキーマ
+// エージェント詳細取得の入力スキーマ（ID指定）
 export const FindByIdInputSchema = z.object({
   id: AgentIdSchema,
 });
+
+// エージェント詳細取得の入力スキーマ（スラグ指定）
+export const FindBySlugInputSchema = z.object({
+  slug: AgentSlugSchema,
+});
+
+// 実行メッセージ取得の入力スキーマ
+export const GetExecutionMessagesInputSchema = z.object({
+  chatId: z.string(),
+});
+
+/** 実行メッセージの出力スキーマ（partsはJSON形式で保存されている） */
+export const GetExecutionMessagesOutputSchema = z.array(
+  z.object({
+    id: z.string(),
+    role: z.string(),
+    parts: z.array(z.record(z.string(), z.unknown())),
+    createdAt: z.date(),
+  }),
+);
 
 // createdByの型定義
 const CreatedBySchema = z
@@ -83,6 +115,16 @@ const McpServerInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   iconPath: z.string().nullable(),
+  // テンプレートのiconPathをフォールバック用に取得
+  templateInstances: z
+    .array(
+      z.object({
+        mcpServerTemplate: z.object({
+          iconPath: z.string().nullable(),
+        }),
+      }),
+    )
+    .optional(),
 });
 
 // スケジュール情報の型定義
@@ -97,6 +139,8 @@ const ScheduleInfoSchema = z.object({
 export const FindAllAgentsOutputSchema = z.array(
   AgentSchema.pick({
     id: true,
+    slug: true,
+    organizationId: true,
     name: true,
     description: true,
     iconPath: true,
@@ -165,12 +209,23 @@ export const agentRouter = createTRPCRouter({
       });
     }),
 
-  // エージェント詳細取得
+  // エージェント詳細取得（ID指定）
   findById: protectedProcedure
     .input(FindByIdInputSchema)
     .query(async ({ ctx, input }) => {
       return await findAgentById(ctx.db, {
         id: input.id,
+        organizationId: ctx.currentOrg.id,
+        userId: ctx.session.user.id,
+      });
+    }),
+
+  // エージェント詳細取得（スラグ指定）
+  findBySlug: protectedProcedure
+    .input(FindBySlugInputSchema)
+    .query(async ({ ctx, input }) => {
+      return await findAgentBySlug(ctx.db, {
+        slug: input.slug,
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });
@@ -200,5 +255,46 @@ export const agentRouter = createTRPCRouter({
 
       // 入力で検証済みのIDをそのまま返す
       return { id: input.id };
+    }),
+
+  // 実行結果のメッセージ取得
+  getExecutionMessages: protectedProcedure
+    .input(GetExecutionMessagesInputSchema)
+    .output(GetExecutionMessagesOutputSchema)
+    .query(async ({ ctx, input }) => {
+      // チャットの存在確認と権限チェック（組織内のチャットのみアクセス可能）
+      const chat = await ctx.db.chat.findFirst({
+        where: {
+          id: input.chatId,
+          organizationId: ctx.currentOrg.id,
+        },
+        select: { id: true },
+      });
+
+      if (!chat) {
+        throw new Error("チャットが見つかりません");
+      }
+
+      // メッセージを取得
+      const messages = await ctx.db.message.findMany({
+        where: { chatId: input.chatId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          role: true,
+          parts: true,
+          createdAt: true,
+        },
+      });
+
+      // partsをパースして返す（JSONからオブジェクト配列にキャスト）
+      return messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        parts: Array.isArray(msg.parts)
+          ? (msg.parts as Record<string, unknown>[])
+          : [],
+        createdAt: msg.createdAt,
+      }));
     }),
 });

@@ -12,6 +12,9 @@ import { healthRoute } from "./features/health/route.js";
 import { mcpFeatureRoute } from "./features/mcp/route.js";
 import { oauthRoute } from "./features/oauth/route.js";
 import { wellKnownRoute } from "./features/oauth/queries/wellKnown/route.js";
+import { schedulerRoute } from "./features/scheduler/index.js";
+import { chatRoute } from "./features/chat/index.js";
+import { agentExecutorRoute } from "./features/agentExecutor/route.js";
 
 // Hono アプリケーションの作成
 const app = new Hono<HonoEnv>();
@@ -24,5 +27,8 @@ app.route("/", healthRoute);
 app.route("/", mcpFeatureRoute);
 app.route("/.well-known", wellKnownRoute);
 app.route("/oauth", oauthRoute);
+app.route("/", schedulerRoute);
+app.route("/", chatRoute);
+app.route("/", agentExecutorRoute);
 
 export default app;

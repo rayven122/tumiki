@@ -68,9 +68,16 @@ export const OrgSidebar = ({
       name: "ダッシュボード",
       href: `/${orgSlug}/dashboard`,
       icon: LayoutDashboard,
-      show: !isPersonal, // 個人組織では非表示
-      disabled: true,
-      comingSoon: true,
+      show: true, // 全組織で表示
+      disabled: false,
+    },
+    {
+      name: "AIエージェント",
+      href: `/${orgSlug}/agents`,
+      icon: Sparkles,
+      show: true, // 全組織で表示
+      disabled: false,
+      beta: true,
     },
     {
       name: "AIチャット",
@@ -86,14 +93,6 @@ export const OrgSidebar = ({
       icon: List,
       show: true, // 全組織で表示
       disabled: false,
-    },
-    {
-      name: "エージェント",
-      href: `/${orgSlug}/agents`,
-      icon: Sparkles,
-      show: true, // 全組織で表示
-      disabled: false,
-      beta: true,
     },
     // {
     //   name: "アクティビティ",
@@ -190,7 +189,10 @@ export const OrgSidebar = ({
                   const isActive = pathname === item.href;
                   const isDisabled = item.disabled;
                   const isBeta = "beta" in item && item.beta;
-                  const tooltipText = item.comingSoon ? "近日公開" : item.name;
+                  const tooltipText =
+                    "comingSoon" in item && item.comingSoon
+                      ? "近日公開"
+                      : item.name;
 
                   const linkContent = (
                     <>

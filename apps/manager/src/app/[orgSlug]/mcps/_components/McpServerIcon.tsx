@@ -36,8 +36,6 @@ export const McpServerIcon = ({
     const iconName = iconPath.replace("lucide:", "");
     const IconComponent = getIconComponent(iconName);
 
-    // アイコンが見つかった場合のみ表示
-    // 見つからない場合はフォールバック（下のFaviconImageへ）
     if (IconComponent) {
       return (
         <IconComponent
@@ -46,10 +44,27 @@ export const McpServerIcon = ({
         />
       );
     }
+    // lucide:形式だがアイコンが見つからない場合はフォールバックへ（URL形式として処理しない）
+    return (
+      <FaviconImage
+        url={fallbackUrl}
+        alt={alt}
+        size={size}
+        fallback={
+          <div
+            className="flex items-center justify-center rounded-md bg-gray-200"
+            style={{ width: size, height: size }}
+          >
+            <ImageIcon className="size-4 text-gray-500" />
+          </div>
+        }
+      />
+    );
   }
 
-  // URL形式（lucide:形式でない場合）→ Imageコンポーネント
-  if (iconPath && !iconPath.startsWith("lucide:")) {
+  // URL形式 → Imageコンポーネント
+  if (iconPath) {
+    const isSvg = iconPath.toLowerCase().endsWith(".svg");
     return (
       <Image
         src={iconPath}
@@ -57,6 +72,7 @@ export const McpServerIcon = ({
         width={size}
         height={size}
         className="rounded-md object-cover"
+        unoptimized={isSvg}
       />
     );
   }

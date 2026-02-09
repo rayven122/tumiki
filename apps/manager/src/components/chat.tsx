@@ -32,6 +32,7 @@ import type { SessionData } from "~/auth";
 import { useDataStream } from "./data-stream-provider";
 import { CoharuProvider, useCoharuContext } from "@/hooks/coharu";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
+import { getProxyServerUrl } from "@/utils/url";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>
@@ -140,6 +141,9 @@ function ChatContent({
     organizationId,
   });
 
+  // mcp-proxy の URL を取得
+  const mcpProxyUrl = getProxyServerUrl();
+
   const {
     messages,
     setMessages,
@@ -154,8 +158,18 @@ function ChatContent({
     experimental_throttle: 100,
     generateId: generateCUID,
     transport: new DefaultChatTransport({
-      api: "/api/chat",
-      fetch: fetchWithErrorHandlers,
+      api: `${mcpProxyUrl}/chat`,
+      fetch: (url, options) => {
+        // mcp-proxy への認証ヘッダーを追加
+        const headers = new Headers(options?.headers);
+        if (session.accessToken) {
+          headers.set("Authorization", `Bearer ${session.accessToken}`);
+        }
+        return fetchWithErrorHandlers(url, {
+          ...options,
+          headers,
+        });
+      },
       prepareSendMessagesRequest(request) {
         const lastMessage = request.messages.at(-1);
 

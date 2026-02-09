@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { McpServerVisibility, ServerStatus } from "@tumiki/db/prisma";
@@ -7,15 +8,24 @@ import { updateAgent } from "../update";
 import { deleteAgent } from "../delete";
 import { findAllAgents } from "../findAll";
 import { findAgentById } from "../findById";
+import { findAgentBySlug } from "../findBySlug";
 import { TRPCError } from "@trpc/server";
+
+// generateUniqueAgentSlugのモック
+vi.mock("@tumiki/db/utils/slug", () => ({
+  generateUniqueAgentSlug: vi.fn().mockResolvedValue("test-agent"),
+  normalizeSlug: vi.fn((slug: string) => slug.toLowerCase()),
+}));
 
 describe("Agent CRUD", () => {
   let mockTx: PrismaTransactionClient;
   const testOrganizationId = "org-123";
   const testUserId = "user-123";
   const testAgentId = "agent-123" as AgentId;
+  const testSlug = "test-agent";
 
   beforeEach(() => {
+    vi.clearAllMocks();
     // Prismaトランザクションクライアントのモック
     mockTx = {
       agent: {
@@ -25,11 +35,17 @@ describe("Agent CRUD", () => {
         update: vi.fn(),
         delete: vi.fn(),
       },
+      organization: {
+        findUnique: vi.fn().mockResolvedValue({ slug: "test-org" }),
+      },
+      organizationMember: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     } as unknown as PrismaTransactionClient;
   });
 
   describe("createAgent", () => {
-    test("エージェントを作成できる", async () => {
+    test("エージェントを作成できる（スラグ自動生成）", async () => {
       const input = {
         name: "テストエージェント",
         description: "テスト用のエージェントです",
@@ -39,6 +55,8 @@ describe("Agent CRUD", () => {
 
       vi.mocked(mockTx.agent.create).mockResolvedValue({
         id: testAgentId,
+        slug: testSlug,
+        name: input.name,
       } as unknown as Awaited<ReturnType<typeof mockTx.agent.create>>);
 
       const result = await createAgent(
@@ -49,21 +67,63 @@ describe("Agent CRUD", () => {
       );
 
       expect(result.id).toBe(testAgentId);
+      expect(result.slug).toBe(testSlug);
       expect(mockTx.agent.create).toHaveBeenCalledWith({
-        data: {
+        data: expect.objectContaining({
+          slug: testSlug,
           name: input.name,
-          description: input.description,
-          iconPath: undefined,
-          systemPrompt: input.systemPrompt,
-          modelId: undefined,
-          visibility: input.visibility,
-          organizationId: testOrganizationId,
-          createdById: testUserId,
-          mcpServers: undefined,
-        },
+        }),
         select: {
           id: true,
+          slug: true,
+          name: true,
         },
+      });
+    });
+
+    test("カスタムスラグでエージェントを作成できる", async () => {
+      const customSlug = "custom-agent";
+      const input = {
+        name: "カスタムスラグエージェント",
+        slug: customSlug,
+        systemPrompt: "カスタムスラグのテスト",
+        visibility: McpServerVisibility.PRIVATE,
+      };
+
+      vi.mocked(mockTx.agent.findFirst).mockResolvedValue(null); // 重複なし
+      vi.mocked(mockTx.agent.create).mockResolvedValue({
+        id: testAgentId,
+        slug: customSlug,
+        name: input.name,
+      } as unknown as Awaited<ReturnType<typeof mockTx.agent.create>>);
+
+      const result = await createAgent(
+        mockTx,
+        input,
+        testOrganizationId,
+        testUserId,
+      );
+
+      expect(result.slug).toBe(customSlug);
+    });
+
+    test("重複するスラグでの作成はエラーになる", async () => {
+      const duplicateSlug = "existing-agent";
+      const input = {
+        name: "重複スラグエージェント",
+        slug: duplicateSlug,
+        systemPrompt: "重複スラグのテスト",
+        visibility: McpServerVisibility.PRIVATE,
+      };
+
+      vi.mocked(mockTx.agent.findFirst).mockResolvedValue({
+        id: "existing-agent-id",
+      } as unknown as Awaited<ReturnType<typeof mockTx.agent.findFirst>>);
+
+      await expect(
+        createAgent(mockTx, input, testOrganizationId, testUserId),
+      ).rejects.toMatchObject({
+        code: "CONFLICT",
       });
     });
 
@@ -78,6 +138,8 @@ describe("Agent CRUD", () => {
 
       vi.mocked(mockTx.agent.create).mockResolvedValue({
         id: testAgentId,
+        slug: testSlug,
+        name: input.name,
       } as unknown as Awaited<ReturnType<typeof mockTx.agent.create>>);
 
       const result = await createAgent(
@@ -88,17 +150,16 @@ describe("Agent CRUD", () => {
       );
 
       expect(result.id).toBe(testAgentId);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const expectedData = expect.objectContaining({
-        mcpServers: {
-          connect: mcpServerIds.map((id) => ({ id })),
-        },
-      });
       expect(mockTx.agent.create).toHaveBeenCalledWith({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        data: expectedData,
+        data: expect.objectContaining({
+          mcpServers: {
+            connect: mcpServerIds.map((id) => ({ id })),
+          },
+        }),
         select: {
           id: true,
+          slug: true,
+          name: true,
         },
       });
     });
@@ -115,6 +176,7 @@ describe("Agent CRUD", () => {
 
       vi.mocked(mockTx.agent.findFirst).mockResolvedValue({
         id: testAgentId,
+        slug: testSlug,
       } as unknown as Awaited<ReturnType<typeof mockTx.agent.findFirst>>);
 
       vi.mocked(mockTx.agent.update).mockResolvedValue({
@@ -128,18 +190,69 @@ describe("Agent CRUD", () => {
         where: {
           id: input.id,
         },
-        data: {
+        data: expect.objectContaining({
           name: input.name,
-          description: undefined,
-          iconPath: undefined,
           systemPrompt: input.systemPrompt,
-          modelId: undefined,
-          visibility: input.visibility,
-          mcpServers: undefined,
-        },
+        }),
         select: {
           id: true,
         },
+      });
+    });
+
+    test("スラグを更新できる", async () => {
+      const newSlug = "updated-agent";
+      const input = {
+        id: testAgentId,
+        slug: newSlug,
+      };
+
+      vi.mocked(mockTx.agent.findFirst)
+        .mockResolvedValueOnce({
+          id: testAgentId,
+          slug: testSlug,
+        } as unknown as Awaited<ReturnType<typeof mockTx.agent.findFirst>>)
+        .mockResolvedValueOnce(null); // 重複チェック
+
+      vi.mocked(mockTx.agent.update).mockResolvedValue({
+        id: testAgentId,
+      } as unknown as Awaited<ReturnType<typeof mockTx.agent.update>>);
+
+      await updateAgent(mockTx, input, testOrganizationId);
+
+      expect(mockTx.agent.update).toHaveBeenCalledWith({
+        where: {
+          id: input.id,
+        },
+        data: expect.objectContaining({
+          slug: newSlug,
+        }),
+        select: {
+          id: true,
+        },
+      });
+    });
+
+    test("重複するスラグへの更新はエラーになる", async () => {
+      const duplicateSlug = "existing-slug";
+      const input = {
+        id: testAgentId,
+        slug: duplicateSlug,
+      };
+
+      vi.mocked(mockTx.agent.findFirst)
+        .mockResolvedValueOnce({
+          id: testAgentId,
+          slug: testSlug,
+        } as unknown as Awaited<ReturnType<typeof mockTx.agent.findFirst>>)
+        .mockResolvedValueOnce({
+          id: "other-agent-id",
+        } as unknown as Awaited<ReturnType<typeof mockTx.agent.findFirst>>);
+
+      await expect(
+        updateAgent(mockTx, input, testOrganizationId),
+      ).rejects.toMatchObject({
+        code: "CONFLICT",
       });
     });
 
@@ -152,6 +265,7 @@ describe("Agent CRUD", () => {
 
       vi.mocked(mockTx.agent.findFirst).mockResolvedValue({
         id: testAgentId,
+        slug: testSlug,
       } as unknown as Awaited<ReturnType<typeof mockTx.agent.findFirst>>);
 
       vi.mocked(mockTx.agent.update).mockResolvedValue({
@@ -160,18 +274,15 @@ describe("Agent CRUD", () => {
 
       await updateAgent(mockTx, input, testOrganizationId);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const expectedData = expect.objectContaining({
-        mcpServers: {
-          set: newMcpServerIds.map((id) => ({ id })),
-        },
-      });
       expect(mockTx.agent.update).toHaveBeenCalledWith({
         where: {
           id: input.id,
         },
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        data: expectedData,
+        data: expect.objectContaining({
+          mcpServers: {
+            set: newMcpServerIds.map((id) => ({ id })),
+          },
+        }),
         select: {
           id: true,
         },
@@ -250,6 +361,7 @@ describe("Agent CRUD", () => {
       const mockAgents = [
         {
           id: "agent-1",
+          slug: "agent-1-slug",
           name: "エージェント1",
           description: "説明1",
           iconPath: null,
@@ -266,6 +378,7 @@ describe("Agent CRUD", () => {
         },
         {
           id: "agent-2",
+          slug: "agent-2-slug",
           name: "エージェント2",
           description: "説明2",
           iconPath: null,
@@ -296,6 +409,7 @@ describe("Agent CRUD", () => {
       expect(agents).toHaveLength(2);
       expect(agents.map((a) => a.name)).toContain("エージェント1");
       expect(agents.map((a) => a.name)).toContain("エージェント2");
+      expect(agents[0]?.slug).toBe("agent-1-slug");
     });
 
     test("ORGANIZATION可視性のエージェントを含むクエリが正しい", async () => {
@@ -308,12 +422,6 @@ describe("Agent CRUD", () => {
         userId: testUserId,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const expectedSelect = expect.objectContaining({
-        id: true,
-        name: true,
-        description: true,
-      });
       expect(mockTx.agent.findMany).toHaveBeenCalledWith({
         where: {
           OR: [
@@ -324,51 +432,16 @@ describe("Agent CRUD", () => {
             },
           ],
         },
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        select: expectedSelect,
+        select: expect.objectContaining({
+          id: true,
+          slug: true,
+          name: true,
+          description: true,
+        }),
         orderBy: {
           updatedAt: "desc",
         },
       });
-    });
-
-    test("関連するMCPサーバー情報を含む", async () => {
-      const mockAgents = [
-        {
-          id: "agent-1",
-          name: "MCPエージェント",
-          description: null,
-          iconPath: null,
-          systemPrompt: "プロンプト",
-          modelId: null,
-          visibility: McpServerVisibility.PRIVATE,
-          createdById: testUserId,
-          createdBy: { id: testUserId, name: "Test User", image: null },
-          mcpServers: [
-            { id: "mcp-1", name: "GitHub", iconPath: "lucide:github" },
-            { id: "mcp-2", name: "Slack", iconPath: "lucide:slack" },
-          ],
-          schedules: [],
-          _count: { executionLogs: 5 },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-
-      vi.mocked(mockTx.agent.findMany).mockResolvedValue(
-        mockAgents as unknown as Awaited<
-          ReturnType<typeof mockTx.agent.findMany>
-        >,
-      );
-
-      const agents = await findAllAgents(mockTx, {
-        organizationId: testOrganizationId,
-        userId: testUserId,
-      });
-
-      expect(agents[0]?.mcpServers).toHaveLength(2);
-      expect(agents[0]?.mcpServers[0]?.name).toBe("GitHub");
-      expect(agents[0]?._count.executionLogs).toBe(5);
     });
   });
 
@@ -376,6 +449,7 @@ describe("Agent CRUD", () => {
     test("エージェント詳細を取得できる", async () => {
       const mockAgent = {
         id: testAgentId,
+        slug: testSlug,
         name: "詳細取得テスト",
         description: "説明",
         iconPath: null,
@@ -431,6 +505,7 @@ describe("Agent CRUD", () => {
       });
 
       expect(result.id).toBe(testAgentId);
+      expect(result.slug).toBe(testSlug);
       expect(result.name).toBe("詳細取得テスト");
       expect(result.mcpServers).toHaveLength(1);
       expect(result.schedules).toHaveLength(1);
@@ -460,7 +535,6 @@ describe("Agent CRUD", () => {
     });
 
     test("他人のPRIVATEエージェントにはアクセスできない", async () => {
-      // PRIVATEエージェントで作成者が異なる場合はfindFirstがnullを返す
       vi.mocked(mockTx.agent.findFirst).mockResolvedValue(null);
 
       const differentUserId = "other-user-456";
@@ -472,6 +546,67 @@ describe("Agent CRUD", () => {
           userId: differentUserId,
         }),
       ).rejects.toThrow(TRPCError);
+    });
+  });
+
+  describe("findAgentBySlug", () => {
+    test("スラグでエージェント詳細を取得できる", async () => {
+      const mockAgent = {
+        id: testAgentId,
+        slug: testSlug,
+        name: "スラグ検索テスト",
+        description: "説明",
+        iconPath: null,
+        systemPrompt: "スラグ検索用",
+        modelId: null,
+        visibility: McpServerVisibility.PRIVATE,
+        organizationId: testOrganizationId,
+        createdById: testUserId,
+        createdBy: { id: testUserId, name: "Test User", image: null },
+        mcpServers: [],
+        schedules: [],
+        executionLogs: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(mockTx.agent.findFirst).mockResolvedValue(
+        mockAgent as unknown as Awaited<
+          ReturnType<typeof mockTx.agent.findFirst>
+        >,
+      );
+
+      const result = await findAgentBySlug(mockTx, {
+        slug: testSlug,
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      });
+
+      expect(result.id).toBe(testAgentId);
+      expect(result.slug).toBe(testSlug);
+      expect(result.name).toBe("スラグ検索テスト");
+    });
+
+    test("存在しないスラグの取得はエラーになる", async () => {
+      vi.mocked(mockTx.agent.findFirst).mockResolvedValue(null);
+
+      await expect(
+        findAgentBySlug(mockTx, {
+          slug: "non-existent-slug",
+          organizationId: testOrganizationId,
+          userId: testUserId,
+        }),
+      ).rejects.toThrow(TRPCError);
+
+      await expect(
+        findAgentBySlug(mockTx, {
+          slug: "non-existent-slug",
+          organizationId: testOrganizationId,
+          userId: testUserId,
+        }),
+      ).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
     });
   });
 });

@@ -36,6 +36,17 @@ export const TIMEOUT_CONFIG = {
 } as const;
 
 /**
+ * エージェント実行関連の設定
+ */
+export const AGENT_EXECUTION_CONFIG = {
+  /**
+   * 孤立したエージェント実行のクリーンアップ間隔（ミリ秒）
+   * 本番環境でネットワークエラー等で実行中のまま残った実行を定期的にクリーンアップ
+   */
+  CLEANUP_INTERVAL_MS: 5 * 60 * 1000, // 5分
+} as const;
+
+/**
  * 認証関連のパターンと設定
  */
 export const AUTH_CONFIG = {

@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { Server } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getIconComponent } from "../../mcps/_components/McpIconPicker";
+import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 
 type ServerIconProps = {
   iconPath?: string | null;
@@ -23,48 +22,21 @@ export const ServerIcon = ({
 }: ServerIconProps) => {
   const sizeClass = size === "sm" ? "h-4 w-4" : "h-8 w-8";
   const iconSizeClass = size === "sm" ? "h-2.5 w-2.5" : "h-4 w-4";
-  const imageSizes = size === "sm" ? "16px" : "32px";
+  const iconSize = size === "sm" ? 16 : 32;
 
-  // lucide:* 形式のアイコンパス
-  if (iconPath?.startsWith("lucide:")) {
-    const iconName = iconPath.replace("lucide:", "");
-    const IconComponent = getIconComponent(iconName);
-
-    if (IconComponent) {
-      return (
-        <div
-          className={cn(
-            "flex items-center justify-center rounded-md border",
-            sizeClass,
-            fallbackColor === "blue" &&
-              "border-blue-200 bg-blue-500/10 text-blue-600",
-            fallbackColor === "purple" &&
-              "border-purple-200 bg-purple-500/10 text-purple-600",
-          )}
-        >
-          <IconComponent className={iconSizeClass} />
-        </div>
-      );
-    }
-  }
-
-  // URL形式のアイコンパス
-  if (iconPath && !iconPath.startsWith("lucide:")) {
+  // アイコンパスがある場合はMcpServerIconを使用
+  if (iconPath) {
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-md border",
+          "flex items-center justify-center overflow-hidden rounded-md border",
           size === "sm" && "rounded-sm",
           sizeClass,
+          fallbackColor === "blue" && "border-blue-200",
+          fallbackColor === "purple" && "border-purple-200",
         )}
       >
-        <Image
-          src={iconPath}
-          alt="Server icon"
-          fill
-          className="object-cover"
-          sizes={imageSizes}
-        />
+        <McpServerIcon iconPath={iconPath} alt="Server icon" size={iconSize} />
       </div>
     );
   }

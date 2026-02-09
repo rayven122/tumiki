@@ -10,7 +10,6 @@ import {
 } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
-import Image from "next/image";
 import { Upload, X, Bot } from "lucide-react";
 import { z } from "zod";
 
@@ -256,12 +255,10 @@ export const AgentIconEditModal = ({
           <div className="text-muted-foreground text-sm">プレビュー</div>
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed">
             {localPreviewUrl ? (
-              <Image
-                src={localPreviewUrl}
+              <McpServerIcon
+                iconPath={localPreviewUrl}
                 alt="プレビュー"
-                width={48}
-                height={48}
-                className="rounded-md object-cover"
+                size={48}
               />
             ) : selectedIconPath ? (
               <McpServerIcon iconPath={selectedIconPath} size={48} />
@@ -336,12 +333,10 @@ export const AgentIconEditModal = ({
               {/* 選択済み画像のプレビュー */}
               {pendingFile && localPreviewUrl && (
                 <div className="flex items-center gap-3 rounded-md border p-3">
-                  <Image
-                    src={localPreviewUrl}
+                  <McpServerIcon
+                    iconPath={localPreviewUrl}
                     alt="選択画像"
-                    width={40}
-                    height={40}
-                    className="rounded-md object-cover"
+                    size={40}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
@@ -373,12 +368,10 @@ export const AgentIconEditModal = ({
                 selectedIconPath &&
                 !selectedIconPath.startsWith("lucide:") && (
                   <div className="flex items-center gap-3 rounded-md border p-3">
-                    <Image
-                      src={selectedIconPath}
+                    <McpServerIcon
+                      iconPath={selectedIconPath}
                       alt="現在の画像"
-                      width={40}
-                      height={40}
-                      className="rounded-md object-cover"
+                      size={40}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">

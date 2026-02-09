@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import { Suspense } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 
 import { AgentCard } from "../AgentCard";
 
@@ -31,6 +31,9 @@ const matchesSearchQuery = (
   );
 };
 
+// ポーリング間隔（3秒）
+const POLLING_INTERVAL_MS = 3000;
+
 /**
  * エージェント一覧の非同期コンポーネント
  */
@@ -38,8 +41,30 @@ const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
   const [agents] = api.v2.agent.findAll.useSuspenseQuery();
   const utils = api.useUtils();
 
-  const filteredAgents = agents.filter((agent) =>
-    matchesSearchQuery(agent, searchQuery),
+  // 全エージェントの稼働中実行を取得（ポーリング）
+  const { data: runningExecutions } =
+    api.v2.agentExecution.getAllRunning.useQuery(undefined, {
+      refetchInterval: POLLING_INTERVAL_MS,
+    });
+
+  // agentId -> 稼働中の実行数のマップを作成
+  const runningCountByAgentId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const exec of runningExecutions ?? []) {
+      map.set(exec.agentId, (map.get(exec.agentId) ?? 0) + 1);
+    }
+    return map;
+  }, [runningExecutions]);
+
+  // 稼働中の実行数が変わったらエージェント一覧を再取得（実行数の更新のため）
+  const runningCount = runningExecutions?.length ?? 0;
+  useEffect(() => {
+    void utils.v2.agent.findAll.invalidate();
+  }, [runningCount, utils]);
+
+  const filteredAgents = useMemo(
+    () => agents.filter((agent) => matchesSearchQuery(agent, searchQuery)),
+    [agents, searchQuery],
   );
 
   // エージェントが存在しない場合
@@ -79,7 +104,12 @@ const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
   return (
     <div className={GRID_STYLES}>
       {filteredAgents.map((agent) => (
-        <AgentCard key={agent.id} agent={agent} revalidate={handleRevalidate} />
+        <AgentCard
+          key={agent.id}
+          agent={agent}
+          revalidate={handleRevalidate}
+          runningCount={runningCountByAgentId.get(agent.id) ?? 0}
+        />
       ))}
     </div>
   );

@@ -35,6 +35,7 @@
     "hono": "^4.11.7",
     "jose": "^6.1.2",
     "js-tiktoken": "^1.0.21",
+    "node-cron": "^4.2.1",
     "openid-client": "^6.3.3",
     "redis": "^5.10.0",
     "zod": "catalog:"
@@ -43,6 +44,7 @@
     "@tumiki/vitest-config": "workspace:*",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "catalog:",
+    "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "catalog:",
     "dotenv-cli": "^8.0.0",
     "eslint": "catalog:",

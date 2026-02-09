@@ -18,7 +18,7 @@ const normalizeToSlug = (name: string): string => {
     .replace(/^-+|-+$/g, "");
 };
 
-export type SlugType = "org" | "personalOrg" | "role";
+export type SlugType = "org" | "personalOrg" | "role" | "agent";
 
 const SLUG_TYPE_CONFIGS: Record<
   SlugType,
@@ -27,6 +27,7 @@ const SLUG_TYPE_CONFIGS: Record<
   org: { prefix: "", fallbackPrefix: "org" },
   personalOrg: { prefix: "@", fallbackPrefix: "user" },
   role: { prefix: "", fallbackPrefix: "role" },
+  agent: { prefix: "", fallbackPrefix: "agent" },
 };
 
 /** 文字列をslug形式に正規化 */
@@ -66,6 +67,38 @@ export const generateUniqueSlug = async (
   }
 
   throw new Error("Failed to generate unique slug after multiple attempts");
+};
+
+/**
+ * エージェント用のユニークなスラッグを生成（組織内でユニーク）
+ */
+export const generateUniqueAgentSlug = async (
+  db: PrismaTransactionClient,
+  baseName: string,
+  organizationId: string,
+): Promise<string> => {
+  const baseSlug = generateBaseSlug(baseName, "agent");
+  let slug = baseSlug;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (attempts < maxAttempts) {
+    const existing = await db.agent.findFirst({
+      where: { slug, organizationId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return slug;
+    }
+
+    slug = `${baseSlug}-${nanoid()}`;
+    attempts++;
+  }
+
+  throw new Error(
+    "Failed to generate unique agent slug after multiple attempts",
+  );
 };
 
 /** カスタムスラッグの検証と利用可能性チェック */

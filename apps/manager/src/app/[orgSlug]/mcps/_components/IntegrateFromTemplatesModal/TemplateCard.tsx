@@ -1,10 +1,9 @@
 "use client";
 
-import { Wrench, X, Plus, Server } from "lucide-react";
-import Image from "next/image";
+import { Wrench, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FaviconImage } from "@/components/ui/FaviconImage";
 import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
+import { McpServerIcon } from "../McpServerIcon";
 import type { SelectableTemplate } from "./types";
 
 type TemplateCardProps = {
@@ -27,9 +26,6 @@ export const TemplateCard = ({
     onDragStart?.(event);
   };
 
-  // デフォルトアイコン
-  const defaultIcon = <Server className="h-5 w-5 text-gray-500" />;
-
   return (
     <div
       onPointerDown={handlePointerDown}
@@ -42,23 +38,12 @@ export const TemplateCard = ({
       )}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-        {template.iconPath ? (
-          <Image
-            src={template.iconPath}
-            alt={template.name}
-            width={32}
-            height={32}
-            className="rounded"
-          />
-        ) : (
-          <FaviconImage
-            url={template.url}
-            alt={template.name}
-            size={32}
-            fallback={defaultIcon}
-            className="rounded"
-          />
-        )}
+        <McpServerIcon
+          iconPath={template.iconPath}
+          fallbackUrl={template.url}
+          alt={template.name}
+          size={32}
+        />
       </div>
 
       <div className="min-w-0 flex-1">

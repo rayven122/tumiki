@@ -6,8 +6,6 @@ import { McpServerVisibility } from "@tumiki/db/prisma";
  * エージェント作成フローの状態型
  */
 export type AgentFlowState = {
-  // 現在のステップ番号 (1-3)
-  currentStep: number;
   // 基本情報
   name: string;
   systemPrompt: string;
@@ -21,7 +19,6 @@ export type AgentFlowState = {
 
 // 初期状態
 const initialState: AgentFlowState = {
-  currentStep: 1,
   name: "",
   systemPrompt: "",
   modelId: "",
@@ -41,14 +38,6 @@ export const useAgentFlow = () => {
 
   const updateFlowState = useCallback(
     (updates: Partial<AgentFlowState>) => {
-      // currentStepのバリデーション
-      if (
-        updates.currentStep !== undefined &&
-        (updates.currentStep < 1 || updates.currentStep > 3)
-      ) {
-        console.warn("Invalid step number:", updates.currentStep);
-        return;
-      }
       setFlowState((prev) => ({ ...prev, ...updates }));
     },
     [setFlowState],
@@ -58,38 +47,9 @@ export const useAgentFlow = () => {
     setFlowState(initialState);
   }, [setFlowState]);
 
-  const goToStep = useCallback(
-    (step: number) => {
-      if (step >= 1 && step <= 3) {
-        setFlowState((prev) => ({ ...prev, currentStep: step }));
-      }
-    },
-    [setFlowState],
-  );
-
-  const nextStep = useCallback(() => {
-    setFlowState((prev) => {
-      if (prev.currentStep < 3) {
-        return { ...prev, currentStep: prev.currentStep + 1 };
-      }
-      return prev;
-    });
-  }, [setFlowState]);
-
-  const prevStep = useCallback(() => {
-    setFlowState((prev) => {
-      if (prev.currentStep > 1) {
-        return { ...prev, currentStep: prev.currentStep - 1 };
-      }
-      return prev;
-    });
-  }, [setFlowState]);
-
-  // 基本情報が入力されているか（ステップ1のバリデーション、作成可否にも使用）
+  // 基本情報が入力されているか（作成可否の判定に使用）
   const isBasicInfoValid = useMemo(
-    () =>
-      flowState.name.trim().length > 0 &&
-      flowState.systemPrompt.trim().length > 0,
+    () => flowState.name.trim() !== "" && flowState.systemPrompt.trim() !== "",
     [flowState.name, flowState.systemPrompt],
   );
 
@@ -97,9 +57,6 @@ export const useAgentFlow = () => {
     flowState,
     updateFlowState,
     resetFlowState,
-    goToStep,
-    nextStep,
-    prevStep,
     isBasicInfoValid,
   };
 };

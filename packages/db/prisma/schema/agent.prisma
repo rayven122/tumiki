@@ -19,6 +19,8 @@ enum ScheduleStatus {
 /// @namespace Agent
 model Agent {
   id           String              @id @default(cuid())
+  /// エージェントの組織内スラグ（URL識別子）
+  slug         String
   /// エージェント名
   name         String
   /// エージェントの説明
@@ -31,6 +33,8 @@ model Agent {
   modelId      String?
   /// 可視性（共有設定）
   visibility   McpServerVisibility @default(PRIVATE)
+  /// 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
+  estimatedDurationMs Int @default(30000)
 
   /// 組織ID
   organizationId String
@@ -46,9 +50,14 @@ model Agent {
   schedules AgentSchedule[]
   /// バッチ実行履歴
   executionLogs AgentExecutionLog[]
+  /// エージェント実行時のチャット履歴
+  chats Chat[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// 組織内でスラグはユニーク
+  @@unique([organizationId, slug])
 }
 
 /// スケジュール設定（定期バッチ用）
@@ -74,7 +83,7 @@ model AgentSchedule {
   updatedAt DateTime @updatedAt
 }
 
-/// バッチ実行履歴（メタデータのみ、詳細はBigQueryに保存）
+/// バッチ実行履歴（メタデータのみ、詳細はChatに保存）
 /// @namespace Agent
 model AgentExecutionLog {
   id      String @id @default(cuid())
@@ -85,8 +94,15 @@ model AgentExecutionLog {
   scheduleId String?
   schedule   AgentSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
-  /// 成功したかどうか
-  success Boolean
+  /// チャットID（実行詳細はChatのMessagesに保存）
+  chatId String? @unique
+  chat   Chat?   @relation(fields: [chatId], references: [id], onDelete: SetNull)
+
+  /// 使用したLLMモデルID（例: "anthropic/claude-3.5-haiku"）
+  modelId String?
+
+  /// 成功したかどうか（null = 実行中）
+  success Boolean?
   /// 実行時間（ミリ秒）
   durationMs Int?
 
