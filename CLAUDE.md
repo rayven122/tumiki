@@ -551,11 +551,11 @@ Tumikiは、オープンソースのCommunity Edition（CE）と商用のEnterpr
 
 ### 環境変数
 
-| 変数名                            | 説明                                    | デフォルト |
-| --------------------------------- | --------------------------------------- | ---------- |
-| `NEXT_PUBLIC_EE_BUILD`            | EE版ビルドを有効化（ビルド時判定）      | `false`    |
-| `NEXT_PUBLIC_ENABLE_ORG_CREATION` | 組織作成機能を有効化（EE版のみ）        | `false`    |
-| `EE_BUILD`                        | EE版テストを有効化（テスト時のみ使用）  | `false`    |
+| 変数名                            | 説明                                   | デフォルト |
+| --------------------------------- | -------------------------------------- | ---------- |
+| `NEXT_PUBLIC_EE_BUILD`            | EE版ビルドを有効化（ビルド時判定）     | `false`    |
+| `NEXT_PUBLIC_ENABLE_ORG_CREATION` | 組織作成機能を有効化（EE版のみ）       | `false`    |
+| `EE_BUILD`                        | EE版テストを有効化（テスト時のみ使用） | `false`    |
 
 ### Facadeパターン
 
@@ -616,6 +616,18 @@ CE版ビルドでは `tsconfig.ce.json` を使用してEEファイルを除外�
   "exclude": ["src/**/*.ee.ts", "src/**/*.ee.test.ts"]
 }
 ```
+
+### ビルドコマンド（manager）
+
+```bash
+# CE版ビルド（webpack使用、.ee.tsファイルを除外）
+cd apps/manager && pnpm build:ce
+
+# EE版ビルド（turbopack使用、全ファイルを含む）
+cd apps/manager && pnpm build:ee
+```
+
+**詳細ガイド**: `.claude/skills/tumiki-ee-ce-separation/SKILL.md` を参照
 
 ## 実装後の必須アクション
 
