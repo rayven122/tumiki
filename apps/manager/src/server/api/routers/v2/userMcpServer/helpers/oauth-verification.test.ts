@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { TransportType } from "@tumiki/db/prisma";
+import { TransportType, ServerStatus } from "@tumiki/db/prisma";
 import {
   verifyOAuthState,
   getMcpServerAndOAuthClient,
@@ -122,6 +122,7 @@ describe("getMcpServerAndOAuthClient", () => {
         id: mockMcpServerId,
         name: "Test MCP Server",
         organizationId: mockOrganizationId,
+        serverStatus: ServerStatus.PENDING,
       },
       mcpServerTemplate: {
         id: "template_123",
@@ -167,6 +168,7 @@ describe("getMcpServerAndOAuthClient", () => {
         name: "Test MCP Server",
         templateUrl: "https://example.com/mcp",
         transportType: TransportType.STREAMABLE_HTTPS,
+        serverStatus: ServerStatus.PENDING,
       },
       mcpServerTemplateId: "template_123",
       mcpServerTemplateInstanceId: mockMcpServerTemplateInstanceId,

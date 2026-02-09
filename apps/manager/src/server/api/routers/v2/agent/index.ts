@@ -193,12 +193,12 @@ export const agentRouter = createTRPCRouter({
         throw new Error("エージェントが見つかりません");
       }
 
-      const updated = await ctx.db.agent.update({
+      await ctx.db.agent.update({
         where: { id: input.id },
         data: { iconPath: input.iconPath },
-        select: { id: true },
       });
 
-      return { id: updated.id as typeof input.id };
+      // 入力で検証済みのIDをそのまま返す
+      return { id: input.id };
     }),
 });
