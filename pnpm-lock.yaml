@@ -7,8 +7,8 @@ settings:
 catalogs:
   default:
     '@tanstack/react-query':
-      specifier: ^5.69.0
-      version: 5.84.1
+      specifier: ^5.90.20
+      version: 5.90.20
     '@types/node':
       specifier: ^22.15.3
       version: 22.19.1
@@ -202,7 +202,7 @@ importers:
         version: 0.12.0(typescript@5.9.2)(zod@4.1.13)
       '@tanstack/react-query':
         specifier: 'catalog:'
-        version: 5.84.1(react@19.2.0)
+        version: 5.90.20(react@19.2.0)
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -211,13 +211,13 @@ importers:
         version: 11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2)
       '@trpc/react-query':
         specifier: 11.8.0
-        version: 11.8.0(@tanstack/react-query@5.84.1(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
+        version: 11.8.0(@tanstack/react-query@5.90.20(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       '@trpc/server':
         specifier: 11.8.0
         version: 11.8.0(typescript@5.9.2)
       '@trpc/tanstack-react-query':
         specifier: 11.8.0
-        version: 11.8.0(@tanstack/react-query@5.84.1(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
+        version: 11.8.0(@tanstack/react-query@5.90.20(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       '@tumiki/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -4593,11 +4593,11 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders || >=4.0.0-alpha.20 || >=4.0.0-beta.1'
 
-  '@tanstack/query-core@5.83.1':
-    resolution: {integrity: sha512-OG69LQgT7jSp+5pPuCfzltq/+7l2xoweggjme9vlbCPa/d7D7zaqv5vN/S82SzSYZ4EDLTxNO1PWrv49RAS64Q==}
+  '@tanstack/query-core@5.90.20':
+    resolution: {integrity: sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==}
 
-  '@tanstack/react-query@5.84.1':
-    resolution: {integrity: sha512-zo7EUygcWJMQfFNWDSG7CBhy8irje/XY0RDVKKV4IQJAysb+ZJkkJPcnQi+KboyGUgT+SQebRFoTqLuTtfoDLw==}
+  '@tanstack/react-query@5.90.20':
+    resolution: {integrity: sha512-vXBxa+qeyveVO7OA0jX1z+DeyCA4JKnThKv411jd5SORpBKgkcVnYKCiBgECvADvniBX7tobwBmg01qq9JmMJw==}
     peerDependencies:
       react: ^18 || ^19
 
@@ -5256,7 +5256,7 @@ packages:
   '@vercel/postgres@0.10.0':
     resolution: {integrity: sha512-fSD23DxGND40IzSkXjcFcxr53t3Tiym59Is0jSYIFpG4/0f0KO9SGtcp1sXiebvPaGe7N/tU05cH4yt2S6/IPg==}
     engines: {node: '>=18.14'}
-    deprecated: '@vercel/postgres is deprecated. You can either choose an alternate storage solution from the Vercel Marketplace if you want to set up a new database. Or you can follow this guide to migrate your existing Vercel Postgres db: https://neon.com/docs/guides/vercel-postgres-transition-guide'
+    deprecated: '@vercel/postgres is deprecated. If you are setting up a new database, you can choose an alternate storage solution from the Vercel Marketplace. If you had an existing Vercel Postgres database, it should have been migrated to Neon as a native Vercel integration. You can find more details and the guide to migrate to Neon''s SDKs here: https://neon.com/docs/guides/vercel-postgres-transition-guide'
 
   '@vercel/python@6.4.2':
     resolution: {integrity: sha512-sFQZnhAXA3PNKfSgbnpy/eL3wybsp/Et03VvB+mgLmAus9ENSmMu7Kqr6gb2CT2PHMa+Bz8mhlRuAiuu2PRKtA==}
@@ -14791,11 +14791,11 @@ snapshots:
       postcss-selector-parser: 6.0.10
       tailwindcss: 4.1.18
 
-  '@tanstack/query-core@5.83.1': {}
+  '@tanstack/query-core@5.90.20': {}
 
-  '@tanstack/react-query@5.84.1(react@19.2.0)':
+  '@tanstack/react-query@5.90.20(react@19.2.0)':
     dependencies:
-      '@tanstack/query-core': 5.83.1
+      '@tanstack/query-core': 5.90.20
       react: 19.2.0
 
   '@tanstack/react-table@8.21.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
@@ -14849,9 +14849,9 @@ snapshots:
       '@trpc/server': 11.8.0(typescript@5.9.2)
       typescript: 5.9.2
 
-  '@trpc/react-query@11.8.0(@tanstack/react-query@5.84.1(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)':
+  '@trpc/react-query@11.8.0(@tanstack/react-query@5.90.20(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)':
     dependencies:
-      '@tanstack/react-query': 5.84.1(react@19.2.0)
+      '@tanstack/react-query': 5.90.20(react@19.2.0)
       '@trpc/client': 11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2)
       '@trpc/server': 11.8.0(typescript@5.9.2)
       react: 19.2.0
@@ -14862,9 +14862,9 @@ snapshots:
     dependencies:
       typescript: 5.9.2
 
-  '@trpc/tanstack-react-query@11.8.0(@tanstack/react-query@5.84.1(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)':
+  '@trpc/tanstack-react-query@11.8.0(@tanstack/react-query@5.90.20(react@19.2.0))(@trpc/client@11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2))(@trpc/server@11.8.0(typescript@5.9.2))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)':
     dependencies:
-      '@tanstack/react-query': 5.84.1(react@19.2.0)
+      '@tanstack/react-query': 5.90.20(react@19.2.0)
       '@trpc/client': 11.8.0(@trpc/server@11.8.0(typescript@5.9.2))(typescript@5.9.2)
       '@trpc/server': 11.8.0(typescript@5.9.2)
       react: 19.2.0
