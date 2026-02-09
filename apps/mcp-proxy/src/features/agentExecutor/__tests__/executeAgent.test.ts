@@ -31,12 +31,14 @@ const mockExecutionLogUpdateTx = vi.hoisted(() => vi.fn());
 
 // ログ更新用モック（新しい実装用）
 const mockExecutionLogUpdate = vi.hoisted(() => vi.fn());
+const mockAgentUpdate = vi.hoisted(() => vi.fn());
 
 // @tumiki/db/serverモジュールをモック
 vi.mock("@tumiki/db/server", () => ({
   db: {
     agent: {
       findUnique: mockAgentFindUnique,
+      update: mockAgentUpdate,
     },
     agentExecutionLog: {
       create: mockExecutionLogCreate,
