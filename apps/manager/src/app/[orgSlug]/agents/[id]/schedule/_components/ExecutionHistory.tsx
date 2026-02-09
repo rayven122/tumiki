@@ -1,6 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { format } from "date-fns";
@@ -9,6 +18,13 @@ import type { AgentId } from "@/schema/ids";
 
 type ExecutionHistoryProps = {
   agentId: AgentId;
+};
+
+// 実行時間のフォーマット
+const formatDuration = (durationMs: number | null): string => {
+  if (durationMs === null) return "-";
+  if (durationMs < 1000) return `${durationMs}ms`;
+  return `${(durationMs / 1000).toFixed(1)}秒`;
 };
 
 export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
@@ -44,41 +60,49 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        {allItems.map((execution) => (
-          <div
-            key={execution.id}
-            className="flex items-center justify-between rounded-lg border p-3"
-          >
-            <div className="flex items-center gap-3">
-              {execution.success ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-500" />
-              )}
-              <div>
-                <div className="text-sm font-medium">
-                  {execution.scheduleName ?? "手動実行"}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {format(
-                    new Date(execution.createdAt),
-                    "yyyy/MM/dd HH:mm:ss",
-                    {
-                      locale: ja,
-                    },
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="text-sm text-gray-500">
-              {execution.durationMs
-                ? `${(execution.durationMs / 1000).toFixed(1)}秒`
-                : "-"}
-            </div>
-          </div>
-        ))}
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>スケジュール名</TableHead>
+            <TableHead>実行日時</TableHead>
+            <TableHead>ステータス</TableHead>
+            <TableHead className="text-right">実行時間</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {allItems.map((execution) => (
+            <TableRow key={execution.id}>
+              <TableCell className="font-medium">
+                {execution.scheduleName ?? "手動実行"}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {format(new Date(execution.createdAt), "yyyy/MM/dd HH:mm:ss", {
+                  locale: ja,
+                })}
+              </TableCell>
+              <TableCell>
+                {execution.success ? (
+                  <Badge
+                    variant="default"
+                    className="bg-green-100 text-green-700 hover:bg-green-100"
+                  >
+                    <CheckCircle className="mr-1 h-3 w-3" />
+                    成功
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive">
+                    <XCircle className="mr-1 h-3 w-3" />
+                    失敗
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-right">
+                {formatDuration(execution.durationMs)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       {hasNextPage && (
         <div className="flex justify-center pt-2">
