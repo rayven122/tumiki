@@ -41,6 +41,14 @@ export const useAgentFlow = () => {
 
   const updateFlowState = useCallback(
     (updates: Partial<AgentFlowState>) => {
+      // currentStepのバリデーション
+      if (
+        updates.currentStep !== undefined &&
+        (updates.currentStep < 1 || updates.currentStep > 3)
+      ) {
+        console.warn("Invalid step number:", updates.currentStep);
+        return;
+      }
       setFlowState((prev) => ({ ...prev, ...updates }));
     },
     [setFlowState],

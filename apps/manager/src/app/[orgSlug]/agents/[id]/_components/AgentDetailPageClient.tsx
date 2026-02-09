@@ -323,8 +323,9 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
   );
 };
 
-// 統計カードの数
-const STATS_CARD_COUNT = 3;
+// 統計カードの定義から数を自動計算
+const STATS_CARDS = ["mcpServers", "schedules", "executionLogs"] as const;
+const STATS_CARD_COUNT = STATS_CARDS.length;
 
 /**
  * スケルトンローダー
