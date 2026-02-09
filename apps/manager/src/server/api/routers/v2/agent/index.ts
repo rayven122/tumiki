@@ -47,6 +47,17 @@ export const DeleteAgentInputSchema = z.object({
   id: AgentIdSchema,
 });
 
+// アイコンパス更新の入力スキーマ
+export const UpdateIconPathInputSchema = z.object({
+  id: AgentIdSchema,
+  iconPath: z.string().nullable(),
+});
+
+// アイコンパス更新の出力スキーマ
+export const UpdateIconPathOutputSchema = z.object({
+  id: AgentIdSchema,
+});
+
 // エージェント削除の出力スキーマ
 export const DeleteAgentOutputSchema = z.object({
   id: AgentIdSchema,
@@ -163,5 +174,31 @@ export const agentRouter = createTRPCRouter({
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });
+    }),
+
+  // アイコンパス更新
+  updateIconPath: protectedProcedure
+    .input(UpdateIconPathInputSchema)
+    .output(UpdateIconPathOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const agent = await ctx.db.agent.findFirst({
+        where: {
+          id: input.id,
+          organizationId: ctx.currentOrg.id,
+        },
+        select: { id: true },
+      });
+
+      if (!agent) {
+        throw new Error("エージェントが見つかりません");
+      }
+
+      const updated = await ctx.db.agent.update({
+        where: { id: input.id },
+        data: { iconPath: input.iconPath },
+        select: { id: true },
+      });
+
+      return { id: updated.id as typeof input.id };
     }),
 });

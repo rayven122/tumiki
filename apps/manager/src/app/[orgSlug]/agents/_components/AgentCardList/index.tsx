@@ -1,7 +1,6 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import { type McpServerVisibility } from "@tumiki/db/prisma";
 import { Suspense } from "react";
 
 import { AgentCard } from "../AgentCard";
@@ -16,7 +15,6 @@ const EMPTY_CONTAINER_STYLES =
 
 type AgentCardListProps = {
   searchQuery: string;
-  selectedVisibility: McpServerVisibility | "ALL";
 };
 
 /**
@@ -36,19 +34,13 @@ const matchesSearchQuery = (
 /**
  * エージェント一覧の非同期コンポーネント
  */
-const AsyncAgentCardList = ({
-  searchQuery,
-  selectedVisibility,
-}: AgentCardListProps) => {
+const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
   const [agents] = api.v2.agent.findAll.useSuspenseQuery();
   const utils = api.useUtils();
 
-  const filteredAgents = agents.filter((agent) => {
-    const matchesSearch = matchesSearchQuery(agent, searchQuery);
-    const matchesVisibility =
-      selectedVisibility === "ALL" || agent.visibility === selectedVisibility;
-    return matchesSearch && matchesVisibility;
-  });
+  const filteredAgents = agents.filter((agent) =>
+    matchesSearchQuery(agent, searchQuery),
+  );
 
   // エージェントが存在しない場合
   if (agents.length === 0) {
@@ -74,7 +66,7 @@ const AsyncAgentCardList = ({
           該当するエージェントが見つかりません
         </h3>
         <p className="mb-4 text-center text-sm text-gray-600">
-          検索条件や公開範囲を変更してみてください
+          検索条件を変更してみてください
         </p>
       </div>
     );
@@ -110,14 +102,8 @@ const AgentCardListSkeleton = () => (
 /**
  * エージェントカード一覧コンポーネント
  */
-export const AgentCardList = ({
-  searchQuery,
-  selectedVisibility,
-}: AgentCardListProps) => (
+export const AgentCardList = ({ searchQuery }: AgentCardListProps) => (
   <Suspense fallback={<AgentCardListSkeleton />}>
-    <AsyncAgentCardList
-      searchQuery={searchQuery}
-      selectedVisibility={selectedVisibility}
-    />
+    <AsyncAgentCardList searchQuery={searchQuery} />
   </Suspense>
 );

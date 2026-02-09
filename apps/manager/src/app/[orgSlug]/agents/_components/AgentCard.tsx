@@ -25,9 +25,9 @@ import {
   Calendar,
   Edit2,
   ExternalLink,
+  ImageIcon,
   Lock,
   type LucideIcon,
-  MessageSquare,
   MoreHorizontal,
   Server,
   Trash2Icon,
@@ -38,6 +38,8 @@ import { useState } from "react";
 
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
+import { AgentIconEditModal } from "./AgentIconEditModal";
+import type { AgentId } from "@/schema/ids";
 
 type Agent = RouterOutputs["v2"]["agent"]["findAll"][number];
 
@@ -83,6 +85,7 @@ export const AgentCard = ({ agent, revalidate }: AgentCardProps) => {
   const orgSlug = params.orgSlug;
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [iconEditModalOpen, setIconEditModalOpen] = useState(false);
 
   const mcpServerCount = agent.mcpServers.length;
   const scheduleCount = agent.schedules.length;
@@ -145,11 +148,14 @@ export const AgentCard = ({ agent, revalidate }: AgentCardProps) => {
                   詳細を見る
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/${orgSlug}/agents/${agent.id}/chat`}>
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  チャットで実行
-                </Link>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIconEditModalOpen(true);
+                }}
+              >
+                <ImageIcon className="mr-2 h-4 w-4" />
+                アイコンを変更
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={`/${orgSlug}/agents/${agent.id}/edit`}>
@@ -273,6 +279,19 @@ export const AgentCard = ({ agent, revalidate }: AgentCardProps) => {
           onSuccess={async () => {
             await revalidate?.();
             setDeleteModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* アイコン編集モーダル */}
+      {iconEditModalOpen && (
+        <AgentIconEditModal
+          agentId={agent.id as AgentId}
+          initialIconPath={agent.iconPath}
+          orgSlug={orgSlug}
+          onOpenChange={setIconEditModalOpen}
+          onSuccess={async () => {
+            await revalidate?.();
           }}
         />
       )}

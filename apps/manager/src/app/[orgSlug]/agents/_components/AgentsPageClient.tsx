@@ -1,10 +1,8 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/trpc/react";
-import { McpServerVisibility } from "@tumiki/db/prisma";
 import { Bot, Plus, Search } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -18,21 +16,6 @@ type AgentsPageClientProps = {
   orgSlug: string;
 };
 
-// 可視性フィルターの選択肢
-const VISIBILITY_OPTIONS = [
-  { value: "ALL" as const, label: "すべて" },
-  { value: McpServerVisibility.PRIVATE, label: "自分のみ" },
-  { value: McpServerVisibility.ORGANIZATION, label: "組織内" },
-] as const;
-
-// 可視性から表示ラベルを取得するマップ
-const VISIBILITY_LABEL_MAP: Record<McpServerVisibility | "ALL", string> = {
-  ALL: "すべて",
-  [McpServerVisibility.PRIVATE]: "自分のみ",
-  [McpServerVisibility.ORGANIZATION]: "組織内",
-  [McpServerVisibility.PUBLIC]: "公開",
-};
-
 /**
  * エージェント一覧ページのクライアントコンポーネント
  */
@@ -41,19 +24,15 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
   const isAdmin = getSessionInfo(session).isAdmin;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedVisibility, setSelectedVisibility] = useState<
-    McpServerVisibility | "ALL"
-  >("ALL");
 
   const { data: agents } = api.v2.agent.findAll.useQuery();
   const agentCount = agents?.length ?? 0;
 
-  const clearAllFilters = () => {
+  const clearSearchQuery = () => {
     setSearchQuery("");
-    setSelectedVisibility("ALL");
   };
 
-  const hasActiveFilters = searchQuery || selectedVisibility !== "ALL";
+  const hasActiveFilters = searchQuery.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -73,67 +52,28 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
         )}
       </div>
 
-      {/* フィルタリングUI */}
+      {/* 検索バー */}
       {agentCount > 0 && (
-        <div className="mb-6 space-y-4">
-          {/* 検索バー */}
-          <div className="relative">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="エージェントを検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        <div className="mb-6">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="エージェントを検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {hasActiveFilters && (
+              <button
+                onClick={clearSearchQuery}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                クリア
+              </button>
+            )}
           </div>
-
-          {/* 可視性フィルター */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-700">
-                公開範囲で絞り込み
-              </h3>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearAllFilters}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  フィルターをクリア
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {VISIBILITY_OPTIONS.map((option) => {
-                const isSelected = selectedVisibility === option.value;
-                return (
-                  <Badge
-                    key={option.value}
-                    variant={isSelected ? "default" : "outline"}
-                    className={
-                      isSelected
-                        ? "cursor-pointer bg-purple-600 text-white transition-colors hover:bg-purple-700"
-                        : "cursor-pointer transition-colors hover:border-purple-300 hover:bg-purple-50"
-                    }
-                    onClick={() => setSelectedVisibility(option.value)}
-                  >
-                    {option.label}
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 選択されたフィルター表示 */}
-          {hasActiveFilters && (
-            <div className="text-sm text-gray-600">
-              {searchQuery && <span>検索: &quot;{searchQuery}&quot; </span>}
-              {selectedVisibility !== "ALL" && (
-                <span>
-                  公開範囲: {VISIBILITY_LABEL_MAP[selectedVisibility]}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -142,10 +82,7 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
         {agentCount === 0 ? (
           <EmptyState isAdmin={isAdmin} orgSlug={orgSlug} />
         ) : (
-          <AgentCardList
-            searchQuery={searchQuery}
-            selectedVisibility={selectedVisibility}
-          />
+          <AgentCardList searchQuery={searchQuery} />
         )}
       </div>
     </div>
