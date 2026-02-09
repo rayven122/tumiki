@@ -18,10 +18,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Clock, Globe } from "lucide-react";
+import { Loader2, Clock, Globe, Timer, CalendarClock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { AgentId } from "@/schema/ids";
+import {
+  type ScheduleType,
+  type FrequencyValue,
+  type IntervalValue,
+  FREQUENCY_OPTIONS,
+  INTERVAL_OPTIONS,
+  HOUR_OPTIONS,
+  MINUTE_OPTIONS,
+  formatTime,
+  getClientTimezone,
+  parseCronExpression,
+  buildFixedCronExpression,
+  buildIntervalCronExpression,
+  getFrequencyLabel,
+  getIntervalLabel,
+  getJstPreview,
+} from "./cronUtils";
 
 type ScheduleFormProps = {
   agentId: AgentId;
@@ -36,104 +53,6 @@ type ScheduleFormProps = {
   };
 };
 
-const FREQUENCY_OPTIONS = [
-  { label: "毎日", value: "daily", cron: "* * *" },
-  { label: "平日（月〜金）", value: "weekdays", cron: "* * 1-5" },
-  { label: "土日", value: "weekends", cron: "* * 0,6" },
-  { label: "毎週月曜", value: "monday", cron: "* * 1" },
-  { label: "毎週金曜", value: "friday", cron: "* * 5" },
-  { label: "毎月1日", value: "monthly", cron: "1 * *" },
-] as const;
-
-type FrequencyValue = (typeof FREQUENCY_OPTIONS)[number]["value"];
-
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
-  label: `${i.toString().padStart(2, "0")}時`,
-  value: i.toString(),
-}));
-
-const MINUTE_OPTIONS = [
-  { label: "00分", value: "0" },
-  { label: "15分", value: "15" },
-  { label: "30分", value: "30" },
-  { label: "45分", value: "45" },
-];
-
-const padTime = (value: string): string => value.padStart(2, "0");
-
-const formatTime = (hour: string, minute: string): string =>
-  `${padTime(hour)}:${padTime(minute)}`;
-
-const getClientTimezone = (): string => {
-  if (typeof window === "undefined") return "Asia/Tokyo";
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch {
-    return "Asia/Tokyo";
-  }
-};
-
-const parseCronExpression = (
-  cron: string,
-): { frequency: FrequencyValue; hour: string; minute: string } => {
-  const parts = cron.split(" ");
-  if (parts.length !== 5) {
-    return { frequency: "daily", hour: "9", minute: "0" };
-  }
-
-  const [minute, hour, day, , dayOfWeek] = parts;
-  const cronSuffix = `${day} * ${dayOfWeek}`;
-
-  const matchedOption = FREQUENCY_OPTIONS.find(
-    (opt) => opt.cron === cronSuffix,
-  );
-  const frequency = matchedOption?.value ?? "daily";
-
-  return {
-    frequency,
-    hour: hour ?? "9",
-    minute: minute ?? "0",
-  };
-};
-
-const buildCronExpression = (
-  frequency: FrequencyValue,
-  hour: string,
-  minute: string,
-): string => {
-  const frequencyOption = FREQUENCY_OPTIONS.find((f) => f.value === frequency);
-  const cronSuffix = frequencyOption?.cron ?? "* * *";
-  return `${minute} ${hour} ${cronSuffix}`;
-};
-
-const getJstPreview = (
-  hour: string,
-  minute: string,
-  clientTimezone: string,
-): string => {
-  const fallback = formatTime(hour, minute);
-  if (clientTimezone === "Asia/Tokyo") {
-    return fallback;
-  }
-
-  try {
-    const now = new Date();
-    now.setHours(Number(hour), Number(minute), 0, 0);
-
-    return now.toLocaleTimeString("ja-JP", {
-      timeZone: "Asia/Tokyo",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  } catch {
-    return fallback;
-  }
-};
-
-const getFrequencyLabel = (frequency: FrequencyValue): string =>
-  FREQUENCY_OPTIONS.find((f) => f.value === frequency)?.label ?? "毎日";
-
 export const ScheduleForm = ({
   agentId,
   isOpen,
@@ -142,24 +61,32 @@ export const ScheduleForm = ({
   initialData,
 }: ScheduleFormProps) => {
   const [name, setName] = useState("");
+  const [scheduleType, setScheduleType] = useState<ScheduleType>("fixed");
   const [frequency, setFrequency] = useState<FrequencyValue>("daily");
+  const [interval, setInterval] = useState<IntervalValue>("1hour");
   const [hour, setHour] = useState("9");
   const [minute, setMinute] = useState("0");
 
   const clientTimezone = useMemo(() => getClientTimezone(), []);
-
   const utils = api.useUtils();
 
   useEffect(() => {
     if (editMode && initialData) {
       setName(initialData.name);
       const parsed = parseCronExpression(initialData.cronExpression);
-      setFrequency(parsed.frequency);
-      setHour(parsed.hour);
-      setMinute(parsed.minute);
+      setScheduleType(parsed.type);
+      if (parsed.type === "fixed") {
+        setFrequency(parsed.frequency ?? "daily");
+        setHour(parsed.hour);
+        setMinute(parsed.minute);
+      } else {
+        setInterval(parsed.interval ?? "1hour");
+      }
     } else {
       setName("");
+      setScheduleType("fixed");
       setFrequency("daily");
+      setInterval("1hour");
       setHour("9");
       setMinute("0");
     }
@@ -198,7 +125,10 @@ export const ScheduleForm = ({
       return;
     }
 
-    const cronExpression = buildCronExpression(frequency, hour, minute);
+    const cronExpression =
+      scheduleType === "fixed"
+        ? buildFixedCronExpression(frequency, hour, minute)
+        : buildIntervalCronExpression(interval);
 
     if (editMode && initialData) {
       updateMutation.mutate({
@@ -243,50 +173,105 @@ export const ScheduleForm = ({
           </div>
 
           <div className="space-y-2">
-            <Label>
-              実行頻度 <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={frequency}
-              onValueChange={(v) => setFrequency(v as FrequencyValue)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FREQUENCY_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>スケジュール種別</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setScheduleType("fixed")}
+                className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
+                  scheduleType === "fixed"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                <CalendarClock className="h-4 w-4" />
+                定時実行
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleType("interval")}
+                className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
+                  scheduleType === "interval"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                <Timer className="h-4 w-4" />
+                インターバル
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>
-              実行時刻 <span className="text-red-500">*</span>
-            </Label>
-            <div className="flex items-center gap-2">
-              <Select value={hour} onValueChange={setHour}>
-                <SelectTrigger className="w-24">
+          {scheduleType === "fixed" ? (
+            <>
+              <div className="space-y-2">
+                <Label>
+                  実行頻度 <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={frequency}
+                  onValueChange={(v) => setFrequency(v as FrequencyValue)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  実行時刻 <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Select value={hour} onValueChange={setHour}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HOUR_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-muted-foreground">:</span>
+                  <Select value={minute} onValueChange={setMinute}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MINUTE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label>
+                実行間隔 <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={interval}
+                onValueChange={(v) => setInterval(v as IntervalValue)}
+              >
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {HOUR_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-muted-foreground">:</span>
-              <Select value={minute} onValueChange={setMinute}>
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MINUTE_OPTIONS.map((opt) => (
+                  {INTERVAL_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -294,33 +279,34 @@ export const ScheduleForm = ({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+          )}
 
           <div className="bg-muted/50 rounded-lg p-3">
-            {clientTimezone === "Asia/Tokyo" ? (
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="text-primary h-4 w-4" />
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="text-primary h-4 w-4" />
+              {scheduleType === "fixed" ? (
+                clientTimezone === "Asia/Tokyo" ? (
+                  <span>
+                    {getFrequencyLabel(frequency)}{" "}
+                    <strong>{formatTime(hour, minute)}</strong> に実行
+                  </span>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground flex items-center gap-1">
+                      <Globe className="h-3 w-3" />
+                      {clientTimezone}: {formatTime(hour, minute)}
+                    </div>
+                    <div>
+                      日本時間: <strong>{jstPreview}</strong>
+                    </div>
+                  </div>
+                )
+              ) : (
                 <span>
-                  {getFrequencyLabel(frequency)}{" "}
-                  <strong>{formatTime(hour, minute)}</strong> に実行
+                  <strong>{getIntervalLabel(interval)}</strong>に実行
                 </span>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <Globe className="h-4 w-4" />
-                  <span>
-                    {clientTimezone}: {formatTime(hour, minute)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="text-primary h-4 w-4" />
-                  <span>
-                    日本時間: <strong>{jstPreview}</strong>
-                  </span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 

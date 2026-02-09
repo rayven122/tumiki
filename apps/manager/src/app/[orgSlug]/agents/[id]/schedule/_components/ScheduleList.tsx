@@ -13,19 +13,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Calendar,
-  Clock,
-  Play,
-  Pause,
-  Trash2,
-  Edit2,
-  Loader2,
-} from "lucide-react";
+import { Calendar, Play, Pause, Trash2, Edit2, Loader2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { AgentId } from "@/schema/ids";
 import { ScheduleForm } from "./ScheduleForm";
+import { cronToJapanese } from "./cronUtils";
 
 type ScheduleListProps = {
   agentId: AgentId;
@@ -134,11 +127,7 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
                     </Badge>
                   </div>
                   <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {schedule.cronExpression}
-                    </span>
-                    <span>{schedule.timezone}</span>
+                    <span>{cronToJapanese(schedule.cronExpression)}</span>
                     <span>実行回数: {schedule._count.executionLogs}</span>
                   </div>
                 </div>
