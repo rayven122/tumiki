@@ -14,7 +14,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useAgentFlow } from "@/atoms/agentFlowAtoms";
-import { McpServerVisibility } from "@tumiki/db/prisma";
 
 // モデル選択肢
 const MODEL_OPTIONS = [
@@ -23,9 +22,6 @@ const MODEL_OPTIONS = [
   { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku（高速）" },
   { value: "anthropic/claude-3-opus", label: "Claude 3 Opus（高性能）" },
 ];
-
-// 公開範囲は組織内に固定
-const FIXED_VISIBILITY = McpServerVisibility.ORGANIZATION;
 
 /**
  * ステップ1: 基本情報入力
