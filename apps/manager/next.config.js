@@ -25,6 +25,8 @@ const config = {
       };
 
       // .ee.ts/.ee.tsx ファイルを空のモジュールに置き換えるプラグイン
+      // NOTE: Webpack内部型は複雑で不完全なため、ここでは例外的に@type {any}を使用
+      // 将来的にTypeScript化する場合は、カスタム型定義の追加を検討
       const eeStubPath = path.resolve(__dirname, "src/lib/ee-stub.js");
       /** @type {any} */
       const cePlugin = {
