@@ -24,19 +24,8 @@ const MODEL_OPTIONS = [
   { value: "anthropic/claude-3-opus", label: "Claude 3 Opus（高性能）" },
 ];
 
-// 可視性選択肢
-const VISIBILITY_OPTIONS = [
-  {
-    value: McpServerVisibility.PRIVATE,
-    label: "自分のみ",
-    description: "作成者のみが使用可能",
-  },
-  {
-    value: McpServerVisibility.ORGANIZATION,
-    label: "組織内",
-    description: "組織メンバー全員が使用可能",
-  },
-];
+// 公開範囲は組織内に固定
+const FIXED_VISIBILITY = McpServerVisibility.ORGANIZATION;
 
 /**
  * ステップ1: 基本情報入力
@@ -118,31 +107,15 @@ export const Step1BasicInfo = () => {
             </p>
           </div>
 
-          {/* 可視性 */}
+          {/* 公開範囲（組織内に固定） */}
           <div className="space-y-2">
-            <Label htmlFor="visibility">公開範囲</Label>
-            <Select
-              value={flowState.visibility}
-              onValueChange={(value) =>
-                updateFlowState({ visibility: value as McpServerVisibility })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {VISIBILITY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex flex-col">
-                      <span>{option.label}</span>
-                      <span className="text-xs text-gray-500">
-                        {option.description}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>公開範囲</Label>
+            <div className="flex items-center gap-2 rounded-md border bg-gray-50 px-3 py-2">
+              <span className="font-medium">組織内</span>
+              <span className="text-sm text-gray-500">
+                組織メンバー全員が使用可能
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
