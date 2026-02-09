@@ -540,6 +540,23 @@ Tumikiは、オープンソースのCommunity Edition（CE）と商用のEnterpr
 | Dynamic Search | `features/dynamicSearch/`                    | AIによるツール検索              |
 | PII Masking    | `infrastructure/piiMasking/`, `features/mcp/middleware/piiMasking/` | GCP DLPによる個人情報マスキング |
 
+### EE機能一覧（manager）
+
+| 機能         | ディレクトリ                          | 説明                           |
+| ------------ | ------------------------------------- | ------------------------------ |
+| メンバー管理 | `server/api/routers/organization/`    | 招待・削除・ロール変更         |
+| ロール管理   | `server/api/routers/v2/role/`         | 作成・更新・削除・権限管理     |
+| グループ管理 | `server/api/routers/v2/group/`        | 作成・更新・削除・メンバー管理 |
+| 組織作成     | `server/api/routers/v2/organization/` | 新規組織作成（オプション機能） |
+
+### 環境変数
+
+| 変数名                            | 説明                                   | デフォルト |
+| --------------------------------- | -------------------------------------- | ---------- |
+| `NEXT_PUBLIC_EE_BUILD`            | EE版ビルドを有効化（ビルド時判定）     | `false`    |
+| `NEXT_PUBLIC_ENABLE_ORG_CREATION` | 組織作成機能を有効化（EE版のみ）       | `false`    |
+| `EE_BUILD`                        | EE版テストを有効化（テスト時のみ使用） | `false`    |
+
 ### Facadeパターン
 
 CE版では、EE機能への参照がある箇所でFacadeパターンを使用：
@@ -558,8 +575,12 @@ export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [];
 export const isMetaTool = (_name: string): boolean => false;
 
 // 型のみエクスポート（型互換性のため）
-export type SearchResult = { /* ... */ };
-export type DescribeToolsResult = { /* ... */ };
+export type SearchResult = {
+  /* ... */
+};
+export type DescribeToolsResult = {
+  /* ... */
+};
 ```
 
 ### 条件付き動的インポート
@@ -595,6 +616,18 @@ CE版ビルドでは `tsconfig.ce.json` を使用してEEファイルを除外�
   "exclude": ["src/**/*.ee.ts", "src/**/*.ee.test.ts"]
 }
 ```
+
+### ビルドコマンド（manager）
+
+```bash
+# CE版ビルド（webpack使用、.ee.tsファイルを除外）
+cd apps/manager && pnpm build:ce
+
+# EE版ビルド（turbopack使用、全ファイルを含む）
+cd apps/manager && pnpm build:ee
+```
+
+**詳細ガイド**: `.claude/skills/tumiki-ee-ce-separation/SKILL.md` を参照
 
 ## 実装後の必須アクション
 

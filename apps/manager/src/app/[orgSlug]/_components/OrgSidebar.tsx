@@ -18,6 +18,7 @@ import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSidebarActions } from "@/hooks/useSidebarActions";
+import { isEEFeatureAvailable } from "@/features/ee";
 import {
   Tooltip,
   TooltipContent,
@@ -97,14 +98,16 @@ export const OrgSidebar = ({
       name: "メンバー管理",
       href: `/${orgSlug}/members`,
       icon: Users,
-      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
+      // 個人組織では非表示、管理者のみ表示、EE機能が有効な場合のみ表示
+      show: !isPersonal && isAdmin && isEEFeatureAvailable("member-management"),
       disabled: false,
     },
     {
       name: "組織構造",
       href: `/${orgSlug}/org-structure`,
       icon: Network,
-      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
+      // 個人組織では非表示、管理者のみ表示、EE機能が有効な場合のみ表示
+      show: !isPersonal && isAdmin && isEEFeatureAvailable("group-management"),
       disabled: false,
       beta: true,
     },
@@ -112,7 +115,8 @@ export const OrgSidebar = ({
       name: "ロール・権限",
       href: `/${orgSlug}/roles`,
       icon: Shield,
-      show: !isPersonal && isAdmin, // 個人組織では非表示、管理者のみ表示
+      // 個人組織では非表示、管理者のみ表示、EE機能が有効な場合のみ表示
+      show: !isPersonal && isAdmin && isEEFeatureAvailable("role-management"),
       disabled: false,
       beta: true,
     },

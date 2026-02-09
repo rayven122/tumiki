@@ -1,6 +1,7 @@
 import tseslint from "typescript-eslint";
+import headers from "eslint-plugin-headers";
 
-export default tseslint.config(
+const tseslintConfigs = tseslint.config(
   {
     ignores: [
       ".next",
@@ -59,3 +60,22 @@ export default tseslint.config(
     },
   },
 );
+
+// EEファイル用のヘッダールール設定（tseslint.configの外で定義）
+const headerConfig = {
+  files: ["**/*.ee.ts", "**/*.ee.test.ts"],
+  plugins: { headers },
+  rules: {
+    "headers/header-format": [
+      "error",
+      {
+        source: "string",
+        style: "line",
+        content: `SPDX-License-Identifier: Elastic-2.0
+Copyright (c) 2024-2025 Reyven Inc.`,
+      },
+    ],
+  },
+};
+
+export default [...tseslintConfigs, headerConfig];

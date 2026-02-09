@@ -1,4 +1,5 @@
 import { api } from "@/trpc/server";
+import { EEFeatureGate, EEUpgradePrompt } from "@/components/ee";
 import { MembersPage } from "./_components/MembersPage";
 
 type MembersPageProps = {
@@ -13,7 +14,14 @@ const Members = async ({ params }: MembersPageProps) => {
   // スラッグから組織情報を取得（layout.tsxで既に検証済み）
   const organization = await api.organization.getBySlug({ slug: decodedSlug });
 
-  return <MembersPage organization={organization} />;
+  return (
+    <EEFeatureGate
+      feature="member-management"
+      fallback={<EEUpgradePrompt feature="member-management" />}
+    >
+      <MembersPage organization={organization} />
+    </EEFeatureGate>
+  );
 };
 
 export default Members;

@@ -5,6 +5,7 @@ import {
   setDefaultOrganizationInputSchema,
   setDefaultOrganizationOutputSchema,
 } from "./setDefaultOrganization";
+// EE機能: 組織作成（CE版はスタブを使用）
 import {
   createOrganization,
   createOrganizationInputSchema,

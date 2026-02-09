@@ -1,8 +1,7 @@
 import { z } from "zod";
-import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import type { ProtectedContext } from "@/server/api/trpc";
 import { OrganizationInvitationIdSchema } from "@/schema/ids";
-import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 
 export const cancelInvitationInputSchema = z.object({
   invitationId: OrganizationInvitationIdSchema,
@@ -17,56 +16,16 @@ export type CancelInvitationOutput = z.infer<
   typeof cancelInvitationOutputSchema
 >;
 
-export const cancelInvitation = async ({
-  input,
-  ctx,
-}: {
+/**
+ * 招待キャンセル（CE版スタブ）
+ * CE版では利用不可
+ */
+export const cancelInvitation = async (_params: {
   input: CancelInvitationInput;
   ctx: ProtectedContext;
 }): Promise<CancelInvitationOutput> => {
-  try {
-    // チームの管理者権限を検証
-    validateOrganizationAccess(ctx.currentOrg, {
-      requireAdmin: true,
-      requireTeam: true,
-    });
-
-    // トランザクションで処理
-    await ctx.db.$transaction(async (tx) => {
-      // 招待が存在するか確認
-      const invitation = await tx.organizationInvitation.findFirst({
-        where: {
-          id: input.invitationId,
-          organizationId: ctx.currentOrg.id,
-        },
-      });
-
-      if (!invitation) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "招待が見つかりません。",
-        });
-      }
-
-      // 招待を削除
-      await tx.organizationInvitation.delete({
-        where: {
-          id: input.invitationId,
-        },
-      });
-    });
-
-    return {
-      success: true,
-    };
-  } catch (error) {
-    if (error instanceof TRPCError) {
-      throw error;
-    }
-    console.error("招待キャンセルエラー:", error);
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "招待のキャンセル中にエラーが発生しました。",
-    });
-  }
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "招待キャンセル機能はEnterprise Editionでのみ利用可能です",
+  });
 };
