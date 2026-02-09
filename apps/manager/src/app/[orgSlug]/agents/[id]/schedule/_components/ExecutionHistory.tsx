@@ -91,8 +91,8 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>スケジュール名</TableHead>
             <TableHead>実行日時</TableHead>
+            <TableHead>スケジュール名</TableHead>
             <TableHead>ステータス</TableHead>
             <TableHead className="text-right">実行時間</TableHead>
           </TableRow>
@@ -100,13 +100,13 @@ export const ExecutionHistory = ({ agentId }: ExecutionHistoryProps) => {
         <TableBody>
           {allItems.map((execution) => (
             <TableRow key={execution.id}>
-              <TableCell className="font-medium">
-                {execution.scheduleName ?? "手動実行"}
-              </TableCell>
               <TableCell className="text-muted-foreground">
                 {format(new Date(execution.createdAt), "yyyy/MM/dd HH:mm:ss", {
                   locale: ja,
                 })}
+              </TableCell>
+              <TableCell className="font-medium">
+                {execution.scheduleName ?? "手動実行"}
               </TableCell>
               <TableCell>
                 <StatusBadge success={execution.success} />
