@@ -31,6 +31,9 @@ const DEFAULT_AGENT_MODEL = "anthropic/claude-3-5-sonnet";
 /** 最大ツール実行ステップ数 */
 const MAX_TOOL_STEPS = 10;
 
+/** エージェント実行タイムアウト（5分） */
+const EXECUTION_TIMEOUT_MS = 5 * 60 * 1000;
+
 /** CUID生成用 */
 const generateCUID = (): string => {
   const chars =
@@ -180,11 +183,11 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
       const startTime = Date.now();
 
       // 実行開始時にAgentExecutionLogを作成（success: null = 実行中）
+      // chatIdは後でonFinishでChatを作成した後に更新する
       await db.agentExecutionLog.create({
         data: {
           id: executionLogId,
           agentId,
-          chatId,
           modelId,
           success: null, // 実行中を示す
         },
@@ -276,10 +279,11 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
                 });
               }
 
-              // AgentExecutionLogを更新（実行完了）
+              // AgentExecutionLogを更新（実行完了 + chatId紐付け）
               await tx.agentExecutionLog.update({
                 where: { id: executionLogId },
                 data: {
+                  chatId,
                   success: true,
                   durationMs,
                 },
@@ -299,26 +303,26 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
             });
           }
         },
-        onError: async (error) => {
+        onError: (error) => {
           logError("Agent execution stream error", toError(error), { agentId });
 
-          // エラー時は実行ログを失敗で更新
+          // エラー時は実行ログを失敗で更新（非同期だがコールバックは同期のみ対応）
           const durationMs = Date.now() - startTime;
-          try {
-            await db.agentExecutionLog.update({
+          db.agentExecutionLog
+            .update({
               where: { id: executionLogId },
               data: {
                 success: false,
                 durationMs,
               },
+            })
+            .catch((updateError) => {
+              logError(
+                "Failed to update execution log on error",
+                toError(updateError),
+                { agentId, executionLogId },
+              );
             });
-          } catch (updateError) {
-            logError(
-              "Failed to update execution log on error",
-              toError(updateError),
-              { agentId, executionLogId },
-            );
-          }
 
           return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
         },
