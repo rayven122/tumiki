@@ -28,7 +28,7 @@ jobs:
       is_pr: ${{ steps.env.outputs.is_pr }}
       pr_number: ${{ steps.env.outputs.pr_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: env
         uses: ./.github/actions/determine-env
 
@@ -45,7 +45,7 @@ jobs:
       preview_migration_applied: ${{ steps.migrate-preview.outputs.migration_applied }}
       preview_migration_names: ${{ steps.migrate-preview.outputs.migration_names }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -60,7 +60,7 @@ jobs:
           output-file: .env
 
       - name: 💾 Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
@@ -98,7 +98,7 @@ jobs:
     outputs:
       vercel_url: ${{ steps.deploy.outputs.url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -113,7 +113,7 @@ jobs:
           output-file: .env
 
       - name: 💾 Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
@@ -153,7 +153,7 @@ jobs:
     outputs:
       cloudrun_url: ${{ steps.deploy-cloudrun.outputs.service_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -168,7 +168,7 @@ jobs:
           output-file: .env
 
       - name: 💾 Cache Turbo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
@@ -200,7 +200,7 @@ jobs:
       (needs.deploy.result == 'success' || needs.deploy-cloudrun.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Comment deployment URLs
         uses: ./.github/actions/comment-deployment
@@ -220,10 +220,10 @@ jobs:
        contains(github.event.pull_request.labels.*.name, 'test-slack'))
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create GitHub summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const environment = '${{ needs.setup.outputs.environment }}';
