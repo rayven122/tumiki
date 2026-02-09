@@ -41,7 +41,7 @@ import {
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
@@ -126,8 +126,18 @@ export const AgentCard = ({
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [executionError, setExecutionError] = useState<string | undefined>();
 
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const utils = api.useUtils();
+
+  // セッションのアクセストークンをrefで保持（クロージャ問題回避）
+  const accessTokenRef = useRef<string | undefined>(session?.accessToken);
+  useEffect(() => {
+    accessTokenRef.current = session?.accessToken;
+  }, [session?.accessToken]);
+
+  // セッションが認証済みかつトークンが存在するかチェック
+  const isSessionReady =
+    sessionStatus === "authenticated" && !!session?.accessToken;
 
   const mcpServerCount = agent.mcpServers.length;
   const scheduleCount = agent.schedules.length;
@@ -144,8 +154,8 @@ export const AgentCard = ({
       api: `${mcpProxyUrl}/agent/${agent.id}`,
       fetch: (url, options) => {
         const headers = new Headers(options?.headers);
-        if (session?.accessToken) {
-          headers.set("Authorization", `Bearer ${session.accessToken}`);
+        if (accessTokenRef.current) {
+          headers.set("Authorization", `Bearer ${accessTokenRef.current}`);
         }
         return fetchWithErrorHandlers(url, {
           ...options,
@@ -264,7 +274,7 @@ export const AgentCard = ({
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={handleExecute}
-                disabled={isStreaming}
+                disabled={isStreaming || !isSessionReady}
                 className="text-purple-600"
               >
                 {isStreaming ? (

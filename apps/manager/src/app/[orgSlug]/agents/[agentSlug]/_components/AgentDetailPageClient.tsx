@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { api } from "@/trpc/react";
@@ -89,7 +89,17 @@ const AsyncAgentDetail = ({
   const utils = api.useUtils();
 
   // セッション情報を取得
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+
+  // セッションのアクセストークンをrefで保持（クロージャ問題回避）
+  const accessTokenRef = useRef<string | undefined>(session?.accessToken);
+  useEffect(() => {
+    accessTokenRef.current = session?.accessToken;
+  }, [session?.accessToken]);
+
+  // セッションが認証済みかつトークンが存在するかチェック
+  const isSessionReady =
+    sessionStatus === "authenticated" && !!session?.accessToken;
 
   // スラグでエージェント情報を取得
   const [agent] = api.v2.agent.findBySlug.useSuspenseQuery({
@@ -108,8 +118,8 @@ const AsyncAgentDetail = ({
       fetch: (url, options) => {
         // mcp-proxy への認証ヘッダーを追加
         const headers = new Headers(options?.headers);
-        if (session?.accessToken) {
-          headers.set("Authorization", `Bearer ${session.accessToken}`);
+        if (accessTokenRef.current) {
+          headers.set("Authorization", `Bearer ${accessTokenRef.current}`);
         }
         return fetchWithErrorHandlers(url, {
           ...options,
@@ -218,7 +228,7 @@ const AsyncAgentDetail = ({
               <Button
                 variant="default"
                 onClick={handleExecute}
-                disabled={isStreaming}
+                disabled={isStreaming || !isSessionReady}
               >
                 {isStreaming ? (
                   <>
