@@ -42,6 +42,12 @@ vi.mock("../shared/constants/config.js", () => ({
   TIMEOUT_CONFIG: {
     GRACEFUL_SHUTDOWN_MS: 9000,
   },
+  AGENT_EXECUTION_CONFIG: {
+    DEFAULT_MODEL: "anthropic/claude-3-5-sonnet",
+    EXECUTION_TIMEOUT_MS: 120000,
+    MAX_TOOL_STEPS: 10,
+    CLEANUP_INTERVAL_MS: 300000,
+  },
 }));
 
 describe("index.ts", () => {

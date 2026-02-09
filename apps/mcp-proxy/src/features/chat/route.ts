@@ -19,23 +19,13 @@ import { db } from "@tumiki/db/server";
 
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
+import { generateCUID } from "../../shared/utils/cuid.js";
 import { gateway } from "../../infrastructure/ai/index.js";
 import { postRequestBodySchema } from "./schema.js";
 import { verifyChatAuth } from "./chatJwtAuth.js";
 import { getChatMcpTools } from "./chatMcpTools.js";
 import { systemPrompt } from "./prompts.js";
 import { convertDBMessagesToAISDK6Format } from "./messageConverter.js";
-
-// CUID生成用（nanoid互換）
-const generateCUID = (): string => {
-  const chars =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "c";
-  for (let i = 0; i < 24; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-};
 
 export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
   // リクエストボディをパース
