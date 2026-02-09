@@ -3,8 +3,6 @@
  *
  * 内部API（サービス間通信用）
  * - POST /internal/scheduler/sync - スケジュール同期
- * - POST /internal/scheduler/run - 手動実行
- * - GET /internal/scheduler/status - ステータス確認
  */
 
 import { Hono } from "hono";
@@ -13,14 +11,10 @@ import { z } from "zod";
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
-import { executeAgent } from "../agentExecutor/index.js";
 import {
   registerSchedule,
   unregisterSchedule,
   syncAllSchedules,
-  getScheduleConfig,
-  getActiveScheduleCount,
-  getAllScheduleConfigs,
 } from "./cronScheduler.js";
 
 export const schedulerRoute = new Hono<HonoEnv>();
@@ -45,23 +39,6 @@ const syncRequestSchema = z.object({
   schedule: scheduleConfigSchema.optional(),
   scheduleId: z.string().optional(),
   schedules: z.array(scheduleConfigSchema).optional(),
-});
-
-/**
- * 手動実行リクエストのスキーマ（スケジュール経由）
- */
-const manualRunRequestSchema = z.object({
-  scheduleId: z.string().min(1),
-  userId: z.string().min(1),
-});
-
-/**
- * エージェント直接実行リクエストのスキーマ
- */
-const agentRunRequestSchema = z.object({
-  agentId: z.string().min(1),
-  userId: z.string().min(1),
-  message: z.string().optional(),
 });
 
 /**
@@ -136,115 +113,4 @@ schedulerRoute.post("/internal/scheduler/sync", async (c) => {
     logError("Scheduler sync error", toError(error));
     return c.json({ error: "Internal server error" }, 500);
   }
-});
-
-/**
- * エージェント実行結果をレスポンス形式に変換
- */
-const toExecutionResponse = (
-  result: Awaited<ReturnType<typeof executeAgent>>,
-) => ({
-  success: result.success,
-  executionId: result.executionId,
-  output: result.output,
-  durationMs: result.durationMs,
-  error: result.error,
-});
-
-/**
- * POST /internal/scheduler/run
- *
- * スケジュールの手動実行
- */
-schedulerRoute.post("/internal/scheduler/run", async (c) => {
-  try {
-    const body: unknown = await c.req.json();
-    const parsed = manualRunRequestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json(
-        { error: "Invalid request", details: parsed.error.issues },
-        400,
-      );
-    }
-
-    const { scheduleId, userId } = parsed.data;
-
-    logInfo("Manual run request", { scheduleId, userId });
-
-    // スケジュール設定を取得
-    const config = getScheduleConfig(scheduleId);
-    if (!config) {
-      return c.json({ error: "Schedule not found" }, 404);
-    }
-
-    // エージェントを実行
-    const result = await executeAgent({
-      agentId: config.agentId,
-      trigger: { type: "manual", userId },
-      message: config.message ?? null,
-    });
-
-    return c.json(toExecutionResponse(result));
-  } catch (error) {
-    logError("Manual run error", toError(error));
-    return c.json({ error: "Internal server error" }, 500);
-  }
-});
-
-/**
- * POST /internal/agent/run
- *
- * エージェントの直接実行（スケジュールなしで実行可能）
- */
-schedulerRoute.post("/internal/agent/run", async (c) => {
-  try {
-    const body: unknown = await c.req.json();
-    const parsed = agentRunRequestSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return c.json(
-        { error: "Invalid request", details: parsed.error.issues },
-        400,
-      );
-    }
-
-    const { agentId, userId, message } = parsed.data;
-
-    logInfo("Agent direct run request", { agentId, userId });
-
-    // エージェントを直接実行
-    const result = await executeAgent({
-      agentId,
-      trigger: { type: "manual", userId },
-      message: message ?? null,
-    });
-
-    return c.json(toExecutionResponse(result));
-  } catch (error) {
-    logError("Agent direct run error", toError(error));
-    return c.json({ error: "Internal server error" }, 500);
-  }
-});
-
-/**
- * GET /internal/scheduler/status
- *
- * スケジューラのステータス確認
- */
-schedulerRoute.get("/internal/scheduler/status", (c) => {
-  const activeCount = getActiveScheduleCount();
-  const schedules = getAllScheduleConfigs();
-
-  return c.json({
-    status: "running",
-    activeSchedules: activeCount,
-    schedules: schedules.map((s) => ({
-      id: s.id,
-      agentId: s.agentId,
-      cronExpression: s.cronExpression,
-      timezone: s.timezone,
-      isEnabled: s.isEnabled,
-    })),
-  });
 });
