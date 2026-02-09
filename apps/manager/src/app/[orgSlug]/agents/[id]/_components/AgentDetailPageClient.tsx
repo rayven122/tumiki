@@ -9,15 +9,12 @@ import {
   ArrowLeft,
   Bot,
   Edit2,
-  MessageSquare,
   Server,
   Calendar,
   Activity,
   Lock,
   Building2,
   Clock,
-  CheckCircle2,
-  XCircle,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +25,7 @@ import type { AgentId } from "@/schema/ids";
 
 import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "../../_components/DeleteAgentModal";
+import { ExecutionHistory } from "../schedule/_components/ExecutionHistory";
 
 type AgentDetailPageClientProps = {
   orgSlug: string;
@@ -123,18 +121,12 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link href={`/${orgSlug}/agents/${agentId}/edit`}>
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  編集
-                </Link>
-              </Button>
-              <Button disabled>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                チャットで実行（準備中）
-              </Button>
-            </div>
+            <Button variant="outline" asChild>
+              <Link href={`/${orgSlug}/agents/${agentId}/edit`}>
+                <Edit2 className="mr-2 h-4 w-4" />
+                編集
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -289,41 +281,7 @@ const AsyncAgentDetail = ({ orgSlug, agentId }: AgentDetailPageClientProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {agent.executionLogs.length > 0 ? (
-            <div className="space-y-2">
-              {agent.executionLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    {log.success ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                    <div>
-                      <p className="text-sm">
-                        {new Date(log.createdAt).toLocaleString("ja-JP")}
-                      </p>
-                      {log.durationMs && (
-                        <p className="text-xs text-gray-500">
-                          実行時間: {(log.durationMs / 1000).toFixed(2)}秒
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Badge variant={log.success ? "default" : "destructive"}>
-                    {log.success ? "成功" : "失敗"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg bg-gray-50 p-6 text-center text-gray-500">
-              実行履歴がありません
-            </div>
-          )}
+          <ExecutionHistory agentId={agent.id as AgentId} />
         </CardContent>
       </Card>
 
