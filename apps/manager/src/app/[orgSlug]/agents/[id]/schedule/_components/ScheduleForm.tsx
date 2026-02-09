@@ -296,18 +296,31 @@ export const ScheduleForm = ({
             </div>
           </div>
 
-          <div className="bg-muted/50 space-y-2 rounded-lg p-3">
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Globe className="h-4 w-4" />
-              <span>タイムゾーン: {clientTimezone}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="text-primary h-4 w-4" />
-              <span>
-                日本時間: <strong>{jstPreview}</strong>（
-                {getFrequencyLabel(frequency)}）
-              </span>
-            </div>
+          <div className="bg-muted/50 rounded-lg p-3">
+            {clientTimezone === "Asia/Tokyo" ? (
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="text-primary h-4 w-4" />
+                <span>
+                  {getFrequencyLabel(frequency)}{" "}
+                  <strong>{formatTime(hour, minute)}</strong> に実行
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Globe className="h-4 w-4" />
+                  <span>
+                    {clientTimezone}: {formatTime(hour, minute)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="text-primary h-4 w-4" />
+                  <span>
+                    日本時間: <strong>{jstPreview}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
