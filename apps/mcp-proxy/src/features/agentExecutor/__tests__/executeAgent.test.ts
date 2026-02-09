@@ -608,4 +608,75 @@ describe("executeAgent", () => {
       expect(result.output).toBe("Issueを作成しました");
     });
   });
+
+  describe("タイムアウト処理", () => {
+    test("タイムアウト時はAbortControllerでストリームがキャンセルされる", async () => {
+      // streamTextにabortSignalが渡されることを確認
+      mockStreamText.mockReturnValueOnce(
+        createMockStreamResult("タスク完了しました"),
+      );
+
+      const request: ExecuteAgentRequest = {
+        agentId: "agent-123",
+        trigger: { type: "schedule", scheduleId: "schedule-456" },
+        message: "テストタスク",
+      };
+
+      await executeAgent(request);
+
+      // streamTextがabortSignalオプション付きで呼ばれることを確認
+      expect(mockStreamText).toHaveBeenCalledWith(
+        expect.objectContaining({
+          abortSignal: expect.any(AbortSignal) as AbortSignal,
+        }),
+      );
+    });
+
+    test("AbortErrorが発生した場合はタイムアウトエラーとして処理される", async () => {
+      // AbortErrorをシミュレート
+      const abortError = new Error("Execution timeout");
+      mockStreamText.mockReturnValueOnce({
+        fullStream: (async function* () {
+          throw abortError;
+        })(),
+        steps: Promise.resolve([]),
+      });
+
+      const request: ExecuteAgentRequest = {
+        agentId: "agent-123",
+        trigger: { type: "schedule", scheduleId: "schedule-456" },
+        message: "テストタスク",
+      };
+
+      const result = await executeAgent(request);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Execution timeout");
+    });
+
+    test("DOMException AbortErrorが発生した場合もタイムアウトエラーとして処理される", async () => {
+      // DOMException AbortErrorをシミュレート
+      const abortError = new DOMException(
+        "The operation was aborted",
+        "AbortError",
+      );
+      mockStreamText.mockReturnValueOnce({
+        fullStream: (async function* () {
+          throw abortError;
+        })(),
+        steps: Promise.resolve([]),
+      });
+
+      const request: ExecuteAgentRequest = {
+        agentId: "agent-123",
+        trigger: { type: "schedule", scheduleId: "schedule-456" },
+        message: "テストタスク",
+      };
+
+      const result = await executeAgent(request);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Execution timeout");
+    });
+  });
 });

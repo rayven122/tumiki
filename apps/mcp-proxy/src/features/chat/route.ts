@@ -276,12 +276,14 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
 
     return createUIMessageStreamResponse({ stream });
   } catch (error) {
-    logError("Chat API error", error as Error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logError("Chat API error", err);
+
+    // 内部エラー詳細は本番環境では返さない
     return c.json(
       {
-        code: "bad_request:api",
-        message: "An error occurred while processing your message.",
-        cause: error instanceof Error ? error.message : "Unknown error",
+        code: "internal_error:chat",
+        message: "An internal error occurred while processing your message.",
       },
       500,
     );

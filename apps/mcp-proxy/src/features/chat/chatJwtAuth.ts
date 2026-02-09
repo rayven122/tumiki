@@ -96,14 +96,16 @@ export const verifyChatAuth = async (
   try {
     let resolvedUserId: string | null = null;
 
-    // sub が存在する場合は Keycloak ID で検索
-    if (jwtPayload.sub) {
-      resolvedUserId = await getUserIdFromKeycloakId(jwtPayload.sub);
+    // sub が存在し、空でない場合は Keycloak ID で検索
+    const trimmedSub = jwtPayload.sub?.trim();
+    if (trimmedSub && trimmedSub.length > 0) {
+      resolvedUserId = await getUserIdFromKeycloakId(trimmedSub);
     }
 
-    // sub が undefined または見つからない場合は email でフォールバック
-    if (!resolvedUserId && jwtPayload.email) {
-      resolvedUserId = await getUserIdByEmail(jwtPayload.email);
+    // sub が undefined、空文字、または見つからない場合は email でフォールバック
+    const trimmedEmail = jwtPayload.email?.trim();
+    if (!resolvedUserId && trimmedEmail && trimmedEmail.length > 0) {
+      resolvedUserId = await getUserIdByEmail(trimmedEmail);
     }
 
     if (!resolvedUserId) {

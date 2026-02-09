@@ -50,6 +50,37 @@ const MAX_TOOL_STEPS = 10;
 /** デフォルトの実行開始メッセージ */
 const DEFAULT_EXECUTION_MESSAGE = "定期実行タスクを開始してください。";
 
+/** タイムアウトエラーメッセージ */
+const TIMEOUT_ERROR_MESSAGE = "Execution timeout";
+
+/**
+ * AbortErrorかどうかを判定
+ * AbortController.abort()によるエラーは "AbortError" name を持つ
+ */
+const isAbortError = (error: unknown): boolean => {
+  if (error instanceof Error) {
+    // AbortController.abort(new Error("message")) の場合
+    if (error.message === TIMEOUT_ERROR_MESSAGE) {
+      return true;
+    }
+    // DOMException AbortError の場合
+    if (error.name === "AbortError") {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * エラーメッセージを取得（AbortErrorの場合は統一メッセージを返す）
+ */
+const getErrorMessage = (error: Error): string => {
+  if (isAbortError(error)) {
+    return TIMEOUT_ERROR_MESSAGE;
+  }
+  return error.message;
+};
+
 /** AI SDK streamText の結果型（必要なプロパティのみ） */
 type StreamTextResult = {
   text: string;
@@ -472,27 +503,31 @@ export const executeAgent = async (
       hasMcpTools,
     });
 
-    // タイムアウト付きでLLM呼び出し（streamTextを使用）
-    const streamResult = streamText({
-      model: gateway(modelId),
-      system: systemPrompt,
-      prompt: userMessage,
-      ...(hasMcpTools && {
-        tools: mcpTools,
-        maxSteps: MAX_TOOL_STEPS,
-      }),
-    });
+    // タイムアウト用のAbortController
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort(new Error("Execution timeout"));
+    }, EXECUTION_TIMEOUT_MS);
 
-    // タイムアウト付きでストリームを消費
-    const result = await Promise.race([
-      consumeStream(streamResult),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Execution timeout")),
-          EXECUTION_TIMEOUT_MS,
-        ),
-      ),
-    ]);
+    let result: StreamTextResult;
+    try {
+      // LLM呼び出し（streamTextを使用、abortSignalでタイムアウト時にキャンセル）
+      const streamResult = streamText({
+        model: gateway(modelId),
+        system: systemPrompt,
+        prompt: userMessage,
+        abortSignal: abortController.signal,
+        ...(hasMcpTools && {
+          tools: mcpTools,
+          maxSteps: MAX_TOOL_STEPS,
+        }),
+      });
+
+      result = await consumeStream(streamResult);
+    } finally {
+      // タイムアウトタイマーをクリア（正常完了時もエラー時も実行）
+      clearTimeout(timeoutId);
+    }
 
     // 出力テキストとメッセージパーツを生成
     const { text } = result;
@@ -557,11 +592,13 @@ export const executeAgent = async (
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const err = toError(error);
+    const errorMessage = getErrorMessage(err);
 
     logError("Agent execution failed", err, {
       executionId,
       agentId: request.agentId,
       durationMs,
+      isTimeout: isAbortError(error),
     });
 
     // pendingログがある場合は更新、ない場合は新規作成
@@ -593,7 +630,7 @@ export const executeAgent = async (
           durationMs,
           userMessage,
           assistantParts: [
-            { type: "text", text: `エラーが発生しました: ${err.message}` },
+            { type: "text", text: `エラーが発生しました: ${errorMessage}` },
           ],
         });
       } else {
@@ -610,7 +647,7 @@ export const executeAgent = async (
       success: false,
       output: "",
       durationMs,
-      error: err.message,
+      error: errorMessage,
     };
   }
 };

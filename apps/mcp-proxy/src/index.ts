@@ -9,7 +9,10 @@ import {
 } from "./features/scheduler/index.js";
 import { cleanupStaleExecutions } from "./features/agentExecutor/route.js";
 import { DEFAULT_PORT } from "./shared/constants/server.js";
-import { TIMEOUT_CONFIG } from "./shared/constants/config.js";
+import {
+  TIMEOUT_CONFIG,
+  AGENT_EXECUTION_CONFIG,
+} from "./shared/constants/config.js";
 import { logInfo, logError } from "./shared/logger/index.js";
 
 // サーバー起動
@@ -23,14 +26,24 @@ logInfo(`Starting Tumiki MCP Proxy on port ${port}`, {
   devMode: devMode ? "enabled (auth bypass, fixed Context7 MCP)" : "disabled",
 });
 
+// 定期クリーンアップ用のインターバルID（グレースフルシャットダウンでクリア）
+let cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
+
 // Node.js環境用のHTTPサーバー起動
 /* v8 ignore start */
 if (process.env.NODE_ENV !== "test") {
   const { serve } = await import("@hono/node-server");
   serve({ fetch: app.fetch, port }, (info) => {
     logInfo(`Server is running on http://localhost:${info.port}`);
-    // 古い稼働中エージェント実行をクリーンアップ
+    // 古い稼働中エージェント実行をクリーンアップ（起動時）
     void cleanupStaleExecutions();
+    // 定期的なクリーンアップを開始（本番環境でのネットワークエラー対応）
+    cleanupIntervalId = setInterval(() => {
+      void cleanupStaleExecutions();
+    }, AGENT_EXECUTION_CONFIG.CLEANUP_INTERVAL_MS);
+    logInfo("Agent execution cleanup scheduler started", {
+      intervalMs: AGENT_EXECUTION_CONFIG.CLEANUP_INTERVAL_MS,
+    });
     // スケジューラを初期化（非同期）
     void initializeScheduler();
   });
@@ -45,6 +58,13 @@ const gracefulShutdown = async (): Promise<void> => {
 
   const shutdownPromise = (async () => {
     try {
+      // 定期クリーンアップを停止
+      if (cleanupIntervalId) {
+        logInfo("Stopping agent execution cleanup scheduler");
+        clearInterval(cleanupIntervalId);
+        cleanupIntervalId = null;
+      }
+
       // スケジューラを停止
       logInfo("Stopping scheduler");
       shutdownScheduler();

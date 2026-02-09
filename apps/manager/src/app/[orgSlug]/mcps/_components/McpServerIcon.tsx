@@ -44,7 +44,22 @@ export const McpServerIcon = ({
         />
       );
     }
-    // lucide:形式だがアイコンが見つからない場合はフォールバックへ
+    // lucide:形式だがアイコンが見つからない場合はフォールバックへ（URL形式として処理しない）
+    return (
+      <FaviconImage
+        url={fallbackUrl}
+        alt={alt}
+        size={size}
+        fallback={
+          <div
+            className="flex items-center justify-center rounded-md bg-gray-200"
+            style={{ width: size, height: size }}
+          >
+            <ImageIcon className="size-4 text-gray-500" />
+          </div>
+        }
+      />
+    );
   }
 
   // URL形式 → Imageコンポーネント
