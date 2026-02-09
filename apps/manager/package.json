@@ -19,7 +19,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@ai-sdk/gateway": "^3.0.22",
+    "@ai-sdk/gateway": "^3.0.39",
     "@ai-sdk/mcp": "^1.0.5",
     "@ai-sdk/react": "^3.0.51",
     "@auth/prisma-adapter": "^2.11.1",
@@ -76,7 +76,7 @@
     "@vercel/otel": "^1.14.0",
     "@vercel/postgres": "^0.10.0",
     "@xyflow/react": "^12.10.0",
-    "ai": "^6.0.49",
+    "ai": "^6.0.77",
     "bcrypt-ts": "^5.0.3",
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
