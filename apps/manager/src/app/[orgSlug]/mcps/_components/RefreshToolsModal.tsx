@@ -29,34 +29,27 @@ import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import type { McpServerId } from "@/schema/ids";
+import type {
+  ToolChange,
+  TemplateInstanceToolChanges,
+  RefreshToolsOutput,
+} from "@/server/api/routers/v2/userMcpServer/refreshTools";
 
-// ツール変更の型（APIレスポンスと一致）
-type ToolChange = {
-  type: "added" | "removed" | "modified" | "unchanged";
-  name: string;
-  description?: string;
-  previousDescription?: string;
-};
+// テンプレートインスタンスごとの変更情報（UIで使用する型）
+type TemplateInstanceChanges = Omit<
+  TemplateInstanceToolChanges,
+  "templateInstanceId"
+>;
 
-// テンプレートインスタンスごとの変更情報
-type TemplateInstanceChanges = {
-  templateName: string;
-  changes: ToolChange[];
-  hasChanges: boolean;
-  addedCount: number;
-  removedCount: number;
-  modifiedCount: number;
-  unchangedCount: number;
-};
-
-// ツール変更データ
-type ToolChangesData = {
-  templateInstances: TemplateInstanceChanges[];
-  totalAddedCount: number;
-  totalRemovedCount: number;
-  totalModifiedCount: number;
-  hasAnyChanges: boolean;
-};
+// ツール変更データ（UIで使用する型）
+type ToolChangesData = Pick<
+  RefreshToolsOutput,
+  | "templateInstances"
+  | "totalAddedCount"
+  | "totalRemovedCount"
+  | "totalModifiedCount"
+  | "hasAnyChanges"
+>;
 
 // モーダルのステップ
 type ModalStep = "initial" | "preview";
