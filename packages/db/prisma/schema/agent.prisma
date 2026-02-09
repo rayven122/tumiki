@@ -46,6 +46,8 @@ model Agent {
   schedules AgentSchedule[]
   /// バッチ実行履歴
   executionLogs AgentExecutionLog[]
+  /// エージェント実行時のチャット履歴
+  chats Chat[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -74,7 +76,7 @@ model AgentSchedule {
   updatedAt DateTime @updatedAt
 }
 
-/// バッチ実行履歴（メタデータのみ、詳細はBigQueryに保存）
+/// バッチ実行履歴（メタデータのみ、詳細はChatに保存）
 /// @namespace Agent
 model AgentExecutionLog {
   id      String @id @default(cuid())
@@ -84,6 +86,10 @@ model AgentExecutionLog {
   /// スケジュールID（スケジュール実行の場合）
   scheduleId String?
   schedule   AgentSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  /// チャットID（実行詳細はChatのMessagesに保存）
+  chatId String? @unique
+  chat   Chat?   @relation(fields: [chatId], references: [id], onDelete: SetNull)
 
   /// 成功したかどうか
   success Boolean
