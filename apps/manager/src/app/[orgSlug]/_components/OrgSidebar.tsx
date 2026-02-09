@@ -18,7 +18,7 @@ import { useAtom } from "jotai";
 import { sidebarOpenAtom } from "@/store/sidebar";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSidebarActions } from "@/hooks/useSidebarActions";
-import { useEEFeatures } from "@/hooks/useEEFeature";
+import { isEEFeatureAvailable } from "@/features/ee";
 import {
   Tooltip,
   TooltipContent,
@@ -49,15 +49,6 @@ export const OrgSidebar = ({
   // カスタムフックでモバイル判定とサイドバー操作を管理
   const isMobile = useIsMobile();
   const { closeSidebar } = useSidebarActions(isMobile, setIsOpen);
-
-  // EE機能の利用可否をチェック
-  const { features: eeFeatures } = useEEFeatures();
-
-  // 特定のEE機能が利用可能かどうかをチェックするヘルパー
-  const isEEFeatureAvailable = (featureName: string): boolean => {
-    const feature = eeFeatures.find((f) => f.feature === featureName);
-    return feature?.available ?? false;
-  };
 
   // チャット画面かどうかを判定
   const isChatPage =

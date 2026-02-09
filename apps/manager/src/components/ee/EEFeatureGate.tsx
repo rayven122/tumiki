@@ -1,5 +1,4 @@
-import { api } from "@/trpc/server";
-import type { EEFeature } from "@/features/ee";
+import { isEEFeatureAvailable, type EEFeature } from "@/features/ee";
 import type { ReactNode } from "react";
 
 type EEFeatureGateProps = {
@@ -11,26 +10,17 @@ type EEFeatureGateProps = {
 /**
  * EE機能のアクセスを制御するゲートコンポーネント
  *
- * サーバーコンポーネントとして実装され、
- * 指定された機能がEE版でのみ利用可能な場合に
- * フォールバックUIを表示する。
+ * ビルド時に環境変数で判定されるため、
+ * CE版ビルドではfallbackが表示される。
  */
-export const EEFeatureGate = async ({
+export const EEFeatureGate = ({
   feature,
   children,
   fallback,
 }: EEFeatureGateProps) => {
-  const result = await api.v2.system.checkEEFeature({ feature });
+  const isAvailable = isEEFeatureAvailable(feature);
 
-  // 特定機能のチェック結果の型ガード
-  const isFeatureResult = (
-    data: typeof result,
-  ): data is { feature: EEFeature; available: boolean } => {
-    return "feature" in data && "available" in data;
-  };
-
-  // EE機能が利用不可の場合はフォールバックを表示
-  if (isFeatureResult(result) && !result.available) {
+  if (!isAvailable) {
     return <>{fallback ?? null}</>;
   }
 
