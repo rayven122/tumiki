@@ -67,7 +67,7 @@ export const getAllRunningExecutions = async (
     .map((exec) => exec.chatId)
     .filter((id): id is string => id !== null);
 
-  // 各chatIdごとに最新のアシスタントメッセージを取得
+  // 各chatIdごとに最新のアシスタントメッセージを取得（distinctでDB側でフィルタリング）
   const latestMessages =
     chatIds.length > 0
       ? await db.message.findMany({
@@ -76,6 +76,7 @@ export const getAllRunningExecutions = async (
             role: "assistant",
           },
           orderBy: { createdAt: "desc" },
+          distinct: ["chatId"],
           select: {
             chatId: true,
             parts: true,
@@ -83,12 +84,10 @@ export const getAllRunningExecutions = async (
         })
       : [];
 
-  // chatIdごとに最新メッセージをマップ化（最初のものが最新）
+  // chatIdごとに最新メッセージをマップ化
   const messageMap = new Map<string, string | null>();
   for (const msg of latestMessages) {
-    if (!messageMap.has(msg.chatId)) {
-      messageMap.set(msg.chatId, extractTextFromParts(msg.parts));
-    }
+    messageMap.set(msg.chatId, extractTextFromParts(msg.parts));
   }
 
   return runningExecutions.map(({ schedule, agent, ...rest }) => ({

@@ -12,10 +12,7 @@ import { db } from "@tumiki/db/server";
 
 import { callToolCommand } from "../mcp/commands/callTool/callToolCommand.js";
 import { logMcpRequest } from "../mcp/middleware/requestLogging/index.js";
-import {
-  DYNAMIC_SEARCH_META_TOOLS,
-  isMetaTool,
-} from "../dynamicSearch/index.js";
+import { DYNAMIC_SEARCH_META_TOOLS } from "../dynamicSearch/index.js";
 
 /**
  * MCPツール取得のパラメータ

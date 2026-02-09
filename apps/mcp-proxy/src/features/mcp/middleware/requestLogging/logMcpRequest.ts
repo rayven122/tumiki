@@ -9,7 +9,7 @@ import {
   db,
   type Prisma,
   PiiMaskingMode,
-  type TransportType,
+  TransportType,
 } from "@tumiki/db/server";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { byteLength } from "../../../../shared/utils/byteLength.js";
@@ -88,7 +88,7 @@ export const logMcpRequest = async (
     organizationId,
     userId,
     toolName,
-    transportType = "STREAMABLE_HTTPS",
+    transportType = TransportType.STREAMABLE_HTTPS,
     durationMs,
     requestBody,
     responseBody,
@@ -97,13 +97,15 @@ export const logMcpRequest = async (
     errorMessage,
   } = params;
 
-  // バイト数を計算
-  const inputBytes = byteLength(JSON.stringify(requestBody));
-  const outputBytes = byteLength(JSON.stringify(responseBody));
+  // JSONシリアライズ（1回のみ実行してバイト数・トークン数計算に再利用）
+  const requestBodyJson = JSON.stringify(requestBody);
+  const responseBodyJson = JSON.stringify(responseBody);
 
-  // トークン数を計算
-  const inputTokens = countTokens(JSON.stringify(requestBody));
-  const outputTokens = countTokens(JSON.stringify(responseBody));
+  // バイト数とトークン数を計算
+  const inputBytes = byteLength(requestBodyJson);
+  const outputBytes = byteLength(responseBodyJson);
+  const inputTokens = countTokens(requestBodyJson);
+  const outputTokens = countTokens(responseBodyJson);
 
   // PostgreSQL用ログデータ
   const postgresLogData = {

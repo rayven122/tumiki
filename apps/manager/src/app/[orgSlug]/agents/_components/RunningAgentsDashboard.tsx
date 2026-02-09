@@ -3,15 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 import { format } from "date-fns";
-import { Activity, AlertTriangle, Eye, Loader2, Zap } from "lucide-react";
-import Image from "next/image";
+import { Activity, AlertTriangle, Bot, Eye, Loader2, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { ExecutionModalBase } from "../[agentSlug]/_components/ExecutionModalBase";
 import { ExecutionMessages } from "../[agentSlug]/_components/ExecutionMessages";
 
-/** ポーリング間隔（1秒 - リアルタイム性向上） */
-const POLLING_INTERVAL_MS = 1000;
+/** ポーリング間隔（5秒 - サーバー負荷軽減） */
+const POLLING_INTERVAL_MS = 5000;
 
 /** 進捗更新間隔（100ms - スムーズなアニメーション用） */
 const PROGRESS_UPDATE_INTERVAL_MS = 100;
@@ -78,19 +78,15 @@ const AgentIcon = ({
 }) => {
   if (iconPath) {
     return (
-      <Image
-        src={iconPath}
-        alt={name}
-        width={32}
-        height={32}
-        className="h-8 w-8 shrink-0 rounded-lg object-cover"
-      />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+        <McpServerIcon iconPath={iconPath} alt={name} size={20} />
+      </div>
     );
   }
 
   return (
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
-      <span className="text-sm font-bold">{name.charAt(0)}</span>
+      <Bot className="h-5 w-5" />
     </div>
   );
 };

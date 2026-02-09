@@ -209,6 +209,7 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
       const stream = createUIMessageStream({
         generateId: generateCUID,
         execute: async ({ writer }: { writer: UIMessageStreamWriter }) => {
+          logInfo("Agent execution execute started", { agentId, chatId });
           try {
             const result = streamText({
               model: gateway.languageModel(modelId),
@@ -236,15 +237,14 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
             });
 
             writer.merge(uiMessageStream);
+            logInfo("Agent execution stream merged", { agentId, chatId });
           } finally {
             // タイムアウトタイマーをクリア
             clearTimeout(timeoutId);
+            logInfo("Agent execution execute completed", { agentId, chatId });
           }
         },
         onFinish: async ({ messages: finishedMessages }) => {
-          // タイムアウトタイマーをクリア
-          clearTimeout(timeoutId);
-
           const durationMs = Date.now() - startTime;
 
           try {
@@ -319,16 +319,18 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
           }
         },
         onError: (error) => {
-          // タイムアウトタイマーをクリア
-          clearTimeout(timeoutId);
-
           const isTimeout =
             error instanceof Error && error.message.includes("timed out");
-          const errorMessage = isTimeout
-            ? "エージェント実行がタイムアウトしました（5分）"
-            : error instanceof Error
-              ? error.message
-              : "Unknown error";
+
+          // エラーメッセージを生成（ネストされた三項演算子を避ける）
+          let errorMessage: string;
+          if (isTimeout) {
+            errorMessage = "エージェント実行がタイムアウトしました（5分）";
+          } else if (error instanceof Error) {
+            errorMessage = error.message;
+          } else {
+            errorMessage = "Unknown error";
+          }
 
           logError("Agent execution stream error", toError(error), {
             agentId,
@@ -371,3 +373,38 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
     }
   },
 );
+
+/**
+ * 古い「稼働中」のエージェント実行をクリーンアップする
+ *
+ * サーバー再起動時などに、前回の実行が完了しなかったレコードを
+ * タイムアウト扱いで失敗にマークする
+ */
+export const cleanupStaleExecutions = async (): Promise<void> => {
+  try {
+    // タイムアウト時間より前に開始された、まだ完了していない実行を検索
+    const staleThreshold = new Date(Date.now() - EXECUTION_TIMEOUT_MS);
+
+    const result = await db.agentExecutionLog.updateMany({
+      where: {
+        success: null, // 実行中のもの
+        createdAt: {
+          lt: staleThreshold, // タイムアウト時間より前に開始
+        },
+      },
+      data: {
+        success: false,
+        durationMs: EXECUTION_TIMEOUT_MS,
+      },
+    });
+
+    if (result.count > 0) {
+      logInfo("Cleaned up stale agent executions", {
+        count: result.count,
+        staleThreshold: staleThreshold.toISOString(),
+      });
+    }
+  } catch (error) {
+    logError("Failed to cleanup stale agent executions", toError(error));
+  }
+};

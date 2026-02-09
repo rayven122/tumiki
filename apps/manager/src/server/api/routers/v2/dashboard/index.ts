@@ -7,7 +7,21 @@ import {
   format,
   eachDayOfInterval,
   eachHourOfInterval,
+  differenceInMinutes,
 } from "date-fns";
+import { CronExpressionParser } from "cron-parser";
+
+// 次の実行予定スキーマ
+const NextScheduleSchema = z
+  .object({
+    agentName: z.string(),
+    agentSlug: z.string(),
+    scheduleName: z.string(),
+    cronExpression: z.string(),
+    nextRunAt: z.date(),
+    minutesUntilNextRun: z.number(),
+  })
+  .nullable();
 
 // ダッシュボード統計のレスポンススキーマ
 const DashboardStatsSchema = z.object({
@@ -24,6 +38,10 @@ const DashboardStatsSchema = z.object({
   // 組織統計
   agentCount: z.number(),
   scheduleCount: z.number(),
+  // 今月のコスト（将来対応、現在は未実装）
+  monthlyEstimatedCost: z.number().nullable(),
+  // 次の実行予定
+  nextSchedule: NextScheduleSchema,
 });
 
 // 最近の実行履歴スキーマ
@@ -118,6 +136,47 @@ const buildChartResult = (
   ...totals,
 });
 
+/**
+ * ログ配列を集計してグラフデータを生成
+ *
+ * @param logs - 集計対象のログ配列
+ * @param timeRange - 時間範囲
+ * @param isSuccess - 成功判定関数
+ */
+const aggregateChartData = <T extends { createdAt: Date }>(
+  logs: T[],
+  timeRange: TimeRange,
+  isSuccess: (log: T) => boolean,
+) => {
+  const now = new Date();
+  const isHourly = timeRange === "24h";
+  const startDate = calculateStartDate(timeRange, now);
+  const dataMap = initializeDataMap(timeRange, startDate, now);
+
+  let total = 0;
+  let successTotal = 0;
+  let errorTotal = 0;
+
+  for (const log of logs) {
+    const label = formatLabel(log.createdAt, isHourly);
+    const existing = dataMap.get(label);
+    if (!existing) continue;
+
+    existing.count++;
+    total++;
+
+    if (isSuccess(log)) {
+      existing.successCount++;
+      successTotal++;
+    } else {
+      existing.errorCount++;
+      errorTotal++;
+    }
+  }
+
+  return buildChartResult(dataMap, { total, successTotal, errorTotal });
+};
+
 export const dashboardRouter = createTRPCRouter({
   /** ダッシュボード統計を取得 */
   getStats: protectedProcedure
@@ -140,6 +199,7 @@ export const dashboardRouter = createTRPCRouter({
         mcpErrors,
         agents,
         schedules,
+        nextScheduleData,
       ] = await Promise.all([
         // 稼働中エージェント数（success === null）
         db.agentExecutionLog.count({
@@ -194,6 +254,24 @@ export const dashboardRouter = createTRPCRouter({
             status: "ACTIVE",
           },
         }),
+        // 次の実行予定（最初のアクティブスケジュールを取得）
+        db.agentSchedule.findFirst({
+          where: {
+            agent: { organizationId },
+            status: "ACTIVE",
+          },
+          orderBy: { createdAt: "asc" },
+          select: {
+            name: true,
+            cronExpression: true,
+            agent: {
+              select: {
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        }),
       ]);
 
       const todaySuccessCount = todayExecutions.filter(
@@ -209,6 +287,70 @@ export const dashboardRouter = createTRPCRouter({
           ? Math.round((mcpErrors / last24hMcpRequests) * 1000) / 10
           : 0;
 
+      // 次の実行予定を整形（全アクティブスケジュールから最も近いものを選択）
+      let nextSchedule: {
+        agentName: string;
+        agentSlug: string;
+        scheduleName: string;
+        cronExpression: string;
+        nextRunAt: Date;
+        minutesUntilNextRun: number;
+      } | null = null;
+
+      if (nextScheduleData) {
+        // 全アクティブスケジュールを取得して最も近い実行時刻を計算
+        const allActiveSchedules = await db.agentSchedule.findMany({
+          where: {
+            agent: { organizationId },
+            status: "ACTIVE",
+          },
+          select: {
+            name: true,
+            cronExpression: true,
+            timezone: true,
+            agent: {
+              select: {
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        });
+
+        let closestSchedule: (typeof allActiveSchedules)[number] | null = null;
+        let closestNextRun: Date | null = null;
+
+        for (const schedule of allActiveSchedules) {
+          try {
+            const interval = CronExpressionParser.parse(
+              schedule.cronExpression,
+              {
+                tz: schedule.timezone,
+              },
+            );
+            const nextRun = interval.next().toDate();
+
+            if (!closestNextRun || nextRun < closestNextRun) {
+              closestNextRun = nextRun;
+              closestSchedule = schedule;
+            }
+          } catch {
+            // cron式のパースに失敗した場合はスキップ
+          }
+        }
+
+        if (closestSchedule && closestNextRun) {
+          nextSchedule = {
+            agentName: closestSchedule.agent.name,
+            agentSlug: closestSchedule.agent.slug,
+            scheduleName: closestSchedule.name,
+            cronExpression: closestSchedule.cronExpression,
+            nextRunAt: closestNextRun,
+            minutesUntilNextRun: differenceInMinutes(closestNextRun, now),
+          };
+        }
+      }
+
       return {
         runningAgentCount: runningAgents,
         todayExecutionCount: todayExecutions.length,
@@ -220,6 +362,9 @@ export const dashboardRouter = createTRPCRouter({
         mcpErrorRate,
         agentCount: agents,
         scheduleCount: schedules,
+        // 今月のコスト（トークン使用量の記録がないため、将来対応）
+        monthlyEstimatedCost: null,
+        nextSchedule,
       };
     }),
 
@@ -282,17 +427,12 @@ export const dashboardRouter = createTRPCRouter({
     .output(ChartDataSchema)
     .query(async ({ ctx, input }) => {
       const { db, currentOrg } = ctx;
-      const organizationId = currentOrg.id;
       const { timeRange } = input;
-
-      const now = new Date();
-      const isHourly = timeRange === "24h";
-      const startDate = calculateStartDate(timeRange, now);
-      const dataMap = initializeDataMap(timeRange, startDate, now);
+      const startDate = calculateStartDate(timeRange, new Date());
 
       const logs = await db.mcpServerRequestLog.findMany({
         where: {
-          organizationId,
+          organizationId: currentOrg.id,
           createdAt: { gte: startDate },
         },
         select: {
@@ -301,33 +441,15 @@ export const dashboardRouter = createTRPCRouter({
         },
       });
 
-      let total = 0;
-      let successTotal = 0;
-      let errorTotal = 0;
-
-      for (const log of logs) {
-        const label = formatLabel(log.createdAt, isHourly);
-        const existing = dataMap.get(label);
-        if (!existing) continue;
-
-        const isSuccess =
+      // HTTPステータス200-399を成功とみなす
+      return aggregateChartData(
+        logs,
+        timeRange,
+        (log) =>
           log.httpStatus !== null &&
           log.httpStatus >= 200 &&
-          log.httpStatus < 400;
-
-        existing.count++;
-        total++;
-
-        if (isSuccess) {
-          existing.successCount++;
-          successTotal++;
-        } else {
-          existing.errorCount++;
-          errorTotal++;
-        }
-      }
-
-      return buildChartResult(dataMap, { total, successTotal, errorTotal });
+          log.httpStatus < 400,
+      );
     }),
 
   /** エージェント実行のグラフデータを取得 */
@@ -336,17 +458,12 @@ export const dashboardRouter = createTRPCRouter({
     .output(ChartDataSchema)
     .query(async ({ ctx, input }) => {
       const { db, currentOrg } = ctx;
-      const organizationId = currentOrg.id;
       const { timeRange } = input;
-
-      const now = new Date();
-      const isHourly = timeRange === "24h";
-      const startDate = calculateStartDate(timeRange, now);
-      const dataMap = initializeDataMap(timeRange, startDate, now);
+      const startDate = calculateStartDate(timeRange, new Date());
 
       const logs = await db.agentExecutionLog.findMany({
         where: {
-          agent: { organizationId },
+          agent: { organizationId: currentOrg.id },
           createdAt: { gte: startDate },
           success: { not: null },
         },
@@ -356,27 +473,7 @@ export const dashboardRouter = createTRPCRouter({
         },
       });
 
-      let total = 0;
-      let successTotal = 0;
-      let errorTotal = 0;
-
-      for (const log of logs) {
-        const label = formatLabel(log.createdAt, isHourly);
-        const existing = dataMap.get(label);
-        if (!existing) continue;
-
-        existing.count++;
-        total++;
-
-        if (log.success) {
-          existing.successCount++;
-          successTotal++;
-        } else {
-          existing.errorCount++;
-          errorTotal++;
-        }
-      }
-
-      return buildChartResult(dataMap, { total, successTotal, errorTotal });
+      // success === true を成功とみなす
+      return aggregateChartData(logs, timeRange, (log) => log.success === true);
     }),
 });

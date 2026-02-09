@@ -432,19 +432,32 @@ export const executeAgent = async (
 
     let mcpTools: Record<string, Tool> = {};
     if (mcpServerIds.length > 0 && effectiveUserId) {
-      const mcpResult = await getChatMcpTools({
-        mcpServerIds,
-        organizationId: agent.organizationId,
-        userId: effectiveUserId,
-      });
-      mcpTools = mcpResult.tools;
+      try {
+        const mcpResult = await getChatMcpTools({
+          mcpServerIds,
+          organizationId: agent.organizationId,
+          userId: effectiveUserId,
+        });
+        mcpTools = mcpResult.tools;
 
-      logInfo("MCP tools loaded", {
-        executionId,
-        agentId: request.agentId,
-        toolCount: mcpResult.toolNames.length,
-        toolNames: mcpResult.toolNames,
-      });
+        logInfo("MCP tools loaded", {
+          executionId,
+          agentId: request.agentId,
+          toolCount: mcpResult.toolNames.length,
+          toolNames: mcpResult.toolNames,
+        });
+      } catch (mcpError) {
+        logError(
+          "Failed to load MCP tools, continuing without tools",
+          toError(mcpError),
+          {
+            executionId,
+            agentId: request.agentId,
+            mcpServerIds,
+          },
+        );
+        // MCPツールなしで実行を継続
+      }
     }
 
     const hasMcpTools = Object.keys(mcpTools).length > 0;

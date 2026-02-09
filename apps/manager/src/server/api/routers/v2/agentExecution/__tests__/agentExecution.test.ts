@@ -3,6 +3,7 @@ import type { PrismaClient } from "@tumiki/db";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId } from "@/schema/ids";
 import { findExecutionsByAgentId } from "../findByAgentId";
+import { getAllRunningExecutions } from "../getAllRunning";
 import { getRecentExecutions } from "../getRecentExecutions";
 import { TRPCError } from "@trpc/server";
 
@@ -656,6 +657,268 @@ describe("AgentExecution", () => {
       const result = await getRecentExecutions(mockDb, input);
 
       expect(result.items[0]?.latestMessage).toStrictEqual(null);
+    });
+  });
+
+  describe("getAllRunningExecutions", () => {
+    test("稼働中の全実行を取得できる", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          agentId: testAgentId,
+          chatId: "chat-1",
+          scheduleId: "schedule-1",
+          schedule: { name: "毎朝9時" },
+          agent: {
+            name: "テストエージェント",
+            slug: "test-agent",
+            iconPath: "/icons/test.png",
+            estimatedDurationMs: 60000,
+          },
+          modelId: "anthropic/claude-3-5-sonnet",
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      const mockMessages = [
+        {
+          chatId: "chat-1",
+          parts: [{ type: "text", text: "処理中です..." }],
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue(
+        mockMessages as unknown as Awaited<
+          ReturnType<typeof mockDb.message.findMany>
+        >,
+      );
+
+      const result = await getAllRunningExecutions(mockDb, input);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toStrictEqual({
+        id: "exec-1",
+        agentId: testAgentId,
+        chatId: "chat-1",
+        scheduleId: "schedule-1",
+        scheduleName: "毎朝9時",
+        agentName: "テストエージェント",
+        agentSlug: "test-agent",
+        agentIconPath: "/icons/test.png",
+        estimatedDurationMs: 60000,
+        modelId: "anthropic/claude-3-5-sonnet",
+        createdAt: new Date("2024-01-01T09:00:00Z"),
+        latestMessage: "処理中です...",
+      });
+    });
+
+    test("メッセージ取得クエリにdistinctが含まれている", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          agentId: testAgentId,
+          chatId: "chat-1",
+          scheduleId: null,
+          schedule: null,
+          agent: {
+            name: "テストエージェント",
+            slug: "test-agent",
+            iconPath: null,
+            estimatedDurationMs: null,
+          },
+          modelId: null,
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue([]);
+
+      await getAllRunningExecutions(mockDb, input);
+
+      // distinctオプションがクエリに含まれていることを確認
+      expect(mockDb.message.findMany).toHaveBeenCalledWith({
+        where: {
+          chatId: { in: ["chat-1"] },
+          role: "assistant",
+        },
+        orderBy: { createdAt: "desc" },
+        distinct: ["chatId"],
+        select: {
+          chatId: true,
+          parts: true,
+        },
+      });
+    });
+
+    test("chatIdがない場合はメッセージを取得しない", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          agentId: testAgentId,
+          chatId: null,
+          scheduleId: null,
+          schedule: null,
+          agent: {
+            name: "テストエージェント",
+            slug: "test-agent",
+            iconPath: null,
+            estimatedDurationMs: null,
+          },
+          modelId: null,
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      const result = await getAllRunningExecutions(mockDb, input);
+
+      // chatIdがないのでメッセージ取得はスキップされる
+      expect(mockDb.message.findMany).not.toHaveBeenCalled();
+      expect(result[0]?.latestMessage).toStrictEqual(null);
+    });
+
+    test("稼働中の実行がない場合は空配列を返す", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      };
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue([]);
+
+      const result = await getAllRunningExecutions(mockDb, input);
+
+      expect(result).toStrictEqual([]);
+      expect(mockDb.message.findMany).not.toHaveBeenCalled();
+    });
+
+    test("長いメッセージは50文字に切り詰められる", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      };
+
+      // 50文字を超えるテキスト（60文字）
+      const longText =
+        "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん。終了です。";
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          agentId: testAgentId,
+          chatId: "chat-1",
+          scheduleId: null,
+          schedule: null,
+          agent: {
+            name: "テストエージェント",
+            slug: "test-agent",
+            iconPath: null,
+            estimatedDurationMs: null,
+          },
+          modelId: null,
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      const mockMessages = [
+        {
+          chatId: "chat-1",
+          parts: [{ type: "text", text: longText }],
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue(
+        mockMessages as unknown as Awaited<
+          ReturnType<typeof mockDb.message.findMany>
+        >,
+      );
+
+      const result = await getAllRunningExecutions(mockDb, input);
+
+      expect(result[0]?.latestMessage).toStrictEqual(
+        longText.substring(0, 50) + "...",
+      );
+    });
+
+    test("アクセス権限チェックのクエリが正しい", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+      };
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue([]);
+
+      await getAllRunningExecutions(mockDb, input);
+
+      expect(mockDb.agentExecutionLog.findMany).toHaveBeenCalledWith({
+        where: {
+          success: null,
+          agent: {
+            OR: [
+              { organizationId: testOrganizationId, createdById: testUserId },
+              {
+                organizationId: testOrganizationId,
+                visibility: McpServerVisibility.ORGANIZATION,
+              },
+            ],
+          },
+        },
+        select: {
+          id: true,
+          agentId: true,
+          chatId: true,
+          scheduleId: true,
+          schedule: { select: { name: true } },
+          agent: {
+            select: {
+              name: true,
+              slug: true,
+              iconPath: true,
+              estimatedDurationMs: true,
+            },
+          },
+          modelId: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
     });
   });
 });

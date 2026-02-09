@@ -118,8 +118,8 @@ export const verifyChatAuth = async (
     userId = resolvedUserId;
   } catch (error) {
     logError("Failed to resolve user ID", error as Error, {
-      keycloakId: jwtPayload.sub,
-      email: jwtPayload.email,
+      keycloakIdPresent: !!jwtPayload.sub,
+      emailPresent: !!jwtPayload.email,
     });
     return {
       success: false,
