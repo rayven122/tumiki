@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
@@ -97,6 +97,12 @@ export const AgentCard = ({ agent, revalidate }: AgentCardProps) => {
 
   const visibilityInfo = VISIBILITY_INFO_MAP[agent.visibility];
   const VisibilityIcon = visibilityInfo.icon;
+
+  // パフォーマンス最適化: 表示するサーバー一覧をメモ化
+  const visibleServers = useMemo(
+    () => agent.mcpServers.slice(0, MAX_VISIBLE_MCP_ICONS),
+    [agent.mcpServers],
+  );
 
   return (
     <>
@@ -225,26 +231,24 @@ export const AgentCard = ({ agent, revalidate }: AgentCardProps) => {
           {/* MCPサーバーアイコン一覧 */}
           {mcpServerCount > 0 && (
             <div className="flex items-center gap-1 pt-2">
-              {agent.mcpServers
-                .slice(0, MAX_VISIBLE_MCP_ICONS)
-                .map((server) => (
-                  <TooltipProvider key={server.id}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100">
-                          <McpServerIcon
-                            iconPath={server.iconPath}
-                            alt={server.name}
-                            size={20}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{server.name}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))}
+              {visibleServers.map((server) => (
+                <TooltipProvider key={server.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100">
+                        <McpServerIcon
+                          iconPath={server.iconPath}
+                          alt={server.name}
+                          size={20}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{server.name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
               {mcpServerCount > MAX_VISIBLE_MCP_ICONS && (
                 <Badge variant="secondary" className="ml-1">
                   +{mcpServerCount - MAX_VISIBLE_MCP_ICONS}

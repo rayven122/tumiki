@@ -66,7 +66,7 @@ export const Step3Review = ({ onSuccess }: Step3ReviewProps) => {
       visibility: flowState.visibility,
       mcpServerIds:
         flowState.selectedMcpServerIds.length > 0
-          ? (flowState.selectedMcpServerIds as McpServerId[])
+          ? flowState.selectedMcpServerIds.map((id) => id as McpServerId)
           : undefined,
     });
   };
