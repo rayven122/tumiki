@@ -73,7 +73,7 @@
     "@vercel/blob": "^0.24.1",
     "@vercel/functions": "^2.2.13",
     "@vercel/mcp-adapter": "^1.0.0",
-    "@vercel/otel": "^1.14.0",
+    "@vercel/otel": "^2.1.0",
     "@vercel/postgres": "^0.10.0",
     "@xyflow/react": "^12.10.0",
     "ai": "^6.0.49",
