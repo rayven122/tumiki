@@ -28,7 +28,7 @@
     "@tumiki/prettier-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
     "@tumiki/vitest-config": "workspace:*",
-    "@types/node": "^22.19.1",
+    "@types/node": "^25.2.2",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",

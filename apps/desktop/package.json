@@ -34,7 +34,7 @@
     "@tumiki/tailwind-config": "workspace:*",
     "@tumiki/tsconfig": "workspace:*",
     "@tumiki/vitest-config": "workspace:*",
-    "@types/node": "^22.15.3",
+    "@types/node": "^25.2.2",
     "@types/react": "catalog:react19",
     "@types/react-dom": "catalog:react19",
     "@typescript/native-preview": "7.0.0-dev.20250814.1",
