@@ -199,37 +199,52 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         chatId,
       });
 
+      // タイムアウト用のAbortController
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort(new Error("Agent execution timed out"));
+      }, EXECUTION_TIMEOUT_MS);
+
       // ストリーミングレスポンスを作成
       const stream = createUIMessageStream({
         generateId: generateCUID,
         execute: async ({ writer }: { writer: UIMessageStreamWriter }) => {
-          const result = streamText({
-            model: gateway.languageModel(modelId),
-            system: systemPrompt,
-            prompt: userMessage,
-            stopWhen: stepCountIs(MAX_TOOL_STEPS),
-            experimental_activeTools: isReasoningModel ? [] : mcpToolNames,
-            providerOptions: isReasoningModel
-              ? {
-                  anthropic: {
-                    thinking: { type: "enabled", budgetTokens: 10_000 },
-                  },
-                }
-              : undefined,
-            tools:
-              Object.keys(mcpTools).length > 0
-                ? (mcpTools as Parameters<typeof streamText>[0]["tools"])
+          try {
+            const result = streamText({
+              model: gateway.languageModel(modelId),
+              system: systemPrompt,
+              prompt: userMessage,
+              stopWhen: stepCountIs(MAX_TOOL_STEPS),
+              abortSignal: abortController.signal,
+              experimental_activeTools: isReasoningModel ? [] : mcpToolNames,
+              providerOptions: isReasoningModel
+                ? {
+                    anthropic: {
+                      thinking: { type: "enabled", budgetTokens: 10_000 },
+                    },
+                  }
                 : undefined,
-          });
+              tools:
+                Object.keys(mcpTools).length > 0
+                  ? (mcpTools as Parameters<typeof streamText>[0]["tools"])
+                  : undefined,
+            });
 
-          // streamTextの結果をUIMessageStreamにマージ
-          const uiMessageStream = result.toUIMessageStream({
-            sendReasoning: true,
-          });
+            // streamTextの結果をUIMessageStreamにマージ
+            const uiMessageStream = result.toUIMessageStream({
+              sendReasoning: true,
+            });
 
-          writer.merge(uiMessageStream);
+            writer.merge(uiMessageStream);
+          } finally {
+            // タイムアウトタイマーをクリア
+            clearTimeout(timeoutId);
+          }
         },
         onFinish: async ({ messages: finishedMessages }) => {
+          // タイムアウトタイマーをクリア
+          clearTimeout(timeoutId);
+
           const durationMs = Date.now() - startTime;
 
           try {
@@ -304,7 +319,21 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
           }
         },
         onError: (error) => {
-          logError("Agent execution stream error", toError(error), { agentId });
+          // タイムアウトタイマーをクリア
+          clearTimeout(timeoutId);
+
+          const isTimeout =
+            error instanceof Error && error.message.includes("timed out");
+          const errorMessage = isTimeout
+            ? "エージェント実行がタイムアウトしました（5分）"
+            : error instanceof Error
+              ? error.message
+              : "Unknown error";
+
+          logError("Agent execution stream error", toError(error), {
+            agentId,
+            isTimeout,
+          });
 
           // エラー時は実行ログを失敗で更新（非同期だがコールバックは同期のみ対応）
           const durationMs = Date.now() - startTime;
@@ -324,7 +353,7 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               );
             });
 
-          return `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
+          return `Error: ${errorMessage}`;
         },
       });
 
