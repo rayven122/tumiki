@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Clock, Globe, Timer, CalendarClock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
@@ -39,16 +40,6 @@ import {
   getIntervalLabel,
   getJstPreview,
 } from "./cronUtils";
-
-// スケジュール種別ボタンの共通スタイル
-const SCHEDULE_TYPE_BUTTON_BASE =
-  "flex items-center justify-center gap-2 rounded-lg border p-3 text-sm transition-colors";
-const SCHEDULE_TYPE_BUTTON_ACTIVE = "border-primary bg-primary/10 text-primary";
-const SCHEDULE_TYPE_BUTTON_INACTIVE = "border-border hover:bg-muted";
-
-// スケジュール種別ボタンのスタイルを取得
-const getScheduleTypeButtonStyle = (isActive: boolean): string =>
-  `${SCHEDULE_TYPE_BUTTON_BASE} ${isActive ? SCHEDULE_TYPE_BUTTON_ACTIVE : SCHEDULE_TYPE_BUTTON_INACTIVE}`;
 
 // スケジュールプレビューコンポーネント
 type SchedulePreviewProps = {
@@ -252,26 +243,22 @@ export const ScheduleForm = ({
 
           <div className="space-y-2">
             <Label>スケジュール種別</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setScheduleType("fixed")}
-                className={getScheduleTypeButtonStyle(scheduleType === "fixed")}
-              >
-                <CalendarClock className="h-4 w-4" />
-                定時実行
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduleType("interval")}
-                className={getScheduleTypeButtonStyle(
-                  scheduleType === "interval",
-                )}
-              >
-                <Timer className="h-4 w-4" />
-                インターバル
-              </button>
-            </div>
+            <Tabs
+              value={scheduleType}
+              onValueChange={(v) => setScheduleType(v as ScheduleType)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="fixed" className="gap-2">
+                  <CalendarClock className="h-4 w-4" />
+                  定時実行
+                </TabsTrigger>
+                <TabsTrigger value="interval" className="gap-2">
+                  <Timer className="h-4 w-4" />
+                  インターバル
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           {scheduleType === "fixed" ? (
