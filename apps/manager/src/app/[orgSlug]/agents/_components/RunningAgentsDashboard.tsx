@@ -3,14 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 import { format } from "date-fns";
-import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  Eye,
-  Loader2,
-  Zap,
-} from "lucide-react";
+import { Activity, AlertTriangle, Eye, Loader2, Zap } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
@@ -250,39 +243,6 @@ const AgentActivityCard = ({
   );
 };
 
-/** リアルタイムログエントリの型 */
-type LogEntry = {
-  id: string;
-  timestamp: string;
-  agentSlug: string;
-  message: string;
-  status: "success" | "warning" | "info";
-};
-
-/** リアルタイムログエントリコンポーネント */
-const LogEntryItem = ({ entry }: { entry: LogEntry }) => {
-  const statusIcon = {
-    success: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-    warning: <AlertTriangle className="h-4 w-4 text-orange-500" />,
-    info: <Activity className="h-4 w-4 text-blue-500" />,
-  };
-
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="w-16 shrink-0 font-mono text-xs text-gray-400">
-        {entry.timestamp}
-      </span>
-      <span className="inline-flex shrink-0 items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-        {entry.agentSlug}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm text-gray-600">
-        {entry.message}
-      </span>
-      {statusIcon[entry.status]}
-    </div>
-  );
-};
-
 type ExecutionDetailsModalProps = {
   execution: ExecutionData | null;
   open: boolean;
@@ -407,37 +367,6 @@ export const RunningAgentsDashboard = () => {
     };
   }, [runningExecutions]);
 
-  // リアルタイムログエントリ（実際のメッセージデータから生成）
-  const logEntries: LogEntry[] = useMemo(() => {
-    if (!runningExecutions?.length) return [];
-
-    return runningExecutions.slice(0, 5).map((exec) => {
-      const progress = calculateProgress(
-        new Date(exec.createdAt),
-        exec.estimatedDurationMs,
-      );
-      const isWarning = progress >= WARNING_THRESHOLD;
-
-      // ステータスを判定: 警告状態、メッセージあり=成功、メッセージなし=処理中
-      const status: "success" | "warning" | "info" = isWarning
-        ? "warning"
-        : exec.latestMessage
-          ? "success"
-          : "info";
-
-      // メッセージを決定: 実際のメッセージがあればそれを使用、なければデフォルト
-      const message = exec.latestMessage ?? "処理を開始しました...";
-
-      return {
-        id: exec.id,
-        timestamp: formatStartTime(new Date(exec.createdAt)),
-        agentSlug: exec.agentSlug,
-        message,
-        status,
-      };
-    });
-  }, [runningExecutions]);
-
   const hasRunningExecutions =
     runningExecutions && runningExecutions.length > 0;
 
@@ -495,20 +424,6 @@ export const RunningAgentsDashboard = () => {
                 />
               ))}
             </div>
-
-            {/* リアルタイムログセクション */}
-            {logEntries.length > 0 && (
-              <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-gray-700">
-                  リアルタイムログ
-                </h3>
-                <div className="divide-y divide-gray-100">
-                  {logEntries.map((entry) => (
-                    <LogEntryItem key={entry.id} entry={entry} />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <EmptyState />

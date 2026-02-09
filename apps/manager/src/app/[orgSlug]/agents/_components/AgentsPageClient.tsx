@@ -11,6 +11,7 @@ import { getSessionInfo } from "~/lib/auth/session-utils";
 
 import { AgentCardList } from "./AgentCardList";
 import { EmptyState } from "./EmptyState";
+import { RealtimeLogPanel } from "./RealtimeLogPanel";
 import { RunningAgentsDashboard } from "./RunningAgentsDashboard";
 
 type AgentsPageClientProps = {
@@ -81,6 +82,11 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
       {/* 稼働中エージェントダッシュボード */}
       <div className="mb-6">
         <RunningAgentsDashboard />
+      </div>
+
+      {/* リアルタイムログ */}
+      <div className="mb-6">
+        <RealtimeLogPanel />
       </div>
 
       {/* エージェント一覧または空状態 */}
