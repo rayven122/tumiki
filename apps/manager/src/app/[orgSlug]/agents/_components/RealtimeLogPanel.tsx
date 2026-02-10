@@ -1,12 +1,10 @@
 "use client";
 
+import { REALTIME_LOG_POLLING_MS } from "@/lib/agent";
 import { api } from "@/trpc/react";
 import { format } from "date-fns";
 import { Loader2, Terminal } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
-
-/** ポーリング間隔（3秒） */
-const POLLING_INTERVAL_MS = 3000;
 
 /** 時刻をフォーマット */
 const formatTime = (date: Date): string => format(date, "HH:mm:ss");
@@ -56,6 +54,73 @@ const LogEntry = ({
   );
 };
 
+/** ログアイテムの型 */
+type LogItem = {
+  id: string;
+  createdAt: Date | string;
+  agentSlug: string;
+  success: boolean | null;
+  latestMessage: string | null;
+};
+
+type LogContentProps = {
+  isLoading: boolean;
+  allItems: LogItem[];
+  isFetchingNextPage: boolean;
+  hasNextPage: boolean | undefined;
+};
+
+/** ログコンテンツコンポーネント（表示状態を明確に分離） */
+const LogContent = ({
+  isLoading,
+  allItems,
+  isFetchingNextPage,
+  hasNextPage,
+}: LogContentProps) => {
+  // ローディング状態
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  // 空状態
+  if (allItems.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center font-mono text-sm text-slate-400">
+        実行履歴がありません
+      </div>
+    );
+  }
+
+  // ログ一覧
+  return (
+    <>
+      {allItems.map((item) => (
+        <LogEntry
+          key={item.id}
+          timestamp={new Date(item.createdAt)}
+          agentSlug={item.agentSlug}
+          success={item.success}
+          message={item.latestMessage}
+        />
+      ))}
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-2">
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+        </div>
+      )}
+      {!hasNextPage && allItems.length > 0 && (
+        <div className="py-2 text-center font-mono text-xs text-slate-500">
+          --- ログの末尾 ---
+        </div>
+      )}
+    </>
+  );
+};
+
 /**
  * リアルタイムログパネル
  * ターミナル風UIで直近の実行履歴を表示
@@ -68,7 +133,7 @@ export const RealtimeLogPanel = () => {
       { limit: 10 },
       {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
-        refetchInterval: POLLING_INTERVAL_MS,
+        refetchInterval: REALTIME_LOG_POLLING_MS,
       },
     );
 
@@ -115,37 +180,12 @@ export const RealtimeLogPanel = () => {
         ref={scrollContainerRef}
         className="h-48 overflow-y-auto rounded-lg bg-slate-800 p-4"
       >
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          </div>
-        ) : allItems.length === 0 ? (
-          <div className="flex h-full items-center justify-center font-mono text-sm text-slate-400">
-            実行履歴がありません
-          </div>
-        ) : (
-          <>
-            {allItems.map((item) => (
-              <LogEntry
-                key={item.id}
-                timestamp={new Date(item.createdAt)}
-                agentSlug={item.agentSlug}
-                success={item.success}
-                message={item.latestMessage}
-              />
-            ))}
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-              </div>
-            )}
-            {!hasNextPage && allItems.length > 0 && (
-              <div className="py-2 text-center font-mono text-xs text-slate-500">
-                --- ログの末尾 ---
-              </div>
-            )}
-          </>
-        )}
+        <LogContent
+          isLoading={isLoading}
+          allItems={allItems}
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+        />
       </div>
     </div>
   );

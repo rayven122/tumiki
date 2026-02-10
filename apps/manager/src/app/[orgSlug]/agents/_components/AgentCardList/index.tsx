@@ -1,5 +1,6 @@
 "use client";
 
+import { AGENT_CARD_POLLING_MS } from "@/lib/agent";
 import { api } from "@/trpc/react";
 import { Suspense, useEffect, useMemo } from "react";
 
@@ -31,9 +32,6 @@ const matchesSearchQuery = (
   );
 };
 
-// ポーリング間隔（3秒）
-const POLLING_INTERVAL_MS = 3000;
-
 /**
  * エージェント一覧の非同期コンポーネント
  */
@@ -44,7 +42,7 @@ const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
   // 全エージェントの稼働中実行を取得（ポーリング）
   const { data: runningExecutions } =
     api.v2.agentExecution.getAllRunning.useQuery(undefined, {
-      refetchInterval: POLLING_INTERVAL_MS,
+      refetchInterval: AGENT_CARD_POLLING_MS,
     });
 
   // agentId -> 稼働中の実行数のマップを作成
