@@ -1,7 +1,7 @@
 "use client";
 
 import { DefaultChatTransport } from "ai";
-import type { Attachment, ChatMessage } from "@/lib/types";
+import type { AgentInfo, Attachment, ChatMessage } from "@/lib/types";
 import { useChat } from "@ai-sdk/react";
 import {
   useCallback,
@@ -11,11 +11,10 @@ import {
   lazy,
   Suspense,
 } from "react";
-import useSWR, { useSWRConfig } from "swr";
-import type { Vote } from "@tumiki/db/prisma";
+import { useSWRConfig } from "swr";
 import { ChatQuickActions } from "./chat/ChatQuickActions";
 import { SuggestedActions } from "./suggested-actions";
-import { fetcher, fetchWithErrorHandlers, generateCUID } from "@/lib/utils";
+import { fetchWithErrorHandlers, generateCUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { MultimodalInput } from "./multimodal-input";
 import { Messages } from "./messages";
@@ -54,6 +53,7 @@ type ChatProps = {
   autoResume: boolean;
   isPersonalOrg: boolean;
   isNewChat?: boolean;
+  agentInfo?: AgentInfo;
 };
 
 export function Chat(props: ChatProps) {
@@ -77,6 +77,7 @@ function ChatContent({
   autoResume,
   isPersonalOrg,
   isNewChat = false,
+  agentInfo,
 }: ChatProps) {
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
@@ -219,11 +220,6 @@ function ChatContent({
       window.history.replaceState({}, "", `/${orgSlug}/chat/${id}`);
     }
   }, [query, sendMessage, hasAppendedQuery, id, orgSlug]);
-
-  const { data: votes } = useSWR<Array<Vote>>(
-    messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
-    fetcher,
-  );
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
@@ -400,12 +396,12 @@ function ChatContent({
               <Messages
                 chatId={id}
                 status={status}
-                votes={votes}
                 messages={messages}
                 setMessages={setMessages}
                 regenerate={regenerate}
                 isReadonly={isReadonly}
                 isArtifactVisible={isArtifactVisible}
+                agentInfo={agentInfo}
               />
 
               <form className="bg-background mx-auto flex w-full flex-col gap-2 px-4 pb-4 md:max-w-3xl md:pb-6">
@@ -483,7 +479,6 @@ function ChatContent({
         messages={messages}
         setMessages={setMessages}
         regenerate={regenerate}
-        votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
       />

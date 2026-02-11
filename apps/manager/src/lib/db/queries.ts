@@ -106,13 +106,17 @@ export const getChatsByUserId = async ({
       direction = "before";
     }
 
-    // カーソルベースのページネーション条件
-    const cursorCondition =
-      direction === "after"
-        ? { createdAt: { gt: cursorDate! } }
-        : direction === "before"
-          ? { createdAt: { lt: cursorDate! } }
-          : null;
+    // カーソルベースのページネーション条件を生成
+    const buildCursorCondition = () => {
+      if (direction === "after") {
+        return { createdAt: { gt: cursorDate! } };
+      }
+      if (direction === "before") {
+        return { createdAt: { lt: cursorDate! } };
+      }
+      return null;
+    };
+    const cursorCondition = buildCursorCondition();
 
     const chats = await db.chat.findMany({
       where: {
@@ -161,6 +165,9 @@ export const getChatById = async ({ id }: { id: string }) => {
       include: {
         mcpServers: {
           select: { id: true },
+        },
+        agent: {
+          select: { id: true, name: true, iconPath: true },
         },
       },
     });
