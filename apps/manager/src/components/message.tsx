@@ -215,6 +215,7 @@ const PurePreviewMessage = ({
                     state: string; // "pending" | "output-available" | "error" など
                     input?: unknown;
                     output?: unknown;
+                    outputRef?: string;
                   };
 
                   // AI SDK 6の状態形式にマッピング
@@ -241,9 +242,11 @@ const PurePreviewMessage = ({
                     <McpToolCall
                       key={dynamicToolPart.toolCallId}
                       toolName={dynamicToolPart.toolName}
+                      toolCallId={dynamicToolPart.toolCallId}
                       state={mapDynamicToolState(dynamicToolPart.state)}
                       input={dynamicToolPart.input}
                       output={dynamicToolPart.output}
+                      outputRef={dynamicToolPart.outputRef}
                     />
                   );
                 }
@@ -290,6 +293,7 @@ const PurePreviewMessage = ({
                     state: string;
                     input?: unknown;
                     output?: unknown;
+                    outputRef?: string;
                   };
                   const { toolCallId, state } = toolPart;
                   // ツール名を抽出 (tool-getWeather → getWeather)
@@ -304,6 +308,7 @@ const PurePreviewMessage = ({
                       <McpToolCall
                         key={toolCallId}
                         toolName={toolName}
+                        toolCallId={toolCallId}
                         state={
                           state as
                             | "input-streaming"
@@ -313,6 +318,7 @@ const PurePreviewMessage = ({
                         }
                         input={toolPart.input}
                         output={toolPart.output}
+                        outputRef={toolPart.outputRef}
                       />
                     );
                   }

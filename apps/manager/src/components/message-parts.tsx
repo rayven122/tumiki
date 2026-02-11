@@ -66,14 +66,17 @@ const ToolPartRenderer = ({
       state: string;
       input?: unknown;
       output?: unknown;
+      outputRef?: string;
     };
 
     return (
       <McpToolCall
         toolName={dynamicToolPart.toolName}
+        toolCallId={dynamicToolPart.toolCallId}
         state={mapDynamicToolState(dynamicToolPart.state)}
         input={dynamicToolPart.input}
         output={dynamicToolPart.output}
+        outputRef={dynamicToolPart.outputRef}
       />
     );
   }
@@ -118,6 +121,7 @@ const ToolPartRenderer = ({
       state: string;
       input?: unknown;
       output?: unknown;
+      outputRef?: string;
     };
     const toolName = type.replace("tool-", "");
 
@@ -128,9 +132,11 @@ const ToolPartRenderer = ({
       return (
         <McpToolCall
           toolName={toolName}
+          toolCallId={toolPart.toolCallId}
           state={toolPart.state as ToolState}
           input={toolPart.input}
           output={toolPart.output}
+          outputRef={toolPart.outputRef}
         />
       );
     }
