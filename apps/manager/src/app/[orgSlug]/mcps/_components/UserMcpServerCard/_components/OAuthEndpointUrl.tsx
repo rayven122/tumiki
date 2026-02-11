@@ -7,16 +7,16 @@ import { toast } from "@/utils/client/toast";
 import { makeHttpProxyServerUrl } from "@/utils/url";
 
 type OAuthEndpointUrlProps = {
-  userMcpServerId: string;
+  userMcpServerSlug: string;
 };
 
 /**
  * OAuth MCPサーバーの接続URLを表示・コピーするコンポーネント
  */
 export const OAuthEndpointUrl = ({
-  userMcpServerId,
+  userMcpServerSlug,
 }: OAuthEndpointUrlProps) => {
-  const endpointUrl = makeHttpProxyServerUrl(userMcpServerId);
+  const endpointUrl = makeHttpProxyServerUrl(userMcpServerSlug);
 
   const handleCopy = async (e: React.MouseEvent) => {
     // カード全体のクリックイベントを防ぐ
@@ -26,14 +26,15 @@ export const OAuthEndpointUrl = ({
   };
 
   /**
-   * URLを短縮表示（ドメイン + /mcp/[ID末尾8文字]）
+   * URLを短縮表示（ドメイン + /mcp/[slug]）
    */
   const truncateUrl = (url: string) => {
     const urlObj = new URL(url);
     const path = urlObj.pathname;
-    const id = path.split("/").pop() ?? "";
-    const shortId = id.length > 8 ? `...${id.slice(-8)}` : id;
-    return `${urlObj.host}/mcp/${shortId}`;
+    const slug = path.split("/").pop() ?? "";
+    // slugが長い場合は末尾を省略
+    const shortSlug = slug.length > 15 ? `${slug.slice(0, 15)}...` : slug;
+    return `${urlObj.host}/mcp/${shortSlug}`;
   };
 
   return (

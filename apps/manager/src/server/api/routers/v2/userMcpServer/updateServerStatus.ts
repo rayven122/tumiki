@@ -8,6 +8,7 @@ type UpdateServerStatusInput = {
   id: McpServerId;
   isEnabled: boolean;
   organizationId: string;
+  organizationSlug: string;
 };
 
 // サーバーステータス更新のレスポンススキーマ
@@ -25,7 +26,7 @@ export const updateServerStatus = async (
   input: UpdateServerStatusInput,
   userId: string,
 ): Promise<UpdateServerStatusOutput> => {
-  const { id, isEnabled, organizationId } = input;
+  const { id, isEnabled, organizationId, organizationSlug } = input;
 
   // サーバーの存在確認
   const server = await tx.mcpServer.findUnique({
@@ -68,7 +69,7 @@ export const updateServerStatus = async (
     priority,
     title: `MCPサーバーが${statusText}しました`,
     message: `「${updatedServer.name}」が${statusText}しました。`,
-    linkUrl: `/${organizationId}/mcps/${id}`,
+    linkUrl: `/${organizationSlug}/mcps/${server.slug}`,
     organizationId,
     triggeredById: userId,
   });

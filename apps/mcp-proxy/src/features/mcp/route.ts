@@ -16,7 +16,7 @@ import { toonConversionMiddleware } from "./middleware/toonConversion/index.js";
 export const mcpFeatureRoute = new Hono<HonoEnv>();
 
 mcpFeatureRoute.post(
-  "/mcp/:mcpServerId",
+  "/mcp/:slug",
   mcpRequestLoggingMiddleware,
   authMiddleware,
   piiMaskingMiddleware,

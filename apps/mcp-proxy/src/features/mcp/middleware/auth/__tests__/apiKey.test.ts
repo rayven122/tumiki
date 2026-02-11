@@ -53,10 +53,10 @@ describe("apiKeyAuthMiddleware", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // テスト用のHonoアプリを作成
+    // テスト用のHonoアプリを作成（パスパラメータをslugに変更）
     app = new Hono<HonoEnv>();
-    app.use("/:mcpServerId/*", apiKeyAuthMiddleware);
-    app.get("/:mcpServerId/test", (c) => {
+    app.use("/:slug/*", apiKeyAuthMiddleware);
+    app.get("/:slug/test", (c) => {
       const authContext = c.get("authContext");
       return c.json({ success: true, authContext });
     });
@@ -68,7 +68,7 @@ describe("apiKeyAuthMiddleware", () => {
 
   describe("APIキーの検証", () => {
     test("APIキーがない場合は401を返す", async () => {
-      const res = await app.request("/server-123/test");
+      const res = await app.request("/my-server/test");
 
       expect(res.status).toBe(401);
       const body = (await res.json()) as ErrorResponse;
@@ -84,6 +84,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -91,7 +92,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_test_key" },
       });
 
@@ -102,6 +103,7 @@ describe("apiKeyAuthMiddleware", () => {
           mcpServer: {
             select: {
               id: true,
+              slug: true,
               organizationId: true,
               piiMaskingMode: true,
               piiInfoTypes: true,
@@ -121,6 +123,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -128,7 +131,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer tumiki_bearer_key" },
       });
 
@@ -149,6 +152,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -156,7 +160,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: {
           "Tumiki-API-Key": "tumiki_priority_key",
           Authorization: "Bearer tumiki_other_key",
@@ -176,7 +180,7 @@ describe("apiKeyAuthMiddleware", () => {
     test("無効なAPIキーの場合は401を返す", async () => {
       mockFindUnique.mockResolvedValue(null);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "invalid_key" },
       });
 
@@ -194,6 +198,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -201,7 +206,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_inactive_key" },
       });
 
@@ -220,7 +225,7 @@ describe("apiKeyAuthMiddleware", () => {
         mcpServer: null,
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_orphan_key" },
       });
 
@@ -243,6 +248,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -250,7 +256,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_expired_key" },
       });
 
@@ -271,6 +277,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -278,7 +285,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_valid_key" },
       });
 
@@ -294,6 +301,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -301,7 +309,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_no_expiry_key" },
       });
 
@@ -309,8 +317,8 @@ describe("apiKeyAuthMiddleware", () => {
     });
   });
 
-  describe("mcpServerId不一致の検証", () => {
-    test("APIキーのmcpServerIdとパスのmcpServerIdが不一致の場合は403を返す", async () => {
+  describe("slug不一致の検証", () => {
+    test("APIキーのmcpServer.slugとパスのslugが不一致の場合は403を返す", async () => {
       mockFindUnique.mockResolvedValue({
         id: "api-key-id-123",
         apiKey: "tumiki_test_key",
@@ -318,7 +326,8 @@ describe("apiKeyAuthMiddleware", () => {
         expiresAt: null,
         userId: "user-456",
         mcpServer: {
-          id: "different-server-id",
+          id: "server-123",
+          slug: "different-server",
           organizationId: "org-789",
           piiMaskingMode: "DISABLED",
           piiInfoTypes: [],
@@ -326,13 +335,13 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_test_key" },
       });
 
       expect(res.status).toBe(403);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.message).toContain("MCP Server ID mismatch");
+      expect(body.error.message).toContain("MCP Server slug mismatch");
     });
   });
 
@@ -346,6 +355,7 @@ describe("apiKeyAuthMiddleware", () => {
         userId: "user-456",
         mcpServer: {
           id: "server-123",
+          slug: "my-server",
           organizationId: "org-789",
           piiMaskingMode: "BOTH",
           piiInfoTypes: ["EMAIL_ADDRESS", "PHONE_NUMBER"],
@@ -353,7 +363,7 @@ describe("apiKeyAuthMiddleware", () => {
         },
       } as never);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_success_key" },
       });
 
@@ -363,7 +373,7 @@ describe("apiKeyAuthMiddleware", () => {
         authMethod: AuthType.API_KEY,
         organizationId: "org-789",
         userId: "user-456",
-        mcpServerId: "server-123",
+        mcpServerId: "server-123", // 実際のIDがauthContextに設定される
         mcpApiKeyId: "api-key-id-123",
         piiMaskingMode: "BOTH",
         piiInfoTypes: ["EMAIL_ADDRESS", "PHONE_NUMBER"],
@@ -372,9 +382,9 @@ describe("apiKeyAuthMiddleware", () => {
     });
   });
 
-  describe("mcpServerIdパラメータの検証", () => {
-    test("mcpServerIdがパスに存在しない場合は403を返す", async () => {
-      // mcpServerIdパラメータがないルートを作成
+  describe("slugパラメータの検証", () => {
+    test("slugがパスに存在しない場合は403を返す", async () => {
+      // slugパラメータがないルートを作成
       const appNoParam = new Hono<HonoEnv>();
       appNoParam.use("/*", apiKeyAuthMiddleware);
       appNoParam.get("/test", (c) => c.json({ success: true }));
@@ -385,7 +395,7 @@ describe("apiKeyAuthMiddleware", () => {
 
       expect(res.status).toBe(403);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.message).toContain("mcpServerId is required in path");
+      expect(body.error.message).toContain("slug is required in path");
     });
   });
 
@@ -393,7 +403,7 @@ describe("apiKeyAuthMiddleware", () => {
     test("データベースエラー時はAPIキーが無効として扱われる", async () => {
       mockFindUnique.mockRejectedValue(new Error("Database connection failed"));
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_test_key" },
       });
 
@@ -409,7 +419,7 @@ describe("apiKeyAuthMiddleware", () => {
       const dbError = new Error("Database connection failed");
       mockFindUnique.mockRejectedValue(dbError);
 
-      await app.request("/server-123/test", {
+      await app.request("/my-server/test", {
         headers: { "Tumiki-API-Key": "tumiki_test_key" },
       });
 

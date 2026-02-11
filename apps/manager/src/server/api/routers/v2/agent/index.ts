@@ -113,6 +113,7 @@ const CreatedBySchema = z
 // MCPサーバー情報の型定義
 const McpServerInfoSchema = z.object({
   id: z.string(),
+  slug: z.string(),
   name: z.string(),
   iconPath: z.string().nullable(),
   // テンプレートのiconPathとツール数を取得

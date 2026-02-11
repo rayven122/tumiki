@@ -21,6 +21,7 @@ import {
 import { updateName } from "./updateName";
 import { updateIconPath } from "./updateIconPath";
 import { findById } from "./findById";
+import { findBySlug } from "./findBySlug";
 import { getToolStats, getToolStatsOutputSchema } from "./getToolStats";
 import {
   updateServerStatus,
@@ -204,6 +205,11 @@ export const FindByIdInputV2 = z.object({
   id: McpServerIdSchema,
 });
 
+// サーバー詳細取得（slug指定）の入力スキーマ
+export const FindBySlugInputV2 = z.object({
+  slug: z.string(),
+});
+
 // ツール統計取得の入力スキーマ
 export const GetToolStatsInputV2 = z.object({
   userMcpServerId: McpServerIdSchema,
@@ -340,7 +346,7 @@ export const userMcpServerRouter = createTRPCRouter({
         priority: "LOW",
         title: "MCPサーバーが追加されました",
         message: `「${input.name}」が組織に追加されました。`,
-        linkUrl: `/${ctx.currentOrg.id}/mcps/${result.id}`,
+        linkUrl: `/${ctx.currentOrg.slug}/mcps/${input.slug}`,
         organizationId: ctx.currentOrg.id,
         triggeredById: ctx.session.user.id,
       });
@@ -373,7 +379,7 @@ export const userMcpServerRouter = createTRPCRouter({
         priority: "LOW",
         title: "MCPサーバーが追加されました",
         message: `「${input.name}」が組織に追加されました。`,
-        linkUrl: `/${ctx.currentOrg.id}/mcps/${result.id}`,
+        linkUrl: `/${ctx.currentOrg.slug}/mcps/${input.slug}`,
         organizationId: ctx.currentOrg.id,
         triggeredById: ctx.session.user.id,
       });
@@ -545,6 +551,21 @@ export const userMcpServerRouter = createTRPCRouter({
       });
     }),
 
+  // サーバー詳細取得（slug指定）
+  findBySlug: protectedProcedure
+    .input(FindBySlugInputV2)
+    .query(async ({ ctx, input }) => {
+      // MCP読み取り権限チェック（slug取得時はサーバーIDが不明なため全体権限チェック）
+      await validateMcpPermission(ctx.db, ctx.currentOrg, {
+        permission: "read",
+      });
+
+      return await findBySlug(ctx.db, {
+        slug: input.slug,
+        organizationId: ctx.currentOrg.id,
+      });
+    }),
+
   // ツール統計取得
   getToolStats: protectedProcedure
     .input(GetToolStatsInputV2)
@@ -580,6 +601,7 @@ export const userMcpServerRouter = createTRPCRouter({
             id: input.id,
             isEnabled: input.isEnabled,
             organizationId: ctx.currentOrg.id,
+            organizationSlug: ctx.currentOrg.slug,
           },
           ctx.session.user.id,
         );

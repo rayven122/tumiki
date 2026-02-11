@@ -22,6 +22,7 @@ const fetchApiKeyFromDatabase = async (apiKey: string) => {
         mcpServer: {
           select: {
             id: true,
+            slug: true,
             organizationId: true,
             piiMaskingMode: true,
             piiInfoTypes: true,
@@ -38,6 +39,9 @@ const fetchApiKeyFromDatabase = async (apiKey: string) => {
 
 /**
  * API Key認証ミドルウェア
+ *
+ * パスパラメータがslugに変更されたため、APIキーに紐づくMcpServerの
+ * slugとパスのslugを比較して認可を行う。
  */
 export const apiKeyAuthMiddleware = async (
   c: Context<HonoEnv>,
@@ -60,13 +64,10 @@ export const apiKeyAuthMiddleware = async (
     );
   }
 
-  // mcpServerIdが存在しない場合は403を返す
-  const pathMcpServerId = c.req.param("mcpServerId");
-  if (!pathMcpServerId) {
-    return c.json(
-      createPermissionDeniedError("mcpServerId is required in path"),
-      403,
-    );
+  // slugが存在しない場合は403を返す
+  const pathSlug = c.req.param("slug");
+  if (!pathSlug) {
+    return c.json(createPermissionDeniedError("slug is required in path"), 403);
   }
 
   const mcpApiKey = await fetchApiKeyFromDatabase(apiKey);
@@ -81,11 +82,11 @@ export const apiKeyAuthMiddleware = async (
     return c.json(createUnauthorizedError("API key has expired"), 401);
   }
 
-  // api keyのmcpServerIdとリクエストパスのmcpServerIdが一致しない場合は403を返す
-  if (mcpApiKey.mcpServer.id !== pathMcpServerId) {
+  // api keyのmcpServer.slugとリクエストパスのslugが一致しない場合は403を返す
+  if (mcpApiKey.mcpServer.slug !== pathSlug) {
     return c.json(
       createPermissionDeniedError(
-        "MCP Server ID mismatch: You are not authorized to access this MCP server",
+        "MCP Server slug mismatch: You are not authorized to access this MCP server",
       ),
       403,
     );
@@ -94,12 +95,12 @@ export const apiKeyAuthMiddleware = async (
   // 認証成功: コンテキストに認証情報を設定
   c.set("authMethod", AuthType.API_KEY);
 
-  // 統一認証コンテキストを設定
+  // 統一認証コンテキストを設定（mcpServerIdは実際のIDを使用）
   c.set("authContext", {
     authMethod: AuthType.API_KEY,
     organizationId: mcpApiKey.mcpServer.organizationId,
     userId: mcpApiKey.userId,
-    mcpServerId: pathMcpServerId,
+    mcpServerId: mcpApiKey.mcpServer.id,
     mcpApiKeyId: mcpApiKey.id,
     piiMaskingMode: mcpApiKey.mcpServer.piiMaskingMode,
     piiInfoTypes: mcpApiKey.mcpServer.piiInfoTypes,

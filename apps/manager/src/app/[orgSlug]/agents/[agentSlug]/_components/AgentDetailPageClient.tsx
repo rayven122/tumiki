@@ -269,7 +269,7 @@ const AsyncAgentDetail = ({
                 return (
                   <Link
                     key={server.id}
-                    href={`/${orgSlug}/mcps/${server.id}`}
+                    href={`/${orgSlug}/mcps/${server.slug}`}
                     className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">

@@ -30,7 +30,7 @@ vi.mock("../../../../../infrastructure/keycloak/jwtVerifierImpl.js", () => ({
 vi.mock(
   "../../../../../infrastructure/db/repositories/mcpServerRepository.js",
   () => ({
-    getMcpServerOrganization: vi.fn(),
+    getMcpServerBySlug: vi.fn(),
     checkOrganizationMembership: vi.fn(),
   }),
 );
@@ -52,7 +52,7 @@ import { jwtAuthMiddleware } from "../jwtAuth.js";
 import { AuthType } from "@tumiki/db";
 import { verifyKeycloakJWT } from "../../../../../infrastructure/keycloak/jwtVerifierImpl.js";
 import {
-  getMcpServerOrganization,
+  getMcpServerBySlug,
   checkOrganizationMembership,
 } from "../../../../../infrastructure/db/repositories/mcpServerRepository.js";
 import {
@@ -62,7 +62,7 @@ import {
 
 // モック関数を取得
 const mockVerifyKeycloakJWT = vi.mocked(verifyKeycloakJWT);
-const mockGetMcpServerOrganization = vi.mocked(getMcpServerOrganization);
+const mockGetMcpServerBySlug = vi.mocked(getMcpServerBySlug);
 const mockCheckOrganizationMembership = vi.mocked(checkOrganizationMembership);
 const mockGetUserIdFromKeycloakId = vi.mocked(getUserIdFromKeycloakId);
 const mockGetUserIdByEmail = vi.mocked(getUserIdByEmail);
@@ -73,10 +73,10 @@ describe("jwtAuthMiddleware", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // テスト用のHonoアプリを作成
+    // テスト用のHonoアプリを作成（パスパラメータをslugに変更）
     app = new Hono<HonoEnv>();
-    app.use("/:mcpServerId/*", jwtAuthMiddleware);
-    app.get("/:mcpServerId/test", (c) => {
+    app.use("/:slug/*", jwtAuthMiddleware);
+    app.get("/:slug/test", (c) => {
       const authContext = c.get("authContext");
       return c.json({ success: true, authContext });
     });
@@ -88,7 +88,7 @@ describe("jwtAuthMiddleware", () => {
 
   describe("Authorizationヘッダーの検証", () => {
     test("Authorizationヘッダーがない場合は401を返す", async () => {
-      const res = await app.request("/server-123/test");
+      const res = await app.request("/my-server/test");
 
       expect(res.status).toBe(401);
       const body = (await res.json()) as ErrorResponse;
@@ -96,7 +96,7 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("Bearer形式でない場合は401を返す", async () => {
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Basic dXNlcjpwYXNz" },
       });
 
@@ -110,7 +110,7 @@ describe("jwtAuthMiddleware", () => {
     test("期限切れトークンの場合は401を返す", async () => {
       mockVerifyKeycloakJWT.mockRejectedValue(new Error("Token has expired"));
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer expired-token" },
       });
 
@@ -124,7 +124,7 @@ describe("jwtAuthMiddleware", () => {
         new Error("Invalid signature detected"),
       );
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer invalid-sig-token" },
       });
 
@@ -136,7 +136,7 @@ describe("jwtAuthMiddleware", () => {
     test("その他の検証エラーの場合は401を返す", async () => {
       mockVerifyKeycloakJWT.mockRejectedValue(new Error("Unknown JWT error"));
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer bad-token" },
       });
 
@@ -146,18 +146,40 @@ describe("jwtAuthMiddleware", () => {
     });
   });
 
+  describe("organizationIdの検証", () => {
+    test("JWTにorganizationIdが含まれていない場合は403を返す", async () => {
+      mockVerifyKeycloakJWT.mockResolvedValue({
+        sub: "keycloak-user-123",
+        email: "user@example.com",
+        // tumiki.org_id が含まれていない
+      });
+
+      const res = await app.request("/my-server/test", {
+        headers: { Authorization: "Bearer valid-token" },
+      });
+
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error.message).toContain("Organization ID not found in JWT");
+    });
+  });
+
   describe("MCP Server検証", () => {
     const validPayload = {
       sub: "keycloak-user-123",
       email: "user@example.com",
+      tumiki: {
+        org_id: "org-456",
+      },
     };
 
     beforeEach(() => {
       mockVerifyKeycloakJWT.mockResolvedValue(validPayload);
+      mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
     });
 
     test("MCP Serverが見つからない場合は404を返す", async () => {
-      mockGetMcpServerOrganization.mockResolvedValue(null);
+      mockGetMcpServerBySlug.mockResolvedValue(null);
 
       const res = await app.request("/nonexistent-server/test", {
         headers: { Authorization: "Bearer valid-token" },
@@ -169,7 +191,7 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("削除済みMCP Serverの場合は404を返す", async () => {
-      mockGetMcpServerOrganization.mockResolvedValue({
+      mockGetMcpServerBySlug.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: new Date(),
@@ -179,7 +201,7 @@ describe("jwtAuthMiddleware", () => {
         toonConversionEnabled: false,
       });
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -189,11 +211,9 @@ describe("jwtAuthMiddleware", () => {
     });
 
     test("MCP Server取得エラーの場合は403を返す", async () => {
-      mockGetMcpServerOrganization.mockRejectedValue(
-        new Error("Database error"),
-      );
+      mockGetMcpServerBySlug.mockRejectedValue(new Error("Database error"));
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -203,17 +223,9 @@ describe("jwtAuthMiddleware", () => {
         "Failed to verify MCP server access",
       );
     });
-  });
 
-  describe("ユーザー解決", () => {
-    const validPayload = {
-      sub: "keycloak-user-123",
-      email: "user@example.com",
-    };
-
-    beforeEach(() => {
-      mockVerifyKeycloakJWT.mockResolvedValue(validPayload);
-      mockGetMcpServerOrganization.mockResolvedValue({
+    test("slugとorganizationIdでMcpServerを検索する", async () => {
+      mockGetMcpServerBySlug.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -222,13 +234,47 @@ describe("jwtAuthMiddleware", () => {
         piiInfoTypes: [],
         toonConversionEnabled: false,
       });
+      mockCheckOrganizationMembership.mockResolvedValue(true);
+
+      const res = await app.request("/my-server/test", {
+        headers: { Authorization: "Bearer valid-token" },
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockGetMcpServerBySlug).toHaveBeenCalledWith(
+        "my-server",
+        "org-456",
+      );
+    });
+  });
+
+  describe("ユーザー解決", () => {
+    const validPayload = {
+      sub: "keycloak-user-123",
+      email: "user@example.com",
+      tumiki: {
+        org_id: "org-456",
+      },
+    };
+
+    beforeEach(() => {
+      mockVerifyKeycloakJWT.mockResolvedValue(validPayload);
     });
 
     test("Keycloak IDでユーザーを解決する", async () => {
       mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
+      mockGetMcpServerBySlug.mockResolvedValue({
+        id: "server-123",
+        organizationId: "org-456",
+        deletedAt: null,
+        authType: "OAUTH",
+        piiMaskingMode: "DISABLED",
+        piiInfoTypes: [],
+        toonConversionEnabled: false,
+      });
       mockCheckOrganizationMembership.mockResolvedValue(true);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -242,9 +288,18 @@ describe("jwtAuthMiddleware", () => {
     test("Keycloak IDで見つからない場合はemailでフォールバック", async () => {
       mockGetUserIdFromKeycloakId.mockResolvedValue(null);
       mockGetUserIdByEmail.mockResolvedValue("tumiki-user-by-email");
+      mockGetMcpServerBySlug.mockResolvedValue({
+        id: "server-123",
+        organizationId: "org-456",
+        deletedAt: null,
+        authType: "OAUTH",
+        piiMaskingMode: "DISABLED",
+        piiInfoTypes: [],
+        toonConversionEnabled: false,
+      });
       mockCheckOrganizationMembership.mockResolvedValue(true);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -256,7 +311,7 @@ describe("jwtAuthMiddleware", () => {
       mockGetUserIdFromKeycloakId.mockResolvedValue(null);
       mockGetUserIdByEmail.mockResolvedValue(null);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -270,7 +325,7 @@ describe("jwtAuthMiddleware", () => {
         new Error("User lookup failed"),
       );
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -285,8 +340,12 @@ describe("jwtAuthMiddleware", () => {
       mockVerifyKeycloakJWT.mockResolvedValue({
         sub: "keycloak-user-123",
         email: "user@example.com",
+        tumiki: {
+          org_id: "org-456",
+        },
       });
-      mockGetMcpServerOrganization.mockResolvedValue({
+      mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
+      mockGetMcpServerBySlug.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -295,13 +354,12 @@ describe("jwtAuthMiddleware", () => {
         piiInfoTypes: [],
         toonConversionEnabled: false,
       });
-      mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
     });
 
     test("メンバーでない場合は403を返す", async () => {
       mockCheckOrganizationMembership.mockResolvedValue(false);
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -315,7 +373,7 @@ describe("jwtAuthMiddleware", () => {
         new Error("Membership check failed"),
       );
 
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -325,9 +383,9 @@ describe("jwtAuthMiddleware", () => {
     });
   });
 
-  describe("mcpServerIdが欠落", () => {
-    test("mcpServerIdがパスにない場合は403を返す", async () => {
-      // mcpServerId パラメータなしのルートを作成
+  describe("slugが欠落", () => {
+    test("slugがパスにない場合は403を返す", async () => {
+      // slug パラメータなしのルートを作成
       const appWithoutParam = new Hono<HonoEnv>();
       appWithoutParam.use("/test/*", jwtAuthMiddleware);
       appWithoutParam.get("/test/endpoint", (c) => {
@@ -337,6 +395,9 @@ describe("jwtAuthMiddleware", () => {
       mockVerifyKeycloakJWT.mockResolvedValue({
         sub: "keycloak-user-123",
         email: "user@example.com",
+        tumiki: {
+          org_id: "org-456",
+        },
       });
 
       const res = await appWithoutParam.request("/test/endpoint", {
@@ -345,7 +406,7 @@ describe("jwtAuthMiddleware", () => {
 
       expect(res.status).toBe(403);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.message).toContain("mcpServerId is required in path");
+      expect(body.error.message).toContain("slug is required in path");
     });
   });
 
@@ -354,8 +415,12 @@ describe("jwtAuthMiddleware", () => {
       mockVerifyKeycloakJWT.mockResolvedValue({
         sub: "keycloak-user-123",
         email: "user@example.com",
+        tumiki: {
+          org_id: "org-456",
+        },
       });
-      mockGetMcpServerOrganization.mockResolvedValue({
+      mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
+      mockGetMcpServerBySlug.mockResolvedValue({
         id: "server-123",
         organizationId: "org-456",
         deletedAt: null,
@@ -364,12 +429,11 @@ describe("jwtAuthMiddleware", () => {
         piiInfoTypes: ["EMAIL_ADDRESS", "PHONE_NUMBER"],
         toonConversionEnabled: true,
       });
-      mockGetUserIdFromKeycloakId.mockResolvedValue("tumiki-user-123");
       mockCheckOrganizationMembership.mockResolvedValue(true);
     });
 
     test("認証成功時にauthContextが設定される", async () => {
-      const res = await app.request("/server-123/test", {
+      const res = await app.request("/my-server/test", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -379,7 +443,7 @@ describe("jwtAuthMiddleware", () => {
         authMethod: AuthType.OAUTH,
         organizationId: "org-456",
         userId: "tumiki-user-123",
-        mcpServerId: "server-123",
+        mcpServerId: "server-123", // 実際のIDがauthContextに設定される
         piiMaskingMode: "BOTH",
         piiInfoTypes: ["EMAIL_ADDRESS", "PHONE_NUMBER"],
         toonConversionEnabled: true,

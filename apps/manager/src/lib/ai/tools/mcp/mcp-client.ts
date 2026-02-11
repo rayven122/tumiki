@@ -125,6 +125,7 @@ type ToolDefinition = {
  */
 type ServerToolDefinitions = {
   serverId: string;
+  serverSlug: string;
   serverName: string;
   tools: ToolDefinition[];
   dynamicSearch: boolean;
@@ -148,6 +149,7 @@ const getToolDefinitionsFromDb = async (
     },
     select: {
       id: true,
+      slug: true,
       name: true,
       dynamicSearch: true,
       templateInstances: {
@@ -177,6 +179,7 @@ const getToolDefinitionsFromDb = async (
     );
     result.set(server.id, {
       serverId: server.id,
+      serverSlug: server.slug,
       serverName: server.name,
       tools,
       dynamicSearch: server.dynamicSearch,
@@ -220,12 +223,13 @@ class ReAuthRequiredError extends Error {
  * mcp-proxyにJSON-RPC 2.0でツール呼び出しを送信
  */
 const callToolViaProxy = async (
+  mcpServerSlug: string,
   mcpServerId: string,
   toolName: string,
   args: unknown,
   accessToken: string,
 ): Promise<unknown> => {
-  const proxyUrl = makeHttpProxyServerUrl(mcpServerId);
+  const proxyUrl = makeHttpProxyServerUrl(mcpServerSlug);
 
   const response = await fetch(proxyUrl, {
     method: "POST",
@@ -278,6 +282,7 @@ const callToolViaProxy = async (
  * ツール実行時のみmcp-proxyにHTTPリクエストを送信
  */
 const createLazyExecute = (
+  mcpServerSlug: string,
   mcpServerId: string,
   toolName: string,
   accessToken: string,
@@ -285,7 +290,13 @@ const createLazyExecute = (
   return async (args: unknown): Promise<unknown> => {
     try {
       const result = await withTimeout(
-        callToolViaProxy(mcpServerId, toolName, args, accessToken),
+        callToolViaProxy(
+          mcpServerSlug,
+          mcpServerId,
+          toolName,
+          args,
+          accessToken,
+        ),
         MCP_TOOL_TIMEOUT_MS,
         `MCP tool '${toolName}' timed out after ${MCP_TOOL_TIMEOUT_MS}ms`,
       );
@@ -414,7 +425,12 @@ export const getMcpToolsFromServers = async (
         allTools[uniqueName] = {
           description: meta.description,
           inputSchema: jsonSchema(meta.inputSchema as Record<string, unknown>),
-          execute: createLazyExecute(mcpServerId, proxyToolName, accessToken),
+          execute: createLazyExecute(
+            serverDef.serverSlug,
+            mcpServerId,
+            proxyToolName,
+            accessToken,
+          ),
         };
 
         toolServerMap[uniqueName] = {
@@ -439,7 +455,12 @@ export const getMcpToolsFromServers = async (
           inputSchema: jsonSchema(
             toolDef.inputSchema as Record<string, unknown>,
           ),
-          execute: createLazyExecute(mcpServerId, proxyToolName, accessToken),
+          execute: createLazyExecute(
+            serverDef.serverSlug,
+            mcpServerId,
+            proxyToolName,
+            accessToken,
+          ),
         };
 
         // サーバー情報をマッピング（UI表示用）

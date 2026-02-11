@@ -11,10 +11,10 @@ export const getProxyServerUrl = () => {
   return MCP_PROXY_SERVER_URL;
 };
 
-export const makeSseProxyServerUrl = (userMcpServerInstanceId: string) => {
-  return `${MCP_PROXY_SERVER_URL}/sse/${userMcpServerInstanceId}`;
+export const makeSseProxyServerUrl = (slug: string) => {
+  return `${MCP_PROXY_SERVER_URL}/sse/${slug}`;
 };
 
-export const makeHttpProxyServerUrl = (userMcpServerInstanceId: string) => {
-  return `${MCP_PROXY_SERVER_URL}/mcp/${userMcpServerInstanceId}`;
+export const makeHttpProxyServerUrl = (slug: string) => {
+  return `${MCP_PROXY_SERVER_URL}/mcp/${slug}`;
 };

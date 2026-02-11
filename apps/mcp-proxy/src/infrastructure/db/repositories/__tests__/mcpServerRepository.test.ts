@@ -54,6 +54,8 @@ import {
   invalidateOrganizationMembershipCache,
   getTemplateInstanceById,
   invalidateTemplateInstanceCache,
+  getMcpServerBySlug,
+  invalidateMcpServerSlugCache,
 } from "../mcpServerRepository.js";
 import {
   getUserIdFromKeycloakId,
@@ -1052,6 +1054,198 @@ describe("mcpServerService", () => {
         "Failed to invalidate template instance cache",
         expect.any(Error),
         { instanceId: "test-instance-id" },
+      );
+    });
+  });
+
+  describe("getMcpServerBySlug", () => {
+    test("slugとorganizationIdでMcpServerを取得する", async () => {
+      const mockMcpServer = createMcpServerData();
+
+      mockGetRedisClient.mockResolvedValue(null);
+      mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+      const result = await getMcpServerBySlug("my-server", "test-org-id");
+
+      expect(result).toStrictEqual(mockMcpServer);
+      expect(mockMcpServerFindUnique).toHaveBeenCalledWith({
+        where: {
+          organizationId_slug: {
+            organizationId: "test-org-id",
+            slug: "my-server",
+          },
+        },
+        select: {
+          id: true,
+          organizationId: true,
+          deletedAt: true,
+          authType: true,
+          piiMaskingMode: true,
+          piiInfoTypes: true,
+          toonConversionEnabled: true,
+        },
+      });
+    });
+
+    test("存在しないslugの場合はnullを返す", async () => {
+      mockGetRedisClient.mockResolvedValue(null);
+      mockMcpServerFindUnique.mockResolvedValue(null);
+
+      const result = await getMcpServerBySlug(
+        "non-existent-server",
+        "test-org-id",
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("Redisキャッシュからデータを取得する", async () => {
+      const cachedData = createMcpServerData({
+        id: "cached-server-id",
+        organizationId: "cached-org-id",
+      });
+      const mockRedis = createMockRedis({
+        get: vi.fn().mockResolvedValue(JSON.stringify(cachedData)),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      const result = await getMcpServerBySlug("my-server", "cached-org-id");
+
+      expect(result).toStrictEqual(cachedData);
+      expect(mockRedis.get).toHaveBeenCalledWith(
+        "mcpserver:slug:cached-org-id:my-server",
+      );
+      expect(mockMcpServerFindUnique).not.toHaveBeenCalled();
+    });
+
+    test("キャッシュミス時はDBからフェッチしてキャッシュする", async () => {
+      const mockMcpServer = createMcpServerData();
+      const mockRedis = createMockRedis();
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+      const result = await getMcpServerBySlug("my-server", "test-org-id");
+
+      expect(result).toStrictEqual(mockMcpServer);
+      expect(mockMcpServerFindUnique).toHaveBeenCalled();
+      expect(mockRedis.setEx).toHaveBeenCalledWith(
+        "mcpserver:slug:test-org-id:my-server",
+        300,
+        JSON.stringify({
+          id: "test-server-id",
+          organizationId: "test-org-id",
+          deletedAt: null,
+          authType: "OAUTH",
+          piiMaskingMode: "DISABLED",
+          piiInfoTypes: [],
+          toonConversionEnabled: false,
+        }),
+      );
+    });
+
+    test("削除されたMcpServerの場合もデータを返す（deletedAtを含む）", async () => {
+      const deletedAt = new Date("2024-01-01");
+      const mockMcpServer = createMcpServerData({
+        id: "deleted-server-id",
+        deletedAt,
+        authType: "API_KEY" as const,
+      });
+
+      mockGetRedisClient.mockResolvedValue(null);
+      mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+      const result = await getMcpServerBySlug("deleted-server", "test-org-id");
+
+      expect(result).toStrictEqual(mockMcpServer);
+      expect(result?.deletedAt).toStrictEqual(deletedAt);
+    });
+
+    test("ネガティブキャッシュ: 存在しないslugもキャッシュされる", async () => {
+      const mockRedis = createMockRedis();
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockMcpServerFindUnique.mockResolvedValue(null);
+
+      const result = await getMcpServerBySlug(
+        "non-existent-server",
+        "test-org-id",
+      );
+
+      expect(result).toBeNull();
+      expect(mockRedis.setEx).toHaveBeenCalledWith(
+        "mcpserver:slug:test-org-id:non-existent-server",
+        300,
+        "null",
+      );
+    });
+
+    test("DB エラー時は例外をスローする", async () => {
+      mockGetRedisClient.mockResolvedValue(null);
+      mockMcpServerFindUnique.mockRejectedValue(
+        new Error("DB connection failed"),
+      );
+
+      await expect(
+        getMcpServerBySlug("my-server", "test-org-id"),
+      ).rejects.toThrow("DB connection failed");
+    });
+
+    test("Redisエラー時はDBにフォールバックする", async () => {
+      const mockMcpServer = createMcpServerData();
+      const mockRedis = createMockRedis({
+        get: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+      mockMcpServerFindUnique.mockResolvedValue(mockMcpServer);
+
+      const result = await getMcpServerBySlug("my-server", "test-org-id");
+
+      expect(result).toStrictEqual(mockMcpServer);
+      expect(mockMcpServerFindUnique).toHaveBeenCalled();
+    });
+  });
+
+  describe("invalidateMcpServerSlugCache", () => {
+    test("キャッシュを正しく無効化する", async () => {
+      const mockRedis = createMockRedis({
+        del: vi.fn().mockResolvedValue(1),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      await invalidateMcpServerSlugCache("my-server", "test-org-id");
+
+      expect(mockRedis.del).toHaveBeenCalledWith(
+        "mcpserver:slug:test-org-id:my-server",
+      );
+    });
+
+    test("Redisが利用不可の場合はスキップする", async () => {
+      mockGetRedisClient.mockResolvedValue(null);
+
+      await expect(
+        invalidateMcpServerSlugCache("my-server", "test-org-id"),
+      ).resolves.not.toThrow();
+    });
+
+    test("Redis del失敗時もエラーをスローしない", async () => {
+      const { logError } = await import("../../../../shared/logger/index.js");
+      const mockRedis = createMockRedis({
+        del: vi.fn().mockRejectedValue(new Error("Redis del failed")),
+      });
+
+      mockGetRedisClient.mockResolvedValue(mockRedis);
+
+      await expect(
+        invalidateMcpServerSlugCache("my-server", "test-org-id"),
+      ).resolves.not.toThrow();
+      expect(logError).toHaveBeenCalledWith(
+        "Failed to invalidate McpServer slug cache",
+        expect.any(Error),
+        { slug: "my-server", organizationId: "test-org-id" },
       );
     });
   });

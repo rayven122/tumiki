@@ -87,12 +87,12 @@ export const ConnectionSettings = ({
 
     // Claude Code - ネイティブサポート
     if (clientId === "claude-code") {
-      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.id} --header "tumiki-api-key: ${apiKey}"`;
+      return `claude mcp add --transport http ${serverName} ${serverUrl}/mcp/${server.slug} --header "tumiki-api-key: ${apiKey}"`;
     }
 
     // Claude Desktop - コネクト機能用のシンプルなURL
     if (clientId === "claude-desktop") {
-      return `${serverUrl}/mcp/${server.id}`;
+      return `${serverUrl}/mcp/${server.slug}`;
     }
 
     // Cursor
@@ -101,7 +101,7 @@ export const ConnectionSettings = ({
         {
           mcpServers: {
             [serverName]: {
-              url: `${serverUrl}/mcp/${server.id}`,
+              url: `${serverUrl}/mcp/${server.slug}`,
               transport: "http",
               headers: {
                 "tumiki-api-key": apiKey,
@@ -120,7 +120,7 @@ export const ConnectionSettings = ({
         {
           mcpServers: {
             [serverName]: {
-              url: `${serverUrl}/mcp/${server.id}`,
+              url: `${serverUrl}/mcp/${server.slug}`,
               transport: "http",
               headers: {
                 "tumiki-api-key": apiKey,
@@ -144,7 +144,7 @@ export const ConnectionSettings = ({
               args: [
                 "-y",
                 "mcp-remote@latest",
-                `${serverUrl}/mcp/${server.id}`,
+                `${serverUrl}/mcp/${server.slug}`,
                 "--header",
                 `tumiki-api-key: ${apiKey}`,
                 "--strategy",
@@ -164,7 +164,7 @@ export const ConnectionSettings = ({
         {
           mcpServers: {
             [serverName]: {
-              url: `${serverUrl}/mcp/${server.id}`,
+              url: `${serverUrl}/mcp/${server.slug}`,
               transport: "http",
               headers: {
                 "tumiki-api-key": apiKey,
@@ -181,7 +181,7 @@ export const ConnectionSettings = ({
 
     // その他のクライアント用
     return `# HTTP接続設定
-URL: ${serverUrl}/mcp/${server.id}
+URL: ${serverUrl}/mcp/${server.slug}
 Method: POST
 Headers:
   Content-Type: application/json
@@ -195,7 +195,7 @@ Headers:
       "args": [
         "-y",
         "mcp-remote@latest",
-        "${serverUrl}/mcp/${server.id}",
+        "${serverUrl}/mcp/${server.slug}",
         "--header",
         "tumiki-api-key: ${apiKey}",
         "--strategy",
@@ -390,14 +390,14 @@ Headers:
                   接続URL
                 </p>
                 <code className="min-w-0 flex-1 overflow-x-auto text-xs text-gray-600">
-                  {makeHttpProxyServerUrl(server.id)}
+                  {makeHttpProxyServerUrl(server.slug)}
                 </code>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7 flex-shrink-0"
                   onClick={async () => {
-                    await copyToClipboard(makeHttpProxyServerUrl(server.id));
+                    await copyToClipboard(makeHttpProxyServerUrl(server.slug));
                     toast.success("接続URLをコピーしました");
                   }}
                 >

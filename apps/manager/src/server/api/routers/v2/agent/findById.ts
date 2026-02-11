@@ -44,6 +44,7 @@ export const findAgentById = async (
       mcpServers: {
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           iconPath: true,
