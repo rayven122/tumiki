@@ -16,15 +16,22 @@ let bigQueryClient: BigQuery | null = null;
  * BigQueryクライアントを取得
  *
  * 環境変数:
- * - GOOGLE_CLOUD_PROJECT: GCPプロジェクトID
+ * - GOOGLE_CLOUD_PROJECT: GCPプロジェクトID（必須）
  * - BIGQUERY_DATASET: データセット名（デフォルト: tumiki_logs）
  *
  * @returns BigQueryクライアント
+ * @throws Error GOOGLE_CLOUD_PROJECT環境変数が未設定の場合
  */
 export const getBigQueryClient = (): BigQuery => {
-  bigQueryClient ??= new BigQuery({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT,
-  });
+  if (!bigQueryClient) {
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+    if (!projectId) {
+      throw new Error(
+        "GOOGLE_CLOUD_PROJECT environment variable is required for BigQuery",
+      );
+    }
+    bigQueryClient = new BigQuery({ projectId });
+  }
   return bigQueryClient;
 };
 

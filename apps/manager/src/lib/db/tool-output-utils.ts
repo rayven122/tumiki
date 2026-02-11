@@ -22,6 +22,15 @@ export type ToolCallPart = {
 };
 
 /**
+ * ツール呼び出しパーツの型ガード
+ */
+const isToolCallPart = (part: unknown): part is ToolCallPart =>
+  typeof part === "object" &&
+  part !== null &&
+  "type" in part &&
+  (part as { type: unknown }).type === "tool-call";
+
+/**
  * ツール出力をBigQuery参照形式に変換
  *
  * outputを削除し、代わりにtoolCallIdへの参照（outputRef）を保存。
@@ -54,14 +63,9 @@ export const convertToOutputRef = (part: ToolCallPart): ToolCallPart => {
  */
 export const convertOutputsToRefs = (parts: unknown[]): unknown[] => {
   return parts.map((part) => {
-    // tool-callパーツの場合のみ処理
-    if (
-      typeof part === "object" &&
-      part !== null &&
-      "type" in part &&
-      (part as { type: string }).type === "tool-call"
-    ) {
-      return convertToOutputRef(part as ToolCallPart);
+    // 型ガードでtool-callパーツを判定
+    if (isToolCallPart(part)) {
+      return convertToOutputRef(part);
     }
     return part;
   });

@@ -115,56 +115,63 @@ export const updateExecutionLogWithChat = async (
 
   try {
     // トランザクションでChat, Message作成とログ更新を一括実行
-    const result = await db.$transaction(async (tx) => {
-      const now = new Date();
+    const result = await db.$transaction(
+      async (tx) => {
+        const now = new Date();
 
-      // Chatを作成（エージェント実行用）
-      const chat = await tx.chat.create({
-        data: {
-          title: `${agentName} - ${now.toLocaleString("ja-JP")}`,
-          createdAt: now,
-          userId,
-          organizationId,
-          agentId,
-          visibility: "PRIVATE",
-        },
-      });
+        // Chatを作成（エージェント実行用）
+        const chat = await tx.chat.create({
+          data: {
+            title: `${agentName} - ${now.toLocaleString("ja-JP")}`,
+            createdAt: now,
+            userId,
+            organizationId,
+            agentId,
+            visibility: "PRIVATE",
+          },
+        });
 
-      // ユーザーメッセージを作成
-      await tx.message.create({
-        data: {
-          chatId: chat.id,
-          role: "user",
-          parts: [{ type: "text", text: userMessage }] as TextPart[],
-          attachments: [],
-          createdAt: now,
-        },
-      });
+        // メッセージ作成とログ更新を並列実行
+        await Promise.all([
+          // ユーザーメッセージを作成
+          tx.message.create({
+            data: {
+              chatId: chat.id,
+              role: "user",
+              parts: [{ type: "text", text: userMessage }] as TextPart[],
+              attachments: [],
+              createdAt: now,
+            },
+          }),
+          // アシスタントメッセージを作成
+          tx.message.create({
+            data: {
+              chatId: chat.id,
+              role: "assistant",
+              parts: assistantParts as unknown as Prisma.InputJsonValue[],
+              attachments: [],
+              createdAt: new Date(now.getTime() + durationMs),
+            },
+          }),
+          // AgentExecutionLogを更新（chatIdを紐付け、成功/失敗を記録）
+          tx.agentExecutionLog.update({
+            where: { id: executionLogId },
+            data: {
+              chatId: chat.id,
+              modelId,
+              success,
+              durationMs,
+            },
+          }),
+        ]);
 
-      // アシスタントメッセージを作成
-      await tx.message.create({
-        data: {
-          chatId: chat.id,
-          role: "assistant",
-          parts: assistantParts as unknown as Prisma.InputJsonValue[],
-          attachments: [],
-          createdAt: new Date(now.getTime() + durationMs),
-        },
-      });
-
-      // AgentExecutionLogを更新（chatIdを紐付け、成功/失敗を記録）
-      await tx.agentExecutionLog.update({
-        where: { id: executionLogId },
-        data: {
-          chatId: chat.id,
-          modelId,
-          success,
-          durationMs,
-        },
-      });
-
-      return { chatId: chat.id };
-    });
+        return { chatId: chat.id };
+      },
+      {
+        timeout: 10000, // 10秒タイムアウト
+        maxWait: 2000, // 最大待機時間2秒
+      },
+    );
 
     return { ...result, failed: false };
   } catch (error) {

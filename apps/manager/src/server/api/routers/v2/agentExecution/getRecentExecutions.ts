@@ -18,6 +18,16 @@ type ToolCallInfo = {
 const truncateText = (text: string, maxLength: number): string =>
   text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 
+/** メッセージパーツの型ガード */
+const isMessagePart = (part: unknown): part is Record<string, unknown> =>
+  typeof part === "object" && part !== null;
+
+/** テキストパーツの型ガード */
+const isTextPart = (
+  part: Record<string, unknown>,
+): part is { type: "text"; text: string } =>
+  part.type === "text" && typeof part.text === "string";
+
 /**
  * メッセージパーツからテキストを抽出
  * textタイプのパーツを優先し、最大60文字に切り詰める
@@ -26,11 +36,10 @@ const extractTextFromParts = (parts: unknown): string | null => {
   if (!Array.isArray(parts)) return null;
 
   for (const part of parts) {
-    if (typeof part !== "object" || part === null) continue;
+    if (!isMessagePart(part)) continue;
 
-    const p = part as Record<string, unknown>;
-    if (p.type === "text" && typeof p.text === "string") {
-      return truncateText(p.text.trim(), 60);
+    if (isTextPart(part)) {
+      return truncateText(part.text.trim(), 60);
     }
   }
 
