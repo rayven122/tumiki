@@ -23,6 +23,10 @@ export const ConnectOAuthMcpServerInputV2 = z.object({
 
   // サーバー情報
   name: nameValidationSchema.optional(),
+  slug: z
+    .string()
+    .min(1, "スラッグは必須です")
+    .regex(/^[a-z0-9-]+$/, "スラッグは小文字英数字とハイフンのみ使用可能です"),
   description: z.string().optional(),
 
   // OAuthクライアント情報（オプション）

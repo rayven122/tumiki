@@ -65,6 +65,7 @@ export const connectOAuthMcpServer = async (
   const mcpServer = await createOfficialMcpServer({
     tx,
     serverName,
+    slug: input.slug,
     description: input.description ?? "",
     templateId,
     organizationId,

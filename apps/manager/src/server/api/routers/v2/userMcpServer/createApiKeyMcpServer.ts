@@ -32,6 +32,7 @@ const createMcpServerInstance = async (
   prisma: PrismaTransactionClient,
   params: {
     name: string;
+    slug: string;
     description: string;
     iconPath: string | null;
     organizationId: string;
@@ -44,6 +45,7 @@ const createMcpServerInstance = async (
   const mcpServer = await prisma.mcpServer.create({
     data: {
       name: params.name,
+      slug: params.slug,
       description: params.description,
       iconPath: params.iconPath,
       serverStatus: ServerStatus.RUNNING,
@@ -136,6 +138,7 @@ const createFromExistingTemplate = async (
   // 3. MCPサーバーインスタンスを作成
   return createMcpServerInstance(prisma, {
     name: input.name,
+    slug: input.slug,
     description: input.description ?? "",
     iconPath: template.iconPath,
     organizationId,
@@ -233,6 +236,7 @@ const createCustomUrlMcpServer = async (
   // 4. MCPサーバーインスタンスを作成
   return createMcpServerInstance(prisma, {
     name: input.name,
+    slug: input.slug,
     description: input.description ?? "",
     iconPath: null,
     organizationId,

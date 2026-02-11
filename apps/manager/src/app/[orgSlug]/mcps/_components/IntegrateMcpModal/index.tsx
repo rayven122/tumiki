@@ -21,6 +21,7 @@ import {
   type UserMcpServer,
   type SelectableMcp,
 } from "@/components/mcp-selector";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
 type IntegrateMcpModalProps = {
   open: boolean;
@@ -36,6 +37,13 @@ const generateDefaultName = (selectedMcps: SelectableMcp[]): string => {
   }
   const firstName = selectedMcps[0]?.name ?? "";
   return `${firstName} and ${selectedMcps.length - 1} MCPs`;
+};
+
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでnanoid生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  // 正規化後に空文字になった場合（日本語名など）はタイムスタンプベースのスラグを生成
+  return normalized || `integrated-${Date.now().toString(36)}`;
 };
 
 export const IntegrateMcpModal = ({
@@ -119,6 +127,7 @@ export const IntegrateMcpModal = ({
 
     createMutation.mutate({
       name: serverName,
+      slug: generateSlugFromName(serverName),
       templates,
     });
   };

@@ -51,6 +51,13 @@ export const CreateApiKeyMcpServerInputV2 = z
     transportType: z.nativeEnum(TransportType).optional(),
     envVars: z.record(z.string(), z.string()).optional(),
     name: nameValidationSchema,
+    slug: z
+      .string()
+      .min(1, "スラッグは必須です")
+      .regex(
+        /^[a-z0-9-]+$/,
+        "スラッグは小文字英数字とハイフンのみ使用可能です",
+      ),
     description: z.string().optional(),
     authType: z.enum(["NONE", "API_KEY"]),
   })
@@ -66,6 +73,10 @@ export const CreateApiKeyMcpServerOutputV2 = z.object({
 // toolIdsはオプショナル - 省略時は全ツール選択
 export const CreateIntegratedMcpServerInputV2 = z.object({
   name: nameValidationSchema,
+  slug: z
+    .string()
+    .min(1, "スラッグは必須です")
+    .regex(/^[a-z0-9-]+$/, "スラッグは小文字英数字とハイフンのみ使用可能です"),
   description: z.string().optional(),
   templates: z
     .array(
@@ -416,10 +427,21 @@ export const userMcpServerRouter = createTRPCRouter({
         permission: "read",
       });
 
-      return await findMcpServers(ctx.db, {
+      const result = await findMcpServers(ctx.db, {
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });
+
+      // DEBUG: スキーマバリデーションの詳細を確認
+      const parseResult = FindMcpServersOutputV2.safeParse(result);
+      if (!parseResult.success) {
+        console.error(
+          "FindMcpServersOutputV2 validation error:",
+          JSON.stringify(parseResult.error.issues, null, 2),
+        );
+      }
+
+      return result;
     }),
 
   // MCPサーバー削除

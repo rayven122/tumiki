@@ -61,6 +61,7 @@ export const useCreateServerForm = ({
   const handleOAuthConnect = useCallback(
     (params: {
       serverName: string;
+      slug: string;
       mcpServerTemplateId?: string;
       customUrl?: string;
       transportType?: TransportType;
@@ -71,6 +72,7 @@ export const useCreateServerForm = ({
         templateId: params.mcpServerTemplateId,
         customUrl: params.customUrl,
         name: params.serverName,
+        slug: params.slug,
         transportType: params.transportType,
         clientId: params.clientId,
         clientSecret: params.clientSecret,
@@ -88,6 +90,7 @@ export const useCreateServerForm = ({
   const handleAddWithApiKey = useCallback(
     (params: {
       serverName: string;
+      slug: string;
       authType: "NONE" | "API_KEY";
       transportType?: TransportType;
       mcpServerTemplateId?: string;
@@ -100,6 +103,7 @@ export const useCreateServerForm = ({
         transportType: params.transportType,
         envVars: params.envVars,
         name: params.serverName,
+        slug: params.slug,
         authType: params.authType,
       });
     },

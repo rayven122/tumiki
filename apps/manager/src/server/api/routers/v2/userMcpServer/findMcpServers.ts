@@ -98,6 +98,9 @@ export const findMcpServers = async (
         ? (tokenInfo?.expiresAt ?? null)
         : null;
 
+      // mcpToolsは出力スキーマに含まれないため除外
+      const { mcpTools: _, ...mcpServerTemplate } = instance.mcpServerTemplate;
+
       return {
         id: instance.id,
         normalizedName: instance.normalizedName,
@@ -107,7 +110,7 @@ export const findMcpServers = async (
         displayOrder: instance.displayOrder,
         createdAt: instance.createdAt,
         updatedAt: instance.updatedAt,
-        mcpServerTemplate: instance.mcpServerTemplate,
+        mcpServerTemplate,
         tools,
         isOAuthAuthenticated,
         oauthTokenExpiresAt,
@@ -135,8 +138,29 @@ export const findMcpServers = async (
         ? new Date(Math.min(...oauthExpirations.map((d) => d.getTime())))
         : null;
 
+    // 出力スキーマと一致するように必要なフィールドのみを返す
     return {
-      ...server,
+      // McpServerSchemaのフィールド
+      id: server.id,
+      serverStatus: server.serverStatus,
+      serverType: server.serverType,
+      authType: server.authType,
+      piiMaskingMode: server.piiMaskingMode,
+      name: server.name,
+      slug: server.slug,
+      description: server.description,
+      iconPath: server.iconPath,
+      organizationId: server.organizationId,
+      createdById: server.createdById,
+      displayOrder: server.displayOrder,
+      piiInfoTypes: server.piiInfoTypes,
+      toonConversionEnabled: server.toonConversionEnabled,
+      dynamicSearch: server.dynamicSearch,
+      createdAt: server.createdAt,
+      updatedAt: server.updatedAt,
+      deletedAt: server.deletedAt,
+      // 拡張フィールド
+      apiKeys: server.apiKeys,
       templateInstances,
       allOAuthAuthenticated,
       earliestOAuthExpiration,

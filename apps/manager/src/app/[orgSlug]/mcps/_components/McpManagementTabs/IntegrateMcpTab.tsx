@@ -12,6 +12,7 @@ import type {
   McpServerTemplateWithTools,
   SelectableTemplate,
 } from "../IntegrateFromTemplatesModal/types";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 
 // テンプレートをSelectableTemplate形式に変換
 const convertToSelectableTemplate = (
@@ -44,6 +45,12 @@ const getSelectionMessage = (count: number): string => {
   if (count === 0) return "テンプレートを選択してください";
   if (count === 1) return "あと1つ選択で統合可能";
   return `${count}つのテンプレートを統合`;
+};
+
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  return normalized || `integrated-${Date.now().toString(36)}`;
 };
 
 export const IntegrateMcpTab = () => {
@@ -128,6 +135,7 @@ export const IntegrateMcpTab = () => {
 
     createMutation.mutate({
       name: serverName,
+      slug: generateSlugFromName(serverName),
       templates,
     });
   };
