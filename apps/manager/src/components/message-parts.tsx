@@ -13,13 +13,7 @@ import { Weather, type WeatherAtLocation } from "./weather";
 import { MessageReasoning } from "./message-reasoning";
 import { Response } from "./response";
 import { sanitizeText } from "@/lib/utils";
-
-// AI SDK 6 のツール状態
-type ToolState =
-  | "input-streaming"
-  | "input-available"
-  | "output-available"
-  | "output-error";
+import { type ToolState, mapDynamicToolState } from "@/features/chat";
 
 type MessagePartsProps = {
   message: UIMessage;
@@ -28,21 +22,6 @@ type MessagePartsProps = {
   compact?: boolean;
   /** 読み取り専用 */
   isReadonly?: boolean;
-};
-
-/**
- * dynamic-tool の状態をマッピング
- */
-const mapDynamicToolState = (state: string): ToolState => {
-  switch (state) {
-    case "output-available":
-      return "output-available";
-    case "error":
-      return "output-error";
-    case "pending":
-    default:
-      return "input-available";
-  }
 };
 
 /**
@@ -77,6 +56,7 @@ const ToolPartRenderer = ({
         input={dynamicToolPart.input}
         output={dynamicToolPart.output}
         outputRef={dynamicToolPart.outputRef}
+        compact={compact}
       />
     );
   }
@@ -137,6 +117,7 @@ const ToolPartRenderer = ({
           input={toolPart.input}
           output={toolPart.output}
           outputRef={toolPart.outputRef}
+          compact={compact}
         />
       );
     }

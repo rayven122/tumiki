@@ -10,85 +10,10 @@ import { jsonSchema, type Tool } from "ai";
 
 import { db } from "@tumiki/db/server";
 
+import { DYNAMIC_SEARCH_META_TOOLS } from "../execution/index.js";
 import { callToolCommand } from "../mcp/commands/callTool/callToolCommand.js";
 import { handleMetaTool } from "../mcp/commands/callTool/handleMetaTool.js";
 import { logMcpRequest } from "../mcp/middleware/requestLogging/index.js";
-
-/**
- * Dynamic Search メタツール定義（CE/EEに関係なくハードコード）
- *
- * dynamicSearch/index.ts (CE Facade) の DYNAMIC_SEARCH_META_TOOLS は
- * 常に空配列を返すため、ここでメタツール定義を直接定義する。
- * handleMetaTool 内で EE モジュールを動的にロードするため、
- * CE版では handleMetaTool がエラーを返す。
- */
-type McpToolDefinition = {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-};
-
-const DYNAMIC_SEARCH_META_TOOLS: McpToolDefinition[] = [
-  {
-    name: "search_tools",
-    description:
-      "利用可能なツールをクエリで検索します。自然言語でツールの機能を説明すると、関連するツールを返します。",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "検索クエリ（例: 'ファイルを作成する', 'GitHubのissueを取得'）",
-        },
-        limit: {
-          type: "number",
-          description: "返す結果の最大数（デフォルト: 10）",
-          default: 10,
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "describe_tools",
-    description:
-      "指定されたツールの詳細な入力スキーマを取得します。search_toolsで見つけたツールの詳細を確認するために使用します。",
-    inputSchema: {
-      type: "object",
-      properties: {
-        toolNames: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "スキーマを取得するツール名の配列",
-        },
-      },
-      required: ["toolNames"],
-    },
-  },
-  {
-    name: "execute_tool",
-    description:
-      "指定されたツールを実行します。事前にdescribe_toolsでスキーマを確認し、適切な引数を渡してください。",
-    inputSchema: {
-      type: "object",
-      properties: {
-        name: {
-          type: "string",
-          description: "実行するツール名",
-        },
-        arguments: {
-          type: "object",
-          description: "ツールに渡す引数",
-          additionalProperties: true,
-        },
-      },
-      required: ["name"],
-    },
-  },
-];
 
 /**
  * MCPツール取得のパラメータ

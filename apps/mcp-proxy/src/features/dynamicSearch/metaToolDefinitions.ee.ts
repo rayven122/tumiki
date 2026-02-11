@@ -2,106 +2,43 @@
 // Copyright (c) 2024-2025 Reyven Inc.
 
 /**
- * Dynamic Search 用のメタツール定義
+ * Dynamic Search 用のメタツール定義（EE re-export）
  *
- * dynamicSearch が有効な場合、これら3つのツールのみが公開される
- * MCP SDK の Tool 型を使用して標準仕様に準拠
+ * 統合された定義を execution/shared からインポートし、
+ * MCP SDK の Tool 型にキャストしてエクスポートする。
  */
 
 import type { Tool } from "./types.ee.js";
+import {
+  DYNAMIC_SEARCH_META_TOOLS as META_TOOLS,
+  SEARCH_TOOLS_DEFINITION,
+  DESCRIBE_TOOLS_DEFINITION,
+  EXECUTE_TOOL_DEFINITION,
+  META_TOOL_NAMES,
+  isMetaToolName,
+} from "../execution/index.js";
 
 /**
- * search_tools メタツール定義
- * クエリに関連するツールをセマンティック検索する
+ * MCP SDK Tool 型へのキャスト
+ * execution/shared の MetaToolDefinition は MCP SDK の Tool と互換性がある
  */
-export const SEARCH_TOOLS_DEFINITION: Tool = {
-  name: "search_tools",
-  description:
-    "利用可能なツールをクエリで検索します。自然言語でツールの機能を説明すると、関連するツールを返します。",
-  inputSchema: {
-    type: "object",
-    properties: {
-      query: {
-        type: "string",
-        description:
-          "検索クエリ（例: 'ファイルを作成する', 'GitHubのissueを取得'）",
-      },
-      limit: {
-        type: "number",
-        description: "返す結果の最大数（デフォルト: 10）",
-        default: 10,
-      },
-    },
-    required: ["query"],
-  },
-};
+const SEARCH_TOOL: Tool = SEARCH_TOOLS_DEFINITION as Tool;
+const DESCRIBE_TOOL: Tool = DESCRIBE_TOOLS_DEFINITION as Tool;
+const EXECUTE_TOOL: Tool = EXECUTE_TOOL_DEFINITION as Tool;
 
-/**
- * describe_tools メタツール定義
- * 指定されたツールの詳細スキーマを取得する
- */
-export const DESCRIBE_TOOLS_DEFINITION: Tool = {
-  name: "describe_tools",
-  description:
-    "指定されたツールの詳細な入力スキーマを取得します。search_toolsで見つけたツールの詳細を確認するために使用します。",
-  inputSchema: {
-    type: "object",
-    properties: {
-      toolNames: {
-        type: "array",
-        items: {
-          type: "string",
-        },
-        description: "スキーマを取得するツール名の配列",
-      },
-    },
-    required: ["toolNames"],
-  },
-};
-
-/**
- * execute_tool メタツール定義
- * 指定されたツールを実行する
- */
-export const EXECUTE_TOOL_DEFINITION: Tool = {
-  name: "execute_tool",
-  description:
-    "指定されたツールを実行します。事前にdescribe_toolsでスキーマを確認し、適切な引数を渡してください。",
-  inputSchema: {
-    type: "object",
-    properties: {
-      name: {
-        type: "string",
-        description: "実行するツール名",
-      },
-      arguments: {
-        type: "object",
-        description: "ツールに渡す引数",
-        additionalProperties: true,
-      },
-    },
-    required: ["name"],
-  },
+export {
+  SEARCH_TOOL as SEARCH_TOOLS_DEFINITION,
+  DESCRIBE_TOOL as DESCRIBE_TOOLS_DEFINITION,
+  EXECUTE_TOOL as EXECUTE_TOOL_DEFINITION,
+  META_TOOL_NAMES,
 };
 
 /**
  * 全メタツール定義の配列
  */
-export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = [
-  SEARCH_TOOLS_DEFINITION,
-  DESCRIBE_TOOLS_DEFINITION,
-  EXECUTE_TOOL_DEFINITION,
-];
-
-/**
- * メタツール名のセット（高速検索用）
- */
-export const META_TOOL_NAMES = new Set(
-  DYNAMIC_SEARCH_META_TOOLS.map((tool) => tool.name),
-);
+export const DYNAMIC_SEARCH_META_TOOLS: Tool[] = META_TOOLS as Tool[];
 
 /**
  * 指定された名前がメタツールかどうかを判定
  */
-export const isMetaTool = (toolName: string): boolean =>
-  META_TOOL_NAMES.has(toolName);
+export const isMetaTool = isMetaToolName;

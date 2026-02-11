@@ -7,30 +7,10 @@
 
 import type { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 
+import { isMetaToolName } from "../../../execution/index.js";
 import { isReAuthRequiredError } from "../../../../shared/errors/index.js";
 import { callToolCommand } from "./callToolCommand.js";
 import { handleMetaTool } from "./handleMetaTool.js";
-
-/**
- * メタツール名のセット（CE/EEに関係なくハードコード）
- *
- * dynamicSearch/index.ts (CE Facade) の isMetaTool は常に false を返すため、
- * ここでメタツール名を直接定義する。
- * handleMetaTool 内で EE モジュールを動的にロードするため、
- * CE版では handleMetaTool がエラーを返す。
- */
-const META_TOOL_NAMES = new Set([
-  "search_tools",
-  "describe_tools",
-  "execute_tool",
-]);
-
-/**
- * 指定された名前がメタツールかどうかを判定
- */
-const isMetaToolName = (toolName: string): boolean => {
-  return META_TOOL_NAMES.has(toolName);
-};
 
 /**
  * ツール実行結果の型
