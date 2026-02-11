@@ -63,14 +63,6 @@ pnpm db:push           # スキーマプッシュ（開発環境）
 pnpm db:push:test      # スキーマプッシュ（テスト環境）
 pnpm db:studio         # Prisma Studio起動
 
-# デプロイ（本番環境のみ使用）
-pnpm deploy            # デプロイ（対話式）
-pnpm deploy:vercel     # Vercelのみデプロイ
-pnpm deploy:gce        # Cloud Runのみデプロイ
-pnpm deploy:all        # 全環境デプロイ
-pnpm deploy:production # 本番環境デプロイ
-pnpm deploy:dry-run    # デプロイ確認（実行なし）
-
 # Stripe（本番環境のみ）
 pnpm verify:stripe     # Stripe環境変数検証
 pnpm stripe:listen     # Stripeウェブフックリスナー
@@ -314,7 +306,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
 - **MCP プロキシサーバー**: `apps/mcp-proxy/src/index.ts`
   - DDD + CQRS + Vertical Slice Architecture（詳細は `tumiki-mcp-proxy-architecture` スキル参照）
   - `/mcp` - HTTP/JSON-RPC 2.0 エンドポイント
-  - Cloud Run対応のステートレス設計
+  - ステートレス設計
   - レイヤー構成: `domain/` → `shared/` → `infrastructure/` → `features/`
 - **型安全性**: 自動 API 生成によるフルスタック型安全性、@tumiki/db から型 import
 

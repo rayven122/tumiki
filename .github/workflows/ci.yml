@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -31,9 +29,6 @@ jobs:
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
-    env:
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -50,9 +45,6 @@ jobs:
   format:
     name: 💅 Format
     runs-on: ubuntu-latest
-    env:
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -68,8 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6
@@ -86,9 +76,6 @@ jobs:
   test:
     name: 🧪 Test
     runs-on: ubuntu-latest
-    env:
-      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TURBO_TEAM: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: 📥 Checkout branch
         uses: actions/checkout@v6

@@ -59,23 +59,15 @@ pnpm test         # テスト実行
 
 ## デプロイメント
 ```bash
-# 全コンポーネント一括デプロイ
-pnpm run deploy
+# アプリケーションのビルド
+pnpm build
 
-# 個別デプロイ
-pnpm run deploy:vercel  # Manager App（Vercel）
-cd apps/mcp-proxy && pnpm deploy  # MCP Proxy（Cloud Run）
-
-# ドライラン
-pnpm run deploy:dry-run
+# サーバー起動
+pnpm start
 ```
 
 ## 環境変数管理
 ```bash
-# Vercel環境変数
-pnpm env:pull     # 環境変数を取得
-pnpm env:push     # 環境変数をプッシュ
-
 # Stripe環境変数検証
 pnpm verify:stripe
 pnpm stripe:listen  # Webhookをローカルに転送
@@ -104,15 +96,15 @@ git     # バージョン管理
 
 ## Docker操作
 ```bash
-# 開発環境（自己署名SSL）
-docker compose -f ./docker/compose.yaml up -d
+# 開発環境
+docker compose -f ./docker/local/compose.yaml up -d
 
-# 本番環境（Let's Encrypt SSL）
-docker compose -f ./docker/compose.prod.yaml up -d
+# 本番環境（Keycloak）
+docker compose -f ./docker/prod/compose.yaml up -d
 
 # 停止
-docker compose -f ./docker/compose.yaml stop
-docker compose -f ./docker/compose.prod.yaml down
+docker compose -f ./docker/local/compose.yaml stop
+docker compose -f ./docker/prod/compose.yaml down
 ```
 
 ## パッケージ管理

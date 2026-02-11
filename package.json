@@ -56,12 +56,6 @@
     "keycloak:prod:restart": "bash docker/prod/deploy.sh restart",
     "keycloak:prod:shell": "bash docker/prod/deploy.sh shell",
     "db:generate": "pnpm --filter @tumiki/db db:generate",
-    "deploy": "bash scripts/deploy.sh",
-    "deploy:vercel": "bash scripts/deploy.sh --target vercel",
-    "deploy:gce": "bash scripts/deploy.sh --target gce",
-    "deploy:all": "bash scripts/deploy.sh --target all",
-    "deploy:production": "bash scripts/deploy.sh --stage production --target all",
-    "deploy:dry-run": "bash scripts/deploy.sh --dry-run",
     "verify:stripe": "tsx scripts/verify-stripe-env.ts",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
     "inspector": "mcp-inspector",
@@ -75,7 +69,6 @@
     "concurrently": "^9.2.1",
     "turbo": "^2.8.3",
     "typescript": "catalog:",
-    "vercel": "^50.13.2",
     "vitest": "catalog:"
   }
 }
