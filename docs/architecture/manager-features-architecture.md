@@ -509,28 +509,141 @@ packages/shared
 
 ### フェーズ1: パッケージ作成
 
-1. `packages/ui/` 作成（shadcn移動）
-2. `packages/ai/` 作成
-3. `packages/shared/` 作成
-4. 依存関係設定
+**目標:** 共通コンポーネント・ユーティリティをパッケージとして切り出す
+
+```bash
+# 1. packages/ui 作成（shadcn移動）
+mkdir -p packages/ui/src/components
+cd packages/ui
+pnpm init
+
+# package.json の exports 設定
+cat > package.json << 'EOF'
+{
+  "name": "@tumiki/ui",
+  "version": "0.0.1",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/components/*.tsx"
+  }
+}
+EOF
+
+# 2. packages/ai 作成
+mkdir -p packages/ai/src
+cd ../ai && pnpm init
+
+# 3. packages/shared 作成
+mkdir -p packages/shared/src
+cd ../shared && pnpm init
+
+# 4. 依存関係設定
+cd ../../apps/manager
+pnpm add @tumiki/ui@workspace:* @tumiki/ai@workspace:* @tumiki/shared@workspace:*
+```
+
+**チェックリスト:**
+
+- [ ] `packages/ui/package.json` 作成・exports 設定
+- [ ] `packages/ai/package.json` 作成・exports 設定
+- [ ] `packages/shared/package.json` 作成・exports 設定
+- [ ] `pnpm install` 成功
+- [ ] `pnpm build` 成功
 
 ### フェーズ2: manager 内部整理
 
-1. `features/` ディレクトリ作成
-2. `components/` 整理（アプリ固有のみ残す）
-3. `hooks/` 整理
-4. `lib/` 整理
+**目標:** Feature-Based Architecture のディレクトリ構造を準備
+
+```bash
+cd apps/manager/src
+
+# 1. features ディレクトリ作成
+mkdir -p features
+
+# 2. 各 feature のテンプレート作成
+for domain in agents mcp-servers organization chat dashboard notification feedback; do
+  mkdir -p features/$domain/{components,actions,hooks,api,types}
+  touch features/$domain/index.ts
+done
+
+# 3. 現在の構造を確認
+tree -L 2 features/
+```
+
+**チェックリスト:**
+
+- [ ] `features/` ディレクトリ作成
+- [ ] 各 feature のサブディレクトリ作成
+- [ ] `components/` の共通コンポーネントを特定（`features/` に移動しないもの）
+- [ ] `hooks/` の共通フックを特定
+- [ ] `lib/` の整理対象を特定
+- [ ] `pnpm typecheck` 成功
 
 ### フェーズ3: Feature 移行（1つずつ）
 
 **移行順序:**
 
-1. `notification` - 小規模、依存少ない
-2. `feedback` - 小規模
-3. `dashboard` - 中規模
-4. `agents` - 大規模
-5. `mcps` - 最大規模
-6. `organization` - レガシーAPIとの統合
+| 順番 | Feature        | 規模   | 理由                           |
+| ---- | -------------- | ------ | ------------------------------ |
+| 1    | `notification` | 小     | 依存少ない、練習に最適         |
+| 2    | `feedback`     | 小     | 単純な CRUD                    |
+| 3    | `dashboard`    | 中     | 他 feature への依存が少ない    |
+| 4    | `agents`       | 大     | コア機能、慎重に移行           |
+| 5    | `mcps`         | 最大   | 最も複雑、最後に移行           |
+| 6    | `organization` | 中〜大 | レガシー API との統合が必要    |
+
+**各 Feature 移行の手順:**
+
+```bash
+# 例: notification feature の移行
+
+# 1. 関連ファイルを特定
+grep -r "notification" apps/manager/src --include="*.tsx" --include="*.ts" -l
+
+# 2. コンポーネント移動
+mv apps/manager/src/app/[orgSlug]/notification/_components/* \
+   apps/manager/src/features/notification/components/
+
+# 3. Server Actions 作成
+touch apps/manager/src/features/notification/actions/markAsRead.ts
+
+# 4. tRPC ルーター移動
+mv apps/manager/src/server/api/routers/notification.ts \
+   apps/manager/src/features/notification/api/router.ts
+
+# 5. index.ts でエクスポート
+cat > apps/manager/src/features/notification/index.ts << 'EOF'
+export { NotificationList } from "./components/NotificationList";
+export { notificationRouter } from "./api/router";
+EOF
+
+# 6. app/ からの import 更新
+# 旧: import { NotificationList } from "@/app/[orgSlug]/notification/_components/NotificationList"
+# 新: import { NotificationList } from "@/features/notification"
+
+# 7. テスト実行
+pnpm test --filter=@tumiki/manager
+
+# 8. 品質チェック
+pnpm typecheck && pnpm lint && pnpm build
+```
+
+**Feature 移行完了チェックリスト（各 feature ごと）:**
+
+- [ ] `features/{domain}/` ディレクトリ作成
+- [ ] コンポーネント移動・`'use client'` 確認
+- [ ] Server Actions 作成・`'use server'` 追加
+- [ ] tRPC ルーター移動・統合
+- [ ] `index.ts` で公開 API エクスポート
+- [ ] `app/` からの import パス更新
+- [ ] 既存テストの移動・更新
+- [ ] `pnpm typecheck` 成功
+- [ ] `pnpm lint` 成功
+- [ ] `pnpm test` 成功
+- [ ] `pnpm build` 成功
+- [ ] 動作確認（ブラウザ）
 
 ---
 

@@ -5,14 +5,15 @@ description: |
   RSC-First + Server Actions + Turborepo パッケージ分割を採用。
   「manager アーキテクチャ」「Feature 追加」「パッケージ分割」などのリクエスト時にトリガー。
 sourcePatterns:
-  - apps/manager/src/app/**
-  - apps/manager/src/features/**
-  - apps/manager/src/components/**
-  - apps/manager/src/hooks/**
-  - apps/manager/src/lib/**
-  - packages/ui/**
-  - packages/ai/**
-  - packages/shared/**
+  - apps/manager/src/app/**/*.{ts,tsx}
+  - apps/manager/src/features/**/*.{ts,tsx}
+  - apps/manager/src/components/**/*.{ts,tsx}
+  - apps/manager/src/hooks/**/*.ts
+  - apps/manager/src/lib/**/*.ts
+  - packages/ui/src/**/*.{ts,tsx}
+  - packages/ai/src/**/*.ts
+  - packages/shared/src/**/*.ts
+  - docs/architecture/manager-features-architecture.md
 ---
 
 # manager アーキテクチャガイドライン
