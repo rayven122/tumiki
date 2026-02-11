@@ -8,13 +8,14 @@
 import { streamText, type Tool } from "ai";
 import { randomUUID } from "crypto";
 
-import { db } from "@tumiki/db/server";
-
 import { gateway } from "../../../../infrastructure/ai/index.js";
 import {
   createPendingExecutionLog,
-  updateExecutionLogWithChat,
+  findAgentForExecution,
+  updateAgentEstimatedDuration,
   updateExecutionLogSimple,
+  updateExecutionLogWithChat,
+  type AgentForExecution,
 } from "../../../../infrastructure/db/repositories/index.js";
 import { AGENT_EXECUTION_CONFIG } from "../../../../shared/constants/config.js";
 import { toError } from "../../../../shared/errors/toError.js";
@@ -63,17 +64,6 @@ const getScheduleId = (trigger: ExecutionTrigger): string | null =>
 const getUserId = (trigger: ExecutionTrigger): string | null =>
   trigger.type === "manual" ? trigger.userId : null;
 
-/** エージェント情報（エラーハンドリング用に保持） */
-type AgentInfo = {
-  id: string;
-  name: string;
-  organizationId: string;
-  systemPrompt: string | null;
-  modelId: string | null;
-  createdById: string | null;
-  mcpServers: Array<{ id: string }>;
-};
-
 /**
  * エージェントを実行
  *
@@ -94,7 +84,7 @@ export const executeAgentCommand = async (
   // pending状態のログID（実行開始後に設定）
   let pendingLogId: string | null = null;
   // エージェント情報をエラー時に再利用するため保持
-  let agentInfo: AgentInfo | null = null;
+  let agentInfo: AgentForExecution | null = null;
   // 実行パラメータをエラー時に再利用するため保持
   let modelId: string = DEFAULT_AGENT_MODEL;
   let userMessage: string = DEFAULT_EXECUTION_MESSAGE;
@@ -107,18 +97,7 @@ export const executeAgentCommand = async (
   });
 
   try {
-    const agent = await db.agent.findUnique({
-      where: { id: request.agentId },
-      select: {
-        id: true,
-        name: true,
-        organizationId: true,
-        systemPrompt: true,
-        modelId: true,
-        createdById: true,
-        mcpServers: { select: { id: true } },
-      },
-    });
+    const agent = await findAgentForExecution(request.agentId);
 
     if (!agent) {
       throw new Error(`Agent not found: ${request.agentId}`);
@@ -127,7 +106,10 @@ export const executeAgentCommand = async (
     // エラー時に再利用するため保持
     agentInfo = agent;
 
-    const systemPrompt = buildSystemPrompt(request.trigger, agent.systemPrompt);
+    const systemPrompt = buildSystemPrompt(
+      request.trigger,
+      agent.systemPrompt ?? undefined,
+    );
     modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
     userMessage = request.message ?? DEFAULT_EXECUTION_MESSAGE;
     effectiveUserId = userId ?? agent.createdById;
@@ -256,10 +238,7 @@ export const executeAgentCommand = async (
 
     // 成功時はエージェントの推定実行時間を更新
     try {
-      await db.agent.update({
-        where: { id: request.agentId },
-        data: { estimatedDurationMs: durationMs },
-      });
+      await updateAgentEstimatedDuration(request.agentId, durationMs);
     } catch (updateError) {
       // 推定時間の更新失敗は致命的ではないため、警告ログのみ
       logError("Failed to update estimated duration", toError(updateError), {
