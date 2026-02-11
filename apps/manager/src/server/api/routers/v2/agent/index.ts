@@ -115,12 +115,15 @@ const McpServerInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   iconPath: z.string().nullable(),
-  // テンプレートのiconPathをフォールバック用に取得
+  // テンプレートのiconPathとツール数を取得
   templateInstances: z
     .array(
       z.object({
         mcpServerTemplate: z.object({
           iconPath: z.string().nullable(),
+          _count: z.object({
+            mcpTools: z.number(),
+          }),
         }),
       }),
     )
@@ -132,7 +135,16 @@ const ScheduleInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   cronExpression: z.string(),
+  timezone: z.string(),
   status: z.string(),
+});
+
+// 最後の実行ログスキーマ
+const LastExecutionLogSchema = z.object({
+  id: z.string(),
+  success: z.boolean().nullable(),
+  durationMs: z.number().nullable(),
+  createdAt: z.date(),
 });
 
 // エージェント一覧の出力スキーマ
@@ -147,6 +159,7 @@ export const FindAllAgentsOutputSchema = z.array(
     systemPrompt: true,
     modelId: true,
     visibility: true,
+    estimatedDurationMs: true,
     createdById: true,
     createdAt: true,
     updatedAt: true,
@@ -157,6 +170,7 @@ export const FindAllAgentsOutputSchema = z.array(
     _count: z.object({
       executionLogs: z.number(),
     }),
+    executionLogs: z.array(LastExecutionLogSchema),
   }),
 );
 

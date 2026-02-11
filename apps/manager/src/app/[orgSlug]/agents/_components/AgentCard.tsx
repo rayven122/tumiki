@@ -23,9 +23,11 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import { getProxyServerUrl } from "@/utils/url";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import {
-  Activity,
+  Bot,
   Building2,
   Calendar,
+  CheckCircle,
+  Clock,
   Edit2,
   ExternalLink,
   ImageIcon,
@@ -34,9 +36,16 @@ import {
   type LucideIcon,
   MoreHorizontal,
   Play,
-  Server,
+  Timer,
   Trash2Icon,
+  TrendingUp,
+  Wrench,
+  XCircle,
 } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { ja } from "date-fns/locale";
+import { ScheduleStatus } from "@tumiki/db/prisma";
+import { CronExpressionParser } from "cron-parser";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
@@ -85,6 +94,201 @@ const VISIBILITY_INFO_MAP: Record<McpServerVisibility, VisibilityInfo> = {
 
 // アイコン一覧で表示する最大数
 const MAX_VISIBLE_MCP_ICONS = 5;
+
+/** スケジュールステータスサマリー */
+const ScheduleStatusSummary = ({
+  schedules,
+}: {
+  schedules: Agent["schedules"];
+}) => {
+  const total = schedules.length;
+
+  if (total === 0) {
+    return <span className="text-gray-400">なし</span>;
+  }
+
+  const activeCount = schedules.filter(
+    (s) => s.status === ScheduleStatus.ACTIVE,
+  ).length;
+
+  if (activeCount === total) {
+    return (
+      <span>
+        {total}件 <span className="text-green-600">(すべて有効)</span>
+      </span>
+    );
+  }
+
+  if (activeCount === 0) {
+    return (
+      <span>
+        {total}件 <span className="text-gray-500">(すべて停止)</span>
+      </span>
+    );
+  }
+
+  const inactiveCount = total - activeCount;
+
+  return (
+    <span>
+      {total}件 <span className="text-green-600">(有効{activeCount}</span>
+      <span className="text-gray-500"> / 停止{inactiveCount})</span>
+    </span>
+  );
+};
+
+/** 作成者アバター */
+const CreatorAvatar = ({ createdBy }: { createdBy: Agent["createdBy"] }) => {
+  if (!createdBy) return null;
+
+  // 名前の最初の2文字をイニシャルとして使用
+  const getInitials = (name: string | null): string => {
+    if (!name) return "?";
+    const words = name.split(" ");
+    return words
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const initials = getInitials(createdBy.name);
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-gray-500">
+      {createdBy.image ? (
+        <img
+          src={createdBy.image}
+          alt={createdBy.name ?? ""}
+          className="h-5 w-5 rounded-full"
+        />
+      ) : (
+        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600">
+          {initials}
+        </div>
+      )}
+      <span>{createdBy.name}</span>
+    </div>
+  );
+};
+
+/** 最後の実行情報 */
+const LastExecution = ({
+  execution,
+}: {
+  execution?: Agent["executionLogs"][number];
+}) => {
+  if (!execution) {
+    return <span className="text-gray-400">未実行</span>;
+  }
+
+  const timeAgo = formatDistanceToNow(new Date(execution.createdAt), {
+    addSuffix: true,
+    locale: ja,
+  });
+
+  // success: true=成功, false=失敗, null=実行中または不明
+  const getStatusIcon = () => {
+    if (execution.success === true) {
+      return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+    }
+    if (execution.success === false) {
+      return <XCircle className="h-3.5 w-3.5 text-red-500" />;
+    }
+    return <Clock className="h-3.5 w-3.5 text-gray-400" />;
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {getStatusIcon()}
+      <span className="text-gray-600">{timeAgo}</span>
+    </div>
+  );
+};
+
+/** LLMモデル名を短縮形で返す */
+const formatModelName = (modelId: string | null): string => {
+  if (!modelId) return "未設定";
+
+  // よく使われるモデル名の短縮形マッピング
+  const modelMapping: Record<string, string> = {
+    "anthropic/claude-3.5-haiku": "Claude 3.5 Haiku",
+    "anthropic/claude-3.5-sonnet": "Claude 3.5 Sonnet",
+    "anthropic/claude-3-opus": "Claude 3 Opus",
+    "openai/gpt-4o": "GPT-4o",
+    "openai/gpt-4o-mini": "GPT-4o mini",
+    "openai/gpt-4-turbo": "GPT-4 Turbo",
+    "google/gemini-pro": "Gemini Pro",
+    "google/gemini-1.5-pro": "Gemini 1.5 Pro",
+  };
+
+  return modelMapping[modelId] || modelId.split("/").pop() || modelId;
+};
+
+/** ミリ秒を読みやすい形式に変換 */
+const formatDuration = (ms: number): string => {
+  if (ms < 1000) return "1秒未満";
+  if (ms < 60000) return `約${Math.round(ms / 1000)}秒`;
+  if (ms < 3600000) return `約${Math.round(ms / 60000)}分`;
+  return `約${Math.round(ms / 3600000)}時間`;
+};
+
+/** 成功率を計算 */
+const calculateSuccessRate = (
+  executionLogs: Agent["executionLogs"],
+): { rate: number; total: number; success: number } | null => {
+  const completedLogs = executionLogs.filter((log) => log.success !== null);
+  if (completedLogs.length === 0) return null;
+
+  const successCount = completedLogs.filter(
+    (log) => log.success === true,
+  ).length;
+  const rate = Math.round((successCount / completedLogs.length) * 100);
+
+  return { rate, total: completedLogs.length, success: successCount };
+};
+
+/** 利用可能なツール数を計算 */
+const calculateTotalTools = (mcpServers: Agent["mcpServers"]): number => {
+  return mcpServers.reduce((total, server) => {
+    const toolCount =
+      server.templateInstances?.reduce(
+        (sum, instance) =>
+          sum + (instance.mcpServerTemplate?._count?.mcpTools ?? 0),
+        0,
+      ) ?? 0;
+    return total + toolCount;
+  }, 0);
+};
+
+/** 次回スケジュール実行時刻を取得 */
+const getNextScheduleTime = (
+  schedules: Agent["schedules"],
+): { time: Date; name: string } | null => {
+  const activeSchedules = schedules.filter(
+    (s) => s.status === ScheduleStatus.ACTIVE,
+  );
+  if (activeSchedules.length === 0) return null;
+
+  let earliest: { time: Date; name: string } | null = null;
+
+  for (const schedule of activeSchedules) {
+    try {
+      const interval = CronExpressionParser.parse(schedule.cronExpression, {
+        tz: schedule.timezone,
+      });
+      const nextTime = interval.next().toDate();
+
+      if (!earliest || nextTime < earliest.time) {
+        earliest = { time: nextTime, name: schedule.name };
+      }
+    } catch {
+      // cron式のパースに失敗した場合はスキップ
+    }
+  }
+
+  return earliest;
+};
 
 /** 稼働中インジケーター */
 const RunningIndicator = ({ count }: { count: number }) => (
@@ -140,8 +344,6 @@ export const AgentCard = ({
     sessionStatus === "authenticated" && !!session?.accessToken;
 
   const mcpServerCount = agent.mcpServers.length;
-  const scheduleCount = agent.schedules.length;
-  const executionCount = agent._count.executionLogs;
 
   // mcp-proxy の URL を取得
   const mcpProxyUrl = getProxyServerUrl();
@@ -339,32 +541,43 @@ export const AgentCard = ({
         </CardHeader>
 
         <CardContent className="flex-1 space-y-3">
-          {/* 統計情報 */}
-          <div className="flex flex-wrap gap-3">
-            {/* MCPサーバー数 */}
-            <div className="flex items-center gap-1.5 text-sm text-gray-600">
-              <Server className="h-4 w-4" />
-              <span>MCP: {mcpServerCount}</span>
+          {/* LLMモデルと推定実行時間 */}
+          <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
+            <div className="flex items-center gap-1.5 text-sm">
+              <Bot className="h-4 w-4 text-purple-500" />
+              <span className="font-medium text-gray-700">
+                {formatModelName(agent.modelId)}
+              </span>
             </div>
-
-            {/* スケジュール数 */}
+            <div className="h-4 w-px bg-gray-300" />
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
-              <Calendar className="h-4 w-4" />
-              <span>スケジュール: {scheduleCount}</span>
-            </div>
-
-            {/* 実行回数 */}
-            <div className="flex items-center gap-1.5 text-sm text-gray-600">
-              <Activity className="h-4 w-4" />
-              <span>実行: {executionCount}</span>
+              <Timer className="h-4 w-4" />
+              <span>{formatDuration(agent.estimatedDurationMs)}</span>
             </div>
           </div>
 
+          {/* 利用可能なツール数 */}
+          {(() => {
+            const toolCount = calculateTotalTools(agent.mcpServers);
+            return toolCount > 0 ? (
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm text-gray-700">
+                    利用可能なツール
+                  </span>
+                </div>
+                <span className="rounded-md bg-blue-100 px-2 py-0.5 text-sm font-medium text-blue-700">
+                  {toolCount}
+                </span>
+              </div>
+            ) : null;
+          })()}
+
           {/* MCPサーバーアイコン一覧 */}
           {mcpServerCount > 0 && (
-            <div className="flex items-center gap-1 pt-2">
+            <div className="flex items-center gap-1">
               {visibleServers.map((server) => {
-                // テンプレートのiconPathをフォールバックとして使用
                 const templateIconPath =
                   server.templateInstances?.[0]?.mcpServerTemplate?.iconPath;
                 const iconPath = server.iconPath ?? templateIconPath ?? null;
@@ -396,17 +609,80 @@ export const AgentCard = ({
             </div>
           )}
 
+          {/* 実行統計と次回スケジュール */}
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+            {/* 成功率 */}
+            {(() => {
+              const stats = calculateSuccessRate(agent.executionLogs);
+              return stats ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp
+                          className={cn(
+                            "h-4 w-4",
+                            stats.rate >= 80
+                              ? "text-green-500"
+                              : stats.rate >= 50
+                                ? "text-yellow-500"
+                                : "text-red-500",
+                          )}
+                        />
+                        <span className="text-gray-600">
+                          成功率: {stats.rate}%
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        直近{stats.total}回中 {stats.success}回成功
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null;
+            })()}
+
+            {/* 最後の実行 */}
+            <div className="flex items-center gap-1.5 text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span>最終実行:</span>
+              <LastExecution execution={agent.executionLogs[0]} />
+            </div>
+
+            {/* 次回スケジュール */}
+            {(() => {
+              const next = getNextScheduleTime(agent.schedules);
+              return next ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <Calendar className="h-4 w-4 text-orange-500" />
+                        <span>
+                          次回: {format(next.time, "M/d HH:mm", { locale: ja })}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{next.name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <ScheduleStatusSummary schedules={agent.schedules} />
+                </div>
+              );
+            })()}
+          </div>
+
           {/* 作成者情報 */}
           {agent.createdBy && (
-            <div className="flex items-center gap-2 pt-2 text-xs text-gray-500">
-              {agent.createdBy.image && (
-                <img
-                  src={agent.createdBy.image}
-                  alt={agent.createdBy.name ?? ""}
-                  className="h-5 w-5 rounded-full"
-                />
-              )}
-              <span>{agent.createdBy.name}</span>
+            <div className="border-t border-gray-100 pt-2">
+              <CreatorAvatar createdBy={agent.createdBy} />
             </div>
           )}
         </CardContent>
