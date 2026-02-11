@@ -5,10 +5,10 @@ import { ChevronDownIcon, ChevronRightIcon, KeyIcon } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { TypingIndicator } from "./typing-indicator";
-import { useAtomValue } from "jotai";
-import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
 import { useReauthenticateFromChat } from "@/hooks/useReauthenticateFromChat";
 import { useToolOutput } from "@/hooks/useToolOutput";
+import { parseToolName } from "@/utils/mcpToolName";
+import { detectErrorFromOutput, extractAuthError } from "@/utils/mcpToolError";
 
 // AI SDK 6 のツール状態
 type ToolState =
@@ -18,51 +18,13 @@ type ToolState =
   | "output-error";
 
 type McpToolCallProps = {
-  toolName: string; // "Linear MCP__linear__list_teams" or "Linear MCP__search_tools"
+  toolName: string; // "linear-mcp__linear__list_teams" or "linear-mcp__search_tools"
   toolCallId: string;
   state: ToolState;
   input?: unknown;
   output?: unknown;
   /** BigQuery参照（outputがBigQueryに保存されている場合） */
   outputRef?: string;
-};
-
-/**
- * ツール名からMCPサーバーIDと表示用ツール名を抽出
- *
- * 形式: "{mcpServerId}__{normalizedName}__{toolName}" または "{mcpServerId}__{metaToolName}"
- *
- * @example
- * "cm7qwxyz123__linear__list_teams" → { serverId: "cm7qwxyz123", displayToolName: "list_teams" }
- * "cm7qwxyz123__search_tools" → { serverId: "cm7qwxyz123", displayToolName: "search_tools" }
- */
-const parseToolName = (
-  fullToolName: string,
-): { serverId: string; displayToolName: string } => {
-  const parts = fullToolName.split("__");
-
-  if (parts.length >= 3) {
-    // {mcpServerId}__{normalizedName}__{toolName} 形式
-    // 最初がサーバーID、残りの最後がツール名
-    return {
-      serverId: parts[0] ?? "",
-      displayToolName: parts.slice(2).join("__"),
-    };
-  }
-
-  if (parts.length === 2) {
-    // {mcpServerId}__{metaToolName} 形式（Dynamic Search メタツール）
-    return {
-      serverId: parts[0] ?? "",
-      displayToolName: parts[1] ?? "",
-    };
-  }
-
-  // フォールバック: パースできない場合はそのまま表示
-  return {
-    serverId: "",
-    displayToolName: fullToolName,
-  };
 };
 
 /**
@@ -121,80 +83,6 @@ const JsonPreview = ({
       )}
     </div>
   );
-};
-
-/**
- * 認証エラー情報の型
- */
-type AuthErrorInfo = {
-  requiresReauth: boolean;
-  mcpServerId: string;
-};
-
-/**
- * 出力から認証エラー情報を抽出する
- * 再認証が必要な場合はmcpServerIdを含むオブジェクトを返す
- *
- * requiresReauth: true が設定されている場合は errorType に関係なく
- * 認証エラーとして扱う（401エラーやReAuthRequiredエラーに対応）
- */
-const extractAuthError = (output: unknown): AuthErrorInfo | null => {
-  if (!output || typeof output !== "object") return null;
-
-  const obj = output as {
-    isError?: boolean;
-    errorType?: string;
-    requiresReauth?: boolean;
-    mcpServerId?: string;
-  };
-
-  // requiresReauth: true があれば認証エラーとして扱う
-  if (
-    obj.isError === true &&
-    obj.requiresReauth === true &&
-    typeof obj.mcpServerId === "string"
-  ) {
-    return {
-      requiresReauth: true,
-      mcpServerId: obj.mcpServerId,
-    };
-  }
-
-  return null;
-};
-
-/**
- * 出力からエラー状態を検出する
- * MCPエラーは以下の形式で返される:
- * - { content: [...], isError: true }
- * - "Failed to execute tool..." (文字列形式のエラー)
- */
-const detectErrorFromOutput = (output: unknown): boolean => {
-  // オブジェクト形式: { isError: true }
-  if (output && typeof output === "object") {
-    const outputObj = output as { isError?: boolean };
-    if (outputObj.isError === true) return true;
-  }
-
-  // 文字列形式: エラーメッセージを含む場合
-  if (typeof output === "string") {
-    const lowerOutput = output.toLowerCase();
-    // エラーを示すキーワードをチェック
-    if (
-      lowerOutput.includes("failed to execute") ||
-      lowerOutput.includes("failed to connect") ||
-      lowerOutput.includes("mcp error") ||
-      lowerOutput.includes("oauth token not found") ||
-      lowerOutput.includes("user needs to authenticate") ||
-      lowerOutput.includes("unauthorized") ||
-      lowerOutput.includes("timed out") ||
-      lowerOutput.includes("timeout")
-    ) {
-      return true;
-    }
-  }
-
-  return false;
 };
 
 /**
@@ -262,10 +150,8 @@ export const McpToolCall = ({
   output: directOutput,
   outputRef,
 }: McpToolCallProps) => {
-  const mcpServerMap = useAtomValue(mcpServerMapAtom);
   const pathname = usePathname();
-  const { serverId, displayToolName } = parseToolName(toolName);
-  const serverName = resolveServerName(mcpServerMap, serverId);
+  const { serverSlug, displayToolName } = parseToolName(toolName);
   const isLoading = state === "input-streaming" || state === "input-available";
 
   // outputRefがある場合、展開時にBigQueryからフェッチ
@@ -305,13 +191,13 @@ export const McpToolCall = ({
         isLoading && "animate-pulse",
       )}
     >
-      {/* ヘッダー: サーバー名 > ツール名 */}
+      {/* ヘッダー: サーバーslug > ツール名 */}
       <div className="flex items-center gap-2">
         <StateIcon state={displayState} />
-        {serverName && (
+        {serverSlug && (
           <>
             <span className="text-muted-foreground text-sm font-medium">
-              {serverName}
+              {serverSlug}
             </span>
             <span className="text-muted-foreground/50">&gt;</span>
           </>
