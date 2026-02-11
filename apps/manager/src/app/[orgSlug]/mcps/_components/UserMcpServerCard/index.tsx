@@ -30,6 +30,7 @@ import {
   Trash2Icon,
   Wrench,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -47,7 +48,9 @@ import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
 import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
 import { ReuseTokenModal } from "./_components/ReuseTokenModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { FeatureBadges } from "./_components/FeatureBadges";
 import { IconEditModal } from "./IconEditModal";
+import { ServerMetaInfo } from "./_components/ServerMetaInfo";
 import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
 
 type UserMcpServer =
@@ -79,7 +82,9 @@ export const UserMcpServerCard = ({
 }: UserMcpServerCardProps) => {
   const params = useParams<{ orgSlug: string }>();
   const router = useRouter();
+  const { data: session } = useSession();
   const orgSlug = params.orgSlug;
+  const currentUserId = session?.user?.id;
 
   // モーダル状態
   const [toolsModalOpen, setToolsModalOpen] = useState(false);
@@ -340,6 +345,24 @@ export const UserMcpServerCard = ({
 
           {/* APIキー有効期限表示 */}
           <ApiKeyExpirationDisplay apiKeyStatus={apiKeyStatus} />
+
+          {/* 機能バッジ（PIIマスキング、Dynamic Search、TOON変換） */}
+          <FeatureBadges
+            piiMaskingMode={userMcpServer.piiMaskingMode}
+            dynamicSearch={userMcpServer.dynamicSearch}
+            toonConversionEnabled={userMcpServer.toonConversionEnabled}
+          />
+
+          {/* メタ情報（最終使用日時、作成者） */}
+          <ServerMetaInfo
+            lastUsedAt={userMcpServer.lastUsedAt}
+            creatorName={userMcpServer.createdBy?.name ?? null}
+            isOwnServer={
+              currentUserId !== undefined &&
+              userMcpServer.createdById === currentUserId
+            }
+            hasCreator={userMcpServer.createdBy !== null}
+          />
 
           {/* カテゴリータグ */}
           <div className="flex flex-wrap gap-1 pt-2">
