@@ -12,6 +12,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  calculateExpirationStatus,
+  getDetailedExpirationText,
+} from "@/utils/shared/expirationHelpers";
 import type { AuthType } from "@tumiki/db/prisma";
 import {
   AlertCircle,
@@ -37,6 +41,8 @@ type AuthTypeIndicatorProps = {
   apiKeyCount?: number;
   // OAuth認証状態（null: OAuthが不要、true: 認証済み、false: 未認証）
   isOAuthAuthenticated?: boolean | null;
+  // OAuthトークンの有効期限（ホバー時に表示）
+  oauthExpiresAt?: Date | null;
   // 再認証コールバック（OAuth未認証時のみ使用）
   onReauthenticate?: () => void | Promise<void>;
   // 再認証中フラグ
@@ -50,6 +56,12 @@ const AUTH_TYPE_CONFIG = {
     icon: ShieldCheck,
     bgColor: "bg-green-100",
     textColor: "text-green-700",
+    label: "OAuth",
+  },
+  OAUTH_WARNING: {
+    icon: ShieldCheck,
+    bgColor: "bg-amber-100",
+    textColor: "text-amber-700",
     label: "OAuth",
   },
   OAUTH_UNAUTHENTICATED: {
@@ -76,15 +88,40 @@ export const AuthTypeIndicator = ({
   authType,
   apiKeyCount,
   isOAuthAuthenticated,
+  oauthExpiresAt,
   onReauthenticate,
   isReauthenticating = false,
   unauthenticatedInstances = [],
 }: AuthTypeIndicatorProps) => {
-  // OAuth未認証の場合は未認証用の設定を使用
-  const configKey =
-    authType === "OAUTH" && isOAuthAuthenticated === false
-      ? "OAUTH_UNAUTHENTICATED"
-      : authType;
+  // OAuth有効期限の状態を計算
+  const oauthStatus = oauthExpiresAt
+    ? calculateExpirationStatus(oauthExpiresAt)
+    : null;
+  const oauthExpirationText = oauthExpiresAt
+    ? getDetailedExpirationText(oauthExpiresAt)
+    : null;
+
+  // OAuth未認証、期限切れ、または残り4日以下の場合は警告表示
+  const isOAuthExpiredOrWarning =
+    oauthStatus?.isExpired === true ||
+    (oauthStatus !== null &&
+      oauthStatus.daysRemaining !== null &&
+      oauthStatus.daysRemaining <= 4);
+
+  // 設定キーを決定
+  const getConfigKey = () => {
+    if (authType === "OAUTH") {
+      if (isOAuthAuthenticated === false) {
+        return "OAUTH_UNAUTHENTICATED";
+      }
+      if (isOAuthExpiredOrWarning) {
+        return "OAUTH_WARNING";
+      }
+      return "OAUTH";
+    }
+    return authType;
+  };
+  const configKey = getConfigKey();
   const config = AUTH_TYPE_CONFIG[configKey];
   const Icon = config.icon;
 
@@ -103,6 +140,13 @@ export const AuthTypeIndicator = ({
       return "OAuth認証が必要です";
     }
     if (authType === "OAUTH" && isOAuthAuthenticated === true) {
+      // 有効期限がある場合は残り時間を表示
+      if (oauthStatus?.isExpired) {
+        return "OAuth: 期限切れ（再認証が必要）";
+      }
+      if (oauthExpirationText) {
+        return `OAuth: ${oauthExpirationText}`;
+      }
       return "接続方法: OAuth（認証済み）";
     }
     return `接続方法: ${config.label}`;
