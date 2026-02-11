@@ -76,6 +76,15 @@ turbo run build --filter=manager       # 特定アプリのみビルド
 
 複数のLinear Issueを並列で処理する場合、[CCManager](https://github.com/upamune/ccmanager)を使用してGit Worktreeベースのセッション管理を推奨します。`/batch-issues`コマンドで複数Issueの並列処理が可能です。
 
+## Cloud Run MCP サーバー連携
+
+Tumiki は Google Cloud Run にデプロイされた MCP サーバーをサポートしています：
+
+- **デプロイ**: [tumiki-mcp-cloudrun](https://github.com/rayven122/tumiki-mcp-cloudrun) を使用して MCP サーバーを Cloud Run にデプロイ
+- **接続方式**: Streamable HTTPS トランスポート
+- **認証**: Cloud Run IAM 認証とフィールドレベル暗号化による API キー管理
+- **詳細ガイド**: [Cloud Run MCP サーバー連携ガイド](./docs/cloudrun-mcp-integration.md) を参照
+
 ## 開発ガイドライン
 
 ### TypeScript コーディング規約
