@@ -186,8 +186,8 @@ export const jwtAuthMiddleware = async (
   c.set("authContext", {
     authMethod: AuthType.OAUTH,
     organizationId: orgId,
-    userId: userId,
-    mcpServerId: mcpServerId,
+    userId,
+    mcpServerId,
     piiMaskingMode,
     piiInfoTypes,
     toonConversionEnabled,

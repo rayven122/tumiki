@@ -43,6 +43,36 @@ type CachedMcpServerResult = {
 // キャッシュのTTL（秒）
 const CACHE_TTL_SECONDS = 300; // 5分
 
+/**
+ * McpServerLookupResult を JSON 文字列にシリアライズ
+ */
+const serializeMcpServer = (result: McpServerLookupResult): string =>
+  JSON.stringify({
+    id: result.id,
+    organizationId: result.organizationId,
+    deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
+    authType: result.authType,
+    piiMaskingMode: result.piiMaskingMode,
+    piiInfoTypes: result.piiInfoTypes,
+    toonConversionEnabled: result.toonConversionEnabled,
+  } satisfies CachedMcpServerResult);
+
+/**
+ * JSON 文字列から McpServerLookupResult をデシリアライズ
+ */
+const deserializeMcpServer = (cached: string): McpServerLookupResult => {
+  const parsed = JSON.parse(cached) as CachedMcpServerResult;
+  return {
+    id: parsed.id,
+    organizationId: parsed.organizationId,
+    deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
+    authType: parsed.authType,
+    piiMaskingMode: parsed.piiMaskingMode,
+    piiInfoTypes: parsed.piiInfoTypes,
+    toonConversionEnabled: parsed.toonConversionEnabled,
+  };
+};
+
 // ネガティブキャッシュの有効/無効
 // DISABLE_NEGATIVE_CACHE=true で無効化（開発環境向け）
 const ENABLE_NEGATIVE_CACHE = process.env.DISABLE_NEGATIVE_CACHE !== "true";
@@ -64,28 +94,8 @@ export const getMcpServerOrganization = async (
     cacheKey,
     ttlSeconds: CACHE_TTL_SECONDS,
     fetch: () => getMcpServerFromDB(mcpServerId),
-    serialize: (result) =>
-      JSON.stringify({
-        id: result.id,
-        organizationId: result.organizationId,
-        deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
-        authType: result.authType,
-        piiMaskingMode: result.piiMaskingMode,
-        piiInfoTypes: result.piiInfoTypes,
-        toonConversionEnabled: result.toonConversionEnabled,
-      } satisfies CachedMcpServerResult),
-    deserialize: (cached) => {
-      const parsed = JSON.parse(cached) as CachedMcpServerResult;
-      return {
-        id: parsed.id,
-        organizationId: parsed.organizationId,
-        deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
-        authType: parsed.authType,
-        piiMaskingMode: parsed.piiMaskingMode,
-        piiInfoTypes: parsed.piiInfoTypes,
-        toonConversionEnabled: parsed.toonConversionEnabled,
-      };
-    },
+    serialize: serializeMcpServer,
+    deserialize: deserializeMcpServer,
     negativeCache: {
       enabled: ENABLE_NEGATIVE_CACHE,
       onBypass: () => {
@@ -372,28 +382,8 @@ export const getMcpServerBySlug = async (
     cacheKey,
     ttlSeconds: CACHE_TTL_SECONDS,
     fetch: () => getMcpServerBySlugFromDB(slug, organizationId),
-    serialize: (result) =>
-      JSON.stringify({
-        id: result.id,
-        organizationId: result.organizationId,
-        deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
-        authType: result.authType,
-        piiMaskingMode: result.piiMaskingMode,
-        piiInfoTypes: result.piiInfoTypes,
-        toonConversionEnabled: result.toonConversionEnabled,
-      } satisfies CachedMcpServerResult),
-    deserialize: (cached) => {
-      const parsed = JSON.parse(cached) as CachedMcpServerResult;
-      return {
-        id: parsed.id,
-        organizationId: parsed.organizationId,
-        deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
-        authType: parsed.authType,
-        piiMaskingMode: parsed.piiMaskingMode,
-        piiInfoTypes: parsed.piiInfoTypes,
-        toonConversionEnabled: parsed.toonConversionEnabled,
-      };
-    },
+    serialize: serializeMcpServer,
+    deserialize: deserializeMcpServer,
     negativeCache: {
       enabled: ENABLE_NEGATIVE_CACHE,
       onBypass: () => {
