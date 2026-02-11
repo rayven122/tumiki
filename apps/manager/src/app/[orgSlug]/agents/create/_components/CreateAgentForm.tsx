@@ -22,7 +22,7 @@ import {
   McpDragDropSelector,
   convertToSelectableMcp,
 } from "@/components/mcp-selector";
-import { MODEL_OPTIONS } from "@/lib/agent";
+import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/lib/agent";
 import type { McpServerId } from "@/schema/ids";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 
@@ -118,7 +118,7 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
     createAgentMutation.mutate({
       name: flowState.name,
       systemPrompt: flowState.systemPrompt,
-      modelId: flowState.modelId || undefined,
+      modelId: flowState.modelId || DEFAULT_MODEL_ID,
       visibility: flowState.visibility,
       mcpServerIds:
         flowState.selectedMcpServerIds.length > 0

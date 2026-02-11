@@ -177,6 +177,7 @@ export const BasicInfoSection = () => {
                   src={organization.logoUrl}
                   alt="組織ロゴ"
                   className="mt-2 h-16 w-16 rounded object-cover"
+                  referrerPolicy="no-referrer"
                 />
               </div>
             )}

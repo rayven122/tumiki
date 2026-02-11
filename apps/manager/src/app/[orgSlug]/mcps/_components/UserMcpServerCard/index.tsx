@@ -35,7 +35,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { McpConfigEditModal } from "../../[id]/_components/McpConfigEditModal";
+import { McpConfigEditModal } from "../../[slug]/_components/McpConfigEditModal";
 import { McpServerIcon } from "../McpServerIcon";
 import { RefreshToolsModal } from "../RefreshToolsModal";
 import { InboundAuthIndicator } from "../ServerCard/_components/InboundAuthIndicator";
@@ -161,7 +161,7 @@ export const UserMcpServerCard = ({
 
   const handleCardClick = () => {
     if (isSortMode) return;
-    router.push(`/${orgSlug}/mcps/${userMcpServer.id}`);
+    router.push(`/${orgSlug}/mcps/${userMcpServer.slug}`);
   };
 
   return (
@@ -193,7 +193,7 @@ export const UserMcpServerCard = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href={`/${orgSlug}/mcps/${userMcpServer.id}`}>
+                  <Link href={`/${orgSlug}/mcps/${userMcpServer.slug}`}>
                     <ExternalLink className="mr-2 h-4 w-4" />
                     詳細を見る
                   </Link>
@@ -321,7 +321,7 @@ export const UserMcpServerCard = ({
         <CardContent className="flex-1 space-y-3">
           {/* OAuth接続URLを表示（OAuthサーバーのみ） */}
           {isOAuthServer && (
-            <OAuthEndpointUrl userMcpServerId={userMcpServer.id} />
+            <OAuthEndpointUrl userMcpServerSlug={userMcpServer.slug} />
           )}
 
           {/* ツール一覧を表示するボタン */}

@@ -62,12 +62,12 @@ const SERVER_TYPE_LABELS = {
 
 type ServerDetailPageClientProps = {
   orgSlug: string;
-  serverId: string;
+  serverSlug: string;
 };
 
 export const ServerDetailPageClient = ({
   orgSlug,
-  serverId,
+  serverSlug,
 }: ServerDetailPageClientProps) => {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -82,16 +82,16 @@ export const ServerDetailPageClient = ({
     data: server,
     isLoading,
     refetch,
-  } = api.v2.userMcpServer.findById.useQuery(
-    { id: serverId as McpServerId },
-    { enabled: !!serverId },
+  } = api.v2.userMcpServer.findBySlug.useQuery(
+    { slug: serverSlug },
+    { enabled: !!serverSlug },
   );
 
-  // リクエスト統計情報を取得
+  // リクエスト統計情報を取得（サーバーデータ取得後にIDで検索）
   const { data: requestStats } =
     api.v2.userMcpServerRequestLog.getRequestStats.useQuery(
-      { userMcpServerId: serverId as McpServerId },
-      { enabled: !!serverId },
+      { userMcpServerId: server?.id as McpServerId },
+      { enabled: !!server?.id },
     );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
@@ -111,15 +111,15 @@ export const ServerDetailPageClient = ({
     api.v2.userMcpServer.updatePiiMasking.useMutation({
       // 楽観的更新
       onMutate: async (variables) => {
-        await utils.v2.userMcpServer.findById.cancel({
-          id: serverId as McpServerId,
+        await utils.v2.userMcpServer.findBySlug.cancel({
+          slug: serverSlug,
         });
-        const previousData = utils.v2.userMcpServer.findById.getData({
-          id: serverId as McpServerId,
+        const previousData = utils.v2.userMcpServer.findBySlug.getData({
+          slug: serverSlug,
         });
         if (previousData) {
-          utils.v2.userMcpServer.findById.setData(
-            { id: serverId as McpServerId },
+          utils.v2.userMcpServer.findBySlug.setData(
+            { slug: serverSlug },
             { ...previousData, piiMaskingEnabled: variables.piiMaskingEnabled },
           );
         }
@@ -130,23 +130,24 @@ export const ServerDetailPageClient = ({
       },
       onError: (error, _variables, context) => {
         if (context?.previousData) {
-          utils.v2.userMcpServer.findById.setData(
-            { id: serverId as McpServerId },
+          utils.v2.userMcpServer.findBySlug.setData(
+            { slug: serverSlug },
             context.previousData,
           );
         }
         toast.error(`エラーが発生しました: ${error.message}`);
       },
       onSettled: async () => {
-        await utils.v2.userMcpServer.findById.invalidate({
-          id: serverId as McpServerId,
+        await utils.v2.userMcpServer.findBySlug.invalidate({
+          slug: serverSlug,
         });
       },
     });
 
   const handlePiiMaskingToggle = (checked: boolean) => {
+    if (!server) return;
     updatePiiMasking({
-      id: serverId as McpServerId,
+      id: server.id as McpServerId,
       piiMaskingEnabled: checked,
     });
   };
@@ -156,15 +157,15 @@ export const ServerDetailPageClient = ({
     api.v2.userMcpServer.updateToonConversion.useMutation({
       // 楽観的更新
       onMutate: async (variables) => {
-        await utils.v2.userMcpServer.findById.cancel({
-          id: serverId as McpServerId,
+        await utils.v2.userMcpServer.findBySlug.cancel({
+          slug: serverSlug,
         });
-        const previousData = utils.v2.userMcpServer.findById.getData({
-          id: serverId as McpServerId,
+        const previousData = utils.v2.userMcpServer.findBySlug.getData({
+          slug: serverSlug,
         });
         if (previousData) {
-          utils.v2.userMcpServer.findById.setData(
-            { id: serverId as McpServerId },
+          utils.v2.userMcpServer.findBySlug.setData(
+            { slug: serverSlug },
             {
               ...previousData,
               toonConversionEnabled: variables.toonConversionEnabled,
@@ -178,23 +179,24 @@ export const ServerDetailPageClient = ({
       },
       onError: (error, _variables, context) => {
         if (context?.previousData) {
-          utils.v2.userMcpServer.findById.setData(
-            { id: serverId as McpServerId },
+          utils.v2.userMcpServer.findBySlug.setData(
+            { slug: serverSlug },
             context.previousData,
           );
         }
         toast.error(`エラーが発生しました: ${error.message}`);
       },
       onSettled: async () => {
-        await utils.v2.userMcpServer.findById.invalidate({
-          id: serverId as McpServerId,
+        await utils.v2.userMcpServer.findBySlug.invalidate({
+          slug: serverSlug,
         });
       },
     });
 
   const handleToonConversionToggle = (checked: boolean) => {
+    if (!server) return;
     updateToonConversion({
-      id: serverId as McpServerId,
+      id: server.id as McpServerId,
       toonConversionEnabled: checked,
     });
   };
@@ -209,22 +211,23 @@ export const ServerDetailPageClient = ({
         toast.error(`エラーが発生しました: ${error.message}`);
       },
       onSettled: async () => {
-        await utils.v2.userMcpServer.findById.invalidate({
-          id: serverId as McpServerId,
+        await utils.v2.userMcpServer.findBySlug.invalidate({
+          slug: serverSlug,
         });
       },
     });
 
   const handleDynamicSearchToggle = (checked: boolean) => {
+    if (!server) return;
     updateDynamicSearch({
-      id: serverId as McpServerId,
+      id: server.id as McpServerId,
       dynamicSearchEnabled: checked,
     });
   };
 
   // APIキー一覧取得（表示用）
   const { data: apiKeys } = api.v2.mcpServerAuth.listApiKeys.useQuery(
-    { serverId: serverId as McpServerId },
+    { serverId: server?.id as McpServerId },
     {
       enabled: !!server && server.authType === AuthType.API_KEY,
     },
@@ -233,7 +236,7 @@ export const ServerDetailPageClient = ({
   const handleStatusToggle = (checked: boolean) => {
     if (!server) return;
     updateStatus({
-      id: serverId as McpServerId,
+      id: server.id as McpServerId,
       isEnabled: checked,
     });
   };
@@ -323,7 +326,7 @@ export const ServerDetailPageClient = ({
                 <div>
                   <p className="font-medium">サーバーが見つかりません</p>
                   <p className="mt-1 text-sm text-red-500">
-                    指定されたIDのサーバーが存在しないか、アクセス権限がありません。
+                    指定されたサーバーが存在しないか、アクセス権限がありません。
                   </p>
                 </div>
               </div>
@@ -677,20 +680,20 @@ export const ServerDetailPageClient = ({
                   <OverviewTab
                     server={server}
                     requestStats={requestStats}
-                    serverId={serverId as McpServerId}
+                    serverId={server.id as McpServerId}
                   />
                 );
               case "connection":
                 return (
                   <ConnectionTab
                     server={server}
-                    serverId={serverId as McpServerId}
+                    serverId={server.id as McpServerId}
                   />
                 );
               case "logs":
                 return (
                   <LogsAnalyticsTab
-                    serverId={serverId as McpServerId}
+                    serverId={server.id as McpServerId}
                     requestStats={requestStats}
                   />
                 );

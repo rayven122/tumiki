@@ -22,21 +22,18 @@ import { createMcpServer } from "./mcpServerFactory.js";
 
 /**
  * ReAuthRequiredError に対する 401 JSON レスポンスを生成
+ *
+ * @param slug - MCP ServerのURLスラッグ（ReAuth URLに使用）
  */
 const toReAuthJsonResponse = (
   c: Context<HonoEnv>,
   error: ReAuthRequiredError,
-  mcpServerId: string,
+  slug: string,
   requestId: string | number | null,
 ) => {
   const baseUrl =
     process.env.NEXT_PUBLIC_MCP_PROXY_URL ?? "http://localhost:8080";
-  const reAuthResponse = createReAuthResponse(
-    error,
-    mcpServerId,
-    requestId,
-    baseUrl,
-  );
+  const reAuthResponse = createReAuthResponse(error, slug, requestId, baseUrl);
   return c.json(reAuthResponse.jsonRpcError, 401, reAuthResponse.headers);
 };
 
@@ -46,7 +43,8 @@ const toReAuthJsonResponse = (
  * Low-Level Server API を使用して JSON-RPC 2.0 リクエストを自動処理
  */
 export const mcpRequestHandler = async (c: Context<HonoEnv>) => {
-  const mcpServerId = c.req.param("mcpServerId");
+  // パスパラメータからslugを取得（ReAuth URLで使用）
+  const slug = c.req.param("slug");
 
   // 認証コンテキストから情報を取得
   const authContext = c.get("authContext");
@@ -54,7 +52,8 @@ export const mcpRequestHandler = async (c: Context<HonoEnv>) => {
     throw new Error("Authentication context not found");
   }
 
-  const { organizationId, userId } = authContext;
+  // mcpServerIdは認証ミドルウェアで解決済み（slugからIDに変換済み）
+  const { organizationId, userId, mcpServerId } = authContext;
 
   // ReAuthRequiredError を保存するためのコンテナ
   // SDK 内部で発生したエラーを外側で処理するために使用
@@ -99,7 +98,7 @@ export const mcpRequestHandler = async (c: Context<HonoEnv>) => {
       return toReAuthJsonResponse(
         c,
         reAuthErrorContainer.error,
-        mcpServerId,
+        slug ?? mcpServerId, // slugが取得できない場合はフォールバック
         reAuthErrorContainer.requestId,
       );
     }
@@ -109,7 +108,7 @@ export const mcpRequestHandler = async (c: Context<HonoEnv>) => {
   } catch (error) {
     // 外側で ReAuthRequiredError をキャッチした場合も 401 を返す
     if (isReAuthRequiredError(error)) {
-      return toReAuthJsonResponse(c, error, mcpServerId, null);
+      return toReAuthJsonResponse(c, error, slug ?? mcpServerId, null);
     }
 
     return handleError(c, toError(error), {

@@ -43,6 +43,36 @@ type CachedMcpServerResult = {
 // キャッシュのTTL（秒）
 const CACHE_TTL_SECONDS = 300; // 5分
 
+/**
+ * McpServerLookupResult を JSON 文字列にシリアライズ
+ */
+const serializeMcpServer = (result: McpServerLookupResult): string =>
+  JSON.stringify({
+    id: result.id,
+    organizationId: result.organizationId,
+    deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
+    authType: result.authType,
+    piiMaskingMode: result.piiMaskingMode,
+    piiInfoTypes: result.piiInfoTypes,
+    toonConversionEnabled: result.toonConversionEnabled,
+  } satisfies CachedMcpServerResult);
+
+/**
+ * JSON 文字列から McpServerLookupResult をデシリアライズ
+ */
+const deserializeMcpServer = (cached: string): McpServerLookupResult => {
+  const parsed = JSON.parse(cached) as CachedMcpServerResult;
+  return {
+    id: parsed.id,
+    organizationId: parsed.organizationId,
+    deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
+    authType: parsed.authType,
+    piiMaskingMode: parsed.piiMaskingMode,
+    piiInfoTypes: parsed.piiInfoTypes,
+    toonConversionEnabled: parsed.toonConversionEnabled,
+  };
+};
+
 // ネガティブキャッシュの有効/無効
 // DISABLE_NEGATIVE_CACHE=true で無効化（開発環境向け）
 const ENABLE_NEGATIVE_CACHE = process.env.DISABLE_NEGATIVE_CACHE !== "true";
@@ -64,28 +94,8 @@ export const getMcpServerOrganization = async (
     cacheKey,
     ttlSeconds: CACHE_TTL_SECONDS,
     fetch: () => getMcpServerFromDB(mcpServerId),
-    serialize: (result) =>
-      JSON.stringify({
-        id: result.id,
-        organizationId: result.organizationId,
-        deletedAt: result.deletedAt ? result.deletedAt.toISOString() : null,
-        authType: result.authType,
-        piiMaskingMode: result.piiMaskingMode,
-        piiInfoTypes: result.piiInfoTypes,
-        toonConversionEnabled: result.toonConversionEnabled,
-      } satisfies CachedMcpServerResult),
-    deserialize: (cached) => {
-      const parsed = JSON.parse(cached) as CachedMcpServerResult;
-      return {
-        id: parsed.id,
-        organizationId: parsed.organizationId,
-        deletedAt: parsed.deletedAt ? new Date(parsed.deletedAt) : null,
-        authType: parsed.authType,
-        piiMaskingMode: parsed.piiMaskingMode,
-        piiInfoTypes: parsed.piiInfoTypes,
-        toonConversionEnabled: parsed.toonConversionEnabled,
-      };
-    },
+    serialize: serializeMcpServer,
+    deserialize: deserializeMcpServer,
     negativeCache: {
       enabled: ENABLE_NEGATIVE_CACHE,
       onBypass: () => {
@@ -346,6 +356,114 @@ export const invalidateTemplateInstanceCache = async (
   } catch (error) {
     logError("Failed to invalidate template instance cache", error as Error, {
       instanceId,
+    });
+  }
+};
+
+/**
+ * slugとorganizationIdでMcpServerを取得
+ *
+ * パスパラメータがslugに変更されたため、slugからMcpServerを検索する。
+ * 組織内でslugはユニークなので、organizationIdとslugの組み合わせで一意に特定可能。
+ *
+ * @param slug - MCP Server のslug
+ * @param organizationId - 組織ID
+ * @returns McpServer情報（見つからない場合はnull）
+ */
+export const getMcpServerBySlug = async (
+  slug: string,
+  organizationId: string,
+): Promise<McpServerLookupResult | null> => {
+  const cacheKey = `mcpserver:slug:${organizationId}:${slug}`;
+  const redis = await getRedisClient();
+
+  return withCache<McpServerLookupResult>({
+    redis,
+    cacheKey,
+    ttlSeconds: CACHE_TTL_SECONDS,
+    fetch: () => getMcpServerBySlugFromDB(slug, organizationId),
+    serialize: serializeMcpServer,
+    deserialize: deserializeMcpServer,
+    negativeCache: {
+      enabled: ENABLE_NEGATIVE_CACHE,
+      onBypass: () => {
+        logDebug("Negative cache ignored due to DISABLE_NEGATIVE_CACHE");
+      },
+    },
+    onHit: () => {
+      logDebug("McpServer slug cache hit", { cacheKey });
+    },
+    onReadError: (error) => {
+      logError("Redis cache error for slug lookup", error);
+    },
+    onWriteError: (error) => {
+      logError("Redis cache save error for slug lookup", error);
+    },
+  });
+};
+
+/**
+ * DBからslugでMcpServerを取得する内部関数
+ */
+const getMcpServerBySlugFromDB = async (
+  slug: string,
+  organizationId: string,
+): Promise<McpServerLookupResult | null> => {
+  try {
+    const mcpServer = await db.mcpServer.findUnique({
+      where: {
+        organizationId_slug: { organizationId, slug },
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        deletedAt: true,
+        authType: true,
+        piiMaskingMode: true,
+        piiInfoTypes: true,
+        toonConversionEnabled: true,
+      },
+    });
+
+    if (!mcpServer) {
+      logWarn("McpServer not found by slug", { slug, organizationId });
+      return null;
+    }
+
+    return mcpServer;
+  } catch (error) {
+    logError("Failed to get McpServer by slug from DB", error as Error, {
+      slug,
+      organizationId,
+    });
+    throw error;
+  }
+};
+
+/**
+ * McpServer slugキャッシュを無効化
+ *
+ * McpServer削除・更新時に呼び出す。
+ */
+export const invalidateMcpServerSlugCache = async (
+  slug: string,
+  organizationId: string,
+): Promise<void> => {
+  const cacheKey = `mcpserver:slug:${organizationId}:${slug}`;
+
+  try {
+    const redis = await getRedisClient();
+    if (!redis) {
+      logDebug("Redis not available, skipping slug cache invalidation");
+      return;
+    }
+
+    await redis.del(cacheKey);
+    logDebug("McpServer slug cache invalidated", { slug, organizationId });
+  } catch (error) {
+    logError("Failed to invalidate McpServer slug cache", error as Error, {
+      slug,
+      organizationId,
     });
   }
 };

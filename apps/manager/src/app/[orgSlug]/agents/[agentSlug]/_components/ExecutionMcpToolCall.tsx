@@ -3,9 +3,9 @@
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
-import { useAtomValue } from "jotai";
-import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
 import { TypingIndicator } from "@/components/typing-indicator";
+import { parseToolName } from "@/utils/mcpToolName";
+import { detectErrorFromOutput } from "@/utils/mcpToolError";
 
 // AI SDK 6 のツール状態
 type ToolState =
@@ -22,40 +22,18 @@ type ExecutionMcpToolCallProps = {
 };
 
 /**
- * ツール名からMCPサーバーIDと表示用ツール名を抽出
- * 形式: serverId__prefix__toolName または serverId__toolName
- */
-const parseToolName = (
-  fullToolName: string,
-): { serverId: string; displayToolName: string } => {
-  const parts = fullToolName.split("__");
-
-  if (parts.length < 2) {
-    return { serverId: "", displayToolName: fullToolName };
-  }
-
-  const serverId = parts[0] ?? "";
-  // 3つ以上: serverId__prefix__toolName -> toolName以降を結合
-  // 2つ: serverId__toolName -> toolNameのみ
-  const displayToolName =
-    parts.length >= 3 ? parts.slice(2).join("__") : (parts[1] ?? "");
-  return { serverId, displayToolName };
-};
-
-/**
  * 状態に応じたアイコン
  */
 const StateIcon = ({ state }: { state: ToolState }) => {
-  // 入力待ち/ストリーミング中はタイピングインジケータ
-  if (state === "input-streaming" || state === "input-available") {
-    return <TypingIndicator size="sm" className="text-muted-foreground" />;
+  switch (state) {
+    case "input-streaming":
+    case "input-available":
+      return <TypingIndicator size="sm" className="text-muted-foreground" />;
+    case "output-available":
+      return <span className="text-green-600">✓</span>;
+    case "output-error":
+      return <span className="text-red-600">✗</span>;
   }
-  // 成功時はチェックマーク
-  if (state === "output-available") {
-    return <span className="text-green-600">✓</span>;
-  }
-  // エラー時はバツマーク
-  return <span className="text-red-600">✗</span>;
 };
 
 /**
@@ -102,34 +80,6 @@ const JsonPreview = ({
 };
 
 /**
- * 出力からエラー状態を検出
- */
-const detectErrorFromOutput = (output: unknown): boolean => {
-  if (output && typeof output === "object") {
-    const outputObj = output as { isError?: boolean };
-    if (outputObj.isError === true) return true;
-  }
-
-  if (typeof output === "string") {
-    const lowerOutput = output.toLowerCase();
-    if (
-      lowerOutput.includes("failed to execute") ||
-      lowerOutput.includes("failed to connect") ||
-      lowerOutput.includes("mcp error") ||
-      lowerOutput.includes("oauth token not found") ||
-      lowerOutput.includes("user needs to authenticate") ||
-      lowerOutput.includes("unauthorized") ||
-      lowerOutput.includes("timed out") ||
-      lowerOutput.includes("timeout")
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-/**
  * 実行結果モーダル用MCPツール呼び出し表示コンポーネント
  * チャット画面のMcpToolCallの簡易版（再認証機能なし）
  */
@@ -139,9 +89,7 @@ export const ExecutionMcpToolCall = ({
   input,
   output,
 }: ExecutionMcpToolCallProps) => {
-  const mcpServerMap = useAtomValue(mcpServerMapAtom);
-  const { serverId, displayToolName } = parseToolName(toolName);
-  const serverName = resolveServerName(mcpServerMap, serverId);
+  const { serverSlug, displayToolName } = parseToolName(toolName);
   const isLoading = state === "input-streaming" || state === "input-available";
 
   // outputにisError:trueがあればエラーとして扱う
@@ -158,13 +106,13 @@ export const ExecutionMcpToolCall = ({
         isLoading && "animate-pulse",
       )}
     >
-      {/* ヘッダー: サーバー名 > ツール名 */}
+      {/* ヘッダー: サーバーslug > ツール名 */}
       <div className="flex items-center gap-2">
         <StateIcon state={displayState} />
-        {serverName && (
+        {serverSlug && (
           <>
             <span className="text-muted-foreground text-sm font-medium">
-              {serverName}
+              {serverSlug}
             </span>
             <span className="text-muted-foreground/50">&gt;</span>
           </>

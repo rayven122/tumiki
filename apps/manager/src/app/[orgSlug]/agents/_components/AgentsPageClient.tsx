@@ -70,7 +70,7 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="h-6 w-6 text-purple-600" />
-          <h1 className="text-2xl font-bold">エージェント</h1>
+          <h1 className="text-2xl font-bold">AIエージェント</h1>
         </div>
         {isAdmin && (
           <Button asChild>

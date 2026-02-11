@@ -9,7 +9,7 @@ import {
 } from "../../../../shared/errors/index.js";
 import { verifyKeycloakJWT } from "../../../../infrastructure/keycloak/jwtVerifierImpl.js";
 import {
-  getMcpServerOrganization,
+  getMcpServerBySlug,
   checkOrganizationMembership,
 } from "../../../../infrastructure/db/repositories/mcpServerRepository.js";
 import {
@@ -23,12 +23,15 @@ import {
  * 以下の検証を早期returnで順次実行:
  * 1. Authorization ヘッダーから Bearer トークンを抽出
  * 2. JWT トークンの検証（Keycloak JWKS 使用）
- * 3. リクエストパスの mcpServerId の確認
- * 4. McpServer から organizationId を取得
- * 5. ユーザーが組織のメンバーかどうかを確認
+ * 3. リクエストパスの slug の確認
+ * 4. JWTから organizationId を取得
+ * 5. Keycloak ID または email から Tumiki User ID を解決
+ * 6. slug と organizationId で McpServer を検索
+ * 7. ユーザーが組織のメンバーかどうかを確認
  *
  * 認可ロジック:
- * - mcpServerId → organizationId → OrganizationMember → userId
+ * - JWT の tumiki.org_id から organizationId を取得
+ * - slug + organizationId → McpServer
  * - ユーザーが組織のメンバーであれば、その組織の MCP サーバーにアクセス可能
  *
  * Cloud Run のステートレス環境向けに設計:
@@ -74,48 +77,20 @@ export const jwtAuthMiddleware = async (
   // JWT ペイロードをコンテキストに設定
   c.set("jwtPayload", jwtPayload);
 
-  // Step 3: mcpServerId の確認
-  const pathMcpServerId = c.req.param("mcpServerId");
+  // Step 3: slug の確認
+  const pathSlug = c.req.param("slug");
 
-  if (!pathMcpServerId) {
-    return c.json(
-      createPermissionDeniedError("mcpServerId is required in path"),
-      403,
-    );
+  if (!pathSlug) {
+    return c.json(createPermissionDeniedError("slug is required in path"), 403);
   }
 
-  // Step 4: McpServer から organizationId と piiMaskingMode, piiInfoTypes, toonConversionEnabled を取得
-  let orgId: string;
-  let piiMaskingMode: PiiMaskingMode;
-  let piiInfoTypes: string[];
-  let toonConversionEnabled: boolean;
-  try {
-    const mcpServer = await getMcpServerOrganization(pathMcpServerId);
-
-    if (!mcpServer) {
-      return c.json(
-        createNotFoundError(`MCP Server not found: ${pathMcpServerId}`),
-        404,
-      );
-    }
-
-    if (mcpServer.deletedAt) {
-      return c.json(
-        createNotFoundError(`MCP Server has been deleted: ${pathMcpServerId}`),
-        404,
-      );
-    }
-
-    orgId = mcpServer.organizationId;
-    piiMaskingMode = mcpServer.piiMaskingMode;
-    piiInfoTypes = mcpServer.piiInfoTypes;
-    toonConversionEnabled = mcpServer.toonConversionEnabled;
-  } catch (error) {
-    logError("Failed to get McpServer organization", error as Error, {
-      mcpServerId: pathMcpServerId,
-    });
+  // Step 4: JWTから organizationId を取得
+  const orgId = jwtPayload.tumiki?.org_id;
+  if (!orgId) {
     return c.json(
-      createPermissionDeniedError("Failed to verify MCP server access"),
+      createPermissionDeniedError(
+        "Organization ID not found in JWT. Please ensure org_id is set in JWT claims.",
+      ),
       403,
     );
   }
@@ -153,7 +128,44 @@ export const jwtAuthMiddleware = async (
     );
   }
 
-  // Step 6: 組織メンバーシップをチェック
+  // Step 6: slug と organizationId で McpServer を検索
+  let mcpServerId: string;
+  let piiMaskingMode: PiiMaskingMode;
+  let piiInfoTypes: string[];
+  let toonConversionEnabled: boolean;
+  try {
+    const mcpServer = await getMcpServerBySlug(pathSlug, orgId);
+
+    if (!mcpServer) {
+      return c.json(
+        createNotFoundError(`MCP Server not found: ${pathSlug}`),
+        404,
+      );
+    }
+
+    if (mcpServer.deletedAt) {
+      return c.json(
+        createNotFoundError(`MCP Server has been deleted: ${pathSlug}`),
+        404,
+      );
+    }
+
+    mcpServerId = mcpServer.id;
+    piiMaskingMode = mcpServer.piiMaskingMode;
+    piiInfoTypes = mcpServer.piiInfoTypes;
+    toonConversionEnabled = mcpServer.toonConversionEnabled;
+  } catch (error) {
+    logError("Failed to get McpServer by slug", error as Error, {
+      slug: pathSlug,
+      organizationId: orgId,
+    });
+    return c.json(
+      createPermissionDeniedError("Failed to verify MCP server access"),
+      403,
+    );
+  }
+
+  // Step 7: 組織メンバーシップをチェック
   let isMember: boolean;
   try {
     isMember = await checkOrganizationMembership(orgId, userId);
@@ -174,8 +186,8 @@ export const jwtAuthMiddleware = async (
   c.set("authContext", {
     authMethod: AuthType.OAUTH,
     organizationId: orgId,
-    userId: userId,
-    mcpServerId: pathMcpServerId,
+    userId,
+    mcpServerId,
     piiMaskingMode,
     piiInfoTypes,
     toonConversionEnabled,

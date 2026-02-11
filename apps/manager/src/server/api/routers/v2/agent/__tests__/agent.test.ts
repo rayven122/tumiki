@@ -466,6 +466,7 @@ describe("Agent CRUD", () => {
         mcpServers: [
           {
             id: "mcp-1",
+            slug: "github",
             name: "GitHub",
             description: "GitHub MCP Server",
             iconPath: "lucide:github",

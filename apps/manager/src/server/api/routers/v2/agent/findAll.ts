@@ -42,6 +42,7 @@ export const findAllAgents = async (
       mcpServers: {
         select: {
           id: true,
+          slug: true,
           name: true,
           iconPath: true,
           // テンプレートのiconPathとツール数を取得

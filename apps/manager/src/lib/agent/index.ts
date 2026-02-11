@@ -2,6 +2,7 @@
  * エージェント関連のユーティリティモジュール
  */
 export {
+  DEFAULT_MODEL_ID,
   MODEL_OPTIONS,
   // ポーリング間隔
   REALTIME_LOG_POLLING_MS,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/chat/button";
 import {
   DropdownMenu,
@@ -12,8 +12,11 @@ import {
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, ChevronDownIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { useSetAtom } from "jotai";
-import { mcpServerMapAtom, type McpServerInfo } from "@/atoms/mcpServerMapAtom";
+import {
+  countEnabledTools,
+  countTotalToolsForSelectedServers,
+  getServerIconPath,
+} from "@/utils/mcpServerUtils";
 
 type OfficialServer =
   RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
@@ -33,7 +36,6 @@ export const McpServerSelector = ({
   disabled = false,
 }: McpServerSelectorProps) => {
   const [open, setOpen] = useState(false);
-  const setMcpServerMap = useSetAtom(mcpServerMapAtom);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (disabled) return;
@@ -42,20 +44,6 @@ export const McpServerSelector = ({
 
   const { data: mcpServers, isLoading } =
     api.v2.userMcpServer.findMcpServers.useQuery();
-
-  // MCPサーバー情報をatomに反映（mcp-tool-call.tsxでサーバー名解決に使用）
-  useEffect(() => {
-    if (mcpServers) {
-      const map: Record<string, McpServerInfo> = {};
-      for (const server of mcpServers) {
-        map[server.id] = {
-          name: server.name,
-          iconPath: server.iconPath ?? undefined,
-        };
-      }
-      setMcpServerMap(map);
-    }
-  }, [mcpServers, setMcpServerMap]);
 
   const availableServers: OfficialServer[] =
     mcpServers?.filter(
@@ -68,18 +56,10 @@ export const McpServerSelector = ({
   );
   const selectedCount = validSelectedIds.length;
 
-  const totalToolsCount = availableServers
-    .filter((server) => selectedMcpServerIds.includes(server.id))
-    .reduce(
-      (total, server) =>
-        total +
-        server.templateInstances.reduce(
-          (count, instance) =>
-            count + instance.tools.filter((tool) => tool.isEnabled).length,
-          0,
-        ),
-      0,
-    );
+  const totalToolsCount = countTotalToolsForSelectedServers(
+    availableServers,
+    selectedMcpServerIds,
+  );
 
   const handleToggleServer = (serverId: string) => {
     const isSelected = selectedMcpServerIds.includes(serverId);
@@ -180,15 +160,8 @@ export const McpServerSelector = ({
             <div className="max-h-[280px] overflow-y-auto">
               {availableServers.map((server) => {
                 const isSelected = selectedMcpServerIds.includes(server.id);
-                const enabledToolsCount = server.templateInstances.reduce(
-                  (count, instance) =>
-                    count +
-                    instance.tools.filter((tool) => tool.isEnabled).length,
-                  0,
-                );
-                const iconPath =
-                  server.iconPath ||
-                  server.templateInstances[0]?.mcpServerTemplate?.iconPath;
+                const enabledToolsCount = countEnabledTools(server);
+                const iconPath = getServerIconPath(server);
 
                 return (
                   <DropdownMenuItem
@@ -211,6 +184,7 @@ export const McpServerSelector = ({
                             src={iconPath}
                             alt=""
                             className="h-5 w-5 object-contain"
+                            referrerPolicy="no-referrer"
                           />
                         ) : (
                           <RouteIcon size={16} />
