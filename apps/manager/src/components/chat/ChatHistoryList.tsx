@@ -4,8 +4,9 @@ import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2, Bot, MessageSquare } from "lucide-react";
 import { UsersIcon, LoaderIcon } from "@/components/icons";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import Link from "next/link";
 import useSWRInfinite from "swr/infinite";
 
@@ -72,6 +73,9 @@ type ChatHistoryListProps = {
   onSidebarClose?: () => void;
 };
 
+/** チャットフィルタータイプ */
+type ChatFilter = "agent" | "normal";
+
 export const ChatHistoryList = ({
   chatId,
   orgSlug,
@@ -83,6 +87,7 @@ export const ChatHistoryList = ({
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [filter, setFilter] = useState<ChatFilter>("normal");
 
   const {
     data: paginatedChatHistories,
@@ -95,10 +100,6 @@ export const ChatHistoryList = ({
       fallbackData: [] as ChatHistory[],
     },
   );
-
-  const hasEmptyChatHistory = paginatedChatHistories
-    ? paginatedChatHistories.every((page) => page.chats.length === 0)
-    : false;
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -145,7 +146,11 @@ export const ChatHistoryList = ({
 
   const chatsFromHistory =
     paginatedChatHistories?.flatMap((page) => page.chats) ?? [];
-  const groupedChats = groupChatsByDate(chatsFromHistory);
+  // フィルター適用
+  const filteredChats = chatsFromHistory.filter((chat) =>
+    filter === "agent" ? chat.agent !== null : chat.agent === null,
+  );
+  const groupedChats = groupChatsByDate(filteredChats);
 
   const renderChatGroup = (title: string, chats: ChatWithUser[]) => {
     if (chats.length === 0) return null;
@@ -173,21 +178,41 @@ export const ChatHistoryList = ({
                 className="min-w-0 flex-1"
                 onClick={onSidebarClose}
               >
-                <div className="flex flex-col gap-0.5">
-                  <span
-                    className={cn(
-                      "truncate text-sm",
-                      !isSidebarOpen && "hidden",
-                    )}
-                  >
-                    {chat.title || "新しいチャット"}
-                  </span>
-                  {isOrganizationShared && chat.user.name && isSidebarOpen && (
-                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                      <UsersIcon size={10} />
-                      {chat.user.name}
-                    </span>
+                <div className="flex items-start gap-2">
+                  {chat.agent && isSidebarOpen && (
+                    <div className="mt-0.5 shrink-0">
+                      <EntityIcon
+                        iconPath={chat.agent.iconPath}
+                        type="agent"
+                        size="xs"
+                        alt={chat.agent.name}
+                      />
+                    </div>
                   )}
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        !isSidebarOpen && "hidden",
+                      )}
+                    >
+                      {chat.title || "新しいチャット"}
+                    </span>
+                    {chat.agent && isSidebarOpen ? (
+                      <span className="text-muted-foreground truncate text-xs">
+                        {chat.agent.name}
+                      </span>
+                    ) : (
+                      isOrganizationShared &&
+                      chat.user.name &&
+                      isSidebarOpen && (
+                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                          <UsersIcon size={10} />
+                          {chat.user.name}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
               </Link>
               {/* 自分のチャットのみ削除可能 */}
@@ -241,6 +266,38 @@ export const ChatHistoryList = ({
         </Button>
       </div>
 
+      {/* フィルタータブ */}
+      {isSidebarOpen && (
+        <div className="flex gap-1 px-4 pb-2">
+          <button
+            type="button"
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+              filter === "normal"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+            onClick={() => setFilter("normal")}
+          >
+            <MessageSquare className="h-3 w-3" />
+            Chat
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+              filter === "agent"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+            onClick={() => setFilter("agent")}
+          >
+            <Bot className="h-3 w-3" />
+            Agent
+          </button>
+        </div>
+      )}
+
       {/* チャット履歴リスト */}
       <div className="flex-1 overflow-y-auto px-4">
         {isLoading ? (
@@ -249,9 +306,13 @@ export const ChatHistoryList = ({
               <LoaderIcon />
             </div>
           </div>
-        ) : hasEmptyChatHistory ? (
+        ) : filteredChats.length === 0 ? (
           <div className="text-muted-foreground py-8 text-center text-sm">
-            {isSidebarOpen ? "チャット履歴がありません" : ""}
+            {isSidebarOpen
+              ? filter === "agent"
+                ? "エージェントチャットがありません"
+                : "普通のチャットがありません"
+              : ""}
           </div>
         ) : (
           <>

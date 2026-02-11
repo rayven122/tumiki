@@ -9,10 +9,11 @@ import { parseIconPath, getIconColorClass } from "@/utils/iconColor";
 
 /**
  * サイズバリアント
+ * - xs: 16x16 (アイコン16px) - サイドバー等の極小表示用（コンテナなし）
  * - sm: 32x32 (アイコン20px) - アクティビティカード等の小さい表示用
  * - md: 48x48 (アイコン28px) - 標準サイズ（カード、詳細ページ共通）
  */
-type SizeVariant = "sm" | "md";
+type SizeVariant = "xs" | "sm" | "md";
 
 /**
  * エンティティタイプ（フォールバックアイコン選択用）
@@ -39,8 +40,19 @@ type EntityIconProps = {
 /** サイズバリアントごとの設定 */
 const SIZE_CONFIG: Record<
   SizeVariant,
-  { container: string; iconSize: number; fallbackIconClass: string }
+  {
+    container: string;
+    iconSize: number;
+    fallbackIconClass: string;
+    noContainer?: boolean;
+  }
 > = {
+  xs: {
+    container: "",
+    iconSize: 16,
+    fallbackIconClass: "h-4 w-4",
+    noContainer: true, // コンテナなしでアイコンのみ表示
+  },
   sm: {
     container: "h-8 w-8",
     iconSize: 20,
@@ -96,12 +108,21 @@ export const EntityIcon = ({
   className,
 }: EntityIconProps) => {
   const sizeConfig = SIZE_CONFIG[size];
+  const noContainer = sizeConfig.noContainer;
 
   const containerClass = cn(
     "flex items-center justify-center rounded-xl border border-gray-200 bg-white shrink-0",
     sizeConfig.container,
     className,
   );
+
+  // ラッパー関数：noContainerの場合はアイコンのみ、それ以外はコンテナ付き
+  const wrapWithContainer = (content: React.ReactNode) =>
+    noContainer ? (
+      <span className={cn("shrink-0", className)}>{content}</span>
+    ) : (
+      <div className={containerClass}>{content}</div>
+    );
 
   // lucide:* 形式 → lucide-reactアイコンを表示
   if (iconPath?.startsWith("lucide:")) {
@@ -112,67 +133,54 @@ export const EntityIcon = ({
       const colorClass = getIconColorClass(parsed.color);
 
       if (IconComponent) {
-        return (
-          <div className={containerClass}>
-            <IconComponent
-              className={colorClass}
-              style={{
-                width: sizeConfig.iconSize,
-                height: sizeConfig.iconSize,
-              }}
-            />
-          </div>
+        return wrapWithContainer(
+          <IconComponent
+            className={colorClass}
+            style={{
+              width: sizeConfig.iconSize,
+              height: sizeConfig.iconSize,
+            }}
+          />,
         );
       }
     }
     // lucide:形式だがアイコンが見つからない場合はフォールバック
-    return (
-      <div className={containerClass}>
-        <FallbackIcon type={type} iconClass={sizeConfig.fallbackIconClass} />
-      </div>
+    return wrapWithContainer(
+      <FallbackIcon type={type} iconClass={sizeConfig.fallbackIconClass} />,
     );
   }
 
   // URL形式 → Imageコンポーネント
   if (iconPath) {
     const isSvg = iconPath.toLowerCase().endsWith(".svg");
-    return (
-      <div className={containerClass}>
-        <Image
-          src={iconPath}
-          alt={alt}
-          width={sizeConfig.iconSize}
-          height={sizeConfig.iconSize}
-          className="rounded-md object-cover"
-          unoptimized={isSvg}
-        />
-      </div>
+    return wrapWithContainer(
+      <Image
+        src={iconPath}
+        alt={alt}
+        width={sizeConfig.iconSize}
+        height={sizeConfig.iconSize}
+        className="rounded-md object-cover"
+        unoptimized={isSvg}
+      />,
     );
   }
 
   // fallbackUrlがある場合 → FaviconImage
   if (fallbackUrl) {
-    return (
-      <div className={containerClass}>
-        <FaviconImage
-          url={fallbackUrl}
-          alt={alt}
-          size={sizeConfig.iconSize}
-          fallback={
-            <FallbackIcon
-              type={type}
-              iconClass={sizeConfig.fallbackIconClass}
-            />
-          }
-        />
-      </div>
+    return wrapWithContainer(
+      <FaviconImage
+        url={fallbackUrl}
+        alt={alt}
+        size={sizeConfig.iconSize}
+        fallback={
+          <FallbackIcon type={type} iconClass={sizeConfig.fallbackIconClass} />
+        }
+      />,
     );
   }
 
   // フォールバック → デフォルトアイコン
-  return (
-    <div className={containerClass}>
-      <FallbackIcon type={type} iconClass={sizeConfig.fallbackIconClass} />
-    </div>
+  return wrapWithContainer(
+    <FallbackIcon type={type} iconClass={sizeConfig.fallbackIconClass} />,
   );
 };

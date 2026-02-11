@@ -52,9 +52,11 @@ export const OrgSidebar = ({
   const { closeSidebar } = useSidebarActions(isMobile, setIsOpen);
 
   // チャット画面かどうかを判定
+  // pathname はエンコード済み（%40など）、orgSlug はデコード済み（@など）なのでデコードして比較
+  const decodedPathname = decodeURIComponent(pathname);
   const isChatPage =
-    pathname.startsWith(`/${orgSlug}/chat`) ||
-    pathname.startsWith(`/${orgSlug}/avatar`);
+    decodedPathname.startsWith(`/${orgSlug}/chat`) ||
+    decodedPathname.startsWith(`/${orgSlug}/avatar`);
 
   // 現在のチャットIDを取得（/chat/[id] または /avatar/[id] の場合）
   // 型ガードで安全に取得
@@ -186,7 +188,7 @@ export const OrgSidebar = ({
               <nav className="grid gap-1 px-4">
                 {navigation.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href;
+                  const isActive = decodedPathname === item.href;
                   const isDisabled = item.disabled;
                   const isBeta = "beta" in item && item.beta;
                   const tooltipText =
