@@ -8,8 +8,14 @@ const isEEBuild = process.env.NEXT_PUBLIC_EE_BUILD === "true";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // Docker / Cloud Run 用にスタンドアロンモードで出力
+  output: "standalone",
   // React Strict Mode を無効化
   reactStrictMode: false,
+  // Docker ビルド時にテスト関連ファイルを除外した tsconfig.build.json を使用
+  typescript: {
+    tsconfigPath: "./tsconfig.build.json",
+  },
   // 静的アセットのgzip圧縮を有効化（60-80%のファイルサイズ削減）
   compress: true,
   // Turbopackで解決できないパッケージをサーバー外部パッケージとして指定

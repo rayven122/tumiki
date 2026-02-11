@@ -7,14 +7,13 @@
 # ========================================
 # Stage 1: Base
 # ========================================
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 
-# Install pnpm using corepack (pnpm version from package.json packageManager field)
+# corepack で pnpm を有効化（バージョンは package.json の packageManager フィールドに従う）
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-# Set working directory
 WORKDIR /app
 
 # ========================================
@@ -22,27 +21,25 @@ WORKDIR /app
 # ========================================
 FROM base AS dependencies
 
-# Copy dependency files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY .npmrc ./
 
-# Copy all package.json files from packages, apps, and tooling
+# 各パッケージの package.json をコピー（pnpm install のワークスペース解決に必要）
 COPY packages/db/package.json ./packages/db/
 COPY packages/oauth-token-manager/package.json ./packages/oauth-token-manager/
 COPY apps/mcp-proxy/package.json ./apps/mcp-proxy/
 COPY tooling/typescript/package.json ./tooling/typescript/
 
-# Copy Prisma config and schema BEFORE install (required for postinstall script)
+# Prisma の postinstall スクリプトに必要な設定とスキーマ
 COPY packages/db/prisma.config.ts ./packages/db/
 COPY packages/db/prisma ./packages/db/prisma
 
-# Create a minimal .env file for Prisma (postinstall needs it but won't use the value)
+# Prisma postinstall 用のダミー DATABASE_URL（実際の接続には使用されない）
 RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
 
-# Set CI environment variable to skip Python MCP installation
+# Python MCP インストールをスキップ
 ENV CI=true
 
-# Install dependencies
 RUN pnpm install --frozen-lockfile --prod=false
 
 # ========================================
@@ -50,44 +47,47 @@ RUN pnpm install --frozen-lockfile --prod=false
 # ========================================
 FROM dependencies AS build
 
-# Copy source code
 COPY tooling/typescript ./tooling/typescript
 COPY packages/db ./packages/db
 COPY packages/oauth-token-manager ./packages/oauth-token-manager
 COPY apps/mcp-proxy ./apps/mcp-proxy
 
-# Build packages in correct order
+# 依存関係の順序に従ってビルド
 WORKDIR /app/packages/db
 RUN pnpm db:generate && pnpm build
 
-# Build oauth-token-manager
 WORKDIR /app/packages/oauth-token-manager
 RUN pnpm build
 
-# Build mcp-proxy
 WORKDIR /app/apps/mcp-proxy
 RUN pnpm build
+
+# Prisma Client 生成コードをステージング（Production stage でコピー）
+# require.resolve で pnpm シンボリックリンクを自動解決し、@prisma/client と .prisma/client をコピー
+WORKDIR /app
+RUN PRISMA_DIR=$(node -e "console.log(require('path').dirname(require.resolve('@prisma/client')))") && \
+    MODULES_DIR=$(dirname "$(dirname "$PRISMA_DIR")") && \
+    cp -rL "$PRISMA_DIR" /prisma-client && \
+    cp -rL "$MODULES_DIR/.prisma/client" /prisma-generated
 
 # ========================================
 # Stage 4: Production
 # ========================================
-FROM node:22-alpine AS production
+FROM node:24-alpine AS production
 
-# Install pnpm using corepack (pnpm version from package.json packageManager field)
+# corepack で pnpm を有効化（本番依存関係のインストールに必要）
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-# Install dumb-init and wget for proper signal handling and health checks
+# dumb-init: シグナル伝播、wget: ヘルスチェック
 RUN apk add --no-cache dumb-init wget
 
-# Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 WORKDIR /app
 
-# Copy dependency files
 COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nodejs:nodejs .npmrc ./
 COPY --chown=nodejs:nodejs packages/db/package.json ./packages/db/
@@ -95,53 +95,42 @@ COPY --chown=nodejs:nodejs packages/oauth-token-manager/package.json ./packages/
 COPY --chown=nodejs:nodejs apps/mcp-proxy/package.json ./apps/mcp-proxy/
 COPY --chown=nodejs:nodejs tooling/typescript/package.json ./tooling/typescript/
 
-# Copy Prisma config and schema BEFORE install (required for postinstall script)
-COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma.config.ts ./packages/db/
-COPY --from=build --chown=nodejs:nodejs /app/packages/db/prisma ./packages/db/prisma
-
-# Create a minimal .env file for Prisma (postinstall needs it but won't use the value)
+# Prisma postinstall 用のダミー DATABASE_URL（実際の接続には使用されない）
 RUN echo "DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder" > .env
 
-# Set CI environment variable to skip Python MCP installation
+# Python MCP インストールをスキップ
 ENV CI=true
 
-# Install all dependencies without running scripts (to avoid network errors in postinstall)
-RUN pnpm install --frozen-lockfile --prod=false --ignore-scripts
+# 本番依存関係のみインストール（postinstall スクリプトをスキップ）
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# Generate Prisma Client with retry logic to handle network errors
-RUN cd packages/db && \
-    for i in 1 2 3; do \
-      pnpm db:generate && break || \
-      (echo "Prisma generate failed (attempt $i/3), retrying..." && sleep 5); \
-    done
+# ビルドステージの Prisma Client を配置
+# @prisma/client（ランタイム）と .prisma/client（生成コード）の両方が必要
+COPY --from=build /prisma-client /prisma-client
+COPY --from=build /prisma-generated /prisma-generated
+RUN DEST=$(find node_modules/.pnpm -path '*/@prisma+client@*/node_modules' -type d | head -1) && \
+    if [ -z "$DEST" ]; then echo "Error: @prisma/client not found in pnpm store" && exit 1; fi && \
+    cp -r /prisma-client/* "$DEST/@prisma/client/" && \
+    mkdir -p "$DEST/.prisma" && \
+    cp -r /prisma-generated "$DEST/.prisma/client" && \
+    rm -rf /prisma-client /prisma-generated
 
-# Remove dev dependencies to reduce image size
-RUN pnpm prune --prod
-
-# Copy built artifacts
+# ビルド成果物
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/oauth-token-manager/dist ./packages/oauth-token-manager/dist
 COPY --from=build --chown=nodejs:nodejs /app/apps/mcp-proxy/dist ./apps/mcp-proxy/dist
 
-# Switch to non-root user
 USER nodejs
 
-# Set working directory to mcp-proxy
 WORKDIR /app/apps/mcp-proxy
 
-# Environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Expose port
 EXPOSE 8080
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start the server
 CMD ["node", "dist/src/index.js"]
