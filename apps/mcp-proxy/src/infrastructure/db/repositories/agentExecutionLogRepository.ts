@@ -1,5 +1,5 @@
 /**
- * 実行ログリポジトリ
+ * エージェント実行ログリポジトリ
  *
  * AgentExecutionLogのDB操作を担当
  */
@@ -8,7 +8,24 @@ import { db, type Prisma } from "@tumiki/db/server";
 
 import { toError } from "../../../shared/errors/toError.js";
 import { logError } from "../../../shared/logger/index.js";
-import type { MessagePart, TextPart } from "../helpers/buildMessageParts.js";
+
+/** テキストパーツ型（メッセージ保存用） */
+type TextPart = {
+  type: "text";
+  text: string;
+};
+
+/** ツール呼び出しパーツ型（メッセージ保存用） */
+type ToolCallPart = {
+  type: string;
+  toolCallId: string;
+  state: "output-available";
+  input: unknown;
+  output: unknown;
+};
+
+/** メッセージパーツの型 */
+type MessagePart = TextPart | ToolCallPart;
 
 /** 実行ログ作成（pending状態）のパラメータ */
 export type CreatePendingLogParams = {

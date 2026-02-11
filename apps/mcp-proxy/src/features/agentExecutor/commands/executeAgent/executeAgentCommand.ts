@@ -1,5 +1,5 @@
 /**
- * エージェント実行機能
+ * エージェント実行コマンド
  *
  * LLMを使用してエージェントを実行し、MCPツールを呼び出す
  * 実行結果はChat/Message形式で保存される
@@ -10,12 +10,22 @@ import { randomUUID } from "crypto";
 
 import { db } from "@tumiki/db/server";
 
-import { gateway } from "../../infrastructure/ai/index.js";
-import { AGENT_EXECUTION_CONFIG } from "../../shared/constants/config.js";
-import { toError } from "../../shared/errors/toError.js";
-import { logError, logInfo } from "../../shared/logger/index.js";
-import { parseIntWithDefault } from "../../shared/utils/parseIntWithDefault.js";
-import { getChatMcpTools } from "../chat/chatMcpTools.js";
+import { gateway } from "../../../../infrastructure/ai/index.js";
+import {
+  createPendingExecutionLog,
+  updateExecutionLogWithChat,
+  updateExecutionLogSimple,
+} from "../../../../infrastructure/db/repositories/index.js";
+import { AGENT_EXECUTION_CONFIG } from "../../../../shared/constants/config.js";
+import { toError } from "../../../../shared/errors/toError.js";
+import { logError, logInfo } from "../../../../shared/logger/index.js";
+import { parseIntWithDefault } from "../../../../shared/utils/parseIntWithDefault.js";
+import { getChatMcpTools } from "../../../chat/chatMcpTools.js";
+import type {
+  ExecuteAgentRequest,
+  ExecuteAgentResult,
+  ExecutionTrigger,
+} from "../../types.js";
 import {
   buildSystemPrompt,
   buildMessageParts,
@@ -24,17 +34,7 @@ import {
   isAbortError,
   TIMEOUT_ERROR_MESSAGE,
   type MessagePart,
-} from "./helpers/index.js";
-import {
-  createPendingExecutionLog,
-  updateExecutionLogWithChat,
-  updateExecutionLogSimple,
-} from "./repository/index.js";
-import type {
-  ExecuteAgentRequest,
-  ExecuteAgentResult,
-  ExecutionTrigger,
-} from "./types.js";
+} from "./index.js";
 
 /** エージェント実行用のデフォルトモデル（環境変数で上書き可能） */
 const DEFAULT_AGENT_MODEL =
@@ -83,7 +83,7 @@ type AgentInfo = {
  * @param request - 実行リクエスト
  * @returns 実行結果
  */
-export const executeAgent = async (
+export const executeAgentCommand = async (
   request: ExecuteAgentRequest,
 ): Promise<ExecuteAgentResult> => {
   const executionId = randomUUID();
@@ -322,3 +322,9 @@ export const executeAgent = async (
     };
   }
 };
+
+/**
+ * 後方互換性のためのエイリアス
+ * @deprecated executeAgentCommand を使用してください
+ */
+export const executeAgent = executeAgentCommand;

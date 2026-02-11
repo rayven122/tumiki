@@ -1,7 +1,11 @@
 /**
- * エージェント実行ヘルパー関数のエクスポート
+ * executeAgent コマンドのエクスポート
  */
 
+// コマンド
+export { executeAgentCommand, executeAgent } from "./executeAgentCommand.js";
+
+// ヘルパー関数
 export { buildSystemPrompt, triggerToString } from "./buildSystemPrompt.js";
 export {
   buildMessageParts,

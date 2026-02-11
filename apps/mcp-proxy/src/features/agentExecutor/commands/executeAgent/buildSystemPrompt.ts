@@ -2,7 +2,7 @@
  * システムプロンプト構築ヘルパー
  */
 
-import type { ExecutionTrigger } from "../types.js";
+import type { ExecutionTrigger } from "../../types.js";
 
 /**
  * トリガー情報を人間可読な文字列に変換する
