@@ -155,19 +155,38 @@ export const getChatMcpTools = async (
 };
 
 /**
+ * AI SDK Tool.execute関数のオプション型
+ * AI SDKがツール実行時に渡すコンテキスト情報を含む
+ */
+type ToolExecuteOptions = {
+  /** AI SDKが生成したツール呼び出しID */
+  toolCallId: string;
+  abortSignal?: AbortSignal;
+  messages?: unknown[];
+};
+
+/**
  * ツール実行関数を作成
  *
  * callToolCommandをラップし、実行時間を計測してログを記録する。
  * エラーはLLMに返す形式に変換する。
+ *
+ * AI SDKのexecute関数は (args, options) の形式で呼び出される。
+ * optionsにはtoolCallIdが含まれており、これをログに記録することで
+ * チャットメッセージとMCPリクエストログを紐付け可能にする。
  */
 const createChatToolExecute = (
   params: CreateChatToolExecuteParams,
-): ((args: unknown) => Promise<unknown>) => {
+): ((args: unknown, options: ToolExecuteOptions) => Promise<unknown>) => {
   const { mcpServerId, fullToolName, organizationId, userId } = params;
 
-  return async (args: unknown): Promise<unknown> => {
+  return async (
+    args: unknown,
+    options: ToolExecuteOptions,
+  ): Promise<unknown> => {
     const startTime = Date.now();
     const requestBody = { name: fullToolName, arguments: args };
+    const { toolCallId } = options;
 
     try {
       const result = await callToolCommand({
@@ -176,6 +195,7 @@ const createChatToolExecute = (
         fullToolName,
         args: args as Record<string, unknown>,
         userId,
+        toolCallId,
       });
 
       const durationMs = Date.now() - startTime;
@@ -190,6 +210,7 @@ const createChatToolExecute = (
         requestBody,
         responseBody: result,
         httpStatus: 200,
+        toolCallId,
       });
 
       return result;
@@ -209,6 +230,7 @@ const createChatToolExecute = (
         responseBody: { error: errorMessage },
         httpStatus: 500,
         errorMessage,
+        toolCallId,
       });
 
       // エラーをLLMに返す（isError: trueで表示）

@@ -29,6 +29,8 @@ export type CallToolCommand = {
   readonly fullToolName: string;
   readonly args: Record<string, unknown>;
   readonly userId: string;
+  /** AIツール呼び出しID（AI SDKが生成、チャットメッセージとの紐付け用） */
+  readonly toolCallId?: string;
 };
 
 /**
@@ -40,7 +42,14 @@ export type CallToolCommand = {
 export const callToolCommand = async (
   command: CallToolCommand,
 ): Promise<unknown> => {
-  const { mcpServerId, organizationId, fullToolName, args, userId } = command;
+  const {
+    mcpServerId,
+    organizationId,
+    fullToolName,
+    args,
+    userId,
+    toolCallId,
+  } = command;
   try {
     // 1. ツール名をパース
     const { instanceName, toolName } = parseNamespacedToolName(fullToolName);
@@ -65,6 +74,7 @@ export const callToolCommand = async (
       method: "tools/call",
       transportType: template.transportType,
       toolName: fullToolName,
+      toolCallId,
     });
 
     const tool = template.mcpTools.find((t) => t.name === toolName);
