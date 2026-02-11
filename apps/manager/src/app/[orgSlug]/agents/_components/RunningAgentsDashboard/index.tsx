@@ -1,13 +1,21 @@
 "use client";
 
-import { RUNNING_DASHBOARD_POLLING_MS, calculateProgress } from "@/lib/agent";
-import { api } from "@/trpc/react";
-import { Activity, Zap } from "lucide-react";
+import { calculateProgress } from "@/lib/agent";
+import type { RouterOutputs } from "@/trpc/react";
+import { Sparkles, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AgentActivityCard } from "./AgentActivityCard";
 import { ExecutionDetailsModal } from "./ExecutionDetailsModal";
 import type { ExecutionData } from "./types";
+
+/** 実行データの型（getRecentのレスポンスアイテム） */
+type RecentExecutionItem =
+  RouterOutputs["v2"]["agentExecution"]["getRecent"]["items"][number];
+
+type RunningAgentsDashboardProps = {
+  executions: RecentExecutionItem[];
+};
 
 /** ステータスバッジ */
 const StatusBadge = ({
@@ -39,7 +47,7 @@ const StatusBadge = ({
 const EmptyState = () => (
   <div className="flex flex-col items-center justify-center py-12 text-center">
     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
-      <Activity className="h-8 w-8 text-gray-400" />
+      <Sparkles className="h-8 w-8 text-gray-400" />
     </div>
     <h3 className="text-lg font-semibold text-gray-700">
       稼働中のエージェントはありません
@@ -51,22 +59,19 @@ const EmptyState = () => (
 );
 
 /** 稼働中エージェントダッシュボード */
-export const RunningAgentsDashboard = () => {
+export const RunningAgentsDashboard = ({
+  executions,
+}: RunningAgentsDashboardProps) => {
   const [selectedExecution, setSelectedExecution] =
     useState<ExecutionData | null>(null);
 
-  const { data: runningExecutions } =
-    api.v2.agentExecution.getAllRunning.useQuery(undefined, {
-      refetchInterval: RUNNING_DASHBOARD_POLLING_MS,
-    });
-
   // 統計情報の計算
   const stats = useMemo(() => {
-    if (!runningExecutions?.length) {
+    if (!executions.length) {
       return { count: 0, averageProgress: 0 };
     }
 
-    const progressValues = runningExecutions.map((exec) =>
+    const progressValues = executions.map((exec) =>
       calculateProgress(new Date(exec.createdAt), exec.estimatedDurationMs),
     );
     const averageProgress = Math.round(
@@ -74,13 +79,12 @@ export const RunningAgentsDashboard = () => {
     );
 
     return {
-      count: runningExecutions.length,
+      count: executions.length,
       averageProgress,
     };
-  }, [runningExecutions]);
+  }, [executions]);
 
-  const hasRunningExecutions =
-    runningExecutions && runningExecutions.length > 0;
+  const hasRunningExecutions = executions.length > 0;
 
   return (
     <>
@@ -125,7 +129,7 @@ export const RunningAgentsDashboard = () => {
           <div className="p-6">
             {/* エージェントカードグリッド */}
             <div className="grid gap-4 sm:grid-cols-2">
-              {runningExecutions.map((execution) => (
+              {executions.map((execution) => (
                 <AgentActivityCard
                   key={execution.id}
                   execution={{

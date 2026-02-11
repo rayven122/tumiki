@@ -427,21 +427,10 @@ export const userMcpServerRouter = createTRPCRouter({
         permission: "read",
       });
 
-      const result = await findMcpServers(ctx.db, {
+      return await findMcpServers(ctx.db, {
         organizationId: ctx.currentOrg.id,
         userId: ctx.session.user.id,
       });
-
-      // DEBUG: スキーマバリデーションの詳細を確認
-      const parseResult = FindMcpServersOutputV2.safeParse(result);
-      if (!parseResult.success) {
-        console.error(
-          "FindMcpServersOutputV2 validation error:",
-          JSON.stringify(parseResult.error.issues, null, 2),
-        );
-      }
-
-      return result;
     }),
 
   // MCPサーバー削除

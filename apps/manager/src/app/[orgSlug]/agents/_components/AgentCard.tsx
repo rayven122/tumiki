@@ -24,7 +24,6 @@ import { getProxyServerUrl } from "@/utils/url";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import {
   Activity,
-  Bot,
   Building2,
   Calendar,
   Edit2,
@@ -43,6 +42,7 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
 import { AgentIconEditModal } from "./AgentIconEditModal";
@@ -275,7 +275,6 @@ export const AgentCard = ({
               <DropdownMenuItem
                 onClick={handleExecute}
                 disabled={isStreaming || !isSessionReady}
-                className="text-purple-600"
               >
                 {isStreaming ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -322,16 +321,12 @@ export const AgentCard = ({
 
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
           {/* アイコン */}
-          <div className="mr-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
-            {agent.iconPath ? (
-              <McpServerIcon
-                iconPath={agent.iconPath}
-                alt={agent.name}
-                size={28}
-              />
-            ) : (
-              <Bot className="h-7 w-7 text-purple-600" />
-            )}
+          <div className="mr-3">
+            <EntityIcon
+              iconPath={agent.iconPath}
+              alt={agent.name}
+              type="agent"
+            />
           </div>
           <div className="min-w-0 flex-1 pr-20">
             <CardTitle className="truncate text-lg">{agent.name}</CardTitle>

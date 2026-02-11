@@ -1,79 +1,226 @@
 "use client";
 
-import { REALTIME_LOG_POLLING_MS } from "@/lib/agent";
-import { api } from "@/trpc/react";
+import type { RouterOutputs } from "@/trpc/react";
 import { format } from "date-fns";
 import { Loader2, Terminal } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
+
+/** ログイベントタイプ */
+type LogEventType = "start" | "tool" | "end" | "running";
+
+/** ターミナルログエントリ */
+type TerminalLogEntry = {
+  id: string;
+  timestamp: Date;
+  agentSlug: string;
+  eventType: LogEventType;
+  status: "success" | "error" | "running" | null;
+  message: string;
+  // 追加情報
+  triggerName?: string; // START時: トリガー種別
+  modelId?: string; // START時: モデル名
+  toolName?: string; // TOOL時: ツール名
+  durationMs?: number; // END時: 実行時間
+};
+
+/** APIから取得した実行アイテムの型 */
+type RecentExecutionItem =
+  RouterOutputs["v2"]["agentExecution"]["getRecent"]["items"][number];
+
+/** コンポーネントプロパティ */
+type RealtimeLogPanelProps = {
+  executions: RecentExecutionItem[];
+  isLoading: boolean;
+  hasNextPage: boolean | undefined;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => void;
+};
 
 /** 時刻をフォーマット */
 const formatTime = (date: Date): string => format(date, "HH:mm:ss");
 
-/** ステータスアイコンを取得 */
-const getStatusIcon = (
-  success: boolean | null,
-): { icon: string; color: string } => {
-  if (success === null) return { icon: "\u25B6", color: "text-slate-100" };
-  if (success) return { icon: "\u2713", color: "text-cyan-400" };
-  return { icon: "\u25B3", color: "text-amber-400" };
+/** 実行時間をフォーマット */
+const formatDuration = (ms: number): string => `${(ms / 1000).toFixed(1)}秒`;
+
+/** モデルIDを表示用に短縮 */
+const formatModelId = (modelId: string): string => {
+  // "anthropic/claude-3-5-haiku" → "claude-3-5-haiku"
+  const parts = modelId.split("/");
+  return parts[parts.length - 1] ?? modelId;
 };
 
-/** デフォルトメッセージを取得 */
-const getDefaultMessage = (success: boolean | null): string => {
-  if (success === null) return "処理中...";
-  if (success) return "正常に完了しました";
-  return "エラーが発生しました";
+/**
+ * 実行アイテムをログエントリに変換
+ */
+const convertExecutionToLogEntries = (
+  execution: RecentExecutionItem,
+): TerminalLogEntry[] => {
+  const entries: TerminalLogEntry[] = [];
+  const {
+    id,
+    createdAt,
+    agentSlug,
+    success,
+    scheduleName,
+    modelId,
+    durationMs,
+    toolCalls,
+    latestMessage,
+  } = execution;
+  const timestamp = new Date(createdAt);
+
+  // 1. START イベント
+  entries.push({
+    id: `${id}-start`,
+    timestamp,
+    agentSlug,
+    eventType: "start",
+    status: null,
+    message: "",
+    triggerName: scheduleName ?? "手動実行",
+    modelId: modelId ? formatModelId(modelId) : undefined,
+  });
+
+  // 2. TOOL イベント（各ツール呼び出し）
+  for (const tool of toolCalls) {
+    entries.push({
+      id: `${id}-tool-${tool.toolName}`,
+      timestamp,
+      agentSlug,
+      eventType: "tool",
+      status: tool.state,
+      message: "",
+      toolName: tool.toolName,
+    });
+  }
+
+  // 3. END イベント（完了時のみ）または RUNNING イベント
+  if (success !== null) {
+    entries.push({
+      id: `${id}-end`,
+      timestamp,
+      agentSlug,
+      eventType: "end",
+      status: success ? "success" : "error",
+      message: latestMessage ?? "",
+      durationMs: durationMs ?? undefined,
+    });
+  } else {
+    entries.push({
+      id: `${id}-running`,
+      timestamp,
+      agentSlug,
+      eventType: "running",
+      status: "running",
+      message: "処理中...",
+    });
+  }
+
+  return entries;
 };
 
-type LogEntryProps = {
-  timestamp: Date;
-  agentSlug: string;
-  success: boolean | null;
-  message: string | null;
+/** ツールステータスの表示情報を取得 */
+const getToolStatusDisplay = (
+  status: "success" | "error" | "running" | null,
+): { colorClass: string; label: string } => {
+  switch (status) {
+    case "success":
+      return { colorClass: "text-green-400", label: "完了" };
+    case "error":
+      return { colorClass: "text-red-400", label: "エラー" };
+    default:
+      return { colorClass: "text-yellow-400", label: "呼び出し中..." };
+  }
 };
 
-/** ログエントリコンポーネント */
-const LogEntry = ({
-  timestamp,
-  agentSlug,
-  success,
-  message,
-}: LogEntryProps) => {
-  const { icon, color } = getStatusIcon(success);
-  const displayMessage = message ?? getDefaultMessage(success);
-
-  return (
-    <div className="flex items-start gap-2 py-1 font-mono text-sm">
-      <span className="shrink-0 text-slate-400">{formatTime(timestamp)}</span>
-      <span className="shrink-0 text-cyan-400">[{agentSlug}]</span>
-      <span className={`shrink-0 ${color}`}>{icon}</span>
-      <span className="min-w-0 flex-1 truncate text-slate-100">
-        {displayMessage}
-      </span>
-    </div>
-  );
+/** 終了ステータスの表示情報を取得 */
+const getEndStatusDisplay = (
+  status: "success" | "error" | "running" | null,
+): { colorClass: string; label: string } => {
+  if (status === "success") {
+    return { colorClass: "text-green-400", label: "成功" };
+  }
+  return { colorClass: "text-red-400", label: "失敗" };
 };
 
-/** ログアイテムの型 */
-type LogItem = {
-  id: string;
-  createdAt: Date | string;
-  agentSlug: string;
-  success: boolean | null;
-  latestMessage: string | null;
+/** ログ行コンポーネント */
+const LogLine = ({ entry }: { entry: TerminalLogEntry }) => {
+  const time = formatTime(entry.timestamp);
+
+  switch (entry.eventType) {
+    case "start":
+      return (
+        <div className="flex gap-2 font-mono text-sm">
+          <span className="shrink-0 text-slate-400">{time}</span>
+          <span className="shrink-0 text-cyan-400">[{entry.agentSlug}]</span>
+          <span className="shrink-0 text-cyan-400">START</span>
+          <span className="min-w-0 flex-1 truncate text-slate-300">
+            {entry.triggerName}
+            {entry.modelId && ` | ${entry.modelId}`}
+          </span>
+        </div>
+      );
+
+    case "tool": {
+      const { colorClass, label } = getToolStatusDisplay(entry.status);
+      return (
+        <div className="flex gap-2 font-mono text-sm">
+          <span className="shrink-0 text-slate-400">{time}</span>
+          <span className="shrink-0 text-cyan-400">[{entry.agentSlug}]</span>
+          <span className="shrink-0 text-yellow-400">TOOL </span>
+          <span className={`min-w-0 flex-1 truncate ${colorClass}`}>
+            {entry.toolName} {label}
+          </span>
+        </div>
+      );
+    }
+
+    case "end": {
+      const { colorClass, label } = getEndStatusDisplay(entry.status);
+      const duration =
+        entry.durationMs !== undefined ? formatDuration(entry.durationMs) : "";
+
+      return (
+        <div className="flex gap-2 font-mono text-sm">
+          <span className="shrink-0 text-slate-400">{time}</span>
+          <span className="shrink-0 text-cyan-400">[{entry.agentSlug}]</span>
+          <span className={`shrink-0 ${colorClass}`}>END </span>
+          <span className={`shrink-0 ${colorClass}`}>{label}</span>
+          {duration && (
+            <span className="shrink-0 text-slate-400">| {duration}</span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-slate-300">
+            {entry.message}
+          </span>
+        </div>
+      );
+    }
+
+    case "running":
+      return (
+        <div className="flex gap-2 font-mono text-sm">
+          <span className="shrink-0 text-slate-400">{time}</span>
+          <span className="shrink-0 text-cyan-400">[{entry.agentSlug}]</span>
+          <span className="shrink-0 text-slate-400">... </span>
+          <span className="min-w-0 flex-1 truncate text-slate-400">
+            {entry.message}
+          </span>
+        </div>
+      );
+  }
 };
 
 type LogContentProps = {
   isLoading: boolean;
-  allItems: LogItem[];
+  logEntries: TerminalLogEntry[];
   isFetchingNextPage: boolean;
   hasNextPage: boolean | undefined;
 };
 
-/** ログコンテンツコンポーネント（表示状態を明確に分離） */
+/** ログコンテンツコンポーネント */
 const LogContent = ({
   isLoading,
-  allItems,
+  logEntries,
   isFetchingNextPage,
   hasNextPage,
 }: LogContentProps) => {
@@ -87,7 +234,7 @@ const LogContent = ({
   }
 
   // 空状態
-  if (allItems.length === 0) {
+  if (logEntries.length === 0) {
     return (
       <div className="flex h-full items-center justify-center font-mono text-sm text-slate-400">
         実行履歴がありません
@@ -98,52 +245,44 @@ const LogContent = ({
   // ログ一覧
   return (
     <>
-      {allItems.map((item) => (
-        <LogEntry
-          key={item.id}
-          timestamp={new Date(item.createdAt)}
-          agentSlug={item.agentSlug}
-          success={item.success}
-          message={item.latestMessage}
-        />
-      ))}
+      {!hasNextPage && logEntries.length > 0 && (
+        <div className="py-2 text-center font-mono text-xs text-slate-500">
+          --- ログの先頭 ---
+        </div>
+      )}
       {isFetchingNextPage && (
         <div className="flex justify-center py-2">
           <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
         </div>
       )}
-      {!hasNextPage && allItems.length > 0 && (
-        <div className="py-2 text-center font-mono text-xs text-slate-500">
-          --- ログの末尾 ---
-        </div>
-      )}
+      {logEntries.map((entry) => (
+        <LogLine key={entry.id} entry={entry} />
+      ))}
     </>
   );
 };
 
 /**
  * リアルタイムログパネル
- * ターミナル風UIで直近の実行履歴を表示
+ * ターミナル風UIで直近の実行履歴を時系列順に表示
  */
-export const RealtimeLogPanel = () => {
+export const RealtimeLogPanel = ({
+  executions,
+  isLoading,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+}: RealtimeLogPanelProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevItemsLengthRef = useRef(0);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    api.v2.agentExecution.getRecent.useInfiniteQuery(
-      { limit: 10 },
-      {
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
-        refetchInterval: REALTIME_LOG_POLLING_MS,
-      },
-    );
-
-  // 無限スクロール: 下端に近づいたら次のページを読み込む
+  // 無限スクロール: 上端に近づいたら次のページ（過去のデータ）を読み込む
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container || isFetchingNextPage || !hasNextPage) return;
 
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    if (scrollHeight - scrollTop - clientHeight < 50) {
+    // 上端に近づいたら過去のログを読み込む
+    if (container.scrollTop < 50) {
       void fetchNextPage();
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
@@ -156,7 +295,36 @@ export const RealtimeLogPanel = () => {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  const allItems = data?.pages.flatMap((page) => page.items) ?? [];
+  // 実行アイテムをログエントリに変換（時系列順: 古い→新しい）
+  // 親コンポーネントから新しい順で渡されるので、逆順にして古い順にする
+  const allItems = useMemo(() => executions.slice().reverse(), [executions]);
+
+  const logEntries = useMemo(() => {
+    return allItems.flatMap((item) => convertExecutionToLogEntries(item));
+  }, [allItems]);
+
+  // 新しいログが追加されたら下に自動スクロール
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const currentLength = allItems.length;
+    if (currentLength > prevItemsLengthRef.current) {
+      // 新しいアイテムが追加された場合、下にスクロール
+      container.scrollTop = container.scrollHeight;
+    }
+    prevItemsLengthRef.current = currentLength;
+  }, [allItems.length]);
+
+  // 初回表示時に下にスクロール
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || isLoading) return;
+
+    // 初回ロード完了後、下にスクロール
+    container.scrollTop = container.scrollHeight;
+  }, [isLoading]);
+
   const runningCount = allItems.filter((item) => item.success === null).length;
 
   return (
@@ -182,7 +350,7 @@ export const RealtimeLogPanel = () => {
       >
         <LogContent
           isLoading={isLoading}
-          allItems={allItems}
+          logEntries={logEntries}
           isFetchingNextPage={isFetchingNextPage}
           hasNextPage={hasNextPage}
         />

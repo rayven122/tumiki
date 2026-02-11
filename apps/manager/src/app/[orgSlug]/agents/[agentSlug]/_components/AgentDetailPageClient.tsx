@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
-  Bot,
   Edit2,
   Server,
   Calendar,
@@ -39,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId } from "@/schema/ids";
 
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "../../_components/DeleteAgentModal";
 import { AgentIconEditModal } from "../../_components/AgentIconEditModal";
@@ -140,17 +140,11 @@ const AsyncAgentDetail = ({
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-purple-100">
-                {agent.iconPath ? (
-                  <McpServerIcon
-                    iconPath={agent.iconPath}
-                    alt={agent.name}
-                    size={36}
-                  />
-                ) : (
-                  <Bot className="h-9 w-9 text-purple-600" />
-                )}
-              </div>
+              <EntityIcon
+                iconPath={agent.iconPath}
+                alt={agent.name}
+                type="agent"
+              />
               <div>
                 <h1 className="text-2xl font-bold">{agent.name}</h1>
                 {agent.description && (

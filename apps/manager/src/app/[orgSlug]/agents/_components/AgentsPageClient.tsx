@@ -2,11 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { REALTIME_LOG_POLLING_MS } from "@/lib/agent";
 import { api } from "@/trpc/react";
 import { Bot, Plus, Search } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 import { AgentCardList } from "./AgentCardList";
@@ -29,6 +30,33 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
 
   const { data: agents } = api.v2.agent.findAll.useQuery();
   const agentCount = agents?.length ?? 0;
+
+  // 統合クエリ: 直近の実行履歴を取得（稼働中ダッシュボード + リアルタイムログ用）
+  const {
+    data: recentExecutionsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isLoadingExecutions,
+  } = api.v2.agentExecution.getRecent.useInfiniteQuery(
+    { limit: 20 },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      refetchInterval: REALTIME_LOG_POLLING_MS,
+    },
+  );
+
+  // 全実行データをフラット化
+  const allExecutions = useMemo(
+    () => recentExecutionsData?.pages.flatMap((page) => page.items) ?? [],
+    [recentExecutionsData],
+  );
+
+  // 稼働中の実行（success === null）をフィルタ
+  const runningExecutions = useMemo(
+    () => allExecutions.filter((exec) => exec.success === null),
+    [allExecutions],
+  );
 
   const clearSearchQuery = () => {
     setSearchQuery("");
@@ -81,12 +109,18 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
 
       {/* 稼働中エージェントダッシュボード */}
       <div className="mb-6">
-        <RunningAgentsDashboard />
+        <RunningAgentsDashboard executions={runningExecutions} />
       </div>
 
       {/* リアルタイムログ */}
       <div className="mb-6">
-        <RealtimeLogPanel />
+        <RealtimeLogPanel
+          executions={allExecutions}
+          isLoading={isLoadingExecutions}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={fetchNextPage}
+        />
       </div>
 
       {/* エージェント一覧または空状態 */}

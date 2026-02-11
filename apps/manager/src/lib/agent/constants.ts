@@ -18,14 +18,8 @@ export type ModelValue = ModelOption["value"];
 // ポーリング間隔（用途別）
 // ========================================
 
-/** 稼働中エージェントダッシュボードのポーリング間隔（5秒 - サーバー負荷軽減） */
-export const RUNNING_DASHBOARD_POLLING_MS = 5000;
-
 /** リアルタイムログのポーリング間隔（3秒） */
 export const REALTIME_LOG_POLLING_MS = 3000;
-
-/** エージェントカードリストのポーリング間隔（3秒） */
-export const AGENT_CARD_POLLING_MS = 3000;
 
 // ========================================
 // 進捗表示関連

@@ -6,10 +6,10 @@ import {
   PROGRESS_WARNING_THRESHOLD,
   calculateProgress,
 } from "@/lib/agent";
-import { Activity, AlertTriangle, Bot, Eye, Loader2 } from "lucide-react";
+import { Activity, AlertTriangle, Eye, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { formatElapsedTime, formatStartTime } from "./timeUtils";
 import type { ExecutionData } from "./types";
 
@@ -40,22 +40,14 @@ const PulseCircleIcon = ({ isWarning = false }: { isWarning?: boolean }) => {
   );
 };
 
-/** エージェントアイコン */
+/** エージェントアイコン（小サイズ：32x32） */
 export const AgentIcon = ({
   iconPath,
   name,
 }: {
   iconPath: string | null;
   name: string;
-}) => (
-  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
-    {iconPath ? (
-      <McpServerIcon iconPath={iconPath} alt={name} size={20} />
-    ) : (
-      <Bot className="h-5 w-5" />
-    )}
-  </div>
-);
+}) => <EntityIcon iconPath={iconPath} alt={name} type="agent" size="sm" />;
 
 type AgentActivityCardProps = {
   execution: ExecutionData;
