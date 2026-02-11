@@ -222,7 +222,7 @@ const formatModelName = (modelId: string | null): string => {
     "google/gemini-1.5-pro": "Gemini 1.5 Pro",
   };
 
-  return modelMapping[modelId] || modelId.split("/").pop() || modelId;
+  return modelMapping[modelId] ?? modelId.split("/").pop() ?? modelId;
 };
 
 /** ミリ秒を読みやすい形式に変換 */

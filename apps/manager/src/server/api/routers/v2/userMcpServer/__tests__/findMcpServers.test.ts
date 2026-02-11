@@ -17,6 +17,9 @@ describe("findMcpServers", () => {
       mcpServer: {
         findMany: vi.fn(),
       },
+      mcpServerRequestLog: {
+        groupBy: vi.fn().mockResolvedValue([]),
+      },
     } as unknown as PrismaTransactionClient;
   });
 
