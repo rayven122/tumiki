@@ -5,7 +5,7 @@ import { userMcpServerRequestLogRouter } from "./userMcpServerRequestLog";
 import { organizationRouter } from "./organization";
 import { mcpServerAuthRouter } from "./mcpServerAuth";
 import { mcpServerRouter } from "./mcpServer";
-import { feedbackRouter } from "./feedback";
+import { feedbackRouter } from "@/features/feedback/api/router";
 import { oauthRouter } from "./oauth";
 import { notificationRouter } from "./notification";
 import { groupRouter } from "./group";

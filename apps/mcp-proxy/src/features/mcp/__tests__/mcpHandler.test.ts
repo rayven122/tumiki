@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
     getInternalToolsForDynamicSearch: vi.fn(),
   },
   dynamicSearch: {
-    isMetaTool: vi.fn(),
+    // isMetaTool は callToolHandler.ts がローカルのハードコードセットを使用するため不要
     searchTools: vi.fn(),
     describeTools: vi.fn(),
     executeToolDynamic: vi.fn(),
@@ -93,9 +93,8 @@ vi.mock("../middleware/requestLogging/context.js", () => ({
   updateExecutionContext: vi.fn(),
 }));
 
-vi.mock("../../dynamicSearch/index.js", () => ({
-  isMetaTool: mocks.dynamicSearch.isMetaTool,
-}));
+// dynamicSearch/index.js (CE Facade) のモックは不要
+// callToolHandler.ts はローカルのハードコードセットを使用してメタツールを判定
 
 vi.mock("../../../shared/logger/index.js", () => ({
   logInfo: vi.fn(),
@@ -155,7 +154,7 @@ describe("mcpRequestHandler", () => {
     });
     mocks.toolExecutor.getInternalToolsForDynamicSearch.mockResolvedValue([]);
 
-    mocks.dynamicSearch.isMetaTool.mockReturnValue(false);
+    // isMetaTool モックは不要（callToolHandler.ts がローカル定義を使用）
 
     mocks.error.isReAuthRequiredError.mockReturnValue(false);
     mocks.error.createReAuthResponse.mockReturnValue({
@@ -318,7 +317,7 @@ describe("mcpRequestHandler", () => {
     });
 
     test("CallToolハンドラーがメタツール呼び出しを処理する", async () => {
-      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
+      // isMetaTool モックは不要（メタツール名はハードコードセットで判定）
       const mockSearchResult = { tools: ["tool1"] };
       mocks.dynamicSearch.searchToolsArgsParse.mockReturnValue({
         query: "test",
@@ -474,7 +473,7 @@ describe("mcpRequestHandler", () => {
 
   describe("handleMetaTool", () => {
     test("search_toolsケースが正しく動作する", async () => {
-      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
+      // isMetaTool モックは不要（メタツール名はハードコードセットで判定）
       const mockSearchResult = { tools: ["tool1"] };
       mocks.dynamicSearch.searchToolsArgsParse.mockReturnValue({
         query: "test",
@@ -495,7 +494,7 @@ describe("mcpRequestHandler", () => {
     });
 
     test("describe_toolsケースが正しく動作する", async () => {
-      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
+      // isMetaTool モックは不要（メタツール名はハードコードセットで判定）
       const mockDescribeResult = { descriptions: ["desc1"] };
       mocks.dynamicSearch.describeToolsArgsParse.mockReturnValue({
         tools: ["tool1"],
@@ -516,7 +515,7 @@ describe("mcpRequestHandler", () => {
     });
 
     test("execute_toolケースが正しく動作する", async () => {
-      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
+      // isMetaTool モックは不要（メタツール名はハードコードセットで判定）
       const mockExecuteResult = {
         content: [{ type: "text", text: "execute result" }],
       };
@@ -542,8 +541,14 @@ describe("mcpRequestHandler", () => {
       expect(executeResult).toStrictEqual(mockExecuteResult);
     });
 
-    test("未知のメタツール名はエラーを投げる", async () => {
-      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
+    test("メタツール実行でエラーが発生した場合はDomainErrorを投げる", async () => {
+      // searchTools がエラーを投げるようにモック
+      mocks.dynamicSearch.searchToolsArgsParse.mockReturnValue({
+        query: "test",
+      });
+      mocks.dynamicSearch.searchTools.mockRejectedValue(
+        new Error("Search failed"),
+      );
 
       await triggerRequest();
 
@@ -552,7 +557,7 @@ describe("mcpRequestHandler", () => {
 
       await expect(
         callHandler!({
-          params: { name: "unknown_meta_tool", arguments: {} },
+          params: { name: "search_tools", arguments: { query: "test" } },
         }) as Promise<unknown>,
       ).rejects.toMatchObject({
         name: "DomainError",
@@ -686,9 +691,7 @@ describe("mcpRequestHandler", () => {
         getExecutionContext: mocks.utils.getExecutionContext,
         updateExecutionContext: vi.fn(),
       }));
-      vi.doMock("../../dynamicSearch/index.js", () => ({
-        isMetaTool: mocks.dynamicSearch.isMetaTool,
-      }));
+      // dynamicSearch/index.js (CE Facade) のモックは不要
       vi.doMock("../../../shared/logger/index.js", () => ({
         logInfo: vi.fn(),
         logError: vi.fn(),
@@ -699,7 +702,7 @@ describe("mcpRequestHandler", () => {
         "../mcpRequestHandler.js"
       );
 
-      mocks.dynamicSearch.isMetaTool.mockReturnValue(true);
+      // isMetaTool モックは不要（メタツール名はハードコードセットで判定）
 
       const capturedHandlersCE = new Map<string, HandlerCallback>();
       mocks.sdk.serverConstructor.mockImplementation(() => ({

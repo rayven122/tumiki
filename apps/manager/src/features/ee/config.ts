@@ -24,7 +24,8 @@ export type EEFeature =
   | "member-management"
   | "role-management"
   | "group-management"
-  | "organization-creation";
+  | "organization-creation"
+  | "dynamic-search";
 
 /**
  * 指定されたEE機能が利用可能かどうかを判定
@@ -49,6 +50,7 @@ export const getAvailableEEFeatures = (): EEFeature[] => {
     "member-management",
     "role-management",
     "group-management",
+    "dynamic-search",
   ];
 
   if (ORG_CREATION_ENABLED) {
@@ -75,6 +77,7 @@ const FEATURE_DESCRIPTIONS: Record<EEFeature, string> = {
   "role-management": "ロールベースのアクセス制御機能",
   "group-management": "グループ管理機能",
   "organization-creation": "新規組織作成機能",
+  "dynamic-search": "MCPツールの動的検索機能",
 };
 
 /**
@@ -86,6 +89,7 @@ export const getAllEEFeatureInfo = (): EEFeatureInfo[] => {
     "role-management",
     "group-management",
     "organization-creation",
+    "dynamic-search",
   ];
 
   return features.map((feature) => ({

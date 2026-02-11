@@ -1,11 +1,12 @@
+import type { Tiktoken } from "js-tiktoken";
+import { getEncoding } from "js-tiktoken";
+
 /**
  * トークン数計算ユーティリティ
  *
  * js-tiktoken を使用してテキストのトークン数を計算する。
  * エンコーディングは cl100k_base（GPT-4/GPT-3.5-turbo 互換）を使用。
  */
-
-import { getEncoding, type Tiktoken } from "js-tiktoken";
 
 // シングルトンエンコーダー（パフォーマンス最適化）
 let encoder: Tiktoken | null = null;

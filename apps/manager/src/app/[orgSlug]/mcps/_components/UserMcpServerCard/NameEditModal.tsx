@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 import { Button } from "@/components/ui/button";
 import {

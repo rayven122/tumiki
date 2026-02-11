@@ -1,5 +1,4 @@
-import type { PrismaTransactionClient } from "@tumiki/db";
-import type { FeedbackType } from "@tumiki/db";
+import type { FeedbackType, PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { sendSlackMessage, makeFeedbackSlackMessage } from "@tumiki/slack";
 import { FeedbackIdSchema } from "@/schema/ids";

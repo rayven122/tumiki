@@ -69,6 +69,7 @@
     "@tumiki/keycloak": "workspace:*",
     "@tumiki/mailer": "workspace:*",
     "@tumiki/oauth-token-manager": "workspace:*",
+    "@tumiki/shared": "workspace:*",
     "@tumiki/slack": "workspace:*",
     "@uiw/react-json-view": "2.0.0-alpha.34",
     "@vercel/analytics": "^1.6.1",

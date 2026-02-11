@@ -43,8 +43,7 @@ describe("countTokens", () => {
     expect(longTokens).toBeGreaterThan(shortTokens);
   });
 
-  test("同じエンコーダーインスタンスを再利用する（パフォーマンス確認）", () => {
-    // 複数回呼び出してもエラーなく動作することを確認
+  test("同じエンコーダーインスタンスを再利用する", () => {
     const text = "Test text";
     const tokens1 = countTokens(text);
     const tokens2 = countTokens(text);

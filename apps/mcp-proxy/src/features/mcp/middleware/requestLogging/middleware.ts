@@ -16,7 +16,7 @@ import { db, type Prisma, PiiMaskingMode } from "@tumiki/db/server";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { publishMcpLog } from "../../../../infrastructure/pubsub/mcpLogger.js";
 import { byteLength } from "../../../../shared/utils/byteLength.js";
-import { countTokens } from "../../../../shared/utils/tokenCount.js";
+import { countTokens } from "@tumiki/shared/utils/tokenCount";
 
 /**
  * MCP サーバー request log を記録

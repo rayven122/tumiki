@@ -15,6 +15,7 @@ import {
 import { api } from "@/trpc/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/utils/client/toast";
+import type { CreateFeedbackOutput } from "../api/schemas";
 
 type FeedbackType = "INQUIRY" | "FEATURE_REQUEST";
 
@@ -34,13 +35,13 @@ export const FeedbackForm = () => {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
 
   const createMutation = api.v2.feedback.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: CreateFeedbackOutput) => {
       // フォームをリセット
       setFormData(INITIAL_FORM_DATA);
       // 成功トーストを表示
       toast.success(data.message);
     },
-    onError: (error) => {
+    onError: (error: { message: string }) => {
       // エラートーストを表示
       toast.error(error.message);
     },

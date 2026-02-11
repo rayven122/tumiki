@@ -13,7 +13,7 @@ import {
 } from "@tumiki/db/server";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { byteLength } from "../../../../shared/utils/byteLength.js";
-import { countTokens } from "../../../../shared/utils/tokenCount.js";
+import { countTokens } from "@tumiki/shared/utils/tokenCount";
 import { publishMcpLog } from "../../../../infrastructure/pubsub/mcpLogger.js";
 
 /**

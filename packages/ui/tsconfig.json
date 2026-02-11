@@ -1,0 +1,10 @@
+{
+  "extends": "@tumiki/tsconfig/react-library.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "emitDeclarationOnly": false
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
