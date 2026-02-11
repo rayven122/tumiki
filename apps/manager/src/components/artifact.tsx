@@ -13,7 +13,7 @@ import {
 import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
 import { useAtomValue } from "jotai";
-import type { Document, Vote } from "@tumiki/db/prisma";
+import type { Document } from "@tumiki/db/prisma";
 import { fetcher } from "@/lib/utils";
 import { MultimodalInput } from "./multimodal-input";
 import { Toolbar } from "./toolbar";
@@ -67,7 +67,6 @@ function PureArtifact({
   messages,
   setMessages,
   regenerate,
-  votes,
   isReadonly,
   selectedVisibilityType,
 }: {
@@ -81,7 +80,6 @@ function PureArtifact({
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
-  votes: Array<Vote> | undefined;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
@@ -319,7 +317,6 @@ function PureArtifact({
                 <ArtifactMessages
                   chatId={chatId}
                   status={status}
-                  votes={votes}
                   messages={messages}
                   setMessages={setMessages}
                   regenerate={regenerate}
@@ -507,7 +504,6 @@ function PureArtifact({
 
 export const Artifact = memo(PureArtifact, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
-  if (!equal(prevProps.votes, nextProps.votes)) return false;
   if (prevProps.input !== nextProps.input) return false;
   if (!equal(prevProps.messages, nextProps.messages.length)) return false;
   if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)

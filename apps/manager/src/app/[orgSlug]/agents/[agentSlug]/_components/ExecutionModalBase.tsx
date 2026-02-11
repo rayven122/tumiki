@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
+import { useSetAtom } from "jotai";
 
 import {
   Dialog,
@@ -16,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { sidebarOpenAtom } from "@/store/sidebar";
 
 type ExecutionModalBaseProps = {
   open: boolean;
@@ -46,6 +48,13 @@ export const ExecutionModalBase = ({
   metadata,
   children,
 }: ExecutionModalBaseProps) => {
+  const setSidebarOpen = useSetAtom(sidebarOpenAtom);
+
+  // 全画面表示リンククリック時にサイドバーを開く
+  const handleFullscreenClick = () => {
+    setSidebarOpen(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] w-[80vw] max-w-[80vw] overflow-y-auto sm:max-w-[80vw]">
@@ -62,7 +71,7 @@ export const ExecutionModalBase = ({
                     className="ml-2 h-8 w-8"
                     asChild
                   >
-                    <Link href={chatPageUrl}>
+                    <Link href={chatPageUrl} onClick={handleFullscreenClick}>
                       <Maximize2 className="h-4 w-4" />
                       <span className="sr-only">全画面で表示</span>
                     </Link>
