@@ -5,7 +5,10 @@
 import type { ExecutionTrigger } from "../types.js";
 
 /**
- * トリガー情報を文字列に変換
+ * トリガー情報を人間可読な文字列に変換する
+ *
+ * @param trigger - 実行トリガー情報（スケジュール、Webhook、手動、A2Aのいずれか）
+ * @returns トリガータイプと識別情報を含む日本語文字列
  */
 export const triggerToString = (trigger: ExecutionTrigger): string => {
   switch (trigger.type) {

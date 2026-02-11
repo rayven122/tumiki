@@ -2,6 +2,8 @@
  * メッセージパーツ構築ヘルパー
  */
 
+import type { JSONValue } from "ai";
+
 /** テキストパーツ型 */
 export type TextPart = {
   type: "text";
@@ -13,8 +15,8 @@ export type ToolCallPart = {
   type: string;
   toolCallId: string;
   state: "output-available";
-  input: unknown;
-  output: unknown;
+  input: JSONValue;
+  output: JSONValue | undefined;
 };
 
 /** メッセージパーツの型 */
@@ -27,11 +29,11 @@ export type StreamTextResult = {
     toolCalls?: Array<{
       toolCallId: string;
       toolName: string;
-      input: unknown;
+      input: JSONValue;
     }>;
     toolResults?: Array<{
       toolCallId: string;
-      output: unknown;
+      output: JSONValue;
     }>;
   }>;
 };

@@ -48,15 +48,32 @@ export const ESTIMATED_DURATION_BUFFER_MS = 10 * 1000;
  * 進捗率を計算（想定時間 = 平均時間 + バッファ）
  *
  * @param createdAt - 実行開始時刻
- * @param estimatedDurationMs - 推定実行時間
- * @returns 進捗率（0-99%）
+ * @param estimatedDurationMs - 推定実行時間（0以下の場合はバッファのみで計算）
+ * @returns 進捗率（0-99%）。無効な入力の場合は0を返す
  */
 export const calculateProgress = (
   createdAt: Date,
   estimatedDurationMs: number,
 ): number => {
-  const elapsedMs = Date.now() - createdAt.getTime();
+  // 無効な日付のバリデーション
+  const createdAtTime = createdAt.getTime();
+  if (Number.isNaN(createdAtTime)) {
+    return 0;
+  }
+
+  const elapsedMs = Date.now() - createdAtTime;
+
+  // 負の経過時間（未来の日付）の場合は0を返す
+  if (elapsedMs < 0) {
+    return 0;
+  }
+
+  // estimatedDurationMsが0以下の場合はバッファのみで計算
+  // 負の値を0として扱うことで、最低限バッファ分の時間で進捗を計算
+  const safeEstimatedDurationMs = Math.max(estimatedDurationMs, 0);
+  const adjustedDurationMs =
+    safeEstimatedDurationMs + ESTIMATED_DURATION_BUFFER_MS;
+
   // 平均時間にバッファを追加して、進捗率を緩やかに表示
-  const adjustedDurationMs = estimatedDurationMs + ESTIMATED_DURATION_BUFFER_MS;
   return Math.min((elapsedMs / adjustedDurationMs) * 100, 99);
 };

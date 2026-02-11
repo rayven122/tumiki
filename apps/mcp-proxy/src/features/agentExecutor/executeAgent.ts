@@ -19,7 +19,7 @@ import { getChatMcpTools } from "../chat/chatMcpTools.js";
 import {
   buildSystemPrompt,
   buildMessageParts,
-  consumeStream,
+  consumeStreamText,
   getErrorMessage,
   isAbortError,
   TIMEOUT_ERROR_MESSAGE,
@@ -209,7 +209,7 @@ export const executeAgent = async (
         }),
       });
 
-      const result = await consumeStream(streamResult);
+      const result = await consumeStreamText(streamResult);
 
       // 出力テキストとメッセージパーツを生成
       text = result.text;

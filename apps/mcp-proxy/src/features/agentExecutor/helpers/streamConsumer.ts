@@ -2,14 +2,14 @@
  * ストリーム消費ヘルパー
  */
 
-import type { streamText } from "ai";
+import type { JSONValue, streamText } from "ai";
 
 import type { StreamTextResult } from "./buildMessageParts.js";
 
 /**
  * ストリームを消費してテキストとステップ情報を収集
  */
-export const consumeStream = async (
+export const consumeStreamText = async (
   streamResult: Awaited<ReturnType<typeof streamText>>,
 ): Promise<StreamTextResult> => {
   // ストリームを消費してテキストを収集
@@ -27,13 +27,13 @@ export const consumeStream = async (
     toolCalls: step.toolCalls.map(({ toolCallId, toolName, input }) => ({
       toolCallId,
       toolName,
-      // AI SDKのtool inputは動的型のためunknownとして扱う
-      input: input as unknown,
+      // AI SDKのtool inputはJSON形式であるためJSONValueにキャスト
+      input: input as JSONValue,
     })),
     toolResults: step.toolResults.map(({ toolCallId, output }) => ({
       toolCallId,
-      // AI SDKのtool outputは動的型のためunknownとして扱う
-      output: output as unknown,
+      // AI SDKのtool outputはJSON形式であるためJSONValueにキャスト
+      output: output as JSONValue,
     })),
   }));
 

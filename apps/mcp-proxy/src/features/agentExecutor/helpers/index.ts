@@ -10,7 +10,7 @@ export {
   type MessagePart,
   type StreamTextResult,
 } from "./buildMessageParts.js";
-export { consumeStream } from "./streamConsumer.js";
+export { consumeStreamText } from "./streamConsumer.js";
 export {
   isAbortError,
   getErrorMessage,
