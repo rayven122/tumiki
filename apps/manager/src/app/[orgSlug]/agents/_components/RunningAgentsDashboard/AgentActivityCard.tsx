@@ -6,35 +6,54 @@ import {
   PROGRESS_WARNING_THRESHOLD,
   calculateProgress,
 } from "@/lib/agent";
-import { Activity, AlertTriangle, Eye, Loader2 } from "lucide-react";
+import { AlertTriangle, Eye, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { EntityIcon } from "@/components/ui/EntityIcon";
 import { formatElapsedTime, formatStartTime } from "./timeUtils";
 import type { ExecutionData } from "./types";
 
-/** パルスアニメーション付き円形アイコン */
-const PulseCircleIcon = ({ isWarning = false }: { isWarning?: boolean }) => {
-  const colorClass = isWarning
-    ? "bg-orange-500"
+/** オービタル（周回する粒子）アニメーション付きアイコン */
+const OrbitingIcon = ({ isWarning = false }: { isWarning?: boolean }) => {
+  const mainColor = isWarning
+    ? "bg-gradient-to-br from-orange-400 to-orange-600"
     : "bg-gradient-to-br from-emerald-400 to-emerald-600";
-  const pulseColorClass = isWarning ? "bg-orange-400" : "bg-emerald-400";
+  const orbitColor = isWarning ? "bg-orange-400" : "bg-emerald-400";
 
   return (
     <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
-      {/* 外側のパルスリング */}
-      <span
-        className={`absolute h-full w-full animate-ping rounded-full opacity-20 ${pulseColorClass}`}
-      />
-      {/* 内側のパルスリング */}
-      <span
-        className={`absolute h-10 w-10 animate-pulse rounded-full opacity-30 ${pulseColorClass}`}
-      />
+      {/* 周回する粒子1（大） */}
+      <div
+        className="absolute h-full w-full animate-spin"
+        style={{ animationDuration: "3s" }}
+      >
+        <span
+          className={`absolute top-0 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full ${orbitColor} shadow-lg`}
+        />
+      </div>
+      {/* 周回する粒子2（中） */}
+      <div
+        className="absolute h-full w-full animate-spin"
+        style={{ animationDuration: "3s", animationDelay: "-1s" }}
+      >
+        <span
+          className={`absolute bottom-0 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${orbitColor} opacity-60`}
+        />
+      </div>
+      {/* 周回する粒子3（小） */}
+      <div
+        className="absolute h-full w-full animate-spin"
+        style={{ animationDuration: "3s", animationDelay: "-2s" }}
+      >
+        <span
+          className={`absolute top-1/2 left-0 h-1 w-1 -translate-y-1/2 rounded-full ${orbitColor} opacity-40`}
+        />
+      </div>
       {/* メインの円 */}
       <span
-        className={`relative flex h-8 w-8 items-center justify-center rounded-full ${colorClass} shadow-lg`}
+        className={`relative flex h-7 w-7 items-center justify-center rounded-full ${mainColor} shadow-lg`}
       >
-        <Activity className="h-4 w-4 text-white" />
+        <Sparkles className="h-4 w-4 text-white" />
       </span>
     </div>
   );
@@ -96,8 +115,8 @@ export const AgentActivityCard = ({
     >
       {/* 上部: アイコンと情報 */}
       <div className="mb-4 flex items-start gap-4">
-        {/* パルスアニメーション付きアイコン */}
-        <PulseCircleIcon isWarning={isWarning} />
+        {/* オービタルアニメーション付きアイコン */}
+        <OrbitingIcon isWarning={isWarning} />
 
         {/* エージェント情報 */}
         <div className="min-w-0 flex-1">
