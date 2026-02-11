@@ -59,23 +59,15 @@ pnpm test         # テスト実行
 
 ## デプロイメント
 ```bash
-# 全コンポーネント一括デプロイ
-pnpm run deploy
+# アプリケーションのビルド
+pnpm build
 
-# 個別デプロイ
-pnpm run deploy:vercel  # Manager App（Vercel）
-cd apps/mcp-proxy && pnpm deploy  # MCP Proxy（Cloud Run）
-
-# ドライラン
-pnpm run deploy:dry-run
+# サーバー起動
+pnpm start
 ```
 
 ## 環境変数管理
 ```bash
-# Vercel環境変数
-pnpm env:pull     # 環境変数を取得
-pnpm env:push     # 環境変数をプッシュ
-
 # Stripe環境変数検証
 pnpm verify:stripe
 pnpm stripe:listen  # Webhookをローカルに転送
