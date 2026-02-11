@@ -8,10 +8,8 @@
 export {
   getMcpServerOrganization,
   checkOrganizationMembership,
-  invalidateOrganizationMembershipCache,
-  invalidateMcpServerCache,
   getTemplateInstanceById,
-  invalidateTemplateInstanceCache,
+  getMcpServerBySlug,
 } from "./mcpServerRepository.js";
 
 export type {
@@ -31,11 +29,7 @@ export {
 export { checkPermission } from "./permissionRepository.js";
 
 // ユーザー関連
-export {
-  getUserIdFromKeycloakId,
-  getUserIdByEmail,
-  invalidateKeycloakUserCache,
-} from "./userRepository.js";
+export { getUserIdFromKeycloakId, getUserIdByEmail } from "./userRepository.js";
 
 // エージェント関連
 export {
