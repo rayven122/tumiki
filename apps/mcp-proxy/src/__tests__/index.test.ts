@@ -22,6 +22,11 @@ vi.mock("../shared/logger/index.js", () => ({
   logError: (...args: unknown[]) => mockLogError(...args) as unknown,
 }));
 
+// Redis接続のモック（シャットダウン時にはクローズしない設計のため、モックは未使用）
+vi.mock("../infrastructure/cache/redis.js", () => ({
+  closeRedisClient: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@tumiki/db/server", () => ({
   db: {
     $disconnect: (...args: unknown[]) => mockDbDisconnect(...args) as unknown,
