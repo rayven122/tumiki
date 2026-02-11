@@ -6,7 +6,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
-import { createAdminNotifications } from "../v2/notification/createBulkNotifications";
+import { createAdminNotifications } from "@/features/notification";
 
 /**
  * メンバーロール変更入力スキーマ

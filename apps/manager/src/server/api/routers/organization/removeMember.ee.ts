@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { removeMemberInput } from "@/server/utils/organizationSchemas";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
-import { createBulkNotifications } from "../v2/notification/createBulkNotifications";
+import { createBulkNotifications } from "@/features/notification";
 
 export const removeMemberInputSchema = removeMemberInput;
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { createAdminNotifications } from "../notification/createBulkNotifications";
+import { createAdminNotifications } from "@/features/notification";
 
 export const deleteApiKeyInputSchema = z.object({
   apiKeyId: z.string(),

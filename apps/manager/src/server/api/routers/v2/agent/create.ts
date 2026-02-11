@@ -3,7 +3,7 @@ import { generateUniqueAgentSlug, normalizeSlug } from "@tumiki/db/utils/slug";
 import type { z } from "zod";
 import type { AgentId } from "@/schema/ids";
 import type { CreateAgentInputSchema } from "./index";
-import { createManyNotifications } from "../notification/createNotification";
+import { createManyNotifications } from "@/features/notification";
 import { TRPCError } from "@trpc/server";
 
 type CreateAgentInput = z.infer<typeof CreateAgentInputSchema>;

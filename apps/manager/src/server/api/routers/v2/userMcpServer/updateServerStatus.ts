@@ -2,7 +2,7 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import { ServerStatus } from "@tumiki/db/prisma";
 import { z } from "zod";
 import type { McpServerId } from "@/schema/ids";
-import { createManyNotifications } from "../notification/createNotification";
+import { createManyNotifications } from "@/features/notification";
 
 type UpdateServerStatusInput = {
   id: McpServerId;

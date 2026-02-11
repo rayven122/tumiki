@@ -3,7 +3,7 @@ import type { ProtectedContext } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { InvitationTokenSchema } from "@/schema/ids";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
-import { createManyNotifications } from "../v2/notification/createNotification";
+import { createManyNotifications } from "@/features/notification";
 
 // 入力スキーマ
 export const acceptInvitationInputSchema = z.object({

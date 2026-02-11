@@ -6,7 +6,7 @@ import { z } from "zod";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import type { ProtectedContext } from "@/server/api/trpc";
-import { createAdminNotifications } from "../notification/createBulkNotifications";
+import { createAdminNotifications } from "@/features/notification";
 
 /**
  * ロール削除 Input スキーマ

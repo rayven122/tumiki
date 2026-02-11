@@ -8,7 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { validateOrganizationAccess } from "@/server/utils/organizationPermissions";
 import { sendInvitationEmail } from "@/server/lib/mail";
 import { generateInviteUrl } from "@/lib/url";
-import { createManyNotifications } from "../v2/notification/createNotification";
+import { createManyNotifications } from "@/features/notification";
 
 // 入力スキーマ
 export const inviteMembersInputSchema = z.object({
