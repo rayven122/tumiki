@@ -624,9 +624,6 @@ importers:
       openid-client:
         specifier: ^6.3.3
         version: 6.8.1
-      redis:
-        specifier: ^5.10.0
-        version: 5.10.0
       zod:
         specifier: 'catalog:'
         version: 4.1.13

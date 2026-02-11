@@ -37,7 +37,6 @@
     "js-tiktoken": "^1.0.21",
     "node-cron": "^4.2.1",
     "openid-client": "^6.3.3",
-    "redis": "^5.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {

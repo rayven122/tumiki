@@ -271,27 +271,6 @@ type AuthInfo = {
 
 ---
 
-## キャッシュ戦略
-
-現在、設定キャッシュは無効化されています。  
-`getCachedConfig()` は常に DB から設定を取得し、`invalidateConfigCache()` は no-op（ログ出力のみ）です。
-
-### 現在の実装
-
-```typescript
-// apps/mcp-proxy/src/infrastructure/cache/configCache.ts
-const data = await getCachedConfig(mcpServerId, fetchFromDb); // 常にDB取得
-await invalidateConfigCache(mcpServerId); // 現在は実処理なし
-```
-
-### 将来再導入時のメモ
-
-- Redis接続の信頼性（Cloud Run環境での再接続/障害時フォールバック）
-- 暗号化/復号化コスト
-- キャッシュ無効化タイミングと整合性
-
----
-
 ## デプロイ構成
 
 ### Google Cloud Run 基本スペック

@@ -9,7 +9,6 @@ import {
   type Mock,
 } from "vitest";
 
-const mockCloseRedisClient = vi.fn();
 const mockDbDisconnect = vi.fn();
 const mockLogInfo = vi.fn();
 const mockLogError = vi.fn();
@@ -21,11 +20,6 @@ vi.mock("../app.js", () => ({
 vi.mock("../shared/logger/index.js", () => ({
   logInfo: (...args: unknown[]) => mockLogInfo(...args) as unknown,
   logError: (...args: unknown[]) => mockLogError(...args) as unknown,
-}));
-
-vi.mock("../infrastructure/cache/redis.js", () => ({
-  closeRedisClient: (...args: unknown[]) =>
-    mockCloseRedisClient(...args) as unknown,
 }));
 
 vi.mock("@tumiki/db/server", () => ({
@@ -56,7 +50,6 @@ describe("index.ts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    mockCloseRedisClient.mockResolvedValue(undefined);
     mockDbDisconnect.mockResolvedValue(undefined);
 
     // process.onをスパイして、ハンドラーをキャプチャ
@@ -127,7 +120,6 @@ describe("gracefulShutdown", () => {
     vi.clearAllMocks();
     vi.resetModules();
     vi.useFakeTimers({ shouldAdvanceTime: false });
-    mockCloseRedisClient.mockResolvedValue(undefined);
     mockDbDisconnect.mockResolvedValue(undefined);
     processExitSpy = vi
       .spyOn(process, "exit")
@@ -157,7 +149,7 @@ describe("gracefulShutdown", () => {
     return call[1] as () => void;
   };
 
-  test("RedisとDBの接続をクローズしprocess.exitを呼ぶ", async () => {
+  test("DBの接続をクローズしprocess.exitを呼ぶ", async () => {
     const handler = await getSignalHandler("SIGTERM");
 
     handler();
@@ -166,8 +158,6 @@ describe("gracefulShutdown", () => {
     await vi.advanceTimersByTimeAsync(10000);
 
     expect(mockLogInfo).toHaveBeenCalledWith("SIGTERM received");
-    expect(mockLogInfo).toHaveBeenCalledWith("Closing Redis connection");
-    expect(mockCloseRedisClient).toHaveBeenCalledTimes(1);
     expect(mockLogInfo).toHaveBeenCalledWith("Closing database connection");
     expect(mockDbDisconnect).toHaveBeenCalledTimes(1);
     expect(mockLogInfo).toHaveBeenCalledWith(
@@ -177,7 +167,7 @@ describe("gracefulShutdown", () => {
   });
 
   test("シャットダウンタイムアウトのログを記録する", async () => {
-    mockCloseRedisClient.mockImplementation(
+    mockDbDisconnect.mockImplementation(
       () =>
         new Promise((resolve) => {
           setTimeout(resolve, 20000);
@@ -202,7 +192,7 @@ describe("gracefulShutdown", () => {
   });
 
   test("シャットダウン中のエラーをログに記録する", async () => {
-    mockCloseRedisClient.mockRejectedValue(new Error("Redis close error"));
+    mockDbDisconnect.mockRejectedValue(new Error("DB disconnect error"));
 
     const handler = await getSignalHandler("SIGTERM");
 
@@ -224,7 +214,6 @@ describe("gracefulShutdown", () => {
     await vi.advanceTimersByTimeAsync(10000);
 
     expect(mockLogInfo).toHaveBeenCalledWith("SIGINT received");
-    expect(mockCloseRedisClient).toHaveBeenCalledTimes(1);
     expect(mockDbDisconnect).toHaveBeenCalledTimes(1);
     expect(processExitSpy).toHaveBeenCalledWith(0);
   });
