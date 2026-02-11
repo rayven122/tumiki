@@ -30,6 +30,7 @@ export const findAllAgents = async (
       systemPrompt: true,
       modelId: true,
       visibility: true,
+      estimatedDurationMs: true,
       createdById: true,
       createdBy: {
         select: {
@@ -43,16 +44,20 @@ export const findAllAgents = async (
           id: true,
           name: true,
           iconPath: true,
-          // テンプレートのiconPathをフォールバックとして取得
+          // テンプレートのiconPathとツール数を取得
           templateInstances: {
             select: {
               mcpServerTemplate: {
                 select: {
                   iconPath: true,
+                  _count: {
+                    select: {
+                      mcpTools: true,
+                    },
+                  },
                 },
               },
             },
-            take: 1,
           },
         },
       },
@@ -61,6 +66,7 @@ export const findAllAgents = async (
           id: true,
           name: true,
           cronExpression: true,
+          timezone: true,
           status: true,
         },
       },
@@ -68,6 +74,19 @@ export const findAllAgents = async (
         select: {
           executionLogs: true,
         },
+      },
+      executionLogs: {
+        select: {
+          id: true,
+          success: true,
+          durationMs: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        // 成功率計算のため、最新20件を取得
+        take: 20,
       },
       createdAt: true,
       updatedAt: true,

@@ -29,6 +29,9 @@ export type McpLogEntry = {
   inputBytes: number;
   outputBytes: number;
 
+  /** AIツール呼び出しID（AI SDKが生成、チャットメッセージとの紐付け用） */
+  toolCallId?: string;
+
   // エラー情報
   errorCode?: number;
   errorMessage?: string;

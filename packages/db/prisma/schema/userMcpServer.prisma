@@ -73,6 +73,9 @@ model McpServer {
   /// 稼働中のMCPサーバー名
   /// @zod.string.min(1)
   name         String
+  /// URL用スラッグ（組織内でユニーク）
+  /// @zod.string.min(1).regex(/^[a-z0-9-]+$/)
+  slug         String
   /// サーバーの説明
   description  String
   /// アイコンパス
@@ -131,6 +134,8 @@ model McpServer {
   /// 論理削除用のタイムスタンプ
   deletedAt DateTime?
 
+  /// 組織内でスラッグはユニーク
+  @@unique([organizationId, slug])
   @@index([deletedAt])
 }
 

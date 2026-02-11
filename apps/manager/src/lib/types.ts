@@ -71,3 +71,11 @@ export type Attachment = {
   url: string;
   contentType: string;
 };
+
+/**
+ * エージェント情報（エージェントチャットの場合のみ）
+ */
+export type AgentInfo = {
+  name: string;
+  iconPath: string | null;
+} | null;

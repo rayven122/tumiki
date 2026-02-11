@@ -105,6 +105,7 @@ export const createIntegratedMcpServer = async (
   const mcpServer = await prisma.mcpServer.create({
     data: {
       name: input.name,
+      slug: input.slug,
       description: input.description ?? "",
       iconPath: null,
       serverStatus: ServerStatus.RUNNING,

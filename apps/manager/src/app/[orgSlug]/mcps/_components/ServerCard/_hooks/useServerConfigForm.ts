@@ -1,7 +1,14 @@
 import { useState, useCallback } from "react";
 import type { Prisma } from "@tumiki/db/prisma";
+import { normalizeSlug } from "@tumiki/db/utils/slug";
 import { useCreateServerForm } from "./useCreateServerForm";
 import { useEditServerForm } from "./useEditServerForm";
+
+// 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）
+const generateSlugFromName = (name: string): string => {
+  const normalized = normalizeSlug(name);
+  return normalized || `mcp-${Date.now().toString(36)}`;
+};
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 
@@ -85,15 +92,17 @@ export const useServerConfigForm = ({
 
   // フォーム送信処理
   const handleSubmit = useCallback(() => {
+    const slug = generateSlugFromName(serverName);
     if (isOAuthSupported && mcpServer.authType === "OAUTH") {
       // OAuth認証の場合
       if (mode === "create") {
         createForm.handleOAuthConnect({
           serverName,
+          slug,
           mcpServerTemplateId: mcpServer.id,
         });
       } else {
-        editForm.handleOAuthConnect(serverName);
+        editForm.handleOAuthConnect(serverName, slug);
       }
     } else {
       // APIキー認証の場合
@@ -104,6 +113,7 @@ export const useServerConfigForm = ({
           : "NONE";
         createForm.handleAddWithApiKey({
           serverName,
+          slug,
           authType,
           mcpServerTemplateId: mcpServer.id,
           envVars,

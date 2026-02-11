@@ -335,23 +335,50 @@ describe("AgentExecution", () => {
       const mockExecutions = [
         {
           id: "exec-1",
+          agentId: "agent-1",
           chatId: "chat-1",
           success: true,
-          agent: { slug: "test-agent-1" },
+          modelId: "anthropic/claude-3-5-haiku",
+          durationMs: 5000,
+          agent: {
+            name: "Test Agent 1",
+            slug: "test-agent-1",
+            iconPath: null,
+            estimatedDurationMs: null,
+          },
+          schedule: { name: "daily-report" },
           createdAt: new Date("2024-01-03T09:00:00Z"),
         },
         {
           id: "exec-2",
+          agentId: "agent-2",
           chatId: "chat-2",
           success: false,
-          agent: { slug: "test-agent-2" },
+          modelId: null,
+          durationMs: null,
+          agent: {
+            name: "Test Agent 2",
+            slug: "test-agent-2",
+            iconPath: null,
+            estimatedDurationMs: null,
+          },
+          schedule: null,
           createdAt: new Date("2024-01-02T09:00:00Z"),
         },
         {
           id: "exec-3",
+          agentId: "agent-3",
           chatId: "chat-3",
           success: null, // 実行中
-          agent: { slug: "test-agent-3" },
+          modelId: "anthropic/claude-3-5-sonnet",
+          durationMs: null,
+          agent: {
+            name: "Test Agent 3",
+            slug: "test-agent-3",
+            iconPath: null,
+            estimatedDurationMs: null,
+          },
+          schedule: null,
           createdAt: new Date("2024-01-01T09:00:00Z"),
         },
       ];
@@ -388,13 +415,22 @@ describe("AgentExecution", () => {
       expect(result.items).toHaveLength(3);
       expect(result.items[0]).toStrictEqual({
         id: "exec-1",
+        agentId: "agent-1",
         chatId: "chat-1",
         success: true,
+        agentName: "Test Agent 1",
         agentSlug: "test-agent-1",
+        agentIconPath: null,
+        estimatedDurationMs: null,
         latestMessage: "処理が完了しました",
         createdAt: new Date("2024-01-03T09:00:00Z"),
+        scheduleName: "daily-report",
+        modelId: "anthropic/claude-3-5-haiku",
+        durationMs: 5000,
+        toolCalls: [],
       });
       expect(result.items[1]?.success).toStrictEqual(false);
+      expect(result.items[1]?.scheduleName).toStrictEqual(null);
       expect(result.items[2]?.success).toStrictEqual(null); // 実行中
     });
 
@@ -410,7 +446,10 @@ describe("AgentExecution", () => {
           id: "exec-1",
           chatId: null,
           success: true,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent" },
+          schedule: null,
           createdAt: new Date("2024-01-01T09:00:00Z"),
         },
       ];
@@ -427,6 +466,7 @@ describe("AgentExecution", () => {
 
       expect(result.items[0]?.latestMessage).toStrictEqual(null);
       expect(result.items[0]?.chatId).toStrictEqual(null);
+      expect(result.items[0]?.toolCalls).toStrictEqual([]);
     });
 
     test("長いメッセージは60文字に切り詰められる", async () => {
@@ -443,7 +483,10 @@ describe("AgentExecution", () => {
           id: "exec-1",
           chatId: "chat-1",
           success: true,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent" },
+          schedule: null,
           createdAt: new Date("2024-01-01T09:00:00Z"),
         },
       ];
@@ -487,21 +530,30 @@ describe("AgentExecution", () => {
           id: "exec-1",
           chatId: "chat-1",
           success: true,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent-1" },
+          schedule: null,
           createdAt: new Date("2024-01-03T09:00:00Z"),
         },
         {
           id: "exec-2",
           chatId: "chat-2",
           success: true,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent-2" },
+          schedule: null,
           createdAt: new Date("2024-01-02T09:00:00Z"),
         },
         {
           id: "exec-3",
           chatId: "chat-3",
           success: false,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent-3" },
+          schedule: null,
           createdAt: new Date("2024-01-01T09:00:00Z"),
         },
       ];
@@ -535,7 +587,10 @@ describe("AgentExecution", () => {
           id: "exec-3",
           chatId: "chat-3",
           success: true,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent-3" },
+          schedule: null,
           createdAt: new Date("2024-01-01T09:00:00Z"),
         },
       ];
@@ -605,11 +660,22 @@ describe("AgentExecution", () => {
         },
         select: {
           id: true,
+          agentId: true,
           chatId: true,
           success: true,
+          modelId: true,
+          durationMs: true,
           agent: {
             select: {
+              name: true,
               slug: true,
+              iconPath: true,
+              estimatedDurationMs: true,
+            },
+          },
+          schedule: {
+            select: {
+              name: true,
             },
           },
           createdAt: true,
@@ -631,7 +697,10 @@ describe("AgentExecution", () => {
           id: "exec-1",
           chatId: "chat-1",
           success: true,
+          modelId: null,
+          durationMs: null,
           agent: { slug: "test-agent" },
+          schedule: null,
           createdAt: new Date("2024-01-01T09:00:00Z"),
         },
       ];
@@ -658,6 +727,70 @@ describe("AgentExecution", () => {
       const result = await getRecentExecutions(mockDb, input);
 
       expect(result.items[0]?.latestMessage).toStrictEqual(null);
+    });
+
+    test("ツール呼び出し情報が正しく抽出される", async () => {
+      const input = {
+        organizationId: testOrganizationId,
+        userId: testUserId,
+        limit: 5,
+      };
+
+      const mockExecutions = [
+        {
+          id: "exec-1",
+          chatId: "chat-1",
+          success: true,
+          modelId: null,
+          durationMs: null,
+          agent: { slug: "test-agent" },
+          schedule: null,
+          createdAt: new Date("2024-01-01T09:00:00Z"),
+        },
+      ];
+
+      const mockMessages = [
+        {
+          chatId: "chat-1",
+          parts: [
+            { type: "text", text: "結果を表示します" },
+            {
+              type: "tool-server1__query-docs",
+              toolName: "server1__query-docs",
+              state: "output-available",
+            },
+            {
+              type: "dynamic-tool",
+              toolName: "server2__prefix__search",
+              state: "output-available",
+            },
+          ],
+        },
+      ];
+
+      vi.mocked(mockDb.agentExecutionLog.findMany).mockResolvedValue(
+        mockExecutions as unknown as Awaited<
+          ReturnType<typeof mockDb.agentExecutionLog.findMany>
+        >,
+      );
+
+      vi.mocked(mockDb.message.findMany).mockResolvedValue(
+        mockMessages as unknown as Awaited<
+          ReturnType<typeof mockDb.message.findMany>
+        >,
+      );
+
+      const result = await getRecentExecutions(mockDb, input);
+
+      expect(result.items[0]?.toolCalls).toHaveLength(2);
+      expect(result.items[0]?.toolCalls[0]).toStrictEqual({
+        toolName: "query-docs",
+        state: "success",
+      });
+      expect(result.items[0]?.toolCalls[1]).toStrictEqual({
+        toolName: "search",
+        state: "success",
+      });
     });
   });
 

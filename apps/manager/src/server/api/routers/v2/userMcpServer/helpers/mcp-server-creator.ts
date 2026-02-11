@@ -7,6 +7,7 @@ import { ServerStatus, ServerType, AuthType } from "@tumiki/db/server";
 type CreateOfficialMcpServerParams = {
   tx: PrismaTransactionClient;
   serverName: string;
+  slug: string;
   description: string;
   templateId: string;
   organizationId: string;
@@ -23,6 +24,7 @@ export const createOfficialMcpServer = async (
   const {
     tx,
     serverName,
+    slug,
     description,
     templateId,
     organizationId,
@@ -33,6 +35,7 @@ export const createOfficialMcpServer = async (
   const mcpServer = await tx.mcpServer.create({
     data: {
       name: serverName,
+      slug,
       description,
       iconPath,
       serverStatus: ServerStatus.PENDING,

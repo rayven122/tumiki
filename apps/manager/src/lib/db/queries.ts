@@ -36,7 +36,7 @@ export const saveChat = async ({
   }
 };
 
-export async function deleteChatById({ id }: { id: string }) {
+export const deleteChatById = async ({ id }: { id: string }) => {
   try {
     await db.vote.deleteMany({
       where: { chatId: id },
@@ -60,7 +60,7 @@ export async function deleteChatById({ id }: { id: string }) {
       error instanceof Error ? error.message : "Failed to delete chat by id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
 /**
  * ユーザーのチャット一覧を取得
@@ -106,22 +106,26 @@ export const getChatsByUserId = async ({
       direction = "before";
     }
 
+    // カーソルベースのページネーション条件を生成
+    const buildCursorCondition = () => {
+      if (direction === "after") {
+        return { createdAt: { gt: cursorDate! } };
+      }
+      if (direction === "before") {
+        return { createdAt: { lt: cursorDate! } };
+      }
+      return null;
+    };
+    const cursorCondition = buildCursorCondition();
+
     const chats = await db.chat.findMany({
       where: {
-        AND: [
-          // 組織でフィルタ
-          { organizationId },
-          // 自分のチャット または 組織内共有チャット
-          {
-            OR: [{ userId: id }, { visibility: "ORGANIZATION" }],
-          },
-          // カーソルベースのページネーション
-          direction === "after"
-            ? { createdAt: { gt: cursorDate! } }
-            : direction === "before"
-              ? { createdAt: { lt: cursorDate! } }
-              : {},
-        ],
+        // 組織でフィルタ
+        organizationId,
+        // 自分のチャット または 組織内共有チャット
+        OR: [{ userId: id }, { visibility: "ORGANIZATION" }],
+        // カーソルベースのページネーション（条件がある場合のみ適用）
+        ...(cursorCondition ? { createdAt: cursorCondition.createdAt } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: extendedLimit,
@@ -130,6 +134,13 @@ export const getChatsByUserId = async ({
           select: {
             id: true,
             name: true,
+          },
+        },
+        agent: {
+          select: {
+            id: true,
+            name: true,
+            iconPath: true,
           },
         },
       },
@@ -147,13 +158,16 @@ export const getChatsByUserId = async ({
   }
 };
 
-export async function getChatById({ id }: { id: string }) {
+export const getChatById = async ({ id }: { id: string }) => {
   try {
     return await db.chat.findUnique({
       where: { id },
       include: {
         mcpServers: {
           select: { id: true },
+        },
+        agent: {
+          select: { id: true, name: true, iconPath: true },
         },
       },
     });
@@ -162,9 +176,9 @@ export async function getChatById({ id }: { id: string }) {
       error instanceof Error ? error.message : "Failed to get chat by id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function saveMessages({
+export const saveMessages = async ({
   messages,
 }: {
   messages: Array<
@@ -173,7 +187,7 @@ export async function saveMessages({
       attachments: Prisma.InputJsonValue;
     }
   >;
-}) {
+}) => {
   try {
     return await db.message.createMany({
       data: messages,
@@ -183,9 +197,9 @@ export async function saveMessages({
       error instanceof Error ? error.message : "Failed to save messages";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getMessagesByChatId({ id }: { id: string }) {
+export const getMessagesByChatId = async ({ id }: { id: string }) => {
   try {
     return await db.message.findMany({
       where: { chatId: id },
@@ -198,9 +212,9 @@ export async function getMessagesByChatId({ id }: { id: string }) {
         : "Failed to get messages by chat id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function voteMessage({
+export const voteMessage = async ({
   chatId,
   messageId,
   type,
@@ -208,7 +222,7 @@ export async function voteMessage({
   chatId: string;
   messageId: string;
   type: "up" | "down";
-}) {
+}) => {
   try {
     const existingVote = await db.vote.findFirst({
       where: { messageId, chatId },
@@ -232,9 +246,9 @@ export async function voteMessage({
       error instanceof Error ? error.message : "Failed to vote message";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getVotesByChatId({ id }: { id: string }) {
+export const getVotesByChatId = async ({ id }: { id: string }) => {
   try {
     return await db.vote.findMany({ where: { chatId: id } });
   } catch (error) {
@@ -242,9 +256,9 @@ export async function getVotesByChatId({ id }: { id: string }) {
       error instanceof Error ? error.message : "Failed to get votes by chat id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function saveDocument({
+export const saveDocument = async ({
   id,
   title,
   kind,
@@ -256,7 +270,7 @@ export async function saveDocument({
   kind: ArtifactKind;
   content: string;
   userId: string;
-}) {
+}) => {
   try {
     return await db.document.create({
       data: {
@@ -273,9 +287,9 @@ export async function saveDocument({
       error instanceof Error ? error.message : "Failed to save document";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getDocumentsById({ id }: { id: string }) {
+export const getDocumentsById = async ({ id }: { id: string }) => {
   try {
     return await db.document.findMany({
       where: { id },
@@ -286,9 +300,9 @@ export async function getDocumentsById({ id }: { id: string }) {
       error instanceof Error ? error.message : "Failed to get documents by id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getDocumentById({ id }: { id: string }) {
+export const getDocumentById = async ({ id }: { id: string }) => {
   try {
     return await db.document.findFirst({
       where: { id },
@@ -299,15 +313,15 @@ export async function getDocumentById({ id }: { id: string }) {
       error instanceof Error ? error.message : "Failed to get document by id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function deleteDocumentsByIdAfterTimestamp({
+export const deleteDocumentsByIdAfterTimestamp = async ({
   id,
   timestamp,
 }: {
   id: string;
   timestamp: Date;
-}) {
+}) => {
   try {
     await db.suggestion.deleteMany({
       where: {
@@ -333,30 +347,30 @@ export async function deleteDocumentsByIdAfterTimestamp({
         : "Failed to delete documents by id after timestamp";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function saveSuggestions({
+export const saveSuggestions = async ({
   suggestions,
 }: {
   suggestions: Array<Suggestion>;
-}) {
+}) => {
   try {
     return await db.suggestion.createMany({
       data: suggestions,
-      skipDuplicates: true, // 必要に応じて追加
+      skipDuplicates: true,
     });
   } catch (error) {
     const cause =
       error instanceof Error ? error.message : "Failed to save suggestions";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getSuggestionsByDocumentId({
+export const getSuggestionsByDocumentId = async ({
   documentId,
 }: {
   documentId: string;
-}) {
+}) => {
   try {
     return await db.suggestion.findMany({
       where: { documentId },
@@ -368,9 +382,9 @@ export async function getSuggestionsByDocumentId({
         : "Failed to get suggestions by document id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getMessageById({ id }: { id: string }) {
+export const getMessageById = async ({ id }: { id: string }) => {
   try {
     return await db.message.findUnique({
       where: { id },
@@ -380,15 +394,15 @@ export async function getMessageById({ id }: { id: string }) {
       error instanceof Error ? error.message : "Failed to get message by id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function deleteMessagesByChatIdAfterTimestamp({
+export const deleteMessagesByChatIdAfterTimestamp = async ({
   chatId,
   timestamp,
 }: {
   chatId: string;
   timestamp: Date;
-}) {
+}) => {
   try {
     const messagesToDelete = await db.message.findMany({
       where: {
@@ -424,7 +438,7 @@ export async function deleteMessagesByChatIdAfterTimestamp({
         : "Failed to delete messages by chat id after timestamp";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
 export const updateChatVisiblityById = async ({
   chatId,
@@ -451,10 +465,10 @@ export const updateChatVisiblityById = async ({
  * チャットに紐づくMCPサーバーを更新する
  * 暗黙的多対多リレーションを使用
  */
-export async function updateChatMcpServers(
+export const updateChatMcpServers = async (
   chatId: string,
   mcpServerIds: string[],
-) {
+) => {
   try {
     return await db.chat.update({
       where: { id: chatId },
@@ -471,19 +485,19 @@ export async function updateChatMcpServers(
         : "Failed to update chat MCP servers";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getMessageCountByUserId({
+export const getMessageCountByUserId = async ({
   id,
   differenceInHours,
 }: {
   id: string;
   differenceInHours: number;
-}) {
+}) => {
   try {
     const threshold = new Date(Date.now() - differenceInHours * 60 * 60 * 1000);
 
-    const count = await db.message.count({
+    return await db.message.count({
       where: {
         createdAt: { gte: threshold },
         role: "user",
@@ -492,8 +506,6 @@ export async function getMessageCountByUserId({
         },
       },
     });
-
-    return count;
   } catch (error) {
     const cause =
       error instanceof Error
@@ -501,15 +513,15 @@ export async function getMessageCountByUserId({
         : "Failed to get message count by user id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function createStreamId({
+export const createStreamId = async ({
   streamId,
   chatId,
 }: {
   streamId: string;
   chatId: string;
-}) {
+}) => {
   try {
     await db.stream.create({
       data: {
@@ -523,9 +535,9 @@ export async function createStreamId({
       error instanceof Error ? error.message : "Failed to create stream id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
-export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
+export const getStreamIdsByChatId = async ({ chatId }: { chatId: string }) => {
   try {
     const streams = await db.stream.findMany({
       where: { chatId },
@@ -541,13 +553,13 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
         : "Failed to get stream ids by chat id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};
 
 /**
  * 公開チャットを取得（認証不要）
  * visibility が PUBLIC のチャットのみ取得可能
  */
-export async function getPublicChatById({ id }: { id: string }) {
+export const getPublicChatById = async ({ id }: { id: string }) => {
   try {
     return await db.chat.findFirst({
       where: {
@@ -571,4 +583,4 @@ export async function getPublicChatById({ id }: { id: string }) {
         : "Failed to get public chat by id";
     throw new ChatSDKError("bad_request:database", cause);
   }
-}
+};

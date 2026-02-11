@@ -99,6 +99,7 @@ describe("createIntegratedMcpServer", () => {
       mockTx,
       {
         name: "統合サーバー",
+        slug: "integrated-server",
         description: "GitHub と Slack の統合",
         templates: [
           {
@@ -126,6 +127,7 @@ describe("createIntegratedMcpServer", () => {
     expect(mockTx.mcpServer.create).toHaveBeenCalledWith({
       data: {
         name: "統合サーバー",
+        slug: "integrated-server",
         description: "GitHub と Slack の統合",
         iconPath: null,
         serverStatus: "RUNNING",
@@ -211,6 +213,7 @@ describe("createIntegratedMcpServer", () => {
       mockTx,
       {
         name: "統合サーバー",
+        slug: "integrated-server-tools",
         templates: [
           {
             mcpServerTemplateId: "template-1",
@@ -303,6 +306,7 @@ describe("createIntegratedMcpServer", () => {
       mockTx,
       {
         name: "統合サーバー",
+        slug: "integrated-server-envvars",
         templates: [
           {
             mcpServerTemplateId: "template-1",
@@ -366,6 +370,7 @@ describe("createIntegratedMcpServer", () => {
         mockTx,
         {
           name: "統合サーバー",
+          slug: "integrated-server-invalid",
           templates: [
             {
               mcpServerTemplateId: "invalid-template",
@@ -422,6 +427,7 @@ describe("createIntegratedMcpServer", () => {
         mockTx,
         {
           name: "統合サーバー",
+          slug: "integrated-server-invalid-tool",
           templates: [
             {
               mcpServerTemplateId: "template-1",
@@ -491,6 +497,7 @@ describe("createIntegratedMcpServer", () => {
       mockTx,
       {
         name: "統合サーバー",
+        slug: "integrated-server-all-tools",
         templates: [
           {
             mcpServerTemplateId: "template-1",
@@ -573,6 +580,7 @@ describe("createIntegratedMcpServer", () => {
         mockTx,
         {
           name: "統合サーバー",
+          slug: "integrated-server-invalid-env",
           templates: [
             {
               mcpServerTemplateId: "template-1",

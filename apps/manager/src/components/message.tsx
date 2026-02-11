@@ -4,7 +4,6 @@ import type { UIMessage } from "ai";
 import cx from "classnames";
 import { AnimatePresence, motion } from "framer-motion";
 import { memo, useState } from "react";
-import type { Vote } from "@tumiki/db/prisma";
 import type { ArtifactKind } from "./artifact";
 import { DocumentToolCall, DocumentToolResult } from "./document";
 import { PencilEditIcon, SparklesIcon } from "./icons";
@@ -22,26 +21,27 @@ import { DocumentPreview } from "./document-preview";
 import { MessageReasoning } from "./message-reasoning";
 import { TypingIndicator } from "./typing-indicator";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import type { ChatMessage } from "@/lib/types";
+import type { AgentInfo, ChatMessage } from "@/lib/types";
+import { EntityIcon } from "./ui/EntityIcon";
 
 const PurePreviewMessage = ({
   chatId,
   message,
-  vote,
   isLoading,
   setMessages,
   regenerate,
   isReadonly,
   requiresScrollPadding,
+  agentInfo,
 }: {
   chatId: string;
   message: UIMessage;
-  vote: Vote | undefined;
   isLoading: boolean;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
   requiresScrollPadding: boolean;
+  agentInfo?: AgentInfo;
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
 
@@ -76,10 +76,21 @@ const PurePreviewMessage = ({
           )}
         >
           {message.role === "assistant" && (
-            <div className="ring-border bg-background flex size-8 shrink-0 items-center justify-center rounded-full ring-1">
-              <div className="translate-y-px">
-                <SparklesIcon size={14} />
-              </div>
+            <div className="flex size-8 shrink-0 items-center justify-center">
+              {agentInfo ? (
+                <EntityIcon
+                  iconPath={agentInfo.iconPath}
+                  type="agent"
+                  size="sm"
+                  alt={agentInfo.name}
+                />
+              ) : (
+                <div className="ring-border bg-background flex size-8 items-center justify-center rounded-full ring-1">
+                  <div className="translate-y-px">
+                    <SparklesIcon size={14} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -215,6 +226,7 @@ const PurePreviewMessage = ({
                     state: string; // "pending" | "output-available" | "error" など
                     input?: unknown;
                     output?: unknown;
+                    outputRef?: string;
                   };
 
                   // AI SDK 6の状態形式にマッピング
@@ -241,9 +253,11 @@ const PurePreviewMessage = ({
                     <McpToolCall
                       key={dynamicToolPart.toolCallId}
                       toolName={dynamicToolPart.toolName}
+                      toolCallId={dynamicToolPart.toolCallId}
                       state={mapDynamicToolState(dynamicToolPart.state)}
                       input={dynamicToolPart.input}
                       output={dynamicToolPart.output}
+                      outputRef={dynamicToolPart.outputRef}
                     />
                   );
                 }
@@ -290,6 +304,7 @@ const PurePreviewMessage = ({
                     state: string;
                     input?: unknown;
                     output?: unknown;
+                    outputRef?: string;
                   };
                   const { toolCallId, state } = toolPart;
                   // ツール名を抽出 (tool-getWeather → getWeather)
@@ -304,6 +319,7 @@ const PurePreviewMessage = ({
                       <McpToolCall
                         key={toolCallId}
                         toolName={toolName}
+                        toolCallId={toolCallId}
                         state={
                           state as
                             | "input-streaming"
@@ -313,6 +329,7 @@ const PurePreviewMessage = ({
                         }
                         input={toolPart.input}
                         output={toolPart.output}
+                        outputRef={toolPart.outputRef}
                       />
                     );
                   }
@@ -424,7 +441,6 @@ const PurePreviewMessage = ({
                 key={`action-${message.id}`}
                 chatId={chatId}
                 message={message}
-                vote={vote}
                 isLoading={isLoading}
               />
             )}
@@ -446,13 +462,12 @@ export const PreviewMessage = memo(
     if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
       return false;
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
-    if (!equal(prevProps.vote, nextProps.vote)) return false;
 
     return true;
   },
 );
 
-export const ThinkingMessage = () => {
+export const ThinkingMessage = ({ agentInfo }: { agentInfo?: AgentInfo }) => {
   const role = "assistant";
 
   return (
@@ -471,8 +486,19 @@ export const ThinkingMessage = () => {
           },
         )}
       >
-        <div className="ring-border bg-background flex size-8 shrink-0 items-center justify-center rounded-full ring-1">
-          <SparklesIcon size={14} />
+        <div className="flex size-8 shrink-0 items-center justify-center">
+          {agentInfo ? (
+            <EntityIcon
+              iconPath={agentInfo.iconPath}
+              type="agent"
+              size="sm"
+              alt={agentInfo.name}
+            />
+          ) : (
+            <div className="ring-border bg-background flex size-8 items-center justify-center rounded-full ring-1">
+              <SparklesIcon size={14} />
+            </div>
+          )}
         </div>
 
         <div className="flex w-full flex-col gap-2 pt-2">

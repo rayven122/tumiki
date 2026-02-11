@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
 import { ChevronDownIcon, HistoryIcon, UsersIcon } from "@/components/icons";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import Link from "next/link";
 import useSWRInfinite from "swr/infinite";
 
@@ -200,16 +201,35 @@ export const ChatHistoryDropdown = ({
                 className="min-w-0 flex-1"
                 onClick={() => setIsOpen(false)}
               >
-                <div className="flex flex-col gap-0.5">
-                  <span className="truncate text-sm">
-                    {chat.title || "新しいチャット"}
-                  </span>
-                  {isOrganizationShared && chat.user.name && (
-                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                      <UsersIcon size={10} />
-                      {chat.user.name}
-                    </span>
+                <div className="flex items-start gap-2">
+                  {chat.agent && (
+                    <div className="mt-0.5 shrink-0">
+                      <EntityIcon
+                        iconPath={chat.agent.iconPath}
+                        type="agent"
+                        size="xs"
+                        alt={chat.agent.name}
+                      />
+                    </div>
                   )}
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-sm">
+                      {chat.title || "新しいチャット"}
+                    </span>
+                    {chat.agent ? (
+                      <span className="text-muted-foreground truncate text-xs">
+                        {chat.agent.name}
+                      </span>
+                    ) : (
+                      isOrganizationShared &&
+                      chat.user.name && (
+                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                          <UsersIcon size={10} />
+                          {chat.user.name}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
               </Link>
               {/* 自分のチャットのみ削除可能 */}

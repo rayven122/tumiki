@@ -54,14 +54,28 @@ const PaginatedExecutionLogsSchema = z.object({
   nextCursor: z.string().optional(),
 });
 
-// 直近の実行履歴スキーマ（成功/失敗/実行中すべて含む）
+// ツール呼び出し情報スキーマ
+const ToolCallInfoSchema = z.object({
+  toolName: z.string(),
+  state: z.enum(["success", "error", "running"]),
+});
+
+// 直近の実行履歴スキーマ（成功/失敗/実行中すべて含む、稼働中ダッシュボード統合用）
 const RecentExecutionSchema = z.object({
   id: AgentExecutionLogIdSchema,
+  agentId: AgentIdSchema,
   chatId: z.string().nullable(),
   success: z.boolean().nullable(), // null = 実行中, true = 成功, false = 失敗
+  agentName: z.string(),
   agentSlug: z.string(),
+  agentIconPath: z.string().nullable(),
+  estimatedDurationMs: z.number(),
   latestMessage: z.string().nullable(),
   createdAt: z.date(),
+  scheduleName: z.string().nullable(),
+  modelId: z.string().nullable(),
+  durationMs: z.number().nullable(),
+  toolCalls: z.array(ToolCallInfoSchema),
 });
 
 // ページネーション対応の直近実行履歴スキーマ

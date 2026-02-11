@@ -8,6 +8,7 @@ import { TypingIndicator } from "./typing-indicator";
 import { useAtomValue } from "jotai";
 import { mcpServerMapAtom, resolveServerName } from "@/atoms/mcpServerMapAtom";
 import { useReauthenticateFromChat } from "@/hooks/useReauthenticateFromChat";
+import { useToolOutput } from "@/hooks/useToolOutput";
 
 // AI SDK 6 のツール状態
 type ToolState =
@@ -18,9 +19,12 @@ type ToolState =
 
 type McpToolCallProps = {
   toolName: string; // "Linear MCP__linear__list_teams" or "Linear MCP__search_tools"
+  toolCallId: string;
   state: ToolState;
   input?: unknown;
   output?: unknown;
+  /** BigQuery参照（outputがBigQueryに保存されている場合） */
+  outputRef?: string;
 };
 
 /**
@@ -252,15 +256,31 @@ const ReauthBanner = ({
  */
 export const McpToolCall = ({
   toolName,
+  toolCallId,
   state,
   input,
-  output,
+  output: directOutput,
+  outputRef,
 }: McpToolCallProps) => {
   const mcpServerMap = useAtomValue(mcpServerMapAtom);
   const pathname = usePathname();
   const { serverId, displayToolName } = parseToolName(toolName);
   const serverName = resolveServerName(mcpServerMap, serverId);
   const isLoading = state === "input-streaming" || state === "input-available";
+
+  // outputRefがある場合、展開時にBigQueryからフェッチ
+  const [shouldFetch, setShouldFetch] = useState(false);
+  const {
+    output: fetchedOutput,
+    isLoading: isFetchingOutput,
+    error: fetchError,
+  } = useToolOutput({
+    toolCallId: outputRef,
+    enabled: shouldFetch && !!outputRef,
+  });
+
+  // 実際に使用するoutput（直接渡されたものまたはフェッチしたもの）
+  const output = directOutput ?? fetchedOutput;
 
   // stateが"output-available"でも、outputにisError:trueがあればエラーとして扱う
   const outputHasError = detectErrorFromOutput(output);
@@ -307,11 +327,40 @@ export const McpToolCall = ({
       )}
 
       {/* 結果（出力）- エラーでない場合のみ表示 */}
-      {displayState === "output-available" &&
-        output !== undefined &&
-        output !== null && (
-          <JsonPreview data={output} label="結果" defaultExpanded={false} />
-        )}
+      {displayState === "output-available" && (
+        <>
+          {/* outputRefがある場合はオンデマンドフェッチ */}
+          {outputRef && !output && !isFetchingOutput && !fetchError && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShouldFetch(true)}
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+              >
+                <ChevronRightIcon className="size-3" />
+                結果を読み込む
+              </button>
+            </div>
+          )}
+          {/* フェッチ中 */}
+          {isFetchingOutput && (
+            <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
+              <TypingIndicator size="sm" />
+              <span>結果を読み込み中...</span>
+            </div>
+          )}
+          {/* フェッチエラー */}
+          {fetchError && (
+            <div className="mt-2 text-xs text-red-600">
+              結果の読み込みに失敗しました: {fetchError.message}
+            </div>
+          )}
+          {/* 結果表示 */}
+          {output !== undefined && output !== null && (
+            <JsonPreview data={output} label="結果" defaultExpanded={false} />
+          )}
+        </>
+      )}
 
       {/* 認証エラー時の再認証バナー */}
       {displayState === "output-error" && authError && redirectTo && (

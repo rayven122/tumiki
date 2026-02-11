@@ -26,6 +26,8 @@ import { generateCUID } from "../../shared/utils/cuid.js";
 import { gateway } from "../../infrastructure/ai/index.js";
 import { verifyChatAuth } from "../chat/index.js";
 import { getChatMcpTools } from "../chat/index.js";
+import { buildSystemPrompt } from "./commands/index.js";
+import type { ExecutionTrigger } from "./types.js";
 
 /** エージェント実行用のデフォルトモデル */
 const DEFAULT_AGENT_MODEL = AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
@@ -45,31 +47,6 @@ const agentRunRequestSchema = z.object({
   /** 実行メッセージ（省略時はデフォルトメッセージ） */
   message: z.string().optional(),
 });
-
-/**
- * システムプロンプトを構築
- */
-const buildSystemPrompt = (
-  userId: string,
-  customSystemPrompt?: string,
-): string => {
-  const executionContext = `
-実行情報:
-- トリガー: 手動実行 (ユーザー: ${userId})
-- 実行時刻: ${new Date().toISOString()}
-`;
-
-  if (customSystemPrompt) {
-    return `${customSystemPrompt}\n\n${executionContext}`;
-  }
-
-  return `あなたはタスク実行エージェントです。
-
-${executionContext}
-
-与えられたタスクを実行し、結果を報告してください。
-エラーが発生した場合は、エラー内容と対処方法を報告してください。`;
-};
 
 export const agentExecutorRoute = new Hono<HonoEnv>().post(
   "/agent/:agentId",
@@ -141,7 +118,12 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
 
       const modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
       const userMessage = message ?? "タスクを実行してください。";
-      const systemPrompt = buildSystemPrompt(userId, agent.systemPrompt);
+      // ストリーミング実行は手動実行として扱う
+      const trigger: ExecutionTrigger = { type: "manual", userId };
+      const systemPrompt = buildSystemPrompt(
+        trigger,
+        agent.systemPrompt ?? undefined,
+      );
 
       // MCPツールを取得
       const mcpServerIds = agent.mcpServers.map((s) => s.id);

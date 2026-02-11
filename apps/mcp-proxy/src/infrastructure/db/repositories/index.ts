@@ -36,3 +36,25 @@ export {
   getUserIdByEmail,
   invalidateKeycloakUserCache,
 } from "./userRepository.js";
+
+// エージェント関連
+export {
+  findAgentForExecution,
+  updateAgentEstimatedDuration,
+} from "./agentRepository.js";
+
+export type { AgentForExecution } from "./agentRepository.js";
+
+// エージェント実行ログ関連
+export {
+  createPendingExecutionLog,
+  updateExecutionLogWithChat,
+  updateExecutionLogSimple,
+} from "./agentExecutionLogRepository.js";
+
+export type {
+  CreatePendingLogParams,
+  UpdateExecutionLogWithChatParams,
+  UpdateExecutionLogSimpleParams,
+  UpdateExecutionLogResult,
+} from "./agentExecutionLogRepository.js";

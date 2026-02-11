@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -17,15 +18,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Loader2, RefreshCw, ChevronDown, Check } from "lucide-react";
+import { Loader2, ChevronDown, Check } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
 import { McpServerIcon } from "../../_components/McpServerIcon";
-
-/** マスクされた値を表す定数 */
-const MASK_VALUE = "•••••";
+import { ServerNameInput } from "../../_components/ServerCard/_components/ServerNameInput";
+import { LoadingOverlay } from "../../_components/ServerCard/_components/LoadingOverlay";
 
 /** 編集可能なテンプレートインスタンスの情報 */
 type EditableInstance = {
@@ -61,9 +61,110 @@ const getEnvVarBadgeText = (envVarCount: number): string => {
 };
 
 /**
- * 単一テンプレートインスタンスの設定セクション
+ * サーバー情報表示コンポーネント（単一インスタンス用）
  */
-const TemplateConfigSection = ({
+const ServerInfoDisplay = ({
+  instanceId,
+  instanceName,
+  iconPath,
+  url,
+}: {
+  instanceId: string;
+  instanceName: string;
+  iconPath?: string | null;
+  url?: string | null;
+}) => {
+  const { data: config, isLoading } =
+    api.v2.userMcpServer.getMcpConfig.useQuery(
+      { templateInstanceId: instanceId },
+      { enabled: true },
+    );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center">
+      <div className="mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border p-2">
+        <McpServerIcon
+          iconPath={iconPath}
+          fallbackUrl={url}
+          alt={instanceName}
+          size={24}
+        />
+      </div>
+      <div className="min-w-0">
+        <h2 className="font-medium">{instanceName}</h2>
+        <Badge variant="outline" className="mt-1 text-xs">
+          {getEnvVarBadgeText(config?.envVarKeys.length ?? 0)}
+        </Badge>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * APIキー入力コンポーネント（単一インスタンス用）
+ */
+const ApiKeyInputs = ({
+  instanceId,
+  envVars,
+  onEnvVarChange,
+  isUpdating,
+}: {
+  instanceId: string;
+  envVars: Record<string, string>;
+  onEnvVarChange: (instanceId: string, key: string, value: string) => void;
+  isUpdating: boolean;
+}) => {
+  const { data: config, isLoading } =
+    api.v2.userMcpServer.getMcpConfig.useQuery(
+      { templateInstanceId: instanceId },
+      { enabled: true },
+    );
+
+  const hasApiConfig = (config?.envVarKeys.length ?? 0) > 0;
+
+  if (isLoading || !hasApiConfig) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      {config?.envVarKeys.map((key, index) => (
+        <div key={key} className="space-y-2">
+          <Label htmlFor={`token-${instanceId}-${key}`} className="text-sm">
+            {key}
+          </Label>
+          <Input
+            id={`token-${instanceId}-${key}`}
+            type="password"
+            placeholder={`${key}を入力してください`}
+            value={envVars[key] ?? ""}
+            onChange={(e) => onEnvVarChange(instanceId, key, e.target.value)}
+            className="text-sm"
+            disabled={isUpdating}
+          />
+          {index === (config?.envVarKeys.length ?? 0) - 1 && (
+            <p className="text-muted-foreground text-xs">
+              トークンは暗号化されて安全に保存されます
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * 複数インスタンス用の設定セクション（Collapsible）
+ */
+const MultiInstanceConfigSection = ({
   instanceId,
   instanceName,
   iconPath,
@@ -73,8 +174,6 @@ const TemplateConfigSection = ({
   envVars,
   onEnvVarChange,
   isUpdating,
-  isMultiple,
-  resetKey,
 }: {
   instanceId: string;
   instanceName: string;
@@ -85,9 +184,6 @@ const TemplateConfigSection = ({
   envVars: Record<string, string>;
   onEnvVarChange: (instanceId: string, key: string, value: string) => void;
   isUpdating: boolean;
-  isMultiple: boolean;
-  /** モーダルが開くたびにインクリメントされるキー（初期化リセット用） */
-  resetKey: number;
 }) => {
   const { data: config, isLoading } =
     api.v2.userMcpServer.getMcpConfig.useQuery(
@@ -95,29 +191,9 @@ const TemplateConfigSection = ({
       { enabled: true },
     );
 
-  // 初期化済みフラグをrefで管理（再レンダリングを防止）
-  const initializedRef = useRef(false);
-
-  // resetKeyが変更されたら初期化フラグをリセット
-  useEffect(() => {
-    initializedRef.current = false;
-  }, [resetKey]);
-
-  // configが読み込まれたらenvVarsを初期化（一度だけ実行）
-  useEffect(() => {
-    if (config && !initializedRef.current) {
-      initializedRef.current = true;
-      for (const key of config.envVarKeys) {
-        if (config.envVars[key]) {
-          onEnvVarChange(instanceId, key, config.envVars[key]);
-        }
-      }
-    }
-  }, [config, instanceId, onEnvVarChange]);
-
   const hasApiConfig = (config?.envVarKeys.length ?? 0) > 0;
   const isConfigured = Object.values(config?.envVars ?? {}).some(
-    (v) => v === MASK_VALUE,
+    (v) => v !== "",
   );
 
   if (isLoading) {
@@ -132,112 +208,74 @@ const TemplateConfigSection = ({
     return null;
   }
 
-  const content = (
-    <div className="space-y-4">
-      {config?.envVarKeys.map((key, index) => (
-        <div key={key} className="space-y-2">
-          <Label htmlFor={`token-${instanceId}-${key}`} className="text-sm">
-            {key}
-          </Label>
-          <Input
-            id={`token-${instanceId}-${key}`}
-            type="password"
-            placeholder={
-              envVars[key] === MASK_VALUE
-                ? "変更する場合は新しい値を入力"
-                : `${key}を入力してください`
-            }
-            value={envVars[key] ?? ""}
-            onChange={(e) => onEnvVarChange(instanceId, key, e.target.value)}
-            className="text-sm"
-            disabled={isUpdating}
-          />
-          {envVars[key] === MASK_VALUE && (
-            <p className="text-muted-foreground text-xs">
-              設定済み。変更しない場合はそのままにしてください。
-            </p>
-          )}
-          {index === (config?.envVarKeys.length ?? 0) - 1 &&
-            envVars[key] !== MASK_VALUE && (
-              <p className="text-muted-foreground text-xs">
-                トークンは暗号化されて安全に保存されます
-              </p>
-            )}
-        </div>
-      ))}
-    </div>
-  );
-
-  // 複数インスタンスの場合はCollapsibleで表示
-  if (isMultiple) {
-    return (
-      <Collapsible open={isOpen} onOpenChange={onOpenChange}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "flex w-full items-center justify-between rounded-lg border p-3 transition-colors",
-              isOpen ? "bg-gray-50" : "hover:bg-gray-50",
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border bg-white p-1.5">
-                <McpServerIcon
-                  iconPath={iconPath}
-                  fallbackUrl={url}
-                  alt={instanceName}
-                  size={20}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{instanceName}</span>
-                {isConfigured && (
-                  <Badge
-                    variant="outline"
-                    className="border-green-200 bg-green-50 text-green-700"
-                  >
-                    <Check className="mr-1 h-3 w-3" />
-                    設定済み
-                  </Badge>
-                )}
-              </div>
-            </div>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-gray-500 transition-transform",
-                isOpen && "rotate-180",
-              )}
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="px-3 pt-4 pb-2">
-          {content}
-        </CollapsibleContent>
-      </Collapsible>
-    );
-  }
-
-  // 単一インスタンスの場合はそのまま表示
   return (
-    <>
-      <div className="flex items-center">
-        <div className="mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border p-2">
-          <McpServerIcon
-            iconPath={iconPath}
-            fallbackUrl={url}
-            alt={instanceName}
-            size={24}
+    <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex w-full items-center justify-between rounded-lg border p-3 transition-colors",
+            isOpen ? "bg-gray-50" : "hover:bg-gray-50",
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border bg-white p-1.5">
+              <McpServerIcon
+                iconPath={iconPath}
+                fallbackUrl={url}
+                alt={instanceName}
+                size={20}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{instanceName}</span>
+              {isConfigured && (
+                <Badge
+                  variant="outline"
+                  className="border-green-200 bg-green-50 text-green-700"
+                >
+                  <Check className="mr-1 h-3 w-3" />
+                  設定済み
+                </Badge>
+              )}
+            </div>
+          </div>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-gray-500 transition-transform",
+              isOpen && "rotate-180",
+            )}
           />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-3 pt-4 pb-2">
+        <div className="space-y-4">
+          {config?.envVarKeys.map((key, index) => (
+            <div key={key} className="space-y-2">
+              <Label htmlFor={`token-${instanceId}-${key}`} className="text-sm">
+                {key}
+              </Label>
+              <Input
+                id={`token-${instanceId}-${key}`}
+                type="password"
+                placeholder={`${key}を入力してください`}
+                value={envVars[key] ?? ""}
+                onChange={(e) =>
+                  onEnvVarChange(instanceId, key, e.target.value)
+                }
+                className="text-sm"
+                disabled={isUpdating}
+              />
+              {index === (config?.envVarKeys.length ?? 0) - 1 && (
+                <p className="text-muted-foreground text-xs">
+                  トークンは暗号化されて安全に保存されます
+                </p>
+              )}
+            </div>
+          ))}
         </div>
-        <div className="min-w-0">
-          <h2 className="font-medium">{instanceName}</h2>
-          <Badge variant="outline" className="mt-1 text-xs">
-            {getEnvVarBadgeText(config?.envVarKeys.length ?? 0)}
-          </Badge>
-        </div>
-      </div>
-      {content}
-    </>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
@@ -264,15 +302,17 @@ export const McpConfigEditModal = ({
   >({});
   // 各セクションの開閉状態
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
-  // 初期化リセット用のキー（モーダルが開くたびにインクリメント）
-  const [resetKey, setResetKey] = useState(0);
 
   // 後方互換性: editableInstancesが渡されない場合は単一インスタンスモード
-  const instances: EditableInstance[] = editableInstances ?? [
-    ...(templateInstanceId
-      ? [{ id: templateInstanceId, name: templateName }]
-      : []),
-  ];
+  const instances = useMemo<EditableInstance[]>(() => {
+    if (editableInstances) {
+      return editableInstances;
+    }
+    if (templateInstanceId) {
+      return [{ id: templateInstanceId, name: templateName }];
+    }
+    return [];
+  }, [editableInstances, templateInstanceId, templateName]);
   const isMultipleInstances = instances.length > 1;
 
   // 初期値をリセット（モーダルが開くたびに）
@@ -280,7 +320,6 @@ export const McpConfigEditModal = ({
     if (open) {
       setServerName(initialServerName);
       setEnvVarsMap({});
-      setResetKey((prev) => prev + 1);
       // 最初のセクションを開く
       const firstInstance = instances[0];
       if (firstInstance) {
@@ -330,15 +369,6 @@ export const McpConfigEditModal = ({
   const handleSubmit = async () => {
     const nameChanged = serverName !== initialServerName;
 
-    // 変更のあるインスタンスを収集
-    const changedInstances = instances.filter((instance) => {
-      const envVars = envVarsMap[instance.id];
-      if (!envVars) return false;
-      return Object.values(envVars).some(
-        (value) => value.trim() !== "" && value !== MASK_VALUE,
-      );
-    });
-
     const promises: Promise<unknown>[] = [];
 
     // サーバー名を更新
@@ -346,14 +376,13 @@ export const McpConfigEditModal = ({
       promises.push(updateNameAsync({ id: serverId, name: serverName }));
     }
 
-    // 各インスタンスのAPI設定を更新
-    for (const instance of changedInstances) {
+    // 各インスタンスのAPI設定を更新（空でない値が入力されたもののみ）
+    for (const instance of instances) {
       const envVars = envVarsMap[instance.id];
       if (!envVars) continue;
 
-      // マスク値のみの場合はスキップ
       const hasNewValue = Object.values(envVars).some(
-        (value) => value.trim() !== "" && value !== MASK_VALUE,
+        (value) => value.trim() !== "",
       );
       if (!hasNewValue) continue;
 
@@ -380,55 +409,55 @@ export const McpConfigEditModal = ({
     }
   };
 
-  // フォームバリデーション
   const isServerNameValid = serverName.trim() !== "";
-  const isFormValid = isServerNameValid;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !isUpdating && onOpenChange(o)}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
         <div className="relative max-h-[90vh] overflow-y-auto">
-          {/* ローディングオーバーレイ */}
-          {isUpdating && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-              <div className="flex flex-col items-center space-y-2">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">
-                  処理中...
-                </span>
-              </div>
-            </div>
-          )}
+          <LoadingOverlay isProcessing={isUpdating} />
 
           <DialogHeader className="mb-6">
             <DialogTitle className="text-xl font-bold">設定を編集</DialogTitle>
+            <DialogDescription>
+              サーバー名やAPIトークンの設定を変更できます。
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* サーバー名入力 */}
-            <div className="space-y-2">
-              <Label htmlFor="server-name" className="text-sm font-medium">
-                サーバー名
-              </Label>
-              <Input
-                id="server-name"
-                type="text"
-                placeholder="サーバー名を入力"
-                value={serverName}
-                onChange={(e) => setServerName(e.target.value)}
-                className="text-sm"
-                disabled={isUpdating}
+            {/* 単一インスタンスの場合: サーバー情報 → サーバー名 → APIキー入力 */}
+            {!isMultipleInstances && instances[0] && (
+              <ServerInfoDisplay
+                instanceId={instances[0].id}
+                instanceName={instances[0].name}
+                iconPath={instances[0].iconPath}
+                url={instances[0].url}
               />
-            </div>
+            )}
 
-            {/* API設定セクション */}
-            {instances.length > 0 && (
+            <ServerNameInput
+              serverName={serverName}
+              placeholder={initialServerName}
+              disabled={isUpdating}
+              onChange={setServerName}
+            />
+
+            {/* 単一インスタンスの場合: APIキー入力 */}
+            {!isMultipleInstances && instances[0] && (
+              <ApiKeyInputs
+                instanceId={instances[0].id}
+                envVars={envVarsMap[instances[0].id] ?? {}}
+                onEnvVarChange={handleEnvVarChange}
+                isUpdating={isUpdating}
+              />
+            )}
+
+            {/* 複数インスタンスの場合: Collapsibleで各インスタンスを表示 */}
+            {isMultipleInstances && (
               <div className="space-y-3">
-                {isMultipleInstances && (
-                  <Label className="text-sm font-medium">API設定</Label>
-                )}
+                <Label className="text-sm font-medium">API設定</Label>
                 {instances.map((instance) => (
-                  <TemplateConfigSection
+                  <MultiInstanceConfigSection
                     key={instance.id}
                     instanceId={instance.id}
                     instanceName={instance.name}
@@ -441,8 +470,6 @@ export const McpConfigEditModal = ({
                     envVars={envVarsMap[instance.id] ?? {}}
                     onEnvVarChange={handleEnvVarChange}
                     isUpdating={isUpdating}
-                    isMultiple={isMultipleInstances}
-                    resetKey={resetKey}
                   />
                 ))}
               </div>
@@ -451,7 +478,6 @@ export const McpConfigEditModal = ({
 
           <Separator className="my-6" />
 
-          {/* アクションボタン */}
           <div className="flex justify-end space-x-2">
             <Button
               variant="outline"
@@ -463,7 +489,7 @@ export const McpConfigEditModal = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isUpdating || !isFormValid}
+              disabled={isUpdating || !isServerNameValid}
               size="sm"
             >
               {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -15,6 +15,7 @@ import { agentRouter } from "./agent";
 import { agentScheduleRouter } from "./agentSchedule";
 import { agentExecutionRouter } from "./agentExecution";
 import { dashboardRouter } from "./dashboard";
+import { toolOutputRouter } from "./toolOutput";
 
 export const v2Router = createTRPCRouter({
   user: userRouter,
@@ -33,4 +34,5 @@ export const v2Router = createTRPCRouter({
   agentSchedule: agentScheduleRouter,
   agentExecution: agentExecutionRouter,
   dashboard: dashboardRouter,
+  toolOutput: toolOutputRouter,
 });

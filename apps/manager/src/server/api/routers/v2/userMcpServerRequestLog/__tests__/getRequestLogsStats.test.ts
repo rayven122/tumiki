@@ -60,6 +60,7 @@ describe.skipIf(process.env.CI === "true")("getRequestLogsStats", () => {
         id: testMcpServerId,
         organizationId: testOrganizationId,
         name: "Test MCP Server",
+        slug: "test-mcp-server-stats",
         description: "Test server for request logs stats",
         serverStatus: "RUNNING",
         serverType: "OFFICIAL",

@@ -470,7 +470,7 @@ export const ServerDetailPageClient = ({
 
                       {/* ツール動的取得 */}
                       <div className="flex items-center gap-1.5">
-                        <Search className="h-3 w-3" />
+                        <Search className="h-3 w-3 text-indigo-600" />
                         <span>動的取得:</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -492,7 +492,7 @@ export const ServerDetailPageClient = ({
                         <Switch
                           checked={server.dynamicSearch ?? false}
                           onCheckedChange={handleDynamicSearchToggle}
-                          className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
+                          className="h-4 w-7 data-[state=checked]:bg-indigo-500 [&>span]:h-3 [&>span]:w-3"
                           aria-label={
                             server.dynamicSearch
                               ? "ツール動的取得を無効にする"
@@ -503,7 +503,7 @@ export const ServerDetailPageClient = ({
 
                       {/* データ圧縮 */}
                       <div className="flex items-center gap-1.5">
-                        <Shrink className="h-3 w-3" />
+                        <Shrink className="h-3 w-3 text-amber-600" />
                         <span>データ圧縮:</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -525,7 +525,7 @@ export const ServerDetailPageClient = ({
                         <Switch
                           checked={server.toonConversionEnabled}
                           onCheckedChange={handleToonConversionToggle}
-                          className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
+                          className="h-4 w-7 data-[state=checked]:bg-amber-500 [&>span]:h-3 [&>span]:w-3"
                           aria-label={
                             server.toonConversionEnabled
                               ? "データ圧縮を無効にする"
@@ -536,7 +536,7 @@ export const ServerDetailPageClient = ({
 
                       {/* マスキング */}
                       <div className="flex items-center gap-1.5">
-                        <ShieldCheck className="h-3 w-3" />
+                        <ShieldCheck className="h-3 w-3 text-emerald-600" />
                         <span>マスキング:</span>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -558,7 +558,7 @@ export const ServerDetailPageClient = ({
                         <Switch
                           checked={server.piiMaskingEnabled}
                           onCheckedChange={handlePiiMaskingToggle}
-                          className="h-4 w-7 data-[state=checked]:bg-green-500 [&>span]:h-3 [&>span]:w-3"
+                          className="h-4 w-7 data-[state=checked]:bg-emerald-500 [&>span]:h-3 [&>span]:w-3"
                           aria-label={
                             server.piiMaskingEnabled
                               ? "マスキングを無効にする"

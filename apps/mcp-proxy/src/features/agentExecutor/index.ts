@@ -2,7 +2,10 @@
  * エージェント実行機能のエントリーポイント
  */
 
-export { executeAgent } from "./executeAgent.js";
+// コマンド
+export { executeAgentCommand, executeAgent } from "./commands/index.js";
+
+// 型定義
 export type {
   ExecuteAgentRequest,
   ExecuteAgentResult,

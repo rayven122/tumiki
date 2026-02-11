@@ -75,8 +75,15 @@ export default async function Page(props: PageProps) {
   // DBからMCPサーバーIDを取得
   const mcpServerIds = chat.mcpServers.map((server) => server.id);
 
+  // エージェント情報を取得
+  const agentInfo = chat.agent
+    ? { name: chat.agent.name, iconPath: chat.agent.iconPath }
+    : null;
+
   // 編集可能かどうか（共通関数を使用）
-  const isEditable = canEditChat(accessResult);
+  // エージェントチャットの場合は閲覧のみ（追加のチャットは不可）
+  const isAgentChat = chat.agentId !== null;
+  const isEditable = canEditChat(accessResult) && !isAgentChat;
 
   return (
     <DataStreamProvider>
@@ -96,6 +103,7 @@ export default async function Page(props: PageProps) {
         session={session}
         autoResume={true}
         isPersonalOrg={organization.isPersonal}
+        agentInfo={agentInfo}
       />
       <DataStreamHandler />
     </DataStreamProvider>

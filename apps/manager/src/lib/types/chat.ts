@@ -16,6 +16,11 @@ export type ChatWithUser = Chat & {
     id: string;
     name: string | null;
   };
+  agent: {
+    id: string;
+    name: string;
+    iconPath: string | null;
+  } | null;
 };
 
 /**

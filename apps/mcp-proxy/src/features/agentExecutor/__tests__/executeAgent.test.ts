@@ -7,7 +7,7 @@
 
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { executeAgent } from "../executeAgent.js";
+import { executeAgent } from "../commands/index.js";
 import type { ExecuteAgentRequest } from "../types.js";
 
 // DBモック用の関数（vi.hoistedで巻き上げ対応）

@@ -153,6 +153,9 @@ const recordRequestLogAsync = async (c: Context<HonoEnv>): Promise<void> => {
     outputBytes,
     userAgent: c.req.header("user-agent"),
 
+    // AIツール呼び出しID（チャットメッセージとの紐付け用）
+    toolCallId: executionContext.toolCallId,
+
     // PII検出情報（集計データのみ、詳細はBigQuery）
     piiMaskingMode,
     piiDetectedRequestCount,

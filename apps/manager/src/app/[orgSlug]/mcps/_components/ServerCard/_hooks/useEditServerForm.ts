@@ -80,10 +80,11 @@ export const useEditServerForm = ({
    * @param serverName - サーバー名
    */
   const handleOAuthConnect = useCallback(
-    (serverName: string) => {
+    (serverName: string, slug: string) => {
       updateOAuthMcpServer({
         templateId: mcpServer.id,
         name: serverName || mcpServer.name,
+        slug: slug,
       });
     },
     [mcpServer.id, mcpServer.name, updateOAuthMcpServer],

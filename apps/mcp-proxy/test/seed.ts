@@ -132,6 +132,7 @@ const main = async () => {
     create: {
       id: TEST_MCP_SERVER_ID,
       name: "Context7 Verification Server",
+      slug: "context7-verification",
       description: "mcp-proxy検証用のContext7サーバーインスタンス",
       iconPath: mcpServerTemplate.iconPath,
       serverStatus: ServerStatus.RUNNING,

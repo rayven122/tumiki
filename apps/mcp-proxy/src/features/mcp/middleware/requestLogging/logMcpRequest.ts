@@ -42,6 +42,8 @@ export type LogMcpRequestParams = {
   errorCode?: number;
   /** エラーメッセージ */
   errorMessage?: string;
+  /** AIツール呼び出しID（チャットメッセージとの紐付け用） */
+  toolCallId?: string;
 };
 
 /**
@@ -95,6 +97,7 @@ export const logMcpRequest = async (
     httpStatus = 200,
     errorCode,
     errorMessage,
+    toolCallId,
   } = params;
 
   // JSONシリアライズ（1回のみ実行してバイト数・トークン数計算に再利用）
@@ -125,6 +128,7 @@ export const logMcpRequest = async (
     toonConversionEnabled: false,
     inputTokens,
     outputTokens,
+    toolCallId,
   };
 
   // PostgreSQLにログ記録
@@ -152,5 +156,6 @@ export const logMcpRequest = async (
     errorCode,
     errorMessage,
     postgresLogFailed: requestLogId === null,
+    toolCallId,
   });
 };

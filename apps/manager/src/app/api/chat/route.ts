@@ -21,6 +21,7 @@ import {
   saveMessages,
   updateChatMcpServers,
 } from "@/lib/db/queries";
+import { convertOutputsToRefs } from "@/lib/db/tool-output-utils";
 import { generateCUID } from "@/lib/utils";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { updateDocument } from "@/lib/ai/tools/update-document";
@@ -498,7 +499,10 @@ export const POST = async (request: Request) => {
                   id: msg.id,
                   chatId: id,
                   role: "assistant" as const,
-                  parts: msg.parts as unknown as Array<{
+                  // ツールoutputをBigQuery参照に変換（outputは保存せずoutputRefのみ）
+                  parts: convertOutputsToRefs(
+                    msg.parts as unknown[],
+                  ) as unknown as Array<{
                     text: string;
                     type: string;
                   }>,

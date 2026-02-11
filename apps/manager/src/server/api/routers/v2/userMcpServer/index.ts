@@ -37,7 +37,6 @@ import { createBulkNotifications } from "../notification/createBulkNotifications
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
 import {
   McpServerSchema,
-  McpApiKeySchema,
   McpServerTemplateInstanceSchema,
   McpServerTemplateSchema,
   McpToolSchema,
@@ -51,6 +50,13 @@ export const CreateApiKeyMcpServerInputV2 = z
     transportType: z.nativeEnum(TransportType).optional(),
     envVars: z.record(z.string(), z.string()).optional(),
     name: nameValidationSchema,
+    slug: z
+      .string()
+      .min(1, "スラッグは必須です")
+      .regex(
+        /^[a-z0-9-]+$/,
+        "スラッグは小文字英数字とハイフンのみ使用可能です",
+      ),
     description: z.string().optional(),
     authType: z.enum(["NONE", "API_KEY"]),
   })
@@ -66,6 +72,10 @@ export const CreateApiKeyMcpServerOutputV2 = z.object({
 // toolIdsはオプショナル - 省略時は全ツール選択
 export const CreateIntegratedMcpServerInputV2 = z.object({
   name: nameValidationSchema,
+  slug: z
+    .string()
+    .min(1, "スラッグは必須です")
+    .regex(/^[a-z0-9-]+$/, "スラッグは小文字英数字とハイフンのみ使用可能です"),
   description: z.string().optional(),
   templates: z
     .array(
@@ -122,10 +132,27 @@ export const UpdateOfficialServerOutputV2 = z.object({
   id: z.string(),
 });
 
+// APIキー出力用のスキーマ
+const ApiKeyOutputSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  isActive: z.boolean(),
+  expiresAt: z.date().nullable(),
+  createdAt: z.date(),
+});
+
+// 作成者情報のスキーマ
+const CreatedBySchema = z
+  .object({
+    id: z.string(),
+    name: z.string().nullable(),
+  })
+  .nullable();
+
 // MCPサーバー一覧取得用の出力スキーマ
 export const FindMcpServersOutputV2 = z.array(
   McpServerSchema.extend({
-    apiKeys: z.array(McpApiKeySchema),
+    apiKeys: z.array(ApiKeyOutputSchema),
     templateInstances: z.array(
       McpServerTemplateInstanceSchema.extend({
         mcpServerTemplate: McpServerTemplateSchema,
@@ -144,6 +171,10 @@ export const FindMcpServersOutputV2 = z.array(
     allOAuthAuthenticated: z.boolean().nullable(),
     // 最も早く期限切れになるOAuthトークンの有効期限（null: OAuthが不要または未認証）
     earliestOAuthExpiration: z.date().nullable(),
+    // 最終使用日時（RequestLogから取得）
+    lastUsedAt: z.date().nullable(),
+    // 作成者情報
+    createdBy: CreatedBySchema,
   }),
 );
 

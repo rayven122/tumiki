@@ -6,13 +6,18 @@ type FindMcpServersInput = {
   userId: string;
 };
 
+/** 日付配列から最小値を取得 */
+const getMinDate = (dates: Date[]): Date | null =>
+  dates.length > 0
+    ? new Date(Math.min(...dates.map((d) => d.getTime())))
+    : null;
+
 export const findMcpServers = async (
   tx: PrismaTransactionClient,
   input: FindMcpServersInput,
 ) => {
   const { organizationId, userId } = input;
 
-  // OAuthトークン一覧とサーバー一覧を並列で取得
   const [userOAuthTokens, servers] = await Promise.all([
     tx.mcpOAuthToken.findMany({
       where: { userId, organizationId },
@@ -22,41 +27,45 @@ export const findMcpServers = async (
       where: {
         organizationId,
         deletedAt: null,
-        // 検証中（PENDING）のサーバーは除外（OAuth認証が中断された場合など）
-        serverStatus: {
-          not: ServerStatus.PENDING,
-        },
+        serverStatus: { not: ServerStatus.PENDING },
       },
-      orderBy: {
-        displayOrder: "asc",
-      },
+      orderBy: { displayOrder: "asc" },
       include: {
         apiKeys: {
-          where: {
+          where: { isActive: true, deletedAt: null },
+          select: {
+            id: true,
+            name: true,
             isActive: true,
-            deletedAt: null,
+            expiresAt: true,
+            createdAt: true,
           },
+        },
+        createdBy: {
+          select: { id: true, name: true },
         },
         templateInstances: {
           orderBy: [{ displayOrder: "asc" }, { updatedAt: "asc" }],
           include: {
-            mcpServerTemplate: {
-              include: {
-                mcpTools: true,
-              },
-            },
-            allowedTools: {
-              select: {
-                id: true,
-              },
-            },
+            mcpServerTemplate: { include: { mcpTools: true } },
+            allowedTools: { select: { id: true } },
           },
         },
       },
     }),
   ]);
 
-  // インスタンスIDごとのトークン情報をMapで管理
+  // 各サーバーの最終使用日時をRequestLogから取得
+  const serverIds = servers.map((s) => s.id);
+  const lastUsedLogs = await tx.mcpServerRequestLog.groupBy({
+    by: ["mcpServerId"],
+    where: { mcpServerId: { in: serverIds } },
+    _max: { createdAt: true },
+  });
+  const lastUsedByServerId = new Map(
+    lastUsedLogs.map((log) => [log.mcpServerId, log._max.createdAt]),
+  );
+
   const tokensByInstanceId = new Map(
     userOAuthTokens.map((t) => [
       t.mcpServerTemplateInstanceId,
@@ -69,9 +78,7 @@ export const findMcpServers = async (
   );
 
   return servers.map((server) => {
-    // 各テンプレートインスタンスの情報を構築
     const templateInstances = server.templateInstances.map((instance) => {
-      // ツールにisEnabledを追加
       const allowedToolIds = new Set(
         instance.allowedTools.map((tool) => tool.id),
       );
@@ -86,17 +93,19 @@ export const findMcpServers = async (
         isEnabled: allowedToolIds.has(tool.id),
       }));
 
-      // OAuth認証状態を追加
       const isOAuthRequired = instance.mcpServerTemplate.authType === "OAUTH";
       const isOAuthAuthenticated = isOAuthRequired
         ? authenticatedInstanceIds.has(instance.id)
         : null;
 
-      // OAuthトークンの有効期限を取得（undefinedはnullに変換）
       const tokenInfo = tokensByInstanceId.get(instance.id);
       const oauthTokenExpiresAt = isOAuthRequired
         ? (tokenInfo?.expiresAt ?? null)
         : null;
+
+      // mcpToolsは出力スキーマに含まれないため除外
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { mcpTools, ...mcpServerTemplate } = instance.mcpServerTemplate;
 
       return {
         id: instance.id,
@@ -107,14 +116,14 @@ export const findMcpServers = async (
         displayOrder: instance.displayOrder,
         createdAt: instance.createdAt,
         updatedAt: instance.updatedAt,
-        mcpServerTemplate: instance.mcpServerTemplate,
+        mcpServerTemplate,
         tools,
         isOAuthAuthenticated,
         oauthTokenExpiresAt,
       };
     });
 
-    // サーバー全体のOAuth状態（1つでも未認証があればfalse）
+    // サーバー全体のOAuth状態
     const oauthInstances = templateInstances.filter(
       (i) => i.isOAuthAuthenticated !== null,
     );
@@ -125,21 +134,38 @@ export const findMcpServers = async (
 
     // 最も早く期限切れになるOAuthトークンの有効期限を取得
     const oauthExpirations = templateInstances
-      .filter(
-        (i): i is typeof i & { oauthTokenExpiresAt: Date } =>
-          i.oauthTokenExpiresAt !== null,
-      )
-      .map((i) => i.oauthTokenExpiresAt);
-    const earliestOAuthExpiration =
-      oauthExpirations.length > 0
-        ? new Date(Math.min(...oauthExpirations.map((d) => d.getTime())))
-        : null;
+      .map((i) => i.oauthTokenExpiresAt)
+      .filter((date): date is Date => date !== null);
+    const earliestOAuthExpiration = getMinDate(oauthExpirations);
+
+    // 最終使用日時（RequestLogから取得）
+    const lastUsedAt = lastUsedByServerId.get(server.id) ?? null;
 
     return {
-      ...server,
+      id: server.id,
+      serverStatus: server.serverStatus,
+      serverType: server.serverType,
+      authType: server.authType,
+      piiMaskingMode: server.piiMaskingMode,
+      name: server.name,
+      slug: server.slug,
+      description: server.description,
+      iconPath: server.iconPath,
+      organizationId: server.organizationId,
+      createdById: server.createdById,
+      displayOrder: server.displayOrder,
+      piiInfoTypes: server.piiInfoTypes,
+      toonConversionEnabled: server.toonConversionEnabled,
+      dynamicSearch: server.dynamicSearch,
+      createdAt: server.createdAt,
+      updatedAt: server.updatedAt,
+      deletedAt: server.deletedAt,
+      apiKeys: server.apiKeys,
       templateInstances,
       allOAuthAuthenticated,
       earliestOAuthExpiration,
+      lastUsedAt,
+      createdBy: server.createdBy,
     };
   });
 };
