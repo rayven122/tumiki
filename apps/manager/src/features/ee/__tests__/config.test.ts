@@ -34,6 +34,7 @@ describe("EE/CE エディション設定", () => {
       expect(isEEFeatureAvailable("role-management")).toBe(false);
       expect(isEEFeatureAvailable("group-management")).toBe(false);
       expect(isEEFeatureAvailable("organization-creation")).toBe(false);
+      expect(isEEFeatureAvailable("dynamic-search")).toBe(false);
     });
 
     test("getAvailableEEFeaturesが空配列を返す", async () => {
@@ -49,7 +50,7 @@ describe("EE/CE エディション設定", () => {
       const { getAllEEFeatureInfo } = await import("../config");
       const features = getAllEEFeatureInfo();
 
-      expect(features).toHaveLength(4);
+      expect(features).toHaveLength(5);
       expect(features.every((f) => f.available === false)).toBe(true);
     });
   });
@@ -104,7 +105,7 @@ describe("EE/CE エディション設定", () => {
       const { getAllEEFeatureInfo } = await import("../config");
       const features = getAllEEFeatureInfo();
 
-      expect(features).toHaveLength(4);
+      expect(features).toHaveLength(5);
 
       const memberManagement = features.find(
         (f) => f.feature === "member-management",
@@ -116,6 +117,12 @@ describe("EE/CE エディション設定", () => {
         (f) => f.feature === "organization-creation",
       );
       expect(orgCreation?.available).toBe(false);
+
+      const dynamicSearch = features.find(
+        (f) => f.feature === "dynamic-search",
+      );
+      expect(dynamicSearch?.available).toBe(true);
+      expect(dynamicSearch?.description).toBe("MCPツールの動的検索機能");
     });
   });
 
@@ -143,8 +150,9 @@ describe("EE/CE エディション設定", () => {
       const { getAvailableEEFeatures } = await import("../config");
       const features = getAvailableEEFeatures();
 
-      expect(features).toHaveLength(4);
+      expect(features).toHaveLength(5);
       expect(features).toContain("organization-creation");
+      expect(features).toContain("dynamic-search");
     });
   });
 
