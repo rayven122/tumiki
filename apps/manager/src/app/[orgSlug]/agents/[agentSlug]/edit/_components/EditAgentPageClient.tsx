@@ -24,7 +24,7 @@ import {
   McpDragDropSelector,
   convertToSelectableMcp,
 } from "@/components/mcp-selector";
-import { MODEL_OPTIONS } from "@/lib/agent";
+import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/lib/agent";
 
 type EditAgentPageClientProps = {
   orgSlug: string;
@@ -144,7 +144,7 @@ const EditForm = ({
       name: formState.name,
       slug: formState.slug,
       systemPrompt: formState.systemPrompt,
-      modelId: formState.modelId || undefined,
+      modelId: formState.modelId || DEFAULT_MODEL_ID,
       visibility: formState.visibility,
       mcpServerIds:
         formState.selectedMcpServerIds.length > 0
