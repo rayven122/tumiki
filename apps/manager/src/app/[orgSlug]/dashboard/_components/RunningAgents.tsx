@@ -54,6 +54,7 @@ export const RunningAgents = ({ agents, orgSlug }: RunningAgentsProps) => {
                       src={agent.agentIconPath}
                       alt=""
                       className="h-6 w-6 rounded"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <Bot className="text-primary h-5 w-5" />

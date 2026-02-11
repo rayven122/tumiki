@@ -161,6 +161,7 @@ const CreatorAvatar = ({ createdBy }: { createdBy: Agent["createdBy"] }) => {
           src={createdBy.image}
           alt={createdBy.name ?? ""}
           className="h-5 w-5 rounded-full"
+          referrerPolicy="no-referrer"
         />
       ) : (
         <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600">
