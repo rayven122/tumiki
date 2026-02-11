@@ -309,6 +309,7 @@ Prisma スキーマは複数のファイルに分割（`packages/db/prisma/schem
   - ステートレス設計
   - レイヤー構成: `domain/` → `shared/` → `infrastructure/` → `features/`
 - **型安全性**: 自動 API 生成によるフルスタック型安全性、@tumiki/db から型 import
+- **Manager Features 構成**: ドメイン単位で `features/` ディレクトリに集約する設計（詳細は [Manager Features Architecture](./docs/architecture/manager-features-architecture.md) 参照）
 
 ### 認証アーキテクチャ
 

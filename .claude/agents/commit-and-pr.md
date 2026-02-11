@@ -84,9 +84,73 @@ gh pr create --draft --title "<title>" --body "<body>" --assignee @me
 - PR URL
 - 作成/更新の区別
 
-## 絶対条件
+## 絶対条件（必ず守ること）
 
-1. **PRの本文は英語と日本語を併記**: Summary、Changesなど、各セクションで英語と日本語の両方を記載する
+### 1. PRの本文は英語と日本語を必ず併記
+
+**各セクションの本文で英語→日本語の順で両方記載すること。どちらか一方のみは禁止。**
+
+PRテンプレート（`.github/pull_request_template.md`）に従い、以下の形式で記載：
+
+```markdown
+## Summary
+
+### What?
+
+[English: Briefly describe what this PR changes]
+
+[日本語: 変更内容を簡潔に説明]
+
+### Why?
+
+[English: Explain the motivation and context]
+
+[日本語: 変更の動機・背景を説明]
+
+### How?
+
+[English: Describe the implementation approach]
+
+[日本語: 実装アプローチの概要を説明]
+
+---
+
+## Changes
+
+- [English bullet point 1]
+- [English bullet point 2]
+
+- [日本語の変更点1]
+- [日本語の変更点2]
+
+## Screenshots
+
+<!-- UI変更がある場合のみ記載 -->
+
+| Before | After |
+| ------ | ----- |
+|        |       |
+
+---
+
+## Breaking Changes
+
+- [x] No breaking changes / 破壊的変更なし
+
+---
+
+## Notes for Reviewers
+
+[English: Points that need special attention]
+
+[日本語: レビュー時に注意してほしい点]
+
+---
+
+## Related Issues
+
+Fixes #[issue number]
+```
 
 ## 重要なガイドライン
 

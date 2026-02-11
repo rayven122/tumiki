@@ -8,6 +8,13 @@
 
 **An AI integration platform that connects your AI agents with business tools**
 
+[![CI](https://github.com/rayven122/tumiki/actions/workflows/ci.yml/badge.svg)](https://github.com/rayven122/tumiki/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.14.0-green)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-10.11.0-orange)](https://pnpm.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
+[![Discord](https://img.shields.io/badge/Discord-Join%20us-7289da?logo=discord&logoColor=white)](https://discord.com/invite/gp9SetUmGe)
+
 [日本語版はこちら](README.ja.md)
 
 ---
@@ -38,6 +45,74 @@ Think of it like this: Just as USB connects your devices to your computer, MCP c
 | **Visualize Activity Logs**        | Track and analyze all activities with comprehensive logging          |
 | **Secure Operation**               | Enterprise-level security for safe management of confidential data   |
 | **Fast Setup**                     | Build your AI agent team environment in minutes with no expertise    |
+
+## Awards & Recognition
+
+### 🏆 NEDO GenIAC Prize 2025
+
+Tumiki was awarded the [**NEDO GenIAC Prize**](https://geniac-prize.nedo.go.jp/) in **Category 03: AI Safety** (October 2025).
+
+> _"A practical and immediately effective proposal that could become the foundation for standard technology supporting safe AI utilization in enterprises."_
+>
+> — GenIAC Prize Review Committee
+
+**Proposal:** "Integrated Risk Countermeasures through MCP Server Security Enhancement and AI Permission Control"
+
+### 📜 Patent
+
+**Japan Patent No. 7731114** — "Information Processing System Management System"
+
+- **Patentee:** RAYVEN Inc.
+- **Filed:** April 9, 2025
+- **Registered:** August 21, 2025
+- **PCT Application:** Filed (International patent pending)
+
+This patent covers the core MCP management infrastructure technology used in Tumiki.
+
+## Project Structure
+
+Tumiki is a monorepo managed with [Turborepo](https://turbo.build/repo) and [pnpm workspaces](https://pnpm.io/workspaces).
+
+```
+tumiki/
+├── apps/
+│   ├── manager/          # Web dashboard (Next.js 15 + React 19)
+│   ├── mcp-proxy/        # MCP Proxy server (Hono)
+│   └── desktop/          # Desktop application (Tauri + Electron)
+├── packages/
+│   ├── db/               # Database layer (Prisma ORM + Field Encryption)
+│   ├── oauth-token-manager/  # OAuth token management
+│   ├── keycloak/         # Keycloak integration utilities
+│   ├── mailer/           # Email service
+│   ├── slack/            # Slack integration
+│   └── scripts/          # Shared build scripts
+├── docker/               # Docker Compose configurations
+└── terraform/            # Infrastructure as Code (Keycloak)
+```
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AI Agents                                 │
+│              (Claude, GPT, Custom Agents, etc.)                  │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │ MCP Protocol
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      MCP Proxy Server                            │
+│    ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│    │   Router    │  │   Auth      │  │   Logging   │            │
+│    └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+   ┌─────────┐          ┌─────────┐          ┌─────────┐
+   │  Slack  │          │  Notion │          │   ...   │
+   └─────────┘          └─────────┘          └─────────┘
+                    Business Tools
+```
 
 ## Getting Started
 
@@ -75,6 +150,28 @@ pnpm dev
 
 For detailed setup instructions, see [docs/SETUP.md](./docs/SETUP.md).
 
+### Available Scripts
+
+```bash
+# Development
+pnpm dev              # Start all development servers
+pnpm build            # Build all packages and apps
+pnpm test             # Run tests
+pnpm typecheck        # TypeScript type checking
+pnpm lint             # Run ESLint
+pnpm format           # Check code formatting
+
+# Docker
+pnpm docker:up        # Start containers
+pnpm docker:down      # Stop and remove containers
+pnpm docker:logs      # View container logs
+
+# Database
+cd packages/db
+pnpm db:migrate       # Run migrations
+pnpm db:studio        # Open Prisma Studio
+```
+
 ## Tech Stack
 
 ### Frontend
@@ -101,13 +198,22 @@ For detailed setup instructions, see [docs/SETUP.md](./docs/SETUP.md).
 
 - [Setup Guide](./docs/SETUP.md) - Detailed setup instructions
 - [Environment Variables](./docs/environment-variables.md) - Configuration reference
+- [Manager Architecture](./docs/architecture/manager-features-architecture.md) - Feature-based architecture guide
+
+## Community
+
+- [Discord](https://discord.com/invite/gp9SetUmGe) - Join our community for discussions and support
+- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - Bug reports and feature requests
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is dual-licensed:
 
-Some files are licensed under the Elastic License v2.0 (ELv2). See [LICENSE.EE](LICENSE.EE) for details.
+- **MIT License** - For most of the codebase. See [LICENSE](LICENSE) for details.
+- **Elastic License v2.0 (ELv2)** - For Enterprise Edition features (files with `.ee.ts` extension). See [LICENSE.EE](LICENSE.EE) for details.
 
 ## Support
 
-- [GitHub Issues](https://github.com/rayven122/tumiki/issues) - Bug reports and feature requests
+If you find Tumiki useful, please consider giving it a ⭐ on GitHub!
+
+For enterprise support and custom integrations, please reach out on [Discord](https://discord.com/invite/gp9SetUmGe).
