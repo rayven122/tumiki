@@ -8,7 +8,7 @@ import {
   TransportType,
   McpServerVisibility,
 } from "@tumiki/db/server";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 import { TRPCError } from "@trpc/server";
 
 type TemplateInfo = {

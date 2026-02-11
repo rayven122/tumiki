@@ -14,7 +14,7 @@ import {
   type McpContentItem,
   type McpToolCallResult,
 } from "../../shared/utils/jsonRpc/typeGuards.js";
-import { countTokens } from "../../shared/utils/tokenCount.js";
+import { countTokens } from "@tumiki/shared/utils/tokenCount";
 
 /**
  * TOON変換結果

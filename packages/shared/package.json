@@ -1,0 +1,48 @@
+{
+  "name": "@tumiki/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "default": "./dist/utils/index.js"
+    },
+    "./utils/normalizeServerName": {
+      "types": "./dist/utils/normalizeServerName.d.ts",
+      "default": "./dist/utils/normalizeServerName.js"
+    },
+    "./utils/tokenCount": {
+      "types": "./dist/utils/tokenCount.d.ts",
+      "default": "./dist/utils/tokenCount.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --project tsconfig.build.json --watch",
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "git clean -xdf .cache .turbo node_modules dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore --write",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "js-tiktoken": "^1.0.21"
+  },
+  "devDependencies": {
+    "@tumiki/eslint-config": "workspace:*",
+    "@tumiki/prettier-config": "workspace:*",
+    "@tumiki/tsconfig": "workspace:*",
+    "@tumiki/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "prettier": "@tumiki/prettier-config"
+}

@@ -30,6 +30,11 @@ const featureMessages: Record<
     title: "組織作成",
     description: "新しい組織を作成するにはEnterprise Editionが必要です。",
   },
+  "dynamic-search": {
+    title: "動的ツール検索",
+    description:
+      "MCPツールの動的検索機能を利用するにはEnterprise Editionが必要です。",
+  },
 };
 
 /**

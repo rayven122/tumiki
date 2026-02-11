@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 type ServerNameInputProps = {
   serverName: string;

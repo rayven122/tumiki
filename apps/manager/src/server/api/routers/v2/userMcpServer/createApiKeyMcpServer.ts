@@ -10,7 +10,7 @@ import {
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { Prisma } from "@tumiki/db/prisma";
 import type { McpServerTemplate } from "@tumiki/db/prisma";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 import { TRPCError } from "@trpc/server";
 import {
   getMcpServerToolsSSE,

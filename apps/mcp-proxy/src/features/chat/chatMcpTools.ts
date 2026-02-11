@@ -10,10 +10,10 @@ import { jsonSchema, type Tool } from "ai";
 
 import { db } from "@tumiki/db/server";
 
+import { DYNAMIC_SEARCH_META_TOOLS } from "../execution/index.js";
 import { callToolCommand } from "../mcp/commands/callTool/callToolCommand.js";
 import { handleMetaTool } from "../mcp/commands/callTool/handleMetaTool.js";
 import { logMcpRequest } from "../mcp/middleware/requestLogging/index.js";
-import { DYNAMIC_SEARCH_META_TOOLS } from "../dynamicSearch/index.js";
 
 /**
  * MCPツール取得のパラメータ
@@ -130,9 +130,7 @@ export const getChatMcpTools = async (
 
         tools[aiSdkToolName] = {
           description: metaTool.description ?? undefined,
-          inputSchema: jsonSchema(
-            metaTool.inputSchema as Record<string, unknown>,
-          ),
+          inputSchema: jsonSchema(metaTool.inputSchema),
           execute: createChatToolExecute({
             mcpServerId: server.id,
             mcpProxyToolName: metaTool.name,

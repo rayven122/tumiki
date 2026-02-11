@@ -7,11 +7,10 @@
 3. [コンポーネント構成](#コンポーネント構成)
 4. [データフロー](#データフロー)
 5. [認証・認可](#認証認可)
-6. [キャッシュ戦略](#キャッシュ戦略)
-7. [デプロイ構成](#デプロイ構成)
-8. [セキュリティ](#セキュリティ)
-9. [パフォーマンス最適化](#パフォーマンス最適化)
-10. [監視とログ](#監視とログ)
+6. [デプロイ構成](#デプロイ構成)
+7. [セキュリティ](#セキュリティ)
+8. [パフォーマンス最適化](#パフォーマンス最適化)
+9. [監視とログ](#監視とログ)
 
 ---
 
@@ -271,27 +270,6 @@ type AuthInfo = {
 
 ---
 
-## キャッシュ戦略
-
-現在、設定キャッシュは無効化されています。  
-`getCachedConfig()` は常に DB から設定を取得し、`invalidateConfigCache()` は no-op（ログ出力のみ）です。
-
-### 現在の実装
-
-```typescript
-// apps/mcp-proxy/src/infrastructure/cache/configCache.ts
-const data = await getCachedConfig(mcpServerId, fetchFromDb); // 常にDB取得
-await invalidateConfigCache(mcpServerId); // 現在は実処理なし
-```
-
-### 将来再導入時のメモ
-
-- Redis接続の信頼性（Cloud Run環境での再接続/障害時フォールバック）
-- 暗号化/復号化コスト
-- キャッシュ無効化タイミングと整合性
-
----
-
 ## デプロイ構成
 
 ### Google Cloud Run 基本スペック
@@ -379,7 +357,7 @@ await invalidateConfigCache(mcpServerId); // 現在は実処理なし
 
 MCP Proxyは、Cloud Runのサーバーレス環境に最適化された、スケーラブルでセキュアなMCPサーバー統合プラットフォームです。
 
-### 主要な設計原則
+**設計原則**:
 
 1. **ステートレス**: インスタンス間で状態共有なし
 2. **単純性**: 設定をDBから直接取得し、整合性を優先

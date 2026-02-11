@@ -2,7 +2,6 @@
 import { db } from "@tumiki/db/server";
 
 import app from "./app.js";
-import { closeRedisClient } from "./infrastructure/cache/redis.js";
 import {
   initializeScheduler,
   shutdownScheduler,
@@ -68,10 +67,6 @@ const gracefulShutdown = async (): Promise<void> => {
       // スケジューラを停止
       logInfo("Stopping scheduler");
       shutdownScheduler();
-
-      // Redis接続をクローズ
-      logInfo("Closing Redis connection");
-      await closeRedisClient();
 
       // Prisma DB接続をクローズ
       logInfo("Closing database connection");

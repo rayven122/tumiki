@@ -7,7 +7,7 @@
 
 import type { ReAuthRequiredError } from "@tumiki/oauth-token-manager";
 
-import { isMetaTool } from "../../../dynamicSearch/index.js";
+import { isMetaToolName } from "../../../execution/index.js";
 import { isReAuthRequiredError } from "../../../../shared/errors/index.js";
 import { callToolCommand } from "./callToolCommand.js";
 import { handleMetaTool } from "./handleMetaTool.js";
@@ -54,7 +54,7 @@ export const createCallToolHandler = (
 
     try {
       // メタツールの処理
-      if (isMetaTool(fullToolName)) {
+      if (isMetaToolName(fullToolName)) {
         return await handleMetaTool(
           fullToolName,
           args,

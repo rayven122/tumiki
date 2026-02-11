@@ -9,13 +9,7 @@ import { useReauthenticateFromChat } from "@/hooks/useReauthenticateFromChat";
 import { useToolOutput } from "@/hooks/useToolOutput";
 import { parseToolName } from "@/utils/mcpToolName";
 import { detectErrorFromOutput, extractAuthError } from "@/utils/mcpToolError";
-
-// AI SDK 6 のツール状態
-type ToolState =
-  | "input-streaming"
-  | "input-available"
-  | "output-available"
-  | "output-error";
+import { type ToolState } from "@/features/chat";
 
 type McpToolCallProps = {
   toolName: string; // "linear-mcp__linear__list_teams" or "linear-mcp__search_tools"
@@ -25,6 +19,13 @@ type McpToolCallProps = {
   output?: unknown;
   /** BigQuery参照（outputがBigQueryに保存されている場合） */
   outputRef?: string;
+  /**
+   * コンパクトモード（エージェント実行モーダル用）
+   * - 再認証バナーを非表示
+   * - outputRef フェッチを無効化
+   * @default false
+   */
+  compact?: boolean;
 };
 
 /**
@@ -149,12 +150,13 @@ export const McpToolCall = ({
   input,
   output: directOutput,
   outputRef,
+  compact = false,
 }: McpToolCallProps) => {
   const pathname = usePathname();
   const { serverSlug, displayToolName } = parseToolName(toolName);
   const isLoading = state === "input-streaming" || state === "input-available";
 
-  // outputRefがある場合、展開時にBigQueryからフェッチ
+  // outputRefがある場合、展開時にBigQueryからフェッチ（compactモードでは無効）
   const [shouldFetch, setShouldFetch] = useState(false);
   const {
     output: fetchedOutput,
@@ -162,7 +164,7 @@ export const McpToolCall = ({
     error: fetchError,
   } = useToolOutput({
     toolCallId: outputRef,
-    enabled: shouldFetch && !!outputRef,
+    enabled: !compact && shouldFetch && !!outputRef,
   });
 
   // 実際に使用するoutput（直接渡されたものまたはフェッチしたもの）
@@ -171,18 +173,17 @@ export const McpToolCall = ({
   // stateが"output-available"でも、outputにisError:trueがあればエラーとして扱う
   const outputHasError = detectErrorFromOutput(output);
 
-  // 認証エラー情報を抽出（再認証ボタン表示用）
-  const authError = extractAuthError(output);
+  // 認証エラー情報を抽出（再認証ボタン表示用、compactモードでは無効）
+  const authError = compact ? null : extractAuthError(output);
 
   // 実際に表示する状態（outputのisErrorでオーバーライド）
   const displayState: ToolState =
     state === "output-available" && outputHasError ? "output-error" : state;
 
-  // 再認証後に戻るURL（チャット画面）
+  // 再認証後に戻るURL（チャット画面、compactモードでは使用しない）
   // パスから orgSlug と chatId を抽出: /[orgSlug]/chat/[chatId]
-  const redirectTo = pathname?.match(/^\/([^/]+)\/chat\/([^/]+)/)
-    ? pathname
-    : null;
+  const redirectTo =
+    !compact && pathname?.match(/^\/([^/]+)\/chat\/([^/]+)/) ? pathname : null;
 
   return (
     <div
@@ -215,28 +216,32 @@ export const McpToolCall = ({
       {/* 結果（出力）- エラーでない場合のみ表示 */}
       {displayState === "output-available" && (
         <>
-          {/* outputRefがある場合はオンデマンドフェッチ */}
-          {outputRef && !output && !isFetchingOutput && !fetchError && (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => setShouldFetch(true)}
-                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-              >
-                <ChevronRightIcon className="size-3" />
-                結果を読み込む
-              </button>
-            </div>
-          )}
-          {/* フェッチ中 */}
-          {isFetchingOutput && (
+          {/* outputRefがある場合はオンデマンドフェッチ（compactモードでは非表示） */}
+          {!compact &&
+            outputRef &&
+            !output &&
+            !isFetchingOutput &&
+            !fetchError && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShouldFetch(true)}
+                  className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                >
+                  <ChevronRightIcon className="size-3" />
+                  結果を読み込む
+                </button>
+              </div>
+            )}
+          {/* フェッチ中（compactモードでは非表示） */}
+          {!compact && isFetchingOutput && (
             <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
               <TypingIndicator size="sm" />
               <span>結果を読み込み中...</span>
             </div>
           )}
-          {/* フェッチエラー */}
-          {fetchError && (
+          {/* フェッチエラー（compactモードでは非表示） */}
+          {!compact && fetchError && (
             <div className="mt-2 text-xs text-red-600">
               結果の読み込みに失敗しました: {fetchError.message}
             </div>

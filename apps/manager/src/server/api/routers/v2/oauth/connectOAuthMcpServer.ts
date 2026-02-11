@@ -10,7 +10,7 @@ import { getOrCreateTemplateInfo } from "../userMcpServer/helpers/server-templat
 import { createOfficialMcpServer } from "../userMcpServer/helpers/mcp-server-creator";
 import { getOrCreateOAuthClient } from "../userMcpServer/helpers/oauth-client-manager";
 import { generateAuthorizationUrl } from "../userMcpServer/helpers/generateAuthorizationUrl";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 type ConnectOAuthMcpServerInput = z.infer<typeof ConnectOAuthMcpServerInputV2>;
 

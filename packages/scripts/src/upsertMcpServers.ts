@@ -1,7 +1,7 @@
 import { db, OFFICIAL_ORGANIZATION_ID } from "@tumiki/db/server";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 import { MCP_SERVERS } from "./constants/mcpServers";
-import { normalizeServerName } from "./utils/normalizeServerName";
 
 /**
  * MCP サーバーテンプレートを登録する

@@ -18,7 +18,7 @@ import {
 import { copyToClipboard } from "@/utils/client/copyToClipboard";
 import { toast } from "@/utils/client/toast";
 import { getProxyServerUrl, makeHttpProxyServerUrl } from "@/utils/url";
-import { normalizeServerName } from "@/utils/normalizeServerName";
+import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 import { api } from "@/trpc/react";
 import Image from "next/image";
 import type { UserMcpServerDetail } from "../types";
