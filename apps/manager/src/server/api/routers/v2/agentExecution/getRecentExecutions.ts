@@ -8,6 +8,16 @@ type GetRecentExecutionsParams = {
   cursor?: string;
 };
 
+/** ツール呼び出し情報 */
+type ToolCallInfo = {
+  toolName: string;
+  state: "success" | "error" | "running";
+};
+
+/** テキストを指定した長さに切り詰める */
+const truncateText = (text: string, maxLength: number): string =>
+  text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+
 /**
  * メッセージパーツからテキストを抽出
  * textタイプのパーツを優先し、最大60文字に切り詰める
@@ -16,16 +26,92 @@ const extractTextFromParts = (parts: unknown): string | null => {
   if (!Array.isArray(parts)) return null;
 
   for (const part of parts) {
-    if (typeof part === "object" && part !== null) {
-      const p = part as Record<string, unknown>;
-      if (p.type === "text" && typeof p.text === "string") {
-        const text = p.text.trim();
-        return text.length > 60 ? text.substring(0, 60) + "..." : text;
-      }
+    if (typeof part !== "object" || part === null) continue;
+
+    const p = part as Record<string, unknown>;
+    if (p.type === "text" && typeof p.text === "string") {
+      return truncateText(p.text.trim(), 60);
     }
   }
 
   return null;
+};
+
+/**
+ * ツール名からMCPサーバー部分を除去して表示用ツール名を取得
+ * 形式: serverId__prefix__toolName → toolName
+ */
+const parseToolDisplayName = (fullToolName: string): string => {
+  const parts = fullToolName.split("__");
+  if (parts.length >= 3) {
+    // serverId__prefix__toolName 形式
+    return parts.slice(2).join("__");
+  }
+  if (parts.length === 2) {
+    // serverId__toolName 形式
+    return parts[1] ?? fullToolName;
+  }
+  return fullToolName;
+};
+
+/** パーツからツール情報を抽出（単一パーツ処理） */
+const extractToolFromPart = (
+  part: Record<string, unknown>,
+): ToolCallInfo | null => {
+  const { type, toolName, state } = part;
+  if (typeof type !== "string") return null;
+
+  // dynamic-tool タイプ
+  if (type === "dynamic-tool") {
+    if (typeof toolName === "string" && typeof state === "string") {
+      return {
+        toolName: parseToolDisplayName(toolName),
+        state: mapToolState(state),
+      };
+    }
+    return null;
+  }
+
+  // tool-* タイプ
+  if (type.startsWith("tool-") && typeof state === "string") {
+    const extractedToolName = type.replace("tool-", "");
+    return {
+      toolName: parseToolDisplayName(extractedToolName),
+      state: mapToolState(state),
+    };
+  }
+
+  return null;
+};
+
+/**
+ * メッセージパーツからツール呼び出し情報を抽出
+ */
+const extractToolCallsFromParts = (parts: unknown): ToolCallInfo[] => {
+  if (!Array.isArray(parts)) return [];
+
+  return parts
+    .filter(
+      (part): part is Record<string, unknown> =>
+        typeof part === "object" && part !== null,
+    )
+    .map(extractToolFromPart)
+    .filter((tool): tool is ToolCallInfo => tool !== null);
+};
+
+/**
+ * ツール状態をマッピング
+ */
+const mapToolState = (state: string): "success" | "error" | "running" => {
+  switch (state) {
+    case "output-available":
+      return "success";
+    case "output-error":
+    case "error":
+      return "error";
+    default:
+      return "running";
+  }
 };
 
 /**
@@ -45,11 +131,22 @@ export const getRecentExecutions = async (
     },
     select: {
       id: true,
+      agentId: true,
       chatId: true,
       success: true,
+      modelId: true,
+      durationMs: true,
       agent: {
         select: {
+          name: true,
           slug: true,
+          iconPath: true,
+          estimatedDurationMs: true,
+        },
+      },
+      schedule: {
+        select: {
+          name: true,
         },
       },
       createdAt: true,
@@ -66,7 +163,7 @@ export const getRecentExecutions = async (
     .map((exec) => exec.chatId)
     .filter((id): id is string => id !== null);
 
-  const latestMessages =
+  const messages =
     chatIds.length > 0
       ? await db.message.findMany({
           where: {
@@ -81,19 +178,31 @@ export const getRecentExecutions = async (
         })
       : [];
 
-  // chatIdごとに最新メッセージをマップ化
+  // chatIdごとに最新メッセージとツール呼び出しをマップ化
   const messageMap = new Map<string, string | null>();
-  for (const msg of latestMessages) {
+  const toolCallsMap = new Map<string, ToolCallInfo[]>();
+
+  for (const msg of messages) {
+    // 最新メッセージ（テキスト）の抽出
     if (!messageMap.has(msg.chatId)) {
       messageMap.set(msg.chatId, extractTextFromParts(msg.parts));
     }
+    // ツール呼び出し情報の抽出（全メッセージから収集）
+    const existingToolCalls = toolCallsMap.get(msg.chatId) ?? [];
+    const newToolCalls = extractToolCallsFromParts(msg.parts);
+    toolCallsMap.set(msg.chatId, [...existingToolCalls, ...newToolCalls]);
   }
 
   return {
-    items: items.map(({ agent, ...rest }) => ({
+    items: items.map(({ agent, schedule, ...rest }) => ({
       ...rest,
+      agentName: agent.name,
       agentSlug: agent.slug,
+      agentIconPath: agent.iconPath,
+      estimatedDurationMs: agent.estimatedDurationMs,
+      scheduleName: schedule?.name ?? null,
       latestMessage: rest.chatId ? (messageMap.get(rest.chatId) ?? null) : null,
+      toolCalls: rest.chatId ? (toolCallsMap.get(rest.chatId) ?? []) : [],
     })),
     nextCursor: hasMore ? items[items.length - 1]?.id : undefined,
   };
