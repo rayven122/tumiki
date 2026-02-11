@@ -11,6 +11,7 @@ import { jsonSchema, type Tool } from "ai";
 import { db } from "@tumiki/db/server";
 
 import { callToolCommand } from "../mcp/commands/callTool/callToolCommand.js";
+import { handleMetaTool } from "../mcp/commands/callTool/handleMetaTool.js";
 import { logMcpRequest } from "../mcp/middleware/requestLogging/index.js";
 import { DYNAMIC_SEARCH_META_TOOLS } from "../dynamicSearch/index.js";
 
@@ -40,10 +41,29 @@ type GetChatMcpToolsResult = {
  * ツール実行関数作成用パラメータ
  */
 type CreateChatToolExecuteParams = {
+  /** MCPサーバーID */
   mcpServerId: string;
-  fullToolName: string;
+  /** mcp-proxyに渡すツール名（プレフィックスなし） */
+  mcpProxyToolName: string;
+  /** AI SDK用の一意な完全ツール名（slug付き） */
+  aiSdkToolName: string;
+  /** 組織ID */
   organizationId: string;
+  /** ユーザーID */
   userId: string;
+  /** dynamicSearchのメタツールかどうか */
+  isDynamicSearchMetaTool: boolean;
+};
+
+/**
+ * AI SDK Tool.execute関数のオプション型
+ * AI SDKがツール実行時に渡すコンテキスト情報を含む
+ */
+type ToolExecuteOptions = {
+  /** AI SDKが生成したツール呼び出しID */
+  toolCallId: string;
+  abortSignal?: AbortSignal;
+  messages?: unknown[];
 };
 
 /**
@@ -80,6 +100,7 @@ export const getChatMcpTools = async (
     },
     select: {
       id: true,
+      slug: true,
       dynamicSearch: true,
       templateInstances: {
         where: { isEnabled: true },
@@ -105,64 +126,53 @@ export const getChatMcpTools = async (
     // dynamicSearch有効時はメタツールを使用
     if (server.dynamicSearch) {
       for (const metaTool of DYNAMIC_SEARCH_META_TOOLS) {
-        // ツール名: {mcpServerId}__{metaToolName}
-        const fullToolName = `${server.id}__${metaTool.name}`;
+        const aiSdkToolName = `${server.slug}__${metaTool.name}`;
 
-        tools[fullToolName] = {
+        tools[aiSdkToolName] = {
           description: metaTool.description ?? undefined,
           inputSchema: jsonSchema(
             metaTool.inputSchema as Record<string, unknown>,
           ),
           execute: createChatToolExecute({
             mcpServerId: server.id,
-            fullToolName: metaTool.name, // mcp-proxyに渡すのはプレフィックスなし
+            mcpProxyToolName: metaTool.name,
+            aiSdkToolName,
             organizationId,
             userId,
+            isDynamicSearchMetaTool: true,
           }),
         };
 
-        toolNames.push(fullToolName);
+        toolNames.push(aiSdkToolName);
       }
-    } else {
-      // 通常モード: 各ツールのインスタンスnormalizedNameを使用
-      for (const instance of server.templateInstances) {
-        for (const tool of instance.allowedTools) {
-          // mcp-proxyに渡すツール名: {instanceNormalizedName}__{toolName}
-          const proxyToolName = `${instance.normalizedName}__${tool.name}`;
-          // AI SDK用の一意キー: {mcpServerId}__{proxyToolName}
-          const fullToolName = `${server.id}__${proxyToolName}`;
+      continue;
+    }
 
-          tools[fullToolName] = {
-            description: tool.description ?? undefined,
-            inputSchema: jsonSchema(
-              tool.inputSchema as Record<string, unknown>,
-            ),
-            execute: createChatToolExecute({
-              mcpServerId: server.id,
-              fullToolName: proxyToolName,
-              organizationId,
-              userId,
-            }),
-          };
+    // 通常モード: 各ツールのインスタンスnormalizedNameを使用
+    for (const instance of server.templateInstances) {
+      for (const tool of instance.allowedTools) {
+        const mcpProxyToolName = `${instance.normalizedName}__${tool.name}`;
+        const aiSdkToolName = `${server.slug}__${mcpProxyToolName}`;
 
-          toolNames.push(fullToolName);
-        }
+        tools[aiSdkToolName] = {
+          description: tool.description ?? undefined,
+          inputSchema: jsonSchema(tool.inputSchema as Record<string, unknown>),
+          execute: createChatToolExecute({
+            mcpServerId: server.id,
+            mcpProxyToolName,
+            aiSdkToolName,
+            organizationId,
+            userId,
+            isDynamicSearchMetaTool: false,
+          }),
+        };
+
+        toolNames.push(aiSdkToolName);
       }
     }
   }
 
   return { tools, toolNames };
-};
-
-/**
- * AI SDK Tool.execute関数のオプション型
- * AI SDKがツール実行時に渡すコンテキスト情報を含む
- */
-type ToolExecuteOptions = {
-  /** AI SDKが生成したツール呼び出しID */
-  toolCallId: string;
-  abortSignal?: AbortSignal;
-  messages?: unknown[];
 };
 
 /**
@@ -178,59 +188,71 @@ type ToolExecuteOptions = {
 const createChatToolExecute = (
   params: CreateChatToolExecuteParams,
 ): ((args: unknown, options: ToolExecuteOptions) => Promise<unknown>) => {
-  const { mcpServerId, fullToolName, organizationId, userId } = params;
+  const {
+    mcpServerId,
+    mcpProxyToolName,
+    aiSdkToolName,
+    organizationId,
+    userId,
+    isDynamicSearchMetaTool,
+  } = params;
 
   return async (
     args: unknown,
     options: ToolExecuteOptions,
   ): Promise<unknown> => {
     const startTime = Date.now();
-    const requestBody = { name: fullToolName, arguments: args };
     const { toolCallId } = options;
 
-    try {
-      const result = await callToolCommand({
-        mcpServerId,
-        organizationId,
-        fullToolName,
-        args: args as Record<string, unknown>,
-        userId,
-        toolCallId,
-      });
+    // ログ記録用の共通パラメータ
+    const logParams = {
+      mcpServerId,
+      organizationId,
+      userId,
+      toolName: aiSdkToolName,
+      toolCallId,
+      requestBody: { name: mcpProxyToolName, arguments: args },
+    };
 
-      const durationMs = Date.now() - startTime;
+    try {
+      // メタツール（dynamicSearch）かどうかで処理を分岐
+      const result = isDynamicSearchMetaTool
+        ? await handleMetaTool(
+            mcpProxyToolName,
+            args,
+            mcpServerId,
+            organizationId,
+            userId,
+          )
+        : await callToolCommand({
+            mcpServerId,
+            organizationId,
+            fullToolName: mcpProxyToolName,
+            args: args as Record<string, unknown>,
+            userId,
+            toolCallId,
+          });
 
       // ログを非同期で記録（レスポンスをブロックしない）
       void logMcpRequest({
-        mcpServerId,
-        organizationId,
-        userId,
-        toolName: fullToolName,
-        durationMs,
-        requestBody,
+        ...logParams,
+        durationMs: Date.now() - startTime,
         responseBody: result,
         httpStatus: 200,
-        toolCallId,
       });
 
       return result;
     } catch (error) {
-      const durationMs = Date.now() - startTime;
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
 
       // エラー時もログを記録
       void logMcpRequest({
-        mcpServerId,
-        organizationId,
-        userId,
-        toolName: fullToolName,
-        durationMs,
-        requestBody,
+        ...logParams,
+        durationMs: Date.now() - startTime,
         responseBody: { error: errorMessage },
         httpStatus: 500,
         errorMessage,
-        toolCallId,
       });
 
       // エラーをLLMに返す（isError: trueで表示）
