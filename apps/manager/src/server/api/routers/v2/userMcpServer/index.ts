@@ -34,7 +34,7 @@ import { updateDynamicSearch } from "./updateDynamicSearch";
 import { refreshTools } from "./refreshTools";
 import { sendToolChangeNotifications } from "./sendToolChangeNotifications";
 import { McpServerIdSchema, ToolIdSchema } from "@/schema/ids";
-import { createBulkNotifications } from "../notification/createBulkNotifications";
+import { createBulkNotifications } from "@/features/notification";
 import { validateMcpPermission } from "@/server/utils/mcpPermissions";
 import {
   McpServerSchema,

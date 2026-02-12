@@ -3,11 +3,11 @@ import { sendToolChangeNotifications } from "../sendToolChangeNotifications";
 import type { RefreshToolsOutput } from "../refreshTools";
 
 // createBulkNotificationsのモック
-vi.mock("../../notification/createBulkNotifications", () => ({
+vi.mock("@/features/notification", () => ({
   createBulkNotifications: vi.fn(),
 }));
 
-import { createBulkNotifications } from "../../notification/createBulkNotifications";
+import { createBulkNotifications } from "@/features/notification";
 
 const createMockDb = () => ({
   mcpServer: {

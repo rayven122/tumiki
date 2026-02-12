@@ -12,7 +12,7 @@ import { reauthenticateOAuthMcpServer } from "./reauthenticateOAuthMcpServer";
 import { reauthenticateByMcpServerId } from "./reauthenticateByMcpServerId";
 import { findReusableOAuthTokens } from "./findReusableOAuthTokens";
 import { reuseOAuthToken } from "./reuseOAuthToken";
-import { createBulkNotifications } from "../notification/createBulkNotifications";
+import { createBulkNotifications } from "@/features/notification";
 
 // OAuth認証MCPサーバー接続用の入力スキーマ
 export const ConnectOAuthMcpServerInputV2 = z.object({

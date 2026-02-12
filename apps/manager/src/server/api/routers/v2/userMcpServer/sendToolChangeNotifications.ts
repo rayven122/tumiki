@@ -1,5 +1,5 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { createBulkNotifications } from "../notification/createBulkNotifications";
+import { createBulkNotifications } from "@/features/notification";
 import type { RefreshToolsOutput } from "./refreshTools";
 
 type SendToolChangeNotificationsInput = {
