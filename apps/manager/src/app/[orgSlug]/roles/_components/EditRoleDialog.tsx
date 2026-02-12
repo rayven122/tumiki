@@ -19,7 +19,7 @@ import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { PermissionSelector, type McpPermission } from "./PermissionSelector";
 import { mapDbToUiAccess, mapUiPermissionToDb } from "./permissionMapping";
-import type { ListRolesOutput } from "@/server/api/routers/v2/role/list";
+import type { ListRolesOutput } from "@/features/roles/api/list";
 import { Tag, Pencil } from "lucide-react";
 
 // フォームで使用するスキーマ（UI用の access/manage 形式）

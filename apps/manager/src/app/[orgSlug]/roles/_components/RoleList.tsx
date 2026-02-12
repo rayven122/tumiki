@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/trpc/react";
 import { EditRoleDialog } from "./EditRoleDialog";
 import { DeleteRoleDialog } from "./DeleteRoleDialog";
-import type { ListRolesOutput } from "@/server/api/routers/v2/role/list";
+import type { ListRolesOutput } from "@/features/roles/api/list";
 
 export const RoleList = () => {
   const [editingRole, setEditingRole] = useState<

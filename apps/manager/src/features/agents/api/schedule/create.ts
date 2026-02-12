@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { AgentScheduleId } from "@/schema/ids";
 import type { CreateScheduleInputSchema } from "./router";
-import { buildAgentAccessCondition } from "@/server/api/routers/v2/utils";
+import { buildAgentAccessCondition } from "../utils";
 
 type CreateScheduleInput = z.infer<typeof CreateScheduleInputSchema>;
 

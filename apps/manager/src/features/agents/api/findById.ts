@@ -1,7 +1,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import type { AgentId } from "@/schema/ids";
 import { TRPCError } from "@trpc/server";
-import { buildAgentAccessCondition } from "@/server/api/routers/v2/utils";
+import { buildAgentAccessCondition } from "./utils";
 
 type FindByIdParams = {
   id: AgentId;
