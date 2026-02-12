@@ -1,10 +1,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import { KeycloakOrganizationProvider } from "@tumiki/keycloak";
-import type {
-  GetGroupMembersInput,
-  Member,
-} from "@/server/utils/groupSchemas";
+import type { GetGroupMembersInput, Member } from "@/server/utils/groupSchemas";
 import type { OrganizationInfo } from "@/server/utils/organizationPermissions";
 
 /**
