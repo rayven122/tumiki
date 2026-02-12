@@ -5,7 +5,7 @@ import type { PrismaTransactionClient } from "@tumiki/db";
 import type { McpServerId } from "@/schema/ids";
 
 // generateAuthorizationUrlヘルパーをモック
-vi.mock("../../userMcpServer/helpers/generateAuthorizationUrl", () => ({
+vi.mock("../../helpers/generateAuthorizationUrl", () => ({
   generateAuthorizationUrl: vi
     .fn()
     .mockResolvedValue("https://auth.example.com/authorize?code=test"),

@@ -12,7 +12,7 @@ import * as generateAuthUrlHelper from "../../helpers/generateAuthorizationUrl";
 
 // モック設定
 vi.mock("@/lib/oauth/dcr");
-vi.mock("../../userMcpServer/helpers/generateAuthorizationUrl");
+vi.mock("../../helpers/generateAuthorizationUrl");
 
 const mockDiscoverOAuthMetadata = vi.mocked(dcr.discoverOAuthMetadata);
 const mockGenerateAuthorizationUrl = vi.mocked(

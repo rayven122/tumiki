@@ -20,7 +20,7 @@ type MockMcpServerTemplateInstance = Pick<McpServerTemplateInstance, "id"> & {
 };
 
 // generateAuthorizationUrlヘルパーをモック
-vi.mock("../../userMcpServer/helpers/generateAuthorizationUrl", () => ({
+vi.mock("../../helpers/generateAuthorizationUrl", () => ({
   generateAuthorizationUrl: vi
     .fn()
     .mockResolvedValue("https://auth.example.com/authorize?code=test"),

@@ -12,8 +12,8 @@ import type { OAuthStatePayload } from "@/lib/oauth/state-token";
 import type { OAuthTokenData } from "@/lib/oauth/oauth-client";
 
 // モック設定
-vi.mock("../../userMcpServer/helpers/oauth-verification");
-vi.mock("../../userMcpServer/helpers/mcp-server-setup");
+vi.mock("../../helpers/oauth-verification");
+vi.mock("../../helpers/mcp-server-setup");
 
 const mockVerifyOAuthState = vi.mocked(oauthVerification.verifyOAuthState);
 const mockGetMcpServerAndOAuthClient = vi.mocked(
