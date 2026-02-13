@@ -1,17 +1,11 @@
-import { describe, test, expect, beforeEach, vi, type Mock } from "vitest";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from "@testing-library/react";
+import { describe, test, expect, beforeEach, vi } from "vitest";
+import { render, screen, act } from "@testing-library/react";
 import * as React from "react";
 import { OrganizationSwitcher } from "../OrganizationSwitcher";
 import { type OrganizationId } from "@/schema/ids";
 
 // Reactをグローバルに設定（モック内で使用するため）
-(globalThis as any).React = React;
+(globalThis as { React?: typeof React }).React = React;
 
 // モック関数を定義
 const mockPush = vi.fn();
@@ -32,7 +26,7 @@ vi.mock("@/trpc/react", () => ({
   api: {
     organization: {
       getUserOrganizations: {
-        useQuery: () => mockUseQuery(),
+        useQuery: (): ReturnType<typeof mockUseQuery> => mockUseQuery(),
       },
     },
   },
@@ -40,13 +34,15 @@ vi.mock("@/trpc/react", () => ({
 
 // useOrganizationContextのモック
 vi.mock("@/hooks/useOrganizationContext", () => ({
-  useOrganizationContext: () => mockUseOrganizationContext(),
+  useOrganizationContext: (): ReturnType<typeof mockUseOrganizationContext> =>
+    mockUseOrganizationContext(),
 }));
 
 // toastのモック
 vi.mock("@/utils/client/toast", () => ({
   toast: {
-    error: (...args: unknown[]) => mockToastError(...args),
+    error: (...args: unknown[]): ReturnType<typeof mockToastError> =>
+      mockToastError(...args),
   },
 }));
 
@@ -360,10 +356,10 @@ describe("OrganizationSwitcher", () => {
       isSwitching: false,
     });
 
-    const { rerender } = render(<OrganizationSwitcher />);
+    render(<OrganizationSwitcher />);
 
-    // Select要素を直接操作して無効な値を設定（通常のUIでは起こらないケース）
-    const selectTrigger = screen.getByRole("combobox");
+    // Select要素を確認（通常のUIでは無効な値を選択できない）
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
 
     // handleValueChangeを直接呼び出すシミュレーション
     // OrganizationSwitcherを少し修正してテスト可能にする必要があるが、

@@ -12,8 +12,10 @@ const THINKING_SUFFIX_REGEX = /-thinking$/;
 // テスト環境用のモックプロバイダー
 export const myProvider = isTestEnvironment
   ? (() => {
+      /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports -- テスト環境での条件付き動的import（ESModulesでは条件付きimportができないためrequire使用） */
       const { artifactModel, chatModel, reasoningModel, titleModel } =
         require("./models.mock") as typeof import("./models.mock");
+      /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
       return customProvider({
         languageModels: {
           // テスト環境用モック - Gateway形式のIDを使用

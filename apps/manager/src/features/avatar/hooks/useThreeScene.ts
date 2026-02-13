@@ -118,11 +118,14 @@ export const useThreeScene = (
       if (setupResult.scene) {
         setupResult.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            child.geometry?.dispose();
-            if (Array.isArray(child.material)) {
-              child.material.forEach((mat) => mat.dispose());
+            (child.geometry as THREE.BufferGeometry | null)?.dispose();
+            const material = child.material as
+              | THREE.Material
+              | THREE.Material[];
+            if (Array.isArray(material)) {
+              material.forEach((mat) => mat.dispose());
             } else {
-              child.material?.dispose();
+              material?.dispose();
             }
           }
         });
@@ -133,8 +136,7 @@ export const useThreeScene = (
         setupResult.renderer.forceContextLoss();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 初回のみ実行
+  }, []); // 初回のみ実行（依存配列は意図的に空）
 
   return { scene, camera, renderer };
 };

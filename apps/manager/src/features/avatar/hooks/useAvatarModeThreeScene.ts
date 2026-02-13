@@ -134,16 +134,17 @@ export const useAvatarModeThreeScene = (
         setupResult.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             // ジオメトリのクリーンアップ
-            child.geometry?.dispose();
+            (child.geometry as THREE.BufferGeometry | null)?.dispose();
 
             // マテリアルのクリーンアップ
-            const materials = Array.isArray(child.material)
-              ? child.material
-              : [child.material];
+            const material = child.material as
+              | THREE.Material
+              | THREE.Material[];
+            const materials = Array.isArray(material) ? material : [material];
             materials.forEach((mat) => {
               if (mat) {
                 // テクスチャのクリーンアップ
-                Object.values(mat).forEach((value) => {
+                Object.entries(mat).forEach(([, value]) => {
                   if (value instanceof THREE.Texture) {
                     value.dispose();
                   }
@@ -154,9 +155,12 @@ export const useAvatarModeThreeScene = (
           }
 
           // VRM固有のリソースクリーンアップ
-          if ("userData" in child && child.userData?.vrm) {
+          const userData = child.userData as
+            | { vrm?: { dispose?: () => void } }
+            | undefined;
+          if (userData?.vrm?.dispose) {
             try {
-              child.userData.vrm.dispose?.();
+              userData.vrm.dispose();
             } catch {
               // VRM dispose エラーは無視
             }
@@ -172,8 +176,7 @@ export const useAvatarModeThreeScene = (
         setupResult.renderer.forceContextLoss();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 初回のみ実行
+  }, []); // 初回のみ実行（依存配列は意図的に空）
 
   return { scene, camera, renderer };
 };

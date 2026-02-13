@@ -7,7 +7,6 @@
 
 import { useCallback, useRef, useEffect } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import type { VRM } from "@pixiv/three-vrm";
 import {
   coharuEnabledAtom,
   coharuVrmAtom,
