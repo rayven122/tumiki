@@ -35,7 +35,7 @@ const matchesSearchQuery = (
  * エージェント一覧の非同期コンポーネント
  */
 const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
-  const [agents] = api.v2.agent.findAll.useSuspenseQuery();
+  const [agents] = api.agent.findAll.useSuspenseQuery();
   const utils = api.useUtils();
 
   const filteredAgents = useMemo(
@@ -74,7 +74,7 @@ const AsyncAgentCardList = ({ searchQuery }: AgentCardListProps) => {
   }
 
   const handleRevalidate = async () => {
-    await utils.v2.agent.findAll.invalidate();
+    await utils.agent.findAll.invalidate();
   };
 
   return (

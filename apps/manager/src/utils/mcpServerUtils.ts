@@ -4,7 +4,7 @@
 
 import type { RouterOutputs } from "~/trpc/react";
 
-type McpServer = RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+type McpServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 /**
  * サーバーの有効なツール数を計算

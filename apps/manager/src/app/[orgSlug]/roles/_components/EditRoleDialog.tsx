@@ -19,7 +19,7 @@ import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { PermissionSelector, type McpPermission } from "./PermissionSelector";
 import { mapDbToUiAccess, mapUiPermissionToDb } from "./permissionMapping";
-import type { ListRolesOutput } from "@/server/api/routers/v2/role/list";
+import type { ListRolesOutput } from "@/features/roles/api/list";
 import { Tag, Pencil } from "lucide-react";
 
 // フォームで使用するスキーマ（UI用の access/manage 形式）
@@ -114,7 +114,7 @@ export const EditRoleDialog = ({
 
   // 組織内のMCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findMcpServers.useQuery(undefined, {
+    api.userMcpServer.findMcpServers.useQuery(undefined, {
       enabled: open,
     });
 
@@ -131,10 +131,10 @@ export const EditRoleDialog = ({
     }));
   }, [mcpServers]);
 
-  const updateMutation = api.v2.role.update.useMutation({
+  const updateMutation = api.role.update.useMutation({
     onSuccess: () => {
       onOpenChange(false);
-      void utils.v2.role.list.invalidate();
+      void utils.role.list.invalidate();
       toast.success("ロールを更新しました");
     },
     onError: (error) => {

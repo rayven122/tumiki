@@ -23,8 +23,8 @@ import type { AgentId, McpServerId } from "@/schema/ids";
 import {
   McpDragDropSelector,
   convertToSelectableMcp,
-} from "@/components/mcp-selector";
-import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/lib/agent";
+} from "@/features/mcps/components/mcp-selector";
+import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/features/agents/constants";
 
 type EditAgentPageClientProps = {
   orgSlug: string;
@@ -60,13 +60,13 @@ const EditForm = ({
   const utils = api.useUtils();
 
   // スラグでエージェント情報を取得
-  const [agent] = api.v2.agent.findBySlug.useSuspenseQuery({
+  const [agent] = api.agent.findBySlug.useSuspenseQuery({
     slug: agentSlug,
   });
 
   // MCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findMcpServers.useQuery();
+    api.userMcpServer.findMcpServers.useQuery();
 
   // フォーム状態（公開範囲は組織内に固定）
   const [formState, setFormState] = useState<EditFormState>({
@@ -79,11 +79,11 @@ const EditForm = ({
   });
 
   // 更新mutation
-  const updateMutation = api.v2.agent.update.useMutation({
+  const updateMutation = api.agent.update.useMutation({
     onSuccess: async () => {
       toast.success("エージェントを更新しました");
-      await utils.v2.agent.findBySlug.invalidate({ slug: formState.slug });
-      await utils.v2.agent.findAll.invalidate();
+      await utils.agent.findBySlug.invalidate({ slug: formState.slug });
+      await utils.agent.findAll.invalidate();
       // スラグが変更された場合は新しいスラグのURLにリダイレクト
       router.push(`/${orgSlug}/agents/${formState.slug}`);
     },

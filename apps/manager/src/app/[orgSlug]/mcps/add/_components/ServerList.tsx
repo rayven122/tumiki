@@ -98,7 +98,7 @@ export const ServerList = ({
   );
 
   // MCPサーバーから利用可能なタグを動的に取得
-  const [mcpServers] = api.v2.mcpServer.findAll.useSuspenseQuery();
+  const [mcpServers] = api.mcpServer.findAll.useSuspenseQuery();
 
   // Controlled判定
   const isControlled =

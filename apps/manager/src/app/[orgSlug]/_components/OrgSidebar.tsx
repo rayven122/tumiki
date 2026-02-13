@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChatHistoryList } from "@/components/chat/ChatHistoryList";
+import { ChatHistoryList } from "@/features/chat";
 
 type OrgSidebarProps = {
   orgSlug: string;

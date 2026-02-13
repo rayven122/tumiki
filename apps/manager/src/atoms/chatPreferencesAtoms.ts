@@ -1,5 +1,5 @@
 import { atomWithStorage } from "jotai/utils";
-import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import { DEFAULT_CHAT_MODEL } from "@/features/chat/services/ai/index.client";
 
 export type ChatPreferences = {
   model: string; // 共通設定

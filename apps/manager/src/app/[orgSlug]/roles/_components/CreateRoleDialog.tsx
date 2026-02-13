@@ -109,7 +109,7 @@ export const CreateRoleDialog = ({
 
   // 組織内のMCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findMcpServers.useQuery(undefined, {
+    api.userMcpServer.findMcpServers.useQuery(undefined, {
       enabled: open,
     });
 
@@ -126,11 +126,11 @@ export const CreateRoleDialog = ({
     }));
   }, [mcpServers]);
 
-  const createMutation = api.v2.role.create.useMutation({
+  const createMutation = api.role.create.useMutation({
     onSuccess: () => {
       onOpenChange(false);
       reset();
-      void utils.v2.role.list.invalidate();
+      void utils.role.list.invalidate();
       toast.success("ロールを作成しました");
     },
     onError: (error) => {

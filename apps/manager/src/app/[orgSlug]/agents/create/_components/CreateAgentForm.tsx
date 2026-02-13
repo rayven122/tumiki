@@ -21,8 +21,8 @@ import { useAgentFlow } from "@/atoms/agentFlowAtoms";
 import {
   McpDragDropSelector,
   convertToSelectableMcp,
-} from "@/components/mcp-selector";
-import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/lib/agent";
+} from "@/features/mcps/components/mcp-selector";
+import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/features/agents/constants";
 import type { McpServerId } from "@/schema/ids";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 
@@ -57,10 +57,10 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
 
   // MCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findMcpServers.useQuery();
+    api.userMcpServer.findMcpServers.useQuery();
 
   // エージェント作成mutation
-  const createAgentMutation = api.v2.agent.create.useMutation({
+  const createAgentMutation = api.agent.create.useMutation({
     onSuccess: (data) => {
       toast.success("エージェントを作成しました");
       resetFlowState();

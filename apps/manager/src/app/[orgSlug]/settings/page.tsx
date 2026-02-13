@@ -36,7 +36,7 @@ const SettingsPage = () => {
 
   // ユーザーの組織一覧を取得（削除後のリダイレクト先用）
   const { data: userOrganizations } =
-    api.v2.organization.getUserOrganizations.useQuery();
+    api.organization.getUserOrganizations.useQuery();
 
   // 個人組織を取得
   const personalOrg = userOrganizations?.find((org) => org.isPersonal);

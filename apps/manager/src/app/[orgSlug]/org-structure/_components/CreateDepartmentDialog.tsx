@@ -22,7 +22,7 @@ import {
 import { Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { type Department } from "./mock/mockOrgData";
+import { type Department } from "@/features/org-structure/utils/mock/mockOrgData";
 import { IconPicker } from "./sidebar/IconPicker";
 
 type CreateDepartmentDialogProps = {
@@ -41,14 +41,14 @@ export const CreateDepartmentDialog = ({
 
   const utils = api.useUtils();
 
-  const createMutation = api.v2.group.create.useMutation({
+  const createMutation = api.group.create.useMutation({
     onSuccess: () => {
       setIsOpen(false);
       setName("");
       setParentGroupId(undefined);
       setIcon(undefined);
-      void utils.v2.group.list.invalidate();
-      void utils.v2.group.getMembers.invalidate();
+      void utils.group.list.invalidate();
+      void utils.group.getMembers.invalidate();
       toast.success("部署を作成しました");
     },
     onError: (error) => {

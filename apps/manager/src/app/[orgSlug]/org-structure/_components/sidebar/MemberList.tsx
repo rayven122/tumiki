@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Crown, UserMinus, Loader2, MoreVertical } from "lucide-react";
-import type { Member } from "../mock/mockOrgData";
+import type { Member } from "@/features/org-structure/utils/mock/mockOrgData";
 
 type MemberListProps = {
   members: Member[];

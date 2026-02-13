@@ -5,8 +5,8 @@ import * as React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { ChangeParentDialog } from "../ChangeParentDialog";
-import type { Department } from "../mock/mockOrgData";
-import type { DepartmentEdgeType } from "../edges/DepartmentEdge";
+import type { Department } from "@/features/org-structure/utils/mock/mockOrgData";
+import type { DepartmentEdgeType } from "@/features/org-structure/components/edges/DepartmentEdge";
 
 // Reactをグローバルに設定（コンポーネント内で使用するため）
 (globalThis as unknown as { React: typeof React }).React = React;

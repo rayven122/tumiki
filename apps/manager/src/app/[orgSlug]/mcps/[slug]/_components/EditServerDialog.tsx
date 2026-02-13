@@ -36,7 +36,7 @@ export const EditServerDialog = ({
   );
 
   const { mutate: updateServer, isPending } =
-    api.v2.userMcpServer.updateName.useMutation({
+    api.userMcpServer.updateName.useMutation({
       onSuccess: async () => {
         await onSuccess();
         onClose();

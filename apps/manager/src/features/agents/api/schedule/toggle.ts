@@ -2,7 +2,7 @@ import type { PrismaClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import type { AgentScheduleId } from "@/schema/ids";
 import type { ScheduleStatus } from "@tumiki/db/prisma";
-import { buildAgentAccessCondition } from "@/server/api/routers/v2/utils";
+import { buildAgentAccessCondition } from "../utils";
 
 type ToggleScheduleParams = {
   id: AgentScheduleId;

@@ -5,7 +5,7 @@ import type { McpServerId } from "@/schema/ids";
 import type { RouterOutputs } from "@/trpc/react";
 
 type AuthTabProps = {
-  server: NonNullable<RouterOutputs["v2"]["userMcpServer"]["findById"]>;
+  server: NonNullable<RouterOutputs["userMcpServer"]["findById"]>;
   serverId: McpServerId;
 };
 

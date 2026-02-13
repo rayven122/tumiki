@@ -8,8 +8,8 @@ import { api } from "@/trpc/react";
 import { AuthType } from "@tumiki/db/prisma";
 import type { UserMcpServerDetail } from "../types";
 import type { McpServerId } from "@/schema/ids";
-import { AuthTypeSelector } from "./_components/AuthTypeSelector";
-import { ApiKeyList } from "./_components/ApiKeyList";
+import { AuthTypeSelector } from "./OverviewTabAuthTypeSelector";
+import { ApiKeyList } from "./OverviewTabApiKeyList";
 
 type AuthSettingsProps = {
   server: UserMcpServerDetail;
@@ -25,10 +25,10 @@ export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
 
   // 認証タイプ更新
   const { mutate: updateAuthType, isPending: isUpdatingAuthType } =
-    api.v2.mcpServerAuth.updateAuthType.useMutation({
+    api.mcpServerAuth.updateAuthType.useMutation({
       onSuccess: async () => {
         toast.success("認証タイプを更新しました");
-        await utils.v2.userMcpServer.findById.invalidate({ id: serverId });
+        await utils.userMcpServer.findById.invalidate({ id: serverId });
       },
       onError: (error) => {
         toast.error(`エラーが発生しました: ${error.message}`);
@@ -37,11 +37,11 @@ export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
 
   // APIキー発行
   const { mutate: generateApiKey, isPending: isGeneratingApiKey } =
-    api.v2.mcpServerAuth.generateApiKey.useMutation({
+    api.mcpServerAuth.generateApiKey.useMutation({
       onSuccess: async () => {
         toast.success("APIキーを発行しました");
-        await utils.v2.userMcpServer.findById.invalidate({ id: serverId });
-        await utils.v2.mcpServerAuth.listApiKeys.invalidate({ serverId });
+        await utils.userMcpServer.findById.invalidate({ id: serverId });
+        await utils.mcpServerAuth.listApiKeys.invalidate({ serverId });
       },
       onError: (error) => {
         toast.error(`エラーが発生しました: ${error.message}`);
@@ -54,34 +54,32 @@ export const AuthSettings = ({ serverId }: AuthSettingsProps) => {
 
   // APIキー一覧取得
   const { data: apiKeys, isLoading: isLoadingApiKeys } =
-    api.v2.mcpServerAuth.listApiKeys.useQuery(
+    api.mcpServerAuth.listApiKeys.useQuery(
       { serverId },
       { enabled: selectedAuthType === AuthType.API_KEY },
     );
 
   // APIキー削除
-  const { mutate: deleteApiKey } =
-    api.v2.mcpServerAuth.deleteApiKey.useMutation({
-      onSuccess: async () => {
-        toast.success("APIキーを削除しました");
-        await utils.v2.mcpServerAuth.listApiKeys.invalidate({ serverId });
-      },
-      onError: (error) => {
-        toast.error(`エラーが発生しました: ${error.message}`);
-      },
-    });
+  const { mutate: deleteApiKey } = api.mcpServerAuth.deleteApiKey.useMutation({
+    onSuccess: async () => {
+      toast.success("APIキーを削除しました");
+      await utils.mcpServerAuth.listApiKeys.invalidate({ serverId });
+    },
+    onError: (error) => {
+      toast.error(`エラーが発生しました: ${error.message}`);
+    },
+  });
 
   // APIキー有効/無効切り替え
-  const { mutate: toggleApiKey } =
-    api.v2.mcpServerAuth.toggleApiKey.useMutation({
-      onSuccess: async () => {
-        toast.success("APIキーの状態を更新しました");
-        await utils.v2.mcpServerAuth.listApiKeys.invalidate({ serverId });
-      },
-      onError: (error) => {
-        toast.error(`エラーが発生しました: ${error.message}`);
-      },
-    });
+  const { mutate: toggleApiKey } = api.mcpServerAuth.toggleApiKey.useMutation({
+    onSuccess: async () => {
+      toast.success("APIキーの状態を更新しました");
+      await utils.mcpServerAuth.listApiKeys.invalidate({ serverId });
+    },
+    onError: (error) => {
+      toast.error(`エラーが発生しました: ${error.message}`);
+    },
+  });
 
   const handleAuthTypeChange = (value: string) => {
     const newAuthType = value as AuthType;

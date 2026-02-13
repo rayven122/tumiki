@@ -1,5 +1,8 @@
-import { getArtifactModel } from "@/lib/ai/providers";
-import { sheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
+import {
+  getArtifactModel,
+  sheetPrompt,
+  updateDocumentPrompt,
+} from "@/features/chat/services/ai";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 import { type UIMessageStreamWriter, streamObject } from "ai";
 import { z } from "zod";

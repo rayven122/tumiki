@@ -38,23 +38,22 @@ import { useState } from "react";
 import { McpConfigEditModal } from "../../[slug]/_components/McpConfigEditModal";
 import { McpServerIcon } from "../McpServerIcon";
 import { RefreshToolsModal } from "../RefreshToolsModal";
-import { InboundAuthIndicator } from "../ServerCard/_components/InboundAuthIndicator";
-import { OutboundApiKeyIndicator } from "../ServerCard/_components/OutboundApiKeyIndicator";
-import { OutboundAuthIndicator } from "../ServerCard/_components/OutboundAuthIndicator";
-import { OutboundNoneIndicator } from "../ServerCard/_components/OutboundNoneIndicator";
+import { InboundAuthIndicator } from "../ServerCard/ServerCardInboundAuthIndicator";
+import { OutboundApiKeyIndicator } from "../ServerCard/ServerCardOutboundApiKeyIndicator";
+import { OutboundAuthIndicator } from "../ServerCard/ServerCardOutboundAuthIndicator";
+import { OutboundNoneIndicator } from "../ServerCard/ServerCardOutboundNoneIndicator";
 import { ToolsModal } from "../ServerCard/ToolsModal";
 import { ServerStatusBadge } from "../ServerStatusBadge";
-import { ApiKeyExpirationDisplay } from "./_components/ApiKeyExpirationDisplay";
-import { OAuthEndpointUrl } from "./_components/OAuthEndpointUrl";
-import { ReuseTokenModal } from "./_components/ReuseTokenModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
-import { FeatureBadges } from "./_components/FeatureBadges";
 import { IconEditModal } from "./IconEditModal";
-import { ServerMetaInfo } from "./_components/ServerMetaInfo";
-import { useReauthenticateOAuth } from "./_hooks/useReauthenticateOAuth";
+import { ApiKeyExpirationDisplay } from "./UserMcpServerApiKeyExpirationDisplay";
+import { FeatureBadges } from "./UserMcpServerFeatureBadges";
+import { ServerMetaInfo } from "./UserMcpServerMetaInfo";
+import { OAuthEndpointUrl } from "./UserMcpServerOAuthEndpointUrl";
+import { ReuseTokenModal } from "./UserMcpServerReuseTokenModal";
+import { useReauthenticateOAuth } from "./hooks/useReauthenticateOAuth";
 
-type UserMcpServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+type UserMcpServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 type UserMcpServerCardProps = {
   userMcpServer: UserMcpServer;

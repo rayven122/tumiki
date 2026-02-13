@@ -1,6 +1,6 @@
 "use client";
 
-import { calculateProgress } from "@/lib/agent";
+import { calculateProgress } from "@/features/agents/constants";
 import type { RouterOutputs } from "@/trpc/react";
 import { Sparkles, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -11,7 +11,7 @@ import type { ExecutionData } from "./types";
 
 /** 実行データの型（getRecentのレスポンスアイテム） */
 type RecentExecutionItem =
-  RouterOutputs["v2"]["agentExecution"]["getRecent"]["items"][number];
+  RouterOutputs["agentExecution"]["getRecent"]["items"][number];
 
 type RunningAgentsDashboardProps = {
   executions: RecentExecutionItem[];

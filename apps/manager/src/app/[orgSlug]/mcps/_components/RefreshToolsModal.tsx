@@ -287,7 +287,7 @@ export const RefreshToolsModal = ({
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
 
   const { mutate: refreshTools, isPending } =
-    api.v2.userMcpServer.refreshTools.useMutation({
+    api.userMcpServer.refreshTools.useMutation({
       onError: (error) => {
         toast.error(`ツール更新に失敗しました: ${error.message}`);
       },

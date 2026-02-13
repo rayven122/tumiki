@@ -1,5 +1,5 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
-import { buildAgentAccessCondition } from "@/server/api/routers/v2/utils";
+import { buildAgentAccessCondition } from "./utils";
 
 type FindAllAgentsParams = {
   organizationId: string;

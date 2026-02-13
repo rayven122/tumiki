@@ -2,7 +2,7 @@
 
 import { Wrench, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AuthTypeBadge } from "../ServerCard/_components/AuthTypeBadge";
+import { AuthTypeBadge } from "../ServerCard/ServerCardAuthTypeBadge";
 import { McpServerIcon } from "../McpServerIcon";
 import type { SelectableTemplate } from "./types";
 

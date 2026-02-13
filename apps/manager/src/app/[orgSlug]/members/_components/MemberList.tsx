@@ -38,7 +38,7 @@ import { UserPlus, Trash2, Crown, User, Mail, Shield, Eye } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
-import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
+import { type GetOrganizationBySlugOutput } from "@/features/organization";
 import { toast } from "sonner";
 import type { OrganizationRole } from "@/server/utils/organizationPermissions";
 import { MemberRoleSelector } from "./MemberRoleSelector";

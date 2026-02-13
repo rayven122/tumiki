@@ -1,7 +1,7 @@
 import type { PrismaTransactionClient } from "@tumiki/db";
 import { TRPCError } from "@trpc/server";
 import type { AgentScheduleId } from "@/schema/ids";
-import { buildAgentAccessCondition } from "@/server/api/routers/v2/utils";
+import { buildAgentAccessCondition } from "../utils";
 
 type DeleteScheduleParams = {
   id: AgentScheduleId;

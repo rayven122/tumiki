@@ -11,7 +11,7 @@ import {
   registerSchedule,
   unregisterSchedule,
   updateSchedule as updateCronSchedule,
-} from "@/lib/scheduler";
+} from "@/features/agents/services/scheduler";
 
 // Cron式のバリデーション（5フィールド形式: 分 時 日 月 曜日）
 const cronExpressionSchema = z

@@ -17,7 +17,7 @@ import { CreateServerModal } from "./CreateServerModal";
 import { Wrench, Building2, Trash2, MoreHorizontal } from "lucide-react";
 import { ToolsModal } from "./ToolsModal";
 import type { Prisma } from "@tumiki/db/prisma";
-import { AuthTypeBadge } from "./_components/AuthTypeBadge";
+import { AuthTypeBadge } from "./ServerCardAuthTypeBadge";
 import {
   Dialog,
   DialogContent,
@@ -54,10 +54,10 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const utils = api.useUtils();
-  const deleteTemplateMutation = api.v2.mcpServer.deleteTemplate.useMutation({
+  const deleteTemplateMutation = api.mcpServer.deleteTemplate.useMutation({
     onSuccess: async () => {
       toast.success(`${mcpServer.name}のテンプレートを削除しました。`);
-      await utils.v2.mcpServer.findAll.invalidate();
+      await utils.mcpServer.findAll.invalidate();
       setDeleteModalOpen(false);
     },
     onError: (error) => {

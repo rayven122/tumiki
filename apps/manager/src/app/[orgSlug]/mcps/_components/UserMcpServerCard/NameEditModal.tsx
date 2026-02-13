@@ -32,7 +32,7 @@ export const NameEditModal = ({
   const [newName, setNewName] = useState(initialName);
 
   const { mutate: updateServerName, isPending } =
-    api.v2.userMcpServer.updateName.useMutation({
+    api.userMcpServer.updateName.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("サーバー名を更新しました。");

@@ -49,7 +49,7 @@ import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
 import { OverviewTab } from "./OverviewTab";
 import { McpServerIcon } from "../../_components/McpServerIcon";
 import { IconEditModal } from "../../_components/UserMcpServerCard/IconEditModal";
-import { useReauthenticateOAuth } from "../../_components/UserMcpServerCard/_hooks/useReauthenticateOAuth";
+import { useReauthenticateOAuth } from "../../_components/UserMcpServerCard/hooks/useReauthenticateOAuth";
 import { McpConfigEditModal } from "./McpConfigEditModal";
 import { Switch } from "@/components/ui/switch";
 import { RefreshToolsModal } from "../../_components/RefreshToolsModal";
@@ -82,20 +82,20 @@ export const ServerDetailPageClient = ({
     data: server,
     isLoading,
     refetch,
-  } = api.v2.userMcpServer.findBySlug.useQuery(
+  } = api.userMcpServer.findBySlug.useQuery(
     { slug: serverSlug },
     { enabled: !!serverSlug },
   );
 
   // リクエスト統計情報を取得（サーバーデータ取得後にIDで検索）
   const { data: requestStats } =
-    api.v2.userMcpServerRequestLog.getRequestStats.useQuery(
+    api.userMcpServerRequestLog.getRequestStats.useQuery(
       { userMcpServerId: server?.id as McpServerId },
       { enabled: !!server?.id },
     );
 
   const { mutate: updateStatus, isPending: isStatusUpdating } =
-    api.v2.userMcpServer.updateServerStatus.useMutation({
+    api.userMcpServer.updateServerStatus.useMutation({
       onSuccess: async () => {
         toast.success("MCPサーバーのステータスを更新しました");
         await refetch();
@@ -108,17 +108,17 @@ export const ServerDetailPageClient = ({
   // PIIマスキング設定更新
   const utils = api.useUtils();
   const { mutate: updatePiiMasking } =
-    api.v2.userMcpServer.updatePiiMasking.useMutation({
+    api.userMcpServer.updatePiiMasking.useMutation({
       // 楽観的更新
       onMutate: async (variables) => {
-        await utils.v2.userMcpServer.findBySlug.cancel({
+        await utils.userMcpServer.findBySlug.cancel({
           slug: serverSlug,
         });
-        const previousData = utils.v2.userMcpServer.findBySlug.getData({
+        const previousData = utils.userMcpServer.findBySlug.getData({
           slug: serverSlug,
         });
         if (previousData) {
-          utils.v2.userMcpServer.findBySlug.setData(
+          utils.userMcpServer.findBySlug.setData(
             { slug: serverSlug },
             { ...previousData, piiMaskingEnabled: variables.piiMaskingEnabled },
           );
@@ -130,7 +130,7 @@ export const ServerDetailPageClient = ({
       },
       onError: (error, _variables, context) => {
         if (context?.previousData) {
-          utils.v2.userMcpServer.findBySlug.setData(
+          utils.userMcpServer.findBySlug.setData(
             { slug: serverSlug },
             context.previousData,
           );
@@ -138,7 +138,7 @@ export const ServerDetailPageClient = ({
         toast.error(`エラーが発生しました: ${error.message}`);
       },
       onSettled: async () => {
-        await utils.v2.userMcpServer.findBySlug.invalidate({
+        await utils.userMcpServer.findBySlug.invalidate({
           slug: serverSlug,
         });
       },
@@ -154,17 +154,17 @@ export const ServerDetailPageClient = ({
 
   // TOON変換設定更新
   const { mutate: updateToonConversion } =
-    api.v2.userMcpServer.updateToonConversion.useMutation({
+    api.userMcpServer.updateToonConversion.useMutation({
       // 楽観的更新
       onMutate: async (variables) => {
-        await utils.v2.userMcpServer.findBySlug.cancel({
+        await utils.userMcpServer.findBySlug.cancel({
           slug: serverSlug,
         });
-        const previousData = utils.v2.userMcpServer.findBySlug.getData({
+        const previousData = utils.userMcpServer.findBySlug.getData({
           slug: serverSlug,
         });
         if (previousData) {
-          utils.v2.userMcpServer.findBySlug.setData(
+          utils.userMcpServer.findBySlug.setData(
             { slug: serverSlug },
             {
               ...previousData,
@@ -179,7 +179,7 @@ export const ServerDetailPageClient = ({
       },
       onError: (error, _variables, context) => {
         if (context?.previousData) {
-          utils.v2.userMcpServer.findBySlug.setData(
+          utils.userMcpServer.findBySlug.setData(
             { slug: serverSlug },
             context.previousData,
           );
@@ -187,7 +187,7 @@ export const ServerDetailPageClient = ({
         toast.error(`エラーが発生しました: ${error.message}`);
       },
       onSettled: async () => {
-        await utils.v2.userMcpServer.findBySlug.invalidate({
+        await utils.userMcpServer.findBySlug.invalidate({
           slug: serverSlug,
         });
       },
@@ -203,7 +203,7 @@ export const ServerDetailPageClient = ({
 
   // ツール動的取得設定更新
   const { mutate: updateDynamicSearch } =
-    api.v2.userMcpServer.updateDynamicSearch.useMutation({
+    api.userMcpServer.updateDynamicSearch.useMutation({
       onSuccess: () => {
         toast.success("ツール動的取得設定を更新しました");
       },
@@ -211,7 +211,7 @@ export const ServerDetailPageClient = ({
         toast.error(`エラーが発生しました: ${error.message}`);
       },
       onSettled: async () => {
-        await utils.v2.userMcpServer.findBySlug.invalidate({
+        await utils.userMcpServer.findBySlug.invalidate({
           slug: serverSlug,
         });
       },
@@ -226,7 +226,7 @@ export const ServerDetailPageClient = ({
   };
 
   // APIキー一覧取得（表示用）
-  const { data: apiKeys } = api.v2.mcpServerAuth.listApiKeys.useQuery(
+  const { data: apiKeys } = api.mcpServerAuth.listApiKeys.useQuery(
     { serverId: server?.id as McpServerId },
     {
       enabled: !!server && server.authType === AuthType.API_KEY,

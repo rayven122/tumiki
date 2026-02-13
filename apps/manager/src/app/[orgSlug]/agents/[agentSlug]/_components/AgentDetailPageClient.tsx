@@ -84,7 +84,7 @@ const AsyncAgentDetail = ({
   const utils = api.useUtils();
 
   // スラグでエージェント情報を取得
-  const [agent] = api.v2.agent.findBySlug.useSuspenseQuery({
+  const [agent] = api.agent.findBySlug.useSuspenseQuery({
     slug: agentSlug,
   });
 
@@ -100,8 +100,8 @@ const AsyncAgentDetail = ({
     organizationId: agent.organizationId,
     onExecutionComplete: () => {
       // 実行完了後にエージェント情報と実行履歴を再取得
-      void utils.v2.agent.findBySlug.invalidate({ slug: agentSlug });
-      void utils.v2.agentExecution.findByAgentId.invalidate({
+      void utils.agent.findBySlug.invalidate({ slug: agentSlug });
+      void utils.agentExecution.findByAgentId.invalidate({
         agentId: agent.id as AgentId,
       });
     },
@@ -117,7 +117,7 @@ const AsyncAgentDetail = ({
   const VisibilityIcon = visibilityInfo.icon;
 
   const handleDeleteSuccess = () => {
-    void utils.v2.agent.findAll.invalidate();
+    void utils.agent.findAll.invalidate();
     router.push(`/${orgSlug}/agents`);
   };
 
@@ -126,13 +126,13 @@ const AsyncAgentDetail = ({
   const handleRefreshHistory = useCallback(async () => {
     setIsRefreshingHistory(true);
     try {
-      await utils.v2.agentExecution.findByAgentId.invalidate({
+      await utils.agentExecution.findByAgentId.invalidate({
         agentId: agent.id as AgentId,
       });
     } finally {
       setIsRefreshingHistory(false);
     }
-  }, [utils.v2.agentExecution.findByAgentId, agent.id]);
+  }, [utils.agentExecution.findByAgentId, agent.id]);
 
   return (
     <div className="space-y-6">
@@ -365,7 +365,7 @@ const AsyncAgentDetail = ({
           orgSlug={orgSlug}
           onOpenChange={setIconEditModalOpen}
           onSuccess={async () => {
-            await utils.v2.agent.findBySlug.invalidate({ slug: agentSlug });
+            await utils.agent.findBySlug.invalidate({ slug: agentSlug });
           }}
         />
       )}

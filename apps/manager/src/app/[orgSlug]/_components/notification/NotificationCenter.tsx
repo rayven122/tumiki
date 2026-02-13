@@ -26,7 +26,7 @@ export const NotificationCenter = () => {
   const pollingInterval = useAdaptivePolling();
 
   // 未読数を取得（アダプティブポーリング）
-  const { data } = api.v2.notification.getUnreadCount.useQuery(undefined, {
+  const { data } = api.notification.getUnreadCount.useQuery(undefined, {
     refetchInterval: pollingInterval || false,
     refetchOnWindowFocus: true,
   });

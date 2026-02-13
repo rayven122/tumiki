@@ -51,7 +51,7 @@ export const OrganizationCreateForm = ({
   const utils = api.useUtils();
   const { update: updateSession } = useSession();
 
-  const createMutation = api.v2.organization.create.useMutation({
+  const createMutation = api.organization.create.useMutation({
     onSuccess: async (data) => {
       toast.success(`チーム「${data.name}」が正常に作成されました。`);
       // すべてのtRPCクエリをinvalidate

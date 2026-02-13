@@ -13,17 +13,17 @@ type DashboardClientProps = {
 
 export const DashboardClient = ({ orgSlug }: DashboardClientProps) => {
   // 統計データを取得
-  const [stats] = api.v2.dashboard.getStats.useSuspenseQuery();
+  const [stats] = api.dashboard.getStats.useSuspenseQuery();
 
   // 稼働中エージェントを取得
-  const [runningAgents] =
-    api.v2.agentExecution.getAllRunning.useSuspenseQuery();
+  const [runningAgents] = api.agentExecution.getAllRunning.useSuspenseQuery();
 
   // 最近の実行履歴を取得
-  const [recentExecutions] =
-    api.v2.dashboard.getRecentExecutions.useSuspenseQuery({
+  const [recentExecutions] = api.dashboard.getRecentExecutions.useSuspenseQuery(
+    {
       limit: 5,
-    });
+    },
+  );
 
   return (
     <div className="space-y-6">

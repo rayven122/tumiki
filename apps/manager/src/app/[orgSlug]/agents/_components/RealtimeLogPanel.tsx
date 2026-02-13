@@ -25,7 +25,7 @@ type TerminalLogEntry = {
 
 /** APIから取得した実行アイテムの型 */
 type RecentExecutionItem =
-  RouterOutputs["v2"]["agentExecution"]["getRecent"]["items"][number];
+  RouterOutputs["agentExecution"]["getRecent"]["items"][number];
 
 /** コンポーネントプロパティ */
 type RealtimeLogPanelProps = {

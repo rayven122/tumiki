@@ -138,10 +138,10 @@ export const ActivityCharts = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>("7d");
 
   const { data: mcpData, isLoading: mcpLoading } =
-    api.v2.dashboard.getMcpChartData.useQuery({ timeRange });
+    api.dashboard.getMcpChartData.useQuery({ timeRange });
 
   const { data: agentData, isLoading: agentLoading } =
-    api.v2.dashboard.getAgentChartData.useQuery({ timeRange });
+    api.dashboard.getAgentChartData.useQuery({ timeRange });
 
   const timeRangeLabel = TIME_RANGE_LABELS[timeRange];
 

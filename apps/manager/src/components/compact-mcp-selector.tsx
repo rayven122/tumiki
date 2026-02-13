@@ -23,8 +23,7 @@ import {
   getServerFallbackUrl,
 } from "@/utils/mcpServerUtils";
 
-type OfficialServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+type OfficialServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 type CompactMcpSelectorProps = {
   selectedMcpServerIds: string[];
@@ -47,7 +46,7 @@ export const CompactMcpSelector = ({
   };
 
   const { data: mcpServers, isLoading } =
-    api.v2.userMcpServer.findMcpServers.useQuery();
+    api.userMcpServer.findMcpServers.useQuery();
 
   // 存在しないサーバーIDをクリーンアップ
   // localStorageに保存された古いIDが残っている場合、利用可能なサーバーが読み込まれた後に削除

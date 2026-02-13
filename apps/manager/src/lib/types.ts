@@ -1,10 +1,6 @@
-import type { InferUITool, UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import { z } from "zod";
 import type { ArtifactKind } from "@/components/artifact";
-import type { createDocument } from "./ai/tools/create-document";
-import type { getWeather } from "./ai/tools/get-weather";
-import type { requestSuggestions } from "./ai/tools/request-suggestions";
-import type { updateDocument } from "./ai/tools/update-document";
 import type { Suggestion } from "@tumiki/db/prisma";
 
 export type DataPart = { type: "append-message"; message: string };
@@ -20,13 +16,30 @@ export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
 
 /**
  * AIツールの型定義
+ * 注意: サーバー専用モジュールへの依存を避けるため、手動で型を定義
+ * ツールの実装から InferUITool で推論する代わりに、入出力型を直接定義
  */
-type WeatherTool = InferUITool<typeof getWeather>;
-type CreateDocumentTool = InferUITool<ReturnType<typeof createDocument>>;
-type UpdateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
-type RequestSuggestionsTool = InferUITool<
-  ReturnType<typeof requestSuggestions>
->;
+type WeatherTool = {
+  input: { latitude: number; longitude: number };
+  output: { weather: string; temperature: number };
+};
+
+type CreateDocumentTool = {
+  input: { title: string; kind: ArtifactKind };
+  output: { id: string; title: string; kind: string; content: string };
+};
+
+type UpdateDocumentTool = {
+  input: { id: string; description: string };
+  output:
+    | { id: string; title: string; kind: string; content: string }
+    | { error: string };
+};
+
+type RequestSuggestionsTool = {
+  input: { documentId: string };
+  output: { suggestions: Suggestion[] };
+};
 
 export type ChatTools = {
   getWeather: WeatherTool;

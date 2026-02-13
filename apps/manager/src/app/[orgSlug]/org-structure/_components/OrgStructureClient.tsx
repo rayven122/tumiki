@@ -6,14 +6,14 @@ import { sidebarOpenAtom } from "@/store/sidebar";
 import { cn } from "@/lib/utils";
 import { MapView } from "./MapView";
 import { GroupDetailSidebar } from "./sidebar/GroupDetailSidebar";
-import type { DepartmentNodeType } from "./nodes/DepartmentNode";
-import type { DepartmentEdgeType } from "./edges/DepartmentEdge";
+import type { DepartmentNodeType } from "@/features/org-structure/components/nodes/DepartmentNode";
+import type { DepartmentEdgeType } from "@/features/org-structure/components/edges/DepartmentEdge";
 import { api } from "@/trpc/react";
 import {
   keycloakGroupsToOrgData,
   extractAllGroupIds,
-} from "./utils/keycloakToOrgDataConverter";
-import type { OrgData } from "./mock/mockOrgData";
+} from "@/features/org-structure/utils/keycloakToOrgDataConverter";
+import type { OrgData } from "@/features/org-structure/utils/mock/mockOrgData";
 import { Loader2, Network, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListView } from "./ListView";
@@ -79,7 +79,7 @@ export const OrgStructureClient = ({
     data: groups,
     isLoading: groupsLoading,
     error: groupsError,
-  } = api.v2.group.list.useQuery({ organizationId });
+  } = api.group.list.useQuery({ organizationId });
 
   // 2. 全グループIDを抽出
   const groupIds = useMemo(() => {
@@ -89,14 +89,14 @@ export const OrgStructureClient = ({
 
   // 3. メンバー情報を取得
   const { data: membersMap, isLoading: membersLoading } =
-    api.v2.group.getMembers.useQuery(
+    api.group.getMembers.useQuery(
       { organizationId, groupIds },
       { enabled: groupIds.length > 0 },
     );
 
   // 4. ロール情報を一括取得
   const { data: allRolesData, isLoading: rolesLoading } =
-    api.v2.group.listAllRoles.useQuery(
+    api.group.listAllRoles.useQuery(
       { organizationId, groupIds },
       { enabled: groupIds.length > 0 },
     );

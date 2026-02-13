@@ -6,12 +6,15 @@ import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
-import { type getUserOrganizationsOutputSchema } from "@/server/api/routers/v2/organization";
+// 循環依存を回避: barrel file からではなく直接スキーマファイルからインポート
+import { type getUserOrganizationsProtectedOutputSchema } from "@/features/organization/api/schemas";
 import { type z } from "zod";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
 // tRPCのZod型定義から型を生成
-type Organization = z.infer<typeof getUserOrganizationsOutputSchema>[number];
+type Organization = z.infer<
+  typeof getUserOrganizationsProtectedOutputSchema
+>[number];
 
 type OrganizationContextType = {
   organizations: Organization[] | undefined;
@@ -52,7 +55,7 @@ export const OrganizationProvider = ({
 
   // 認証済みユーザーのみ組織リストを取得（パブリックページでは取得しない）
   const { data: organizations, isLoading } =
-    api.v2.organization.getUserOrganizations.useQuery(undefined, {
+    api.organization.getUserOrganizations.useQuery(undefined, {
       enabled: !isPublicPage && status === "authenticated" && !!session?.user,
       retry: false,
       refetchOnWindowFocus: false,
@@ -77,7 +80,7 @@ export const OrganizationProvider = ({
 
   // デフォルト組織を設定するmutation
   const setDefaultOrgMutation =
-    api.v2.organization.setDefaultOrganization.useMutation({
+    api.organization.setDefaultOrganization.useMutation({
       onSuccess: async (data) => {
         toast.success("組織を切り替えました");
 

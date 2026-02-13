@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
+import { type GetOrganizationBySlugOutput } from "@/features/organization";
 import { MemberList } from "./MemberList";
 import { InvitationList } from "./InvitationList";
 import { getSessionInfo } from "~/lib/auth/session-utils";

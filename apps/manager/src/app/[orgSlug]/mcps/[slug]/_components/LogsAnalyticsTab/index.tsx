@@ -76,7 +76,7 @@ export const LogsAnalyticsTab = ({
     data: logsData,
     isLoading,
     isFetching,
-  } = api.v2.userMcpServerRequestLog.findRequestLogs.useQuery(
+  } = api.userMcpServerRequestLog.findRequestLogs.useQuery(
     {
       userMcpServerId: serverId,
       page: currentPage,
@@ -95,7 +95,7 @@ export const LogsAnalyticsTab = ({
 
   // グラフ用の統計データを取得（日別または時間別）
   const { data: statsData } =
-    api.v2.userMcpServerRequestLog.getRequestLogsStats.useQuery(
+    api.userMcpServerRequestLog.getRequestLogsStats.useQuery(
       {
         userMcpServerId: serverId,
         days: daysAndTimezone.days,

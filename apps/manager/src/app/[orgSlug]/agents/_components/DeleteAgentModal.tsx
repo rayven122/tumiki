@@ -32,7 +32,7 @@ export const DeleteAgentModal = ({
   onOpenChange,
   onSuccess,
 }: DeleteAgentModalProps) => {
-  const deleteAgentMutation = api.v2.agent.delete.useMutation({
+  const deleteAgentMutation = api.agent.delete.useMutation({
     onSuccess: () => {
       toast.success("エージェントを削除しました");
       onSuccess?.();

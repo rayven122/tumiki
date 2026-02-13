@@ -92,7 +92,7 @@ export const AgentIconEditModal = ({
   }, [localPreviewUrl]);
 
   const { mutate: updateIconPath, isPending } =
-    api.v2.agent.updateIconPath.useMutation({
+    api.agent.updateIconPath.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("アイコンを更新しました。");

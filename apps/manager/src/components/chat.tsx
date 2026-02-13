@@ -12,7 +12,7 @@ import {
   Suspense,
 } from "react";
 import { useSWRConfig } from "swr";
-import { ChatQuickActions } from "./chat/ChatQuickActions";
+import { ChatQuickActions } from "@/features/chat";
 import { SuggestedActions } from "./suggested-actions";
 import { fetchWithErrorHandlers, generateCUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
@@ -29,13 +29,13 @@ import { useAutoResume } from "@/hooks/use-auto-resume";
 import { ChatSDKError } from "@/lib/errors";
 import type { SessionData } from "~/auth";
 import { useDataStream } from "./data-stream-provider";
-import { CoharuProvider, useCoharuContext } from "@/hooks/coharu";
+import { CoharuProvider, useCoharuContext } from "@/features/avatar/hooks";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { getProxyServerUrl } from "@/utils/url";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>
-  import("@/components/coharu/CoharuViewer").then((mod) => ({
+  import("@/features/avatar/components/CoharuViewer").then((mod) => ({
     default: mod.CoharuViewer,
   })),
 );

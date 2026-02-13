@@ -28,14 +28,12 @@ const mockRouterPush = vi.fn();
 // tRPC APIのモック
 vi.mock("@/trpc/react", () => ({
   api: {
-    v2: {
-      organization: {
-        getUserOrganizations: {
-          useQuery: () => mockUseQuery(),
-        },
-        setDefaultOrganization: {
-          useMutation: (options: any) => mockUseMutation(options),
-        },
+    organization: {
+      getUserOrganizations: {
+        useQuery: () => mockUseQuery(),
+      },
+      setDefaultOrganization: {
+        useMutation: (options: any) => mockUseMutation(options),
       },
     },
     useUtils: () => mockUseUtils(),

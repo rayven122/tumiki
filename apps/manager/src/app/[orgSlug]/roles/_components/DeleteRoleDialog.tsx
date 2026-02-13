@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import type { ListRolesOutput } from "@/server/api/routers/v2/role/list";
+import type { ListRolesOutput } from "@/features/roles/api/list";
 
 type DeleteRoleDialogProps = {
   role: ListRolesOutput[number];
@@ -26,10 +26,10 @@ export const DeleteRoleDialog = ({
 }: DeleteRoleDialogProps) => {
   const utils = api.useUtils();
 
-  const deleteMutation = api.v2.role.delete.useMutation({
+  const deleteMutation = api.role.delete.useMutation({
     onSuccess: () => {
       onOpenChange(false);
-      void utils.v2.role.list.invalidate();
+      void utils.role.list.invalidate();
       toast.success("ロールを削除しました");
     },
     onError: (error) => {

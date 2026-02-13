@@ -5,7 +5,7 @@ import {
   PROGRESS_UPDATE_INTERVAL_MS,
   PROGRESS_WARNING_THRESHOLD,
   calculateProgress,
-} from "@/lib/agent";
+} from "@/features/agents/constants";
 import { AlertTriangle, Eye, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
