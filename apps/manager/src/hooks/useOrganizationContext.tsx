@@ -6,7 +6,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "@/utils/client/toast";
 import { type OrganizationId } from "@/schema/ids";
-import { type getUserOrganizationsProtectedOutputSchema } from "@/features/organization";
+// 循環依存を回避: barrel file からではなく直接スキーマファイルからインポート
+import { type getUserOrganizationsProtectedOutputSchema } from "@/features/organization/api/schemas";
 import { type z } from "zod";
 import { getSessionInfo } from "~/lib/auth/session-utils";
 
