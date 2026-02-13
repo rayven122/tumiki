@@ -34,7 +34,7 @@ export const DeleteServerDialog = ({
   const [confirmationName, setConfirmationName] = useState("");
 
   const { mutate: deleteServer, isPending } =
-    api.v2.userMcpServer.delete.useMutation({
+    api.userMcpServer.delete.useMutation({
       onSuccess: () => {
         toast.success("MCPサーバーを削除しました");
         router.push(`/${orgSlug}/mcps`);

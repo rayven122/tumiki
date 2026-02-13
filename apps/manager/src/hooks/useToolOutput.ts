@@ -35,7 +35,7 @@ export const useToolOutput = ({
   toolCallId,
   enabled = true,
 }: UseToolOutputParams): UseToolOutputResult => {
-  const { data, isLoading, error, isFetched } = api.v2.toolOutput.get.useQuery(
+  const { data, isLoading, error, isFetched } = api.toolOutput.get.useQuery(
     { toolCallId: toolCallId ?? "" },
     {
       enabled: enabled && !!toolCallId,

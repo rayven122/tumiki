@@ -5,7 +5,7 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import type { VRM } from "@pixiv/three-vrm";
-import type { SpeechQueue } from "@/lib/coharu/speechQueue";
+import type { SpeechQueue } from "@/features/avatar/services/speechQueue";
 
 // 有効/無効（localStorage に永続化）
 export const coharuEnabledAtom = atomWithStorage("coharu-enabled", false);

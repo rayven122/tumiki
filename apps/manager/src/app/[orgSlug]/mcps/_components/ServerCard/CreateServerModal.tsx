@@ -11,12 +11,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { Prisma } from "@tumiki/db/prisma";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
-import { useCreateServerForm } from "./_hooks/useCreateServerForm";
-import { ServerInfoSection } from "./_components/ServerInfoSection";
-import { ServerNameInput } from "./_components/ServerNameInput";
-import { AuthMethodTabs } from "./_components/AuthMethodTabs";
-import { FormActions } from "./_components/FormActions";
-import { LoadingOverlay } from "./_components/LoadingOverlay";
+import { useCreateServerForm } from "./hooks/useCreateServerForm";
+import { ServerInfoSection } from "./ServerCardServerInfoSection";
+import { ServerNameInput } from "./ServerCardServerNameInput";
+import { AuthMethodTabs } from "./ServerCardAuthMethodTabs";
+import { FormActions } from "./ServerCardFormActions";
+import { LoadingOverlay } from "./ServerCardLoadingOverlay";
 
 // 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）
 const generateSlugFromName = (name: string): string => {

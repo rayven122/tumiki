@@ -1,6 +1,6 @@
 "use client";
 
-import { REALTIME_LOG_POLLING_MS } from "@/lib/agent";
+import { REALTIME_LOG_POLLING_MS } from "@/features/agents/constants";
 import { api } from "@/trpc/react";
 import { Loader2 } from "lucide-react";
 
@@ -23,14 +23,13 @@ export const ExecutionDetailsModal = ({
   onClose,
 }: ExecutionDetailsModalProps) => {
   // メッセージをポーリングで取得
-  const { data: messages, isLoading } =
-    api.v2.agentExecution.getMessages.useQuery(
-      { chatId: execution?.chatId ?? "" },
-      {
-        enabled: open && !!execution?.chatId,
-        refetchInterval: REALTIME_LOG_POLLING_MS,
-      },
-    );
+  const { data: messages, isLoading } = api.agentExecution.getMessages.useQuery(
+    { chatId: execution?.chatId ?? "" },
+    {
+      enabled: open && !!execution?.chatId,
+      refetchInterval: REALTIME_LOG_POLLING_MS,
+    },
+  );
 
   if (!execution) return null;
 

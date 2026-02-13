@@ -18,7 +18,7 @@ import {
 import { Mail, RefreshCw, X, Clock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { getSessionInfo } from "~/lib/auth/session-utils";
-import { type GetOrganizationBySlugOutput } from "@/server/api/routers/organization/getBySlug";
+import { type GetOrganizationBySlugOutput } from "@/features/organization";
 
 type InvitationListProps = {
   organization: GetOrganizationBySlugOutput;

@@ -1,7 +1,7 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { AdapterUser } from "@auth/core/adapters";
 import { db } from "@tumiki/db/server";
-import { createUserWithOrganization } from "~/server/api/routers/v2/user/createUserWithOrganization";
+import { createUserWithOrganization } from "@/features/user";
 
 /**
  * Keycloak profileSubフィールドを含む拡張AdapterUser型

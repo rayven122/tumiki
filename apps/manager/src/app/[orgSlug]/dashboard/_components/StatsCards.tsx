@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Activity, Bot, DollarSign, Clock } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 
-type Stats = RouterOutputs["v2"]["dashboard"]["getStats"];
+type Stats = RouterOutputs["dashboard"]["getStats"];
 
 type StatsCardsProps = {
   stats: Stats;

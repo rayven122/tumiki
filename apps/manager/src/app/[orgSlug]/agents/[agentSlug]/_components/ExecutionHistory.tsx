@@ -67,7 +67,7 @@ export const ExecutionHistory = ({
   const [modalOpen, setModalOpen] = useState(false);
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    api.v2.agentExecution.findByAgentId.useInfiniteQuery(
+    api.agentExecution.findByAgentId.useInfiniteQuery(
       { agentId, limit: 10 },
       {
         getNextPageParam: (lastPage) => lastPage.nextCursor,

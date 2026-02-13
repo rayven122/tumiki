@@ -30,7 +30,7 @@ export const DeleteConfirmModal = ({
   isLoading: customIsLoading,
 }: DeleteConfirmModalProps) => {
   const { mutate: deleteServerInstance, isPending } =
-    api.v2.userMcpServer.delete.useMutation({
+    api.userMcpServer.delete.useMutation({
       onSuccess: async () => {
         toast.success(`${serverName}のMCPサーバーを削除しました。`);
         await onSuccess?.();

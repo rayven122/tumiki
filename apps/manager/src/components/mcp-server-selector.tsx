@@ -18,8 +18,7 @@ import {
   getServerIconPath,
 } from "@/utils/mcpServerUtils";
 
-type OfficialServer =
-  RouterOutputs["v2"]["userMcpServer"]["findMcpServers"][number];
+type OfficialServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
 type McpServerSelectorProps = {
   selectedMcpServerIds: string[];
@@ -43,7 +42,7 @@ export const McpServerSelector = ({
   };
 
   const { data: mcpServers, isLoading } =
-    api.v2.userMcpServer.findMcpServers.useQuery();
+    api.userMcpServer.findMcpServers.useQuery();
 
   const availableServers: OfficialServer[] =
     mcpServers?.filter(

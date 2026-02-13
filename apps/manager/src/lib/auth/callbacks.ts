@@ -4,7 +4,7 @@ import type { Role } from "@tumiki/db/server";
 import type { AdapterUser } from "@auth/core/adapters";
 import type { KeycloakJWTPayload, KeycloakTumikiClaims } from "./types";
 import { db } from "@tumiki/db/server";
-import { getTumikiClaims } from "~/server/api/routers/v2/user/getTumikiClaims";
+import { getTumikiClaims } from "@/features/user";
 import { getKeycloakEnv } from "~/utils/env";
 import { decodeJwt } from "jose";
 

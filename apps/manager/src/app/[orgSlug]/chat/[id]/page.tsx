@@ -6,7 +6,7 @@ import { Chat } from "@/components/chat";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DataStreamProvider } from "@/components/data-stream-provider";
-import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import { DEFAULT_CHAT_MODEL } from "@/features/chat/services/ai";
 import type { Message } from "@tumiki/db/prisma";
 import type { ChatMessage } from "@/lib/types";
 import { api } from "@/trpc/server";

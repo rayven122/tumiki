@@ -53,7 +53,7 @@ export const ConnectionSettings = ({
   const [showApiKey, setShowApiKey] = useState(false);
 
   // APIキー一覧取得
-  const { data: apiKeys } = api.v2.mcpServerAuth.listApiKeys.useQuery({
+  const { data: apiKeys } = api.mcpServerAuth.listApiKeys.useQuery({
     serverId,
   });
 

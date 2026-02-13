@@ -11,7 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useCoharuContext } from "@/hooks/coharu/useCoharuContext";
+import { useCoharuContext } from "@/features/avatar/hooks/useCoharuContext";
 
 type DisplayMode = "normal" | "coharu" | "avatar";
 

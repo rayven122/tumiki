@@ -8,8 +8,7 @@ import type { RouterOutputs } from "@/trpc/react";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 
-type RunningAgent =
-  RouterOutputs["v2"]["agentExecution"]["getAllRunning"][number];
+type RunningAgent = RouterOutputs["agentExecution"]["getAllRunning"][number];
 
 type RunningAgentsProps = {
   agents: RunningAgent[];

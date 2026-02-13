@@ -60,13 +60,13 @@ export const IntegrateMcpTab = () => {
   const utils = api.useUtils();
 
   // テンプレート一覧を取得
-  const { data: mcpServerTemplates } = api.v2.mcpServer.findAll.useQuery();
+  const { data: mcpServerTemplates } = api.mcpServer.findAll.useQuery();
 
   const createMutation =
-    api.v2.userMcpServer.createIntegratedMcpServer.useMutation({
+    api.userMcpServer.createIntegratedMcpServer.useMutation({
       onSuccess: () => {
         toast.success("統合MCPを作成しました");
-        void utils.v2.userMcpServer.findMcpServers.invalidate();
+        void utils.userMcpServer.findMcpServers.invalidate();
         // 状態をリセット
         setName("");
         setSelectedTemplateIds([]);

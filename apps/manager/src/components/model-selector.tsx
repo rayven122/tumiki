@@ -15,11 +15,11 @@ import {
   chatModels,
   DEFAULT_CHAT_MODEL,
   getModelsGroupedByProvider,
-} from "@/lib/ai/models";
+  entitlementsByUserType,
+} from "@/features/chat/services/ai/index.client";
 import { cn } from "@/lib/utils";
 
 import { CheckCircleFillIcon, ChevronDownIcon } from "./icons";
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import type { SessionData } from "~/auth";
 
 export function ModelSelector({

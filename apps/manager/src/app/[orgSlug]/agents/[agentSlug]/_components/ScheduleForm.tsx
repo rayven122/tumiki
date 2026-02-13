@@ -176,11 +176,11 @@ export const ScheduleForm = ({
     [hour, minute, clientTimezone],
   );
 
-  const createMutation = api.v2.agentSchedule.create.useMutation({
+  const createMutation = api.agentSchedule.create.useMutation({
     onSuccess: () => {
       toast.success("スケジュールを作成しました");
-      void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
-      void utils.v2.agent.findById.invalidate({ id: agentId });
+      void utils.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.agent.findById.invalidate({ id: agentId });
       onClose();
     },
     onError: (error) => {
@@ -188,11 +188,11 @@ export const ScheduleForm = ({
     },
   });
 
-  const updateMutation = api.v2.agentSchedule.update.useMutation({
+  const updateMutation = api.agentSchedule.update.useMutation({
     onSuccess: () => {
       toast.success("スケジュールを更新しました");
-      void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
-      void utils.v2.agent.findById.invalidate({ id: agentId });
+      void utils.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.agent.findById.invalidate({ id: agentId });
       onClose();
     },
     onError: (error) => {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chatModels } from "@/lib/ai/models";
+import { chatModels } from "@/features/chat/services/ai";
 
 // AI SDK 6: parts配列内のテキストパート
 const textPartSchema = z.object({

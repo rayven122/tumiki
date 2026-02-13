@@ -26,10 +26,10 @@ export const DeleteRoleDialog = ({
 }: DeleteRoleDialogProps) => {
   const utils = api.useUtils();
 
-  const deleteMutation = api.v2.role.delete.useMutation({
+  const deleteMutation = api.role.delete.useMutation({
     onSuccess: () => {
       onOpenChange(false);
-      void utils.v2.role.list.invalidate();
+      void utils.role.list.invalidate();
       toast.success("ロールを削除しました");
     },
     onError: (error) => {

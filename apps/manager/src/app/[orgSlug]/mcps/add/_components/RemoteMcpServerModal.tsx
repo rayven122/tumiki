@@ -29,7 +29,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from "react-toastify";
-import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/_hooks/useCreateServerForm";
+import { useCreateServerForm } from "@/app/[orgSlug]/mcps/_components/ServerCard/hooks/useCreateServerForm";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 // 名前からslugを生成（日本語などの非ASCII文字はフォールバックでタイムスタンプ生成）

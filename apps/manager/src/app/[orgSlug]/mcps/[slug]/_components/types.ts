@@ -1,17 +1,15 @@
 import type { RouterOutputs } from "~/trpc/react";
 
 // サーバー詳細の型
-export type UserMcpServerDetail =
-  RouterOutputs["v2"]["userMcpServer"]["findById"];
+export type UserMcpServerDetail = RouterOutputs["userMcpServer"]["findById"];
 
 // リクエスト統計の型
 export type RequestStats =
-  RouterOutputs["v2"]["userMcpServerRequestLog"]["getRequestStats"];
+  RouterOutputs["userMcpServerRequestLog"]["getRequestStats"];
 
 // リクエストログの型
 export type RequestLog =
-  RouterOutputs["v2"]["userMcpServerRequestLog"]["findRequestLogs"]["data"][number];
+  RouterOutputs["userMcpServerRequestLog"]["findRequestLogs"]["data"][number];
 
 // ツール統計の型
-export type ToolStats =
-  RouterOutputs["v2"]["userMcpServer"]["getToolStats"][number];
+export type ToolStats = RouterOutputs["userMcpServer"]["getToolStats"][number];

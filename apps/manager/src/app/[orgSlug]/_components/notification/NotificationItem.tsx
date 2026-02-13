@@ -45,10 +45,10 @@ export const NotificationItem = ({
 }: NotificationItemProps) => {
   const router = useRouter();
   const utils = api.useUtils();
-  const markAsRead = api.v2.notification.markAsRead.useMutation({
+  const markAsRead = api.notification.markAsRead.useMutation({
     onSuccess: async () => {
-      await utils.v2.notification.getNotifications.invalidate();
-      await utils.v2.notification.getUnreadCount.invalidate();
+      await utils.notification.getNotifications.invalidate();
+      await utils.notification.getUnreadCount.invalidate();
       onRead?.();
     },
   });

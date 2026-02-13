@@ -35,11 +35,10 @@ const AsyncServerCardList = forwardRef<
   { isSortMode, searchQuery, selectedTags },
   ref,
 ) {
-  const [userMcpServers] =
-    api.v2.userMcpServer.findMcpServers.useSuspenseQuery();
+  const [userMcpServers] = api.userMcpServer.findMcpServers.useSuspenseQuery();
   const utils = api.useUtils();
   const updateDisplayOrderMutation =
-    api.v2.userMcpServer.updateDisplayOrder.useMutation();
+    api.userMcpServer.updateDisplayOrder.useMutation();
 
   const {
     servers,
@@ -50,7 +49,7 @@ const AsyncServerCardList = forwardRef<
   } = useSortableServers({
     originalServers: userMcpServers,
     updateMutation: updateDisplayOrderMutation,
-    invalidateQuery: () => utils.v2.userMcpServer.findMcpServers.invalidate(),
+    invalidateQuery: () => utils.userMcpServer.findMcpServers.invalidate(),
     isSortMode,
   });
 
@@ -101,8 +100,8 @@ const AsyncServerCardList = forwardRef<
                 userMcpServer={server}
                 isSortMode={isSortMode}
                 revalidate={async () => {
-                  await utils.v2.userMcpServer.findMcpServers.invalidate();
-                  await utils.v2.userMcpServer.findMcpServers.refetch();
+                  await utils.userMcpServer.findMcpServers.invalidate();
+                  await utils.userMcpServer.findMcpServers.refetch();
                 }}
               />
             ))}
@@ -152,8 +151,8 @@ const AsyncServerCardList = forwardRef<
           userMcpServer={server}
           isSortMode={isSortMode}
           revalidate={async () => {
-            await utils.v2.userMcpServer.findMcpServers.invalidate();
-            await utils.v2.userMcpServer.findMcpServers.refetch();
+            await utils.userMcpServer.findMcpServers.invalidate();
+            await utils.userMcpServer.findMcpServers.refetch();
           }}
         />
       ))}

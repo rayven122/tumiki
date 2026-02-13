@@ -9,7 +9,17 @@ import {
   type UIMessageStreamWriter,
 } from "ai";
 import { auth } from "~/auth";
-import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
+import {
+  type RequestHints,
+  systemPrompt,
+  getLanguageModel,
+  entitlementsByUserType,
+} from "@/features/chat/services/ai";
+import { createDocument } from "@/features/chat/services/ai/tools/create-document";
+import { updateDocument } from "@/features/chat/services/ai/tools/update-document";
+import { requestSuggestions } from "@/features/chat/services/ai/tools/request-suggestions";
+import { getWeather } from "@/features/chat/services/ai/tools/get-weather";
+import { getMcpToolsFromServers } from "@/features/chat/services/ai/tools/mcp";
 import {
   createStreamId,
   deleteChatById,
@@ -23,14 +33,7 @@ import {
 } from "@/lib/db/queries";
 import { convertOutputsToRefs } from "@/lib/db/tool-output-utils";
 import { generateCUID } from "@/lib/utils";
-import { createDocument } from "@/lib/ai/tools/create-document";
-import { updateDocument } from "@/lib/ai/tools/update-document";
-import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
-import { getWeather } from "@/lib/ai/tools/get-weather";
-import { getMcpToolsFromServers } from "@/lib/ai/tools/mcp";
 import { isProductionEnvironment } from "@/lib/constants";
-import { getLanguageModel } from "@/lib/ai/providers";
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { postRequestBodySchema, type PostRequestBody } from "./schema";
 import { geolocation } from "@vercel/functions";
 import { createResumableStreamContext } from "resumable-stream";

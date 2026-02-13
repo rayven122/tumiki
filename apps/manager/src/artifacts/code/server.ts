@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { type UIMessageStreamWriter, streamObject } from "ai";
-import { getArtifactModel } from "@/lib/ai/providers";
-import { codePrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
+import {
+  getArtifactModel,
+  codePrompt,
+  updateDocumentPrompt,
+} from "@/features/chat/services/ai";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 
 // UIMessageStreamWriterにデータを書き込むヘルパー関数

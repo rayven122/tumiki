@@ -39,13 +39,12 @@ export const ExecutionHistoryModal = ({
   orgSlug,
 }: ExecutionHistoryModalProps) => {
   // chatIdがある場合はメッセージを取得
-  const { data: messages, isLoading } =
-    api.v2.agent.getExecutionMessages.useQuery(
-      { chatId: result?.chatId ?? "" },
-      {
-        enabled: open && !!result?.chatId,
-      },
-    );
+  const { data: messages, isLoading } = api.agent.getExecutionMessages.useQuery(
+    { chatId: result?.chatId ?? "" },
+    {
+      enabled: open && !!result?.chatId,
+    },
+  );
 
   if (!result) return null;
 

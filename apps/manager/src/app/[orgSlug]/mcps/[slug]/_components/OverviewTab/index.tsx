@@ -29,20 +29,20 @@ export const OverviewTab = ({
   );
   const utils = api.useUtils();
 
-  const { mutate: toggleTool } = api.v2.userMcpServer.toggleTool.useMutation({
+  const { mutate: toggleTool } = api.userMcpServer.toggleTool.useMutation({
     // 楽観的更新: サーバーレスポンスを待たずにUIを即座に更新
     onMutate: async (variables) => {
       // 進行中のクエリをキャンセル
-      await utils.v2.userMcpServer.findById.cancel({ id: serverId });
+      await utils.userMcpServer.findById.cancel({ id: serverId });
 
       // 現在のデータを取得（ロールバック用）
-      const previousData = utils.v2.userMcpServer.findById.getData({
+      const previousData = utils.userMcpServer.findById.getData({
         id: serverId,
       });
 
       // UIを楽観的に更新
       if (previousData) {
-        utils.v2.userMcpServer.findById.setData(
+        utils.userMcpServer.findById.setData(
           { id: serverId },
           {
             ...previousData,
@@ -70,7 +70,7 @@ export const OverviewTab = ({
     onError: (error, _variables, context) => {
       // エラー時は元のデータに戻す
       if (context?.previousData) {
-        utils.v2.userMcpServer.findById.setData(
+        utils.userMcpServer.findById.setData(
           { id: serverId },
           context.previousData,
         );
@@ -84,7 +84,7 @@ export const OverviewTab = ({
     },
     // 成功/失敗に関わらず最終的にデータを再取得して整合性を保つ
     onSettled: async () => {
-      await utils.v2.userMcpServer.findById.invalidate({ id: serverId });
+      await utils.userMcpServer.findById.invalidate({ id: serverId });
     },
   });
 

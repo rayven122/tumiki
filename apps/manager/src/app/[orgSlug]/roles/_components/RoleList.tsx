@@ -17,7 +17,7 @@ export const RoleList = () => {
     ListRolesOutput[number] | null
   >(null);
 
-  const { data: roles, isLoading } = api.v2.role.list.useQuery({
+  const { data: roles, isLoading } = api.role.list.useQuery({
     includePermissions: true,
   });
 

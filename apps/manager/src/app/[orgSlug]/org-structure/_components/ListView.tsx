@@ -4,7 +4,10 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
 import { ChevronRight, ChevronDown, Users, UserCircle2 } from "lucide-react";
-import type { OrgData, Department } from "./mock/mockOrgData";
+import type {
+  OrgData,
+  Department,
+} from "@/features/org-structure/utils/mock/mockOrgData";
 
 type ListViewProps = {
   orgData: OrgData;

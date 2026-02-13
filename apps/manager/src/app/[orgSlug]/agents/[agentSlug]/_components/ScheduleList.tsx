@@ -57,14 +57,14 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
 
   // スケジュール一覧を取得
   const { data: schedules, isLoading } =
-    api.v2.agentSchedule.findByAgentId.useQuery({ agentId });
+    api.agentSchedule.findByAgentId.useQuery({ agentId });
 
   // 削除ミューテーション
-  const deleteMutation = api.v2.agentSchedule.delete.useMutation({
+  const deleteMutation = api.agentSchedule.delete.useMutation({
     onSuccess: (data) => {
       toast.success(`「${data.name}」を削除しました`);
-      void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
-      void utils.v2.agent.findById.invalidate({ id: agentId });
+      void utils.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.agent.findById.invalidate({ id: agentId });
       setDeleteTargetId(null);
     },
     onError: (error) => {
@@ -73,10 +73,10 @@ export const ScheduleList = ({ agentId }: ScheduleListProps) => {
   });
 
   // 有効/無効切り替えミューテーション
-  const toggleMutation = api.v2.agentSchedule.toggle.useMutation({
+  const toggleMutation = api.agentSchedule.toggle.useMutation({
     onSuccess: () => {
-      void utils.v2.agentSchedule.findByAgentId.invalidate({ agentId });
-      void utils.v2.agent.findById.invalidate({ id: agentId });
+      void utils.agentSchedule.findByAgentId.invalidate({ agentId });
+      void utils.agent.findById.invalidate({ id: agentId });
     },
     onError: (error) => {
       toast.error(`ステータス変更に失敗しました: ${error.message}`);

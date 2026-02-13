@@ -114,7 +114,7 @@ export const EditRoleDialog = ({
 
   // 組織内のMCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
-    api.v2.userMcpServer.findMcpServers.useQuery(undefined, {
+    api.userMcpServer.findMcpServers.useQuery(undefined, {
       enabled: open,
     });
 
@@ -131,10 +131,10 @@ export const EditRoleDialog = ({
     }));
   }, [mcpServers]);
 
-  const updateMutation = api.v2.role.update.useMutation({
+  const updateMutation = api.role.update.useMutation({
     onSuccess: () => {
       onOpenChange(false);
-      void utils.v2.role.list.invalidate();
+      void utils.role.list.invalidate();
       toast.success("ロールを更新しました");
     },
     onError: (error) => {

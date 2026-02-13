@@ -20,8 +20,7 @@ import { ja } from "date-fns/locale";
 import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { ExecutionHistoryModal } from "../../agents/[agentSlug]/_components/ExecutionHistoryModal";
 
-type Execution =
-  RouterOutputs["v2"]["dashboard"]["getRecentExecutions"][number];
+type Execution = RouterOutputs["dashboard"]["getRecentExecutions"][number];
 
 type RecentExecutionsProps = {
   executions: Execution[];

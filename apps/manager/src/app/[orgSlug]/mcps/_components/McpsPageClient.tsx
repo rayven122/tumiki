@@ -45,11 +45,11 @@ export const McpsPageClient = ({ orgSlug }: McpsPageClientProps) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // 登録済みサーバー数を取得
-  const { data: userServers } = api.v2.userMcpServer.findMcpServers.useQuery();
+  const { data: userServers } = api.userMcpServer.findMcpServers.useQuery();
   const serverCount = userServers?.length ?? 0;
 
   // MCPサーバーテンプレート一覧から利用可能なタグを動的に取得
-  const { data: mcpServerTemplates } = api.v2.mcpServer.findAll.useQuery();
+  const { data: mcpServerTemplates } = api.mcpServer.findAll.useQuery();
 
   // 全MCPサーバーテンプレートからユニークなタグを抽出
   const availableTags = useMemo(() => {

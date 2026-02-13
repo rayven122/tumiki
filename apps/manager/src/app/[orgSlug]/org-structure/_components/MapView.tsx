@@ -28,19 +28,21 @@ import { CreateDepartmentDialog } from "./CreateDepartmentDialog";
 import { DeleteDepartmentConfirmDialog } from "./DeleteDepartmentConfirmDialog";
 import { MoveConfirmDialog, type MoveOperation } from "./MoveConfirmDialog";
 import { ChangeParentDialog } from "./ChangeParentDialog";
-import type { Department } from "./mock/mockOrgData";
+import type {
+  Department,
+  OrgData,
+} from "@/features/org-structure/utils/mock/mockOrgData";
 import {
   DepartmentNode,
   type DepartmentNodeType,
-} from "./nodes/DepartmentNode";
+} from "@/features/org-structure/components/nodes/DepartmentNode";
 import {
   DepartmentEdge,
   type DepartmentEdgeType,
-} from "./edges/DepartmentEdge";
-import { getLayoutedElements } from "./utils/layoutNodes";
-import { convertOrgDataToFlow } from "./utils/orgDataConverter";
-import { detectOrphanedDepartments } from "./utils/validation";
-import type { OrgData } from "./mock/mockOrgData";
+} from "@/features/org-structure/components/edges/DepartmentEdge";
+import { getLayoutedElements } from "@/features/org-structure/utils/layoutNodes";
+import { convertOrgDataToFlow } from "@/features/org-structure/utils/orgDataConverter";
+import { detectOrphanedDepartments } from "@/features/org-structure/utils/validation";
 import { api } from "@/trpc/react";
 
 // カスタムノードとエッジの型定義
@@ -110,7 +112,7 @@ export const MapView = ({
   const utils = api.useUtils();
 
   // グループ移動mutation
-  const moveMutation = api.v2.group.move.useMutation();
+  const moveMutation = api.group.move.useMutation();
 
   // 保存ボタンの状態制御
   const hasOrphanedDepartments = useMemo(() => {
@@ -352,11 +354,11 @@ export const MapView = ({
       toast.success("組織構造を保存しました");
 
       // データを再取得
-      await utils.v2.group.list.invalidate();
+      await utils.group.list.invalidate();
     } catch {
       toast.error("保存に失敗しました");
     }
-  }, [pendingMoves, organizationId, moveMutation, utils.v2.group.list]);
+  }, [pendingMoves, organizationId, moveMutation, utils.group.list]);
 
   /**
    * 確認モーダルキャンセル

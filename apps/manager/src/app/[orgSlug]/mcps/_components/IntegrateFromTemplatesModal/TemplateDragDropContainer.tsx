@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { McpServerIcon } from "../McpServerIcon";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { useDrag } from "@/components/mcp-selector";
+import { useDrag } from "@/features/mcps/components/mcp-selector";
 import { TemplateCard } from "./TemplateCard";
 import {
   type SelectableTemplate,

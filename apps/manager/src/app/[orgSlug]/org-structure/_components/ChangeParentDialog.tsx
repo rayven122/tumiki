@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
-import { type Department } from "./mock/mockOrgData";
-import type { DepartmentEdgeType } from "./edges/DepartmentEdge";
+import { type Department } from "@/features/org-structure/utils/mock/mockOrgData";
+import type { DepartmentEdgeType } from "@/features/org-structure/components/edges/DepartmentEdge";
 
 type ChangeParentDialogProps = {
   isOpen: boolean;

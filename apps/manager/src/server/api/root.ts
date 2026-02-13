@@ -1,9 +1,28 @@
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
-import { waitingListRouter } from "./routers/waitingList";
-import { organizationRouter } from "./routers/organization/index";
-import { v2Router } from "./routers/v2";
-// TODO: Rewrite OAuth token management for Auth.js
-// import { oauthRouter } from "./routers/oauth/index";
+
+// すべてfeatures/からインポート
+import { waitingListRouter } from "@/features/waitingList";
+import { organizationRouter } from "@/features/organization";
+import { userRouter } from "@/features/user";
+import { systemRouter } from "@/features/system";
+import {
+  userMcpServerRouter,
+  mcpServerRouter,
+  mcpServerAuthRouter,
+  oauthRouter,
+  userMcpServerRequestLogRouter,
+} from "@/features/mcps";
+import { feedbackRouter } from "@/features/feedback/api/router";
+import { notificationRouter } from "@/features/notification/api/router";
+import { groupRouter } from "@/features/groups/api/router";
+import { roleRouter } from "@/features/roles/api/router";
+import {
+  agentRouter,
+  agentExecutionRouter,
+  agentScheduleRouter,
+} from "@/features/agents";
+import { dashboardRouter } from "@/features/dashboard/api/router";
+import { toolOutputRouter } from "@/features/chat/api/toolOutput/router";
 
 /**
  * This is the primary router for your server.
@@ -11,11 +30,25 @@ import { v2Router } from "./routers/v2";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  // フラット構成（v2なし）
   waitingList: waitingListRouter,
   organization: organizationRouter,
-  v2: v2Router,
-  // TODO: Rewrite OAuth token management for Auth.js
-  // oauth: oauthRouter,
+  user: userRouter,
+  system: systemRouter,
+  userMcpServer: userMcpServerRouter,
+  userMcpServerRequestLog: userMcpServerRequestLogRouter,
+  mcpServerAuth: mcpServerAuthRouter,
+  mcpServer: mcpServerRouter,
+  feedback: feedbackRouter,
+  oauth: oauthRouter,
+  notification: notificationRouter,
+  group: groupRouter,
+  role: roleRouter,
+  agent: agentRouter,
+  agentSchedule: agentScheduleRouter,
+  agentExecution: agentExecutionRouter,
+  dashboard: dashboardRouter,
+  toolOutput: toolOutputRouter,
 });
 
 // export type definition of API

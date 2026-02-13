@@ -20,7 +20,7 @@ import {
   convertToSelectableMcp,
   type UserMcpServer,
   type SelectableMcp,
-} from "@/components/mcp-selector";
+} from "@/features/mcps/components/mcp-selector";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 
 type IntegrateMcpModalProps = {
@@ -57,10 +57,10 @@ export const IntegrateMcpModal = ({
   const utils = api.useUtils();
 
   const createMutation =
-    api.v2.userMcpServer.createIntegratedMcpServer.useMutation({
+    api.userMcpServer.createIntegratedMcpServer.useMutation({
       onSuccess: () => {
         toast.success("統合MCPを作成しました");
-        void utils.v2.userMcpServer.findMcpServers.invalidate();
+        void utils.userMcpServer.findMcpServers.invalidate();
         handleClose();
       },
       onError: (error) => {

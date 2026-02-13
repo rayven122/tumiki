@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/trpc/react";
-import type { Department } from "../mock/mockOrgData";
+import type { Department } from "@/features/org-structure/utils/mock/mockOrgData";
 import { MemberList } from "./MemberList";
 import { AddMembersDialog } from "./AddMembersDialog";
 import { IconPicker } from "./IconPicker";
@@ -73,23 +73,23 @@ export const GroupDetailSidebar = ({
   }, [orgMembersData]);
 
   // グループに割り当てられたロール一覧を取得
-  const { data: groupRolesData } = api.v2.group.listRoles.useQuery(
+  const { data: groupRolesData } = api.group.listRoles.useQuery(
     { organizationId, groupId: groupId ?? "" },
     { enabled: isOpen && !!groupId },
   );
 
   // 組織のロール一覧を取得（割り当て可能なロール用）
-  const { data: organizationRolesData } = api.v2.role.list.useQuery(
+  const { data: organizationRolesData } = api.role.list.useQuery(
     { includePermissions: false },
     { enabled: isOpen },
   );
 
   // リーダー更新
-  const updateLeaderMutation = api.v2.group.updateLeader.useMutation({
+  const updateLeaderMutation = api.group.updateLeader.useMutation({
     onSuccess: () => {
       toast.success("リーダーを更新しました");
-      void utils.v2.group.list.invalidate();
-      void utils.v2.group.getMembers.invalidate();
+      void utils.group.list.invalidate();
+      void utils.group.getMembers.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "リーダーの更新に失敗しました");
@@ -97,7 +97,7 @@ export const GroupDetailSidebar = ({
   });
 
   // メンバー追加（一括）
-  const addMembersMutation = api.v2.group.addMembers.useMutation({
+  const addMembersMutation = api.group.addMembers.useMutation({
     onSuccess: (result) => {
       if (result.success) {
         toast.success(`${result.addedCount}人のメンバーを追加しました`);
@@ -106,8 +106,8 @@ export const GroupDetailSidebar = ({
           `${result.addedCount}人を追加しました（${result.failedUserIds.length}人は失敗）`,
         );
       }
-      void utils.v2.group.list.invalidate();
-      void utils.v2.group.getMembers.invalidate();
+      void utils.group.list.invalidate();
+      void utils.group.getMembers.invalidate();
       // 成功したらダイアログを閉じる
       setIsAddMembersDialogOpen(false);
     },
@@ -119,11 +119,11 @@ export const GroupDetailSidebar = ({
   });
 
   // メンバー削除
-  const removeMemberMutation = api.v2.group.removeMember.useMutation({
+  const removeMemberMutation = api.group.removeMember.useMutation({
     onSuccess: () => {
       toast.success("メンバーを削除しました");
-      void utils.v2.group.list.invalidate();
-      void utils.v2.group.getMembers.invalidate();
+      void utils.group.list.invalidate();
+      void utils.group.getMembers.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "メンバーの削除に失敗しました");
@@ -131,11 +131,11 @@ export const GroupDetailSidebar = ({
   });
 
   // グループ更新
-  const updateGroupMutation = api.v2.group.update.useMutation({
+  const updateGroupMutation = api.group.update.useMutation({
     onSuccess: () => {
       toast.success("部署情報を更新しました");
       setIsEditing(false);
-      void utils.v2.group.list.invalidate();
+      void utils.group.list.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "部署情報の更新に失敗しました");
@@ -143,10 +143,10 @@ export const GroupDetailSidebar = ({
   });
 
   // ロール割り当て
-  const assignRoleMutation = api.v2.group.assignRole.useMutation({
+  const assignRoleMutation = api.group.assignRole.useMutation({
     onSuccess: () => {
       toast.success("ロールを割り当てました");
-      void utils.v2.group.listRoles.invalidate();
+      void utils.group.listRoles.invalidate();
       setIsAssignRoleDialogOpen(false);
     },
     onError: (error) => {
@@ -156,10 +156,10 @@ export const GroupDetailSidebar = ({
   });
 
   // ロール解除
-  const removeRoleMutation = api.v2.group.removeRole.useMutation({
+  const removeRoleMutation = api.group.removeRole.useMutation({
     onSuccess: () => {
       toast.success("ロールを解除しました");
-      void utils.v2.group.listRoles.invalidate();
+      void utils.group.listRoles.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "ロールの解除に失敗しました");

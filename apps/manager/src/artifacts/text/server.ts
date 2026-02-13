@@ -1,7 +1,9 @@
 import { type UIMessageStreamWriter, smoothStream, streamText } from "ai";
-import { getArtifactModel } from "@/lib/ai/providers";
+import {
+  getArtifactModel,
+  updateDocumentPrompt,
+} from "@/features/chat/services/ai";
 import { createDocumentHandler } from "@/lib/artifacts/server";
-import { updateDocumentPrompt } from "@/lib/ai/prompts";
 
 // UIMessageStreamWriterにデータを書き込むヘルパー関数
 // AI SDK 6では `data-${string}` パターンを使用

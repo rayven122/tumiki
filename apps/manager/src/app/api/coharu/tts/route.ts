@@ -5,8 +5,8 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "~/auth";
-import { AivisCloudTTSClient } from "@/lib/coharu/tts";
-import type { TTSOptions } from "@/lib/coharu/tts";
+import { AivisCloudTTSClient } from "@/features/avatar/services/tts";
+import type { TTSOptions } from "@/features/avatar/services/tts";
 
 // 環境変数から設定を取得
 const getConfig = () => {

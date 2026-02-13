@@ -58,7 +58,7 @@ import { AgentIconEditModal } from "./AgentIconEditModal";
 import { ExecutionResultModal } from "../[agentSlug]/_components/ExecutionResultModal";
 import type { AgentId } from "@/schema/ids";
 
-type Agent = RouterOutputs["v2"]["agent"]["findAll"][number];
+type Agent = RouterOutputs["agent"]["findAll"][number];
 
 type AgentCardProps = {
   agent: Agent;
@@ -384,8 +384,8 @@ export const AgentCard = ({
       setExecutionError(error.message);
     },
     onFinish: () => {
-      void utils.v2.agent.findAll.invalidate();
-      void utils.v2.agentExecution.getAllRunning.invalidate();
+      void utils.agent.findAll.invalidate();
+      void utils.agentExecution.getAllRunning.invalidate();
       void revalidate?.();
     },
   });
@@ -400,7 +400,7 @@ export const AgentCard = ({
       setResultModalOpen(true);
 
       // 実行開始時にキャッシュをインバリデート（稼働中表示の更新）
-      void utils.v2.agentExecution.getAllRunning.invalidate();
+      void utils.agentExecution.getAllRunning.invalidate();
 
       void sendMessage({
         role: "user",

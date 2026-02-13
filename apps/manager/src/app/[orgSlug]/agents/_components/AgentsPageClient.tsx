@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { REALTIME_LOG_POLLING_MS } from "@/lib/agent";
+import { REALTIME_LOG_POLLING_MS } from "@/features/agents/constants";
 import { api } from "@/trpc/react";
 import { Bot, Plus, Search } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -28,7 +28,7 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: agents } = api.v2.agent.findAll.useQuery();
+  const { data: agents } = api.agent.findAll.useQuery();
   const agentCount = agents?.length ?? 0;
 
   // 統合クエリ: 直近の実行履歴を取得（稼働中ダッシュボード + リアルタイムログ用）
@@ -38,7 +38,7 @@ export const AgentsPageClient = ({ orgSlug }: AgentsPageClientProps) => {
     hasNextPage,
     isFetchingNextPage,
     isLoading: isLoadingExecutions,
-  } = api.v2.agentExecution.getRecent.useInfiniteQuery(
+  } = api.agentExecution.getRecent.useInfiniteQuery(
     { limit: 20 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,

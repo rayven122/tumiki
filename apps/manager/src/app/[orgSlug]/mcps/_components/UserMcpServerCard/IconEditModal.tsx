@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type McpServerId } from "@/schema/ids";
 import { McpIconPicker } from "../McpIconPicker";
 import { McpServerIcon } from "../McpServerIcon";
-import { useImageUpload } from "./_hooks/useImageUpload";
+import { useImageUpload } from "./hooks/useImageUpload";
 import { cn } from "@/lib/utils";
 
 // 保存ボタンのラベルを取得（ネストした三項演算子を回避）
@@ -85,7 +85,7 @@ export const IconEditModal = ({
   }, [localPreviewUrl]);
 
   const { mutate: updateIconPath, isPending } =
-    api.v2.userMcpServer.updateIconPath.useMutation({
+    api.userMcpServer.updateIconPath.useMutation({
       onSuccess: async () => {
         await onSuccess?.();
         toast.success("アイコンを更新しました。");

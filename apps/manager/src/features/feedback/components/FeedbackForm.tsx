@@ -34,7 +34,7 @@ const INITIAL_FORM_DATA: FormData = {
 export const FeedbackForm = () => {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
 
-  const createMutation = api.v2.feedback.create.useMutation({
+  const createMutation = api.feedback.create.useMutation({
     onSuccess: (data: CreateFeedbackOutput) => {
       // フォームをリセット
       setFormData(INITIAL_FORM_DATA);

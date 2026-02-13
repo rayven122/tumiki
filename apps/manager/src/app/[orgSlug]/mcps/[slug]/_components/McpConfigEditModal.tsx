@@ -24,8 +24,8 @@ import { toast } from "@/utils/client/toast";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
 import { McpServerIcon } from "../../_components/McpServerIcon";
-import { ServerNameInput } from "../../_components/ServerCard/_components/ServerNameInput";
-import { LoadingOverlay } from "../../_components/ServerCard/_components/LoadingOverlay";
+import { ServerNameInput } from "../../_components/ServerCard/ServerCardServerNameInput";
+import { LoadingOverlay } from "../../_components/ServerCard/ServerCardLoadingOverlay";
 
 /** 編集可能なテンプレートインスタンスの情報 */
 type EditableInstance = {
@@ -74,11 +74,10 @@ const ServerInfoDisplay = ({
   iconPath?: string | null;
   url?: string | null;
 }) => {
-  const { data: config, isLoading } =
-    api.v2.userMcpServer.getMcpConfig.useQuery(
-      { templateInstanceId: instanceId },
-      { enabled: true },
-    );
+  const { data: config, isLoading } = api.userMcpServer.getMcpConfig.useQuery(
+    { templateInstanceId: instanceId },
+    { enabled: true },
+  );
 
   if (isLoading) {
     return (
@@ -122,11 +121,10 @@ const ApiKeyInputs = ({
   onEnvVarChange: (instanceId: string, key: string, value: string) => void;
   isUpdating: boolean;
 }) => {
-  const { data: config, isLoading } =
-    api.v2.userMcpServer.getMcpConfig.useQuery(
-      { templateInstanceId: instanceId },
-      { enabled: true },
-    );
+  const { data: config, isLoading } = api.userMcpServer.getMcpConfig.useQuery(
+    { templateInstanceId: instanceId },
+    { enabled: true },
+  );
 
   const hasApiConfig = (config?.envVarKeys.length ?? 0) > 0;
 
@@ -185,11 +183,10 @@ const MultiInstanceConfigSection = ({
   onEnvVarChange: (instanceId: string, key: string, value: string) => void;
   isUpdating: boolean;
 }) => {
-  const { data: config, isLoading } =
-    api.v2.userMcpServer.getMcpConfig.useQuery(
-      { templateInstanceId: instanceId },
-      { enabled: true },
-    );
+  const { data: config, isLoading } = api.userMcpServer.getMcpConfig.useQuery(
+    { templateInstanceId: instanceId },
+    { enabled: true },
+  );
 
   const hasApiConfig = (config?.envVarKeys.length ?? 0) > 0;
   const isConfigured = Object.values(config?.envVars ?? {}).some(
@@ -330,11 +327,11 @@ export const McpConfigEditModal = ({
 
   // サーバー名更新ミューテーション
   const { mutateAsync: updateNameAsync, isPending: isUpdatingName } =
-    api.v2.userMcpServer.updateName.useMutation();
+    api.userMcpServer.updateName.useMutation();
 
   // API設定更新ミューテーション
   const { mutateAsync: updateConfigAsync, isPending: isUpdatingConfig } =
-    api.v2.userMcpServer.updateMcpConfig.useMutation();
+    api.userMcpServer.updateMcpConfig.useMutation();
 
   const isUpdating = isUpdatingName || isUpdatingConfig;
 
