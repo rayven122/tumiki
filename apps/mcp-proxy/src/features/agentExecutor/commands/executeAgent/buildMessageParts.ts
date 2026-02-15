@@ -23,6 +23,7 @@ export type ToolCallPart = {
 export type SlackNotificationPart = {
   type: "slack-notification";
   success: boolean;
+  channelName?: string;
   errorCode?: string;
   errorMessage?: string;
   userAction?: string;
@@ -88,6 +89,8 @@ export type SlackNotificationResultParams = {
   attempted: boolean;
   /** 成功したか */
   success: boolean;
+  /** 送信先チャンネル名（成功時） */
+  channelName?: string;
   /** エラーコード（失敗時） */
   errorCode?: string;
   /** エラーメッセージ（失敗時） */
@@ -113,6 +116,7 @@ export const buildSlackNotificationPart = (
   return {
     type: "slack-notification",
     success: result.success,
+    ...(result.channelName && { channelName: result.channelName }),
     ...(result.errorCode && { errorCode: result.errorCode }),
     ...(result.errorMessage && { errorMessage: result.errorMessage }),
     ...(result.userAction && { userAction: result.userAction }),

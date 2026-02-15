@@ -27,6 +27,7 @@ erDiagram
   Int estimatedDurationMs
   Boolean enableSlackNotification
   String slackNotificationChannelId "nullable"
+  String slackNotificationChannelName "nullable"
   Boolean notifyOnlyOnFailure
   String organizationId FK
   String createdById FK "nullable"
@@ -79,6 +80,7 @@ AIエージェント定義
   - `estimatedDurationMs`: 推定実行時間（ミリ秒）- 初回は30秒、実行完了後に更新
   - `enableSlackNotification`: Slack通知を有効化
   - `slackNotificationChannelId`: 通知先SlackチャンネルID（エージェントごとに設定）
+  - `slackNotificationChannelName`: 通知先Slackチャンネル名（表示用）
   - `notifyOnlyOnFailure`: 失敗時のみ通知
   - `organizationId`: 組織ID
   - `createdById`: 作成者ID（作成者削除時はnullに）
@@ -598,7 +600,7 @@ MCPサーバーインスタンスへのリクエストログ
 リレーションを排除し、IDのみ保持することでサイズを削減
 
 **Properties**
-  - `id`: レコードID（cuid: 25文字）
+  - `id`: レコードID��cuid: 25文字）
   - `mcpServerId`: MCPサーバーインスタンスID
   - `organizationId`: 組織ID
   - `userId`: リクエストを実行したユーザーID

@@ -191,7 +191,11 @@ export const notifyAgentExecution = async (
       channelId: agentConfig.slackNotificationChannelId,
     });
 
-    return { attempted: true, success: true };
+    return {
+      attempted: true,
+      success: true,
+      channelName: notificationChannelName,
+    };
   } catch (error) {
     // Slack APIエラーの場合はユーザーフレンドリーなメッセージを返す
     if (isSlackApiError(error)) {

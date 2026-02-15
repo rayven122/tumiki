@@ -68,6 +68,7 @@ export const createAgent = async (
       // Slack通知設定
       enableSlackNotification: input.enableSlackNotification,
       slackNotificationChannelId: input.slackNotificationChannelId,
+      slackNotificationChannelName: input.slackNotificationChannelName,
       notifyOnlyOnFailure: input.notifyOnlyOnFailure,
     },
     select: {

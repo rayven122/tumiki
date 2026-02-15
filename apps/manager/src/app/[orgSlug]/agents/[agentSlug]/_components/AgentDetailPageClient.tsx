@@ -92,8 +92,10 @@ const getSlackNotificationStatus = (agent: {
 /** Slack通知状態バッジ */
 const SlackNotificationBadge = ({
   status,
+  channelName,
 }: {
   status: SlackNotificationStatus;
+  channelName?: string | null;
 }) => {
   switch (status) {
     case "enabled":
@@ -103,7 +105,7 @@ const SlackNotificationBadge = ({
           className="border-green-300 bg-green-50 text-green-700"
         >
           <Bell className="mr-1 h-3 w-3" />
-          Slack通知: 有効
+          Slack通知: #{channelName ?? "有効"}
         </Badge>
       );
     case "channel-missing":
@@ -209,7 +211,10 @@ const AsyncAgentDetail = ({
                   {agent.modelId && (
                     <Badge variant="outline">{agent.modelId}</Badge>
                   )}
-                  <SlackNotificationBadge status={slackNotificationStatus} />
+                  <SlackNotificationBadge
+                    status={slackNotificationStatus}
+                    channelName={agent.slackNotificationChannelName}
+                  />
                 </div>
               </div>
             </div>

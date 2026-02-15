@@ -60,6 +60,7 @@ export const updateAgentEstimatedDuration = async (
 export type AgentNotificationConfig = {
   enableSlackNotification: boolean;
   slackNotificationChannelId: string | null;
+  slackNotificationChannelName: string | null;
   notifyOnlyOnFailure: boolean;
 };
 
@@ -77,6 +78,7 @@ export const getAgentNotificationConfig = async (
     select: {
       enableSlackNotification: true,
       slackNotificationChannelId: true,
+      slackNotificationChannelName: true,
       notifyOnlyOnFailure: true,
     },
   });

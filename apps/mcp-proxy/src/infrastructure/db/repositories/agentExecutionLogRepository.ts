@@ -24,8 +24,18 @@ type ToolCallPart = {
   output: unknown;
 };
 
+/** Slack通知結果パーツ型（メッセージ保存用） */
+type SlackNotificationPart = {
+  type: "slack-notification";
+  success: boolean;
+  channelName?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  userAction?: string;
+};
+
 /** メッセージパーツの型 */
-type MessagePart = TextPart | ToolCallPart;
+type MessagePart = TextPart | ToolCallPart | SlackNotificationPart;
 
 /** 実行ログ作成（pending状態）のパラメータ */
 export type CreatePendingLogParams = {

@@ -18,6 +18,7 @@ export type AgentFlowState = {
   // Slack通知設定
   enableSlackNotification: boolean;
   slackNotificationChannelId: string;
+  slackNotificationChannelName: string;
   notifyOnlyOnFailure: boolean;
 };
 
@@ -31,6 +32,7 @@ const initialState: AgentFlowState = {
   visibility: McpServerVisibility.ORGANIZATION,
   enableSlackNotification: false,
   slackNotificationChannelId: "",
+  slackNotificationChannelName: "",
   notifyOnlyOnFailure: false,
 };
 

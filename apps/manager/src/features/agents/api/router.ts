@@ -22,6 +22,7 @@ export const AgentSlugSchema = alphanumericWithHyphenUnderscoreSchema
 const SlackNotificationFieldsSchema = z.object({
   enableSlackNotification: z.boolean().optional(),
   slackNotificationChannelId: z.string().optional(),
+  slackNotificationChannelName: z.string().optional(),
   notifyOnlyOnFailure: z.boolean().optional(),
 });
 
@@ -49,6 +50,7 @@ export const CreateAgentOutputSchema = z.object({
 const SlackNotificationFieldsForUpdateSchema = z.object({
   enableSlackNotification: z.boolean().optional(),
   slackNotificationChannelId: z.string().nullable().optional(),
+  slackNotificationChannelName: z.string().nullable().optional(),
   notifyOnlyOnFailure: z.boolean().optional(),
 });
 
@@ -185,6 +187,7 @@ export const FindAllAgentsOutputSchema = z.array(
     // Slack通知設定
     enableSlackNotification: true,
     slackNotificationChannelId: true,
+    slackNotificationChannelName: true,
     notifyOnlyOnFailure: true,
   }).extend({
     createdBy: CreatedBySchema,

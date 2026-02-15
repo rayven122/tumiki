@@ -28,6 +28,7 @@ const getPartText = (part: MessagePart): string => {
 type SlackNotificationPartData = {
   type: "slack-notification";
   success: boolean;
+  channelName?: string;
   errorCode?: string;
   errorMessage?: string;
   userAction?: string;
@@ -132,10 +133,11 @@ export const ExecutionMessages = ({
           </div>
         ))}
 
-        {/* Slack通知結果を表示（失敗時のみ） */}
-        {slackNotification && !slackNotification.success && (
+        {/* Slack通知結果を表示（成功・失敗両方） */}
+        {slackNotification && (
           <SlackNotificationAlert
             success={slackNotification.success}
+            channelName={slackNotification.channelName}
             errorMessage={slackNotification.errorMessage}
             userAction={slackNotification.userAction}
           />
