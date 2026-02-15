@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { User, Users, ArrowRight, CheckCircle, Lock } from "lucide-react";
+import { User, Users, ArrowRight, CheckCircle, Lock, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
 import { OnboardingFloatingBlocks } from "./OnboardingFloatingBlocks";
+import { TeamInquiryModal } from "./TeamInquiryModal";
 import { toast } from "@/lib/client/toast";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import type { Session } from "next-auth";
@@ -52,8 +53,8 @@ const ANIMATION_DURATION = 3000;
 const personalFeatures = [
   "簡単セットアップ",
   "即座に利用開始",
-  "すべての機能を利用可能",
-  "後からチーム招待も可能",
+  "MCPサーバーの追加・管理",
+  "エージェントの作成・設定",
 ];
 
 const teamFeatures = [
@@ -91,6 +92,7 @@ export const OnboardingClient = ({
   >(null);
   const [isOrgDialogOpen, setIsOrgDialogOpen] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
 
   // クエリパラメータからアンロックキーを取得
   const unlockKey = searchParams.get("unlock");
@@ -129,7 +131,7 @@ export const OnboardingClient = ({
     // ロックされている場合はトーストを表示して処理を中断
     if (!isTeamUnlocked) {
       toast.info(
-        "チーム利用は現在ウェイティングリスト登録者限定の特典です。アーリーアクセスをお待ちください！",
+        "チーム利用は現在準備中です。お問い合わせボタンからご連絡ください。",
       );
       return;
     }
@@ -267,41 +269,48 @@ export const OnboardingClient = ({
 
               {/* ロックオーバーレイ */}
               {!isTeamUnlocked && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
                   <motion.div
-                    className="flex flex-col items-center gap-3 border-2 border-black bg-white px-6 py-4 shadow-[4px_4px_0_#000]"
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatType: "reverse",
-                      ease: "easeInOut",
-                    }}
+                    className="flex flex-col items-center gap-3 border-2 border-black bg-white px-6 py-5 shadow-[4px_4px_0_#6366f1]"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
                   >
                     <motion.div
                       animate={{
                         rotate: [0, -5, 5, -5, 0],
                       }}
                       transition={{
-                        duration: 2,
+                        duration: 3,
                         repeat: Infinity,
                         ease: "easeInOut",
                       }}
                     >
-                      <Lock className="h-10 w-10 text-gray-500" />
+                      <Lock className="h-8 w-8 text-indigo-500" />
                     </motion.div>
                     <div className="text-center">
                       <span className="inline-block bg-black px-2 py-0.5 text-xs font-bold text-white">
                         Coming Soon
                       </span>
                       <p className="mt-2 text-sm font-semibold text-gray-700">
-                        ウェイティングリスト登録者限定
+                        チーム利用に興味がありますか？
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        アーリーアクセスをお待ちください
+                        お気軽にお問い合わせください
                       </p>
                     </div>
+                    <motion.button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsInquiryModalOpen(true);
+                      }}
+                      className="mt-2 flex items-center gap-2 border-2 border-black bg-indigo-500 px-4 py-2 text-sm font-bold text-white shadow-[3px_3px_0_#000] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#000]"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Mail className="h-4 w-4" />
+                      お問い合わせ
+                    </motion.button>
                   </motion.div>
                 </div>
               )}
@@ -403,6 +412,12 @@ export const OnboardingClient = ({
           <OrganizationCreateForm onSuccess={handleOrganizationCreated} />
         </DialogContent>
       </Dialog>
+
+      {/* チーム利用お問い合わせモーダル */}
+      <TeamInquiryModal
+        isOpen={isInquiryModalOpen}
+        onClose={() => setIsInquiryModalOpen(false)}
+      />
     </div>
   );
 };
