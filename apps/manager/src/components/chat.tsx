@@ -36,6 +36,7 @@ import {
   isAutoModel,
   selectModelByTask,
 } from "@/features/chat/services/ai/auto-model-selector";
+import { DEFAULT_CHAT_MODEL } from "@/features/chat/services/ai/index.client";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>
@@ -201,12 +202,19 @@ function ChatContent({
         // 自動モデル選択の場合、タスクに応じてモデルを決定
         const currentModel = selectedChatModelRef.current;
         const actualModel = isAutoModel(currentModel)
-          ? selectModelByTask({
-              messageText,
-              mcpToolCount: selectedMcpServerIdsRef.current.length,
-              hasAttachments,
-              conversationLength: request.messages.length,
-            })
+          ? (() => {
+              try {
+                return selectModelByTask({
+                  messageText,
+                  mcpToolCount: selectedMcpServerIdsRef.current.length,
+                  hasAttachments,
+                  conversationLength: request.messages.length,
+                });
+              } catch {
+                // 自動選択に失敗した場合はデフォルトモデルにフォールバック
+                return DEFAULT_CHAT_MODEL;
+              }
+            })()
           : currentModel;
 
         return {

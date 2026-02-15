@@ -9,6 +9,17 @@ import type { Tool } from "ai";
 import { gateway } from "../../../infrastructure/ai/index.js";
 
 /**
+ * 推論モデルを識別するためのパターン
+ *
+ * - includes: モデルIDに含まれる場合に推論モデルと判定
+ * - endsWith: モデルIDがこのサフィックスで終わる場合に推論モデルと判定
+ */
+const REASONING_MODEL_PATTERNS = {
+  includes: ["reasoning", "o1", "o3"],
+  endsWith: ["-thinking"],
+} as const;
+
+/**
  * 推論モデルかどうかを判定
  *
  * 推論モデル（Claude reasoning, OpenAI o1等）は thinking 機能を使用し、
@@ -18,7 +29,12 @@ import { gateway } from "../../../infrastructure/ai/index.js";
  * @returns 推論モデルの場合 true
  */
 export const isReasoningModel = (modelId: string): boolean =>
-  modelId.includes("reasoning") || modelId.endsWith("-thinking");
+  REASONING_MODEL_PATTERNS.includes.some((pattern) =>
+    modelId.includes(pattern),
+  ) ||
+  REASONING_MODEL_PATTERNS.endsWith.some((pattern) =>
+    modelId.endsWith(pattern),
+  );
 
 /**
  * streamText 設定オプション

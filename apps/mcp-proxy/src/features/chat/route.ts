@@ -239,10 +239,9 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
                 id: msg.id,
                 chatId,
                 role: "assistant" as const,
-                parts: msg.parts as unknown as Array<{
-                  text: string;
-                  type: string;
-                }>,
+                // partsはUIMessageのパーツ配列をDB保存用に変換
+                // Prisma JsonValue として保存されるため、JSON互換オブジェクトに変換
+                parts: JSON.parse(JSON.stringify(msg.parts)),
                 attachments: [],
                 createdAt: new Date(),
               })),

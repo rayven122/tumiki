@@ -156,27 +156,26 @@ const COMPLEXITY_THRESHOLDS = {
   // それ以上は複雑
 } as const;
 
+/** タスクタイプの優先度順（コード > 分析 > クリエイティブ > 質問 > 一般） */
+const TASK_TYPE_PRIORITY: TaskType[] = [
+  "code",
+  "analysis",
+  "creative",
+  "question",
+  "general",
+];
+
 /**
  * メッセージからタスクタイプを検出する
  */
 export const detectTaskType = (messageText: string): TaskType => {
-  // 優先度順にチェック（コード > 分析 > クリエイティブ > 質問 > 一般）
-  const priorityOrder: TaskType[] = [
-    "code",
-    "analysis",
-    "creative",
-    "question",
-    "general",
-  ];
-
-  for (const taskType of priorityOrder) {
+  // 優先度順にキーワードマッチングを行い、最初に一致したタイプを返す
+  const matchedType = TASK_TYPE_PRIORITY.find((taskType) => {
     const keywords = TASK_TYPE_KEYWORDS[taskType];
-    if (keywords.some((regex) => regex.test(messageText))) {
-      return taskType;
-    }
-  }
+    return keywords.some((regex) => regex.test(messageText));
+  });
 
-  return "general";
+  return matchedType ?? "general";
 };
 
 /**
