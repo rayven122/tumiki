@@ -18,6 +18,10 @@ type ExecutionResultModalProps = {
   isStreaming: boolean;
   /** エラーメッセージ（エラー時のみ） */
   error?: string;
+  /** エージェントのSlack通知が有効かどうか */
+  agentEnableSlackNotification?: boolean;
+  /** エージェントのSlack通知チャンネル名 */
+  agentSlackChannelName?: string | null;
 };
 
 /** 実行状態を表すユニオン型 */
@@ -75,6 +79,8 @@ export const ExecutionResultModal = ({
   messages,
   isStreaming,
   error,
+  agentEnableSlackNotification,
+  agentSlackChannelName,
 }: ExecutionResultModalProps) => {
   const hasMessages = messages.length > 0;
   const hasError = !!error;
@@ -107,6 +113,10 @@ export const ExecutionResultModal = ({
           messages={executionMessages}
           isLoading={!hasMessages && isStreaming}
           fallbackOutput=""
+          showSlackPendingNotification={
+            agentEnableSlackNotification && !isStreaming && hasMessages
+          }
+          slackChannelName={agentSlackChannelName}
         />
       )}
     </ExecutionModalBase>

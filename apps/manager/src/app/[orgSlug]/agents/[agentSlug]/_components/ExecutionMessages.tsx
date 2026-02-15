@@ -12,6 +12,10 @@ type ExecutionMessagesProps = {
   messages: ExecutionMessage[] | undefined;
   isLoading: boolean;
   fallbackOutput: string;
+  /** Slack通知が送信中であることを表示するか（エージェント設定ベース） */
+  showSlackPendingNotification?: boolean;
+  /** Slackチャンネル名（エージェント設定） */
+  slackChannelName?: string | null;
 };
 
 /** パーツからtype文字列を取得 */
@@ -100,6 +104,8 @@ export const ExecutionMessages = ({
   messages,
   isLoading,
   fallbackOutput,
+  showSlackPendingNotification,
+  slackChannelName,
 }: ExecutionMessagesProps) => {
   // ローディング中
   if (isLoading) {
@@ -112,7 +118,7 @@ export const ExecutionMessages = ({
 
   // メッセージがある場合
   if (messages && messages.length > 0) {
-    // Slack通知パーツを検索
+    // Slack通知パーツを検索（メッセージパーツから、または設定ベースで表示）
     const slackNotification = findSlackNotificationPart(messages);
 
     return (
@@ -134,13 +140,21 @@ export const ExecutionMessages = ({
         ))}
 
         {/* Slack通知結果を表示（成功・失敗両方） */}
-        {slackNotification && (
+        {slackNotification ? (
           <SlackNotificationAlert
             success={slackNotification.success}
             channelName={slackNotification.channelName}
             errorMessage={slackNotification.errorMessage}
             userAction={slackNotification.userAction}
           />
+        ) : (
+          // DBからのslack-notificationパーツがない場合、エージェント設定に基づいて表示
+          showSlackPendingNotification && (
+            <SlackNotificationAlert
+              success={true}
+              channelName={slackChannelName ?? undefined}
+            />
+          )
         )}
       </div>
     );

@@ -433,6 +433,8 @@ const AsyncAgentDetail = ({
         messages={messages}
         isStreaming={isStreaming}
         error={executionError}
+        agentEnableSlackNotification={agent.enableSlackNotification}
+        agentSlackChannelName={agent.slackNotificationChannelName}
       />
 
       {/* スケジュール作成モーダル */}

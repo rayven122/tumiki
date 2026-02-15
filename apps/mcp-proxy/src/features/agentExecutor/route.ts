@@ -185,6 +185,11 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         abortSignal: abortController.signal,
       });
 
+      // Slack通知結果を保持（execute内で設定、onFinishで使用）
+      let slackNotificationResult: Awaited<
+        ReturnType<typeof notifyAgentExecution>
+      > | null = null;
+
       // ストリーミングレスポンスを作成
       const stream = createUIMessageStream({
         generateId: generateCUID,
@@ -202,8 +207,27 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               sendReasoning: true,
             });
 
-            writer.merge(uiMessageStream);
-            logInfo("Agent execution stream merged", { agentId, chatId });
+            // ストリームをマージして完了を待つ
+            await writer.merge(uiMessageStream);
+
+            // AIストリーム完了後にSlack通知を送信
+            const durationMs = Date.now() - startTime;
+            slackNotificationResult = await notifyAgentExecution({
+              agentId,
+              agentName: agent.name,
+              organizationId,
+              success: true,
+              durationMs,
+              toolNames: mcpToolNames,
+              chatId,
+            });
+
+            logInfo("Agent execution stream merged with Slack notification", {
+              agentId,
+              chatId,
+              slackAttempted: slackNotificationResult.attempted,
+              slackSuccess: slackNotificationResult.success,
+            });
           } finally {
             // タイムアウトタイマーをクリア
             clearTimeout(timeoutId);
@@ -214,20 +238,10 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
           const durationMs = Date.now() - startTime;
 
           try {
-            // Slack通知を先に送信して結果を取得
-            const slackResult = await notifyAgentExecution({
-              agentId,
-              agentName: agent.name,
-              organizationId,
-              success: true,
-              durationMs,
-              toolNames: mcpToolNames,
-              chatId,
-            });
-
-            // Slack通知結果をパーツに変換
-            const slackNotificationPart =
-              buildSlackNotificationPart(slackResult);
+            // Slack通知結果をパーツに変換（executeで既に送信済み）
+            const slackNotificationPart = slackNotificationResult
+              ? buildSlackNotificationPart(slackNotificationResult)
+              : null;
 
             // トランザクションでChat, Message, AgentExecutionLogを一括作成
             await db.$transaction(async (tx) => {
@@ -310,8 +324,8 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               agentId,
               chatId,
               durationMs,
-              slackNotificationAttempted: slackResult.attempted,
-              slackNotificationSuccess: slackResult.success,
+              slackNotificationAttempted: slackNotificationResult?.attempted,
+              slackNotificationSuccess: slackNotificationResult?.success,
             });
           } catch (error) {
             // ログ保存失敗は致命的エラーではないため、警告ログのみ
