@@ -36,6 +36,12 @@ import { getSessionInfo } from "@/lib/auth/session-utils";
 import { McpServerIcon } from "../mcps/_components/McpServerIcon";
 import { WorkspaceIconEditModal } from "./_components/WorkspaceIconEditModal";
 
+// 組織情報の型
+type OrganizationData = {
+  name: string;
+  logoUrl: string | null;
+};
+
 // 一般設定フォームの型定義
 type GeneralFormData = {
   name: string;
@@ -55,17 +61,144 @@ const DisplayField = ({ label, children }: DisplayFieldProps) => (
   </div>
 );
 
+// ロゴプレビューのprops型
+type LogoPreviewProps = {
+  logoUrl: string | null;
+  size?: number;
+};
+
+// ロゴプレビューコンポーネント
+const LogoPreview = ({ logoUrl, size = 48 }: LogoPreviewProps) => {
+  if (logoUrl) {
+    return (
+      <McpServerIcon iconPath={logoUrl} alt="ワークスペースロゴ" size={size} />
+    );
+  }
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg bg-gray-100"
+      style={{ width: size, height: size }}
+    >
+      <Building2 className="h-6 w-6 text-gray-400" />
+    </div>
+  );
+};
+
+// ロゴ編集セクションのprops型
+type LogoEditSectionProps = {
+  organization: OrganizationData | null | undefined;
+  isAdmin: boolean;
+  onOpenModal: () => void;
+};
+
+// ロゴ編集セクションコンポーネント
+const LogoEditSection = ({
+  organization,
+  isAdmin,
+  onOpenModal,
+}: LogoEditSectionProps) => {
+  if (!isAdmin) {
+    return (
+      <DisplayField label="ロゴ">
+        <LogoPreview logoUrl={organization?.logoUrl ?? null} />
+      </DisplayField>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>ロゴ</Label>
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onOpenModal}
+          className="group relative flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed border-gray-200 transition-colors hover:border-gray-400"
+        >
+          <LogoPreview logoUrl={organization?.logoUrl ?? null} size={40} />
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <Edit2 className="h-4 w-4 text-white" />
+          </div>
+        </button>
+        <Button variant="outline" size="sm" onClick={onOpenModal}>
+          <Edit2 className="mr-2 h-4 w-4" />
+          ロゴを変更
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// ワークスペース名編集フォームのprops型
+type WorkspaceNameEditFormProps = {
+  value: string;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+  isPending: boolean;
+};
+
+// ワークスペース名編集フォームコンポーネント
+const WorkspaceNameEditForm = ({
+  value,
+  onChange,
+  onCancel,
+  onSave,
+  isPending,
+}: WorkspaceNameEditFormProps) => (
+  <div className="space-y-2">
+    <Label htmlFor="workspace-name">ワークスペース名</Label>
+    <div className="flex items-center gap-2">
+      <Input
+        id="workspace-name"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="ワークスペース名を入力"
+        className="flex-1"
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onCancel}
+        disabled={isPending}
+      >
+        <X className="mr-2 h-4 w-4" />
+        キャンセル
+      </Button>
+      <Button size="sm" onClick={onSave} disabled={isPending}>
+        {isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="mr-2 h-4 w-4" />
+        )}
+        保存
+      </Button>
+    </div>
+  </div>
+);
+
 // 一般設定表示のprops型
 type GeneralSettingsDisplayProps = {
-  organization?: { name: string } | null;
+  organization: OrganizationData | null | undefined;
+  isAdmin: boolean;
+  onEdit: () => void;
 };
 
 // 一般設定表示コンポーネント（ワークスペース名のみ）
 const GeneralSettingsDisplay = ({
   organization,
+  isAdmin,
+  onEdit,
 }: GeneralSettingsDisplayProps) => (
   <DisplayField label="ワークスペース名">
-    <p className="text-lg font-medium">{organization?.name}</p>
+    <div className="flex items-center justify-between">
+      <p className="text-lg font-medium">{organization?.name}</p>
+      {isAdmin && (
+        <Button variant="outline" size="sm" onClick={onEdit}>
+          <Edit2 className="mr-2 h-4 w-4" />
+          編集
+        </Button>
+      )}
+    </div>
   </DisplayField>
 );
 
@@ -197,107 +330,29 @@ const SettingsPage = () => {
 
       {/* 一般設定セクション */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>一般設定</CardTitle>
-          {isAdmin && !isEditingGeneral && (
-            <Button variant="outline" size="sm" onClick={handleEditGeneral}>
-              <Edit2 className="mr-2 h-4 w-4" />
-              編集
-            </Button>
-          )}
-          {isEditingGeneral && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelGeneral}
-                disabled={updateMutation.isPending}
-              >
-                <X className="mr-2 h-4 w-4" />
-                キャンセル
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveGeneral}
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                保存
-              </Button>
-            </div>
-          )}
         </CardHeader>
         <CardContent className="space-y-4">
+          <LogoEditSection
+            organization={organization}
+            isAdmin={isAdmin}
+            onOpenModal={() => setIsIconModalOpen(true)}
+          />
           {isEditingGeneral ? (
-            <div className="space-y-2">
-              <Label htmlFor="workspace-name">ワークスペース名</Label>
-              <Input
-                id="workspace-name"
-                value={generalFormData.name}
-                onChange={(e) =>
-                  setGeneralFormData((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                placeholder="ワークスペース名を入力"
-              />
-            </div>
+            <WorkspaceNameEditForm
+              value={generalFormData.name}
+              onChange={(value) => setGeneralFormData({ name: value })}
+              onCancel={handleCancelGeneral}
+              onSave={handleSaveGeneral}
+              isPending={updateMutation.isPending}
+            />
           ) : (
-            <GeneralSettingsDisplay organization={organization} />
-          )}
-          {/* ロゴ編集（編集モード関係なく表示） */}
-          {isAdmin && (
-            <div className="space-y-2">
-              <Label>ロゴ</Label>
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setIsIconModalOpen(true)}
-                  className="group relative flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed border-gray-200 transition-colors hover:border-gray-400"
-                >
-                  {organization?.logoUrl ? (
-                    <McpServerIcon
-                      iconPath={organization.logoUrl}
-                      alt="ワークスペースロゴ"
-                      size={40}
-                    />
-                  ) : (
-                    <Building2 className="h-6 w-6 text-gray-400" />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Edit2 className="h-4 w-4 text-white" />
-                  </div>
-                </button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsIconModalOpen(true)}
-                >
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  ロゴを変更
-                </Button>
-              </div>
-            </div>
-          )}
-          {!isAdmin && !isEditingGeneral && (
-            <DisplayField label="ロゴ">
-              {organization?.logoUrl ? (
-                <McpServerIcon
-                  iconPath={organization.logoUrl}
-                  alt="ワークスペースロゴ"
-                  size={48}
-                />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100">
-                  <Building2 className="h-6 w-6 text-gray-400" />
-                </div>
-              )}
-            </DisplayField>
+            <GeneralSettingsDisplay
+              organization={organization}
+              isAdmin={isAdmin}
+              onEdit={handleEditGeneral}
+            />
           )}
         </CardContent>
       </Card>
