@@ -706,9 +706,11 @@ export const AgentCard = ({
       <ExecutionResultModal
         open={resultModalOpen}
         onOpenChange={setResultModalOpen}
+        agentId={agent.id as AgentId}
         messages={messages}
         isStreaming={isStreaming}
         error={executionError}
+        agentEnableSlackNotification={agent.enableSlackNotification}
       />
     </>
   );

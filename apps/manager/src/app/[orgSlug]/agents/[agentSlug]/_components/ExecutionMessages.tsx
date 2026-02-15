@@ -1,21 +1,31 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { Bot, User } from "lucide-react";
+import { Bot, User, Loader2 } from "lucide-react";
 import { Response } from "@/components/response";
 import { MessageParts } from "@/components/message-parts";
 import { sanitizeText } from "@/lib/utils";
 import { type ExecutionMessage, type MessagePart } from "@/features/chat";
 import { SlackNotificationAlert } from "./SlackNotificationAlert";
 
+/** Slack通知パーツの型 */
+type SlackNotificationPartData = {
+  type: "slack-notification";
+  success: boolean;
+  channelName?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  userAction?: string;
+};
+
 type ExecutionMessagesProps = {
   messages: ExecutionMessage[] | undefined;
   isLoading: boolean;
   fallbackOutput: string;
-  /** Slack通知が送信中であることを表示するか（エージェント設定ベース） */
-  showSlackPendingNotification?: boolean;
-  /** Slackチャンネル名（エージェント設定） */
-  slackChannelName?: string | null;
+  /** DBから取得したSlack通知結果（ストリーミング完了後） */
+  slackNotification?: SlackNotificationPartData | null;
+  /** Slack通知結果を取得中かどうか */
+  isFetchingSlackNotification?: boolean;
 };
 
 /** パーツからtype文字列を取得 */
@@ -26,16 +36,6 @@ const getPartType = (part: MessagePart): string => {
 /** パーツからtext文字列を取得 */
 const getPartText = (part: MessagePart): string => {
   return typeof part.text === "string" ? part.text : "";
-};
-
-/** Slack通知パーツの型 */
-type SlackNotificationPartData = {
-  type: "slack-notification";
-  success: boolean;
-  channelName?: string;
-  errorCode?: string;
-  errorMessage?: string;
-  userAction?: string;
 };
 
 /** パーツがSlack通知パーツかどうかを判定 */
@@ -104,8 +104,8 @@ export const ExecutionMessages = ({
   messages,
   isLoading,
   fallbackOutput,
-  showSlackPendingNotification,
-  slackChannelName,
+  slackNotification,
+  isFetchingSlackNotification,
 }: ExecutionMessagesProps) => {
   // ローディング中
   if (isLoading) {
@@ -118,8 +118,11 @@ export const ExecutionMessages = ({
 
   // メッセージがある場合
   if (messages && messages.length > 0) {
-    // Slack通知パーツを検索（メッセージパーツから、または設定ベースで表示）
-    const slackNotification = findSlackNotificationPart(messages);
+    // メッセージパーツからSlack通知を検索（実行履歴からの表示用）
+    const slackNotificationFromMessages = findSlackNotificationPart(messages);
+    // 優先順位: props経由 > メッセージパーツから
+    const displaySlackNotification =
+      slackNotification ?? slackNotificationFromMessages;
 
     return (
       <div className="space-y-6">
@@ -139,23 +142,20 @@ export const ExecutionMessages = ({
           </div>
         ))}
 
-        {/* Slack通知結果を表示（成功・失敗両方） */}
-        {slackNotification ? (
+        {/* Slack通知結果を表示 */}
+        {isFetchingSlackNotification ? (
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Slack通知結果を確認中...</span>
+          </div>
+        ) : displaySlackNotification ? (
           <SlackNotificationAlert
-            success={slackNotification.success}
-            channelName={slackNotification.channelName}
-            errorMessage={slackNotification.errorMessage}
-            userAction={slackNotification.userAction}
+            success={displaySlackNotification.success}
+            channelName={displaySlackNotification.channelName}
+            errorMessage={displaySlackNotification.errorMessage}
+            userAction={displaySlackNotification.userAction}
           />
-        ) : (
-          // DBからのslack-notificationパーツがない場合、エージェント設定に基づいて表示
-          showSlackPendingNotification && (
-            <SlackNotificationAlert
-              success={true}
-              channelName={slackChannelName ?? undefined}
-            />
-          )
-        )}
+        ) : null}
       </div>
     );
   }

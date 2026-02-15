@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle, XCircle, Loader2, type LucideIcon } from "lucide-react";
 import type { UIMessage } from "@ai-sdk/react";
 
+import { api } from "@/trpc/react";
+import type { AgentId } from "@/schema/ids";
 import { ExecutionMessages } from "./ExecutionMessages";
 import {
   ExecutionModalBase,
@@ -12,6 +15,8 @@ import {
 type ExecutionResultModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** エージェントID */
+  agentId: AgentId;
   /** ストリーミングメッセージ */
   messages: UIMessage[];
   /** ストリーミング中かどうか */
@@ -20,8 +25,6 @@ type ExecutionResultModalProps = {
   error?: string;
   /** エージェントのSlack通知が有効かどうか */
   agentEnableSlackNotification?: boolean;
-  /** エージェントのSlack通知チャンネル名 */
-  agentSlackChannelName?: string | null;
 };
 
 /** 実行状態を表すユニオン型 */
@@ -68,25 +71,118 @@ const STATUS_INFO: Record<ExecutionStatus, StatusInfo> = {
   },
 };
 
+/** Slack通知パーツの型 */
+type SlackNotificationPartData = {
+  type: "slack-notification";
+  success: boolean;
+  channelName?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  userAction?: string;
+};
+
+/** DB保存完了を待つための遅延時間（ミリ秒） */
+const SLACK_NOTIFICATION_FETCH_DELAY_MS = 1500;
+
+/** メッセージからSlack通知パーツを抽出 */
+const findSlackNotificationPart = (
+  messages: Array<{ role: string; parts: Record<string, unknown>[] }>,
+): SlackNotificationPartData | null => {
+  const allParts = messages
+    .filter((message) => message.role === "assistant")
+    .flatMap((message) => message.parts);
+
+  const slackPart = allParts.find((part) => part.type === "slack-notification");
+  return (slackPart as unknown as SlackNotificationPartData) ?? null;
+};
+
 /**
  * 実行結果モーダル（ストリーミング対応版）
  *
  * useChatのメッセージをリアルタイム表示
+ * ストリーミング完了後、DBからSlack通知結果を取得
  */
 export const ExecutionResultModal = ({
   open,
   onOpenChange,
+  agentId,
   messages,
   isStreaming,
   error,
   agentEnableSlackNotification,
-  agentSlackChannelName,
 }: ExecutionResultModalProps) => {
   const hasMessages = messages.length > 0;
   const hasError = !!error;
   const status = getExecutionStatus(hasError, isStreaming, hasMessages);
   const statusInfo = STATUS_INFO[status];
   const StatusIcon = statusInfo.icon;
+
+  // Slack通知結果を保持
+  const [slackNotification, setSlackNotification] =
+    useState<SlackNotificationPartData | null>(null);
+  // Slack通知を取得中かどうか
+  const [isFetchingSlack, setIsFetchingSlack] = useState(false);
+
+  // 前回のストリーミング状態を追跡
+  const prevIsStreamingRef = useRef(isStreaming);
+
+  // 最新の実行メッセージを取得するクエリ
+  const { refetch: refetchLatestMessages } =
+    api.agentExecution.getLatestExecutionMessages.useQuery(
+      { agentId },
+      {
+        enabled: false, // 手動で呼び出す
+      },
+    );
+
+  // ストリーミング完了を検知してDBから取得
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingRef.current;
+    prevIsStreamingRef.current = isStreaming;
+
+    // ストリーミングが完了した（true → false）かつSlack通知が有効な場合
+    if (
+      wasStreaming &&
+      !isStreaming &&
+      hasMessages &&
+      !hasError &&
+      agentEnableSlackNotification
+    ) {
+      // 少し待ってからDBを問い合わせる（onFinishでのDB保存完了を待つ）
+      setIsFetchingSlack(true);
+      const timeoutId = setTimeout(() => {
+        refetchLatestMessages()
+          .then((result) => {
+            if (result.data) {
+              const slackPart = findSlackNotificationPart(result.data);
+              setSlackNotification(slackPart);
+            }
+          })
+          .catch(() => {
+            // エラー時は何もしない（Slack通知取得は必須機能ではないため）
+          })
+          .finally(() => {
+            setIsFetchingSlack(false);
+          });
+      }, SLACK_NOTIFICATION_FETCH_DELAY_MS);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    isStreaming,
+    hasMessages,
+    hasError,
+    agentEnableSlackNotification,
+    refetchLatestMessages,
+  ]);
+
+  // モーダルが閉じられたらSlack通知状態をリセット
+  useEffect(() => {
+    if (!open) {
+      setSlackNotification(null);
+      setIsFetchingSlack(false);
+    }
+  }, [open]);
 
   // メッセージをExecutionMessages形式に変換
   const executionMessages = messages.map((msg) => ({
@@ -98,6 +194,10 @@ export const ExecutionResultModal = ({
   const titleIcon = (
     <StatusIcon className={`h-5 w-5 ${statusInfo.iconClass}`} />
   );
+
+  // Slack通知取得中かどうか（Slack通知が有効な場合のみ表示）
+  const showSlackFetchingIndicator =
+    isFetchingSlack && agentEnableSlackNotification;
 
   return (
     <ExecutionModalBase
@@ -113,10 +213,8 @@ export const ExecutionResultModal = ({
           messages={executionMessages}
           isLoading={!hasMessages && isStreaming}
           fallbackOutput=""
-          showSlackPendingNotification={
-            agentEnableSlackNotification && !isStreaming && hasMessages
-          }
-          slackChannelName={agentSlackChannelName}
+          slackNotification={slackNotification}
+          isFetchingSlackNotification={showSlackFetchingIndicator}
         />
       )}
     </ExecutionModalBase>

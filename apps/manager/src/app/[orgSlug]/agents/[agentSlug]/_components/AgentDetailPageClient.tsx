@@ -430,11 +430,11 @@ const AsyncAgentDetail = ({
       <ExecutionResultModal
         open={resultModalOpen}
         onOpenChange={setResultModalOpen}
+        agentId={agent.id as AgentId}
         messages={messages}
         isStreaming={isStreaming}
         error={executionError}
         agentEnableSlackNotification={agent.enableSlackNotification}
-        agentSlackChannelName={agent.slackNotificationChannelName}
       />
 
       {/* スケジュール作成モーダル */}
