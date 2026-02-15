@@ -46,6 +46,9 @@ import {
 const DEFAULT_AGENT_MODEL =
   process.env.AGENT_DEFAULT_MODEL ?? AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
 
+/** 自動モデル選択を示すID */
+const AUTO_MODEL_ID = AGENT_EXECUTION_CONFIG.AUTO_MODEL_ID;
+
 /** 実行タイムアウト（ミリ秒、環境変数で上書き可能） */
 const EXECUTION_TIMEOUT_MS = parseIntWithDefault(
   process.env.AGENT_EXECUTION_TIMEOUT_MS,
@@ -115,7 +118,11 @@ export const executeAgentCommand = async (
       request.trigger,
       agent.systemPrompt ?? undefined,
     );
-    modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
+    // "auto" または未設定の場合はデフォルトモデルに解決
+    modelId =
+      agent.modelId && agent.modelId !== AUTO_MODEL_ID
+        ? agent.modelId
+        : DEFAULT_AGENT_MODEL;
     userMessage = request.message ?? DEFAULT_EXECUTION_MESSAGE;
     effectiveUserId = userId ?? agent.createdById;
 

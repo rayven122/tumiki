@@ -19,7 +19,10 @@ import {
 import { db, type Prisma } from "@tumiki/db/server";
 
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
-import { AGENT_EXECUTION_CONFIG } from "../../shared/constants/config.js";
+import {
+  AGENT_EXECUTION_CONFIG,
+  resolveModelId,
+} from "../../shared/constants/config.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
 import { generateCUID } from "../../shared/utils/cuid.js";
@@ -30,9 +33,6 @@ import { buildSystemPrompt } from "./commands/index.js";
 import { notifyAgentExecution } from "../notification/index.js";
 import type { ExecutionTrigger } from "./types.js";
 import { buildSlackNotificationPart } from "./commands/executeAgent/buildMessageParts.js";
-
-/** エージェント実行用のデフォルトモデル */
-const DEFAULT_AGENT_MODEL = AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
 
 /** 最大ツール実行ステップ数 */
 const MAX_TOOL_STEPS = AGENT_EXECUTION_CONFIG.MAX_TOOL_STEPS;
@@ -118,7 +118,8 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         );
       }
 
-      const modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
+      // "auto" または未設定の場合はデフォルトモデルに解決
+      const modelId = resolveModelId(agent.modelId);
       const userMessage = message ?? "タスクを実行してください。";
       // ストリーミング実行は手動実行として扱う
       const trigger: ExecutionTrigger = { type: "manual", userId };
