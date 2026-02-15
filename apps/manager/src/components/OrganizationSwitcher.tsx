@@ -27,7 +27,6 @@ const renderOrganizationDisplay = ({
   logoUrl,
   isPersonal,
 }: OrganizationDisplayProps): ReactNode => {
-  const displayName = isPersonal ? "個人ワークスペース" : name;
   const Icon = isPersonal ? User : Building2;
   const iconClass = isPersonal ? "text-gray-600" : "text-blue-600";
 
@@ -35,7 +34,7 @@ const renderOrganizationDisplay = ({
     return (
       <>
         <McpServerIcon iconPath={logoUrl} size={16} />
-        <span className="font-medium">{displayName}</span>
+        <span className="font-medium">{name}</span>
       </>
     );
   }
@@ -43,7 +42,7 @@ const renderOrganizationDisplay = ({
   return (
     <>
       <Icon className={`h-4 w-4 ${iconClass}`} />
-      <span className="font-medium">{displayName}</span>
+      <span className="font-medium">{name}</span>
     </>
   );
 };
@@ -117,7 +116,7 @@ export const OrganizationSwitcher = () => {
               ) : (
                 <User className="h-4 w-4 text-gray-600" />
               )}
-              <span>個人ワークスペース</span>
+              <span>{personalOrg.name}</span>
             </div>
           </SelectItem>
         )}

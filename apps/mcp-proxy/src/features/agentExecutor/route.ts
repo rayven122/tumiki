@@ -207,8 +207,8 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               sendReasoning: true,
             });
 
-            // ストリームをマージして完了を待つ
-            await writer.merge(uiMessageStream);
+            // ストリームをマージ（merge()はvoidを返すため、完了はonFinish内で検知）
+            writer.merge(uiMessageStream);
 
             // AIストリーム完了後にSlack通知を送信
             const durationMs = Date.now() - startTime;

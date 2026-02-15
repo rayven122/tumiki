@@ -252,8 +252,8 @@ describe("OrganizationSwitcher", () => {
 
     render(<OrganizationSwitcher />);
 
-    // 個人ワークスペースと表示される（複数ある場合は最初の要素）
-    const personalElements = screen.getAllByText("個人ワークスペース");
+    // ワークスペース名が表示される（複数ある場合は最初の要素）
+    const personalElements = screen.getAllByText("Personal Workspace");
     expect(personalElements[0]).toBeInTheDocument();
   });
 
@@ -432,8 +432,8 @@ describe("OrganizationSwitcher", () => {
 
     render(<OrganizationSwitcher />);
 
-    // 個人ワークスペースの選択肢がないことを確認
-    const personalOption = screen.queryByText("個人ワークスペース");
+    // 個人ワークスペースの選択肢がないことを確認（Personal Workspaceという名前で検索）
+    const personalOption = screen.queryByText("Personal Workspace");
     expect(personalOption).toBeNull();
   });
 
