@@ -16,15 +16,17 @@ type Organization = z.infer<
   typeof getUserOrganizationsProtectedOutputSchema
 >[number];
 
+type CurrentOrganization = {
+  id: OrganizationId;
+  name: string;
+  isPersonal: boolean;
+  memberCount: number;
+  logoUrl: string | null;
+};
+
 type OrganizationContextType = {
   organizations: Organization[] | undefined;
-  currentOrganization: {
-    id: OrganizationId;
-    name: string;
-    isPersonal: boolean;
-    // isAdmin削除: JWTのrolesで判定（session.user.isOrganizationAdmin）
-    memberCount: number;
-  } | null;
+  currentOrganization: CurrentOrganization | null;
   setCurrentOrganization: (organizationId: OrganizationId) => void;
   isLoading: boolean;
   isSwitching: boolean;
@@ -61,22 +63,22 @@ export const OrganizationProvider = ({
       refetchOnWindowFocus: false,
     });
 
-  // 現在の組織はsessionのorganizationIdから取得
-  // organizationsリストから詳細情報を補完
+  // セッションの組織IDから現在の組織情報を取得
   const { organizationId } = getSessionInfo(session);
-  const currentOrganization = organizationId
-    ? (() => {
-        const org = organizations?.find((o) => o.id === organizationId);
-        if (!org) return null;
-        return {
-          id: org.id,
-          name: org.name,
-          isPersonal: org.isPersonal,
-          // isAdmin削除: JWTのrolesで判定（session.user.tumiki.roles）
-          memberCount: org.memberCount,
-        };
-      })()
-    : null;
+  const currentOrganization = ((): CurrentOrganization | null => {
+    if (!organizationId) return null;
+
+    const org = organizations?.find((o) => o.id === organizationId);
+    if (!org) return null;
+
+    return {
+      id: org.id,
+      name: org.name,
+      isPersonal: org.isPersonal,
+      memberCount: org.memberCount,
+      logoUrl: org.logoUrl,
+    };
+  })();
 
   // デフォルト組織を設定するmutation
   const setDefaultOrgMutation =
