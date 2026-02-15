@@ -12,8 +12,10 @@ import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
 import {
   getAgentNotificationConfig,
+  getOrganizationSlackConfig as getOrgSlackConfigFromDb,
   type AgentNotificationConfig,
 } from "../../infrastructure/db/repositories/index.js";
+import { decrypt } from "../../infrastructure/crypto/index.js";
 
 export type AgentExecutionNotifyParams = {
   agentId: string;
@@ -26,7 +28,7 @@ export type AgentExecutionNotifyParams = {
   chatId?: string;
 };
 
-type OrganizationSlackConfig = {
+type DecryptedSlackConfig = {
   slackBotToken: string | null;
 };
 
@@ -42,19 +44,23 @@ const buildDetailUrl = (chatId?: string): string | undefined => {
 };
 
 /**
- * 組織のSlack Bot Token を取得
+ * 組織のSlack Bot Token を取得・復号化
  *
- * 注: 現時点では組織にslackBotTokenフィールドがないため、
- * 環境変数からフォールバックする実装
- * 将来的にはOrganization.slackBotTokenから取得
+ * データベースから暗号化されたトークンを取得し、復号化して返す
  */
-const getOrganizationSlackConfig = async (
-  _organizationId: string,
-): Promise<OrganizationSlackConfig> => {
-  // TODO: Organization.slackBotToken から取得する実装に変更
-  return {
-    slackBotToken: process.env.SLACK_BOT_TOKEN ?? null,
-  };
+const getDecryptedSlackConfig = async (
+  organizationId: string,
+): Promise<DecryptedSlackConfig> => {
+  const orgConfig = await getOrgSlackConfigFromDb(organizationId);
+
+  if (!orgConfig?.slackBotToken) {
+    return { slackBotToken: null };
+  }
+
+  // 暗号化されたトークンを復号化
+  const decryptedToken = decrypt(orgConfig.slackBotToken);
+
+  return { slackBotToken: decryptedToken };
 };
 
 /**
@@ -69,8 +75,12 @@ const shouldNotify = (
     return false;
   }
 
-  // 失敗時のみ通知する設定の場合、成功時は通知しない
-  return !(config.notifyOnlyOnFailure && success);
+  // 失敗時のみ通知する設定で、成功した場合は通知しない
+  if (config.notifyOnlyOnFailure && success) {
+    return false;
+  }
+
+  return true;
 };
 
 /**
@@ -98,8 +108,8 @@ export const notifyAgentExecution = async (
       return;
     }
 
-    // 組織のSlack設定を取得
-    const orgConfig = await getOrganizationSlackConfig(params.organizationId);
+    // 組織のSlack設定を取得・復号化
+    const orgConfig = await getDecryptedSlackConfig(params.organizationId);
     if (!orgConfig.slackBotToken) {
       logInfo("Slack bot token not configured", {
         organizationId: params.organizationId,

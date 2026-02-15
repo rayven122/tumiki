@@ -56,3 +56,8 @@ export type {
   UpdateExecutionLogSimpleParams,
   UpdateExecutionLogResult,
 } from "./agentExecutionLogRepository.js";
+
+// 組織関連
+export { getOrganizationSlackConfig } from "./organizationRepository.js";
+
+export type { OrganizationSlackConfig } from "./organizationRepository.js";

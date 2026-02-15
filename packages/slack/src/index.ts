@@ -2,8 +2,10 @@ export { sendSlackMessage, type SlackMessage } from "./client.js";
 
 export {
   sendSlackBotMessage,
+  listSlackChannels,
   type SlackBotMessage,
   type SlackBotClientConfig,
+  type SlackChannel,
 } from "./botClient.js";
 
 export {

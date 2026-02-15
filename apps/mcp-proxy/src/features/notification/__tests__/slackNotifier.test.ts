@@ -1,14 +1,9 @@
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  test,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { AgentNotificationConfig } from "../../../infrastructure/db/repositories/index.js";
+import type {
+  AgentNotificationConfig,
+  OrganizationSlackConfig,
+} from "../../../infrastructure/db/repositories/index.js";
 import {
   notifyAgentExecution,
   type AgentExecutionNotifyParams,
@@ -43,12 +38,24 @@ vi.mock("../../../shared/logger/index.js", () => ({
 
 // repository をモック
 const mockGetAgentNotificationConfig = vi.fn();
+const mockGetOrganizationSlackConfig = vi.fn();
 
 vi.mock("../../../infrastructure/db/repositories/index.js", () => ({
   getAgentNotificationConfig: (
     agentId: string,
   ): Promise<AgentNotificationConfig | null> =>
     Promise.resolve(mockGetAgentNotificationConfig(agentId)),
+  getOrganizationSlackConfig: (
+    organizationId: string,
+  ): Promise<OrganizationSlackConfig | null> =>
+    Promise.resolve(mockGetOrganizationSlackConfig(organizationId)),
+}));
+
+// crypto をモック
+const mockDecrypt = vi.fn();
+
+vi.mock("../../../infrastructure/crypto/index.js", () => ({
+  decrypt: (encrypted: string): string => mockDecrypt(encrypted) as string,
 }));
 
 // toError をモック
@@ -72,16 +79,11 @@ describe("notifyAgentExecution", () => {
     notifyOnlyOnFailure: false,
   };
 
-  beforeAll(() => {
-    vi.stubEnv("SLACK_BOT_TOKEN", "xoxb-test-bot-token");
-    vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
-  });
-
-  afterAll(() => {
-    vi.unstubAllEnvs();
-  });
+  const encryptedToken = "encrypted-xoxb-test-bot-token";
+  const decryptedToken = "xoxb-test-bot-token";
 
   beforeEach(() => {
+    vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
     vi.clearAllMocks();
     mockMakeAgentExecutionSlackMessage.mockReturnValue({
       channel: "C1234567890",
@@ -89,6 +91,16 @@ describe("notifyAgentExecution", () => {
       blocks: [],
     });
     mockSendSlackBotMessage.mockResolvedValue({ ok: true });
+    // デフォルトで組織のSlack設定を返す
+    mockGetOrganizationSlackConfig.mockReturnValue({
+      slackBotToken: encryptedToken,
+    });
+    // デフォルトで復号化されたトークンを返す
+    mockDecrypt.mockReturnValue(decryptedToken);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   describe("正常系", () => {
@@ -98,6 +110,8 @@ describe("notifyAgentExecution", () => {
       await notifyAgentExecution(baseParams);
 
       expect(mockGetAgentNotificationConfig).toHaveBeenCalledWith("agent-123");
+      expect(mockGetOrganizationSlackConfig).toHaveBeenCalledWith("org-456");
+      expect(mockDecrypt).toHaveBeenCalledWith(encryptedToken);
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith({
         agentName: "テストエージェント",
         success: true,
@@ -108,7 +122,7 @@ describe("notifyAgentExecution", () => {
         channelId: "C1234567890",
       });
       expect(mockSendSlackBotMessage).toHaveBeenCalledWith(
-        { botToken: "xoxb-test-bot-token" },
+        { botToken: decryptedToken },
         { channel: "C1234567890", text: "テストメッセージ", blocks: [] },
       );
       expect(mockLogInfo).toHaveBeenCalledWith(
@@ -246,8 +260,8 @@ describe("notifyAgentExecution", () => {
     });
 
     test("Slack Bot Tokenが未設定の場合はスキップする", async () => {
-      vi.stubEnv("SLACK_BOT_TOKEN", "");
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
+      mockGetOrganizationSlackConfig.mockReturnValue({ slackBotToken: null });
 
       await notifyAgentExecution(baseParams);
 
@@ -256,9 +270,19 @@ describe("notifyAgentExecution", () => {
         { organizationId: "org-456" },
       );
       expect(mockSendSlackBotMessage).not.toHaveBeenCalled();
+    });
 
-      // 元に戻す
-      vi.stubEnv("SLACK_BOT_TOKEN", "xoxb-test-bot-token");
+    test("組織が見つからない場合はスキップする", async () => {
+      mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
+      mockGetOrganizationSlackConfig.mockReturnValue(null);
+
+      await notifyAgentExecution(baseParams);
+
+      expect(mockLogInfo).toHaveBeenCalledWith(
+        "Slack bot token not configured",
+        { organizationId: "org-456" },
+      );
+      expect(mockSendSlackBotMessage).not.toHaveBeenCalled();
     });
   });
 
@@ -278,9 +302,6 @@ describe("notifyAgentExecution", () => {
           detailUrl: "https://app.tumiki.io/agents/executions/chat-abc",
         }),
       );
-
-      // 元に戻す
-      vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
     });
 
     test("カスタムMANAGER_BASE_URLが設定されている場合はそれを使用する", async () => {
@@ -297,9 +318,6 @@ describe("notifyAgentExecution", () => {
           detailUrl: "https://custom.example.com/agents/executions/chat-xyz",
         }),
       );
-
-      // 元に戻す
-      vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
     });
   });
 

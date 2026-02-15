@@ -103,10 +103,9 @@ export const updateAgent = async (
       modelId: input.modelId,
       visibility: input.visibility,
       mcpServers: mcpServersUpdate,
-      // Slack通知設定（EE機能）
+      // Slack通知設定
       enableSlackNotification: input.enableSlackNotification,
       slackNotificationChannelId: input.slackNotificationChannelId,
-      notificationPriority: input.notificationPriority,
       notifyOnlyOnFailure: input.notifyOnlyOnFailure,
     },
     select: {

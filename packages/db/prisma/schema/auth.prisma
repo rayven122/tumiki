@@ -59,6 +59,9 @@ model User {
   /// エージェント関連（作成者として）
   createdAgents Agent[] @relation("AgentCreatedBy")
 
+  /// Slack連携を行った組織
+  slackConnectedOrganizations Organization[] @relation("SlackConnectedOrganizations")
+
   /// Auth.js adapter
   accounts Account[]
   sessions Session[]

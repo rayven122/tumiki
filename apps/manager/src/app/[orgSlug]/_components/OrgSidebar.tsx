@@ -134,7 +134,7 @@ export const OrgSidebar = ({
       name: "設定",
       href: `/${orgSlug}/settings`,
       icon: Settings,
-      show: !isPersonal, // 個人組織では非表示
+      show: true, // 全組織で表示（Slack連携など）
       disabled: false,
     },
     {

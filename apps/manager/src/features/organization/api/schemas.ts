@@ -4,7 +4,6 @@
  * organization routerで使用される共通スキーマ
  */
 import { z } from "zod";
-import { OrganizationSchema } from "@tumiki/db/zod";
 import { OrganizationIdSchema } from "@/schema/ids";
 
 /**
@@ -14,10 +13,21 @@ export const getUserOrganizationsInputSchema = z.object({}).optional();
 
 /**
  * ユーザーの組織一覧取得用の出力スキーマ（publicProcedure用）
+ * Slackフィールドは除外（機密情報のため）
  */
 export const getUserOrganizationsOutputSchema = z.array(
-  OrganizationSchema.extend({
+  z.object({
     id: OrganizationIdSchema,
+    name: z.string(),
+    slug: z.string(),
+    description: z.string().nullable(),
+    logoUrl: z.string().nullable(),
+    isDeleted: z.boolean(),
+    isPersonal: z.boolean(),
+    maxMembers: z.number(),
+    createdBy: z.string(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
     memberCount: z.number(),
     isDefault: z.boolean(),
   }),

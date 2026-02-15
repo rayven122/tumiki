@@ -23,6 +23,7 @@ import {
 import { AlertTriangle, Trash2, Info, Loader2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { SlackConnectionSection } from "@/features/slack-integration";
 
 const SettingsPage = () => {
   const { data: session, update } = useSession();
@@ -88,6 +89,9 @@ const SettingsPage = () => {
         <h1 className="text-3xl font-bold">設定</h1>
         <p className="text-muted-foreground mt-2">組織の設定を管理</p>
       </div>
+
+      {/* Slack連携セクション */}
+      <SlackConnectionSection />
 
       {/* 一般設定セクション（開発中） */}
       <Card>
