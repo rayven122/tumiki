@@ -8,6 +8,62 @@ import { TRPCError } from "@trpc/server";
 type UpdateAgentInput = z.infer<typeof UpdateAgentInputSchema>;
 
 /**
+ * 既存エージェントを取得し、存在しない場合はエラー
+ */
+const findExistingAgentOrThrow = async (
+  tx: PrismaTransactionClient,
+  agentId: string,
+  organizationId: string,
+): Promise<{ id: string; slug: string }> => {
+  const agent = await tx.agent.findFirst({
+    where: { id: agentId, organizationId },
+    select: { id: true, slug: true },
+  });
+
+  if (!agent) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "エージェントが見つかりません",
+    });
+  }
+
+  return agent;
+};
+
+/**
+ * スラグの重複チェック（変更がある場合のみ）
+ */
+const validateSlugUniqueness = async (
+  tx: PrismaTransactionClient,
+  input: UpdateAgentInput,
+  existingSlug: string,
+  organizationId: string,
+): Promise<string | undefined> => {
+  if (!input.slug) return undefined;
+
+  const normalizedSlug = normalizeSlug(input.slug);
+  if (normalizedSlug === existingSlug) return normalizedSlug;
+
+  const duplicateAgent = await tx.agent.findFirst({
+    where: {
+      slug: normalizedSlug,
+      organizationId,
+      id: { not: input.id },
+    },
+    select: { id: true },
+  });
+
+  if (duplicateAgent) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "このスラグは既に使用されています",
+    });
+  }
+
+  return normalizedSlug;
+};
+
+/**
  * エージェントを更新する
  */
 export const updateAgent = async (
@@ -15,47 +71,17 @@ export const updateAgent = async (
   input: UpdateAgentInput,
   organizationId: string,
 ): Promise<{ id: AgentId }> => {
-  // エージェントの存在確認
-  const existingAgent = await tx.agent.findFirst({
-    where: {
-      id: input.id,
-      organizationId,
-    },
-    select: {
-      id: true,
-      slug: true,
-    },
-  });
-
-  if (!existingAgent) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "エージェントが見つかりません",
-    });
-  }
-
-  // スラグが指定された場合の重複チェック
-  let normalizedSlug: string | undefined;
-  if (input.slug) {
-    normalizedSlug = normalizeSlug(input.slug);
-    // 自分自身以外で同じスラグを持つエージェントがないかチェック
-    if (normalizedSlug !== existingAgent.slug) {
-      const duplicateAgent = await tx.agent.findFirst({
-        where: {
-          slug: normalizedSlug,
-          organizationId,
-          id: { not: input.id },
-        },
-        select: { id: true },
-      });
-      if (duplicateAgent) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "このスラグは既に使用されています",
-        });
-      }
-    }
-  }
+  const existingAgent = await findExistingAgentOrThrow(
+    tx,
+    input.id,
+    organizationId,
+  );
+  const normalizedSlug = await validateSlugUniqueness(
+    tx,
+    input,
+    existingAgent.slug,
+    organizationId,
+  );
 
   // MCPサーバーの更新（set で完全置換）
   const mcpServersUpdate = input.mcpServerIds

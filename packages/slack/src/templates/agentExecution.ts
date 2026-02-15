@@ -83,11 +83,9 @@ export const makeAgentExecutionSlackMessage = (
   }
 
   // 使用ツールを表示
-  if (data.toolNames && data.toolNames.length > 0) {
+  if (data.toolNames?.length) {
     blocks.push(
-      {
-        type: "divider",
-      },
+      { type: "divider" },
       {
         type: "section",
         text: {

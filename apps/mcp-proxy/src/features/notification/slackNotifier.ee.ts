@@ -33,6 +33,17 @@ type OrganizationSlackConfig = {
   slackBotToken: string | null;
 };
 
+const DEFAULT_MANAGER_BASE_URL = "https://app.tumiki.io";
+
+/**
+ * 詳細ページURLを構築
+ */
+const buildDetailUrl = (chatId?: string): string | undefined => {
+  if (!chatId) return undefined;
+  const baseUrl = process.env.MANAGER_BASE_URL ?? DEFAULT_MANAGER_BASE_URL;
+  return `${baseUrl}/agents/executions/${chatId}`;
+};
+
 /**
  * 組織のSlack Bot Token を取得
  *
@@ -44,7 +55,6 @@ const getOrganizationSlackConfig = async (
   _organizationId: string,
 ): Promise<OrganizationSlackConfig> => {
   // TODO: Organization.slackBotToken から取得する実装に変更
-  // 現時点では環境変数からフォールバック
   return {
     slackBotToken: process.env.SLACK_BOT_TOKEN ?? null,
   };
@@ -57,20 +67,13 @@ const shouldNotify = (
   config: AgentNotificationConfig,
   success: boolean,
 ): boolean => {
-  if (!config.enableSlackNotification) {
-    return false;
-  }
-
-  if (!config.slackNotificationChannelId) {
+  // 通知が無効、またはチャンネル未設定の場合は通知しない
+  if (!config.enableSlackNotification || !config.slackNotificationChannelId) {
     return false;
   }
 
   // 失敗時のみ通知する設定の場合、成功時は通知しない
-  if (config.notifyOnlyOnFailure && success) {
-    return false;
-  }
-
-  return true;
+  return !(config.notifyOnlyOnFailure && success);
 };
 
 /**
@@ -107,11 +110,8 @@ export const notifyAgentExecution = async (
       return;
     }
 
-    // 詳細ページURLを構築（環境変数から取得）
-    const baseUrl = process.env.MANAGER_BASE_URL ?? "https://app.tumiki.io";
-    const detailUrl = params.chatId
-      ? `${baseUrl}/agents/executions/${params.chatId}`
-      : undefined;
+    // 詳細ページURLを構築
+    const detailUrl = buildDetailUrl(params.chatId);
 
     // 通知メッセージを生成
     const message = makeAgentExecutionSlackMessage({
