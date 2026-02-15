@@ -1,9 +1,16 @@
 /**
  * チャット/エージェント実行の共通型定義
+ *
+ * NOTE: このファイルの型定義は mcp-proxy 側の
+ * apps/mcp-proxy/src/features/execution/shared/schema.ts
+ * と整合性を保つ必要がある
  */
 
 /**
  * AI SDK 6 のツール状態
+ *
+ * mcp-proxy の ToolState と同一定義
+ * @see apps/mcp-proxy/src/features/execution/shared/schema.ts
  */
 export type ToolState =
   | "input-streaming"

@@ -1,7 +1,6 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { useChat, type UIMessage } from "@ai-sdk/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,9 +17,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn, generateCUID, fetchWithErrorHandlers } from "@/lib/utils";
+import { cn, generateCUID } from "@/lib/utils";
 import { api, type RouterOutputs } from "@/trpc/react";
-import { getProxyServerUrl } from "@/lib/url";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import {
   Bot,
@@ -47,15 +45,15 @@ import { ja } from "date-fns/locale";
 import { ScheduleStatus } from "@tumiki/db/prisma";
 import { CronExpressionParser } from "cron-parser";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { EntityIcon } from "@/components/ui/EntityIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
 import { AgentIconEditModal } from "./AgentIconEditModal";
 import { ExecutionResultModal } from "../[agentSlug]/_components/ExecutionResultModal";
 import type { AgentId } from "@/schema/ids";
+import { useExecutionTransport } from "@/features/chat/hooks/useExecutionTransport";
 
 type Agent = RouterOutputs["agent"]["findAll"][number];
 
@@ -330,45 +328,19 @@ export const AgentCard = ({
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [executionError, setExecutionError] = useState<string | undefined>();
 
-  const { data: session, status: sessionStatus } = useSession();
   const utils = api.useUtils();
-
-  // セッションのアクセストークンをrefで保持（クロージャ問題回避）
-  const accessTokenRef = useRef<string | undefined>(session?.accessToken);
-  useEffect(() => {
-    accessTokenRef.current = session?.accessToken;
-  }, [session?.accessToken]);
-
-  // セッションが認証済みかつトークンが存在するかチェック
-  const isSessionReady =
-    sessionStatus === "authenticated" && !!session?.accessToken;
 
   const mcpServerCount = agent.mcpServers.length;
 
-  // mcp-proxy の URL を取得
-  const mcpProxyUrl = getProxyServerUrl();
-
-  // ストリーミング用のuseChat
-  const { messages, status, sendMessage, setMessages } = useChat({
-    id: `agent-card-execution-${agent.id}`,
-    generateId: generateCUID,
-    transport: new DefaultChatTransport({
-      api: `${mcpProxyUrl}/agent/${agent.id}`,
-      fetch: (url, options) => {
-        const headers = new Headers(options?.headers);
-        if (accessTokenRef.current) {
-          headers.set("Authorization", `Bearer ${accessTokenRef.current}`);
-        }
-        return fetchWithErrorHandlers(url, {
-          ...options,
-          headers,
-        });
-      },
-      prepareSendMessagesRequest(request) {
+  // prepareSendMessagesRequest をメモ化
+  const prepareSendMessagesRequest = useMemo(
+    () =>
+      (request: { messages: UIMessage[]; body?: Record<string, unknown> }) => {
         const lastMessage = request.messages.at(-1);
         const userText =
-          lastMessage?.parts?.find((p) => p.type === "text")?.text ??
-          "タスクを実行してください。";
+          lastMessage?.parts?.find(
+            (p): p is { type: "text"; text: string } => p.type === "text",
+          )?.text ?? "タスクを実行してください。";
 
         return {
           body: {
@@ -378,7 +350,20 @@ export const AgentCard = ({
           },
         };
       },
-    }),
+    [agent.organizationId],
+  );
+
+  // 共通トランスポートを使用
+  const { transport, isSessionReady } = useExecutionTransport({
+    apiPath: `/agent/${agent.id}`,
+    prepareSendMessagesRequest,
+  });
+
+  // ストリーミング用のuseChat
+  const { messages, status, sendMessage, setMessages } = useChat({
+    id: `agent-card-execution-${agent.id}`,
+    generateId: generateCUID,
+    transport,
     onError: (error) => {
       setExecutionError(error.message);
     },

@@ -2,15 +2,24 @@
  * エージェント関連の共通定数
  */
 
+import { AUTO_MODEL_ID } from "@/features/chat/services/ai/auto-model-selector";
+
 /** デフォルトで使用するAIモデルID */
 export const DEFAULT_MODEL_ID = "anthropic/claude-3.5-sonnet";
 
+// 自動モデル選択IDは auto-model-selector.ts から再エクスポート
+export { AUTO_MODEL_ID };
+
 // AIモデル選択肢
 export const MODEL_OPTIONS = [
+  { value: AUTO_MODEL_ID, label: "自動（推奨）" },
   { value: "default", label: "デフォルト（Claude 3.5 Sonnet）" },
   { value: DEFAULT_MODEL_ID, label: "Claude 3.5 Sonnet" },
+  {
+    value: "anthropic/claude-sonnet-4.5",
+    label: "Claude Sonnet 4.5（高性能）",
+  },
   { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku（高速）" },
-  { value: "anthropic/claude-3-opus", label: "Claude 3 Opus（高性能）" },
 ] as const;
 
 // 型定義

@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useChat, type UIMessage } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useSession } from "next-auth/react";
 import type { AgentId } from "@/schema/ids";
-import { getProxyServerUrl } from "@/lib/url";
-import { generateCUID, fetchWithErrorHandlers } from "@/lib/utils";
+import { generateCUID } from "@/lib/utils";
+import { useExecutionTransport } from "@/features/chat/hooks/useExecutionTransport";
 
 type UseAgentExecutionParams = {
   agentId: AgentId;
@@ -46,44 +44,15 @@ export const useAgentExecution = ({
 }: UseAgentExecutionParams): UseAgentExecutionReturn => {
   const [executionError, setExecutionError] = useState<string | undefined>();
 
-  // セッション情報を取得
-  const { data: session, status: sessionStatus } = useSession();
-
-  // セッションのアクセストークンをrefで保持（クロージャ問題回避）
-  const accessTokenRef = useRef<string | undefined>(session?.accessToken);
-  useEffect(() => {
-    accessTokenRef.current = session?.accessToken;
-  }, [session?.accessToken]);
-
-  // セッションが認証済みかつトークンが存在するかチェック
-  const isSessionReady =
-    sessionStatus === "authenticated" && !!session?.accessToken;
-
-  // mcp-proxy の URL を取得
-  const mcpProxyUrl = getProxyServerUrl();
-
-  // ストリーミング用のuseChat
-  const { messages, status, sendMessage, setMessages } = useChat({
-    id: `agent-execution-${agentId}`,
-    generateId: generateCUID,
-    transport: new DefaultChatTransport({
-      api: `${mcpProxyUrl}/agent/${agentId}`,
-      fetch: (url, options) => {
-        // mcp-proxy への認証ヘッダーを追加
-        const headers = new Headers(options?.headers);
-        if (accessTokenRef.current) {
-          headers.set("Authorization", `Bearer ${accessTokenRef.current}`);
-        }
-        return fetchWithErrorHandlers(url, {
-          ...options,
-          headers,
-        });
-      },
-      prepareSendMessagesRequest(request) {
+  // prepareSendMessagesRequest をメモ化
+  const prepareSendMessagesRequest = useMemo(
+    () =>
+      (request: { messages: UIMessage[]; body?: Record<string, unknown> }) => {
         const lastMessage = request.messages.at(-1);
         const userText =
-          lastMessage?.parts?.find((p) => p.type === "text")?.text ??
-          "タスクを実行してください。";
+          lastMessage?.parts?.find(
+            (p): p is { type: "text"; text: string } => p.type === "text",
+          )?.text ?? "タスクを実行してください。";
 
         return {
           body: {
@@ -93,7 +62,20 @@ export const useAgentExecution = ({
           },
         };
       },
-    }),
+    [organizationId],
+  );
+
+  // 共通トランスポートを使用
+  const { transport, isSessionReady } = useExecutionTransport({
+    apiPath: `/agent/${agentId}`,
+    prepareSendMessagesRequest,
+  });
+
+  // ストリーミング用のuseChat
+  const { messages, status, sendMessage, setMessages } = useChat({
+    id: `agent-execution-${agentId}`,
+    generateId: generateCUID,
+    transport,
     onError: (error) => {
       setExecutionError(error.message);
     },

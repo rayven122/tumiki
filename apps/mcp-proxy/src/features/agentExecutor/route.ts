@@ -23,9 +23,9 @@ import { AGENT_EXECUTION_CONFIG } from "../../shared/constants/config.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
 import { generateCUID } from "../../shared/utils/cuid.js";
-import { gateway } from "../../infrastructure/ai/index.js";
 import { verifyChatAuth } from "../chat/index.js";
 import { getChatMcpTools } from "../chat/index.js";
+import { buildStreamTextConfig } from "../execution/shared/index.js";
 import { buildSystemPrompt } from "./commands/index.js";
 import type { ExecutionTrigger } from "./types.js";
 
@@ -146,10 +146,6 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         });
       }
 
-      // 推論モデルはツールを使用しない
-      const isReasoningModel =
-        modelId.includes("reasoning") || modelId.endsWith("-thinking");
-
       // 実行ログ用のチャットIDとログIDを事前生成
       const chatId = generateCUID();
       const executionLogId = generateCUID();
@@ -178,6 +174,15 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         abortController.abort(new Error("Agent execution timed out"));
       }, EXECUTION_TIMEOUT_MS);
 
+      // LLM呼び出し設定を構築
+      const llmConfig = buildStreamTextConfig({
+        modelId,
+        systemPrompt,
+        mcpToolNames,
+        mcpTools,
+        abortSignal: abortController.signal,
+      });
+
       // ストリーミングレスポンスを作成
       const stream = createUIMessageStream({
         generateId: generateCUID,
@@ -185,23 +190,9 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
           logInfo("Agent execution execute started", { agentId, chatId });
           try {
             const result = streamText({
-              model: gateway.languageModel(modelId),
-              system: systemPrompt,
+              ...llmConfig,
               prompt: userMessage,
               stopWhen: stepCountIs(MAX_TOOL_STEPS),
-              abortSignal: abortController.signal,
-              experimental_activeTools: isReasoningModel ? [] : mcpToolNames,
-              providerOptions: isReasoningModel
-                ? {
-                    anthropic: {
-                      thinking: { type: "enabled", budgetTokens: 10_000 },
-                    },
-                  }
-                : undefined,
-              tools:
-                Object.keys(mcpTools).length > 0
-                  ? (mcpTools as Parameters<typeof streamText>[0]["tools"])
-                  : undefined,
             });
 
             // streamTextの結果をUIMessageStreamにマージ

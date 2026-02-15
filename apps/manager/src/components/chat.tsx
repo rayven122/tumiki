@@ -32,6 +32,10 @@ import { useDataStream } from "./data-stream-provider";
 import { CoharuProvider, useCoharuContext } from "@/features/avatar/hooks";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { getProxyServerUrl } from "@/lib/url";
+import {
+  isAutoModel,
+  selectModelByTask,
+} from "@/features/chat/services/ai/auto-model-selector";
 
 // CoharuViewer を動的インポート（Three.js のバンドルサイズ最適化）
 const CoharuViewer = lazy(() =>
@@ -106,6 +110,8 @@ function ChatContent({
 
   // MCPサーバーIDsを ref で保持（useChat のコールバック内で最新値を参照するため）
   const selectedMcpServerIdsRef = useRef<string[]>([]);
+  // 選択されたモデルIDを ref で保持
+  const selectedChatModelRef = useRef<string>("");
 
   // ストリーミング中のTTS用状態
   // 蓄積中のテキスト
@@ -135,6 +141,10 @@ function ChatContent({
   useEffect(() => {
     selectedMcpServerIdsRef.current = selectedMcpServerIds;
   }, [selectedMcpServerIds]);
+
+  useEffect(() => {
+    selectedChatModelRef.current = selectedChatModel;
+  }, [selectedChatModel]);
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -174,12 +184,37 @@ function ChatContent({
       prepareSendMessagesRequest(request) {
         const lastMessage = request.messages.at(-1);
 
+        // メッセージからテキストを抽出
+        const messageText =
+          lastMessage?.parts
+            ?.filter(
+              (part): part is { type: "text"; text: string } =>
+                part.type === "text",
+            )
+            .map((part) => part.text)
+            .join("") ?? "";
+
+        // 添付ファイルの有無を判定
+        const hasAttachments =
+          lastMessage?.parts?.some((part) => part.type === "file") ?? false;
+
+        // 自動モデル選択の場合、タスクに応じてモデルを決定
+        const currentModel = selectedChatModelRef.current;
+        const actualModel = isAutoModel(currentModel)
+          ? selectModelByTask({
+              messageText,
+              mcpToolCount: selectedMcpServerIdsRef.current.length,
+              hasAttachments,
+              conversationLength: request.messages.length,
+            })
+          : currentModel;
+
         return {
           body: {
             id: request.id,
             organizationId,
             message: lastMessage,
-            selectedChatModel,
+            selectedChatModel: actualModel,
             selectedVisibilityType: visibilityType,
             selectedMcpServerIds: selectedMcpServerIdsRef.current,
             isCoharuEnabled: isCoharuEnabledRef.current,

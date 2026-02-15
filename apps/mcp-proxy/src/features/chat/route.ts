@@ -13,6 +13,7 @@ import {
   convertToModelMessages,
   stepCountIs,
   type UIMessageStreamWriter,
+  type Tool,
 } from "ai";
 
 import { db } from "@tumiki/db/server";
@@ -20,12 +21,12 @@ import { db } from "@tumiki/db/server";
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { generateCUID } from "../../shared/utils/cuid.js";
-import { gateway } from "../../infrastructure/ai/index.js";
 import { postRequestBodySchema } from "./schema.js";
 import { verifyChatAuth } from "./chatJwtAuth.js";
 import { getChatMcpTools } from "./chatMcpTools.js";
 import { systemPrompt } from "./prompts.js";
 import { convertDBMessagesToAISDK6Format } from "./messageConverter.js";
+import { buildStreamTextConfig } from "../execution/shared/index.js";
 
 export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
   // リクエストボディをパース
@@ -164,7 +165,7 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
     );
 
     // MCPツールを取得
-    let mcpTools: Record<string, unknown> = {};
+    let mcpTools: Record<string, Tool> = {};
     let mcpToolNames: string[] = [];
 
     if (selectedMcpServerIds.length > 0) {
@@ -192,33 +193,26 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
       });
     }
 
-    // 推論モデルはツールを使用しない
-    const isReasoningModel =
-      selectedChatModel.includes("reasoning") ||
-      selectedChatModel.endsWith("-thinking");
+    // LLM呼び出し設定を構築
+    const llmConfig = buildStreamTextConfig({
+      modelId: selectedChatModel,
+      systemPrompt: systemPrompt({
+        selectedChatModel,
+        mcpToolNames,
+        isCoharuEnabled,
+      }),
+      mcpToolNames,
+      mcpTools,
+    });
 
     // ストリーミングレスポンスを作成
     const stream = createUIMessageStream({
       generateId: generateCUID,
       execute: async ({ writer }: { writer: UIMessageStreamWriter }) => {
         const result = streamText({
-          model: gateway.languageModel(selectedChatModel),
-          system: systemPrompt({
-            selectedChatModel,
-            mcpToolNames,
-            isCoharuEnabled,
-          }),
+          ...llmConfig,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
-          experimental_activeTools: isReasoningModel ? [] : mcpToolNames,
-          providerOptions: isReasoningModel
-            ? {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 10_000 },
-                },
-              }
-            : undefined,
-          tools: mcpTools as Parameters<typeof streamText>[0]["tools"],
         });
 
         // streamTextの結果をUIMessageStreamにマージ
