@@ -1,8 +1,5 @@
-// SPDX-License-Identifier: Elastic-2.0
-// Copyright (c) 2024-2025 Reyven Inc.
-
 /**
- * Slack通知送信ロジック（EE機能）
+ * Slack通知送信ロジック
  *
  * エージェント実行完了時にSlack通知を送信する
  */

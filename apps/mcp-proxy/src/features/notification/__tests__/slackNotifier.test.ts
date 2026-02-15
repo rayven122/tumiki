@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Elastic-2.0
-// Copyright (c) 2024-2025 Reyven Inc.
-
 import {
   afterAll,
   beforeAll,
@@ -15,7 +12,7 @@ import type { AgentNotificationConfig } from "../../../infrastructure/db/reposit
 import {
   notifyAgentExecution,
   type AgentExecutionNotifyParams,
-} from "../slackNotifier.ee.js";
+} from "../slackNotifier.js";
 
 // @tumiki/slack をモック
 const mockSendSlackBotMessage = vi.fn();
