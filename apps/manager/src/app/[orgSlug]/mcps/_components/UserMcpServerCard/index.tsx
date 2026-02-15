@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
 import { type RouterOutputs } from "@/trpc/react";
-import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
+import { calculateExpirationStatus } from "@/lib/shared/expirationHelpers";
 import {
   Edit2,
   ExternalLink,
@@ -36,7 +36,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { McpConfigEditModal } from "../../[slug]/_components/McpConfigEditModal";
-import { McpServerIcon } from "../McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { RefreshToolsModal } from "../RefreshToolsModal";
 import { InboundAuthIndicator } from "../ServerCard/ServerCardInboundAuthIndicator";
 import { OutboundApiKeyIndicator } from "../ServerCard/ServerCardOutboundApiKeyIndicator";
@@ -254,14 +254,14 @@ export const UserMcpServerCard = ({
         )}
 
         <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-          <div className="mr-2 rounded-md p-2">
-            <McpServerIcon
-              iconPath={userMcpServer.iconPath ?? mcpServer?.iconPath}
-              fallbackUrl={mcpServerUrl}
-              alt={userMcpServer.name}
-              size={32}
-            />
-          </div>
+          <EntityIcon
+            iconPath={userMcpServer.iconPath ?? mcpServer?.iconPath}
+            fallbackUrl={mcpServerUrl}
+            type="mcp"
+            size="sm"
+            alt={userMcpServer.name}
+            className="mr-2"
+          />
           <div className="min-w-0 flex-1 pr-10">
             <div className="flex items-center gap-1">
               {userMcpServer.serverType === "CUSTOM" && (

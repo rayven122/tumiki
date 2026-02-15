@@ -39,7 +39,6 @@ import { McpServerVisibility } from "@tumiki/db/prisma";
 import type { AgentId } from "@/schema/ids";
 
 import { EntityIcon } from "@/components/ui/EntityIcon";
-import { McpServerIcon } from "../../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "../../_components/DeleteAgentModal";
 import { AgentIconEditModal } from "../../_components/AgentIconEditModal";
 import { useAgentExecution } from "../_hooks";
@@ -272,13 +271,12 @@ const AsyncAgentDetail = ({
                     href={`/${orgSlug}/mcps/${server.slug}`}
                     className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                      <McpServerIcon
-                        iconPath={iconPath}
-                        alt={server.name}
-                        size={24}
-                      />
-                    </div>
+                    <EntityIcon
+                      iconPath={iconPath}
+                      type="mcp"
+                      size="sm"
+                      alt={server.name}
+                    />
                     <div className="flex-1">
                       <p className="font-medium">{server.name}</p>
                       {server.description && (

@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CheckCircleFillIcon, RouteIcon } from "./icons";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { McpServerIcon } from "@/app/[orgSlug]/mcps/_components/McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import {
   Tooltip,
   TooltipContent,
@@ -21,7 +21,7 @@ import {
   countTotalToolsForSelectedServers,
   getServerIconPath,
   getServerFallbackUrl,
-} from "@/utils/mcpServerUtils";
+} from "@/features/mcps/utils/mcpServerUtils";
 
 type OfficialServer = RouterOutputs["userMcpServer"]["findMcpServers"][number];
 
@@ -215,14 +215,13 @@ export const CompactMcpSelector = ({
                     )}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded">
-                        <McpServerIcon
-                          iconPath={iconPath}
-                          fallbackUrl={fallbackUrl}
-                          alt={server.name}
-                          size={20}
-                        />
-                      </div>
+                      <EntityIcon
+                        iconPath={iconPath}
+                        fallbackUrl={fallbackUrl}
+                        type="mcp"
+                        size="sm"
+                        alt={server.name}
+                      />
                       <div className="min-w-0 flex-1 text-left">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-sm font-medium">

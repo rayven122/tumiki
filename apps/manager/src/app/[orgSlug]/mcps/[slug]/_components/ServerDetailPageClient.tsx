@@ -36,18 +36,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AUTH_TYPE_LABELS } from "@/constants/userMcpServer";
+import { AUTH_TYPE_LABELS } from "@/features/mcps/constants/userMcpServer";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { AuthType, ServerStatus, ServerType } from "@tumiki/db/prisma";
 import { ConnectionTab } from "./ConnectionTab";
 import { CustomTabs } from "./CustomTabs";
 import { DeleteServerDialog } from "./DeleteServerDialog";
 import { LogsAnalyticsTab } from "./LogsAnalyticsTab";
 import { OverviewTab } from "./OverviewTab";
-import { McpServerIcon } from "../../_components/McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { IconEditModal } from "../../_components/UserMcpServerCard/IconEditModal";
 import { useReauthenticateOAuth } from "../../_components/UserMcpServerCard/hooks/useReauthenticateOAuth";
 import { McpConfigEditModal } from "./McpConfigEditModal";
@@ -372,19 +372,16 @@ export const ServerDetailPageClient = ({
                 {/* 左側: アイコン + 情報 */}
                 <div className="flex min-w-0 flex-1 items-start gap-4">
                   {/* アイコン */}
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-gray-50">
-                    <McpServerIcon
-                      iconPath={
-                        server.iconPath ??
-                        server.templateInstances[0]?.mcpServerTemplate?.iconPath
-                      }
-                      fallbackUrl={
-                        server.templateInstances[0]?.mcpServerTemplate?.url
-                      }
-                      alt={server.name}
-                      size={48}
-                    />
-                  </div>
+                  <EntityIcon
+                    iconPath={
+                      server.iconPath ??
+                      firstTemplateInstance?.mcpServerTemplate?.iconPath
+                    }
+                    fallbackUrl={firstTemplateInstance?.mcpServerTemplate?.url}
+                    type="mcp"
+                    size="md"
+                    alt={server.name}
+                  />
 
                   {/* サーバー情報 */}
                   <div className="min-w-0 flex-1 space-y-2">
@@ -402,7 +399,7 @@ export const ServerDetailPageClient = ({
                           <Wrench className="h-3 w-3" />
                           <span>ツール</span>
                           <span className="font-medium">
-                            {server.templateInstances[0]?.tools.length ?? 0}個
+                            {firstTemplateInstance?.tools.length ?? 0}個
                           </span>
                         </div>
                       ) : (
