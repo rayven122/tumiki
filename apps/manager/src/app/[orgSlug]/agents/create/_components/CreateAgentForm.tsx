@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Loader2, Sparkles, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
-import { useAgentFlow } from "@/atoms/agentFlowAtoms";
+import { useAgentFlow } from "@/store/agentFlow";
 import {
   McpDragDropSelector,
   convertToSelectableMcp,

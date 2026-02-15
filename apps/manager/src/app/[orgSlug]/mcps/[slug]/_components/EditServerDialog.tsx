@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { Loader2 } from "lucide-react";
 import type { UserMcpServerDetail } from "./types";
 import type { McpServerId } from "@/schema/ids";

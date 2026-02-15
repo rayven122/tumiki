@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, generateCUID, fetchWithErrorHandlers } from "@/lib/utils";
 import { api, type RouterOutputs } from "@/trpc/react";
-import { getProxyServerUrl } from "@/utils/url";
+import { getProxyServerUrl } from "@/lib/url";
 import { McpServerVisibility } from "@tumiki/db/prisma";
 import {
   Bot,
@@ -52,7 +52,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EntityIcon } from "@/components/ui/EntityIcon";
-import { McpServerIcon } from "../../mcps/_components/McpServerIcon";
 import { DeleteAgentModal } from "./DeleteAgentModal";
 import { AgentIconEditModal } from "./AgentIconEditModal";
 import { ExecutionResultModal } from "../[agentSlug]/_components/ExecutionResultModal";
@@ -587,13 +586,12 @@ export const AgentCard = ({
                   <TooltipProvider key={server.id}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100">
-                          <McpServerIcon
-                            iconPath={iconPath}
-                            alt={server.name}
-                            size={20}
-                          />
-                        </div>
+                        <EntityIcon
+                          iconPath={iconPath}
+                          type="mcp"
+                          size="sm"
+                          alt={server.name}
+                        />
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{server.name}</p>

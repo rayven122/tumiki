@@ -13,10 +13,6 @@ export const formatDataSize = (bytes: number): string => {
 
 /**
  * トークン数を人間が読みやすい形式にフォーマット
- * @example
- * formatTokenCount(1234) // "1.2K"
- * formatTokenCount(1234567) // "1.2M"
- * formatTokenCount(null) // "-"
  */
 export const formatTokenCount = (tokens: number | null | undefined): string => {
   if (tokens === null || tokens === undefined) return "-";
@@ -34,9 +30,6 @@ export const formatTokenCount = (tokens: number | null | undefined): string => {
 /**
  * トークン削減率を計算
  * @returns 削減率（パーセント）、計算不可の場合はnull
- * @example
- * calculateTokenReductionRate(1000, 700) // 30
- * calculateTokenReductionRate(null, 700) // null
  */
 export const calculateTokenReductionRate = (
   inputTokens: number | null | undefined,

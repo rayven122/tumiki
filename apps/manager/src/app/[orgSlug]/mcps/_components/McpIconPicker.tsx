@@ -39,7 +39,7 @@ import {
   getIconColorClass,
   DEFAULT_ICON_COLOR,
   type IconColorName,
-} from "@/utils/iconColor";
+} from "@/lib/iconColor";
 import { IconColorPicker } from "./IconColorPicker";
 
 // アイコンコンポーネントの型（McpServerIconでstyle使用のため含める）

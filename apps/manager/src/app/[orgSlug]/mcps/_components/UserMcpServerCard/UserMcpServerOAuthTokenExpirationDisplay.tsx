@@ -4,7 +4,7 @@ import {
   calculateExpirationStatus,
   getOAuthExpirationBadgeClass,
   getDetailedExpirationText,
-} from "@/utils/shared/expirationHelpers";
+} from "@/lib/shared/expirationHelpers";
 
 type OAuthTokenExpirationDisplayProps = {
   /** OAuthトークンの有効期限 */

@@ -8,7 +8,7 @@ import {
   type DragEvent,
 } from "react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

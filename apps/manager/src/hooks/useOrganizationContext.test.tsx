@@ -41,7 +41,7 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 // toastのモック
-vi.mock("@/utils/client/toast", () => ({
+vi.mock("@/lib/client/toast", () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),

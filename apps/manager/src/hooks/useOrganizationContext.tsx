@@ -4,7 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { type OrganizationId } from "@/schema/ids";
 // 循環依存を回避: barrel file からではなく直接スキーマファイルからインポート
 import { type getUserOrganizationsProtectedOutputSchema } from "@/features/organization/api/schemas";

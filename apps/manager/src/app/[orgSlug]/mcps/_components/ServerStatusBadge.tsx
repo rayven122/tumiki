@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { ServerStatus } from "@tumiki/db/prisma";
-import { SERVER_STATUS_LABELS } from "@/constants/userMcpServer";
+import { SERVER_STATUS_LABELS } from "@/features/mcps/constants/userMcpServer";
 
 type ServerStatusBadgeProps = {
   serverStatus: ServerStatus;

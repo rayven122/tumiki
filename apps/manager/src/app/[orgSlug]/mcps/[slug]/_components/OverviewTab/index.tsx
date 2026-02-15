@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { api } from "@/trpc/react";
 import { ToolCard } from "./ToolCard";
 import { RequestStatsCard } from "./RequestStatsCard";
 import { DataUsageStatsCard } from "./DataUsageStatsCard";
 import { sanitizeErrorMessage } from "./errorUtils";
-import { McpServerIcon } from "../../../_components/McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { cn } from "@/lib/utils";
 import type { UserMcpServerDetail, RequestStats } from "../types";
 import type { McpServerId, ToolId } from "@/schema/ids";
@@ -216,11 +216,12 @@ export const OverviewTab = ({
                           : "bg-muted hover:bg-muted/80",
                       )}
                     >
-                      <McpServerIcon
+                      <EntityIcon
                         iconPath={instance.mcpServerTemplate.iconPath}
                         fallbackUrl={instance.mcpServerTemplate.url}
+                        type="mcp"
+                        size="xs"
                         alt={instance.mcpServerTemplate.name}
-                        size={16}
                       />
                       <span>{instance.mcpServerTemplate.name}</span>
                     </button>

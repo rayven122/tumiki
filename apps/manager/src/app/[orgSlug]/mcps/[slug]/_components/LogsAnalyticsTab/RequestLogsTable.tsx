@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatDataSize } from "@/utils/formatters";
+import { formatDataSize } from "@tumiki/shared";
 import { getPaginationPages } from "./utils";
 import { MaskingInfoCell } from "./MaskingInfoCell";
 import { TokenInfoCell } from "./TokenInfoCell";

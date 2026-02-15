@@ -7,8 +7,11 @@ import { usePathname } from "next/navigation";
 import { TypingIndicator } from "./typing-indicator";
 import { useReauthenticateFromChat } from "@/hooks/useReauthenticateFromChat";
 import { useToolOutput } from "@/hooks/useToolOutput";
-import { parseToolName } from "@/utils/mcpToolName";
-import { detectErrorFromOutput, extractAuthError } from "@/utils/mcpToolError";
+import { parseToolName } from "@/features/mcps/utils/mcpToolName";
+import {
+  detectErrorFromOutput,
+  extractAuthError,
+} from "@/features/mcps/utils/mcpToolError";
 import { type ToolState } from "@/features/chat";
 
 type McpToolCallProps = {

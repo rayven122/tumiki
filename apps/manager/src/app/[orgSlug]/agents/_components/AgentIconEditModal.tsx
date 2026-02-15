@@ -9,7 +9,7 @@ import {
   type DragEvent,
 } from "react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { Upload, X, Bot } from "lucide-react";
 import { z } from "zod";
 

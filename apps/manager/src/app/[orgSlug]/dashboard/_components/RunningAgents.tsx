@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Bot, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -47,18 +48,12 @@ export const RunningAgents = ({ agents, orgSlug }: RunningAgentsProps) => {
             >
               <div className="flex items-center gap-3">
                 {/* アイコン */}
-                <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                  {agent.agentIconPath ? (
-                    <img
-                      src={agent.agentIconPath}
-                      alt=""
-                      className="h-6 w-6 rounded"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <Bot className="text-primary h-5 w-5" />
-                  )}
-                </div>
+                <EntityIcon
+                  iconPath={agent.agentIconPath}
+                  type="agent"
+                  size="sm"
+                  alt={agent.agentName}
+                />
 
                 {/* 情報 */}
                 <div className="min-w-0 flex-1">

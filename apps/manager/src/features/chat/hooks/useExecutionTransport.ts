@@ -9,7 +9,7 @@
 import { useRef, useEffect, useCallback, useMemo } from "react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useSession } from "next-auth/react";
-import { getProxyServerUrl } from "@/utils/url";
+import { getProxyServerUrl } from "@/lib/url";
 import { fetchWithErrorHandlers } from "@/lib/utils";
 
 type UseExecutionTransportParams = {

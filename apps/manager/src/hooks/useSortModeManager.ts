@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import type { ServerCardListRef } from "@/types/sort";
 
 export const useSortModeManager = () => {

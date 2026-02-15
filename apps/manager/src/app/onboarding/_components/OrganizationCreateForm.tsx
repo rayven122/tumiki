@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 
 /**
  * 組織名からslugプレビューを生成

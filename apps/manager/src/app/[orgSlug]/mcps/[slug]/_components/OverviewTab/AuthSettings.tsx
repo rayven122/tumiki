@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Info } from "lucide-react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import { api } from "@/trpc/react";
 import { AuthType } from "@tumiki/db/prisma";
 import type { UserMcpServerDetail } from "../types";

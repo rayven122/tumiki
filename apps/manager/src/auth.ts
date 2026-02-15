@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
-import { getKeycloakEnv } from "~/utils/env";
+import { getKeycloakEnv } from "~/lib/env";
 import { createCustomAdapter } from "~/lib/auth/adapter";
 import { jwtCallback, sessionCallback } from "~/lib/auth/callbacks";
 import type { KeycloakProfile } from "~/lib/auth/types";

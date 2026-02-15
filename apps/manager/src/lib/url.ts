@@ -1,54 +1,55 @@
+const MCP_PROXY_SERVER_URL =
+  process.env.NEXT_PUBLIC_MCP_PROXY_URL ??
+  (process.env.NODE_ENV === "production"
+    ? "https://server.tumiki.cloud"
+    : "http://localhost:8080");
+
 /**
- * URL関連のユーティリティ関数
- *
- * Cloudflare Tunnel等のリバースプロキシ環境では、Next.jsサーバーはlocalhostで動作するため、
- * request.url が localhost になってしまう。このモジュールでは環境変数から正しいベースURLを取得する。
+ * プロキシサーバーのベースURLを取得
  */
+export const getProxyServerUrl = () => {
+  return MCP_PROXY_SERVER_URL;
+};
+
+export const makeSseProxyServerUrl = (slug: string) => {
+  return `${MCP_PROXY_SERVER_URL}/sse/${slug}`;
+};
+
+export const makeHttpProxyServerUrl = (slug: string) => {
+  return `${MCP_PROXY_SERVER_URL}/mcp/${slug}`;
+};
 
 /**
  * アプリケーションのベースURLを取得
- *
- * 優先順位:
- * 1. ブラウザ環境: window.location.origin（現在のページのオリジン）
- * 2. NEXTAUTH_URL（明示的に設定されている場合）
- * 3. VERCEL_URL（Vercel環境 - プロトコルなしのため`https://`を追加）
- * 4. デフォルト（ローカル開発環境: http://localhost:3000）
- *
- * @returns アプリケーションのベースURL（末尾スラッシュなし）
+ * NEXTAUTH_URL > VERCEL_URL > localhost:3000 の優先順位
  */
 export const getAppBaseUrl = (): string => {
-  // ブラウザ環境では現在のページのオリジンを使用
+  // ブラウザ環境の場合は window.location.origin を使用
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
 
-  // サーバーサイドでは環境変数から取得
+  // サーバーサイド: 環境変数ベース
   if (process.env.NEXTAUTH_URL) {
-    // 末尾のスラッシュを削除
     return process.env.NEXTAUTH_URL.replace(/\/$/, "");
   }
+
   if (process.env.VERCEL_URL) {
-    // VERCEL_URLはプロトコルなしのドメイン名のみ（例: "my-app-abc123.vercel.app"）
     return `https://${process.env.VERCEL_URL}`;
   }
+
   return "http://localhost:3000";
 };
 
 /**
- * OAuth リダイレクトURI を取得
- * 環境変数から適切なベースURLを取得して構築
- *
- * @returns OAuth callback用のリダイレクトURI
+ * OAuth認証のリダイレクトURIを生成
  */
 export const getOAuthRedirectUri = (): string => {
   return `${getAppBaseUrl()}/api/oauth/callback`;
 };
 
 /**
- * 招待URLを生成する
- *
- * @param token - 招待トークン
- * @returns 招待URL
+ * 招待URLを生成
  */
 export const generateInviteUrl = (token: string): string => {
   return `${getAppBaseUrl()}/invite/${token}`;

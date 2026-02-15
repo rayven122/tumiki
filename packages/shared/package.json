@@ -19,6 +19,18 @@
     "./utils/tokenCount": {
       "types": "./dist/utils/tokenCount.d.ts",
       "default": "./dist/utils/tokenCount.js"
+    },
+    "./utils/sleep": {
+      "types": "./dist/utils/sleep.d.ts",
+      "default": "./dist/utils/sleep.js"
+    },
+    "./utils/debounce": {
+      "types": "./dist/utils/debounce.d.ts",
+      "default": "./dist/utils/debounce.js"
+    },
+    "./utils/formatters": {
+      "types": "./dist/utils/formatters.d.ts",
+      "default": "./dist/utils/formatters.js"
     }
   },
   "scripts": {

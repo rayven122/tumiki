@@ -1,4 +1,4 @@
-import { client } from "@/libs/microcms";
+import { client } from "@/lib/blog/microcms";
 import type { BlogPost } from "@/types/blog";
 import { BlogClient } from "./_components/BlogClient";
 

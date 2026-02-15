@@ -4,7 +4,7 @@ import Image from "next/image";
 import { FaviconImage } from "@/components/ui/FaviconImage";
 import { ImageIcon } from "lucide-react";
 import { getIconComponent } from "./McpIconPicker";
-import { parseIconPath, getIconColorClass } from "@/utils/iconColor";
+import { parseIconPath, getIconColorClass } from "@/lib/iconColor";
 
 type McpServerIconProps = {
   iconPath: string | null | undefined;

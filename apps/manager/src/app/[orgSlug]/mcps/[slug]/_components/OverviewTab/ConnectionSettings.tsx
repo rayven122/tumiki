@@ -15,9 +15,9 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { copyToClipboard } from "@/utils/client/copyToClipboard";
-import { toast } from "@/utils/client/toast";
-import { getProxyServerUrl, makeHttpProxyServerUrl } from "@/utils/url";
+import { copyToClipboard } from "@/lib/client/copyToClipboard";
+import { toast } from "@/lib/client/toast";
+import { getProxyServerUrl, makeHttpProxyServerUrl } from "@/lib/url";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 import { api } from "@/trpc/react";
 import Image from "next/image";

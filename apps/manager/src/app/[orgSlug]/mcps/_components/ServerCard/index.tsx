@@ -34,8 +34,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
-import { McpServerIcon } from "../McpServerIcon";
+import { toast } from "@/lib/client/toast";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };
@@ -116,14 +116,14 @@ export function ServerCard({ mcpServer }: ServerCardProps) {
       </div>
 
       <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-        <div className="mr-2 rounded-md p-2">
-          <McpServerIcon
-            iconPath={mcpServer.iconPath}
-            fallbackUrl={mcpServer.url}
-            alt={mcpServer.name}
-            size={32}
-          />
-        </div>
+        <EntityIcon
+          iconPath={mcpServer.iconPath}
+          fallbackUrl={mcpServer.url}
+          type="mcp"
+          size="sm"
+          alt={mcpServer.name}
+          className="mr-2"
+        />
         <div className="min-w-0 flex-1 pr-24">
           <CardTitle className="truncate">{mcpServer.name}</CardTitle>
         </div>

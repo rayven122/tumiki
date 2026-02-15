@@ -1,9 +1,10 @@
-import { describe, test, expect } from "vitest";
+import { describe, expect, test } from "vitest";
+
 import {
+  calculateTokenReductionRate,
   formatDataSize,
   formatTokenCount,
-  calculateTokenReductionRate,
-} from "../formatters";
+} from "../formatters.js";
 
 describe("formatDataSize", () => {
   test("0バイトの場合は'0 B'を返す", () => {

@@ -8,7 +8,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import type { VRM } from "@pixiv/three-vrm";
 import { VRMAAnimationManager } from "@/features/avatar/services/VRMAAnimationManager";
-import { getAvailableVrmaPaths } from "@/utils/coharu";
+import { getAvailableVrmaPaths } from "@/features/avatar/utils";
 
 type AnimationManagerResult = {
   update: (deltaTime: number) => void;

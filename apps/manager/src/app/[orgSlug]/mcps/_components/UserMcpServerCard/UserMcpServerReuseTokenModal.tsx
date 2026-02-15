@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { RefreshCw, CheckCircle, Key } from "lucide-react";
 import { api, type RouterOutputs } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
-import { McpServerIcon } from "../McpServerIcon";
+import { toast } from "@/lib/client/toast";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -118,10 +118,11 @@ export const ReuseTokenModal = ({
                     : "border-gray-200 hover:bg-gray-50",
                 )}
               >
-                <McpServerIcon
+                <EntityIcon
                   iconPath={token.iconPath}
+                  type="mcp"
+                  size="sm"
                   alt={token.mcpServerName}
-                  size={32}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-gray-900">

@@ -11,7 +11,7 @@ import {
   VRMAnimationLoaderPlugin,
   createVRMAnimationClip,
 } from "@pixiv/three-vrm-animation";
-import { VRMA_PATHS } from "@/utils/coharu";
+import { VRMA_PATHS } from "@/features/avatar/utils";
 
 export class VRMAAnimationManager {
   private vrm: VRM;

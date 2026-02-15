@@ -15,7 +15,7 @@ import { TRPCError } from "@trpc/server";
 import {
   getMcpServerToolsSSE,
   getMcpServerToolsHTTP,
-} from "@/utils/getMcpServerTools";
+} from "@/features/mcps/utils/getMcpServerTools";
 
 export type CreateApiKeyMcpServerInput = z.infer<
   typeof CreateApiKeyMcpServerInputV2

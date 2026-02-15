@@ -2,7 +2,7 @@
 
 import { Layers, Package, Wrench } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { McpServerIcon } from "../McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useDrag } from "@/features/mcps/components/mcp-selector";
@@ -37,13 +37,13 @@ const DragOverlayCard = ({
         transform: "translate(-50%, -50%)",
       }}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-        <McpServerIcon
-          iconPath={template.iconPath}
-          alt={template.name}
-          size={32}
-        />
-      </div>
+      <EntityIcon
+        iconPath={template.iconPath}
+        fallbackUrl={template.url}
+        type="mcp"
+        size="sm"
+        alt={template.name}
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-gray-900">{template.name}</p>
         <div className="flex items-center gap-1 text-xs text-gray-500">

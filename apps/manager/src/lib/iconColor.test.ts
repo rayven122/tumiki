@@ -5,7 +5,7 @@ import {
   getIconColorClass,
   ICON_COLOR_PALETTE,
   DEFAULT_ICON_COLOR,
-} from "../iconColor";
+} from "./iconColor";
 
 describe("parseIconPath", () => {
   test("lucide:形式でアイコン名のみの場合、デフォルトカラーを返す", () => {

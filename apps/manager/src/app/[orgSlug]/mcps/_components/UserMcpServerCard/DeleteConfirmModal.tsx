@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
-import { toast } from "@/utils/client/toast";
+import { toast } from "@/lib/client/toast";
 import type { McpServerId } from "@/schema/ids";
 
 type DeleteConfirmModalProps = {

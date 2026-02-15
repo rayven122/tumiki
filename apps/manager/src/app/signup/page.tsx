@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { determineRedirectUrl, getBaseUrl } from "~/lib/auth/redirect-utils";
 import { getSessionInfo } from "~/lib/auth/session-utils";
-import { getKeycloakEnv } from "~/utils/env";
+import { getKeycloakEnv } from "~/lib/env";
 
 type SignUpPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;

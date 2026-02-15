@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { Prisma } from "@tumiki/db/prisma";
-import { McpServerIcon } from "../McpServerIcon";
+import { EntityIcon } from "@/components/ui/EntityIcon";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 
@@ -21,14 +21,14 @@ export const ServerInfoSection = ({ mcpServer }: ServerInfoSectionProps) => {
 
   return (
     <div className="flex items-center">
-      <div className="mr-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border p-2">
-        <McpServerIcon
-          iconPath={mcpServer.iconPath}
-          fallbackUrl={mcpServer.url}
-          alt={mcpServer.name}
-          size={24}
-        />
-      </div>
+      <EntityIcon
+        iconPath={mcpServer.iconPath}
+        fallbackUrl={mcpServer.url}
+        type="mcp"
+        size="sm"
+        alt={mcpServer.name}
+        className="mr-3"
+      />
       <div className="min-w-0">
         <h2 className="font-medium">{mcpServer.name}</h2>
         <Badge variant="outline" className="mt-1 text-xs">

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { client } from "@/libs/microcms";
+import { client } from "@/lib/blog/microcms";
 import type { BlogPost } from "@/types/blog";
 import BlogDetailClient from "./_components/BlogDetailClient";
 

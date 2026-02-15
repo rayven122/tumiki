@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Key, Copy, Eye, EyeOff, Trash2, Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { calculateExpirationStatus } from "@/utils/shared/expirationHelpers";
+import { calculateExpirationStatus } from "@/lib/shared/expirationHelpers";
 
 type ApiKeyItemProps = {
   apiKey: {

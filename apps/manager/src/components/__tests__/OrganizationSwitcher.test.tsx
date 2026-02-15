@@ -39,7 +39,7 @@ vi.mock("@/hooks/useOrganizationContext", () => ({
 }));
 
 // toastのモック
-vi.mock("@/utils/client/toast", () => ({
+vi.mock("@/lib/client/toast", () => ({
   toast: {
     error: (...args: unknown[]): ReturnType<typeof mockToastError> =>
       mockToastError(...args),

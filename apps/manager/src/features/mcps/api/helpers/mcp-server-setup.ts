@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import {
   getMcpServerToolsHTTP,
   getMcpServerToolsSSE,
-} from "@/utils/getMcpServerTools";
+} from "@/features/mcps/utils/getMcpServerTools";
 
 /**
  * MCPサーバーからツールを取得してセットアップ

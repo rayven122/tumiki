@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import {
   getMcpServerToolsHTTP,
   getMcpServerToolsSSE,
-} from "@/utils/getMcpServerTools";
+} from "@/features/mcps/utils/getMcpServerTools";
 import type { McpServerId } from "@/schema/ids";
 
 // ツール変更の種類
