@@ -152,6 +152,8 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
       enableSlackNotification: flowState.enableSlackNotification,
       slackNotificationChannelId:
         flowState.slackNotificationChannelId || undefined,
+      slackNotificationChannelName:
+        flowState.slackNotificationChannelName || undefined,
       notifyOnlyOnFailure: flowState.notifyOnlyOnFailure,
     });
   };

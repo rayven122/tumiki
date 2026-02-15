@@ -187,6 +187,8 @@ const EditForm = ({
       // Slack通知設定
       enableSlackNotification: formState.enableSlackNotification,
       slackNotificationChannelId: formState.slackNotificationChannelId || null,
+      slackNotificationChannelName:
+        formState.slackNotificationChannelName || null,
       notifyOnlyOnFailure: formState.notifyOnlyOnFailure,
     });
   };
