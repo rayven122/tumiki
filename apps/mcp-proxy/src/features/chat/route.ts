@@ -16,7 +16,7 @@ import {
   type Tool,
 } from "ai";
 
-import { db } from "@tumiki/db/server";
+import { db, type Prisma } from "@tumiki/db/server";
 
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
@@ -239,9 +239,8 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
                 id: msg.id,
                 chatId,
                 role: "assistant" as const,
-                // partsはUIMessageのパーツ配列をDB保存用に変換
-                // Prisma JsonValue として保存されるため、JSON互換オブジェクトに変換
-                parts: JSON.parse(JSON.stringify(msg.parts)),
+                // partsはUIMessageのパーツ配列をPrisma JsonValueとして保存
+                parts: msg.parts as unknown as Prisma.InputJsonValue[],
                 attachments: [],
                 createdAt: new Date(),
               })),
