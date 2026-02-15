@@ -4,6 +4,8 @@
  * managerのlib/ai/prompts.tsから移植
  */
 
+import { isReasoningModel } from "../execution/shared/index.js";
+
 /**
  * アーティファクトプロンプト
  */
@@ -143,15 +145,15 @@ export const systemPrompt = ({
 }): string => {
   const mcpToolsPrompt = getMcpToolsPrompt(mcpToolNames);
   const coharuPrompt = isCoharuEnabled ? coharuProfilePrompt : "";
+  const reasoning = isReasoningModel(selectedChatModel);
 
-  // 推論モデルはアーティファクト機能を使用しない
-  const isReasoningModel =
-    selectedChatModel.includes("reasoning") ||
-    selectedChatModel.endsWith("-thinking");
+  // プロンプトパーツを構築（推論モデルはアーティファクト機能を使用しない）
+  const parts = [
+    regularPrompt,
+    coharuPrompt,
+    reasoning ? "" : artifactsPrompt,
+    mcpToolsPrompt,
+  ].filter(Boolean);
 
-  if (isReasoningModel) {
-    return `${regularPrompt}\n\n${coharuPrompt}${mcpToolsPrompt}`;
-  }
-
-  return `${regularPrompt}\n\n${coharuPrompt}\n\n${artifactsPrompt}${mcpToolsPrompt}`;
+  return parts.join("\n\n");
 };

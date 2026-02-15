@@ -13,19 +13,20 @@ import {
   convertToModelMessages,
   stepCountIs,
   type UIMessageStreamWriter,
+  type Tool,
 } from "ai";
 
-import { db } from "@tumiki/db/server";
+import { db, type Prisma } from "@tumiki/db/server";
 
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { generateCUID } from "../../shared/utils/cuid.js";
-import { gateway } from "../../infrastructure/ai/index.js";
 import { postRequestBodySchema } from "./schema.js";
 import { verifyChatAuth } from "./chatJwtAuth.js";
 import { getChatMcpTools } from "./chatMcpTools.js";
 import { systemPrompt } from "./prompts.js";
 import { convertDBMessagesToAISDK6Format } from "./messageConverter.js";
+import { buildStreamTextConfig } from "../execution/shared/index.js";
 
 export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
   // リクエストボディをパース
@@ -61,19 +62,19 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
   );
 
   if (!authResult.success) {
-    const statusCode =
-      authResult.error.code === "unauthorized"
-        ? 401
-        : authResult.error.code === "forbidden"
-          ? 403
-          : 400;
-    return c.json(
-      {
-        code: `${authResult.error.code}:chat`,
-        message: authResult.error.message,
-      },
-      statusCode,
-    );
+    const errorResponse = {
+      code: `${authResult.error.code}:chat`,
+      message: authResult.error.message,
+    };
+    // 認証エラーコードに応じたHTTPステータスを返す
+    switch (authResult.error.code) {
+      case "unauthorized":
+        return c.json(errorResponse, 401);
+      case "forbidden":
+        return c.json(errorResponse, 403);
+      default:
+        return c.json(errorResponse, 400);
+    }
   }
 
   const { userId } = authResult.context;
@@ -164,7 +165,7 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
     );
 
     // MCPツールを取得
-    let mcpTools: Record<string, unknown> = {};
+    let mcpTools: Record<string, Tool> = {};
     let mcpToolNames: string[] = [];
 
     if (selectedMcpServerIds.length > 0) {
@@ -192,33 +193,26 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
       });
     }
 
-    // 推論モデルはツールを使用しない
-    const isReasoningModel =
-      selectedChatModel.includes("reasoning") ||
-      selectedChatModel.endsWith("-thinking");
+    // LLM呼び出し設定を構築
+    const llmConfig = buildStreamTextConfig({
+      modelId: selectedChatModel,
+      systemPrompt: systemPrompt({
+        selectedChatModel,
+        mcpToolNames,
+        isCoharuEnabled,
+      }),
+      mcpToolNames,
+      mcpTools,
+    });
 
     // ストリーミングレスポンスを作成
     const stream = createUIMessageStream({
       generateId: generateCUID,
       execute: async ({ writer }: { writer: UIMessageStreamWriter }) => {
         const result = streamText({
-          model: gateway.languageModel(selectedChatModel),
-          system: systemPrompt({
-            selectedChatModel,
-            mcpToolNames,
-            isCoharuEnabled,
-          }),
+          ...llmConfig,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
-          experimental_activeTools: isReasoningModel ? [] : mcpToolNames,
-          providerOptions: isReasoningModel
-            ? {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 10_000 },
-                },
-              }
-            : undefined,
-          tools: mcpTools as Parameters<typeof streamText>[0]["tools"],
         });
 
         // streamTextの結果をUIMessageStreamにマージ
@@ -245,10 +239,8 @@ export const chatRoute = new Hono<HonoEnv>().post("/chat", async (c) => {
                 id: msg.id,
                 chatId,
                 role: "assistant" as const,
-                parts: msg.parts as unknown as Array<{
-                  text: string;
-                  type: string;
-                }>,
+                // partsはUIMessageのパーツ配列をPrisma JsonValueとして保存
+                parts: msg.parts as unknown as Prisma.InputJsonValue[],
                 attachments: [],
                 createdAt: new Date(),
               })),

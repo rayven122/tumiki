@@ -19,3 +19,14 @@ export {
 
 // エンタイトルメント
 export { entitlementsByUserType } from "./entitlements";
+
+// 自動モデル選択
+export {
+  AUTO_MODEL_ID,
+  isAutoModel,
+  selectModelByTask,
+  analyzeTaskComplexity,
+  detectTaskType,
+  calculateComplexityScore,
+  type TaskContext,
+} from "./auto-model-selector";

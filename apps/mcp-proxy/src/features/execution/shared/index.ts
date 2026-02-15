@@ -29,3 +29,11 @@ export {
   convertDBMessagesToAISDK6Format,
   type UIMessage,
 } from "./messageConverter.js";
+
+// LLM設定
+export {
+  isReasoningModel,
+  buildStreamTextConfig,
+  type LLMConfigOptions,
+  type StreamTextConfig,
+} from "./llmConfig.js";
