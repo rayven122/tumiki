@@ -34,6 +34,8 @@ export type SlackNotificationResult = {
   attempted: boolean;
   /** 成功したか */
   success: boolean;
+  /** 送信先チャンネル名（成功時） */
+  channelName?: string;
   /** エラーコード（失敗時） */
   errorCode?: string;
   /** エラーメッセージ（失敗時） */
@@ -47,7 +49,21 @@ type DecryptedSlackConfig = {
   slackBotToken: string | null;
 };
 
-const DEFAULT_MANAGER_BASE_URL = "https://app.tumiki.io";
+/**
+ * アプリケーションのベースURLを取得
+ * NEXTAUTH_URL > VERCEL_URL > デフォルト の優先順位
+ */
+const getAppBaseUrl = (): string => {
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, "");
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return "http://localhost:3000";
+};
 
 /**
  * 詳細ページURLを構築
@@ -61,7 +77,7 @@ const buildDetailUrl = (
   chatId?: string,
 ): string | undefined => {
   if (!chatId) return undefined;
-  const baseUrl = process.env.MANAGER_BASE_URL ?? DEFAULT_MANAGER_BASE_URL;
+  const baseUrl = getAppBaseUrl();
   return `${baseUrl}/${orgSlug}/chat/${chatId}`;
 };
 
@@ -115,8 +131,9 @@ const NOT_ATTEMPTED: SlackNotificationResult = {
 export const notifyAgentExecution = async (
   params: AgentExecutionNotifyParams,
 ): Promise<SlackNotificationResult> => {
-  // catchブロックでも参照できるようにチャンネルIDを保持
+  // catchブロックでも参照できるようにチャンネル情報を保持
   let notificationChannelId: string | undefined;
+  let notificationChannelName: string | undefined;
 
   try {
     // エージェントの通知設定を取得
@@ -137,8 +154,10 @@ export const notifyAgentExecution = async (
       return NOT_ATTEMPTED;
     }
 
-    // チャンネルIDを保持（エラー時のログ用）
+    // チャンネル情報を保持（エラー時のログ用、成功時の戻り値用）
     notificationChannelId = agentConfig.slackNotificationChannelId ?? undefined;
+    notificationChannelName =
+      agentConfig.slackNotificationChannelName ?? undefined;
 
     // 組織のSlack設定を取得（prisma-field-encryptionで自動復号化）
     const orgConfig = await getSlackConfig(params.organizationId);

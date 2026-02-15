@@ -92,7 +92,7 @@ describe("notifyAgentExecution", () => {
   const orgSlug = "@test-org";
 
   beforeEach(() => {
-    vi.stubEnv("MANAGER_BASE_URL", "https://app.tumiki.io");
+    vi.stubEnv("NEXTAUTH_URL", "https://app.tumiki.io");
     vi.clearAllMocks();
     mockMakeAgentExecutionSlackMessage.mockReturnValue({
       channel: "C1234567890",
@@ -336,9 +336,9 @@ describe("notifyAgentExecution", () => {
   });
 
   describe("環境変数", () => {
-    test("MANAGER_BASE_URLが未設定の場合はデフォルトURLを使用する", async () => {
+    test("NEXTAUTH_URLが未設定の場合はデフォルトURLを使用する", async () => {
       // undefinedをスタブするとデフォルト値が使用される
-      vi.stubEnv("MANAGER_BASE_URL", undefined as unknown as string);
+      vi.stubEnv("NEXTAUTH_URL", undefined as unknown as string);
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
 
       await notifyAgentExecution({
@@ -348,13 +348,13 @@ describe("notifyAgentExecution", () => {
 
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          detailUrl: `https://app.tumiki.io/${orgSlug}/chat/chat-abc`,
+          detailUrl: `http://localhost:3000/${orgSlug}/chat/chat-abc`,
         }),
       );
     });
 
-    test("カスタムMANAGER_BASE_URLが設定されている場合はそれを使用する", async () => {
-      vi.stubEnv("MANAGER_BASE_URL", "https://custom.example.com");
+    test("NEXTAUTH_URLが設定されている場合はそれを使用する", async () => {
+      vi.stubEnv("NEXTAUTH_URL", "https://custom.example.com");
       mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
 
       await notifyAgentExecution({
@@ -365,6 +365,39 @@ describe("notifyAgentExecution", () => {
       expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           detailUrl: `https://custom.example.com/${orgSlug}/chat/chat-xyz`,
+        }),
+      );
+    });
+
+    test("VERCEL_URLが設定されている場合はそれを使用する", async () => {
+      vi.stubEnv("NEXTAUTH_URL", undefined as unknown as string);
+      vi.stubEnv("VERCEL_URL", "my-app.vercel.app");
+      mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
+
+      await notifyAgentExecution({
+        ...baseParams,
+        chatId: "chat-vercel",
+      });
+
+      expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detailUrl: `https://my-app.vercel.app/${orgSlug}/chat/chat-vercel`,
+        }),
+      );
+    });
+
+    test("NEXTAUTH_URLの末尾スラッシュは除去される", async () => {
+      vi.stubEnv("NEXTAUTH_URL", "https://example.com/");
+      mockGetAgentNotificationConfig.mockReturnValue(enabledConfig);
+
+      await notifyAgentExecution({
+        ...baseParams,
+        chatId: "chat-slash",
+      });
+
+      expect(mockMakeAgentExecutionSlackMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detailUrl: `https://example.com/${orgSlug}/chat/chat-slash`,
         }),
       );
     });
