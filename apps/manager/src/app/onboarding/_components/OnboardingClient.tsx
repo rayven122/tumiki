@@ -3,15 +3,8 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User, Users, ArrowRight, CheckCircle, Lock } from "lucide-react";
-import { clsx } from "clsx";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +13,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { OrganizationCreateForm } from "./OrganizationCreateForm";
+import { OnboardingFloatingBlocks } from "./OnboardingFloatingBlocks";
 import { toast } from "@/lib/client/toast";
 import { SuccessAnimation } from "@/app/_components/ui/SuccessAnimation";
 import type { Session } from "next-auth";
 import { getSessionInfo } from "~/lib/auth/session-utils";
+
+// コーナーブロック装飾コンポーネント
+type CornerBlocksProps = {
+  colorClass: string;
+};
+
+const CornerBlocks = ({ colorClass }: CornerBlocksProps) => (
+  <>
+    <div
+      className={`absolute -top-2 -left-2 h-4 w-4 border-2 border-black ${colorClass}`}
+    />
+    <div
+      className={`absolute -top-2 -right-2 h-4 w-4 border-2 border-black ${colorClass}`}
+    />
+    <div
+      className={`absolute -bottom-2 -left-2 h-4 w-4 border-2 border-black ${colorClass}`}
+    />
+    <div
+      className={`absolute -right-2 -bottom-2 h-4 w-4 border-2 border-black ${colorClass}`}
+    />
+  </>
+);
 
 type OnboardingClientProps = {
   session: Session | null;
@@ -31,6 +47,38 @@ type OnboardingClientProps = {
 };
 
 const ANIMATION_DURATION = 3000;
+
+// 機能リストの定義
+const personalFeatures = [
+  "簡単セットアップ",
+  "即座に利用開始",
+  "すべての機能を利用可能",
+  "後からチーム招待も可能",
+];
+
+const teamFeatures = [
+  "チーム名とロゴを設定",
+  "メンバー招待機能",
+  "ロールベース権限管理",
+  "チーム用ダッシュボード",
+];
+
+// アニメーション設定
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: { opacity: 1, x: 0 },
+};
 
 export const OnboardingClient = ({
   session,
@@ -103,139 +151,225 @@ export const OnboardingClient = ({
   };
 
   return (
-    <div className="container mx-auto flex min-h-screen items-center justify-center py-10">
-      <div className="w-full max-w-4xl">
-        {/* ヘッダー */}
-        <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold">
-            {isFirstLogin ? "Tumikiへようこそ！" : "新しいチームを作成"}
-          </h1>
-          <p className="text-muted-foreground text-xl">
-            {isFirstLogin
-              ? "MCPサーバー管理を始めるために、利用形態を選択してください"
-              : "チーム利用のための新しいチームを作成します。利用形態を選択してください"}
-          </p>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-white">
+      {/* フローティングブロック背景 */}
+      <OnboardingFloatingBlocks />
 
-        {/* オプション選択 */}
-        <div className="grid gap-8 md:grid-cols-2">
-          {/* 個人利用オプション */}
-          <Card
-            className={clsx(
-              "transition-all hover:shadow-lg",
-              selectedOption === "personal" && "ring-primary ring-2",
-              "cursor-pointer",
-            )}
-            onClick={handlePersonalUse}
+      <div className="relative z-10 container mx-auto flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="w-full max-w-4xl">
+          {/* ヘッダー */}
+          <motion.div
+            className="mb-12 text-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-                <User className="h-8 w-8 text-blue-600" />
-              </div>
-              <CardTitle className="text-2xl">個人利用</CardTitle>
-              <CardDescription className="text-base">
-                一人でMCPサーバーを管理したい
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  簡単セットアップ
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  即座に利用開始
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  すべての機能を利用可能
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  後からチーム招待も可能
-                </li>
-              </ul>
-              <Button className="mt-6 w-full" tabIndex={-1} asChild>
-                <span>
-                  {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </span>
-              </Button>
-            </CardContent>
-          </Card>
+            <h1 className="mb-4 text-3xl font-black tracking-tight text-black sm:text-4xl md:text-5xl">
+              {isFirstLogin ? (
+                <>
+                  <span className="mr-2 inline-block -rotate-1 transform bg-black px-3 py-1 text-white shadow-[4px_4px_0_#6366f1]">
+                    Tumiki
+                  </span>
+                  へようこそ！
+                </>
+              ) : (
+                "新しいチームを作成"
+              )}
+            </h1>
+            <motion.p
+              className="text-lg font-medium text-gray-600 sm:text-xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              {isFirstLogin
+                ? "MCPサーバー管理を始めるために、利用形態を選択してください"
+                : "チーム利用のための新しいチームを作成します"}
+            </motion.p>
+          </motion.div>
 
-          {/* チーム利用オプション */}
-          <Card
-            className={clsx(
-              "relative transition-all",
-              selectedOption === "team" && "ring-primary ring-2",
-              isTeamUnlocked
-                ? "cursor-pointer hover:shadow-lg"
-                : "cursor-not-allowed",
-            )}
-            onClick={handleTeamUse}
-          >
-            {/* ロックオーバーレイ */}
-            {!isTeamUnlocked && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/50">
-                <div className="flex flex-col items-center gap-3 rounded-lg bg-white px-6 py-4 shadow-2xl">
-                  <Lock className="h-12 w-12 text-gray-400" strokeWidth={2} />
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-700">
-                      ウェイティングリスト登録者限定
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      アーリーアクセスをお待ちください
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* オプション選択 */}
+          <div className="grid gap-8 md:grid-cols-2">
+            {/* 個人利用オプション */}
+            <motion.div
+              className="group relative cursor-pointer border-3 border-black bg-white p-6 shadow-[6px_6px_0_#6366f1] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[10px_10px_0_#6366f1]"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              onClick={handlePersonalUse}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <CornerBlocks colorClass="bg-indigo-500" />
 
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
-                <Users className="h-8 w-8 text-purple-600" />
+              {/* アイコン */}
+              <motion.div
+                className="mx-auto mb-6 flex h-20 w-20 items-center justify-center border-3 border-black bg-gradient-to-br from-blue-50 to-indigo-100 shadow-[4px_4px_0_#000]"
+                whileHover={{ scale: 1.05, rotate: 3 }}
+              >
+                <User className="h-10 w-10 text-blue-600" />
+              </motion.div>
+
+              <div className="text-center">
+                <h2 className="mb-2 text-2xl font-black text-black">
+                  個人利用
+                </h2>
+                <p className="mb-6 text-gray-600">
+                  一人でMCPサーバーを管理したい
+                </p>
               </div>
-              <CardTitle className="text-2xl">チーム利用</CardTitle>
-              <CardDescription className="text-base">
-                チームでMCPサーバーを共有管理したい
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  チーム名とロゴを設定
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  メンバー招待機能
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  ロールベース権限管理
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  チーム用ダッシュボード
-                </li>
-              </ul>
+
+              {/* 機能リスト */}
+              <motion.ul
+                className="mb-6 space-y-3 text-sm"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {personalFeatures.map((feature, i) => (
+                  <motion.li
+                    key={i}
+                    className="flex items-center gap-2"
+                    variants={itemVariants}
+                  >
+                    <CheckCircle className="h-5 w-5 flex-shrink-0 text-green-500" />
+                    <span className="text-gray-700">{feature}</span>
+                  </motion.li>
+                ))}
+              </motion.ul>
+
               <Button
-                className="mt-6 w-full"
+                className="w-full border-2 border-black bg-black text-white shadow-[4px_4px_0_#6366f1] transition-all hover:-translate-x-1 hover:-translate-y-1 hover:bg-black hover:shadow-[6px_6px_0_#6366f1]"
+                tabIndex={-1}
+              >
+                {isFirstLogin ? "個人利用で開始" : "個人利用に戻る"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </motion.div>
+
+            {/* チーム利用オプション */}
+            <motion.div
+              className={`group relative border-3 border-black bg-white p-6 transition-all duration-300 ${
+                isTeamUnlocked
+                  ? "cursor-pointer shadow-[6px_6px_0_#9ca3af] hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[10px_10px_0_#9ca3af]"
+                  : "cursor-not-allowed opacity-80 shadow-[6px_6px_0_#e5e7eb]"
+              }`}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              onClick={handleTeamUse}
+              whileHover={isTeamUnlocked ? { scale: 1.02 } : {}}
+              whileTap={isTeamUnlocked ? { scale: 0.98 } : {}}
+            >
+              <CornerBlocks
+                colorClass={isTeamUnlocked ? "bg-purple-500" : "bg-gray-400"}
+              />
+
+              {/* ロックオーバーレイ */}
+              {!isTeamUnlocked && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+                  <motion.div
+                    className="flex flex-col items-center gap-3 border-2 border-black bg-white px-6 py-4 shadow-[4px_4px_0_#000]"
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                      ease: "easeInOut",
+                    }}
+                  >
+                    <motion.div
+                      animate={{
+                        rotate: [0, -5, 5, -5, 0],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <Lock className="h-10 w-10 text-gray-500" />
+                    </motion.div>
+                    <div className="text-center">
+                      <span className="inline-block bg-black px-2 py-0.5 text-xs font-bold text-white">
+                        Coming Soon
+                      </span>
+                      <p className="mt-2 text-sm font-semibold text-gray-700">
+                        ウェイティングリスト登録者限定
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        アーリーアクセスをお待ちください
+                      </p>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+
+              {/* アイコン */}
+              <motion.div
+                className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center border-3 border-black shadow-[4px_4px_0_#000] ${
+                  isTeamUnlocked
+                    ? "bg-gradient-to-br from-purple-50 to-indigo-100"
+                    : "bg-gray-100 grayscale"
+                }`}
+                whileHover={isTeamUnlocked ? { scale: 1.05, rotate: -3 } : {}}
+              >
+                <Users
+                  className={`h-10 w-10 ${isTeamUnlocked ? "text-purple-600" : "text-gray-400"}`}
+                />
+              </motion.div>
+
+              <div className="text-center">
+                <h2 className="mb-2 text-2xl font-black text-black">
+                  チーム利用
+                </h2>
+                <p className="mb-6 text-gray-600">
+                  チームでMCPサーバーを共有管理したい
+                </p>
+              </div>
+
+              {/* 機能リスト */}
+              <motion.ul
+                className="mb-6 space-y-3 text-sm"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {teamFeatures.map((feature, i) => (
+                  <motion.li
+                    key={i}
+                    className="flex items-center gap-2"
+                    variants={itemVariants}
+                  >
+                    <CheckCircle
+                      className={`h-5 w-5 flex-shrink-0 ${isTeamUnlocked ? "text-green-500" : "text-gray-400"}`}
+                    />
+                    <span
+                      className={
+                        isTeamUnlocked ? "text-gray-700" : "text-gray-500"
+                      }
+                    >
+                      {feature}
+                    </span>
+                  </motion.li>
+                ))}
+              </motion.ul>
+
+              <Button
+                className={`w-full border-2 border-black transition-all ${
+                  isTeamUnlocked
+                    ? "bg-white text-black shadow-[4px_4px_0_#9ca3af] hover:-translate-x-1 hover:-translate-y-1 hover:bg-white hover:shadow-[6px_6px_0_#9ca3af]"
+                    : "cursor-not-allowed bg-gray-100 text-gray-400 shadow-[4px_4px_0_#e5e7eb]"
+                }`}
                 variant="outline"
                 tabIndex={-1}
-                asChild
               >
-                <span
-                  className={clsx(!isTeamUnlocked && "pointer-events-none")}
-                >
-                  チームを作成
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </span>
+                チームを作成
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            </CardContent>
-          </Card>
+            </motion.div>
+          </div>
         </div>
       </div>
 
@@ -257,9 +391,11 @@ export const OnboardingClient = ({
 
       {/* チーム作成ダイアログ */}
       <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl border-2 border-black shadow-[8px_8px_0_#6366f1]">
           <DialogHeader>
-            <DialogTitle>新しいチームを作成</DialogTitle>
+            <DialogTitle className="text-2xl font-black">
+              新しいチームを作成
+            </DialogTitle>
             <DialogDescription>
               新しいチームを作成します。チーム名、説明、ロゴを設定してください。
             </DialogDescription>
