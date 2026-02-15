@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FaviconImage } from "@/components/ui/FaviconImage";
+import { FaviconImage } from "@/features/shared/components/FaviconImage";
 import { ImageIcon } from "lucide-react";
 import { getIconComponent } from "./McpIconPicker";
 import { parseIconPath, getIconColorClass } from "@/lib/iconColor";

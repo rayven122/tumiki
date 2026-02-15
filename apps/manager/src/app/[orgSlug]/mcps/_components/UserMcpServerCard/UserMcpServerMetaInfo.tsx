@@ -5,7 +5,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { formatDistanceToNow, format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Calendar, User } from "lucide-react";

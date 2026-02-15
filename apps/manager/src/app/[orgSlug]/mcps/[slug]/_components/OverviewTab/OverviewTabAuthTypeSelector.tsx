@@ -1,8 +1,8 @@
 "use client";
 
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@tumiki/ui/label";
+import { RadioGroup, RadioGroupItem } from "@tumiki/ui/radio-group";
+import { Badge } from "@tumiki/ui/badge";
 import { AuthType } from "@tumiki/db/prisma";
 
 type AuthTypeSelectorProps = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { Copy, Link2 } from "lucide-react";
 import { copyToClipboard } from "@/lib/client/copyToClipboard";
 import { toast } from "@/lib/client/toast";

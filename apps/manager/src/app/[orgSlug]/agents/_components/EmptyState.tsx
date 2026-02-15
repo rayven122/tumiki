@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { Bot, Plus } from "lucide-react";
 import Link from "next/link";
 

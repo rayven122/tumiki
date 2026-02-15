@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@tumiki/ui/button";
+import { Label } from "@tumiki/ui/label";
+import { Switch } from "@tumiki/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@tumiki/ui/select";
 import { cn } from "@/lib/utils";
 import type { McpPermission, McpServerOption } from "./PermissionSelector";
 import { ServerIcon } from "./ServerIcon";

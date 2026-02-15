@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   PROGRESS_UPDATE_INTERVAL_MS,
   PROGRESS_WARNING_THRESHOLD,
@@ -9,7 +9,7 @@ import {
 import { AlertTriangle, Eye, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { formatElapsedTime, formatStartTime } from "./timeUtils";
 import type { ExecutionData } from "./types";
 

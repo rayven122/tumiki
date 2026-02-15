@@ -1,12 +1,12 @@
 import { Info } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { normalizeServerName } from "@tumiki/shared/utils/normalizeServerName";
 
 type ServerNameInputProps = {

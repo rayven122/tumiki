@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@tumiki/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@tumiki/ui/alert";
 import { AlertCircle, Plus } from "lucide-react";
 import { toast } from "@/lib/client/toast";
 import { ApiKeyItem } from "./OverviewTabApiKeyItem";

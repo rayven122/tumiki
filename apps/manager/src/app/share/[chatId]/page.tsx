@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { getPublicChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { SharedChatMessages } from "./_components/SharedChatMessages";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import type { Message } from "@tumiki/db/prisma";
 import type { UIMessage } from "ai";
 import type { Attachment } from "@/lib/types";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@tumiki/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
 import { api } from "@/trpc/react";
 import { NotificationItem } from "./NotificationItem";
 import { Loader2 } from "lucide-react";

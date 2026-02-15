@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import type React from "react";
 
 import {
@@ -9,9 +9,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LinkifiedText } from "@/components/ui/LinkifiedText";
+} from "@tumiki/ui/card";
+import { Badge } from "@tumiki/ui/badge";
+import { LinkifiedText } from "@/features/shared/components/LinkifiedText";
 import { useState } from "react";
 import { CreateServerModal } from "./CreateServerModal";
 import { Wrench, Building2, Trash2, MoreHorizontal } from "lucide-react";
@@ -25,17 +25,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import { AlertTriangleIcon } from "lucide-react";
 import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 
 type McpServerTemplateWithTools = Prisma.McpServerTemplateGetPayload<{
   include: { mcpTools: true };

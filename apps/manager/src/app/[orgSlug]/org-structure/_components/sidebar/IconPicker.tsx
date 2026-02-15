@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import * as LucideIcons from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button } from "@tumiki/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
 import { cn } from "@/lib/utils";
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { ServerIcon } from "./ServerIcon";
 import { ToggleRow } from "./ToggleRow";
 import type { McpPermission } from "./PermissionSelector";

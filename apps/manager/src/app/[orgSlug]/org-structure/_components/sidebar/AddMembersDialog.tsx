@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@tumiki/ui/avatar";
+import { Button } from "@tumiki/ui/button";
+import { Checkbox } from "@tumiki/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@tumiki/ui/dialog";
 import { UserPlus } from "lucide-react";
 
 type OrganizationMember = {

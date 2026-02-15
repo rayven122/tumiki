@@ -1,18 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Input } from "@tumiki/ui/input";
+import { Label } from "@tumiki/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@tumiki/ui/popover";
+import { Switch } from "@tumiki/ui/switch";
 import { AlertCircle, Bell, Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 
 /**
  * Slack通知設定の値を表す型

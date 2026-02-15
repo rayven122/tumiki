@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import type {
   Member,
   Role,

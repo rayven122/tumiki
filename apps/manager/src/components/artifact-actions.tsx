@@ -1,5 +1,5 @@
-import { Button } from "./ui/chat/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/chat/tooltip";
+import { Button } from "@tumiki/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@tumiki/ui/tooltip";
 import { artifactDefinitions, type UIArtifact } from "./artifact";
 import { type Dispatch, memo, type SetStateAction, useState } from "react";
 import type { ArtifactActionContext } from "./create-artifact";

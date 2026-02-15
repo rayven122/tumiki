@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -8,7 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@tumiki/ui/alert-dialog";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import type { ListRolesOutput } from "@/features/roles/api/list";

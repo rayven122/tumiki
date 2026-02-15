@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@tumiki/ui/card";
 import { Activity, Bot, DollarSign, Clock } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 

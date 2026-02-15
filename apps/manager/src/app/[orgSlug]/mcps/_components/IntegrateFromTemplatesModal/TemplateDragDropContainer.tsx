@@ -2,7 +2,7 @@
 
 import { Layers, Package, Wrench } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useDrag } from "@/features/mcps/components/mcp-selector";

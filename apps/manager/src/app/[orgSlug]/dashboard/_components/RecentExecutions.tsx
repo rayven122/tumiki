@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
+import { Button } from "@tumiki/ui/button";
+import { Badge } from "@tumiki/ui/badge";
 import {
   Table,
   TableBody,
@@ -12,12 +12,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@tumiki/ui/table";
 import { Clock, Activity, CheckCircle, XCircle, Eye } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { ExecutionHistoryModal } from "../../agents/[agentSlug]/_components/ExecutionHistoryModal";
 
 type Execution = RouterOutputs["dashboard"]["getRecentExecutions"][number];

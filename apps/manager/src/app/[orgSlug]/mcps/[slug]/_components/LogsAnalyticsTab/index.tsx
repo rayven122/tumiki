@@ -2,19 +2,19 @@
 
 import { useState, useMemo } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@tumiki/ui/select";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@/features/analytics/components/Chart";
 import {
   Activity,
   CheckCircle,
@@ -22,7 +22,7 @@ import {
   Clock,
   RefreshCw,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import type { RequestStats } from "../types";
 import { StatsCard } from "./StatsCard";

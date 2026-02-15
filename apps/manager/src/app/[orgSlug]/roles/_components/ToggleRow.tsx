@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@tumiki/ui/switch";
 import { cn } from "@/lib/utils";
 
 type ToggleRowProps = {

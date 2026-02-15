@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Server, ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@tumiki/ui/collapsible";
 import { DefaultPermissionsSection } from "./DefaultPermissionsSection";
 import { ServerPermissionCard } from "./ServerPermissionCard";
 import { AddServerPermissionForm } from "./AddServerPermissionForm";

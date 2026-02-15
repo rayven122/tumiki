@@ -1,21 +1,21 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@tumiki/ui/badge";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@tumiki/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { McpServerId } from "@/schema/ids";
 import { type RouterOutputs } from "@/trpc/react";
@@ -36,7 +36,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { McpConfigEditModal } from "../../[slug]/_components/McpConfigEditModal";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import { RefreshToolsModal } from "../RefreshToolsModal";
 import { InboundAuthIndicator } from "../ServerCard/ServerCardInboundAuthIndicator";
 import { OutboundApiKeyIndicator } from "../ServerCard/ServerCardOutboundApiKeyIndicator";

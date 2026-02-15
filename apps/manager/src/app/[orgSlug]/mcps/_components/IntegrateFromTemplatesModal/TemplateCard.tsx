@@ -3,7 +3,7 @@
 import { Wrench, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuthTypeBadge } from "../ServerCard/ServerCardAuthTypeBadge";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 import type { SelectableTemplate } from "./types";
 
 type TemplateCardProps = {

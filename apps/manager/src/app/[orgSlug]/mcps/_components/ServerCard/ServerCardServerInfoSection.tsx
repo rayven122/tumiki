@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tumiki/ui/badge";
 import type { Prisma } from "@tumiki/db/prisma";
-import { EntityIcon } from "@/components/ui/EntityIcon";
+import { EntityIcon } from "@/features/shared/components/EntityIcon";
 
 type McpServerTemplate = Prisma.McpServerTemplateGetPayload<object>;
 

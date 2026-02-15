@@ -11,7 +11,7 @@ import { api } from "@/trpc/react";
 import { toast } from "@/lib/client/toast";
 import { Upload, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@tumiki/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@tumiki/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@tumiki/ui/tabs";
 import { type McpServerId } from "@/schema/ids";
 import { McpIconPicker } from "../McpIconPicker";
 import { McpServerIcon } from "../McpServerIcon";

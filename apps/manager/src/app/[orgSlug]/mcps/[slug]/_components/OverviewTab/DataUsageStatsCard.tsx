@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import { HardDrive } from "lucide-react";
 import type { RequestStats } from "../types";
 

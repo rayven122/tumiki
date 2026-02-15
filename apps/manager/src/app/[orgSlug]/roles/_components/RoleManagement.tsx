@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@tumiki/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@tumiki/ui/card";
 import { RoleList } from "./RoleList";
 import { CreateRoleDialog } from "./CreateRoleDialog";
 

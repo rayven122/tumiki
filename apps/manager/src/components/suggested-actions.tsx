@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button } from "./ui/chat/button";
+import { Button } from "@tumiki/ui/button";
 import { memo } from "react";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { VisibilityType } from "./visibility-selector";

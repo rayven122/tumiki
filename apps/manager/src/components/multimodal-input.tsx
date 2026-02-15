@@ -19,8 +19,8 @@ import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
-import { Button } from "./ui/chat/button";
-import { Textarea } from "./ui/chat/textarea";
+import { Button } from "@tumiki/ui/button";
+import { Textarea } from "@tumiki/ui/textarea";
 import equal from "fast-deep-equal";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { AnimatePresence, motion } from "framer-motion";

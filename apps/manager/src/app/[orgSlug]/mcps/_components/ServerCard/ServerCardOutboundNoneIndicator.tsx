@@ -1,10 +1,10 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@tumiki/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@tumiki/ui/tooltip";
 import { Unlock } from "lucide-react";
 
 /**

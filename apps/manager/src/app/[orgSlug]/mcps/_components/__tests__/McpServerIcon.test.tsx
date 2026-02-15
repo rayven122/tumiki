@@ -34,7 +34,7 @@ vi.mock("next/image", () => ({
 }));
 
 // FaviconImageをモック
-vi.mock("@/components/ui/FaviconImage", () => ({
+vi.mock("@/features/shared/components/FaviconImage", () => ({
   FaviconImage: ({
     url,
     alt,
