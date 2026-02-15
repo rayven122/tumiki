@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm with-env next dev --turbopack",
+    "dev:https": "pnpm with-env next dev --turbopack --experimental-https",
     "build": "pnpm with-env next build --turbopack",
     "build:ce": "NEXT_PUBLIC_EE_BUILD=false pnpm with-env next build --webpack",
     "build:ee": "NEXT_PUBLIC_EE_BUILD=true pnpm with-env next build --turbopack",

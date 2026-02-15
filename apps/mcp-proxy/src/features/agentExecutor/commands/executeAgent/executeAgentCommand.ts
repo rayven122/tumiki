@@ -22,6 +22,10 @@ import { toError } from "../../../../shared/errors/toError.js";
 import { logError, logInfo } from "../../../../shared/logger/index.js";
 import { parseIntWithDefault } from "../../../../shared/utils/parseIntWithDefault.js";
 import { getChatMcpTools } from "../../../chat/chatMcpTools.js";
+import {
+  notifyAgentExecution,
+  type AgentExecutionNotifyParams,
+} from "../../../notification/index.js";
 import type {
   ExecuteAgentRequest,
   ExecuteAgentResult,
@@ -30,6 +34,7 @@ import type {
 import {
   buildSystemPrompt,
   buildMessageParts,
+  buildSlackNotificationPart,
   consumeStreamText,
   getErrorMessage,
   isAbortError,
@@ -40,6 +45,9 @@ import {
 /** エージェント実行用のデフォルトモデル（環境変数で上書き可能） */
 const DEFAULT_AGENT_MODEL =
   process.env.AGENT_DEFAULT_MODEL ?? AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
+
+/** 自動モデル選択を示すID */
+const AUTO_MODEL_ID = AGENT_EXECUTION_CONFIG.AUTO_MODEL_ID;
 
 /** 実行タイムアウト（ミリ秒、環境変数で上書き可能） */
 const EXECUTION_TIMEOUT_MS = parseIntWithDefault(
@@ -110,7 +118,11 @@ export const executeAgentCommand = async (
       request.trigger,
       agent.systemPrompt ?? undefined,
     );
-    modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
+    // "auto" または未設定の場合はデフォルトモデルに解決
+    modelId =
+      agent.modelId && agent.modelId !== AUTO_MODEL_ID
+        ? agent.modelId
+        : DEFAULT_AGENT_MODEL;
     userMessage = request.message ?? DEFAULT_EXECUTION_MESSAGE;
     effectiveUserId = userId ?? agent.createdById;
 
@@ -247,6 +259,54 @@ export const executeAgentCommand = async (
       });
     }
 
+    // Slack通知を送信して結果を取得
+    const usedToolNames = Object.keys(mcpTools);
+    const slackResult = await notifyAgentExecution({
+      agentId: request.agentId,
+      agentName: agent.name,
+      organizationId: agent.organizationId,
+      success: true,
+      durationMs,
+      toolNames: usedToolNames.length > 0 ? usedToolNames : undefined,
+      chatId: chatId ?? undefined,
+    } satisfies AgentExecutionNotifyParams);
+
+    // Slack通知結果をパーツに追加してメッセージを更新
+    const slackNotificationPart = buildSlackNotificationPart(slackResult);
+    if (slackNotificationPart && chatId) {
+      // Slack通知結果をメッセージに追加（最後のアシスタントメッセージを更新）
+      // DB更新は非同期で行い、エラー時はログのみ
+      void (async () => {
+        try {
+          const { db } = await import("@tumiki/db/server");
+          // 最後のアシスタントメッセージを取得
+          const lastMessage = await db.message.findFirst({
+            where: {
+              chatId,
+              role: "assistant",
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          if (lastMessage && Array.isArray(lastMessage.parts)) {
+            // JSON互換に変換してPrismaに渡す
+            const updatedParts = JSON.parse(
+              JSON.stringify([...lastMessage.parts, slackNotificationPart]),
+            ) as object[];
+            await db.message.update({
+              where: { id: lastMessage.id },
+              data: { parts: updatedParts },
+            });
+          }
+        } catch (updateError) {
+          logError(
+            "Failed to update message with Slack notification result",
+            toError(updateError),
+            { chatId },
+          );
+        }
+      })();
+    }
+
     return {
       executionId,
       success: true,
@@ -266,9 +326,31 @@ export const executeAgentCommand = async (
       isTimeout: isAbortError(error),
     });
 
+    // Slack通知を先に送信して結果を取得
+    let slackNotificationPart: MessagePart | null = null;
+    if (agentInfo) {
+      const slackResult = await notifyAgentExecution({
+        agentId: request.agentId,
+        agentName: agentInfo.name,
+        organizationId: agentInfo.organizationId,
+        success: false,
+        durationMs,
+        errorMessage,
+      } satisfies AgentExecutionNotifyParams);
+      slackNotificationPart = buildSlackNotificationPart(slackResult);
+    }
+
     // pendingログがある場合は更新（事前に取得したエージェント情報を再利用）
     if (pendingLogId) {
       if (effectiveUserId && agentInfo) {
+        // Slack通知結果をアシスタントメッセージに含める
+        const errorParts: MessagePart[] = [
+          { type: "text", text: `エラーが発生しました: ${errorMessage}` },
+        ];
+        if (slackNotificationPart) {
+          errorParts.push(slackNotificationPart);
+        }
+
         await updateExecutionLogWithChat({
           executionLogId: pendingLogId,
           organizationId: agentInfo.organizationId,
@@ -279,9 +361,7 @@ export const executeAgentCommand = async (
           success: false,
           durationMs,
           userMessage,
-          assistantParts: [
-            { type: "text", text: `エラーが発生しました: ${errorMessage}` },
-          ],
+          assistantParts: errorParts,
         });
       } else {
         await updateExecutionLogSimple({

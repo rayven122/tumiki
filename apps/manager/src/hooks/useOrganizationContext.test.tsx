@@ -148,6 +148,7 @@ describe("useOrganizationContext", () => {
       id: "org_1",
       name: "Organization 1",
       isPersonal: false,
+      logoUrl: undefined,
       memberCount: 5,
     });
     expect(result.current.isLoading).toBe(false);

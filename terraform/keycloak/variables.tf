@@ -63,6 +63,7 @@ variable "manager_redirect_uris" {
   type        = list(string)
   default = [
     "http://localhost:3000/*",
+    "https://localhost:3000/*",
     "http://localhost:3001/*",
     "https://manager.tumiki.cloud/*"
   ]
@@ -73,6 +74,7 @@ variable "manager_web_origins" {
   type        = list(string)
   default = [
     "http://localhost:3000",
+    "https://localhost:3000",
     "http://localhost:3001",
     "https://manager.tumiki.cloud"
   ]

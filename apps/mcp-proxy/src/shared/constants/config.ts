@@ -56,11 +56,32 @@ export const AGENT_EXECUTION_CONFIG = {
   DEFAULT_MODEL: "anthropic/claude-3-5-sonnet",
 
   /**
+   * 自動モデル選択を示す特別なID
+   * フロントエンドの AUTO_MODEL_ID と同じ値
+   */
+  AUTO_MODEL_ID: "auto",
+
+  /**
    * 孤立したエージェント実行のクリーンアップ間隔（ミリ秒）
    * 本番環境でネットワークエラー等で実行中のまま残った実行を定期的にクリーンアップ
    */
   CLEANUP_INTERVAL_MS: 5 * 60 * 1000, // 5分
 } as const;
+
+/**
+ * モデルIDを解決する
+ *
+ * "auto" または未設定の場合はデフォルトモデルを返す
+ *
+ * @param modelId - エージェントに設定されたモデルID
+ * @returns 実際に使用するモデルID
+ */
+export const resolveModelId = (modelId: string | null | undefined): string => {
+  if (!modelId || modelId === AGENT_EXECUTION_CONFIG.AUTO_MODEL_ID) {
+    return AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
+  }
+  return modelId;
+};
 
 /**
  * 認証関連のパターンと設定

@@ -19,7 +19,10 @@ import {
 import { db, type Prisma } from "@tumiki/db/server";
 
 import type { HonoEnv } from "../../shared/types/honoEnv.js";
-import { AGENT_EXECUTION_CONFIG } from "../../shared/constants/config.js";
+import {
+  AGENT_EXECUTION_CONFIG,
+  resolveModelId,
+} from "../../shared/constants/config.js";
 import { logError, logInfo } from "../../shared/logger/index.js";
 import { toError } from "../../shared/errors/toError.js";
 import { generateCUID } from "../../shared/utils/cuid.js";
@@ -27,10 +30,9 @@ import { verifyChatAuth } from "../chat/index.js";
 import { getChatMcpTools } from "../chat/index.js";
 import { buildStreamTextConfig } from "../execution/shared/index.js";
 import { buildSystemPrompt } from "./commands/index.js";
+import { notifyAgentExecution } from "../notification/index.js";
 import type { ExecutionTrigger } from "./types.js";
-
-/** エージェント実行用のデフォルトモデル */
-const DEFAULT_AGENT_MODEL = AGENT_EXECUTION_CONFIG.DEFAULT_MODEL;
+import { buildSlackNotificationPart } from "./commands/executeAgent/buildMessageParts.js";
 
 /** 最大ツール実行ステップ数 */
 const MAX_TOOL_STEPS = AGENT_EXECUTION_CONFIG.MAX_TOOL_STEPS;
@@ -116,7 +118,8 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         );
       }
 
-      const modelId = agent.modelId ?? DEFAULT_AGENT_MODEL;
+      // "auto" または未設定の場合はデフォルトモデルに解決
+      const modelId = resolveModelId(agent.modelId);
       const userMessage = message ?? "タスクを実行してください。";
       // ストリーミング実行は手動実行として扱う
       const trigger: ExecutionTrigger = { type: "manual", userId };
@@ -183,6 +186,11 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
         abortSignal: abortController.signal,
       });
 
+      // Slack通知結果を保持（execute内で設定、onFinishで使用）
+      let slackNotificationResult: Awaited<
+        ReturnType<typeof notifyAgentExecution>
+      > | null = null;
+
       // ストリーミングレスポンスを作成
       const stream = createUIMessageStream({
         generateId: generateCUID,
@@ -200,8 +208,27 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               sendReasoning: true,
             });
 
+            // ストリームをマージ（merge()はvoidを返すため、完了はonFinish内で検知）
             writer.merge(uiMessageStream);
-            logInfo("Agent execution stream merged", { agentId, chatId });
+
+            // AIストリーム完了後にSlack通知を送信
+            const durationMs = Date.now() - startTime;
+            slackNotificationResult = await notifyAgentExecution({
+              agentId,
+              agentName: agent.name,
+              organizationId,
+              success: true,
+              durationMs,
+              toolNames: mcpToolNames,
+              chatId,
+            });
+
+            logInfo("Agent execution stream merged with Slack notification", {
+              agentId,
+              chatId,
+              slackAttempted: slackNotificationResult.attempted,
+              slackSuccess: slackNotificationResult.success,
+            });
           } finally {
             // タイムアウトタイマーをクリア
             clearTimeout(timeoutId);
@@ -212,6 +239,11 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
           const durationMs = Date.now() - startTime;
 
           try {
+            // Slack通知結果をパーツに変換（executeで既に送信済み）
+            const slackNotificationPart = slackNotificationResult
+              ? buildSlackNotificationPart(slackNotificationResult)
+              : null;
+
             // トランザクションでChat, Message, AgentExecutionLogを一括作成
             await db.$transaction(async (tx) => {
               const now = new Date();
@@ -246,15 +278,35 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               );
 
               if (assistantMessages.length > 0) {
+                // 最後のアシスタントメッセージにSlack通知結果を追加
+                const messagesWithSlackResult = assistantMessages.map(
+                  (msg, index) => {
+                    const isLastMessage =
+                      index === assistantMessages.length - 1;
+                    const baseParts =
+                      msg.parts as unknown as Prisma.InputJsonValue[];
+                    // 最後のメッセージにSlack通知結果パーツを追加
+                    const parts =
+                      isLastMessage && slackNotificationPart
+                        ? [
+                            ...baseParts,
+                            slackNotificationPart as unknown as Prisma.InputJsonValue,
+                          ]
+                        : baseParts;
+
+                    return {
+                      id: msg.id,
+                      chatId,
+                      role: "assistant" as const,
+                      parts,
+                      attachments: [],
+                      createdAt: now,
+                    };
+                  },
+                );
+
                 await tx.message.createMany({
-                  data: assistantMessages.map((msg) => ({
-                    id: msg.id,
-                    chatId,
-                    role: "assistant" as const,
-                    parts: msg.parts as unknown as Prisma.InputJsonValue[],
-                    attachments: [],
-                    createdAt: now,
-                  })),
+                  data: messagesWithSlackResult,
                 });
               }
 
@@ -273,6 +325,8 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
               agentId,
               chatId,
               durationMs,
+              slackNotificationAttempted: slackNotificationResult?.attempted,
+              slackNotificationSuccess: slackNotificationResult?.success,
             });
           } catch (error) {
             // ログ保存失敗は致命的エラーではないため、警告ログのみ
@@ -310,6 +364,19 @@ export const agentExecutorRoute = new Hono<HonoEnv>().post(
                 success: false,
                 durationMs,
               },
+            })
+            .then(() => {
+              // Slack通知を送信（失敗時）
+              void notifyAgentExecution({
+                agentId,
+                agentName: agent.name,
+                organizationId,
+                success: false,
+                durationMs,
+                errorMessage,
+                toolNames: mcpToolNames,
+                chatId,
+              });
             })
             .catch((updateError) => {
               logError(

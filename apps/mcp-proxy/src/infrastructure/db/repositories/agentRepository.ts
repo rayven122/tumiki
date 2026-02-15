@@ -55,3 +55,31 @@ export const updateAgentEstimatedDuration = async (
     data: { estimatedDurationMs },
   });
 };
+
+/** エージェント通知設定 */
+export type AgentNotificationConfig = {
+  enableSlackNotification: boolean;
+  slackNotificationChannelId: string | null;
+  slackNotificationChannelName: string | null;
+  notifyOnlyOnFailure: boolean;
+};
+
+/**
+ * エージェントIDから通知設定を取得
+ *
+ * @param agentId - エージェントID
+ * @returns 通知設定（見つからない場合はnull）
+ */
+export const getAgentNotificationConfig = async (
+  agentId: string,
+): Promise<AgentNotificationConfig | null> => {
+  return db.agent.findUnique({
+    where: { id: agentId },
+    select: {
+      enableSlackNotification: true,
+      slackNotificationChannelId: true,
+      slackNotificationChannelName: true,
+      notifyOnlyOnFailure: true,
+    },
+  });
+};

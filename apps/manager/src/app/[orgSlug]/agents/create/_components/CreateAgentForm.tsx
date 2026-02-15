@@ -23,6 +23,10 @@ import {
   convertToSelectableMcp,
 } from "@/features/mcps/components/mcp-selector";
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/features/agents/constants";
+import {
+  SlackNotificationSettings,
+  type SlackChannel,
+} from "@/features/agents/components";
 import type { McpServerId } from "@/schema/ids";
 import { normalizeSlug } from "@tumiki/db/utils/slug";
 
@@ -58,6 +62,26 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
   // MCPサーバー一覧を取得
   const { data: mcpServers, isLoading: isLoadingServers } =
     api.userMcpServer.findMcpServers.useQuery();
+
+  // Slack連携状態を取得
+  const { data: slackConnectionStatus } =
+    api.slackIntegration.getConnectionStatus.useQuery();
+
+  // Slackチャンネル一覧を取得（連携済みの場合のみ）
+  const { data: slackChannels } = api.slackIntegration.listChannels.useQuery(
+    undefined,
+    {
+      enabled: slackConnectionStatus?.isConnected === true,
+    },
+  );
+
+  // Slackチャンネルを SlackChannel 型に変換
+  const formattedSlackChannels: SlackChannel[] | undefined = slackChannels?.map(
+    (ch) => ({
+      id: ch.id,
+      name: ch.name,
+    }),
+  );
 
   // エージェント作成mutation
   const createAgentMutation = api.agent.create.useMutation({
@@ -124,6 +148,13 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
         flowState.selectedMcpServerIds.length > 0
           ? flowState.selectedMcpServerIds.map((id) => id as McpServerId)
           : undefined,
+      // Slack通知設定
+      enableSlackNotification: flowState.enableSlackNotification,
+      slackNotificationChannelId:
+        flowState.slackNotificationChannelId || undefined,
+      slackNotificationChannelName:
+        flowState.slackNotificationChannelName || undefined,
+      notifyOnlyOnFailure: flowState.notifyOnlyOnFailure,
     });
   };
 
@@ -249,6 +280,19 @@ export const CreateAgentForm = ({ orgSlug }: CreateAgentFormProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Slack通知設定 */}
+      <SlackNotificationSettings
+        value={{
+          enableSlackNotification: flowState.enableSlackNotification,
+          slackNotificationChannelId: flowState.slackNotificationChannelId,
+          slackNotificationChannelName: flowState.slackNotificationChannelName,
+          notifyOnlyOnFailure: flowState.notifyOnlyOnFailure,
+        }}
+        onChange={updateFlowState}
+        isSlackConnected={slackConnectionStatus?.isConnected ?? false}
+        channels={formattedSlackChannels}
+      />
 
       {/* 作成ボタン */}
       <Button

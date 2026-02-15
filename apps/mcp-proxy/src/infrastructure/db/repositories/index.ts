@@ -35,9 +35,13 @@ export { getUserIdFromKeycloakId, getUserIdByEmail } from "./userRepository.js";
 export {
   findAgentForExecution,
   updateAgentEstimatedDuration,
+  getAgentNotificationConfig,
 } from "./agentRepository.js";
 
-export type { AgentForExecution } from "./agentRepository.js";
+export type {
+  AgentForExecution,
+  AgentNotificationConfig,
+} from "./agentRepository.js";
 
 // エージェント実行ログ関連
 export {
@@ -52,3 +56,8 @@ export type {
   UpdateExecutionLogSimpleParams,
   UpdateExecutionLogResult,
 } from "./agentExecutionLogRepository.js";
+
+// 組織関連
+export { getOrganizationSlackConfig } from "./organizationRepository.js";
+
+export type { OrganizationSlackConfig } from "./organizationRepository.js";

@@ -56,6 +56,18 @@ model Organization {
   /// エージェント関連
   agents Agent[]
 
+  /// Slack Bot Token（暗号化して保存）
+  slackBotToken      String? /// @encrypted
+  /// SlackワークスペースのTeam ID
+  slackTeamId        String?
+  /// Slackワークスペース名（表示用）
+  slackTeamName      String?
+  /// Slack連携日時
+  slackConnectedAt   DateTime?
+  /// Slack連携を行ったユーザーID
+  slackConnectedById String?
+  slackConnectedBy   User?     @relation("SlackConnectedOrganizations", fields: [slackConnectedById], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

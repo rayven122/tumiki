@@ -25,6 +25,10 @@ import {
   convertToSelectableMcp,
 } from "@/features/mcps/components/mcp-selector";
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from "@/features/agents/constants";
+import {
+  SlackNotificationSettings,
+  type SlackChannel,
+} from "@/features/agents/components";
 
 type EditAgentPageClientProps = {
   orgSlug: string;
@@ -44,6 +48,11 @@ type EditFormState = {
   modelId: string;
   visibility: McpServerVisibility;
   selectedMcpServerIds: string[];
+  // Slack通知設定
+  enableSlackNotification: boolean;
+  slackNotificationChannelId: string;
+  slackNotificationChannelName: string;
+  notifyOnlyOnFailure: boolean;
 };
 
 /**
@@ -68,6 +77,26 @@ const EditForm = ({
   const { data: mcpServers, isLoading: isLoadingServers } =
     api.userMcpServer.findMcpServers.useQuery();
 
+  // Slack連携状態を取得
+  const { data: slackConnectionStatus } =
+    api.slackIntegration.getConnectionStatus.useQuery();
+
+  // Slackチャンネル一覧を取得（連携済みの場合のみ）
+  const { data: slackChannels } = api.slackIntegration.listChannels.useQuery(
+    undefined,
+    {
+      enabled: slackConnectionStatus?.isConnected === true,
+    },
+  );
+
+  // Slackチャンネルを SlackChannel 型に変換
+  const formattedSlackChannels: SlackChannel[] | undefined = slackChannels?.map(
+    (ch) => ({
+      id: ch.id,
+      name: ch.name,
+    }),
+  );
+
   // フォーム状態（公開範囲は組織内に固定）
   const [formState, setFormState] = useState<EditFormState>({
     name: agent.name,
@@ -76,6 +105,11 @@ const EditForm = ({
     modelId: agent.modelId ?? "",
     visibility: FIXED_VISIBILITY,
     selectedMcpServerIds: agent.mcpServers.map((s) => s.id),
+    // Slack通知設定
+    enableSlackNotification: agent.enableSlackNotification,
+    slackNotificationChannelId: agent.slackNotificationChannelId ?? "",
+    slackNotificationChannelName: agent.slackNotificationChannelName ?? "",
+    notifyOnlyOnFailure: agent.notifyOnlyOnFailure,
   });
 
   // 更新mutation
@@ -150,6 +184,12 @@ const EditForm = ({
         formState.selectedMcpServerIds.length > 0
           ? (formState.selectedMcpServerIds as McpServerId[])
           : undefined,
+      // Slack通知設定
+      enableSlackNotification: formState.enableSlackNotification,
+      slackNotificationChannelId: formState.slackNotificationChannelId || null,
+      slackNotificationChannelName:
+        formState.slackNotificationChannelName || null,
+      notifyOnlyOnFailure: formState.notifyOnlyOnFailure,
     });
   };
 
@@ -299,6 +339,19 @@ const EditForm = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Slack通知設定 */}
+      <SlackNotificationSettings
+        value={{
+          enableSlackNotification: formState.enableSlackNotification,
+          slackNotificationChannelId: formState.slackNotificationChannelId,
+          slackNotificationChannelName: formState.slackNotificationChannelName,
+          notifyOnlyOnFailure: formState.notifyOnlyOnFailure,
+        }}
+        onChange={updateFormState}
+        isSlackConnected={slackConnectionStatus?.isConnected ?? false}
+        channels={formattedSlackChannels}
+      />
 
       {/* 保存ボタン */}
       <Button

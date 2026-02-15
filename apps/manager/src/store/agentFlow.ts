@@ -15,6 +15,11 @@ export type AgentFlowState = {
   selectedMcpServerIds: string[];
   // 可視性
   visibility: McpServerVisibility;
+  // Slack通知設定
+  enableSlackNotification: boolean;
+  slackNotificationChannelId: string;
+  slackNotificationChannelName: string;
+  notifyOnlyOnFailure: boolean;
 };
 
 // 初期状態
@@ -25,6 +30,10 @@ const initialState: AgentFlowState = {
   iconPath: "",
   selectedMcpServerIds: [],
   visibility: McpServerVisibility.ORGANIZATION,
+  enableSlackNotification: false,
+  slackNotificationChannelId: "",
+  slackNotificationChannelName: "",
+  notifyOnlyOnFailure: false,
 };
 
 // エージェント作成フローのatom

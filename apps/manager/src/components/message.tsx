@@ -23,6 +23,11 @@ import { TypingIndicator } from "./typing-indicator";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { AgentInfo, ChatMessage } from "@/lib/types";
 import { EntityIcon } from "./ui/EntityIcon";
+import { SlackNotificationAlert } from "@/app/[orgSlug]/agents/[agentSlug]/_components/SlackNotificationAlert";
+import {
+  type SlackNotificationPart,
+  mapDynamicToolState,
+} from "@/features/chat";
 
 const PurePreviewMessage = ({
   chatId,
@@ -229,26 +234,6 @@ const PurePreviewMessage = ({
                     outputRef?: string;
                   };
 
-                  // AI SDK 6の状態形式にマッピング
-                  // dynamic-tool の状態: "pending", "output-available", "error"
-                  const mapDynamicToolState = (
-                    state: string,
-                  ):
-                    | "input-streaming"
-                    | "input-available"
-                    | "output-available"
-                    | "output-error" => {
-                    switch (state) {
-                      case "output-available":
-                        return "output-available";
-                      case "error":
-                        return "output-error";
-                      case "pending":
-                      default:
-                        return "input-available";
-                    }
-                  };
-
                   return (
                     <McpToolCall
                       key={dynamicToolPart.toolCallId}
@@ -430,6 +415,21 @@ const PurePreviewMessage = ({
                       </div>
                     );
                   }
+                }
+
+                // Slack通知パート（DBから取得したカスタムパーツタイプ）
+                // NOTE: AISDKのUIMessageパーツ型には含まれないためstring比較
+                if ((type as string) === "slack-notification") {
+                  const slackPart = part as unknown as SlackNotificationPart;
+                  return (
+                    <SlackNotificationAlert
+                      key={key}
+                      success={slackPart.success}
+                      channelName={slackPart.channelName}
+                      errorMessage={slackPart.errorMessage}
+                      userAction={slackPart.userAction}
+                    />
+                  );
                 }
 
                 return null;

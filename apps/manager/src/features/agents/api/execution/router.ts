@@ -131,6 +131,45 @@ export const agentExecutionRouter = createTRPCRouter({
       }));
     }),
 
+  /** agentIdから最新の実行ログのメッセージを取得（Slack通知結果取得用） */
+  getLatestExecutionMessages: protectedProcedure
+    .input(z.object({ agentId: AgentIdSchema }))
+    .output(z.array(ExecutionMessageSchema).nullable())
+    .query(async ({ ctx, input }) => {
+      // 最新の完了済み実行ログを取得
+      const latestExecution = await ctx.db.agentExecutionLog.findFirst({
+        where: {
+          agentId: input.agentId,
+          success: { not: null }, // 完了済み（成功または失敗）
+          chatId: { not: null }, // チャットIDがある
+        },
+        orderBy: { createdAt: "desc" },
+        select: { chatId: true },
+      });
+
+      if (!latestExecution?.chatId) {
+        return null;
+      }
+
+      const messages = await ctx.db.message.findMany({
+        where: { chatId: latestExecution.chatId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          role: true,
+          parts: true,
+          createdAt: true,
+        },
+      });
+
+      return messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        parts: (msg.parts ?? []) as Record<string, unknown>[],
+        createdAt: msg.createdAt,
+      }));
+    }),
+
   /** 直近の実行履歴を取得（カーソルベースページネーション対応） */
   getRecent: protectedProcedure
     .input(

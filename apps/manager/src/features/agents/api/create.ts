@@ -9,6 +9,34 @@ import { TRPCError } from "@trpc/server";
 type CreateAgentInput = z.infer<typeof CreateAgentInputSchema>;
 
 /**
+ * スラグを解決する（指定があれば検証、なければ自動生成）
+ */
+const resolveAgentSlug = async (
+  tx: PrismaTransactionClient,
+  input: CreateAgentInput,
+  organizationId: string,
+): Promise<string> => {
+  if (!input.slug) {
+    return generateUniqueAgentSlug(tx, input.name, organizationId);
+  }
+
+  const slug = normalizeSlug(input.slug);
+  const existingAgent = await tx.agent.findFirst({
+    where: { slug, organizationId },
+    select: { id: true },
+  });
+
+  if (existingAgent) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "このスラグは既に使用されています",
+    });
+  }
+
+  return slug;
+};
+
+/**
  * エージェントを作成する
  */
 export const createAgent = async (
@@ -18,25 +46,7 @@ export const createAgent = async (
   userId: string,
 ): Promise<{ id: AgentId; slug: string }> => {
   // スラグの決定（指定がなければ名前から自動生成）
-  let slug: string;
-  if (input.slug) {
-    // ユーザー指定のスラグを正規化
-    slug = normalizeSlug(input.slug);
-    // 組織内での重複チェック
-    const existingAgent = await tx.agent.findFirst({
-      where: { slug, organizationId },
-      select: { id: true },
-    });
-    if (existingAgent) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "このスラグは既に使用されています",
-      });
-    }
-  } else {
-    // 名前から自動生成（ユニーク保証）
-    slug = await generateUniqueAgentSlug(tx, input.name, organizationId);
-  }
+  const slug = await resolveAgentSlug(tx, input, organizationId);
 
   const agent = await tx.agent.create({
     data: {
@@ -55,6 +65,11 @@ export const createAgent = async (
             connect: input.mcpServerIds.map((id) => ({ id })),
           }
         : undefined,
+      // Slack通知設定
+      enableSlackNotification: input.enableSlackNotification,
+      slackNotificationChannelId: input.slackNotificationChannelId,
+      slackNotificationChannelName: input.slackNotificationChannelName,
+      notifyOnlyOnFailure: input.notifyOnlyOnFailure,
     },
     select: {
       id: true,

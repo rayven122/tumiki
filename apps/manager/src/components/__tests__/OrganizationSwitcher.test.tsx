@@ -61,6 +61,22 @@ vi.mock("lucide-react", () => ({
     React.createElement("span", { className, "data-testid": "loader-icon" }),
 }));
 
+// McpServerIconのモック（lucide-reactアイコンへの依存を回避）
+vi.mock("@/app/[orgSlug]/mcps/_components/McpServerIcon", () => ({
+  McpServerIcon: ({
+    iconPath,
+    size,
+  }: {
+    iconPath: string | null | undefined;
+    size?: number;
+  }) =>
+    React.createElement("span", {
+      "data-testid": "mcp-server-icon",
+      "data-icon-path": iconPath,
+      "data-size": size,
+    }),
+}));
+
 // OrganizationIdSchemaのモック
 vi.mock("@/schema/ids", () => ({
   OrganizationIdSchema: {
@@ -74,17 +90,17 @@ vi.mock("@/schema/ids", () => ({
 }));
 
 // UIコンポーネントのモック - 型安全な実装
-interface SelectProps {
+type SelectProps = {
   children: React.ReactNode;
   value?: string;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
-}
+};
 
-interface SelectItemProps {
+type SelectItemProps = {
   children: React.ReactNode;
   value: string;
-}
+};
 
 // onValueChangeハンドラーを保存するための変数
 let selectOnValueChange: ((value: string) => void) | undefined;
@@ -236,8 +252,8 @@ describe("OrganizationSwitcher", () => {
 
     render(<OrganizationSwitcher />);
 
-    // 個人ワークスペースと表示される（複数ある場合は最初の要素）
-    const personalElements = screen.getAllByText("個人ワークスペース");
+    // ワークスペース名が表示される（複数ある場合は最初の要素）
+    const personalElements = screen.getAllByText("Personal Workspace");
     expect(personalElements[0]).toBeInTheDocument();
   });
 
@@ -416,8 +432,8 @@ describe("OrganizationSwitcher", () => {
 
     render(<OrganizationSwitcher />);
 
-    // 個人ワークスペースの選択肢がないことを確認
-    const personalOption = screen.queryByText("個人ワークスペース");
+    // 個人ワークスペースの選択肢がないことを確認（Personal Workspaceという名前で検索）
+    const personalOption = screen.queryByText("Personal Workspace");
     expect(personalOption).toBeNull();
   });
 

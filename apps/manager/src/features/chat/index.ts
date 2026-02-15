@@ -4,6 +4,7 @@ export {
   type ToolState,
   type MessagePart,
   type ExecutionMessage,
+  type SlackNotificationPart,
   mapDynamicToolState,
 } from "./types";
 

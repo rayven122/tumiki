@@ -12,8 +12,13 @@ import { McpToolCall } from "./mcp-tool-call";
 import { Weather, type WeatherAtLocation } from "./weather";
 import { MessageReasoning } from "./message-reasoning";
 import { Response } from "./response";
+import { SlackNotificationAlert } from "@/app/[orgSlug]/agents/[agentSlug]/_components/SlackNotificationAlert";
 import { sanitizeText } from "@/lib/utils";
-import { type ToolState, mapDynamicToolState } from "@/features/chat";
+import {
+  type ToolState,
+  type SlackNotificationPart,
+  mapDynamicToolState,
+} from "@/features/chat";
 
 type MessagePartsProps = {
   message: UIMessage;
@@ -262,6 +267,22 @@ export const MessageParts = ({
               key={key}
               part={part as { type: string; [key: string]: unknown }}
               compact={compact}
+            />
+          );
+        }
+
+        // Slack通知パート（DBから取得したカスタムパーツタイプ）
+        // コンパクト表示（アバターモード）では省略
+        // NOTE: AISDKのUIMessageパーツ型には含まれないためstring比較
+        if ((type as string) === "slack-notification" && !compact) {
+          const slackPart = part as unknown as SlackNotificationPart;
+          return (
+            <SlackNotificationAlert
+              key={key}
+              success={slackPart.success}
+              channelName={slackPart.channelName}
+              errorMessage={slackPart.errorMessage}
+              userAction={slackPart.userAction}
             />
           );
         }

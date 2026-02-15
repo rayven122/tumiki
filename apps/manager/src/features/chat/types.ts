@@ -47,3 +47,18 @@ export type ExecutionMessage = {
   parts: MessagePart[];
   createdAt?: Date;
 };
+
+/**
+ * Slack通知パーツの型
+ *
+ * mcp-proxy の SlackNotificationPart と同一定義
+ * @see apps/mcp-proxy/src/features/agentExecutor/commands/executeAgent/buildMessageParts.ts
+ */
+export type SlackNotificationPart = {
+  type: "slack-notification";
+  success: boolean;
+  channelName?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  userAction?: string;
+};
